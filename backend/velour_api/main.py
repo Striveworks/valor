@@ -28,5 +28,5 @@ async def root():
 def create_gt_detection(
     detection: schemas.GroundTruthDetectionCreate,
     db: Session = Depends(get_db),
-):
+) -> schemas.GroundTruthDetection:
     return crud.create_gt_detection(db=db, detection=detection)
