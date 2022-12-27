@@ -1,2 +1,3 @@
 fastapi[all]
 GeoAlchemy2
+psycopg2

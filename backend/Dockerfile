@@ -1,8 +1,13 @@
 FROM python:3.10-slim
 
-COPY ./main.py ./main.py
-COPY ./requirements.txt ./requirements.txt
+RUN apt-get update
+RUN apt-get install build-essential libpq-dev -y
+
+COPY ./requirements.txt /requirements.txt
 
 RUN python -m pip install -r requirements.txt
 
-CMD ["uvicorn", "main:app", "--reload"]
+COPY ./velour_api /velour_api
+WORKDIR /
+
+CMD ["uvicorn", "velour_api.main:app", "--reload", "--host", "0.0.0.0"]
