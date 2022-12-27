@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  db:
+    image: "postgis/postgis"
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
