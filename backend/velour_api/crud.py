@@ -7,11 +7,13 @@ from . import models, schemas
 
 def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
     """Returns the "Well-known text" format of a detection"""
+    pts = det.boundary
+    # in PostGIS polygon has to begin and end at the same point
+    if pts[0] != pts[-1]:
+        pts = pts + [pts[0]]
     return (
         "POLYGON (("
-        + ", ".join(
-            [" ".join([str(pt[0]), str(pt[1])]) for pt in det.boundary]
-        )
+        + ", ".join([" ".join([str(pt[0]), str(pt[1])]) for pt in pts])
         + "))"
     )
 
