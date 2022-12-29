@@ -5,7 +5,7 @@ description = "Python client for Velour evaluation store"
 readme = "README.md"
 requires-python = ">=3.7"
 license = {file = "LICENSE"}
-dependencies = ["requests"]
+dependencies = ["requests", "Pillow >= 9.1.0"]
 
 [build-system]
 requires =  ["setuptools>=61.0"]
