@@ -3,9 +3,9 @@ FROM python:3.10-slim
 RUN apt-get update
 RUN apt-get install build-essential libpq-dev -y
 
-COPY ./requirements.txt /requirements.txt
+COPY ./pyproject.toml /
 
-RUN python -m pip install -r requirements.txt
+RUN python -m pip install .
 
 COPY ./velour_api /velour_api
 WORKDIR /
