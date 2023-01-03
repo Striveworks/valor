@@ -1,10 +1,26 @@
+import time
+
 from fastapi import Depends, FastAPI
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from . import crud, models, schemas
 from .database import SessionLocal, engine
 
-models.Base.metadata.create_all(bind=engine)
+# wait up to 30 seconds for the db to spin up
+timeout = 15
+start_time = time.time()
+while True:
+    try:
+        models.Base.metadata.create_all(bind=engine)
+        break
+    except OperationalError:
+        if time.time() - start_time >= timeout:
+            raise RuntimeError(
+                f"Failed to connect to database within {timeout} seconds."
+            )
+        time.sleep(2)
+
 
 app = FastAPI()
 
@@ -15,11 +31,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-@app.get("/")
-async def root():
-    return {"message": "Hello World"}
 
 
 @app.post(
