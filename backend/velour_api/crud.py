@@ -27,7 +27,7 @@ def _list_of_points_from_wkt_polygon(
     return [tuple(p) for p in geo["coordinates"][0]]
 
 
-def create_gt_detection(
+def create_groundtruth_detection(
     db: Session, detection: schemas.GroundTruthDetectionCreate
 ) -> models.Detection:
     db_detection = models.Detection(
@@ -43,5 +43,26 @@ def create_gt_detection(
     return schemas.GroundTruthDetection(
         boundary=_list_of_points_from_wkt_polygon(db=db, det=db_detection),
         class_label=db_detection.class_label,
+        id=db_detection.id,
+    )
+
+
+def create_predicted_detection(
+    db: Session, detection: schemas.PredictedDetectionCreate
+) -> models.Detection:
+    db_detection = models.Detection(
+        boundary=_wkt_polygon_from_detection(detection),
+        score=detection.score,
+        class_label=detection.class_label,
+    )
+
+    db.add(db_detection)
+    db.commit()
+    db.refresh(db_detection)
+    # need to convert to a schemas.Detection object here
+    return schemas.PredictedDetection(
+        boundary=_list_of_points_from_wkt_polygon(db=db, det=db_detection),
+        class_label=db_detection.class_label,
+        score=db_detection.score,
         id=db_detection.id,
     )

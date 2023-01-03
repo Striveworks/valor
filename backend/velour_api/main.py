@@ -25,8 +25,16 @@ async def root():
 @app.post(
     "/groundtruth-detections", response_model=schemas.GroundTruthDetection
 )
-def create_gt_detection(
+def create_groundtruth_detection(
     detection: schemas.GroundTruthDetectionCreate,
     db: Session = Depends(get_db),
 ) -> schemas.GroundTruthDetection:
-    return crud.create_gt_detection(db=db, detection=detection)
+    return crud.create_groundtruth_detection(db=db, detection=detection)
+
+
+@app.post("/predicted-detections", response_model=schemas.GroundTruthDetection)
+def create_predicted_detection(
+    detection: schemas.PredictedDetectionCreate,
+    db: Session = Depends(get_db),
+) -> schemas.PredictedDetection:
+    return crud.create_predicted_detection(db=db, detection=detection)

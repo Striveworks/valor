@@ -2,7 +2,11 @@ from typing import List
 from urllib.parse import urljoin
 
 import requests
-from velour.data_types import BoundingPolygon, GroundTruthDetection
+from velour.data_types import (
+    BoundingPolygon,
+    GroundTruthDetection,
+    PredictedDetection,
+)
 
 
 def _payload_for_bounding_polygon(poly: BoundingPolygon) -> List[List[int]]:
@@ -23,7 +27,7 @@ class Client:
             )
         self.host = host
 
-    def upload_gt_detection(
+    def upload_groundtruth_detection(
         self, det: GroundTruthDetection
     ) -> requests.Response:
         payload = {
@@ -32,4 +36,16 @@ class Client:
         }
 
         url = urljoin(self.host, "groundtruth-detections")
+        return requests.post(url, json=payload)
+
+    def upload_predicted_detection(
+        self, det: PredictedDetection
+    ) -> requests.Response:
+        payload = {
+            "boundary": _payload_for_bounding_polygon(det.boundary),
+            "class_label": det.class_label,
+            "score": det.score,
+        }
+
+        url = urljoin(self.host, "predicted-detections")
         return requests.post(url, json=payload)
