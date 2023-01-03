@@ -16,7 +16,7 @@ from velour.client import Client
 
 @pytest.fixture
 def client():
-    return Client(host="http://localhost:8000")
+    return Client(host="http://127.0.0.1:8000")
 
 
 @pytest.fixture
