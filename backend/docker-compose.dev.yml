@@ -1,0 +1,5 @@
+name: velour
+services:
+  web:
+    volumes:
+      - ./velour_api:/src/velour_api
