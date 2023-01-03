@@ -1,8 +1,12 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from velour.data_types import (BoundingPolygon, GroundTruthDetection, Point,
-                               PredictedDetection)
+from velour.data_types import (
+    BoundingPolygon,
+    GroundTruthDetection,
+    Point,
+    PredictedDetection,
+)
 from velour_api import ops
 from velour_api.crud import _list_of_points_from_wkt_polygon
 from velour_api.models import Detection
