@@ -23,5 +23,5 @@ jobs:
       - name: install client
         run: pip install .[test]
         working-directory: ./client
-      - run: pytest integration_tests
+      - run: pytest -v integration_tests
         working-directory: ./
