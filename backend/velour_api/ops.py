@@ -23,3 +23,13 @@ def intersection_area(
 def area(session: Session, det: Detection) -> float:
     """Computes the area of the intersection between two detections"""
     return session.scalar(ST_Area(det.boundary))
+
+
+def tp_fp_counts(
+    session: Session,
+    detections: list[Detection],
+    groundtruths: list[Detection],
+    iou_thres: float,
+):
+    """Computes the number of true positives and false positives for detections in a single image"""
+    pass

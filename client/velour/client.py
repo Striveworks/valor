@@ -27,25 +27,31 @@ class Client:
             )
         self.host = host
 
-    def upload_groundtruth_detection(
-        self, det: GroundTruthDetection
-    ) -> requests.Response:
-        payload = {
-            "boundary": _payload_for_bounding_polygon(det.boundary),
-            "class_label": det.class_label,
-        }
+    def upload_groundtruth_detections(
+        self, dets: List[GroundTruthDetection]
+    ) -> List[int]:
+        payload = [
+            {
+                "boundary": _payload_for_bounding_polygon(det.boundary),
+                "class_label": det.class_label,
+            }
+            for det in dets
+        ]
 
         url = urljoin(self.host, "groundtruth-detections")
-        return requests.post(url, json=payload)
+        return requests.post(url, json=payload).json()
 
-    def upload_predicted_detection(
-        self, det: PredictedDetection
-    ) -> requests.Response:
-        payload = {
-            "boundary": _payload_for_bounding_polygon(det.boundary),
-            "class_label": det.class_label,
-            "score": det.score,
-        }
+    def upload_predicted_detections(
+        self, dets: List[PredictedDetection]
+    ) -> List[int]:
+        payload = [
+            {
+                "boundary": _payload_for_bounding_polygon(det.boundary),
+                "class_label": det.class_label,
+                "score": det.score,
+            }
+            for det in dets
+        ]
 
         url = urljoin(self.host, "predicted-detections")
-        return requests.post(url, json=payload)
+        return requests.post(url, json=payload).json()

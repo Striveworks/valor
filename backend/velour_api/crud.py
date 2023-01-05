@@ -22,47 +22,43 @@ def _list_of_points_from_wkt_polygon(
     db: Session,
     det: models.Detection,
 ) -> list[tuple[int, int]]:
+    print(f"det.boundary: {det.boundary}")
     geo = json.loads(db.scalar(det.boundary.ST_AsGeoJSON()))
     assert len(geo["coordinates"]) == 1
     return [tuple(p) for p in geo["coordinates"][0]]
 
 
-def create_groundtruth_detection(
-    db: Session, detection: schemas.GroundTruthDetectionCreate
-) -> models.Detection:
-    db_detection = models.Detection(
-        boundary=_wkt_polygon_from_detection(detection),
-        score=-1,
-        class_label=detection.class_label,
-    )
+def create_groundtruth_detections(
+    db: Session, detections: list[schemas.GroundTruthDetectionCreate]
+) -> list[int]:
+    mappings = [
+        {
+            "boundary": _wkt_polygon_from_detection(detection),
+            "score": -1,
+            "class_label": detection.class_label,
+        }
+        for detection in detections
+    ]
 
-    db.add(db_detection)
+    db.bulk_insert_mappings(models.Detection, mappings, return_defaults=True)
     db.commit()
-    db.refresh(db_detection)
+
     # need to convert to a schemas.Detection object here
-    return schemas.GroundTruthDetection(
-        boundary=_list_of_points_from_wkt_polygon(db=db, det=db_detection),
-        class_label=db_detection.class_label,
-        id=db_detection.id,
-    )
+    return [m["id"] for m in mappings]
 
 
-def create_predicted_detection(
-    db: Session, detection: schemas.PredictedDetectionCreate
-) -> models.Detection:
-    db_detection = models.Detection(
-        boundary=_wkt_polygon_from_detection(detection),
-        score=detection.score,
-        class_label=detection.class_label,
-    )
-
-    db.add(db_detection)
+def create_predicted_detections(
+    db: Session, detections: list[schemas.PredictedDetectionCreate]
+) -> list[int]:
+    mappings = [
+        {
+            "boundary": _wkt_polygon_from_detection(detection),
+            "score": detection.score,
+            "class_label": detection.class_label,
+        }
+        for detection in detections
+    ]
+    db.bulk_insert_mappings(models.Detection, mappings, return_defaults=True)
     db.commit()
-    db.refresh(db_detection)
-    # need to convert to a schemas.Detection object here
-    return schemas.PredictedDetection(
-        boundary=_list_of_points_from_wkt_polygon(db=db, det=db_detection),
-        class_label=db_detection.class_label,
-        score=db_detection.score,
-        id=db_detection.id,
-    )
+
+    return [m["id"] for m in mappings]

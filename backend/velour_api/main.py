@@ -33,19 +33,17 @@ def get_db():
         db.close()
 
 
-@app.post(
-    "/groundtruth-detections", response_model=schemas.GroundTruthDetection
-)
-def create_groundtruth_detection(
-    detection: schemas.GroundTruthDetectionCreate,
+@app.post("/groundtruth-detections")
+def create_groundtruth_detections(
+    detections: list[schemas.GroundTruthDetectionCreate],
     db: Session = Depends(get_db),
-) -> schemas.GroundTruthDetection:
-    return crud.create_groundtruth_detection(db=db, detection=detection)
+) -> list[int]:
+    return crud.create_groundtruth_detections(db=db, detections=detections)
 
 
-@app.post("/predicted-detections", response_model=schemas.GroundTruthDetection)
-def create_predicted_detection(
-    detection: schemas.PredictedDetectionCreate,
+@app.post("/predicted-detections")
+def create_predicted_detections(
+    detections: list[schemas.PredictedDetectionCreate],
     db: Session = Depends(get_db),
-) -> schemas.PredictedDetection:
-    return crud.create_predicted_detection(db=db, detection=detection)
+) -> list[int]:
+    return crud.create_predicted_detections(db=db, detections=detections)

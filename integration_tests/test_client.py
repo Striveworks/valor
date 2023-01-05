@@ -1,17 +1,17 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+from velour.client import Client
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
     Point,
     PredictedDetection,
 )
+
 from velour_api import ops
 from velour_api.crud import _list_of_points_from_wkt_polygon
 from velour_api.models import Detection
-
-from velour.client import Client
 
 
 @pytest.fixture
@@ -87,8 +87,7 @@ def test_upload_groundtruth_detection(
         boundary=rect1,
         class_label="class-1",
     )
-    resp = client.upload_groundtruth_detection(gt_det)
-    det_id = resp.json()["id"]
+    det_id = client.upload_groundtruth_detections([gt_det])[0]
     db_det = session.query(Detection).get(det_id)
 
     # check score is -1 since its a groundtruth detection
@@ -103,15 +102,14 @@ def test_upload_groundtruth_detection(
     assert set(points) == set([(pt.x, pt.y) for pt in rect1.points])
 
 
-def test_upload_predicted_detection(
+def test_upload_predicted_detections(
     client: Client, session: Session, rect2: BoundingPolygon
 ):
     """Test that upload of a predicted detection from velour client to backend works"""
     pred_det = PredictedDetection(
         boundary=rect2, class_label="class-2", score=0.7
     )
-    resp = client.upload_predicted_detection(pred_det)
-    det_id = resp.json()["id"]
+    det_id = client.upload_predicted_detections([pred_det])[0]
     db_det = session.query(Detection).get(det_id)
 
     # check score
@@ -137,15 +135,13 @@ def test_iou(
         boundary=rect1,
         class_label="class-1",
     )
-    resp = client.upload_groundtruth_detection(gt_det)
-    gt_id = resp.json()["id"]
+    gt_id = client.upload_groundtruth_detections([gt_det])[0]
     db_gt = session.query(Detection).get(gt_id)
 
     pred_det = PredictedDetection(
         boundary=rect2, class_label="class-1", score=0.6
     )
-    resp = client.upload_predicted_detection(pred_det)
-    pred_id = resp.json()["id"]
+    pred_id = client.upload_predicted_detections([pred_det])[0]
     db_pred = session.query(Detection).get(pred_id)
 
     assert ops.iou(session, db_gt, db_pred) == iou(rect1, rect2)
