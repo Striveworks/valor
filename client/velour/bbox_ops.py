@@ -1,4 +1,5 @@
-from typing import List
+from dataclasses import dataclass
+from typing import Dict, List
 
 from velour.data_types import (
     BoundingPolygon,
@@ -77,3 +78,138 @@ def iou_matrix(
         [iou(p.boundary, g.boundary) for g in groundtruths]
         for p in predictions
     ]
+
+
+def _cumsum(a: list) -> list:
+    ret = [0]
+    for x in a:
+        ret.append(ret[-1] + x)
+
+    return ret[1:]
+
+
+@dataclass
+class DetectionMatchInfo:
+    tp: bool
+    score: float
+
+
+def _get_tp_fp_single_image_single_class(
+    predictions: List[PredictedDetection],
+    groundtruths: List[GroundTruthDetection],
+    iou_threshold: float,
+) -> List[DetectionMatchInfo]:
+    predictions = sorted(
+        predictions,
+        key=lambda p: p.score,
+        reverse=True,
+    )
+
+    ious = iou_matrix(groundtruths=groundtruths, predictions=predictions)
+
+    matches = _match_array(ious, iou_threshold)
+
+    return [
+        DetectionMatchInfo(tp=(match is not None), score=prediction.score)
+        for match, prediction in zip(matches, predictions)
+    ]
+
+
+def ap(
+    predictions: List[List[PredictedDetection]],
+    groundtruths: List[List[GroundTruthDetection]],
+    class_label: str,
+    iou_thresholds: list[float],
+) -> Dict[float, float]:
+    assert len(predictions) == len(groundtruths)
+
+    predictions = [
+        [p for p in preds if p.class_label == class_label]
+        for preds in predictions
+    ]
+    groundtruths = [
+        [gt for gt in gts if gt.class_label == class_label]
+        for gts in groundtruths
+    ]
+
+    # total number of groundtruth objects across all images
+    n_gt = sum([len(gts) for gts in groundtruths])
+
+    ret = {}
+    for iou_thres in iou_thresholds:
+        match_infos = []
+        for preds, gts in zip(predictions, groundtruths):
+            match_infos.extend(
+                _get_tp_fp_single_image_single_class(
+                    predictions=preds,
+                    groundtruths=gts,
+                    iou_threshold=iou_thres,
+                )
+            )
+
+        match_infos = sorted(match_infos, key=lambda m: m.score, reverse=True)
+
+        tp = [float(m.tp) for m in match_infos]
+        fp = [float(not m.tp) for m in match_infos]
+
+        cum_tp = _cumsum(tp)
+        cum_fp = _cumsum(fp)
+
+        precisions = [ctp / (ctp + cfp) for ctp, cfp in zip(cum_tp, cum_fp)]
+        recalls = [ctp / n_gt for ctp in cum_tp]
+
+        ret[iou_thres] = calculate_ap_11_pt_interp(
+            precisions=precisions, recalls=recalls
+        )
+
+    return ret
+
+
+def compute_ap_metrics(
+    predictions: List[List[PredictedDetection]],
+    groundtruths: List[List[GroundTruthDetection]],
+    iou_thresholds: List[float],
+):
+    class_labels = set(
+        [pred.class_label for preds in predictions for pred in preds]
+    ).union([gt.class_label for gts in groundtruths for gt in gts])
+
+    ret = {
+        "AP": {
+            class_label: ap(
+                predictions=predictions,
+                groundtruths=groundtruths,
+                class_label=class_label,
+                iou_thresholds=iou_thresholds,
+            )
+            for class_label in class_labels
+        }
+    }
+
+    ret["mAP"] = {
+        iou_thres: sum(
+            [ret["AP"][class_label][iou_thres] for class_label in class_labels]
+        )
+        / len(class_labels)
+        for iou_thres in iou_thresholds
+    }
+
+    return ret
+
+
+def calculate_ap_11_pt_interp(precisions, recalls):
+    """Use the 11 point interpolation method"""
+    assert len(precisions) == len(recalls)
+
+    if len(precisions) == 0:
+        return 0
+
+    ret = 0
+    # TODO: should be able to make this part more efficient.
+    for r in [0.1 * i for i in range(11)]:
+        precs = [
+            prec for prec, recall in zip(precisions, recalls) if recall >= r
+        ]
+        ret += max(precs) if len(precs) > 0 else 0.0
+
+    return ret / 11.0
