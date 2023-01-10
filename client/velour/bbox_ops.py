@@ -134,6 +134,8 @@ def ap(
 
     # total number of groundtruth objects across all images
     n_gt = sum([len(gts) for gts in groundtruths])
+    if n_gt == 0:
+        return {iou_thres: -1.0 for iou_thres in iou_thresholds}
 
     ret = {}
     for iou_thres in iou_thresholds:
@@ -155,10 +157,13 @@ def ap(
         cum_tp = _cumsum(tp)
         cum_fp = _cumsum(fp)
 
-        precisions = [ctp / (ctp + cfp) for ctp, cfp in zip(cum_tp, cum_fp)]
+        precisions = [
+            ctp / (ctp + cfp + 2.220446049250313e-16)
+            for ctp, cfp in zip(cum_tp, cum_fp)
+        ]
         recalls = [ctp / n_gt for ctp in cum_tp]
 
-        ret[iou_thres] = calculate_ap_11_pt_interp(
+        ret[iou_thres] = calculate_ap_101_pt_interp(
             precisions=precisions, recalls=recalls
         )
 
@@ -186,18 +191,25 @@ def compute_ap_metrics(
         }
     }
 
+    def _ave_ignore_minus_one(a):
+        num, denom = 0.0, 0.0
+        for x in a:
+            if x != -1:
+                num += x
+                denom += 1
+        return num / denom
+
     ret["mAP"] = {
-        iou_thres: sum(
+        iou_thres: _ave_ignore_minus_one(
             [ret["AP"][class_label][iou_thres] for class_label in class_labels]
         )
-        / len(class_labels)
         for iou_thres in iou_thresholds
     }
 
     return ret
 
 
-def calculate_ap_11_pt_interp(precisions, recalls):
+def calculate_ap_101_pt_interp(precisions, recalls):
     """Use the 11 point interpolation method"""
     assert len(precisions) == len(recalls)
 
@@ -206,10 +218,10 @@ def calculate_ap_11_pt_interp(precisions, recalls):
 
     ret = 0
     # TODO: should be able to make this part more efficient.
-    for r in [0.1 * i for i in range(11)]:
+    for r in [0.01 * i for i in range(101)]:
         precs = [
             prec for prec, recall in zip(precisions, recalls) if recall >= r
         ]
         ret += max(precs) if len(precs) > 0 else 0.0
 
-    return ret / 11.0
+    return ret / 101
