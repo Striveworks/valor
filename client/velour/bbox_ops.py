@@ -9,6 +9,7 @@ from velour.data_types import (
 
 
 def area(rect: BoundingPolygon) -> float:
+    """Computes the area of a rectangle"""
     assert len(rect.points) == 4
     xs = [pt.x for pt in rect.points]
     ys = [pt.y for pt in rect.points]
@@ -17,6 +18,7 @@ def area(rect: BoundingPolygon) -> float:
 
 
 def intersection_area(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
+    """Computes the intersection area of two rectangles"""
     assert len(rect1.points) == len(rect2.points) == 4
 
     xs1 = [pt.x for pt in rect1.points]
@@ -38,6 +40,7 @@ def intersection_area(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
 
 
 def iou(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
+    """Computes the "intersection over union" of two rectangles"""
     inter_area = intersection_area(rect1, rect2)
     return inter_area / (area(rect1) + area(rect2) - inter_area)
 
@@ -47,7 +50,7 @@ def _match_array(
     iou_thres: float,
 ) -> List[int | None]:
     """
-    iou[i][j] is iou between predicted detection i and groundtruth detection j
+    iou[i][j] should be the iou between predicted detection i and groundtruth detection j
 
     important assumption is that the predicted detections are sorted by confidence
 
@@ -71,9 +74,12 @@ def _match_array(
 
 
 def iou_matrix(
-    groundtruths: List[GroundTruthDetection],
     predictions: List[PredictedDetection],
+    groundtruths: List[GroundTruthDetection],
 ) -> List[List[float]]:
+    """Returns a list of lists where the entry at [i][j]
+    is the iou between `predictions[i]` and `groundtruths[j]`.
+    """
     return [
         [iou(p.boundary, g.boundary) for g in groundtruths]
         for p in predictions
@@ -121,6 +127,11 @@ def ap(
     class_label: str,
     iou_thresholds: list[float],
 ) -> Dict[float, float]:
+    """Computes the average precision. Return is a dict with keys
+    `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
+    `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
+    of the scores across all of the IoU thresholds.
+    """
     assert len(predictions) == len(groundtruths)
 
     predictions = [
@@ -184,6 +195,10 @@ def compute_ap_metrics(
 ) -> dict:
     """Computes average precision metrics. Note that this is not an optimized method
     and is here for toy/test purposes. Will likely be (re)moved in future versions.
+
+    The return dictionary, `d` indexes AP scores by `d["AP"][class_label][iou_key]`
+    and mAP scores by `d["mAP"][iou_key]` where `iou_key` is `f"IoU={iou_thres}"` or
+    `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"`
     """
     class_labels = set(
         [pred.class_label for preds in predictions for pred in preds]
@@ -223,7 +238,7 @@ def compute_ap_metrics(
 
 
 def calculate_ap_101_pt_interp(precisions, recalls):
-    """Use the 11 point interpolation method"""
+    """Use the 101 point interpolation method (following torchmetrics)"""
     assert len(precisions) == len(recalls)
 
     if len(precisions) == 0:
