@@ -222,12 +222,18 @@ def round_dict_(d: dict, prec: int) -> None:
 
 
 def test_compute_ap_metrics(groundtruths, predictions):
-    iou_thresholds = [0.25, 0.5, 0.75]
+    iou_thresholds = [round(0.5 + 0.05 * i, 2) for i in range(10)]
     metrics = compute_ap_metrics(
         predictions=predictions,
         groundtruths=groundtruths,
         iou_thresholds=iou_thresholds,
     )
+
+    for iou_thres in [i for i in iou_thresholds if i not in [0.5, 0.75]]:
+        k = f"IoU={iou_thres}"
+        metrics["mAP"].pop(k)
+        for class_label in metrics["AP"].keys():
+            metrics["AP"][class_label].pop(k)
 
     round_dict_(metrics, 3)
 
@@ -235,12 +241,12 @@ def test_compute_ap_metrics(groundtruths, predictions):
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     assert metrics == {
         "AP": {
-            "2": {0.25: 0.505, 0.5: 0.505, 0.75: 0.505},
-            "49": {0.25: 0.901, 0.5: 0.79, 0.75: 0.576},
-            "3": {0.25: -1.0, 0.5: -1.0, 0.75: -1.0},
-            "0": {0.25: 1.0, 0.5: 1.0, 0.75: 0.723},
-            "1": {0.25: 1.0, 0.5: 1.0, 0.75: 1.0},
-            "4": {0.25: 1.0, 0.5: 1.0, 0.75: 1.0},
+            "2": {"IoU=0.5": 0.505, "IoU=0.75": 0.505, "IoU=0.5:0.95": 0.454},
+            "49": {"IoU=0.5": 0.79, "IoU=0.75": 0.576, "IoU=0.5:0.95": 0.555},
+            "3": {"IoU=0.5": -1.0, "IoU=0.75": -1.0, "IoU=0.5:0.95": -1.0},
+            "0": {"IoU=0.5": 1.0, "IoU=0.75": 0.723, "IoU=0.5:0.95": 0.725},
+            "1": {"IoU=0.5": 1.0, "IoU=0.75": 1.0, "IoU=0.5:0.95": 0.8},
+            "4": {"IoU=0.5": 1.0, "IoU=0.75": 1.0, "IoU=0.5:0.95": 0.65},
         },
-        "mAP": {0.25: 0.881, 0.5: 0.859, 0.75: 0.761},
+        "mAP": {"IoU=0.5": 0.859, "IoU=0.75": 0.761, "IoU=0.5:0.95": 0.637},
     }

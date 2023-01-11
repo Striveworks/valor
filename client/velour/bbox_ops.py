@@ -134,38 +134,45 @@ def ap(
 
     # total number of groundtruth objects across all images
     n_gt = sum([len(gts) for gts in groundtruths])
-    if n_gt == 0:
-        return {iou_thres: -1.0 for iou_thres in iou_thresholds}
 
     ret = {}
-    for iou_thres in iou_thresholds:
-        match_infos = []
-        for preds, gts in zip(predictions, groundtruths):
-            match_infos.extend(
-                _get_tp_fp_single_image_single_class(
-                    predictions=preds,
-                    groundtruths=gts,
-                    iou_threshold=iou_thres,
+    if n_gt == 0:
+        ret.update({f"IoU={iou_thres}": -1.0 for iou_thres in iou_thresholds})
+    else:
+        for iou_thres in iou_thresholds:
+            match_infos = []
+            for preds, gts in zip(predictions, groundtruths):
+                match_infos.extend(
+                    _get_tp_fp_single_image_single_class(
+                        predictions=preds,
+                        groundtruths=gts,
+                        iou_threshold=iou_thres,
+                    )
                 )
+
+            match_infos = sorted(
+                match_infos, key=lambda m: m.score, reverse=True
             )
 
-        match_infos = sorted(match_infos, key=lambda m: m.score, reverse=True)
+            tp = [float(m.tp) for m in match_infos]
+            fp = [float(not m.tp) for m in match_infos]
 
-        tp = [float(m.tp) for m in match_infos]
-        fp = [float(not m.tp) for m in match_infos]
+            cum_tp = _cumsum(tp)
+            cum_fp = _cumsum(fp)
 
-        cum_tp = _cumsum(tp)
-        cum_fp = _cumsum(fp)
+            precisions = [
+                ctp / (ctp + cfp) for ctp, cfp in zip(cum_tp, cum_fp)
+            ]
+            recalls = [ctp / n_gt for ctp in cum_tp]
 
-        precisions = [
-            ctp / (ctp + cfp + 2.220446049250313e-16)
-            for ctp, cfp in zip(cum_tp, cum_fp)
-        ]
-        recalls = [ctp / n_gt for ctp in cum_tp]
+            ret[f"IoU={iou_thres}"] = calculate_ap_101_pt_interp(
+                precisions=precisions, recalls=recalls
+            )
 
-        ret[iou_thres] = calculate_ap_101_pt_interp(
-            precisions=precisions, recalls=recalls
-        )
+    # compute average over all IoUs
+    ret[f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"] = sum(
+        [ret[f"IoU={iou_thres}"] for iou_thres in iou_thresholds]
+    ) / len(iou_thresholds)
 
     return ret
 
@@ -174,7 +181,10 @@ def compute_ap_metrics(
     predictions: List[List[PredictedDetection]],
     groundtruths: List[List[GroundTruthDetection]],
     iou_thresholds: List[float],
-):
+) -> dict:
+    """Computes average precision metrics. Note that this is not an optimized method
+    and is here for toy/test purposes. Will likely be (re)moved in future versions.
+    """
     class_labels = set(
         [pred.class_label for preds in predictions for pred in preds]
     ).union([gt.class_label for gts in groundtruths for gt in gts])
@@ -199,11 +209,14 @@ def compute_ap_metrics(
                 denom += 1
         return num / denom
 
+    keys_to_avg_over = [f"IoU={iou_thres}" for iou_thres in iou_thresholds] + [
+        f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"
+    ]
     ret["mAP"] = {
-        iou_thres: _ave_ignore_minus_one(
-            [ret["AP"][class_label][iou_thres] for class_label in class_labels]
+        k: _ave_ignore_minus_one(
+            [ret["AP"][class_label][k] for class_label in class_labels]
         )
-        for iou_thres in iou_thresholds
+        for k in keys_to_avg_over
     }
 
     return ret
