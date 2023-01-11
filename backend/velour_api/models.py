@@ -16,6 +16,9 @@ class Detection(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     boundary = Column(Geometry("POLYGON"))
+    # should add bounding box here too?
+    # can get this from ST_Envelope
+    # use https://docs.sqlalchemy.org/en/14/orm/mapping_columns.html#sqlalchemy.orm.column_property
     score = Column(Float)  # between 0 and 1, -1 if groundtruth
     class_label = Column(String)
 

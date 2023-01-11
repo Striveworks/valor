@@ -22,7 +22,6 @@ def _list_of_points_from_wkt_polygon(
     db: Session,
     det: models.Detection,
 ) -> list[tuple[int, int]]:
-    print(f"det.boundary: {det.boundary}")
     geo = json.loads(db.scalar(det.boundary.ST_AsGeoJSON()))
     assert len(geo["coordinates"]) == 1
     return [tuple(p) for p in geo["coordinates"][0]]
