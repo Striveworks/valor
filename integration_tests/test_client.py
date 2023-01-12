@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from velour.client import Client
-from velour.client.velour import bbox_ops
+from velour import bbox_ops
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,

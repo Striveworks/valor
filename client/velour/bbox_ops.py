@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from velour.data_types import (
     BoundingPolygon,
@@ -48,7 +48,7 @@ def iou(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
 def _match_array(
     ious: List[List[float]],
     iou_thres: float,
-) -> List[int | None]:
+) -> List[Optional[int]]:
     """
     iou[i][j] should be the iou between predicted detection i and groundtruth detection j
 
