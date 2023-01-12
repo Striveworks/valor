@@ -6,9 +6,8 @@ from .models import Detection
 
 def iou(session: Session, det1: Detection, det2: Detection) -> float:
     """Computes the IOU between two detections"""
-    return intersection_area(session, det1, det2) / (
-        area(session, det1) + area(session, det2)
-    )
+    cap_area = intersection_area(session, det1, det2)
+    return cap_area / (area(session, det1) + area(session, det2) - cap_area)
 
 
 def intersection_area(
