@@ -10,5 +10,7 @@ def test__wkt_polygon_from_detection_adds_point():
 
 def test__wkt_polygon_from_detection_does_not_add_point():
     """Check that no points get added since boundary first and last points are teh same"""
-    det = DetectionBase(boundary=[(0, 1), (1, 1), (2, 1), (0, 1)], class_label="class")
+    det = DetectionBase(
+        boundary=[(0, 1), (1, 1), (2, 1), (0, 1)], class_label="class"
+    )
     assert _wkt_polygon_from_detection(det) == "POLYGON ((0 1, 1 1, 2 1, 0 1))"
