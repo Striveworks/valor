@@ -1,4 +1,3 @@
-name: velour
 services:
   web:
     volumes:
