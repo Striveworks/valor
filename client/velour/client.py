@@ -41,9 +41,7 @@ class Client:
         url = urljoin(self.host, "groundtruth-detections")
         return requests.post(url, json=payload).json()
 
-    def upload_predicted_detections(
-        self, dets: List[PredictedDetection]
-    ) -> List[int]:
+    def upload_predicted_detections(self, dets: List[PredictedDetection]) -> List[int]:
         payload = [
             {
                 "boundary": _payload_for_bounding_polygon(det.boundary),

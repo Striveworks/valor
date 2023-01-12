@@ -76,7 +76,9 @@ def intersection_area(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
 
 
 def iou(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
-    return intersection_area(rect1, rect2) / (area(rect1) + area(rect2))
+    return intersection_area(rect1, rect2) / (
+        area(rect1) + area(rect2) - intersection_area(rect1, rect2)
+    )
 
 
 def test_upload_groundtruth_detection(
@@ -106,9 +108,7 @@ def test_upload_predicted_detections(
     client: Client, session: Session, rect2: BoundingPolygon
 ):
     """Test that upload of a predicted detection from velour client to backend works"""
-    pred_det = PredictedDetection(
-        boundary=rect2, class_label="class-2", score=0.7
-    )
+    pred_det = PredictedDetection(boundary=rect2, class_label="class-2", score=0.7)
     det_id = client.upload_predicted_detections([pred_det])[0]
     db_det = session.query(Detection).get(det_id)
 
@@ -138,9 +138,7 @@ def test_iou(
     gt_id = client.upload_groundtruth_detections([gt_det])[0]
     db_gt = session.query(Detection).get(gt_id)
 
-    pred_det = PredictedDetection(
-        boundary=rect2, class_label="class-1", score=0.6
-    )
+    pred_det = PredictedDetection(boundary=rect2, class_label="class-1", score=0.6)
     pred_id = client.upload_predicted_detections([pred_det])[0]
     db_pred = session.query(Detection).get(pred_id)
 

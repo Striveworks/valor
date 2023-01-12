@@ -6,18 +6,13 @@ from .models import Detection
 
 def iou(session: Session, det1: Detection, det2: Detection) -> float:
     """Computes the IOU between two detections"""
-    return intersection_area(session, det1, det2) / (
-        area(session, det1) + area(session, det2)
-    )
+    cap_area = intersection_area(session, det1, det2)
+    return cap_area / (area(session, det1) + area(session, det2) - cap_area)
 
 
-def intersection_area(
-    session: Session, det1: Detection, det2: Detection
-) -> float:
+def intersection_area(session: Session, det1: Detection, det2: Detection) -> float:
     """Computes the area of the intersection between two detections"""
-    return session.scalar(
-        ST_Area(ST_Intersection(det1.boundary, det2.boundary))
-    )
+    return session.scalar(ST_Area(ST_Intersection(det1.boundary, det2.boundary)))
 
 
 def area(session: Session, det: Detection) -> float:

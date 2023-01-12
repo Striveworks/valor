@@ -80,10 +80,7 @@ def iou_matrix(
     """Returns a list of lists where the entry at [i][j]
     is the iou between `predictions[i]` and `groundtruths[j]`.
     """
-    return [
-        [iou(p.boundary, g.boundary) for g in groundtruths]
-        for p in predictions
-    ]
+    return [[iou(p.boundary, g.boundary) for g in groundtruths] for p in predictions]
 
 
 def _cumsum(a: list) -> list:
@@ -135,12 +132,10 @@ def ap(
     assert len(predictions) == len(groundtruths)
 
     predictions = [
-        [p for p in preds if p.class_label == class_label]
-        for preds in predictions
+        [p for p in preds if p.class_label == class_label] for preds in predictions
     ]
     groundtruths = [
-        [gt for gt in gts if gt.class_label == class_label]
-        for gts in groundtruths
+        [gt for gt in gts if gt.class_label == class_label] for gts in groundtruths
     ]
 
     # total number of groundtruth objects across all images
@@ -161,9 +156,7 @@ def ap(
                     )
                 )
 
-            match_infos = sorted(
-                match_infos, key=lambda m: m.score, reverse=True
-            )
+            match_infos = sorted(match_infos, key=lambda m: m.score, reverse=True)
 
             tp = [float(m.tp) for m in match_infos]
             fp = [float(not m.tp) for m in match_infos]
@@ -171,9 +164,7 @@ def ap(
             cum_tp = _cumsum(tp)
             cum_fp = _cumsum(fp)
 
-            precisions = [
-                ctp / (ctp + cfp) for ctp, cfp in zip(cum_tp, cum_fp)
-            ]
+            precisions = [ctp / (ctp + cfp) for ctp, cfp in zip(cum_tp, cum_fp)]
             recalls = [ctp / n_gt for ctp in cum_tp]
 
             ret[f"IoU={iou_thres}"] = calculate_ap_101_pt_interp(
@@ -247,9 +238,7 @@ def calculate_ap_101_pt_interp(precisions, recalls):
     ret = 0
     # TODO: should be able to make this part more efficient.
     for r in [0.01 * i for i in range(101)]:
-        precs = [
-            prec for prec, recall in zip(precisions, recalls) if recall >= r
-        ]
+        precs = [prec for prec, recall in zip(precisions, recalls) if recall >= r]
         ret += max(precs) if len(precs) > 0 else 0.0
 
     return ret / 101

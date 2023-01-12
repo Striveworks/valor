@@ -9,9 +9,7 @@ class DetectionBase(BaseModel):
     @validator("boundary")
     def enough_pts(cls, v):
         if len(v) < 3:
-            raise ValueError(
-                "Boundary must be composed of at least three points."
-            )
+            raise ValueError("Boundary must be composed of at least three points.")
         return v
 
 
