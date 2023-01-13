@@ -1,3 +1,4 @@
+import heapq
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
@@ -244,12 +245,22 @@ def calculate_ap_101_pt_interp(precisions, recalls):
     if len(precisions) == 0:
         return 0
 
-    ret = 0
-    # TODO: should be able to make this part more efficient.
-    for r in [0.01 * i for i in range(101)]:
-        precs = [
-            prec for prec, recall in zip(precisions, recalls) if recall >= r
-        ]
-        ret += max(precs) if len(precs) > 0 else 0.0
+    data = list(zip(precisions, recalls))
+    data.sort(key=lambda l: l[1])
+    # negative is because we want a max heap
+    prec_heap = [[-precision, i] for i, (precision, _) in enumerate(data)]
+    prec_heap.sort()
 
+    cutoff_idx = 0
+
+    ret = 0
+
+    for r in [0.01 * i for i in range(101)]:
+        while cutoff_idx < len(data) and data[cutoff_idx][1] < r:
+            cutoff_idx += 1
+        while prec_heap and prec_heap[0][1] < cutoff_idx:
+            heapq.heappop(prec_heap)
+        if cutoff_idx >= len(data):
+            continue
+        ret -= prec_heap[0][0]
     return ret / 101
