@@ -9,7 +9,7 @@ from velour_api.schemas import (
     PredictedDetectionCreate,
 )
 
-create_db()
+create_db(timeout=30)
 
 
 def bounding_box(xmin, ymin, xmax, ymax) -> list[tuple[int, int]]:
