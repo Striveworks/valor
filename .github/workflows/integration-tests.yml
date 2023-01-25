@@ -1,0 +1,27 @@
+name: Integration tests
+
+on:
+  push:
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v3
+      - name: setup backend test env
+        run: make test-env
+        working-directory: ./backend
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: install api
+        run: pip install .[test]
+        working-directory: ./backend
+      - name: install client
+        run: pip install .[test]
+        working-directory: ./client
+      - run: pytest -v integration_tests
+        working-directory: ./
