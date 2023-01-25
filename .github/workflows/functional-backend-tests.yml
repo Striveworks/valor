@@ -12,10 +12,16 @@ jobs:
     defaults:
       run:
         working-directory: ./backend
+    services:
+      postgis:
+        image: postgis/postgis
+        ports: 5432:5432
+        env:
+          POSTGRES_PASSWORD: password
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
       - run: pip install ".[test]"
-      - run: make functional-tests
+      - run: POSTGRES_PASSWORD=password POSTGRES_HOST=postgis python -m pytest -v tests/functional-tests

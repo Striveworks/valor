@@ -9,8 +9,3 @@ stop-env:
 
 unit-tests:
 	python -m pytest -v tests/unit-tests
-
-functional-tests:
-	# bring up the db
-	docker compose up -d db
-	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost python -m pytest -v tests/functional-tests
