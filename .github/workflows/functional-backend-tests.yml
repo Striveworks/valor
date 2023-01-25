@@ -25,4 +25,7 @@ jobs:
         with:
           python-version: "3.10"
       - run: pip install ".[test]"
-      - run: POSTGRES_PASSWORD=password POSTGRES_HOST=postgis python -m pytest -v tests/functional-tests
+      - run: python -m pytest -v tests/functional-tests
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_HOST: localhost
