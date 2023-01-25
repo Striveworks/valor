@@ -2,8 +2,8 @@ name: Unit tests
 
 on:
   push:
-paths:
-  - backend/velour_api/**
+    paths:
+      - backend/velour_api/**
 
 jobs:
   backend-functional-tests:
