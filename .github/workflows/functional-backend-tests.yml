@@ -15,7 +15,8 @@ jobs:
     services:
       postgis:
         image: postgis/postgis
-        ports: 5432:5432
+        ports:
+          - 5432:5432
         env:
           POSTGRES_PASSWORD: password
     steps:
