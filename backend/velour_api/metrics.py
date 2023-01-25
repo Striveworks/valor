@@ -2,6 +2,8 @@ import heapq
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+from sqlalchemy.orm import Session
+
 from velour_api import ops
 from velour_api.models import Detection
 
@@ -49,7 +51,7 @@ class DetectionMatchInfo:
 
 
 def _get_tp_fp_single_image_single_class(
-    db,
+    db: Session,
     predictions: list[Detection],
     groundtruths: list[Detection],
     iou_threshold: float,
@@ -73,7 +75,7 @@ def _get_tp_fp_single_image_single_class(
 
 
 def iou_matrix(
-    db,
+    db: Session,
     predictions: List[Detection],
     groundtruths: List[Detection],
 ) -> List[List[float]]:
@@ -84,7 +86,7 @@ def iou_matrix(
 
 
 def ap(
-    db,
+    db: Session,
     predictions: List[List[Detection]],
     groundtruths: List[List[Detection]],
     class_label: str,
@@ -181,7 +183,7 @@ def calculate_ap_101_pt_interp(precisions, recalls):
 
 
 def compute_ap_metrics(
-    db,
+    db: Session,
     predictions: List[List[Detection]],
     groundtruths: List[List[Detection]],
     iou_thresholds: List[float],
