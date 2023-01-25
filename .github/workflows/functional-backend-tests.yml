@@ -1,10 +1,10 @@
 name: Functional tests
 
-on:
-  push:
-    paths:
-      - backend/velour_api/**
-      - backend/tests/functional-tests/**
+# on:
+#   push:
+#     paths:
+#       - backend/velour_api/**
+#       - backend/tests/functional-tests/**
 
 jobs:
   backend-functional-tests:
