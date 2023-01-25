@@ -220,7 +220,4 @@ def test_compute_ap_metrics(
         "mAP": {"IoU=0.5": 0.859, "IoU=0.75": 0.761, "IoU=0.5:0.95": 0.637},
     }
 
-    import pdb
-
-    pdb.set_trace()
     assert metrics == target

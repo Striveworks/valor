@@ -3,7 +3,7 @@ from pydantic import BaseModel, validator
 
 class DetectionBase(BaseModel):
     # should enforce beginning and ending points are the same? or no?
-    boundary: list[tuple[int, int]]
+    boundary: list[tuple[float, float]]
     class_label: str
 
     @validator("boundary")
