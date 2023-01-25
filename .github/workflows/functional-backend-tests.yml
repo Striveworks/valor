@@ -1,7 +1,7 @@
 name: Functional tests
 
-# on:
-#   push:
+on:
+  push:
 #     paths:
 #       - backend/velour_api/**
 #       - backend/tests/functional-tests/**
