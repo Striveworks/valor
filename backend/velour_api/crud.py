@@ -30,6 +30,7 @@ def _list_of_points_from_wkt_polygon(
 def create_groundtruth_detections(
     db: Session, detections: list[schemas.GroundTruthDetectionCreate]
 ) -> list[int]:
+    """Adds groundtruth detections to the database"""
     mappings = [
         {
             "boundary": _wkt_polygon_from_detection(detection),
@@ -49,6 +50,7 @@ def create_groundtruth_detections(
 def create_predicted_detections(
     db: Session, detections: list[schemas.PredictedDetectionCreate]
 ) -> list[int]:
+    """Adds predicted detections to the database"""
     mappings = [
         {
             "boundary": _wkt_polygon_from_detection(detection),

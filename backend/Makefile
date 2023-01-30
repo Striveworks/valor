@@ -8,4 +8,4 @@ stop-env:
 	docker compose -p velour down
 
 unit-tests:
-	python -m pytest -v tests/*
+	python -m pytest -v tests/unit-tests

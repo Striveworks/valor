@@ -1,4 +1,5 @@
 import pytest
+
 from velour_api.schemas import GroundTruthDetectionCreate
 
 

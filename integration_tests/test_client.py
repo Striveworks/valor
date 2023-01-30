@@ -1,18 +1,54 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from velour.client import Client
-from velour import bbox_ops
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
     Point,
     PredictedDetection,
 )
-
 from velour_api import ops
 from velour_api.crud import _list_of_points_from_wkt_polygon
 from velour_api.models import Detection
+
+from velour.client import Client
+
+
+def area(rect: BoundingPolygon) -> float:
+    """Computes the area of a rectangle"""
+    assert len(rect.points) == 4
+    xs = [pt.x for pt in rect.points]
+    ys = [pt.y for pt in rect.points]
+
+    return (max(xs) - min(xs)) * (max(ys) - min(ys))
+
+
+def intersection_area(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
+    """Computes the intersection area of two rectangles"""
+    assert len(rect1.points) == len(rect2.points) == 4
+
+    xs1 = [pt.x for pt in rect1.points]
+    xs2 = [pt.x for pt in rect2.points]
+
+    ys1 = [pt.y for pt in rect1.points]
+    ys2 = [pt.y for pt in rect2.points]
+
+    inter_xmin = max(min(xs1), min(xs2))
+    inter_xmax = min(max(xs1), max(xs2))
+
+    inter_ymin = max(min(ys1), min(ys2))
+    inter_ymax = min(max(ys1), max(ys2))
+
+    inter_width = max(inter_xmax - inter_xmin, 0)
+    inter_height = max(inter_ymax - inter_ymin, 0)
+
+    return inter_width * inter_height
+
+
+def iou(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
+    """Computes the "intersection over union" of two rectangles"""
+    inter_area = intersection_area(rect1, rect2)
+    return inter_area / (area(rect1) + area(rect2) - inter_area)
 
 
 @pytest.fixture
@@ -115,4 +151,4 @@ def test_iou(
     pred_id = client.upload_predicted_detections([pred_det])[0]
     db_pred = session.query(Detection).get(pred_id)
 
-    assert ops.iou(session, db_gt, db_pred) == bbox_ops.iou(rect1, rect2)
+    assert ops.iou(session, db_gt, db_pred) == iou(rect1, rect2)
