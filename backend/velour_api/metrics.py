@@ -2,48 +2,10 @@ import heapq
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from velour.data_types import (
-    BoundingPolygon,
-    GroundTruthDetection,
-    PredictedDetection,
-)
+from sqlalchemy.orm import Session
 
-
-def area(rect: BoundingPolygon) -> float:
-    """Computes the area of a rectangle"""
-    assert len(rect.points) == 4
-    xs = [pt.x for pt in rect.points]
-    ys = [pt.y for pt in rect.points]
-
-    return (max(xs) - min(xs)) * (max(ys) - min(ys))
-
-
-def intersection_area(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
-    """Computes the intersection area of two rectangles"""
-    assert len(rect1.points) == len(rect2.points) == 4
-
-    xs1 = [pt.x for pt in rect1.points]
-    xs2 = [pt.x for pt in rect2.points]
-
-    ys1 = [pt.y for pt in rect1.points]
-    ys2 = [pt.y for pt in rect2.points]
-
-    inter_xmin = max(min(xs1), min(xs2))
-    inter_xmax = min(max(xs1), max(xs2))
-
-    inter_ymin = max(min(ys1), min(ys2))
-    inter_ymax = min(max(ys1), max(ys2))
-
-    inter_width = max(inter_xmax - inter_xmin, 0)
-    inter_height = max(inter_ymax - inter_ymin, 0)
-
-    return inter_width * inter_height
-
-
-def iou(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
-    """Computes the "intersection over union" of two rectangles"""
-    inter_area = intersection_area(rect1, rect2)
-    return inter_area / (area(rect1) + area(rect2) - inter_area)
+from velour_api import ops
+from velour_api.models import Detection
 
 
 def _match_array(
@@ -74,19 +36,6 @@ def _match_array(
     return matches
 
 
-def iou_matrix(
-    predictions: List[PredictedDetection],
-    groundtruths: List[GroundTruthDetection],
-) -> List[List[float]]:
-    """Returns a list of lists where the entry at [i][j]
-    is the iou between `predictions[i]` and `groundtruths[j]`.
-    """
-    return [
-        [iou(p.boundary, g.boundary) for g in groundtruths]
-        for p in predictions
-    ]
-
-
 def _cumsum(a: list) -> list:
     ret = [0]
     for x in a:
@@ -102,17 +51,20 @@ class DetectionMatchInfo:
 
 
 def _get_tp_fp_single_image_single_class(
-    predictions: List[PredictedDetection],
-    groundtruths: List[GroundTruthDetection],
+    db: Session,
+    predictions: list[Detection],
+    groundtruths: list[Detection],
     iou_threshold: float,
-) -> List[DetectionMatchInfo]:
+) -> list[DetectionMatchInfo]:
     predictions = sorted(
         predictions,
         key=lambda p: p.score,
         reverse=True,
     )
 
-    ious = iou_matrix(groundtruths=groundtruths, predictions=predictions)
+    ious = iou_matrix(
+        db=db, groundtruths=groundtruths, predictions=predictions
+    )
 
     matches = _match_array(ious, iou_threshold)
 
@@ -122,9 +74,21 @@ def _get_tp_fp_single_image_single_class(
     ]
 
 
+def iou_matrix(
+    db: Session,
+    predictions: List[Detection],
+    groundtruths: List[Detection],
+) -> List[List[float]]:
+    """Returns a list of lists where the entry at [i][j]
+    is the iou between `predictions[i]` and `groundtruths[j]`.
+    """
+    return [[ops.iou(db, p, g) for g in groundtruths] for p in predictions]
+
+
 def ap(
-    predictions: List[List[PredictedDetection]],
-    groundtruths: List[List[GroundTruthDetection]],
+    db: Session,
+    predictions: List[List[Detection]],
+    groundtruths: List[List[Detection]],
     class_label: str,
     iou_thresholds: list[float],
 ) -> Dict[float, float]:
@@ -156,6 +120,7 @@ def ap(
             for preds, gts in zip(predictions, groundtruths):
                 match_infos.extend(
                     _get_tp_fp_single_image_single_class(
+                        db=db,
                         predictions=preds,
                         groundtruths=gts,
                         iou_threshold=iou_thres,
@@ -189,9 +154,38 @@ def ap(
     return ret
 
 
+def calculate_ap_101_pt_interp(precisions, recalls):
+    """Use the 101 point interpolation method (following torchmetrics)"""
+    assert len(precisions) == len(recalls)
+
+    if len(precisions) == 0:
+        return 0
+
+    data = list(zip(precisions, recalls))
+    data.sort(key=lambda l: l[1])
+    # negative is because we want a max heap
+    prec_heap = [[-precision, i] for i, (precision, _) in enumerate(data)]
+    prec_heap.sort()
+
+    cutoff_idx = 0
+
+    ret = 0
+
+    for r in [0.01 * i for i in range(101)]:
+        while cutoff_idx < len(data) and data[cutoff_idx][1] < r:
+            cutoff_idx += 1
+        while prec_heap and prec_heap[0][1] < cutoff_idx:
+            heapq.heappop(prec_heap)
+        if cutoff_idx >= len(data):
+            continue
+        ret -= prec_heap[0][0]
+    return ret / 101
+
+
 def compute_ap_metrics(
-    predictions: List[List[PredictedDetection]],
-    groundtruths: List[List[GroundTruthDetection]],
+    db: Session,
+    predictions: List[List[Detection]],
+    groundtruths: List[List[Detection]],
     iou_thresholds: List[float],
 ) -> dict:
     """Computes average precision metrics. Note that this is not an optimized method
@@ -208,6 +202,7 @@ def compute_ap_metrics(
     ret = {
         "AP": {
             class_label: ap(
+                db=db,
                 predictions=predictions,
                 groundtruths=groundtruths,
                 class_label=class_label,
@@ -236,31 +231,3 @@ def compute_ap_metrics(
     }
 
     return ret
-
-
-def calculate_ap_101_pt_interp(precisions, recalls):
-    """Use the 101 point interpolation method (following torchmetrics)"""
-    assert len(precisions) == len(recalls)
-
-    if len(precisions) == 0:
-        return 0
-
-    data = list(zip(precisions, recalls))
-    data.sort(key=lambda l: l[1])
-    # negative is because we want a max heap
-    prec_heap = [[-precision, i] for i, (precision, _) in enumerate(data)]
-    prec_heap.sort()
-
-    cutoff_idx = 0
-
-    ret = 0
-
-    for r in [0.01 * i for i in range(101)]:
-        while cutoff_idx < len(data) and data[cutoff_idx][1] < r:
-            cutoff_idx += 1
-        while prec_heap and prec_heap[0][1] < cutoff_idx:
-            heapq.heappop(prec_heap)
-        if cutoff_idx >= len(data):
-            continue
-        ret -= prec_heap[0][0]
-    return ret / 101

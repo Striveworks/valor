@@ -1,29 +1,39 @@
-from typing import List
-
 import pytest
 
-from velour.bbox_ops import _match_array, compute_ap_metrics, iou_matrix
-from velour.data_types import (
-    BoundingPolygon,
-    GroundTruthDetection,
-    Point,
-    PredictedDetection,
+from velour_api import crud
+from velour_api.database import SessionLocal, create_db
+from velour_api.metrics import compute_ap_metrics
+from velour_api.models import Detection
+from velour_api.schemas import (
+    GroundTruthDetectionCreate,
+    PredictedDetectionCreate,
 )
 
+create_db(timeout=30)
 
-def bounding_box(xmin, ymin, xmax, ymax) -> BoundingPolygon:
-    return BoundingPolygon(
-        [
-            Point(x=xmin, y=ymin),
-            Point(x=xmin, y=ymax),
-            Point(x=xmax, y=ymax),
-            Point(x=xmax, y=ymin),
-        ]
-    )
+
+def bounding_box(xmin, ymin, xmax, ymax) -> list[tuple[int, int]]:
+    return [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin)]
+
+
+def round_dict_(d: dict, prec: int) -> None:
+    """Modifies a dictionary in place by rounding every float in it
+    to three decimal places
+    """
+    for k, v in d.items():
+        if isinstance(v, float):
+            d[k] = round(v, prec)
+        elif isinstance(v, dict):
+            round_dict_(v, prec)
 
 
 @pytest.fixture
-def groundtruths():
+def db():
+    return SessionLocal()
+
+
+@pytest.fixture
+def groundtruths(db) -> list[list[Detection]]:
     gts_per_img = [
         {"boxes": [[214.1500, 41.2900, 562.4100, 285.0700]], "labels": ["4"]},
         {
@@ -72,9 +82,9 @@ def groundtruths():
             ],
         },
     ]
-    return [
+    db_gts_per_img = [
         [
-            GroundTruthDetection(
+            GroundTruthDetectionCreate(
                 boundary=bounding_box(*box),
                 class_label=class_label,
             )
@@ -83,9 +93,17 @@ def groundtruths():
         for gts in gts_per_img
     ]
 
+    created_ids = [
+        crud.create_groundtruth_detections(db, gts) for gts in db_gts_per_img
+    ]
+    return [
+        [db.query(Detection).get(det_id) for det_id in ids]
+        for ids in created_ids
+    ]
+
 
 @pytest.fixture
-def predictions() -> List[List[PredictedDetection]]:
+def predictions(db) -> list[list[Detection]]:
     # predictions for four images taken from
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L59
     preds_per_img = [
@@ -142,9 +160,9 @@ def predictions() -> List[List[PredictedDetection]]:
         },
     ]
 
-    return [
+    db_preds_per_img = [
         [
-            PredictedDetection(
+            PredictedDetectionCreate(
                 boundary=bounding_box(*box),
                 class_label=class_label,
                 score=score,
@@ -156,74 +174,24 @@ def predictions() -> List[List[PredictedDetection]]:
         for preds in preds_per_img
     ]
 
-
-def test__match_array():
-    gts = [
-        GroundTruthDetection(
-            boundary=bounding_box(185, 84, 231, 150), class_label="class 2"
-        ),
-        GroundTruthDetection(
-            boundary=bounding_box(463, 303, 497, 315), class_label="class3"
-        ),
-        GroundTruthDetection(
-            boundary=bounding_box(433, 260, 470, 314), class_label="class 1"
-        ),
+    created_ids = [
+        crud.create_predicted_detections(db, preds)
+        for preds in db_preds_per_img
+    ]
+    return [
+        [db.query(Detection).get(det_id) for det_id in ids]
+        for ids in created_ids
     ]
 
-    preds = [
-        PredictedDetection(
-            boundary=bounding_box(433, 259, 464, 311),
-            class_label="class 1",
-            score=0.9,
-        ),
-        PredictedDetection(
-            boundary=bounding_box(201, 84, 231, 150),
-            class_label="class 2",
-            score=0.8,
-        ),
-        PredictedDetection(
-            boundary=bounding_box(460, 302, 495, 315),
-            class_label="class 3",
-            score=0.55,
-        ),
-        PredictedDetection(
-            boundary=bounding_box(184, 85, 219, 150),
-            class_label="class 2",
-            score=0.4,
-        ),
-    ]
 
-    # note that we're ignoring the class labels here
-    preds = sorted(preds, key=lambda g: g.score, reverse=True)
-
-    ious = iou_matrix(groundtruths=gts, predictions=preds)
-
-    assert _match_array(ious, 1.0) == [None, None, None, None]
-
-    assert _match_array(ious, 0.75) == [2, None, 1, None]
-
-    assert _match_array(ious, 0.7) == [2, None, 1, 0]
-
-    # check that match to groundtruth 0 switches
-    assert _match_array(ious, 0.1) == [2, 0, 1, None]
-
-    assert _match_array(ious, 0.0) == [2, 0, 1, None]
-
-
-def round_dict_(d: dict, prec: int) -> None:
-    """Modifies a dictionary in place by rounding every float in it
-    to three decimal places
-    """
-    for k, v in d.items():
-        if isinstance(v, float):
-            d[k] = round(v, prec)
-        elif isinstance(v, dict):
-            round_dict_(v, prec)
-
-
-def test_compute_ap_metrics(groundtruths, predictions):
+def test_compute_ap_metrics(
+    db,
+    groundtruths: list[list[GroundTruthDetectionCreate]],
+    predictions: list[list[PredictedDetectionCreate]],
+):
     iou_thresholds = [round(0.5 + 0.05 * i, 2) for i in range(10)]
     metrics = compute_ap_metrics(
+        db=db,
         predictions=predictions,
         groundtruths=groundtruths,
         iou_thresholds=iou_thresholds,
@@ -239,7 +207,8 @@ def test_compute_ap_metrics(groundtruths, predictions):
 
     # cf with torch metrics/pycocotools results listed here:
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
-    assert metrics == {
+
+    target = {
         "AP": {
             "2": {"IoU=0.5": 0.505, "IoU=0.75": 0.505, "IoU=0.5:0.95": 0.454},
             "49": {"IoU=0.5": 0.79, "IoU=0.75": 0.576, "IoU=0.5:0.95": 0.555},
@@ -250,3 +219,5 @@ def test_compute_ap_metrics(groundtruths, predictions):
         },
         "mAP": {"IoU=0.5": 0.859, "IoU=0.75": 0.761, "IoU=0.5:0.95": 0.637},
     }
+
+    assert metrics == target

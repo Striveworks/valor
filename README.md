@@ -1,10 +1,10 @@
-# velour
+# velour evaluation store
 
 This repo contains the python [client](client) and [backend](backend) packages.
 
 ## Tests
 
-There are integration tests, client unit tests, and backend unit tests.
+There are integration tests, backend unit tests, and backend functional tests.
 
 ### CI/CD
 
@@ -40,23 +40,9 @@ make test-env
 pytest -v integration_tests
 ```
 
-#### Client unit tests
-
-1. Install the client: from the `client` directory run
-
-```shell
-pip install .[test]
-```
-
-2. Run the tests: from the `client` directory run
-
-```shel
-pytest -v tests
-```
-
 #### Backend unit tests
 
-1. Install the client: from the `backend` directory run
+1. Install the backend package: from the `backend` directory run
 
 ```shell
 pip install .[test]
@@ -64,6 +50,24 @@ pip install .[test]
 
 2. Run the tests: from the `backend` directory run
 
-```shel
-pytest -v tests
+```shell
+pytest -v tests/unit-tests
+```
+
+#### Backend functional tests
+
+These are tests of the backend that require a running instance of PostGIS to be running. To run these
+
+1. Install the backend package: from the `backend` directory run
+
+```shell
+pip install .[test]
+```
+
+2. Set the environment variaables `POSTGRES_HOST` and `POSTGRES_PASSWORD` to a running PostGIS instance.
+
+3. Run the functional tests: from the `backend` directory run
+
+```shell
+pytest -v tests/functional-tests
 ```

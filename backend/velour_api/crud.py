@@ -1,5 +1,6 @@
 import json
 
+from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from . import models, schemas
@@ -27,9 +28,20 @@ def _list_of_points_from_wkt_polygon(
     return [tuple(p) for p in geo["coordinates"][0]]
 
 
+def bulk_insert_dets_return_ids(
+    db: Session, mappings: list[dict]
+) -> list[int]:
+    added_ids = db.scalars(
+        insert(models.Detection).returning(models.Detection.id), mappings
+    )
+    db.commit()
+    return added_ids.all()
+
+
 def create_groundtruth_detections(
     db: Session, detections: list[schemas.GroundTruthDetectionCreate]
 ) -> list[int]:
+    """Adds groundtruth detections to the database"""
     mappings = [
         {
             "boundary": _wkt_polygon_from_detection(detection),
@@ -39,16 +51,13 @@ def create_groundtruth_detections(
         for detection in detections
     ]
 
-    db.bulk_insert_mappings(models.Detection, mappings, return_defaults=True)
-    db.commit()
-
-    # need to convert to a schemas.Detection object here
-    return [m["id"] for m in mappings]
+    return bulk_insert_dets_return_ids(db, mappings)
 
 
 def create_predicted_detections(
     db: Session, detections: list[schemas.PredictedDetectionCreate]
 ) -> list[int]:
+    """Adds predicted detections to the database"""
     mappings = [
         {
             "boundary": _wkt_polygon_from_detection(detection),
@@ -57,7 +66,5 @@ def create_predicted_detections(
         }
         for detection in detections
     ]
-    db.bulk_insert_mappings(models.Detection, mappings, return_defaults=True)
-    db.commit()
 
-    return [m["id"] for m in mappings]
+    return bulk_insert_dets_return_ids(db, mappings)

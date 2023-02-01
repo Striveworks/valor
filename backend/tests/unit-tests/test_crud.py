@@ -5,7 +5,10 @@ from velour_api.schemas import DetectionBase
 def test__wkt_polygon_from_detection_adds_point():
     """Check that the first point gets added to the end in the WKT"""
     det = DetectionBase(boundary=[(0, 1), (1, 1), (2, 1)], class_label="class")
-    assert _wkt_polygon_from_detection(det) == "POLYGON ((0 1, 1 1, 2 1, 0 1))"
+    assert (
+        _wkt_polygon_from_detection(det)
+        == "POLYGON ((0.0 1.0, 1.0 1.0, 2.0 1.0, 0.0 1.0))"
+    )
 
 
 def test__wkt_polygon_from_detection_does_not_add_point():
@@ -13,4 +16,7 @@ def test__wkt_polygon_from_detection_does_not_add_point():
     det = DetectionBase(
         boundary=[(0, 1), (1, 1), (2, 1), (0, 1)], class_label="class"
     )
-    assert _wkt_polygon_from_detection(det) == "POLYGON ((0 1, 1 1, 2 1, 0 1))"
+    assert (
+        _wkt_polygon_from_detection(det)
+        == "POLYGON ((0.0 1.0, 1.0 1.0, 2.0 1.0, 0.0 1.0))"
+    )
