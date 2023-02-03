@@ -3,9 +3,14 @@ import pytest
 from velour_api import crud
 from velour_api.database import SessionLocal, create_db
 from velour_api.metrics import compute_ap_metrics
-from velour_api.models import Detection
+from velour_api.models import (
+    LabeledGroundTruthDetection,
+    LabeledPredictedDetection,
+)
 from velour_api.schemas import (
     GroundTruthDetectionCreate,
+    Image,
+    Label,
     PredictedDetectionCreate,
 )
 
@@ -33,7 +38,14 @@ def db():
 
 
 @pytest.fixture
-def groundtruths(db) -> list[list[Detection]]:
+def images() -> list[Image]:
+    return [Image(uri=f"{i}") for i in range(4)]
+
+
+@pytest.fixture
+def groundtruths(
+    db, images: list[Image]
+) -> list[list[LabeledGroundTruthDetection]]:
     gts_per_img = [
         {"boxes": [[214.1500, 41.2900, 562.4100, 285.0700]], "labels": ["4"]},
         {
@@ -86,24 +98,27 @@ def groundtruths(db) -> list[list[Detection]]:
         [
             GroundTruthDetectionCreate(
                 boundary=bounding_box(*box),
-                class_label=class_label,
+                labels=[Label(key="class", value=class_label)],
+                image=image,
             )
             for box, class_label in zip(gts["boxes"], gts["labels"])
         ]
-        for gts in gts_per_img
+        for gts, image in zip(gts_per_img, images)
     ]
 
     created_ids = [
         crud.create_groundtruth_detections(db, gts) for gts in db_gts_per_img
     ]
     return [
-        [db.query(Detection).get(det_id) for det_id in ids]
+        [db.query(LabeledGroundTruthDetection).get(det_id) for det_id in ids]
         for ids in created_ids
     ]
 
 
 @pytest.fixture
-def predictions(db) -> list[list[Detection]]:
+def predictions(
+    db, images: list[Image]
+) -> list[list[LabeledPredictedDetection]]:
     # predictions for four images taken from
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L59
     preds_per_img = [
@@ -164,14 +179,15 @@ def predictions(db) -> list[list[Detection]]:
         [
             PredictedDetectionCreate(
                 boundary=bounding_box(*box),
-                class_label=class_label,
+                labels=[Label(key="class", value=class_label)],
                 score=score,
+                image=image,
             )
             for box, class_label, score in zip(
                 preds["boxes"], preds["labels"], preds["scores"]
             )
         ]
-        for preds in preds_per_img
+        for preds, image in zip(preds_per_img, images)
     ]
 
     created_ids = [
@@ -179,7 +195,7 @@ def predictions(db) -> list[list[Detection]]:
         for preds in db_preds_per_img
     ]
     return [
-        [db.query(Detection).get(det_id) for det_id in ids]
+        [db.query(LabeledPredictedDetection).get(det_id) for det_id in ids]
         for ids in created_ids
     ]
 
@@ -210,12 +226,36 @@ def test_compute_ap_metrics(
 
     target = {
         "AP": {
-            "2": {"IoU=0.5": 0.505, "IoU=0.75": 0.505, "IoU=0.5:0.95": 0.454},
-            "49": {"IoU=0.5": 0.79, "IoU=0.75": 0.576, "IoU=0.5:0.95": 0.555},
-            "3": {"IoU=0.5": -1.0, "IoU=0.75": -1.0, "IoU=0.5:0.95": -1.0},
-            "0": {"IoU=0.5": 1.0, "IoU=0.75": 0.723, "IoU=0.5:0.95": 0.725},
-            "1": {"IoU=0.5": 1.0, "IoU=0.75": 1.0, "IoU=0.5:0.95": 0.8},
-            "4": {"IoU=0.5": 1.0, "IoU=0.75": 1.0, "IoU=0.5:0.95": 0.65},
+            ("class", "2"): {
+                "IoU=0.5": 0.505,
+                "IoU=0.75": 0.505,
+                "IoU=0.5:0.95": 0.454,
+            },
+            ("class", "49"): {
+                "IoU=0.5": 0.79,
+                "IoU=0.75": 0.576,
+                "IoU=0.5:0.95": 0.555,
+            },
+            ("class", "3"): {
+                "IoU=0.5": -1.0,
+                "IoU=0.75": -1.0,
+                "IoU=0.5:0.95": -1.0,
+            },
+            ("class", "0"): {
+                "IoU=0.5": 1.0,
+                "IoU=0.75": 0.723,
+                "IoU=0.5:0.95": 0.725,
+            },
+            ("class", "1"): {
+                "IoU=0.5": 1.0,
+                "IoU=0.75": 1.0,
+                "IoU=0.5:0.95": 0.8,
+            },
+            ("class", "4"): {
+                "IoU=0.5": 1.0,
+                "IoU=0.75": 1.0,
+                "IoU=0.5:0.95": 0.65,
+            },
         },
         "mAP": {"IoU=0.5": 0.859, "IoU=0.75": 0.761, "IoU=0.5:0.95": 0.637},
     }

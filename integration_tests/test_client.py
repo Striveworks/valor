@@ -1,17 +1,26 @@
+import json
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+from velour.client import Client
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
     Point,
     PredictedDetection,
 )
+
 from velour_api import ops
-from velour_api.crud import _list_of_points_from_wkt_polygon
 from velour_api.models import Detection
 
-from velour.client import Client
+
+def _list_of_points_from_wkt_polygon(
+    db: Session, det: Detection
+) -> list[tuple[int, int]]:
+    geo = json.loads(db.scalar(det.boundary.ST_AsGeoJSON()))
+    assert len(geo["coordinates"]) == 1
+    return [tuple(p) for p in geo["coordinates"][0]]
 
 
 def area(rect: BoundingPolygon) -> float:

@@ -1,9 +1,8 @@
-import json
-
-from sqlalchemy import insert
+from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
 from . import models, schemas
+from .database import Base
 
 
 def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
@@ -19,52 +18,119 @@ def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
     )
 
 
-def _list_of_points_from_wkt_polygon(
-    db: Session,
-    det: models.Detection,
-) -> list[tuple[int, int]]:
-    geo = json.loads(db.scalar(det.boundary.ST_AsGeoJSON()))
-    assert len(geo["coordinates"]) == 1
-    return [tuple(p) for p in geo["coordinates"][0]]
-
-
-def bulk_insert_dets_return_ids(
-    db: Session, mappings: list[dict]
+def bulk_insert_and_return_ids(
+    db: Session, model: Base, mappings: list[dict]
 ) -> list[int]:
-    added_ids = db.scalars(
-        insert(models.Detection).returning(models.Detection.id), mappings
-    )
+    added_ids = db.scalars(insert(model).returning(model.id), mappings)
     db.commit()
     return added_ids.all()
+
+
+def _create_detections(
+    db: Session,
+    detections: list[schemas.GroundTruthDetectionCreate]
+    | list[schemas.PredictedDetectionCreate],
+    det_model_class: type,
+    labeled_det_model_class: type,
+):
+    # add the images to the db and add their ids to the pydantic objects
+    add_pydantic_objs_to_db(
+        db=db,
+        model_class=models.Image,
+        pydantic_objs=[detection.image for detection in detections],
+    )
+
+    # create gt detections
+    det_mappings = [
+        {
+            "boundary": _wkt_polygon_from_detection(detection),
+            "image": detection.image._db_id,
+        }
+        for detection in detections
+    ]
+
+    det_ids = bulk_insert_and_return_ids(db, det_model_class, det_mappings)
+
+    # add the labels to the db and add their ids to the pydantic objects
+    add_pydantic_objs_to_db(
+        db=db,
+        model_class=models.Label,
+        pydantic_objs=[
+            label for detection in detections for label in detection.labels
+        ],
+    )
+
+    labeled_mappings = [
+        {"detection_id": gt_det_id, "label_id": label._db_id}
+        | ({"score": detection.score} if hasattr(detection, "score") else {})
+        for gt_det_id, detection in zip(det_ids, detections)
+        for label in detection.labels
+    ]
+
+    return bulk_insert_and_return_ids(
+        db, labeled_det_model_class, labeled_mappings
+    )
 
 
 def create_groundtruth_detections(
     db: Session, detections: list[schemas.GroundTruthDetectionCreate]
 ) -> list[int]:
-    """Adds groundtruth detections to the database"""
-    mappings = [
-        {
-            "boundary": _wkt_polygon_from_detection(detection),
-            "score": -1,
-            "class_label": detection.class_label,
-        }
-        for detection in detections
-    ]
-
-    return bulk_insert_dets_return_ids(db, mappings)
+    return _create_detections(
+        db=db,
+        detections=detections,
+        det_model_class=models.GroundTruthDetection,
+        labeled_det_model_class=models.LabeledGroundTruthDetection,
+    )
 
 
 def create_predicted_detections(
     db: Session, detections: list[schemas.PredictedDetectionCreate]
 ) -> list[int]:
-    """Adds predicted detections to the database"""
-    mappings = [
-        {
-            "boundary": _wkt_polygon_from_detection(detection),
-            "score": detection.score,
-            "class_label": detection.class_label,
-        }
-        for detection in detections
-    ]
+    return _create_detections(
+        db=db,
+        detections=detections,
+        det_model_class=models.PredictedDetection,
+        labeled_det_model_class=models.LabeledPredictedDetection,
+    )
 
-    return bulk_insert_dets_return_ids(db, mappings)
+
+def get_or_create_row(
+    db: Session,
+    model_class: type,
+    mapping: dict,
+) -> int:
+    """Tries to get the row defined by mapping. If that exists then
+    its id is returned. Otherwise a row is created by `mapping` and the newly created
+    row's id is returned
+    """
+    # create the query from the mapping
+    where_expressions = [
+        (getattr(model_class, k) == v) for k, v in mapping.items()
+    ]
+    where_expression = where_expressions[0]
+    for exp in where_expressions[1:]:
+        where_expression = where_expression & exp
+
+    db_element = db.scalar(select(model_class).where(where_expression))
+
+    if not db_element:
+        db_element = model_class(**mapping)
+        db.add(db_element)
+        db.flush()
+        db.commit()
+
+    return db_element.id
+
+
+def add_pydantic_objs_to_db(
+    db: Session, model_class: type, pydantic_objs: list[schemas.BaseModel]
+) -> None:
+    for obj in pydantic_objs:
+        if not hasattr(obj, "_db_id"):
+            setattr(
+                obj,
+                "_db_id",
+                get_or_create_row(
+                    db=db, model_class=model_class, mapping=obj.dict()
+                ),
+            )

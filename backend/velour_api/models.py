@@ -1,69 +1,170 @@
 from geoalchemy2 import Geometry
-from sqlalchemy import Column, Float, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import relationship, validates
 
 from .database import Base
 
-# need three representations for a lot of objects:
-# - a (user-friendly) representation for the python client
-# - a (compressed) representation for REST (these will be Pydantic models)
-# - a representation for the database
+
+class Label(Base):
+    __tablename__ = "label"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # (key, value) should be unique
+    key = Column(String)
+    value = Column(String)
+    labeled_ground_truth_detections = relationship(
+        "LabeledGroundTruthDetection", back_populates="label"
+    )
+    labeled_predicted_detections = relationship(
+        "LabeledPredictedDetection", back_populates="label"
+    )
+    # labeled_segmentations = relationship("LabeledSegmentation")
+    # labeled_images = relationship("LabeledImage")
+
+    __table_args__ = (UniqueConstraint("key", "value"),)
 
 
-class Detection(Base):
-    """Represents a single detection in an image"""
+class GroundTruthDetection(Base):
+    """Represents a single groundtruth detection in an image. This purposefully does not have
+    a label field to support the case where an object might have multiple labels (e.g. a
+    car might have "make" and "model" labels)
+    """
 
-    __tablename__ = "detection"
+    __tablename__ = "ground_truth_detection"
 
     id = Column(Integer, primary_key=True, index=True)
     boundary = Column(Geometry("POLYGON"))
     image = Column(Integer, ForeignKey("image.id"))
-    labeled_detections = relationship("LabeledDetection")
+    labeled_ground_truth_detections = relationship(
+        "LabeledGroundTruthDetection", back_populates="detection"
+    )
     # should add bounding box here too?
     # can get this from ST_Envelope
     # use https://docs.sqlalchemy.org/en/14/orm/mapping_columns.html#sqlalchemy.orm.column_property
-    # score = Column(Float)  # between 0 and 1, -1 if groundtruth
 
 
-class LabeledDetection(Base):
-    # also used for instance segmentation
-    __tablename__ = "labeled_detection"
+class PredictedDetection(Base):
+    """Represents a single groundtruth detection in an image. This purposefully does not have
+    a label field to support the case where an object might have multiple labels (e.g. a
+    car might have "make" and "model" labels)
+    """
+
+    __tablename__ = "predicted_detection"
 
     id = Column(Integer, primary_key=True, index=True)
+    boundary = Column(Geometry("POLYGON"))
+    image = Column(Integer, ForeignKey("image.id"))
+    labeled_predicted_detections = relationship(
+        "LabeledPredictedDetection", back_populates="detection"
+    )
+    # should add bounding box here too?
+    # can get this from ST_Envelope
+    # use https://docs.sqlalchemy.org/en/14/orm/mapping_columns.html#sqlalchemy.orm.column_property
+
+
+class LabeledGroundTruthDetection(Base):
+    """Represents a grountruth detected object"""
+
+    # also used for instance segmentation
+    __tablename__ = "labeled_ground_truth_detection"
+
+    id = Column(Integer, primary_key=True, index=True)
+    detection_id = Column(Integer, ForeignKey("ground_truth_detection.id"))
+    detection = relationship(
+        "GroundTruthDetection",
+        back_populates="labeled_ground_truth_detections",
+    )
+    label_id = Column(Integer, ForeignKey("label.id"))
+    label = relationship(
+        "Label", back_populates="labeled_ground_truth_detections"
+    )
+
+
+class LabeledPredictedDetection(Base):
+    """Represents a predicted detection from a model"""
+
+    # also used for instance segmentation
+    __tablename__ = "labeled_predicted_detection"
+
+    id = Column(Integer, primary_key=True, index=True)
+    detection_id = Column(Integer, ForeignKey("predicted_detection.id"))
+    detection = relationship(
+        "PredictedDetection",
+        back_populates="labeled_predicted_detections",
+    )
+    label_id = Column(Integer, ForeignKey("label.id"))
+    label = relationship(
+        "Label", back_populates="labeled_predicted_detections"
+    )
     score = Column(Float)
-    detection = Column(Integer, ForeignKey("detection.id"))
+    model = Column(
+        Integer, ForeignKey("model.id")
+    )  # the model that inferred this detection
+
+
+class GroundTruthImageClassification(Base):
+    """Groundtruth for an image classification"""
+
+    __tablename__ = "ground_truth_image_classification"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # need some uniquess for labels (a key can only appear once for a given image)
+    image = Column(Integer, ForeignKey("image.id"))
     label = Column(Integer, ForeignKey("label.id"))
 
 
-class LabeledImage(Base):
-    __tablename__ = "labeled_image"
+class PredictedImageClassification(Base):
+    """Prediction for image classification from a model"""
+
+    __tablename__ = "predicted_image_classification"
 
     id = Column(Integer, primary_key=True, index=True)
     score = Column(Float)
     # need some uniquess for labels (a key can only appear once for a given image)
-    image = Column(Integer, foreign_key="image.id")
-    label = Column(Integer, ForeignKey("label.id"))
-
-
-class Segmentation(Base):
-    """Represents a single detection in an image"""
-
-    __tablename__ = "segmentation"
-
-    id = Column(Integer, primary_key=True, index=True)
-    boundary = Column(Geometry("POLYGON"))
     image = Column(Integer, ForeignKey("image.id"))
-    labeled_segmentations = relationship("LabeledSegmentation")
-
-
-class LabeledSegmentation(Base):
-    # also used for instance segmentation
-    __tablename__ = "labeled_segmentation"
-
-    id = Column(Integer, primary_key=True, index=True)
-    score = Column(Float)
-    segmentation = Column(Integer, ForeignKey("segmentation.id"))
     label = Column(Integer, ForeignKey("label.id"))
+    model = Column(Integer, ForeignKey("model.id"))
+
+
+# class Segmentation(Base):
+#     """Represents a entire image segmentation"""
+
+#     __tablename__ = "ground_truth_segmentation"
+
+#     id = Column(Integer, primary_key=True, index=True)
+#     boundary = Column(Geometry("POLYGON"))
+#     image = Column(Integer, ForeignKey("image.id"))
+#     labeled_segmentations = relationship("LabeledSegmentation")
+
+
+# class GroundTruthSegmentation(Base):
+#     # also used for instance segmentation
+#     __tablename__ = "ground_truth_segmentation"
+
+#     id = Column(Integer, primary_key=True, index=True)
+#     score = Column(Float)
+#     segmentation = Column(Integer, ForeignKey("segmentation.id"))
+#     label = Column(Integer, ForeignKey("label.id"))
+
+
+# class PredictedSegmentation(Base):
+#     # also used for instance segmentation
+#     """Predicted semantic segmentation for a model"""
+#     __tablename__ = "predicted_segmentation"
+
+#     id = Column(Integer, primary_key=True, index=True)
+#     score = Column(Float)
+#     segmentation = Column(Integer, ForeignKey("segmentation.id"))
+#     label = Column(Integer, ForeignKey("label.id"))
+#     model = Column(Integer, ForeignKey("model.id"))
 
 
 class Image(Base):
@@ -75,8 +176,8 @@ class Image(Base):
     __tablename__ = "image"
 
     id = Column(Integer, primary_key=True, index=True)
-    dataset = Column(Integer, foreign_key="dataset.id")
-    href = Column(String)
+    dataset = Column(Integer, ForeignKey("dataset.id"))
+    uri = Column(String, unique=True)
 
 
 class Model(Base):
@@ -85,35 +186,34 @@ class Model(Base):
     __tablename__ = "model"
 
     id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    version = Column(Integer)
+
+    @validates("version")
+    def validate_version(self, _, version):
+        if version < 1:
+            raise ValueError("version must be >= 1.")
+
+    __table_args__ = (UniqueConstraint("name", "version"),)
 
 
-class ImageWithGroundTruth:
-    # link image with detections
-    pass
+class Dataset(Base):
+    """ """
 
-
-class ImagePrediction:
-    # link image with detections and a model
-    pass
-
-
-class Dataset:
     __tablename__ = "dataset"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
+    name = Column(String, index=True)
+    draft = Column(Boolean)  # whether or not the dataset is done being created
+    version = Column(Integer)
+    images = relationship("Image")
 
+    __table_args__ = (UniqueConstraint("name", "version"),)
 
-class Label:
-    __tablename__ = "label"
-
-    id = Column(Integer, primary_key=True, index=True)
-    # (key, value) should be unique
-    key = Column(String)
-    value = Column(String)
-    labeled_detections = relationship("LabeledDetection")
-    labeled_segmentations = relationship("LabeledSegmentation")
-    labeled_images = relationship("LabeledImage")
+    @validates("version")
+    def validate_version(self, _, version):
+        if version < 1:
+            raise ValueError("version must be >= 1.")
 
 
 """

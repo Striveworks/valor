@@ -1,11 +1,24 @@
 import math
 from dataclasses import dataclass
-from typing import List
+from typing import List, Union
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Dict, Image, ImageDraw, ImageFont
 
 MaskType = List[List[float]]
 ImageInput = List[Image.Image]
+
+ClassLabelType = Union[str, Dict[str, str]]
+
+
+@dataclass
+class Image:
+    uri: str
+
+
+@dataclass
+class Label:
+    key: str
+    value: str
 
 
 @dataclass
@@ -74,7 +87,8 @@ class DetectionBase:
     """Class representing a single object detection in an image."""
 
     boundary: BoundingPolygon
-    class_label: str
+    class_label: Label
+    image: Image
 
     def draw_on_image(
         self, img: Image.Image, inplace: bool = False

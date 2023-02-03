@@ -9,3 +9,9 @@ stop-env:
 
 unit-tests:
 	python -m pytest -v tests/unit-tests
+
+start-postgis-docker:
+	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgis/postgis
+
+functional-tests:
+	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost pytest -v tests/functional-tests
