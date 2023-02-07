@@ -1,8 +1,12 @@
 from sqlalchemy import insert, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import models, schemas
-from .database import Base
+
+
+class DatasetAlreadyExistsError(Exception):
+    pass
 
 
 def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
@@ -19,8 +23,15 @@ def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
 
 
 def bulk_insert_and_return_ids(
-    db: Session, model: Base, mappings: list[dict]
+    db: Session, model: type, mappings: list[dict]
 ) -> list[int]:
+    """Bulk adds to the database
+
+    model
+        the class that represents the database table
+    mappings
+        dictionaries mapping column names to values
+    """
     added_ids = db.scalars(insert(model).returning(model.id), mappings)
     db.commit()
     return added_ids.all()
@@ -32,7 +43,8 @@ def _create_detections(
     | list[schemas.PredictedDetectionCreate],
     det_model_class: type,
     labeled_det_model_class: type,
-):
+) -> list[int]:
+    """Adds a collection of detectinos to the database"""
     # add the images to the db and add their ids to the pydantic objects
     add_pydantic_objs_to_db(
         db=db,
@@ -125,6 +137,9 @@ def get_or_create_row(
 def add_pydantic_objs_to_db(
     db: Session, model_class: type, pydantic_objs: list[schemas.BaseModel]
 ) -> None:
+    """Adds pydantic objects to the db if they don't already exist. The id in the db
+    is then added to the pydantic object as the attribute `"_db_id"`.
+    """
     for obj in pydantic_objs:
         if not hasattr(obj, "_db_id"):
             setattr(
@@ -134,3 +149,22 @@ def add_pydantic_objs_to_db(
                     db=db, model_class=model_class, mapping=obj.dict()
                 ),
             )
+
+
+def create_dataset(db: Session, dataset: schemas.DatasetCreate):
+    """Creates a dataset"""
+    try:
+        db.add(models.Dataset(name=dataset.name, draft=True))
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise DatasetAlreadyExistsError(
+            f"Dataset with name {dataset.name} already exists."
+        )
+
+
+def get_datasets(db: Session):
+    return [
+        schemas.Dataset(name=d.name, draft=d.draft)
+        for d in db.scalars(select(models.Dataset))
+    ]

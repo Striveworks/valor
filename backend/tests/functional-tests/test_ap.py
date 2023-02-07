@@ -1,7 +1,6 @@
 import pytest
 
 from velour_api import crud
-from velour_api.database import SessionLocal, create_db
 from velour_api.metrics import compute_ap_metrics
 from velour_api.models import (
     LabeledGroundTruthDetection,
@@ -13,8 +12,6 @@ from velour_api.schemas import (
     Label,
     PredictedDetectionCreate,
 )
-
-create_db(timeout=30)
 
 
 def bounding_box(xmin, ymin, xmax, ymax) -> list[tuple[int, int]]:
@@ -30,11 +27,6 @@ def round_dict_(d: dict, prec: int) -> None:
             d[k] = round(v, prec)
         elif isinstance(v, dict):
             round_dict_(v, prec)
-
-
-@pytest.fixture
-def db():
-    return SessionLocal()
 
 
 @pytest.fixture

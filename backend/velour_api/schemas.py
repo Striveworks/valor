@@ -2,6 +2,15 @@ from pydantic import BaseModel, Extra, validator
 
 
 # extra=Extra.allow allows us to attach additional attributes to these objects later
+class Dataset(BaseModel, extra=Extra.allow):
+    name: str
+    draft: bool
+
+
+class DatasetCreate(BaseModel):
+    name: str
+
+
 class Image(BaseModel, extra=Extra.allow):
     uri: str
 
@@ -31,4 +40,4 @@ class PredictedDetectionCreate(DetectionBase):
 
 
 class GroundTruthDetectionCreate(DetectionBase):
-    pass
+    dataset_name: int

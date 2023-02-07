@@ -8,9 +8,9 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy.orm import relationship, validates
+from sqlalchemy.orm import relationship
 
-from .database import Base
+from velour_api.database import Base
 
 
 class Label(Base):
@@ -186,15 +186,7 @@ class Model(Base):
     __tablename__ = "model"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    version = Column(Integer)
-
-    @validates("version")
-    def validate_version(self, _, version):
-        if version < 1:
-            raise ValueError("version must be >= 1.")
-
-    __table_args__ = (UniqueConstraint("name", "version"),)
+    name = Column(String, index=True, unique=True)
 
 
 class Dataset(Base):
@@ -203,17 +195,10 @@ class Dataset(Base):
     __tablename__ = "dataset"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    draft = Column(Boolean)  # whether or not the dataset is done being created
-    version = Column(Integer)
+    name = Column(String, index=True, unique=True)
+    # whether or not the dataset is done being created
+    draft = Column(Boolean, default=True)
     images = relationship("Image")
-
-    __table_args__ = (UniqueConstraint("name", "version"),)
-
-    @validates("version")
-    def validate_version(self, _, version):
-        if version < 1:
-            raise ValueError("version must be >= 1.")
 
 
 """
