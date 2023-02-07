@@ -6,7 +6,28 @@ from . import models, schemas
 
 
 class DatasetAlreadyExistsError(Exception):
-    pass
+    def __init__(self, name: str):
+        return super().__init__(f"Dataset with name {name} already exists.")
+
+
+class ModelAlreadyExistsError(Exception):
+    def __init__(self, name: str):
+        return super().__init__(f"Model with uri {name} already exists.")
+
+
+class DatasetDoesNotExistError(Exception):
+    def __init__(self, name: str):
+        return super().__init__(f"Dataset with name {name} does not exist.")
+
+
+class ModelDoesNotExistError(Exception):
+    def __init__(self, name: str):
+        return super().__init__(f"Model with name {name} does not exist.")
+
+
+class ImageDoesNotExistError(Exception):
+    def __init__(self, uri: str):
+        return super().__init__(f"Image with uri {uri} does not exist.")
 
 
 def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
@@ -37,72 +58,114 @@ def bulk_insert_and_return_ids(
     return added_ids.all()
 
 
-def _create_detections(
-    db: Session,
-    detections: list[schemas.GroundTruthDetectionCreate]
-    | list[schemas.PredictedDetectionCreate],
-    det_model_class: type,
-    labeled_det_model_class: type,
-) -> list[int]:
-    """Adds a collection of detectinos to the database"""
-    # add the images to the db and add their ids to the pydantic objects
-    add_pydantic_objs_to_db(
-        db=db,
-        model_class=models.Image,
-        pydantic_objs=[detection.image for detection in detections],
-    )
-
-    # create gt detections
-    det_mappings = [
+def _create_detection_mappings(
+    detections: list[schemas.DetectionBase], image_ids: list[str]
+) -> list[dict[str, str]]:
+    return [
         {
             "boundary": _wkt_polygon_from_detection(detection),
-            "image": detection.image._db_id,
+            "image_id": image_id,
         }
-        for detection in detections
+        for detection, image_id in zip(detections, image_ids)
     ]
 
-    det_ids = bulk_insert_and_return_ids(db, det_model_class, det_mappings)
 
-    # add the labels to the db and add their ids to the pydantic objects
-    add_pydantic_objs_to_db(
-        db=db,
-        model_class=models.Label,
-        pydantic_objs=[
-            label for detection in detections for label in detection.labels
-        ],
+def _create_label_tuple_to_id_dict(
+    db, detections: list[schemas.DetectionBase]
+) -> dict[tuple, str]:
+    """Goes through detections and adds a label if it doesn't exist. Return is a mapping from
+    `tuple(label)` (since `label` is not hashable) to label id
+    """
+    label_tuple_to_id = {}
+    for detection in detections:
+        for label in detection.labels:
+            label_tuple = tuple(label)
+            if label_tuple not in label_tuple_to_id:
+                label_tuple_to_id[label_tuple] = get_or_create_row(
+                    db, models.Label, {"key": label.key, "value": label.value}
+                )
+    return label_tuple_to_id
+
+
+def create_groundtruth_detections(
+    db: Session,
+    data: schemas.GroundTruthDetectionsCreate,
+) -> list[int]:
+    # create (if they don't exist) the image rows and get the ids
+    dset_id = get_dataset(db, dataset_name=data.dataset_name).id
+    image_ids = []
+    for detection in data.detections:
+        image_ids.append(
+            get_or_create_row(
+                db=db,
+                model_class=models.Image,
+                mapping={"dataset_id": dset_id, "uri": detection.image.uri},
+            )
+        )
+
+    # create gt detections
+    det_mappings = _create_detection_mappings(
+        detections=data.detections, image_ids=image_ids
+    )
+    det_ids = bulk_insert_and_return_ids(
+        db, models.GroundTruthDetection, det_mappings
     )
 
-    labeled_mappings = [
-        {"detection_id": gt_det_id, "label_id": label._db_id}
-        | ({"score": detection.score} if hasattr(detection, "score") else {})
-        for gt_det_id, detection in zip(det_ids, detections)
+    label_tuple_to_id = _create_label_tuple_to_id_dict(db, data.detections)
+
+    labeled_gt_mappings = [
+        {
+            "detection_id": gt_det_id,
+            "label_id": label_tuple_to_id[tuple(label)],
+        }
+        for gt_det_id, detection in zip(det_ids, data.detections)
         for label in detection.labels
     ]
 
     return bulk_insert_and_return_ids(
-        db, labeled_det_model_class, labeled_mappings
-    )
-
-
-def create_groundtruth_detections(
-    db: Session, detections: list[schemas.GroundTruthDetectionCreate]
-) -> list[int]:
-    return _create_detections(
-        db=db,
-        detections=detections,
-        det_model_class=models.GroundTruthDetection,
-        labeled_det_model_class=models.LabeledGroundTruthDetection,
+        db, models.LabeledGroundTruthDetection, labeled_gt_mappings
     )
 
 
 def create_predicted_detections(
-    db: Session, detections: list[schemas.PredictedDetectionCreate]
+    db: Session, data: schemas.PredictedDetectionsCreate
 ) -> list[int]:
-    return _create_detections(
-        db=db,
-        detections=detections,
-        det_model_class=models.PredictedDetection,
-        labeled_det_model_class=models.LabeledPredictedDetection,
+    """
+    Raises
+    ------
+    ModelDoesNotExistError
+        if the model with name `data.model_name` does not exist
+    """
+    model_id = get_model(db, model_name=data.model_name).id
+    # get image ids from uris (these images should already exist)
+    image_ids = [
+        get_image(db, uri=detection.image.uri).id
+        for detection in data.detections
+    ]
+
+    det_mappings = _create_detection_mappings(
+        detections=data.detections, image_ids=image_ids
+    )
+    for m in det_mappings:
+        m["model_id"] = model_id
+    det_ids = bulk_insert_and_return_ids(
+        db, models.PredictedDetection, det_mappings
+    )
+
+    label_tuple_to_id = _create_label_tuple_to_id_dict(db, data.detections)
+
+    labeled_pred_mappings = [
+        {
+            "detection_id": gt_det_id,
+            "label_id": label_tuple_to_id[tuple(label)],
+            "score": detection.score,
+        }
+        for gt_det_id, detection in zip(det_ids, data.detections)
+        for label in detection.labels
+    ]
+
+    return bulk_insert_and_return_ids(
+        db, models.LabeledPredictedDetection, labeled_pred_mappings
     )
 
 
@@ -134,33 +197,36 @@ def get_or_create_row(
     return db_element.id
 
 
-def add_pydantic_objs_to_db(
-    db: Session, model_class: type, pydantic_objs: list[schemas.BaseModel]
-) -> None:
-    """Adds pydantic objects to the db if they don't already exist. The id in the db
-    is then added to the pydantic object as the attribute `"_db_id"`.
-    """
-    for obj in pydantic_objs:
-        if not hasattr(obj, "_db_id"):
-            setattr(
-                obj,
-                "_db_id",
-                get_or_create_row(
-                    db=db, model_class=model_class, mapping=obj.dict()
-                ),
-            )
-
-
 def create_dataset(db: Session, dataset: schemas.DatasetCreate):
-    """Creates a dataset"""
+    """Creates a dataset
+
+    Raises
+    ------
+    DatasetAlreadyExistsError
+        if the dataset name already exists
+    """
     try:
         db.add(models.Dataset(name=dataset.name, draft=True))
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise DatasetAlreadyExistsError(
-            f"Dataset with name {dataset.name} already exists."
-        )
+        raise DatasetAlreadyExistsError(dataset.name)
+
+
+def create_model(db: Session, model: schemas.ModelCreate):
+    """Creates a dataset
+
+    Raises
+    ------
+    ModelAlreadyExistsError
+        if the model uri already exists
+    """
+    try:
+        db.add(models.Model(name=model.name))
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ModelAlreadyExistsError(model.uri)
 
 
 def get_datasets(db: Session):
@@ -168,3 +234,31 @@ def get_datasets(db: Session):
         schemas.Dataset(name=d.name, draft=d.draft)
         for d in db.scalars(select(models.Dataset))
     ]
+
+
+def get_dataset(db: Session, dataset_name: str) -> models.Dataset:
+    ret = db.scalar(
+        select(models.Dataset).where(models.Dataset.name == dataset_name)
+    )
+    if ret is None:
+        raise DatasetDoesNotExistError(dataset_name)
+
+    return ret
+
+
+def get_model(db: Session, model_name: str) -> models.Model:
+    ret = db.scalar(
+        select(models.Model).where(models.Model.name == model_name)
+    )
+    if ret is None:
+        raise ModelDoesNotExistError(model_name)
+
+    return ret
+
+
+def get_image(db: Session, uri: str) -> models.Image:
+    ret = db.scalar(select(models.Image).where(models.Image.uri == uri))
+    if ret is None:
+        raise ImageDoesNotExistError(uri)
+
+    return ret

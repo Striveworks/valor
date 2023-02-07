@@ -20,7 +20,7 @@ def drop_all(db):
 
 @pytest.fixture
 def db():
-    """This fixture provides a db session. a `RuntimeError`is raised if
+    """This fixture provides a db session. a `RuntimeError` is raised if
     a velour tablename already exists. At teardown, all velour tables are wiped.
     """
     db = SessionLocal()

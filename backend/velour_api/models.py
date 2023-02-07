@@ -61,7 +61,7 @@ class PredictedDetection(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     boundary = Column(Geometry("POLYGON"))
-    image = Column(Integer, ForeignKey("image.id"))
+    image_id = Column(Integer, ForeignKey("image.id"))
     labeled_predicted_detections = relationship(
         "LabeledPredictedDetection", back_populates="detection"
     )
@@ -86,6 +86,9 @@ class LabeledGroundTruthDetection(Base):
     label = relationship(
         "Label", back_populates="labeled_ground_truth_detections"
     )
+    model_id = Column(
+        Integer, ForeignKey("model.id")
+    )  # the model that inferred this detection
 
 
 class LabeledPredictedDetection(Base):
@@ -105,9 +108,6 @@ class LabeledPredictedDetection(Base):
         "Label", back_populates="labeled_predicted_detections"
     )
     score = Column(Float)
-    model = Column(
-        Integer, ForeignKey("model.id")
-    )  # the model that inferred this detection
 
 
 class GroundTruthImageClassification(Base):
@@ -176,7 +176,7 @@ class Image(Base):
     __tablename__ = "image"
 
     id = Column(Integer, primary_key=True, index=True)
-    dataset = Column(Integer, ForeignKey("dataset.id"))
+    dataset_id = Column(Integer, ForeignKey("dataset.id"))
     uri = Column(String, unique=True)
 
 

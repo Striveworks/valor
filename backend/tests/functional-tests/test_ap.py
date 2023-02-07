@@ -7,10 +7,14 @@ from velour_api.models import (
     LabeledPredictedDetection,
 )
 from velour_api.schemas import (
-    GroundTruthDetectionCreate,
+    DatasetCreate,
+    DetectionBase,
+    GroundTruthDetectionsCreate,
     Image,
     Label,
-    PredictedDetectionCreate,
+    ModelCreate,
+    PredictedDetection,
+    PredictedDetectionsCreate,
 )
 
 
@@ -38,6 +42,8 @@ def images() -> list[Image]:
 def groundtruths(
     db, images: list[Image]
 ) -> list[list[LabeledGroundTruthDetection]]:
+    dataset_name = "test dataset"
+    crud.create_dataset(db, dataset=DatasetCreate(name=dataset_name))
     gts_per_img = [
         {"boxes": [[214.1500, 41.2900, 562.4100, 285.0700]], "labels": ["4"]},
         {
@@ -88,7 +94,7 @@ def groundtruths(
     ]
     db_gts_per_img = [
         [
-            GroundTruthDetectionCreate(
+            DetectionBase(
                 boundary=bounding_box(*box),
                 labels=[Label(key="class", value=class_label)],
                 image=image,
@@ -99,7 +105,13 @@ def groundtruths(
     ]
 
     created_ids = [
-        crud.create_groundtruth_detections(db, gts) for gts in db_gts_per_img
+        crud.create_groundtruth_detections(
+            db,
+            GroundTruthDetectionsCreate(
+                dataset_name=dataset_name, detections=gts
+            ),
+        )
+        for gts in db_gts_per_img
     ]
     return [
         [db.query(LabeledGroundTruthDetection).get(det_id) for det_id in ids]
@@ -111,6 +123,9 @@ def groundtruths(
 def predictions(
     db, images: list[Image]
 ) -> list[list[LabeledPredictedDetection]]:
+    model_name = "test model"
+    crud.create_model(db, ModelCreate(name=model_name))
+
     # predictions for four images taken from
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L59
     preds_per_img = [
@@ -169,7 +184,7 @@ def predictions(
 
     db_preds_per_img = [
         [
-            PredictedDetectionCreate(
+            PredictedDetection(
                 boundary=bounding_box(*box),
                 labels=[Label(key="class", value=class_label)],
                 score=score,
@@ -183,7 +198,10 @@ def predictions(
     ]
 
     created_ids = [
-        crud.create_predicted_detections(db, preds)
+        crud.create_predicted_detections(
+            db,
+            PredictedDetectionsCreate(model_name=model_name, detections=preds),
+        )
         for preds in db_preds_per_img
     ]
     return [
@@ -194,8 +212,8 @@ def predictions(
 
 def test_compute_ap_metrics(
     db,
-    groundtruths: list[list[GroundTruthDetectionCreate]],
-    predictions: list[list[PredictedDetectionCreate]],
+    groundtruths: list[list[DetectionBase]],
+    predictions: list[list[PredictedDetection]],
 ):
     iou_thresholds = [round(0.5 + 0.05 * i, 2) for i in range(10)]
     metrics = compute_ap_metrics(

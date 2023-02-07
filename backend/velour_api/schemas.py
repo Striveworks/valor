@@ -1,8 +1,7 @@
-from pydantic import BaseModel, Extra, validator
+from pydantic import BaseModel, validator
 
 
-# extra=Extra.allow allows us to attach additional attributes to these objects later
-class Dataset(BaseModel, extra=Extra.allow):
+class Dataset(BaseModel):
     name: str
     draft: bool
 
@@ -11,11 +10,15 @@ class DatasetCreate(BaseModel):
     name: str
 
 
-class Image(BaseModel, extra=Extra.allow):
+class ModelCreate(BaseModel):
+    name: str
+
+
+class Image(BaseModel):
     uri: str
 
 
-class Label(BaseModel, extra=Extra.allow):
+class Label(BaseModel):
     key: str
     value: str
 
@@ -35,9 +38,15 @@ class DetectionBase(BaseModel):
         return v
 
 
-class PredictedDetectionCreate(DetectionBase):
+class PredictedDetection(DetectionBase):
     score: float
 
 
-class GroundTruthDetectionCreate(DetectionBase):
-    dataset_name: int
+class PredictedDetectionsCreate(BaseModel):
+    model_name: str
+    detections: list[PredictedDetection]
+
+
+class GroundTruthDetectionsCreate(BaseModel):
+    dataset_name: str
+    detections: list[DetectionBase]
