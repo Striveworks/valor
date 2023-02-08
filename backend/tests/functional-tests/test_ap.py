@@ -114,7 +114,7 @@ def groundtruths(
         for gts in db_gts_per_img
     ]
     return [
-        [db.query(LabeledGroundTruthDetection).get(det_id) for det_id in ids]
+        [db.get(LabeledGroundTruthDetection, det_id) for det_id in ids]
         for ids in created_ids
     ]
 
@@ -205,7 +205,7 @@ def predictions(
         for preds in db_preds_per_img
     ]
     return [
-        [db.query(LabeledPredictedDetection).get(det_id) for det_id in ids]
+        [db.get(LabeledPredictedDetection, det_id) for det_id in ids]
         for ids in created_ids
     ]
 

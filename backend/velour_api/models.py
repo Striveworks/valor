@@ -42,9 +42,11 @@ class GroundTruthDetection(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     boundary = Column(Geometry("POLYGON"))
-    image = Column(Integer, ForeignKey("image.id"))
+    image_id = Column(Integer, ForeignKey("image.id"))
     labeled_ground_truth_detections = relationship(
-        "LabeledGroundTruthDetection", back_populates="detection"
+        "LabeledGroundTruthDetection",
+        back_populates="detection",
+        cascade="all, delete",
     )
     # should add bounding box here too?
     # can get this from ST_Envelope
@@ -178,6 +180,9 @@ class Image(Base):
     id = Column(Integer, primary_key=True, index=True)
     dataset_id = Column(Integer, ForeignKey("dataset.id"))
     uri = Column(String, unique=True)
+    ground_truth_detections = relationship(
+        "GroundTruthDetection", cascade="all, delete"
+    )
 
 
 class Model(Base):
@@ -198,7 +203,7 @@ class Dataset(Base):
     name = Column(String, index=True, unique=True)
     # whether or not the dataset is done being created
     draft = Column(Boolean, default=True)
-    images = relationship("Image")
+    images = relationship("Image", cascade="all, delete")
 
 
 """

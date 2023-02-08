@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from velour_api import crud, models, schemas
@@ -33,3 +33,52 @@ def test_get_dataset(db: Session):
     crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
     dset = crud.get_dataset(db, dset_name)
     assert dset.name == dset_name
+
+
+def test_delete_dataset(db: Session):
+    dset_name = "test dataset"
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+
+    # sanity check nothing in db
+    for model_cls in [
+        models.Image,
+        models.GroundTruthDetection,
+        models.LabeledGroundTruthDetection,
+        models.Label,
+    ]:
+        assert db.scalars(select(func.count(model_cls.id))).first() == 0
+
+    crud.create_groundtruth_detections(
+        db,
+        data=schemas.GroundTruthDetectionsCreate(
+            dataset_name=dset_name,
+            detections=[
+                schemas.DetectionBase(
+                    boundary=[(10, 20), (10, 30), (20, 30), (20, 20)],
+                    labels=[schemas.Label(key="k", value="v")],
+                    image=schemas.Image(uri="uri1"),
+                )
+            ],
+        ),
+    )
+
+    # should have one row for all of these tables
+    for model_cls in [
+        models.Image,
+        models.GroundTruthDetection,
+        models.LabeledGroundTruthDetection,
+    ]:
+        assert db.scalars(select(func.count(model_cls.id))).first() == 1
+
+    # delete dataset and check the cascade worked
+    crud.delete_dataset(db, dataset_name=dset_name)
+    for model_cls in [
+        models.Dataset,
+        models.Image,
+        models.GroundTruthDetection,
+        models.LabeledGroundTruthDetection,
+    ]:
+        assert db.scalars(select(func.count(model_cls.id))).first() == 0
+
+    # make åsure labels are still there`
+    assert db.scalars(select(func.count(models.Label.id))).first() == 1
