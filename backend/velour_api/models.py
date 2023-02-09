@@ -1,14 +1,6 @@
 from geoalchemy2 import Geometry
-from sqlalchemy import (
-    Boolean,
-    Column,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    UniqueConstraint,
-)
-from sqlalchemy.orm import Mapped, relationship
+from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from velour_api.database import Base
 
@@ -16,10 +8,10 @@ from velour_api.database import Base
 class Label(Base):
     __tablename__ = "label"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
     # (key, value) should be unique
-    key = Column(String)
-    value = Column(String)
+    key: Mapped[str]
+    value: Mapped[str]
     labeled_ground_truth_detections = relationship(
         "LabeledGroundTruthDetection", back_populates="label"
     )
@@ -40,9 +32,9 @@ class GroundTruthDetection(Base):
 
     __tablename__ = "ground_truth_detection"
 
-    id = Column(Integer, primary_key=True, index=True)
-    boundary = Column(Geometry("POLYGON"))
-    image_id = Column(Integer, ForeignKey("image.id"))
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    boundary = mapped_column(Geometry("POLYGON"))
+    image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
     labeled_ground_truth_detections: Mapped[
         list["LabeledGroundTruthDetection"]
     ] = relationship(
@@ -63,16 +55,16 @@ class PredictedDetection(Base):
 
     __tablename__ = "predicted_detection"
 
-    id = Column(Integer, primary_key=True, index=True)
-    boundary = Column(Geometry("POLYGON"))
-    image_id = Column(Integer, ForeignKey("image.id"))
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    boundary = mapped_column(Geometry("POLYGON"))
+    image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
     labeled_predicted_detections = relationship(
         "LabeledPredictedDetection",
         back_populates="detection",
         cascade="all, delete",
     )
-    model_id = Column(
-        Integer, ForeignKey("model.id")
+    model_id: Mapped[int] = mapped_column(
+        ForeignKey("model.id")
     )  # the model that inferred this detection
 
     # should add bounding box here too?
@@ -86,13 +78,15 @@ class LabeledGroundTruthDetection(Base):
     # also used for instance segmentation
     __tablename__ = "labeled_ground_truth_detection"
 
-    id = Column(Integer, primary_key=True, index=True)
-    detection_id = Column(Integer, ForeignKey("ground_truth_detection.id"))
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    detection_id: Mapped[int] = mapped_column(
+        ForeignKey("ground_truth_detection.id")
+    )
     detection = relationship(
         "GroundTruthDetection",
         back_populates="labeled_ground_truth_detections",
     )
-    label_id = Column(Integer, ForeignKey("label.id"))
+    label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
     label = relationship(
         "Label", back_populates="labeled_ground_truth_detections"
     )
@@ -104,41 +98,43 @@ class LabeledPredictedDetection(Base):
     # also used for instance segmentation
     __tablename__ = "labeled_predicted_detection"
 
-    id = Column(Integer, primary_key=True, index=True)
-    detection_id = Column(Integer, ForeignKey("predicted_detection.id"))
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    detection_id: Mapped[int] = mapped_column(
+        ForeignKey("predicted_detection.id")
+    )
     detection = relationship(
         "PredictedDetection",
         back_populates="labeled_predicted_detections",
     )
-    label_id = Column(Integer, ForeignKey("label.id"))
+    label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
     label = relationship(
         "Label", back_populates="labeled_predicted_detections"
     )
-    score = Column(Float)
+    score: Mapped[float]
 
 
-class GroundTruthImageClassification(Base):
-    """Groundtruth for an image classification"""
+# class GroundTruthImageClassification(Base):
+#     """Groundtruth for an image classification"""
 
-    __tablename__ = "ground_truth_image_classification"
+#     __tablename__ = "ground_truth_image_classification"
 
-    id = Column(Integer, primary_key=True, index=True)
-    # need some uniquess for labels (a key can only appear once for a given image)
-    image = Column(Integer, ForeignKey("image.id"))
-    label = Column(Integer, ForeignKey("label.id"))
+#     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+#     # need some uniquess for labels (a key can only appear once for a given image)
+#     image: Mapped[int] = mapped_column(ForeignKey("image.id"))
+#     label: Mapped[int] = mapped_column(ForeignKey("label.id"))
 
 
-class PredictedImageClassification(Base):
-    """Prediction for image classification from a model"""
+# class PredictedImageClassification(Base):
+#     """Prediction for image classification from a model"""
 
-    __tablename__ = "predicted_image_classification"
+#     __tablename__ = "predicted_image_classification"
 
-    id = Column(Integer, primary_key=True, index=True)
-    score = Column(Float)
-    # need some uniquess for labels (a key can only appear once for a given image)
-    image = Column(Integer, ForeignKey("image.id"))
-    label = Column(Integer, ForeignKey("label.id"))
-    model = Column(Integer, ForeignKey("model.id"))
+#     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+#     score = Column(Float)
+#     # need some uniquess for labels (a key can only appear once for a given image)
+#     image = Column(Integer, ForeignKey("image.id"))
+#     label = Column(Integer, ForeignKey("label.id"))
+#     model = Column(Integer, ForeignKey("model.id"))
 
 
 # class Segmentation(Base):
@@ -182,9 +178,9 @@ class Image(Base):
 
     __tablename__ = "image"
 
-    id = Column(Integer, primary_key=True, index=True)
-    dataset_id = Column(Integer, ForeignKey("dataset.id"))
-    uri = Column(String, unique=True)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
+    uri: Mapped[str] = mapped_column(unique=True)
     ground_truth_detections: Mapped[list[GroundTruthDetection]] = relationship(
         GroundTruthDetection, cascade="all, delete"
     )
@@ -195,8 +191,8 @@ class Model(Base):
 
     __tablename__ = "model"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True, unique=True)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(index=True, unique=True)
     predicted_detections = relationship(
         PredictedDetection, cascade="all, delete"
     )
@@ -207,10 +203,10 @@ class Dataset(Base):
 
     __tablename__ = "dataset"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True, unique=True)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(index=True, unique=True)
     # whether or not the dataset is done being created
-    draft = Column(Boolean, default=True)
+    draft: Mapped[bool] = mapped_column(default=True)
     images = relationship("Image", cascade="all, delete")
 
 
