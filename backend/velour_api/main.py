@@ -31,10 +31,13 @@ def create_groundtruth_detections(
 
 @app.post("/predicted-detections")
 def create_predicted_detections(
-    detections: list[schemas.PredictedDetectionsCreate],
+    data: schemas.PredictedDetectionsCreate,
     db: Session = Depends(get_db),
 ) -> list[int]:
-    return crud.create_predicted_detections(db=db, detections=detections)
+    try:
+        return crud.create_predicted_detections(db=db, data=data)
+    except crud.ImageDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get("/datasets", status_code=200)
@@ -54,7 +57,6 @@ def create_dataset(
 
 @app.put("/datasets/{dataset_name}")
 def get_dataset(dataset_name: str) -> schemas.Dataset:
-    # returns nothing for now, just verifies dataset exists
     dset = crud.get_dataset(name=dataset_name)
     return schemas.Dataset(name=dset.name, draft=dset.draft)
 
@@ -94,6 +96,30 @@ def get_dataset_images(
 @app.delete("/datasets/{dataset_name}")
 def delete_dataset(dataset_name: str, db: Session = Depends(get_db)) -> None:
     return crud.delete_dataset(db, dataset_name)
+
+
+@app.get("/models", status_code=200)
+def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
+    return crud.get_models(db)
+
+
+@app.post("/models", status_code=201)
+def create_model(model: schemas.Model, db: Session = Depends(get_db)):
+    try:
+        crud.create_model(db=db, model=model)
+    except crud.ModelAlreadyExistsError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@app.put("/models/{model_name}")
+def get_model(model_name: str) -> schemas.Model:
+    dset = crud.get_model(name=model_name)
+    return schemas.Model(name=dset.name)
+
+
+@app.delete("/models/{model_name}")
+def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
+    return crud.delete_model(db, model_name)
 
 
 @app.get("/labels", status_code=200)

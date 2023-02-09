@@ -1,5 +1,5 @@
 import json
-from typing import Union
+from typing import List, Union
 
 import pytest
 from sqlalchemy import create_engine, select
@@ -15,6 +15,8 @@ from velour.data_types import (
 )
 
 from velour_api import models, ops
+
+dset_name = "test dataset"
 
 
 def _list_of_points_from_wkt_polygon(
@@ -68,10 +70,19 @@ def client():
 
 
 @pytest.fixture
-def db(client: Client):
+def db(client: Client) -> Session:
+    """This fixture makes sure there's not datasets, models, or labels in the backend
+    (raising a RuntimeError if there are). It returns a db session and as cleanup
+    clears out all datasets, models, and labels from the backend.
+    """
     if len(client.get_datasets()) > 0:
         raise RuntimeError(
             "Tests should be run on an empty velour backend but found existing datasets."
+        )
+
+    if len(client.get_models()) > 0:
+        raise RuntimeError(
+            "Tests should be run on an empty velour backend but found existing models."
         )
 
     if len(client.get_all_labels()) > 0:
@@ -84,9 +95,12 @@ def db(client: Client):
 
     yield sess
 
-    # cleanup by deleting all datasets and labels
+    # cleanup by deleting all datasets, models, and labels
     for dataset in client.get_datasets():
         client.delete_dataset(name=dataset["name"])
+
+    for model in client.get_models():
+        client.delete_model(name=model["name"])
 
     labels = sess.scalars(select(models.Label))
     for label in labels:
@@ -131,10 +145,59 @@ def rect3():
     )
 
 
+@pytest.fixture
+def gt_dets1(
+    rect1: BoundingPolygon, rect2: BoundingPolygon
+) -> List[GroundTruthDetection]:
+    return [
+        GroundTruthDetection(
+            boundary=rect1,
+            labels=[Label(key="k1", value="v1")],
+            image=Image(uri="uri1"),
+        ),
+        GroundTruthDetection(
+            boundary=rect2,
+            labels=[Label(key="k1", value="v1")],
+            image=Image(uri="uri2"),
+        ),
+    ]
+
+
+@pytest.fixture
+def gt_dets2(rect3: BoundingPolygon) -> List[GroundTruthDetection]:
+    return [
+        GroundTruthDetection(
+            boundary=rect3,
+            labels=[Label(key="k2", value="v2")],
+            image=Image(uri="uri1"),
+        )
+    ]
+
+
+@pytest.fixture
+def pred_dets(
+    rect1: BoundingPolygon, rect2: BoundingPolygon
+) -> List[PredictedDetection]:
+    return [
+        PredictedDetection(
+            boundary=rect1,
+            labels=[Label(key="k1", value="v1")],
+            image=Image(uri="uri1"),
+            score=0.3,
+        ),
+        PredictedDetection(
+            boundary=rect2,
+            labels=[Label(key="k2", value="v2")],
+            image=Image(uri="uri2"),
+            score=0.98,
+        ),
+    ]
+
+
 def test_create_dataset_with_detections(
     client: Client,
-    rect1: BoundingPolygon,
-    rect2: BoundingPolygon,
+    gt_dets1: List[GroundTruthDetection],
+    gt_dets2: List[GroundTruthDetection],
     rect3: BoundingPolygon,
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
@@ -145,37 +208,14 @@ def test_create_dataset_with_detections(
     - Finalizes dataset
     - Tries to add more data and verifies an error is thrown
     """
-    dset_name = "test dataset"
     dataset = client.create_dataset(dset_name)
 
     with pytest.raises(ClientException) as exc_info:
         client.create_dataset(dset_name)
     assert "already exists" in str(exc_info)
 
-    dataset.add_groundtruth_detections(
-        [
-            GroundTruthDetection(
-                boundary=rect1,
-                labels=[Label(key="k1", value="v1")],
-                image=Image(uri="uri1"),
-            ),
-            GroundTruthDetection(
-                boundary=rect2,
-                labels=[Label(key="k1", value="v1")],
-                image=Image(uri="uri2"),
-            ),
-        ]
-    )
-
-    dataset.add_groundtruth_detections(
-        [
-            GroundTruthDetection(
-                boundary=rect3,
-                labels=[Label(key="k2", value="v2")],
-                image=Image(uri="uri1"),
-            )
-        ]
-    )
+    dataset.add_groundtruth_detections(gt_dets1)
+    dataset.add_groundtruth_detections(gt_dets2)
 
     # check that the dataset has two images
     images = dataset.get_images()
@@ -206,13 +246,59 @@ def test_create_dataset_with_detections(
     assert "since it is finalized" in str(exc_info)
 
 
-def test_get_dataset(client: Client):
-    pass
+def test_create_model_with_predictions(
+    client: Client,
+    gt_dets1: List[GroundTruthDetection],
+    pred_dets: List[PredictedDetection],
+    db: Session,
+):
+    model_name = "test model"
+    model = client.create_model(model_name)
+
+    # verify we get an error if we try to create another model
+    # with the same name
+    with pytest.raises(ClientException) as exc_info:
+        client.create_model(model_name)
+    assert "already exists" in str(exc_info)
+
+    # check that if we try to add detections we get an error
+    # since we haven't added any images yet
+    with pytest.raises(ClientException) as exc_info:
+        model.add_predictions(pred_dets)
+    assert "Image with uri" in str(exc_info)
+
+    # add groundtruth and predictions
+    dataset = client.create_dataset(dset_name)
+    dataset.add_groundtruth_detections(gt_dets1)
+    model.add_predictions(pred_dets)
+
+    # check predictions have been added
+    labeled_pred_dets = db.scalars(
+        select(models.LabeledPredictedDetection)
+    ).all()
+    assert len(labeled_pred_dets) == 2
+
+    # check labels
+    assert set([(p.label.key, p.label.value) for p in labeled_pred_dets]) == {
+        ("k1", "v1"),
+        ("k2", "v2"),
+    }
+
+    # check scores
+    assert set([p.score for p in labeled_pred_dets]) == {0.3, 0.98}
+
+    # check boundary
+    db_pred = [
+        p for p in labeled_pred_dets if p.detection.image.uri == "uri1"
+    ][0]
+    points = _list_of_points_from_wkt_polygon(db, db_pred.detection)
+    pred = pred_dets[0]
+
+    assert set(points) == set([(pt.x, pt.y) for pt in pred.boundary.points])
 
 
 def test_boundary(client: Client, db: Session, rect1: BoundingPolygon):
     """Test consistency of boundary in backend and client"""
-    dset_name = "test dataset"
     dataset = client.create_dataset(dset_name)
     dataset.add_groundtruth_detections(
         [
@@ -233,35 +319,12 @@ def test_boundary(client: Client, db: Session, rect1: BoundingPolygon):
     assert set(points) == set([(pt.x, pt.y) for pt in rect1.points])
 
 
-def test_upload_predicted_detections(
-    client: Client, session: Session, rect2: BoundingPolygon
-):
-    """Test that upload of a predicted detection from velour client to backend works"""
-    pred_det = PredictedDetection(
-        boundary=rect2, class_label="class-2", score=0.7
-    )
-    det_id = client.upload_predicted_detections([pred_det])[0]
-    db_det = session.query(PredictedDetection).get(det_id)
-
-    # check score
-    assert db_det.score == pred_det.score == 0.7
-
-    # check label
-    assert db_det.class_label == pred_det.class_label
-
-    # check boundary
-    points = _list_of_points_from_wkt_polygon(session, db_det)
-
-    assert set(points) == set([(pt.x, pt.y) for pt in rect2.points])
-
-
 def test_iou(
     client: Client,
     db: Session,
     rect1: BoundingPolygon,
     rect2: BoundingPolygon,
 ):
-    dset_name = "test dataset"
     client.create_dataset(dset_name)
 
     gt_det = GroundTruthDetection(

@@ -58,6 +58,9 @@ class PredictedDetection(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     boundary = mapped_column(Geometry("POLYGON"))
     image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
+    image: Mapped["Image"] = relationship(
+        "Image", back_populates="predicted_detections"
+    )
     labeled_predicted_detections = relationship(
         "LabeledPredictedDetection",
         back_populates="detection",
@@ -82,8 +85,8 @@ class LabeledGroundTruthDetection(Base):
     detection_id: Mapped[int] = mapped_column(
         ForeignKey("ground_truth_detection.id")
     )
-    detection = relationship(
-        "GroundTruthDetection",
+    detection: Mapped[GroundTruthDetection] = relationship(
+        GroundTruthDetection,
         back_populates="labeled_ground_truth_detections",
     )
     label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
@@ -102,7 +105,7 @@ class LabeledPredictedDetection(Base):
     detection_id: Mapped[int] = mapped_column(
         ForeignKey("predicted_detection.id")
     )
-    detection = relationship(
+    detection: Mapped[PredictedDetection] = relationship(
         "PredictedDetection",
         back_populates="labeled_predicted_detections",
     )
@@ -183,6 +186,9 @@ class Image(Base):
     uri: Mapped[str] = mapped_column(unique=True)
     ground_truth_detections: Mapped[list[GroundTruthDetection]] = relationship(
         GroundTruthDetection, cascade="all, delete"
+    )
+    predicted_detections: Mapped[list[PredictedDetection]] = relationship(
+        PredictedDetection, cascade="all, delete"
     )
 
 

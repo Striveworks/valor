@@ -96,7 +96,8 @@ class Client:
             "detections": [
                 {
                     "boundary": _payload_for_bounding_polygon(det.boundary),
-                    "class_label": det.class_label,
+                    "labels": [asdict(label) for label in det.labels],
+                    "image": asdict(det.image),
                     "score": det.score,
                 }
                 for det in dets
@@ -138,6 +139,22 @@ class Client:
             Label(key=label["key"], value=label["value"]) for label in labels
         ]
 
+    def create_model(self, name: str) -> "Model":
+        self._requests_post_rel_host("models", json={"name": name})
+
+        return Model(client=self, name=name)
+
+    def delete_model(self, name: str) -> None:
+        self._requests_delete_rel_host(f"models/{name}")
+
+    def get_model(self, name: str) -> dict:
+        resp = self._requests_get_rel_host("models", json={"name": name})
+
+        return resp.json()
+
+    def get_models(self) -> List[dict]:
+        return self._requests_get_rel_host("models").json()
+
     def get_all_labels(self) -> List[Label]:
         return self._requests_get_rel_host("labels").json()
 
@@ -175,5 +192,5 @@ class Model:
 
     def add_predictions(self, dets: List[PredictedDetection]) -> None:
         return self.client.upload_predicted_detections(
-            dataset_name=self.name, dets=dets
+            model_name=self.name, dets=dets
         )
