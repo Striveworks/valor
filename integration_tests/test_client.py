@@ -17,6 +17,7 @@ from velour.data_types import (
 from velour_api import models, ops
 
 dset_name = "test dataset"
+model_name = "test model"
 
 
 def _list_of_points_from_wkt_polygon(
@@ -252,7 +253,6 @@ def test_create_model_with_predictions(
     pred_dets: List[PredictedDetection],
     db: Session,
 ):
-    model_name = "test model"
     model = client.create_model(model_name)
 
     # verify we get an error if we try to create another model
@@ -325,19 +325,28 @@ def test_iou(
     rect1: BoundingPolygon,
     rect2: BoundingPolygon,
 ):
-    client.create_dataset(dset_name)
+    dataset = client.create_dataset(dset_name)
+    model = client.create_model(model_name)
 
-    gt_det = GroundTruthDetection(
-        boundary=rect1,
-        class_label="class-1",
+    dataset.add_groundtruth_detections(
+        [
+            GroundTruthDetection(
+                boundary=rect1, labels=[Label("k", "v")], image=Image("uri")
+            )
+        ]
     )
-    client.upload_groundtruth_detections([gt_det])[0]
-    db_gt = db.scalar(select(GroundTruthDetection))
+    db_gt = db.scalar(select(models.GroundTruthDetection))
 
-    pred_det = PredictedDetection(
-        boundary=rect2, class_label="class-1", score=0.6
+    model.add_predictions(
+        [
+            PredictedDetection(
+                boundary=rect2,
+                labels=[Label("k", "v")],
+                score=0.6,
+                image=Image("uri"),
+            )
+        ]
     )
-    client.upload_predicted_detections([pred_det])[0]
-    db_pred = db.scalar(select(PredictedDetection))
+    db_pred = db.scalar(select(models.PredictedDetection))
 
     assert ops.iou(db, db_gt, db_pred) == iou(rect1, rect2)

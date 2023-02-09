@@ -205,8 +205,6 @@ class Model(Base):
 
 
 class Dataset(Base):
-    """ """
-
     __tablename__ = "dataset"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -214,10 +212,3 @@ class Dataset(Base):
     # whether or not the dataset is done being created
     draft: Mapped[bool] = mapped_column(default=True)
     images = relationship("Image", cascade="all, delete")
-
-
-"""
-Queries:
-- get all detections in a dataset with a given label key
-- get all detections in a dataset with a given label key and values in a list
-"""
