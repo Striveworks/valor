@@ -1,13 +1,9 @@
 import math
 from dataclasses import dataclass
-from typing import List, Union
+from typing import List
 
-from PIL import Dict, Image, ImageDraw, ImageFont
-
-MaskType = List[List[float]]
-ImageInput = List[Image.Image]
-
-ClassLabelType = Union[str, Dict[str, str]]
+from PIL import Image as PILImage
+from PIL import ImageDraw, ImageFont
 
 
 @dataclass
@@ -41,11 +37,11 @@ class BoundingPolygon:
 
     def draw_on_image(
         self,
-        img: Image.Image,
+        img: PILImage.Image,
         inplace: bool = False,
         text: str = None,
         font_size: int = 24,
-    ) -> Image.Image:
+    ) -> PILImage.Image:
         color = (255, 0, 0)
         img = img if inplace else img.copy()
         img_draw = ImageDraw.Draw(img)
@@ -87,12 +83,12 @@ class DetectionBase:
     """Class representing a single object detection in an image."""
 
     boundary: BoundingPolygon
-    class_label: Label
+    labels: List[Label]
     image: Image
 
     def draw_on_image(
-        self, img: Image.Image, inplace: bool = False
-    ) -> Image.Image:
+        self, img: PILImage.Image, inplace: bool = False
+    ) -> PILImage.Image:
         img = self.boundary.draw_on_image(
             img, inplace=inplace, text=f"{self.class_label} {self.score:0.2f}"
         )

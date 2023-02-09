@@ -14,9 +14,17 @@ def gt_dets_create() -> schemas.GroundTruthDetectionsCreate:
         detections=[
             schemas.DetectionBase(
                 boundary=[(10, 20), (10, 30), (20, 30), (20, 20)],
-                labels=[schemas.Label(key="k", value="v")],
+                labels=[
+                    schemas.Label(key="k1", value="v1"),
+                    schemas.Label(key="k2", value="v2"),
+                ],
                 image=schemas.Image(uri="uri1"),
-            )
+            ),
+            schemas.DetectionBase(
+                boundary=[(10, 20), (10, 30), (20, 30), (20, 20)],
+                labels=[schemas.Label(key="k2", value="v2")],
+                image=schemas.Image(uri="uri1"),
+            ),
         ],
     )
 
@@ -48,7 +56,7 @@ def test_get_dataset(db: Session):
     assert dset.name == dset_name
 
 
-def test_delete_dataset(
+def test_create_detections_and_delete_dataset(
     db: Session, gt_dets_create: schemas.GroundTruthDetectionsCreate
 ):
     crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
@@ -64,13 +72,10 @@ def test_delete_dataset(
 
     crud.create_groundtruth_detections(db, data=gt_dets_create)
 
-    # should have one row for all of these tables
-    for model_cls in [
-        models.Image,
-        models.GroundTruthDetection,
-        models.LabeledGroundTruthDetection,
-    ]:
-        assert db.scalar(select(func.count(model_cls.id))) == 1
+    assert crud.number_of_rows(db, models.GroundTruthDetection) == 2
+    assert crud.number_of_rows(db, models.Image) == 1
+    assert crud.number_of_rows(db, models.LabeledGroundTruthDetection) == 3
+    assert crud.number_of_rows(db, models.Label) == 2
 
     # delete dataset and check the cascade worked
     crud.delete_dataset(db, dataset_name=dset_name)
@@ -80,7 +85,20 @@ def test_delete_dataset(
         models.GroundTruthDetection,
         models.LabeledGroundTruthDetection,
     ]:
-        assert db.scalar(select(func.count(model_cls.id))) == 0
+        assert crud.number_of_rows(db, model_cls) == 0
 
-    # make åsure labels are still there`
-    assert db.scalar(select(func.count(models.Label.id))) == 1
+    # make sure labels are still there`
+    assert crud.number_of_rows(db, models.Label) == 2
+
+
+def test_get_labels(
+    db: Session, gt_dets_create: schemas.GroundTruthDetectionsCreate
+):
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_groundtruth_detections(db, data=gt_dets_create)
+    labels = crud.get_labels_in_dataset(db, dset_name)
+
+    assert len(labels) == 2
+    assert set([(label.key, label.value) for label in labels]) == set(
+        [("k1", "v1"), ("k2", "v2")]
+    )

@@ -8,7 +8,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from velour_api.database import Base
 
@@ -43,7 +43,9 @@ class GroundTruthDetection(Base):
     id = Column(Integer, primary_key=True, index=True)
     boundary = Column(Geometry("POLYGON"))
     image_id = Column(Integer, ForeignKey("image.id"))
-    labeled_ground_truth_detections = relationship(
+    labeled_ground_truth_detections: Mapped[
+        list["LabeledGroundTruthDetection"]
+    ] = relationship(
         "LabeledGroundTruthDetection",
         back_populates="detection",
         cascade="all, delete",
@@ -180,9 +182,9 @@ class Image(Base):
     id = Column(Integer, primary_key=True, index=True)
     dataset_id = Column(Integer, ForeignKey("dataset.id"))
     uri = Column(String, unique=True)
-    ground_truth_detections = relationship(
-        "GroundTruthDetection", cascade="all, delete"
-    )
+    ground_truth_detections: Mapped[
+        list["GroundTruthDetection"]
+    ] = relationship("GroundTruthDetection", cascade="all, delete")
 
 
 class Model(Base):

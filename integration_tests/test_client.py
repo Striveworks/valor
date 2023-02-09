@@ -1,22 +1,24 @@
 import json
+from typing import Union
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
-from velour.client import Client
+from velour.client import Client, ClientException
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
+    Image,
+    Label,
     Point,
     PredictedDetection,
 )
 
-from velour_api import ops
-from velour_api.models import Detection
+from velour_api import models, ops
 
 
 def _list_of_points_from_wkt_polygon(
-    db: Session, det: Detection
+    db: Session, det: Union[GroundTruthDetection, PredictedDetection]
 ) -> list[tuple[int, int]]:
     geo = json.loads(db.scalar(det.boundary.ST_AsGeoJSON()))
     assert len(geo["coordinates"]) == 1
@@ -66,9 +68,31 @@ def client():
 
 
 @pytest.fixture
-def session():
+def db(client: Client):
+    if len(client.get_datasets()) > 0:
+        raise RuntimeError(
+            "Tests should be run on an empty velour backend but found existing datasets."
+        )
+
+    if len(client.get_all_labels()) > 0:
+        raise RuntimeError(
+            "Tests should be run on an empty velour backend but found existing labels."
+        )
+
     engine = create_engine("postgresql://postgres:password@localhost/postgres")
-    return Session(engine)
+    sess = Session(engine)
+
+    yield sess
+
+    # cleanup by deleting all datasets and labels
+    for dataset in client.get_datasets():
+        client.delete_dataset(name=dataset["name"])
+
+    labels = sess.scalars(select(models.Label))
+    for label in labels:
+        sess.delete(label)
+
+    sess.commit()
 
 
 @pytest.fixture
@@ -95,25 +119,116 @@ def rect2():
     )
 
 
-def test_upload_groundtruth_detection(
-    client: Client, session: Session, rect1: BoundingPolygon
-):
-    """Test that upload of a groundtruth detection from velour client to backend works"""
-    gt_det = GroundTruthDetection(
-        boundary=rect1,
-        class_label="class-1",
+@pytest.fixture
+def rect3():
+    return BoundingPolygon(
+        [
+            Point(x=158, y=10),
+            Point(x=87, y=10),
+            Point(x=87, y=820),
+            Point(x=158, y=820),
+        ]
     )
-    det_id = client.upload_groundtruth_detections([gt_det])[0]
-    db_det = session.query(Detection).get(det_id)
 
-    # check score is -1 since its a groundtruth detection
-    assert db_det.score == -1
 
-    # check label
-    assert db_det.class_label == gt_det.class_label
+def test_create_dataset_with_detections(
+    client: Client,
+    rect1: BoundingPolygon,
+    rect2: BoundingPolygon,
+    rect3: BoundingPolygon,
+    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
+):
+    """This test does the following
+    - Creates a dataset
+    - Adds groundtruth data to it in two batches
+    - Verifies the images and labels have actually been added
+    - Finalizes dataset
+    - Tries to add more data and verifies an error is thrown
+    """
+    dset_name = "test dataset"
+    dataset = client.create_dataset(dset_name)
+
+    with pytest.raises(ClientException) as exc_info:
+        client.create_dataset(dset_name)
+    assert "already exists" in str(exc_info)
+
+    dataset.add_groundtruth_detections(
+        [
+            GroundTruthDetection(
+                boundary=rect1,
+                labels=[Label(key="k1", value="v1")],
+                image=Image(uri="uri1"),
+            ),
+            GroundTruthDetection(
+                boundary=rect2,
+                labels=[Label(key="k1", value="v1")],
+                image=Image(uri="uri2"),
+            ),
+        ]
+    )
+
+    dataset.add_groundtruth_detections(
+        [
+            GroundTruthDetection(
+                boundary=rect3,
+                labels=[Label(key="k2", value="v2")],
+                image=Image(uri="uri1"),
+            )
+        ]
+    )
+
+    # check that the dataset has two images
+    images = dataset.get_images()
+    assert len(images) == 2
+    assert set([image.uri for image in images]) == {"uri1", "uri2"}
+
+    # check that there are two labels
+    labels = dataset.get_labels()
+    assert len(labels) == 2
+    assert set([(label.key, label.value) for label in labels]) == {
+        ("k1", "v1"),
+        ("k2", "v2"),
+    }
+
+    dataset.finalize()
+    # check that we get an error when trying to add more images
+    # to the dataset since it is finalized
+    with pytest.raises(ClientException) as exc_info:
+        dataset.add_groundtruth_detections(
+            [
+                GroundTruthDetection(
+                    boundary=rect3,
+                    labels=[Label(key="k3", value="v3")],
+                    image=Image(uri="uri8"),
+                )
+            ]
+        )
+    assert "since it is finalized" in str(exc_info)
+
+
+def test_get_dataset(client: Client):
+    pass
+
+
+def test_boundary(client: Client, db: Session, rect1: BoundingPolygon):
+    """Test consistency of boundary in backend and client"""
+    dset_name = "test dataset"
+    dataset = client.create_dataset(dset_name)
+    dataset.add_groundtruth_detections(
+        [
+            GroundTruthDetection(
+                boundary=rect1,
+                labels=[Label(key="k1", value="v1")],
+                image=Image(uri="uri1"),
+            )
+        ]
+    )
+
+    # get the one detection that exists
+    db_det = db.scalar(select(models.GroundTruthDetection))
 
     # check boundary
-    points = _list_of_points_from_wkt_polygon(session, db_det)
+    points = _list_of_points_from_wkt_polygon(db, db_det)
 
     assert set(points) == set([(pt.x, pt.y) for pt in rect1.points])
 
@@ -126,7 +241,7 @@ def test_upload_predicted_detections(
         boundary=rect2, class_label="class-2", score=0.7
     )
     det_id = client.upload_predicted_detections([pred_det])[0]
-    db_det = session.query(Detection).get(det_id)
+    db_det = session.query(PredictedDetection).get(det_id)
 
     # check score
     assert db_det.score == pred_det.score == 0.7
@@ -142,22 +257,24 @@ def test_upload_predicted_detections(
 
 def test_iou(
     client: Client,
-    session: Session,
+    db: Session,
     rect1: BoundingPolygon,
     rect2: BoundingPolygon,
 ):
+    dset_name = "test dataset"
+    client.create_dataset(dset_name)
 
     gt_det = GroundTruthDetection(
         boundary=rect1,
         class_label="class-1",
     )
-    gt_id = client.upload_groundtruth_detections([gt_det])[0]
-    db_gt = session.query(Detection).get(gt_id)
+    client.upload_groundtruth_detections([gt_det])[0]
+    db_gt = db.scalar(select(GroundTruthDetection))
 
     pred_det = PredictedDetection(
         boundary=rect2, class_label="class-1", score=0.6
     )
-    pred_id = client.upload_predicted_detections([pred_det])[0]
-    db_pred = session.query(Detection).get(pred_id)
+    client.upload_predicted_detections([pred_det])[0]
+    db_pred = db.scalar(select(PredictedDetection))
 
-    assert ops.iou(session, db_gt, db_pred) == iou(rect1, rect2)
+    assert ops.iou(db, db_gt, db_pred) == iou(rect1, rect2)

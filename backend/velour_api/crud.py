@@ -1,4 +1,4 @@
-from sqlalchemy import insert, select
+from sqlalchemy import func, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -7,27 +7,34 @@ from . import models, schemas
 
 class DatasetAlreadyExistsError(Exception):
     def __init__(self, name: str):
-        return super().__init__(f"Dataset with name {name} already exists.")
+        return super().__init__(f"Dataset with name '{name}' already exists.")
 
 
 class ModelAlreadyExistsError(Exception):
     def __init__(self, name: str):
-        return super().__init__(f"Model with uri {name} already exists.")
+        return super().__init__(f"Model with name '{name}' already exists.")
 
 
 class DatasetDoesNotExistError(Exception):
     def __init__(self, name: str):
-        return super().__init__(f"Dataset with name {name} does not exist.")
+        return super().__init__(f"Dataset with name '{name}' does not exist.")
+
+
+class DatasetIsFinalizedError(Exception):
+    def __init__(self, name: str):
+        return super().__init__(
+            f"Cannot add images or annotations to dataset '{name}' since it is finalized."
+        )
 
 
 class ModelDoesNotExistError(Exception):
     def __init__(self, name: str):
-        return super().__init__(f"Model with name {name} does not exist.")
+        return super().__init__(f"Model with name '{name}' does not exist.")
 
 
 class ImageDoesNotExistError(Exception):
     def __init__(self, uri: str):
-        return super().__init__(f"Image with uri {uri} does not exist.")
+        return super().__init__(f"Image with uri '{uri}' does not exist.")
 
 
 def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
@@ -92,7 +99,10 @@ def create_groundtruth_detections(
     data: schemas.GroundTruthDetectionsCreate,
 ) -> list[int]:
     # create (if they don't exist) the image rows and get the ids
-    dset_id = get_dataset(db, dataset_name=data.dataset_name).id
+    dset = get_dataset(db, dataset_name=data.dataset_name)
+    if not dset.draft:
+        raise DatasetIsFinalizedError(data.dataset_name)
+    dset_id = dset.id
     image_ids = []
     for detection in data.detections:
         image_ids.append(
@@ -229,7 +239,7 @@ def create_model(db: Session, model: schemas.ModelCreate):
         raise ModelAlreadyExistsError(model.uri)
 
 
-def get_datasets(db: Session):
+def get_datasets(db: Session) -> list[schemas.Dataset]:
     return [
         schemas.Dataset(name=d.name, draft=d.draft)
         for d in db.scalars(select(models.Dataset))
@@ -244,6 +254,12 @@ def get_dataset(db: Session, dataset_name: str) -> models.Dataset:
         raise DatasetDoesNotExistError(dataset_name)
 
     return ret
+
+
+def finalize_dataset(db: Session, dataset_name: str) -> None:
+    dset = get_dataset(db, dataset_name)
+    dset.draft = False
+    db.commit()
 
 
 def get_model(db: Session, model_name: str) -> models.Model:
@@ -262,3 +278,52 @@ def get_image(db: Session, uri: str) -> models.Image:
         raise ImageDoesNotExistError(uri)
 
     return ret
+
+
+def get_labels_in_dataset(
+    db: Session, dataset_name: str
+) -> list[models.Label]:
+    # TODO must be a better and more SQLy way of doing this
+    dset = get_dataset(db, dataset_name)
+    unique_ids = set()
+    for image in dset.images:
+        unique_ids.update(get_unique_label_ids_in_image(image))
+
+    return db.scalars(
+        select(models.Label).where(models.Label.id.in_(unique_ids))
+    ).all()
+
+
+def get_all_labels(db: Session) -> list[schemas.Label]:
+    return [
+        schemas.Label(key=label.key, value=label.value)
+        for label in db.scalars(select(models.Label))
+    ]
+
+
+def get_images_in_dataset(
+    db: Session, dataset_name: str
+) -> list[models.Label]:
+    # TODO must be a better and more SQLy way of doing this
+    dset = get_dataset(db, dataset_name)
+    return dset.images
+
+
+def get_unique_label_ids_in_image(image: models.Image) -> set[int]:
+    ret = set()
+    for det in image.ground_truth_detections:
+        for labeled_det in det.labeled_ground_truth_detections:
+            ret.add(labeled_det.label.id)
+
+    return ret
+
+
+def delete_dataset(db: Session, dataset_name: str):
+    dset = get_dataset(db, dataset_name)
+
+    db.delete(dset)
+    db.commit()
+
+
+def number_of_rows(db: Session, model_cls: type) -> int:
+    return db.scalar(select(func.count(model_cls.id)))
