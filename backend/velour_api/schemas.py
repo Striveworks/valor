@@ -10,7 +10,7 @@ class DatasetCreate(BaseModel):
     name: str
 
 
-class ModelCreate(BaseModel):
+class Model(BaseModel):
     name: str
 
 

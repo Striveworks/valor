@@ -89,16 +89,19 @@ class Client:
         return resp.json()
 
     def upload_predicted_detections(
-        self, dets: List[PredictedDetection]
+        self, model_name: str, dets: List[PredictedDetection]
     ) -> List[int]:
-        payload = [
-            {
-                "boundary": _payload_for_bounding_polygon(det.boundary),
-                "class_label": det.class_label,
-                "score": det.score,
-            }
-            for det in dets
-        ]
+        payload = {
+            "model_name": model_name,
+            "detections": [
+                {
+                    "boundary": _payload_for_bounding_polygon(det.boundary),
+                    "class_label": det.class_label,
+                    "score": det.score,
+                }
+                for det in dets
+            ],
+        }
 
         resp = self._requests_post_rel_host(
             "predicted-detections", json=payload
@@ -163,3 +166,14 @@ class Dataset:
 
     def get_labels(self) -> List[Label]:
         return self.client.get_dataset_labels(self.name)
+
+
+class Model:
+    def __init__(self, client: Client, name: str):
+        self.client = client
+        self.name = name
+
+    def add_predictions(self, dets: List[PredictedDetection]) -> None:
+        return self.client.upload_predicted_detections(
+            dataset_name=self.name, dets=dets
+        )

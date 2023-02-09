@@ -17,6 +17,7 @@ def get_db():
         db.close()
 
 
+# should move the following two routes to be behind /datasets/{dataset}/ ?
 @app.post("/groundtruth-detections")
 def create_groundtruth_detections(
     data: schemas.GroundTruthDetectionsCreate,

@@ -12,7 +12,7 @@ from velour_api.schemas import (
     GroundTruthDetectionsCreate,
     Image,
     Label,
-    ModelCreate,
+    Model,
     PredictedDetection,
     PredictedDetectionsCreate,
 )
@@ -124,7 +124,7 @@ def predictions(
     db, images: list[Image]
 ) -> list[list[LabeledPredictedDetection]]:
     model_name = "test model"
-    crud.create_model(db, ModelCreate(name=model_name))
+    crud.create_model(db, Model(name=model_name))
 
     # predictions for four images taken from
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L59

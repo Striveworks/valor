@@ -223,22 +223,6 @@ def create_dataset(db: Session, dataset: schemas.DatasetCreate):
         raise DatasetAlreadyExistsError(dataset.name)
 
 
-def create_model(db: Session, model: schemas.ModelCreate):
-    """Creates a dataset
-
-    Raises
-    ------
-    ModelAlreadyExistsError
-        if the model uri already exists
-    """
-    try:
-        db.add(models.Model(name=model.name))
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise ModelAlreadyExistsError(model.uri)
-
-
 def get_datasets(db: Session) -> list[schemas.Dataset]:
     return [
         schemas.Dataset(name=d.name, draft=d.draft)
@@ -254,6 +238,28 @@ def get_dataset(db: Session, dataset_name: str) -> models.Dataset:
         raise DatasetDoesNotExistError(dataset_name)
 
     return ret
+
+
+def get_models(db: Session) -> list[schemas.Model]:
+    return [
+        schemas.Model(name=m.name) for m in db.scalars(select(models.Model))
+    ]
+
+
+def create_model(db: Session, model: schemas.Model):
+    """Creates a dataset
+
+    Raises
+    ------
+    ModelAlreadyExistsError
+        if the model uri already exists
+    """
+    try:
+        db.add(models.Model(name=model.name))
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ModelAlreadyExistsError(model.name)
 
 
 def finalize_dataset(db: Session, dataset_name: str) -> None:
@@ -322,6 +328,13 @@ def delete_dataset(db: Session, dataset_name: str):
     dset = get_dataset(db, dataset_name)
 
     db.delete(dset)
+    db.commit()
+
+
+def delete_model(db: Session, model_name: str):
+    model = get_model(db, model_name)
+
+    db.delete(model)
     db.commit()
 
 

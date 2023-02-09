@@ -67,8 +67,14 @@ class PredictedDetection(Base):
     boundary = Column(Geometry("POLYGON"))
     image_id = Column(Integer, ForeignKey("image.id"))
     labeled_predicted_detections = relationship(
-        "LabeledPredictedDetection", back_populates="detection"
+        "LabeledPredictedDetection",
+        back_populates="detection",
+        cascade="all, delete",
     )
+    model_id = Column(
+        Integer, ForeignKey("model.id")
+    )  # the model that inferred this detection
+
     # should add bounding box here too?
     # can get this from ST_Envelope
     # use https://docs.sqlalchemy.org/en/14/orm/mapping_columns.html#sqlalchemy.orm.column_property
@@ -90,9 +96,6 @@ class LabeledGroundTruthDetection(Base):
     label = relationship(
         "Label", back_populates="labeled_ground_truth_detections"
     )
-    model_id = Column(
-        Integer, ForeignKey("model.id")
-    )  # the model that inferred this detection
 
 
 class LabeledPredictedDetection(Base):
@@ -182,9 +185,9 @@ class Image(Base):
     id = Column(Integer, primary_key=True, index=True)
     dataset_id = Column(Integer, ForeignKey("dataset.id"))
     uri = Column(String, unique=True)
-    ground_truth_detections: Mapped[
-        list["GroundTruthDetection"]
-    ] = relationship("GroundTruthDetection", cascade="all, delete")
+    ground_truth_detections: Mapped[list[GroundTruthDetection]] = relationship(
+        GroundTruthDetection, cascade="all, delete"
+    )
 
 
 class Model(Base):
@@ -194,6 +197,9 @@ class Model(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True, unique=True)
+    predicted_detections = relationship(
+        PredictedDetection, cascade="all, delete"
+    )
 
 
 class Dataset(Base):
