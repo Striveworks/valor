@@ -17,7 +17,7 @@ def get_db():
         db.close()
 
 
-# should move the following two routes to be behind /datasets/{dataset}/ ?
+# should move the following routes to be behind /datasets/{dataset}/ ?
 @app.post("/groundtruth-detections")
 def create_groundtruth_detections(
     data: schemas.GroundTruthDetectionsCreate,
@@ -36,6 +36,28 @@ def create_predicted_detections(
 ) -> list[int]:
     try:
         return crud.create_predicted_detections(db=db, data=data)
+    except crud.ImageDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.post("/groundtruth-classifications")
+def create_groundtruth_classifications(
+    data: schemas.GroundTruthDetectionsCreate,
+    db: Session = Depends(get_db),
+) -> list[int]:
+    try:
+        return crud.create_groundtruth_classifications(db=db, data=data)
+    except crud.DatasetIsFinalizedError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@app.post("/predicted-classifications")
+def create_predicted_classifications(
+    data: schemas.PredictedDetectionsCreate,
+    db: Session = Depends(get_db),
+) -> list[int]:
+    try:
+        return crud.create_predicted_classifications(db=db, data=data)
     except crud.ImageDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

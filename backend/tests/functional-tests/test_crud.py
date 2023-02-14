@@ -176,6 +176,9 @@ def test_create_predicted_detections_and_delete_model(
     assert crud.number_of_rows(db, models.LabeledPredictedDetection) == 0
 
 
+# test create groundtruth classification
+
+
 def test_get_labels(
     db: Session, gt_dets_create: schemas.GroundTruthDetectionsCreate
 ):

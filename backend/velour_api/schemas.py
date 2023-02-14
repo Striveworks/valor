@@ -50,3 +50,22 @@ class PredictedDetectionsCreate(BaseModel):
 class GroundTruthDetectionsCreate(BaseModel):
     dataset_name: str
     detections: list[DetectionBase]
+
+
+class ImageClassificationBase(BaseModel):
+    image: Image
+    labels: list[Label]
+
+
+class PredictedImageClassification(ImageClassificationBase):
+    score: float
+
+
+class GroundTruthImageClassificationsCreate(BaseModel):
+    dataset_name: str
+    classifications: list[ImageClassificationBase]
+
+
+class PredictedImageClassificationsCreate(BaseModel):
+    model_name: str
+    classifications: list[PredictedImageClassification]

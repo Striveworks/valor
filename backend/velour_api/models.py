@@ -12,14 +12,19 @@ class Label(Base):
     # (key, value) should be unique
     key: Mapped[str]
     value: Mapped[str]
-    labeled_ground_truth_detections = relationship(
-        "LabeledGroundTruthDetection", back_populates="label"
-    )
-    labeled_predicted_detections = relationship(
-        "LabeledPredictedDetection", back_populates="label"
-    )
+    labeled_ground_truth_detections: Mapped[
+        list["LabeledGroundTruthDetection"]
+    ] = relationship("LabeledGroundTruthDetection", back_populates="label")
+    labeled_predicted_detections: Mapped[
+        list["LabeledPredictedDetection"]
+    ] = relationship("LabeledPredictedDetection", back_populates="label")
+    ground_truth_image_classifications: Mapped[
+        list["GroundTruthImageClassification"]
+    ] = relationship("GroundTruthImageClassification", back_populates="label")
+    predicted_image_classifications: Mapped[
+        list["PredictedImageClassification"]
+    ] = relationship("PredictedImageClassification", back_populates="label")
     # labeled_segmentations = relationship("LabeledSegmentation")
-    # labeled_images = relationship("LabeledImage")
 
     __table_args__ = (UniqueConstraint("key", "value"),)
 
@@ -116,28 +121,34 @@ class LabeledPredictedDetection(Base):
     score: Mapped[float]
 
 
-# class GroundTruthImageClassification(Base):
-#     """Groundtruth for an image classification"""
+class GroundTruthImageClassification(Base):
+    """Groundtruth for an image classification"""
 
-#     __tablename__ = "ground_truth_image_classification"
+    __tablename__ = "ground_truth_image_classification"
 
-#     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-#     # need some uniquess for labels (a key can only appear once for a given image)
-#     image: Mapped[int] = mapped_column(ForeignKey("image.id"))
-#     label: Mapped[int] = mapped_column(ForeignKey("label.id"))
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    # need some uniquess for labels (a key can only appear once for a given image)
+    image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
+    label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
+    label = relationship(
+        "Label", back_populates="ground_truth_image_classifications"
+    )
 
 
-# class PredictedImageClassification(Base):
-#     """Prediction for image classification from a model"""
+class PredictedImageClassification(Base):
+    """Prediction for image classification from a model"""
 
-#     __tablename__ = "predicted_image_classification"
+    __tablename__ = "predicted_image_classification"
 
-#     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-#     score = Column(Float)
-#     # need some uniquess for labels (a key can only appear once for a given image)
-#     image = Column(Integer, ForeignKey("image.id"))
-#     label = Column(Integer, ForeignKey("label.id"))
-#     model = Column(Integer, ForeignKey("model.id"))
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    score: Mapped[float]
+    # need some uniquess for labels (a key can only appear once for a given image)
+    image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
+    label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
+    model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
+    label = relationship(
+        "Label", back_populates="predicted_image_classifications"
+    )
 
 
 # class Segmentation(Base):
@@ -175,9 +186,6 @@ class LabeledPredictedDetection(Base):
 
 class Image(Base):
     """Represents an image"""
-
-    # make every image belong to just one dataset but will be able to
-    # have dataset "views"
 
     __tablename__ = "image"
 

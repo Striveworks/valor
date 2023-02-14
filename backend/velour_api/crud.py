@@ -78,14 +78,17 @@ def _create_detection_mappings(
 
 
 def _create_label_tuple_to_id_dict(
-    db, detections: list[schemas.DetectionBase]
+    db,
+    annotated_objects: list[
+        schemas.DetectionBase | schemas.ImageClassificationBase
+    ],
 ) -> dict[tuple, str]:
     """Goes through detections and adds a label if it doesn't exist. Return is a mapping from
     `tuple(label)` (since `label` is not hashable) to label id
     """
     label_tuple_to_id = {}
-    for detection in detections:
-        for label in detection.labels:
+    for obj in annotated_objects:
+        for label in obj.labels:
             label_tuple = tuple(label)
             if label_tuple not in label_tuple_to_id:
                 label_tuple_to_id[label_tuple] = get_or_create_row(
@@ -94,24 +97,35 @@ def _create_label_tuple_to_id_dict(
     return label_tuple_to_id
 
 
+def _add_image_uris_to_dataset(
+    db: Session, dataset_name, uris: list[str]
+) -> list[int]:
+    """Adds images defined by URIs to a dataset (creating the Image rows if they don't exist),
+    returning the list of image ids"""
+    dset = get_dataset(db, dataset_name=dataset_name)
+    if not dset.draft:
+        raise DatasetIsFinalizedError(dataset_name)
+    dset_id = dset.id
+
+    return [
+        get_or_create_row(
+            db=db,
+            model_class=models.Image,
+            mapping={"dataset_id": dset_id, "uri": uri},
+        )
+        for uri in uris
+    ]
+
+
 def create_groundtruth_detections(
     db: Session,
     data: schemas.GroundTruthDetectionsCreate,
 ) -> list[int]:
-    # create (if they don't exist) the image rows and get the ids
-    dset = get_dataset(db, dataset_name=data.dataset_name)
-    if not dset.draft:
-        raise DatasetIsFinalizedError(data.dataset_name)
-    dset_id = dset.id
-    image_ids = []
-    for detection in data.detections:
-        image_ids.append(
-            get_or_create_row(
-                db=db,
-                model_class=models.Image,
-                mapping={"dataset_id": dset_id, "uri": detection.image.uri},
-            )
-        )
+    image_ids = _add_image_uris_to_dataset(
+        db=db,
+        dataset_name=data.dataset_name,
+        uris=[det.image.uri for det in data.detections],
+    )
 
     # create gt detections
     det_mappings = _create_detection_mappings(
@@ -176,6 +190,52 @@ def create_predicted_detections(
 
     return bulk_insert_and_return_ids(
         db, models.LabeledPredictedDetection, labeled_pred_mappings
+    )
+
+
+def create_ground_truth_image_classifications(
+    db: Session, data: schemas.GroundTruthImageClassificationsCreate
+):
+    image_ids = _add_image_uris_to_dataset(
+        db=db,
+        dataset_name=data.dataset_name,
+        uris=[c.image.uri for c in data.classifications],
+    )
+    label_tuple_to_id = _create_label_tuple_to_id_dict(db, data.detections)
+    clf_mappings = [
+        {"label_id": label_tuple_to_id[tuple(label)], "image_id": image_id}
+        for clf, image_id in zip(data.classifications, image_ids)
+        for label in clf.labels
+    ]
+
+    return bulk_insert_and_return_ids(
+        db, models.GroundTruthImageClassification, clf_mappings
+    )
+
+
+def create_ground_predicted_image_classifications(
+    db: Session, data: schemas.PredictedImageClassificationsCreate
+):
+    model_id = get_model(db, model_name=data.model_name).id
+    # get image ids from uris (these images should already exist)
+    image_ids = [
+        get_image(db, uri=detection.image.uri).id
+        for detection in data.detections
+    ]
+
+    label_tuple_to_id = _create_label_tuple_to_id_dict(db, data.detections)
+    clf_mappings = [
+        {
+            "label_id": label_tuple_to_id[tuple(label)],
+            "image_id": image_id,
+            "model_id": model_id,
+        }
+        for clf, image_id in zip(data.classifications, image_ids)
+        for label in clf.labels
+    ]
+
+    return bulk_insert_and_return_ids(
+        db, models.PredictedImageClassification, clf_mappings
     )
 
 
