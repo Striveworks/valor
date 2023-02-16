@@ -13,6 +13,8 @@ from velour.data_types import (
     Label,
     Point,
     PredictedDetection,
+    PredictedImageClassification,
+    ScoredLabel,
 )
 
 from velour_api import models, ops
@@ -180,8 +182,11 @@ def gt_dets2(rect3: BoundingPolygon) -> List[GroundTruthDetection]:
 def gt_clfs1() -> List[GroundTruthImageClassification]:
     return [
         GroundTruthImageClassification(
-            image=Image(uri="uri5"), labels=[Label(key="k4", value="v4")]
-        )
+            image=Image(uri="uri5"), labels=[Label(key="k5", value="v5")]
+        ),
+        GroundTruthImageClassification(
+            image=Image(uri="uri6"), labels=[Label(key="k4", value="v4")]
+        ),
     ]
 
 
@@ -189,11 +194,8 @@ def gt_clfs1() -> List[GroundTruthImageClassification]:
 def gt_clfs2() -> List[GroundTruthImageClassification]:
     return [
         GroundTruthImageClassification(
-            image=Image(uri="uri5"), labels=[Label(key="k5", value="v5")]
-        ),
-        GroundTruthImageClassification(
-            image=Image(uri="uri6"), labels=[Label(key="k4", value="v4")]
-        ),
+            image=Image(uri="uri5"), labels=[Label(key="k4", value="v4")]
+        )
     ]
 
 
@@ -213,6 +215,25 @@ def pred_dets(
             labels=[Label(key="k2", value="v2")],
             image=Image(uri="uri2"),
             score=0.98,
+        ),
+    ]
+
+
+@pytest.fixture
+def pred_clfs() -> List[PredictedImageClassification]:
+    return [
+        PredictedImageClassification(
+            image=Image(uri="uri5"),
+            scored_labels=[
+                ScoredLabel(label=Label(key="k12", value="v12"), score=0.47),
+                ScoredLabel(label=Label(key="k13", value="v13"), score=0.12),
+            ],
+        ),
+        PredictedImageClassification(
+            image=Image(uri="uri6"),
+            scored_labels=[
+                ScoredLabel(label=Label(key="k4", value="v4"), score=0.71),
+            ],
         ),
     ]
 
@@ -286,13 +307,13 @@ def test_create_model_with_predicted_detections(
     # check that if we try to add detections we get an error
     # since we haven't added any images yet
     with pytest.raises(ClientException) as exc_info:
-        model.add_predictions(pred_dets)
+        model.add_predicted_detections(pred_dets)
     assert "Image with uri" in str(exc_info)
 
     # add groundtruth and predictions
     dataset = client.create_dataset(dset_name)
     dataset.add_groundtruth_detections(gt_dets1)
-    model.add_predictions(pred_dets)
+    model.add_predicted_detections(pred_dets)
 
     # check predictions have been added
     labeled_pred_dets = db.scalars(
@@ -369,6 +390,46 @@ def test_create_dataset_with_classifications(
     assert "since it is finalized" in str(exc_info)
 
 
+def test_create_model_with_predicted_classifications(
+    client: Client,
+    gt_clfs1: List[GroundTruthDetection],
+    pred_clfs: List[PredictedDetection],
+    db: Session,
+):
+    model = client.create_model(model_name)
+
+    # verify we get an error if we try to create another model
+    # with the same name
+    with pytest.raises(ClientException) as exc_info:
+        client.create_model(model_name)
+    assert "already exists" in str(exc_info)
+
+    # check that if we try to add detections we get an error
+    # since we haven't added any images yet
+    with pytest.raises(ClientException) as exc_info:
+        model.add_predicted_classifications(pred_clfs)
+    assert "Image with uri" in str(exc_info)
+
+    # add groundtruth and predictions
+    dataset = client.create_dataset(dset_name)
+    dataset.add_groundtruth_classifications(gt_clfs1)
+    model.add_predicted_classifications(pred_clfs)
+
+    # check predictions have been added
+    pred_clfs = db.scalars(select(models.PredictedImageClassification)).all()
+    assert len(pred_clfs) == 3
+
+    # check labels
+    assert set([(p.label.key, p.label.value) for p in pred_clfs]) == {
+        ("k12", "v12"),
+        ("k13", "v13"),
+        ("k4", "v4"),
+    }
+
+    # check scores
+    assert set([p.score for p in pred_clfs]) == {0.47, 0.12, 0.71}
+
+
 def test_boundary(client: Client, db: Session, rect1: BoundingPolygon):
     """Test consistency of boundary in backend and client"""
     dataset = client.create_dataset(dset_name)
@@ -409,7 +470,7 @@ def test_iou(
     )
     db_gt = db.scalar(select(models.GroundTruthDetection))
 
-    model.add_predictions(
+    model.add_predicted_detections(
         [
             PredictedDetection(
                 boundary=rect2,

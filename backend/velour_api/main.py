@@ -64,7 +64,7 @@ def create_predicted_classifications(
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
-        return crud.create_predicted_classifications(db=db, data=data)
+        return crud.create_predicted_image_classifications(db=db, data=data)
     except crud.ImageDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

@@ -135,10 +135,10 @@ class Client:
         return resp.json()
 
     def upload_predicted_classifications(
-        self, dataset_name: str, clfs: List[PredictedImageClassification]
+        self, model_name: str, clfs: List[PredictedImageClassification]
     ) -> List[int]:
         payload = {
-            "dataset_name": dataset_name,
+            "model_name": model_name,
             "classifications": [
                 {
                     "scored_labels": [
@@ -244,7 +244,14 @@ class Model:
         self.client = client
         self.name = name
 
-    def add_predictions(self, dets: List[PredictedDetection]) -> None:
+    def add_predicted_detections(self, dets: List[PredictedDetection]) -> None:
         return self.client.upload_predicted_detections(
             model_name=self.name, dets=dets
+        )
+
+    def add_predicted_classifications(
+        self, clfs: List[PredictedImageClassification]
+    ) -> None:
+        return self.client.upload_predicted_classifications(
+            model_name=self.name, clfs=clfs
         )
