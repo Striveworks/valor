@@ -1,8 +1,14 @@
+import logging
+
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
-from velour_api import crud, schemas
+from velour_api import crud, schemas, settings
 from velour_api.database import SessionLocal, create_db
+
+logging.config.dictConfig(settings.LogConfig().dict())
+logger = logging.getLogger("velour-backend")
+logger.setLevel(logging.DEBUG)
 
 app = FastAPI()
 
@@ -42,18 +48,19 @@ def create_predicted_detections(
 
 @app.post("/groundtruth-classifications")
 def create_groundtruth_classifications(
-    data: schemas.GroundTruthDetectionsCreate,
+    data: schemas.GroundTruthImageClassificationsCreate,
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
-        return crud.create_groundtruth_classifications(db=db, data=data)
+        logger.debug(f"got: {data}")
+        return crud.create_ground_truth_image_classifications(db=db, data=data)
     except crud.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.post("/predicted-classifications")
 def create_predicted_classifications(
-    data: schemas.PredictedDetectionsCreate,
+    data: schemas.PredictedImageClassificationsCreate,
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:

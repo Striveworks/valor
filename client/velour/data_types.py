@@ -18,6 +18,12 @@ class Label:
 
 
 @dataclass
+class ScoredLabel:
+    label: Label
+    score: float
+
+
+@dataclass
 class Point:
     x: int
     y: int
@@ -109,6 +115,18 @@ class PredictedDetection(DetectionBase):
             raise ValueError(
                 f"score must be between 0.0 and 1.0 but got {self.score}."
             )
+
+
+@dataclass
+class GroundTruthImageClassification:
+    image: Image
+    labels: List[Label]
+
+
+@dataclass
+class PredictedImageClassification:
+    image: Image
+    scored_labels: List[ScoredLabel]
 
 
 def _write_text(

@@ -8,6 +8,7 @@ from velour.client import Client, ClientException
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
+    GroundTruthImageClassification,
     Image,
     Label,
     Point,
@@ -176,6 +177,27 @@ def gt_dets2(rect3: BoundingPolygon) -> List[GroundTruthDetection]:
 
 
 @pytest.fixture
+def gt_clfs1() -> List[GroundTruthImageClassification]:
+    return [
+        GroundTruthImageClassification(
+            image=Image(uri="uri5"), labels=[Label(key="k4", value="v4")]
+        )
+    ]
+
+
+@pytest.fixture
+def gt_clfs2() -> List[GroundTruthImageClassification]:
+    return [
+        GroundTruthImageClassification(
+            image=Image(uri="uri5"), labels=[Label(key="k5", value="v5")]
+        ),
+        GroundTruthImageClassification(
+            image=Image(uri="uri6"), labels=[Label(key="k4", value="v4")]
+        ),
+    ]
+
+
+@pytest.fixture
 def pred_dets(
     rect1: BoundingPolygon, rect2: BoundingPolygon
 ) -> List[PredictedDetection]:
@@ -247,7 +269,7 @@ def test_create_dataset_with_detections(
     assert "since it is finalized" in str(exc_info)
 
 
-def test_create_model_with_predictions(
+def test_create_model_with_predicted_detections(
     client: Client,
     gt_dets1: List[GroundTruthDetection],
     pred_dets: List[PredictedDetection],
@@ -295,6 +317,56 @@ def test_create_model_with_predictions(
     pred = pred_dets[0]
 
     assert set(points) == set([(pt.x, pt.y) for pt in pred.boundary.points])
+
+
+def test_create_dataset_with_classifications(
+    client: Client,
+    gt_clfs1: List[GroundTruthImageClassification],
+    gt_clfs2: List[GroundTruthImageClassification],
+    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
+):
+    """This test does the following
+    - Creates a dataset
+    - Adds groundtruth data to it in two batches
+    - Verifies the images and labels have actually been added
+    - Finalizes dataset
+    - Tries to add more data and verifies an error is thrown
+    """
+    dataset = client.create_dataset(dset_name)
+
+    with pytest.raises(ClientException) as exc_info:
+        client.create_dataset(dset_name)
+    assert "already exists" in str(exc_info)
+
+    dataset.add_groundtruth_classifications(gt_clfs1)
+    dataset.add_groundtruth_classifications(gt_clfs2)
+
+    # check that the dataset has two images
+    images = dataset.get_images()
+    assert len(images) == 2
+    assert set([image.uri for image in images]) == {"uri5", "uri6"}
+
+    # check that there are two labels
+    labels = dataset.get_labels()
+    assert len(labels) == 2
+    assert set([(label.key, label.value) for label in labels]) == {
+        ("k5", "v5"),
+        ("k4", "v4"),
+    }
+
+    dataset.finalize()
+    # check that we get an error when trying to add more images
+    # to the dataset since it is finalized
+    with pytest.raises(ClientException) as exc_info:
+        dataset.add_groundtruth_classifications(
+            [
+                GroundTruthImageClassification(
+                    labels=[Label(key="k3", value="v3")],
+                    image=Image(uri="uri8"),
+                )
+            ]
+        )
+    assert "since it is finalized" in str(exc_info)
 
 
 def test_boundary(client: Client, db: Session, rect1: BoundingPolygon):

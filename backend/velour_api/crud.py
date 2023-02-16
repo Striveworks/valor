@@ -380,7 +380,7 @@ def get_all_labels(db: Session) -> list[schemas.Label]:
 
 def get_images_in_dataset(
     db: Session, dataset_name: str
-) -> list[models.Label]:
+) -> list[models.Image]:
     # TODO must be a better and more SQLy way of doing this
     dset = get_dataset(db, dataset_name)
     return dset.images
@@ -391,6 +391,9 @@ def get_unique_label_ids_in_image(image: models.Image) -> set[int]:
     for det in image.ground_truth_detections:
         for labeled_det in det.labeled_ground_truth_detections:
             ret.add(labeled_det.label.id)
+
+    for clf in image.ground_truth_classifications:
+        ret.add(clf.label.id)
 
     return ret
 

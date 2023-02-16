@@ -6,9 +6,11 @@ import requests
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
+    GroundTruthImageClassification,
     Image,
     Label,
     PredictedDetection,
+    PredictedImageClassification,
 )
 
 
@@ -111,6 +113,51 @@ class Client:
         resp.raise_for_status()
         return resp.json()
 
+    def upload_groundtruth_classifications(
+        self, dataset_name: str, clfs: List[GroundTruthImageClassification]
+    ) -> List[int]:
+        payload = {
+            "dataset_name": dataset_name,
+            "classifications": [
+                {
+                    "labels": [asdict(label) for label in clf.labels],
+                    "image": asdict(clf.image),
+                }
+                for clf in clfs
+            ],
+        }
+
+        resp = self._requests_post_rel_host(
+            "groundtruth-classifications", json=payload
+        )
+        resp.raise_for_status()
+
+        return resp.json()
+
+    def upload_predicted_classifications(
+        self, dataset_name: str, clfs: List[PredictedImageClassification]
+    ) -> List[int]:
+        payload = {
+            "dataset_name": dataset_name,
+            "classifications": [
+                {
+                    "scored_labels": [
+                        asdict(scored_label)
+                        for scored_label in clf.scored_labels
+                    ],
+                    "image": asdict(clf.image),
+                }
+                for clf in clfs
+            ],
+        }
+
+        resp = self._requests_post_rel_host(
+            "predicted-classifications", json=payload
+        )
+        resp.raise_for_status()
+
+        return resp.json()
+
     def create_dataset(self, name: str) -> "Dataset":
         self._requests_post_rel_host("datasets", json={"name": name})
 
@@ -170,6 +217,13 @@ class Dataset:
     def add_groundtruth_detections(self, dets: List[GroundTruthDetection]):
         return self.client.upload_groundtruth_detections(
             dataset_name=self.name, dets=dets
+        )
+
+    def add_groundtruth_classifications(
+        self, clfs: List[GroundTruthImageClassification]
+    ):
+        return self.client.upload_groundtruth_classifications(
+            dataset_name=self.name, clfs=clfs
         )
 
     def finalize(self):
