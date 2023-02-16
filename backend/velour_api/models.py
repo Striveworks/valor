@@ -198,6 +198,12 @@ class Image(Base):
     predicted_detections: Mapped[list[PredictedDetection]] = relationship(
         PredictedDetection, cascade="all, delete"
     )
+    ground_truth_classifications: Mapped[
+        list[GroundTruthImageClassification]
+    ] = relationship(GroundTruthImageClassification, cascade="all, delete")
+    predicted_classifications: Mapped[
+        list[PredictedImageClassification]
+    ] = relationship(PredictedImageClassification, cascade="all, delete")
 
 
 class Model(Base):
@@ -210,6 +216,7 @@ class Model(Base):
     predicted_detections = relationship(
         PredictedDetection, cascade="all, delete"
     )
+    predicted_image_classifications = relationship(PredictedImageClassification, cascade="all, delete")
 
 
 class Dataset(Base):

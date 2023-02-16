@@ -79,21 +79,18 @@ def _create_detection_mappings(
 
 def _create_label_tuple_to_id_dict(
     db,
-    annotated_objects: list[
-        schemas.DetectionBase | schemas.ImageClassificationBase
-    ],
+    labels: list[schemas.Label],
 ) -> dict[tuple, str]:
-    """Goes through detections and adds a label if it doesn't exist. Return is a mapping from
+    """Goes through the labels and adds to the db if it doesn't exist. The return is a mapping from
     `tuple(label)` (since `label` is not hashable) to label id
     """
     label_tuple_to_id = {}
-    for obj in annotated_objects:
-        for label in obj.labels:
-            label_tuple = tuple(label)
-            if label_tuple not in label_tuple_to_id:
-                label_tuple_to_id[label_tuple] = get_or_create_row(
-                    db, models.Label, {"key": label.key, "value": label.value}
-                )
+    for label in labels:
+        label_tuple = tuple(label)
+        if label_tuple not in label_tuple_to_id:
+            label_tuple_to_id[label_tuple] = get_or_create_row(
+                db, models.Label, {"key": label.key, "value": label.value}
+            )
     return label_tuple_to_id
 
 
@@ -135,7 +132,9 @@ def create_groundtruth_detections(
         db, models.GroundTruthDetection, det_mappings
     )
 
-    label_tuple_to_id = _create_label_tuple_to_id_dict(db, data.detections)
+    label_tuple_to_id = _create_label_tuple_to_id_dict(
+        db, [label for det in data.detections for label in det.labels]
+    )
 
     labeled_gt_mappings = [
         {
@@ -176,7 +175,9 @@ def create_predicted_detections(
         db, models.PredictedDetection, det_mappings
     )
 
-    label_tuple_to_id = _create_label_tuple_to_id_dict(db, data.detections)
+    label_tuple_to_id = _create_label_tuple_to_id_dict(
+        db, [label for det in data.detections for label in det.labels]
+    )
 
     labeled_pred_mappings = [
         {
@@ -201,7 +202,9 @@ def create_ground_truth_image_classifications(
         dataset_name=data.dataset_name,
         uris=[c.image.uri for c in data.classifications],
     )
-    label_tuple_to_id = _create_label_tuple_to_id_dict(db, data.detections)
+    label_tuple_to_id = _create_label_tuple_to_id_dict(
+        db, [label for clf in data.classifications for label in clf.labels]
+    )
     clf_mappings = [
         {"label_id": label_tuple_to_id[tuple(label)], "image_id": image_id}
         for clf, image_id in zip(data.classifications, image_ids)
@@ -213,29 +216,37 @@ def create_ground_truth_image_classifications(
     )
 
 
-def create_ground_predicted_image_classifications(
+def create_predicted_image_classifications(
     db: Session, data: schemas.PredictedImageClassificationsCreate
 ):
     model_id = get_model(db, model_name=data.model_name).id
     # get image ids from uris (these images should already exist)
     image_ids = [
-        get_image(db, uri=detection.image.uri).id
-        for detection in data.detections
+        get_image(db, uri=classification.image.uri).id
+        for classification in data.classifications
     ]
 
-    label_tuple_to_id = _create_label_tuple_to_id_dict(db, data.detections)
-    clf_mappings = [
+    label_tuple_to_id = _create_label_tuple_to_id_dict(
+        db,
+        [
+            scored_label.label
+            for clf in data.classifications
+            for scored_label in clf.scored_labels
+        ],
+    )
+    pred_mappings = [
         {
-            "label_id": label_tuple_to_id[tuple(label)],
+            "label_id": label_tuple_to_id[tuple(scored_label.label)],
+            "score": scored_label.score,
             "image_id": image_id,
             "model_id": model_id,
         }
         for clf, image_id in zip(data.classifications, image_ids)
-        for label in clf.labels
+        for scored_label in clf.scored_labels
     ]
 
     return bulk_insert_and_return_ids(
-        db, models.PredictedImageClassification, clf_mappings
+        db, models.PredictedImageClassification, pred_mappings
     )
 
 
