@@ -14,10 +14,32 @@ def check_db_empty(db: Session):
         models.Image,
         models.GroundTruthDetection,
         models.LabeledGroundTruthDetection,
+        models.PredictedDetection,
         models.Label,
         models.Dataset,
+        models.GroundTruthImageClassification,
+        models.PredictedImageClassification,
+        models.LabeledGroundTruthSegmentation,
+        models.LabeledPredictedDetection,
+        models.PredictedSegmentation,
+        models.LabeledPredictedSegmentation,
     ]:
         assert db.scalar(select(func.count(model_cls.id))) == 0
+
+
+@pytest.fixture
+def poly_without_hole() -> schemas.PolygonWithHole:
+    # should have area 45.5
+    return schemas.PolygonWithHole(polygon=[(4, 10), (9, 7), (11, 2), (2, 2)])
+
+
+@pytest.fixture
+def poly_with_hole() -> schemas.PolygonWithHole:
+    # should have area 100 - 8 = 92
+    return schemas.PolygonWithHole(
+        polygon=[(0, 10), (10, 10), (10, 0), (0, 0)],
+        hole=[(2, 4), (2, 8), (6, 4)],
+    )
 
 
 @pytest.fixture
@@ -67,6 +89,56 @@ def pred_dets_create() -> schemas.PredictedDetectionsCreate:
                     )
                 ],
                 image=schemas.Image(uri="uri1"),
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def gt_segs_create(
+    poly_with_hole, poly_without_hole
+) -> schemas.GroundTruthSegmentationsCreate:
+    return schemas.GroundTruthSegmentationsCreate(
+        dataset_name=dset_name,
+        segmentations=[
+            schemas.GroundTruthSegmentation(
+                shape=[poly_with_hole],
+                image=schemas.Image(uri="uri1"),
+                labels=[schemas.Label(key="k1", value="v1")],
+            ),
+            schemas.GroundTruthSegmentation(
+                shape=[poly_without_hole],
+                image=schemas.Image(uri="uri2"),
+                labels=[schemas.Label(key="k1", value="v1")],
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def pred_segs_create(
+    poly_with_hole, poly_without_hole
+) -> schemas.PredictedSegmentationsCreate:
+    return schemas.PredictedSegmentationsCreate(
+        model_name=model_name,
+        segmentations=[
+            schemas.PredictedSegmentation(
+                shape=[poly_with_hole],
+                image=schemas.Image(uri="uri1"),
+                scored_labels=[
+                    schemas.ScoredLabel(
+                        label=schemas.Label(key="k1", value="v1"), score=0.43
+                    )
+                ],
+            ),
+            schemas.PredictedSegmentation(
+                shape=[poly_without_hole],
+                image=schemas.Image(uri="uri1"),
+                scored_labels=[
+                    schemas.ScoredLabel(
+                        label=schemas.Label(key="k2", value="v2"), score=0.97
+                    )
+                ],
             ),
         ],
     )
@@ -294,6 +366,68 @@ def test_create_predicted_classifications_and_delete_model(
     assert crud.number_of_rows(db, models.Model) == 0
     assert crud.number_of_rows(db, models.PredictedDetection) == 0
     assert crud.number_of_rows(db, models.LabeledPredictedDetection) == 0
+
+
+def test_create_ground_truth_segmentations_and_delete_dataset(
+    db: Session, gt_segs_create: schemas.GroundTruthDetectionsCreate
+):
+    # sanity check nothing in db
+    check_db_empty(db=db)
+
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+
+    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+
+    assert crud.number_of_rows(db, models.GroundTruthSegmentation) == 2
+    assert crud.number_of_rows(db, models.Image) == 2
+    assert crud.number_of_rows(db, models.LabeledGroundTruthSegmentation) == 2
+    assert crud.number_of_rows(db, models.Label) == 1
+
+    # delete dataset and check the cascade worked
+    crud.delete_dataset(db, dataset_name=dset_name)
+    for model_cls in [
+        models.Dataset,
+        models.Image,
+        models.GroundTruthSegmentation,
+        models.LabeledGroundTruthSegmentation,
+    ]:
+        assert crud.number_of_rows(db, model_cls) == 0
+
+    # make sure labels are still there`
+    assert crud.number_of_rows(db, models.Label) == 1
+
+
+def test_create_predicted_segmentations_and_delete_model(
+    db: Session,
+    pred_segs_create: schemas.PredictedSegmentationsCreate,
+    gt_segs_create: schemas.GroundTruthSegmentationsCreate,
+):
+    # check this gives an error since the model hasn't been added yet
+    with pytest.raises(crud.ModelDoesNotExistError) as exc_info:
+        crud.create_predicted_segmentations(db, pred_segs_create)
+    assert "does not exist" in str(exc_info)
+
+    crud.create_model(db, schemas.Model(name=model_name))
+
+    # check this gives an error since the images haven't been added yet
+    with pytest.raises(crud.ImageDoesNotExistError) as exc_info:
+        crud.create_predicted_segmentations(db, pred_segs_create)
+    assert "Image with uri" in str(exc_info)
+
+    # create dataset, add images, and add predictions
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_groundtruth_segmentations(db, gt_segs_create)
+    crud.create_predicted_segmentations(db, pred_segs_create)
+
+    # check db has the added predictions
+    assert crud.number_of_rows(db, models.PredictedSegmentation) == 2
+    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 2
+
+    # delete model and check all detections from it are gone
+    crud.delete_model(db, model_name)
+    assert crud.number_of_rows(db, models.Model) == 0
+    assert crud.number_of_rows(db, models.PredictedSegmentation) == 0
+    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 0
 
 
 def test_get_labels(

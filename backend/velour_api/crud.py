@@ -342,7 +342,7 @@ def create_predicted_segmentations(
         db=db,
         model_name=data.model_name,
         dets_or_segs=data.segmentations,
-        mapping_method=_create_detection_mappings,
+        mapping_method=_create_segmentaiton_mappings,
         model_cls=models.PredictedSegmentation,
         labeled_mapping_method=_create_labeled_pred_segmentation_mappings,
         labeled_model_cls=models.LabeledPredictedSegmentation,
