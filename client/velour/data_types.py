@@ -102,19 +102,38 @@ class DetectionBase:
 
 
 @dataclass
-class GroundTruthDetection(DetectionBase):
-    pass
+class GroundTruthDetection:
+    boundary: BoundingPolygon
+    labels: List[Label]
+    image: Image
+
+    def draw_on_image(
+        self, img: PILImage.Image, inplace: bool = False
+    ) -> PILImage.Image:
+        text = ", ".join(
+            [f"{label.key}:{label.value}" for label in self.labels]
+        )
+        img = self.boundary.draw_on_image(img, inplace=inplace, text=text)
+        return img
 
 
 @dataclass
-class PredictedDetection(DetectionBase):
-    score: float
+class PredictedDetection:
+    boundary: BoundingPolygon
+    scored_labels: List[ScoredLabel]
+    image: Image
 
-    def __post_init__(self):
-        if not 0.0 <= self.score <= 1.0:
-            raise ValueError(
-                f"score must be between 0.0 and 1.0 but got {self.score}."
-            )
+    def draw_on_image(
+        self, img: PILImage.Image, inplace: bool = False
+    ) -> PILImage.Image:
+        text = ", ".join(
+            [
+                f"{scored_label.label.key}:{scored_label.label.value} ({scored_label.score})"
+                for scored_label in self.scored_labels
+            ]
+        )
+        img = self.boundary.draw_on_image(img, inplace=inplace, text=text)
+        return img
 
 
 @dataclass
