@@ -176,17 +176,22 @@ def create_predicted_detections(
     )
 
     label_tuple_to_id = _create_label_tuple_to_id_dict(
-        db, [label for det in data.detections for label in det.labels]
+        db,
+        [
+            scored_label.label
+            for det in data.detections
+            for scored_label in det.scored_labels
+        ],
     )
 
     labeled_pred_mappings = [
         {
             "detection_id": gt_det_id,
-            "label_id": label_tuple_to_id[tuple(label)],
-            "score": detection.score,
+            "label_id": label_tuple_to_id[tuple(scored_label.label)],
+            "score": scored_label.score,
         }
         for gt_det_id, detection in zip(det_ids, data.detections)
-        for label in detection.labels
+        for scored_label in detection.scored_labels
     ]
 
     return bulk_insert_and_return_ids(

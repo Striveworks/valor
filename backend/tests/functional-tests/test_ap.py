@@ -8,13 +8,14 @@ from velour_api.models import (
 )
 from velour_api.schemas import (
     DatasetCreate,
-    DetectionBase,
+    GroundTruthDetection,
     GroundTruthDetectionsCreate,
     Image,
     Label,
     Model,
     PredictedDetection,
     PredictedDetectionsCreate,
+    ScoredLabel,
 )
 
 
@@ -94,7 +95,7 @@ def groundtruths(
     ]
     db_gts_per_img = [
         [
-            DetectionBase(
+            GroundTruthDetection(
                 boundary=bounding_box(*box),
                 labels=[Label(key="class", value=class_label)],
                 image=image,
@@ -186,8 +187,12 @@ def predictions(
         [
             PredictedDetection(
                 boundary=bounding_box(*box),
-                labels=[Label(key="class", value=class_label)],
-                score=score,
+                scored_labels=[
+                    ScoredLabel(
+                        label=Label(key="class", value=class_label),
+                        score=score,
+                    )
+                ],
                 image=image,
             )
             for box, class_label, score in zip(
@@ -212,7 +217,7 @@ def predictions(
 
 def test_compute_ap_metrics(
     db,
-    groundtruths: list[list[DetectionBase]],
+    groundtruths: list[list[GroundTruthDetection]],
     predictions: list[list[PredictedDetection]],
 ):
     iou_thresholds = [round(0.5 + 0.05 * i, 2) for i in range(10)]

@@ -24,7 +24,7 @@ def gt_dets_create() -> schemas.GroundTruthDetectionsCreate:
     return schemas.GroundTruthDetectionsCreate(
         dataset_name=dset_name,
         detections=[
-            schemas.DetectionBase(
+            schemas.GroundTruthDetection(
                 boundary=[(10, 20), (10, 30), (20, 30), (20, 20)],
                 labels=[
                     schemas.Label(key="k1", value="v1"),
@@ -32,7 +32,7 @@ def gt_dets_create() -> schemas.GroundTruthDetectionsCreate:
                 ],
                 image=schemas.Image(uri="uri1"),
             ),
-            schemas.DetectionBase(
+            schemas.GroundTruthDetection(
                 boundary=[(10, 20), (10, 30), (20, 30), (20, 20)],
                 labels=[schemas.Label(key="k2", value="v2")],
                 image=schemas.Image(uri="uri1"),
@@ -48,18 +48,24 @@ def pred_dets_create() -> schemas.PredictedDetectionsCreate:
         detections=[
             schemas.PredictedDetection(
                 boundary=[(107, 207), (107, 307), (207, 307), (207, 207)],
-                labels=[
-                    schemas.Label(key="k1", value="v1"),
-                    schemas.Label(key="k2", value="v2"),
+                scored_labels=[
+                    schemas.ScoredLabel(
+                        label=schemas.Label(key="k1", value="v1"), score=0.6
+                    ),
+                    schemas.ScoredLabel(
+                        label=schemas.Label(key="k2", value="v2"), score=0.2
+                    ),
                 ],
                 image=schemas.Image(uri="uri1"),
-                score=0.6,
             ),
             schemas.PredictedDetection(
                 boundary=[(107, 207), (107, 307), (207, 307), (207, 207)],
-                labels=[schemas.Label(key="k2", value="v2")],
+                scored_labels=[
+                    schemas.ScoredLabel(
+                        label=schemas.Label(key="k2", value="v2"), score=0.9
+                    )
+                ],
                 image=schemas.Image(uri="uri1"),
-                score=0.9,
             ),
         ],
     )

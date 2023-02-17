@@ -31,7 +31,6 @@ class ScoredLabel(BaseModel):
 class DetectionBase(BaseModel):
     # should enforce beginning and ending points are the same? or no?
     boundary: list[tuple[float, float]]
-    labels: list[Label]
     image: Image
 
     @validator("boundary")
@@ -43,8 +42,12 @@ class DetectionBase(BaseModel):
         return v
 
 
+class GroundTruthDetection(DetectionBase):
+    labels: list[Label]
+
+
 class PredictedDetection(DetectionBase):
-    score: float
+    scored_labels: list[ScoredLabel]
 
 
 class PredictedDetectionsCreate(BaseModel):
@@ -54,7 +57,7 @@ class PredictedDetectionsCreate(BaseModel):
 
 class GroundTruthDetectionsCreate(BaseModel):
     dataset_name: str
-    detections: list[DetectionBase]
+    detections: list[GroundTruthDetection]
 
 
 class ImageClassificationBase(BaseModel):
