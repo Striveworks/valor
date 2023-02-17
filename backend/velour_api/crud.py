@@ -54,14 +54,15 @@ def _boundary_points_to_str(pts: list[tuple[float, float]]) -> str:
     )
 
 
-def _wkt_multipolygon_from_polygons_with_holes(
-    polys: list[schemas.PolygonWithHoles],
+def _wkt_multipolygon_from_polygons_with_hole(
+    polys: list[schemas.PolygonWithHole],
 ) -> str:
-    strs = [
-        f"({_boundary_points_to_str(poly.inner)}, {_boundary_points_to_str(poly.outer)})"
-        for poly in polys
-    ]
-    return f"MULTIPOLYGON ( {', '.join(strs)} )"
+    def poly_str(poly: schemas.PolygonWithHole):
+        if poly.hole is None:
+            return f"({_boundary_points_to_str(poly.polygon)})"
+        return f"({_boundary_points_to_str(poly.polygon)}, {_boundary_points_to_str(poly.hole)})"
+
+    return f"MULTIPOLYGON ( {', '.join([poly_str(poly) for poly in polys])} )"
 
 
 def bulk_insert_and_return_ids(
@@ -96,7 +97,7 @@ def _create_segmentaiton_mappings(
 ) -> list[dict[str, str]]:
     return [
         {
-            "shape": _wkt_multipolygon_from_polygons_with_holes(
+            "shape": _wkt_multipolygon_from_polygons_with_hole(
                 segmentation.shape
             ),
             "image_id": image_id,

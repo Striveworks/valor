@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import inspect, text
 
-from velour_api import models
+from velour_api import models, schemas
 from velour_api.database import Base, SessionLocal, create_db
 
 # get all velour table names
@@ -36,3 +36,18 @@ def db():
     yield db
     # teardown
     drop_all(db)
+
+
+@pytest.fixture
+def poly_without_hole() -> schemas.PolygonWithHole:
+    # should have area 45.5
+    return schemas.PolygonWithHole(polygon=[(4, 10), (9, 7), (11, 2), (2, 2)])
+
+
+@pytest.fixture
+def poly_with_hole() -> schemas.PolygonWithHole:
+    # should have area 100 - 8 = 92
+    return schemas.PolygonWithHole(
+        polygon=[(0, 10), (10, 10), (10, 0), (0, 0)],
+        hole=[(2, 4), (2, 8), (6, 4)],
+    )

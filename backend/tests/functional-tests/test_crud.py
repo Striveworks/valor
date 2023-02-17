@@ -1,4 +1,5 @@
 import pytest
+from geoalchemy2.functions import ST_Area
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -306,3 +307,83 @@ def test_get_labels(
     assert set([(label.key, label.value) for label in labels]) == set(
         [("k1", "v1"), ("k2", "v2")]
     )
+
+
+def test_segmentation_area_no_hole(
+    db: Session, poly_without_hole: schemas.PolygonWithHole
+):
+    # sanity check nothing in db
+    check_db_empty(db=db)
+
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_groundtruth_segmentations(
+        db,
+        data=schemas.GroundTruthSegmentationsCreate(
+            dataset_name=dset_name,
+            segmentations=[
+                schemas.GroundTruthSegmentation(
+                    shape=[poly_without_hole],
+                    image=schemas.Image(uri="uri1"),
+                    labels=[schemas.Label(key="k1", value="v1")],
+                )
+            ],
+        ),
+    )
+
+    segmentation = db.scalar(select(models.GroundTruthSegmentation))
+
+    assert db.scalar(ST_Area(segmentation.shape)) == 45.5
+
+
+def test_segmentation_area_with_hole(
+    db: Session, poly_with_hole: schemas.PolygonWithHole
+):
+    # sanity check nothing in db
+    check_db_empty(db=db)
+
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_groundtruth_segmentations(
+        db,
+        data=schemas.GroundTruthSegmentationsCreate(
+            dataset_name=dset_name,
+            segmentations=[
+                schemas.GroundTruthSegmentation(
+                    shape=[poly_with_hole],
+                    image=schemas.Image(uri="uri1"),
+                    labels=[schemas.Label(key="k1", value="v1")],
+                )
+            ],
+        ),
+    )
+
+    segmentation = db.scalar(select(models.GroundTruthSegmentation))
+
+    assert db.scalar(ST_Area(segmentation.shape)) == 92
+
+
+def test_segmentation_area_multi_polygon(
+    db: Session,
+    poly_with_hole: schemas.PolygonWithHole,
+    poly_without_hole: schemas.PolygonWithHole,
+):
+    # sanity check nothing in db
+    check_db_empty(db=db)
+
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_groundtruth_segmentations(
+        db,
+        data=schemas.GroundTruthSegmentationsCreate(
+            dataset_name=dset_name,
+            segmentations=[
+                schemas.GroundTruthSegmentation(
+                    shape=[poly_with_hole, poly_without_hole],
+                    image=schemas.Image(uri="uri1"),
+                    labels=[schemas.Label(key="k1", value="v1")],
+                )
+            ],
+        ),
+    )
+
+    segmentation = db.scalar(select(models.GroundTruthSegmentation))
+
+    assert db.scalar(ST_Area(segmentation.shape)) == 45.5 + 92

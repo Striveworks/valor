@@ -82,21 +82,17 @@ class PredictedImageClassificationsCreate(BaseModel):
     classifications: list[PredictedImageClassification]
 
 
-class PolygonWithHoles(BaseModel):
-    outer: list[tuple[float, float]]
-    inner: list[tuple[float, float]]
+class PolygonWithHole(BaseModel):
+    polygon: list[tuple[float, float]]
+    hole: list[tuple[float, float]] = None
 
-    @validator("outer")
+    @validator("polygon")
     def enough_pts_outer(cls, v):
-        return validate_single_polygon(v)
-
-    @validator("inner")
-    def enough_pts_inner(cls, v):
         return validate_single_polygon(v)
 
 
 class SegmentationBase(BaseModel):
-    shape: list[PolygonWithHoles]
+    shape: list[PolygonWithHole]
     image: Image
 
     @validator("shape")
