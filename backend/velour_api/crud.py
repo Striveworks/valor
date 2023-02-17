@@ -40,14 +40,28 @@ class ImageDoesNotExistError(Exception):
 def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
     """Returns the "Well-known text" format of a detection"""
     pts = det.boundary
+    return f"POLYGON ( {_boundary_points_to_str(pts)} )"
+
+
+def _boundary_points_to_str(pts: list[tuple[float, float]]) -> str:
     # in PostGIS polygon has to begin and end at the same point
     if pts[0] != pts[-1]:
         pts = pts + [pts[0]]
     return (
-        "POLYGON (("
+        "("
         + ", ".join([" ".join([str(pt[0]), str(pt[1])]) for pt in pts])
-        + "))"
+        + ")"
     )
+
+
+def _wkt_multipolygon_from_polygons_with_holes(
+    polys: list[schemas.PolygonWithHoles],
+) -> str:
+    strs = [
+        f"({_boundary_points_to_str(poly.inner)}, {_boundary_points_to_str(poly.outer)})"
+        for poly in polys
+    ]
+    return f"MULTIPOLYGON ( {', '.join(strs)} )"
 
 
 def bulk_insert_and_return_ids(
@@ -74,6 +88,20 @@ def _create_detection_mappings(
             "image_id": image_id,
         }
         for detection, image_id in zip(detections, image_ids)
+    ]
+
+
+def _create_segmentaiton_mappings(
+    segmentations: list[schemas.SegmentationBase], image_ids: list[str]
+) -> list[dict[str, str]]:
+    return [
+        {
+            "shape": _wkt_multipolygon_from_polygons_with_holes(
+                segmentation.shape
+            ),
+            "image_id": image_id,
+        }
+        for segmentation, image_id in zip(segmentations, image_ids)
     ]
 
 
@@ -114,39 +142,154 @@ def _add_image_uris_to_dataset(
     ]
 
 
-def create_groundtruth_detections(
+def _create_gt_dets_or_segs(
     db: Session,
-    data: schemas.GroundTruthDetectionsCreate,
-) -> list[int]:
+    dataset_name: str,
+    dets_or_segs: list[
+        schemas.GroundTruthDetection | schemas.GroundTruthSegmentation
+    ],
+    mapping_method: callable,
+    labeled_mapping_method: callable,
+    model_cls: type,
+    labeled_model_cls: type,
+):
     image_ids = _add_image_uris_to_dataset(
         db=db,
-        dataset_name=data.dataset_name,
-        uris=[det.image.uri for det in data.detections],
+        dataset_name=dataset_name,
+        uris=[d_or_s.image.uri for d_or_s in dets_or_segs],
     )
+    mappings = mapping_method(dets_or_segs, image_ids)
 
-    # create gt detections
-    det_mappings = _create_detection_mappings(
-        detections=data.detections, image_ids=image_ids
-    )
-    det_ids = bulk_insert_and_return_ids(
-        db, models.GroundTruthDetection, det_mappings
-    )
+    ids = bulk_insert_and_return_ids(db, model_cls, mappings)
 
     label_tuple_to_id = _create_label_tuple_to_id_dict(
-        db, [label for det in data.detections for label in det.labels]
+        db, [label for d_or_s in dets_or_segs for label in d_or_s.labels]
     )
 
-    labeled_gt_mappings = [
+    labeled_gt_mappings = labeled_mapping_method(
+        label_tuple_to_id, ids, dets_or_segs
+    )
+
+    return bulk_insert_and_return_ids(
+        db, labeled_model_cls, labeled_gt_mappings
+    )
+
+
+def _create_pred_dets_or_segs(
+    db: Session,
+    model_name: str,
+    dets_or_segs: list[
+        schemas.PredictedDetection | schemas.PredictedSegmentation
+    ],
+    mapping_method: callable,
+    labeled_mapping_method: callable,
+    model_cls: type,
+    labeled_model_cls: type,
+):
+    model_id = get_model(db, model_name=model_name).id
+    # get image ids from uris (these images should already exist)
+    image_ids = [
+        get_image(db, uri=d_or_s.image.uri).id for d_or_s in dets_or_segs
+    ]
+    mappings = mapping_method(dets_or_segs, image_ids)
+    for m in mappings:
+        m["model_id"] = model_id
+
+    ids = bulk_insert_and_return_ids(db, model_cls, mappings)
+
+    label_tuple_to_id = _create_label_tuple_to_id_dict(
+        db,
+        [
+            scored_label.label
+            for d_or_s in dets_or_segs
+            for scored_label in d_or_s.scored_labels
+        ],
+    )
+
+    labeled_pred_mappings = labeled_mapping_method(
+        label_tuple_to_id, ids, dets_or_segs
+    )
+
+    return bulk_insert_and_return_ids(
+        db, labeled_model_cls, labeled_pred_mappings
+    )
+
+
+def _create_labeled_gt_detection_mappings(
+    label_tuple_to_id,
+    gt_det_ids: list[int],
+    detections: list[schemas.GroundTruthDetection],
+):
+    return [
         {
             "detection_id": gt_det_id,
             "label_id": label_tuple_to_id[tuple(label)],
         }
-        for gt_det_id, detection in zip(det_ids, data.detections)
+        for gt_det_id, detection in zip(gt_det_ids, detections)
         for label in detection.labels
     ]
 
-    return bulk_insert_and_return_ids(
-        db, models.LabeledGroundTruthDetection, labeled_gt_mappings
+
+def _create_labeled_gt_segmentation_mappings(
+    label_tuple_to_id,
+    gt_det_ids: list[int],
+    detections: list[schemas.GroundTruthSegmentation],
+):
+    return [
+        {
+            "segmentation_id": gt_det_id,
+            "label_id": label_tuple_to_id[tuple(label)],
+        }
+        for gt_det_id, segmentation in zip(gt_det_ids, detections)
+        for label in segmentation.labels
+    ]
+
+
+def _create_labeled_pred_detection_mappings(
+    label_tuple_to_id,
+    gt_det_ids: list[int],
+    detections: list[schemas.PredictedDetection],
+):
+    return [
+        {
+            "detection_id": gt_id,
+            "label_id": label_tuple_to_id[tuple(scored_label.label)],
+            "score": scored_label.score,
+        }
+        for gt_id, detection in zip(gt_det_ids, detections)
+        for scored_label in detection.scored_labels
+    ]
+
+
+def _create_labeled_pred_segmentation_mappings(
+    label_tuple_to_id,
+    gt_det_ids: list[int],
+    segmentations: list[schemas.PredictedSegmentation],
+):
+    return [
+        {
+            "segmentation_id": gt_id,
+            "label_id": label_tuple_to_id[tuple(scored_label.label)],
+            "score": scored_label.score,
+        }
+        for gt_id, segmentation in zip(gt_det_ids, segmentations)
+        for scored_label in segmentation.scored_labels
+    ]
+
+
+def create_groundtruth_detections(
+    db: Session,
+    data: schemas.GroundTruthDetectionsCreate,
+) -> list[int]:
+
+    return _create_gt_dets_or_segs(
+        db=db,
+        dataset_name=data.dataset_name,
+        dets_or_segs=data.detections,
+        mapping_method=_create_detection_mappings,
+        labeled_mapping_method=_create_labeled_gt_detection_mappings,
+        model_cls=models.GroundTruthDetection,
+        labeled_model_cls=models.LabeledGroundTruthDetection,
     )
 
 
@@ -159,43 +302,49 @@ def create_predicted_detections(
     ModelDoesNotExistError
         if the model with name `data.model_name` does not exist
     """
-    model_id = get_model(db, model_name=data.model_name).id
-    # get image ids from uris (these images should already exist)
-    image_ids = [
-        get_image(db, uri=detection.image.uri).id
-        for detection in data.detections
-    ]
-
-    det_mappings = _create_detection_mappings(
-        detections=data.detections, image_ids=image_ids
-    )
-    for m in det_mappings:
-        m["model_id"] = model_id
-    det_ids = bulk_insert_and_return_ids(
-        db, models.PredictedDetection, det_mappings
+    return _create_pred_dets_or_segs(
+        db=db,
+        model_name=data.model_name,
+        dets_or_segs=data.detections,
+        mapping_method=_create_detection_mappings,
+        model_cls=models.PredictedDetection,
+        labeled_mapping_method=_create_labeled_pred_detection_mappings,
+        labeled_model_cls=models.LabeledPredictedDetection,
     )
 
-    label_tuple_to_id = _create_label_tuple_to_id_dict(
-        db,
-        [
-            scored_label.label
-            for det in data.detections
-            for scored_label in det.scored_labels
-        ],
+
+def create_groundtruth_segmentations(
+    db: Session,
+    data: schemas.GroundTruthSegmentationsCreate,
+) -> list[int]:
+    return _create_gt_dets_or_segs(
+        db=db,
+        dataset_name=data.dataset_name,
+        dets_or_segs=data.segmentations,
+        mapping_method=_create_segmentaiton_mappings,
+        labeled_mapping_method=_create_labeled_gt_segmentation_mappings,
+        model_cls=models.GroundTruthSegmentation,
+        labeled_model_cls=models.LabeledGroundTruthSegmentation,
     )
 
-    labeled_pred_mappings = [
-        {
-            "detection_id": gt_det_id,
-            "label_id": label_tuple_to_id[tuple(scored_label.label)],
-            "score": scored_label.score,
-        }
-        for gt_det_id, detection in zip(det_ids, data.detections)
-        for scored_label in detection.scored_labels
-    ]
 
-    return bulk_insert_and_return_ids(
-        db, models.LabeledPredictedDetection, labeled_pred_mappings
+def create_predicted_segmentations(
+    db: Session, data: schemas.PredictedSegmentationsCreate
+) -> list[int]:
+    """
+    Raises
+    ------
+    ModelDoesNotExistError
+        if the model with name `data.model_name` does not exist
+    """
+    return _create_pred_dets_or_segs(
+        db=db,
+        model_name=data.model_name,
+        dets_or_segs=data.segmentations,
+        mapping_method=_create_detection_mappings,
+        model_cls=models.PredictedSegmentation,
+        labeled_mapping_method=_create_labeled_pred_segmentation_mappings,
+        labeled_model_cls=models.LabeledPredictedSegmentation,
     )
 
 

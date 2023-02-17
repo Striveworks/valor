@@ -1,6 +1,12 @@
 from pydantic import BaseModel, validator
 
 
+def validate_single_polygon(poly: list[tuple[float, float]]):
+    if len(poly) < 3:
+        raise ValueError("Polygon must be composed of at least three points.")
+    return poly
+
+
 class Dataset(BaseModel):
     name: str
     draft: bool
@@ -35,11 +41,7 @@ class DetectionBase(BaseModel):
 
     @validator("boundary")
     def enough_pts(cls, v):
-        if len(v) < 3:
-            raise ValueError(
-                "Boundary must be composed of at least three points."
-            )
-        return v
+        return validate_single_polygon(v)
 
 
 class GroundTruthDetection(DetectionBase):
@@ -78,3 +80,45 @@ class GroundTruthImageClassificationsCreate(BaseModel):
 class PredictedImageClassificationsCreate(BaseModel):
     model_name: str
     classifications: list[PredictedImageClassification]
+
+
+class PolygonWithHoles(BaseModel):
+    outer: list[tuple[float, float]]
+    inner: list[tuple[float, float]]
+
+    @validator("outer")
+    def enough_pts_outer(cls, v):
+        return validate_single_polygon(v)
+
+    @validator("inner")
+    def enough_pts_inner(cls, v):
+        return validate_single_polygon(v)
+
+
+class SegmentationBase(BaseModel):
+    shape: list[PolygonWithHoles]
+    image: Image
+
+    @validator("shape")
+    def non_empty(cls, v):
+        if len(v) == 0:
+            raise ValueError("shape must have at least one element.")
+        return v
+
+
+class GroundTruthSegmentation(SegmentationBase):
+    labels: list[Label]
+
+
+class PredictedSegmentation(SegmentationBase):
+    scored_labels: list[ScoredLabel]
+
+
+class GroundTruthSegmentationsCreate(BaseModel):
+    dataset_name: str
+    segmentations: list[GroundTruthSegmentation]
+
+
+class PredictedSegmentationsCreate(BaseModel):
+    model_name: str
+    segmentations: list[PredictedSegmentation]
