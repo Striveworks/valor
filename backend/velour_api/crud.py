@@ -40,7 +40,7 @@ class ImageDoesNotExistError(Exception):
 def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
     """Returns the "Well-known text" format of a detection"""
     pts = det.boundary
-    return f"POLYGON ( {_boundary_points_to_str(pts)} )"
+    return f"POLYGON ({_boundary_points_to_str(pts)})"
 
 
 def _boundary_points_to_str(pts: list[tuple[float, float]]) -> str:
