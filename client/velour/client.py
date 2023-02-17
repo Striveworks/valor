@@ -3,6 +3,7 @@ from typing import List
 from urllib.parse import urljoin
 
 import requests
+
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
@@ -98,9 +99,11 @@ class Client:
             "detections": [
                 {
                     "boundary": _payload_for_bounding_polygon(det.boundary),
-                    "labels": [asdict(label) for label in det.labels],
+                    "scored_labels": [
+                        asdict(scored_label)
+                        for scored_label in det.scored_labels
+                    ],
                     "image": asdict(det.image),
-                    "score": det.score,
                 }
                 for det in dets
             ],

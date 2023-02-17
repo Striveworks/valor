@@ -4,6 +4,8 @@ from typing import List, Union
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
+from velour_api import models, ops
+
 from velour.client import Client, ClientException
 from velour.data_types import (
     BoundingPolygon,
@@ -16,8 +18,6 @@ from velour.data_types import (
     PredictedImageClassification,
     ScoredLabel,
 )
-
-from velour_api import models, ops
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -206,15 +206,17 @@ def pred_dets(
     return [
         PredictedDetection(
             boundary=rect1,
-            labels=[Label(key="k1", value="v1")],
+            scored_labels=[
+                ScoredLabel(label=Label(key="k1", value="v1"), score=0.3)
+            ],
             image=Image(uri="uri1"),
-            score=0.3,
         ),
         PredictedDetection(
             boundary=rect2,
-            labels=[Label(key="k2", value="v2")],
+            scored_labels=[
+                ScoredLabel(label=Label(key="k2", value="v2"), score=0.98)
+            ],
             image=Image(uri="uri2"),
-            score=0.98,
         ),
     ]
 
@@ -474,8 +476,7 @@ def test_iou(
         [
             PredictedDetection(
                 boundary=rect2,
-                labels=[Label("k", "v")],
-                score=0.6,
+                scored_labels=[ScoredLabel(label=Label("k", "v"), score=0.6)],
                 image=Image("uri"),
             )
         ]
