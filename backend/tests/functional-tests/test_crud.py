@@ -1,5 +1,8 @@
+import io
+
 import pytest
 from geoalchemy2.functions import ST_Area
+from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -40,6 +43,24 @@ def poly_with_hole() -> schemas.PolygonWithHole:
         polygon=[(0, 10), (10, 10), (10, 0), (0, 0)],
         hole=[(2, 4), (2, 8), (6, 4)],
     )
+
+
+@pytest.fixture
+def mask_bytes1() -> bytes:
+    mask = Image.new(mode="1", size=(32, 64))
+    f = io.BytesIO()
+    mask.save(f, format="PNG")
+    f.seek(0)
+    return f.read()
+
+
+@pytest.fixture
+def mask_bytes2() -> bytes:
+    mask = Image.new(mode="1", size=(16, 12))
+    f = io.BytesIO()
+    mask.save(f, format="PNG")
+    f.seek(0)
+    return f.read()
 
 
 @pytest.fixture
@@ -117,13 +138,13 @@ def gt_segs_create(
 
 @pytest.fixture
 def pred_segs_create(
-    poly_with_hole, poly_without_hole
+    mask_bytes1: bytes, mask_bytes2: bytes
 ) -> schemas.PredictedSegmentationsCreate:
     return schemas.PredictedSegmentationsCreate(
         model_name=model_name,
         segmentations=[
             schemas.PredictedSegmentation(
-                shape=[poly_with_hole],
+                shape=mask_bytes1,
                 image=schemas.Image(uri="uri1"),
                 scored_labels=[
                     schemas.ScoredLabel(
@@ -132,7 +153,7 @@ def pred_segs_create(
                 ],
             ),
             schemas.PredictedSegmentation(
-                shape=[poly_without_hole],
+                shape=mask_bytes2,
                 image=schemas.Image(uri="uri1"),
                 scored_labels=[
                     schemas.ScoredLabel(

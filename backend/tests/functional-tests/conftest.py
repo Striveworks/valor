@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import inspect, text
 
 from velour_api import models
-from velour_api.database import Base, SessionLocal, create_db
+from velour_api.database import Base, create_db, make_session
 
 # get all velour table names
 classes = [
@@ -23,7 +23,7 @@ def db():
     """This fixture provides a db session. a `RuntimeError` is raised if
     a velour tablename already exists. At teardown, all velour tables are wiped.
     """
-    db = SessionLocal()
+    db = make_session()
     inspector = inspect(db.connection())
     for tablename in tablenames:
         if inspector.has_table(tablename):

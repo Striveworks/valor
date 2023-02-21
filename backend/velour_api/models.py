@@ -1,6 +1,7 @@
-from geoalchemy2 import Geometry
+from geoalchemy2 import Geometry, Raster
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql import func
 
 from velour_api.database import Base
 
@@ -172,13 +173,19 @@ class GroundTruthSegmentation(Base):
     )
 
 
+class GDALRaster(Raster):
+    # see https://github.com/geoalchemy/geoalchemy2/issues/290
+    def bind_expression(self, bindvalue):
+        return func.ST_FromGDALRaster(bindvalue)
+
+
 class PredictedSegmentation(Base):
     # also used for instance segmentation
     """Predicted semantic segmentation for a model"""
     __tablename__ = "predicted_segmentation"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    shape = mapped_column(Geometry("MULTIPOLYGON"))
+    shape = mapped_column(GDALRaster)
     image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
     image: Mapped["Image"] = relationship(
         "Image", back_populates="predicted_segmentations"

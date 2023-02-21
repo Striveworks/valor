@@ -1,3 +1,6 @@
+import io
+
+import PIL.Image
 from pydantic import BaseModel, validator
 
 
@@ -91,9 +94,10 @@ class PolygonWithHole(BaseModel):
         return validate_single_polygon(v)
 
 
-class SegmentationBase(BaseModel):
+class GroundTruthSegmentation(BaseModel):
     shape: list[PolygonWithHole]
     image: Image
+    labels: list[Label]
 
     @validator("shape")
     def non_empty(cls, v):
@@ -102,12 +106,26 @@ class SegmentationBase(BaseModel):
         return v
 
 
-class GroundTruthSegmentation(SegmentationBase):
-    labels: list[Label]
-
-
-class PredictedSegmentation(SegmentationBase):
+class PredictedSegmentation(BaseModel):
+    shape: bytes
+    image: Image
     scored_labels: list[ScoredLabel]
+
+    @validator("shape")
+    def check_png_and_mode(cls, v):
+        """Check that the bytes are for a png file and is binary"""
+        f = io.BytesIO(v)
+        img = PIL.Image.open(f)
+        f.close()
+        if img.format != "PNG":
+            raise ValueError(
+                f"Expected image format PNG but got {img.format}."
+            )
+        if img.mode != "1":
+            raise ValueError(
+                f"Expected image mode to be binary but got mode {img.mode}."
+            )
+        return v
 
 
 class GroundTruthSegmentationsCreate(BaseModel):
