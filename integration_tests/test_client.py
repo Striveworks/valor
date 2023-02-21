@@ -1,5 +1,5 @@
 import json
-from typing import Any, List, Union
+from typing import Any
 
 import pytest
 from sqlalchemy import create_engine, select
@@ -37,7 +37,7 @@ def _list_of_outer_and_inner_points_from_wkt(
 
 
 def _list_of_points_from_wkt_polygon(
-    db: Session, det: Union[GroundTruthDetection, PredictedDetection]
+    db: Session, det: GroundTruthDetection | PredictedDetection
 ) -> list[tuple[int, int]]:
     geo = json.loads(db.scalar(det.boundary.ST_AsGeoJSON()))
     assert len(geo["coordinates"]) == 1
@@ -165,7 +165,7 @@ def rect3():
 @pytest.fixture
 def gt_dets1(
     rect1: BoundingPolygon, rect2: BoundingPolygon
-) -> List[GroundTruthDetection]:
+) -> list[GroundTruthDetection]:
     return [
         GroundTruthDetection(
             boundary=rect1,
@@ -181,7 +181,7 @@ def gt_dets1(
 
 
 @pytest.fixture
-def gt_dets2(rect3: BoundingPolygon) -> List[GroundTruthDetection]:
+def gt_dets2(rect3: BoundingPolygon) -> list[GroundTruthDetection]:
     return [
         GroundTruthDetection(
             boundary=rect3,
@@ -192,7 +192,7 @@ def gt_dets2(rect3: BoundingPolygon) -> List[GroundTruthDetection]:
 
 
 @pytest.fixture
-def gt_dets3(rect3: BoundingPolygon) -> List[GroundTruthDetection]:
+def gt_dets3(rect3: BoundingPolygon) -> list[GroundTruthDetection]:
     return [
         GroundTruthDetection(
             boundary=rect3,
@@ -205,7 +205,7 @@ def gt_dets3(rect3: BoundingPolygon) -> List[GroundTruthDetection]:
 @pytest.fixture
 def gt_segs1(
     rect1: BoundingPolygon, rect2: BoundingPolygon
-) -> List[GroundTruthSegmentation]:
+) -> list[GroundTruthSegmentation]:
     return [
         GroundTruthSegmentation(
             shape=[PolygonWithHole(polygon=rect1)],
@@ -223,7 +223,7 @@ def gt_segs1(
 @pytest.fixture
 def gt_segs2(
     rect1: BoundingPolygon, rect3: BoundingPolygon
-) -> List[GroundTruthDetection]:
+) -> list[GroundTruthDetection]:
     return [
         GroundTruthSegmentation(
             shape=[
@@ -237,7 +237,7 @@ def gt_segs2(
 
 
 @pytest.fixture
-def gt_segs3(rect3: BoundingPolygon) -> List[GroundTruthDetection]:
+def gt_segs3(rect3: BoundingPolygon) -> list[GroundTruthDetection]:
     return [
         GroundTruthSegmentation(
             shape=[PolygonWithHole(polygon=rect3)],
@@ -248,7 +248,7 @@ def gt_segs3(rect3: BoundingPolygon) -> List[GroundTruthDetection]:
 
 
 @pytest.fixture
-def gt_clfs1() -> List[GroundTruthImageClassification]:
+def gt_clfs1() -> list[GroundTruthImageClassification]:
     return [
         GroundTruthImageClassification(
             image=Image(uri="uri5"), labels=[Label(key="k5", value="v5")]
@@ -260,7 +260,7 @@ def gt_clfs1() -> List[GroundTruthImageClassification]:
 
 
 @pytest.fixture
-def gt_clfs2() -> List[GroundTruthImageClassification]:
+def gt_clfs2() -> list[GroundTruthImageClassification]:
     return [
         GroundTruthImageClassification(
             image=Image(uri="uri5"), labels=[Label(key="k4", value="v4")]
@@ -269,7 +269,7 @@ def gt_clfs2() -> List[GroundTruthImageClassification]:
 
 
 @pytest.fixture
-def gt_clfs3() -> List[GroundTruthImageClassification]:
+def gt_clfs3() -> list[GroundTruthImageClassification]:
     return [
         GroundTruthImageClassification(
             labels=[Label(key="k3", value="v3")],
@@ -281,7 +281,7 @@ def gt_clfs3() -> List[GroundTruthImageClassification]:
 @pytest.fixture
 def pred_dets(
     rect1: BoundingPolygon, rect2: BoundingPolygon
-) -> List[PredictedDetection]:
+) -> list[PredictedDetection]:
     return [
         PredictedDetection(
             boundary=rect1,
@@ -303,7 +303,7 @@ def pred_dets(
 @pytest.fixture
 def pred_segs(
     rect1: BoundingPolygon, rect2: BoundingPolygon, rect3: BoundingPolygon
-) -> List[PredictedDetection]:
+) -> list[PredictedDetection]:
     return [
         PredictedSegmentation(
             shape=[PolygonWithHole(polygon=rect1, hole=rect2)],
@@ -323,7 +323,7 @@ def pred_segs(
 
 
 @pytest.fixture
-def pred_clfs() -> List[PredictedImageClassification]:
+def pred_clfs() -> list[PredictedImageClassification]:
     return [
         PredictedImageClassification(
             image=Image(uri="uri5"),
@@ -343,13 +343,12 @@ def pred_clfs() -> List[PredictedImageClassification]:
 
 def _test_create_dataset_with_gts(
     client: Client,
-    gts1,
-    gts2,
-    gts3,
-    add_method_name,
-    expected_labels_tuples,
-    expected_image_uris,
-    db: Session,
+    gts1: list[Any],
+    gts2: list[Any],
+    gts3: list[Any],
+    add_method_name: str,
+    expected_labels_tuples: set[tuple[str, str]],
+    expected_image_uris: list[str],
 ):
     """This test does the following
     - Creates a dataset
@@ -357,6 +356,22 @@ def _test_create_dataset_with_gts(
     - Verifies the images and labels have actually been added
     - Finalizes dataset
     - Tries to add more data and verifies an error is thrown
+
+    Parameters
+    ----------
+    client
+    gts1
+        list of groundtruth objects (from `velour.data_types`)
+    gts2
+        list of groundtruth objects (from `velour.data_types`)
+    gts3
+        list of groundtruth objects (from `velour.data_types`)
+    add_method_name
+        method name of `velour.client.Dataset` to add groundtruth objects
+    expected_labels_tuples
+        set of tuples of key/value labels to check were added to the database
+    expected_image_uris
+        set of image uris to check were added to the database
     """
     dataset = client.create_dataset(dset_name)
 
@@ -391,20 +406,38 @@ def _test_create_dataset_with_gts(
 
 def _test_create_model_with_preds(
     client: Client,
-    gts: List[Any],
-    preds,
-    add_gts_method_name,
-    add_preds_method_name,
-    preds_model_class,
-    preds_expected_number,
-    expected_labels_tuples,
-    expected_scores,
+    gts: list[Any],
+    preds: list[Any],
+    add_gts_method_name: str,
+    add_preds_method_name: str,
+    preds_model_class: type,
+    preds_expected_number: int,
+    expected_labels_tuples: set[tuple[str, str]],
+    expected_scores: set[float],
     db: Session,
 ):
     """Tests that the client can be used to add predictions.
 
     Parameters
     ----------
+    client
+    gts
+        list of groundtruth objects (from `velour.data_types`)
+    preds
+        list of prediction objects (from `velour.data_types`)
+    add_gts_method_name
+        method name of `velour.client.Dataset` to add groundtruth objects
+    add_preds_method_name
+        method name of `velour.client.Model` to add prediction objects
+    preds_model_class
+        class in `velour_api.models` that specifies the labeled predictions
+    preds_expected_number
+        expected number of (labeled) predictions added to the database
+    expected_labels_tuples
+        set of tuples of key/value labels to check were added to the database
+    expected_scores
+        set of the scores of hte predictions
+    db
 
     Returns
     -------
@@ -449,9 +482,9 @@ def _test_create_model_with_preds(
 
 def test_create_dataset_with_detections(
     client: Client,
-    gt_dets1: List[GroundTruthDetection],
-    gt_dets2: List[GroundTruthDetection],
-    gt_dets3: List[GroundTruthDetection],
+    gt_dets1: list[GroundTruthDetection],
+    gt_dets2: list[GroundTruthDetection],
+    gt_dets3: list[GroundTruthDetection],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     _test_create_dataset_with_gts(
@@ -465,14 +498,13 @@ def test_create_dataset_with_detections(
             ("k1", "v1"),
             ("k2", "v2"),
         },
-        db=db,
     )
 
 
 def test_create_model_with_predicted_detections(
     client: Client,
-    gt_dets1: List[GroundTruthDetection],
-    pred_dets: List[PredictedDetection],
+    gt_dets1: list[GroundTruthDetection],
+    pred_dets: list[PredictedDetection],
     db: Session,
 ):
     labeled_pred_dets = _test_create_model_with_preds(
@@ -500,9 +532,9 @@ def test_create_model_with_predicted_detections(
 
 def test_create_dataset_with_segmentations(
     client: Client,
-    gt_segs1: List[GroundTruthSegmentation],
-    gt_segs2: List[GroundTruthSegmentation],
-    gt_segs3: List[GroundTruthSegmentation],
+    gt_segs1: list[GroundTruthSegmentation],
+    gt_segs2: list[GroundTruthSegmentation],
+    gt_segs3: list[GroundTruthSegmentation],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     _test_create_dataset_with_gts(
@@ -516,14 +548,13 @@ def test_create_dataset_with_segmentations(
             ("k1", "v1"),
             ("k2", "v2"),
         },
-        db=db,
     )
 
 
 def test_create_model_with_predicted_segmentations(
     client: Client,
-    gt_segs1: List[GroundTruthSegmentation],
-    pred_segs: List[PredictedSegmentation],
+    gt_segs1: list[GroundTruthSegmentation],
+    pred_segs: list[PredictedSegmentation],
     db: Session,
 ):
     labeled_pred_segs = _test_create_model_with_preds(
@@ -560,9 +591,9 @@ def test_create_model_with_predicted_segmentations(
 
 def test_create_dataset_with_classifications(
     client: Client,
-    gt_clfs1: List[GroundTruthImageClassification],
-    gt_clfs2: List[GroundTruthImageClassification],
-    gt_clfs3: List[GroundTruthImageClassification],
+    gt_clfs1: list[GroundTruthImageClassification],
+    gt_clfs2: list[GroundTruthImageClassification],
+    gt_clfs3: list[GroundTruthImageClassification],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     _test_create_dataset_with_gts(
@@ -576,14 +607,13 @@ def test_create_dataset_with_classifications(
             ("k5", "v5"),
             ("k4", "v4"),
         },
-        db=db,
     )
 
 
 def test_create_model_with_predicted_classifications(
     client: Client,
-    gt_clfs1: List[GroundTruthDetection],
-    pred_clfs: List[PredictedDetection],
+    gt_clfs1: list[GroundTruthDetection],
+    pred_clfs: list[PredictedDetection],
     db: Session,
 ):
     _test_create_model_with_preds(
