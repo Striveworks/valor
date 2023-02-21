@@ -1,9 +1,11 @@
 import json
-from typing import List, Union
+from typing import Any, List, Union
 
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
+from velour_api import models, ops
+
 from velour.client import Client, ClientException
 from velour.data_types import (
     BoundingPolygon,
@@ -16,13 +18,22 @@ from velour.data_types import (
     PolygonWithHole,
     PredictedDetection,
     PredictedImageClassification,
+    PredictedSegmentation,
     ScoredLabel,
 )
 
-from velour_api import models, ops
-
 dset_name = "test dataset"
 model_name = "test model"
+
+
+def _list_of_outer_and_inner_points_from_wkt(
+    db: Session, seg: PredictedSegmentation
+) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
+    geo = json.loads(db.scalar(seg.shape.ST_AsGeoJSON()))
+    assert len(geo["coordinates"]) == 1
+    outer, inner = geo["coordinates"][0]
+
+    return [tuple(p) for p in outer], [tuple(p) for p in inner]
 
 
 def _list_of_points_from_wkt_polygon(
@@ -290,6 +301,28 @@ def pred_dets(
 
 
 @pytest.fixture
+def pred_segs(
+    rect1: BoundingPolygon, rect2: BoundingPolygon, rect3: BoundingPolygon
+) -> List[PredictedDetection]:
+    return [
+        PredictedSegmentation(
+            shape=[PolygonWithHole(polygon=rect1, hole=rect2)],
+            scored_labels=[
+                ScoredLabel(label=Label(key="k1", value="v1"), score=0.87)
+            ],
+            image=Image(uri="uri1"),
+        ),
+        PredictedSegmentation(
+            shape=[PolygonWithHole(polygon=rect3)],
+            scored_labels=[
+                ScoredLabel(label=Label(key="k2", value="v2"), score=0.92)
+            ],
+            image=Image(uri="uri2"),
+        ),
+    ]
+
+
+@pytest.fixture
 def pred_clfs() -> List[PredictedImageClassification]:
     return [
         PredictedImageClassification(
@@ -356,6 +389,64 @@ def _test_create_dataset_with_gts(
     assert "since it is finalized" in str(exc_info)
 
 
+def _test_create_model_with_preds(
+    client: Client,
+    gts: List[Any],
+    preds,
+    add_gts_method_name,
+    add_preds_method_name,
+    preds_model_class,
+    preds_expected_number,
+    expected_labels_tuples,
+    expected_scores,
+    db: Session,
+):
+    """Tests that the client can be used to add predictions.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    the sqlalchemy objects for the created predictions
+    """
+    model = client.create_model(model_name)
+    add_preds_method = getattr(model, add_preds_method_name)
+
+    # verify we get an error if we try to create another model
+    # with the same name
+    with pytest.raises(ClientException) as exc_info:
+        client.create_model(model_name)
+    assert "already exists" in str(exc_info)
+
+    # check that if we try to add detections we get an error
+    # since we haven't added any images yet
+    with pytest.raises(ClientException) as exc_info:
+        add_preds_method(preds)
+    assert "Image with uri" in str(exc_info)
+
+    dataset = client.create_dataset(dset_name)
+    add_gts_method = getattr(dataset, add_gts_method_name)
+
+    add_gts_method(gts)
+    add_preds_method(preds)
+
+    # check predictions have been added
+    db_preds = db.scalars(select(preds_model_class)).all()
+    assert len(db_preds) == preds_expected_number
+
+    # check labels
+    assert (
+        set([(p.label.key, p.label.value) for p in db_preds])
+        == expected_labels_tuples
+    )
+
+    # check scores
+    assert set([p.score for p in db_preds]) == expected_scores
+
+    return db_preds
+
+
 def test_create_dataset_with_detections(
     client: Client,
     gt_dets1: List[GroundTruthDetection],
@@ -384,39 +475,18 @@ def test_create_model_with_predicted_detections(
     pred_dets: List[PredictedDetection],
     db: Session,
 ):
-    model = client.create_model(model_name)
-
-    # verify we get an error if we try to create another model
-    # with the same name
-    with pytest.raises(ClientException) as exc_info:
-        client.create_model(model_name)
-    assert "already exists" in str(exc_info)
-
-    # check that if we try to add detections we get an error
-    # since we haven't added any images yet
-    with pytest.raises(ClientException) as exc_info:
-        model.add_predicted_detections(pred_dets)
-    assert "Image with uri" in str(exc_info)
-
-    # add groundtruth and predictions
-    dataset = client.create_dataset(dset_name)
-    dataset.add_groundtruth_detections(gt_dets1)
-    model.add_predicted_detections(pred_dets)
-
-    # check predictions have been added
-    labeled_pred_dets = db.scalars(
-        select(models.LabeledPredictedDetection)
-    ).all()
-    assert len(labeled_pred_dets) == 2
-
-    # check labels
-    assert set([(p.label.key, p.label.value) for p in labeled_pred_dets]) == {
-        ("k1", "v1"),
-        ("k2", "v2"),
-    }
-
-    # check scores
-    assert set([p.score for p in labeled_pred_dets]) == {0.3, 0.98}
+    labeled_pred_dets = _test_create_model_with_preds(
+        client=client,
+        gts=gt_dets1,
+        preds=pred_dets,
+        add_gts_method_name="add_groundtruth_detections",
+        add_preds_method_name="add_predicted_detections",
+        preds_model_class=models.LabeledPredictedDetection,
+        preds_expected_number=2,
+        expected_labels_tuples={("k1", "v1"), ("k2", "v2")},
+        expected_scores={0.3, 0.98},
+        db=db,
+    )
 
     # check boundary
     db_pred = [
@@ -450,6 +520,44 @@ def test_create_dataset_with_segmentations(
     )
 
 
+def test_create_model_with_predicted_segmentations(
+    client: Client,
+    gt_segs1: List[GroundTruthSegmentation],
+    pred_segs: List[PredictedSegmentation],
+    db: Session,
+):
+    labeled_pred_segs = _test_create_model_with_preds(
+        client=client,
+        gts=gt_segs1,
+        preds=pred_segs,
+        add_gts_method_name="add_groundtruth_segmentations",
+        add_preds_method_name="add_predicted_segmentations",
+        preds_model_class=models.LabeledPredictedSegmentation,
+        preds_expected_number=2,
+        expected_labels_tuples={("k1", "v1"), ("k2", "v2")},
+        expected_scores={0.87, 0.92},
+        db=db,
+    )
+
+    # check segmentation
+    db_pred = [
+        p for p in labeled_pred_segs if p.segmentation.image.uri == "uri1"
+    ][0]
+
+    outer, inner = _list_of_outer_and_inner_points_from_wkt(
+        db, db_pred.segmentation
+    )
+
+    pred = pred_segs[0]
+
+    assert set(outer) == set(
+        [(pt.x, pt.y) for pt in pred.shape[0].polygon.points]
+    )
+    assert set(inner) == set(
+        [(pt.x, pt.y) for pt in pred.shape[0].hole.points]
+    )
+
+
 def test_create_dataset_with_classifications(
     client: Client,
     gt_clfs1: List[GroundTruthImageClassification],
@@ -478,38 +586,18 @@ def test_create_model_with_predicted_classifications(
     pred_clfs: List[PredictedDetection],
     db: Session,
 ):
-    model = client.create_model(model_name)
-
-    # verify we get an error if we try to create another model
-    # with the same name
-    with pytest.raises(ClientException) as exc_info:
-        client.create_model(model_name)
-    assert "already exists" in str(exc_info)
-
-    # check that if we try to add detections we get an error
-    # since we haven't added any images yet
-    with pytest.raises(ClientException) as exc_info:
-        model.add_predicted_classifications(pred_clfs)
-    assert "Image with uri" in str(exc_info)
-
-    # add groundtruth and predictions
-    dataset = client.create_dataset(dset_name)
-    dataset.add_groundtruth_classifications(gt_clfs1)
-    model.add_predicted_classifications(pred_clfs)
-
-    # check predictions have been added
-    pred_clfs = db.scalars(select(models.PredictedImageClassification)).all()
-    assert len(pred_clfs) == 3
-
-    # check labels
-    assert set([(p.label.key, p.label.value) for p in pred_clfs]) == {
-        ("k12", "v12"),
-        ("k13", "v13"),
-        ("k4", "v4"),
-    }
-
-    # check scores
-    assert set([p.score for p in pred_clfs]) == {0.47, 0.12, 0.71}
+    _test_create_model_with_preds(
+        client=client,
+        gts=gt_clfs1,
+        preds=pred_clfs,
+        add_gts_method_name="add_groundtruth_classifications",
+        add_preds_method_name="add_predicted_classifications",
+        preds_model_class=models.PredictedImageClassification,
+        preds_expected_number=3,
+        expected_labels_tuples={("k12", "v12"), ("k13", "v13"), ("k4", "v4")},
+        expected_scores={0.47, 0.12, 0.71},
+        db=db,
+    )
 
 
 def test_boundary(client: Client, db: Session, rect1: BoundingPolygon):

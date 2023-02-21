@@ -3,6 +3,7 @@ from typing import Dict, List
 from urllib.parse import urljoin
 
 import requests
+
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
@@ -13,6 +14,7 @@ from velour.data_types import (
     PolygonWithHole,
     PredictedDetection,
     PredictedImageClassification,
+    PredictedSegmentation,
 )
 
 
@@ -148,6 +150,31 @@ class Client:
 
         resp = self._requests_post_rel_host(
             "predicted-detections", json=payload
+        )
+
+        resp.raise_for_status()
+        return resp.json()
+
+    def upload_predicted_segmentations(
+        self, model_name: str, segs: List[PredictedSegmentation]
+    ) -> List[int]:
+        payload = {
+            "model_name": model_name,
+            "segmentations": [
+                {
+                    "shape": _payload_for_polys_with_holes(seg.shape),
+                    "scored_labels": [
+                        asdict(scored_label)
+                        for scored_label in seg.scored_labels
+                    ],
+                    "image": asdict(seg.image),
+                }
+                for seg in segs
+            ],
+        }
+
+        resp = self._requests_post_rel_host(
+            "predicted-segmentations", json=payload
         )
 
         resp.raise_for_status()
@@ -294,6 +321,13 @@ class Model:
     def add_predicted_detections(self, dets: List[PredictedDetection]) -> None:
         return self.client.upload_predicted_detections(
             model_name=self.name, dets=dets
+        )
+
+    def add_predicted_segmentations(
+        self, segs: List[PredictedSegmentation]
+    ) -> None:
+        return self.client.upload_predicted_segmentations(
+            model_name=self.name, segs=segs
         )
 
     def add_predicted_classifications(
