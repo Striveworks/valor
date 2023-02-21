@@ -46,6 +46,29 @@ def create_predicted_detections(
         raise HTTPException(status_code=404, detail=str(e))
 
 
+@app.post("/groundtruth-segmentations")
+def create_groundtruth_segmentations(
+    data: schemas.GroundTruthSegmentationsCreate,
+    db: Session = Depends(get_db),
+) -> list[int]:
+    try:
+        logger.debug(f"got: {data}")
+        return crud.create_groundtruth_segmentations(db=db, data=data)
+    except crud.DatasetIsFinalizedError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@app.post("/predicted-segmentations")
+def create_predicted_segmentations(
+    data: schemas.PredictedSegmentationsCreate,
+    db: Session = Depends(get_db),
+) -> list[int]:
+    try:
+        return crud.create_predicted_segmentations(db=db, data=data)
+    except crud.ImageDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @app.post("/groundtruth-classifications")
 def create_groundtruth_classifications(
     data: schemas.GroundTruthImageClassificationsCreate,

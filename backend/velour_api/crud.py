@@ -550,6 +550,10 @@ def get_unique_label_ids_in_image(image: models.Image) -> set[int]:
     for clf in image.ground_truth_classifications:
         ret.add(clf.label.id)
 
+    for seg in image.ground_truth_segmentations:
+        for labeled_seg in seg.labeled_ground_truth_segmentations:
+            ret.add(labeled_seg.label.id)
+
     return ret
 
 

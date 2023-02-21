@@ -1,15 +1,16 @@
 from dataclasses import asdict
-from typing import List
+from typing import Dict, List
 from urllib.parse import urljoin
 
 import requests
-
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
     GroundTruthImageClassification,
+    GroundTruthSegmentation,
     Image,
     Label,
+    PolygonWithHole,
     PredictedDetection,
     PredictedImageClassification,
 )
@@ -17,6 +18,20 @@ from velour.data_types import (
 
 def _payload_for_bounding_polygon(poly: BoundingPolygon) -> List[List[int]]:
     return [[pt.x, pt.y] for pt in poly.points]
+
+
+def _payload_for_polys_with_holes(
+    polys_with_holes: List[PolygonWithHole],
+) -> List[Dict[str, List[List[int]]]]:
+    return [
+        {
+            "polygon": _payload_for_bounding_polygon(sh.polygon),
+            "hole": _payload_for_bounding_polygon(sh.hole)
+            if sh.hole is not None
+            else None,
+        }
+        for sh in polys_with_holes
+    ]
 
 
 class ClientException(Exception):
@@ -86,6 +101,28 @@ class Client:
 
         resp = self._requests_post_rel_host(
             "groundtruth-detections", json=payload
+        )
+        resp.raise_for_status()
+
+        return resp.json()
+
+    def upload_groundtruth_segmentations(
+        self, dataset_name: str, segs: List[GroundTruthSegmentation]
+    ) -> List[int]:
+        payload = {
+            "dataset_name": dataset_name,
+            "segmentations": [
+                {
+                    "shape": _payload_for_polys_with_holes(seg.shape),
+                    "labels": [asdict(label) for label in seg.labels],
+                    "image": asdict(seg.image),
+                }
+                for seg in segs
+            ],
+        }
+
+        resp = self._requests_post_rel_host(
+            "groundtruth-segmentations", json=payload
         )
         resp.raise_for_status()
 
@@ -227,6 +264,13 @@ class Dataset:
     ):
         return self.client.upload_groundtruth_classifications(
             dataset_name=self.name, clfs=clfs
+        )
+
+    def add_groundtruth_segmentations(
+        self, segs: List[GroundTruthSegmentation]
+    ):
+        return self.client.upload_groundtruth_segmentations(
+            dataset_name=self.name, segs=segs
         )
 
     def finalize(self):

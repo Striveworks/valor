@@ -137,6 +137,26 @@ class PredictedDetection:
 
 
 @dataclass
+class PolygonWithHole:
+    polygon: BoundingPolygon
+    hole: BoundingPolygon = None
+
+
+@dataclass
+class GroundTruthSegmentation:
+    shape: List[PolygonWithHole]
+    labels: List[Label]
+    image: Image
+
+
+@dataclass
+class PredictedSegmentation:
+    shape: List[PolygonWithHole]
+    scored_labels: List[ScoredLabel]
+    image: Image
+
+
+@dataclass
 class GroundTruthImageClassification:
     image: Image
     labels: List[Label]

@@ -4,20 +4,22 @@ from typing import List, Union
 import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
-from velour_api import models, ops
-
 from velour.client import Client, ClientException
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
     GroundTruthImageClassification,
+    GroundTruthSegmentation,
     Image,
     Label,
     Point,
+    PolygonWithHole,
     PredictedDetection,
     PredictedImageClassification,
     ScoredLabel,
 )
+
+from velour_api import models, ops
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -179,6 +181,62 @@ def gt_dets2(rect3: BoundingPolygon) -> List[GroundTruthDetection]:
 
 
 @pytest.fixture
+def gt_dets3(rect3: BoundingPolygon) -> List[GroundTruthDetection]:
+    return [
+        GroundTruthDetection(
+            boundary=rect3,
+            labels=[Label(key="k3", value="v3")],
+            image=Image(uri="uri8"),
+        )
+    ]
+
+
+@pytest.fixture
+def gt_segs1(
+    rect1: BoundingPolygon, rect2: BoundingPolygon
+) -> List[GroundTruthSegmentation]:
+    return [
+        GroundTruthSegmentation(
+            shape=[PolygonWithHole(polygon=rect1)],
+            labels=[Label(key="k1", value="v1")],
+            image=Image(uri="uri1"),
+        ),
+        GroundTruthSegmentation(
+            shape=[PolygonWithHole(polygon=rect2, hole=rect1)],
+            labels=[Label(key="k1", value="v1")],
+            image=Image(uri="uri2"),
+        ),
+    ]
+
+
+@pytest.fixture
+def gt_segs2(
+    rect1: BoundingPolygon, rect3: BoundingPolygon
+) -> List[GroundTruthDetection]:
+    return [
+        GroundTruthSegmentation(
+            shape=[
+                PolygonWithHole(polygon=rect3),
+                PolygonWithHole(polygon=rect1),
+            ],
+            labels=[Label(key="k2", value="v2")],
+            image=Image(uri="uri1"),
+        )
+    ]
+
+
+@pytest.fixture
+def gt_segs3(rect3: BoundingPolygon) -> List[GroundTruthDetection]:
+    return [
+        GroundTruthSegmentation(
+            shape=[PolygonWithHole(polygon=rect3)],
+            labels=[Label(key="k3", value="v3")],
+            image=Image(uri="uri9"),
+        )
+    ]
+
+
+@pytest.fixture
 def gt_clfs1() -> List[GroundTruthImageClassification]:
     return [
         GroundTruthImageClassification(
@@ -195,6 +253,16 @@ def gt_clfs2() -> List[GroundTruthImageClassification]:
     return [
         GroundTruthImageClassification(
             image=Image(uri="uri5"), labels=[Label(key="k4", value="v4")]
+        )
+    ]
+
+
+@pytest.fixture
+def gt_clfs3() -> List[GroundTruthImageClassification]:
+    return [
+        GroundTruthImageClassification(
+            labels=[Label(key="k3", value="v3")],
+            image=Image(uri="uri8"),
         )
     ]
 
@@ -240,12 +308,15 @@ def pred_clfs() -> List[PredictedImageClassification]:
     ]
 
 
-def test_create_dataset_with_detections(
+def _test_create_dataset_with_gts(
     client: Client,
-    gt_dets1: List[GroundTruthDetection],
-    gt_dets2: List[GroundTruthDetection],
-    rect3: BoundingPolygon,
-    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
+    gts1,
+    gts2,
+    gts3,
+    add_method_name,
+    expected_labels_tuples,
+    expected_image_uris,
+    db: Session,
 ):
     """This test does the following
     - Creates a dataset
@@ -260,36 +331,51 @@ def test_create_dataset_with_detections(
         client.create_dataset(dset_name)
     assert "already exists" in str(exc_info)
 
-    dataset.add_groundtruth_detections(gt_dets1)
-    dataset.add_groundtruth_detections(gt_dets2)
+    add_method = getattr(dataset, add_method_name)
+    add_method(gts1)
+    add_method(gts2)
 
     # check that the dataset has two images
     images = dataset.get_images()
-    assert len(images) == 2
-    assert set([image.uri for image in images]) == {"uri1", "uri2"}
+    assert len(images) == len(expected_image_uris)
+    assert set([image.uri for image in images]) == expected_image_uris
 
     # check that there are two labels
     labels = dataset.get_labels()
-    assert len(labels) == 2
-    assert set([(label.key, label.value) for label in labels]) == {
-        ("k1", "v1"),
-        ("k2", "v2"),
-    }
+    assert len(labels) == len(expected_labels_tuples)
+    assert (
+        set([(label.key, label.value) for label in labels])
+        == expected_labels_tuples
+    )
 
     dataset.finalize()
     # check that we get an error when trying to add more images
     # to the dataset since it is finalized
     with pytest.raises(ClientException) as exc_info:
-        dataset.add_groundtruth_detections(
-            [
-                GroundTruthDetection(
-                    boundary=rect3,
-                    labels=[Label(key="k3", value="v3")],
-                    image=Image(uri="uri8"),
-                )
-            ]
-        )
+        add_method(gts3)
     assert "since it is finalized" in str(exc_info)
+
+
+def test_create_dataset_with_detections(
+    client: Client,
+    gt_dets1: List[GroundTruthDetection],
+    gt_dets2: List[GroundTruthDetection],
+    gt_dets3: List[GroundTruthDetection],
+    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
+):
+    _test_create_dataset_with_gts(
+        client=client,
+        gts1=gt_dets1,
+        gts2=gt_dets2,
+        gts3=gt_dets3,
+        add_method_name="add_groundtruth_detections",
+        expected_image_uris={"uri1", "uri2"},
+        expected_labels_tuples={
+            ("k1", "v1"),
+            ("k2", "v2"),
+        },
+        db=db,
+    )
 
 
 def test_create_model_with_predicted_detections(
@@ -342,54 +428,48 @@ def test_create_model_with_predicted_detections(
     assert set(points) == set([(pt.x, pt.y) for pt in pred.boundary.points])
 
 
+def test_create_dataset_with_segmentations(
+    client: Client,
+    gt_segs1: List[GroundTruthSegmentation],
+    gt_segs2: List[GroundTruthSegmentation],
+    gt_segs3: List[GroundTruthSegmentation],
+    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
+):
+    _test_create_dataset_with_gts(
+        client=client,
+        gts1=gt_segs1,
+        gts2=gt_segs2,
+        gts3=gt_segs3,
+        add_method_name="add_groundtruth_segmentations",
+        expected_image_uris={"uri1", "uri2"},
+        expected_labels_tuples={
+            ("k1", "v1"),
+            ("k2", "v2"),
+        },
+        db=db,
+    )
+
+
 def test_create_dataset_with_classifications(
     client: Client,
     gt_clfs1: List[GroundTruthImageClassification],
     gt_clfs2: List[GroundTruthImageClassification],
+    gt_clfs3: List[GroundTruthImageClassification],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
-    """This test does the following
-    - Creates a dataset
-    - Adds groundtruth data to it in two batches
-    - Verifies the images and labels have actually been added
-    - Finalizes dataset
-    - Tries to add more data and verifies an error is thrown
-    """
-    dataset = client.create_dataset(dset_name)
-
-    with pytest.raises(ClientException) as exc_info:
-        client.create_dataset(dset_name)
-    assert "already exists" in str(exc_info)
-
-    dataset.add_groundtruth_classifications(gt_clfs1)
-    dataset.add_groundtruth_classifications(gt_clfs2)
-
-    # check that the dataset has two images
-    images = dataset.get_images()
-    assert len(images) == 2
-    assert set([image.uri for image in images]) == {"uri5", "uri6"}
-
-    # check that there are two labels
-    labels = dataset.get_labels()
-    assert len(labels) == 2
-    assert set([(label.key, label.value) for label in labels]) == {
-        ("k5", "v5"),
-        ("k4", "v4"),
-    }
-
-    dataset.finalize()
-    # check that we get an error when trying to add more images
-    # to the dataset since it is finalized
-    with pytest.raises(ClientException) as exc_info:
-        dataset.add_groundtruth_classifications(
-            [
-                GroundTruthImageClassification(
-                    labels=[Label(key="k3", value="v3")],
-                    image=Image(uri="uri8"),
-                )
-            ]
-        )
-    assert "since it is finalized" in str(exc_info)
+    _test_create_dataset_with_gts(
+        client=client,
+        gts1=gt_clfs1,
+        gts2=gt_clfs2,
+        gts3=gt_clfs3,
+        add_method_name="add_groundtruth_classifications",
+        expected_image_uris={"uri5", "uri6"},
+        expected_labels_tuples={
+            ("k5", "v5"),
+            ("k4", "v4"),
+        },
+        db=db,
+    )
 
 
 def test_create_model_with_predicted_classifications(
