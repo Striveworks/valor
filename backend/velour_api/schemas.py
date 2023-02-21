@@ -1,35 +1,120 @@
 from pydantic import BaseModel, validator
 
 
-class DetectionBase(BaseModel):
-    # should enforce beginning and ending points are the same? or no?
-    boundary: list[tuple[float, float]]
-    class_label: str
-
-    @validator("boundary")
-    def enough_pts(cls, v):
-        if len(v) < 3:
-            raise ValueError(
-                "Boundary must be composed of at least three points."
-            )
-        return v
+def validate_single_polygon(poly: list[tuple[float, float]]):
+    if len(poly) < 3:
+        raise ValueError("Polygon must be composed of at least three points.")
+    return poly
 
 
-class PredictedDetectionBase(DetectionBase):
+class Dataset(BaseModel):
+    name: str
+    draft: bool
+
+
+class DatasetCreate(BaseModel):
+    name: str
+
+
+class Model(BaseModel):
+    name: str
+
+
+class Image(BaseModel):
+    uri: str
+
+
+class Label(BaseModel):
+    key: str
+    value: str
+
+
+class ScoredLabel(BaseModel):
+    label: Label
     score: float
 
 
-class GroundTruthDetectionCreate(DetectionBase):
-    pass
+class DetectionBase(BaseModel):
+    # should enforce beginning and ending points are the same? or no?
+    boundary: list[tuple[float, float]]
+    image: Image
 
-
-class PredictedDetectionCreate(PredictedDetectionBase):
-    pass
+    @validator("boundary")
+    def enough_pts(cls, v):
+        return validate_single_polygon(v)
 
 
 class GroundTruthDetection(DetectionBase):
-    id: int
+    labels: list[Label]
 
 
-class PredictedDetection(PredictedDetectionBase):
-    id: int
+class PredictedDetection(DetectionBase):
+    scored_labels: list[ScoredLabel]
+
+
+class PredictedDetectionsCreate(BaseModel):
+    model_name: str
+    detections: list[PredictedDetection]
+
+
+class GroundTruthDetectionsCreate(BaseModel):
+    dataset_name: str
+    detections: list[GroundTruthDetection]
+
+
+class ImageClassificationBase(BaseModel):
+    image: Image
+    labels: list[Label]
+
+
+class PredictedImageClassification(BaseModel):
+    image: Image
+    scored_labels: list[ScoredLabel]
+
+
+class GroundTruthImageClassificationsCreate(BaseModel):
+    dataset_name: str
+    classifications: list[ImageClassificationBase]
+
+
+class PredictedImageClassificationsCreate(BaseModel):
+    model_name: str
+    classifications: list[PredictedImageClassification]
+
+
+class PolygonWithHole(BaseModel):
+    polygon: list[tuple[float, float]]
+    hole: list[tuple[float, float]] = None
+
+    @validator("polygon")
+    def enough_pts_outer(cls, v):
+        return validate_single_polygon(v)
+
+
+class SegmentationBase(BaseModel):
+    shape: list[PolygonWithHole]
+    image: Image
+
+    @validator("shape")
+    def non_empty(cls, v):
+        if len(v) == 0:
+            raise ValueError("shape must have at least one element.")
+        return v
+
+
+class GroundTruthSegmentation(SegmentationBase):
+    labels: list[Label]
+
+
+class PredictedSegmentation(SegmentationBase):
+    scored_labels: list[ScoredLabel]
+
+
+class GroundTruthSegmentationsCreate(BaseModel):
+    dataset_name: str
+    segmentations: list[GroundTruthSegmentation]
+
+
+class PredictedSegmentationsCreate(BaseModel):
+    model_name: str
+    segmentations: list[PredictedSegmentation]

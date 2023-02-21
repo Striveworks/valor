@@ -1,17 +1,20 @@
 import heapq
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
 from velour_api import ops
-from velour_api.models import Detection
+from velour_api.models import (
+    Label,
+    LabeledGroundTruthDetection,
+    LabeledPredictedDetection,
+)
 
 
 def _match_array(
-    ious: List[List[float]],
+    ious: list[list[float]],
     iou_thres: float,
-) -> List[Optional[int]]:
+) -> list[int | None]:
     """
     iou[i][j] should be the iou between predicted detection i and groundtruth detection j
 
@@ -52,8 +55,8 @@ class DetectionMatchInfo:
 
 def _get_tp_fp_single_image_single_class(
     db: Session,
-    predictions: list[Detection],
-    groundtruths: list[Detection],
+    predictions: list[LabeledPredictedDetection],
+    groundtruths: list[LabeledGroundTruthDetection],
     iou_threshold: float,
 ) -> list[DetectionMatchInfo]:
     predictions = sorted(
@@ -76,22 +79,25 @@ def _get_tp_fp_single_image_single_class(
 
 def iou_matrix(
     db: Session,
-    predictions: List[Detection],
-    groundtruths: List[Detection],
-) -> List[List[float]]:
+    predictions: list[LabeledPredictedDetection],
+    groundtruths: list[LabeledGroundTruthDetection],
+) -> list[list[float]]:
     """Returns a list of lists where the entry at [i][j]
     is the iou between `predictions[i]` and `groundtruths[j]`.
     """
-    return [[ops.iou(db, p, g) for g in groundtruths] for p in predictions]
+    return [
+        [ops.iou(db, p.detection, g.detection) for g in groundtruths]
+        for p in predictions
+    ]
 
 
 def ap(
     db: Session,
-    predictions: List[List[Detection]],
-    groundtruths: List[List[Detection]],
-    class_label: str,
+    predictions: list[list[LabeledPredictedDetection]],
+    groundtruths: list[list[LabeledGroundTruthDetection]],
+    label: Label,
     iou_thresholds: list[float],
-) -> Dict[float, float]:
+) -> dict[float, float]:
     """Computes the average precision. Return is a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
     `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
@@ -100,12 +106,10 @@ def ap(
     assert len(predictions) == len(groundtruths)
 
     predictions = [
-        [p for p in preds if p.class_label == class_label]
-        for preds in predictions
+        [p for p in preds if p.label == label] for preds in predictions
     ]
     groundtruths = [
-        [gt for gt in gts if gt.class_label == class_label]
-        for gts in groundtruths
+        [gt for gt in gts if gt.label == label] for gts in groundtruths
     ]
 
     # total number of groundtruth objects across all images
@@ -184,9 +188,9 @@ def calculate_ap_101_pt_interp(precisions, recalls):
 
 def compute_ap_metrics(
     db: Session,
-    predictions: List[List[Detection]],
-    groundtruths: List[List[Detection]],
-    iou_thresholds: List[float],
+    predictions: list[list[LabeledPredictedDetection]],
+    groundtruths: list[list[LabeledGroundTruthDetection]],
+    iou_thresholds: list[float],
 ) -> dict:
     """Computes average precision metrics. Note that this is not an optimized method
     and is here for toy/test purposes. Will likely be (re)moved in future versions.
@@ -195,20 +199,20 @@ def compute_ap_metrics(
     and mAP scores by `d["mAP"][iou_key]` where `iou_key` is `f"IoU={iou_thres}"` or
     `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"`
     """
-    class_labels = set(
-        [pred.class_label for preds in predictions for pred in preds]
-    ).union([gt.class_label for gts in groundtruths for gt in gts])
+    labels = set(
+        [pred.label for preds in predictions for pred in preds]
+    ).union([gt.label for gts in groundtruths for gt in gts])
 
     ret = {
         "AP": {
-            class_label: ap(
+            (label.key, label.value): ap(
                 db=db,
                 predictions=predictions,
                 groundtruths=groundtruths,
-                class_label=class_label,
+                label=label,
                 iou_thresholds=iou_thresholds,
             )
-            for class_label in class_labels
+            for label in labels
         }
     }
 
@@ -225,7 +229,7 @@ def compute_ap_metrics(
     ]
     ret["mAP"] = {
         k: _ave_ignore_minus_one(
-            [ret["AP"][class_label][k] for class_label in class_labels]
+            [ret["AP"][(label.key, label.value)][k] for label in labels]
         )
         for k in keys_to_avg_over
     }

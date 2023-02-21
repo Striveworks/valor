@@ -2,10 +2,25 @@ import math
 from dataclasses import dataclass
 from typing import List
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image as PILImage
+from PIL import ImageDraw, ImageFont
 
-MaskType = List[List[float]]
-ImageInput = List[Image.Image]
+
+@dataclass
+class Image:
+    uri: str
+
+
+@dataclass
+class Label:
+    key: str
+    value: str
+
+
+@dataclass
+class ScoredLabel:
+    label: Label
+    score: float
 
 
 @dataclass
@@ -28,11 +43,11 @@ class BoundingPolygon:
 
     def draw_on_image(
         self,
-        img: Image.Image,
+        img: PILImage.Image,
         inplace: bool = False,
         text: str = None,
         font_size: int = 24,
-    ) -> Image.Image:
+    ) -> PILImage.Image:
         color = (255, 0, 0)
         img = img if inplace else img.copy()
         img_draw = ImageDraw.Draw(img)
@@ -74,11 +89,12 @@ class DetectionBase:
     """Class representing a single object detection in an image."""
 
     boundary: BoundingPolygon
-    class_label: str
+    labels: List[Label]
+    image: Image
 
     def draw_on_image(
-        self, img: Image.Image, inplace: bool = False
-    ) -> Image.Image:
+        self, img: PILImage.Image, inplace: bool = False
+    ) -> PILImage.Image:
         img = self.boundary.draw_on_image(
             img, inplace=inplace, text=f"{self.class_label} {self.score:0.2f}"
         )
@@ -86,19 +102,70 @@ class DetectionBase:
 
 
 @dataclass
-class GroundTruthDetection(DetectionBase):
-    pass
+class GroundTruthDetection:
+    boundary: BoundingPolygon
+    labels: List[Label]
+    image: Image
+
+    def draw_on_image(
+        self, img: PILImage.Image, inplace: bool = False
+    ) -> PILImage.Image:
+        text = ", ".join(
+            [f"{label.key}:{label.value}" for label in self.labels]
+        )
+        img = self.boundary.draw_on_image(img, inplace=inplace, text=text)
+        return img
 
 
 @dataclass
-class PredictedDetection(DetectionBase):
-    score: float
+class PredictedDetection:
+    boundary: BoundingPolygon
+    scored_labels: List[ScoredLabel]
+    image: Image
 
-    def __post_init__(self):
-        if not 0.0 <= self.score <= 1.0:
-            raise ValueError(
-                f"score must be between 0.0 and 1.0 but got {self.score}."
-            )
+    def draw_on_image(
+        self, img: PILImage.Image, inplace: bool = False
+    ) -> PILImage.Image:
+        text = ", ".join(
+            [
+                f"{scored_label.label.key}:{scored_label.label.value} ({scored_label.score})"
+                for scored_label in self.scored_labels
+            ]
+        )
+        img = self.boundary.draw_on_image(img, inplace=inplace, text=text)
+        return img
+
+
+@dataclass
+class PolygonWithHole:
+    polygon: BoundingPolygon
+    hole: BoundingPolygon = None
+
+
+@dataclass
+class GroundTruthSegmentation:
+    shape: List[PolygonWithHole]
+    labels: List[Label]
+    image: Image
+
+
+@dataclass
+class PredictedSegmentation:
+    shape: List[PolygonWithHole]
+    scored_labels: List[ScoredLabel]
+    image: Image
+
+
+@dataclass
+class GroundTruthImageClassification:
+    image: Image
+    labels: List[Label]
+
+
+@dataclass
+class PredictedImageClassification:
+    image: Image
+    scored_labels: List[ScoredLabel]
 
 
 def _write_text(
