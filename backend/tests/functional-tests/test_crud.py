@@ -1,15 +1,31 @@
 import io
 
+import numpy as np
 import pytest
 from geoalchemy2.functions import ST_Area
 from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, models, schemas
+from velour_api import crud, models, ops, schemas
 
 dset_name = "test dataset"
 model_name = "test model"
+
+
+def random_mask_bytes(size: tuple[int, int]) -> bytes:
+    mask = np.random.randint(0, 2, size=size, dtype=bool)
+    mask = Image.fromarray(mask)
+    f = io.BytesIO()
+    mask.save(f, format="PNG")
+    f.seek(0)
+    return f.read()
+
+
+def bytes_to_pil(b: bytes) -> Image.Image:
+    f = io.BytesIO(b)
+    img = Image.open(f)
+    return img
 
 
 def check_db_empty(db: Session):
@@ -43,24 +59,6 @@ def poly_with_hole() -> schemas.PolygonWithHole:
         polygon=[(0, 10), (10, 10), (10, 0), (0, 0)],
         hole=[(2, 4), (2, 8), (6, 4)],
     )
-
-
-@pytest.fixture
-def mask_bytes1() -> bytes:
-    mask = Image.new(mode="1", size=(32, 64))
-    f = io.BytesIO()
-    mask.save(f, format="PNG")
-    f.seek(0)
-    return f.read()
-
-
-@pytest.fixture
-def mask_bytes2() -> bytes:
-    mask = Image.new(mode="1", size=(16, 12))
-    f = io.BytesIO()
-    mask.save(f, format="PNG")
-    f.seek(0)
-    return f.read()
 
 
 @pytest.fixture
@@ -137,9 +135,9 @@ def gt_segs_create(
 
 
 @pytest.fixture
-def pred_segs_create(
-    mask_bytes1: bytes, mask_bytes2: bytes
-) -> schemas.PredictedSegmentationsCreate:
+def pred_segs_create() -> schemas.PredictedSegmentationsCreate:
+    mask_bytes1 = random_mask_bytes(size=(32, 64))
+    mask_bytes2 = random_mask_bytes(size=(16, 12))
     return schemas.PredictedSegmentationsCreate(
         model_name=model_name,
         segmentations=[
@@ -418,7 +416,7 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
     assert crud.number_of_rows(db, models.Label) == 1
 
 
-def test_create_predicted_segmentations_and_delete_model(
+def test_create_predicted_segmentations_check_area_and_delete_model(
     db: Session,
     pred_segs_create: schemas.PredictedSegmentationsCreate,
     gt_segs_create: schemas.GroundTruthSegmentationsCreate,
@@ -443,6 +441,13 @@ def test_create_predicted_segmentations_and_delete_model(
     # check db has the added predictions
     assert crud.number_of_rows(db, models.PredictedSegmentation) == 2
     assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 2
+
+    # grab the first one and check that the area of the raster
+    # matches the area of the image
+    img = crud.get_image(db, "uri1")
+    seg = img.predicted_segmentations[0]
+    mask = bytes_to_pil(pred_segs_create.segmentations[0].shape)
+    assert ops.pred_seg_area(db, seg) == np.array(mask).sum()
 
     # delete model and check all detections from it are gone
     crud.delete_model(db, model_name)

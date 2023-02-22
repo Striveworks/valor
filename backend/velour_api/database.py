@@ -33,6 +33,10 @@ def create_db(timeout: int = 15):
     start_time = time.time()
     while True:
         try:
+            db.execute(
+                text("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';")
+            )
+            db.commit()
             # create raster extension if it doesn't exist
             if (
                 db.execute(
