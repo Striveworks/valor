@@ -111,7 +111,7 @@ def _create_pred_segmentation_mappings(
 ) -> list[dict[str, str]]:
     return [
         {
-            "shape": segmentation.shape,
+            "shape": segmentation.mask_bytes,
             "image_id": image_id,
         }
         for segmentation, image_id in zip(segmentations, image_ids)

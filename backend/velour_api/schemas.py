@@ -1,7 +1,8 @@
 import io
+from base64 import b64decode
 
 import PIL.Image
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, Extra, Field, validator
 
 
 def validate_single_polygon(poly: list[tuple[float, float]]):
@@ -107,14 +108,25 @@ class GroundTruthSegmentation(BaseModel):
 
 
 class PredictedSegmentation(BaseModel):
-    shape: bytes
+    base64_mask: str = Field(str, allow_mutation=False)
     image: Image
     scored_labels: list[ScoredLabel]
 
-    @validator("shape")
+    class Config:
+        extra = Extra.allow
+        validate_assignment = True
+
+    @property
+    def mask_bytes(self) -> bytes:
+        if not hasattr(self, "_mask_bytes"):
+            self._mask_bytes = b64decode(self.base64_mask)
+
+        return self._mask_bytes
+
+    @validator("base64_mask")
     def check_png_and_mode(cls, v):
         """Check that the bytes are for a png file and is binary"""
-        f = io.BytesIO(v)
+        f = io.BytesIO(b64decode(v))
         img = PIL.Image.open(f)
         f.close()
         if img.format != "PNG":

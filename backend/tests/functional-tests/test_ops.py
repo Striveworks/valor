@@ -84,13 +84,26 @@ def test_area_pred_seg(
 def test_intersection_pred_seg_gt_seg(
     db: Session, model: models.Model, img: models.Image
 ):
-    mask = np.zeros(shape=(100, 200), dtype=bool)
-    mask[50:80, 20:30] = True
+    h, w = 100, 200
+    y_min, y_max, x_min, x_max = 50, 80, 20, 30
+    mask = np.zeros(shape=(h, w), dtype=bool)
+    mask[y_min:y_max, x_min:x_max] = True
     mask_bytes = pil_to_bytes(Image.fromarray(mask))
 
+    poly_y_min, poly_y_max, poly_x_min, poly_x_max = 60, 90, 10, 25
     poly = schemas.PolygonWithHole(
-        polygon=[(10, 60), (25, 60), (25, 90), (10, 90)]
+        polygon=[
+            (poly_x_min, poly_y_min),
+            (poly_x_max, poly_y_min),
+            (poly_x_max, poly_y_max),
+            (poly_x_min, poly_y_max),
+        ]
     )
+
+    inter_xmin = max(x_min, poly_x_min)
+    inter_xmax = min(x_max, poly_x_max)
+    inter_ymin = max(y_min, poly_y_min)
+    inter_ymax = min(y_max, poly_y_max)
 
     pred_seg = _pred_seg_from_bytes(
         db=db, mask_bytes=mask_bytes, model=model, img=img
@@ -99,4 +112,4 @@ def test_intersection_pred_seg_gt_seg(
 
     assert ops.intersection_area_of_gt_seg_and_pred_seg(
         db=db, gt_seg=gt_seg, pred_seg=pred_seg
-    ) == (25 - 20) * (80 - 60)
+    ) == (inter_xmax - inter_xmin) * (inter_ymax - inter_ymin)

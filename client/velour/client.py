@@ -1,9 +1,12 @@
+import io
+from base64 import b64encode
 from dataclasses import asdict
 from typing import Dict, List
 from urllib.parse import urljoin
 
+import numpy as np
 import requests
-
+from PIL import Image as PILImage
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
@@ -16,6 +19,15 @@ from velour.data_types import (
     PredictedImageClassification,
     PredictedSegmentation,
 )
+
+
+def _mask_array_to_pil_base64(mask: np.ndarray) -> str:
+    f = io.BytesIO()
+    PILImage.fromarray(mask).save(f, format="PNG")
+    f.seek(0)
+    mask_bytes = f.read()
+    f.close()
+    return b64encode(mask_bytes).decode()
 
 
 def _payload_for_bounding_polygon(poly: BoundingPolygon) -> List[List[int]]:
@@ -162,7 +174,7 @@ class Client:
             "model_name": model_name,
             "segmentations": [
                 {
-                    "shape": _payload_for_polys_with_holes(seg.shape),
+                    "base64_mask": _mask_array_to_pil_base64(seg.mask),
                     "scored_labels": [
                         asdict(scored_label)
                         for scored_label in seg.scored_labels

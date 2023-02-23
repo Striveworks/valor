@@ -2,6 +2,7 @@ import math
 from dataclasses import dataclass
 from typing import List
 
+import numpy as np
 from PIL import Image as PILImage
 from PIL import ImageDraw, ImageFont
 
@@ -151,9 +152,15 @@ class GroundTruthSegmentation:
 
 @dataclass
 class PredictedSegmentation:
-    shape: List[PolygonWithHole]
+    mask: np.ndarray
     scored_labels: List[ScoredLabel]
     image: Image
+
+    def __post_init__(self):
+        if self.mask.dtype != bool:
+            raise ValueError(
+                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {self.mask.dtype}"
+            )
 
 
 @dataclass

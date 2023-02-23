@@ -1,11 +1,14 @@
+import io
 import json
 from typing import Any
 
+import numpy as np
 import pytest
+from geoalchemy2.functions import ST_AsPNG
+from PIL import Image as PILImage
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
-from velour_api import models, ops
-
+from sqlalchemy.sql import text
 from velour.client import Client, ClientException
 from velour.data_types import (
     BoundingPolygon,
@@ -21,6 +24,8 @@ from velour.data_types import (
     PredictedSegmentation,
     ScoredLabel,
 )
+
+from velour_api import models, ops
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -109,6 +114,8 @@ def db(client: Client) -> Session:
 
     engine = create_engine("postgresql://postgres:password@localhost/postgres")
     sess = Session(engine)
+    sess.execute(text("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';"))
+    sess.execute(text("SET postgis.enable_outdb_rasters = True;"))
 
     yield sess
 
@@ -301,19 +308,19 @@ def pred_dets(
 
 
 @pytest.fixture
-def pred_segs(
-    rect1: BoundingPolygon, rect2: BoundingPolygon, rect3: BoundingPolygon
-) -> list[PredictedDetection]:
+def pred_segs() -> list[PredictedDetection]:
+    mask_1 = np.random.randint(0, 2, size=(64, 32), dtype=bool)
+    mask_2 = np.random.randint(0, 2, size=(12, 23), dtype=bool)
     return [
         PredictedSegmentation(
-            shape=[PolygonWithHole(polygon=rect1, hole=rect2)],
+            mask=mask_1,
             scored_labels=[
                 ScoredLabel(label=Label(key="k1", value="v1"), score=0.87)
             ],
             image=Image(uri="uri1"),
         ),
         PredictedSegmentation(
-            shape=[PolygonWithHole(polygon=rect3)],
+            mask=mask_2,
             scored_labels=[
                 ScoredLabel(label=Label(key="k2", value="v2"), score=0.92)
             ],
@@ -557,6 +564,7 @@ def test_create_model_with_predicted_segmentations(
     pred_segs: list[PredictedSegmentation],
     db: Session,
 ):
+    """Tests that we can create a predicted segmentation from a mask array"""
     labeled_pred_segs = _test_create_model_with_preds(
         client=client,
         gts=gt_segs1,
@@ -570,23 +578,16 @@ def test_create_model_with_predicted_segmentations(
         db=db,
     )
 
-    # check segmentation
+    # grab the segmentation from the db, recover the mask, and check
+    # its equal to the mask the client sent over
     db_pred = [
         p for p in labeled_pred_segs if p.segmentation.image.uri == "uri1"
     ][0]
+    png_from_db = db.scalar(ST_AsPNG(db_pred.segmentation.shape))
+    f = io.BytesIO(png_from_db.tobytes())
+    mask_array = np.array(PILImage.open(f))
 
-    outer, inner = _list_of_outer_and_inner_points_from_wkt(
-        db, db_pred.segmentation
-    )
-
-    pred = pred_segs[0]
-
-    assert set(outer) == set(
-        [(pt.x, pt.y) for pt in pred.shape[0].polygon.points]
-    )
-    assert set(inner) == set(
-        [(pt.x, pt.y) for pt in pred.shape[0].hole.points]
-    )
+    np.testing.assert_equal(mask_array, pred_segs[0].mask)
 
 
 def test_create_dataset_with_classifications(
