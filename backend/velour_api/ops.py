@@ -42,7 +42,7 @@ def intersection_area_of_gt_seg_and_pred_seg(
     return db.execute(
         text(
             f"""
-        SELECT ST_Area((ST_Intersection(ST_SetGeoReference({PredictedSegmentation.__tablename__}.shape, '1 0 0 1 0 0', 'GDAL'), {GroundTruthSegmentation.__tablename__}.shape)).geom)
+        SELECT ST_Area((ST_Intersection(ST_SetGeoReference(ST_SetBandNoDataValue({PredictedSegmentation.__tablename__}.shape, 0), '1 0 0 1 0 0', 'GDAL'), {GroundTruthSegmentation.__tablename__}.shape)).geom)
         FROM {PredictedSegmentation.__tablename__}, {GroundTruthSegmentation.__tablename__}
         WHERE {PredictedSegmentation.__tablename__}.id={pred_seg.id} AND {GroundTruthSegmentation.__tablename__}.id={gt_seg.id}
         """
