@@ -1,4 +1,5 @@
 import io
+from base64 import b64decode, b64encode
 
 import numpy as np
 import pytest
@@ -129,11 +130,13 @@ def gt_segs_create(
 def pred_segs_create(
     mask_bytes1: bytes, mask_bytes2: bytes
 ) -> schemas.PredictedSegmentationsCreate:
+    b64_mask1 = b64encode(mask_bytes1).decode()
+    b64_mask2 = b64encode(mask_bytes2).decode()
     return schemas.PredictedSegmentationsCreate(
         model_name=model_name,
         segmentations=[
             schemas.PredictedSegmentation(
-                shape=mask_bytes1,
+                base64_mask=b64_mask1,
                 image=schemas.Image(uri="uri1"),
                 scored_labels=[
                     schemas.ScoredLabel(
@@ -142,7 +145,7 @@ def pred_segs_create(
                 ],
             ),
             schemas.PredictedSegmentation(
-                shape=mask_bytes2,
+                base64_mask=b64_mask2,
                 image=schemas.Image(uri="uri1"),
                 scored_labels=[
                     schemas.ScoredLabel(
@@ -437,7 +440,9 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     # matches the area of the image
     img = crud.get_image(db, "uri1")
     seg = img.predicted_segmentations[0]
-    mask = bytes_to_pil(pred_segs_create.segmentations[0].shape)
+    mask = bytes_to_pil(
+        b64decode(pred_segs_create.segmentations[0].base64_mask)
+    )
     assert ops.pred_seg_area(db, seg) == np.array(mask).sum()
 
     # delete model and check all detections from it are gone
