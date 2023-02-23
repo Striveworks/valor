@@ -13,15 +13,6 @@ dset_name = "test dataset"
 model_name = "test model"
 
 
-def random_mask_bytes(size: tuple[int, int]) -> bytes:
-    mask = np.random.randint(0, 2, size=size, dtype=bool)
-    mask = Image.fromarray(mask)
-    f = io.BytesIO()
-    mask.save(f, format="PNG")
-    f.seek(0)
-    return f.read()
-
-
 def bytes_to_pil(b: bytes) -> Image.Image:
     f = io.BytesIO(b)
     img = Image.open(f)
@@ -135,9 +126,9 @@ def gt_segs_create(
 
 
 @pytest.fixture
-def pred_segs_create() -> schemas.PredictedSegmentationsCreate:
-    mask_bytes1 = random_mask_bytes(size=(32, 64))
-    mask_bytes2 = random_mask_bytes(size=(16, 12))
+def pred_segs_create(
+    mask_bytes1: bytes, mask_bytes2: bytes
+) -> schemas.PredictedSegmentationsCreate:
     return schemas.PredictedSegmentationsCreate(
         model_name=model_name,
         segmentations=[

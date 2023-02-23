@@ -41,7 +41,7 @@ def create_db(timeout: int = 15):
             if (
                 db.execute(
                     text(
-                        "SELECT * FROM pg_available_extensions WHERE name='postgis_raster';"
+                        "SELECT * FROM pg_extension WHERE extname='postgis_raster';"
                     )
                 ).scalar()
                 is None

@@ -245,15 +245,15 @@ def _create_labeled_gt_detection_mappings(
 
 def _create_labeled_gt_segmentation_mappings(
     label_tuple_to_id,
-    gt_det_ids: list[int],
-    detections: list[schemas.GroundTruthSegmentation],
+    gt_seg_ids: list[int],
+    segmentations: list[schemas.GroundTruthSegmentation],
 ):
     return [
         {
-            "segmentation_id": gt_det_id,
+            "segmentation_id": gt_seg_id,
             "label_id": label_tuple_to_id[tuple(label)],
         }
-        for gt_det_id, segmentation in zip(gt_det_ids, detections)
+        for gt_seg_id, segmentation in zip(gt_seg_ids, segmentations)
         for label in segmentation.labels
     ]
 

@@ -25,8 +25,8 @@ class ScoredLabel:
 
 @dataclass
 class Point:
-    x: int
-    y: int
+    x: float
+    y: float
 
     def resize(
         self, og_img_h: int, og_img_w: int, new_img_h: int, new_img_w: int

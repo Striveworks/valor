@@ -1,4 +1,8 @@
+import io
+
+import numpy as np
 import pytest
+from PIL import Image
 from sqlalchemy import inspect, text
 
 from velour_api import models
@@ -16,6 +20,25 @@ tablenames = [v.__tablename__ for v in classes if hasattr(v, "__tablename__")]
 def drop_all(db):
     db.execute(text(f"DROP TABLE {', '.join(tablenames)};"))
     db.commit()
+
+
+def random_mask_bytes(size: tuple[int, int]) -> bytes:
+    mask = np.random.randint(0, 2, size=size, dtype=bool)
+    mask = Image.fromarray(mask)
+    f = io.BytesIO()
+    mask.save(f, format="PNG")
+    f.seek(0)
+    return f.read()
+
+
+@pytest.fixture
+def mask_bytes1():
+    return random_mask_bytes(size=(32, 64))
+
+
+@pytest.fixture
+def mask_bytes2():
+    return random_mask_bytes(size=(16, 12))
 
 
 @pytest.fixture
