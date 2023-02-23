@@ -2,6 +2,7 @@ import logging
 import os
 import time
 
+import psycopg2
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
@@ -33,6 +34,7 @@ def create_db(timeout: int = 15):
     start_time = time.time()
     while True:
         try:
+            # will raise psycopg2.OperationalError if db not ready
             db.execute(
                 text("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';")
             )
@@ -51,7 +53,11 @@ def create_db(timeout: int = 15):
             db.close()
             models.Base.metadata.create_all(bind=engine)
             break
-        except (OperationalError, ProgrammingError) as e:
+        except (
+            psycopg2.OperationalError,
+            OperationalError,
+            ProgrammingError,
+        ) as e:
             if time.time() - start_time >= timeout:
                 raise RuntimeError(
                     f"Failed to connect to database within {timeout} seconds. Error: {str(e)}"
