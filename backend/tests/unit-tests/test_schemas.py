@@ -1,4 +1,5 @@
 import os
+from base64 import b64encode
 from tempfile import TemporaryDirectory
 
 import PIL.Image
@@ -33,50 +34,44 @@ def test_ground_truth_detection_validation_neg():
     assert "must be composed of at least three points" in str(exc_info)
 
 
-def test_predicted_segmentation_validation_pos():
+def _create_b64_mask(mode: str, ext: str) -> str:
     with TemporaryDirectory() as tempdir:
-        img = PIL.Image.new(mode="1", size=(20, 20))
-        img_path = os.path.join(tempdir, "img.png")
+        img = PIL.Image.new(mode=mode, size=(20, 20))
+        img_path = os.path.join(tempdir, f"img.{ext}")
         img.save(img_path)
 
         with open(img_path, "rb") as f:
             img_bytes = f.read()
 
+        return b64encode(img_bytes).decode()
+
+
+def test_predicted_segmentation_validation_pos():
+    base64_mask = _create_b64_mask(mode="1", ext="png")
+
     pred_seg = PredictedSegmentation(
-        shape=img_bytes, image=Image(uri="uri"), scored_labels=[]
+        base64_mask=base64_mask, image=Image(uri="uri"), scored_labels=[]
     )
-    assert pred_seg.shape == img_bytes
+    assert pred_seg.base64_mask == base64_mask
 
 
 def test_predicted_segmentation_validation_mode_neg():
     """Check we get an error if the mode is not binary"""
-    with TemporaryDirectory() as tempdir:
-        img = PIL.Image.new(mode="RGB", size=(20, 20))
-        img_path = os.path.join(tempdir, "img.png")
-        img.save(img_path)
-
-        with open(img_path, "rb") as f:
-            img_bytes = f.read()
+    base64_mask = _create_b64_mask(mode="RGB", ext="png")
 
     with pytest.raises(ValueError) as exc_info:
         PredictedSegmentation(
-            shape=img_bytes, image=Image(uri="uri"), scored_labels=[]
+            base64_mask=base64_mask, image=Image(uri="uri"), scored_labels=[]
         )
     assert "Expected image mode to be binary but got mode" in str(exc_info)
 
 
 def test_predicted_segmentation_validation_format_neg():
     """Check we get an error if the format is not PNG"""
-    with TemporaryDirectory() as tempdir:
-        img = PIL.Image.new(mode="1", size=(20, 20))
-        img_path = os.path.join(tempdir, "img.jpg")
-        img.save(img_path)
-
-        with open(img_path, "rb") as f:
-            img_bytes = f.read()
+    base64_mask = _create_b64_mask(mode="1", ext="jpg")
 
     with pytest.raises(ValueError) as exc_info:
         PredictedSegmentation(
-            shape=img_bytes, image=Image(uri="uri"), scored_labels=[]
+            base64_mask=base64_mask, image=Image(uri="uri"), scored_labels=[]
         )
     assert "Expected image format PNG but got" in str(exc_info)
