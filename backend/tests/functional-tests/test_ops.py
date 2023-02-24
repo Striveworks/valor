@@ -60,10 +60,10 @@ def _pred_seg_from_bytes(
     return pred_seg
 
 
-def _gt_seg_from_poly(
-    db: Session, poly: schemas.PolygonWithHole, img: models.Image
+def _gt_seg_from_polys(
+    db: Session, polys: schemas.PolygonWithHole, img: models.Image
 ) -> models.GroundTruthSegmentation:
-    wkt_poly = _wkt_multipolygon_from_polygons_with_hole([poly])
+    wkt_poly = _wkt_multipolygon_from_polygons_with_hole(polys)
     gt_seg = models.GroundTruthSegmentation(shape=wkt_poly, image_id=img.id)
     db.add(gt_seg)
     db.commit()
@@ -108,8 +108,56 @@ def test_intersection_pred_seg_gt_seg(
     pred_seg = _pred_seg_from_bytes(
         db=db, mask_bytes=mask_bytes, model=model, img=img
     )
-    gt_seg = _gt_seg_from_poly(db=db, poly=poly, img=img)
+    gt_seg = _gt_seg_from_polys(db=db, polys=[poly], img=img)
 
     assert ops.intersection_area_of_gt_seg_and_pred_seg(
         db=db, gt_seg=gt_seg, pred_seg=pred_seg
     ) == (inter_xmax - inter_xmin) * (inter_ymax - inter_ymin)
+
+
+def test_intersection_pred_seg_multi_poly_gt_seg(
+    db: Session, model: models.Model, img: models.Image
+):
+    """Tests intersection of a predictino mask with a groundtruth
+    that's comprised of two disjoint polygons
+    """
+
+    h, w = 300, 800
+    y_min, y_max, x_min, x_max = 7, 290, 108, 316
+    mask = np.zeros(shape=(h, w), dtype=bool)
+    mask[y_min:y_max, x_min:x_max] = True
+    mask_bytes = pil_to_bytes(Image.fromarray(mask))
+
+    poly_y_min, poly_y_max, poly_x_min, poly_x_max = 103, 200, 92, 330
+    poly1 = schemas.PolygonWithHole(
+        polygon=[
+            (poly_x_min, poly_y_min),
+            (poly_x_max, poly_y_min),
+            (poly_x_max, poly_y_max),
+            (poly_x_min, poly_y_max),
+        ]
+    )
+    # triangle contained in the mask
+    poly2 = schemas.PolygonWithHole(
+        polygon=[(200, 210), (200, 250), (265, 210)]
+    )
+
+    inter_xmin = max(x_min, poly_x_min)
+    inter_xmax = min(x_max, poly_x_max)
+    inter_ymin = max(y_min, poly_y_min)
+    inter_ymax = min(y_max, poly_y_max)
+
+    pred_seg = _pred_seg_from_bytes(
+        db=db, mask_bytes=mask_bytes, model=model, img=img
+    )
+    gt_seg = _gt_seg_from_polys(db=db, polys=[poly1, poly2], img=img)
+
+    area_int_mask_rect = (inter_xmax - inter_xmin) * (inter_ymax - inter_ymin)
+    area_triangle = (265 - 200) * (250 - 210) / 2
+
+    assert (
+        ops.intersection_area_of_gt_seg_and_pred_seg(
+            db=db, gt_seg=gt_seg, pred_seg=pred_seg
+        )
+        == area_int_mask_rect + area_triangle
+    )
