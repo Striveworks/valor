@@ -1,8 +1,12 @@
+import io
+
+import numpy as np
 import pytest
+from PIL import Image
 from sqlalchemy import inspect, text
 
 from velour_api import models
-from velour_api.database import Base, SessionLocal, create_db
+from velour_api.database import Base, create_db, make_session
 
 # get all velour table names
 classes = [
@@ -18,12 +22,31 @@ def drop_all(db):
     db.commit()
 
 
+def random_mask_bytes(size: tuple[int, int]) -> bytes:
+    mask = np.random.randint(0, 2, size=size, dtype=bool)
+    mask = Image.fromarray(mask)
+    f = io.BytesIO()
+    mask.save(f, format="PNG")
+    f.seek(0)
+    return f.read()
+
+
+@pytest.fixture
+def mask_bytes1():
+    return random_mask_bytes(size=(32, 64))
+
+
+@pytest.fixture
+def mask_bytes2():
+    return random_mask_bytes(size=(16, 12))
+
+
 @pytest.fixture
 def db():
     """This fixture provides a db session. a `RuntimeError` is raised if
     a velour tablename already exists. At teardown, all velour tables are wiped.
     """
-    db = SessionLocal()
+    db = make_session()
     inspector = inspect(db.connection())
     for tablename in tablenames:
         if inspector.has_table(tablename):
@@ -32,7 +55,7 @@ def db():
                 "functional tests should be run with an empty db."
             )
 
-    create_db(timeout=30)
+    create_db()
     yield db
     # teardown
     drop_all(db)

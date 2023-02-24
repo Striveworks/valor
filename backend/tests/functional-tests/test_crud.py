@@ -1,12 +1,23 @@
+import io
+from base64 import b64decode, b64encode
+
+import numpy as np
 import pytest
 from geoalchemy2.functions import ST_Area
+from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, models, schemas
+from velour_api import crud, models, ops, schemas
 
 dset_name = "test dataset"
 model_name = "test model"
+
+
+def bytes_to_pil(b: bytes) -> Image.Image:
+    f = io.BytesIO(b)
+    img = Image.open(f)
+    return img
 
 
 def check_db_empty(db: Session):
@@ -117,13 +128,15 @@ def gt_segs_create(
 
 @pytest.fixture
 def pred_segs_create(
-    poly_with_hole, poly_without_hole
+    mask_bytes1: bytes, mask_bytes2: bytes
 ) -> schemas.PredictedSegmentationsCreate:
+    b64_mask1 = b64encode(mask_bytes1).decode()
+    b64_mask2 = b64encode(mask_bytes2).decode()
     return schemas.PredictedSegmentationsCreate(
         model_name=model_name,
         segmentations=[
             schemas.PredictedSegmentation(
-                shape=[poly_with_hole],
+                base64_mask=b64_mask1,
                 image=schemas.Image(uri="uri1"),
                 scored_labels=[
                     schemas.ScoredLabel(
@@ -132,7 +145,7 @@ def pred_segs_create(
                 ],
             ),
             schemas.PredictedSegmentation(
-                shape=[poly_without_hole],
+                base64_mask=b64_mask2,
                 image=schemas.Image(uri="uri1"),
                 scored_labels=[
                     schemas.ScoredLabel(
@@ -397,7 +410,7 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
     assert crud.number_of_rows(db, models.Label) == 1
 
 
-def test_create_predicted_segmentations_and_delete_model(
+def test_create_predicted_segmentations_check_area_and_delete_model(
     db: Session,
     pred_segs_create: schemas.PredictedSegmentationsCreate,
     gt_segs_create: schemas.GroundTruthSegmentationsCreate,
@@ -422,6 +435,15 @@ def test_create_predicted_segmentations_and_delete_model(
     # check db has the added predictions
     assert crud.number_of_rows(db, models.PredictedSegmentation) == 2
     assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 2
+
+    # grab the first one and check that the area of the raster
+    # matches the area of the image
+    img = crud.get_image(db, "uri1")
+    seg = img.predicted_segmentations[0]
+    mask = bytes_to_pil(
+        b64decode(pred_segs_create.segmentations[0].base64_mask)
+    )
+    assert ops.pred_seg_area(db, seg) == np.array(mask).sum()
 
     # delete model and check all detections from it are gone
     crud.delete_model(db, model_name)

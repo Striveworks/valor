@@ -92,14 +92,26 @@ def _create_detection_mappings(
     ]
 
 
-def _create_segmentaiton_mappings(
-    segmentations: list[schemas.SegmentationBase], image_ids: list[str]
+def _create_gt_segmentation_mappings(
+    segmentations: list[schemas.GroundTruthSegmentation], image_ids: list[str]
 ) -> list[dict[str, str]]:
     return [
         {
             "shape": _wkt_multipolygon_from_polygons_with_hole(
                 segmentation.shape
             ),
+            "image_id": image_id,
+        }
+        for segmentation, image_id in zip(segmentations, image_ids)
+    ]
+
+
+def _create_pred_segmentation_mappings(
+    segmentations: list[schemas.PredictedSegmentation], image_ids: list[str]
+) -> list[dict[str, str]]:
+    return [
+        {
+            "shape": segmentation.mask_bytes,
             "image_id": image_id,
         }
         for segmentation, image_id in zip(segmentations, image_ids)
@@ -233,15 +245,15 @@ def _create_labeled_gt_detection_mappings(
 
 def _create_labeled_gt_segmentation_mappings(
     label_tuple_to_id,
-    gt_det_ids: list[int],
-    detections: list[schemas.GroundTruthSegmentation],
+    gt_seg_ids: list[int],
+    segmentations: list[schemas.GroundTruthSegmentation],
 ):
     return [
         {
-            "segmentation_id": gt_det_id,
+            "segmentation_id": gt_seg_id,
             "label_id": label_tuple_to_id[tuple(label)],
         }
-        for gt_det_id, segmentation in zip(gt_det_ids, detections)
+        for gt_seg_id, segmentation in zip(gt_seg_ids, segmentations)
         for label in segmentation.labels
     ]
 
@@ -322,7 +334,7 @@ def create_groundtruth_segmentations(
         db=db,
         dataset_name=data.dataset_name,
         dets_or_segs=data.segmentations,
-        mapping_method=_create_segmentaiton_mappings,
+        mapping_method=_create_gt_segmentation_mappings,
         labeled_mapping_method=_create_labeled_gt_segmentation_mappings,
         model_cls=models.GroundTruthSegmentation,
         labeled_model_cls=models.LabeledGroundTruthSegmentation,
@@ -342,7 +354,7 @@ def create_predicted_segmentations(
         db=db,
         model_name=data.model_name,
         dets_or_segs=data.segmentations,
-        mapping_method=_create_segmentaiton_mappings,
+        mapping_method=_create_pred_segmentation_mappings,
         model_cls=models.PredictedSegmentation,
         labeled_mapping_method=_create_labeled_pred_segmentation_mappings,
         labeled_model_cls=models.LabeledPredictedSegmentation,

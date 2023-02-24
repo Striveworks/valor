@@ -4,7 +4,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
 from velour_api import crud, schemas, settings
-from velour_api.database import SessionLocal, create_db
+from velour_api.database import create_db, make_session
 
 logging.config.dictConfig(settings.LogConfig().dict())
 logger = logging.getLogger("velour-backend")
@@ -16,7 +16,7 @@ create_db()
 
 
 def get_db():
-    db = SessionLocal()
+    db = make_session()
     try:
         yield db
     finally:

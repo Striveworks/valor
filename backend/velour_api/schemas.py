@@ -1,4 +1,8 @@
-from pydantic import BaseModel, validator
+import io
+from base64 import b64decode
+
+import PIL.Image
+from pydantic import BaseModel, Extra, Field, validator
 
 
 def validate_single_polygon(poly: list[tuple[float, float]]):
@@ -91,9 +95,10 @@ class PolygonWithHole(BaseModel):
         return validate_single_polygon(v)
 
 
-class SegmentationBase(BaseModel):
+class GroundTruthSegmentation(BaseModel):
     shape: list[PolygonWithHole]
     image: Image
+    labels: list[Label]
 
     @validator("shape")
     def non_empty(cls, v):
@@ -102,12 +107,37 @@ class SegmentationBase(BaseModel):
         return v
 
 
-class GroundTruthSegmentation(SegmentationBase):
-    labels: list[Label]
-
-
-class PredictedSegmentation(SegmentationBase):
+class PredictedSegmentation(BaseModel):
+    base64_mask: str = Field(str, allow_mutation=False)
+    image: Image
     scored_labels: list[ScoredLabel]
+
+    class Config:
+        extra = Extra.allow
+        validate_assignment = True
+
+    @property
+    def mask_bytes(self) -> bytes:
+        if not hasattr(self, "_mask_bytes"):
+            self._mask_bytes = b64decode(self.base64_mask)
+
+        return self._mask_bytes
+
+    @validator("base64_mask")
+    def check_png_and_mode(cls, v):
+        """Check that the bytes are for a png file and is binary"""
+        f = io.BytesIO(b64decode(v))
+        img = PIL.Image.open(f)
+        f.close()
+        if img.format != "PNG":
+            raise ValueError(
+                f"Expected image format PNG but got {img.format}."
+            )
+        if img.mode != "1":
+            raise ValueError(
+                f"Expected image mode to be binary but got mode {img.mode}."
+            )
+        return v
 
 
 class GroundTruthSegmentationsCreate(BaseModel):
