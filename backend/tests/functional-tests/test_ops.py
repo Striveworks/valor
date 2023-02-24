@@ -119,7 +119,7 @@ def test_intersection_pred_seg_multi_poly_gt_seg(
     db: Session, model: models.Model, img: models.Image
 ):
     """Tests intersection of a predictino mask with a groundtruth
-    that's comprised of two disjoint polygons
+    that's comprised of two disjoint polygons, with one having a hole
     """
 
     h, w = 300, 800
@@ -129,14 +129,21 @@ def test_intersection_pred_seg_multi_poly_gt_seg(
     mask_bytes = pil_to_bytes(Image.fromarray(mask))
 
     poly_y_min, poly_y_max, poly_x_min, poly_x_max = 103, 200, 92, 330
-    poly1 = schemas.PolygonWithHole(
-        polygon=[
-            (poly_x_min, poly_y_min),
-            (poly_x_max, poly_y_min),
-            (poly_x_max, poly_y_max),
-            (poly_x_min, poly_y_max),
-        ]
-    )
+    polygon = [
+        (poly_x_min, poly_y_min),
+        (poly_x_max, poly_y_min),
+        (poly_x_max, poly_y_max),
+        (poly_x_min, poly_y_max),
+    ]
+    # a hole inside the polygon that's completely inside the mask
+    hole_y_min, hole_y_max, hole_x_min, hole_x_max = 110, 170, 124, 190
+    hole = [
+        (hole_x_min, hole_y_min),
+        (hole_x_max, hole_y_min),
+        (hole_x_max, hole_y_max),
+        (hole_x_min, hole_y_max),
+    ]
+    poly1 = schemas.PolygonWithHole(polygon=polygon, hole=hole)
     # triangle contained in the mask
     poly2 = schemas.PolygonWithHole(
         polygon=[(200, 210), (200, 250), (265, 210)]
@@ -153,11 +160,12 @@ def test_intersection_pred_seg_multi_poly_gt_seg(
     gt_seg = _gt_seg_from_polys(db=db, polys=[poly1, poly2], img=img)
 
     area_int_mask_rect = (inter_xmax - inter_xmin) * (inter_ymax - inter_ymin)
+    area_hole = (hole_x_max - hole_x_min) * (hole_y_max - hole_y_min)
     area_triangle = (265 - 200) * (250 - 210) / 2
 
     assert (
         ops.intersection_area_of_gt_seg_and_pred_seg(
             db=db, gt_seg=gt_seg, pred_seg=pred_seg
         )
-        == area_int_mask_rect + area_triangle
+        == area_int_mask_rect + area_triangle - area_hole
     )
