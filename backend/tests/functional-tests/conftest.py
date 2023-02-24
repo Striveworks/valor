@@ -55,7 +55,7 @@ def db():
                 "functional tests should be run with an empty db."
             )
 
-    create_db(timeout=30)
+    create_db()
     yield db
     # teardown
     drop_all(db)

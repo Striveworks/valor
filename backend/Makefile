@@ -1,5 +1,5 @@
 test-env:
-	docker compose -p velour --env-file .env.testing up --build
+	docker compose -p velour --env-file .env.testing up --build -d
 
 dev-env:
 	docker compose -p velour -f docker-compose.yml -f docker-compose.dev.yml --env-file .env.testing up --build
