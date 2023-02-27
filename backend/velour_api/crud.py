@@ -1,4 +1,4 @@
-from sqlalchemy import func, insert, select
+from sqlalchemy import Select, func, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -75,46 +75,66 @@ def bulk_insert_and_return_ids(
     mappings
         dictionaries mapping column names to values
     """
-    added_ids = db.scalars(insert(model).returning(model.id), mappings)
+    added_ids = db.scalars(insert(model).values(mappings).returning(model.id))
     db.commit()
     return added_ids.all()
 
 
 def _create_detection_mappings(
-    detections: list[schemas.DetectionBase], image_ids: list[str]
+    detections: list[schemas.DetectionBase], images: list[models.Image]
 ) -> list[dict[str, str]]:
     return [
         {
             "boundary": _wkt_polygon_from_detection(detection),
-            "image_id": image_id,
+            "image_id": image.id,
         }
-        for detection, image_id in zip(detections, image_ids)
+        for detection, image in zip(detections, images)
     ]
 
 
+def _select_statement_from_poly(
+    shape: list[schemas.PolygonWithHole],
+) -> Select:
+    """Statement that converts a polygon to a raster"""
+    poly = _wkt_multipolygon_from_polygons_with_hole(shape)
+    return select(
+        text(f"ST_AsRaster(ST_GeomFromText('{poly}'), {1.0}, {1.0})")
+    )
+
+
 def _create_gt_segmentation_mappings(
-    segmentations: list[schemas.GroundTruthSegmentation], image_ids: list[str]
+    segmentations: list[schemas.GroundTruthSegmentation],
+    images: list[models.Image],
 ) -> list[dict[str, str]]:
-    return [
-        {
-            "shape": _wkt_multipolygon_from_polygons_with_hole(
-                segmentation.shape
-            ),
-            "image_id": image_id,
+    def _create_single_mapping(
+        seg: schemas.GroundTruthSegmentation, image: models.Image
+    ):
+        if seg.is_poly:
+            shape = _select_statement_from_poly(seg.shape)
+        else:
+            shape = seg.mask_bytes
+
+        return {
+            "shape": shape,
+            "image_id": image.id,
         }
-        for segmentation, image_id in zip(segmentations, image_ids)
+
+    return [
+        _create_single_mapping(segmentation, image)
+        for segmentation, image in zip(segmentations, images)
     ]
 
 
 def _create_pred_segmentation_mappings(
-    segmentations: list[schemas.PredictedSegmentation], image_ids: list[str]
+    segmentations: list[schemas.PredictedSegmentation],
+    images: list[models.Image],
 ) -> list[dict[str, str]]:
     return [
         {
             "shape": segmentation.mask_bytes,
-            "image_id": image_id,
+            "image_id": image.id,
         }
-        for segmentation, image_id in zip(segmentations, image_ids)
+        for segmentation, image in zip(segmentations, images)
     ]
 
 
@@ -131,13 +151,13 @@ def _create_label_tuple_to_id_dict(
         if label_tuple not in label_tuple_to_id:
             label_tuple_to_id[label_tuple] = get_or_create_row(
                 db, models.Label, {"key": label.key, "value": label.value}
-            )
+            ).id
     return label_tuple_to_id
 
 
-def _add_image_uris_to_dataset(
-    db: Session, dataset_name, uris: list[str]
-) -> list[int]:
+def _add_images_to_dataset(
+    db: Session, dataset_name, images: list[schemas.Image]
+) -> list[models.Image]:
     """Adds images defined by URIs to a dataset (creating the Image rows if they don't exist),
     returning the list of image ids"""
     dset = get_dataset(db, dataset_name=dataset_name)
@@ -149,9 +169,14 @@ def _add_image_uris_to_dataset(
         get_or_create_row(
             db=db,
             model_class=models.Image,
-            mapping={"dataset_id": dset_id, "uri": uri},
+            mapping={
+                "dataset_id": dset_id,
+                "uri": img.uri,
+                "width": img.width,
+                "height": img.height,
+            },
         )
-        for uri in uris
+        for img in images
     ]
 
 
@@ -166,12 +191,12 @@ def _create_gt_dets_or_segs(
     model_cls: type,
     labeled_model_cls: type,
 ):
-    image_ids = _add_image_uris_to_dataset(
+    images = _add_images_to_dataset(
         db=db,
         dataset_name=dataset_name,
-        uris=[d_or_s.image.uri for d_or_s in dets_or_segs],
+        images=[d_or_s.image for d_or_s in dets_or_segs],
     )
-    mappings = mapping_method(dets_or_segs, image_ids)
+    mappings = mapping_method(dets_or_segs, images)
 
     ids = bulk_insert_and_return_ids(db, model_cls, mappings)
 
@@ -201,10 +226,8 @@ def _create_pred_dets_or_segs(
 ):
     model_id = get_model(db, model_name=model_name).id
     # get image ids from uris (these images should already exist)
-    image_ids = [
-        get_image(db, uri=d_or_s.image.uri).id for d_or_s in dets_or_segs
-    ]
-    mappings = mapping_method(dets_or_segs, image_ids)
+    images = [get_image(db, uri=d_or_s.image.uri) for d_or_s in dets_or_segs]
+    mappings = mapping_method(dets_or_segs, images)
     for m in mappings:
         m["model_id"] = model_id
 
@@ -364,17 +387,17 @@ def create_predicted_segmentations(
 def create_ground_truth_image_classifications(
     db: Session, data: schemas.GroundTruthImageClassificationsCreate
 ):
-    image_ids = _add_image_uris_to_dataset(
+    images = _add_images_to_dataset(
         db=db,
         dataset_name=data.dataset_name,
-        uris=[c.image.uri for c in data.classifications],
+        images=[c.image for c in data.classifications],
     )
     label_tuple_to_id = _create_label_tuple_to_id_dict(
         db, [label for clf in data.classifications for label in clf.labels]
     )
     clf_mappings = [
-        {"label_id": label_tuple_to_id[tuple(label)], "image_id": image_id}
-        for clf, image_id in zip(data.classifications, image_ids)
+        {"label_id": label_tuple_to_id[tuple(label)], "image_id": image.id}
+        for clf, image in zip(data.classifications, images)
         for label in clf.labels
     ]
 
@@ -421,10 +444,10 @@ def get_or_create_row(
     db: Session,
     model_class: type,
     mapping: dict,
-) -> int:
+) -> any:
     """Tries to get the row defined by mapping. If that exists then
-    its id is returned. Otherwise a row is created by `mapping` and the newly created
-    row's id is returned
+    its mapped object is returned. Otherwise a row is created by `mapping` and the newly created
+    object is returned
     """
     # create the query from the mapping
     where_expressions = [
@@ -442,7 +465,7 @@ def get_or_create_row(
         db.flush()
         db.commit()
 
-    return db_element.id
+    return db_element
 
 
 def create_dataset(db: Session, dataset: schemas.DatasetCreate):

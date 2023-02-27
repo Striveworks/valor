@@ -10,6 +10,8 @@ from PIL import ImageDraw, ImageFont
 @dataclass
 class Image:
     uri: str
+    height: int
+    width: int
 
 
 @dataclass

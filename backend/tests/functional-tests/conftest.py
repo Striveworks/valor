@@ -4,8 +4,9 @@ import numpy as np
 import pytest
 from PIL import Image
 from sqlalchemy import inspect, text
+from sqlalchemy.orm import Session
 
-from velour_api import models
+from velour_api import models, schemas
 from velour_api.database import Base, create_db, make_session
 
 # get all velour table names
@@ -42,6 +43,16 @@ def mask_bytes2():
 
 
 @pytest.fixture
+def img1() -> schemas.Image:
+    return schemas.Image(uri="uri1", height=1000, width=2000)
+
+
+@pytest.fixture
+def img2() -> schemas.Image:
+    return schemas.Image(uri="uri2", height=1600, width=1200)
+
+
+@pytest.fixture
 def db():
     """This fixture provides a db session. a `RuntimeError` is raised if
     a velour tablename already exists. At teardown, all velour tables are wiped.
@@ -59,3 +70,21 @@ def db():
     yield db
     # teardown
     drop_all(db)
+
+
+@pytest.fixture
+def dset(db: Session) -> models.Dataset:
+    dset = models.Dataset(name="dset")
+    db.add(dset)
+    db.commit()
+
+    return dset
+
+
+@pytest.fixture
+def img(db: Session, dset: models.Dataset) -> models.Image:
+    img = models.Image(uri="uri", dataset_id=dset.id, height=1000, width=2000)
+    db.add(img)
+    db.commit()
+
+    return img

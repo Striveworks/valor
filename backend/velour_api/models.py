@@ -1,4 +1,5 @@
 from geoalchemy2 import Geometry, Raster
+from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -157,12 +158,25 @@ class PredictedImageClassification(Base):
     )
 
 
+class GDALRaster(Raster):
+    # see https://github.com/geoalchemy/geoalchemy2/issues/290
+    def bind_expression(self, bindvalue):
+        # ST_SetBandNoDataValue tells PostGIS that values of 0 should be null
+        # ST_SetGeoReference makes the convention consistent with image indices
+        return ST_SetGeoReference(
+            ST_SetBandNoDataValue(func.ST_FromGDALRaster(bindvalue), 0),
+            "1 0 0 1 0 0",
+            "GDAL",
+        )
+
+
 class GroundTruthSegmentation(Base):
     # also used for instance segmentation
     __tablename__ = "ground_truth_segmentation"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    shape = mapped_column(Geometry("MULTIPOLYGON"))
+    # shape = mapped_column(Geometry("MULTIPOLYGON"))
+    shape = mapped_column(GDALRaster)
     image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
     labeled_ground_truth_segmentations: Mapped[
         list["LabeledGroundTruthSegmentation"]
@@ -171,12 +185,6 @@ class GroundTruthSegmentation(Base):
         back_populates="segmentation",
         cascade="all, delete",
     )
-
-
-class GDALRaster(Raster):
-    # see https://github.com/geoalchemy/geoalchemy2/issues/290
-    def bind_expression(self, bindvalue):
-        return func.ST_FromGDALRaster(bindvalue)
 
 
 class PredictedSegmentation(Base):
@@ -249,6 +257,8 @@ class Image(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
     uri: Mapped[str] = mapped_column(unique=True)
+    height: Mapped[int] = mapped_column()
+    width: Mapped[int] = mapped_column()
     ground_truth_detections: Mapped[list[GroundTruthDetection]] = relationship(
         GroundTruthDetection, cascade="all, delete"
     )
