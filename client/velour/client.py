@@ -256,7 +256,12 @@ class Client:
     def get_dataset_images(self, name: str) -> List[Image]:
         images = self._requests_get_rel_host(f"datasets/{name}/images").json()
 
-        return [Image(uri=image["uri"]) for image in images]
+        return [
+            Image(
+                uri=image["uri"], height=image["height"], width=image["width"]
+            )
+            for image in images
+        ]
 
     def get_dataset_labels(self, name: str) -> List[Label]:
         labels = self._requests_get_rel_host(f"datasets/{name}/labels").json()

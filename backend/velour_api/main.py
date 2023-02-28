@@ -142,7 +142,10 @@ def get_dataset_images(
         images = crud.get_images_in_dataset(db, dataset_name)
     except crud.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    return [schemas.Image(uri=image.uri) for image in images]
+    return [
+        schemas.Image(uri=image.uri, height=image.height, width=image.width)
+        for image in images
+    ]
 
 
 @app.delete("/datasets/{dataset_name}")
