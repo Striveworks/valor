@@ -26,6 +26,8 @@ class Model(BaseModel):
 
 class Image(BaseModel):
     uri: str
+    height: int
+    width: int
 
 
 class Label(BaseModel):
@@ -96,9 +98,14 @@ class PolygonWithHole(BaseModel):
 
 
 class GroundTruthSegmentation(BaseModel):
-    shape: list[PolygonWithHole]
+    # multipolygon or base64 mask
+    shape: str | list[PolygonWithHole] = Field(allow_mutation=False)
     image: Image
     labels: list[Label]
+
+    class Config:
+        extra = Extra.allow
+        validate_assignment = True
 
     @validator("shape")
     def non_empty(cls, v):
@@ -106,9 +113,24 @@ class GroundTruthSegmentation(BaseModel):
             raise ValueError("shape must have at least one element.")
         return v
 
+    @property
+    def is_poly(self) -> bool:
+        return isinstance(self.shape, list)
+
+    @property
+    def mask_bytes(self) -> bytes:
+        if self.is_poly:
+            raise RuntimeError(
+                "`mask_bytes` can only be called for `GroundTruthSegmentation`'s defined"
+                " by masks, not polygons"
+            )
+        if not hasattr(self, "_mask_bytes"):
+            self._mask_bytes = b64decode(self.shape)
+        return self._mask_bytes
+
 
 class PredictedSegmentation(BaseModel):
-    base64_mask: str = Field(str, allow_mutation=False)
+    base64_mask: str = Field(allow_mutation=False)
     image: Image
     scored_labels: list[ScoredLabel]
 
@@ -120,7 +142,6 @@ class PredictedSegmentation(BaseModel):
     def mask_bytes(self) -> bytes:
         if not hasattr(self, "_mask_bytes"):
             self._mask_bytes = b64decode(self.base64_mask)
-
         return self._mask_bytes
 
     @validator("base64_mask")

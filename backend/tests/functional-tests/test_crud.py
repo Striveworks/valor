@@ -1,11 +1,12 @@
 import io
+import math
 from base64 import b64decode, b64encode
 
 import numpy as np
 import pytest
-from geoalchemy2.functions import ST_Area
+from geoalchemy2.functions import ST_AsText, ST_Polygon
 from PIL import Image
-from sqlalchemy import func, select
+from sqlalchemy import func, insert, select
 from sqlalchemy.orm import Session
 
 from velour_api import crud, models, ops, schemas
@@ -18,6 +19,13 @@ def bytes_to_pil(b: bytes) -> Image.Image:
     f = io.BytesIO(b)
     img = Image.open(f)
     return img
+
+
+def np_to_bytes(arr: np.ndarray) -> bytes:
+    f = io.BytesIO()
+    Image.fromarray(arr).save(f, format="PNG")
+    f.seek(0)
+    return f.read()
 
 
 def check_db_empty(db: Session):
@@ -41,7 +49,9 @@ def check_db_empty(db: Session):
 @pytest.fixture
 def poly_without_hole() -> schemas.PolygonWithHole:
     # should have area 45.5
-    return schemas.PolygonWithHole(polygon=[(4, 10), (9, 7), (11, 2), (2, 2)])
+    return schemas.PolygonWithHole(
+        polygon=[(14, 10), (19, 7), (21, 2), (12, 2)]
+    )
 
 
 @pytest.fixture
@@ -54,7 +64,7 @@ def poly_with_hole() -> schemas.PolygonWithHole:
 
 
 @pytest.fixture
-def gt_dets_create() -> schemas.GroundTruthDetectionsCreate:
+def gt_dets_create(img1: schemas.Image) -> schemas.GroundTruthDetectionsCreate:
     return schemas.GroundTruthDetectionsCreate(
         dataset_name=dset_name,
         detections=[
@@ -64,19 +74,19 @@ def gt_dets_create() -> schemas.GroundTruthDetectionsCreate:
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
                 ],
-                image=schemas.Image(uri="uri1"),
+                image=img1,
             ),
             schemas.GroundTruthDetection(
                 boundary=[(10, 20), (10, 30), (20, 30), (20, 20)],
                 labels=[schemas.Label(key="k2", value="v2")],
-                image=schemas.Image(uri="uri1"),
+                image=img1,
             ),
         ],
     )
 
 
 @pytest.fixture
-def pred_dets_create() -> schemas.PredictedDetectionsCreate:
+def pred_dets_create(img1: schemas.Image) -> schemas.PredictedDetectionsCreate:
     return schemas.PredictedDetectionsCreate(
         model_name=model_name,
         detections=[
@@ -90,7 +100,7 @@ def pred_dets_create() -> schemas.PredictedDetectionsCreate:
                         label=schemas.Label(key="k2", value="v2"), score=0.2
                     ),
                 ],
-                image=schemas.Image(uri="uri1"),
+                image=img1,
             ),
             schemas.PredictedDetection(
                 boundary=[(107, 207), (107, 307), (207, 307), (207, 207)],
@@ -99,7 +109,7 @@ def pred_dets_create() -> schemas.PredictedDetectionsCreate:
                         label=schemas.Label(key="k2", value="v2"), score=0.9
                     )
                 ],
-                image=schemas.Image(uri="uri1"),
+                image=img1,
             ),
         ],
     )
@@ -107,19 +117,19 @@ def pred_dets_create() -> schemas.PredictedDetectionsCreate:
 
 @pytest.fixture
 def gt_segs_create(
-    poly_with_hole, poly_without_hole
+    poly_with_hole, poly_without_hole, img1, img2
 ) -> schemas.GroundTruthSegmentationsCreate:
     return schemas.GroundTruthSegmentationsCreate(
         dataset_name=dset_name,
         segmentations=[
             schemas.GroundTruthSegmentation(
                 shape=[poly_with_hole],
-                image=schemas.Image(uri="uri1"),
+                image=img1,
                 labels=[schemas.Label(key="k1", value="v1")],
             ),
             schemas.GroundTruthSegmentation(
                 shape=[poly_without_hole],
-                image=schemas.Image(uri="uri2"),
+                image=img2,
                 labels=[schemas.Label(key="k1", value="v1")],
             ),
         ],
@@ -128,7 +138,7 @@ def gt_segs_create(
 
 @pytest.fixture
 def pred_segs_create(
-    mask_bytes1: bytes, mask_bytes2: bytes
+    mask_bytes1: bytes, mask_bytes2: bytes, img1: schemas.Image
 ) -> schemas.PredictedSegmentationsCreate:
     b64_mask1 = b64encode(mask_bytes1).decode()
     b64_mask2 = b64encode(mask_bytes2).decode()
@@ -137,7 +147,7 @@ def pred_segs_create(
         segmentations=[
             schemas.PredictedSegmentation(
                 base64_mask=b64_mask1,
-                image=schemas.Image(uri="uri1"),
+                image=img1,
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k1", value="v1"), score=0.43
@@ -146,7 +156,7 @@ def pred_segs_create(
             ),
             schemas.PredictedSegmentation(
                 base64_mask=b64_mask2,
-                image=schemas.Image(uri="uri1"),
+                image=img1,
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k2", value="v2"), score=0.97
@@ -158,19 +168,21 @@ def pred_segs_create(
 
 
 @pytest.fixture
-def gt_clfs_create() -> schemas.GroundTruthImageClassificationsCreate:
+def gt_clfs_create(
+    img1: schemas.Image, img2: schemas.Image
+) -> schemas.GroundTruthImageClassificationsCreate:
     return schemas.GroundTruthImageClassificationsCreate(
         dataset_name=dset_name,
         classifications=[
             schemas.ImageClassificationBase(
-                image=schemas.Image(uri="uri1"),
+                image=img1,
                 labels=[
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
                 ],
             ),
             schemas.ImageClassificationBase(
-                image=schemas.Image(uri="uri2"),
+                image=img2,
                 labels=[schemas.Label(key="k2", value="v2")],
             ),
         ],
@@ -178,12 +190,14 @@ def gt_clfs_create() -> schemas.GroundTruthImageClassificationsCreate:
 
 
 @pytest.fixture
-def pred_clfs_create() -> schemas.PredictedImageClassificationsCreate:
+def pred_clfs_create(
+    img1: schemas.Image, img2: schemas.Image
+) -> schemas.PredictedImageClassificationsCreate:
     return schemas.PredictedImageClassificationsCreate(
         model_name=model_name,
         classifications=[
             schemas.PredictedImageClassification(
-                image=schemas.Image(uri="uri1"),
+                image=img1,
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k1", value="v1"), score=0.2
@@ -194,7 +208,7 @@ def pred_clfs_create() -> schemas.PredictedImageClassificationsCreate:
                 ],
             ),
             schemas.PredictedImageClassification(
-                image=schemas.Image(uri="uri2"),
+                image=img2,
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k2", value="v2"), score=0.3
@@ -443,7 +457,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     mask = bytes_to_pil(
         b64decode(pred_segs_create.segmentations[0].base64_mask)
     )
-    assert ops.pred_seg_area(db, seg) == np.array(mask).sum()
+    assert ops.seg_area(db, seg) == np.array(mask).sum()
 
     # delete model and check all detections from it are gone
     crud.delete_model(db, model_name)
@@ -466,7 +480,9 @@ def test_get_labels(
 
 
 def test_segmentation_area_no_hole(
-    db: Session, poly_without_hole: schemas.PolygonWithHole
+    db: Session,
+    poly_without_hole: schemas.PolygonWithHole,
+    img1: schemas.Image,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -479,7 +495,7 @@ def test_segmentation_area_no_hole(
             segmentations=[
                 schemas.GroundTruthSegmentation(
                     shape=[poly_without_hole],
-                    image=schemas.Image(uri="uri1"),
+                    image=img1,
                     labels=[schemas.Label(key="k1", value="v1")],
                 )
             ],
@@ -488,11 +504,13 @@ def test_segmentation_area_no_hole(
 
     segmentation = db.scalar(select(models.GroundTruthSegmentation))
 
-    assert db.scalar(ST_Area(segmentation.shape)) == 45.5
+    assert ops.seg_area(db, segmentation) == math.ceil(
+        45.5
+    )  # area of mask will be an int
 
 
 def test_segmentation_area_with_hole(
-    db: Session, poly_with_hole: schemas.PolygonWithHole
+    db: Session, poly_with_hole: schemas.PolygonWithHole, img1: schemas.Image
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -505,7 +523,7 @@ def test_segmentation_area_with_hole(
             segmentations=[
                 schemas.GroundTruthSegmentation(
                     shape=[poly_with_hole],
-                    image=schemas.Image(uri="uri1"),
+                    image=img1,
                     labels=[schemas.Label(key="k1", value="v1")],
                 )
             ],
@@ -514,13 +532,15 @@ def test_segmentation_area_with_hole(
 
     segmentation = db.scalar(select(models.GroundTruthSegmentation))
 
-    assert db.scalar(ST_Area(segmentation.shape)) == 92
+    # give tolerance of 2 pixels because of poly -> mask conversion
+    assert (ops.seg_area(db, segmentation) - 92) <= 2
 
 
 def test_segmentation_area_multi_polygon(
     db: Session,
     poly_with_hole: schemas.PolygonWithHole,
     poly_without_hole: schemas.PolygonWithHole,
+    img1: schemas.Image,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -533,7 +553,7 @@ def test_segmentation_area_multi_polygon(
             segmentations=[
                 schemas.GroundTruthSegmentation(
                     shape=[poly_with_hole, poly_without_hole],
-                    image=schemas.Image(uri="uri1"),
+                    image=img1,
                     labels=[schemas.Label(key="k1", value="v1")],
                 )
             ],
@@ -542,4 +562,75 @@ def test_segmentation_area_multi_polygon(
 
     segmentation = db.scalar(select(models.GroundTruthSegmentation))
 
-    assert db.scalar(ST_Area(segmentation.shape)) == 45.5 + 92
+    # the two shapes don't intersect so area should be sum of the areas
+    # give tolerance of 2 pixels because of poly -> mask conversion
+    assert abs(ops.seg_area(db, segmentation) - (math.ceil(45.5) + 92)) <= 2
+
+
+def test__select_statement_from_poly(
+    db: Session, poly_with_hole: schemas.PolygonWithHole, img: models.Image
+):
+    gt_seg = db.scalar(
+        insert(models.GroundTruthSegmentation)
+        .values(
+            [
+                {
+                    "shape": crud._select_statement_from_poly(
+                        [poly_with_hole]
+                    ),
+                    "image_id": img.id,
+                }
+            ]
+        )
+        .returning(models.GroundTruthSegmentation)
+    )
+    db.add(gt_seg)
+    db.commit()
+
+    wkt = db.scalar(ST_AsText(ST_Polygon(gt_seg.shape)))
+
+    # note the hole, which is a triangle, is jagged due to aliasing
+    assert (
+        wkt
+        == "MULTIPOLYGON(((0 0,0 10,10 10,10 0,0 0),(2 4,2 8,3 8,3 7,4 7,4 6,5 6,5 5,6 5,6 4,2 4)))"
+    )
+
+
+def test_gt_seg_as_mask_or_polys(db: Session, img1: schemas.Image):
+    """Check that a groundtruth segmentation can be created as a polygon or mask"""
+    xmin, xmax, ymin, ymax = 11, 45, 37, 102
+    h, w = 150, 200
+    mask = np.zeros((h, w), dtype=bool)
+    mask[ymin:ymax, xmin:xmax] = True
+    mask_b64 = b64encode(np_to_bytes(mask)).decode()
+
+    poly = [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin)]
+
+    gt1 = schemas.GroundTruthSegmentation(
+        shape=mask_b64,
+        image=img1,
+        labels=[schemas.Label(key="k1", value="v1")],
+    )
+    gt2 = schemas.GroundTruthSegmentation(
+        shape=[schemas.PolygonWithHole(polygon=poly)],
+        image=img1,
+        labels=[schemas.Label(key="k1", value="v1")],
+    )
+
+    check_db_empty(db=db)
+
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_groundtruth_segmentations(
+        db,
+        data=schemas.GroundTruthSegmentationsCreate(
+            dataset_name=dset_name, segmentations=[gt1, gt2]
+        ),
+    )
+
+    shapes = db.scalars(
+        select(ST_AsText(ST_Polygon(models.GroundTruthSegmentation.shape)))
+    ).all()
+
+    assert len(shapes) == 2
+    # check that the mask and polygon define the same polygons
+    assert shapes[0] == shapes[1]

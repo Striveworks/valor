@@ -4,11 +4,13 @@ from typing import Any
 
 import numpy as np
 import pytest
-from geoalchemy2.functions import ST_AsPNG
+from geoalchemy2.functions import ST_AsPNG, ST_AsText, ST_Polygon
 from PIL import Image as PILImage
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
+from velour_api import models, ops
+
 from velour.client import Client, ClientException
 from velour.data_types import (
     BoundingPolygon,
@@ -25,20 +27,8 @@ from velour.data_types import (
     ScoredLabel,
 )
 
-from velour_api import models, ops
-
 dset_name = "test dataset"
 model_name = "test model"
-
-
-def _list_of_outer_and_inner_points_from_wkt(
-    db: Session, seg: PredictedSegmentation
-) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
-    geo = json.loads(db.scalar(seg.shape.ST_AsGeoJSON()))
-    assert len(geo["coordinates"]) == 1
-    outer, inner = geo["coordinates"][0]
-
-    return [tuple(p) for p in outer], [tuple(p) for p in inner]
 
 
 def _list_of_points_from_wkt_polygon(
@@ -89,6 +79,36 @@ def iou(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
 @pytest.fixture
 def client():
     return Client(host="http://localhost:8000")
+
+
+@pytest.fixture
+def img1():
+    return Image(uri="uri1", height=400, width=300)
+
+
+@pytest.fixture
+def img2():
+    return Image(uri="uri2", height=400, width=300)
+
+
+@pytest.fixture
+def img5():
+    return Image(uri="uri5", height=400, width=300)
+
+
+@pytest.fixture
+def img6():
+    return Image(uri="uri6", height=400, width=300)
+
+
+@pytest.fixture
+def img8():
+    return Image(uri="uri8", height=400, width=300)
+
+
+@pytest.fixture
+def img9():
+    return Image(uri="uri9", height=400, width=300)
 
 
 @pytest.fixture
@@ -171,65 +191,69 @@ def rect3():
 
 @pytest.fixture
 def gt_dets1(
-    rect1: BoundingPolygon, rect2: BoundingPolygon
+    rect1: BoundingPolygon, rect2: BoundingPolygon, img1: Image, img2: Image
 ) -> list[GroundTruthDetection]:
     return [
         GroundTruthDetection(
             boundary=rect1,
             labels=[Label(key="k1", value="v1")],
-            image=Image(uri="uri1"),
+            image=img1,
         ),
         GroundTruthDetection(
             boundary=rect2,
             labels=[Label(key="k1", value="v1")],
-            image=Image(uri="uri2"),
+            image=img2,
         ),
     ]
 
 
 @pytest.fixture
-def gt_dets2(rect3: BoundingPolygon) -> list[GroundTruthDetection]:
+def gt_dets2(
+    rect3: BoundingPolygon, img1: Image
+) -> list[GroundTruthDetection]:
     return [
         GroundTruthDetection(
             boundary=rect3,
             labels=[Label(key="k2", value="v2")],
-            image=Image(uri="uri1"),
+            image=img1,
         )
     ]
 
 
 @pytest.fixture
-def gt_dets3(rect3: BoundingPolygon) -> list[GroundTruthDetection]:
+def gt_dets3(
+    rect3: BoundingPolygon, img8: Image
+) -> list[GroundTruthDetection]:
     return [
         GroundTruthDetection(
             boundary=rect3,
             labels=[Label(key="k3", value="v3")],
-            image=Image(uri="uri8"),
+            image=img8,
         )
     ]
 
 
 @pytest.fixture
 def gt_segs1(
-    rect1: BoundingPolygon, rect2: BoundingPolygon
+    rect1: BoundingPolygon, rect2: BoundingPolygon, img1: Image, img2: Image
 ) -> list[GroundTruthSegmentation]:
     return [
         GroundTruthSegmentation(
             shape=[PolygonWithHole(polygon=rect1)],
             labels=[Label(key="k1", value="v1")],
-            image=Image(uri="uri1"),
+            image=img1,
         ),
         GroundTruthSegmentation(
             shape=[PolygonWithHole(polygon=rect2, hole=rect1)],
             labels=[Label(key="k1", value="v1")],
-            image=Image(uri="uri2"),
+            image=img2,
         ),
     ]
 
 
 @pytest.fixture
 def gt_segs2(
-    rect1: BoundingPolygon, rect3: BoundingPolygon
+    rect1: BoundingPolygon, rect3: BoundingPolygon, img1: Image
 ) -> list[GroundTruthDetection]:
     return [
         GroundTruthSegmentation(
@@ -238,56 +262,58 @@ def gt_segs2(
                 PolygonWithHole(polygon=rect1),
             ],
             labels=[Label(key="k2", value="v2")],
-            image=Image(uri="uri1"),
+            image=img1,
         )
     ]
 
 
 @pytest.fixture
-def gt_segs3(rect3: BoundingPolygon) -> list[GroundTruthDetection]:
+def gt_segs3(
+    rect3: BoundingPolygon, img9: Image
+) -> list[GroundTruthDetection]:
     return [
         GroundTruthSegmentation(
             shape=[PolygonWithHole(polygon=rect3)],
             labels=[Label(key="k3", value="v3")],
-            image=Image(uri="uri9"),
+            image=img9,
         )
     ]
 
 
 @pytest.fixture
-def gt_clfs1() -> list[GroundTruthImageClassification]:
+def gt_clfs1(img5: Image, img6: Image) -> list[GroundTruthImageClassification]:
     return [
         GroundTruthImageClassification(
-            image=Image(uri="uri5"), labels=[Label(key="k5", value="v5")]
+            image=img5, labels=[Label(key="k5", value="v5")]
         ),
         GroundTruthImageClassification(
-            image=Image(uri="uri6"), labels=[Label(key="k4", value="v4")]
+            image=img6, labels=[Label(key="k4", value="v4")]
         ),
     ]
 
 
 @pytest.fixture
-def gt_clfs2() -> list[GroundTruthImageClassification]:
+def gt_clfs2(img5: Image) -> list[GroundTruthImageClassification]:
     return [
         GroundTruthImageClassification(
-            image=Image(uri="uri5"), labels=[Label(key="k4", value="v4")]
+            image=img5, labels=[Label(key="k4", value="v4")]
         )
     ]
 
 
 @pytest.fixture
-def gt_clfs3() -> list[GroundTruthImageClassification]:
+def gt_clfs3(img8: Image) -> list[GroundTruthImageClassification]:
     return [
         GroundTruthImageClassification(
             labels=[Label(key="k3", value="v3")],
-            image=Image(uri="uri8"),
+            image=img8,
         )
     ]
 
 
 @pytest.fixture
 def pred_dets(
-    rect1: BoundingPolygon, rect2: BoundingPolygon
+    rect1: BoundingPolygon, rect2: BoundingPolygon, img1: Image, img2: Image
 ) -> list[PredictedDetection]:
     return [
         PredictedDetection(
@@ -295,20 +321,20 @@ def pred_dets(
             scored_labels=[
                 ScoredLabel(label=Label(key="k1", value="v1"), score=0.3)
             ],
-            image=Image(uri="uri1"),
+            image=img1,
         ),
         PredictedDetection(
             boundary=rect2,
             scored_labels=[
                 ScoredLabel(label=Label(key="k2", value="v2"), score=0.98)
             ],
-            image=Image(uri="uri2"),
+            image=img2,
         ),
     ]
 
 
 @pytest.fixture
-def pred_segs() -> list[PredictedDetection]:
+def pred_segs(img1: Image, img2: Image) -> list[PredictedDetection]:
     mask_1 = np.random.randint(0, 2, size=(64, 32), dtype=bool)
     mask_2 = np.random.randint(0, 2, size=(12, 23), dtype=bool)
     return [
@@ -317,30 +343,30 @@ def pred_segs() -> list[PredictedDetection]:
             scored_labels=[
                 ScoredLabel(label=Label(key="k1", value="v1"), score=0.87)
             ],
-            image=Image(uri="uri1"),
+            image=img1,
         ),
         PredictedSegmentation(
             mask=mask_2,
             scored_labels=[
                 ScoredLabel(label=Label(key="k2", value="v2"), score=0.92)
             ],
-            image=Image(uri="uri2"),
+            image=img2,
         ),
     ]
 
 
 @pytest.fixture
-def pred_clfs() -> list[PredictedImageClassification]:
+def pred_clfs(img5: Image, img6: Image) -> list[PredictedImageClassification]:
     return [
         PredictedImageClassification(
-            image=Image(uri="uri5"),
+            image=img5,
             scored_labels=[
                 ScoredLabel(label=Label(key="k12", value="v12"), score=0.47),
                 ScoredLabel(label=Label(key="k13", value="v13"), score=0.12),
             ],
         ),
         PredictedImageClassification(
-            image=Image(uri="uri6"),
+            image=img6,
             scored_labels=[
                 ScoredLabel(label=Label(key="k4", value="v4"), score=0.71),
             ],
@@ -558,6 +584,49 @@ def test_create_dataset_with_segmentations(
     )
 
 
+def test_create_gt_segs_as_polys_or_masks(
+    client: Client, img1: Image, db: Session
+):
+    """Test that we can create a dataset with groundtruth segmentations that are defined
+    both my polygons and mask arrays
+    """
+    dataset = client.create_dataset(dset_name)
+
+    xmin, xmax, ymin, ymax = 11, 45, 37, 102
+    h, w = 150, 200
+    mask = np.zeros((h, w), dtype=bool)
+    mask[ymin:ymax, xmin:xmax] = True
+
+    poly = PolygonWithHole(
+        polygon=BoundingPolygon(
+            [
+                Point(x=xmin, y=ymin),
+                Point(x=xmin, y=ymax),
+                Point(x=xmax, y=ymax),
+                Point(x=xmax, y=ymin),
+            ]
+        )
+    )
+
+    gt1 = GroundTruthSegmentation(
+        shape=mask, labels=[Label(key="k1", value="v1")], image=img1
+    )
+    gt2 = GroundTruthSegmentation(
+        shape=[poly], labels=[Label(key="k1", value="v1")], image=img1
+    )
+
+    dataset.add_groundtruth_segmentations([gt1, gt2])
+    wkts = db.scalars(
+        select(ST_AsText(ST_Polygon(models.GroundTruthSegmentation.shape)))
+    ).all()
+
+    for wkt in wkts:
+        assert (
+            wkt
+            == f"MULTIPOLYGON((({xmin} {ymin},{xmin} {ymax},{xmax} {ymax},{xmax} {ymin},{xmin} {ymin})))"
+        )
+
+
 def test_create_model_with_predicted_segmentations(
     client: Client,
     gt_segs1: list[GroundTruthSegmentation],
@@ -631,7 +700,9 @@ def test_create_model_with_predicted_classifications(
     )
 
 
-def test_boundary(client: Client, db: Session, rect1: BoundingPolygon):
+def test_boundary(
+    client: Client, db: Session, rect1: BoundingPolygon, img1: Image
+):
     """Test consistency of boundary in backend and client"""
     dataset = client.create_dataset(dset_name)
     dataset.add_groundtruth_detections(
@@ -639,7 +710,7 @@ def test_boundary(client: Client, db: Session, rect1: BoundingPolygon):
             GroundTruthDetection(
                 boundary=rect1,
                 labels=[Label(key="k1", value="v1")],
-                image=Image(uri="uri1"),
+                image=img1,
             )
         ]
     )
@@ -658,6 +729,7 @@ def test_iou(
     db: Session,
     rect1: BoundingPolygon,
     rect2: BoundingPolygon,
+    img1: Image,
 ):
     dataset = client.create_dataset(dset_name)
     model = client.create_model(model_name)
@@ -665,7 +737,7 @@ def test_iou(
     dataset.add_groundtruth_detections(
         [
             GroundTruthDetection(
-                boundary=rect1, labels=[Label("k", "v")], image=Image("uri")
+                boundary=rect1, labels=[Label("k", "v")], image=img1
             )
         ]
     )
@@ -676,7 +748,7 @@ def test_iou(
             PredictedDetection(
                 boundary=rect2,
                 scored_labels=[ScoredLabel(label=Label("k", "v"), score=0.6)],
-                image=Image("uri"),
+                image=img1,
             )
         ]
     )

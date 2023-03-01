@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass
-from typing import List
+from typing import List, Union
 
 import numpy as np
 from PIL import Image as PILImage
@@ -10,6 +10,8 @@ from PIL import ImageDraw, ImageFont
 @dataclass
 class Image:
     uri: str
+    height: int
+    width: int
 
 
 @dataclass
@@ -86,23 +88,6 @@ class BoundingPolygon:
 
 
 @dataclass
-class DetectionBase:
-    """Class representing a single object detection in an image."""
-
-    boundary: BoundingPolygon
-    labels: List[Label]
-    image: Image
-
-    def draw_on_image(
-        self, img: PILImage.Image, inplace: bool = False
-    ) -> PILImage.Image:
-        img = self.boundary.draw_on_image(
-            img, inplace=inplace, text=f"{self.class_label} {self.score:0.2f}"
-        )
-        return img
-
-
-@dataclass
 class GroundTruthDetection:
     boundary: BoundingPolygon
     labels: List[Label]
@@ -143,11 +128,22 @@ class PolygonWithHole:
     hole: BoundingPolygon = None
 
 
+def _validate_mask(mask: np.ndarray):
+    if mask.dtype != bool:
+        raise ValueError(
+            f"Expecting a binary mask (i.e. of dtype bool) but got dtype {mask.dtype}"
+        )
+
+
 @dataclass
 class GroundTruthSegmentation:
-    shape: List[PolygonWithHole]
+    shape: Union[List[PolygonWithHole], np.ndarray]
     labels: List[Label]
     image: Image
+
+    def __post_init__(self):
+        if isinstance(self.shape, np.ndarray):
+            _validate_mask(self.shape)
 
 
 @dataclass
@@ -157,10 +153,7 @@ class PredictedSegmentation:
     image: Image
 
     def __post_init__(self):
-        if self.mask.dtype != bool:
-            raise ValueError(
-                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {self.mask.dtype}"
-            )
+        _validate_mask(self.mask)
 
 
 @dataclass

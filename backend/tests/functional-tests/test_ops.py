@@ -3,10 +3,11 @@ import io
 import numpy as np
 import pytest
 from PIL import Image
+from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from velour_api import models, ops, schemas
-from velour_api.crud import _wkt_multipolygon_from_polygons_with_hole
+from velour_api.crud import _select_statement_from_poly
 
 
 def bytes_to_pil(b: bytes) -> Image.Image:
@@ -23,30 +24,12 @@ def pil_to_bytes(img: Image.Image) -> bytes:
 
 
 @pytest.fixture
-def dset(db: Session) -> models.Dataset:
-    dset = models.Dataset(name="dset")
-    db.add(dset)
-    db.commit()
-
-    return dset
-
-
-@pytest.fixture
 def model(db: Session) -> models.Model:
     model = models.Model(name="model")
     db.add(model)
     db.commit()
 
     return model
-
-
-@pytest.fixture
-def img(db: Session, dset: models.Dataset) -> models.Image:
-    img = models.Image(uri="uri", dataset_id=dset.id)
-    db.add(img)
-    db.commit()
-
-    return img
 
 
 def _pred_seg_from_bytes(
@@ -61,11 +44,15 @@ def _pred_seg_from_bytes(
 
 
 def _gt_seg_from_polys(
-    db: Session, polys: schemas.PolygonWithHole, img: models.Image
+    db: Session, polys: list[schemas.PolygonWithHole], img: models.Image
 ) -> models.GroundTruthSegmentation:
-    wkt_poly = _wkt_multipolygon_from_polygons_with_hole(polys)
-    gt_seg = models.GroundTruthSegmentation(shape=wkt_poly, image_id=img.id)
-    db.add(gt_seg)
+    mapping = {"shape": _select_statement_from_poly(polys), "image_id": img.id}
+    gt_seg = db.scalar(
+        insert(models.GroundTruthSegmentation)
+        .values([mapping])
+        .returning(models.GroundTruthSegmentation)
+    )
+
     db.commit()
     return gt_seg
 
@@ -78,7 +65,7 @@ def test_area_pred_seg(
     )
 
     mask = bytes_to_pil(mask_bytes1)
-    assert ops.pred_seg_area(db, pred_seg) == np.array(mask).sum()
+    assert ops.seg_area(db, pred_seg) == np.array(mask).sum()
 
 
 def test_intersection_pred_seg_gt_seg(

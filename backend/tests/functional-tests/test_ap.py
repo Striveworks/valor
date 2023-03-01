@@ -36,7 +36,7 @@ def round_dict_(d: dict, prec: int) -> None:
 
 @pytest.fixture
 def images() -> list[Image]:
-    return [Image(uri=f"{i}") for i in range(4)]
+    return [Image(uri=f"{i}", height=1000, width=2000) for i in range(4)]
 
 
 @pytest.fixture
