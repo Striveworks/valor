@@ -4,11 +4,13 @@ from typing import Any
 
 import numpy as np
 import pytest
-from geoalchemy2.functions import ST_AsPNG
+from geoalchemy2.functions import ST_AsPNG, ST_AsText, ST_Polygon
 from PIL import Image as PILImage
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
+from velour_api import models, ops
+
 from velour.client import Client, ClientException
 from velour.data_types import (
     BoundingPolygon,
@@ -25,20 +27,8 @@ from velour.data_types import (
     ScoredLabel,
 )
 
-from velour_api import models, ops
-
 dset_name = "test dataset"
 model_name = "test model"
-
-
-def _list_of_outer_and_inner_points_from_wkt(
-    db: Session, seg: PredictedSegmentation
-) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
-    geo = json.loads(db.scalar(seg.shape.ST_AsGeoJSON()))
-    assert len(geo["coordinates"]) == 1
-    outer, inner = geo["coordinates"][0]
-
-    return [tuple(p) for p in outer], [tuple(p) for p in inner]
 
 
 def _list_of_points_from_wkt_polygon(
@@ -592,6 +582,49 @@ def test_create_dataset_with_segmentations(
             ("k2", "v2"),
         },
     )
+
+
+def test_create_gt_segs_as_polys_or_masks(
+    client: Client, img1: Image, db: Session
+):
+    """Test that we can create a dataset with groundtruth segmentations that are defined
+    both my polygons and mask arrays
+    """
+    dataset = client.create_dataset(dset_name)
+
+    xmin, xmax, ymin, ymax = 11, 45, 37, 102
+    h, w = 150, 200
+    mask = np.zeros((h, w), dtype=bool)
+    mask[ymin:ymax, xmin:xmax] = True
+
+    poly = PolygonWithHole(
+        polygon=BoundingPolygon(
+            [
+                Point(x=xmin, y=ymin),
+                Point(x=xmin, y=ymax),
+                Point(x=xmax, y=ymax),
+                Point(x=xmax, y=ymin),
+            ]
+        )
+    )
+
+    gt1 = GroundTruthSegmentation(
+        shape=mask, labels=[Label(key="k1", value="v1")], image=img1
+    )
+    gt2 = GroundTruthSegmentation(
+        shape=[poly], labels=[Label(key="k1", value="v1")], image=img1
+    )
+
+    dataset.add_groundtruth_segmentations([gt1, gt2])
+    wkts = db.scalars(
+        select(ST_AsText(ST_Polygon(models.GroundTruthSegmentation.shape)))
+    ).all()
+
+    for wkt in wkts:
+        assert (
+            wkt
+            == f"MULTIPOLYGON((({xmin} {ymin},{xmin} {ymax},{xmax} {ymax},{xmax} {ymin},{xmin} {ymin})))"
+        )
 
 
 def test_create_model_with_predicted_segmentations(

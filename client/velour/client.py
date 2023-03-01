@@ -1,12 +1,13 @@
 import io
 from base64 import b64encode
 from dataclasses import asdict
-from typing import Dict, List
+from typing import Dict, List, Union
 from urllib.parse import urljoin
 
 import numpy as np
 import requests
 from PIL import Image as PILImage
+
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
@@ -123,11 +124,17 @@ class Client:
     def upload_groundtruth_segmentations(
         self, dataset_name: str, segs: List[GroundTruthSegmentation]
     ) -> List[int]:
+        def _shape_value(shape: Union[List[PolygonWithHole], np.ndarray]):
+            if isinstance(shape, np.ndarray):
+                return _mask_array_to_pil_base64(shape)
+            else:
+                return _payload_for_polys_with_holes(shape)
+
         payload = {
             "dataset_name": dataset_name,
             "segmentations": [
                 {
-                    "shape": _payload_for_polys_with_holes(seg.shape),
+                    "shape": _shape_value(seg.shape),
                     "labels": [asdict(label) for label in seg.labels],
                     "image": asdict(seg.image),
                 }
