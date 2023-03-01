@@ -26,10 +26,6 @@ def intersection_area_of_dets(
     return db.scalar(ST_Area(ST_Intersection(det1.boundary, det2.boundary)))
 
 
-# SELECT ST_Area((ST_Intersection(ST_SetGeoReference(predicted_segmentation.shape, '1 0 0 1 0 0', 'GDAL'), ground_truth_segmentation.shape)).geom)
-# FROM predicted_segmentation, ground_truth_segmentation
-
-
 def _area_from_value_counts(vcs: list[str]) -> float:
     """
     vcs

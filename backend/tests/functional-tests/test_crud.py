@@ -21,6 +21,13 @@ def bytes_to_pil(b: bytes) -> Image.Image:
     return img
 
 
+def np_to_bytes(arr: np.ndarray) -> bytes:
+    f = io.BytesIO()
+    Image.fromarray(arr).save(f, format="PNG")
+    f.seek(0)
+    return f.read()
+
+
 def check_db_empty(db: Session):
     for model_cls in [
         models.Image,
@@ -589,5 +596,41 @@ def test__select_statement_from_poly(
     )
 
 
-def test_gt_seg_as_mask_or_polys():
-    pass
+def test_gt_seg_as_mask_or_polys(db: Session, img1: schemas.Image):
+    """Check that a groundtruth segmentation can be created as a polygon or mask"""
+    xmin, xmax, ymin, ymax = 11, 45, 37, 102
+    h, w = 150, 200
+    mask = np.zeros((h, w), dtype=bool)
+    mask[ymin:ymax, xmin:xmax] = True
+    mask_b64 = b64encode(np_to_bytes(mask)).decode()
+
+    poly = [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin)]
+
+    gt1 = schemas.GroundTruthSegmentation(
+        shape=mask_b64,
+        image=img1,
+        labels=[schemas.Label(key="k1", value="v1")],
+    )
+    gt2 = schemas.GroundTruthSegmentation(
+        shape=[schemas.PolygonWithHole(polygon=poly)],
+        image=img1,
+        labels=[schemas.Label(key="k1", value="v1")],
+    )
+
+    check_db_empty(db=db)
+
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_groundtruth_segmentations(
+        db,
+        data=schemas.GroundTruthSegmentationsCreate(
+            dataset_name=dset_name, segmentations=[gt1, gt2]
+        ),
+    )
+
+    shapes = db.scalars(
+        select(ST_AsText(ST_Polygon(models.GroundTruthSegmentation.shape)))
+    ).all()
+
+    assert len(shapes) == 2
+    # check that the mask and polygon define the same polygons
+    assert shapes[0] == shapes[1]

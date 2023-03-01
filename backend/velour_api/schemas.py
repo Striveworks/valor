@@ -1,6 +1,5 @@
 import io
 from base64 import b64decode
-from typing import Union
 
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, validator
@@ -98,15 +97,6 @@ class PolygonWithHole(BaseModel):
         return validate_single_polygon(v)
 
 
-def _mask_bytes(
-    self: Union["GroundTruthSegmentation", "PredictedSegmentation"]
-) -> bytes:
-    if not hasattr(self, "_mask_bytes"):
-        self._mask_bytes = b64decode(self.base64_mask)
-
-    return self._mask_bytes
-
-
 class GroundTruthSegmentation(BaseModel):
     # multipolygon or base64 mask
     shape: str | list[PolygonWithHole] = Field(allow_mutation=False)
@@ -134,7 +124,9 @@ class GroundTruthSegmentation(BaseModel):
                 "`mask_bytes` can only be called for `GroundTruthSegmentation`'s defined"
                 " by masks, not polygons"
             )
-        return _mask_bytes(self)
+        if not hasattr(self, "_mask_bytes"):
+            self._mask_bytes = b64decode(self.shape)
+        return self._mask_bytes
 
 
 class PredictedSegmentation(BaseModel):
@@ -148,7 +140,9 @@ class PredictedSegmentation(BaseModel):
 
     @property
     def mask_bytes(self) -> bytes:
-        return _mask_bytes(self)
+        if not hasattr(self, "_mask_bytes"):
+            self._mask_bytes = b64decode(self.base64_mask)
+        return self._mask_bytes
 
     @validator("base64_mask")
     def check_png_and_mode(cls, v):
