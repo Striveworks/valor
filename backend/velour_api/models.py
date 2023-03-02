@@ -175,7 +175,7 @@ class GroundTruthSegmentation(Base):
     __tablename__ = "ground_truth_segmentation"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    # shape = mapped_column(Geometry("MULTIPOLYGON"))
+    is_instance: Mapped[bool] = mapped_column(nullable=False)
     shape = mapped_column(GDALRaster)
     image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
     labeled_ground_truth_segmentations: Mapped[
@@ -193,6 +193,7 @@ class PredictedSegmentation(Base):
     __tablename__ = "predicted_segmentation"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    is_instance: Mapped[bool] = mapped_column(nullable=False)
     shape = mapped_column(GDALRaster)
     image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
     image: Mapped["Image"] = relationship(

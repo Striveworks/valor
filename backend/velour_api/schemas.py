@@ -102,6 +102,7 @@ class GroundTruthSegmentation(BaseModel):
     shape: str | list[PolygonWithHole] = Field(allow_mutation=False)
     image: Image
     labels: list[Label]
+    is_instance: bool
 
     class Config:
         extra = Extra.allow
@@ -133,6 +134,7 @@ class PredictedSegmentation(BaseModel):
     base64_mask: str = Field(allow_mutation=False)
     image: Image
     scored_labels: list[ScoredLabel]
+    is_instance: bool
 
     class Config:
         extra = Extra.allow

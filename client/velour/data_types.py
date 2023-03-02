@@ -1,5 +1,6 @@
 import math
-from dataclasses import dataclass
+from abc import ABC
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
@@ -183,28 +184,50 @@ def _validate_mask(mask: np.ndarray):
 
 
 @dataclass
-class _GroundTruthSegmentation:
+class GroundTruthSegmentation(ABC):
     shape: Union[List[PolygonWithHole], np.ndarray]
     labels: List[Label]
     image: Image
+    _is_instance: bool
 
     def __post_init__(self):
+        if self.__class__ == GroundTruthSegmentation:
+            raise TypeError("Cannot instantiate abstract class.")
         if isinstance(self.shape, np.ndarray):
             _validate_mask(self.shape)
 
 
-GroundTruthInstanceSegmentation = _GroundTruthSegmentation
-GroundTruthSemanticSegmentation = _GroundTruthSegmentation
+@dataclass
+class GroundTruthInstanceSegmentation(GroundTruthSegmentation):
+    _is_instance: bool = field(default=True, init=False)
 
 
 @dataclass
-class PredictedSegmentation:
+class GroundTruthSemanticSegmentation(GroundTruthSegmentation):
+    _is_instance: bool = field(default=False, init=False)
+
+
+@dataclass
+class PredictedSegmentation(ABC):
     mask: np.ndarray
     scored_labels: List[ScoredLabel]
     image: Image
+    _is_instance: bool
 
     def __post_init__(self):
+        if self.__class__ == GroundTruthSegmentation:
+            raise TypeError("Cannot instantiate abstract class.")
         _validate_mask(self.mask)
+
+
+@dataclass
+class PredictedInstanceSegmentation(PredictedSegmentation):
+    _is_instance: bool = field(default=True, init=False)
+
+
+@dataclass
+class PredictedSemanticSegmentation(PredictedSegmentation):
+    _is_instance: bool = field(default=False, init=False)
 
 
 @dataclass
