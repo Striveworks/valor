@@ -1,4 +1,3 @@
-import logging
 import os
 import time
 
@@ -8,9 +7,19 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.sql import text
 
-SQLALCHEMY_DATABASE_URL = f"postgresql://postgres:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/postgres"
+from velour_api import logger
 
-logging.debug(f"SQLALCHEMY_DATABASE_URL: {SQLALCHEMY_DATABASE_URL}")
+POSTGRES_HOST = os.getenv("POSTGRES_HOST")
+POSTGRES_USERNAME = os.getenv("POSTGRES_USERNAME", "postgresql")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+POSTGRES_DB = os.getenv("POSTGRES_DB", "postgres")
+
+SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USERNAME}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}/{POSTGRES_DB}"
+
+logger.debug(
+    f"POSTGRES_HOST: {POSTGRES_HOST}, POSTGRES_USERNAME: {POSTGRES_USERNAME}, "
+    f"POSTGRES_PASSWORD: {'null' if POSTGRES_PASSWORD is None else 'not null'}, POSTGRES_DB: {POSTGRES_DB} "
+)
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 make_session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
