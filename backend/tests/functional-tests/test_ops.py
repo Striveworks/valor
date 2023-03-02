@@ -36,7 +36,7 @@ def _pred_seg_from_bytes(
     db: Session, mask_bytes: bytes, model: models.Model, img: models.Image
 ) -> models.PredictedSegmentation:
     pred_seg = models.PredictedSegmentation(
-        shape=mask_bytes, image_id=img.id, model_id=model.id
+        shape=mask_bytes, image_id=img.id, model_id=model.id, is_instance=False
     )
     db.add(pred_seg)
     db.commit()
@@ -46,7 +46,11 @@ def _pred_seg_from_bytes(
 def _gt_seg_from_polys(
     db: Session, polys: list[schemas.PolygonWithHole], img: models.Image
 ) -> models.GroundTruthSegmentation:
-    mapping = {"shape": _select_statement_from_poly(polys), "image_id": img.id}
+    mapping = {
+        "shape": _select_statement_from_poly(polys),
+        "image_id": img.id,
+        "is_instance": False,
+    }
     gt_seg = db.scalar(
         insert(models.GroundTruthSegmentation)
         .values([mapping])

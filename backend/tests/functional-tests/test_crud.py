@@ -123,11 +123,13 @@ def gt_segs_create(
         dataset_name=dset_name,
         segmentations=[
             schemas.GroundTruthSegmentation(
+                is_instance=True,
                 shape=[poly_with_hole],
                 image=img1,
                 labels=[schemas.Label(key="k1", value="v1")],
             ),
             schemas.GroundTruthSegmentation(
+                is_instance=False,
                 shape=[poly_without_hole],
                 image=img2,
                 labels=[schemas.Label(key="k1", value="v1")],
@@ -147,6 +149,7 @@ def pred_segs_create(
         segmentations=[
             schemas.PredictedSegmentation(
                 base64_mask=b64_mask1,
+                is_instance=True,
                 image=img1,
                 scored_labels=[
                     schemas.ScoredLabel(
@@ -156,6 +159,7 @@ def pred_segs_create(
             ),
             schemas.PredictedSegmentation(
                 base64_mask=b64_mask2,
+                is_instance=False,
                 image=img1,
                 scored_labels=[
                     schemas.ScoredLabel(
@@ -494,6 +498,7 @@ def test_segmentation_area_no_hole(
             dataset_name=dset_name,
             segmentations=[
                 schemas.GroundTruthSegmentation(
+                    is_instance=True,
                     shape=[poly_without_hole],
                     image=img1,
                     labels=[schemas.Label(key="k1", value="v1")],
@@ -522,6 +527,7 @@ def test_segmentation_area_with_hole(
             dataset_name=dset_name,
             segmentations=[
                 schemas.GroundTruthSegmentation(
+                    is_instance=False,
                     shape=[poly_with_hole],
                     image=img1,
                     labels=[schemas.Label(key="k1", value="v1")],
@@ -552,6 +558,7 @@ def test_segmentation_area_multi_polygon(
             dataset_name=dset_name,
             segmentations=[
                 schemas.GroundTruthSegmentation(
+                    is_instance=True,
                     shape=[poly_with_hole, poly_without_hole],
                     image=img1,
                     labels=[schemas.Label(key="k1", value="v1")],
@@ -579,6 +586,7 @@ def test__select_statement_from_poly(
                         [poly_with_hole]
                     ),
                     "image_id": img.id,
+                    "is_instance": True,
                 }
             ]
         )
@@ -607,11 +615,13 @@ def test_gt_seg_as_mask_or_polys(db: Session, img1: schemas.Image):
     poly = [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin)]
 
     gt1 = schemas.GroundTruthSegmentation(
+        is_instance=False,
         shape=mask_b64,
         image=img1,
         labels=[schemas.Label(key="k1", value="v1")],
     )
     gt2 = schemas.GroundTruthSegmentation(
+        is_instance=True,
         shape=[schemas.PolygonWithHole(polygon=poly)],
         image=img1,
         labels=[schemas.Label(key="k1", value="v1")],

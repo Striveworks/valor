@@ -1,4 +1,3 @@
-import logging
 import os
 import time
 
@@ -8,9 +7,20 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.sql import text
 
-SQLALCHEMY_DATABASE_URL = f"postgresql://postgres:{os.getenv('POSTGRES_PASSWORD')}@{os.getenv('POSTGRES_HOST')}/postgres"
+from velour_api import logger
 
-logging.debug(f"SQLALCHEMY_DATABASE_URL: {SQLALCHEMY_DATABASE_URL}")
+POSTGRES_HOST = os.getenv("POSTGRES_HOST")
+POSTGRES_USERNAME = os.getenv("POSTGRES_USERNAME", "postgres")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+POSTGRES_DB = os.getenv("POSTGRES_DB", "postgres")
+POSTGRES_PORT = os.getenv("POSTGRES_PORT", 5432)
+
+SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USERNAME}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+
+logger.debug(
+    f"POSTGRES_HOST: {POSTGRES_HOST}:{POSTGRES_PORT}, POSTGRES_USERNAME: {POSTGRES_USERNAME}, "
+    f"POSTGRES_PASSWORD: {'null' if POSTGRES_PASSWORD is None else 'not null'}, POSTGRES_DB: {POSTGRES_DB} "
+)
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 make_session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -20,8 +30,8 @@ def retry_connection(f):
     TIMEOUT = 30
 
     def wrapper(*args, **kwargs):
+        start_time = time.time()
         while True:
-            start_time = time.time()
             try:
                 return f(*args, **kwargs)
             except (
@@ -44,8 +54,6 @@ def make_session() -> Session:
     db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
     db.execute(text("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';"))
     db.commit()
-    # db.execute(text("CREATE EXTENSION postgis_raster;"))
-    # db.commit()
     return db
 
 
@@ -57,15 +65,18 @@ def create_db():
     from . import models
 
     db = make_session()
-    # create raster extension if it doesn't exist
-    if (
-        db.execute(
-            text("SELECT * FROM pg_extension WHERE extname='postgis_raster';")
-        ).scalar()
-        is None
-    ):
-        db.execute(text("CREATE EXTENSION postgis_raster;"))
-        db.commit()
+    # create postgis and raster extensions if they don't exist
+    for extension in ["postgis", "postgis_raster"]:
+        if (
+            db.execute(
+                text(
+                    f"SELECT * FROM pg_extension WHERE extname='{extension}';"
+                )
+            ).scalar()
+            is None
+        ):
+            db.execute(text(f"CREATE EXTENSION {extension};"))
+            db.commit()
 
     db.close()
     models.Base.metadata.create_all(bind=engine)

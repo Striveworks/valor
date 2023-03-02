@@ -115,6 +115,7 @@ def _create_gt_segmentation_mappings(
             shape = seg.mask_bytes
 
         return {
+            "is_instance": seg.is_instance,
             "shape": shape,
             "image_id": image.id,
         }
@@ -131,6 +132,7 @@ def _create_pred_segmentation_mappings(
 ) -> list[dict[str, str]]:
     return [
         {
+            "is_instance": segmentation.is_instance,
             "shape": segmentation.mask_bytes,
             "image_id": image.id,
         }

@@ -50,7 +50,7 @@ def test_predicted_segmentation_validation_pos(img: Image):
     base64_mask = _create_b64_mask(mode="1", ext="png")
 
     pred_seg = PredictedSegmentation(
-        base64_mask=base64_mask, image=img, scored_labels=[]
+        base64_mask=base64_mask, image=img, scored_labels=[], is_instance=True
     )
     assert pred_seg.base64_mask == base64_mask
 
@@ -61,7 +61,10 @@ def test_predicted_segmentation_validation_mode_neg(img: Image):
 
     with pytest.raises(ValueError) as exc_info:
         PredictedSegmentation(
-            base64_mask=base64_mask, image=img, scored_labels=[]
+            base64_mask=base64_mask,
+            image=img,
+            scored_labels=[],
+            is_instance=False,
         )
     assert "Expected image mode to be binary but got mode" in str(exc_info)
 
@@ -72,6 +75,9 @@ def test_predicted_segmentation_validation_format_neg(img: Image):
 
     with pytest.raises(ValueError) as exc_info:
         PredictedSegmentation(
-            base64_mask=base64_mask, image=img, scored_labels=[]
+            base64_mask=base64_mask,
+            image=img,
+            scored_labels=[],
+            is_instance=True,
         )
     assert "Expected image format PNG but got" in str(exc_info)

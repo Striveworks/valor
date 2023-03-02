@@ -7,7 +7,6 @@ from urllib.parse import urljoin
 import numpy as np
 import requests
 from PIL import Image as PILImage
-
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
@@ -137,6 +136,7 @@ class Client:
                     "shape": _shape_value(seg.shape),
                     "labels": [asdict(label) for label in seg.labels],
                     "image": asdict(seg.image),
+                    "is_instance": seg._is_instance,
                 }
                 for seg in segs
             ],
@@ -187,6 +187,7 @@ class Client:
                         for scored_label in seg.scored_labels
                     ],
                     "image": asdict(seg.image),
+                    "is_instance": seg._is_instance,
                 }
                 for seg in segs
             ],
