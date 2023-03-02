@@ -9,23 +9,24 @@ from PIL import Image as PILImage
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
-from velour_api import models, ops
-
 from velour.client import Client, ClientException
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
     GroundTruthImageClassification,
-    GroundTruthSegmentation,
+    GroundTruthInstanceSegmentation,
+    GroundTruthSemanticSegmentation,
     Image,
     Label,
     Point,
     PolygonWithHole,
     PredictedDetection,
     PredictedImageClassification,
-    PredictedSegmentation,
+    PredictedInstanceSegmentation,
     ScoredLabel,
 )
+
+from velour_api import models, ops
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -236,14 +237,14 @@ def gt_dets3(
 @pytest.fixture
 def gt_segs1(
     rect1: BoundingPolygon, rect2: BoundingPolygon, img1: Image, img2: Image
-) -> list[GroundTruthSegmentation]:
+) -> list[GroundTruthInstanceSegmentation]:
     return [
-        GroundTruthSegmentation(
+        GroundTruthInstanceSegmentation(
             shape=[PolygonWithHole(polygon=rect1)],
             labels=[Label(key="k1", value="v1")],
             image=img1,
         ),
-        GroundTruthSegmentation(
+        GroundTruthInstanceSegmentation(
             shape=[PolygonWithHole(polygon=rect2, hole=rect1)],
             labels=[Label(key="k1", value="v1")],
             image=img2,
@@ -254,9 +255,9 @@ def gt_segs1(
 @pytest.fixture
 def gt_segs2(
     rect1: BoundingPolygon, rect3: BoundingPolygon, img1: Image
-) -> list[GroundTruthDetection]:
+) -> list[GroundTruthSemanticSegmentation]:
     return [
-        GroundTruthSegmentation(
+        GroundTruthSemanticSegmentation(
             shape=[
                 PolygonWithHole(polygon=rect3),
                 PolygonWithHole(polygon=rect1),
@@ -270,9 +271,9 @@ def gt_segs2(
 @pytest.fixture
 def gt_segs3(
     rect3: BoundingPolygon, img9: Image
-) -> list[GroundTruthDetection]:
+) -> list[GroundTruthSemanticSegmentation]:
     return [
-        GroundTruthSegmentation(
+        GroundTruthSemanticSegmentation(
             shape=[PolygonWithHole(polygon=rect3)],
             labels=[Label(key="k3", value="v3")],
             image=img9,
@@ -334,18 +335,18 @@ def pred_dets(
 
 
 @pytest.fixture
-def pred_segs(img1: Image, img2: Image) -> list[PredictedDetection]:
+def pred_segs(img1: Image, img2: Image) -> list[PredictedInstanceSegmentation]:
     mask_1 = np.random.randint(0, 2, size=(64, 32), dtype=bool)
     mask_2 = np.random.randint(0, 2, size=(12, 23), dtype=bool)
     return [
-        PredictedSegmentation(
+        PredictedInstanceSegmentation(
             mask=mask_1,
             scored_labels=[
                 ScoredLabel(label=Label(key="k1", value="v1"), score=0.87)
             ],
             image=img1,
         ),
-        PredictedSegmentation(
+        PredictedInstanceSegmentation(
             mask=mask_2,
             scored_labels=[
                 ScoredLabel(label=Label(key="k2", value="v2"), score=0.92)
@@ -565,9 +566,9 @@ def test_create_model_with_predicted_detections(
 
 def test_create_dataset_with_segmentations(
     client: Client,
-    gt_segs1: list[GroundTruthSegmentation],
-    gt_segs2: list[GroundTruthSegmentation],
-    gt_segs3: list[GroundTruthSegmentation],
+    gt_segs1: list[GroundTruthSemanticSegmentation],
+    gt_segs2: list[GroundTruthSemanticSegmentation],
+    gt_segs3: list[GroundTruthSemanticSegmentation],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     _test_create_dataset_with_gts(
@@ -608,10 +609,10 @@ def test_create_gt_segs_as_polys_or_masks(
         )
     )
 
-    gt1 = GroundTruthSegmentation(
+    gt1 = GroundTruthSemanticSegmentation(
         shape=mask, labels=[Label(key="k1", value="v1")], image=img1
     )
-    gt2 = GroundTruthSegmentation(
+    gt2 = GroundTruthSemanticSegmentation(
         shape=[poly], labels=[Label(key="k1", value="v1")], image=img1
     )
 
@@ -629,8 +630,8 @@ def test_create_gt_segs_as_polys_or_masks(
 
 def test_create_model_with_predicted_segmentations(
     client: Client,
-    gt_segs1: list[GroundTruthSegmentation],
-    pred_segs: list[PredictedSegmentation],
+    gt_segs1: list[GroundTruthInstanceSegmentation],
+    pred_segs: list[PredictedInstanceSegmentation],
     db: Session,
 ):
     """Tests that we can create a predicted segmentation from a mask array"""
