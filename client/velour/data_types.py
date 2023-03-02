@@ -1,27 +1,11 @@
 import math
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Union
 
 import numpy as np
 from PIL import Image as PILImage
 from PIL import ImageDraw, ImageFont
-
-
-def rle_to_mask(
-    run_length_encoding: List[Tuple[int, int]],
-    image_height: int,
-    image_width: int,
-) -> np.ndarray:
-    res = np.zeros((image_height, image_width), dtype=bool)
-    idx = 0
-    for start, length in run_length_encoding:
-        idx += start
-        for i in range(idx, idx + length):
-            y, x = divmod(i, image_height)
-            res[x, y] = True
-        idx += length
-    return res
 
 
 def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
@@ -50,9 +34,15 @@ def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
 
     h, w = coco_rle_seg_dict["size"]
 
-    return rle_to_mask(
-        run_length_encoding=run_length_encoding, image_height=h, image_width=w
-    )
+    res = np.zeros((h, w), dtype=bool)
+    idx = 0
+    for start, length in run_length_encoding:
+        idx += start
+        for i in range(idx, idx + length):
+            y, x = divmod(i, h)
+            res[x, y] = True
+        idx += length
+    return res
 
 
 @dataclass

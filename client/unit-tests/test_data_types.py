@@ -1,17 +1,19 @@
 import pytest
+from PIL import Image
+
 from velour.data_types import (
     GroundTruthInstanceSegmentation,
     GroundTruthSegmentation,
     GroundTruthSemanticSegmentation,
-    rle_to_mask,
+    coco_rle_to_mask,
 )
 
 
-def test_rle_to_mask():
+def test_coco_rle_to_mask():
     h, w = 4, 6
-    rle = [(10, 4), (3, 7)]
+    coco_rle_seg_dict = {"counts": [10, 4, 3, 7], "size": (h, w)}
 
-    mask = rle_to_mask(run_length_encoding=rle, image_height=h, image_width=w)
+    mask = coco_rle_to_mask(coco_rle_seg_dict=coco_rle_seg_dict)
     expected_mask = [
         [False, False, False, True, False, True],
         [False, False, False, True, True, True],
@@ -21,6 +23,11 @@ def test_rle_to_mask():
 
     assert mask.sum() == 4 + 7
     assert mask.tolist() == expected_mask
+
+    img = Image.fromarray(mask)
+
+    assert img.width == w
+    assert img.height == h
 
 
 def test_ground_truth_segmentation():
