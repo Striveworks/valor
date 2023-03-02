@@ -1,14 +1,8 @@
-import logging
-
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
-from velour_api import crud, schemas, settings
+from velour_api import crud, logger, schemas
 from velour_api.database import create_db, make_session
-
-logging.config.dictConfig(settings.LogConfig().dict())
-logger = logging.getLogger("velour-backend")
-logger.setLevel(logging.DEBUG)
 
 app = FastAPI()
 
