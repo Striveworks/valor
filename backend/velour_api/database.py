@@ -10,7 +10,7 @@ from sqlalchemy.sql import text
 from velour_api import logger
 
 POSTGRES_HOST = os.getenv("POSTGRES_HOST")
-POSTGRES_USERNAME = os.getenv("POSTGRES_USERNAME", "postgresql")
+POSTGRES_USERNAME = os.getenv("POSTGRES_USERNAME", "postgres")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_DB = os.getenv("POSTGRES_DB", "postgres")
 
@@ -29,8 +29,8 @@ def retry_connection(f):
     TIMEOUT = 30
 
     def wrapper(*args, **kwargs):
+        start_time = time.time()
         while True:
-            start_time = time.time()
             try:
                 return f(*args, **kwargs)
             except (
