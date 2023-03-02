@@ -1,10 +1,57 @@
 import math
 from dataclasses import dataclass
-from typing import List, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 from PIL import Image as PILImage
 from PIL import ImageDraw, ImageFont
+
+
+def rle_to_mask(
+    run_length_encoding: List[Tuple[int, int]],
+    image_height: int,
+    image_width: int,
+) -> np.ndarray:
+    res = np.zeros((image_height, image_width), dtype=bool)
+    idx = 0
+    for start, length in run_length_encoding:
+        idx += start
+        for i in range(idx, idx + length):
+            y, x = divmod(i, image_height)
+            res[x, y] = True
+        idx += length
+    return res
+
+
+def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
+    """Converts a COCO run-length-encoded segmentation to a binary mask
+
+    Parameters
+    ----------
+    coco_rle_seg_dict
+        a COCO formatted RLE segmentation dictionary. This should have keys
+        "counts" and "size".
+
+    Returns
+    -------
+    the corresponding binary mask
+    """
+    if not set(coco_rle_seg_dict.keys()) == {"counts", "size"}:
+        raise ValueError(
+            "`coco_rle_seg_dict` expected to be dict with keys 'counts' and 'size'."
+        )
+
+    starts, lengths = (
+        coco_rle_seg_dict["counts"][::2],
+        coco_rle_seg_dict["counts"][1::2],
+    )
+    run_length_encoding = list(zip(starts, lengths))
+
+    h, w = coco_rle_seg_dict["size"]
+
+    return rle_to_mask(
+        run_length_encoding=run_length_encoding, image_height=h, image_width=w
+    )
 
 
 @dataclass
@@ -136,7 +183,7 @@ def _validate_mask(mask: np.ndarray):
 
 
 @dataclass
-class GroundTruthSegmentation:
+class _GroundTruthSegmentation:
     shape: Union[List[PolygonWithHole], np.ndarray]
     labels: List[Label]
     image: Image
@@ -144,6 +191,10 @@ class GroundTruthSegmentation:
     def __post_init__(self):
         if isinstance(self.shape, np.ndarray):
             _validate_mask(self.shape)
+
+
+GroundTruthInstanceSegmentation = _GroundTruthSegmentation
+GroundTruthSemanticSegmentation = _GroundTruthSegmentation
 
 
 @dataclass
