@@ -20,10 +20,10 @@ jobs:
         with:
           python-version: "3.10"
       - name: install api
-        run: pip install .[test]
+        run: pip install -e ".[test]"
         working-directory: ./backend
       - name: install client
-        run: pip install .[test]
+        run: pip install -e ".[test]"
         working-directory: ./client
       - run: coverage run --source="backend/velour_api,client/velour" --omit backend/velour_api/main.py -m pytest -v integration_tests
         working-directory: ./
