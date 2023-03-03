@@ -138,7 +138,7 @@ jobs:
           path: .coverage.integration-tests
       - uses: actions/download-artifact@v3
         with:
-          name: .coverage.backend-functional-testss
+          name: .coverage.backend-functional-tests
           path: .coverage.backend-functional-tests
       - run: coverage combine
       - run: coverage report
