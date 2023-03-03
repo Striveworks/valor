@@ -29,6 +29,11 @@ jobs:
           POSTGRES_PASSWORD: password
           POSTGRES_HOST: localhost
       - run: coverage report
+      - name: upload coverage report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.COVERAGE_FILE }}
+          path: backend/${{ env.COVERAGE_FILE }}
 
   integration-tests:
     env:
@@ -55,6 +60,11 @@ jobs:
         working-directory: ./
       - run: coverage report
         working-directory: ./
+      - name: upload coverage report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.COVERAGE_FILE }}
+          path: ${{ env.COVERAGE_FILE }}
 
   backend-unit-tests:
     env:
@@ -101,7 +111,13 @@ jobs:
           path: client/${{ env.COVERAGE_FILE }}
 
   combine-coverage-report:
-    needs: [backend-unit-tests, client-unit-tests]
+    needs:
+      [
+        backend-functional-tests,
+        integration-tests,
+        backend-unit-tests,
+        client-unit-tests,
+      ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-python@v4
@@ -116,5 +132,13 @@ jobs:
         with:
           name: .coverage.client-unit-tests
           path: .coverage.client-unit-tests
+      - uses: actions/download-artifact@v3
+        with:
+          name: .coverage.integration-tests
+          path: .coverage.integration-tests
+      - uses: actions/download-artifact@v3
+        with:
+          name: .coverage.backend-functional-testss
+          path: .coverage.backend-functional-tests
       - run: coverage combine
       - run: coverage report
