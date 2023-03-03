@@ -139,3 +139,19 @@ jobs:
           name: .coverage.backend-functional-tests
       - run: coverage combine
       - run: coverage report
+      # https://nedbatchelder.com/blog/202209/making_a_coverage_badge.html
+      - run: |
+          coverage json
+          export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "total=$TOTAL" >> $GITHUB_ENV
+      - name: "Make badge"
+        uses: schneegans/dynamic-badges-action@v1.4.0
+        with:
+          auth: ${{ secrets.GIST_TOKEN }}
+          gistID: 501428c92df8d0de6805f40fb78b1363
+          filename: velour-coverage.json
+          label: Coverage
+          message: ${{ env.total }}%
+          minColorRange: 50
+          maxColorRange: 90
+          valColorRange: ${{ env.total }}

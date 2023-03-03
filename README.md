@@ -1,5 +1,7 @@
 # velour evaluation store
 
+![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ekorman/501428c92df8d0de6805f40fb78b1363/raw/velour-coverage.json)
+
 This repo contains the python [client](client) and [backend](backend) packages.
 
 ## Tests
