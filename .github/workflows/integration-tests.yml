@@ -27,3 +27,4 @@ jobs:
         working-directory: ./client
       - run: coverage run --source="backend/velour_api,client/velour" --omit backend/velour_api/main.py -m pytest -v integration_tests
         working-directory: ./
+      - run: coverage report
