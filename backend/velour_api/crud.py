@@ -173,7 +173,7 @@ def _add_images_to_dataset(
             model_class=models.Image,
             mapping={
                 "dataset_id": dset_id,
-                **img.json()
+                **img.dict()
             },
         )
         for img in images
