@@ -127,18 +127,14 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: .coverage.backend-unit-tests
-          path: .coverage.backend-unit-tests
       - uses: actions/download-artifact@v3
         with:
           name: .coverage.client-unit-tests
-          path: .coverage.client-unit-tests
       - uses: actions/download-artifact@v3
         with:
           name: .coverage.integration-tests
-          path: .coverage.integration-tests
       - uses: actions/download-artifact@v3
         with:
           name: .coverage.backend-functional-tests
-          path: .coverage.backend-functional-tests
       - run: coverage combine
       - run: coverage report
