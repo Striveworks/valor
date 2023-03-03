@@ -147,7 +147,7 @@ jobs:
       - name: "Make badge"
         uses: schneegans/dynamic-badges-action@v1.4.0
         with:
-          auth: ${{ secrets.GIST_TOKEN }}
+          auth: ${{ secrets.GIST_SECRET }}
           gistID: 501428c92df8d0de6805f40fb78b1363
           filename: velour-coverage.json
           label: Coverage
