@@ -36,4 +36,3 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: pip install tox
       - run: tox -e py
-      - run: coverage report
