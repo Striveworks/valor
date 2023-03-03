@@ -1,0 +1,119 @@
+name: Unit, functional, integration tests and code coverage
+
+on:
+  push:
+
+jobs:
+  backend-functional-tests:
+    env:
+      COVERAGE_FILE: .coverage.backend-functional-tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    services:
+      postgis:
+        image: postgis/postgis
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: password
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - run: pip install ".[test]"
+      - run: coverage run --source=velour_api --omit velour_api/main.py -m pytest -v tests/functional-tests
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_HOST: localhost
+      - run: coverage report
+
+  integration-tests:
+    env:
+      COVERAGE_FILE: .coverage.integration-tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v3
+      - name: setup backend test env
+        run: make test-env
+        working-directory: ./backend
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: install api
+        run: pip install -e ".[test]"
+        working-directory: ./backend
+      - name: install client
+        run: pip install -e ".[test]"
+        working-directory: ./client
+      - run: coverage run --source="backend/velour_api,client/velour" --omit backend/velour_api/main.py -m pytest -v integration_tests
+        working-directory: ./
+      - run: coverage report
+
+  backend-unit-tests:
+    env:
+      COVERAGE_FILE: .coverage.backend-unit-tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - run: pip install ".[test]"
+      - run: coverage run --source=velour_api --omit velour_api/main.py -m pytest -v tests/unit-tests
+      - run: coverage report
+      - name: upload coverage report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.COVERAGE_FILE }}
+          path: ${{ env.COVERAGE_FILE }}
+
+  client-unit-tests:
+    env:
+      COVERAGE_FILE: .coverage.client-unit-tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+    defaults:
+      run:
+        working-directory: ./client
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install tox
+      - run: tox -e py
+      - name: upload coverage report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.COVERAGE_FILE }}
+          path: ${{ env.COVERAGE_FILE }}
+
+  combine-coverage-report:
+    needs: [backend-unit-tests, client-unit-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - run: pip install coverage
+      - uses: actions/download-artifact@v3
+        with:
+          name: .coverage.backend-unit-tests
+          path: .coverage.backend-unit-tests
+      - uses: actions/download-artifact@v3
+        with:
+          name: .coverage.client-unit-tests
+          path: .coverage.client-unit-tests
+      - run: coverage combine
+      - run: coverage report
