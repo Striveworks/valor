@@ -1,11 +1,11 @@
-from fastapi.security import HTTPBearer
 import jwt
+from fastapi.security import HTTPBearer
 from starlette.requests import Request
 
 from velour_api.settings import auth_settings
 
 if auth_settings.jwks_url is not None:
-    jwks_client = jwt.PjJWKClient(auth_settings.jwks_url)
+    jwks_client = jwt.PyJWKClient(auth_settings.jwks_url)
 else:
     jwks_client = None
 
@@ -18,7 +18,7 @@ class OptionalHTTPBearer(HTTPBearer):
     async def __call__(self, request: Request):
         if auth_settings.no_auth:
             return None
-        await super().__call__(request)
+        return await super().__call__(request)
 
 
 def verify_token(token: str):

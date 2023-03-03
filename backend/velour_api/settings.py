@@ -44,6 +44,9 @@ class AuthConfig(BaseSettings):
     algorithms: str = None
     issuer: str = None
 
+    class Config:
+        env_file = ".env.auth"
+
     @property
     def no_auth(self) -> bool:
         return all([not v for v in self.dict().values()])

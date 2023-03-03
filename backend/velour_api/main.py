@@ -1,11 +1,11 @@
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
-from velour_api import crud, logger, schemas
-from velour_api.auth import OptionalHTTPBearer
+from velour_api import auth, crud, logger, schemas
 from velour_api.database import create_db, make_session
 
-token_auth_scheme = OptionalHTTPBearer()
+token_auth_scheme = auth.OptionalHTTPBearer()
+
 
 app = FastAPI()
 
@@ -94,6 +94,9 @@ def create_predicted_classifications(
 def get_datasets(
     db: Session = Depends(get_db), token: str = Depends(token_auth_scheme)
 ) -> list[schemas.Dataset]:
+    logger.debug(f"token: {token}")
+    out = auth.verify_token(token.credentials)
+    logger.debug(f"verify output: {out}")
     return crud.get_datasets(db)
 
 
