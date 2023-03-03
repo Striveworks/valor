@@ -1,6 +1,11 @@
-import importlib.metadata
+import sys
+
+if sys.version_info.minor >= 8:
+    import importlib.metadata as importlib_metadata
+else:
+    import importlib_metadata
 
 try:
-    __version__ = importlib.metadata.version("functional-cat")
-except importlib.metadata.PackageNotFoundError:
+    __version__ = importlib_metadata.version("velour")
+except importlib_metadata.PackageNotFoundError:
     __version__ = ""
