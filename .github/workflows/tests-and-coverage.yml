@@ -54,6 +54,7 @@ jobs:
       - run: coverage run --source="backend/velour_api,client/velour" --omit backend/velour_api/main.py -m pytest -v integration_tests
         working-directory: ./
       - run: coverage report
+        working-directory: ./
 
   backend-unit-tests:
     env:
@@ -74,7 +75,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ env.COVERAGE_FILE }}
-          path: ${{ env.COVERAGE_FILE }}
+          path: backend/${{ env.COVERAGE_FILE }}
 
   client-unit-tests:
     env:
@@ -97,7 +98,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ env.COVERAGE_FILE }}
-          path: ${{ env.COVERAGE_FILE }}
+          path: client/${{ env.COVERAGE_FILE }}
 
   combine-coverage-report:
     needs: [backend-unit-tests, client-unit-tests]
