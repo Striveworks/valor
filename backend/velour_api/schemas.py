@@ -2,7 +2,8 @@ import io
 from base64 import b64decode
 
 import PIL.Image
-from pydantic import BaseModel, Extra, Field, validator, Optional
+from pydantic import BaseModel, Extra, Field, validator
+from typing import Optional
 
 
 def validate_single_polygon(poly: list[tuple[float, float]]):
