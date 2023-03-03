@@ -55,12 +55,16 @@ class ClientException(Exception):
 class Client:
     """Client for interacting with the velour backend"""
 
-    def __init__(self, host: str):
+    def __init__(
+        self, host: str, client_id: str = None, client_secret: str = None
+    ):
         if not (host.startswith("http://") or host.startswith("https://")):
             raise ValueError(
                 f"host must stat with 'http://' or 'https://' but got {host}"
             )
         self.host = host
+        self.client_id = client_id
+        self.client_secret = client_secret
 
     def _requests_wrapper(
         self, method_name: str, endpoint: str, *args, **kwargs

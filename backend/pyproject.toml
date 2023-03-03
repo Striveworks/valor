@@ -5,7 +5,7 @@ description = "Backend for Velour evaluation store"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {file = "LICENSE"}
-dependencies = ["fastapi[all]", "GeoAlchemy2", "psycopg2", "SQLAlchemy>=2.0", "Pillow >= 9.1.0"]
+dependencies = ["fastapi[all]", "PyJWT", "GeoAlchemy2", "psycopg2", "SQLAlchemy>=2.0", "Pillow >= 9.1.0"]
 
 [build-system]
 requires =  ["setuptools>=61.0"]

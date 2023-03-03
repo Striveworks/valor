@@ -2,7 +2,10 @@ from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
 from velour_api import crud, logger, schemas
+from velour_api.auth import OptionalHTTPBearer
 from velour_api.database import create_db, make_session
+
+token_auth_scheme = OptionalHTTPBearer()
 
 app = FastAPI()
 
@@ -22,6 +25,7 @@ def get_db():
 def create_groundtruth_detections(
     data: schemas.GroundTruthDetectionsCreate,
     db: Session = Depends(get_db),
+    token: str = Depends(token_auth_scheme),
 ) -> list[int]:
     try:
         return crud.create_groundtruth_detections(db=db, data=data)
@@ -87,7 +91,9 @@ def create_predicted_classifications(
 
 
 @app.get("/datasets", status_code=200)
-def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
+def get_datasets(
+    db: Session = Depends(get_db), token: str = Depends(token_auth_scheme)
+) -> list[schemas.Dataset]:
     return crud.get_datasets(db)
 
 
