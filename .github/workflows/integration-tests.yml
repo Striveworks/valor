@@ -5,6 +5,8 @@ on:
 
 jobs:
   integration-tests:
+    env:
+      COVERAGE_FILE: .coverage.integration-tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -23,5 +25,5 @@ jobs:
       - name: install client
         run: pip install .[test]
         working-directory: ./client
-      - run: pytest -v integration_tests
+      - run: coverage run --source=backend/velour_api,client/velour --omit backend/velour_api/main.py -m pytest -v integration_tests
         working-directory: ./

@@ -5,6 +5,8 @@ on:
 
 jobs:
   backend-functional-tests:
+    env:
+      COVERAGE_FILE: .coverage.backend-functional-tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -22,7 +24,8 @@ jobs:
         with:
           python-version: "3.10"
       - run: pip install ".[test]"
-      - run: python -m pytest -v tests/functional-tests
+      - run: coverage run --source=velour_api --omit velour_api/main.py -m pytest -v tests/functional-tests
         env:
           POSTGRES_PASSWORD: password
           POSTGRES_HOST: localhost
+      - run: coverage report
