@@ -19,6 +19,32 @@ export const ProfilePage = () => {
   });
 
   console.log(`accessToken: ${accessToken}`);
-
-  return <></>;
+  const fields = ["name", "email"];
+  return (
+    <div>
+      <table>
+        {fields.map((f) => (
+          <tr>
+            <th>{f}:</th>
+            <td>{user ? user[f] : null}</td>
+          </tr>
+        ))}
+        <tr>
+          <th>Access token:</th>
+          <td>{accessToken}</td>
+        </tr>
+      </table>
+    </div>
+  );
 };
+
+// {fields.map((f) => (
+//   <p>{f}</p>
+// ))}
+
+// <tr>
+//               <th>f</th>
+//               <td>
+//                 <p>asd</p>
+//               </td>
+//             </tr>

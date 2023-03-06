@@ -13,8 +13,8 @@ function App() {
           <div className="App">
             <header className="App-header">
               <h1>velour</h1>
+              <LoginButton />
             </header>
-            <LoginButton />
           </div>
         }
       />
