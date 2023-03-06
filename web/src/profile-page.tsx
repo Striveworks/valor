@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
+import { LogoutButton } from "./logout-button";
 
 export const ProfilePage = () => {
   const [accessToken, setAccessToken] = useState("");
@@ -17,17 +18,20 @@ export const ProfilePage = () => {
   return (
     <div>
       <table>
-        {fields.map((f) => (
+        <tbody>
+          {fields.map((f) => (
+            <tr key={f}>
+              <th>{f}:</th>
+              <td>{user ? user[f] : null}</td>
+            </tr>
+          ))}
           <tr>
-            <th>{f}:</th>
-            <td>{user ? user[f] : null}</td>
+            <th>Access token:</th>
+            <td>{accessToken}</td>
           </tr>
-        ))}
-        <tr>
-          <th>Access token:</th>
-          <td>{accessToken}</td>
-        </tr>
+        </tbody>
       </table>
+      <LogoutButton />
     </div>
   );
 };
