@@ -3,9 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@auth0/auth0-react": "^2.0.1",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "@types/auth0": "^2.35.10",
     "@types/jest": "^27.5.2",
     "@types/node": "^16.18.14",
     "@types/react": "^18.0.28",
