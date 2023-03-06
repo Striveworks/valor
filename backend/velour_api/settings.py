@@ -45,6 +45,7 @@ class AuthConfig(BaseSettings):
 
     class Config:
         env_file = ".env.auth"
+        env_prefix = "auth0_"
 
     @property
     def no_auth(self) -> bool:

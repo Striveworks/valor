@@ -1,6 +1,6 @@
 import jwt
 from fastapi import HTTPException
-from fastapi.security import HTTPBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.requests import Request
 
 from velour_api import logger
@@ -23,7 +23,13 @@ class OptionalHTTPBearer(HTTPBearer):
         return await super().__call__(request)
 
 
-def verify_token(token: str):
+def verify_token(token: HTTPAuthorizationCredentials | None):
+    if auth_settings.no_auth:
+        if token is not None:
+            logger.debug(
+                f"`auth_settings.no_auth is true but got a token: {token}"
+            )
+        return {}
     # https://auth0.com/blog/build-and-secure-fastapi-server-with-auth0/
 
     def _handle_error(msg):
@@ -31,7 +37,9 @@ def verify_token(token: str):
         raise HTTPException(status_code=401)
 
     try:
-        signing_key = jwks_client.get_signing_key_from_jwt(token).key
+        signing_key = jwks_client.get_signing_key_from_jwt(
+            token.credentials
+        ).key
     except (
         jwt.exceptions.PyJWKClientError,
         jwt.exceptions.DecodeError,
@@ -40,7 +48,7 @@ def verify_token(token: str):
 
     try:
         payload = jwt.decode(
-            token,
+            token.credentials,
             signing_key,
             algorithms=auth_settings.algorithms,
             audience=auth_settings.audience,

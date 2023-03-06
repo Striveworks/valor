@@ -1,4 +1,5 @@
 import io
+import os
 from base64 import b64encode
 from dataclasses import asdict
 from typing import Dict, List, Union
@@ -55,16 +56,36 @@ class ClientException(Exception):
 class Client:
     """Client for interacting with the velour backend"""
 
-    def __init__(
-        self, host: str, client_id: str = None, client_secret: str = None
-    ):
+    def __init__(self, host: str, access_token: str = None):
+        """
+        Parameters
+        ----------
+        host
+            the host to connect to. Should start with "http://" or "https://"
+        access_token
+            the access token if the host requires authentication
+        """
         if not (host.startswith("http://") or host.startswith("https://")):
             raise ValueError(
                 f"host must stat with 'http://' or 'https://' but got {host}"
             )
         self.host = host
-        self.client_id = client_id
-        self.client_secret = client_secret
+        self.access_token = os.getenv("VELOUR_ACCESS_TOKEN", access_token)
+
+        # check the connection by hitting the users endpoint
+        email = self._get_users_email()
+        success_str = f"Succesfully connected to {self.host}"
+        if email is None:
+            print(f"{success_str}.")
+        else:
+            print(f"{success_str} with user {email}.")
+
+    def _get_users_email(self) -> Union[str, None]:
+        """Gets the users e-mail address (in the case when auth is enabled)
+        or returns None in the case of a no-auth backend.
+        """
+        resp = self._requests_get_rel_host("/user").json()
+        return resp["email"]
 
     def _requests_wrapper(
         self, method_name: str, endpoint: str, *args, **kwargs
@@ -74,7 +95,11 @@ class Client:
         url = urljoin(self.host, endpoint)
         requests_method = getattr(requests, method_name)
 
-        resp = requests_method(url, *args, **kwargs)
+        if self.access_token is not None:
+            headers = {"Authorization": f"Bearer {self.access_token}"}
+        else:
+            headers = None
+        resp = requests_method(url, headers=headers, *args, **kwargs)
         if not resp.ok:
             if resp.status_code == 500:
                 resp.raise_for_status()

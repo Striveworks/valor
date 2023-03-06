@@ -1,8 +1,10 @@
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from velour_api import auth, crud, logger, schemas
 from velour_api.database import create_db, make_session
+from velour_api.settings import auth_settings
 
 token_auth_scheme = auth.OptionalHTTPBearer()
 
@@ -10,6 +12,10 @@ token_auth_scheme = auth.OptionalHTTPBearer()
 app = FastAPI()
 
 create_db()
+
+logger.info(
+    f"API started {'WITHOUT' if auth_settings.no_auth else 'WITH'} authentication"
+)
 
 
 def get_db():
@@ -92,10 +98,12 @@ def create_predicted_classifications(
 
 @app.get("/datasets", status_code=200)
 def get_datasets(
-    db: Session = Depends(get_db), token: str = Depends(token_auth_scheme)
+    db: Session = Depends(get_db),
+    token: HTTPAuthorizationCredentials | None = Depends(token_auth_scheme),
 ) -> list[schemas.Dataset]:
-    out = auth.verify_token(token.credentials)
-    logger.debug(f"verify output: {out}")
+    token_payload = auth.verify_token(token)
+
+    logger.debug(f"verify output: {token_payload}")
     return crud.get_datasets(db)
 
 
@@ -182,3 +190,11 @@ def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
 @app.get("/labels", status_code=200)
 def get_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
     return crud.get_all_labels(db)
+
+
+@app.get("/user")
+def user(
+    token: HTTPAuthorizationCredentials | None = Depends(token_auth_scheme),
+) -> schemas.User:
+    token_payload = auth.verify_token(token)
+    return schemas.User(email=token_payload.get("email"))
