@@ -94,7 +94,6 @@ def create_predicted_classifications(
 def get_datasets(
     db: Session = Depends(get_db), token: str = Depends(token_auth_scheme)
 ) -> list[schemas.Dataset]:
-    logger.debug(f"token: {token}")
     out = auth.verify_token(token.credentials)
     logger.debug(f"verify output: {out}")
     return crud.get_datasets(db)

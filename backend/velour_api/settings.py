@@ -40,9 +40,8 @@ class LogConfig(BaseSettings):
 
 class AuthConfig(BaseSettings):
     domain: str = None
-    api_audience: str = None
+    audience: str = None
     algorithms: str = None
-    issuer: str = None
 
     class Config:
         env_file = ".env.auth"
@@ -56,6 +55,10 @@ class AuthConfig(BaseSettings):
         if self.domain:
             return f"https://{self.domain}/.well-known/jwks.json"
         return None
+
+    @property
+    def issuer(self) -> str:
+        return f"https://{self.domain}/"
 
 
 auth_settings = AuthConfig()
