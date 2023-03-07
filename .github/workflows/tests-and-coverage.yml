@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: "3.10"
       - run: pip install ".[test]"
-      - run: coverage run --source=velour_api --omit velour_api/main.py -m pytest -v tests/functional-tests
+      - run: coverage run --source=velour_api -m pytest -v tests/functional-tests
         env:
           POSTGRES_PASSWORD: password
           POSTGRES_HOST: localhost
@@ -56,7 +56,7 @@ jobs:
       - name: install client
         run: pip install -e ".[test]"
         working-directory: ./client
-      - run: coverage run --source="backend/velour_api,client/velour" --omit backend/velour_api/main.py -m pytest -v integration_tests/test_client.py
+      - run: coverage run --source="backend/velour_api,client/velour" -m pytest -v integration_tests/test_client.py
         working-directory: ./
       - run: coverage report
         working-directory: ./
@@ -95,7 +95,7 @@ jobs:
         with:
           python-version: "3.10"
       - run: pip install ".[test]"
-      - run: coverage run --source=velour_api --omit velour_api/main.py -m pytest -v tests/unit-tests
+      - run: coverage run --source=velour_api -m pytest -v tests/unit-tests
       - run: coverage report
       - name: upload coverage report as artifact
         uses: actions/upload-artifact@v3

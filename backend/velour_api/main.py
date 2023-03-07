@@ -111,7 +111,9 @@ def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
     return crud.get_datasets(db)
 
 
-@app.post("/datasets", status_code=201)
+@app.post(
+    "/datasets", status_code=201, dependencies=[Depends(token_auth_scheme)]
+)
 def create_dataset(
     dataset: schemas.DatasetCreate, db: Session = Depends(get_db)
 ):
@@ -122,8 +124,13 @@ def create_dataset(
 
 
 @app.put("/datasets/{dataset_name}", dependencies=[Depends(token_auth_scheme)])
-def get_dataset(dataset_name: str) -> schemas.Dataset:
-    dset = crud.get_dataset(name=dataset_name)
+def get_dataset(
+    dataset_name: str, db: Session = Depends(get_db)
+) -> schemas.Dataset:
+    dset = crud.get_dataset(db, dataset_name=dataset_name)
+    import pdb
+
+    pdb.set_trace()
     return schemas.Dataset(name=dset.name, draft=dset.draft)
 
 
