@@ -123,14 +123,12 @@ def create_dataset(
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@app.put("/datasets/{dataset_name}", dependencies=[Depends(token_auth_scheme)])
+@app.get("/datasets/{dataset_name}", dependencies=[Depends(token_auth_scheme)])
 def get_dataset(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> schemas.Dataset:
     dset = crud.get_dataset(db, dataset_name=dataset_name)
-    import pdb
 
-    pdb.set_trace()
     return schemas.Dataset(name=dset.name, draft=dset.draft)
 
 
