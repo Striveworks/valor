@@ -73,10 +73,11 @@ jobs:
           AUTH0_ALGORITHMS: ${{ vars.AUTH0_ALGORITHMS }}
       - run: pytest -v integration_tests/test_client_auth.py
         working-directory: ./
-        AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
-        AUTH0_AUDIENCE: ${{ vars.AUTH0_AUDIENCE }}
-        AUTH0_CLIENT_ID: ${{ vars.AUTH0_CLIENT_ID }}
-        AUTH0_CLIENT_SECRET: ${{ vars.AUTH0_CLIENT_SECRET }}
+        env:
+          AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
+          AUTH0_AUDIENCE: ${{ vars.AUTH0_AUDIENCE }}
+          AUTH0_CLIENT_ID: ${{ vars.AUTH0_CLIENT_ID }}
+          AUTH0_CLIENT_SECRET: ${{ vars.AUTH0_CLIENT_SECRET }}
 
   backend-unit-tests:
     env:
