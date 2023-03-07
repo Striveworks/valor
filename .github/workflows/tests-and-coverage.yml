@@ -47,6 +47,8 @@ jobs:
       # - name: setup backend test env
       #   run: make test-env
       #   working-directory: ./backend
+      - name: Setup upterm session
+        uses: lhotari/action-upterm@v1
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
