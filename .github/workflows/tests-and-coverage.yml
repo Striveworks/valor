@@ -47,8 +47,6 @@ jobs:
       # - name: setup backend test env
       #   run: make test-env
       #   working-directory: ./backend
-      - name: Setup upterm session
-        uses: lhotari/action-upterm@v1
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
@@ -73,6 +71,9 @@ jobs:
           AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
           AUTH0_AUDIENCE: ${{ vars.AUTH0_AUDIENCE }}
           AUTH0_ALGORITHMS: ${{ vars.AUTH0_ALGORITHMS }}
+      - run: sleep 20
+      - run: docker logs velour-web-1
+      - run: docker logs velour-db-1
       - run: pytest -v integration_tests/test_client_auth.py
         working-directory: ./
         env:
