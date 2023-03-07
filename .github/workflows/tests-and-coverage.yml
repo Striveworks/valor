@@ -47,9 +47,9 @@ jobs:
       # - name: setup backend test env
       #   run: make test-env
       #   working-directory: ./backend
-      # - uses: actions/setup-python@v4
-      #   with:
-      #     python-version: "3.10"
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
       # - name: install api
       #   run: pip install -e ".[test]"
       #   working-directory: ./backend
