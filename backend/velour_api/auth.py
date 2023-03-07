@@ -20,7 +20,9 @@ class OptionalHTTPBearer(HTTPBearer):
     async def __call__(self, request: Request):
         if auth_settings.no_auth:
             return None
-        return await super().__call__(request)
+        ret = await super().__call__(request)
+        verify_token(ret)
+        return ret
 
 
 def verify_token(token: HTTPAuthorizationCredentials | None) -> dict:

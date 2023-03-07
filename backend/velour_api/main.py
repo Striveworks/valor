@@ -27,7 +27,7 @@ def get_db():
 
 
 # should move the following routes to be behind /datasets/{dataset}/ ?
-@app.post("/groundtruth-detections")
+@app.post("/groundtruth-detections", dependencies=[Depends(token_auth_scheme)])
 def create_groundtruth_detections(
     data: schemas.GroundTruthDetectionsCreate,
     db: Session = Depends(get_db),
@@ -39,7 +39,7 @@ def create_groundtruth_detections(
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@app.post("/predicted-detections")
+@app.post("/predicted-detections", dependencies=[Depends(token_auth_scheme)])
 def create_predicted_detections(
     data: schemas.PredictedDetectionsCreate,
     db: Session = Depends(get_db),
@@ -50,7 +50,9 @@ def create_predicted_detections(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@app.post("/groundtruth-segmentations")
+@app.post(
+    "/groundtruth-segmentations", dependencies=[Depends(token_auth_scheme)]
+)
 def create_groundtruth_segmentations(
     data: schemas.GroundTruthSegmentationsCreate,
     db: Session = Depends(get_db),
@@ -62,7 +64,9 @@ def create_groundtruth_segmentations(
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@app.post("/predicted-segmentations")
+@app.post(
+    "/predicted-segmentations", dependencies=[Depends(token_auth_scheme)]
+)
 def create_predicted_segmentations(
     data: schemas.PredictedSegmentationsCreate,
     db: Session = Depends(get_db),
@@ -73,7 +77,9 @@ def create_predicted_segmentations(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@app.post("/groundtruth-classifications")
+@app.post(
+    "/groundtruth-classifications", dependencies=[Depends(token_auth_scheme)]
+)
 def create_groundtruth_classifications(
     data: schemas.GroundTruthImageClassificationsCreate,
     db: Session = Depends(get_db),
@@ -85,7 +91,9 @@ def create_groundtruth_classifications(
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@app.post("/predicted-classifications")
+@app.post(
+    "/predicted-classifications", dependencies=[Depends(token_auth_scheme)]
+)
 def create_predicted_classifications(
     data: schemas.PredictedImageClassificationsCreate,
     db: Session = Depends(get_db),
@@ -96,14 +104,10 @@ def create_predicted_classifications(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@app.get("/datasets", status_code=200)
-def get_datasets(
-    db: Session = Depends(get_db),
-    token: HTTPAuthorizationCredentials | None = Depends(token_auth_scheme),
-) -> list[schemas.Dataset]:
-    token_payload = auth.verify_token(token)
-
-    logger.debug(f"verify output: {token_payload}")
+@app.get(
+    "/datasets", status_code=200, dependencies=[Depends(token_auth_scheme)]
+)
+def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
     return crud.get_datasets(db)
 
 
@@ -117,13 +121,17 @@ def create_dataset(
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@app.put("/datasets/{dataset_name}")
+@app.put("/datasets/{dataset_name}", dependencies=[Depends(token_auth_scheme)])
 def get_dataset(dataset_name: str) -> schemas.Dataset:
     dset = crud.get_dataset(name=dataset_name)
     return schemas.Dataset(name=dset.name, draft=dset.draft)
 
 
-@app.put("/datasets/{dataset_name}/finalize", status_code=200)
+@app.put(
+    "/datasets/{dataset_name}/finalize",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
 def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     try:
         crud.finalize_dataset(db, dataset_name)
@@ -131,7 +139,11 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@app.get("/datasets/{dataset_name}/labels", status_code=200)
+@app.get(
+    "/datasets/{dataset_name}/labels",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
 def get_dataset_labels(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
@@ -144,7 +156,11 @@ def get_dataset_labels(
     ]
 
 
-@app.get("/datasets/{dataset_name}/images", status_code=200)
+@app.get(
+    "/datasets/{dataset_name}/images",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
 def get_dataset_images(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Image]:
@@ -158,17 +174,21 @@ def get_dataset_images(
     ]
 
 
-@app.delete("/datasets/{dataset_name}")
+@app.delete(
+    "/datasets/{dataset_name}", dependencies=[Depends(token_auth_scheme)]
+)
 def delete_dataset(dataset_name: str, db: Session = Depends(get_db)) -> None:
     return crud.delete_dataset(db, dataset_name)
 
 
-@app.get("/models", status_code=200)
+@app.get("/models", status_code=200, dependencies=[Depends(token_auth_scheme)])
 def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
     return crud.get_models(db)
 
 
-@app.post("/models", status_code=201)
+@app.post(
+    "/models", status_code=201, dependencies=[Depends(token_auth_scheme)]
+)
 def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     try:
         crud.create_model(db=db, model=model)
@@ -176,18 +196,18 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@app.put("/models/{model_name}")
+@app.put("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
 def get_model(model_name: str) -> schemas.Model:
     dset = crud.get_model(name=model_name)
     return schemas.Model(name=dset.name)
 
 
-@app.delete("/models/{model_name}")
+@app.delete("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
 def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
     return crud.delete_model(db, model_name)
 
 
-@app.get("/labels", status_code=200)
+@app.get("/labels", status_code=200, dependencies=[Depends(token_auth_scheme)])
 def get_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
     return crud.get_all_labels(db)
 
