@@ -1,3 +1,5 @@
+import os
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -9,7 +11,7 @@ from velour_api.settings import auth_settings
 token_auth_scheme = auth.OptionalHTTPBearer()
 
 
-app = FastAPI()
+app = FastAPI(root_path=os.getenv("API_ROOT_PATH", ""))
 
 create_db()
 
@@ -29,9 +31,7 @@ def get_db():
 # should move the following routes to be behind /datasets/{dataset}/ ?
 @app.post("/groundtruth-detections", dependencies=[Depends(token_auth_scheme)])
 def create_groundtruth_detections(
-    data: schemas.GroundTruthDetectionsCreate,
-    db: Session = Depends(get_db),
-    token: str = Depends(token_auth_scheme),
+    data: schemas.GroundTruthDetectionsCreate, db: Session = Depends(get_db)
 ) -> list[int]:
     try:
         return crud.create_groundtruth_detections(db=db, data=data)

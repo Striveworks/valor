@@ -10,6 +10,4 @@ WORKDIR /src
 RUN python -m pip install -U pip
 RUN python -m pip install .
 
-ENV API_ROOT_PATH /
-
-CMD "uvicorn velour_api.main:app --reload --root-path ${API_ROOT_PATH} --host 0.0.0.0"
+CMD ["uvicorn", "velour_api.main:app", "--reload", "--host", "0.0.0.0"]
