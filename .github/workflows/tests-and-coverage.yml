@@ -66,7 +66,7 @@ jobs:
           name: ${{ env.COVERAGE_FILE }}
           path: ${{ env.COVERAGE_FILE }}
       - run: make stop-env
-      - run: docker compose -p velour up
+      - run: docker compose -p velour up -d
         env:
           AUTH0_DOMAIN: ${{ env.AUTH0_DOMAIN }}
           AUTH0_AUDIENCE: ${{ env.AUTH0_AUDIENCE }}
