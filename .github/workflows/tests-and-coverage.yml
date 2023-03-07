@@ -67,7 +67,7 @@ jobs:
           path: ${{ env.COVERAGE_FILE }}
       - run: make stop-env
       - run: make test-env
-        with:
+        env:
           AUTH0_DOMAIN: ${{ env.AUTH0_DOMAIN }}
           AUTH0_AUDIENCE: ${{ env.AUTH0_AUDIENCE }}
           AUTH0_ALGORITHMS: ${{ env.AUTH0_ALGORITHMS }}
