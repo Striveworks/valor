@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 import numpy as np
 import requests
 from PIL import Image as PILImage
+
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
@@ -69,6 +70,9 @@ class Client:
             raise ValueError(
                 f"host must stat with 'http://' or 'https://' but got {host}"
             )
+
+        if not host.endswith("/"):
+            host += "/"
         self.host = host
         self.access_token = os.getenv("VELOUR_ACCESS_TOKEN", access_token)
 
@@ -84,7 +88,7 @@ class Client:
         """Gets the users e-mail address (in the case when auth is enabled)
         or returns None in the case of a no-auth backend.
         """
-        resp = self._requests_get_rel_host("/user").json()
+        resp = self._requests_get_rel_host("user").json()
         return resp["email"]
 
     def _requests_wrapper(
