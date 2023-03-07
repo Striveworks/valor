@@ -3,10 +3,14 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { LogoutButton } from "./logout-button";
 import SyntaxHighlighter from "react-syntax-highlighter/dist/esm/default-highlight";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { CopyToClipboard } from "react-copy-to-clipboard";
 
 export const ProfilePage = () => {
   const [accessToken, setAccessToken] = useState("");
   const { user, getAccessTokenSilently } = useAuth0();
+  const [snippetCopied, setSnippetCopied] = useState(false);
+
+  const codeSnippet = `from velour.client import Client\n\nclient = Client("${process.env.REACT_APP_BACKEND_URL}", access_token="${accessToken}")`;
 
   useEffect(() => {
     const getToken = async () => {
@@ -37,10 +41,26 @@ export const ProfilePage = () => {
 
       <div style={{ width: "75%" }}>
         <SyntaxHighlighter language="python" style={atomOneDark}>
-          {`from velour.client import Client\n\nclient = Client("${process.env.REACT_APP_BACKEND_URL}", access_token="${accessToken}")`}
+          {codeSnippet}
         </SyntaxHighlighter>
       </div>
-      <LogoutButton />
+      <div>
+        <div>
+          <CopyToClipboard
+            text={codeSnippet}
+            onCopy={() => setSnippetCopied(true)}
+          >
+            <button>Copy code to clipboard</button>
+          </CopyToClipboard>
+          {snippetCopied ? (
+            <span style={{ fontWeight: "bolder" }}> copied! </span>
+          ) : (
+            <></>
+          )}
+        </div>
+        <br />
+        <LogoutButton />
+      </div>
     </div>
   );
 };
