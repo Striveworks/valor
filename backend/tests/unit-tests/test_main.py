@@ -5,6 +5,7 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from velour_api import database, exceptions
+from velour_api.schemas import Dataset, Model
 
 
 @pytest.fixture
@@ -41,9 +42,13 @@ def _test_post_endpoints(
     expected_status_code=200,
     endpoint_only_has_post=True,
 ):
+    crud_method = getattr(crud, crud_method_name)
+    # have mock method return empty list (type hint in main is satisfied)
+    crud_method.return_value = []
     resp = client.post(endpoint, json=example_json)
     assert resp.status_code == expected_status_code
-    getattr(crud, crud_method_name).assert_called_once()
+
+    crud_method.assert_called_once()
 
     # now send a bad payload and make sure we get a 422
     resp = client.post(endpoint, json={})
@@ -203,18 +208,19 @@ def test_post_models(client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_datasets(crud, client: TestClient):
+    crud.get_datasets.return_value = []
     resp = client.get("/datasets")
     assert resp.status_code == 200
     crud.get_datasets.assert_called_once()
 
 
 @patch("velour_api.main.crud")
-@patch("velour_api.main.schemas")
-def test_get_dataset_by_name(schemas, crud, client: TestClient):
+def test_get_dataset_by_name(crud, client: TestClient):
+    crud.get_dataset.return_value = Dataset(name="", draft=True)
+
     resp = client.get("/datasets/dsetname")
     assert resp.status_code == 200
     crud.get_dataset.assert_called_once()
-    schemas.Dataset.assert_called_once()
 
     with patch(
         "velour_api.main.crud.get_dataset",
@@ -228,12 +234,11 @@ def test_get_dataset_by_name(schemas, crud, client: TestClient):
 
 
 @patch("velour_api.main.crud")
-@patch("velour_api.main.schemas")
-def test_get_model_by_name(schemas, crud, client: TestClient):
+def test_get_model_by_name(crud, client: TestClient):
+    crud.get_model.return_value = Model(name="")
     resp = client.get("/models/modelname")
     assert resp.status_code == 200
     crud.get_model.assert_called_once()
-    schemas.Model.assert_called_once()
 
     with patch(
         "velour_api.main.crud.get_model",
@@ -308,6 +313,7 @@ def test_delete_dataset(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_models(crud, client: TestClient):
+    crud.get_models.return_value = []
     resp = client.get("/models")
     assert resp.status_code == 200
     crud.get_models.assert_called_once()
@@ -322,6 +328,7 @@ def test_delete_model(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_labels(crud, client: TestClient):
+    crud.get_all_labels.return_value = []
     resp = client.get("/labels")
     assert resp.status_code == 200
     crud.get_all_labels.assert_called_once()
