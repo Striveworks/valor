@@ -4,7 +4,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from velour_api import auth, crud, logger, schemas
+from velour_api import auth, crud, exceptions, logger, schemas
 from velour_api.database import create_db, make_session
 from velour_api.settings import auth_settings
 
@@ -35,7 +35,7 @@ def create_groundtruth_detections(
 ) -> list[int]:
     try:
         return crud.create_groundtruth_detections(db=db, data=data)
-    except crud.DatasetIsFinalizedError as e:
+    except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -46,7 +46,7 @@ def create_predicted_detections(
 ) -> list[int]:
     try:
         return crud.create_predicted_detections(db=db, data=data)
-    except crud.ImageDoesNotExistError as e:
+    except exceptions.ImageDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -60,7 +60,7 @@ def create_groundtruth_segmentations(
     try:
         logger.debug(f"got: {data}")
         return crud.create_groundtruth_segmentations(db=db, data=data)
-    except crud.DatasetIsFinalizedError as e:
+    except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -73,7 +73,7 @@ def create_predicted_segmentations(
 ) -> list[int]:
     try:
         return crud.create_predicted_segmentations(db=db, data=data)
-    except crud.ImageDoesNotExistError as e:
+    except exceptions.ImageDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -87,7 +87,7 @@ def create_groundtruth_classifications(
     try:
         logger.debug(f"got: {data}")
         return crud.create_ground_truth_image_classifications(db=db, data=data)
-    except crud.DatasetIsFinalizedError as e:
+    except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -100,7 +100,7 @@ def create_predicted_classifications(
 ) -> list[int]:
     try:
         return crud.create_predicted_image_classifications(db=db, data=data)
-    except crud.ImageDoesNotExistError as e:
+    except exceptions.ImageDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -119,7 +119,7 @@ def create_dataset(
 ):
     try:
         crud.create_dataset(db=db, dataset=dataset)
-    except crud.DatasetAlreadyExistsError as e:
+    except exceptions.DatasetAlreadyExistsError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -127,9 +127,11 @@ def create_dataset(
 def get_dataset(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> schemas.Dataset:
-    dset = crud.get_dataset(db, dataset_name=dataset_name)
-
-    return schemas.Dataset(name=dset.name, draft=dset.draft)
+    try:
+        dset = crud.get_dataset(db, dataset_name=dataset_name)
+        return schemas.Dataset(name=dset.name, draft=dset.draft)
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.put(
@@ -140,7 +142,7 @@ def get_dataset(
 def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     try:
         crud.finalize_dataset(db, dataset_name)
-    except crud.DatasetDoesNotExistError as e:
+    except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -154,7 +156,7 @@ def get_dataset_labels(
 ) -> list[schemas.Label]:
     try:
         labels = crud.get_labels_in_dataset(db, dataset_name)
-    except crud.DatasetDoesNotExistError as e:
+    except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return [
         schemas.Label(key=label.key, value=label.value) for label in labels
@@ -171,7 +173,7 @@ def get_dataset_images(
 ) -> list[schemas.Image]:
     try:
         images = crud.get_images_in_dataset(db, dataset_name)
-    except crud.DatasetDoesNotExistError as e:
+    except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return [
         schemas.Image(uri=image.uri, height=image.height, width=image.width)
@@ -197,14 +199,17 @@ def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
 def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     try:
         crud.create_model(db=db, model=model)
-    except crud.ModelAlreadyExistsError as e:
+    except exceptions.ModelAlreadyExistsError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@app.put("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
+@app.get("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
 def get_model(model_name: str) -> schemas.Model:
-    dset = crud.get_model(name=model_name)
-    return schemas.Model(name=dset.name)
+    try:
+        dset = crud.get_model(name=model_name)
+        return schemas.Model(name=dset.name)
+    except exceptions.ModelDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.delete("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
