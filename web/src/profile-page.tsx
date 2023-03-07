@@ -27,7 +27,7 @@ export const ProfilePage = () => {
           ))}
           <tr>
             <th>Access token:</th>
-            <td>{accessToken}</td>
+            <td style={{ overflow: "scroll" }}>{accessToken}</td>
           </tr>
         </tbody>
       </table>
