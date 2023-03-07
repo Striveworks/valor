@@ -66,13 +66,14 @@ jobs:
           name: ${{ env.COVERAGE_FILE }}
           path: ${{ env.COVERAGE_FILE }}
       - run: make stop-env
-      - run: make test-env
+      - run: docker compose -p velour up
         env:
           AUTH0_DOMAIN: ${{ env.AUTH0_DOMAIN }}
           AUTH0_AUDIENCE: ${{ env.AUTH0_AUDIENCE }}
           AUTH0_ALGORITHMS: ${{ env.AUTH0_ALGORITHMS }}
           AUTH0_CLIENT_ID: ${{ env.AUTH0_CLIENT_ID }}
           AUTH0_CLIENT_SECRET: ${{ env.AUTH0_CLIENT_SECRET }}
+        working-directory: ./
       - run: pytest -v integration_tests/test_client_auth.py
 
   backend-unit-tests:
