@@ -31,7 +31,6 @@ class Image(BaseModel):
     height: int
     width: int
     frame: Optional[int] = None
-    timestamp: Optional[float] = None
 
 
 class Label(BaseModel):

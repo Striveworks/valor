@@ -122,12 +122,12 @@ def ground_truth_det_to_mot(
 
 
 def pred_det_to_mot(
-    pred: schemas.PredictedDetection, obj_id_to_int: dict
+    pred: schemas.PredictedDetection, obj_id_to_int: dict, object_id_label_key: str = OBJECT_ID_LABEL_KEY
 ) -> list[float]:
     """Helper to convert a predicted detection into MOT format"""
 
     for scored_label in pred.scored_labels:
-        if scored_label.label.key == OBJECT_ID_LABEL_KEY:
+        if scored_label.label.key == object_id_label_key:
             break
 
     bbox = BoundingBox.from_polygon(pred.boundary)
