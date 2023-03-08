@@ -189,7 +189,8 @@ def predictions(
                 boundary=bounding_box(*box),
                 scored_labels=[
                     ScoredLabel(
-                        label=Label(key="class", value=class_label),
+                        key="class", 
+                        value=class_label,
                         score=score,
                     )
                 ],
