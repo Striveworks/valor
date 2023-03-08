@@ -47,7 +47,7 @@ def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
 
 @dataclass
 class Image:
-    uri: str
+    uid: str
     height: int
     width: int
 
@@ -174,49 +174,49 @@ def _validate_mask(mask: np.ndarray):
 
 
 @dataclass
-class GroundTruthSegmentation(ABC):
+class _GroundTruthSegmentation(ABC):
     shape: Union[List[PolygonWithHole], np.ndarray]
     labels: List[Label]
     image: Image
     _is_instance: bool
 
     def __post_init__(self):
-        if self.__class__ == GroundTruthSegmentation:
+        if self.__class__ == _GroundTruthSegmentation:
             raise TypeError("Cannot instantiate abstract class.")
         if isinstance(self.shape, np.ndarray):
             _validate_mask(self.shape)
 
 
 @dataclass
-class GroundTruthInstanceSegmentation(GroundTruthSegmentation):
+class GroundTruthInstanceSegmentation(_GroundTruthSegmentation):
     _is_instance: bool = field(default=True, init=False)
 
 
 @dataclass
-class GroundTruthSemanticSegmentation(GroundTruthSegmentation):
+class GroundTruthSemanticSegmentation(_GroundTruthSegmentation):
     _is_instance: bool = field(default=False, init=False)
 
 
 @dataclass
-class PredictedSegmentation(ABC):
+class _PredictedSegmentation(ABC):
     mask: np.ndarray
     scored_labels: List[ScoredLabel]
     image: Image
     _is_instance: bool
 
     def __post_init__(self):
-        if self.__class__ == GroundTruthSegmentation:
+        if self.__class__ == _GroundTruthSegmentation:
             raise TypeError("Cannot instantiate abstract class.")
         _validate_mask(self.mask)
 
 
 @dataclass
-class PredictedInstanceSegmentation(PredictedSegmentation):
+class PredictedInstanceSegmentation(_PredictedSegmentation):
     _is_instance: bool = field(default=True, init=False)
 
 
 @dataclass
-class PredictedSemanticSegmentation(PredictedSegmentation):
+class PredictedSemanticSegmentation(_PredictedSegmentation):
     _is_instance: bool = field(default=False, init=False)
 
 

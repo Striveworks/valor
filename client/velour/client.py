@@ -8,18 +8,17 @@ from urllib.parse import urljoin
 import numpy as np
 import requests
 from PIL import Image as PILImage
-
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
     GroundTruthImageClassification,
-    GroundTruthSegmentation,
     Image,
     Label,
     PolygonWithHole,
     PredictedDetection,
     PredictedImageClassification,
-    PredictedSegmentation,
+    _GroundTruthSegmentation,
+    _PredictedSegmentation,
 )
 
 
@@ -154,7 +153,7 @@ class Client:
         return resp.json()
 
     def upload_groundtruth_segmentations(
-        self, dataset_name: str, segs: List[GroundTruthSegmentation]
+        self, dataset_name: str, segs: List[_GroundTruthSegmentation]
     ) -> List[int]:
         def _shape_value(shape: Union[List[PolygonWithHole], np.ndarray]):
             if isinstance(shape, np.ndarray):
@@ -208,7 +207,7 @@ class Client:
         return resp.json()
 
     def upload_predicted_segmentations(
-        self, model_name: str, segs: List[PredictedSegmentation]
+        self, model_name: str, segs: List[_PredictedSegmentation]
     ) -> List[int]:
         payload = {
             "model_name": model_name,
@@ -299,7 +298,7 @@ class Client:
 
         return [
             Image(
-                uri=image["uri"], height=image["height"], width=image["width"]
+                uid=image["uid"], height=image["height"], width=image["width"]
             )
             for image in images
         ]
@@ -352,7 +351,7 @@ class Dataset:
         )
 
     def add_groundtruth_segmentations(
-        self, segs: List[GroundTruthSegmentation]
+        self, segs: List[_GroundTruthSegmentation]
     ):
         return self.client.upload_groundtruth_segmentations(
             dataset_name=self.name, segs=segs
@@ -382,7 +381,7 @@ class Model:
         )
 
     def add_predicted_segmentations(
-        self, segs: List[PredictedSegmentation]
+        self, segs: List[_PredictedSegmentation]
     ) -> None:
         return self.client.upload_predicted_segmentations(
             model_name=self.name, segs=segs

@@ -26,5 +26,5 @@ class ModelDoesNotExistError(Exception):
 
 
 class ImageDoesNotExistError(Exception):
-    def __init__(self, uri: str):
-        return super().__init__(f"Image with uri '{uri}' does not exist.")
+    def __init__(self, uid: str):
+        return super().__init__(f"Image with uid '{uid}' does not exist.")

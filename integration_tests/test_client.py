@@ -88,32 +88,32 @@ def client():
 
 @pytest.fixture
 def img1():
-    return Image(uri="uri1", height=400, width=300)
+    return Image(uid="uid1", height=400, width=300)
 
 
 @pytest.fixture
 def img2():
-    return Image(uri="uri2", height=400, width=300)
+    return Image(uid="uid2", height=400, width=300)
 
 
 @pytest.fixture
 def img5():
-    return Image(uri="uri5", height=400, width=300)
+    return Image(uid="uid5", height=400, width=300)
 
 
 @pytest.fixture
 def img6():
-    return Image(uri="uri6", height=400, width=300)
+    return Image(uid="uid6", height=400, width=300)
 
 
 @pytest.fixture
 def img8():
-    return Image(uri="uri8", height=400, width=300)
+    return Image(uid="uid8", height=400, width=300)
 
 
 @pytest.fixture
 def img9():
-    return Image(uri="uri9", height=400, width=300)
+    return Image(uid="uid9", height=400, width=300)
 
 
 @pytest.fixture
@@ -386,7 +386,7 @@ def _test_create_dataset_with_gts(
     gts3: list[Any],
     add_method_name: str,
     expected_labels_tuples: set[tuple[str, str]],
-    expected_image_uris: list[str],
+    expected_image_uids: list[str],
 ):
     """This test does the following
     - Creates a dataset
@@ -408,8 +408,8 @@ def _test_create_dataset_with_gts(
         method name of `velour.client.Dataset` to add groundtruth objects
     expected_labels_tuples
         set of tuples of key/value labels to check were added to the database
-    expected_image_uris
-        set of image uris to check were added to the database
+    expected_image_uids
+        set of image uids to check were added to the database
     """
     dataset = client.create_dataset(dset_name)
 
@@ -423,8 +423,8 @@ def _test_create_dataset_with_gts(
 
     # check that the dataset has two images
     images = dataset.get_images()
-    assert len(images) == len(expected_image_uris)
-    assert set([image.uri for image in images]) == expected_image_uris
+    assert len(images) == len(expected_image_uids)
+    assert set([image.uid for image in images]) == expected_image_uids
 
     # check that there are two labels
     labels = dataset.get_labels()
@@ -494,7 +494,7 @@ def _test_create_model_with_preds(
     # since we haven't added any images yet
     with pytest.raises(ClientException) as exc_info:
         add_preds_method(preds)
-    assert "Image with uri" in str(exc_info)
+    assert "Image with uid" in str(exc_info)
 
     dataset = client.create_dataset(dset_name)
     add_gts_method = getattr(dataset, add_gts_method_name)
@@ -531,7 +531,7 @@ def test_create_dataset_with_detections(
         gts2=gt_dets2,
         gts3=gt_dets3,
         add_method_name="add_groundtruth_detections",
-        expected_image_uris={"uri1", "uri2"},
+        expected_image_uids={"uid1", "uid2"},
         expected_labels_tuples={
             ("k1", "v1"),
             ("k2", "v2"),
@@ -560,7 +560,7 @@ def test_create_model_with_predicted_detections(
 
     # check boundary
     db_pred = [
-        p for p in labeled_pred_dets if p.detection.image.uri == "uri1"
+        p for p in labeled_pred_dets if p.detection.image.uid == "uid1"
     ][0]
     points = _list_of_points_from_wkt_polygon(db, db_pred.detection)
     pred = pred_dets[0]
@@ -581,7 +581,7 @@ def test_create_dataset_with_segmentations(
         gts2=gt_segs2,
         gts3=gt_segs3,
         add_method_name="add_groundtruth_segmentations",
-        expected_image_uris={"uri1", "uri2"},
+        expected_image_uids={"uid1", "uid2"},
         expected_labels_tuples={
             ("k1", "v1"),
             ("k2", "v2"),
@@ -655,7 +655,7 @@ def test_create_model_with_predicted_segmentations(
     # grab the segmentation from the db, recover the mask, and check
     # its equal to the mask the client sent over
     db_pred = [
-        p for p in labeled_pred_segs if p.segmentation.image.uri == "uri1"
+        p for p in labeled_pred_segs if p.segmentation.image.uid == "uid1"
     ][0]
     png_from_db = db.scalar(ST_AsPNG(db_pred.segmentation.shape))
     f = io.BytesIO(png_from_db.tobytes())
@@ -677,7 +677,7 @@ def test_create_dataset_with_classifications(
         gts2=gt_clfs2,
         gts3=gt_clfs3,
         add_method_name="add_groundtruth_classifications",
-        expected_image_uris={"uri5", "uri6"},
+        expected_image_uids={"uid5", "uid6"},
         expected_labels_tuples={
             ("k5", "v5"),
             ("k4", "v4"),

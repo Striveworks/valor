@@ -25,7 +25,7 @@ class Model(BaseModel):
 
 
 class Image(BaseModel):
-    uri: str
+    uid: str
     height: int
     width: int
 
