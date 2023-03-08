@@ -1,0 +1,54 @@
+html, body, #app, #app>div {
+  height: 100%;
+  color: white;
+}
+
+body {
+  background-image: linear-gradient(to right top, #4c4355, #3d323e, #2c2329, #1a1517, #000000);
+  font-family: 'Anek Tamil', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+table {
+  width: 50%;
+  white-space: nowrap;
+  table-layout: fixed;
+  padding: 15px;
+}
+
+
+td {
+ font-weight: bold;
+}
+
+th {
+  font-weight: bolder;
+  width: 25%;
+}
+
+td, th {
+  text-align: left;
+  vertical-align: top;
+  padding: 0 0px;
+}
+
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+button {
+  background-color: #3171e8;
+  color: white;
+  padding: 14px 20px;
+  margin: 8px 0;
+  border: none;
+  cursor: pointer;
+}
+
+/* Add a hover effect for buttons */
+button:hover {
+  opacity: 0.8;
+}
