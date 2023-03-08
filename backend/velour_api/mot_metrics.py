@@ -106,7 +106,7 @@ def ground_truth_det_to_mot(
     """Helper to convert a ground truth detection into MOT format"""
 
     for label in gt.labels:
-        if label.key == "object_id":
+        if label.key == OBJECT_ID_LABEL_KEY:
             break
     bbox = BoundingBox.from_polygon(gt.boundary)
     mot_det = MOTDetection(
@@ -127,7 +127,7 @@ def pred_det_to_mot(
     """Helper to convert a predicted detection into MOT format"""
 
     for scored_label in pred.scored_labels:
-        if scored_label.label.key == "object_id":
+        if scored_label.label.key == OBJECT_ID_LABEL_KEY:
             break
 
     bbox = BoundingBox.from_polygon(pred.boundary)
