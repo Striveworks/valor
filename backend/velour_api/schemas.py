@@ -3,6 +3,7 @@ from base64 import b64decode
 
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, validator
+from typing import Optional
 
 
 def validate_single_polygon(poly: list[tuple[float, float]]):
@@ -14,6 +15,7 @@ def validate_single_polygon(poly: list[tuple[float, float]]):
 class Dataset(BaseModel):
     name: str
     draft: bool
+    from_video: bool = False
 
 
 class DatasetCreate(BaseModel):
@@ -28,6 +30,7 @@ class Image(BaseModel):
     uri: str
     height: int
     width: int
+    frame: Optional[int] = None
 
 
 class Label(BaseModel):
