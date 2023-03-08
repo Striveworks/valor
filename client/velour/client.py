@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 import numpy as np
 import requests
 from PIL import Image as PILImage
+
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
@@ -285,10 +286,9 @@ class Client:
     def delete_dataset(self, name: str) -> None:
         self._requests_delete_rel_host(f"datasets/{name}")
 
-    def get_dataset(self, name: str) -> dict:
-        resp = self._requests_get_rel_host("datasets", json={"name": name})
-
-        return resp.json()
+    def get_dataset(self, name: str) -> "Dataset":
+        resp = self._requests_get_rel_host(f"datasets/{name}")
+        return Dataset(client=self, name=resp.json()["name"])
 
     def get_datasets(self) -> List[dict]:
         return self._requests_get_rel_host("datasets").json()
