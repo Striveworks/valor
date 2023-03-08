@@ -36,3 +36,30 @@ class LogConfig(BaseSettings):
             "propagate": False,
         },
     }
+
+
+class AuthConfig(BaseSettings):
+    domain: str = None
+    audience: str = None
+    algorithms: str = None
+
+    class Config:
+        env_file = ".env.auth"
+        env_prefix = "auth0_"
+
+    @property
+    def no_auth(self) -> bool:
+        return all([not v for v in self.dict().values()])
+
+    @property
+    def jwks_url(self) -> str:
+        if self.domain:
+            return f"https://{self.domain}/.well-known/jwks.json"
+        return None
+
+    @property
+    def issuer(self) -> str:
+        return f"https://{self.domain}/"
+
+
+auth_settings = AuthConfig()
