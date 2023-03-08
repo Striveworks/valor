@@ -19,7 +19,7 @@ def generate_mot_data(num_frames: int):
         key=OBJECT_ID_LABEL_KEY, value=obj_id
     )
     create_scored_label = lambda obj_id, score: schemas.ScoredLabel(
-        key=OBJECT_ID_LABEL_KEY, value=obj_id, score=score
+        label=schemas.Label(key=OBJECT_ID_LABEL_KEY, value=obj_id), score=score
     )
 
     square = lambda x, y: [(x, y), (x + 10, y), (x, y + 10), (x + 10, y + 10)]
