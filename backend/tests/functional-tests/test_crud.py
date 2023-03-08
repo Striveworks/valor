@@ -94,10 +94,10 @@ def pred_dets_create(img1: schemas.Image) -> schemas.PredictedDetectionsCreate:
                 boundary=[(107, 207), (107, 307), (207, 307), (207, 207)],
                 scored_labels=[
                     schemas.ScoredLabel(
-                        key="k1", value="v1", score=0.6
+                        label=schemas.Label(key="k1", value="v1"), score=0.6
                     ),
                     schemas.ScoredLabel(
-                        key="k2", value="v2", score=0.2
+                        label=schemas.Label(key="k2", value="v2"), score=0.2
                     ),
                 ],
                 image=img1,
@@ -106,7 +106,7 @@ def pred_dets_create(img1: schemas.Image) -> schemas.PredictedDetectionsCreate:
                 boundary=[(107, 207), (107, 307), (207, 307), (207, 207)],
                 scored_labels=[
                     schemas.ScoredLabel(
-                        key="k2", value="v2", score=0.9
+                        label=schemas.Label(key="k2", value="v2"), score=0.9
                     )
                 ],
                 image=img1,
@@ -153,7 +153,7 @@ def pred_segs_create(
                 image=img1,
                 scored_labels=[
                     schemas.ScoredLabel(
-                        key="k1", value="v1", score=0.43
+                        label=schemas.Label(key="k1", value="v1"), score=0.43
                     )
                 ],
             ),
@@ -163,7 +163,7 @@ def pred_segs_create(
                 image=img1,
                 scored_labels=[
                     schemas.ScoredLabel(
-                        key="k2", value="v2", score=0.97
+                        label=schemas.Label(key="k2", value="v2"), score=0.97
                     )
                 ],
             ),
@@ -204,10 +204,10 @@ def pred_clfs_create(
                 image=img1,
                 scored_labels=[
                     schemas.ScoredLabel(
-                        key="k1", value="v1", score=0.2
+                        label=schemas.Label(key="k1", value="v1"), score=0.2
                     ),
                     schemas.ScoredLabel(
-                        key="k4", value="v4", score=0.5
+                        label=schemas.Label(key="k4", value="v4"), score=0.5
                     ),
                 ],
             ),
@@ -215,10 +215,10 @@ def pred_clfs_create(
                 image=img2,
                 scored_labels=[
                     schemas.ScoredLabel(
-                        key="k2", value="v2", score=0.3
+                        label=schemas.Label(key="k2", value="v2"), score=0.3
                     ),
                     schemas.ScoredLabel(
-                        key="k3", value="v3", score=0.87
+                        label=schemas.Label(key="k3", value="v3"), score=0.87
                     ),
                 ],
             ),

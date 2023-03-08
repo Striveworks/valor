@@ -126,18 +126,18 @@ def pred_det_to_mot(
 ) -> list[float]:
     """Helper to convert a predicted detection into MOT format"""
 
-    for label in pred.scored_labels:
-        if label.key == "object_id":
+    for scored_label in pred.scored_labels:
+        if scored_label.label.key == "object_id":
             break
 
     bbox = BoundingBox.from_polygon(pred.boundary)
     mot_det = MOTDetection(
         frame_number=pred.image.frame,
         object_id=obj_id_to_int[
-            label.value
+            scored_label.label.value
         ],  # Label's value is used as object id
         bbox=bbox,
-        confidence=label.score,
+        confidence=scored_label.score,
     )
 
     return np.array(mot_det.to_list())
@@ -154,9 +154,9 @@ def compute_mot_metrics(
     # Build obj_id_to_int map
     obj_ids = set()
     for pred in predictions:
-        for label in pred.scored_labels:
-            if label.key == OBJECT_ID_LABEL_KEY:
-                obj_ids.add(label.value)
+        for scored_label in pred.scored_labels:
+            if scored_label.label.key == OBJECT_ID_LABEL_KEY:
+                obj_ids.add(scored_label.label.value)
     for gt in groundtruths:
         for label in gt.labels:
             if label.key == OBJECT_ID_LABEL_KEY:
