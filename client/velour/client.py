@@ -131,153 +131,6 @@ class Client:
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
-    def upload_groundtruth_detections(
-        self, dataset_name: str, dets: List[GroundTruthDetection]
-    ) -> List[int]:
-        payload = {
-            "dataset_name": dataset_name,
-            "detections": [
-                {
-                    "boundary": _payload_for_bounding_polygon(det.boundary),
-                    "labels": [asdict(label) for label in det.labels],
-                    "image": asdict(det.image),
-                }
-                for det in dets
-            ],
-        }
-
-        resp = self._requests_post_rel_host(
-            "groundtruth-detections", json=payload
-        )
-        resp.raise_for_status()
-
-        return resp.json()
-
-    def upload_groundtruth_segmentations(
-        self, dataset_name: str, segs: List[_GroundTruthSegmentation]
-    ) -> List[int]:
-        def _shape_value(shape: Union[List[PolygonWithHole], np.ndarray]):
-            if isinstance(shape, np.ndarray):
-                return _mask_array_to_pil_base64(shape)
-            else:
-                return _payload_for_polys_with_holes(shape)
-
-        payload = {
-            "dataset_name": dataset_name,
-            "segmentations": [
-                {
-                    "shape": _shape_value(seg.shape),
-                    "labels": [asdict(label) for label in seg.labels],
-                    "image": asdict(seg.image),
-                    "is_instance": seg._is_instance,
-                }
-                for seg in segs
-            ],
-        }
-
-        resp = self._requests_post_rel_host(
-            "groundtruth-segmentations", json=payload
-        )
-        resp.raise_for_status()
-
-        return resp.json()
-
-    def upload_predicted_detections(
-        self, model_name: str, dets: List[PredictedDetection]
-    ) -> List[int]:
-        payload = {
-            "model_name": model_name,
-            "detections": [
-                {
-                    "boundary": _payload_for_bounding_polygon(det.boundary),
-                    "scored_labels": [
-                        asdict(scored_label)
-                        for scored_label in det.scored_labels
-                    ],
-                    "image": asdict(det.image),
-                }
-                for det in dets
-            ],
-        }
-
-        resp = self._requests_post_rel_host(
-            "predicted-detections", json=payload
-        )
-
-        resp.raise_for_status()
-        return resp.json()
-
-    def upload_predicted_segmentations(
-        self, model_name: str, segs: List[_PredictedSegmentation]
-    ) -> List[int]:
-        payload = {
-            "model_name": model_name,
-            "segmentations": [
-                {
-                    "base64_mask": _mask_array_to_pil_base64(seg.mask),
-                    "scored_labels": [
-                        asdict(scored_label)
-                        for scored_label in seg.scored_labels
-                    ],
-                    "image": asdict(seg.image),
-                    "is_instance": seg._is_instance,
-                }
-                for seg in segs
-            ],
-        }
-
-        resp = self._requests_post_rel_host(
-            "predicted-segmentations", json=payload
-        )
-
-        resp.raise_for_status()
-        return resp.json()
-
-    def upload_groundtruth_classifications(
-        self, dataset_name: str, clfs: List[GroundTruthImageClassification]
-    ) -> List[int]:
-        payload = {
-            "dataset_name": dataset_name,
-            "classifications": [
-                {
-                    "labels": [asdict(label) for label in clf.labels],
-                    "image": asdict(clf.image),
-                }
-                for clf in clfs
-            ],
-        }
-
-        resp = self._requests_post_rel_host(
-            "groundtruth-classifications", json=payload
-        )
-        resp.raise_for_status()
-
-        return resp.json()
-
-    def upload_predicted_classifications(
-        self, model_name: str, clfs: List[PredictedImageClassification]
-    ) -> List[int]:
-        payload = {
-            "model_name": model_name,
-            "classifications": [
-                {
-                    "scored_labels": [
-                        asdict(scored_label)
-                        for scored_label in clf.scored_labels
-                    ],
-                    "image": asdict(clf.image),
-                }
-                for clf in clfs
-            ],
-        }
-
-        resp = self._requests_post_rel_host(
-            "predicted-classifications", json=payload
-        )
-        resp.raise_for_status()
-
-        return resp.json()
-
     def create_dataset(self, name: str) -> "Dataset":
         self._requests_post_rel_host("datasets", json={"name": name})
 
@@ -293,23 +146,6 @@ class Client:
     def get_datasets(self) -> List[dict]:
         return self._requests_get_rel_host("datasets").json()
 
-    def get_dataset_images(self, name: str) -> List[Image]:
-        images = self._requests_get_rel_host(f"datasets/{name}/images").json()
-
-        return [
-            Image(
-                uid=image["uid"], height=image["height"], width=image["width"]
-            )
-            for image in images
-        ]
-
-    def get_dataset_labels(self, name: str) -> List[Label]:
-        labels = self._requests_get_rel_host(f"datasets/{name}/labels").json()
-
-        return [
-            Label(key=label["key"], value=label["value"]) for label in labels
-        ]
-
     def create_model(self, name: str) -> "Model":
         self._requests_post_rel_host("models", json={"name": name})
 
@@ -318,19 +154,15 @@ class Client:
     def delete_model(self, name: str) -> None:
         self._requests_delete_rel_host(f"models/{name}")
 
-    def get_model(self, name: str) -> dict:
-        resp = self._requests_get_rel_host("models", json={"name": name})
-
-        return resp.json()
+    def get_model(self, name: str) -> "Model":
+        resp = self._requests_get_rel_host("models/{name}")
+        return Model(client=self, name=resp.json())
 
     def get_models(self) -> List[dict]:
         return self._requests_get_rel_host("models").json()
 
     def get_all_labels(self) -> List[Label]:
         return self._requests_get_rel_host("labels").json()
-
-    def finalize_dataset(self, name: str):
-        return self._requests_put_rel_host(f"datasets/{name}/finalize")
 
 
 class Dataset:
@@ -339,35 +171,103 @@ class Dataset:
         self.name = name
 
     def add_groundtruth_detections(self, dets: List[GroundTruthDetection]):
-        return self.client.upload_groundtruth_detections(
-            dataset_name=self.name, dets=dets
+        payload = {
+            "dataset_name": self.name,
+            "detections": [
+                {
+                    "boundary": _payload_for_bounding_polygon(det.boundary),
+                    "labels": [asdict(label) for label in det.labels],
+                    "image": asdict(det.image),
+                }
+                for det in dets
+            ],
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "groundtruth-detections", json=payload
         )
+        resp.raise_for_status()
+
+        return resp.json()
 
     def add_groundtruth_classifications(
         self, clfs: List[GroundTruthImageClassification]
     ):
-        return self.client.upload_groundtruth_classifications(
-            dataset_name=self.name, clfs=clfs
+        payload = {
+            "dataset_name": self.name,
+            "classifications": [
+                {
+                    "labels": [asdict(label) for label in clf.labels],
+                    "image": asdict(clf.image),
+                }
+                for clf in clfs
+            ],
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "groundtruth-classifications", json=payload
         )
+        resp.raise_for_status()
+
+        return resp.json()
 
     def add_groundtruth_segmentations(
         self, segs: List[_GroundTruthSegmentation]
     ):
-        return self.client.upload_groundtruth_segmentations(
-            dataset_name=self.name, segs=segs
+        def _shape_value(shape: Union[List[PolygonWithHole], np.ndarray]):
+            if isinstance(shape, np.ndarray):
+                return _mask_array_to_pil_base64(shape)
+            else:
+                return _payload_for_polys_with_holes(shape)
+
+        payload = {
+            "dataset_name": self.name,
+            "segmentations": [
+                {
+                    "shape": _shape_value(seg.shape),
+                    "labels": [asdict(label) for label in seg.labels],
+                    "image": asdict(seg.image),
+                    "is_instance": seg._is_instance,
+                }
+                for seg in segs
+            ],
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "groundtruth-segmentations", json=payload
         )
+        resp.raise_for_status()
+
+        return resp.json()
 
     def finalize(self):
-        return self.client.finalize_dataset(self.name)
+        return self.client._requests_put_rel_host(
+            f"datasets/{self.name}/finalize"
+        )
 
     def delete(self):
         return self.client.delete_dataset(self.name)
 
     def get_images(self) -> List[Image]:
-        return self.client.get_dataset_images(self.name)
+        images = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/images"
+        ).json()
+
+        return [
+            Image(
+                uid=image["uid"], height=image["height"], width=image["width"]
+            )
+            for image in images
+        ]
 
     def get_labels(self) -> List[Label]:
-        return self.client.get_dataset_labels(self.name)
+        labels = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/labels"
+        ).json()
+
+        return [
+            Label(key=label["key"], value=label["value"]) for label in labels
+        ]
 
 
 class Model:
@@ -376,20 +276,74 @@ class Model:
         self.name = name
 
     def add_predicted_detections(self, dets: List[PredictedDetection]) -> None:
-        return self.client.upload_predicted_detections(
-            model_name=self.name, dets=dets
+        payload = {
+            "model_name": self.name,
+            "detections": [
+                {
+                    "boundary": _payload_for_bounding_polygon(det.boundary),
+                    "scored_labels": [
+                        asdict(scored_label)
+                        for scored_label in det.scored_labels
+                    ],
+                    "image": asdict(det.image),
+                }
+                for det in dets
+            ],
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "predicted-detections", json=payload
         )
+
+        resp.raise_for_status()
+        return resp.json()
 
     def add_predicted_segmentations(
         self, segs: List[_PredictedSegmentation]
     ) -> None:
-        return self.client.upload_predicted_segmentations(
-            model_name=self.name, segs=segs
+        payload = {
+            "model_name": self.name,
+            "segmentations": [
+                {
+                    "base64_mask": _mask_array_to_pil_base64(seg.mask),
+                    "scored_labels": [
+                        asdict(scored_label)
+                        for scored_label in seg.scored_labels
+                    ],
+                    "image": asdict(seg.image),
+                    "is_instance": seg._is_instance,
+                }
+                for seg in segs
+            ],
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "predicted-segmentations", json=payload
         )
+
+        resp.raise_for_status()
+        return resp.json()
 
     def add_predicted_classifications(
         self, clfs: List[PredictedImageClassification]
     ) -> None:
-        return self.client.upload_predicted_classifications(
-            model_name=self.name, clfs=clfs
+        payload = {
+            "model_name": self.name,
+            "classifications": [
+                {
+                    "scored_labels": [
+                        asdict(scored_label)
+                        for scored_label in clf.scored_labels
+                    ],
+                    "image": asdict(clf.image),
+                }
+                for clf in clfs
+            ],
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "predicted-classifications", json=payload
         )
+        resp.raise_for_status()
+
+        return resp.json()
