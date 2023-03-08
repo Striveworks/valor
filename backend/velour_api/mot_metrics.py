@@ -1,6 +1,26 @@
 import motmetrics as mm
 import numpy as np
-import schemas
+from velour_api import schemas
+
+OBJECT_ID_LABEL_KEY = "object_id"
+MOT_METRICS_NAMES = [
+    "num_frames",
+    "idf1",
+    "idp",
+    "idr",
+    "recall",
+    "precision",
+    "num_objects",
+    "mostly_tracked",
+    "partially_tracked",
+    "mostly_lost",
+    "num_false_positives",
+    "num_misses",
+    "num_switches",
+    "num_fragmentations",
+    "mota",
+    "motp",
+]
 
 
 class BoundingBox:
@@ -80,50 +100,75 @@ class MOTDetection:
         ]
 
 
-def ground_truth_det_to_mot(gt: schemas.GroundTruthDetection) -> list[float]:
+def ground_truth_det_to_mot(
+    gt: schemas.GroundTruthDetection, obj_id_to_int: dict
+) -> list[float]:
     """Helper to convert a ground truth detection into MOT format"""
-    mot_lines = []
 
     for label in gt.labels:
-        bbox = BoundingBox.from_polygon(gt.boundary)
-        mot_det = MOTDetection(
-            frame_number=gt.image.frame,
-            object_id=label.value,  # Label's value is used as object id
-            bbox=bbox,
-            confidence=1,
-        )
-        mot_lines.append(mot_det.to_list())
+        if label.key == "object_id":
+            break
+    bbox = BoundingBox.from_polygon(gt.boundary)
+    mot_det = MOTDetection(
+        frame_number=gt.image.frame,
+        object_id=obj_id_to_int[
+            label.value
+        ],  # Label's value is used as object id
+        bbox=bbox,
+        confidence=1,
+    )
 
-    return np.array(mot_lines)
+    return np.array(mot_det.to_list())
 
 
-def pred_det_to_mot(pred: schemas.PredictedDetection) -> list[float]:
+def pred_det_to_mot(
+    pred: schemas.PredictedDetection, obj_id_to_int: dict
+) -> list[float]:
     """Helper to convert a predicted detection into MOT format"""
-    mot_lines = []
 
-    for scored_label in pred.scored_labels:
-        bbox = BoundingBox.from_polygon(pred.boundary)
-        mot_det = MOTDetection(
-            frame_number=pred.image.frame,
-            object_id=scored_label.label.value,  # Label's value is used as object id
-            bbox=bbox,
-            confidence=scored_label.score,
-        )
-        mot_lines.append(mot_det.to_list())
+    for label in pred.scored_labels:
+        if label.key == "object_id":
+            break
 
-    return np.array(mot_lines)
+    bbox = BoundingBox.from_polygon(pred.boundary)
+    mot_det = MOTDetection(
+        frame_number=pred.image.frame,
+        object_id=obj_id_to_int[
+            label.value
+        ],  # Label's value is used as object id
+        bbox=bbox,
+        confidence=label.score,
+    )
+
+    return np.array(mot_det.to_list())
 
 
 def compute_mot_metrics(
-    predictions: list[list[schemas.PredictedDetection]],
-    groundtruths: list[list[schemas.GroundTruthDetection]],
+    predictions: list[schemas.PredictedDetection],
+    groundtruths: list[schemas.GroundTruthDetection],
 ):
     """Compute the MOT metrics given predictions and ground truths.
     See https://arxiv.org/abs/1603.00831 for details on MOT.
     """
-    predicted_total = np.concatenate(list(map(pred_det_to_mot, predictions)))
-    groundtruths_total = np.concatenate(
-        list(map(ground_trutn_det_to_mot, groundtruths))
+
+    # Build obj_id_to_int map
+    obj_ids = set()
+    for pred in predictions:
+        for label in pred.scored_labels:
+            if label.key == OBJECT_ID_LABEL_KEY:
+                obj_ids.add(label.value)
+    for gt in groundtruths:
+        for label in gt.labels:
+            if label.key == OBJECT_ID_LABEL_KEY:
+                obj_ids.add(label.value)
+    obj_id_to_int = {_id: i for i, _id in enumerate(obj_ids)}
+
+    # Conver to MOT format
+    predicted_total = np.array(
+        [pred_det_to_mot(pred, obj_id_to_int) for pred in predictions]
+    )
+    groundtruths_total = np.array(
+        [ground_truth_det_to_mot(gt, obj_id_to_int) for gt in groundtruths]
     )
 
     acc = mm.MOTAccumulator(auto_id=True)
@@ -138,9 +183,7 @@ def compute_mot_metrics(
             predicted_total[:, 0] == frame, 1:6
         ]  # select all detections in predicted_total
 
-        C = mm.distances.iou_matrix(
-            gt_dets[:, 1:], t_dets[:, 1:], max_iou=0.5
-        )
+        C = mm.distances.iou_matrix(gt_dets[:, 1:], t_dets[:, 1:], max_iou=0.5)
 
         acc.update(
             gt_dets[:, 0].astype("int").tolist(),
@@ -152,25 +195,8 @@ def compute_mot_metrics(
 
     summary = mh.compute(
         acc,
-        metrics=[
-            "num_frames",
-            "idf1",
-            "idp",
-            "idr",
-            "recall",
-            "precision",
-            "num_objects",
-            "mostly_tracked",
-            "partially_tracked",
-            "mostly_lost",
-            "num_false_positives",
-            "num_misses",
-            "num_switches",
-            "num_fragmentations",
-            "mota",
-            "motp",
-        ],
+        metrics=MOT_METRICS_NAMES,
         name="acc",
     )
 
-    return summary
+    return summary.to_dict(orient="records")[0]

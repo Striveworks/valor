@@ -39,8 +39,7 @@ class Label(BaseModel):
     value: str
 
 
-class ScoredLabel(BaseModel):
-    label: Label
+class ScoredLabel(Label):
     score: float
 
 
