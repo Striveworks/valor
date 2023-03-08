@@ -2,39 +2,7 @@ from sqlalchemy import Select, func, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from . import models, schemas
-
-
-class DatasetAlreadyExistsError(Exception):
-    def __init__(self, name: str):
-        return super().__init__(f"Dataset with name '{name}' already exists.")
-
-
-class ModelAlreadyExistsError(Exception):
-    def __init__(self, name: str):
-        return super().__init__(f"Model with name '{name}' already exists.")
-
-
-class DatasetDoesNotExistError(Exception):
-    def __init__(self, name: str):
-        return super().__init__(f"Dataset with name '{name}' does not exist.")
-
-
-class DatasetIsFinalizedError(Exception):
-    def __init__(self, name: str):
-        return super().__init__(
-            f"Cannot add images or annotations to dataset '{name}' since it is finalized."
-        )
-
-
-class ModelDoesNotExistError(Exception):
-    def __init__(self, name: str):
-        return super().__init__(f"Model with name '{name}' does not exist.")
-
-
-class ImageDoesNotExistError(Exception):
-    def __init__(self, uri: str):
-        return super().__init__(f"Image with uri '{uri}' does not exist.")
+from . import exceptions, models, schemas
 
 
 def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
@@ -164,7 +132,7 @@ def _add_images_to_dataset(
     returning the list of image ids"""
     dset = get_dataset(db, dataset_name=dataset_name)
     if not dset.draft:
-        raise DatasetIsFinalizedError(dataset_name)
+        raise exceptions.DatasetIsFinalizedError(dataset_name)
     dset_id = dset.id
 
     return [
@@ -483,7 +451,7 @@ def create_dataset(db: Session, dataset: schemas.DatasetCreate):
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise DatasetAlreadyExistsError(dataset.name)
+        raise exceptions.DatasetAlreadyExistsError(dataset.name)
 
 
 def get_datasets(db: Session) -> list[schemas.Dataset]:
@@ -498,7 +466,7 @@ def get_dataset(db: Session, dataset_name: str) -> models.Dataset:
         select(models.Dataset).where(models.Dataset.name == dataset_name)
     )
     if ret is None:
-        raise DatasetDoesNotExistError(dataset_name)
+        raise exceptions.DatasetDoesNotExistError(dataset_name)
 
     return ret
 
@@ -522,7 +490,7 @@ def create_model(db: Session, model: schemas.Model):
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise ModelAlreadyExistsError(model.name)
+        raise exceptions.ModelAlreadyExistsError(model.name)
 
 
 def finalize_dataset(db: Session, dataset_name: str) -> None:
@@ -536,7 +504,7 @@ def get_model(db: Session, model_name: str) -> models.Model:
         select(models.Model).where(models.Model.name == model_name)
     )
     if ret is None:
-        raise ModelDoesNotExistError(model_name)
+        raise exceptions.ModelDoesNotExistError(model_name)
 
     return ret
 
@@ -544,7 +512,7 @@ def get_model(db: Session, model_name: str) -> models.Model:
 def get_image(db: Session, uri: str) -> models.Image:
     ret = db.scalar(select(models.Image).where(models.Image.uri == uri))
     if ret is None:
-        raise ImageDoesNotExistError(uri)
+        raise exceptions.ImageDoesNotExistError(uri)
 
     return ret
 

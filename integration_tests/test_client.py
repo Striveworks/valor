@@ -1,3 +1,7 @@
+""" These integration tests should be run with a backend at http://localhost:8000
+that is no auth
+"""
+
 import io
 import json
 from typing import Any
