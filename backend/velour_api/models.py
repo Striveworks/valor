@@ -261,7 +261,6 @@ class Image(Base):
     height: Mapped[int] = mapped_column()
     width: Mapped[int] = mapped_column()
     frame: Mapped[int] = mapped_column(nullable=True)
-    timestamp: Mapped[float] = mapped_column(nullable=True)
     ground_truth_detections: Mapped[list[GroundTruthDetection]] = relationship(
         GroundTruthDetection, cascade="all, delete"
     )
