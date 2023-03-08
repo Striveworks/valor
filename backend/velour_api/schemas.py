@@ -174,3 +174,7 @@ class GroundTruthSegmentationsCreate(BaseModel):
 class PredictedSegmentationsCreate(BaseModel):
     model_name: str
     segmentations: list[PredictedSegmentation]
+
+
+class User(BaseModel):
+    email: str = None

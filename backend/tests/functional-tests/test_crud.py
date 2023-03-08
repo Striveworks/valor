@@ -9,7 +9,7 @@ from PIL import Image
 from sqlalchemy import func, insert, select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, models, ops, schemas
+from velour_api import crud, exceptions, models, ops, schemas
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -233,7 +233,7 @@ def test_create_and_get_datasets(db: Session):
     assert len(all_datasets) == 1
     assert all_datasets[0].name == dset_name
 
-    with pytest.raises(crud.DatasetAlreadyExistsError) as exc_info:
+    with pytest.raises(exceptions.DatasetAlreadyExistsError) as exc_info:
         crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
     assert "already exists" in str(exc_info)
 
@@ -250,7 +250,7 @@ def test_create_and_get_models(db: Session):
     assert len(all_models) == 1
     assert all_models[0].name == model_name
 
-    with pytest.raises(crud.ModelAlreadyExistsError) as exc_info:
+    with pytest.raises(exceptions.ModelAlreadyExistsError) as exc_info:
         crud.create_model(db, schemas.Model(name=model_name))
     assert "already exists" in str(exc_info)
 
@@ -261,7 +261,7 @@ def test_create_and_get_models(db: Session):
 
 
 def test_get_dataset(db: Session):
-    with pytest.raises(crud.DatasetDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
         crud.get_dataset(db, dset_name)
     assert "does not exist" in str(exc_info)
 
@@ -271,7 +271,7 @@ def test_get_dataset(db: Session):
 
 
 def test_get_model(db: Session):
-    with pytest.raises(crud.ModelDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         crud.get_model(db, model_name)
     assert "does not exist" in str(exc_info)
 
@@ -315,14 +315,14 @@ def test_create_predicted_detections_and_delete_model(
     gt_dets_create: schemas.GroundTruthDetectionsCreate,
 ):
     # check this gives an error since the model hasn't been added yet
-    with pytest.raises(crud.ModelDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         crud.create_predicted_detections(db, pred_dets_create)
     assert "does not exist" in str(exc_info)
 
     crud.create_model(db, schemas.Model(name=model_name))
 
     # check this gives an error since the images haven't been added yet
-    with pytest.raises(crud.ImageDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
         crud.create_predicted_detections(db, pred_dets_create)
     assert "Image with uri" in str(exc_info)
 
@@ -373,14 +373,14 @@ def test_create_predicted_classifications_and_delete_model(
     gt_clfs_create: schemas.GroundTruthImageClassificationsCreate,
 ):
     # check this gives an error since the model hasn't been added yet
-    with pytest.raises(crud.ModelDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         crud.create_predicted_image_classifications(db, pred_clfs_create)
     assert "does not exist" in str(exc_info)
 
     crud.create_model(db, schemas.Model(name=model_name))
 
     # check this gives an error since the images haven't been added yet
-    with pytest.raises(crud.ImageDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
         crud.create_predicted_image_classifications(db, pred_clfs_create)
     assert "Image with uri" in str(exc_info)
 
@@ -434,14 +434,14 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     gt_segs_create: schemas.GroundTruthSegmentationsCreate,
 ):
     # check this gives an error since the model hasn't been added yet
-    with pytest.raises(crud.ModelDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         crud.create_predicted_segmentations(db, pred_segs_create)
     assert "does not exist" in str(exc_info)
 
     crud.create_model(db, schemas.Model(name=model_name))
 
     # check this gives an error since the images haven't been added yet
-    with pytest.raises(crud.ImageDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
         crud.create_predicted_segmentations(db, pred_segs_create)
     assert "Image with uri" in str(exc_info)
 
