@@ -178,6 +178,7 @@ class GroundTruthSegmentation(Base):
     is_instance: Mapped[bool] = mapped_column(nullable=False)
     shape = mapped_column(GDALRaster)
     image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
+    image = relationship("Image", back_populates="ground_truth_segmentations")
     labeled_ground_truth_segmentations: Mapped[
         list["LabeledGroundTruthSegmentation"]
     ] = relationship(

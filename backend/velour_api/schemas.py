@@ -1,5 +1,6 @@
 import io
 from base64 import b64decode
+from enum import Enum
 
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, validator
@@ -175,3 +176,22 @@ class PredictedSegmentationsCreate(BaseModel):
 
 class User(BaseModel):
     email: str = None
+
+
+class Task(Enum):
+    OBJECT_DETECTION = "Object Detection"
+    INSTANCE_SEGMENTATION = "Instance Segmentation"
+    IMAGE_CLASSIFICATION = "Image Classification"
+    SEMANTIC_SEGMENTATION = "Semantic Segmentation"
+
+
+class MetricInfo(BaseModel):
+    model_name: str
+    dataset_name: str
+    model_pred_type: Task
+    dataset_gt_type: Task
+    labels: list[Label] = None
+
+
+class APMetric(MetricInfo):
+    ious: float | list[float]

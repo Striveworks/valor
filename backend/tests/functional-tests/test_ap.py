@@ -1,4 +1,5 @@
 import pytest
+from sqlalchemy.orm import Session
 
 from velour_api import crud
 from velour_api.metrics import compute_ap_metrics
@@ -41,7 +42,7 @@ def images() -> list[Image]:
 
 @pytest.fixture
 def groundtruths(
-    db, images: list[Image]
+    db: Session, images: list[Image]
 ) -> list[list[LabeledGroundTruthDetection]]:
     dataset_name = "test dataset"
     crud.create_dataset(db, dataset=DatasetCreate(name=dataset_name))
@@ -122,7 +123,7 @@ def groundtruths(
 
 @pytest.fixture
 def predictions(
-    db, images: list[Image]
+    db: Session, images: list[Image]
 ) -> list[list[LabeledPredictedDetection]]:
     model_name = "test model"
     crud.create_model(db, Model(name=model_name))
@@ -216,7 +217,7 @@ def predictions(
 
 
 def test_compute_ap_metrics(
-    db,
+    db: Session,
     groundtruths: list[list[GroundTruthDetection]],
     predictions: list[list[PredictedDetection]],
 ):

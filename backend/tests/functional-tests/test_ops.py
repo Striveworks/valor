@@ -109,7 +109,7 @@ def test_intersection_pred_seg_gt_seg(
 def test_intersection_pred_seg_multi_poly_gt_seg(
     db: Session, model: models.Model, img: models.Image
 ):
-    """Tests intersection of a predictino mask with a groundtruth
+    """Tests intersection of a prediction mask with a groundtruth
     that's comprised of two disjoint polygons, with one having a hole
     """
 
@@ -160,3 +160,37 @@ def test_intersection_pred_seg_multi_poly_gt_seg(
         )
         == area_int_mask_rect + area_triangle - area_hole
     )
+
+
+def test_intersection_area_of_gt_seg_and_pred_det(
+    db: Session, model: models.Model, img: models.Image
+):
+    h, w = 100, 200
+    y_min, y_max, x_min, x_max = 50, 80, 20, 30
+    mask = np.zeros(shape=(h, w), dtype=bool)
+    mask[y_min:y_max, x_min:x_max] = True
+    mask_bytes = pil_to_bytes(Image.fromarray(mask))
+
+    poly_y_min, poly_y_max, poly_x_min, poly_x_max = 60, 90, 10, 25
+    poly = schemas.PolygonWithHole(
+        polygon=[
+            (poly_x_min, poly_y_min),
+            (poly_x_max, poly_y_min),
+            (poly_x_max, poly_y_max),
+            (poly_x_min, poly_y_max),
+        ]
+    )
+
+    inter_xmin = max(x_min, poly_x_min)
+    inter_xmax = min(x_max, poly_x_max)
+    inter_ymin = max(y_min, poly_y_min)
+    inter_ymax = min(y_max, poly_y_max)
+
+    pred_seg = _pred_seg_from_bytes(
+        db=db, mask_bytes=mask_bytes, model=model, img=img
+    )
+    gt_seg = _gt_seg_from_polys(db=db, polys=[poly], img=img)
+
+    assert ops.intersection_area_of_gt_seg_and_pred_seg(
+        db=db, gt_seg=gt_seg, pred_seg=pred_seg
+    ) == (inter_xmax - inter_xmin) * (inter_ymax - inter_ymin)

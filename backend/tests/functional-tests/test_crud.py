@@ -134,6 +134,12 @@ def gt_segs_create(
                 image=img2,
                 labels=[schemas.Label(key="k1", value="v1")],
             ),
+            schemas.GroundTruthSegmentation(
+                is_instance=True,
+                shape=[poly_without_hole],
+                image=img2,
+                labels=[schemas.Label(key="k2", value="v2")],
+            ),
         ],
     )
 
@@ -409,10 +415,10 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
 
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
 
-    assert crud.number_of_rows(db, models.GroundTruthSegmentation) == 2
+    assert crud.number_of_rows(db, models.GroundTruthSegmentation) == 3
     assert crud.number_of_rows(db, models.Image) == 2
-    assert crud.number_of_rows(db, models.LabeledGroundTruthSegmentation) == 2
-    assert crud.number_of_rows(db, models.Label) == 1
+    assert crud.number_of_rows(db, models.LabeledGroundTruthSegmentation) == 3
+    assert crud.number_of_rows(db, models.Label) == 2
 
     # delete dataset and check the cascade worked
     crud.delete_dataset(db, dataset_name=dset_name)
@@ -425,7 +431,7 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
         assert crud.number_of_rows(db, model_cls) == 0
 
     # make sure labels are still there`
-    assert crud.number_of_rows(db, models.Label) == 1
+    assert crud.number_of_rows(db, models.Label) == 2
 
 
 def test_create_predicted_segmentations_check_area_and_delete_model(
@@ -644,3 +650,42 @@ def test_gt_seg_as_mask_or_polys(db: Session, img1: schemas.Image):
     assert len(shapes) == 2
     # check that the mask and polygon define the same polygons
     assert shapes[0] == shapes[1]
+
+
+def test_get_instance_segmentations_and_unique_labels_and_filtering(
+    db: Session, gt_segs_create: schemas.GroundTruthDetectionsCreate
+):
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+
+    # add three total segmentations, two of which are instance segmentations with
+    # the same label
+    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+
+    segs_statement = crud.instance_segmentations_in_dataset_statement(
+        dset_name
+    )
+
+    segs = db.scalars(segs_statement).all()
+
+    assert len(segs) == 2
+
+    labels = crud.labels_in_query(db, segs_statement)
+    assert len(labels) == 2
+
+    # now query just the one with label "k1", "v1"
+    segs = crud.get_and_filter_gts_by_labels(
+        db, segs_statement, [schemas.Label(key="k1", value="v1")]
+    )
+    assert len(segs) == 1
+    assert segs[0].label.key, segs[0].label.value == ("k1", "v1")
+
+    # check error when requesitng a label that doesn't exist
+    with pytest.raises(ValueError) as exc_info:
+        crud.get_and_filter_gts_by_labels(
+            db, segs_statement, [schemas.Label(key="k1", value="v2")]
+        )
+    assert "The following label key/value pairs are missing" in str(exc_info)
+
+    # check get both segmentations if the labels argument is empty
+    segs = crud.get_and_filter_gts_by_labels(db, segs_statement)
+    assert len(segs) == 2

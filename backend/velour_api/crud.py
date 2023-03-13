@@ -1,4 +1,4 @@
-from sqlalchemy import Select, func, insert, select, text
+from sqlalchemy import Select, and_, func, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -541,7 +541,6 @@ def get_all_labels(db: Session) -> list[schemas.Label]:
 def get_images_in_dataset(
     db: Session, dataset_name: str
 ) -> list[models.Image]:
-    # TODO must be a better and more SQLy way of doing this
     dset = get_dataset(db, dataset_name)
     return dset.images
 
@@ -578,3 +577,65 @@ def delete_model(db: Session, model_name: str):
 
 def number_of_rows(db: Session, model_cls: type) -> int:
     return db.scalar(select(func.count(model_cls.id)))
+
+
+def get_and_filter_gts_by_labels(
+    db: Session, s: Select, requested_labels: list[schemas.Label] = None
+):
+    if requested_labels is not None:
+        available_labels = labels_in_query(db, s)
+        # filter to those labels specified
+        available_label_tuples = set(
+            [(label.key, label.value) for label in available_labels]
+        )
+        requested_label_tuples = set(
+            [(label.key, label.value) for label in requested_labels]
+        )
+
+        if not (requested_label_tuples <= available_label_tuples):
+            raise ValueError(
+                f"The following label key/value pairs are missing in the dataset: {requested_label_tuples - available_label_tuples}"
+            )
+
+        labels_to_use_ids = [
+            label.id
+            for label in available_labels
+            if (label.key, label.value) in requested_label_tuples
+        ]
+
+        s = s.join(models.Label).where(models.Label.id.in_(labels_to_use_ids))
+
+    return db.scalars(s).all()
+
+
+def instance_segmentations_in_dataset_statement(dataset_name: str) -> Select:
+    s = (
+        select(models.LabeledGroundTruthSegmentation)
+        .join(models.GroundTruthSegmentation)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.GroundTruthSegmentation.is_instance,
+                models.Dataset.name == dataset_name,
+            )
+        )
+    )
+
+    return s
+
+
+def object_detections_in_dataset_statement(dataset_name: str) -> Select:
+    return (
+        select(models.LabeledGroundTruthDetection)
+        .join(models.GroundTruthDetection)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(models.Dataset.id == dataset_name)
+    )
+
+
+def labels_in_query(db: Session, s: Select) -> list[models.Label]:
+    return db.scalars(
+        (select(models.Label).join(s.subquery())).distinct()
+    ).all()
