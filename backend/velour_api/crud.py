@@ -579,11 +579,86 @@ def number_of_rows(db: Session, model_cls: type) -> int:
     return db.scalar(select(func.count(model_cls.id)))
 
 
-def get_and_filter_gts_by_labels(
-    db: Session, s: Select, requested_labels: list[schemas.Label] = None
+def validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+    db: Session,
+    gts_statement: Select,
+    preds_statement: Select,
+    requested_labels: list[schemas.Label] = None,
+) -> tuple[Select, Select, set[tuple[str, str]], set[tuple[str, str]]]:
+    """
+
+    Returns
+    -------
+
+
+    Raises
+    ------
+    ValueError
+        if there are labels in `requested_labels` that are not in the groundtruth annotations defined
+        by `gts_statement`.
+    """
+
+    if requested_labels is None:
+        requested_label_tuples = [
+            (label.key, label.value)
+            for label in labels_in_query(db, gts_statement)
+        ]
+        pred_label_tuples = [
+            (label.key, label.value)
+            for label in labels_in_query(db, preds_statement)
+        ]
+    else:
+        available_labels = labels_in_query(db, gts_statement)
+        pred_labels = labels_in_query(db, preds_statement)
+
+        # convert available labels and requested labels to key/value tuples to allow easy comparison
+        available_label_tuples = set(
+            [(label.key, label.value) for label in available_labels]
+        )
+        requested_label_tuples = set(
+            [(label.key, label.value) for label in requested_labels]
+        )
+        pred_label_tuples = set(
+            [(label.key, label.value) for label in pred_labels]
+        )
+
+        # filter to those labels specified
+        if not (requested_label_tuples <= available_label_tuples):
+            raise ValueError(
+                f"The following label key/value pairs are missing in the dataset: {requested_label_tuples - available_label_tuples}"
+            )
+
+        labels_to_use_ids = [
+            label.id
+            for label in available_labels
+            if (label.key, label.value) in requested_label_tuples
+        ]
+
+        gts_statement = gts_statement.join(models.Label).where(
+            models.Label.id.in_(labels_to_use_ids)
+        )
+        preds_statement = preds_statement.join(models.Label).where(
+            models.Label.id.in_(labels_to_use_ids)
+        )
+
+    missing_pred_labels = requested_label_tuples - pred_label_tuples
+    ignored_pred_labels = pred_label_tuples - requested_label_tuples
+
+    return (
+        gts_statement,
+        preds_statement,
+        missing_pred_labels,
+        ignored_pred_labels,
+    )
+
+
+def get_and_filter_gts_by_labels_statement(
+    db: Session,
+    defining_statement: Select,
+    requested_labels: list[schemas.Label] = None,
 ):
     if requested_labels is not None:
-        available_labels = labels_in_query(db, s)
+        available_labels = labels_in_query(db, defining_statement)
         # filter to those labels specified
         available_label_tuples = set(
             [(label.key, label.value) for label in available_labels]
@@ -603,13 +678,57 @@ def get_and_filter_gts_by_labels(
             if (label.key, label.value) in requested_label_tuples
         ]
 
-        s = s.join(models.Label).where(models.Label.id.in_(labels_to_use_ids))
+        defining_statement = defining_statement.join(models.Label).where(
+            models.Label.id.in_(labels_to_use_ids)
+        )
 
-    return db.scalars(s).all()
+    return defining_statement
+
+
+def ap_metrics(db: Session, metric_info: schemas.APMetric):
+    allowable_tasks = [
+        schemas.Task.OBJECT_DETECTION,
+        schemas.Task.INSTANCE_SEGMENTATION,
+    ]
+    if metric_info.model_pred_type not in allowable_tasks:
+        raise ValueError(
+            f"`pred_type` must be one of {allowable_tasks} but got {metric_info.model_pred_type}."
+        )
+    if metric_info.dataset_gt_type not in allowable_tasks:
+        raise ValueError(
+            f"`dataset_gt_type` must be one of {allowable_tasks} but got {metric_info.dataset_gt_type}."
+        )
+
+    if metric_info.model_pred_type == schemas.Task.OBJECT_DETECTION:
+        gts_statement = object_detections_in_dataset_statement(
+            metric_info.dataset_name
+        )
+        preds_statement = model_object_detection_preds_statement(
+            model_name=metric_info.model_name,
+            dataset_name=metric_info.dataset_name,
+        )
+    else:
+        gts_statement = instance_segmentations_in_dataset_statement(
+            metric_info.dataset_name
+        )
+        preds_statement = model_instance_segmentation_preds_statement(
+            model_name=metric_info.model_name,
+            dataset_name=metric_info.dataset_name,
+        )
+
+    # get the select statement that defines all of the groundtruth labels
+    gts_statement = get_and_filter_gts_by_labels_statement(
+        db,
+        defining_statement=gts_statement,
+        requested_labels=metric_info.labels,
+    )
+
+    # get the select statement that defines all of the predictions on the images underlying the above groundtruths
+    preds_statement
 
 
 def instance_segmentations_in_dataset_statement(dataset_name: str) -> Select:
-    s = (
+    return (
         select(models.LabeledGroundTruthSegmentation)
         .join(models.GroundTruthSegmentation)
         .join(models.Image)
@@ -622,8 +741,6 @@ def instance_segmentations_in_dataset_statement(dataset_name: str) -> Select:
         )
     )
 
-    return s
-
 
 def object_detections_in_dataset_statement(dataset_name: str) -> Select:
     return (
@@ -635,7 +752,45 @@ def object_detections_in_dataset_statement(dataset_name: str) -> Select:
     )
 
 
-def labels_in_query(db: Session, s: Select) -> list[models.Label]:
+def model_instance_segmentation_preds_statement(
+    model_name: str, dataset_name: str
+) -> Select:
+    return (
+        select(models.LabeledPredictedSegmentation)
+        .join(models.PredictedSegmentation)
+        .join(models.Image)
+        .join(models.Model)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Model.name == model_name,
+                models.Dataset.name == dataset_name,
+            )
+        )
+    )
+
+
+def model_object_detection_preds_statement(
+    model_name: str, dataset_name
+) -> Select:
+    return (
+        select(models.LabeledPredictedDetection)
+        .join(models.PredictedDetection)
+        .join(models.Image)
+        .join(models.Model)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Model.name == model_name,
+                models.Dataset.name == dataset_name,
+            )
+        )
+    )
+
+
+def labels_in_query(
+    db: Session, query_statement: Select
+) -> list[models.Label]:
     return db.scalars(
-        (select(models.Label).join(s.subquery())).distinct()
+        (select(models.Label).join(query_statement.subquery())).distinct()
     ).all()
