@@ -138,7 +138,7 @@ def gt_segs_create(
                 is_instance=True,
                 shape=[poly_without_hole],
                 image=img2,
-                labels=[schemas.Label(key="k2", value="v2")],
+                labels=[schemas.Label(key="k3", value="v3")],
             ),
         ],
     )
@@ -170,6 +170,16 @@ def pred_segs_create(
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k2", value="v2"), score=0.97
+                    )
+                ],
+            ),
+            schemas.PredictedSegmentation(
+                base64_mask=b64_mask2,
+                is_instance=True,
+                image=img1,
+                scored_labels=[
+                    schemas.ScoredLabel(
+                        label=schemas.Label(key="k2", value="v2"), score=0.74
                     )
                 ],
             ),
@@ -457,8 +467,8 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     crud.create_predicted_segmentations(db, pred_segs_create)
 
     # check db has the added predictions
-    assert crud.number_of_rows(db, models.PredictedSegmentation) == 2
-    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 2
+    assert crud.number_of_rows(db, models.PredictedSegmentation) == 3
+    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 3
 
     # grab the first one and check that the area of the raster
     # matches the area of the image
@@ -652,40 +662,83 @@ def test_gt_seg_as_mask_or_polys(db: Session, img1: schemas.Image):
     assert shapes[0] == shapes[1]
 
 
-def test_get_instance_segmentations_and_unique_labels_and_filtering(
-    db: Session, gt_segs_create: schemas.GroundTruthDetectionsCreate
+def test_validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+    db: Session,
+    gt_segs_create: schemas.GroundTruthDetectionsCreate,
+    pred_segs_create: schemas.PredictedSegmentationsCreate,
 ):
     crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_model(db, schemas.Model(name=model_name))
 
-    # add three total segmentations, two of which are instance segmentations with
-    # the same label
+    # add three total ground truth segmentations, two of which are instance segmentations with
+    # the same label.
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+    # add three total predicted segmentations, two of which are instance segmentations
+    crud.create_predicted_segmentations(db, pred_segs_create)
 
-    segs_statement = crud.instance_segmentations_in_dataset_statement(
-        dset_name
+    gts_statement = crud.instance_segmentations_in_dataset_statement(dset_name)
+    preds_statement = crud.model_instance_segmentation_preds_statement(
+        model_name=model_name, dataset_name=dset_name
     )
 
-    segs = db.scalars(segs_statement).all()
+    gts = db.scalars(gts_statement).all()
+    preds = db.scalars(preds_statement).all()
 
-    assert len(segs) == 2
+    assert len(gts) == 2
+    assert len(preds) == 2
 
-    labels = crud.labels_in_query(db, segs_statement)
+    labels = crud.labels_in_query(db, gts_statement)
     assert len(labels) == 2
 
     # now query just the one with label "k1", "v1"
-    segs = crud.get_and_filter_gts_by_labels(
-        db, segs_statement, [schemas.Label(key="k1", value="v1")]
+    (
+        new_gts_statement,
+        new_preds_statement,
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = crud.validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+        db=db,
+        gts_statement=gts_statement,
+        preds_statement=preds_statement,
+        requested_labels=[schemas.Label(key="k1", value="v1")],
     )
-    assert len(segs) == 1
-    assert segs[0].label.key, segs[0].label.value == ("k1", "v1")
 
-    # check error when requesitng a label that doesn't exist
+    gts = db.scalars(new_gts_statement).all()
+    preds = db.scalars(new_preds_statement).all()
+
+    assert len(gts) == 1
+    assert (gts[0].label.key, gts[0].label.value) == ("k1", "v1")
+    assert len(preds) == 1
+    assert (preds[0].label.key, preds[0].label.value) == ("k1", "v1")
+    assert missing_pred_labels == set()
+    assert ignored_pred_labels == {("k2", "v2")}
+
+    # # check error when requesting a label that doesn't exist
     with pytest.raises(ValueError) as exc_info:
-        crud.get_and_filter_gts_by_labels(
-            db, segs_statement, [schemas.Label(key="k1", value="v2")]
+        crud.validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+            db=db,
+            gts_statement=gts_statement,
+            preds_statement=preds_statement,
+            requested_labels=[schemas.Label(key="k1", value="v2")],
         )
     assert "The following label key/value pairs are missing" in str(exc_info)
 
-    # check get both segmentations if the labels argument is empty
-    segs = crud.get_and_filter_gts_by_labels(db, segs_statement)
-    assert len(segs) == 2
+    # check get everything if the requested labels argument is empty
+    (
+        new_gts_statement,
+        new_preds_statement,
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = crud.validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+        db=db, gts_statement=gts_statement, preds_statement=preds_statement
+    )
+
+    gts = db.scalars(new_gts_statement).all()
+    preds = db.scalars(new_preds_statement).all()
+
+    assert len(gts) == 2
+    # should not get the pred with label "k2", "v2" since its not
+    # present in the groundtruths
+    assert len(preds) == 1
+    assert missing_pred_labels == {("k3", "v3")}
+    assert ignored_pred_labels == {("k2", "v2")}

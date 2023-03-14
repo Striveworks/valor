@@ -585,11 +585,33 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     preds_statement: Select,
     requested_labels: list[schemas.Label] = None,
 ) -> tuple[Select, Select, set[tuple[str, str]], set[tuple[str, str]]]:
-    """
+    """Takes statements defining a collection of labeled groundtruths and labeled predictions,
+    and a list of requsted labels and creates a new statement that further
+    filters down to those groundtruths and preditions that have labels in the list of requested labels.
+    It also checks that the requested labels are contained in the set of all possible labels
+    and throws a ValueError if not.
+
+    Parameters
+    ----------
+    db
+    gts_statement
+        the select statement that defines the colllection of labeled groundtruths
+    preds_statement
+        the select statement that defines the colllection of labeled predictions
+    requested_labels
+        list of labels requested. if this is None then all labels present in the collection
+        defined by `gts_statement` are used.
 
     Returns
     -------
-
+    a tuple with the following elements:
+        - select statement defining the filtered groundtruths
+        - select statement defining the filtered predictions
+        - list of key/value label tuples of requested labels (or labels in the groundtruth collection
+        in the case that `requested_labels` is None) that are not present in the predictions collection
+        - list of key/value label tuples of labels that are present in the predictions collection but
+        are not in `requested_labels` (or the labels in the groundtruth collection in the case that
+        `requested_labels` is None)
 
     Raises
     ------
@@ -598,17 +620,20 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
         by `gts_statement`.
     """
 
+    available_labels = labels_in_query(db, gts_statement)
+
     if requested_labels is None:
-        requested_label_tuples = [
-            (label.key, label.value)
-            for label in labels_in_query(db, gts_statement)
-        ]
-        pred_label_tuples = [
-            (label.key, label.value)
-            for label in labels_in_query(db, preds_statement)
-        ]
+        requested_label_tuples = set(
+            [(label.key, label.value) for label in available_labels]
+        )
+        pred_label_tuples = set(
+            [
+                (label.key, label.value)
+                for label in labels_in_query(db, preds_statement)
+            ]
+        )
+        labels_to_use_ids = [label.id for label in available_labels]
     else:
-        available_labels = labels_in_query(db, gts_statement)
         pred_labels = labels_in_query(db, preds_statement)
 
         # convert available labels and requested labels to key/value tuples to allow easy comparison
@@ -637,9 +662,10 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
         gts_statement = gts_statement.join(models.Label).where(
             models.Label.id.in_(labels_to_use_ids)
         )
-        preds_statement = preds_statement.join(models.Label).where(
-            models.Label.id.in_(labels_to_use_ids)
-        )
+
+    preds_statement = preds_statement.join(models.Label).where(
+        models.Label.id.in_(labels_to_use_ids)
+    )
 
     missing_pred_labels = requested_label_tuples - pred_label_tuples
     ignored_pred_labels = pred_label_tuples - requested_label_tuples
@@ -650,39 +676,6 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
         missing_pred_labels,
         ignored_pred_labels,
     )
-
-
-def get_and_filter_gts_by_labels_statement(
-    db: Session,
-    defining_statement: Select,
-    requested_labels: list[schemas.Label] = None,
-):
-    if requested_labels is not None:
-        available_labels = labels_in_query(db, defining_statement)
-        # filter to those labels specified
-        available_label_tuples = set(
-            [(label.key, label.value) for label in available_labels]
-        )
-        requested_label_tuples = set(
-            [(label.key, label.value) for label in requested_labels]
-        )
-
-        if not (requested_label_tuples <= available_label_tuples):
-            raise ValueError(
-                f"The following label key/value pairs are missing in the dataset: {requested_label_tuples - available_label_tuples}"
-            )
-
-        labels_to_use_ids = [
-            label.id
-            for label in available_labels
-            if (label.key, label.value) in requested_label_tuples
-        ]
-
-        defining_statement = defining_statement.join(models.Label).where(
-            models.Label.id.in_(labels_to_use_ids)
-        )
-
-    return defining_statement
 
 
 def ap_metrics(db: Session, metric_info: schemas.APMetric):
@@ -716,15 +709,17 @@ def ap_metrics(db: Session, metric_info: schemas.APMetric):
             dataset_name=metric_info.dataset_name,
         )
 
-    # get the select statement that defines all of the groundtruth labels
-    gts_statement = get_and_filter_gts_by_labels_statement(
-        db,
-        defining_statement=gts_statement,
+    (
+        gts_statement,
+        preds_statement,
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+        db=db,
+        gts_statement=gts_statement,
+        preds_statement=preds_statement,
         requested_labels=metric_info.labels,
     )
-
-    # get the select statement that defines all of the predictions on the images underlying the above groundtruths
-    preds_statement
 
 
 def instance_segmentations_in_dataset_statement(dataset_name: str) -> Select:
@@ -765,6 +760,7 @@ def model_instance_segmentation_preds_statement(
             and_(
                 models.Model.name == model_name,
                 models.Dataset.name == dataset_name,
+                models.PredictedSegmentation.is_instance,
             )
         )
     )
