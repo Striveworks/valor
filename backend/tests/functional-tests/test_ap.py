@@ -229,51 +229,111 @@ def test_compute_ap_metrics(
         iou_thresholds=iou_thresholds,
     )
 
-    for iou_thres in [i for i in iou_thresholds if i not in [0.5, 0.75]]:
-        k = f"IoU={iou_thres}"
-        metrics["mAP"].pop(k)
-        for class_label in metrics["AP"].keys():
-            metrics["AP"][class_label].pop(k)
+    # only look at APs at thresholds 0.5 and 0.75 or averaged over all iou thresholds
+    metrics = [
+        m for m in metrics if m.iou in [0.5, 0.75] or isinstance(m.iou, list)
+    ]
 
-    round_dict_(metrics, 3)
+    # convert to dicts and round
+    metrics = [m.dict() for m in metrics]
+    for m in metrics:
+        round_dict_(m, 3)
 
     # cf with torch metrics/pycocotools results listed here:
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
-
-    target = {
-        "AP": {
-            ("class", "2"): {
-                "IoU=0.5": 0.505,
-                "IoU=0.75": 0.505,
-                "IoU=0.5:0.95": 0.454,
-            },
-            ("class", "49"): {
-                "IoU=0.5": 0.79,
-                "IoU=0.75": 0.576,
-                "IoU=0.5:0.95": 0.555,
-            },
-            ("class", "3"): {
-                "IoU=0.5": -1.0,
-                "IoU=0.75": -1.0,
-                "IoU=0.5:0.95": -1.0,
-            },
-            ("class", "0"): {
-                "IoU=0.5": 1.0,
-                "IoU=0.75": 0.723,
-                "IoU=0.5:0.95": 0.725,
-            },
-            ("class", "1"): {
-                "IoU=0.5": 1.0,
-                "IoU=0.75": 1.0,
-                "IoU=0.5:0.95": 0.8,
-            },
-            ("class", "4"): {
-                "IoU=0.5": 1.0,
-                "IoU=0.75": 1.0,
-                "IoU=0.5:0.95": 0.65,
-            },
+    expected = [
+        {"iou": 0.5, "value": 0.505, "label": {"key": "class", "value": "2"}},
+        {"iou": 0.75, "value": 0.505, "label": {"key": "class", "value": "2"}},
+        {
+            "iou": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95],
+            "value": 0.454,
+            "label": {"key": "class", "value": "2"},
         },
-        "mAP": {"IoU=0.5": 0.859, "IoU=0.75": 0.761, "IoU=0.5:0.95": 0.637},
-    }
+        {"iou": 0.5, "value": 0.79, "label": {"key": "class", "value": "49"}},
+        {
+            "iou": 0.75,
+            "value": 0.576,
+            "label": {"key": "class", "value": "49"},
+        },
+        {
+            "iou": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95],
+            "value": 0.555,
+            "label": {"key": "class", "value": "49"},
+        },
+        {"iou": 0.5, "value": -1.0, "label": {"key": "class", "value": "3"}},
+        {"iou": 0.75, "value": -1.0, "label": {"key": "class", "value": "3"}},
+        {
+            "iou": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95],
+            "value": -1.0,
+            "label": {"key": "class", "value": "3"},
+        },
+        {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "0"}},
+        {"iou": 0.75, "value": 0.723, "label": {"key": "class", "value": "0"}},
+        {
+            "iou": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95],
+            "value": 0.725,
+            "label": {"key": "class", "value": "0"},
+        },
+        {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "1"}},
+        {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "1"}},
+        {
+            "iou": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95],
+            "value": 0.8,
+            "label": {"key": "class", "value": "1"},
+        },
+        {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "4"}},
+        {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "4"}},
+        {
+            "iou": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95],
+            "value": 0.65,
+            "label": {"key": "class", "value": "4"},
+        },
+        {
+            "iou": 0.5,
+            "value": 0.859,
+            "labels": [
+                {"key": "class", "value": "3"},
+                {"key": "class", "value": "2"},
+                {"key": "class", "value": "4"},
+                {"key": "class", "value": "0"},
+                {"key": "class", "value": "1"},
+                {"key": "class", "value": "49"},
+            ],
+        },
+        {
+            "iou": 0.75,
+            "value": 0.761,
+            "labels": [
+                {"key": "class", "value": "3"},
+                {"key": "class", "value": "2"},
+                {"key": "class", "value": "4"},
+                {"key": "class", "value": "0"},
+                {"key": "class", "value": "1"},
+                {"key": "class", "value": "49"},
+            ],
+        },
+        {
+            "iou": [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95],
+            "value": 0.637,
+            "labels": [
+                {"key": "class", "value": "3"},
+                {"key": "class", "value": "2"},
+                {"key": "class", "value": "4"},
+                {"key": "class", "value": "0"},
+                {"key": "class", "value": "1"},
+                {"key": "class", "value": "49"},
+            ],
+        },
+    ]
 
-    assert metrics == target
+    # sort labels lists
+    for m in metrics + expected:
+        if "labels" in m:
+            m["labels"] = sorted(m["labels"], key=lambda x: x["value"])
+
+    # check that metrics and labels are equivalent
+    for m in metrics:
+        assert m in expected
+
+    for m in expected:
+        assert m in metrics

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from velour_api import ops
+from velour_api import ops, schemas
 from velour_api.models import (
     Label,
     LabeledGroundTruthDetection,
@@ -16,14 +16,16 @@ def _match_array(
     iou_thres: float,
 ) -> list[int | None]:
     """
-    iou[i][j] should be the iou between predicted detection i and groundtruth detection j
-
-    important assumption is that the predicted detections are sorted by confidence
+    Parameters
+    ----------
+    ious
+        ious[i][j] should be the iou between predicted detection i and groundtruth detection j
+        an important assumption is that the predicted detections are sorted by confidence
 
     Returns
     -------
     array of match indices. value at index i is the index of the groundtruth object that
-    best matches the ith detection, or None if that deteciton has no match
+    best matches the ith detection, or None if that detection has no match
     """
     matches = []
     for i in range(len(ious)):
@@ -51,6 +53,7 @@ def _cumsum(a: list) -> list:
 class DetectionMatchInfo:
     tp: bool
     score: float
+    # add ids and iou here and then store this informatoin?
 
 
 def _get_tp_fp_single_image_single_class(
@@ -80,13 +83,17 @@ def iou_matrix(
     ]
 
 
+def _db_label_to_pydantic_label(label: Label):
+    return schemas.Label(key=label.key, value=label.value)
+
+
 def ap(
     db: Session,
     predictions: list[list[LabeledPredictedDetection]],
     groundtruths: list[list[LabeledGroundTruthDetection]],
     label: Label,
     iou_thresholds: list[float],
-) -> dict[float, float]:
+) -> list[schemas.APAtIOU]:
     """Computes the average precision. Return is a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
     `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
@@ -113,10 +120,22 @@ def ap(
     # total number of groundtruth objects across all images
     n_gt = sum([len(gts) for gts in groundtruths])
 
-    ret = {}
+    ret = []
     if n_gt == 0:
-        ret.update({f"IoU={iou_thres}": -1.0 for iou_thres in iou_thresholds})
+        ret.extend(
+            [
+                schemas.APAtIOU(
+                    iou=iou_thres,
+                    value=-1.0,
+                    label=_db_label_to_pydantic_label(label),
+                )
+                for iou_thres in iou_thresholds
+            ]
+        )
     else:
+        # TODO: for large datasets is this going to be a memory problem?
+        # these should often be sparse so maybe use sparse matrices?
+        # or use something like redis?
         iou_matrices = [
             iou_matrix(db=db, groundtruths=gts, predictions=preds)
             for preds, gts in zip(predictions, groundtruths)
@@ -147,19 +166,30 @@ def ap(
             ]
             recalls = [ctp / n_gt for ctp in cum_tp]
 
-            ret[f"IoU={iou_thres}"] = calculate_ap_101_pt_interp(
-                precisions=precisions, recalls=recalls
+            ret.append(
+                schemas.APAtIOU(
+                    iou=iou_thres,
+                    value=calculate_ap_101_pt_interp(
+                        precisions=precisions, recalls=recalls
+                    ),
+                    label=_db_label_to_pydantic_label(label),
+                )
             )
 
     # compute average over all IoUs
-    ret[f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"] = sum(
-        [ret[f"IoU={iou_thres}"] for iou_thres in iou_thresholds]
-    ) / len(iou_thresholds)
+
+    ret.append(
+        schemas.APAtIOU(
+            iou=iou_thresholds,
+            value=sum([a.value for a in ret]) / len(iou_thresholds),
+            label=_db_label_to_pydantic_label(label),
+        )
+    )
 
     return ret
 
 
-def calculate_ap_101_pt_interp(precisions, recalls):
+def calculate_ap_101_pt_interp(precisions, recalls) -> float:
     """Use the 101 point interpolation method (following torchmetrics)"""
     assert len(precisions) == len(recalls)
 
@@ -192,30 +222,30 @@ def compute_ap_metrics(
     predictions: list[list[LabeledPredictedDetection]],
     groundtruths: list[list[LabeledGroundTruthDetection]],
     iou_thresholds: list[float],
-) -> dict:
-    """Computes average precision metrics. Note that this is not an optimized method
-    and is here for toy/test purposes. Will likely be (re)moved in future versions.
+) -> list[schemas.APAtIOU | schemas.MAPAtIOU]:
+    """Computes average precision metrics.
 
     The return dictionary, `d` indexes AP scores by `d["AP"][class_label][iou_key]`
     and mAP scores by `d["mAP"][iou_key]` where `iou_key` is `f"IoU={iou_thres}"` or
     `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"`
     """
+    iou_thresholds = sorted(iou_thresholds)
     labels = set(
         [pred.label for preds in predictions for pred in preds]
     ).union([gt.label for gts in groundtruths for gt in gts])
 
-    ret = {
-        "AP": {
-            (label.key, label.value): ap(
+    ret = []
+
+    for label in labels:
+        ret.extend(
+            ap(
                 db=db,
                 predictions=predictions,
                 groundtruths=groundtruths,
                 label=label,
                 iou_thresholds=iou_thresholds,
             )
-            for label in labels
-        }
-    }
+        )
 
     def _ave_ignore_minus_one(a):
         num, denom = 0.0, 0.0
@@ -225,14 +255,34 @@ def compute_ap_metrics(
                 denom += 1
         return num / denom
 
-    keys_to_avg_over = [f"IoU={iou_thres}" for iou_thres in iou_thresholds] + [
-        f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"
-    ]
-    ret["mAP"] = {
-        k: _ave_ignore_minus_one(
-            [ret["AP"][(label.key, label.value)][k] for label in labels]
+    # average all of the iou threshold
+    vals = {iou: [] for iou in iou_thresholds}
+    # for storing the values of the APs averaged over the IOU thresholds
+    average_over_iou_vals = []
+
+    for a in ret:
+        # see if metric is AP at single value for averaged
+        if isinstance(a.iou, list):
+            average_over_iou_vals.append(a.value)
+        else:
+            vals[a.iou].append(a.value)
+
+    # convert labels to pydantic objects
+    labels = [_db_label_to_pydantic_label(label) for label in labels]
+
+    for iou in iou_thresholds:
+        ret.append(
+            schemas.MAPAtIOU(
+                iou=iou, value=_ave_ignore_minus_one(vals[iou]), labels=labels
+            )
         )
-        for k in keys_to_avg_over
-    }
+
+    ret.append(
+        schemas.MAPAtIOU(
+            iou=iou_thresholds,
+            value=_ave_ignore_minus_one(average_over_iou_vals),
+            labels=labels,
+        )
+    )
 
     return ret
