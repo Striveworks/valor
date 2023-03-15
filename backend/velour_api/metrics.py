@@ -54,21 +54,10 @@ class DetectionMatchInfo:
 
 
 def _get_tp_fp_single_image_single_class(
-    db: Session,
     predictions: list[LabeledPredictedDetection],
-    groundtruths: list[LabeledGroundTruthDetection],
     iou_threshold: float,
+    ious: list[list[float]],
 ) -> list[DetectionMatchInfo]:
-    predictions = sorted(
-        predictions,
-        key=lambda p: p.score,
-        reverse=True,
-    )
-
-    ious = iou_matrix(
-        db=db, groundtruths=groundtruths, predictions=predictions
-    )
-
     matches = _match_array(ious, iou_threshold)
 
     return [
@@ -112,6 +101,15 @@ def ap(
         [gt for gt in gts if gt.label == label] for gts in groundtruths
     ]
 
+    predictions = [
+        sorted(
+            preds,
+            key=lambda p: p.score,
+            reverse=True,
+        )
+        for preds in predictions
+    ]
+
     # total number of groundtruth objects across all images
     n_gt = sum([len(gts) for gts in groundtruths])
 
@@ -119,15 +117,18 @@ def ap(
     if n_gt == 0:
         ret.update({f"IoU={iou_thres}": -1.0 for iou_thres in iou_thresholds})
     else:
+        iou_matrices = [
+            iou_matrix(db=db, groundtruths=gts, predictions=preds)
+            for preds, gts in zip(predictions, groundtruths)
+        ]
         for iou_thres in iou_thresholds:
             match_infos = []
-            for preds, gts in zip(predictions, groundtruths):
+            for preds, ious in zip(predictions, iou_matrices):
                 match_infos.extend(
                     _get_tp_fp_single_image_single_class(
-                        db=db,
                         predictions=preds,
-                        groundtruths=gts,
                         iou_threshold=iou_thres,
+                        ious=ious,
                     )
                 )
 

@@ -3,8 +3,8 @@ from PIL import Image
 
 from velour.data_types import (
     GroundTruthInstanceSegmentation,
-    GroundTruthSegmentation,
     GroundTruthSemanticSegmentation,
+    _GroundTruthSegmentation,
     coco_rle_to_mask,
 )
 
@@ -33,7 +33,7 @@ def test_coco_rle_to_mask():
 def test_ground_truth_segmentation():
     """Test that a GroundTruthSegmentation object can't be instantiated"""
     with pytest.raises(TypeError) as exc_info:
-        GroundTruthSegmentation(
+        _GroundTruthSegmentation(
             shape=None, labels=None, image=None, _is_instance=None
         )
 

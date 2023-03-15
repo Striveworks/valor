@@ -139,10 +139,7 @@ def _add_images_to_dataset(
         get_or_create_row(
             db=db,
             model_class=models.Image,
-            mapping={
-                "dataset_id": dset_id,
-                **img.dict()
-            },
+            mapping={"dataset_id": dset_id, **img.dict()},
         )
         for img in images
     ]
@@ -193,8 +190,8 @@ def _create_pred_dets_or_segs(
     labeled_model_cls: type,
 ):
     model_id = get_model(db, model_name=model_name).id
-    # get image ids from uris (these images should already exist)
-    images = [get_image(db, uri=d_or_s.image.uri) for d_or_s in dets_or_segs]
+    # get image ids from uids (these images should already exist)
+    images = [get_image(db, uid=d_or_s.image.uid) for d_or_s in dets_or_segs]
     mappings = mapping_method(dets_or_segs, images)
     for m in mappings:
         m["model_id"] = model_id
@@ -378,9 +375,9 @@ def create_predicted_image_classifications(
     db: Session, data: schemas.PredictedImageClassificationsCreate
 ):
     model_id = get_model(db, model_name=data.model_name).id
-    # get image ids from uris (these images should already exist)
+    # get image ids from uids (these images should already exist)
     image_ids = [
-        get_image(db, uri=classification.image.uri).id
+        get_image(db, uid=classification.image.uid).id
         for classification in data.classifications
     ]
 
@@ -436,7 +433,9 @@ def get_or_create_row(
     return db_element
 
 
-def create_dataset(db: Session, dataset: schemas.DatasetCreate, from_video=False):
+def create_dataset(
+    db: Session, dataset: schemas.DatasetCreate, from_video=False
+):
     """Creates a dataset
 
     Raises
@@ -445,7 +444,11 @@ def create_dataset(db: Session, dataset: schemas.DatasetCreate, from_video=False
         if the dataset name already exists
     """
     try:
-        db.add(models.Dataset(name=dataset.name, draft=True, from_video=from_video))
+        db.add(
+            models.Dataset(
+                name=dataset.name, draft=True, from_video=from_video
+            )
+        )
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -481,7 +484,7 @@ def create_model(db: Session, model: schemas.Model):
     Raises
     ------
     ModelAlreadyExistsError
-        if the model uri already exists
+        if the model uid already exists
     """
     try:
         db.add(models.Model(name=model.name))
@@ -507,10 +510,10 @@ def get_model(db: Session, model_name: str) -> models.Model:
     return ret
 
 
-def get_image(db: Session, uri: str) -> models.Image:
-    ret = db.scalar(select(models.Image).where(models.Image.uri == uri))
+def get_image(db: Session, uid: str) -> models.Image:
+    ret = db.scalar(select(models.Image).where(models.Image.uid == uid))
     if ret is None:
-        raise exceptions.ImageDoesNotExistError(uri)
+        raise exceptions.ImageDoesNotExistError(uid)
 
     return ret
 

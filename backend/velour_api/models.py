@@ -257,7 +257,7 @@ class Image(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
-    uri: Mapped[str] = mapped_column(unique=True)
+    uid: Mapped[str] = mapped_column()
     height: Mapped[int] = mapped_column()
     width: Mapped[int] = mapped_column()
     frame: Mapped[int] = mapped_column(nullable=True)
@@ -279,6 +279,8 @@ class Image(Base):
     predicted_segmentations: Mapped[
         list[PredictedSegmentation]
     ] = relationship(PredictedSegmentation, cascade="all, delete")
+
+    __table_args__ = (UniqueConstraint("dataset_id", "uid"),)
 
 
 class Model(Base):

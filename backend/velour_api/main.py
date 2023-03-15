@@ -176,7 +176,7 @@ def get_dataset_images(
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return [
-        schemas.Image(uri=image.uri, height=image.height, width=image.width)
+        schemas.Image(uid=image.uid, height=image.height, width=image.width)
         for image in images
     ]
 
