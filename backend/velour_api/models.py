@@ -1,7 +1,6 @@
 from geoalchemy2 import Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
 from sqlalchemy import Enum, ForeignKey, UniqueConstraint
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -348,7 +347,7 @@ class APMetric(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
-    iou_threshold = mapped_column(JSONB())  # (float or sorted list of float)
+    iou_threshold: Mapped[float] = mapped_column()
     value: Mapped[float] = mapped_column()
     metric_parameters_id: Mapped[int] = mapped_column(
         ForeignKey("metric_parameters.id")

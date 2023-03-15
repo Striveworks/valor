@@ -208,28 +208,17 @@ class APRequest(BaseModel):
     ]
 
 
-# class APMetricInfo(MetricInfo):
-#     iou_thresholds: float | list[float]
-
-#     def defining_dict(self) -> dict:
-#         ret = self.dict()
-#         ret.pop("model_name")
-#         ret.pop("dataset_name")
-
-#         return ret
-
-
 class APMetric(BaseModel):
     pass
 
 
 class APAtIOU(BaseModel):
-    iou: float | list[float]
+    iou: float
     value: float
     label: Label
 
 
 class MAPAtIOU(BaseModel):
-    iou: float | list[float]
+    iou: float
     value: float
     labels: list[Label]

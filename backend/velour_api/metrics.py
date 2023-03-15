@@ -176,15 +176,6 @@ def ap(
                 )
             )
 
-    # compute average over all IoUs
-    ret.append(
-        schemas.APAtIOU(
-            iou=iou_thresholds,
-            value=sum([a.value for a in ret]) / len(iou_thresholds),
-            label=_db_label_to_pydantic_label(label),
-        )
-    )
-
     return ret
 
 
@@ -264,17 +255,12 @@ def compute_map_metrics_from_aps(
 
     # dictionary for mapping an iou threshold to set of APs
     vals: dict[float, list] = {}
-    # for storing APs that are averaged over IOU thresholds
-    average_over_iou_vals: list[float] = []
     labels: list[schemas.Label] = []
     for ap in ap_scores:
         # see if metric is AP at single value or averaged
-        if isinstance(ap.iou, list):
-            average_over_iou_vals.append(ap.value)
-        else:
-            if ap.iou not in vals:
-                vals[ap.iou] = []
-            vals[ap.iou].append(ap.value)
+        if ap.iou not in vals:
+            vals[ap.iou] = []
+        vals[ap.iou].append(ap.value)
 
         if ap.label not in labels:
             labels.append(ap.label)
@@ -288,14 +274,5 @@ def compute_map_metrics_from_aps(
         )
         for iou in iou_thresholds
     ]
-
-    # get mAP metric averaged over all IOUs
-    map_metrics.append(
-        schemas.MAPAtIOU(
-            iou=iou_thresholds,
-            value=_ave_ignore_minus_one(average_over_iou_vals),
-            labels=labels,
-        )
-    )
 
     return map_metrics

@@ -411,11 +411,7 @@ def create_predicted_image_classifications(
     )
 
 
-def get_or_create_row(
-    db: Session,
-    model_class: type,
-    mapping: dict,
-) -> any:
+def get_or_create_row(db: Session, model_class: type, mapping: dict) -> any:
     """Tries to get the row defined by mapping. If that exists then
     its mapped object is returned. Otherwise a row is created by `mapping` and the newly created
     object is returned
@@ -690,6 +686,7 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
 def create_ap_metrics(
     db: Session, request_info: schemas.APRequest, iou_thresholds: list[float]
 ):
+    # do some validation
     allowable_tasks = [
         schemas.Task.OBJECT_DETECTION,
         schemas.Task.INSTANCE_SEGMENTATION,
@@ -772,21 +769,26 @@ def create_ap_metrics(
     dataset_id = get_dataset(db, request_info.parameters.dataset_name).id
     model_id = get_model(db, request_info.parameters.model_name).id
 
-    mp = models.MetricParameters(
-        dataset_id=dataset_id,
-        model_id=model_id,
-        model_pred_type=request_info.parameters.model_pred_type,
-        dataset_gt_type=request_info.parameters.dataset_gt_type,
+    mp = get_or_create_row(
+        db,
+        models.MetricParameters,
+        mapping={
+            "dataset_id": dataset_id,
+            "model_id": model_id,
+            "model_pred_type": request_info.parameters.model_pred_type,
+            "dataset_gt_type": request_info.parameters.dataset_gt_type,
+        },
     )
-    db.add(mp)
-    db.commit()
 
     ap_metric_mappings = _create_ap_metric_mappings(
         db=db, metrics=ap_metrics, metric_parameters_id=mp.id
     )
-    ap_metric_ids = bulk_insert_and_return_ids(
-        db, models.APMetric, ap_metric_mappings
-    )
+
+    ap_metric_ids = [
+        get_or_create_row(db, models.APMetric, mapping).id
+        for mapping in ap_metric_mappings
+    ]
+    db.commit()
 
     return ap_metric_ids, missing_pred_labels, ignored_pred_labels
 

@@ -776,3 +776,18 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
 
     # should be five labels (since thats how many are in groundtruth set)
     assert len(set(m.label_id for m in metrics)) == 5
+
+    # run again and make sure no new ids were created
+    ap_metric_ids_again, _, _ = crud.create_ap_metrics(
+        db,
+        request_info=schemas.APRequest(
+            parameters=schemas.MetricParameters(
+                model_name="test model",
+                dataset_name="test dataset",
+                model_pred_type=enums.Task.OBJECT_DETECTION,
+                dataset_gt_type=enums.Task.OBJECT_DETECTION,
+            )
+        ),
+        iou_thresholds=[0.2, 0.6],
+    )
+    assert sorted(ap_metric_ids) == sorted(ap_metric_ids_again)
