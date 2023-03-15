@@ -140,12 +140,7 @@ def _add_images_to_dataset(
         get_or_create_row(
             db=db,
             model_class=models.Image,
-            mapping={
-                "dataset_id": dset_id,
-                "uid": img.uid,
-                "width": img.width,
-                "height": img.height,
-            },
+            mapping={"dataset_id": dset_id, **img.dict()},
         )
         for img in images
     ]
@@ -435,7 +430,9 @@ def get_or_create_row(db: Session, model_class: type, mapping: dict) -> any:
     return db_element
 
 
-def create_dataset(db: Session, dataset: schemas.DatasetCreate):
+def create_dataset(
+    db: Session, dataset: schemas.DatasetCreate, from_video=False
+):
     """Creates a dataset
 
     Raises
@@ -444,7 +441,11 @@ def create_dataset(db: Session, dataset: schemas.DatasetCreate):
         if the dataset name already exists
     """
     try:
-        db.add(models.Dataset(name=dataset.name, draft=True))
+        db.add(
+            models.Dataset(
+                name=dataset.name, draft=True, from_video=from_video
+            )
+        )
         db.commit()
     except IntegrityError:
         db.rollback()
