@@ -222,22 +222,17 @@ def compute_ap_metrics(
     predictions: list[list[LabeledPredictedDetection]],
     groundtruths: list[list[LabeledGroundTruthDetection]],
     iou_thresholds: list[float],
-) -> list[schemas.APAtIOU | schemas.MAPAtIOU]:
-    """Computes average precision metrics.
-
-    The return dictionary, `d` indexes AP scores by `d["AP"][class_label][iou_key]`
-    and mAP scores by `d["mAP"][iou_key]` where `iou_key` is `f"IoU={iou_thres}"` or
-    `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"`
-    """
+) -> list[schemas.APAtIOU]:
+    """Computes average precision metrics."""
     iou_thresholds = sorted(iou_thresholds)
     labels = set(
         [pred.label for preds in predictions for pred in preds]
     ).union([gt.label for gts in groundtruths for gt in gts])
 
-    ret = []
+    ap_metrics = []
 
     for label in labels:
-        ret.extend(
+        ap_metrics.extend(
             ap(
                 db=db,
                 predictions=predictions,
@@ -247,6 +242,19 @@ def compute_ap_metrics(
             )
         )
 
+    return ap_metrics
+
+
+def compute_map_metrics_from_aps(
+    ap_scores: list[schemas.APAtIOU],
+) -> list[schemas.MAPAtIOU]:
+    """
+    Parameters
+    ----------
+    ap_scores
+        list of AP scores. this should be output from the method `compute_ap_metrics`
+    """
+
     def _ave_ignore_minus_one(a):
         num, denom = 0.0, 0.0
         for x in a:
@@ -255,29 +263,35 @@ def compute_ap_metrics(
                 denom += 1
         return num / denom
 
-    # average all of the iou threshold
-    vals = {iou: [] for iou in iou_thresholds}
-    # for storing the values of the APs averaged over the IOU thresholds
-    average_over_iou_vals = []
-
-    for a in ret:
-        # see if metric is AP at single value for averaged
-        if isinstance(a.iou, list):
-            average_over_iou_vals.append(a.value)
+    # dictionary for mapping an iou threshold to set of APs
+    vals: dict[float, list] = {}
+    # for storing APs that are averaged over IOU thresholds
+    average_over_iou_vals: list[float] = []
+    labels: list[schemas.Label] = []
+    for ap in ap_scores:
+        # see if metric is AP at single value or averaged
+        if isinstance(ap.iou, list):
+            average_over_iou_vals.append(ap.value)
         else:
-            vals[a.iou].append(a.value)
+            if ap.iou not in vals:
+                vals[ap.iou] = []
+            vals[ap.iou].append(ap.value)
 
-    # convert labels to pydantic objects
-    labels = [_db_label_to_pydantic_label(label) for label in labels]
+        if ap.label not in labels:
+            labels.append(ap.label)
 
-    for iou in iou_thresholds:
-        ret.append(
-            schemas.MAPAtIOU(
-                iou=iou, value=_ave_ignore_minus_one(vals[iou]), labels=labels
-            )
+    iou_thresholds = list(vals.keys())
+
+    # get mAP metrics at the individual IOUs
+    map_metrics = [
+        schemas.MAPAtIOU(
+            iou=iou, value=_ave_ignore_minus_one(vals[iou]), labels=labels
         )
+        for iou in iou_thresholds
+    ]
 
-    ret.append(
+    # get mAP metric averaged over all IOUs
+    map_metrics.append(
         schemas.MAPAtIOU(
             iou=iou_thresholds,
             value=_ave_ignore_minus_one(average_over_iou_vals),
@@ -285,4 +299,4 @@ def compute_ap_metrics(
         )
     )
 
-    return ret
+    return map_metrics

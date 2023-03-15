@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from velour_api import crud
-from velour_api.metrics import compute_ap_metrics
+from velour_api.metrics import compute_ap_metrics, compute_map_metrics_from_aps
 from velour_api.models import (
     LabeledGroundTruthDetection,
     LabeledPredictedDetection,
@@ -222,12 +222,14 @@ def test_compute_ap_metrics(
     predictions: list[list[PredictedDetection]],
 ):
     iou_thresholds = [round(0.5 + 0.05 * i, 2) for i in range(10)]
-    metrics = compute_ap_metrics(
+    ap_metrics = compute_ap_metrics(
         db=db,
         predictions=predictions,
         groundtruths=groundtruths,
         iou_thresholds=iou_thresholds,
     )
+    map_metrics = compute_map_metrics_from_aps(ap_metrics)
+    metrics = ap_metrics + map_metrics
 
     # only look at APs at thresholds 0.5 and 0.75 or averaged over all iou thresholds
     metrics = [
