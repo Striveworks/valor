@@ -1,9 +1,10 @@
 import io
 from base64 import b64decode
-from enum import Enum
 
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, validator
+
+from velour_api.enums import Task
 
 
 def validate_single_polygon(poly: list[tuple[float, float]]):
@@ -34,6 +35,10 @@ class Image(BaseModel):
 class Label(BaseModel):
     key: str
     value: str
+
+    @classmethod
+    def from_key_value_tuple(cls, kv_tuple: tuple[str, str]):
+        return cls(key=kv_tuple[0], value=kv_tuple[1])
 
 
 class ScoredLabel(BaseModel):
@@ -178,30 +183,40 @@ class User(BaseModel):
     email: str = None
 
 
-class Task(Enum):
-    OBJECT_DETECTION = "Object Detection"
-    INSTANCE_SEGMENTATION = "Instance Segmentation"
-    IMAGE_CLASSIFICATION = "Image Classification"
-    SEMANTIC_SEGMENTATION = "Semantic Segmentation"
+class MetricParameters(BaseModel):
+    """General parameters defining any filters of the data such
+    as model, dataset, groundtruth and prediction type, model, dataset,
+    size constraints, coincidence/intersection constraints, etc.
+    """
 
-
-class MetricInfo(BaseModel):
     model_name: str
     dataset_name: str
     model_pred_type: Task
     dataset_gt_type: Task
+    # TODO: add things here for filtering, prediction
+    # and dataset label mappings (e.g. man, boy -> person)
+
+
+class APRequest(BaseModel):
+    """Request to compute average precision"""
+
+    parameters: MetricParameters
     labels: list[Label] = None
+    # (mutable defaults are ok for pydantic models)
+    iou_thresholds: float | list[float] = [
+        round(0.5 + 0.05 * i, 2) for i in range(10)
+    ]
 
 
-class APMetricInfo(MetricInfo):
-    iou_thresholds: float | list[float]
+# class APMetricInfo(MetricInfo):
+#     iou_thresholds: float | list[float]
 
-    def defining_dict(self) -> dict:
-        ret = self.dict()
-        ret.pop("model_name")
-        ret.pop("dataset_name")
+#     def defining_dict(self) -> dict:
+#         ret = self.dict()
+#         ret.pop("model_name")
+#         ret.pop("dataset_name")
 
-        return ret
+#         return ret
 
 
 class APMetric(BaseModel):

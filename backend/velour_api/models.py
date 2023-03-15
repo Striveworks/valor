@@ -1,10 +1,12 @@
 from geoalchemy2 import Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import Enum, ForeignKey, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from velour_api.database import Base
+from velour_api.enums import Task
 
 
 class Label(Base):
@@ -106,6 +108,11 @@ class LabeledGroundTruthDetection(Base):
         "Label", back_populates="labeled_ground_truth_detections"
     )
 
+    # add image_id property for easier access
+    @property
+    def image_id(self):
+        return self.detection.image_id
+
 
 class LabeledPredictedDetection(Base):
     """Represents a predicted detection from a model"""
@@ -126,6 +133,11 @@ class LabeledPredictedDetection(Base):
         "Label", back_populates="labeled_predicted_detections"
     )
     score: Mapped[float]
+
+    # add image_id property for easier access
+    @property
+    def image_id(self):
+        return self.detection.image_id
 
 
 class GroundTruthImageClassification(Base):
@@ -229,6 +241,11 @@ class LabeledGroundTruthSegmentation(Base):
         "Label", back_populates="labeled_ground_truth_segmentations"
     )
 
+    # add image_id property for easier access
+    @property
+    def image_id(self):
+        return self.segmentation.image_id
+
 
 class LabeledPredictedSegmentation(Base):
     """Represents a predicted semantic segmentation"""
@@ -249,6 +266,11 @@ class LabeledPredictedSegmentation(Base):
         "Label", back_populates="labeled_predicted_segmentations"
     )
     score: Mapped[float]
+
+    # add image_id property for easier access
+    @property
+    def image_id(self):
+        return self.segmentation.image_id
 
 
 class Image(Base):
@@ -309,3 +331,25 @@ class Dataset(Base):
     # whether or not the dataset is done being created
     draft: Mapped[bool] = mapped_column(default=True)
     images = relationship("Image", cascade="all, delete")
+
+
+class MetricParameters(Base):
+    __tablename__ = "metric_parameters"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
+    model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
+    model_pred_type: Mapped[str] = mapped_column(Enum(Task))
+    dataset_gt_type: Mapped[str] = mapped_column(Enum(Task))
+
+
+class APMetric(Base):
+    __tablename__ = "ap_metric"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
+    iou_threshold = mapped_column(JSONB())  # (float or sorted list of float)
+    value: Mapped[float] = mapped_column()
+    metric_parameters_id: Mapped[int] = mapped_column(
+        ForeignKey("metric_parameters.id")
+    )

@@ -9,7 +9,7 @@ from PIL import Image
 from sqlalchemy import func, insert, select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, exceptions, models, ops, schemas
+from velour_api import crud, enums, exceptions, models, ops, schemas
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -742,3 +742,37 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
     assert len(preds) == 1
     assert missing_pred_labels == {("k3", "v3")}
     assert ignored_pred_labels == {("k2", "v2")}
+
+
+def test_create_ap_metrics(db: Session, groundtruths, predictions):
+    # the groundtruths and predictions arguments are not used but
+    # those fixtures create the necessary dataset, model, groundtruths, and predictions
+    (
+        ap_metric_ids,
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = crud.create_ap_metrics(
+        db,
+        request_info=schemas.APRequest(
+            parameters=schemas.MetricParameters(
+                model_name="test model",
+                dataset_name="test dataset",
+                model_pred_type=enums.Task.OBJECT_DETECTION,
+                dataset_gt_type=enums.Task.OBJECT_DETECTION,
+            )
+        ),
+        iou_thresholds=[0.2, 0.6],
+    )
+
+    assert missing_pred_labels == []
+    assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
+
+    metrics = db.scalars(
+        select(models.APMetric).where(models.APMetric.id.in_(ap_metric_ids))
+    ).all()
+
+    for metric in metrics:
+        assert metric.iou_threshold in [0.2, 0.6, [0.2, 0.6]]
+
+    # should be five labels (since thats how many are in groundtruth set)
+    assert len(set(m.label_id for m in metrics)) == 5

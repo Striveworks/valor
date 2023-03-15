@@ -2,7 +2,8 @@ from sqlalchemy import Select, and_, func, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from . import exceptions, models, schemas
+from velour_api import exceptions, models, schemas
+from velour_api.metrics import compute_ap_metrics
 
 
 def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
@@ -584,7 +585,7 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     gts_statement: Select,
     preds_statement: Select,
     requested_labels: list[schemas.Label] = None,
-) -> tuple[Select, Select, set[tuple[str, str]], set[tuple[str, str]]]:
+) -> tuple[Select, Select, list[schemas.Label], list[schemas.Label]]:
     """Takes statements defining a collection of labeled groundtruths and labeled predictions,
     and a list of requsted labels and creates a new statement that further
     filters down to those groundtruths and preditions that have labels in the list of requested labels.
@@ -670,6 +671,14 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     missing_pred_labels = requested_label_tuples - pred_label_tuples
     ignored_pred_labels = pred_label_tuples - requested_label_tuples
 
+    # convert back to labels
+    missing_pred_labels = [
+        schemas.Label.from_key_value_tuple(la) for la in missing_pred_labels
+    ]
+    ignored_pred_labels = [
+        schemas.Label.from_key_value_tuple(la) for la in ignored_pred_labels
+    ]
+
     return (
         gts_statement,
         preds_statement,
@@ -678,35 +687,40 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     )
 
 
-def ap_metrics(db: Session, metric_info: schemas.APMetric):
+def create_ap_metrics(
+    db: Session, request_info: schemas.APRequest, iou_thresholds: list[float]
+):
     allowable_tasks = [
         schemas.Task.OBJECT_DETECTION,
         schemas.Task.INSTANCE_SEGMENTATION,
     ]
-    if metric_info.model_pred_type not in allowable_tasks:
+    if request_info.parameters.model_pred_type not in allowable_tasks:
         raise ValueError(
-            f"`pred_type` must be one of {allowable_tasks} but got {metric_info.model_pred_type}."
+            f"`pred_type` must be one of {allowable_tasks} but got {request_info.parameters.model_pred_type}."
         )
-    if metric_info.dataset_gt_type not in allowable_tasks:
+    if request_info.parameters.dataset_gt_type not in allowable_tasks:
         raise ValueError(
-            f"`dataset_gt_type` must be one of {allowable_tasks} but got {metric_info.dataset_gt_type}."
+            f"`dataset_gt_type` must be one of {allowable_tasks} but got {request_info.parameters.dataset_gt_type}."
         )
 
-    if metric_info.model_pred_type == schemas.Task.OBJECT_DETECTION:
+    if (
+        request_info.parameters.model_pred_type
+        == schemas.Task.OBJECT_DETECTION
+    ):
         gts_statement = object_detections_in_dataset_statement(
-            metric_info.dataset_name
+            request_info.parameters.dataset_name
         )
         preds_statement = model_object_detection_preds_statement(
-            model_name=metric_info.model_name,
-            dataset_name=metric_info.dataset_name,
+            model_name=request_info.parameters.model_name,
+            dataset_name=request_info.parameters.dataset_name,
         )
     else:
         gts_statement = instance_segmentations_in_dataset_statement(
-            metric_info.dataset_name
+            request_info.parameters.dataset_name
         )
         preds_statement = model_instance_segmentation_preds_statement(
-            model_name=metric_info.model_name,
-            dataset_name=metric_info.dataset_name,
+            model_name=request_info.parameters.model_name,
+            dataset_name=request_info.parameters.dataset_name,
         )
 
     (
@@ -718,8 +732,83 @@ def ap_metrics(db: Session, metric_info: schemas.APMetric):
         db=db,
         gts_statement=gts_statement,
         preds_statement=preds_statement,
-        requested_labels=metric_info.labels,
+        requested_labels=request_info.labels,
     )
+
+    # need to break down preds and gts by image
+    gts = db.scalars(gts_statement).all()
+    preds = db.scalars(preds_statement).all()
+
+    image_id_to_gts = {}
+    image_id_to_preds = {}
+    all_image_ids = set()
+    for gt in gts:
+        if gt.image_id not in image_id_to_gts:
+            image_id_to_gts[gt.image_id] = []
+        image_id_to_gts[gt.image_id].append(gt)
+        all_image_ids.add(gt.image_id)
+    for pred in preds:
+        if pred.image_id not in image_id_to_preds:
+            image_id_to_preds[pred.image_id] = []
+        image_id_to_preds[pred.image_id].append(pred)
+        all_image_ids.add(pred.image_id)
+
+    all_image_ids = list(all_image_ids)
+
+    # all_gts and all_preds are list of lists of gts and preds per image
+    all_gts = []
+    all_preds = []
+    for image_id in all_image_ids:
+        all_gts.append(image_id_to_gts.get(image_id, []))
+        all_preds.append(image_id_to_preds.get(image_id, []))
+
+    ap_metrics = compute_ap_metrics(
+        db=db,
+        predictions=all_preds,
+        groundtruths=all_gts,
+        iou_thresholds=iou_thresholds,
+    )
+
+    dataset_id = get_dataset(db, request_info.parameters.dataset_name).id
+    model_id = get_model(db, request_info.parameters.model_name).id
+
+    mp = models.MetricParameters(
+        dataset_id=dataset_id,
+        model_id=model_id,
+        model_pred_type=request_info.parameters.model_pred_type,
+        dataset_gt_type=request_info.parameters.dataset_gt_type,
+    )
+    db.add(mp)
+    db.commit()
+
+    ap_metric_mappings = _create_ap_metric_mappings(
+        db=db, metrics=ap_metrics, metric_parameters_id=mp.id
+    )
+    ap_metric_ids = bulk_insert_and_return_ids(
+        db, models.APMetric, ap_metric_mappings
+    )
+
+    return ap_metric_ids, missing_pred_labels, ignored_pred_labels
+
+
+def _create_ap_metric_mappings(
+    db: Session, metrics: list[schemas.APAtIOU], metric_parameters_id: int
+) -> list[dict]:
+    label_map = label_key_value_to_id(
+        db=db,
+        labels=set(
+            [(metric.label.key, metric.label.value) for metric in metrics]
+        ),
+    )
+    return [
+        {
+            "value": metric.value,
+            "label_id": label_map[(metric.label.key, metric.label.value)],
+            "iou_threshold": metric.iou,
+            "metric_parameters_id": metric_parameters_id,
+        }
+        for metric in metrics
+    ]
 
 
 def instance_segmentations_in_dataset_statement(dataset_name: str) -> Select:
@@ -743,7 +832,7 @@ def object_detections_in_dataset_statement(dataset_name: str) -> Select:
         .join(models.GroundTruthDetection)
         .join(models.Image)
         .join(models.Dataset)
-        .where(models.Dataset.id == dataset_name)
+        .where(models.Dataset.name == dataset_name)
     )
 
 
@@ -790,3 +879,19 @@ def labels_in_query(
     return db.scalars(
         (select(models.Label).join(query_statement.subquery())).distinct()
     ).all()
+
+
+def label_key_value_to_id(
+    db: Session, labels: set[tuple[str, str]]
+) -> dict[tuple[str, str], int]:
+    return {
+        label: db.scalar(
+            select(models.Label.id).where(
+                and_(
+                    models.Label.key == label[0],
+                    models.Label.value == label[1],
+                )
+            )
+        )
+        for label in labels
+    }

@@ -177,7 +177,6 @@ def ap(
             )
 
     # compute average over all IoUs
-
     ret.append(
         schemas.APAtIOU(
             iou=iou_thresholds,
