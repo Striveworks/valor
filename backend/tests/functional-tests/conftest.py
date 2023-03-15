@@ -44,12 +44,12 @@ def mask_bytes2():
 
 @pytest.fixture
 def img1() -> schemas.Image:
-    return schemas.Image(uri="uri1", height=1000, width=2000)
+    return schemas.Image(uid="uid1", height=1000, width=2000)
 
 
 @pytest.fixture
 def img2() -> schemas.Image:
-    return schemas.Image(uri="uri2", height=1600, width=1200)
+    return schemas.Image(uid="uid2", height=1600, width=1200)
 
 
 @pytest.fixture
@@ -83,7 +83,7 @@ def dset(db: Session) -> models.Dataset:
 
 @pytest.fixture
 def img(db: Session, dset: models.Dataset) -> models.Image:
-    img = models.Image(uri="uri", dataset_id=dset.id, height=1000, width=2000)
+    img = models.Image(uid="uid", dataset_id=dset.id, height=1000, width=2000)
     db.add(img)
     db.commit()
 

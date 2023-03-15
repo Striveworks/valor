@@ -13,13 +13,13 @@ from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
     GroundTruthImageClassification,
-    GroundTruthSegmentation,
     Image,
     Label,
     PolygonWithHole,
     PredictedDetection,
     PredictedImageClassification,
-    PredictedSegmentation,
+    _GroundTruthSegmentation,
+    _PredictedSegmentation,
 )
 
 
@@ -131,11 +131,48 @@ class Client:
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
-    def upload_groundtruth_detections(
-        self, dataset_name: str, dets: List[GroundTruthDetection]
-    ) -> List[int]:
+    def create_dataset(self, name: str) -> "Dataset":
+        self._requests_post_rel_host("datasets", json={"name": name})
+
+        return Dataset(client=self, name=name)
+
+    def delete_dataset(self, name: str) -> None:
+        self._requests_delete_rel_host(f"datasets/{name}")
+
+    def get_dataset(self, name: str) -> "Dataset":
+        resp = self._requests_get_rel_host(f"datasets/{name}")
+        return Dataset(client=self, name=resp.json()["name"])
+
+    def get_datasets(self) -> List[dict]:
+        return self._requests_get_rel_host("datasets").json()
+
+    def create_model(self, name: str) -> "Model":
+        self._requests_post_rel_host("models", json={"name": name})
+
+        return Model(client=self, name=name)
+
+    def delete_model(self, name: str) -> None:
+        self._requests_delete_rel_host(f"models/{name}")
+
+    def get_model(self, name: str) -> "Model":
+        resp = self._requests_get_rel_host("models/{name}")
+        return Model(client=self, name=resp.json())
+
+    def get_models(self) -> List[dict]:
+        return self._requests_get_rel_host("models").json()
+
+    def get_all_labels(self) -> List[Label]:
+        return self._requests_get_rel_host("labels").json()
+
+
+class Dataset:
+    def __init__(self, client: Client, name: str):
+        self.client = client
+        self.name = name
+
+    def add_groundtruth_detections(self, dets: List[GroundTruthDetection]):
         payload = {
-            "dataset_name": dataset_name,
+            "dataset_name": self.name,
             "detections": [
                 {
                     "boundary": _payload_for_bounding_polygon(det.boundary),
@@ -146,16 +183,37 @@ class Client:
             ],
         }
 
-        resp = self._requests_post_rel_host(
+        resp = self.client._requests_post_rel_host(
             "groundtruth-detections", json=payload
         )
         resp.raise_for_status()
 
         return resp.json()
 
-    def upload_groundtruth_segmentations(
-        self, dataset_name: str, segs: List[GroundTruthSegmentation]
-    ) -> List[int]:
+    def add_groundtruth_classifications(
+        self, clfs: List[GroundTruthImageClassification]
+    ):
+        payload = {
+            "dataset_name": self.name,
+            "classifications": [
+                {
+                    "labels": [asdict(label) for label in clf.labels],
+                    "image": asdict(clf.image),
+                }
+                for clf in clfs
+            ],
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "groundtruth-classifications", json=payload
+        )
+        resp.raise_for_status()
+
+        return resp.json()
+
+    def add_groundtruth_segmentations(
+        self, segs: List[_GroundTruthSegmentation]
+    ):
         def _shape_value(shape: Union[List[PolygonWithHole], np.ndarray]):
             if isinstance(shape, np.ndarray):
                 return _mask_array_to_pil_base64(shape)
@@ -163,7 +221,7 @@ class Client:
                 return _payload_for_polys_with_holes(shape)
 
         payload = {
-            "dataset_name": dataset_name,
+            "dataset_name": self.name,
             "segmentations": [
                 {
                     "shape": _shape_value(seg.shape),
@@ -175,18 +233,51 @@ class Client:
             ],
         }
 
-        resp = self._requests_post_rel_host(
+        resp = self.client._requests_post_rel_host(
             "groundtruth-segmentations", json=payload
         )
         resp.raise_for_status()
 
         return resp.json()
 
-    def upload_predicted_detections(
-        self, model_name: str, dets: List[PredictedDetection]
-    ) -> List[int]:
+    def finalize(self):
+        return self.client._requests_put_rel_host(
+            f"datasets/{self.name}/finalize"
+        )
+
+    def delete(self):
+        return self.client.delete_dataset(self.name)
+
+    def get_images(self) -> List[Image]:
+        images = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/images"
+        ).json()
+
+        return [
+            Image(
+                uid=image["uid"], height=image["height"], width=image["width"]
+            )
+            for image in images
+        ]
+
+    def get_labels(self) -> List[Label]:
+        labels = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/labels"
+        ).json()
+
+        return [
+            Label(key=label["key"], value=label["value"]) for label in labels
+        ]
+
+
+class Model:
+    def __init__(self, client: Client, name: str):
+        self.client = client
+        self.name = name
+
+    def add_predicted_detections(self, dets: List[PredictedDetection]) -> None:
         payload = {
-            "model_name": model_name,
+            "model_name": self.name,
             "detections": [
                 {
                     "boundary": _payload_for_bounding_polygon(det.boundary),
@@ -200,18 +291,18 @@ class Client:
             ],
         }
 
-        resp = self._requests_post_rel_host(
+        resp = self.client._requests_post_rel_host(
             "predicted-detections", json=payload
         )
 
         resp.raise_for_status()
         return resp.json()
 
-    def upload_predicted_segmentations(
-        self, model_name: str, segs: List[PredictedSegmentation]
-    ) -> List[int]:
+    def add_predicted_segmentations(
+        self, segs: List[_PredictedSegmentation]
+    ) -> None:
         payload = {
-            "model_name": model_name,
+            "model_name": self.name,
             "segmentations": [
                 {
                     "base64_mask": _mask_array_to_pil_base64(seg.mask),
@@ -226,39 +317,18 @@ class Client:
             ],
         }
 
-        resp = self._requests_post_rel_host(
+        resp = self.client._requests_post_rel_host(
             "predicted-segmentations", json=payload
         )
 
         resp.raise_for_status()
         return resp.json()
 
-    def upload_groundtruth_classifications(
-        self, dataset_name: str, clfs: List[GroundTruthImageClassification]
-    ) -> List[int]:
+    def add_predicted_classifications(
+        self, clfs: List[PredictedImageClassification]
+    ) -> None:
         payload = {
-            "dataset_name": dataset_name,
-            "classifications": [
-                {
-                    "labels": [asdict(label) for label in clf.labels],
-                    "image": asdict(clf.image),
-                }
-                for clf in clfs
-            ],
-        }
-
-        resp = self._requests_post_rel_host(
-            "groundtruth-classifications", json=payload
-        )
-        resp.raise_for_status()
-
-        return resp.json()
-
-    def upload_predicted_classifications(
-        self, model_name: str, clfs: List[PredictedImageClassification]
-    ) -> List[int]:
-        payload = {
-            "model_name": model_name,
+            "model_name": self.name,
             "classifications": [
                 {
                     "scored_labels": [
@@ -271,126 +341,9 @@ class Client:
             ],
         }
 
-        resp = self._requests_post_rel_host(
+        resp = self.client._requests_post_rel_host(
             "predicted-classifications", json=payload
         )
         resp.raise_for_status()
 
         return resp.json()
-
-    def create_dataset(self, name: str) -> "Dataset":
-        self._requests_post_rel_host("datasets", json={"name": name})
-
-        return Dataset(client=self, name=name)
-
-    def delete_dataset(self, name: str) -> None:
-        self._requests_delete_rel_host(f"datasets/{name}")
-
-    def get_dataset(self, name: str) -> dict:
-        resp = self._requests_get_rel_host("datasets", json={"name": name})
-
-        return resp.json()
-
-    def get_datasets(self) -> List[dict]:
-        return self._requests_get_rel_host("datasets").json()
-
-    def get_dataset_images(self, name: str) -> List[Image]:
-        images = self._requests_get_rel_host(f"datasets/{name}/images").json()
-
-        return [
-            Image(
-                uri=image["uri"], height=image["height"], width=image["width"]
-            )
-            for image in images
-        ]
-
-    def get_dataset_labels(self, name: str) -> List[Label]:
-        labels = self._requests_get_rel_host(f"datasets/{name}/labels").json()
-
-        return [
-            Label(key=label["key"], value=label["value"]) for label in labels
-        ]
-
-    def create_model(self, name: str) -> "Model":
-        self._requests_post_rel_host("models", json={"name": name})
-
-        return Model(client=self, name=name)
-
-    def delete_model(self, name: str) -> None:
-        self._requests_delete_rel_host(f"models/{name}")
-
-    def get_model(self, name: str) -> dict:
-        resp = self._requests_get_rel_host("models", json={"name": name})
-
-        return resp.json()
-
-    def get_models(self) -> List[dict]:
-        return self._requests_get_rel_host("models").json()
-
-    def get_all_labels(self) -> List[Label]:
-        return self._requests_get_rel_host("labels").json()
-
-    def finalize_dataset(self, name: str):
-        return self._requests_put_rel_host(f"datasets/{name}/finalize")
-
-
-class Dataset:
-    def __init__(self, client: Client, name: str):
-        self.client = client
-        self.name = name
-
-    def add_groundtruth_detections(self, dets: List[GroundTruthDetection]):
-        return self.client.upload_groundtruth_detections(
-            dataset_name=self.name, dets=dets
-        )
-
-    def add_groundtruth_classifications(
-        self, clfs: List[GroundTruthImageClassification]
-    ):
-        return self.client.upload_groundtruth_classifications(
-            dataset_name=self.name, clfs=clfs
-        )
-
-    def add_groundtruth_segmentations(
-        self, segs: List[GroundTruthSegmentation]
-    ):
-        return self.client.upload_groundtruth_segmentations(
-            dataset_name=self.name, segs=segs
-        )
-
-    def finalize(self):
-        return self.client.finalize_dataset(self.name)
-
-    def delete(self):
-        return self.client.delete_dataset(self.name)
-
-    def get_images(self) -> List[Image]:
-        return self.client.get_dataset_images(self.name)
-
-    def get_labels(self) -> List[Label]:
-        return self.client.get_dataset_labels(self.name)
-
-
-class Model:
-    def __init__(self, client: Client, name: str):
-        self.client = client
-        self.name = name
-
-    def add_predicted_detections(self, dets: List[PredictedDetection]) -> None:
-        return self.client.upload_predicted_detections(
-            model_name=self.name, dets=dets
-        )
-
-    def add_predicted_segmentations(
-        self, segs: List[PredictedSegmentation]
-    ) -> None:
-        return self.client.upload_predicted_segmentations(
-            model_name=self.name, segs=segs
-        )
-
-    def add_predicted_classifications(
-        self, clfs: List[PredictedImageClassification]
-    ) -> None:
-        return self.client.upload_predicted_classifications(
-            model_name=self.name, clfs=clfs
-        )

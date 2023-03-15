@@ -324,7 +324,7 @@ def test_create_predicted_detections_and_delete_model(
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
         crud.create_predicted_detections(db, pred_dets_create)
-    assert "Image with uri" in str(exc_info)
+    assert "Image with uid" in str(exc_info)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
@@ -382,7 +382,7 @@ def test_create_predicted_classifications_and_delete_model(
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
         crud.create_predicted_image_classifications(db, pred_clfs_create)
-    assert "Image with uri" in str(exc_info)
+    assert "Image with uid" in str(exc_info)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
@@ -443,7 +443,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
         crud.create_predicted_segmentations(db, pred_segs_create)
-    assert "Image with uri" in str(exc_info)
+    assert "Image with uid" in str(exc_info)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
@@ -456,7 +456,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # grab the first one and check that the area of the raster
     # matches the area of the image
-    img = crud.get_image(db, "uri1")
+    img = crud.get_image(db, "uid1")
     seg = img.predicted_segmentations[0]
     mask = bytes_to_pil(
         b64decode(pred_segs_create.segmentations[0].base64_mask)
