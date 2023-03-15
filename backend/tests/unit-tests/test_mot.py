@@ -1,9 +1,9 @@
-from velour_api.mot_metrics import (
-    compute_mot_metrics,
-    OBJECT_ID_LABEL_KEY,
-    MOT_METRICS_NAMES,
-)
 from velour_api import schemas
+from velour_api.mot_metrics import (
+    MOT_METRICS_NAMES,
+    OBJECT_ID_LABEL_KEY,
+    compute_mot_metrics,
+)
 
 
 def generate_mot_data(num_frames: int):
@@ -12,23 +12,33 @@ def generate_mot_data(num_frames: int):
     Three objects in each frame, moving in different directions at constant speed.
     """
 
-    create_img = lambda frame: schemas.Image(
-        uri="", height=500, width=500, frame=frame
+    create_img = lambda frame: schemas.Image(  # noqa: E731
+        uid="", height=500, width=500, frame=frame
     )
-    create_label = lambda obj_id: schemas.Label(
+    create_label = lambda obj_id: schemas.Label(  # noqa: E731
         key=OBJECT_ID_LABEL_KEY, value=obj_id
     )
-    create_scored_label = lambda obj_id, score: schemas.ScoredLabel(
-        label=schemas.Label(key=OBJECT_ID_LABEL_KEY, value=obj_id), score=score
+    create_scored_label = (
+        lambda obj_id, score: schemas.ScoredLabel(  # noqa: E731
+            label=schemas.Label(key=OBJECT_ID_LABEL_KEY, value=obj_id),
+            score=score,
+        )
     )
 
-    square = lambda x, y: [(x, y), (x + 10, y), (x, y + 10), (x + 10, y + 10)]
+    square = lambda x, y: [  # noqa: E731
+        (x, y),
+        (x + 10, y),
+        (x, y + 10),
+        (x + 10, y + 10),
+    ]
     # Square Boundary moving diagonally
-    create_boundary_1 = lambda frame: square(5 * frame, 5 * frame)
+    create_boundary_1 = lambda frame: square(  # noqa: E731
+        5 * frame, 5 * frame
+    )
     # Square Boundary moving horizontally
-    create_boundary_2 = lambda frame: square(5 * frame, 0)
+    create_boundary_2 = lambda frame: square(5 * frame, 0)  # noqa: E731
     # Square Boundary moving vertically
-    create_boundary_3 = lambda frame: square(0, 5 * frame)
+    create_boundary_3 = lambda frame: square(0, 5 * frame)  # noqa: E731
 
     predictions = []
     groundtruths = []
