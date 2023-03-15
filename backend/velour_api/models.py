@@ -260,6 +260,7 @@ class Image(Base):
     uid: Mapped[str] = mapped_column()
     height: Mapped[int] = mapped_column()
     width: Mapped[int] = mapped_column()
+    frame: Mapped[int] = mapped_column(nullable=True)
     ground_truth_detections: Mapped[list[GroundTruthDetection]] = relationship(
         GroundTruthDetection, cascade="all, delete"
     )
@@ -307,4 +308,6 @@ class Dataset(Base):
     name: Mapped[str] = mapped_column(index=True, unique=True)
     # whether or not the dataset is done being created
     draft: Mapped[bool] = mapped_column(default=True)
+    # whether or not the dataset comes from a video
+    from_video: Mapped[bool] = mapped_column(default=False)
     images = relationship("Image", cascade="all, delete")
