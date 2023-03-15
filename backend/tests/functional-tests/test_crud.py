@@ -710,8 +710,8 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
     assert (gts[0].label.key, gts[0].label.value) == ("k1", "v1")
     assert len(preds) == 1
     assert (preds[0].label.key, preds[0].label.value) == ("k1", "v1")
-    assert missing_pred_labels == set()
-    assert ignored_pred_labels == {("k2", "v2")}
+    assert missing_pred_labels == []
+    assert ignored_pred_labels == [schemas.Label(key="k2", value="v2")]
 
     # # check error when requesting a label that doesn't exist
     with pytest.raises(ValueError) as exc_info:
@@ -740,8 +740,8 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
     # should not get the pred with label "k2", "v2" since its not
     # present in the groundtruths
     assert len(preds) == 1
-    assert missing_pred_labels == {("k3", "v3")}
-    assert ignored_pred_labels == {("k2", "v2")}
+    assert missing_pred_labels == [schemas.Label(key="k3", value="v3")]
+    assert ignored_pred_labels == [schemas.Label(key="k2", value="v2")]
 
 
 def test_create_ap_metrics(db: Session, groundtruths, predictions):
