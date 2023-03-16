@@ -20,6 +20,13 @@ class DatasetIsFinalizedError(Exception):
         )
 
 
+class DatasetIsDraftError(Exception):
+    def __init__(self, name: str):
+        return super().__init__(
+            f"Cannot evaluate against dataset '{name}' since it is still a draft."
+        )
+
+
 class ModelDoesNotExistError(Exception):
     def __init__(self, name: str):
         return super().__init__(f"Model with name '{name}' does not exist.")

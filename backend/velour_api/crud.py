@@ -687,6 +687,10 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
 def create_ap_metrics(
     db: Session, request_info: schemas.APRequest, iou_thresholds: list[float]
 ):
+    if get_dataset(db, request_info.parameters.dataset_name).draft:
+        raise exceptions.DatasetIsDraftError(
+            request_info.parameters.dataset_name
+        )
     # do some validation
     allowable_tasks = [
         schemas.Task.OBJECT_DETECTION,

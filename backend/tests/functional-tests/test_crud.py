@@ -747,22 +747,31 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
 def test_create_ap_metrics(db: Session, groundtruths, predictions):
     # the groundtruths and predictions arguments are not used but
     # those fixtures create the necessary dataset, model, groundtruths, and predictions
-    (
-        ap_metric_ids,
-        missing_pred_labels,
-        ignored_pred_labels,
-    ) = crud.create_ap_metrics(
-        db,
-        request_info=schemas.APRequest(
-            parameters=schemas.MetricParameters(
-                model_name="test model",
-                dataset_name="test dataset",
-                model_pred_type=enums.Task.OBJECT_DETECTION,
-                dataset_gt_type=enums.Task.OBJECT_DETECTION,
-            )
-        ),
-        iou_thresholds=[0.2, 0.6],
-    )
+
+    def method_to_test():
+        return crud.create_ap_metrics(
+            db,
+            request_info=schemas.APRequest(
+                parameters=schemas.MetricParameters(
+                    model_name="test model",
+                    dataset_name="test dataset",
+                    model_pred_type=enums.Task.OBJECT_DETECTION,
+                    dataset_gt_type=enums.Task.OBJECT_DETECTION,
+                )
+            ),
+            iou_thresholds=[0.2, 0.6],
+        )
+
+    # check we get an error since the dataset is still a draft
+    with pytest.raises(exceptions.DatasetIsDraftError):
+        method_to_test()
+
+    # finalize dataset and try again
+    ds = crud.get_dataset(db, "test dataset")
+    ds.draft = False
+    db.commit()
+
+    ap_metric_ids, missing_pred_labels, ignored_pred_labels = method_to_test()
 
     assert missing_pred_labels == []
     assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
@@ -771,23 +780,11 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         select(models.APMetric).where(models.APMetric.id.in_(ap_metric_ids))
     ).all()
 
-    for metric in metrics:
-        assert metric.iou_threshold in [0.2, 0.6, [0.2, 0.6]]
+    assert set([m.iou_threshold for m in metrics]) == {0.2, 0.6}
 
     # should be five labels (since thats how many are in groundtruth set)
     assert len(set(m.label_id for m in metrics)) == 5
 
     # run again and make sure no new ids were created
-    ap_metric_ids_again, _, _ = crud.create_ap_metrics(
-        db,
-        request_info=schemas.APRequest(
-            parameters=schemas.MetricParameters(
-                model_name="test model",
-                dataset_name="test dataset",
-                model_pred_type=enums.Task.OBJECT_DETECTION,
-                dataset_gt_type=enums.Task.OBJECT_DETECTION,
-            )
-        ),
-        iou_thresholds=[0.2, 0.6],
-    )
+    ap_metric_ids_again, _, _ = method_to_test()
     assert sorted(ap_metric_ids) == sorted(ap_metric_ids_again)

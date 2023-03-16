@@ -211,10 +211,6 @@ class APRequest(BaseModel):
     ]
 
 
-class APMetric(BaseModel):
-    pass
-
-
 class APAtIOU(BaseModel):
     iou: float
     value: float
