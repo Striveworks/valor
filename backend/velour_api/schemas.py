@@ -206,9 +206,7 @@ class APRequest(BaseModel):
     parameters: MetricParameters
     labels: list[Label] = None
     # (mutable defaults are ok for pydantic models)
-    iou_thresholds: float | list[float] = [
-        round(0.5 + 0.05 * i, 2) for i in range(10)
-    ]
+    iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
 
 
 class APMetric(BaseModel):
@@ -229,3 +227,8 @@ class MetricResponse(BaseModel):
     metric_name: str
     parameters: MetricParameters
     metric: APMetric | MAPMetric
+
+
+class CreateMetricsResponse(BaseModel):
+    missing_pred_labels: list[Label]
+    ignored_pred_labels: list[Label]

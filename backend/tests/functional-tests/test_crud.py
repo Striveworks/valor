@@ -749,17 +749,30 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     # those fixtures create the necessary dataset, model, groundtruths, and predictions
 
     def method_to_test():
-        return crud.create_ap_metrics(
-            db,
-            request_info=schemas.APRequest(
-                parameters=schemas.MetricParameters(
-                    model_name="test model",
-                    dataset_name="test dataset",
-                    model_pred_type=enums.Task.OBJECT_DETECTION,
-                    dataset_gt_type=enums.Task.OBJECT_DETECTION,
-                )
+        request_info = schemas.APRequest(
+            parameters=schemas.MetricParameters(
+                model_name="test model",
+                dataset_name="test dataset",
+                model_pred_type=enums.Task.OBJECT_DETECTION,
+                dataset_gt_type=enums.Task.OBJECT_DETECTION,
             ),
             iou_thresholds=[0.2, 0.6],
+        )
+
+        (
+            gts_statement,
+            preds_statement,
+            cm_resp,
+        ) = crud.validate_create_ap_metrics(db, request_info)
+        return (
+            crud.create_ap_metrics(
+                db,
+                gts_statement=gts_statement,
+                preds_statement=preds_statement,
+                request_info=request_info,
+            ),
+            cm_resp.missing_pred_labels,
+            cm_resp.ignored_pred_labels,
         )
 
     # check we get an error since the dataset is still a draft

@@ -8,7 +8,6 @@ from urllib.parse import urljoin
 import numpy as np
 import requests
 from PIL import Image as PILImage
-
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
@@ -21,6 +20,7 @@ from velour.data_types import (
     _GroundTruthSegmentation,
     _PredictedSegmentation,
 )
+from velour.metrics import Task
 
 
 def _mask_array_to_pil_base64(mask: np.ndarray) -> str:
@@ -163,6 +163,34 @@ class Client:
 
     def get_all_labels(self) -> List[Label]:
         return self._requests_get_rel_host("labels").json()
+
+    def evaluate_ap(
+        self,
+        model: "Model",
+        dataset: "Dataset",
+        model_pred_type: Task,
+        dataset_gt_type: Task,
+        iou_thresholds: list[float],
+        labels: list[Label],
+    ):
+        payload = {
+            "parameters": {
+                "model_name": model.name,
+                "dataset_name": dataset.name,
+                "model_pred_type": model_pred_type.value,
+                "dataset_gt_type": dataset_gt_type.value,
+            },
+            "labels": [label.__dict__ for label in labels],
+            "iou_thresholds": iou_thresholds,
+        }
+
+        resp = self._requests_post_rel_host("/metrics", json=payload).json()
+        # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
+        # list of label dicts. convert label dicts to Label objects
+        for k, v in resp.items():
+            resp[k] = [Label(**la) for la in v]
+
+        return resp
 
 
 class Dataset:

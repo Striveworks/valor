@@ -684,9 +684,15 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     )
 
 
-def create_ap_metrics(
-    db: Session, request_info: schemas.APRequest, iou_thresholds: list[float]
-):
+def validate_create_ap_metrics(
+    db: Session, request_info: schemas.APRequest
+) -> tuple[Select, Select, schemas.CreateMetricsResponse]:
+    """Validates request_info and produces select statements for grabbing groundtruth and
+    prediction data
+
+    Parameters
+    ----------
+    """
     if get_dataset(db, request_info.parameters.dataset_name).draft:
         raise exceptions.DatasetIsDraftError(
             request_info.parameters.dataset_name
@@ -737,6 +743,22 @@ def create_ap_metrics(
         requested_labels=request_info.labels,
     )
 
+    return (
+        gts_statement,
+        preds_statement,
+        schemas.CreateMetricsResponse(
+            missing_pred_labels=missing_pred_labels,
+            ignored_pred_labels=ignored_pred_labels,
+        ),
+    )
+
+
+def create_ap_metrics(
+    db: Session,
+    gts_statement: Select,
+    preds_statement: Select,
+    request_info: schemas.APRequest,
+):
     # need to break down preds and gts by image
     gts = db.scalars(gts_statement).all()
     preds = db.scalars(preds_statement).all()
@@ -768,7 +790,7 @@ def create_ap_metrics(
         db=db,
         predictions=all_preds,
         groundtruths=all_gts,
-        iou_thresholds=iou_thresholds,
+        iou_thresholds=request_info.iou_thresholds,
     )
 
     dataset_id = get_dataset(db, request_info.parameters.dataset_name).id
@@ -795,7 +817,7 @@ def create_ap_metrics(
     ]
     db.commit()
 
-    return ap_metric_ids, missing_pred_labels, ignored_pred_labels
+    return ap_metric_ids
 
 
 def _create_ap_metric_mappings(
