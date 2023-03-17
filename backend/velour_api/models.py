@@ -340,9 +340,12 @@ class MetricParameters(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
+    dataset = relationship(Dataset)
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
+    model = relationship(Model)
     model_pred_type: Mapped[str] = mapped_column(Enum(Task))
     dataset_gt_type: Mapped[str] = mapped_column(Enum(Task))
+    ap_metrics: Mapped[list["APMetric"]] = relationship("APMetric")
 
 
 class APMetric(Base):
@@ -350,7 +353,8 @@ class APMetric(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
-    iou_threshold: Mapped[float] = mapped_column()
+    label = relationship(Label)
+    iou: Mapped[float] = mapped_column()
     value: Mapped[float] = mapped_column()
     metric_parameters_id: Mapped[int] = mapped_column(
         ForeignKey("metric_parameters.id")

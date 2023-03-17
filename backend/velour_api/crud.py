@@ -811,7 +811,7 @@ def _create_ap_metric_mappings(
         {
             "value": metric.value,
             "label_id": label_map[(metric.label.key, metric.label.value)],
-            "iou_threshold": metric.iou,
+            "iou": metric.iou,
             "metric_parameters_id": metric_parameters_id,
         }
         for metric in metrics
@@ -902,3 +902,52 @@ def label_key_value_to_id(
         )
         for label in labels
     }
+
+
+def get_model_metrics(
+    db: Session, model_name: str
+) -> list[schemas.MetricResponse]:
+    # TODO: may return multiple types of metrics
+    # use get_model so exception get's raised if model does
+    # not exist
+    model = get_model(db, model_name)
+
+    metric_params = db.scalars(
+        select(models.MetricParameters)
+        .join(models.Model)
+        .where(models.Model.id == model.id)
+    )
+
+    return [
+        schemas.MetricResponse(
+            metric_name=m.__tablename__,
+            parameters=_db_metric_params_to_pydantic_metric_params(mp),
+            metric=_db_metric_to_pydantic_metric(m),
+        )
+        for mp in metric_params
+        for m in mp.ap_metrics
+    ]
+
+
+def _db_metric_params_to_pydantic_metric_params(
+    metric_params: models.MetricParameters,
+) -> schemas.MetricParameters:
+    return schemas.MetricParameters(
+        model_name=metric_params.model.name,
+        dataset_name=metric_params.dataset.name,
+        model_pred_type=metric_params.model_pred_type,
+        dataset_gt_type=metric_params.dataset_gt_type,
+    )
+
+
+def _db_metric_to_pydantic_metric(metric: models.APMetric) -> schemas.APAtIOU:
+    # TODO: this will have to support more metrics
+    return schemas.APAtIOU(
+        iou=metric.iou,
+        value=metric.value,
+        label=_db_label_to_schemas_label(metric.label),
+    )
+
+
+def _db_label_to_schemas_label(label: models.Label) -> schemas.Label:
+    return schemas.Label(key=label.key, value=label.value)

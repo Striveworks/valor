@@ -221,3 +221,11 @@ class MAPAtIOU(BaseModel):
     iou: float
     value: float
     labels: list[Label]
+
+
+class MetricResponse(BaseModel):
+    """Used for REST responses sending a metric"""
+
+    metric_name: str
+    parameters: MetricParameters
+    metric: APAtIOU | MAPAtIOU

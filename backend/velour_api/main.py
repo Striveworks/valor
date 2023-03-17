@@ -217,6 +217,18 @@ def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
     return crud.delete_model(db, model_name)
 
 
+@app.get(
+    "/models/{model_name}/metrics", dependencies=[Depends(token_auth_scheme)]
+)
+def get_model_metrics(
+    model_name: str, db: Session = Depends(get_db)
+) -> list[schemas.MetricResponse]:
+    try:
+        return crud.get_model_metrics(db, model_name)
+    except exceptions.ModelDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @app.get("/labels", status_code=200, dependencies=[Depends(token_auth_scheme)])
 def get_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
     return crud.get_all_labels(db)

@@ -780,7 +780,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         select(models.APMetric).where(models.APMetric.id.in_(ap_metric_ids))
     ).all()
 
-    assert set([m.iou_threshold for m in metrics]) == {0.2, 0.6}
+    assert set([m.iou for m in metrics]) == {0.2, 0.6}
 
     # should be five labels (since thats how many are in groundtruth set)
     assert len(set(m.label_id for m in metrics)) == 5
@@ -788,3 +788,16 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     # run again and make sure no new ids were created
     ap_metric_ids_again, _, _ = method_to_test()
     assert sorted(ap_metric_ids) == sorted(ap_metric_ids_again)
+
+    # test crud.get_model_metrics
+    metrics_pydantic = crud.get_model_metrics(db, "test model")
+
+    assert len(metrics_pydantic) == len(metrics)
+
+    for m in metrics_pydantic:
+        assert m.parameters.dataset_name == "test dataset"
+        assert m.parameters.model_name == "test model"
+        assert m.parameters.model_pred_type == enums.Task.OBJECT_DETECTION
+        assert m.parameters.dataset_gt_type == enums.Task.OBJECT_DETECTION
+        assert m.metric_name == "ap_metric"
+        assert isinstance(m.metric, schemas.APAtIOU)
