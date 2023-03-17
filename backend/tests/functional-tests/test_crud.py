@@ -800,4 +800,4 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         assert m.parameters.model_pred_type == enums.Task.OBJECT_DETECTION
         assert m.parameters.dataset_gt_type == enums.Task.OBJECT_DETECTION
         assert m.metric_name == "ap_metric"
-        assert isinstance(m.metric, schemas.APAtIOU)
+        assert isinstance(m.metric, schemas.APMetric)

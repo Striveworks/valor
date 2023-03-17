@@ -211,13 +211,13 @@ class APRequest(BaseModel):
     ]
 
 
-class APAtIOU(BaseModel):
+class APMetric(BaseModel):
     iou: float
     value: float
     label: Label
 
 
-class MAPAtIOU(BaseModel):
+class MAPMetric(BaseModel):
     iou: float
     value: float
     labels: list[Label]
@@ -228,4 +228,4 @@ class MetricResponse(BaseModel):
 
     metric_name: str
     parameters: MetricParameters
-    metric: APAtIOU | MAPAtIOU
+    metric: APMetric | MAPMetric

@@ -93,7 +93,7 @@ def ap(
     groundtruths: list[list[LabeledGroundTruthDetection]],
     label: Label,
     iou_thresholds: list[float],
-) -> list[schemas.APAtIOU]:
+) -> list[schemas.APMetric]:
     """Computes the average precision. Return is a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
     `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
@@ -124,7 +124,7 @@ def ap(
     if n_gt == 0:
         ret.extend(
             [
-                schemas.APAtIOU(
+                schemas.APMetric(
                     iou=iou_thres,
                     value=-1.0,
                     label=_db_label_to_pydantic_label(label),
@@ -167,7 +167,7 @@ def ap(
             recalls = [ctp / n_gt for ctp in cum_tp]
 
             ret.append(
-                schemas.APAtIOU(
+                schemas.APMetric(
                     iou=iou_thres,
                     value=calculate_ap_101_pt_interp(
                         precisions=precisions, recalls=recalls
@@ -212,7 +212,7 @@ def compute_ap_metrics(
     predictions: list[list[LabeledPredictedDetection]],
     groundtruths: list[list[LabeledGroundTruthDetection]],
     iou_thresholds: list[float],
-) -> list[schemas.APAtIOU]:
+) -> list[schemas.APMetric]:
     """Computes average precision metrics."""
     iou_thresholds = sorted(iou_thresholds)
     labels = set(
@@ -236,8 +236,8 @@ def compute_ap_metrics(
 
 
 def compute_map_metrics_from_aps(
-    ap_scores: list[schemas.APAtIOU],
-) -> list[schemas.MAPAtIOU]:
+    ap_scores: list[schemas.APMetric],
+) -> list[schemas.MAPMetric]:
     """
     Parameters
     ----------
@@ -269,7 +269,7 @@ def compute_map_metrics_from_aps(
 
     # get mAP metrics at the individual IOUs
     map_metrics = [
-        schemas.MAPAtIOU(
+        schemas.MAPMetric(
             iou=iou, value=_ave_ignore_minus_one(vals[iou]), labels=labels
         )
         for iou in iou_thresholds

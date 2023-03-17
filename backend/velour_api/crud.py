@@ -799,7 +799,7 @@ def create_ap_metrics(
 
 
 def _create_ap_metric_mappings(
-    db: Session, metrics: list[schemas.APAtIOU], metric_parameters_id: int
+    db: Session, metrics: list[schemas.APMetric], metric_parameters_id: int
 ) -> list[dict]:
     label_map = label_key_value_to_id(
         db=db,
@@ -940,9 +940,9 @@ def _db_metric_params_to_pydantic_metric_params(
     )
 
 
-def _db_metric_to_pydantic_metric(metric: models.APMetric) -> schemas.APAtIOU:
+def _db_metric_to_pydantic_metric(metric: models.APMetric) -> schemas.APMetric:
     # TODO: this will have to support more metrics
-    return schemas.APAtIOU(
+    return schemas.APMetric(
         iou=metric.iou,
         value=metric.value,
         label=_db_label_to_schemas_label(metric.label),
