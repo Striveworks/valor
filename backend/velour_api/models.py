@@ -333,6 +333,9 @@ class Dataset(Base):
     # whether or not the dataset comes from a video
     from_video: Mapped[bool] = mapped_column(default=False)
     images = relationship("Image", cascade="all, delete")
+    metric_parameters = relationship(
+        "MetricParameters", cascade="all, delete", back_populates="dataset"
+    )
 
 
 class MetricParameters(Base):
@@ -340,12 +343,14 @@ class MetricParameters(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
-    dataset = relationship(Dataset)
+    dataset = relationship(Dataset, viewonly=True)
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
     model = relationship(Model)
     model_pred_type: Mapped[str] = mapped_column(Enum(Task))
     dataset_gt_type: Mapped[str] = mapped_column(Enum(Task))
-    ap_metrics: Mapped[list["APMetric"]] = relationship("APMetric")
+    ap_metrics: Mapped[list["APMetric"]] = relationship(
+        "APMetric", cascade="all, delete"
+    )
 
 
 class APMetric(Base):
