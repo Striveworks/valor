@@ -348,8 +348,8 @@ class MetricParameters(Base):
     dataset = relationship(Dataset, viewonly=True)
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
     model = relationship(Model)
-    model_pred_type: Mapped[str] = mapped_column(Enum(Task))
-    dataset_gt_type: Mapped[str] = mapped_column(Enum(Task))
+    model_pred_task_type: Mapped[str] = mapped_column(Enum(Task))
+    dataset_gt_task_type: Mapped[str] = mapped_column(Enum(Task))
     ap_metrics: Mapped[list["APMetric"]] = relationship(
         "APMetric", cascade="all, delete"
     )

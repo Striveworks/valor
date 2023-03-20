@@ -779,8 +779,8 @@ def test_evaluate_ap(
     resp = client.evaluate_ap(
         model=model,
         dataset=dataset,
-        model_pred_type=Task.OBJECT_DETECTION,
-        dataset_gt_type=Task.OBJECT_DETECTION,
+        model_pred_task_type=Task.OBJECT_DETECTION,
+        dataset_gt_task_type=Task.OBJECT_DETECTION,
         labels=[Label(key="k1", value="v1")],
         iou_thresholds=[0.1, 0.6],
     )

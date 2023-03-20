@@ -195,8 +195,8 @@ class MetricParameters(BaseModel):
 
     model_name: str
     dataset_name: str
-    model_pred_type: Task
-    dataset_gt_type: Task
+    model_pred_task_type: Task
+    dataset_gt_task_type: Task
     # TODO: add things here for filtering, prediction
     # and dataset label mappings (e.g. man, boy -> person)
 

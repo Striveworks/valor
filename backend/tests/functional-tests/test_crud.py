@@ -753,8 +753,8 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
             parameters=schemas.MetricParameters(
                 model_name="test model",
                 dataset_name="test dataset",
-                model_pred_type=enums.Task.OBJECT_DETECTION,
-                dataset_gt_type=enums.Task.OBJECT_DETECTION,
+                model_pred_task_type=enums.Task.OBJECT_DETECTION,
+                dataset_gt_task_type=enums.Task.OBJECT_DETECTION,
             ),
             iou_thresholds=[0.2, 0.6],
         )
@@ -810,7 +810,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     for m in metrics_pydantic:
         assert m.parameters.dataset_name == "test dataset"
         assert m.parameters.model_name == "test model"
-        assert m.parameters.model_pred_type == enums.Task.OBJECT_DETECTION
-        assert m.parameters.dataset_gt_type == enums.Task.OBJECT_DETECTION
+        assert m.parameters.model_pred_task_type == enums.Task.OBJECT_DETECTION
+        assert m.parameters.dataset_gt_task_type == enums.Task.OBJECT_DETECTION
         assert m.metric_name == "ap_metric"
         assert isinstance(m.metric, schemas.APMetric)

@@ -168,8 +168,8 @@ class Client:
         self,
         model: "Model",
         dataset: "Dataset",
-        model_pred_type: Task,
-        dataset_gt_type: Task,
+        model_pred_task_type: Task,
+        dataset_gt_task_type: Task,
         iou_thresholds: list[float],
         labels: list[Label],
     ):
@@ -177,8 +177,8 @@ class Client:
             "parameters": {
                 "model_name": model.name,
                 "dataset_name": dataset.name,
-                "model_pred_type": model_pred_type.value,
-                "dataset_gt_type": dataset_gt_type.value,
+                "model_pred_task_type": model_pred_task_type.value,
+                "dataset_gt_task_type": dataset_gt_task_type.value,
             },
             "labels": [label.__dict__ for label in labels],
             "iou_thresholds": iou_thresholds,

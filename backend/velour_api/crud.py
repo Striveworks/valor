@@ -702,17 +702,17 @@ def validate_create_ap_metrics(
         schemas.Task.OBJECT_DETECTION,
         schemas.Task.INSTANCE_SEGMENTATION,
     ]
-    if request_info.parameters.model_pred_type not in allowable_tasks:
+    if request_info.parameters.model_pred_task_type not in allowable_tasks:
         raise ValueError(
-            f"`pred_type` must be one of {allowable_tasks} but got {request_info.parameters.model_pred_type}."
+            f"`pred_type` must be one of {allowable_tasks} but got {request_info.parameters.model_pred_task_type}."
         )
-    if request_info.parameters.dataset_gt_type not in allowable_tasks:
+    if request_info.parameters.dataset_gt_task_type not in allowable_tasks:
         raise ValueError(
-            f"`dataset_gt_type` must be one of {allowable_tasks} but got {request_info.parameters.dataset_gt_type}."
+            f"`dataset_gt_task_type` must be one of {allowable_tasks} but got {request_info.parameters.dataset_gt_task_type}."
         )
 
     if (
-        request_info.parameters.model_pred_type
+        request_info.parameters.model_pred_task_type
         == schemas.Task.OBJECT_DETECTION
     ):
         gts_statement = object_detections_in_dataset_statement(
@@ -802,8 +802,8 @@ def create_ap_metrics(
         mapping={
             "dataset_id": dataset_id,
             "model_id": model_id,
-            "model_pred_type": request_info.parameters.model_pred_type,
-            "dataset_gt_type": request_info.parameters.dataset_gt_type,
+            "model_pred_task_type": request_info.parameters.model_pred_task_type,
+            "dataset_gt_task_type": request_info.parameters.dataset_gt_task_type,
         },
     )
 
@@ -957,8 +957,8 @@ def _db_metric_params_to_pydantic_metric_params(
     return schemas.MetricParameters(
         model_name=metric_params.model.name,
         dataset_name=metric_params.dataset.name,
-        model_pred_type=metric_params.model_pred_type,
-        dataset_gt_type=metric_params.dataset_gt_type,
+        model_pred_task_type=metric_params.model_pred_task_type,
+        dataset_gt_task_type=metric_params.dataset_gt_task_type,
     )
 
 
