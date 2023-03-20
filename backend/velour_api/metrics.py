@@ -237,7 +237,7 @@ def compute_ap_metrics(
 
 def compute_map_metrics_from_aps(
     ap_scores: list[schemas.APMetric],
-) -> list[schemas.MAPMetric]:
+) -> list[schemas.mAPMetric]:
     """
     Parameters
     ----------
@@ -269,7 +269,7 @@ def compute_map_metrics_from_aps(
 
     # get mAP metrics at the individual IOUs
     map_metrics = [
-        schemas.MAPMetric(
+        schemas.mAPMetric(
             iou=iou, value=_ave_ignore_minus_one(vals[iou]), labels=labels
         )
         for iou in iou_thresholds

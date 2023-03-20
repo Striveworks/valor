@@ -1,4 +1,5 @@
 import io
+from abc import ABC
 from base64 import b64decode
 from typing import Optional
 
@@ -209,13 +210,17 @@ class APRequest(BaseModel):
     iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
 
 
-class APMetric(BaseModel):
+class Metric(BaseModel, ABC):
+    pass
+
+
+class APMetric(Metric):
     iou: float
     value: float
     label: Label
 
 
-class MAPMetric(BaseModel):
+class mAPMetric(Metric):
     iou: float
     value: float
     labels: list[Label]
@@ -226,7 +231,7 @@ class MetricResponse(BaseModel):
 
     metric_name: str
     parameters: MetricParameters
-    metric: APMetric | MAPMetric
+    metric: Metric
 
 
 class CreateMetricsResponse(BaseModel):
