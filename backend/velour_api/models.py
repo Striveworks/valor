@@ -170,6 +170,8 @@ class PredictedImageClassification(Base):
 
 
 class GDALRaster(Raster):
+    cache_ok = True
+
     # see https://github.com/geoalchemy/geoalchemy2/issues/290
     def bind_expression(self, bindvalue):
         # ST_SetBandNoDataValue tells PostGIS that values of 0 should be null

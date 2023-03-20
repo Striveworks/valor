@@ -229,7 +229,7 @@ def get_model_metrics(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@app.post("/metrics", dependencies=[Depends(token_auth_scheme)])
+@app.post("/ap-metrics", dependencies=[Depends(token_auth_scheme)])
 def create_ap_metrics(
     data: schemas.APRequest,
     background_tasks: BackgroundTasks,

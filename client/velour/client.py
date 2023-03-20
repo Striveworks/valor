@@ -184,7 +184,7 @@ class Client:
             "iou_thresholds": iou_thresholds,
         }
 
-        resp = self._requests_post_rel_host("/metrics", json=payload).json()
+        resp = self._requests_post_rel_host("/ap-metrics", json=payload).json()
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
         # list of label dicts. convert label dicts to Label objects
         for k, v in resp.items():
