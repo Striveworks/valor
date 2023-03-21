@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Union
 
 import numpy as np
-from PIL import Image as PILImage
+import PIL.Image
 from PIL import ImageDraw, ImageFont
 
 
@@ -84,11 +84,11 @@ class BoundingPolygon:
 
     def draw_on_image(
         self,
-        img: PILImage.Image,
+        img: PIL.Image.Image,
         inplace: bool = False,
         text: str = None,
         font_size: int = 24,
-    ) -> PILImage.Image:
+    ) -> PIL.Image.Image:
         color = (255, 0, 0)
         img = img if inplace else img.copy()
         img_draw = ImageDraw.Draw(img)
@@ -132,8 +132,8 @@ class GroundTruthDetection:
     image: Image
 
     def draw_on_image(
-        self, img: PILImage.Image, inplace: bool = False
-    ) -> PILImage.Image:
+        self, img: PIL.Image.Image, inplace: bool = False
+    ) -> PIL.Image.Image:
         text = ", ".join(
             [f"{label.key}:{label.value}" for label in self.labels]
         )
@@ -148,8 +148,8 @@ class PredictedDetection:
     image: Image
 
     def draw_on_image(
-        self, img: PILImage.Image, inplace: bool = False
-    ) -> PILImage.Image:
+        self, img: PIL.Image.Image, inplace: bool = False
+    ) -> PIL.Image.Image:
         text = ", ".join(
             [
                 f"{scored_label.label.key}:{scored_label.label.value} ({scored_label.score})"
@@ -185,6 +185,23 @@ class _GroundTruthSegmentation(ABC):
             raise TypeError("Cannot instantiate abstract class.")
         if isinstance(self.shape, np.ndarray):
             _validate_mask(self.shape)
+
+    def draw_on_img(self, img: PIL.Image):
+        assert isinstance(self.shape, np.ndarray)
+
+        mask = np.zeros(
+            (self.shape.shape[0], self.shape.shape[1], 3), dtype=np.uint8
+        )
+        mask[np.where(self.shape == 1)] = [255, 0, 0]
+        blend = PIL.Image.blend(img, PIL.Image.fromarray(mask), alpha=0.4)
+
+        img = img.convert("RGB")
+        img.paste(
+            blend,
+            (0, 0),
+            PIL.Image.fromarray(255 * self.shape.astype(np.uint8)),
+        )
+        return img
 
 
 @dataclass
