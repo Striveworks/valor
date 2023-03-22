@@ -59,7 +59,7 @@ def test__polygons_to_binary_mask(poly1):
 
 def test_combined_segmentation_mask(poly1: PolygonWithHole):
     with pytest.raises(ValueError) as exc_info:
-        combined_segmentation_mask([])
+        combined_segmentation_mask([], label_key="")
     assert "cannot be empty" in str(exc_info)
 
     image = Image("uid", 200, 200)
@@ -79,11 +79,6 @@ def test_combined_segmentation_mask(poly1: PolygonWithHole):
         image=image,
     )
     segs = [seg1, seg2]
-
-    # check error if don't pass a label
-    with pytest.raises(RuntimeError) as exc_info:
-        combined_segmentation_mask(segs)
-    assert "multiple labels" in str(exc_info)
 
     # check get an error since "k3" isn't a label key in seg2
     with pytest.raises(RuntimeError) as exc_info:
@@ -113,6 +108,7 @@ def test_combined_segmentation_mask(poly1: PolygonWithHole):
                     labels=[],
                     image=Image("different uid", height=10, width=100),
                 ),
-            ]
+            ],
+            "",
         )
     assert "belong to the same image" in str(exc_info)

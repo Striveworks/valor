@@ -52,8 +52,32 @@ def _polygons_to_binary_mask(
 
 def combined_segmentation_mask(
     segs: List[Union[_GroundTruthSegmentation, _PredictedSegmentation]],
-    label_key: str = None,
+    label_key: str,
 ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
+    """Creates a combined segmentation mask from a list of segmentations
+
+    segs
+        list of segmentations. these all must have the same `image` attribute. this
+        must be non-empty
+    label_key
+        the label key to use.
+
+
+    Returns
+    -------
+    tuple
+        the first element of the tuple is the combined mask, as an RGB PIL image. the second
+        element is a color legend: it's a dict with keys the unique values of the labels and the
+        values of the dict are PIL image swatches of the color corresponding to the label value.
+
+    Raises
+    ------
+    RuntimeError
+        if all segmentations don't belong to the same image, or there is a
+        segmentation that doesn't have `label_key` as the key of one of its labels
+    ValueError
+        if segs is empty
+    """
 
     if len(set([seg.image.uid for seg in segs])) > 1:
         raise RuntimeError(
@@ -65,24 +89,16 @@ def combined_segmentation_mask(
 
     label_values = []
     for seg in segs:
-        if label_key is None:
-            if len(seg.labels) > 0:
-                raise RuntimeError(
-                    "Found segmentation with multiple labels. Pass the desired "
-                    "label key to the `label_key` parameter."
-                )
-            label_values.append(seg.labels[0].value)
-        else:
-            found_label = False
-            for label in seg.labels:
-                if label.key == label_key:
-                    found_label = True
-                    label_values.append(label.value)
-            if not found_label:
-                raise RuntimeError(
-                    "Found a segmentation that doesn't have a label with key 'label_key'."
-                    f" Available label keys are: {[label.key for label in seg.labels]}"
-                )
+        found_label = False
+        for label in seg.labels:
+            if label.key == label_key:
+                found_label = True
+                label_values.append(label.value)
+        if not found_label:
+            raise RuntimeError(
+                "Found a segmentation that doesn't have a label with key 'label_key'."
+                f" Available label keys are: {[label.key for label in seg.labels]}"
+            )
 
     unique_label_values = list(set(label_values))
     label_value_to_color = {
