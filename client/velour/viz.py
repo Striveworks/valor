@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 from PIL import Image, ImageDraw
@@ -51,7 +51,7 @@ def _polygons_to_binary_mask(
 
 
 def combined_segmentation_mask(
-    segs: List[_GroundTruthSegmentation | _PredictedSegmentation],
+    segs: List[Union[_GroundTruthSegmentation, _PredictedSegmentation]],
     label_key: str = None,
 ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
 
