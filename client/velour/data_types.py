@@ -1,11 +1,8 @@
-import math
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
-import PIL.Image
-from PIL import ImageDraw, ImageFont
 
 
 def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
@@ -57,6 +54,9 @@ class Label:
     key: str
     value: str
 
+    def tuple(self) -> Tuple[str, str]:
+        return (self.key, self.value)
+
 
 @dataclass
 class ScoredLabel:
@@ -82,31 +82,8 @@ class BoundingPolygon:
 
     points: List[Point]
 
-    def draw_on_image(
-        self,
-        img: PIL.Image.Image,
-        inplace: bool = False,
-        text: str = None,
-        font_size: int = 24,
-    ) -> PIL.Image.Image:
-        color = (255, 0, 0)
-        img = img if inplace else img.copy()
-        img_draw = ImageDraw.Draw(img)
-
-        img_draw.polygon(
-            [(p.x, p.y) for p in self.points],
-            outline=color,
-        )
-
-        if text is not None:
-            _write_text(
-                font_size=font_size,
-                text=text,
-                boundary=self,
-                draw=img_draw,
-                color=color,
-            )
-        return img
+    def xy_list(self):
+        return [(pt.x, pt.y) for pt in self.points]
 
     @property
     def xmin(self):
@@ -131,33 +108,12 @@ class GroundTruthDetection:
     labels: List[Label]
     image: Image
 
-    def draw_on_image(
-        self, img: PIL.Image.Image, inplace: bool = False
-    ) -> PIL.Image.Image:
-        text = ", ".join(
-            [f"{label.key}:{label.value}" for label in self.labels]
-        )
-        img = self.boundary.draw_on_image(img, inplace=inplace, text=text)
-        return img
-
 
 @dataclass
 class PredictedDetection:
     boundary: BoundingPolygon
     scored_labels: List[ScoredLabel]
     image: Image
-
-    def draw_on_image(
-        self, img: PIL.Image.Image, inplace: bool = False
-    ) -> PIL.Image.Image:
-        text = ", ".join(
-            [
-                f"{scored_label.label.key}:{scored_label.label.value} ({scored_label.score})"
-                for scored_label in self.scored_labels
-            ]
-        )
-        img = self.boundary.draw_on_image(img, inplace=inplace, text=text)
-        return img
 
 
 @dataclass
@@ -185,23 +141,6 @@ class _GroundTruthSegmentation(ABC):
             raise TypeError("Cannot instantiate abstract class.")
         if isinstance(self.shape, np.ndarray):
             _validate_mask(self.shape)
-
-    def draw_on_img(self, img: PIL.Image):
-        assert isinstance(self.shape, np.ndarray)
-
-        mask = np.zeros(
-            (self.shape.shape[0], self.shape.shape[1], 3), dtype=np.uint8
-        )
-        mask[np.where(self.shape == 1)] = [255, 0, 0]
-        blend = PIL.Image.blend(img, PIL.Image.fromarray(mask), alpha=0.4)
-
-        img = img.convert("RGB")
-        img.paste(
-            blend,
-            (0, 0),
-            PIL.Image.fromarray(255 * self.shape.astype(np.uint8)),
-        )
-        return img
 
 
 @dataclass
@@ -247,40 +186,3 @@ class GroundTruthImageClassification:
 class PredictedImageClassification:
     image: Image
     scored_labels: List[ScoredLabel]
-
-
-def _write_text(
-    font_size: int,
-    text: str,
-    boundary: BoundingPolygon,
-    draw: ImageDraw.Draw,
-    color: str,
-):
-    try:
-        font = ImageFont.truetype("arial.ttf", font_size)
-    except IOError:
-        try:
-            font = ImageFont.truetype("Arial.ttf", font_size)
-        except IOError:
-            font = ImageFont.load_default()
-
-    text_width, text_height = font.getsize(text)
-    if boundary.ymin > text_height:
-        text_bottom = boundary.ymin
-    else:
-        text_bottom = boundary.ymax + text_height
-
-    margin = math.ceil(0.05 * text_height) - 1
-    draw.rectangle(
-        [
-            (boundary.xmin, text_bottom - text_height - 2 * margin),
-            (boundary.xmin + text_width, text_bottom),
-        ],
-        fill=color,
-    )
-    draw.text(
-        (boundary.xmin + margin, text_bottom - text_height - margin),
-        text,
-        fill="black",
-        font=font,
-    )
