@@ -1,4 +1,6 @@
-from typing import List
+from typing import Any, Dict, List
+
+import numpy as np
 
 from velour.data_types import (
     BoundingPolygon,
@@ -42,3 +44,40 @@ def chariot_detections_to_velour(
             dets["detection_classes"],
         )
     ]
+
+
+def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
+    """Converts a COCO run-length-encoded segmentation to a binary mask
+
+    Parameters
+    ----------
+    coco_rle_seg_dict
+        a COCO formatted RLE segmentation dictionary. This should have keys
+        "counts" and "size".
+
+    Returns
+    -------
+    the corresponding binary mask
+    """
+    if not set(coco_rle_seg_dict.keys()) == {"counts", "size"}:
+        raise ValueError(
+            "`coco_rle_seg_dict` expected to be dict with keys 'counts' and 'size'."
+        )
+
+    starts, lengths = (
+        coco_rle_seg_dict["counts"][::2],
+        coco_rle_seg_dict["counts"][1::2],
+    )
+    run_length_encoding = list(zip(starts, lengths))
+
+    h, w = coco_rle_seg_dict["size"]
+
+    res = np.zeros((h, w), dtype=bool)
+    idx = 0
+    for start, length in run_length_encoding:
+        idx += start
+        for i in range(idx, idx + length):
+            y, x = divmod(i, h)
+            res[x, y] = True
+        idx += length
+    return res
