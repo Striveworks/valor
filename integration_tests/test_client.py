@@ -760,7 +760,7 @@ def test_iou(
     )
     db_pred = db.scalar(select(models.PredictedDetection))
 
-    assert ops.iou(db, db_gt, db_pred) == iou(rect1, rect2)
+    assert ops.iou_two_dets(db, db_gt, db_pred) == iou(rect1, rect2)
 
 
 def test_evaluate_ap(

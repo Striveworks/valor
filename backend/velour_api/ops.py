@@ -53,6 +53,8 @@ def iou(
     ):
         return iou_two_segs(db, det_or_seg1, det_or_seg2)
 
+    raise ValueError("Unexpected arguments")
+
 
 def iou_two_dets(
     db: Session, det1: DetectionType, det2: DetectionType
