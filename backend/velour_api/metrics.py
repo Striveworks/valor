@@ -7,7 +7,9 @@ from velour_api import ops, schemas
 from velour_api.models import (
     Label,
     LabeledGroundTruthDetection,
+    LabeledGroundTruthSegmentation,
     LabeledPredictedDetection,
+    LabeledPredictedSegmentation,
 )
 
 
@@ -71,15 +73,18 @@ def _get_tp_fp_single_image_single_class(
 
 def iou_matrix(
     db: Session,
-    predictions: list[LabeledPredictedDetection],
-    groundtruths: list[LabeledGroundTruthDetection],
+    predictions: list[
+        LabeledPredictedDetection | LabeledPredictedSegmentation
+    ],
+    groundtruths: list[
+        LabeledGroundTruthDetection | LabeledGroundTruthSegmentation
+    ],
 ) -> list[list[float]]:
     """Returns a list of lists where the entry at [i][j]
     is the iou between `predictions[i]` and `groundtruths[j]`.
     """
     return [
-        [ops.iou(db, p.detection, g.detection) for g in groundtruths]
-        for p in predictions
+        [ops.iou(db, pred, gt) for gt in groundtruths] for pred in predictions
     ]
 
 
@@ -89,8 +94,12 @@ def _db_label_to_pydantic_label(label: Label):
 
 def ap(
     db: Session,
-    predictions: list[list[LabeledPredictedDetection]],
-    groundtruths: list[list[LabeledGroundTruthDetection]],
+    predictions: list[
+        list[LabeledPredictedDetection | LabeledPredictedSegmentation]
+    ],
+    groundtruths: list[
+        list[LabeledGroundTruthDetection | LabeledGroundTruthSegmentation]
+    ],
     label: Label,
     iou_thresholds: list[float],
 ) -> list[schemas.APMetric]:
@@ -209,11 +218,32 @@ def calculate_ap_101_pt_interp(precisions, recalls) -> float:
 
 def compute_ap_metrics(
     db: Session,
-    predictions: list[list[LabeledPredictedDetection]],
-    groundtruths: list[list[LabeledGroundTruthDetection]],
+    predictions: list[
+        list[LabeledPredictedDetection | LabeledPredictedSegmentation]
+    ],
+    groundtruths: list[
+        list[LabeledGroundTruthDetection | LabeledGroundTruthSegmentation]
+    ],
     iou_thresholds: list[float],
 ) -> list[schemas.APMetric]:
     """Computes average precision metrics."""
+
+    # check that any segmentations are instance segmentations
+    for pred in predictions:
+        if isinstance(pred, LabeledPredictedSegmentation):
+            if not pred.segmentation.is_instance:
+                raise RuntimeError(
+                    "Found predicted segmentation that is a semantic segmentation."
+                    " AP metrics are only defined for instance segmentation."
+                )
+    for gt in groundtruths:
+        if isinstance(gt, LabeledGroundTruthSegmentation):
+            if not gt.segmentation.is_instance:
+                raise RuntimeError(
+                    "Found groundtruth segmentation that is a semantic segmentation."
+                    " AP metrics are only defined for instance segmentation."
+                )
+
     iou_thresholds = sorted(iou_thresholds)
     labels = set(
         [pred.label for preds in predictions for pred in preds]
