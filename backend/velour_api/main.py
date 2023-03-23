@@ -58,7 +58,9 @@ def create_groundtruth_segmentations(
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
-        logger.debug(f"got: {data}")
+        logger.debug(
+            f"got: {len(data.segmentations)} segmentations for dataset {data.dataset_name}"
+        )
         return crud.create_groundtruth_segmentations(db=db, data=data)
     except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))

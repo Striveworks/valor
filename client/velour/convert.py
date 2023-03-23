@@ -1,13 +1,20 @@
+import json
+from pathlib import Path
 from typing import Any, Dict, List
 
 import numpy as np
-
+import PIL.Image
+from tqdm import tqdm
+from velour.client import Dataset
 from velour.data_types import (
     BoundingPolygon,
+    GroundTruthInstanceSegmentation,
+    GroundTruthSemanticSegmentation,
     Image,
     Label,
     PredictedDetection,
     ScoredLabel,
+    _GroundTruthSegmentation,
 )
 
 
@@ -81,3 +88,67 @@ def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
             res[x, y] = True
         idx += length
     return res
+
+
+def upload_coco_panoptic(
+    dataset: Dataset,
+    annotation_file: str,
+    masks_path: str,
+) -> None:
+    masks_path = Path(masks_path)
+    with open(annotation_file) as f:
+        panoptic_anns = json.load(f)
+
+    category_id_to_category = {
+        cat["id"]: cat for cat in panoptic_anns["categories"]
+    }
+
+    image_id_to_height, image_id_to_width, image_id_to_coco_url = {}, {}, {}
+    for image in panoptic_anns["images"]:
+        image_id_to_height[image["id"]] = image["height"]
+        image_id_to_width[image["id"]] = image["width"]
+        image_id_to_coco_url[image["id"]] = image["coco_url"]
+
+    def _get_segs_for_single_image(
+        ann_dict: dict,
+    ) -> List[_GroundTruthSegmentation]:
+        mask = np.array(
+            PIL.Image.open(masks_path / ann_dict["file_name"])
+        ).astype(int)
+        # convert the colors in the mask to ids
+        mask_ids = np.apply_along_axis(
+            lambda a: a[0] + 256 * a[1] + 256**2 * a[2], 2, mask
+        )
+
+        image_id = ann_dict["image_id"]
+        img = Image(
+            uid=image_id,
+            height=image_id_to_height[image_id],
+            width=image_id_to_width[image_id],
+        )
+
+        segs = []
+        for segment in ann_dict["segments_info"]:
+            binary_mask = mask_ids == segment["id"]
+
+            category = category_id_to_category[segment["category_id"]]
+            labels = [
+                Label(key=k, value=category[k])
+                for k in ["supercategory", "name"]
+            ] + [Label(key="iscrowd", value=segment["iscrowd"])]
+
+            if category["isthing"]:
+                seg = GroundTruthInstanceSegmentation(
+                    shape=binary_mask, image=img, labels=labels
+                )
+            else:
+                seg = GroundTruthSemanticSegmentation(
+                    shape=binary_mask, image=img, labels=labels
+                )
+            segs.append(seg)
+
+        return segs
+
+    for ann in tqdm(panoptic_anns["annotations"]):
+        segs = _get_segs_for_single_image(ann)
+        dataset.add_groundtruth_segmentations(segs)
