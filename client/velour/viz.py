@@ -1,10 +1,14 @@
+import math
 from typing import Dict, List, Tuple, Union
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 from velour.data_types import (
+    BoundingPolygon,
+    GroundTruthDetection,
     PolygonWithHole,
+    PredictedDetection,
     _GroundTruthSegmentation,
     _PredictedSegmentation,
 )
@@ -125,3 +129,95 @@ def combined_segmentation_mask(
     }
 
     return Image.fromarray(combined_mask), legend
+
+
+def draw_detections_on_image(
+    detections: List[Union[GroundTruthDetection, PredictedDetection]],
+    img: Image.Image,
+) -> Image.Image:
+    """Draws detections (bounding boxes and labels) on an image"""
+    for i, detection in enumerate(detections):
+        img = _draw_detection_on_image(detection, img, inplace=i != 0)
+    return img
+
+
+def _draw_detection_on_image(
+    detection: Union[GroundTruthDetection, PredictedDetection],
+    img: Image.Image,
+    inplace: bool,
+) -> Image.Image:
+    text = ", ".join(
+        [f"{label.key}:{label.value}" for label in detection.labels]
+    )
+    img = _draw_bounding_polygon_on_image(
+        detection.boundary,
+        img,
+        inplace=inplace,
+        text=text,
+    )
+
+    return img
+
+
+def _draw_bounding_polygon_on_image(
+    polygon: BoundingPolygon,
+    img: Image.Image,
+    color: Tuple[int, int, int] = (255, 0, 0),
+    inplace: bool = False,
+    text: str = None,
+    font_size: int = 24,
+) -> Image.Image:
+    img = img if inplace else img.copy()
+    img_draw = ImageDraw.Draw(img)
+
+    img_draw.polygon(
+        [(p.x, p.y) for p in polygon.points],
+        outline=color,
+    )
+
+    if text is not None:
+        _write_text(
+            font_size=font_size,
+            text=text,
+            boundary=polygon,
+            draw=img_draw,
+            color=color,
+        )
+    return img
+
+
+def _write_text(
+    font_size: int,
+    text: str,
+    boundary: BoundingPolygon,
+    draw: ImageDraw.Draw,
+    color: str,
+):
+    try:
+        font = ImageFont.truetype("arial.ttf", font_size)
+    except IOError:
+        try:
+            font = ImageFont.truetype("Arial.ttf", font_size)
+        except IOError:
+            font = ImageFont.load_default()
+
+    _, _, text_width, text_height = font.getbbox(text)
+    if boundary.ymin > text_height:
+        text_bottom = boundary.ymin
+    else:
+        text_bottom = boundary.ymax + text_height
+
+    margin = math.ceil(0.05 * text_height) - 1
+    draw.rectangle(
+        [
+            (boundary.xmin, text_bottom - text_height - 2 * margin),
+            (boundary.xmin + text_width, text_bottom),
+        ],
+        fill=color,
+    )
+    draw.text(
+        (boundary.xmin + margin, text_bottom - text_height - margin),
+        text,
+        fill="black",
+        font=font,
+    )

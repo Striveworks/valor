@@ -126,6 +126,10 @@ class PredictedDetection:
     scored_labels: List[ScoredLabel]
     image: Image
 
+    @property
+    def labels(self):
+        return [sl.label for sl in self.scored_labels]
+
 
 @dataclass
 class PolygonWithHole:

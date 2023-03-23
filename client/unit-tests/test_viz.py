@@ -1,28 +1,39 @@
 import numpy as np
+import PIL.Image
 import pytest
 
 from velour.data_types import (
     BoundingPolygon,
+    GroundTruthDetection,
     GroundTruthInstanceSegmentation,
     Image,
     Label,
     Point,
     PolygonWithHole,
 )
-from velour.viz import _polygons_to_binary_mask, combined_segmentation_mask
+from velour.viz import (
+    _polygons_to_binary_mask,
+    combined_segmentation_mask,
+    draw_detections_on_image,
+)
 
 
 @pytest.fixture
-def poly1() -> PolygonWithHole:
+def bounding_poly() -> BoundingPolygon:
+    return BoundingPolygon(
+        [
+            Point(100, 100),
+            Point(200, 100),
+            Point(200, 200),
+            Point(100, 200),
+        ]
+    )
+
+
+@pytest.fixture
+def poly1(bounding_poly: BoundingPolygon) -> PolygonWithHole:
     return PolygonWithHole(
-        polygon=BoundingPolygon(
-            [
-                Point(100, 100),
-                Point(200, 100),
-                Point(200, 200),
-                Point(100, 200),
-            ]
-        ),
+        polygon=bounding_poly,
         hole=BoundingPolygon(
             [
                 Point(150, 120),
@@ -112,3 +123,22 @@ def test_combined_segmentation_mask(poly1: PolygonWithHole):
             "",
         )
     assert "belong to the same image" in str(exc_info)
+
+
+def test_draw_detections_on_image(bounding_poly: BoundingPolygon):
+    detections = [
+        GroundTruthDetection(
+            boundary=bounding_poly,
+            labels=[Label("k", "v")],
+            image=Image("", 300, 300),
+        )
+    ]
+    img = PIL.Image.new("RGB", (300, 300))
+
+    img = draw_detections_on_image(detections, img)
+
+    assert img.size == (300, 300)
+
+    # check unique colors only have red component
+    unique_rgb = np.unique(np.array(img).reshape(-1, 3), axis=0)
+    assert unique_rgb[:, 1:].sum() == 0
