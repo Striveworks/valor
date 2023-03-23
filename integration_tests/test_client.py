@@ -29,6 +29,7 @@ from velour.data_types import (
     PredictedInstanceSegmentation,
     ScoredLabel,
 )
+from velour.metrics import Task
 
 from velour_api import models, ops
 
@@ -759,4 +760,31 @@ def test_iou(
     )
     db_pred = db.scalar(select(models.PredictedDetection))
 
-    assert ops.iou(db, db_gt, db_pred) == iou(rect1, rect2)
+    assert ops.iou_two_dets(db, db_gt, db_pred) == iou(rect1, rect2)
+
+
+def test_evaluate_ap(
+    client: Client,
+    gt_dets1: list[GroundTruthDetection],
+    pred_dets: list[PredictedDetection],
+    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
+):
+    dataset = client.create_dataset(dset_name)
+    dataset.add_groundtruth_detections(gt_dets1)
+    dataset.finalize()
+
+    model = client.create_model(model_name)
+    model.add_predicted_detections(pred_dets)
+
+    resp = client.evaluate_ap(
+        model=model,
+        dataset=dataset,
+        model_pred_task_type=Task.OBJECT_DETECTION,
+        dataset_gt_task_type=Task.OBJECT_DETECTION,
+        labels=[Label(key="k1", value="v1")],
+        iou_thresholds=[0.1, 0.6],
+    )
+
+    assert set(resp.keys()) == {"missing_pred_labels", "ignored_pred_labels"}
+    assert resp["ignored_pred_labels"] == [Label(key="k2", value="v2")]
+    assert resp["missing_pred_labels"] == []

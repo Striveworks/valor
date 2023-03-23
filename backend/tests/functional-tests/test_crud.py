@@ -9,7 +9,7 @@ from PIL import Image
 from sqlalchemy import func, insert, select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, exceptions, models, ops, schemas
+from velour_api import crud, enums, exceptions, models, ops, schemas
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -134,6 +134,12 @@ def gt_segs_create(
                 image=img2,
                 labels=[schemas.Label(key="k1", value="v1")],
             ),
+            schemas.GroundTruthSegmentation(
+                is_instance=True,
+                shape=[poly_without_hole],
+                image=img2,
+                labels=[schemas.Label(key="k3", value="v3")],
+            ),
         ],
     )
 
@@ -164,6 +170,16 @@ def pred_segs_create(
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k2", value="v2"), score=0.97
+                    )
+                ],
+            ),
+            schemas.PredictedSegmentation(
+                base64_mask=b64_mask2,
+                is_instance=True,
+                image=img1,
+                scored_labels=[
+                    schemas.ScoredLabel(
+                        label=schemas.Label(key="k2", value="v2"), score=0.74
                     )
                 ],
             ),
@@ -409,10 +425,10 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
 
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
 
-    assert crud.number_of_rows(db, models.GroundTruthSegmentation) == 2
+    assert crud.number_of_rows(db, models.GroundTruthSegmentation) == 3
     assert crud.number_of_rows(db, models.Image) == 2
-    assert crud.number_of_rows(db, models.LabeledGroundTruthSegmentation) == 2
-    assert crud.number_of_rows(db, models.Label) == 1
+    assert crud.number_of_rows(db, models.LabeledGroundTruthSegmentation) == 3
+    assert crud.number_of_rows(db, models.Label) == 2
 
     # delete dataset and check the cascade worked
     crud.delete_dataset(db, dataset_name=dset_name)
@@ -425,7 +441,7 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
         assert crud.number_of_rows(db, model_cls) == 0
 
     # make sure labels are still there`
-    assert crud.number_of_rows(db, models.Label) == 1
+    assert crud.number_of_rows(db, models.Label) == 2
 
 
 def test_create_predicted_segmentations_check_area_and_delete_model(
@@ -451,8 +467,8 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     crud.create_predicted_segmentations(db, pred_segs_create)
 
     # check db has the added predictions
-    assert crud.number_of_rows(db, models.PredictedSegmentation) == 2
-    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 2
+    assert crud.number_of_rows(db, models.PredictedSegmentation) == 3
+    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 3
 
     # grab the first one and check that the area of the raster
     # matches the area of the image
@@ -644,3 +660,157 @@ def test_gt_seg_as_mask_or_polys(db: Session, img1: schemas.Image):
     assert len(shapes) == 2
     # check that the mask and polygon define the same polygons
     assert shapes[0] == shapes[1]
+
+
+def test_validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+    db: Session,
+    gt_segs_create: schemas.GroundTruthDetectionsCreate,
+    pred_segs_create: schemas.PredictedSegmentationsCreate,
+):
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_model(db, schemas.Model(name=model_name))
+
+    # add three total ground truth segmentations, two of which are instance segmentations with
+    # the same label.
+    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+    # add three total predicted segmentations, two of which are instance segmentations
+    crud.create_predicted_segmentations(db, pred_segs_create)
+
+    gts_statement = crud.instance_segmentations_in_dataset_statement(dset_name)
+    preds_statement = crud.model_instance_segmentation_preds_statement(
+        model_name=model_name, dataset_name=dset_name
+    )
+
+    gts = db.scalars(gts_statement).all()
+    preds = db.scalars(preds_statement).all()
+
+    assert len(gts) == 2
+    assert len(preds) == 2
+
+    labels = crud.labels_in_query(db, gts_statement)
+    assert len(labels) == 2
+
+    # now query just the one with label "k1", "v1"
+    (
+        new_gts_statement,
+        new_preds_statement,
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = crud.validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+        db=db,
+        gts_statement=gts_statement,
+        preds_statement=preds_statement,
+        requested_labels=[schemas.Label(key="k1", value="v1")],
+    )
+
+    gts = db.scalars(new_gts_statement).all()
+    preds = db.scalars(new_preds_statement).all()
+
+    assert len(gts) == 1
+    assert (gts[0].label.key, gts[0].label.value) == ("k1", "v1")
+    assert len(preds) == 1
+    assert (preds[0].label.key, preds[0].label.value) == ("k1", "v1")
+    assert missing_pred_labels == []
+    assert ignored_pred_labels == [schemas.Label(key="k2", value="v2")]
+
+    # # check error when requesting a label that doesn't exist
+    with pytest.raises(ValueError) as exc_info:
+        crud.validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+            db=db,
+            gts_statement=gts_statement,
+            preds_statement=preds_statement,
+            requested_labels=[schemas.Label(key="k1", value="v2")],
+        )
+    assert "The following label key/value pairs are missing" in str(exc_info)
+
+    # check get everything if the requested labels argument is empty
+    (
+        new_gts_statement,
+        new_preds_statement,
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = crud.validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+        db=db, gts_statement=gts_statement, preds_statement=preds_statement
+    )
+
+    gts = db.scalars(new_gts_statement).all()
+    preds = db.scalars(new_preds_statement).all()
+
+    assert len(gts) == 2
+    # should not get the pred with label "k2", "v2" since its not
+    # present in the groundtruths
+    assert len(preds) == 1
+    assert missing_pred_labels == [schemas.Label(key="k3", value="v3")]
+    assert ignored_pred_labels == [schemas.Label(key="k2", value="v2")]
+
+
+def test_create_ap_metrics(db: Session, groundtruths, predictions):
+    # the groundtruths and predictions arguments are not used but
+    # those fixtures create the necessary dataset, model, groundtruths, and predictions
+
+    def method_to_test():
+        request_info = schemas.APRequest(
+            parameters=schemas.MetricParameters(
+                model_name="test model",
+                dataset_name="test dataset",
+                model_pred_task_type=enums.Task.OBJECT_DETECTION,
+                dataset_gt_task_type=enums.Task.OBJECT_DETECTION,
+            ),
+            iou_thresholds=[0.2, 0.6],
+        )
+
+        (
+            gts_statement,
+            preds_statement,
+            cm_resp,
+        ) = crud.validate_create_ap_metrics(db, request_info)
+        return (
+            crud.create_ap_metrics(
+                db,
+                gts_statement=gts_statement,
+                preds_statement=preds_statement,
+                request_info=request_info,
+            ),
+            cm_resp.missing_pred_labels,
+            cm_resp.ignored_pred_labels,
+        )
+
+    # check we get an error since the dataset is still a draft
+    with pytest.raises(exceptions.DatasetIsDraftError):
+        method_to_test()
+
+    # finalize dataset and try again
+    ds = crud.get_dataset(db, "test dataset")
+    ds.draft = False
+    db.commit()
+
+    ap_metric_ids, missing_pred_labels, ignored_pred_labels = method_to_test()
+
+    assert missing_pred_labels == []
+    assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
+
+    metrics = db.scalars(
+        select(models.APMetric).where(models.APMetric.id.in_(ap_metric_ids))
+    ).all()
+
+    assert set([m.iou for m in metrics]) == {0.2, 0.6}
+
+    # should be five labels (since thats how many are in groundtruth set)
+    assert len(set(m.label_id for m in metrics)) == 5
+
+    # run again and make sure no new ids were created
+    ap_metric_ids_again, _, _ = method_to_test()
+    assert sorted(ap_metric_ids) == sorted(ap_metric_ids_again)
+
+    # test crud.get_model_metrics
+    metrics_pydantic = crud.get_model_metrics(db, "test model")
+
+    assert len(metrics_pydantic) == len(metrics)
+
+    for m in metrics_pydantic:
+        assert m.parameters.dataset_name == "test dataset"
+        assert m.parameters.model_name == "test model"
+        assert m.parameters.model_pred_task_type == enums.Task.OBJECT_DETECTION
+        assert m.parameters.dataset_gt_task_type == enums.Task.OBJECT_DETECTION
+        assert m.metric_name == "ap_metric"
+        assert isinstance(m.metric, schemas.APMetric)
