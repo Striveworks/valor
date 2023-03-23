@@ -101,6 +101,17 @@ class BoundingPolygon:
     def ymax(self):
         return max(p.y for p in self.points)
 
+    @classmethod
+    def from_ymin_xmin_ymax_xmax(cls, ymin, xmin, ymax, xmax):
+        return cls(
+            points=[
+                Point(xmin, ymin),
+                Point(xmin, ymax),
+                Point(xmax, ymax),
+                Point(xmax, ymin),
+            ]
+        )
+
 
 @dataclass
 class GroundTruthDetection:
