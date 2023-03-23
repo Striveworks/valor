@@ -1,10 +1,11 @@
 from geoalchemy2 import Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import Enum, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from velour_api.database import Base
+from velour_api.enums import Task
 
 
 class Label(Base):
@@ -106,6 +107,11 @@ class LabeledGroundTruthDetection(Base):
         "Label", back_populates="labeled_ground_truth_detections"
     )
 
+    # add image_id property for easier access
+    @property
+    def image_id(self):
+        return self.detection.image_id
+
 
 class LabeledPredictedDetection(Base):
     """Represents a predicted detection from a model"""
@@ -126,6 +132,11 @@ class LabeledPredictedDetection(Base):
         "Label", back_populates="labeled_predicted_detections"
     )
     score: Mapped[float]
+
+    # add image_id property for easier access
+    @property
+    def image_id(self):
+        return self.detection.image_id
 
 
 class GroundTruthImageClassification(Base):
@@ -159,6 +170,8 @@ class PredictedImageClassification(Base):
 
 
 class GDALRaster(Raster):
+    cache_ok = True
+
     # see https://github.com/geoalchemy/geoalchemy2/issues/290
     def bind_expression(self, bindvalue):
         # ST_SetBandNoDataValue tells PostGIS that values of 0 should be null
@@ -178,6 +191,7 @@ class GroundTruthSegmentation(Base):
     is_instance: Mapped[bool] = mapped_column(nullable=False)
     shape = mapped_column(GDALRaster)
     image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
+    image = relationship("Image", back_populates="ground_truth_segmentations")
     labeled_ground_truth_segmentations: Mapped[
         list["LabeledGroundTruthSegmentation"]
     ] = relationship(
@@ -228,6 +242,11 @@ class LabeledGroundTruthSegmentation(Base):
         "Label", back_populates="labeled_ground_truth_segmentations"
     )
 
+    # add image_id property for easier access
+    @property
+    def image_id(self):
+        return self.segmentation.image_id
+
 
 class LabeledPredictedSegmentation(Base):
     """Represents a predicted semantic segmentation"""
@@ -248,6 +267,11 @@ class LabeledPredictedSegmentation(Base):
         "Label", back_populates="labeled_predicted_segmentations"
     )
     score: Mapped[float]
+
+    # add image_id property for easier access
+    @property
+    def image_id(self):
+        return self.segmentation.image_id
 
 
 class Image(Base):
@@ -311,3 +335,34 @@ class Dataset(Base):
     # whether or not the dataset comes from a video
     from_video: Mapped[bool] = mapped_column(default=False)
     images = relationship("Image", cascade="all, delete")
+    metric_parameters = relationship(
+        "MetricParameters", cascade="all, delete", back_populates="dataset"
+    )
+
+
+class MetricParameters(Base):
+    __tablename__ = "metric_parameters"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
+    dataset = relationship(Dataset, viewonly=True)
+    model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
+    model = relationship(Model)
+    model_pred_task_type: Mapped[str] = mapped_column(Enum(Task))
+    dataset_gt_task_type: Mapped[str] = mapped_column(Enum(Task))
+    ap_metrics: Mapped[list["APMetric"]] = relationship(
+        "APMetric", cascade="all, delete"
+    )
+
+
+class APMetric(Base):
+    __tablename__ = "ap_metric"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
+    label = relationship(Label)
+    iou: Mapped[float] = mapped_column()
+    value: Mapped[float] = mapped_column()
+    metric_parameters_id: Mapped[int] = mapped_column(
+        ForeignKey("metric_parameters.id")
+    )

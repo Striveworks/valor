@@ -3,11 +3,13 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from velour_api import ops
+from velour_api import ops, schemas
 from velour_api.models import (
     Label,
     LabeledGroundTruthDetection,
+    LabeledGroundTruthSegmentation,
     LabeledPredictedDetection,
+    LabeledPredictedSegmentation,
 )
 
 
@@ -16,14 +18,16 @@ def _match_array(
     iou_thres: float,
 ) -> list[int | None]:
     """
-    iou[i][j] should be the iou between predicted detection i and groundtruth detection j
-
-    important assumption is that the predicted detections are sorted by confidence
+    Parameters
+    ----------
+    ious
+        ious[i][j] should be the iou between predicted detection i and groundtruth detection j
+        an important assumption is that the predicted detections are sorted by confidence
 
     Returns
     -------
     array of match indices. value at index i is the index of the groundtruth object that
-    best matches the ith detection, or None if that deteciton has no match
+    best matches the ith detection, or None if that detection has no match
     """
     matches = []
     for i in range(len(ious)):
@@ -51,6 +55,7 @@ def _cumsum(a: list) -> list:
 class DetectionMatchInfo:
     tp: bool
     score: float
+    # add ids and iou here and then store this informatoin?
 
 
 def _get_tp_fp_single_image_single_class(
@@ -68,25 +73,36 @@ def _get_tp_fp_single_image_single_class(
 
 def iou_matrix(
     db: Session,
-    predictions: list[LabeledPredictedDetection],
-    groundtruths: list[LabeledGroundTruthDetection],
+    predictions: list[
+        LabeledPredictedDetection | LabeledPredictedSegmentation
+    ],
+    groundtruths: list[
+        LabeledGroundTruthDetection | LabeledGroundTruthSegmentation
+    ],
 ) -> list[list[float]]:
     """Returns a list of lists where the entry at [i][j]
     is the iou between `predictions[i]` and `groundtruths[j]`.
     """
     return [
-        [ops.iou(db, p.detection, g.detection) for g in groundtruths]
-        for p in predictions
+        [ops.iou(db, pred, gt) for gt in groundtruths] for pred in predictions
     ]
+
+
+def _db_label_to_pydantic_label(label: Label):
+    return schemas.Label(key=label.key, value=label.value)
 
 
 def ap(
     db: Session,
-    predictions: list[list[LabeledPredictedDetection]],
-    groundtruths: list[list[LabeledGroundTruthDetection]],
+    predictions: list[
+        list[LabeledPredictedDetection | LabeledPredictedSegmentation]
+    ],
+    groundtruths: list[
+        list[LabeledGroundTruthDetection | LabeledGroundTruthSegmentation]
+    ],
     label: Label,
     iou_thresholds: list[float],
-) -> dict[float, float]:
+) -> list[schemas.APMetric]:
     """Computes the average precision. Return is a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
     `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
@@ -113,10 +129,22 @@ def ap(
     # total number of groundtruth objects across all images
     n_gt = sum([len(gts) for gts in groundtruths])
 
-    ret = {}
+    ret = []
     if n_gt == 0:
-        ret.update({f"IoU={iou_thres}": -1.0 for iou_thres in iou_thresholds})
+        ret.extend(
+            [
+                schemas.APMetric(
+                    iou=iou_thres,
+                    value=-1.0,
+                    label=_db_label_to_pydantic_label(label),
+                )
+                for iou_thres in iou_thresholds
+            ]
+        )
     else:
+        # TODO: for large datasets is this going to be a memory problem?
+        # these should often be sparse so maybe use sparse matrices?
+        # or use something like redis?
         iou_matrices = [
             iou_matrix(db=db, groundtruths=gts, predictions=preds)
             for preds, gts in zip(predictions, groundtruths)
@@ -147,19 +175,20 @@ def ap(
             ]
             recalls = [ctp / n_gt for ctp in cum_tp]
 
-            ret[f"IoU={iou_thres}"] = calculate_ap_101_pt_interp(
-                precisions=precisions, recalls=recalls
+            ret.append(
+                schemas.APMetric(
+                    iou=iou_thres,
+                    value=calculate_ap_101_pt_interp(
+                        precisions=precisions, recalls=recalls
+                    ),
+                    label=_db_label_to_pydantic_label(label),
+                )
             )
-
-    # compute average over all IoUs
-    ret[f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"] = sum(
-        [ret[f"IoU={iou_thres}"] for iou_thres in iou_thresholds]
-    ) / len(iou_thresholds)
 
     return ret
 
 
-def calculate_ap_101_pt_interp(precisions, recalls):
+def calculate_ap_101_pt_interp(precisions, recalls) -> float:
     """Use the 101 point interpolation method (following torchmetrics)"""
     assert len(precisions) == len(recalls)
 
@@ -189,33 +218,62 @@ def calculate_ap_101_pt_interp(precisions, recalls):
 
 def compute_ap_metrics(
     db: Session,
-    predictions: list[list[LabeledPredictedDetection]],
-    groundtruths: list[list[LabeledGroundTruthDetection]],
+    predictions: list[
+        list[LabeledPredictedDetection | LabeledPredictedSegmentation]
+    ],
+    groundtruths: list[
+        list[LabeledGroundTruthDetection | LabeledGroundTruthSegmentation]
+    ],
     iou_thresholds: list[float],
-) -> dict:
-    """Computes average precision metrics. Note that this is not an optimized method
-    and is here for toy/test purposes. Will likely be (re)moved in future versions.
+) -> list[schemas.APMetric]:
+    """Computes average precision metrics."""
 
-    The return dictionary, `d` indexes AP scores by `d["AP"][class_label][iou_key]`
-    and mAP scores by `d["mAP"][iou_key]` where `iou_key` is `f"IoU={iou_thres}"` or
-    `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"`
-    """
+    # check that any segmentations are instance segmentations
+    for pred in predictions:
+        if isinstance(pred, LabeledPredictedSegmentation):
+            if not pred.segmentation.is_instance:
+                raise RuntimeError(
+                    "Found predicted segmentation that is a semantic segmentation."
+                    " AP metrics are only defined for instance segmentation."
+                )
+    for gt in groundtruths:
+        if isinstance(gt, LabeledGroundTruthSegmentation):
+            if not gt.segmentation.is_instance:
+                raise RuntimeError(
+                    "Found groundtruth segmentation that is a semantic segmentation."
+                    " AP metrics are only defined for instance segmentation."
+                )
+
+    iou_thresholds = sorted(iou_thresholds)
     labels = set(
         [pred.label for preds in predictions for pred in preds]
     ).union([gt.label for gts in groundtruths for gt in gts])
 
-    ret = {
-        "AP": {
-            (label.key, label.value): ap(
+    ap_metrics = []
+
+    for label in labels:
+        ap_metrics.extend(
+            ap(
                 db=db,
                 predictions=predictions,
                 groundtruths=groundtruths,
                 label=label,
                 iou_thresholds=iou_thresholds,
             )
-            for label in labels
-        }
-    }
+        )
+
+    return ap_metrics
+
+
+def compute_map_metrics_from_aps(
+    ap_scores: list[schemas.APMetric],
+) -> list[schemas.mAPMetric]:
+    """
+    Parameters
+    ----------
+    ap_scores
+        list of AP scores. this should be output from the method `compute_ap_metrics`
+    """
 
     def _ave_ignore_minus_one(a):
         num, denom = 0.0, 0.0
@@ -225,14 +283,26 @@ def compute_ap_metrics(
                 denom += 1
         return num / denom
 
-    keys_to_avg_over = [f"IoU={iou_thres}" for iou_thres in iou_thresholds] + [
-        f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"
-    ]
-    ret["mAP"] = {
-        k: _ave_ignore_minus_one(
-            [ret["AP"][(label.key, label.value)][k] for label in labels]
-        )
-        for k in keys_to_avg_over
-    }
+    # dictionary for mapping an iou threshold to set of APs
+    vals: dict[float, list] = {}
+    labels: list[schemas.Label] = []
+    for ap in ap_scores:
+        # see if metric is AP at single value or averaged
+        if ap.iou not in vals:
+            vals[ap.iou] = []
+        vals[ap.iou].append(ap.value)
 
-    return ret
+        if ap.label not in labels:
+            labels.append(ap.label)
+
+    iou_thresholds = list(vals.keys())
+
+    # get mAP metrics at the individual IOUs
+    map_metrics = [
+        schemas.mAPMetric(
+            iou=iou, value=_ave_ignore_minus_one(vals[iou]), labels=labels
+        )
+        for iou in iou_thresholds
+    ]
+
+    return map_metrics

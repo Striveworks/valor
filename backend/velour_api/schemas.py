@@ -1,9 +1,12 @@
 import io
+from abc import ABC
 from base64 import b64decode
 from typing import Optional
 
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, validator
+
+from velour_api.enums import Task
 
 
 def validate_single_polygon(poly: list[tuple[float, float]]):
@@ -36,6 +39,10 @@ class Image(BaseModel):
 class Label(BaseModel):
     key: str
     value: str
+
+    @classmethod
+    def from_key_value_tuple(cls, kv_tuple: tuple[str, str]):
+        return cls(key=kv_tuple[0], value=kv_tuple[1])
 
 
 class ScoredLabel(BaseModel):
@@ -178,3 +185,55 @@ class PredictedSegmentationsCreate(BaseModel):
 
 class User(BaseModel):
     email: str = None
+
+
+class MetricParameters(BaseModel):
+    """General parameters defining any filters of the data such
+    as model, dataset, groundtruth and prediction type, model, dataset,
+    size constraints, coincidence/intersection constraints, etc.
+    """
+
+    model_name: str
+    dataset_name: str
+    model_pred_task_type: Task
+    dataset_gt_task_type: Task
+    # TODO: add things here for filtering, prediction
+    # and dataset label mappings (e.g. man, boy -> person)
+
+
+class APRequest(BaseModel):
+    """Request to compute average precision"""
+
+    parameters: MetricParameters
+    labels: list[Label] = None
+    # (mutable defaults are ok for pydantic models)
+    iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
+
+
+class Metric(BaseModel, ABC):
+    pass
+
+
+class APMetric(Metric):
+    iou: float
+    value: float
+    label: Label
+
+
+class mAPMetric(Metric):
+    iou: float
+    value: float
+    labels: list[Label]
+
+
+class MetricResponse(BaseModel):
+    """Used for REST responses sending a metric"""
+
+    metric_name: str
+    parameters: MetricParameters
+    metric: Metric
+
+
+class CreateMetricsResponse(BaseModel):
+    missing_pred_labels: list[Label]
+    ignored_pred_labels: list[Label]

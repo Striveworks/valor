@@ -1,6 +1,6 @@
 import os
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -215,6 +215,44 @@ def get_model(model_name: str) -> schemas.Model:
 @app.delete("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
 def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
     return crud.delete_model(db, model_name)
+
+
+@app.get(
+    "/models/{model_name}/metrics", dependencies=[Depends(token_auth_scheme)]
+)
+def get_model_metrics(
+    model_name: str, db: Session = Depends(get_db)
+) -> list[schemas.MetricResponse]:
+    try:
+        return crud.get_model_metrics(db, model_name)
+    except exceptions.ModelDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.post("/ap-metrics", dependencies=[Depends(token_auth_scheme)])
+def create_ap_metrics(
+    data: schemas.APRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> schemas.CreateMetricsResponse:
+    try:
+        (
+            gts_statement,
+            preds_statement,
+            cm_resp,
+        ) = crud.validate_create_ap_metrics(db, request_info=data)
+
+        background_tasks.add_task(
+            crud.create_ap_metrics,
+            db=db,
+            request_info=data,
+            gts_statement=gts_statement,
+            preds_statement=preds_statement,
+        )
+
+        return cm_resp
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/labels", status_code=200, dependencies=[Depends(token_auth_scheme)])

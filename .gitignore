@@ -4,5 +4,4 @@ build
 .tox
 .coverage*
 *.ipynb
-.env.auth
-.env
+.env*
