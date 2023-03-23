@@ -7,7 +7,10 @@ from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from velour_api import models, ops, schemas
-from velour_api.crud import _select_statement_from_poly
+from velour_api.crud import (
+    _boundary_points_to_str,
+    _select_statement_from_poly,
+)
 
 
 def bytes_to_pil(b: bytes) -> Image.Image:
@@ -30,6 +33,35 @@ def model(db: Session) -> models.Model:
     db.commit()
 
     return model
+
+
+@pytest.fixture
+def mask_bytes_poly_intersection():
+    """Returns a bytes mask, a polygon, and the area of intersection of them."""
+    h, w = 100, 200
+    y_min, y_max, x_min, x_max = 50, 80, 20, 30
+    mask = np.zeros(shape=(h, w), dtype=bool)
+    mask[y_min:y_max, x_min:x_max] = True
+    mask_bytes = pil_to_bytes(Image.fromarray(mask))
+
+    poly_y_min, poly_y_max, poly_x_min, poly_x_max = 60, 90, 10, 25
+    poly = schemas.PolygonWithHole(
+        polygon=[
+            (poly_x_min, poly_y_min),
+            (poly_x_max, poly_y_min),
+            (poly_x_max, poly_y_max),
+            (poly_x_min, poly_y_max),
+        ]
+    )
+
+    inter_xmin = max(x_min, poly_x_min)
+    inter_xmax = min(x_max, poly_x_max)
+    inter_ymin = max(y_min, poly_y_min)
+    inter_ymax = min(y_max, poly_y_max)
+
+    intersection_area = (inter_xmax - inter_xmin) * (inter_ymax - inter_ymin)
+
+    return mask_bytes, poly, intersection_area
 
 
 def _pred_seg_from_bytes(
@@ -61,6 +93,10 @@ def _gt_seg_from_polys(
     return gt_seg
 
 
+def _gt_det_from_polys(db: Session) -> models.GroundTruthDetection:
+    pass
+
+
 def test_area_pred_seg(
     db: Session, mask_bytes1: bytes, model: models.Model, img: models.Image
 ):
@@ -72,7 +108,7 @@ def test_area_pred_seg(
     assert ops.seg_area(db, pred_seg) == np.array(mask).sum()
 
 
-def test_intersection_pred_seg_gt_seg(
+def test_intersection_area_of_segs(
     db: Session, model: models.Model, img: models.Image
 ):
     h, w = 100, 200
@@ -101,8 +137,8 @@ def test_intersection_pred_seg_gt_seg(
     )
     gt_seg = _gt_seg_from_polys(db=db, polys=[poly], img=img)
 
-    assert ops.intersection_area_of_gt_seg_and_pred_seg(
-        db=db, gt_seg=gt_seg, pred_seg=pred_seg
+    assert ops.intersection_area_of_segs(
+        db=db, seg1=gt_seg, seg2=pred_seg
     ) == (inter_xmax - inter_xmin) * (inter_ymax - inter_ymin)
 
 
@@ -155,42 +191,47 @@ def test_intersection_pred_seg_multi_poly_gt_seg(
     area_triangle = (265 - 200) * (250 - 210) / 2
 
     assert (
-        ops.intersection_area_of_gt_seg_and_pred_seg(
-            db=db, gt_seg=gt_seg, pred_seg=pred_seg
-        )
+        ops.intersection_area_of_segs(db=db, seg1=gt_seg, seg2=pred_seg)
         == area_int_mask_rect + area_triangle - area_hole
     )
 
 
 def test_intersection_area_of_gt_seg_and_pred_det(
-    db: Session, model: models.Model, img: models.Image
+    db: Session,
+    model: models.Model,
+    img: models.Image,
+    mask_bytes_poly_intersection: tuple[bytes, schemas.PolygonWithHole, float],
 ):
-    h, w = 100, 200
-    y_min, y_max, x_min, x_max = 50, 80, 20, 30
-    mask = np.zeros(shape=(h, w), dtype=bool)
-    mask[y_min:y_max, x_min:x_max] = True
-    mask_bytes = pil_to_bytes(Image.fromarray(mask))
-
-    poly_y_min, poly_y_max, poly_x_min, poly_x_max = 60, 90, 10, 25
-    poly = schemas.PolygonWithHole(
-        polygon=[
-            (poly_x_min, poly_y_min),
-            (poly_x_max, poly_y_min),
-            (poly_x_max, poly_y_max),
-            (poly_x_min, poly_y_max),
-        ]
-    )
-
-    inter_xmin = max(x_min, poly_x_min)
-    inter_xmax = min(x_max, poly_x_max)
-    inter_ymin = max(y_min, poly_y_min)
-    inter_ymax = min(y_max, poly_y_max)
+    mask_bytes, poly, intersection_area = mask_bytes_poly_intersection
 
     pred_seg = _pred_seg_from_bytes(
         db=db, mask_bytes=mask_bytes, model=model, img=img
     )
     gt_seg = _gt_seg_from_polys(db=db, polys=[poly], img=img)
 
-    assert ops.intersection_area_of_gt_seg_and_pred_seg(
-        db=db, gt_seg=gt_seg, pred_seg=pred_seg
-    ) == (inter_xmax - inter_xmin) * (inter_ymax - inter_ymin)
+    assert (
+        ops.intersection_area_of_segs(db=db, seg1=gt_seg, seg2=pred_seg)
+        == intersection_area
+    )
+
+
+def test_intersection_area_of_det_and_seg(
+    db: Session,
+    model: models.Model,
+    img: models.Image,
+    mask_bytes_poly_intersection: tuple[bytes, schemas.PolygonWithHole, float],
+):
+    mask_bytes, poly, intersection_area = mask_bytes_poly_intersection
+    seg = _pred_seg_from_bytes(
+        db=db, mask_bytes=mask_bytes, model=model, img=img
+    )
+    det = models.GroundTruthDetection(
+        boundary=f"POLYGON({_boundary_points_to_str(poly.polygon)})",
+        image_id=img.id,
+    )
+    db.add(det)
+    db.commit()
+
+    assert (
+        ops.intersection_area_of_det_and_seg(db, det, seg) == intersection_area
+    )
