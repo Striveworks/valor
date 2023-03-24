@@ -601,7 +601,7 @@ def test__select_statement_from_poly(
         .values(
             [
                 {
-                    "shape": crud._select_statement_from_poly(
+                    "shape": crud._create._select_statement_from_poly(
                         [poly_with_hole]
                     ),
                     "image_id": img.id,
@@ -679,9 +679,13 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
     # add three total predicted segmentations, two of which are instance segmentations
     crud.create_predicted_segmentations(db, pred_segs_create)
 
-    gts_statement = crud.instance_segmentations_in_dataset_statement(dset_name)
-    preds_statement = crud.model_instance_segmentation_preds_statement(
-        model_name=model_name, dataset_name=dset_name
+    gts_statement = crud._create._instance_segmentations_in_dataset_statement(
+        dset_name
+    )
+    preds_statement = (
+        crud._create._model_instance_segmentation_preds_statement(
+            model_name=model_name, dataset_name=dset_name
+        )
     )
 
     gts = db.scalars(gts_statement).all()
@@ -690,7 +694,7 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
     assert len(gts) == 2
     assert len(preds) == 2
 
-    labels = crud.labels_in_query(db, gts_statement)
+    labels = crud._create._labels_in_query(db, gts_statement)
     assert len(labels) == 2
 
     # now query just the one with label "k1", "v1"

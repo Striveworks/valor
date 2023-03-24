@@ -1,4 +1,4 @@
-from velour_api.crud import _wkt_polygon_from_detection
+from velour_api.crud._create import _wkt_polygon_from_detection
 from velour_api.schemas import DetectionBase, Image, Label
 
 
