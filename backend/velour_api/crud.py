@@ -140,10 +140,7 @@ def _add_images_to_dataset(
         get_or_create_row(
             db=db,
             model_class=models.Image,
-            mapping={
-                "dataset_id": dset_id,
-                **img.dict(exclude=set(["dataset_name"])),
-            },
+            mapping={"dataset_id": dset_id, **img.dict()},
         )
         for img in images
     ]
@@ -185,6 +182,7 @@ def _create_gt_dets_or_segs(
 def _create_pred_dets_or_segs(
     db: Session,
     model_name: str,
+    dataset_name: str,
     dets_or_segs: list[
         schemas.PredictedDetection | schemas.PredictedSegmentation
     ],
@@ -196,9 +194,7 @@ def _create_pred_dets_or_segs(
     model_id = get_model(db, model_name=model_name).id
     # get image ids from uids (these images should already exist)
     images = [
-        get_image(
-            db, uid=d_or_s.image.uid, dataset_name=d_or_s.image.dataset_name
-        )
+        get_image(db, uid=d_or_s.image.uid, dataset_name=dataset_name)
         for d_or_s in dets_or_segs
     ]
     mappings = mapping_method(dets_or_segs, images)
@@ -315,6 +311,7 @@ def create_predicted_detections(
     return _create_pred_dets_or_segs(
         db=db,
         model_name=data.model_name,
+        dataset_name=data.dataset_name,
         dets_or_segs=data.detections,
         mapping_method=_create_detection_mappings,
         model_cls=models.PredictedDetection,
@@ -350,6 +347,7 @@ def create_predicted_segmentations(
     return _create_pred_dets_or_segs(
         db=db,
         model_name=data.model_name,
+        dataset_name=data.dataset_name,
         dets_or_segs=data.segmentations,
         mapping_method=_create_pred_segmentation_mappings,
         model_cls=models.PredictedSegmentation,
@@ -389,7 +387,7 @@ def create_predicted_image_classifications(
         get_image(
             db,
             uid=classification.image.uid,
-            dataset_name=classification.image.dataset_name,
+            dataset_name=data.dataset_name,
         ).id
         for classification in data.classifications
     ]

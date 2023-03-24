@@ -303,9 +303,12 @@ class Model:
         self.client = client
         self.name = name
 
-    def add_predicted_detections(self, dets: List[PredictedDetection]) -> None:
+    def add_predicted_detections(
+        self, dataset: Dataset, dets: List[PredictedDetection]
+    ) -> None:
         payload = {
             "model_name": self.name,
+            "dataset_name": dataset.name,
             "detections": [
                 {
                     "boundary": _payload_for_bounding_polygon(det.boundary),
@@ -327,10 +330,11 @@ class Model:
         return resp.json()
 
     def add_predicted_segmentations(
-        self, segs: List[_PredictedSegmentation]
+        self, dataset: Dataset, segs: List[_PredictedSegmentation]
     ) -> None:
         payload = {
             "model_name": self.name,
+            "dataset_name": dataset.name,
             "segmentations": [
                 {
                     "base64_mask": _mask_array_to_pil_base64(seg.mask),
@@ -353,10 +357,11 @@ class Model:
         return resp.json()
 
     def add_predicted_classifications(
-        self, clfs: List[PredictedImageClassification]
+        self, dataset: Dataset, clfs: List[PredictedImageClassification]
     ) -> None:
         payload = {
             "model_name": self.name,
+            "dataset_name": dataset.name,
             "classifications": [
                 {
                     "scored_labels": [

@@ -13,7 +13,7 @@ def generate_mot_data(num_frames: int):
     """
 
     create_img = lambda frame: schemas.Image(  # noqa: E731
-        uid="", dataset_name="", height=500, width=500, frame=frame
+        uid="", height=500, width=500, frame=frame
     )
     create_label = lambda obj_id: schemas.Label(  # noqa: E731
         key=OBJECT_ID_LABEL_KEY, value=obj_id
