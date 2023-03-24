@@ -33,5 +33,7 @@ class ModelDoesNotExistError(Exception):
 
 
 class ImageDoesNotExistError(Exception):
-    def __init__(self, uid: str):
-        return super().__init__(f"Image with uid '{uid}' does not exist.")
+    def __init__(self, uid: str, dataset_name: str):
+        return super().__init__(
+            f"Image with uid '{uid}' does not exist in dataset '{dataset_name}'."
+        )

@@ -70,6 +70,7 @@ class PredictedDetection(DetectionBase):
 
 class PredictedDetectionsCreate(BaseModel):
     model_name: str
+    dataset_name: str
     detections: list[PredictedDetection]
 
 
@@ -95,6 +96,7 @@ class GroundTruthImageClassificationsCreate(BaseModel):
 
 class PredictedImageClassificationsCreate(BaseModel):
     model_name: str
+    dataset_name: str
     classifications: list[PredictedImageClassification]
 
 
@@ -180,6 +182,7 @@ class GroundTruthSegmentationsCreate(BaseModel):
 
 class PredictedSegmentationsCreate(BaseModel):
     model_name: str
+    dataset_name: str
     segmentations: list[PredictedSegmentation]
 
 

@@ -79,7 +79,7 @@ def test_post_groundtruth_detections(client: TestClient):
 
 
 def test_post_predicted_detections(client: TestClient):
-    example_json = {"model_name": "", "detections": []}
+    example_json = {"model_name": "", "dataset_name": "", "detections": []}
     _test_post_endpoints(
         client=client,
         endpoint="/predicted-detections",
@@ -90,7 +90,7 @@ def test_post_predicted_detections(client: TestClient):
     # check we get a 404 if an image does not exist
     with patch(
         "velour_api.main.crud.create_predicted_detections",
-        side_effect=exceptions.ImageDoesNotExistError(""),
+        side_effect=exceptions.ImageDoesNotExistError("", ""),
     ):
         resp = client.post("/predicted-detections", json=example_json)
         assert resp.status_code == 404
@@ -115,7 +115,7 @@ def test_post_groundtruth_segmentations(client: TestClient):
 
 
 def test_post_predicted_segmentations(client: TestClient):
-    example_json = {"model_name": "", "segmentations": []}
+    example_json = {"model_name": "", "dataset_name": "", "segmentations": []}
     _test_post_endpoints(
         client=client,
         endpoint="/predicted-segmentations",
@@ -126,7 +126,7 @@ def test_post_predicted_segmentations(client: TestClient):
     # check we get a 404 if an image does not exist
     with patch(
         "velour_api.main.crud.create_predicted_segmentations",
-        side_effect=exceptions.ImageDoesNotExistError(""),
+        side_effect=exceptions.ImageDoesNotExistError("", ""),
     ):
         resp = client.post("/predicted-segmentations", json=example_json)
         assert resp.status_code == 404
@@ -151,7 +151,11 @@ def test_post_groundtruth_classifications(client: TestClient):
 
 
 def test_post_predicted_classifications(client: TestClient):
-    example_json = {"model_name": "", "classifications": []}
+    example_json = {
+        "model_name": "",
+        "dataset_name": "",
+        "classifications": [],
+    }
     _test_post_endpoints(
         client=client,
         endpoint="/predicted-classifications",
@@ -162,7 +166,7 @@ def test_post_predicted_classifications(client: TestClient):
     # check we get a 404 if an image does not exist
     with patch(
         "velour_api.main.crud.create_predicted_image_classifications",
-        side_effect=exceptions.ImageDoesNotExistError(""),
+        side_effect=exceptions.ImageDoesNotExistError("", ""),
     ):
         resp = client.post("/predicted-classifications", json=example_json)
         assert resp.status_code == 404
