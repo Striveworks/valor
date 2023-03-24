@@ -182,6 +182,7 @@ def _create_gt_dets_or_segs(
 def _create_pred_dets_or_segs(
     db: Session,
     model_name: str,
+    dataset_name: str,
     dets_or_segs: list[
         schemas.PredictedDetection | schemas.PredictedSegmentation
     ],
@@ -192,7 +193,10 @@ def _create_pred_dets_or_segs(
 ):
     model_id = get_model(db, model_name=model_name).id
     # get image ids from uids (these images should already exist)
-    images = [get_image(db, uid=d_or_s.image.uid) for d_or_s in dets_or_segs]
+    images = [
+        get_image(db, uid=d_or_s.image.uid, dataset_name=dataset_name)
+        for d_or_s in dets_or_segs
+    ]
     mappings = mapping_method(dets_or_segs, images)
     for m in mappings:
         m["model_id"] = model_id
@@ -307,6 +311,7 @@ def create_predicted_detections(
     return _create_pred_dets_or_segs(
         db=db,
         model_name=data.model_name,
+        dataset_name=data.dataset_name,
         dets_or_segs=data.detections,
         mapping_method=_create_detection_mappings,
         model_cls=models.PredictedDetection,
@@ -342,6 +347,7 @@ def create_predicted_segmentations(
     return _create_pred_dets_or_segs(
         db=db,
         model_name=data.model_name,
+        dataset_name=data.dataset_name,
         dets_or_segs=data.segmentations,
         mapping_method=_create_pred_segmentation_mappings,
         model_cls=models.PredictedSegmentation,
@@ -378,7 +384,11 @@ def create_predicted_image_classifications(
     model_id = get_model(db, model_name=data.model_name).id
     # get image ids from uids (these images should already exist)
     image_ids = [
-        get_image(db, uid=classification.image.uid).id
+        get_image(
+            db,
+            uid=classification.image.uid,
+            dataset_name=data.dataset_name,
+        ).id
         for classification in data.classifications
     ]
 
@@ -507,10 +517,20 @@ def get_model(db: Session, model_name: str) -> models.Model:
     return ret
 
 
-def get_image(db: Session, uid: str) -> models.Image:
-    ret = db.scalar(select(models.Image).where(models.Image.uid == uid))
+def get_image(db: Session, uid: str, dataset_name: str) -> models.Image:
+    ret = db.scalar(
+        select(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Image.uid == uid,
+                models.Image.dataset_id == models.Dataset.id,
+                models.Dataset.name == dataset_name,
+            )
+        )
+    )
     if ret is None:
-        raise exceptions.ImageDoesNotExistError(uid)
+        raise exceptions.ImageDoesNotExistError(uid, dataset_name)
 
     return ret
 

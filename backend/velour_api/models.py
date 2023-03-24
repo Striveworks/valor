@@ -281,7 +281,7 @@ class Image(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
-    uid: Mapped[str] = mapped_column()
+    uid: Mapped[str] = mapped_column(index=True)
     height: Mapped[int] = mapped_column()
     width: Mapped[int] = mapped_column()
     frame: Mapped[int] = mapped_column(nullable=True)
