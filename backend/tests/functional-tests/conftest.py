@@ -196,6 +196,7 @@ def predictions(
     from a torchmetrics unit test (see test_metrics.py)
     """
     model_name = "test model"
+    dset_name = "test dataset"
     crud.create_model(db, schemas.Model(name=model_name))
 
     # predictions for four images taken from
@@ -277,7 +278,7 @@ def predictions(
         crud.create_predicted_detections(
             db,
             schemas.PredictedDetectionsCreate(
-                model_name=model_name, detections=preds
+                model_name=model_name, dataset_name=dset_name, detections=preds
             ),
         )
         for preds in db_preds_per_img

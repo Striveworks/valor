@@ -89,6 +89,7 @@ def gt_dets_create(img1: schemas.Image) -> schemas.GroundTruthDetectionsCreate:
 def pred_dets_create(img1: schemas.Image) -> schemas.PredictedDetectionsCreate:
     return schemas.PredictedDetectionsCreate(
         model_name=model_name,
+        dataset_name=dset_name,
         detections=[
             schemas.PredictedDetection(
                 boundary=[(107, 207), (107, 307), (207, 307), (207, 207)],
@@ -152,6 +153,7 @@ def pred_segs_create(
     b64_mask2 = b64encode(mask_bytes2).decode()
     return schemas.PredictedSegmentationsCreate(
         model_name=model_name,
+        dataset_name=dset_name,
         segmentations=[
             schemas.PredictedSegmentation(
                 base64_mask=b64_mask1,
@@ -215,6 +217,7 @@ def pred_clfs_create(
 ) -> schemas.PredictedImageClassificationsCreate:
     return schemas.PredictedImageClassificationsCreate(
         model_name=model_name,
+        dataset_name=dset_name,
         classifications=[
             schemas.PredictedImageClassification(
                 image=img1,
@@ -472,7 +475,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # grab the first one and check that the area of the raster
     # matches the area of the image
-    img = crud.get_image(db, "uid1")
+    img = crud.get_image(db, "uid1", dset_name)
     seg = img.predicted_segmentations[0]
     mask = bytes_to_pil(
         b64decode(pred_segs_create.segmentations[0].base64_mask)

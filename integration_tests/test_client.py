@@ -483,6 +483,8 @@ def _test_create_model_with_preds(
     the sqlalchemy objects for the created predictions
     """
     model = client.create_model(model_name)
+    dataset = client.create_dataset(dset_name)
+
     add_preds_method = getattr(model, add_preds_method_name)
 
     # verify we get an error if we try to create another model
@@ -494,14 +496,13 @@ def _test_create_model_with_preds(
     # check that if we try to add detections we get an error
     # since we haven't added any images yet
     with pytest.raises(ClientException) as exc_info:
-        add_preds_method(preds)
+        add_preds_method(dataset, preds)
     assert "Image with uid" in str(exc_info)
 
-    dataset = client.create_dataset(dset_name)
     add_gts_method = getattr(dataset, add_gts_method_name)
 
     add_gts_method(gts)
-    add_preds_method(preds)
+    add_preds_method(dataset, preds)
 
     # check predictions have been added
     db_preds = db.scalars(select(preds_model_class)).all()
@@ -750,13 +751,14 @@ def test_iou(
     db_gt = db.scalar(select(models.GroundTruthDetection))
 
     model.add_predicted_detections(
+        dataset,
         [
             PredictedDetection(
                 boundary=rect2,
                 scored_labels=[ScoredLabel(label=Label("k", "v"), score=0.6)],
                 image=img1,
             )
-        ]
+        ],
     )
     db_pred = db.scalar(select(models.PredictedDetection))
 
@@ -774,7 +776,7 @@ def test_evaluate_ap(
     dataset.finalize()
 
     model = client.create_model(model_name)
-    model.add_predicted_detections(pred_dets)
+    model.add_predicted_detections(dataset, pred_dets)
 
     resp = client.evaluate_ap(
         model=model,
