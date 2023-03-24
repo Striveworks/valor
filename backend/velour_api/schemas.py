@@ -33,6 +33,7 @@ class Image(BaseModel):
     uid: str
     height: int
     width: int
+    dataset_name: str
     frame: Optional[int] = None
 
 

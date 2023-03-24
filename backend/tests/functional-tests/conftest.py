@@ -17,6 +17,8 @@ classes = [
 ]
 tablenames = [v.__tablename__ for v in classes if hasattr(v, "__tablename__")]
 
+dset_name = "test dataset"
+
 
 def drop_all(db):
     db.execute(text(f"DROP TABLE {', '.join(tablenames)};"))
@@ -44,12 +46,16 @@ def mask_bytes2():
 
 @pytest.fixture
 def img1() -> schemas.Image:
-    return schemas.Image(uid="uid1", height=1000, width=2000)
+    return schemas.Image(
+        uid="uid1", dataset_name=dset_name, height=1000, width=2000
+    )
 
 
 @pytest.fixture
 def img2() -> schemas.Image:
-    return schemas.Image(uid="uid2", height=1600, width=1200)
+    return schemas.Image(
+        uid="uid2", dataset_name=dset_name, height=1600, width=1200
+    )
 
 
 @pytest.fixture
@@ -97,7 +103,10 @@ def bounding_box(xmin, ymin, xmax, ymax) -> list[tuple[int, int]]:
 @pytest.fixture
 def images() -> list[schemas.Image]:
     return [
-        schemas.Image(uid=f"{i}", height=1000, width=2000) for i in range(4)
+        schemas.Image(
+            uid=f"{i}", dataset_name=dset_name, height=1000, width=2000
+        )
+        for i in range(4)
     ]
 
 

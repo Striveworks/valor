@@ -472,7 +472,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # grab the first one and check that the area of the raster
     # matches the area of the image
-    img = crud.get_image(db, "uid1")
+    img = crud.get_image(db, "uid1", dset_name)
     seg = img.predicted_segmentations[0]
     mask = bytes_to_pil(
         b64decode(pred_segs_create.segmentations[0].base64_mask)
