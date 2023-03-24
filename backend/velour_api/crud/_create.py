@@ -1,9 +1,19 @@
-from sqlalchemy import Select, and_, func, insert, select, text
+from sqlalchemy import Select, and_, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import exceptions, models, schemas
 from velour_api.metrics import compute_ap_metrics
+
+from ._read import get_dataset, get_image, get_model
+
+
+def _labels_in_query(
+    db: Session, query_statement: Select
+) -> list[models.Label]:
+    return db.scalars(
+        (select(models.Label).join(query_statement.subquery())).distinct()
+    ).all()
 
 
 def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
@@ -34,7 +44,7 @@ def _wkt_multipolygon_from_polygons_with_hole(
     return f"MULTIPOLYGON ( {', '.join([poly_str(poly) for poly in polys])} )"
 
 
-def bulk_insert_and_return_ids(
+def _bulk_insert_and_return_ids(
     db: Session, model: type, mappings: list[dict]
 ) -> list[int]:
     """Bulk adds to the database
@@ -120,7 +130,7 @@ def _create_label_tuple_to_id_dict(
     for label in labels:
         label_tuple = tuple(label)
         if label_tuple not in label_tuple_to_id:
-            label_tuple_to_id[label_tuple] = get_or_create_row(
+            label_tuple_to_id[label_tuple] = _get_or_create_row(
                 db, models.Label, {"key": label.key, "value": label.value}
             ).id
     return label_tuple_to_id
@@ -137,7 +147,7 @@ def _add_images_to_dataset(
     dset_id = dset.id
 
     return [
-        get_or_create_row(
+        _get_or_create_row(
             db=db,
             model_class=models.Image,
             mapping={"dataset_id": dset_id, **img.dict()},
@@ -164,7 +174,7 @@ def _create_gt_dets_or_segs(
     )
     mappings = mapping_method(dets_or_segs, images)
 
-    ids = bulk_insert_and_return_ids(db, model_cls, mappings)
+    ids = _bulk_insert_and_return_ids(db, model_cls, mappings)
 
     label_tuple_to_id = _create_label_tuple_to_id_dict(
         db, [label for d_or_s in dets_or_segs for label in d_or_s.labels]
@@ -174,7 +184,7 @@ def _create_gt_dets_or_segs(
         label_tuple_to_id, ids, dets_or_segs
     )
 
-    return bulk_insert_and_return_ids(
+    return _bulk_insert_and_return_ids(
         db, labeled_model_cls, labeled_gt_mappings
     )
 
@@ -201,7 +211,7 @@ def _create_pred_dets_or_segs(
     for m in mappings:
         m["model_id"] = model_id
 
-    ids = bulk_insert_and_return_ids(db, model_cls, mappings)
+    ids = _bulk_insert_and_return_ids(db, model_cls, mappings)
 
     label_tuple_to_id = _create_label_tuple_to_id_dict(
         db,
@@ -216,7 +226,7 @@ def _create_pred_dets_or_segs(
         label_tuple_to_id, ids, dets_or_segs
     )
 
-    return bulk_insert_and_return_ids(
+    return _bulk_insert_and_return_ids(
         db, labeled_model_cls, labeled_pred_mappings
     )
 
@@ -373,7 +383,7 @@ def create_ground_truth_image_classifications(
         for label in clf.labels
     ]
 
-    return bulk_insert_and_return_ids(
+    return _bulk_insert_and_return_ids(
         db, models.GroundTruthImageClassification, clf_mappings
     )
 
@@ -411,12 +421,12 @@ def create_predicted_image_classifications(
         for scored_label in clf.scored_labels
     ]
 
-    return bulk_insert_and_return_ids(
+    return _bulk_insert_and_return_ids(
         db, models.PredictedImageClassification, pred_mappings
     )
 
 
-def get_or_create_row(db: Session, model_class: type, mapping: dict) -> any:
+def _get_or_create_row(db: Session, model_class: type, mapping: dict) -> any:
     """Tries to get the row defined by mapping. If that exists then
     its mapped object is returned. Otherwise a row is created by `mapping` and the newly created
     object is returned
@@ -462,29 +472,6 @@ def create_dataset(
         raise exceptions.DatasetAlreadyExistsError(dataset.name)
 
 
-def get_datasets(db: Session) -> list[schemas.Dataset]:
-    return [
-        schemas.Dataset(name=d.name, draft=d.draft)
-        for d in db.scalars(select(models.Dataset))
-    ]
-
-
-def get_dataset(db: Session, dataset_name: str) -> models.Dataset:
-    ret = db.scalar(
-        select(models.Dataset).where(models.Dataset.name == dataset_name)
-    )
-    if ret is None:
-        raise exceptions.DatasetDoesNotExistError(dataset_name)
-
-    return ret
-
-
-def get_models(db: Session) -> list[schemas.Model]:
-    return [
-        schemas.Model(name=m.name) for m in db.scalars(select(models.Model))
-    ]
-
-
 def create_model(db: Session, model: schemas.Model):
     """Creates a dataset
 
@@ -501,100 +488,40 @@ def create_model(db: Session, model: schemas.Model):
         raise exceptions.ModelAlreadyExistsError(model.name)
 
 
-def finalize_dataset(db: Session, dataset_name: str) -> None:
-    dset = get_dataset(db, dataset_name)
-    dset.draft = False
-    db.commit()
-
-
-def get_model(db: Session, model_name: str) -> models.Model:
-    ret = db.scalar(
-        select(models.Model).where(models.Model.name == model_name)
-    )
-    if ret is None:
-        raise exceptions.ModelDoesNotExistError(model_name)
-
-    return ret
-
-
-def get_image(db: Session, uid: str, dataset_name: str) -> models.Image:
-    ret = db.scalar(
-        select(models.Image)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Image.uid == uid,
-                models.Image.dataset_id == models.Dataset.id,
-                models.Dataset.name == dataset_name,
+def _label_key_value_to_id(
+    db: Session, labels: set[tuple[str, str]]
+) -> dict[tuple[str, str], int]:
+    return {
+        label: db.scalar(
+            select(models.Label.id).where(
+                and_(
+                    models.Label.key == label[0],
+                    models.Label.value == label[1],
+                )
             )
         )
+        for label in labels
+    }
+
+
+def _create_ap_metric_mappings(
+    db: Session, metrics: list[schemas.APMetric], metric_parameters_id: int
+) -> list[dict]:
+    label_map = _label_key_value_to_id(
+        db=db,
+        labels=set(
+            [(metric.label.key, metric.label.value) for metric in metrics]
+        ),
     )
-    if ret is None:
-        raise exceptions.ImageDoesNotExistError(uid, dataset_name)
-
-    return ret
-
-
-def get_labels_in_dataset(
-    db: Session, dataset_name: str
-) -> list[models.Label]:
-    # TODO must be a better and more SQLy way of doing this
-    dset = get_dataset(db, dataset_name)
-    unique_ids = set()
-    for image in dset.images:
-        unique_ids.update(get_unique_label_ids_in_image(image))
-
-    return db.scalars(
-        select(models.Label).where(models.Label.id.in_(unique_ids))
-    ).all()
-
-
-def get_all_labels(db: Session) -> list[schemas.Label]:
     return [
-        schemas.Label(key=label.key, value=label.value)
-        for label in db.scalars(select(models.Label))
+        {
+            "value": metric.value,
+            "label_id": label_map[(metric.label.key, metric.label.value)],
+            "iou": metric.iou,
+            "metric_parameters_id": metric_parameters_id,
+        }
+        for metric in metrics
     ]
-
-
-def get_images_in_dataset(
-    db: Session, dataset_name: str
-) -> list[models.Image]:
-    dset = get_dataset(db, dataset_name)
-    return dset.images
-
-
-def get_unique_label_ids_in_image(image: models.Image) -> set[int]:
-    ret = set()
-    for det in image.ground_truth_detections:
-        for labeled_det in det.labeled_ground_truth_detections:
-            ret.add(labeled_det.label.id)
-
-    for clf in image.ground_truth_classifications:
-        ret.add(clf.label.id)
-
-    for seg in image.ground_truth_segmentations:
-        for labeled_seg in seg.labeled_ground_truth_segmentations:
-            ret.add(labeled_seg.label.id)
-
-    return ret
-
-
-def delete_dataset(db: Session, dataset_name: str):
-    dset = get_dataset(db, dataset_name)
-
-    db.delete(dset)
-    db.commit()
-
-
-def delete_model(db: Session, model_name: str):
-    model = get_model(db, model_name)
-
-    db.delete(model)
-    db.commit()
-
-
-def number_of_rows(db: Session, model_cls: type) -> int:
-    return db.scalar(select(func.count(model_cls.id)))
 
 
 def validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
@@ -638,7 +565,7 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
         by `gts_statement`.
     """
 
-    available_labels = labels_in_query(db, gts_statement)
+    available_labels = _labels_in_query(db, gts_statement)
 
     if requested_labels is None:
         requested_label_tuples = set(
@@ -647,12 +574,12 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
         pred_label_tuples = set(
             [
                 (label.key, label.value)
-                for label in labels_in_query(db, preds_statement)
+                for label in _labels_in_query(db, preds_statement)
             ]
         )
         labels_to_use_ids = [label.id for label in available_labels]
     else:
-        pred_labels = labels_in_query(db, preds_statement)
+        pred_labels = _labels_in_query(db, preds_statement)
 
         # convert available labels and requested labels to key/value tuples to allow easy comparison
         available_label_tuples = set(
@@ -704,6 +631,68 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     )
 
 
+def _instance_segmentations_in_dataset_statement(dataset_name: str) -> Select:
+    return (
+        select(models.LabeledGroundTruthSegmentation)
+        .join(models.GroundTruthSegmentation)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.GroundTruthSegmentation.is_instance,
+                models.Dataset.name == dataset_name,
+            )
+        )
+    )
+
+
+def _object_detections_in_dataset_statement(dataset_name: str) -> Select:
+    return (
+        select(models.LabeledGroundTruthDetection)
+        .join(models.GroundTruthDetection)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(models.Dataset.name == dataset_name)
+    )
+
+
+def _model_instance_segmentation_preds_statement(
+    model_name: str, dataset_name: str
+) -> Select:
+    return (
+        select(models.LabeledPredictedSegmentation)
+        .join(models.PredictedSegmentation)
+        .join(models.Image)
+        .join(models.Model)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Model.name == model_name,
+                models.Dataset.name == dataset_name,
+                models.PredictedSegmentation.is_instance,
+            )
+        )
+    )
+
+
+def _model_object_detection_preds_statement(
+    model_name: str, dataset_name
+) -> Select:
+    return (
+        select(models.LabeledPredictedDetection)
+        .join(models.PredictedDetection)
+        .join(models.Image)
+        .join(models.Model)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Model.name == model_name,
+                models.Dataset.name == dataset_name,
+            )
+        )
+    )
+
+
 def validate_create_ap_metrics(
     db: Session, request_info: schemas.APRequest
 ) -> tuple[Select, Select, schemas.CreateMetricsResponse]:
@@ -735,18 +724,18 @@ def validate_create_ap_metrics(
         request_info.parameters.model_pred_task_type
         == schemas.Task.OBJECT_DETECTION
     ):
-        gts_statement = object_detections_in_dataset_statement(
+        gts_statement = _object_detections_in_dataset_statement(
             request_info.parameters.dataset_name
         )
-        preds_statement = model_object_detection_preds_statement(
+        preds_statement = _model_object_detection_preds_statement(
             model_name=request_info.parameters.model_name,
             dataset_name=request_info.parameters.dataset_name,
         )
     else:
-        gts_statement = instance_segmentations_in_dataset_statement(
+        gts_statement = _instance_segmentations_in_dataset_statement(
             request_info.parameters.dataset_name
         )
-        preds_statement = model_instance_segmentation_preds_statement(
+        preds_statement = _model_instance_segmentation_preds_statement(
             model_name=request_info.parameters.model_name,
             dataset_name=request_info.parameters.dataset_name,
         )
@@ -816,7 +805,7 @@ def create_ap_metrics(
     dataset_id = get_dataset(db, request_info.parameters.dataset_name).id
     model_id = get_model(db, request_info.parameters.model_name).id
 
-    mp = get_or_create_row(
+    mp = _get_or_create_row(
         db,
         models.MetricParameters,
         mapping={
@@ -832,164 +821,9 @@ def create_ap_metrics(
     )
 
     ap_metric_ids = [
-        get_or_create_row(db, models.APMetric, mapping).id
+        _get_or_create_row(db, models.APMetric, mapping).id
         for mapping in ap_metric_mappings
     ]
     db.commit()
 
     return ap_metric_ids
-
-
-def _create_ap_metric_mappings(
-    db: Session, metrics: list[schemas.APMetric], metric_parameters_id: int
-) -> list[dict]:
-    label_map = label_key_value_to_id(
-        db=db,
-        labels=set(
-            [(metric.label.key, metric.label.value) for metric in metrics]
-        ),
-    )
-    return [
-        {
-            "value": metric.value,
-            "label_id": label_map[(metric.label.key, metric.label.value)],
-            "iou": metric.iou,
-            "metric_parameters_id": metric_parameters_id,
-        }
-        for metric in metrics
-    ]
-
-
-def instance_segmentations_in_dataset_statement(dataset_name: str) -> Select:
-    return (
-        select(models.LabeledGroundTruthSegmentation)
-        .join(models.GroundTruthSegmentation)
-        .join(models.Image)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.GroundTruthSegmentation.is_instance,
-                models.Dataset.name == dataset_name,
-            )
-        )
-    )
-
-
-def object_detections_in_dataset_statement(dataset_name: str) -> Select:
-    return (
-        select(models.LabeledGroundTruthDetection)
-        .join(models.GroundTruthDetection)
-        .join(models.Image)
-        .join(models.Dataset)
-        .where(models.Dataset.name == dataset_name)
-    )
-
-
-def model_instance_segmentation_preds_statement(
-    model_name: str, dataset_name: str
-) -> Select:
-    return (
-        select(models.LabeledPredictedSegmentation)
-        .join(models.PredictedSegmentation)
-        .join(models.Image)
-        .join(models.Model)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Model.name == model_name,
-                models.Dataset.name == dataset_name,
-                models.PredictedSegmentation.is_instance,
-            )
-        )
-    )
-
-
-def model_object_detection_preds_statement(
-    model_name: str, dataset_name
-) -> Select:
-    return (
-        select(models.LabeledPredictedDetection)
-        .join(models.PredictedDetection)
-        .join(models.Image)
-        .join(models.Model)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Model.name == model_name,
-                models.Dataset.name == dataset_name,
-            )
-        )
-    )
-
-
-def labels_in_query(
-    db: Session, query_statement: Select
-) -> list[models.Label]:
-    return db.scalars(
-        (select(models.Label).join(query_statement.subquery())).distinct()
-    ).all()
-
-
-def label_key_value_to_id(
-    db: Session, labels: set[tuple[str, str]]
-) -> dict[tuple[str, str], int]:
-    return {
-        label: db.scalar(
-            select(models.Label.id).where(
-                and_(
-                    models.Label.key == label[0],
-                    models.Label.value == label[1],
-                )
-            )
-        )
-        for label in labels
-    }
-
-
-def get_model_metrics(
-    db: Session, model_name: str
-) -> list[schemas.MetricResponse]:
-    # TODO: may return multiple types of metrics
-    # use get_model so exception get's raised if model does
-    # not exist
-    model = get_model(db, model_name)
-
-    metric_params = db.scalars(
-        select(models.MetricParameters)
-        .join(models.Model)
-        .where(models.Model.id == model.id)
-    )
-
-    return [
-        schemas.MetricResponse(
-            metric_name=m.__tablename__,
-            parameters=_db_metric_params_to_pydantic_metric_params(mp),
-            metric=_db_metric_to_pydantic_metric(m),
-        )
-        for mp in metric_params
-        for m in mp.ap_metrics
-    ]
-
-
-def _db_metric_params_to_pydantic_metric_params(
-    metric_params: models.MetricParameters,
-) -> schemas.MetricParameters:
-    return schemas.MetricParameters(
-        model_name=metric_params.model.name,
-        dataset_name=metric_params.dataset.name,
-        model_pred_task_type=metric_params.model_pred_task_type,
-        dataset_gt_task_type=metric_params.dataset_gt_task_type,
-    )
-
-
-def _db_metric_to_pydantic_metric(metric: models.APMetric) -> schemas.APMetric:
-    # TODO: this will have to support more metrics
-    return schemas.APMetric(
-        iou=metric.iou,
-        value=metric.value,
-        label=_db_label_to_schemas_label(metric.label),
-    )
-
-
-def _db_label_to_schemas_label(label: models.Label) -> schemas.Label:
-    return schemas.Label(key=label.key, value=label.value)
