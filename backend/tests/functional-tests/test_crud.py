@@ -69,7 +69,7 @@ def gt_dets_create(img1: schemas.Image) -> schemas.GroundTruthDetectionsCreate:
         dataset_name=dset_name,
         detections=[
             schemas.GroundTruthDetection(
-                boundary=[(10, 20), (10, 30), (20, 30), (20, 20)],
+                boundary=[(10, 20), (10, 30), (20, 30), (20, 20), (10, 20)],
                 labels=[
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
@@ -77,7 +77,7 @@ def gt_dets_create(img1: schemas.Image) -> schemas.GroundTruthDetectionsCreate:
                 image=img1,
             ),
             schemas.GroundTruthDetection(
-                boundary=[(10, 20), (10, 30), (20, 30), (20, 20)],
+                boundary=[(10, 20), (10, 30), (20, 30), (20, 20), (10, 20)],
                 labels=[schemas.Label(key="k2", value="v2")],
                 image=img1,
             ),
@@ -313,6 +313,12 @@ def test_create_ground_truth_detections_and_delete_dataset(
     assert crud.number_of_rows(db, models.Image) == 1
     assert crud.number_of_rows(db, models.LabeledGroundTruthDetection) == 3
     assert crud.number_of_rows(db, models.Label) == 2
+
+    # verify we get the same dets back
+    dets = crud.get_groundtruth_detections_in_image(
+        db, uid=gt_dets_create.detections[0].image.uid, dataset_name=dset_name
+    )
+    assert dets == gt_dets_create.detections
 
     # delete dataset and check the cascade worked
     crud.delete_dataset(db, dataset_name=dset_name)

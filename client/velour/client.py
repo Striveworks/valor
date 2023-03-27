@@ -8,12 +8,14 @@ from urllib.parse import urljoin
 import numpy as np
 import requests
 from PIL import Image as PILImage
+
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
     GroundTruthImageClassification,
     Image,
     Label,
+    Point,
     PolygonWithHole,
     PredictedDetection,
     PredictedImageClassification,
@@ -33,7 +35,21 @@ def _mask_array_to_pil_base64(mask: np.ndarray) -> str:
 
 
 def _payload_for_bounding_polygon(poly: BoundingPolygon) -> List[List[int]]:
+    """For converting a BoundingPolygon to list of list of ints expected
+    by the backend servce
+    """
     return [[pt.x, pt.y] for pt in poly.points]
+
+
+def _list_of_list_to_bounding_polygon(points: List[List[int]]):
+    """Inverse of the above method"""
+    # backend should return a polygon with the same first and last entries
+    # but probably should change the backend to omit the last entry
+    # instead of doing it here
+    if points[0] != points[-1]:
+        raise ValueError("Expected points[0] == points[-1]")
+
+    return BoundingPolygon(points=[Point(*pt) for pt in points[:-1]])
 
 
 def _payload_for_polys_with_holes(
@@ -267,6 +283,22 @@ class Dataset:
         resp.raise_for_status()
 
         return resp.json()
+
+    def get_groundtruth_detections(
+        self, image_uid: str
+    ) -> List[GroundTruthDetection]:
+        resp = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/images/{image_uid}/detections"
+        ).json()
+
+        return [
+            GroundTruthDetection(
+                boundary=_list_of_list_to_bounding_polygon(gt["boundary"]),
+                labels=[Label(**label) for label in gt["labels"]],
+                image=Image(**gt["image"]),
+            )
+            for gt in resp
+        ]
 
     def finalize(self):
         return self.client._requests_put_rel_host(

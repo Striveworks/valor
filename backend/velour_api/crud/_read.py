@@ -1,3 +1,6 @@
+import json
+
+from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
@@ -53,6 +56,43 @@ def get_image(db: Session, uid: str, dataset_name: str) -> models.Image:
         raise exceptions.ImageDoesNotExistError(uid, dataset_name)
 
     return ret
+
+
+def _boundary_points_from_detection(
+    db: Session,
+    detection: models.PredictedDetection | models.GroundTruthDetection,
+) -> list[tuple[float, float]]:
+    geojson = db.scalar(ST_AsGeoJSON(detection.boundary))
+    geojson = json.loads(geojson)
+    coords = geojson["coordinates"]
+
+    # make sure not a polygon
+    assert len(coords) == 1
+
+    return [tuple(coord) for coord in coords[0]]
+
+
+def get_groundtruth_detections_in_image(
+    db: Session, uid: str, dataset_name: str
+) -> list[schemas.GroundTruthDetection]:
+    db_img = get_image(db, uid, dataset_name)
+    gt_dets = db_img.ground_truth_detections
+
+    img = schemas.Image(
+        uid=uid, height=db_img.height, width=db_img.width, frame=db_img.frame
+    )
+
+    return [
+        schemas.GroundTruthDetection(
+            boundary=_boundary_points_from_detection(db, gt_det),
+            image=img,
+            labels=[
+                _db_label_to_schemas_label(labeled_gt_det.label)
+                for labeled_gt_det in gt_det.labeled_ground_truth_detections
+            ],
+        )
+        for gt_det in gt_dets
+    ]
 
 
 def get_labels_in_dataset(

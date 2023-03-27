@@ -13,7 +13,8 @@ from PIL import Image as PILImage
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
-from velour.client import Client, ClientException
+
+from velour.client import Client, ClientException, Dataset
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
@@ -30,7 +31,6 @@ from velour.data_types import (
     ScoredLabel,
 )
 from velour.metrics import Task
-
 from velour_api import models, ops
 
 dset_name = "test dataset"
@@ -388,7 +388,7 @@ def _test_create_dataset_with_gts(
     add_method_name: str,
     expected_labels_tuples: set[tuple[str, str]],
     expected_image_uids: list[str],
-):
+) -> Dataset:
     """This test does the following
     - Creates a dataset
     - Adds groundtruth data to it in two batches
@@ -441,6 +441,8 @@ def _test_create_dataset_with_gts(
     with pytest.raises(ClientException) as exc_info:
         add_method(gts3)
     assert "since it is finalized" in str(exc_info)
+
+    return dataset
 
 
 def _test_create_model_with_preds(
@@ -527,7 +529,7 @@ def test_create_dataset_with_detections(
     gt_dets3: list[GroundTruthDetection],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
-    _test_create_dataset_with_gts(
+    dataset = _test_create_dataset_with_gts(
         client=client,
         gts1=gt_dets1,
         gts2=gt_dets2,
@@ -539,6 +541,20 @@ def test_create_dataset_with_detections(
             ("k2", "v2"),
         },
     )
+
+    dets1 = dataset.get_groundtruth_detections("uid1")
+    dets2 = dataset.get_groundtruth_detections("uid2")
+
+    # check we get back what we inserted
+    gt_dets_uid1 = [
+        gt for gt in gt_dets1 + gt_dets2 + gt_dets3 if gt.image.uid == "uid1"
+    ]
+    assert dets1 == gt_dets_uid1
+
+    gt_dets_uid2 = [
+        gt for gt in gt_dets1 + gt_dets2 + gt_dets3 if gt.image.uid == "uid2"
+    ]
+    assert dets2 == gt_dets_uid2
 
 
 def test_create_model_with_predicted_detections(

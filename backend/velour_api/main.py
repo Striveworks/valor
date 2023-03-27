@@ -183,10 +183,30 @@ def get_dataset_images(
     ]
 
 
+@app.get(
+    "/datasets/{dataset_name}/images/{image_uid}/detections",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_image_detections(
+    dataset_name: str, image_uid: str, db: Session = Depends(get_db)
+):
+    try:
+        return crud.get_groundtruth_detections_in_image(
+            db, uid=image_uid, dataset_name=dataset_name
+        )
+    except (
+        exceptions.ImageDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @app.delete(
     "/datasets/{dataset_name}", dependencies=[Depends(token_auth_scheme)]
 )
 def delete_dataset(dataset_name: str, db: Session = Depends(get_db)) -> None:
+    logger.debug(f"request to delete dataset {dataset_name}")
     return crud.delete_dataset(db, dataset_name)
 
 

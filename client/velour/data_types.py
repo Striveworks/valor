@@ -10,6 +10,7 @@ class Image:
     uid: str
     height: int
     width: int
+    frame: int = None
 
 
 @dataclass
