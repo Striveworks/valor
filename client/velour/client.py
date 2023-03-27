@@ -186,8 +186,8 @@ class Client:
         dataset: "Dataset",
         model_pred_task_type: Task,
         dataset_gt_task_type: Task,
-        iou_thresholds: list[float],
-        labels: list[Label],
+        iou_thresholds: List[float],
+        labels: List[Label],
     ):
         payload = {
             "parameters": {
