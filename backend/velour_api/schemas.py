@@ -4,7 +4,7 @@ from base64 import b64decode
 from typing import Optional
 
 import PIL.Image
-from pydantic import BaseModel, Extra, Field, validator
+from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 from velour_api.enums import Task
 
@@ -109,6 +109,11 @@ class PolygonWithHole(BaseModel):
         return validate_single_polygon(v)
 
 
+def _mask_bytes_to_pil(mask_bytes: bytes) -> PIL.Image.Image:
+    with io.BytesIO(mask_bytes) as f:
+        return PIL.Image.open(f)
+
+
 class GroundTruthSegmentation(BaseModel):
     # multipolygon or base64 mask
     shape: str | list[PolygonWithHole] = Field(allow_mutation=False)
@@ -126,6 +131,18 @@ class GroundTruthSegmentation(BaseModel):
             raise ValueError("shape must have at least one element.")
         return v
 
+    @root_validator(pre=True)
+    def correct_mask_shape(cls, values):
+        if isinstance(values["shape"], list):
+            return values
+        mask_size = _mask_bytes_to_pil(b64decode(values["shape"])).size
+        image_size = (values["image"].width, values["image"].height)
+        if mask_size != image_size:
+            raise ValueError(
+                f"Expected mask and image to have the same size, but got size {mask_size} for the mask and {image_size} for image."
+            )
+        return values
+
     @property
     def is_poly(self) -> bool:
         return isinstance(self.shape, list)
@@ -140,6 +157,10 @@ class GroundTruthSegmentation(BaseModel):
         if not hasattr(self, "_mask_bytes"):
             self._mask_bytes = b64decode(self.shape)
         return self._mask_bytes
+
+    @property
+    def pil_mask(self) -> PIL.Image:
+        return _mask_bytes_to_pil(self.mask_bytes)
 
 
 class PredictedSegmentation(BaseModel):

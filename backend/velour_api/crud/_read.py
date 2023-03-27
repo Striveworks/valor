@@ -1,10 +1,48 @@
+import io
 import json
+from base64 import b64encode
 
-from geoalchemy2.functions import ST_AsGeoJSON
+from geoalchemy2 import RasterElement
+from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
+from PIL import Image
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from velour_api import exceptions, models, schemas
+
+
+def _get_bounding_box_of_raster(
+    db: Session, raster: RasterElement
+) -> tuple[int, int, int, int]:
+    env = json.loads(db.scalar(ST_AsGeoJSON(ST_Envelope(raster))))
+    assert len(env["coordinates"]) == 1
+    xs = [pt[0] for pt in env["coordinates"][0]]
+    ys = [pt[1] for pt in env["coordinates"][0]]
+
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def _raster_to_png_b64(
+    db: Session, raster: RasterElement, image: schemas.Image
+) -> str:
+    enveloping_box = _get_bounding_box_of_raster(db, raster)
+    raster = Image.open(io.BytesIO(db.scalar(ST_AsPNG((raster))).tobytes()))
+
+    assert raster.mode == "L"
+
+    ret = Image.new(size=(image.width, image.height), mode=raster.mode)
+
+    ret.paste(raster, box=enveloping_box)
+
+    # mask is greyscale with values 0 and 1. to convert to binary
+    # we first need to map 1 to 255
+    ret = ret.point(lambda x: 255 if x == 1 else 0).convert("1")
+
+    f = io.BytesIO()
+    ret.save(f, format="PNG")
+    f.seek(0)
+    mask_bytes = f.read()
+    return b64encode(mask_bytes).decode()
 
 
 def get_datasets(db: Session) -> list[schemas.Dataset]:
@@ -92,6 +130,37 @@ def get_groundtruth_detections_in_image(
             ],
         )
         for gt_det in gt_dets
+    ]
+
+
+def get_groundtruth_segmentations_in_image(
+    db: Session, uid: str, dataset_name: str, are_instance: bool
+) -> list[schemas.GroundTruthSegmentation]:
+    db_img = get_image(db, uid, dataset_name)
+    gt_segs = db.scalars(
+        select(models.GroundTruthSegmentation).where(
+            and_(
+                models.GroundTruthSegmentation.image_id == db_img.id,
+                models.GroundTruthSegmentation.is_instance == are_instance,
+            )
+        )
+    ).all()
+
+    img = schemas.Image(
+        uid=uid, height=db_img.height, width=db_img.width, frame=db_img.frame
+    )
+
+    return [
+        schemas.GroundTruthSegmentation(
+            shape=_raster_to_png_b64(db, gt_seg.shape, img),
+            image=img,
+            labels=[
+                _db_label_to_schemas_label(labeled_gt_seg.label)
+                for labeled_gt_seg in gt_seg.labeled_ground_truth_segmentations
+            ],
+            is_instance=gt_seg.is_instance,
+        )
+        for gt_seg in gt_segs
     ]
 
 
