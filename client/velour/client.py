@@ -173,8 +173,8 @@ class Client:
         self._requests_delete_rel_host(f"models/{name}")
 
     def get_model(self, name: str) -> "Model":
-        resp = self._requests_get_rel_host("models/{name}")
-        return Model(client=self, name=resp.json())
+        resp = self._requests_get_rel_host(f"models/{name}")
+        return Model(client=self, name=resp.json()["name"])
 
     def get_models(self) -> List[dict]:
         return self._requests_get_rel_host("models").json()
@@ -188,19 +188,22 @@ class Client:
         dataset: "Dataset",
         model_pred_task_type: Task,
         dataset_gt_task_type: Task,
-        iou_thresholds: List[float],
-        labels: List[Label],
-    ):
+        iou_thresholds: List[float] = None,
+        labels: List[Label] = None,
+    ) -> dict:
         payload = {
             "parameters": {
                 "model_name": model.name,
                 "dataset_name": dataset.name,
                 "model_pred_task_type": model_pred_task_type.value,
                 "dataset_gt_task_type": dataset_gt_task_type.value,
-            },
-            "labels": [label.__dict__ for label in labels],
-            "iou_thresholds": iou_thresholds,
+            }
         }
+
+        if labels is not None:
+            payload["labels"] = [label.__dict__ for label in labels]
+        if iou_thresholds is not None:
+            payload["iou_thresholds"] = iou_thresholds
 
         resp = self._requests_post_rel_host("/ap-metrics", json=payload).json()
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values

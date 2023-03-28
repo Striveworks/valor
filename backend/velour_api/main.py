@@ -267,9 +267,9 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
 
 
 @app.get("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
-def get_model(model_name: str) -> schemas.Model:
+def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     try:
-        dset = crud.get_model(name=model_name)
+        dset = crud.get_model(db=db, model_name=model_name)
         return schemas.Model(name=dset.name)
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -316,6 +316,8 @@ def create_ap_metrics(
         return cm_resp
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except exceptions.DatasetIsDraftError as e:
+        raise HTTPException(status_code=405, detail=str(e))
 
 
 @app.get("/labels", status_code=200, dependencies=[Depends(token_auth_scheme)])

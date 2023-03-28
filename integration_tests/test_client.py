@@ -23,6 +23,7 @@ from velour.data_types import (
     GroundTruthSemanticSegmentation,
     Image,
     Label,
+    Model,
     Point,
     PolygonWithHole,
     PredictedDetection,
@@ -518,6 +519,11 @@ def _test_create_model_with_preds(
 
     # check scores
     assert set([p.score for p in db_preds]) == expected_scores
+
+    # check that the get_model method works
+    retrieved_model = client.get_model(model_name)
+    assert isinstance(retrieved_model, Model)
+    assert retrieved_model.name == model_name
 
     return db_preds
 
