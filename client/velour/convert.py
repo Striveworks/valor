@@ -1,6 +1,6 @@
 import json
-from pathlib import Path
-from typing import Any, Dict, List
+from pathlib import Path, PosixPath
+from typing import Any, Dict, List, Union
 
 import numpy as np
 import PIL.Image
@@ -93,19 +93,20 @@ def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
 
 def upload_coco_panoptic(
     dataset: Dataset,
-    annotation_file: str,
+    annotations: Union[str, PosixPath, dict],
     masks_path: str,
 ) -> None:
     masks_path = Path(masks_path)
-    with open(annotation_file) as f:
-        panoptic_anns = json.load(f)
+    if isinstance(annotations, (str, PosixPath)):
+        with open(annotations) as f:
+            annotations = json.load(f)
 
     category_id_to_category = {
-        cat["id"]: cat for cat in panoptic_anns["categories"]
+        cat["id"]: cat for cat in annotations["categories"]
     }
 
     image_id_to_height, image_id_to_width, image_id_to_coco_url = {}, {}, {}
-    for image in panoptic_anns["images"]:
+    for image in annotations["images"]:
         image_id_to_height[image["id"]] = image["height"]
         image_id_to_width[image["id"]] = image["width"]
         image_id_to_coco_url[image["id"]] = image["coco_url"]
@@ -117,10 +118,9 @@ def upload_coco_panoptic(
             PIL.Image.open(masks_path / ann_dict["file_name"])
         ).astype(int)
         # convert the colors in the mask to ids
-        mask_ids = np.apply_along_axis(
-            lambda a: a[0] + 256 * a[1] + 256**2 * a[2], 2, mask
+        mask_ids = (
+            mask[:, :, 0] + 256 * mask[:, :, 1] + (256**2) * mask[:, :, 2]
         )
-
         image_id = ann_dict["image_id"]
         img = Image(
             uid=image_id,
@@ -150,6 +150,6 @@ def upload_coco_panoptic(
 
         return segs
 
-    for ann in tqdm(panoptic_anns["annotations"]):
+    for ann in tqdm(annotations["annotations"]):
         segs = _get_segs_for_single_image(ann)
         dataset.add_groundtruth_segmentations(segs)
