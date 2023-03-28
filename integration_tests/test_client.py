@@ -14,7 +14,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
-from velour.client import Client, ClientException, Dataset
+from velour.client import Client, ClientException, Dataset, Model
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
@@ -23,7 +23,6 @@ from velour.data_types import (
     GroundTruthSemanticSegmentation,
     Image,
     Label,
-    Model,
     Point,
     PolygonWithHole,
     PredictedDetection,
