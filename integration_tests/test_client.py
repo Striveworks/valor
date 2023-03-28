@@ -89,7 +89,7 @@ def client():
 
 @pytest.fixture
 def img1():
-    return Image(uid="uid1", height=400, width=300)
+    return Image(uid="uid1", height=900, width=300)
 
 
 @pytest.fixture
@@ -593,7 +593,7 @@ def test_create_dataset_with_segmentations(
     gt_segs3: list[GroundTruthSemanticSegmentation],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
-    _test_create_dataset_with_gts(
+    dataset = _test_create_dataset_with_gts(
         client=client,
         gts1=gt_segs1,
         gts2=gt_segs2,
@@ -606,6 +606,28 @@ def test_create_dataset_with_segmentations(
         },
     )
 
+    # should have one instance segmentation that's a rectangle
+    # with xmin, ymin, xmax, ymax = 10, 10, 60, 40
+    instance_segs = dataset.get_groundtruth_instance_segmentations("uid1")
+    assert len(instance_segs) == 1
+    mask = instance_segs[0].shape
+    # check get all True in the box
+    assert mask[10:40, 10:60].all()
+    # check that outside the box is all False
+    assert mask.sum() == (40 - 10) * (60 - 10)
+    # check shape agrees with image
+    assert mask.shape == (gt_segs1[0].image.height, gt_segs1[0].image.width)
+
+    # should have one semantic segmentation that's a rectangle
+    # with xmin, ymin, xmax, ymax = 10, 10, 60, 40 plus a rectangle
+    # with xmin, ymin, xmax, ymax = 87, 10, 158, 820
+    semantic_segs = dataset.get_groundtruth_semantic_segmentations("uid1")
+    mask = semantic_segs[0].shape
+    assert mask[10:40, 10:60].all()
+    assert mask[10:820, 87:158].all()
+    assert mask.sum() == (40 - 10) * (60 - 10) + (820 - 10) * (158 - 87)
+    assert mask.shape == (gt_segs1[0].image.height, gt_segs1[0].image.width)
+
 
 def test_create_gt_segs_as_polys_or_masks(
     client: Client, img1: Image, db: Session
@@ -616,7 +638,7 @@ def test_create_gt_segs_as_polys_or_masks(
     dataset = client.create_dataset(dset_name)
 
     xmin, xmax, ymin, ymax = 11, 45, 37, 102
-    h, w = 150, 200
+    h, w = 900, 300
     mask = np.zeros((h, w), dtype=bool)
     mask[ymin:ymax, xmin:xmax] = True
 

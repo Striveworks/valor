@@ -1,18 +1,20 @@
 import io
 import os
-from base64 import b64encode
+from base64 import b64decode, b64encode
 from dataclasses import asdict
 from typing import Dict, List, Union
 from urllib.parse import urljoin
 
 import numpy as np
+import PIL.Image
 import requests
-from PIL import Image as PILImage
 
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
     GroundTruthImageClassification,
+    GroundTruthInstanceSegmentation,
+    GroundTruthSemanticSegmentation,
     Image,
     Label,
     Point,
@@ -27,7 +29,7 @@ from velour.metrics import Task
 
 def _mask_array_to_pil_base64(mask: np.ndarray) -> str:
     f = io.BytesIO()
-    PILImage.fromarray(mask).save(f, format="PNG")
+    PIL.Image.fromarray(mask).save(f, format="PNG")
     f.seek(0)
     mask_bytes = f.read()
     f.close()
@@ -299,6 +301,41 @@ class Dataset:
             )
             for gt in resp
         ]
+
+    def _get_segmentations(
+        self, image_uid: str, instance: bool
+    ) -> Union[
+        GroundTruthSemanticSegmentation, GroundTruthInstanceSegmentation
+    ]:
+        resp = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/images/{image_uid}/{'instance' if instance else 'semantic'}-segmentations"
+        ).json()
+
+        def _b64_mask_to_array(b64_mask: str) -> np.ndarray:
+            mask = b64decode(b64_mask)
+            with io.BytesIO(mask) as f:
+                img = PIL.Image.open(f)
+
+                return np.array(img)
+
+        return [
+            GroundTruthInstanceSegmentation(
+                shape=_b64_mask_to_array(gt["shape"]),
+                labels=[Label(**label) for label in gt["labels"]],
+                image=Image(**gt["image"]),
+            )
+            for gt in resp
+        ]
+
+    def get_groundtruth_instance_segmentations(
+        self, image_uid: str
+    ) -> List[GroundTruthInstanceSegmentation]:
+        return self._get_segmentations(image_uid, instance=True)
+
+    def get_groundtruth_semantic_segmentations(
+        self, image_uid: str
+    ) -> List[GroundTruthSemanticSegmentation]:
+        return self._get_segmentations(image_uid, instance=False)
 
     def finalize(self):
         return self.client._requests_put_rel_host(

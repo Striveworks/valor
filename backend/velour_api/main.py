@@ -190,10 +190,48 @@ def get_dataset_images(
 )
 def get_image_detections(
     dataset_name: str, image_uid: str, db: Session = Depends(get_db)
-):
+) -> list[schemas.GroundTruthDetection]:
     try:
         return crud.get_groundtruth_detections_in_image(
             db, uid=image_uid, dataset_name=dataset_name
+        )
+    except (
+        exceptions.ImageDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/datasets/{dataset_name}/images/{image_uid}/instance-segmentations",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_instance_segmentations(
+    dataset_name: str, image_uid: str, db: Session = Depends(get_db)
+) -> list[schemas.GroundTruthSegmentation]:
+    try:
+        return crud.get_groundtruth_segmentations_in_image(
+            db, uid=image_uid, dataset_name=dataset_name, are_instance=True
+        )
+    except (
+        exceptions.ImageDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/datasets/{dataset_name}/images/{image_uid}/semantic-segmentations",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_semantic_segmentations(
+    dataset_name: str, image_uid: str, db: Session = Depends(get_db)
+) -> list[schemas.GroundTruthSegmentation]:
+    try:
+        return crud.get_groundtruth_segmentations_in_image(
+            db, uid=image_uid, dataset_name=dataset_name, are_instance=False
         )
     except (
         exceptions.ImageDoesNotExistError,
