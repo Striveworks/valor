@@ -46,7 +46,10 @@ def create_predicted_detections(
 ) -> list[int]:
     try:
         return crud.create_predicted_detections(db=db, data=data)
-    except exceptions.ImageDoesNotExistError as e:
+    except (
+        exceptions.ModelDoesNotExistError,
+        exceptions.ImageDoesNotExistError,
+    ) as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
