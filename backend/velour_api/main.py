@@ -1,4 +1,5 @@
 import os
+from time import perf_counter
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
@@ -305,8 +306,16 @@ def create_ap_metrics(
             cm_resp,
         ) = crud.validate_create_ap_metrics(db, request_info=data)
 
+        def _compute_fn(*args, **kwargs):
+            logger.debug("starting computing AP metrics")
+            start = perf_counter()
+            crud.create_ap_metrics(*args, **kwargs)
+            logger.debug(
+                f"finished computing AP metrics in {perf_counter() - start} seconds"
+            )
+
         background_tasks.add_task(
-            crud.create_ap_metrics,
+            _compute_fn,
             db=db,
             request_info=data,
             gts_statement=gts_statement,
