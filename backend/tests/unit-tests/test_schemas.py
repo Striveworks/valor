@@ -4,13 +4,27 @@ from tempfile import TemporaryDirectory
 
 import PIL.Image
 import pytest
+from pydantic import ValidationError
 
 from velour_api.schemas import (
     DetectionBase,
+    GroundTruthSegmentation,
     Image,
     Label,
     PredictedSegmentation,
 )
+
+
+def _create_b64_mask(mode: str, ext: str, size=(20, 20)) -> str:
+    with TemporaryDirectory() as tempdir:
+        img = PIL.Image.new(mode=mode, size=size)
+        img_path = os.path.join(tempdir, f"img.{ext}")
+        img.save(img_path)
+
+        with open(img_path, "rb") as f:
+            img_bytes = f.read()
+
+        return b64encode(img_bytes).decode()
 
 
 def test_ground_truth_detection_validation_pos(img: Image):
@@ -34,16 +48,18 @@ def test_ground_truth_detection_validation_neg(img: Image):
     assert "must be composed of at least three points" in str(exc_info)
 
 
-def _create_b64_mask(mode: str, ext: str) -> str:
-    with TemporaryDirectory() as tempdir:
-        img = PIL.Image.new(mode=mode, size=(20, 20))
-        img_path = os.path.join(tempdir, f"img.{ext}")
-        img.save(img_path)
+def test_ground_truth_segmentation_validation(img: Image):
+    mask = _create_b64_mask(mode="1", ext="PNG")
+    with pytest.raises(ValidationError) as exc_info:
+        GroundTruthSegmentation(
+            shape=mask, image=img, labels=[], is_instance=True
+        )
+    assert "Expected mask and image to have the same size" in str(exc_info)
 
-        with open(img_path, "rb") as f:
-            img_bytes = f.read()
-
-        return b64encode(img_bytes).decode()
+    mask = _create_b64_mask(mode="1", ext="PNG", size=(img.width, img.height))
+    assert GroundTruthSegmentation(
+        shape=mask, image=img, labels=[], is_instance=True
+    )
 
 
 def test_predicted_segmentation_validation_pos(img: Image):

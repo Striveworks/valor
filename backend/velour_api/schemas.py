@@ -131,7 +131,7 @@ class GroundTruthSegmentation(BaseModel):
             raise ValueError("shape must have at least one element.")
         return v
 
-    @root_validator(pre=True)
+    @root_validator
     def correct_mask_shape(cls, values):
         if isinstance(values["shape"], list):
             return values
