@@ -609,6 +609,8 @@ def test_create_dataset_with_segmentations(
     # should have one instance segmentation that's a rectangle
     # with xmin, ymin, xmax, ymax = 10, 10, 60, 40
     instance_segs = dataset.get_groundtruth_instance_segmentations("uid1")
+    for seg in instance_segs:
+        assert isinstance(seg, GroundTruthInstanceSegmentation)
     assert len(instance_segs) == 1
     mask = instance_segs[0].shape
     # check get all True in the box
@@ -622,6 +624,8 @@ def test_create_dataset_with_segmentations(
     # with xmin, ymin, xmax, ymax = 10, 10, 60, 40 plus a rectangle
     # with xmin, ymin, xmax, ymax = 87, 10, 158, 820
     semantic_segs = dataset.get_groundtruth_semantic_segmentations("uid1")
+    for seg in semantic_segs:
+        assert isinstance(seg, GroundTruthSemanticSegmentation)
     mask = semantic_segs[0].shape
     assert mask[10:40, 10:60].all()
     assert mask[10:820, 87:158].all()

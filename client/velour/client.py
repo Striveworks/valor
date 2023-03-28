@@ -318,8 +318,14 @@ class Dataset:
 
                 return np.array(img)
 
+        data_cls = (
+            GroundTruthInstanceSegmentation
+            if instance
+            else GroundTruthSemanticSegmentation
+        )
+
         return [
-            GroundTruthInstanceSegmentation(
+            data_cls(
                 shape=_b64_mask_to_array(gt["shape"]),
                 labels=[Label(**label) for label in gt["labels"]],
                 image=Image(**gt["image"]),
