@@ -18,7 +18,15 @@ def _labels_in_query(
 
 def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
     """Returns the "Well-known text" format of a detection"""
-    pts = det.boundary
+    if det.is_bbox:
+        pts = [
+            (det.bbox[0], det.bbox[1]),
+            (det.bbox[0], det.bbox[3]),
+            (det.bbox[2], det.bbox[3]),
+            (det.bbox[2], det.bbox[1]),
+        ]
+    else:
+        pts = det.boundary
     return f"POLYGON ({_boundary_points_to_str(pts)})"
 
 
@@ -66,6 +74,7 @@ def _create_detection_mappings(
         {
             "boundary": _wkt_polygon_from_detection(detection),
             "image_id": image.id,
+            "is_bbox": detection.is_bbox,
         }
         for detection, image in zip(detections, images)
     ]
