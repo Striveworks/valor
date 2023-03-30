@@ -1,5 +1,6 @@
 import motmetrics as mm
 import numpy as np
+
 from velour_api import schemas
 
 OBJECT_ID_LABEL_KEY = "object_id"
@@ -122,7 +123,9 @@ def ground_truth_det_to_mot(
 
 
 def pred_det_to_mot(
-    pred: schemas.PredictedDetection, obj_id_to_int: dict, object_id_label_key: str = OBJECT_ID_LABEL_KEY
+    pred: schemas.PredictedDetection,
+    obj_id_to_int: dict,
+    object_id_label_key: str = OBJECT_ID_LABEL_KEY,
 ) -> list[float]:
     """Helper to convert a predicted detection into MOT format"""
 

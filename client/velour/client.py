@@ -1,19 +1,23 @@
 import io
 import os
-from base64 import b64encode
+from base64 import b64decode, b64encode
 from dataclasses import asdict
 from typing import Dict, List, Union
 from urllib.parse import urljoin
 
 import numpy as np
+import PIL.Image
 import requests
-from PIL import Image as PILImage
+
 from velour.data_types import (
     BoundingPolygon,
     GroundTruthDetection,
     GroundTruthImageClassification,
+    GroundTruthInstanceSegmentation,
+    GroundTruthSemanticSegmentation,
     Image,
     Label,
+    Point,
     PolygonWithHole,
     PredictedDetection,
     PredictedImageClassification,
@@ -25,7 +29,7 @@ from velour.metrics import Task
 
 def _mask_array_to_pil_base64(mask: np.ndarray) -> str:
     f = io.BytesIO()
-    PILImage.fromarray(mask).save(f, format="PNG")
+    PIL.Image.fromarray(mask).save(f, format="PNG")
     f.seek(0)
     mask_bytes = f.read()
     f.close()
@@ -33,7 +37,21 @@ def _mask_array_to_pil_base64(mask: np.ndarray) -> str:
 
 
 def _payload_for_bounding_polygon(poly: BoundingPolygon) -> List[List[int]]:
+    """For converting a BoundingPolygon to list of list of ints expected
+    by the backend servce
+    """
     return [[pt.x, pt.y] for pt in poly.points]
+
+
+def _list_of_list_to_bounding_polygon(points: List[List[int]]):
+    """Inverse of the above method"""
+    # backend should return a polygon with the same first and last entries
+    # but probably should change the backend to omit the last entry
+    # instead of doing it here
+    if points[0] != points[-1]:
+        raise ValueError("Expected points[0] == points[-1]")
+
+    return BoundingPolygon(points=[Point(*pt) for pt in points[:-1]])
 
 
 def _payload_for_polys_with_holes(
@@ -155,8 +173,8 @@ class Client:
         self._requests_delete_rel_host(f"models/{name}")
 
     def get_model(self, name: str) -> "Model":
-        resp = self._requests_get_rel_host("models/{name}")
-        return Model(client=self, name=resp.json())
+        resp = self._requests_get_rel_host(f"models/{name}")
+        return Model(client=self, name=resp.json()["name"])
 
     def get_models(self) -> List[dict]:
         return self._requests_get_rel_host("models").json()
@@ -170,19 +188,22 @@ class Client:
         dataset: "Dataset",
         model_pred_task_type: Task,
         dataset_gt_task_type: Task,
-        iou_thresholds: list[float],
-        labels: list[Label],
-    ):
+        iou_thresholds: List[float] = None,
+        labels: List[Label] = None,
+    ) -> dict:
         payload = {
             "parameters": {
                 "model_name": model.name,
                 "dataset_name": dataset.name,
                 "model_pred_task_type": model_pred_task_type.value,
                 "dataset_gt_task_type": dataset_gt_task_type.value,
-            },
-            "labels": [label.__dict__ for label in labels],
-            "iou_thresholds": iou_thresholds,
+            }
         }
+
+        if labels is not None:
+            payload["labels"] = [label.__dict__ for label in labels]
+        if iou_thresholds is not None:
+            payload["iou_thresholds"] = iou_thresholds
 
         resp = self._requests_post_rel_host("/ap-metrics", json=payload).json()
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
@@ -267,6 +288,63 @@ class Dataset:
         resp.raise_for_status()
 
         return resp.json()
+
+    def get_groundtruth_detections(
+        self, image_uid: str
+    ) -> List[GroundTruthDetection]:
+        resp = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/images/{image_uid}/detections"
+        ).json()
+
+        return [
+            GroundTruthDetection(
+                boundary=_list_of_list_to_bounding_polygon(gt["boundary"]),
+                labels=[Label(**label) for label in gt["labels"]],
+                image=Image(**gt["image"]),
+            )
+            for gt in resp
+        ]
+
+    def _get_segmentations(
+        self, image_uid: str, instance: bool
+    ) -> Union[
+        GroundTruthSemanticSegmentation, GroundTruthInstanceSegmentation
+    ]:
+        resp = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/images/{image_uid}/{'instance' if instance else 'semantic'}-segmentations"
+        ).json()
+
+        def _b64_mask_to_array(b64_mask: str) -> np.ndarray:
+            mask = b64decode(b64_mask)
+            with io.BytesIO(mask) as f:
+                img = PIL.Image.open(f)
+
+                return np.array(img)
+
+        data_cls = (
+            GroundTruthInstanceSegmentation
+            if instance
+            else GroundTruthSemanticSegmentation
+        )
+
+        return [
+            data_cls(
+                shape=_b64_mask_to_array(gt["shape"]),
+                labels=[Label(**label) for label in gt["labels"]],
+                image=Image(**gt["image"]),
+            )
+            for gt in resp
+        ]
+
+    def get_groundtruth_instance_segmentations(
+        self, image_uid: str
+    ) -> List[GroundTruthInstanceSegmentation]:
+        return self._get_segmentations(image_uid, instance=True)
+
+    def get_groundtruth_semantic_segmentations(
+        self, image_uid: str
+    ) -> List[GroundTruthSemanticSegmentation]:
+        return self._get_segmentations(image_uid, instance=False)
 
     def finalize(self):
         return self.client._requests_put_rel_host(
