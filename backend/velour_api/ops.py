@@ -1,8 +1,13 @@
 import ast
 
-from geoalchemy2.functions import ST_Area, ST_Intersection, ST_ValueCount
+from geoalchemy2.elements import RasterElement
+from geoalchemy2.functions import (
+    ST_Area,
+    ST_AsRaster,
+    ST_Intersection,
+    ST_ValueCount,
+)
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import text
 
 from .models import (
     GroundTruthDetection,
@@ -88,18 +93,23 @@ def intersection_area_of_dets(
 def intersection_area_of_det_and_seg(
     db: Session, det: DetectionType, seg: SegmentationType
 ):
-    # not exactly sure why geoalchemy2.functions don't work here. they seem to have issues with mixing vector/raster types
-    # see e.g. the warning here: https://geoalchemy-2.readthedocs.io/en/latest/spatial_functions.html
-
-    return db.execute(
-        text(
-            f"""
-        SELECT ST_Area((ST_Intersection(ST_SetGeoReference(ST_SetBandNoDataValue({seg.__class__.__tablename__}.shape, 0), '1 0 0 1 0 0', 'GDAL'), {det.__class__.__tablename__}.boundary)).geom)
-        FROM {seg.__class__.__tablename__}, {det.__class__.__tablename__}
-        WHERE {seg.__class__.__tablename__}.id={seg.id} AND {det.__class__.__tablename__}.id={det.id}
-        """
-        )
-    ).scalar()
+    # this method used to be:
+    #
+    #  return db.execute(
+    #     text(
+    #         f"""
+    #     SELECT ST_Area((ST_Intersection(ST_SetGeoReference(ST_SetBandNoDataValue({seg.__class__.__tablename__}.shape, 0), '1 0 0 1 0 0', 'GDAL'), {det.__class__.__tablename__}.boundary)).geom)
+    #     FROM {seg.__class__.__tablename__}, {det.__class__.__tablename__}
+    #     WHERE {seg.__class__.__tablename__}.id={seg.id} AND {det.__class__.__tablename__}.id={det.id}
+    #     """
+    #     )
+    # ).scalar()
+    #
+    # but that was giving an issue with self-intersecting geometrys. so now we just convert the
+    # detection to a raster and do the intersection of rasters
+    return _intersection_area_of_rasters(
+        db, ST_AsRaster(det.boundary, seg.shape), seg.shape
+    )
 
 
 def _area_from_value_counts(vcs: list[str]) -> float:
@@ -126,10 +136,14 @@ def intersection_area_of_segs(
     seg1: SegmentationType,
     seg2: SegmentationType,
 ) -> float:
+    return _intersection_area_of_rasters(db, seg1.shape, seg2.shape)
+
+
+def _intersection_area_of_rasters(
+    db: Session, rast1: RasterElement, rast2: RasterElement
+) -> float:
     return _area_from_value_counts(
-        db.scalars(
-            ST_ValueCount(ST_Intersection(seg1.shape, seg2.shape))
-        ).fetchall()
+        db.scalars(ST_ValueCount(ST_Intersection(rast1, rast2))).fetchall()
     )
 
 

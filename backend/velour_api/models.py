@@ -147,6 +147,9 @@ class GroundTruthImageClassification(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     # need some uniquess for labels (a key can only appear once for a given image)
     image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
+    image: Mapped["Image"] = relationship(
+        "Image", back_populates="ground_truth_classifications"
+    )
     label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
     label = relationship(
         "Label", back_populates="ground_truth_image_classifications"
@@ -162,6 +165,9 @@ class PredictedImageClassification(Base):
     score: Mapped[float]
     # need some uniquess for labels (a key can only appear once for a given image)
     image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
+    image: Mapped["Image"] = relationship(
+        "Image", back_populates="predicted_classifications"
+    )
     label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
     label = relationship(
@@ -280,7 +286,9 @@ class Image(Base):
     __tablename__ = "image"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
+    dataset_id: Mapped[int] = mapped_column(
+        ForeignKey("dataset.id"), index=True
+    )
     uid: Mapped[str] = mapped_column(index=True)
     height: Mapped[int] = mapped_column()
     width: Mapped[int] = mapped_column()

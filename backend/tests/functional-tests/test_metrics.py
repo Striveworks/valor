@@ -1,7 +1,10 @@
 from sqlalchemy.orm import Session
 
 from velour_api.metrics import compute_ap_metrics, compute_map_metrics_from_aps
-from velour_api.schemas import GroundTruthDetection, PredictedDetection
+from velour_api.models import (
+    LabeledGroundTruthDetection,
+    LabeledPredictedDetection,
+)
 
 
 def round_dict_(d: dict, prec: int) -> None:
@@ -17,8 +20,8 @@ def round_dict_(d: dict, prec: int) -> None:
 
 def test_compute_ap_metrics(
     db: Session,
-    groundtruths: list[list[GroundTruthDetection]],
-    predictions: list[list[PredictedDetection]],
+    groundtruths: list[list[LabeledGroundTruthDetection]],
+    predictions: list[list[LabeledPredictedDetection]],
 ):
     iou_thresholds = [round(0.5 + 0.05 * i, 2) for i in range(10)]
     ap_metrics = compute_ap_metrics(

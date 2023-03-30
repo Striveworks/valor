@@ -5,11 +5,12 @@ from base64 import b64decode, b64encode
 import numpy as np
 import pytest
 from geoalchemy2.functions import ST_AsText, ST_Polygon
-from PIL import Image
+from PIL import Image, ImageDraw
 from sqlalchemy import func, insert, select
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, exceptions, models, ops, schemas
+from velour_api.crud._read import _raster_to_png_b64
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -69,7 +70,7 @@ def gt_dets_create(img1: schemas.Image) -> schemas.GroundTruthDetectionsCreate:
         dataset_name=dset_name,
         detections=[
             schemas.GroundTruthDetection(
-                boundary=[(10, 20), (10, 30), (20, 30), (20, 20)],
+                boundary=[(10, 20), (10, 30), (20, 30), (20, 20), (10, 20)],
                 labels=[
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
@@ -77,7 +78,7 @@ def gt_dets_create(img1: schemas.Image) -> schemas.GroundTruthDetectionsCreate:
                 image=img1,
             ),
             schemas.GroundTruthDetection(
-                boundary=[(10, 20), (10, 30), (20, 30), (20, 20)],
+                boundary=[(10, 20), (10, 30), (20, 30), (20, 20), (10, 20)],
                 labels=[schemas.Label(key="k2", value="v2")],
                 image=img1,
             ),
@@ -314,6 +315,12 @@ def test_create_ground_truth_detections_and_delete_dataset(
     assert crud.number_of_rows(db, models.LabeledGroundTruthDetection) == 3
     assert crud.number_of_rows(db, models.Label) == 2
 
+    # verify we get the same dets back
+    dets = crud.get_groundtruth_detections_in_image(
+        db, uid=gt_dets_create.detections[0].image.uid, dataset_name=dset_name
+    )
+    assert dets == gt_dets_create.detections
+
     # delete dataset and check the cascade worked
     crud.delete_dataset(db, dataset_name=dset_name)
     for model_cls in [
@@ -419,7 +426,7 @@ def test_create_predicted_classifications_and_delete_model(
 
 
 def test_create_ground_truth_segmentations_and_delete_dataset(
-    db: Session, gt_segs_create: schemas.GroundTruthDetectionsCreate
+    db: Session, gt_segs_create: schemas.GroundTruthSegmentationsCreate
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -623,7 +630,7 @@ def test__select_statement_from_poly(
     )
 
 
-def test_gt_seg_as_mask_or_polys(db: Session, img1: schemas.Image):
+def test_gt_seg_as_mask_or_polys(db: Session):
     """Check that a groundtruth segmentation can be created as a polygon or mask"""
     xmin, xmax, ymin, ymax = 11, 45, 37, 102
     h, w = 150, 200
@@ -631,18 +638,20 @@ def test_gt_seg_as_mask_or_polys(db: Session, img1: schemas.Image):
     mask[ymin:ymax, xmin:xmax] = True
     mask_b64 = b64encode(np_to_bytes(mask)).decode()
 
+    img = schemas.Image(uid="uid", height=h, width=w)
+
     poly = [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin)]
 
     gt1 = schemas.GroundTruthSegmentation(
         is_instance=False,
         shape=mask_b64,
-        image=img1,
+        image=img,
         labels=[schemas.Label(key="k1", value="v1")],
     )
     gt2 = schemas.GroundTruthSegmentation(
         is_instance=True,
         shape=[schemas.PolygonWithHole(polygon=poly)],
-        image=img1,
+        image=img,
         labels=[schemas.Label(key="k1", value="v1")],
     )
 
@@ -663,6 +672,18 @@ def test_gt_seg_as_mask_or_polys(db: Session, img1: schemas.Image):
     assert len(shapes) == 2
     # check that the mask and polygon define the same polygons
     assert shapes[0] == shapes[1]
+
+    # verify we get the same segmentations back
+    segs = crud.get_groundtruth_segmentations_in_image(
+        db, uid=img.uid, dataset_name=dset_name, are_instance=True
+    )
+    assert len(segs) == 1  # should just be one instance segmentation
+    decoded_mask = bytes_to_pil(b64decode(segs[0].shape))
+    decoded_mask_arr = np.array(decoded_mask)
+
+    np.testing.assert_equal(decoded_mask_arr, mask)
+    assert segs[0].image == gt1.image
+    assert segs[0].labels == gt1.labels
 
 
 def test_validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
@@ -821,3 +842,38 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         assert m.parameters.dataset_gt_task_type == enums.Task.OBJECT_DETECTION
         assert m.metric_name == "ap_metric"
         assert isinstance(m.metric, schemas.APMetric)
+
+
+def test__raster_to_png_b64(db: Session):
+    # create a mask consisting of an ellipse with a whole in it
+    w, h = 50, 100
+    img = Image.new("1", size=(w, h))
+    draw = ImageDraw.Draw(img)
+    draw.ellipse((15, 40, 30, 70), fill=True)
+    draw.ellipse((20, 50, 25, 60), fill=False)
+
+    f = io.BytesIO()
+    img.save(f, format="PNG")
+    f.seek(0)
+    b64_mask = b64encode(f.read()).decode()
+
+    image = schemas.Image(uid="uid", height=h, width=w)
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_groundtruth_segmentations(
+        db,
+        data=schemas.GroundTruthSegmentationsCreate(
+            dataset_name=dset_name,
+            segmentations=[
+                schemas.GroundTruthSegmentation(
+                    shape=b64_mask,
+                    image=image,
+                    labels=[schemas.Label(key="k", value="v")],
+                    is_instance=True,
+                )
+            ],
+        ),
+    )
+
+    seg = db.scalar(select(models.GroundTruthSegmentation))
+
+    assert b64_mask == _raster_to_png_b64(db, seg.shape, image)

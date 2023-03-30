@@ -698,9 +698,6 @@ def validate_create_ap_metrics(
 ) -> tuple[Select, Select, schemas.CreateMetricsResponse]:
     """Validates request_info and produces select statements for grabbing groundtruth and
     prediction data
-
-    Parameters
-    ----------
     """
     if get_dataset(db, request_info.parameters.dataset_name).draft:
         raise exceptions.DatasetIsDraftError(
@@ -721,20 +718,26 @@ def validate_create_ap_metrics(
         )
 
     if (
-        request_info.parameters.model_pred_task_type
+        request_info.parameters.dataset_gt_task_type
         == schemas.Task.OBJECT_DETECTION
     ):
         gts_statement = _object_detections_in_dataset_statement(
             request_info.parameters.dataset_name
         )
+    else:
+        gts_statement = _instance_segmentations_in_dataset_statement(
+            request_info.parameters.dataset_name
+        )
+
+    if (
+        request_info.parameters.model_pred_task_type
+        == schemas.Task.OBJECT_DETECTION
+    ):
         preds_statement = _model_object_detection_preds_statement(
             model_name=request_info.parameters.model_name,
             dataset_name=request_info.parameters.dataset_name,
         )
     else:
-        gts_statement = _instance_segmentations_in_dataset_statement(
-            request_info.parameters.dataset_name
-        )
         preds_statement = _model_instance_segmentation_preds_statement(
             model_name=request_info.parameters.model_name,
             dataset_name=request_info.parameters.dataset_name,

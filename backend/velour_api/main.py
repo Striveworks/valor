@@ -1,4 +1,5 @@
 import os
+from time import perf_counter
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
@@ -46,7 +47,10 @@ def create_predicted_detections(
 ) -> list[int]:
     try:
         return crud.create_predicted_detections(db=db, data=data)
-    except exceptions.ImageDoesNotExistError as e:
+    except (
+        exceptions.ModelDoesNotExistError,
+        exceptions.ImageDoesNotExistError,
+    ) as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -58,7 +62,9 @@ def create_groundtruth_segmentations(
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
-        logger.debug(f"got: {data}")
+        logger.debug(
+            f"got: {len(data.segmentations)} segmentations for dataset {data.dataset_name}"
+        )
         return crud.create_groundtruth_segmentations(db=db, data=data)
     except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -181,10 +187,68 @@ def get_dataset_images(
     ]
 
 
+@app.get(
+    "/datasets/{dataset_name}/images/{image_uid}/detections",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_image_detections(
+    dataset_name: str, image_uid: str, db: Session = Depends(get_db)
+) -> list[schemas.GroundTruthDetection]:
+    try:
+        return crud.get_groundtruth_detections_in_image(
+            db, uid=image_uid, dataset_name=dataset_name
+        )
+    except (
+        exceptions.ImageDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/datasets/{dataset_name}/images/{image_uid}/instance-segmentations",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_instance_segmentations(
+    dataset_name: str, image_uid: str, db: Session = Depends(get_db)
+) -> list[schemas.GroundTruthSegmentation]:
+    try:
+        return crud.get_groundtruth_segmentations_in_image(
+            db, uid=image_uid, dataset_name=dataset_name, are_instance=True
+        )
+    except (
+        exceptions.ImageDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/datasets/{dataset_name}/images/{image_uid}/semantic-segmentations",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_semantic_segmentations(
+    dataset_name: str, image_uid: str, db: Session = Depends(get_db)
+) -> list[schemas.GroundTruthSegmentation]:
+    try:
+        return crud.get_groundtruth_segmentations_in_image(
+            db, uid=image_uid, dataset_name=dataset_name, are_instance=False
+        )
+    except (
+        exceptions.ImageDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @app.delete(
     "/datasets/{dataset_name}", dependencies=[Depends(token_auth_scheme)]
 )
 def delete_dataset(dataset_name: str, db: Session = Depends(get_db)) -> None:
+    logger.debug(f"request to delete dataset {dataset_name}")
     return crud.delete_dataset(db, dataset_name)
 
 
@@ -204,9 +268,9 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
 
 
 @app.get("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
-def get_model(model_name: str) -> schemas.Model:
+def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     try:
-        dset = crud.get_model(name=model_name)
+        dset = crud.get_model(db=db, model_name=model_name)
         return schemas.Model(name=dset.name)
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -242,8 +306,16 @@ def create_ap_metrics(
             cm_resp,
         ) = crud.validate_create_ap_metrics(db, request_info=data)
 
+        def _compute_fn(*args, **kwargs):
+            logger.debug("starting computing AP metrics")
+            start = perf_counter()
+            crud.create_ap_metrics(*args, **kwargs)
+            logger.debug(
+                f"finished computing AP metrics in {perf_counter() - start} seconds"
+            )
+
         background_tasks.add_task(
-            crud.create_ap_metrics,
+            _compute_fn,
             db=db,
             request_info=data,
             gts_statement=gts_statement,
@@ -253,6 +325,8 @@ def create_ap_metrics(
         return cm_resp
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except exceptions.DatasetIsDraftError as e:
+        raise HTTPException(status_code=405, detail=str(e))
 
 
 @app.get("/labels", status_code=200, dependencies=[Depends(token_auth_scheme)])
