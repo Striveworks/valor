@@ -368,6 +368,37 @@ def test_create_predicted_detections_and_delete_model(
     assert crud.number_of_rows(db, models.LabeledPredictedDetection) == 0
 
 
+def test_create_detections_as_bbox_or_poly(db: Session, img1: schemas.Image):
+    xmin, ymin, xmax, ymax = 50, 70, 120, 300
+    det1 = schemas.GroundTruthDetection(
+        boundary=[(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin)],
+        image=img1,
+        labels=[schemas.Label(key="k", value="v")],
+    )
+    det2 = schemas.GroundTruthDetection(
+        bbox=(xmin, ymin, xmax, ymax),
+        image=img1,
+        labels=[schemas.Label(key="k", value="v")],
+    )
+
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_groundtruth_detections(
+        db,
+        data=schemas.GroundTruthDetectionsCreate(
+            dataset_name=dset_name, detections=[det1, det2]
+        ),
+    )
+
+    dets = db.scalars(select(models.LabeledGroundTruthDetection)).all()
+    assert len(dets) == 2
+    assert set([det.detection.is_bbox for det in dets]) == {True, False}
+
+    # check we get the same polygon
+    assert db.scalar(ST_AsText(dets[0].detection.boundary)) == db.scalar(
+        ST_AsText(dets[1].detection.boundary)
+    )
+
+
 def test_create_ground_truth_classifications_and_delete_dataset(
     db: Session, gt_clfs_create: schemas.GroundTruthImageClassificationsCreate
 ):

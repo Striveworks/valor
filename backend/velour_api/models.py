@@ -47,6 +47,7 @@ class GroundTruthDetection(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     boundary = mapped_column(Geometry("POLYGON"))
+    is_bbox: Mapped[bool] = mapped_column(nullable=False)
     image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
     labeled_ground_truth_detections: Mapped[
         list["LabeledGroundTruthDetection"]
@@ -70,6 +71,7 @@ class PredictedDetection(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     boundary = mapped_column(Geometry("POLYGON"))
+    is_bbox: Mapped[bool] = mapped_column(nullable=False)
     image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
     image: Mapped["Image"] = relationship(
         "Image", back_populates="predicted_detections"

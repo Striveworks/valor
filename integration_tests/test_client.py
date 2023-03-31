@@ -16,6 +16,7 @@ from sqlalchemy.sql import text
 
 from velour.client import Client, ClientException, Dataset, Model
 from velour.data_types import (
+    BoundingBox,
     BoundingPolygon,
     GroundTruthDetection,
     GroundTruthImageClassification,
@@ -589,6 +590,95 @@ def test_create_model_with_predicted_detections(
     pred = pred_dets[0]
 
     assert set(points) == set([(pt.x, pt.y) for pt in pred.boundary.points])
+
+
+def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
+    """Test that a groundtruth detection can be created as either a bounding box
+    or a polygon
+    """
+    xmin, ymin, xmax, ymax = 10, 25, 30, 50
+    image = Image(uid="uid", height=200, width=150)
+    dataset = client.create_dataset(dset_name)
+
+    gt_bbox = GroundTruthDetection(
+        image=image,
+        labels=[Label(key="k", value="v")],
+        bbox=BoundingBox(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax),
+    )
+    gt_poly = GroundTruthDetection(
+        image=image,
+        labels=[Label(key="k", value="v")],
+        boundary=BoundingPolygon(
+            points=[
+                Point(x=xmin, y=ymin),
+                Point(x=xmin, y=ymax),
+                Point(x=xmax, y=ymax),
+                Point(x=xmax, y=ymin),
+            ]
+        ),
+    )
+
+    dataset.add_groundtruth_detections([gt_bbox, gt_poly])
+
+    db_dets = db.scalars(select(models.GroundTruthDetection)).all()
+    assert len(db_dets) == 2
+    assert set([db_det.is_bbox for db_det in db_dets]) == {True, False}
+    assert (
+        db.scalar(ST_AsText(db_dets[0].boundary))
+        == "POLYGON((10 25,10 50,30 50,30 25,10 25))"
+        == db.scalar(ST_AsText(db_dets[1].boundary))
+    )
+
+
+def test_create_pred_detections_as_bbox_or_poly(
+    db: Session,
+    client: Client,
+    gt_dets1: list[GroundTruthDetection],
+    img1: Image,
+):
+    """Test that a predicted detection can be created as either a bounding box
+    or a polygon
+    """
+    xmin, ymin, xmax, ymax = 10, 25, 30, 50
+    dataset = client.create_dataset(dset_name)
+    model = client.create_model(model_name)
+
+    dataset.add_groundtruth_detections(gt_dets1)
+
+    pred_bbox = PredictedDetection(
+        image=img1,
+        scored_labels=[
+            ScoredLabel(label=Label(key="k", value="v"), score=0.6)
+        ],
+        bbox=BoundingBox(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax),
+    )
+    pred_poly = PredictedDetection(
+        image=img1,
+        scored_labels=[
+            ScoredLabel(label=Label(key="k", value="v"), score=0.4)
+        ],
+        boundary=BoundingPolygon(
+            points=[
+                Point(x=xmin, y=ymin),
+                Point(x=xmin, y=ymax),
+                Point(x=xmax, y=ymax),
+                Point(x=xmax, y=ymin),
+            ]
+        ),
+    )
+
+    model.add_predicted_detections(
+        dataset=dataset, dets=[pred_bbox, pred_poly]
+    )
+
+    db_dets = db.scalars(select(models.PredictedDetection)).all()
+    assert len(db_dets) == 2
+    assert set([db_det.is_bbox for db_det in db_dets]) == {True, False}
+    assert (
+        db.scalar(ST_AsText(db_dets[0].boundary))
+        == "POLYGON((10 25,10 50,30 50,30 25,10 25))"
+        == db.scalar(ST_AsText(db_dets[1].boundary))
+    )
 
 
 def test_create_dataset_with_segmentations(

@@ -3,8 +3,11 @@ import ast
 from geoalchemy2.elements import RasterElement
 from geoalchemy2.functions import (
     ST_Area,
-    ST_AsRaster,
+    ST_Boundary,
+    ST_ConvexHull,
+    ST_Envelope,
     ST_Intersection,
+    ST_Polygon,
     ST_ValueCount,
 )
 from sqlalchemy.orm import Session
@@ -86,30 +89,38 @@ def iou_det_and_seg(
 def intersection_area_of_dets(
     db: Session, det1: DetectionType, det2: DetectionType
 ) -> float:
-    """Computes the area of the intersection between two detections"""
-    return db.scalar(ST_Area(ST_Intersection(det1.boundary, det2.boundary)))
+    """Computes the area of the intersection between two detections
+    If one is a bounding box detection and the other a polygon detection, then
+    the polygon will be converted to a bounding box.
+    """
+    boundary1 = det1.boundary
+    boundary2 = det2.boundary
+
+    # check if any boundaries need to be converted to bboxes
+    if det1.is_bbox and not det2.is_bbox:
+        # convert polygon to a bounding box
+        boundary2 = ST_Envelope(boundary2)
+    elif not det1.is_bbox and det2.is_bbox:
+        boundary1 = ST_Envelope(boundary1)
+
+    return db.scalar(ST_Area(ST_Intersection(boundary1, boundary2)))
 
 
 def intersection_area_of_det_and_seg(
     db: Session, det: DetectionType, seg: SegmentationType
 ):
-    # this method used to be:
-    #
-    #  return db.execute(
-    #     text(
-    #         f"""
-    #     SELECT ST_Area((ST_Intersection(ST_SetGeoReference(ST_SetBandNoDataValue({seg.__class__.__tablename__}.shape, 0), '1 0 0 1 0 0', 'GDAL'), {det.__class__.__tablename__}.boundary)).geom)
-    #     FROM {seg.__class__.__tablename__}, {det.__class__.__tablename__}
-    #     WHERE {seg.__class__.__tablename__}.id={seg.id} AND {det.__class__.__tablename__}.id={det.id}
-    #     """
-    #     )
-    # ).scalar()
-    #
-    # but that was giving an issue with self-intersecting geometrys. so now we just convert the
-    # detection to a raster and do the intersection of rasters
-    return _intersection_area_of_rasters(
-        db, ST_AsRaster(det.boundary, seg.shape), seg.shape
-    )
+    """Computes the intersection area of a detection and segmentation. In the case that
+    the detection is a bounding box, we take the interection of the detection
+    with the bounding box that circumscribes the segmentation. If the detection is a polygon
+    then we take the intersection of the detection with the convex hull of the segmentation
+    """
+    seg_boundary = ST_Polygon(seg.shape)
+    if det.is_bbox:
+        seg_boundary = ST_Envelope(seg_boundary)
+    else:
+        seg_boundary = ST_ConvexHull(ST_Boundary(seg_boundary))
+
+    return db.scalar(ST_Area(ST_Intersection(det.boundary, seg_boundary)))
 
 
 def _area_from_value_counts(vcs: list[str]) -> float:

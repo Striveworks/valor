@@ -78,17 +78,52 @@ class BoundingPolygon:
 
 
 @dataclass
+class BoundingBox:
+    xmin: float
+    ymin: float
+    xmax: float
+    ymax: float
+
+    def __post_init__(self):
+        if self.xmin > self.xmax:
+            raise ValueError("Cannot have xmin > xmax")
+        if self.ymin > self.ymax:
+            raise ValueError("Cannot have ymin > ymax")
+
+
+def _verify_boundary_bbox(det):
+    if (det.boundary is None) == (det.bbox is None):
+        raise ValueError("Must pass exactly one of `boundary` or `bbox`.")
+
+
+@dataclass
 class GroundTruthDetection:
-    boundary: BoundingPolygon
-    labels: List[Label]
     image: Image
+    labels: List[Label]
+    boundary: BoundingPolygon = None
+    bbox: BoundingBox = None
+
+    def __post_init__(self):
+        _verify_boundary_bbox(self)
+
+    @property
+    def is_bbox(self):
+        return self.bbox is not None
 
 
 @dataclass
 class PredictedDetection:
-    boundary: BoundingPolygon
     scored_labels: List[ScoredLabel]
     image: Image
+    boundary: BoundingPolygon = None
+    bbox: BoundingBox = None
+
+    def __post_init__(self):
+        _verify_boundary_bbox(self)
+
+    @property
+    def is_bbox(self):
+        return self.bbox is not None
 
     @property
     def labels(self):

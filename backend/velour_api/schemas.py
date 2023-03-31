@@ -50,13 +50,28 @@ class ScoredLabel(BaseModel):
 
 
 class DetectionBase(BaseModel):
-    # should enforce beginning and ending points are the same? or no?
-    boundary: list[tuple[float, float]]
+    # list of (x, y) points
+    boundary: list[tuple[float, float]] = None
+    # (xmin, ymin, xmax, ymax)
+    bbox: tuple[float, float, float, float] = None
     image: Image
+
+    @root_validator(skip_on_failure=True)
+    def boundary_or_bbox(cls, values):
+        if (values["boundary"] is None) == (values["bbox"] is None):
+            raise ValueError("Must have exactly one of boundary or bbox")
+
+        return values
 
     @validator("boundary")
     def enough_pts(cls, v):
-        return validate_single_polygon(v)
+        if v is not None:
+            return validate_single_polygon(v)
+        return v
+
+    @property
+    def is_bbox(self):
+        return self.bbox is not None
 
 
 class GroundTruthDetection(DetectionBase):
