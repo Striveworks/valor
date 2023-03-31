@@ -68,7 +68,7 @@ def _pred_seg_from_bytes(
     db: Session, mask_bytes: bytes, model: models.Model, img: models.Image
 ) -> models.PredictedSegmentation:
     pred_seg = models.PredictedSegmentation(
-        shape=mask_bytes, image_id=img.id, model_id=model.id, is_instance=False
+        shape=mask_bytes, image_id=img.id, model_id=model.id, is_instance=True
     )
     db.add(pred_seg)
     db.commit()
@@ -91,10 +91,6 @@ def _gt_seg_from_polys(
 
     db.commit()
     return gt_seg
-
-
-def _gt_det_from_polys(db: Session) -> models.GroundTruthDetection:
-    pass
 
 
 def test_area_pred_seg(
@@ -228,6 +224,7 @@ def test_intersection_area_of_det_and_seg(
     det = models.GroundTruthDetection(
         boundary=f"POLYGON({_boundary_points_to_str(poly.polygon)})",
         image_id=img.id,
+        is_bbox=True,
     )
     db.add(det)
     db.commit()
@@ -235,3 +232,111 @@ def test_intersection_area_of_det_and_seg(
     assert (
         ops.intersection_area_of_det_and_seg(db, det, seg) == intersection_area
     )
+
+    # now create a mask that's a triangle and check intersection is correct
+    # when computed against a bounding box detection and a polygon detection
+    mask = np.zeros((10, 30), dtype=bool)
+    for i in range(10):
+        for j in range(30):
+            if i + j < 10:
+                mask[i, j] = True
+    mask_bytes = pil_to_bytes(Image.fromarray(mask))
+    seg = _pred_seg_from_bytes(
+        db=db, mask_bytes=mask_bytes, model=model, img=img
+    )
+
+    ymin, ymax, xmin, xmax = 0, 10, 0, 20
+    poly = f"POLYGON({_boundary_points_to_str([(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)])})"
+    bbox_det = models.GroundTruthDetection(
+        boundary=poly,
+        image_id=img.id,
+        is_bbox=True,
+    )
+    poly_det = models.GroundTruthDetection(
+        boundary=poly,
+        image_id=img.id,
+        is_bbox=False,
+    )
+
+    db.add(bbox_det)
+    db.add(poly_det)
+    db.commit()
+
+    # this should be a little more than the area of the triangle since its contained in the detection
+    assert ops.intersection_area_of_det_and_seg(db, poly_det, seg) == 59.5
+
+    # this should be the area of the rectangle that circumscribes the triangle
+    assert ops.intersection_area_of_det_and_seg(db, bbox_det, seg) == 10 * 10
+
+
+def test_intersection_area_of_dets(db: Session, img: models.Image):
+    ymin1, ymax1, xmin1, xmax1 = 50, 80, 20, 30
+    ymin2, ymax2, xmin2, xmax2 = 60, 90, 10, 25
+
+    intersection_area = (25 - 20) * (80 - 60)
+
+    # poly1 and poly2 are bounding boxes
+    poly1 = f"POLYGON({_boundary_points_to_str([(xmin1, ymin1), (xmax1, ymin1), (xmax1, ymax1), (xmin1, ymax1)])})"
+    poly2 = f"POLYGON({_boundary_points_to_str([(xmin2, ymin2), (xmax2, ymin2), (xmax2, ymax2), (xmin2, ymax2)])})"
+    # triangle thats half of the bounding box poly1
+    poly3 = f"POLYGON({_boundary_points_to_str([(xmin1, ymin1), (xmax1, ymin1), (xmax1, ymax1)])})"
+
+    bbox_det1 = models.GroundTruthDetection(
+        boundary=poly1,
+        image_id=img.id,
+        is_bbox=True,
+    )
+    bbox_det2 = models.GroundTruthDetection(
+        boundary=poly2,
+        image_id=img.id,
+        is_bbox=True,
+    )
+    poly_det1 = models.GroundTruthDetection(
+        boundary=poly1,
+        image_id=img.id,
+        is_bbox=False,
+    )
+    poly_det2 = models.GroundTruthDetection(
+        boundary=poly2,
+        image_id=img.id,
+        is_bbox=False,
+    )
+    poly_det3 = models.GroundTruthDetection(
+        boundary=poly3,
+        image_id=img.id,
+        is_bbox=False,
+    )
+
+    db.add(bbox_det1)
+    db.add(bbox_det2)
+    db.add(poly_det1)
+    db.add(poly_det2)
+    db.add(poly_det3)
+    db.commit()
+
+    assert (
+        ops.intersection_area_of_dets(db, bbox_det1, bbox_det2)
+        == intersection_area
+    )
+
+    assert (
+        ops.intersection_area_of_dets(db, bbox_det1, poly_det2)
+        == intersection_area
+    )
+
+    assert (
+        ops.intersection_area_of_dets(db, poly_det1, poly_det2)
+        == intersection_area
+    )
+
+    # doing intersection of rectangle det as a polygon with triangle should give half the area
+    # of the rectange
+    assert ops.intersection_area_of_dets(db, poly_det1, poly_det3) == 0.5 * (
+        80 - 50
+    ) * (30 - 20)
+
+    # doing intersection of rectangle det as a bounding box with triangle should give the area
+    # of the rectange
+    assert ops.intersection_area_of_dets(db, bbox_det1, poly_det3) == (
+        80 - 50
+    ) * (30 - 20)

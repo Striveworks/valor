@@ -7,7 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from velour_api.schemas import (
-    DetectionBase,
+    GroundTruthDetection,
     GroundTruthSegmentation,
     Image,
     Label,
@@ -29,23 +29,39 @@ def _create_b64_mask(mode: str, ext: str, size=(20, 20)) -> str:
 
 def test_ground_truth_detection_validation_pos(img: Image):
     boundary = [[1, 1], [2, 2], [0, 4]]
-    det = DetectionBase(
+    det = GroundTruthDetection(
         boundary=boundary,
         labels=[Label(key="class", value="a")],
         image=img,
     )
     assert det.boundary == [tuple(pt) for pt in boundary]
 
+    det = GroundTruthDetection(
+        bbox=(1, 2, 3, 4),
+        labels=[Label(key="class", value="a")],
+        image=img,
+    )
+
 
 def test_ground_truth_detection_validation_neg(img: Image):
-    boundary = [[1, 1], [2, 2]]
+    boundary = [(1, 1), (2, 2)]
+
     with pytest.raises(ValueError) as exc_info:
-        DetectionBase(
+        GroundTruthDetection(
             boundary=boundary,
             labels=[Label(key="class", value="a")],
             image=img,
         )
     assert "must be composed of at least three points" in str(exc_info)
+
+    with pytest.raises(ValueError) as exc_info:
+        GroundTruthDetection(
+            boundary=boundary + [(3, 4)],
+            bbox=(1, 2, 3, 4),
+            labels=[Label(key="class", value="a")],
+            image=img,
+        )
+    assert "Must have exactly one of boundary or bbox" in str(exc_info)
 
 
 def test_ground_truth_segmentation_validation(img: Image):

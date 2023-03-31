@@ -68,6 +68,27 @@ def _payload_for_polys_with_holes(
     ]
 
 
+def _det_to_dict(det: Union[PredictedDetection, GroundTruthDetection]) -> dict:
+    labels_key = (
+        "scored_labels" if isinstance(det, PredictedDetection) else "labels"
+    )
+    ret = {
+        labels_key: [asdict(label) for label in getattr(det, labels_key)],
+        "image": asdict(det.image),
+    }
+    if det.is_bbox:
+        ret["bbox"] = [
+            det.bbox.xmin,
+            det.bbox.ymin,
+            det.bbox.xmax,
+            det.bbox.ymax,
+        ]
+    else:
+        ret["boundary"] = _payload_for_bounding_polygon(det.boundary)
+
+    return ret
+
+
 class ClientException(Exception):
     pass
 
@@ -222,20 +243,12 @@ class Dataset:
     def add_groundtruth_detections(self, dets: List[GroundTruthDetection]):
         payload = {
             "dataset_name": self.name,
-            "detections": [
-                {
-                    "boundary": _payload_for_bounding_polygon(det.boundary),
-                    "labels": [asdict(label) for label in det.labels],
-                    "image": asdict(det.image),
-                }
-                for det in dets
-            ],
+            "detections": [_det_to_dict(det) for det in dets],
         }
 
         resp = self.client._requests_post_rel_host(
             "groundtruth-detections", json=payload
         )
-        resp.raise_for_status()
 
         return resp.json()
 
@@ -256,7 +269,6 @@ class Dataset:
         resp = self.client._requests_post_rel_host(
             "groundtruth-classifications", json=payload
         )
-        resp.raise_for_status()
 
         return resp.json()
 
@@ -285,7 +297,6 @@ class Dataset:
         resp = self.client._requests_post_rel_host(
             "groundtruth-segmentations", json=payload
         )
-        resp.raise_for_status()
 
         return resp.json()
 
@@ -387,24 +398,13 @@ class Model:
         payload = {
             "model_name": self.name,
             "dataset_name": dataset.name,
-            "detections": [
-                {
-                    "boundary": _payload_for_bounding_polygon(det.boundary),
-                    "scored_labels": [
-                        asdict(scored_label)
-                        for scored_label in det.scored_labels
-                    ],
-                    "image": asdict(det.image),
-                }
-                for det in dets
-            ],
+            "detections": [_det_to_dict(det) for det in dets],
         }
 
         resp = self.client._requests_post_rel_host(
             "predicted-detections", json=payload
         )
 
-        resp.raise_for_status()
         return resp.json()
 
     def add_predicted_segmentations(
@@ -431,7 +431,6 @@ class Model:
             "predicted-segmentations", json=payload
         )
 
-        resp.raise_for_status()
         return resp.json()
 
     def add_predicted_classifications(
@@ -455,6 +454,5 @@ class Model:
         resp = self.client._requests_post_rel_host(
             "predicted-classifications", json=payload
         )
-        resp.raise_for_status()
 
         return resp.json()
