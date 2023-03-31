@@ -83,13 +83,13 @@ def test_ground_truth_detection():
 
     assert GroundTruthDetection(
         image=None, labels=[], bbox=BoundingBox(1, 2, 3, 4)
-    )
+    ).is_bbox
 
-    assert GroundTruthDetection(
+    assert not GroundTruthDetection(
         image=None,
         labels=[],
         boundary=BoundingPolygon([]),
-    )
+    ).is_bbox
 
 
 def test_predicted_detection():

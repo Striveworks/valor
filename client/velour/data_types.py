@@ -106,6 +106,10 @@ class GroundTruthDetection:
     def __post_init__(self):
         _verify_boundary_bbox(self)
 
+    @property
+    def is_bbox(self):
+        return self.bbox is not None
+
 
 @dataclass
 class PredictedDetection:
@@ -116,6 +120,10 @@ class PredictedDetection:
 
     def __post_init__(self):
         _verify_boundary_bbox(self)
+
+    @property
+    def is_bbox(self):
+        return self.bbox is not None
 
     @property
     def labels(self):

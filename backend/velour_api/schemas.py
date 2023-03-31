@@ -50,8 +50,9 @@ class ScoredLabel(BaseModel):
 
 
 class DetectionBase(BaseModel):
-    # boundary is either a polyogn or bounding box
+    # list of (x, y) points
     boundary: list[tuple[float, float]] = None
+    # (xmin, ymin, xmax, ymax)
     bbox: tuple[float, float, float, float] = None
     image: Image
 
