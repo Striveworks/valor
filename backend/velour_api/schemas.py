@@ -55,7 +55,7 @@ class DetectionBase(BaseModel):
     bbox: tuple[float, float, float, float] = None
     image: Image
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def boundary_or_bbox(cls, values):
         if (values["boundary"] is None) == (values["bbox"] is None):
             raise ValueError("Must have exactly one of boundary or bbox")
