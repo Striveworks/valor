@@ -109,6 +109,12 @@ def intersection_area_of_dets(
 def intersection_area_of_det_and_seg(
     db: Session, det: DetectionType, seg: SegmentationType
 ):
+    """Computes the intersection area of a detection and segmentation. In the case that
+    the detection is a bounding box, we take the interection of the detection
+    with the bounding box that circumscribes the segmentation. If the detection is a polygon
+    then we take the intersection of the detection with the polygon that bounds
+    the segmentation
+    """
     seg_boundary = ST_Polygon(seg.shape)
     if det.is_bbox:
         seg_boundary = ST_Envelope(seg_boundary)
