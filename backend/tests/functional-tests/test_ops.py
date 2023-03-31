@@ -93,10 +93,6 @@ def _gt_seg_from_polys(
     return gt_seg
 
 
-def _gt_det_from_polys(db: Session) -> models.GroundTruthDetection:
-    pass
-
-
 def test_area_pred_seg(
     db: Session, mask_bytes1: bytes, model: models.Model, img: models.Image
 ):
@@ -266,10 +262,8 @@ def test_intersection_area_of_det_and_seg(
     db.add(poly_det)
     db.commit()
 
-    # this should be the area of the triangle since its contained in the detection
-    assert (
-        ops.intersection_area_of_det_and_seg(db, poly_det, seg) == mask.sum()
-    )
+    # this should be a little more than the area of the triangle since its contained in the detection
+    assert ops.intersection_area_of_det_and_seg(db, poly_det, seg) == 59.5
 
     # this should be the area of the rectangle that circumscribes the triangle
     assert ops.intersection_area_of_det_and_seg(db, bbox_det, seg) == 10 * 10

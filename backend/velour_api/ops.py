@@ -4,9 +4,9 @@ from geoalchemy2.elements import RasterElement
 from geoalchemy2.functions import (
     ST_Area,
     ST_Boundary,
+    ST_ConvexHull,
     ST_Envelope,
     ST_Intersection,
-    ST_MakePolygon,
     ST_Polygon,
     ST_ValueCount,
 )
@@ -112,14 +112,13 @@ def intersection_area_of_det_and_seg(
     """Computes the intersection area of a detection and segmentation. In the case that
     the detection is a bounding box, we take the interection of the detection
     with the bounding box that circumscribes the segmentation. If the detection is a polygon
-    then we take the intersection of the detection with the polygon that bounds
-    the segmentation
+    then we take the intersection of the detection with the convex hull of the segmentation
     """
     seg_boundary = ST_Polygon(seg.shape)
     if det.is_bbox:
         seg_boundary = ST_Envelope(seg_boundary)
     else:
-        seg_boundary = ST_MakePolygon(ST_Boundary(seg_boundary))
+        seg_boundary = ST_ConvexHull(ST_Boundary(seg_boundary))
 
     return db.scalar(ST_Area(ST_Intersection(det.boundary, seg_boundary)))
 
