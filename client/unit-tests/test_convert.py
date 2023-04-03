@@ -9,7 +9,6 @@ def test_chariot_detections_to_velour():
         "num_detections": 2,
         "detection_classes": [
             "person",
-            "person",
             "car",
         ],
         "detection_boxes": [
@@ -39,6 +38,23 @@ def test_chariot_detections_to_velour():
         for det in velour_dets
         for scored_label in det.scored_labels
     ] == ["class", "class"]
+    assert set(
+        [
+            scored_label.label.value
+            for det in velour_dets
+            for scored_label in det.scored_labels
+        ]
+    ) == {"person", "car"}
+
+    for i, velour_det in enumerate(velour_dets):
+        assert dets["detection_boxes"][i] == [
+            velour_det.bbox.ymin,
+            velour_det.bbox.xmin,
+            velour_det.bbox.ymax,
+            velour_det.bbox.xmax,
+        ]
+
+        assert velour_det.boundary is None
 
 
 def test_coco_rle_to_mask():
