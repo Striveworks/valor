@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from velour.client import Dataset
 from velour.data_types import (
-    BoundingPolygon,
+    BoundingBox,
     GroundTruthInstanceSegmentation,
     GroundTruthSemanticSegmentation,
     Image,
@@ -38,7 +38,9 @@ def chariot_detections_to_velour(
 
     return [
         PredictedDetection(
-            boundary=BoundingPolygon.from_ymin_xmin_ymax_xmax(*box),
+            bbox=BoundingBox(
+                ymin=box[0], xmin=box[1], ymax=box[2], xmax=box[3]
+            ),
             scored_labels=[
                 ScoredLabel(
                     label=Label(key=label_key, value=label), score=score
