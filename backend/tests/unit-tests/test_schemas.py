@@ -6,7 +6,9 @@ import PIL.Image
 import pytest
 from pydantic import ValidationError
 
+from velour_api.enums import JobStatus
 from velour_api.schemas import (
+    EvalJob,
     GroundTruthDetection,
     GroundTruthSegmentation,
     Image,
@@ -113,3 +115,13 @@ def test_predicted_segmentation_validation_format_neg(img: Image):
             is_instance=True,
         )
     assert "Expected image format PNG but got" in str(exc_info)
+
+
+def test_eval_job():
+    job = EvalJob()
+    # check that job got a uid of the right form
+    assert isinstance(job.uid, str)
+    assert len(job.uid.split("-")) == 5
+
+    assert job.status == JobStatus.PENDING
+    assert job.created_metrics_ids is None
