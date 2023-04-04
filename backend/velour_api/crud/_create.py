@@ -704,7 +704,7 @@ def _model_object_detection_preds_statement(
 
 def validate_create_ap_metrics(
     db: Session, request_info: schemas.APRequest
-) -> tuple[Select, Select, schemas.CreateMetricsResponse]:
+) -> tuple[Select, Select, list[schemas.Label], list[schemas.Label]]:
     """Validates request_info and produces select statements for grabbing groundtruth and
     prediction data
     """
@@ -767,10 +767,8 @@ def validate_create_ap_metrics(
     return (
         gts_statement,
         preds_statement,
-        schemas.CreateMetricsResponse(
-            missing_pred_labels=missing_pred_labels,
-            ignored_pred_labels=ignored_pred_labels,
-        ),
+        missing_pred_labels,
+        ignored_pred_labels,
     )
 
 

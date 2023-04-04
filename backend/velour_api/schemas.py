@@ -272,6 +272,7 @@ class MetricResponse(BaseModel):
 class CreateMetricsResponse(BaseModel):
     missing_pred_labels: list[Label]
     ignored_pred_labels: list[Label]
+    job_id: str
 
 
 class EvalJob(BaseModel):
