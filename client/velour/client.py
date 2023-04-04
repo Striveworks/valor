@@ -11,6 +11,7 @@ import requests
 
 from velour.data_types import (
     BoundingPolygon,
+    EvalJob,
     GroundTruthDetection,
     GroundTruthImageClassification,
     GroundTruthInstanceSegmentation,
@@ -211,7 +212,7 @@ class Client:
         dataset_gt_task_type: Task,
         iou_thresholds: List[float] = None,
         labels: List[Label] = None,
-    ) -> dict:
+    ) -> EvalJob:
         payload = {
             "parameters": {
                 "model_name": model.name,
@@ -229,10 +230,10 @@ class Client:
         resp = self._requests_post_rel_host("/ap-metrics", json=payload).json()
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
         # list of label dicts. convert label dicts to Label objects
-        for k, v in resp.items():
-            resp[k] = [Label(**la) for la in v]
+        for k in ["missing_pred_labels", "ignored_pred_labels"]:
+            resp[k] = [Label(**la) for la in resp[k]]
 
-        return resp
+        return EvalJob(**resp)
 
 
 class Dataset:
