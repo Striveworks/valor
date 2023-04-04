@@ -4,7 +4,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from velour_api import auth, crud, exceptions, jobs, logger, schemas
+from velour_api import auth, crud, enums, exceptions, jobs, logger, schemas
 from velour_api.database import create_db, make_session
 from velour_api.settings import auth_settings
 
@@ -347,5 +347,21 @@ def user(
 def get_job(job_id: str) -> schemas.EvalJob:
     try:
         return jobs.get_job(job_id)
+    except exceptions.JobDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/jobs/{job_id}/metrics", dependencies=[Depends(token_auth_scheme)])
+def get_job_metrics(
+    job_id: str, db: Session = Depends(get_db)
+) -> list[schemas.MetricResponse]:
+    try:
+        job = jobs.get_job(job_id)
+        if job.status != enums.JobStatus.DONE:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No metrics for job since its status is {job.status}",
+            )
+        return crud.get_metrics_from_metric_params_id(db, job.metric_params_id)
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))

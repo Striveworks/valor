@@ -11,7 +11,6 @@ import requests
 
 from velour.data_types import (
     BoundingPolygon,
-    EvalJob,
     GroundTruthDetection,
     GroundTruthImageClassification,
     GroundTruthInstanceSegmentation,
@@ -212,7 +211,7 @@ class Client:
         dataset_gt_task_type: Task,
         iou_thresholds: List[float] = None,
         labels: List[Label] = None,
-    ) -> EvalJob:
+    ) -> "EvalJob":
         payload = {
             "parameters": {
                 "model_name": model.name,
@@ -233,7 +232,7 @@ class Client:
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
             resp[k] = [Label(**la) for la in resp[k]]
 
-        return EvalJob(**resp)
+        return EvalJob(client=self, **resp)
 
 
 class Dataset:
@@ -457,3 +456,26 @@ class Model:
         )
 
         return resp.json()
+
+
+class EvalJob:
+    def __init__(
+        self,
+        client: Client,
+        job_id: str,
+        missing_pred_labels: List[Label],
+        ignored_pred_labels: List[Label],
+    ):
+        self._id = job_id
+        self.missing_pred_labels = missing_pred_labels
+        self.ignored_pred_labels = ignored_pred_labels
+        self.client = client
+
+    def status(self) -> str:
+        resp = self.client._requests_get_rel_host(f"/jobs/{self._id}").json()
+        return resp["status"]
+
+    def metrics(self) -> List[dict]:
+        return self.client._requests_get_rel_host(
+            f"/jobs/{self._id}/metrics"
+        ).json()

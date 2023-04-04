@@ -200,10 +200,3 @@ class GroundTruthImageClassification:
 class PredictedImageClassification:
     image: Image
     scored_labels: List[ScoredLabel]
-
-
-@dataclass
-class EvalJob:
-    missing_pred_labels: List[Label]
-    ignored_pred_labels: List[Label]
-    job_id: str
