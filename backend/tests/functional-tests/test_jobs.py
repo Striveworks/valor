@@ -67,18 +67,14 @@ def test_wrap_metric_computation():
         assert (
             job.status == JobStatus.PROCESSING == jobs.get_job(job.uid).status
         )
-        return [1, 2, 3]
+        return 1
 
     job, wrapped_f = jobs.wrap_metric_computation(f)
 
     assert job.status == JobStatus.PENDING == jobs.get_job(job.uid).status
     wrapped_f()
     assert job.status == JobStatus.DONE == jobs.get_job(job.uid).status
-    assert (
-        job.created_metrics_ids
-        == [1, 2, 3]
-        == jobs.get_job(job.uid).created_metrics_ids
-    )
+    assert job.metric_params_id == 1 == jobs.get_job(job.uid).metric_params_id
 
     def g():
         assert (
@@ -116,7 +112,7 @@ def test_create_ap_metrics_endpoint(uuid4, crud, client: TestClient):
     # that the job it corresponds to is in the processing state
     def patch_create_ap_metrics(*args, **kwargs):
         assert jobs.get_job("1").status == JobStatus.PROCESSING
-        return [1, 2]
+        return 2
 
     crud.create_ap_metrics = patch_create_ap_metrics
 
@@ -128,4 +124,4 @@ def test_create_ap_metrics_endpoint(uuid4, crud, client: TestClient):
     assert job_id == "1"
     job = jobs.get_job(job_id)
     assert job.status == JobStatus.DONE
-    assert job.created_metrics_ids == [1, 2]
+    assert job.metric_params_id == 2

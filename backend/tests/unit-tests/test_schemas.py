@@ -124,4 +124,4 @@ def test_eval_job():
     assert len(job.uid.split("-")) == 5
 
     assert job.status == JobStatus.PENDING
-    assert job.created_metrics_ids is None
+    assert job.metric_params_id is None

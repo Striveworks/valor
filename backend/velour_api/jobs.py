@@ -78,8 +78,8 @@ def wrap_metric_computation(fn: callable) -> tuple[EvalJob, callable]:
     Parameters
     ----------
     fn
-        the method that computes and stores metrics. This should return a
-        list of ids of metrics in the database
+        the method that computes and stores metrics. This should return an
+        id for a MetricParams row in the db
 
     Returns
     -------
@@ -95,12 +95,12 @@ def wrap_metric_computation(fn: callable) -> tuple[EvalJob, callable]:
             add_job(job)
             logger.debug(f"starting computing metrics using {fn}")
             start = perf_counter()
-            created_metric_ids = fn(*args, **kwargs)
+            metric_params_id = fn(*args, **kwargs)
             logger.debug(
                 f"finished computing metrics in {perf_counter() - start} seconds"
             )
             job.status = JobStatus.DONE
-            job.created_metrics_ids = created_metric_ids
+            job.metric_params_id = metric_params_id
             add_job(job)
         except Exception as e:
             job.status = JobStatus.FAILED

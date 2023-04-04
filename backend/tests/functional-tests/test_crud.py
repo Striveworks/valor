@@ -844,14 +844,22 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     ds.draft = False
     db.commit()
 
-    ap_metric_ids, missing_pred_labels, ignored_pred_labels = method_to_test()
+    (
+        metric_params_id,
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = method_to_test()
 
     assert missing_pred_labels == []
     assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
 
-    metrics = db.scalars(
-        select(models.APMetric).where(models.APMetric.id.in_(ap_metric_ids))
-    ).all()
+    metrics = db.scalar(
+        select(models.MetricParameters).where(
+            models.MetricParameters.id == metric_params_id
+        )
+    ).ap_metrics
+
+    ap_metric_ids = [m.id for m in metrics]
 
     assert set([m.iou for m in metrics]) == {0.2, 0.6}
 
@@ -859,7 +867,16 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     assert len(set(m.label_id for m in metrics)) == 5
 
     # run again and make sure no new ids were created
-    ap_metric_ids_again, _, _ = method_to_test()
+    metric_params_id_again, _, _ = method_to_test()
+    assert metric_params_id == metric_params_id_again
+    ap_metric_ids_again = [
+        m.id
+        for m in db.scalar(
+            select(models.MetricParameters).where(
+                models.MetricParameters.id == metric_params_id_again
+            )
+        ).ap_metrics
+    ]
     assert sorted(ap_metric_ids) == sorted(ap_metric_ids_again)
 
     # test crud.get_model_metrics

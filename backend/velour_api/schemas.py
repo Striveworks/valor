@@ -278,4 +278,4 @@ class CreateMetricsResponse(BaseModel):
 class EvalJob(BaseModel):
     uid: str = Field(default_factory=lambda: str(uuid4()))
     status: JobStatus = JobStatus.PENDING
-    created_metrics_ids: list[int] = None
+    metric_params_id: int = None
