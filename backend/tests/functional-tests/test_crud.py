@@ -821,7 +821,8 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         (
             gts_statement,
             preds_statement,
-            cm_resp,
+            missing_pred_labels,
+            ignored_pred_labels,
         ) = crud.validate_create_ap_metrics(db, request_info)
         return (
             crud.create_ap_metrics(
@@ -830,8 +831,8 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
                 preds_statement=preds_statement,
                 request_info=request_info,
             ),
-            cm_resp.missing_pred_labels,
-            cm_resp.ignored_pred_labels,
+            missing_pred_labels,
+            ignored_pred_labels,
         )
 
     # check we get an error since the dataset is still a draft
