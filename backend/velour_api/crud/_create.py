@@ -779,7 +779,7 @@ def create_ap_metrics(
     gts_statement: Select,
     preds_statement: Select,
     request_info: schemas.APRequest,
-):
+) -> list[int]:
     # need to break down preds and gts by image
     gts = db.scalars(gts_statement).all()
     preds = db.scalars(preds_statement).all()

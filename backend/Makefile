@@ -13,6 +13,9 @@ unit-tests:
 start-postgis-docker:
 	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgis/postgis
 
+start-redis-docker:
+	docker run -p 6379:6379 -d redis
+
 functional-tests:
 	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost pytest -v tests/functional-tests
 
