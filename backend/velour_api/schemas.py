@@ -1,11 +1,12 @@
 import io
 from base64 import b64decode
 from typing import Optional
+from uuid import uuid4
 
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
-from velour_api.enums import Task
+from velour_api.enums import JobStatus, Task
 
 
 def validate_single_polygon(poly: list[tuple[float, float]]):
@@ -271,3 +272,10 @@ class MetricResponse(BaseModel):
 class CreateMetricsResponse(BaseModel):
     missing_pred_labels: list[Label]
     ignored_pred_labels: list[Label]
+    job_id: str
+
+
+class EvalJob(BaseModel):
+    uid: str = Field(default_factory=lambda: str(uuid4()))
+    status: JobStatus = JobStatus.PENDING
+    metric_params_id: int = None

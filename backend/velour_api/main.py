@@ -1,11 +1,10 @@
 import os
-from time import perf_counter
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from velour_api import auth, crud, exceptions, logger, schemas
+from velour_api import auth, crud, enums, exceptions, jobs, logger, schemas
 from velour_api.database import create_db, make_session
 from velour_api.settings import auth_settings
 
@@ -293,7 +292,9 @@ def get_model_metrics(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@app.post("/ap-metrics", dependencies=[Depends(token_auth_scheme)])
+@app.post(
+    "/ap-metrics", status_code=202, dependencies=[Depends(token_auth_scheme)]
+)
 def create_ap_metrics(
     data: schemas.APRequest,
     background_tasks: BackgroundTasks,
@@ -303,19 +304,19 @@ def create_ap_metrics(
         (
             gts_statement,
             preds_statement,
-            cm_resp,
+            missing_pred_labels,
+            ignored_pred_labels,
         ) = crud.validate_create_ap_metrics(db, request_info=data)
 
-        def _compute_fn(*args, **kwargs):
-            logger.debug("starting computing AP metrics")
-            start = perf_counter()
-            crud.create_ap_metrics(*args, **kwargs)
-            logger.debug(
-                f"finished computing AP metrics in {perf_counter() - start} seconds"
-            )
+        job, wrapped_fn = jobs.wrap_metric_computation(crud.create_ap_metrics)
+        cm_resp = schemas.CreateMetricsResponse(
+            missing_pred_labels=missing_pred_labels,
+            ignored_pred_labels=ignored_pred_labels,
+            job_id=job.uid,
+        )
 
         background_tasks.add_task(
-            _compute_fn,
+            wrapped_fn,
             db=db,
             request_info=data,
             gts_statement=gts_statement,
@@ -340,3 +341,27 @@ def user(
 ) -> schemas.User:
     token_payload = auth.verify_token(token)
     return schemas.User(email=token_payload.get("email"))
+
+
+@app.get("/jobs/{job_id}", dependencies=[Depends(token_auth_scheme)])
+def get_job(job_id: str) -> schemas.EvalJob:
+    try:
+        return jobs.get_job(job_id)
+    except exceptions.JobDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/jobs/{job_id}/metrics", dependencies=[Depends(token_auth_scheme)])
+def get_job_metrics(
+    job_id: str, db: Session = Depends(get_db)
+) -> list[schemas.MetricResponse]:
+    try:
+        job = jobs.get_job(job_id)
+        if job.status != enums.JobStatus.DONE:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No metrics for job since its status is {job.status}",
+            )
+        return crud.get_metrics_from_metric_params_id(db, job.metric_params_id)
+    except exceptions.JobDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))

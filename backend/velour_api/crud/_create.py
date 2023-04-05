@@ -704,7 +704,7 @@ def _model_object_detection_preds_statement(
 
 def validate_create_ap_metrics(
     db: Session, request_info: schemas.APRequest
-) -> tuple[Select, Select, schemas.CreateMetricsResponse]:
+) -> tuple[Select, Select, list[schemas.Label], list[schemas.Label]]:
     """Validates request_info and produces select statements for grabbing groundtruth and
     prediction data
     """
@@ -767,10 +767,8 @@ def validate_create_ap_metrics(
     return (
         gts_statement,
         preds_statement,
-        schemas.CreateMetricsResponse(
-            missing_pred_labels=missing_pred_labels,
-            ignored_pred_labels=ignored_pred_labels,
-        ),
+        missing_pred_labels,
+        ignored_pred_labels,
     )
 
 
@@ -779,7 +777,7 @@ def create_ap_metrics(
     gts_statement: Select,
     preds_statement: Select,
     request_info: schemas.APRequest,
-):
+) -> int:
     # need to break down preds and gts by image
     gts = db.scalars(gts_statement).all()
     preds = db.scalars(preds_statement).all()
@@ -832,10 +830,8 @@ def create_ap_metrics(
         db=db, metrics=ap_metrics, metric_parameters_id=mp.id
     )
 
-    ap_metric_ids = [
-        _get_or_create_row(db, models.APMetric, mapping).id
-        for mapping in ap_metric_mappings
-    ]
+    for mapping in ap_metric_mappings:
+        _get_or_create_row(db, models.APMetric, mapping)
     db.commit()
 
-    return ap_metric_ids
+    return mp.id

@@ -11,3 +11,10 @@ class Task(Enum):
 class MetricType(Enum):
     AP = "Average Precision"
     mAP = "Mean Average Precision"
+
+
+class JobStatus(Enum):
+    PENDING = "Pending"
+    PROCESSING = "Processing"
+    FAILED = "Failed"
+    DONE = "Done"
