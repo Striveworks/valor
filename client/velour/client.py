@@ -211,7 +211,7 @@ class Client:
         dataset_gt_task_type: Task,
         iou_thresholds: List[float] = None,
         labels: List[Label] = None,
-    ) -> dict:
+    ) -> "EvalJob":
         payload = {
             "parameters": {
                 "model_name": model.name,
@@ -229,10 +229,10 @@ class Client:
         resp = self._requests_post_rel_host("/ap-metrics", json=payload).json()
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
         # list of label dicts. convert label dicts to Label objects
-        for k, v in resp.items():
-            resp[k] = [Label(**la) for la in v]
+        for k in ["missing_pred_labels", "ignored_pred_labels"]:
+            resp[k] = [Label(**la) for la in resp[k]]
 
-        return resp
+        return EvalJob(client=self, **resp)
 
 
 class Dataset:
@@ -456,3 +456,26 @@ class Model:
         )
 
         return resp.json()
+
+
+class EvalJob:
+    def __init__(
+        self,
+        client: Client,
+        job_id: str,
+        missing_pred_labels: List[Label],
+        ignored_pred_labels: List[Label],
+    ):
+        self._id = job_id
+        self.missing_pred_labels = missing_pred_labels
+        self.ignored_pred_labels = ignored_pred_labels
+        self.client = client
+
+    def status(self) -> str:
+        resp = self.client._requests_get_rel_host(f"/jobs/{self._id}").json()
+        return resp["status"]
+
+    def metrics(self) -> List[dict]:
+        return self.client._requests_get_rel_host(
+            f"/jobs/{self._id}/metrics"
+        ).json()

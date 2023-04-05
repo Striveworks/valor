@@ -37,3 +37,8 @@ class ImageDoesNotExistError(Exception):
         return super().__init__(
             f"Image with uid '{uid}' does not exist in dataset '{dataset_name}'."
         )
+
+
+class JobDoesNotExistError(Exception):
+    def __init__(self, uid: str):
+        return super().__init__(f"Job with uid '{uid} does not exist")

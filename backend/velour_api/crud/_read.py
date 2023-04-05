@@ -232,6 +232,31 @@ def _db_metric_to_pydantic_metric(metric: models.APMetric) -> schemas.APMetric:
     )
 
 
+def get_metrics_from_metric_params(
+    metric_params: list[models.MetricParameters],
+) -> list[schemas.MetricResponse]:
+    return [
+        schemas.MetricResponse(
+            metric_name=m.__tablename__,
+            parameters=_db_metric_params_to_pydantic_metric_params(mp),
+            metric=_db_metric_to_pydantic_metric(m),
+        )
+        for mp in metric_params
+        for m in mp.ap_metrics
+    ]
+
+
+def get_metrics_from_metric_params_id(
+    db: Session, metric_params_id: int
+) -> list[schemas.MetricResponse]:
+    metric_params = db.scalar(
+        select(models.MetricParameters).where(
+            models.MetricParameters.id == metric_params_id
+        )
+    )
+    return get_metrics_from_metric_params([metric_params])
+
+
 def get_model_metrics(
     db: Session, model_name: str
 ) -> list[schemas.MetricResponse]:
@@ -246,15 +271,7 @@ def get_model_metrics(
         .where(models.Model.id == model.id)
     )
 
-    return [
-        schemas.MetricResponse(
-            metric_name=m.__tablename__,
-            parameters=_db_metric_params_to_pydantic_metric_params(mp),
-            metric=_db_metric_to_pydantic_metric(m),
-        )
-        for mp in metric_params
-        for m in mp.ap_metrics
-    ]
+    return get_metrics_from_metric_params(metric_params)
 
 
 def number_of_rows(db: Session, model_cls: type) -> int:

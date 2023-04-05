@@ -4,6 +4,7 @@ that is no auth
 
 import io
 import json
+import time
 from typing import Any
 
 import numpy as np
@@ -915,7 +916,7 @@ def test_evaluate_ap(
     model = client.create_model(model_name)
     model.add_predicted_detections(dataset, pred_dets)
 
-    resp = client.evaluate_ap(
+    eval_job = client.evaluate_ap(
         model=model,
         dataset=dataset,
         model_pred_task_type=Task.OBJECT_DETECTION,
@@ -924,6 +925,41 @@ def test_evaluate_ap(
         iou_thresholds=[0.1, 0.6],
     )
 
-    assert set(resp.keys()) == {"missing_pred_labels", "ignored_pred_labels"}
-    assert resp["ignored_pred_labels"] == [Label(key="k2", value="v2")]
-    assert resp["missing_pred_labels"] == []
+    assert eval_job.ignored_pred_labels == [Label(key="k2", value="v2")]
+    assert eval_job.missing_pred_labels == []
+    assert isinstance(eval_job._id, str)
+
+    # sleep to give the backend time to compute
+    time.sleep(1)
+    assert eval_job.status() == "Done"
+
+    assert eval_job.metrics() == [
+        {
+            "metric_name": "ap_metric",
+            "parameters": {
+                "model_name": "test model",
+                "dataset_name": "test dataset",
+                "model_pred_task_type": "Object Detection",
+                "dataset_gt_task_type": "Object Detection",
+            },
+            "metric": {
+                "iou": 0.1,
+                "value": 0.504950495049505,
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+        {
+            "metric_name": "ap_metric",
+            "parameters": {
+                "model_name": "test model",
+                "dataset_name": "test dataset",
+                "model_pred_task_type": "Object Detection",
+                "dataset_gt_task_type": "Object Detection",
+            },
+            "metric": {
+                "iou": 0.6,
+                "value": 0.504950495049505,
+                "label": {"key": "k1", "value": "v1"},
+            },
+        },
+    ]
