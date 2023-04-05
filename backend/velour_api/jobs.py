@@ -53,6 +53,7 @@ def needs_redis(fn):
     return wrapper
 
 
+@needs_redis
 def get_job(uid: str) -> EvalJob:
     json_str = r.get(uid)
     if json_str is None:
@@ -61,6 +62,7 @@ def get_job(uid: str) -> EvalJob:
     return EvalJob(uid=uid, **job_info)
 
 
+@needs_redis
 def get_all_jobs() -> list[EvalJob]:
     return [get_job(uid) for uid in r.keys()]
 
