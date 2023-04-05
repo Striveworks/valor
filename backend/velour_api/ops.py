@@ -1,14 +1,12 @@
-import ast
-
 from geoalchemy2.elements import RasterElement
 from geoalchemy2.functions import (
     ST_Area,
     ST_Boundary,
     ST_ConvexHull,
+    ST_Count,
     ST_Envelope,
     ST_Intersection,
     ST_Polygon,
-    ST_ValueCount,
 )
 from sqlalchemy.orm import Session
 
@@ -123,25 +121,6 @@ def intersection_area_of_det_and_seg(
     return db.scalar(ST_Area(ST_Intersection(det.boundary, seg_boundary)))
 
 
-def _area_from_value_counts(vcs: list[str]) -> float:
-    """
-    vcs
-        list of the form  ['(1, N)', '(0, M)'] where N is the number of
-        pixels with value 1 and M is the number of pixels with value 0
-    """
-    # convert strings to tuples
-    vcs = [ast.literal_eval(vc) for vc in vcs]
-
-    # get value count for pixel value 1
-    vc1 = [vc for vc in vcs if vc[0] == 1]
-
-    if len(vc1) == 0:
-        return 0.0
-
-    vc1 = vc1[0]
-    return vc1[1]
-
-
 def intersection_area_of_segs(
     db: Session,
     seg1: SegmentationType,
@@ -153,9 +132,7 @@ def intersection_area_of_segs(
 def _intersection_area_of_rasters(
     db: Session, rast1: RasterElement, rast2: RasterElement
 ) -> float:
-    return _area_from_value_counts(
-        db.scalars(ST_ValueCount(ST_Intersection(rast1, rast2))).fetchall()
-    )
+    return db.scalar(ST_Count(ST_Intersection(rast1, rast2)))
 
 
 def det_area(db: Session, det: DetectionType) -> float:
@@ -166,6 +143,4 @@ def det_area(db: Session, det: DetectionType) -> float:
 def seg_area(
     db: Session, seg: PredictedSegmentation | GroundTruthSegmentation
 ) -> float:
-    return _area_from_value_counts(
-        db.scalars(ST_ValueCount(seg.shape)).fetchall()
-    )
+    return db.scalar(ST_Count(seg.shape))
