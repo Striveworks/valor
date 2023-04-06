@@ -838,8 +838,8 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
             parameters=schemas.MetricParameters(
                 model_name="test model",
                 dataset_name="test dataset",
-                model_pred_task_type=enums.Task.OBJECT_DETECTION,
-                dataset_gt_task_type=enums.Task.OBJECT_DETECTION,
+                model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+                dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
             ),
             iou_thresholds=[0.2, 0.6],
         )
@@ -913,8 +913,14 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     for m in metrics_pydantic:
         assert m.parameters.dataset_name == "test dataset"
         assert m.parameters.model_name == "test model"
-        assert m.parameters.model_pred_task_type == enums.Task.OBJECT_DETECTION
-        assert m.parameters.dataset_gt_task_type == enums.Task.OBJECT_DETECTION
+        assert (
+            m.parameters.model_pred_task_type
+            == enums.Task.BBOX_OBJECT_DETECTION
+        )
+        assert (
+            m.parameters.dataset_gt_task_type
+            == enums.Task.BBOX_OBJECT_DETECTION
+        )
         assert m.metric_name == "ap_metric"
         assert isinstance(m.metric, schemas.APMetric)
 
@@ -1085,32 +1091,46 @@ def test___object_detections_in_dataset_statement(db: Session, groundtruths):
 
     # check min_area arg
     stmt = _object_detections_in_dataset_statement(
-        dataset_name=dset_name, min_area=93
+        dataset_name=dset_name,
+        min_area=93,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 20
     stmt = _object_detections_in_dataset_statement(
-        dataset_name=dset_name, min_area=326771
+        dataset_name=dset_name,
+        min_area=326771,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 0
 
     # check max_area argument
     stmt = _object_detections_in_dataset_statement(
-        dataset_name=dset_name, max_area=93
+        dataset_name=dset_name,
+        max_area=93,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 0
 
     stmt = _object_detections_in_dataset_statement(
-        dataset_name=dset_name, max_area=326771
+        dataset_name=dset_name,
+        max_area=326771,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 20
 
     # check specifying both min size and max size
     stmt = _object_detections_in_dataset_statement(
-        dataset_name=dset_name, min_area=94, max_area=326771
+        dataset_name=dset_name,
+        min_area=94,
+        max_area=326771,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 20
     stmt = _object_detections_in_dataset_statement(
-        dataset_name=dset_name, min_area=500, max_area=1200
+        dataset_name=dset_name,
+        min_area=500,
+        max_area=1200,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 9
 
@@ -1138,22 +1158,34 @@ def test__model_object_detection_preds_statement(
 
     # check min_area arg
     stmt = _model_object_detection_preds_statement(
-        dataset_name=dset_name, model_name=model_name, min_area=93
+        dataset_name=dset_name,
+        model_name=model_name,
+        min_area=93,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 19
     stmt = _model_object_detection_preds_statement(
-        dataset_name=dset_name, model_name=model_name, min_area=326771
+        dataset_name=dset_name,
+        model_name=model_name,
+        min_area=326771,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 0
 
     # check max_area argument
     stmt = _model_object_detection_preds_statement(
-        dataset_name=dset_name, model_name=model_name, max_area=93
+        dataset_name=dset_name,
+        model_name=model_name,
+        max_area=93,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 0
 
     stmt = _model_object_detection_preds_statement(
-        dataset_name=dset_name, model_name=model_name, max_area=326771
+        dataset_name=dset_name,
+        model_name=model_name,
+        max_area=326771,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 19
 
@@ -1163,6 +1195,7 @@ def test__model_object_detection_preds_statement(
         model_name=model_name,
         min_area=94,
         max_area=326771,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 19
     stmt = _model_object_detection_preds_statement(
@@ -1170,5 +1203,6 @@ def test__model_object_detection_preds_statement(
         model_name=model_name,
         min_area=500,
         max_area=1200,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 9
