@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 from velour_api import crud, enums, exceptions, models, ops, schemas
 from velour_api.crud._create import (
     _instance_segmentations_in_dataset_statement,
+    _model_instance_segmentation_preds_statement,
+    _model_object_detection_preds_statement,
     _object_detections_in_dataset_statement,
 )
 from velour_api.crud._read import _raster_to_png_b64
@@ -158,10 +160,14 @@ def gt_segs_create(
 
 @pytest.fixture
 def pred_segs_create(
-    mask_bytes1: bytes, mask_bytes2: bytes, img1: schemas.Image
+    mask_bytes1: bytes,
+    mask_bytes2: bytes,
+    mask_bytes3: bytes,
+    img1: schemas.Image,
 ) -> schemas.PredictedSegmentationsCreate:
     b64_mask1 = b64encode(mask_bytes1).decode()
     b64_mask2 = b64encode(mask_bytes2).decode()
+    b64_mask3 = b64encode(mask_bytes3).decode()
     return schemas.PredictedSegmentationsCreate(
         model_name=model_name,
         dataset_name=dset_name,
@@ -193,6 +199,16 @@ def pred_segs_create(
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k2", value="v2"), score=0.74
+                    )
+                ],
+            ),
+            schemas.PredictedSegmentation(
+                base64_mask=b64_mask3,
+                is_instance=True,
+                image=img1,
+                scored_labels=[
+                    schemas.ScoredLabel(
+                        label=schemas.Label(key="k2", value="v2"), score=0.14
                     )
                 ],
             ),
@@ -518,8 +534,8 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     crud.create_predicted_segmentations(db, pred_segs_create)
 
     # check db has the added predictions
-    assert crud.number_of_rows(db, models.PredictedSegmentation) == 3
-    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 3
+    assert crud.number_of_rows(db, models.PredictedSegmentation) == 4
+    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 4
 
     # grab the first one and check that the area of the raster
     # matches the area of the image
@@ -754,7 +770,7 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
     preds = db.scalars(preds_statement).all()
 
     assert len(gts) == 3
-    assert len(preds) == 2
+    assert len(preds) == 3
 
     labels = crud._create._labels_in_query(db, gts_statement)
     assert len(labels) == 2
@@ -988,6 +1004,68 @@ def test__instance_segmentations_in_dataset_statement(
     assert len(db.scalars(stmt).all()) == 1
 
 
+def test___model_instance_segmentation_preds_statement(
+    db: Session,
+    gt_segs_create: schemas.GroundTruthSegmentationsCreate,
+    pred_segs_create: schemas.PredictedSegmentationsCreate,
+):
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+    crud.create_predicted_segmentations(db, pred_segs_create)
+
+    areas = db.scalars(
+        select(ST_Count(models.PredictedSegmentation.shape)).where(
+            models.PredictedSegmentation.is_instance
+        )
+    ).all()
+
+    assert sorted(areas) == [95, 279, 1077]
+
+    # sanity check no min_area and max_area arguments
+    stmt = _model_instance_segmentation_preds_statement(
+        dataset_name=dset_name, model_name=model_name
+    )
+    assert len(db.scalars(stmt).all()) == 3
+
+    # check min_area arg
+    stmt = _model_instance_segmentation_preds_statement(
+        dataset_name=dset_name, model_name=model_name, min_area=94
+    )
+    assert len(db.scalars(stmt).all()) == 3
+    stmt = _model_instance_segmentation_preds_statement(
+        dataset_name=dset_name, model_name=model_name, min_area=1078
+    )
+    assert len(db.scalars(stmt).all()) == 0
+
+    # check max_area argument
+    stmt = _model_instance_segmentation_preds_statement(
+        dataset_name=dset_name, model_name=model_name, max_area=94
+    )
+    assert len(db.scalars(stmt).all()) == 0
+
+    stmt = _model_instance_segmentation_preds_statement(
+        dataset_name=dset_name, model_name=model_name, max_area=1078
+    )
+    assert len(db.scalars(stmt).all()) == 3
+
+    # check specifying both min size and max size
+    stmt = _model_instance_segmentation_preds_statement(
+        dataset_name=dset_name,
+        model_name=model_name,
+        min_area=94,
+        max_area=1078,
+    )
+    assert len(db.scalars(stmt).all()) == 3
+    stmt = _model_instance_segmentation_preds_statement(
+        dataset_name=dset_name,
+        model_name=model_name,
+        min_area=200,
+        max_area=300,
+    )
+    assert len(db.scalars(stmt).all()) == 1
+
+
 def test___object_detections_in_dataset_statement(db: Session, groundtruths):
     # the groundtruths argument is not used but that fixture creates groundtruth
     # detections in the database
@@ -1033,5 +1111,64 @@ def test___object_detections_in_dataset_statement(db: Session, groundtruths):
     assert len(db.scalars(stmt).all()) == 20
     stmt = _object_detections_in_dataset_statement(
         dataset_name=dset_name, min_area=500, max_area=1200
+    )
+    assert len(db.scalars(stmt).all()) == 9
+
+
+def test__model_object_detection_preds_statement(
+    db: Session, groundtruths, predictions
+):
+    # the groundtruths and predictions arguments are not used but the fixtures create predicted
+    # detections in the database
+
+    areas = db.scalars(ST_Area(models.PredictedDetection.boundary)).all()
+
+    # these are just to establish what the bounds on the areas of
+    # the groundtruth detections are
+    assert len(areas) == 19
+    assert min(areas) > 94
+    assert max(areas) < 307274
+    assert len([a for a in areas if a > 500 and a < 1200]) == 9
+
+    # sanity check no min_area and max_area arguments
+    stmt = _model_object_detection_preds_statement(
+        dataset_name=dset_name, model_name=model_name
+    )
+    assert len(db.scalars(stmt).all()) == 19
+
+    # check min_area arg
+    stmt = _model_object_detection_preds_statement(
+        dataset_name=dset_name, model_name=model_name, min_area=93
+    )
+    assert len(db.scalars(stmt).all()) == 19
+    stmt = _model_object_detection_preds_statement(
+        dataset_name=dset_name, model_name=model_name, min_area=326771
+    )
+    assert len(db.scalars(stmt).all()) == 0
+
+    # check max_area argument
+    stmt = _model_object_detection_preds_statement(
+        dataset_name=dset_name, model_name=model_name, max_area=93
+    )
+    assert len(db.scalars(stmt).all()) == 0
+
+    stmt = _model_object_detection_preds_statement(
+        dataset_name=dset_name, model_name=model_name, max_area=326771
+    )
+    assert len(db.scalars(stmt).all()) == 19
+
+    # check specifying both min size and max size
+    stmt = _model_object_detection_preds_statement(
+        dataset_name=dset_name,
+        model_name=model_name,
+        min_area=94,
+        max_area=326771,
+    )
+    assert len(db.scalars(stmt).all()) == 19
+    stmt = _model_object_detection_preds_statement(
+        dataset_name=dset_name,
+        model_name=model_name,
+        min_area=500,
+        max_area=1200,
     )
     assert len(db.scalars(stmt).all()) == 9

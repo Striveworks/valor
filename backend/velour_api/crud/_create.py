@@ -718,20 +718,23 @@ def _model_instance_segmentation_preds_statement(
 
     if min_area is not None:
         ret = ret.where(
-            ST_Count(models.GroundTruthDetection.boundary) >= min_area
+            ST_Count(models.PredictedSegmentation.shape) >= min_area
         )
     if max_area is not None:
         ret = ret.where(
-            ST_Area(models.GroundTruthDetection.boundary) <= max_area
+            ST_Count(models.PredictedSegmentation.shape) <= max_area
         )
 
     return ret
 
 
 def _model_object_detection_preds_statement(
-    model_name: str, dataset_name
+    model_name: str,
+    dataset_name,
+    min_area: float = None,
+    max_area: float = None,
 ) -> Select:
-    return (
+    ret = (
         select(models.LabeledPredictedDetection)
         .join(models.PredictedDetection)
         .join(models.Image)
@@ -744,6 +747,17 @@ def _model_object_detection_preds_statement(
             )
         )
     )
+
+    if min_area is not None:
+        ret = ret.where(
+            ST_Area(models.PredictedDetection.boundary) >= min_area
+        )
+    if max_area is not None:
+        ret = ret.where(
+            ST_Area(models.PredictedDetection.boundary) <= max_area
+        )
+
+    return ret
 
 
 def validate_create_ap_metrics(

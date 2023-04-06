@@ -18,6 +18,9 @@ classes = [
 tablenames = [v.__tablename__ for v in classes if hasattr(v, "__tablename__")]
 
 
+np.random.seed(29)
+
+
 def drop_all(db):
     db.execute(text(f"DROP TABLE {', '.join(tablenames)};"))
     db.commit()
@@ -40,6 +43,11 @@ def mask_bytes1():
 @pytest.fixture
 def mask_bytes2():
     return random_mask_bytes(size=(16, 12))
+
+
+@pytest.fixture
+def mask_bytes3():
+    return random_mask_bytes(size=(20, 27))
 
 
 @pytest.fixture
