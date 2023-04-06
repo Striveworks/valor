@@ -765,6 +765,13 @@ def validate_create_ap_metrics(
 ) -> tuple[Select, Select, list[schemas.Label], list[schemas.Label]]:
     """Validates request_info and produces select statements for grabbing groundtruth and
     prediction data
+
+    Returns
+    -------
+    tuple[Select, Select, list[schemas.Label], list[schemas.Label]]
+        first element is the select statement for groundtruths, second is the select statement
+        for predictions, third is list of labels that were missing in the predictions, and fourth
+        is list of labels in the predictions that were ignored (because they weren't in the groundtruth)
     """
     if get_dataset(db, request_info.parameters.dataset_name).draft:
         raise exceptions.DatasetIsDraftError(
@@ -788,27 +795,29 @@ def validate_create_ap_metrics(
         request_info.parameters.dataset_gt_task_type
         == schemas.Task.OBJECT_DETECTION
     ):
-        gts_statement = _object_detections_in_dataset_statement(
-            request_info.parameters.dataset_name
-        )
+        gts_statement_method = _object_detections_in_dataset_statement
     else:
-        gts_statement = _instance_segmentations_in_dataset_statement(
-            request_info.parameters.dataset_name
-        )
+        gts_statement_method = _instance_segmentations_in_dataset_statement
+    gts_statement = gts_statement_method(
+        request_info.parameters.dataset_name,
+        min_area=request_info.parameters.min_area,
+        max_area=request_info.parameters.max_area,
+    )
 
     if (
         request_info.parameters.model_pred_task_type
         == schemas.Task.OBJECT_DETECTION
     ):
-        preds_statement = _model_object_detection_preds_statement(
-            model_name=request_info.parameters.model_name,
-            dataset_name=request_info.parameters.dataset_name,
-        )
+        preds_statement_method = _model_object_detection_preds_statement
+
     else:
-        preds_statement = _model_instance_segmentation_preds_statement(
-            model_name=request_info.parameters.model_name,
-            dataset_name=request_info.parameters.dataset_name,
-        )
+        preds_statement_method = _model_instance_segmentation_preds_statement
+    preds_statement = preds_statement_method(
+        model_name=request_info.parameters.model_name,
+        dataset_name=request_info.parameters.dataset_name,
+        min_area=request_info.parameters.min_area,
+        max_area=request_info.parameters.max_area,
+    )
 
     (
         gts_statement,
