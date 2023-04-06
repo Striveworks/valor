@@ -1,3 +1,4 @@
+from geoalchemy2.functions import ST_Area, ST_Count
 from sqlalchemy import Select, and_, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -640,8 +641,10 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     )
 
 
-def _instance_segmentations_in_dataset_statement(dataset_name: str) -> Select:
-    return (
+def _instance_segmentations_in_dataset_statement(
+    dataset_name: str, min_area: float = None, max_area: float = None
+) -> Select:
+    ret = (
         select(models.LabeledGroundTruthSegmentation)
         .join(models.GroundTruthSegmentation)
         .join(models.Image)
@@ -654,9 +657,25 @@ def _instance_segmentations_in_dataset_statement(dataset_name: str) -> Select:
         )
     )
 
+    if min_area is not None:
+        ret = ret.where(
+            ST_Count(models.GroundTruthSegmentation.shape) >= min_area
+        )
+    if max_area is not None:
+        ret = ret.where(
+            ST_Count(models.GroundTruthSegmentation.shape) <= max_area
+        )
 
-def _object_detections_in_dataset_statement(dataset_name: str) -> Select:
-    return (
+    return ret
+
+
+def _object_detections_in_dataset_statement(
+    dataset_name: str, min_area: float = None, max_area: float = None
+) -> Select:
+    """returns the select statement for all groundtruth object detections in a dataset.
+    if min_area and/or max_area is None then it will filter accordingly by the area (pixels^2 and not proportion)
+    """
+    ret = (
         select(models.LabeledGroundTruthDetection)
         .join(models.GroundTruthDetection)
         .join(models.Image)
@@ -664,11 +683,25 @@ def _object_detections_in_dataset_statement(dataset_name: str) -> Select:
         .where(models.Dataset.name == dataset_name)
     )
 
+    if min_area is not None:
+        ret = ret.where(
+            ST_Area(models.GroundTruthDetection.boundary) >= min_area
+        )
+    if max_area is not None:
+        ret = ret.where(
+            ST_Area(models.GroundTruthDetection.boundary) <= max_area
+        )
+
+    return ret
+
 
 def _model_instance_segmentation_preds_statement(
-    model_name: str, dataset_name: str
+    model_name: str,
+    dataset_name: str,
+    min_area: float = None,
+    max_area: float = None,
 ) -> Select:
-    return (
+    ret = (
         select(models.LabeledPredictedSegmentation)
         .join(models.PredictedSegmentation)
         .join(models.Image)
@@ -682,6 +715,17 @@ def _model_instance_segmentation_preds_statement(
             )
         )
     )
+
+    if min_area is not None:
+        ret = ret.where(
+            ST_Count(models.GroundTruthDetection.boundary) >= min_area
+        )
+    if max_area is not None:
+        ret = ret.where(
+            ST_Area(models.GroundTruthDetection.boundary) <= max_area
+        )
+
+    return ret
 
 
 def _model_object_detection_preds_statement(

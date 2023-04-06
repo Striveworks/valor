@@ -4,12 +4,16 @@ from base64 import b64decode, b64encode
 
 import numpy as np
 import pytest
-from geoalchemy2.functions import ST_AsText, ST_Polygon
+from geoalchemy2.functions import ST_Area, ST_AsText, ST_Count, ST_Polygon
 from PIL import Image, ImageDraw
 from sqlalchemy import func, insert, select
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, exceptions, models, ops, schemas
+from velour_api.crud._create import (
+    _instance_segmentations_in_dataset_statement,
+    _object_detections_in_dataset_statement,
+)
 from velour_api.crud._read import _raster_to_png_b64
 
 dset_name = "test dataset"
@@ -141,6 +145,12 @@ def gt_segs_create(
                 shape=[poly_without_hole],
                 image=img2,
                 labels=[schemas.Label(key="k3", value="v3")],
+            ),
+            schemas.GroundTruthSegmentation(
+                is_instance=True,
+                shape=[poly_with_hole, poly_without_hole],
+                image=img1,
+                labels=[schemas.Label(key="k1", value="v1")],
             ),
         ],
     )
@@ -466,9 +476,9 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
 
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
 
-    assert crud.number_of_rows(db, models.GroundTruthSegmentation) == 3
+    assert crud.number_of_rows(db, models.GroundTruthSegmentation) == 4
     assert crud.number_of_rows(db, models.Image) == 2
-    assert crud.number_of_rows(db, models.LabeledGroundTruthSegmentation) == 3
+    assert crud.number_of_rows(db, models.LabeledGroundTruthSegmentation) == 4
     assert crud.number_of_rows(db, models.Label) == 2
 
     # delete dataset and check the cascade worked
@@ -743,7 +753,7 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
     gts = db.scalars(gts_statement).all()
     preds = db.scalars(preds_statement).all()
 
-    assert len(gts) == 2
+    assert len(gts) == 3
     assert len(preds) == 2
 
     labels = crud._create._labels_in_query(db, gts_statement)
@@ -765,7 +775,7 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
     gts = db.scalars(new_gts_statement).all()
     preds = db.scalars(new_preds_statement).all()
 
-    assert len(gts) == 1
+    assert len(gts) == 2
     assert (gts[0].label.key, gts[0].label.value) == ("k1", "v1")
     assert len(preds) == 1
     assert (preds[0].label.key, preds[0].label.value) == ("k1", "v1")
@@ -795,7 +805,7 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
     gts = db.scalars(new_gts_statement).all()
     preds = db.scalars(new_preds_statement).all()
 
-    assert len(gts) == 2
+    assert len(gts) == 3
     # should not get the pred with label "k2", "v2" since its not
     # present in the groundtruths
     assert len(preds) == 1
@@ -926,3 +936,102 @@ def test__raster_to_png_b64(db: Session):
     seg = db.scalar(select(models.GroundTruthSegmentation))
 
     assert b64_mask == _raster_to_png_b64(db, seg.shape, image)
+
+
+def test__instance_segmentations_in_dataset_statement(
+    db: Session, gt_segs_create: schemas.GroundTruthSegmentationsCreate
+):
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+
+    areas = db.scalars(
+        select(ST_Count(models.GroundTruthSegmentation.shape)).where(
+            models.GroundTruthSegmentation.is_instance
+        )
+    ).all()
+
+    assert sorted(areas) == [46, 90, 136]
+
+    # sanity check no min_area and max_area arguments
+    stmt = _instance_segmentations_in_dataset_statement(dataset_name=dset_name)
+    assert len(db.scalars(stmt).all()) == 3
+
+    # check min_area arg
+    stmt = _instance_segmentations_in_dataset_statement(
+        dataset_name=dset_name, min_area=45
+    )
+    assert len(db.scalars(stmt).all()) == 3
+    stmt = _instance_segmentations_in_dataset_statement(
+        dataset_name=dset_name, min_area=137
+    )
+    assert len(db.scalars(stmt).all()) == 0
+
+    # check max_area argument
+    stmt = _instance_segmentations_in_dataset_statement(
+        dataset_name=dset_name, max_area=45
+    )
+    assert len(db.scalars(stmt).all()) == 0
+
+    stmt = _instance_segmentations_in_dataset_statement(
+        dataset_name=dset_name, max_area=136
+    )
+    assert len(db.scalars(stmt).all()) == 3
+
+    # check specifying both min size and max size
+    stmt = _instance_segmentations_in_dataset_statement(
+        dataset_name=dset_name, min_area=45, max_area=136
+    )
+    assert len(db.scalars(stmt).all()) == 3
+    stmt = _instance_segmentations_in_dataset_statement(
+        dataset_name=dset_name, min_area=50, max_area=100
+    )
+    assert len(db.scalars(stmt).all()) == 1
+
+
+def test___object_detections_in_dataset_statement(db: Session, groundtruths):
+    # the groundtruths argument is not used but that fixture creates groundtruth
+    # detections in the database
+
+    areas = db.scalars(ST_Area(models.GroundTruthDetection.boundary)).all()
+
+    # these are just to establish what the bounds on the areas of
+    # the groundtruth detections are
+    assert len(areas) == 20
+    assert min(areas) > 94
+    assert max(areas) < 326771
+    assert len([a for a in areas if a > 500 and a < 1200]) == 9
+
+    # sanity check no min_area and max_area arguments
+    stmt = _object_detections_in_dataset_statement(dataset_name=dset_name)
+    assert len(db.scalars(stmt).all()) == 20
+
+    # check min_area arg
+    stmt = _object_detections_in_dataset_statement(
+        dataset_name=dset_name, min_area=93
+    )
+    assert len(db.scalars(stmt).all()) == 20
+    stmt = _object_detections_in_dataset_statement(
+        dataset_name=dset_name, min_area=326771
+    )
+    assert len(db.scalars(stmt).all()) == 0
+
+    # check max_area argument
+    stmt = _object_detections_in_dataset_statement(
+        dataset_name=dset_name, max_area=93
+    )
+    assert len(db.scalars(stmt).all()) == 0
+
+    stmt = _object_detections_in_dataset_statement(
+        dataset_name=dset_name, max_area=326771
+    )
+    assert len(db.scalars(stmt).all()) == 20
+
+    # check specifying both min size and max size
+    stmt = _object_detections_in_dataset_statement(
+        dataset_name=dset_name, min_area=94, max_area=326771
+    )
+    assert len(db.scalars(stmt).all()) == 20
+    stmt = _object_detections_in_dataset_statement(
+        dataset_name=dset_name, min_area=500, max_area=1200
+    )
+    assert len(db.scalars(stmt).all()) == 9
