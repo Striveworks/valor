@@ -868,9 +868,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         method_to_test()
 
     # finalize dataset and try again
-    ds = crud.get_dataset(db, "test dataset")
-    ds.draft = False
-    db.commit()
+    crud.finalize_dataset(db, "test dataset")
 
     (
         metric_params_id,
