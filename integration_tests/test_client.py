@@ -919,8 +919,8 @@ def test_evaluate_ap(
     eval_job = client.evaluate_ap(
         model=model,
         dataset=dataset,
-        model_pred_task_type=Task.OBJECT_DETECTION,
-        dataset_gt_task_type=Task.OBJECT_DETECTION,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
         labels=[Label(key="k1", value="v1")],
         iou_thresholds=[0.1, 0.6],
     )
@@ -939,8 +939,8 @@ def test_evaluate_ap(
             "parameters": {
                 "model_name": "test model",
                 "dataset_name": "test dataset",
-                "model_pred_task_type": "Object Detection",
-                "dataset_gt_task_type": "Object Detection",
+                "model_pred_task_type": "Bounding Box Object Detection",
+                "dataset_gt_task_type": "Bounding Box Object Detection",
                 "min_area": None,
                 "max_area": None,
             },
@@ -955,8 +955,8 @@ def test_evaluate_ap(
             "parameters": {
                 "model_name": "test model",
                 "dataset_name": "test dataset",
-                "model_pred_task_type": "Object Detection",
-                "dataset_gt_task_type": "Object Detection",
+                "model_pred_task_type": "Bounding Box Object Detection",
+                "dataset_gt_task_type": "Bounding Box Object Detection",
                 "min_area": None,
                 "max_area": None,
             },
@@ -978,8 +978,8 @@ def test_evaluate_ap(
     eval_job = client.evaluate_ap(
         model=model,
         dataset=dataset,
-        model_pred_task_type=Task.OBJECT_DETECTION,
-        dataset_gt_task_type=Task.OBJECT_DETECTION,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
         labels=[Label(key="k1", value="v1")],
         iou_thresholds=[0.1, 0.6],
         min_area=10,
@@ -992,8 +992,8 @@ def test_evaluate_ap(
     eval_job = client.evaluate_ap(
         model=model,
         dataset=dataset,
-        model_pred_task_type=Task.OBJECT_DETECTION,
-        dataset_gt_task_type=Task.OBJECT_DETECTION,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
         labels=[Label(key="k1", value="v1")],
         iou_thresholds=[0.1, 0.6],
         min_area=1200,
@@ -1004,8 +1004,8 @@ def test_evaluate_ap(
     eval_job = client.evaluate_ap(
         model=model,
         dataset=dataset,
-        model_pred_task_type=Task.OBJECT_DETECTION,
-        dataset_gt_task_type=Task.OBJECT_DETECTION,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
         labels=[Label(key="k1", value="v1")],
         iou_thresholds=[0.1, 0.6],
         max_area=1200,
@@ -1016,8 +1016,8 @@ def test_evaluate_ap(
     eval_job = client.evaluate_ap(
         model=model,
         dataset=dataset,
-        model_pred_task_type=Task.OBJECT_DETECTION,
-        dataset_gt_task_type=Task.OBJECT_DETECTION,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
         labels=[Label(key="k1", value="v1")],
         iou_thresholds=[0.1, 0.6],
         min_area=1200,
