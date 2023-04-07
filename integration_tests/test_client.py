@@ -9,7 +9,7 @@ from typing import Any
 
 import numpy as np
 import pytest
-from geoalchemy2.functions import ST_AsPNG, ST_AsText, ST_Polygon
+from geoalchemy2.functions import ST_Area, ST_AsPNG, ST_AsText, ST_Polygon
 from PIL import Image as PILImage
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
@@ -919,8 +919,8 @@ def test_evaluate_ap(
     eval_job = client.evaluate_ap(
         model=model,
         dataset=dataset,
-        model_pred_task_type=Task.OBJECT_DETECTION,
-        dataset_gt_task_type=Task.OBJECT_DETECTION,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
         labels=[Label(key="k1", value="v1")],
         iou_thresholds=[0.1, 0.6],
     )
@@ -933,14 +933,16 @@ def test_evaluate_ap(
     time.sleep(1)
     assert eval_job.status() == "Done"
 
-    assert eval_job.metrics() == [
+    expected_metrics = [
         {
             "metric_name": "ap_metric",
             "parameters": {
                 "model_name": "test model",
                 "dataset_name": "test dataset",
-                "model_pred_task_type": "Object Detection",
-                "dataset_gt_task_type": "Object Detection",
+                "model_pred_task_type": "Bounding Box Object Detection",
+                "dataset_gt_task_type": "Bounding Box Object Detection",
+                "min_area": None,
+                "max_area": None,
             },
             "metric": {
                 "iou": 0.1,
@@ -953,8 +955,10 @@ def test_evaluate_ap(
             "parameters": {
                 "model_name": "test model",
                 "dataset_name": "test dataset",
-                "model_pred_task_type": "Object Detection",
-                "dataset_gt_task_type": "Object Detection",
+                "model_pred_task_type": "Bounding Box Object Detection",
+                "dataset_gt_task_type": "Bounding Box Object Detection",
+                "min_area": None,
+                "max_area": None,
             },
             "metric": {
                 "iou": 0.6,
@@ -963,3 +967,61 @@ def test_evaluate_ap(
             },
         },
     ]
+
+    assert eval_job.metrics() == expected_metrics
+
+    # now test if we set min_area and/or max_area
+    areas = db.scalars(ST_Area(models.GroundTruthDetection.boundary)).all()
+    assert sorted(areas) == [1100.0, 1500.0]
+
+    # sanity check this should give us the same thing
+    eval_job = client.evaluate_ap(
+        model=model,
+        dataset=dataset,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
+        labels=[Label(key="k1", value="v1")],
+        iou_thresholds=[0.1, 0.6],
+        min_area=10,
+        max_area=2000,
+    )
+    time.sleep(1)
+    assert eval_job.metrics() == expected_metrics
+
+    # now check we get different things by setting the thresholds accordingly
+    eval_job = client.evaluate_ap(
+        model=model,
+        dataset=dataset,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
+        labels=[Label(key="k1", value="v1")],
+        iou_thresholds=[0.1, 0.6],
+        min_area=1200,
+    )
+    time.sleep(1)
+    assert eval_job.metrics() != expected_metrics
+
+    eval_job = client.evaluate_ap(
+        model=model,
+        dataset=dataset,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
+        labels=[Label(key="k1", value="v1")],
+        iou_thresholds=[0.1, 0.6],
+        max_area=1200,
+    )
+    time.sleep(1)
+    assert eval_job.metrics() != expected_metrics
+
+    eval_job = client.evaluate_ap(
+        model=model,
+        dataset=dataset,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
+        labels=[Label(key="k1", value="v1")],
+        iou_thresholds=[0.1, 0.6],
+        min_area=1200,
+        max_area=1800,
+    )
+    time.sleep(1)
+    assert eval_job.metrics() != expected_metrics
