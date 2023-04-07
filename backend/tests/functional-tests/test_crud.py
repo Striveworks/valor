@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, exceptions, models, ops, schemas
 from velour_api.crud._create import (
+    _filter_instance_segmentations_by_area,
     _instance_segmentations_in_dataset_statement,
     _model_instance_segmentation_preds_statement,
     _model_object_detection_preds_statement,
@@ -1206,3 +1207,108 @@ def test__model_object_detection_preds_statement(
         task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 9
+
+
+def test__filter_instance_segmentations_by_area(db: Session):
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    # triangle of area 150
+    poly1 = schemas.PolygonWithHole(polygon=[(10, 20), (10, 40), (25, 20)])
+    # rectangle of area 1050
+    poly2 = schemas.PolygonWithHole(
+        polygon=[(0, 5), (0, 40), (30, 40), (30, 5)]
+    )
+
+    img = schemas.Image(uid="", height=1000, width=2000)
+
+    crud.create_groundtruth_segmentations(
+        db,
+        data=schemas.GroundTruthSegmentationsCreate(
+            dataset_name=dset_name,
+            segmentations=[
+                schemas.GroundTruthSegmentation(
+                    shape=[poly1],
+                    image=img,
+                    labels=[schemas.Label(key="k", value="v")],
+                    is_instance=True,
+                ),
+                schemas.GroundTruthSegmentation(
+                    shape=[poly2],
+                    image=img,
+                    labels=[schemas.Label(key="k", value="v")],
+                    is_instance=True,
+                ),
+            ],
+        ),
+    )
+
+    areas = db.scalars(ST_Count(models.GroundTruthSegmentation.shape)).all()
+    assert sorted(areas) == [150, 1050]
+
+    # check filtering when use area determined by instance segmentation task
+    stmt = _filter_instance_segmentations_by_area(
+        select(models.GroundTruthSegmentation),
+        seg_table=models.GroundTruthSegmentation,
+        task=enums.Task.INSTANCE_SEGMENTATION,
+        min_area=100,
+        max_area=2000,
+    )
+    assert len(db.scalars(stmt).all()) == 2
+
+    stmt = _filter_instance_segmentations_by_area(
+        select(models.GroundTruthSegmentation),
+        seg_table=models.GroundTruthSegmentation,
+        task=enums.Task.INSTANCE_SEGMENTATION,
+        min_area=100,
+        max_area=200,
+    )
+    assert len(db.scalars(stmt).all()) == 1
+
+    stmt = _filter_instance_segmentations_by_area(
+        select(models.GroundTruthSegmentation),
+        seg_table=models.GroundTruthSegmentation,
+        task=enums.Task.INSTANCE_SEGMENTATION,
+        min_area=151,
+        max_area=2000,
+    )
+    assert len(db.scalars(stmt).all()) == 1
+
+    # now when we use bounding box detection task, the triangle becomes its circumscribing
+    # rectangle (with area 300) so we should get both segmentations
+    stmt = _filter_instance_segmentations_by_area(
+        select(models.GroundTruthSegmentation),
+        seg_table=models.GroundTruthSegmentation,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
+        min_area=299,
+        max_area=2000,
+    )
+    assert len(db.scalars(stmt).all()) == 2
+
+    stmt = _filter_instance_segmentations_by_area(
+        select(models.GroundTruthSegmentation),
+        seg_table=models.GroundTruthSegmentation,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
+        min_area=301,
+        max_area=2000,
+    )
+    assert len(db.scalars(stmt).all()) == 1
+
+    # if we use polygon detection then the areas shouldn't change much (the area
+    # of the triangle actually becomes 163-- not sure if this is aliasing or what)
+    stmt = _filter_instance_segmentations_by_area(
+        select(models.GroundTruthSegmentation),
+        seg_table=models.GroundTruthSegmentation,
+        task=enums.Task.POLY_OBJECT_DETECTION,
+        min_area=149,
+        max_area=2000,
+    )
+    assert len(db.scalars(stmt).all()) == 2
+
+    stmt = _filter_instance_segmentations_by_area(
+        select(models.GroundTruthSegmentation),
+        seg_table=models.GroundTruthSegmentation,
+        task=enums.Task.POLY_OBJECT_DETECTION,
+        min_area=164,
+        max_area=2000,
+    )
+
+    assert len(db.scalars(stmt).all()) == 1

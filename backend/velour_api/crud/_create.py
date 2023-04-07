@@ -4,6 +4,7 @@ from geoalchemy2.functions import (
     ST_ConvexHull,
     ST_Count,
     ST_Envelope,
+    ST_Polygon,
 )
 from sqlalchemy import Select, and_, insert, select, text
 from sqlalchemy.exc import IntegrityError
@@ -101,6 +102,8 @@ def _create_gt_segmentation_mappings(
     segmentations: list[schemas.GroundTruthSegmentation],
     images: list[models.Image],
 ) -> list[dict[str, str]]:
+    assert len(segmentations) == len(images)
+
     def _create_single_mapping(
         seg: schemas.GroundTruthSegmentation, image: models.Image
     ):
@@ -660,7 +663,9 @@ def _filter_instance_segmentations_by_area(
     if task == schemas.Task.BBOX_OBJECT_DETECTION:
         area_fn = lambda x: ST_Area(ST_Envelope(x))  # noqa: E731
     elif task == schemas.Task.POLY_OBJECT_DETECTION:
-        area_fn = lambda x: ST_ConvexHull(ST_Boundary(x))  # noqa: E731
+        area_fn = lambda x: ST_Area(  # noqa: E731
+            ST_ConvexHull(ST_Boundary(ST_Polygon(x)))
+        )
     else:
         area_fn = ST_Count
 
