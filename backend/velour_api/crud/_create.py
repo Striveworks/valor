@@ -1,3 +1,11 @@
+from geoalchemy2.functions import (
+    ST_Area,
+    ST_Boundary,
+    ST_ConvexHull,
+    ST_Count,
+    ST_Envelope,
+    ST_Polygon,
+)
 from sqlalchemy import Select, and_, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -94,6 +102,8 @@ def _create_gt_segmentation_mappings(
     segmentations: list[schemas.GroundTruthSegmentation],
     images: list[models.Image],
 ) -> list[dict[str, str]]:
+    assert len(segmentations) == len(images)
+
     def _create_single_mapping(
         seg: schemas.GroundTruthSegmentation, image: models.Image
     ):
@@ -640,65 +650,165 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     )
 
 
-def _instance_segmentations_in_dataset_statement(dataset_name: str) -> Select:
-    return (
-        select(models.LabeledGroundTruthSegmentation)
-        .join(models.GroundTruthSegmentation)
-        .join(models.Image)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.GroundTruthSegmentation.is_instance,
-                models.Dataset.name == dataset_name,
-            )
+def _filter_instance_segmentations_by_area(
+    stmt: Select,
+    seg_table: type,
+    task: schemas.Task,
+    min_area: float | None,
+    max_area: float | None,
+) -> Select:
+    if min_area is None and max_area is None:
+        return stmt
+
+    if task == schemas.Task.BBOX_OBJECT_DETECTION:
+        area_fn = lambda x: ST_Area(ST_Envelope(x))  # noqa: E731
+    elif task == schemas.Task.POLY_OBJECT_DETECTION:
+        area_fn = lambda x: ST_Area(  # noqa: E731
+            ST_ConvexHull(ST_Boundary(ST_Polygon(x)))
         )
+    else:
+        area_fn = ST_Count
+
+    if min_area is not None:
+        stmt = stmt.where(area_fn(seg_table.shape) >= min_area)
+    if max_area is not None:
+        stmt = stmt.where(area_fn(seg_table.shape) <= max_area)
+
+    return stmt
+
+
+def _filter_object_detections_by_area(
+    stmt: Select,
+    det_table: type,
+    task: schemas.Task,
+    min_area: float | None,
+    max_area: float | None,
+) -> Select:
+    if min_area is None and max_area is None:
+        return stmt
+
+    if task == schemas.Task.BBOX_OBJECT_DETECTION:
+        area_fn = lambda x: ST_Area(ST_Envelope(x))  # noqa: E731
+    elif task == schemas.Task.POLY_OBJECT_DETECTION:
+        area_fn = ST_Area
+    else:
+        raise ValueError(
+            f"Expected task to be {schemas.Task.BBOX_OBJECT_DETECTION} or "
+            f"{schemas.Task.POLY_OBJECT_DETECTION} but got {task}."
+        )
+
+    if min_area is not None:
+        stmt = stmt.where(area_fn(det_table.boundary) >= min_area)
+    if max_area is not None:
+        stmt = stmt.where(area_fn(det_table.boundary) <= max_area)
+
+    return stmt
+
+
+def _instance_segmentations_in_dataset_statement(
+    dataset_name: str,
+    min_area: float = None,
+    max_area: float = None,
+    task: schemas.Task = None,
+) -> Select:
+    return _filter_instance_segmentations_by_area(
+        stmt=(
+            select(models.LabeledGroundTruthSegmentation)
+            .join(models.GroundTruthSegmentation)
+            .join(models.Image)
+            .join(models.Dataset)
+            .where(
+                and_(
+                    models.GroundTruthSegmentation.is_instance,
+                    models.Dataset.name == dataset_name,
+                )
+            )
+        ),
+        seg_table=models.GroundTruthSegmentation,
+        task=task,
+        min_area=min_area,
+        max_area=max_area,
     )
 
 
-def _object_detections_in_dataset_statement(dataset_name: str) -> Select:
-    return (
-        select(models.LabeledGroundTruthDetection)
-        .join(models.GroundTruthDetection)
-        .join(models.Image)
-        .join(models.Dataset)
-        .where(models.Dataset.name == dataset_name)
+def _object_detections_in_dataset_statement(
+    dataset_name: str,
+    min_area: float = None,
+    max_area: float = None,
+    task: schemas.Task = None,
+) -> Select:
+    """returns the select statement for all groundtruth object detections in a dataset.
+    if min_area and/or max_area is None then it will filter accordingly by the area (pixels^2 and not proportion)
+    """
+    return _filter_object_detections_by_area(
+        stmt=(
+            select(models.LabeledGroundTruthDetection)
+            .join(models.GroundTruthDetection)
+            .join(models.Image)
+            .join(models.Dataset)
+            .where(models.Dataset.name == dataset_name)
+        ),
+        det_table=models.GroundTruthDetection,
+        task=task,
+        min_area=min_area,
+        max_area=max_area,
     )
 
 
 def _model_instance_segmentation_preds_statement(
-    model_name: str, dataset_name: str
+    model_name: str,
+    dataset_name: str,
+    min_area: float = None,
+    max_area: float = None,
+    task: schemas.Task = None,
 ) -> Select:
-    return (
-        select(models.LabeledPredictedSegmentation)
-        .join(models.PredictedSegmentation)
-        .join(models.Image)
-        .join(models.Model)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Model.name == model_name,
-                models.Dataset.name == dataset_name,
-                models.PredictedSegmentation.is_instance,
+    return _filter_instance_segmentations_by_area(
+        stmt=(
+            select(models.LabeledPredictedSegmentation)
+            .join(models.PredictedSegmentation)
+            .join(models.Image)
+            .join(models.Model)
+            .join(models.Dataset)
+            .where(
+                and_(
+                    models.Model.name == model_name,
+                    models.Dataset.name == dataset_name,
+                    models.PredictedSegmentation.is_instance,
+                )
             )
-        )
+        ),
+        seg_table=models.PredictedSegmentation,
+        task=task,
+        min_area=min_area,
+        max_area=max_area,
     )
 
 
 def _model_object_detection_preds_statement(
-    model_name: str, dataset_name
+    model_name: str,
+    dataset_name,
+    min_area: float = None,
+    max_area: float = None,
+    task: schemas.Task = None,
 ) -> Select:
-    return (
-        select(models.LabeledPredictedDetection)
-        .join(models.PredictedDetection)
-        .join(models.Image)
-        .join(models.Model)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Model.name == model_name,
-                models.Dataset.name == dataset_name,
+    return _filter_object_detections_by_area(
+        stmt=(
+            select(models.LabeledPredictedDetection)
+            .join(models.PredictedDetection)
+            .join(models.Image)
+            .join(models.Model)
+            .join(models.Dataset)
+            .where(
+                and_(
+                    models.Model.name == model_name,
+                    models.Dataset.name == dataset_name,
+                )
             )
-        )
+        ),
+        det_table=models.PredictedDetection,
+        task=task,
+        min_area=min_area,
+        max_area=max_area,
     )
 
 
@@ -707,6 +817,13 @@ def validate_create_ap_metrics(
 ) -> tuple[Select, Select, list[schemas.Label], list[schemas.Label]]:
     """Validates request_info and produces select statements for grabbing groundtruth and
     prediction data
+
+    Returns
+    -------
+    tuple[Select, Select, list[schemas.Label], list[schemas.Label]]
+        first element is the select statement for groundtruths, second is the select statement
+        for predictions, third is list of labels that were missing in the predictions, and fourth
+        is list of labels in the predictions that were ignored (because they weren't in the groundtruth)
     """
     if get_dataset(db, request_info.parameters.dataset_name).draft:
         raise exceptions.DatasetIsDraftError(
@@ -714,9 +831,11 @@ def validate_create_ap_metrics(
         )
     # do some validation
     allowable_tasks = [
-        schemas.Task.OBJECT_DETECTION,
+        schemas.Task.BBOX_OBJECT_DETECTION,
+        schemas.Task.POLY_OBJECT_DETECTION,
         schemas.Task.INSTANCE_SEGMENTATION,
     ]
+
     if request_info.parameters.model_pred_task_type not in allowable_tasks:
         raise ValueError(
             f"`pred_type` must be one of {allowable_tasks} but got {request_info.parameters.model_pred_task_type}."
@@ -726,31 +845,49 @@ def validate_create_ap_metrics(
             f"`dataset_gt_task_type` must be one of {allowable_tasks} but got {request_info.parameters.dataset_gt_task_type}."
         )
 
-    if (
-        request_info.parameters.dataset_gt_task_type
-        == schemas.Task.OBJECT_DETECTION
-    ):
-        gts_statement = _object_detections_in_dataset_statement(
-            request_info.parameters.dataset_name
-        )
+    # when computing AP, the fidelity of a detection will drop to the minimum fidelity of the groundtruth and predicted
+    # task type. e.g. if one is bounding box detection but the other is polygon object detection, then the polygons will be
+    # converted to bounding boxes. we want the area filters to operate after this conversion.
+    gt_and_pred_tasks = [
+        request_info.parameters.dataset_gt_task_type,
+        request_info.parameters.model_pred_task_type,
+    ]
+    if schemas.Task.BBOX_OBJECT_DETECTION in gt_and_pred_tasks:
+        common_task = schemas.Task.BBOX_OBJECT_DETECTION
+    elif schemas.Task.POLY_OBJECT_DETECTION in gt_and_pred_tasks:
+        common_task = schemas.Task.POLY_OBJECT_DETECTION
     else:
-        gts_statement = _instance_segmentations_in_dataset_statement(
-            request_info.parameters.dataset_name
-        )
+        common_task = schemas.Task.INSTANCE_SEGMENTATION
 
-    if (
-        request_info.parameters.model_pred_task_type
-        == schemas.Task.OBJECT_DETECTION
-    ):
-        preds_statement = _model_object_detection_preds_statement(
-            model_name=request_info.parameters.model_name,
-            dataset_name=request_info.parameters.dataset_name,
-        )
+    if request_info.parameters.dataset_gt_task_type in [
+        schemas.Task.BBOX_OBJECT_DETECTION,
+        schemas.Task.POLY_OBJECT_DETECTION,
+    ]:
+        gts_statement_method = _object_detections_in_dataset_statement
     else:
-        preds_statement = _model_instance_segmentation_preds_statement(
-            model_name=request_info.parameters.model_name,
-            dataset_name=request_info.parameters.dataset_name,
-        )
+        gts_statement_method = _instance_segmentations_in_dataset_statement
+    gts_statement = gts_statement_method(
+        request_info.parameters.dataset_name,
+        min_area=request_info.parameters.min_area,
+        max_area=request_info.parameters.max_area,
+        task=common_task,
+    )
+
+    if request_info.parameters.model_pred_task_type in [
+        schemas.Task.BBOX_OBJECT_DETECTION,
+        schemas.Task.POLY_OBJECT_DETECTION,
+    ]:
+        preds_statement_method = _model_object_detection_preds_statement
+
+    else:
+        preds_statement_method = _model_instance_segmentation_preds_statement
+    preds_statement = preds_statement_method(
+        model_name=request_info.parameters.model_name,
+        dataset_name=request_info.parameters.dataset_name,
+        min_area=request_info.parameters.min_area,
+        max_area=request_info.parameters.max_area,
+        task=common_task,
+    )
 
     (
         gts_statement,

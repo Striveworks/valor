@@ -103,8 +103,8 @@ def test_create_ap_metrics_endpoint(uuid4, crud, client: TestClient):
         "parameters": {
             "model_name": "",
             "dataset_name": "",
-            "model_pred_task_type": "Object Detection",
-            "dataset_gt_task_type": "Object Detection",
+            "model_pred_task_type": "Bounding Box Object Detection",
+            "dataset_gt_task_type": "Bounding Box Object Detection",
         },
     }
 

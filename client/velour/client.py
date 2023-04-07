@@ -211,6 +211,8 @@ class Client:
         dataset_gt_task_type: Task,
         iou_thresholds: List[float] = None,
         labels: List[Label] = None,
+        min_area: float = None,
+        max_area: float = None,
     ) -> "EvalJob":
         payload = {
             "parameters": {
@@ -218,6 +220,8 @@ class Client:
                 "dataset_name": dataset.name,
                 "model_pred_task_type": model_pred_task_type.value,
                 "dataset_gt_task_type": dataset_gt_task_type.value,
+                "min_area": min_area,
+                "max_area": max_area,
             }
         }
 
