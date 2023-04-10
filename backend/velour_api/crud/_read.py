@@ -1,6 +1,7 @@
 import io
 import json
 from base64 import b64encode
+from collections.abc import Iterable
 
 from geoalchemy2 import RasterElement
 from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
@@ -8,7 +9,7 @@ from PIL import Image
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
-from velour_api import exceptions, models, schemas
+from velour_api import enums, exceptions, models, schemas
 
 
 def _get_bounding_box_of_raster(
@@ -276,3 +277,81 @@ def get_model_metrics(
 
 def number_of_rows(db: Session, model_cls: type) -> int:
     return db.scalar(select(func.count(model_cls.id)))
+
+
+def _get_detection_task_types(
+    dets: Iterable[models.GroundTruthDetection | models.PredictedDetection],
+) -> set[enums.Task]:
+    # TODO: maybe more sql way of doing this
+    ret = set()
+    found_bbox, found_poly = False, False
+    for det in dets:
+        if det.is_bbox:
+            found_bbox = True
+            ret.add(enums.Task.BBOX_OBJECT_DETECTION)
+        else:
+            found_poly = True
+            ret.add(enums.Task.POLY_OBJECT_DETECTION)
+        if found_bbox and found_poly:
+            break
+    return ret
+
+
+def _get_segmentation_task_types(
+    segs: Iterable[
+        models.GroundTruthSegmentation | models.PredictedSegmentation
+    ],
+) -> set[enums.Task]:
+    # TODO: maybe more sql way of doing this
+    ret = set()
+    found_instance_seg, found_semantic_seg = False, False
+    for seg in segs:
+        if seg.is_instance:
+            found_instance_seg = True
+            ret.add(enums.Task.INSTANCE_SEGMENTATION)
+        else:
+            found_semantic_seg = True
+            ret.add(enums.Task.SEMANTIC_SEGMENTATION)
+        if found_instance_seg and found_semantic_seg:
+            break
+
+    return ret
+
+
+def _get_model_pred_task_types(
+    db: Session, model_name: str
+) -> set[enums.Task]:
+    model = get_model(db, model_name)
+    ret = _get_detection_task_types(model.predicted_detections).union(
+        _get_segmentation_task_types(model.predicted_segmentations)
+    )
+
+    if len(model.predicted_image_classifications):
+        ret.add(enums.Task.IMAGE_CLASSIFICATION)
+
+    return ret
+
+
+def _get_dataset_task_types(db: Session, dataset_name: str) -> set[enums.Task]:
+    dataset = get_dataset(db, dataset_name)
+
+    def _detection_generator():
+        for image in dataset.images:
+            for detection in image.ground_truth_detections:
+                yield detection
+
+    def _segmentation_generator():
+        for image in dataset.images:
+            for segmentation in image.ground_truth_segmentations:
+                yield segmentation
+
+    ret = _get_detection_task_types(_detection_generator()).union(
+        _segmentation_generator()
+    )
+
+    for image in dataset.images:
+        if len(image.ground_truth_classifications) > 0:
+            ret.add(enums.Task.IMAGE_CLASSIFICATION)
+            break
+
+    return ret

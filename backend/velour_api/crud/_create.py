@@ -13,7 +13,13 @@ from sqlalchemy.orm import Session
 from velour_api import exceptions, models, schemas
 from velour_api.metrics import compute_ap_metrics
 
-from ._read import get_dataset, get_image, get_model
+from ._read import (
+    _get_dataset_task_types,
+    _get_model_pred_task_types,
+    get_dataset,
+    get_image,
+    get_model,
+)
 
 
 def _labels_in_query(
@@ -812,6 +818,65 @@ def _model_object_detection_preds_statement(
     )
 
 
+def _validate_and_update_metric_parameters_task_type_for_detection(
+    db: Session,
+    metric_params: schemas.MetricParameters,
+) -> schemas.MetricParameters:
+    """If the model or dataset task types are none, then get these from the
+    datasets themselves. In either case verify that these task types are compatible
+    for detection evaluation.
+    """
+    # metric_params = metric_params.copy()
+    dataset_name = metric_params.dataset_name
+    model_name = metric_params.model_name
+    if get_dataset(db, dataset_name).draft:
+        raise exceptions.DatasetIsDraftError(metric_params.dataset_name)
+    # check that inferences are finalized
+    if not _check_finalized_inferences(
+        db, model_name=model_name, dataset_name=dataset_name
+    ):
+        raise exceptions.InferencesAreNotFinalizedError(
+            dataset_name=dataset_name, model_name=model_name
+        )
+
+    # do some validation
+    allowable_tasks = set(
+        [
+            schemas.Task.BBOX_OBJECT_DETECTION,
+            schemas.Task.POLY_OBJECT_DETECTION,
+            schemas.Task.INSTANCE_SEGMENTATION,
+        ]
+    )
+
+    if metric_params.dataset_gt_task_type is None:
+        dset_task_types = _get_dataset_task_types(db, dataset_name)
+        inter = allowable_tasks.intersection(dset_task_types)
+        if len(inter) > 1:
+            raise
+        if len(inter) == 0:
+            raise
+        metric_params.dataset_gt_task_type = inter.pop()
+    elif metric_params.dataset_gt_task_type not in allowable_tasks:
+        raise ValueError(
+            f"`dataset_gt_task_type` must be one of {allowable_tasks} but got {metric_params.dataset_gt_task_type}."
+        )
+
+    if metric_params.model_pred_task_type is None:
+        model_task_types = _get_model_pred_task_types(db, model_name)
+        inter = allowable_tasks.intersection(model_task_types)
+        if len(inter) > 1:
+            raise
+        if len(inter) == 0:
+            raise
+        metric_params.model_pred_task_type = inter.pop()
+    elif metric_params.model_pred_task_type not in allowable_tasks:
+        raise ValueError(
+            f"`pred_type` must be one of {allowable_tasks} but got {metric_params.model_pred_task_type}."
+        )
+
+    return metric_params
+
+
 def validate_create_ap_metrics(
     db: Session, request_info: schemas.APRequest
 ) -> tuple[Select, Select, list[schemas.Label], list[schemas.Label]]:
@@ -825,35 +890,10 @@ def validate_create_ap_metrics(
         for predictions, third is list of labels that were missing in the predictions, and fourth
         is list of labels in the predictions that were ignored (because they weren't in the groundtruth)
     """
-    dataset_name = request_info.parameters.dataset_name
-    model_name = request_info.parameters.model_name
-    if get_dataset(db, dataset_name).draft:
-        raise exceptions.DatasetIsDraftError(
-            request_info.parameters.dataset_name
-        )
-    # check that inferences are finalized
-    if not _check_finalized_inferences(
-        db, model_name=model_name, dataset_name=dataset_name
-    ):
-        raise exceptions.InferencesAreNotFinalizedError(
-            dataset_name=dataset_name, model_name=model_name
-        )
 
-    # do some validation
-    allowable_tasks = [
-        schemas.Task.BBOX_OBJECT_DETECTION,
-        schemas.Task.POLY_OBJECT_DETECTION,
-        schemas.Task.INSTANCE_SEGMENTATION,
-    ]
-
-    if request_info.parameters.model_pred_task_type not in allowable_tasks:
-        raise ValueError(
-            f"`pred_type` must be one of {allowable_tasks} but got {request_info.parameters.model_pred_task_type}."
-        )
-    if request_info.parameters.dataset_gt_task_type not in allowable_tasks:
-        raise ValueError(
-            f"`dataset_gt_task_type` must be one of {allowable_tasks} but got {request_info.parameters.dataset_gt_task_type}."
-        )
+    _validate_and_update_metric_parameters_task_type_for_detection(
+        db, metric_params=request_info.parameters
+    )
 
     # when computing AP, the fidelity of a detection will drop to the minimum fidelity of the groundtruth and predicted
     # task type. e.g. if one is bounding box detection but the other is polygon object detection, then the polygons will be

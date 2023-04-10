@@ -840,8 +840,8 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
             parameters=schemas.MetricParameters(
                 model_name="test model",
                 dataset_name="test dataset",
-                model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
-                dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+                # model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+                # dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
             ),
             iou_thresholds=[0.2, 0.6],
         )
