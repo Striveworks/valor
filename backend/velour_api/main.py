@@ -326,7 +326,10 @@ def create_ap_metrics(
         return cm_resp
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except exceptions.DatasetIsDraftError as e:
+    except (
+        exceptions.DatasetIsDraftError,
+        exceptions.InferencesAreNotFinalizedError,
+    ) as e:
         raise HTTPException(status_code=405, detail=str(e))
 
 
@@ -364,4 +367,23 @@ def get_job_metrics(
             )
         return crud.get_metrics_from_metric_params_id(db, job.metric_params_id)
     except exceptions.JobDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.put(
+    "/models/{model_name}/inferences/{dataset_name}/finalize",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def finalize_inferences(
+    model_name: str, dataset_name: str, db: Session = Depends(get_db)
+):
+    try:
+        crud.finalize_inferences(
+            db, model_name=model_name, dataset_name=dataset_name
+        )
+    except (
+        exceptions.DatasetDoesNotExistError,
+        exceptions.ModelDoesNotExistError,
+    ) as e:
         raise HTTPException(status_code=404, detail=str(e))

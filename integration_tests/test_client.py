@@ -915,6 +915,7 @@ def test_evaluate_ap(
 
     model = client.create_model(model_name)
     model.add_predicted_detections(dataset, pred_dets)
+    model.finalize_inferences(dataset)
 
     eval_job = client.evaluate_ap(
         model=model,

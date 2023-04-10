@@ -333,6 +333,23 @@ class Model(Base):
     predicted_segmentations = relationship(
         PredictedSegmentation, cascade="all, delete"
     )
+    finalized_inferences = relationship(
+        "FinalizedInferences", cascade="all, delete"
+    )
+
+
+class FinalizedInferences(Base):
+    """Table keeping track of what evaluation of datasets and models"""
+
+    __tablename__ = "finalized_inferences"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    dataset_id: Mapped[int] = mapped_column(
+        ForeignKey("dataset.id"), index=True
+    )
+    model_id: Mapped[int] = mapped_column(ForeignKey("model.id"), index=True)
+
+    __table_args__ = (UniqueConstraint("dataset_id", "model_id"),)
 
 
 class Dataset(Base):
@@ -345,6 +362,9 @@ class Dataset(Base):
     # whether or not the dataset comes from a video
     from_video: Mapped[bool] = mapped_column(default=False)
     images = relationship("Image", cascade="all, delete")
+    finalized_inferences = relationship(
+        "FinalizedInferences", cascade="all, delete"
+    )
     metric_parameters = relationship(
         "MetricParameters", cascade="all, delete", back_populates="dataset"
     )
