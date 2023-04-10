@@ -163,26 +163,12 @@ def db(client: Client) -> Session:
 
 @pytest.fixture
 def rect1():
-    return BoundingPolygon(
-        [
-            Point(x=10, y=10),
-            Point(x=10, y=40),
-            Point(x=60, y=40),
-            Point(x=60, y=10),
-        ]
-    )
+    return BoundingBox(xmin=10, ymin=10, xmax=60, ymax=40)
 
 
 @pytest.fixture
 def rect2():
-    return BoundingPolygon(
-        [
-            Point(x=15, y=0),
-            Point(x=70, y=0),
-            Point(x=70, y=20),
-            Point(x=15, y=20),
-        ]
-    )
+    return BoundingBox(xmin=15, ymin=0, xmax=70, ymax=20)
 
 
 @pytest.fixture
@@ -199,16 +185,16 @@ def rect3():
 
 @pytest.fixture
 def gt_dets1(
-    rect1: BoundingPolygon, rect2: BoundingPolygon, img1: Image, img2: Image
+    rect1: BoundingBox, rect2: BoundingBox, img1: Image, img2: Image
 ) -> list[GroundTruthDetection]:
     return [
         GroundTruthDetection(
-            boundary=rect1,
+            bbox=rect1,
             labels=[Label(key="k1", value="v1")],
             image=img1,
         ),
         GroundTruthDetection(
-            boundary=rect2,
+            bbox=rect2,
             labels=[Label(key="k1", value="v1")],
             image=img2,
         ),
@@ -321,18 +307,18 @@ def gt_clfs3(img8: Image) -> list[GroundTruthImageClassification]:
 
 @pytest.fixture
 def pred_dets(
-    rect1: BoundingPolygon, rect2: BoundingPolygon, img1: Image, img2: Image
+    rect1: BoundingBox, rect2: BoundingBox, img1: Image, img2: Image
 ) -> list[PredictedDetection]:
     return [
         PredictedDetection(
-            boundary=rect1,
+            bbox=rect1,
             scored_labels=[
                 ScoredLabel(label=Label(key="k1", value="v1"), score=0.3)
             ],
             image=img1,
         ),
         PredictedDetection(
-            boundary=rect2,
+            bbox=rect2,
             scored_labels=[
                 ScoredLabel(label=Label(key="k2", value="v2"), score=0.98)
             ],
