@@ -11,14 +11,16 @@ from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, exceptions, models, ops, schemas
 from velour_api.crud._create import (
-    _filter_instance_segmentations_by_area,
-    _filter_object_detections_by_area,
     _instance_segmentations_in_dataset_statement,
     _model_instance_segmentation_preds_statement,
     _model_object_detection_preds_statement,
     _object_detections_in_dataset_statement,
 )
-from velour_api.crud._read import _raster_to_png_b64
+from velour_api.crud._read import (
+    _filter_instance_segmentations_by_area,
+    _filter_object_detections_by_area,
+    _raster_to_png_b64,
+)
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -762,10 +764,8 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
     gts_statement = crud._create._instance_segmentations_in_dataset_statement(
         dset_name
     )
-    preds_statement = (
-        crud._create._model_instance_segmentation_preds_statement(
-            model_name=model_name, dataset_name=dset_name
-        )
+    preds_statement = crud._read._model_instance_segmentation_preds_statement(
+        model_name=model_name, dataset_name=dset_name
     )
 
     gts = db.scalars(gts_statement).all()
@@ -1093,7 +1093,9 @@ def test___object_detections_in_dataset_statement(db: Session, groundtruths):
     assert len([a for a in areas if a > 500 and a < 1200]) == 9
 
     # sanity check no min_area and max_area arguments
-    stmt = _object_detections_in_dataset_statement(dataset_name=dset_name)
+    stmt = _object_detections_in_dataset_statement(
+        dataset_name=dset_name, task=enums.Task.BBOX_OBJECT_DETECTION
+    )
     assert len(db.scalars(stmt).all()) == 20
 
     # check min_area arg
@@ -1101,12 +1103,14 @@ def test___object_detections_in_dataset_statement(db: Session, groundtruths):
         dataset_name=dset_name,
         min_area=93,
         task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 20
     stmt = _object_detections_in_dataset_statement(
         dataset_name=dset_name,
         min_area=326771,
         task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 0
 
@@ -1115,6 +1119,7 @@ def test___object_detections_in_dataset_statement(db: Session, groundtruths):
         dataset_name=dset_name,
         max_area=93,
         task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 0
 
@@ -1122,6 +1127,7 @@ def test___object_detections_in_dataset_statement(db: Session, groundtruths):
         dataset_name=dset_name,
         max_area=326771,
         task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 20
 
@@ -1131,6 +1137,7 @@ def test___object_detections_in_dataset_statement(db: Session, groundtruths):
         min_area=94,
         max_area=326771,
         task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 20
     stmt = _object_detections_in_dataset_statement(
@@ -1138,6 +1145,7 @@ def test___object_detections_in_dataset_statement(db: Session, groundtruths):
         min_area=500,
         max_area=1200,
         task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 9
 
@@ -1159,7 +1167,9 @@ def test__model_object_detection_preds_statement(
 
     # sanity check no min_area and max_area arguments
     stmt = _model_object_detection_preds_statement(
-        dataset_name=dset_name, model_name=model_name
+        dataset_name=dset_name,
+        model_name=model_name,
+        task=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 19
 
@@ -1169,6 +1179,7 @@ def test__model_object_detection_preds_statement(
         model_name=model_name,
         min_area=93,
         task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 19
     stmt = _model_object_detection_preds_statement(
@@ -1176,6 +1187,7 @@ def test__model_object_detection_preds_statement(
         model_name=model_name,
         min_area=326771,
         task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 0
 
@@ -1185,6 +1197,7 @@ def test__model_object_detection_preds_statement(
         model_name=model_name,
         max_area=93,
         task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 0
 
@@ -1193,6 +1206,7 @@ def test__model_object_detection_preds_statement(
         model_name=model_name,
         max_area=326771,
         task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 19
 
@@ -1203,6 +1217,7 @@ def test__model_object_detection_preds_statement(
         min_area=94,
         max_area=326771,
         task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 19
     stmt = _model_object_detection_preds_statement(
@@ -1211,6 +1226,7 @@ def test__model_object_detection_preds_statement(
         min_area=500,
         max_area=1200,
         task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
     )
     assert len(db.scalars(stmt).all()) == 9
 
@@ -1254,7 +1270,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     stmt = _filter_instance_segmentations_by_area(
         select(models.GroundTruthSegmentation),
         seg_table=models.GroundTruthSegmentation,
-        task=enums.Task.INSTANCE_SEGMENTATION,
+        task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
         min_area=100,
         max_area=2000,
     )
@@ -1263,7 +1279,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     stmt = _filter_instance_segmentations_by_area(
         select(models.GroundTruthSegmentation),
         seg_table=models.GroundTruthSegmentation,
-        task=enums.Task.INSTANCE_SEGMENTATION,
+        task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
         min_area=100,
         max_area=200,
     )
@@ -1272,7 +1288,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     stmt = _filter_instance_segmentations_by_area(
         select(models.GroundTruthSegmentation),
         seg_table=models.GroundTruthSegmentation,
-        task=enums.Task.INSTANCE_SEGMENTATION,
+        task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
         min_area=151,
         max_area=2000,
     )
@@ -1283,7 +1299,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     stmt = _filter_instance_segmentations_by_area(
         select(models.GroundTruthSegmentation),
         seg_table=models.GroundTruthSegmentation,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=299,
         max_area=2000,
     )
@@ -1292,7 +1308,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     stmt = _filter_instance_segmentations_by_area(
         select(models.GroundTruthSegmentation),
         seg_table=models.GroundTruthSegmentation,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=301,
         max_area=2000,
     )
@@ -1303,7 +1319,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     stmt = _filter_instance_segmentations_by_area(
         select(models.GroundTruthSegmentation),
         seg_table=models.GroundTruthSegmentation,
-        task=enums.Task.POLY_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=149,
         max_area=2000,
     )
@@ -1312,7 +1328,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     stmt = _filter_instance_segmentations_by_area(
         select(models.GroundTruthSegmentation),
         seg_table=models.GroundTruthSegmentation,
-        task=enums.Task.POLY_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=164,
         max_area=2000,
     )
@@ -1355,7 +1371,7 @@ def test__filter_object_detections_by_area(db: Session):
     stmt = _filter_object_detections_by_area(
         select(models.GroundTruthDetection),
         det_table=models.GroundTruthDetection,
-        task=enums.Task.POLY_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=100,
         max_area=2000,
     )
@@ -1364,7 +1380,7 @@ def test__filter_object_detections_by_area(db: Session):
     stmt = _filter_object_detections_by_area(
         select(models.GroundTruthDetection),
         det_table=models.GroundTruthDetection,
-        task=enums.Task.POLY_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=100,
         max_area=200,
     )
@@ -1373,7 +1389,7 @@ def test__filter_object_detections_by_area(db: Session):
     stmt = _filter_object_detections_by_area(
         select(models.GroundTruthDetection),
         det_table=models.GroundTruthDetection,
-        task=enums.Task.POLY_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=151,
         max_area=2000,
     )
@@ -1384,7 +1400,7 @@ def test__filter_object_detections_by_area(db: Session):
     stmt = _filter_object_detections_by_area(
         select(models.GroundTruthDetection),
         det_table=models.GroundTruthDetection,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=299,
         max_area=2000,
     )
@@ -1393,7 +1409,7 @@ def test__filter_object_detections_by_area(db: Session):
     stmt = _filter_object_detections_by_area(
         select(models.GroundTruthDetection),
         det_table=models.GroundTruthDetection,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=301,
         max_area=2000,
     )
@@ -1404,8 +1420,8 @@ def test__filter_object_detections_by_area(db: Session):
         _filter_object_detections_by_area(
             select(models.GroundTruthDetection),
             det_table=models.GroundTruthDetection,
-            task=enums.Task.INSTANCE_SEGMENTATION,
+            task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
             min_area=301,
             max_area=2000,
         )
-    assert "Expected task to be" in str(exc_info)
+    assert "Expected task_for_area_computation to be" in str(exc_info)

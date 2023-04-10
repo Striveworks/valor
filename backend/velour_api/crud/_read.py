@@ -1,12 +1,20 @@
 import io
 import json
 from base64 import b64encode
-from collections.abc import Iterable
 
 from geoalchemy2 import RasterElement
-from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
+from geoalchemy2.functions import (
+    ST_Area,
+    ST_AsGeoJSON,
+    ST_AsPNG,
+    ST_Boundary,
+    ST_ConvexHull,
+    ST_Count,
+    ST_Envelope,
+    ST_Polygon,
+)
 from PIL import Image
-from sqlalchemy import and_, func, select
+from sqlalchemy import Select, and_, func, select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, models, schemas
@@ -279,79 +287,255 @@ def number_of_rows(db: Session, model_cls: type) -> int:
     return db.scalar(select(func.count(model_cls.id)))
 
 
-def _get_detection_task_types(
-    dets: Iterable[models.GroundTruthDetection | models.PredictedDetection],
-) -> set[enums.Task]:
-    # TODO: maybe more sql way of doing this
-    ret = set()
-    found_bbox, found_poly = False, False
-    for det in dets:
-        if det.is_bbox:
-            found_bbox = True
-            ret.add(enums.Task.BBOX_OBJECT_DETECTION)
-        else:
-            found_poly = True
-            ret.add(enums.Task.POLY_OBJECT_DETECTION)
-        if found_bbox and found_poly:
-            break
-    return ret
+def _filter_instance_segmentations_by_area(
+    stmt: Select,
+    seg_table: type,
+    task_for_area_computation: schemas.Task,
+    min_area: float | None,
+    max_area: float | None,
+) -> Select:
+    if min_area is None and max_area is None:
+        return stmt
+
+    if task_for_area_computation == schemas.Task.BBOX_OBJECT_DETECTION:
+        area_fn = lambda x: ST_Area(ST_Envelope(x))  # noqa: E731
+    elif task_for_area_computation == schemas.Task.POLY_OBJECT_DETECTION:
+        area_fn = lambda x: ST_Area(  # noqa: E731
+            ST_ConvexHull(ST_Boundary(ST_Polygon(x)))
+        )
+    else:
+        area_fn = ST_Count
+
+    if min_area is not None:
+        stmt = stmt.where(area_fn(seg_table.shape) >= min_area)
+    if max_area is not None:
+        stmt = stmt.where(area_fn(seg_table.shape) <= max_area)
+
+    return stmt
 
 
-def _get_segmentation_task_types(
-    segs: Iterable[
-        models.GroundTruthSegmentation | models.PredictedSegmentation
-    ],
-) -> set[enums.Task]:
-    # TODO: maybe more sql way of doing this
-    ret = set()
-    found_instance_seg, found_semantic_seg = False, False
-    for seg in segs:
-        if seg.is_instance:
-            found_instance_seg = True
-            ret.add(enums.Task.INSTANCE_SEGMENTATION)
-        else:
-            found_semantic_seg = True
-            ret.add(enums.Task.SEMANTIC_SEGMENTATION)
-        if found_instance_seg and found_semantic_seg:
-            break
+def _instance_segmentations_in_dataset_statement(
+    dataset_name: str,
+    min_area: float = None,
+    max_area: float = None,
+    task_for_area_computation: schemas.Task = None,
+) -> Select:
+    """Produces the select statement to get all instance segmentations in a dataset,
+    optionally filtered by area.
 
-    return ret
-
-
-def _get_model_pred_task_types(
-    db: Session, model_name: str
-) -> set[enums.Task]:
-    model = get_model(db, model_name)
-    ret = _get_detection_task_types(model.predicted_detections).union(
-        _get_segmentation_task_types(model.predicted_segmentations)
+    Parameters
+    ----------
+    dataset_name
+        name of the dataset
+    min_area
+        only select segmentations with area at least this value
+    max_area
+        only select segmentations with area at most this value
+    task_for_area_computation
+        one of Task.BBOX_OBJECT_DETECTION, Task.POLY_OBJECT_DETECTION, or
+        Task.INSTANCE_SEGMENTATION. this determines how the area is calculated:
+        if Task.BBOX_OBJECT_DETECTION then the area of the circumscribing polygon of the segmentation is used,
+        if Task.POLY_OBJECT_DETECTION then the area of the convex hull of the segmentation is used
+        if Task.INSTANCE_SEGMENTATION then the area of the segmentation itself is used.
+    """
+    return _filter_instance_segmentations_by_area(
+        stmt=(
+            select(models.LabeledGroundTruthSegmentation)
+            .join(models.GroundTruthSegmentation)
+            .join(models.Image)
+            .join(models.Dataset)
+            .where(
+                and_(
+                    models.GroundTruthSegmentation.is_instance,
+                    models.Dataset.name == dataset_name,
+                )
+            )
+        ),
+        seg_table=models.GroundTruthSegmentation,
+        task_for_area_computation=task_for_area_computation,
+        min_area=min_area,
+        max_area=max_area,
     )
 
-    if len(model.predicted_image_classifications):
-        ret.add(enums.Task.IMAGE_CLASSIFICATION)
+
+def _filter_object_detections_by_area(
+    stmt: Select,
+    det_table: type,
+    task_for_area_computation: schemas.Task | None,
+    min_area: float | None,
+    max_area: float | None,
+) -> Select:
+    if min_area is None and max_area is None:
+        return stmt
+
+    if task_for_area_computation == schemas.Task.BBOX_OBJECT_DETECTION:
+        area_fn = lambda x: ST_Area(ST_Envelope(x))  # noqa: E731
+    elif task_for_area_computation == schemas.Task.POLY_OBJECT_DETECTION:
+        area_fn = ST_Area
+    else:
+        raise ValueError(
+            f"Expected task_for_area_computation to be {schemas.Task.BBOX_OBJECT_DETECTION} or "
+            f"{schemas.Task.POLY_OBJECT_DETECTION} but got {task_for_area_computation}."
+        )
+
+    if min_area is not None:
+        stmt = stmt.where(area_fn(det_table.boundary) >= min_area)
+    if max_area is not None:
+        stmt = stmt.where(area_fn(det_table.boundary) <= max_area)
+
+    return stmt
+
+
+def _object_detections_in_dataset_statement(
+    dataset_name: str,
+    task: schemas.Task,
+    min_area: float = None,
+    max_area: float = None,
+    task_for_area_computation: schemas.Task = None,
+) -> Select:
+    """returns the select statement for all groundtruth object detections in a dataset.
+    if min_area and/or max_area is None then it will filter accordingly by the area (pixels^2 and not proportion)
+    """
+    if task not in [
+        enums.Task.POLY_OBJECT_DETECTION,
+        enums.Task.BBOX_OBJECT_DETECTION,
+    ]:
+        raise ValueError(
+            f"Expected task to be a detection task but got {task}"
+        )
+    return _filter_object_detections_by_area(
+        stmt=(
+            select(models.LabeledGroundTruthDetection)
+            .join(models.GroundTruthDetection)
+            .join(models.Image)
+            .join(models.Dataset)
+            .where(
+                and_(
+                    models.Dataset.name == dataset_name,
+                    models.GroundTruthDetection.is_bbox
+                    == (task == enums.Task.BBOX_OBJECT_DETECTION),
+                )
+            )
+        ),
+        det_table=models.GroundTruthDetection,
+        task_for_area_computation=task_for_area_computation,
+        min_area=min_area,
+        max_area=max_area,
+    )
+
+
+def _model_instance_segmentation_preds_statement(
+    model_name: str,
+    dataset_name: str,
+    min_area: float = None,
+    max_area: float = None,
+    task_for_area_computation: schemas.Task = None,
+) -> Select:
+    return _filter_instance_segmentations_by_area(
+        stmt=(
+            select(models.LabeledPredictedSegmentation)
+            .join(models.PredictedSegmentation)
+            .join(models.Image)
+            .join(models.Model)
+            .join(models.Dataset)
+            .where(
+                and_(
+                    models.Model.name == model_name,
+                    models.Dataset.name == dataset_name,
+                    models.PredictedSegmentation.is_instance,
+                )
+            )
+        ),
+        seg_table=models.PredictedSegmentation,
+        task_for_area_computation=task_for_area_computation,
+        min_area=min_area,
+        max_area=max_area,
+    )
+
+
+def _model_object_detection_preds_statement(
+    model_name: str,
+    dataset_name: str,
+    task: enums.Task,
+    min_area: float = None,
+    max_area: float = None,
+    task_for_area_computation: schemas.Task = None,
+) -> Select:
+    if task not in [
+        enums.Task.POLY_OBJECT_DETECTION,
+        enums.Task.BBOX_OBJECT_DETECTION,
+    ]:
+        raise ValueError(
+            f"Expected task to be a detection task but got {task}"
+        )
+    return _filter_object_detections_by_area(
+        stmt=(
+            select(models.LabeledPredictedDetection)
+            .join(models.PredictedDetection)
+            .join(models.Image)
+            .join(models.Model)
+            .join(models.Dataset)
+            .where(
+                and_(
+                    models.Model.name == model_name,
+                    models.Dataset.name == dataset_name,
+                    models.PredictedDetection.is_bbox
+                    == (task == enums.Task.BBOX_OBJECT_DETECTION),
+                )
+            )
+        ),
+        det_table=models.PredictedDetection,
+        task_for_area_computation=task_for_area_computation,
+        min_area=min_area,
+        max_area=max_area,
+    )
+
+
+def get_dataset_task_types(db: Session, dataset_name: str) -> set[enums.Task]:
+    ret = set()
+
+    if db.query(
+        _instance_segmentations_in_dataset_statement(
+            dataset_name=dataset_name
+        ).exists()
+    ).scalar():
+        ret.add(enums.Task.INSTANCE_SEGMENTATION)
+
+    for task in [
+        enums.Task.BBOX_OBJECT_DETECTION,
+        enums.Task.POLY_OBJECT_DETECTION,
+    ]:
+        if db.query(
+            _object_detections_in_dataset_statement(
+                dataset_name, task
+            ).exists()
+        ).scalar():
+            ret.add(task)
 
     return ret
 
 
-def _get_dataset_task_types(db: Session, dataset_name: str) -> set[enums.Task]:
-    dataset = get_dataset(db, dataset_name)
+def get_model_task_types(
+    db: Session, model_name: str, dataset_name: str
+) -> set[enums.Task]:
+    ret = set()
 
-    def _detection_generator():
-        for image in dataset.images:
-            for detection in image.ground_truth_detections:
-                yield detection
+    if db.query(
+        _model_instance_segmentation_preds_statement(
+            model_name=model_name, dataset_name=dataset_name
+        ).exists()
+    ).scalar():
+        ret.add(enums.Task.INSTANCE_SEGMENTATION)
 
-    def _segmentation_generator():
-        for image in dataset.images:
-            for segmentation in image.ground_truth_segmentations:
-                yield segmentation
-
-    ret = _get_detection_task_types(_detection_generator()).union(
-        _segmentation_generator()
-    )
-
-    for image in dataset.images:
-        if len(image.ground_truth_classifications) > 0:
-            ret.add(enums.Task.IMAGE_CLASSIFICATION)
-            break
+    for task in [
+        enums.Task.BBOX_OBJECT_DETECTION,
+        enums.Task.POLY_OBJECT_DETECTION,
+    ]:
+        if db.query(
+            _model_object_detection_preds_statement(
+                model_name=model_name, dataset_name=dataset_name, task=task
+            ).exists()
+        ).scalar():
+            ret.add(task)
 
     return ret
