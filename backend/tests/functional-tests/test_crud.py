@@ -867,8 +867,15 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     with pytest.raises(exceptions.DatasetIsDraftError):
         method_to_test()
 
-    # finalize dataset and try again
+    # finalize dataset
     crud.finalize_dataset(db, "test dataset")
+
+    # now if we try again we should get an error that inferences aren't finalized
+    with pytest.raises(exceptions.InferencesAreNotFinalizedError):
+        method_to_test()
+
+    # finalize inferences and try again
+    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
     (
         metric_params_id,
