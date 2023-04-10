@@ -825,10 +825,20 @@ def validate_create_ap_metrics(
         for predictions, third is list of labels that were missing in the predictions, and fourth
         is list of labels in the predictions that were ignored (because they weren't in the groundtruth)
     """
-    if get_dataset(db, request_info.parameters.dataset_name).draft:
+    dataset_name = request_info.parameters.dataset_name
+    model_name = request_info.parameters.model_name
+    if get_dataset(db, dataset_name).draft:
         raise exceptions.DatasetIsDraftError(
             request_info.parameters.dataset_name
         )
+    # check that inferences are finalized
+    if not _check_finalized_inferences(
+        db, model_name=model_name, dataset_name=dataset_name
+    ):
+        raise exceptions.InferencesAreNotFinalizedError(
+            dataset_name=dataset_name, model_name=model_name
+        )
+
     # do some validation
     allowable_tasks = [
         schemas.Task.BBOX_OBJECT_DETECTION,
@@ -972,3 +982,45 @@ def create_ap_metrics(
     db.commit()
 
     return mp.id
+
+
+def _check_finalized_inferences(
+    db: Session, model_name: str, dataset_name: str
+) -> bool:
+    """Checks if inferences of model given by `model_name` on dataset given by `dataset_name`
+    are finalized
+    """
+    model_id = get_model(db, model_name).id
+    dataset_id = get_dataset(db, dataset_name).id
+    entries = db.scalars(
+        select(models.FinalizedInferences).where(
+            and_(
+                models.FinalizedInferences.model_id == model_id,
+                models.FinalizedInferences.dataset_id == dataset_id,
+            )
+        )
+    ).all()
+    # this should never happen because of uniqueness constraint
+    if len(entries) > 1:
+        raise RuntimeError(
+            f"got multiple entries for finalized inferences with model id {model_id} "
+            f"and dataset id {dataset_id}, which should never happen"
+        )
+
+    return len(entries) != 0
+
+
+def finalize_inferences(
+    db: Session, model_name: str, dataset_name: str
+) -> None:
+    dataset = get_dataset(db, dataset_name)
+    if dataset.draft:
+        raise exceptions.DatasetIsDraftError(dataset_name)
+
+    model_id = get_model(db, model_name).id
+    dataset_id = dataset.id
+
+    db.add(
+        models.FinalizedInferences(dataset_id=dataset_id, model_id=model_id)
+    )
+    db.commit()

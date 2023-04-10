@@ -461,6 +461,11 @@ class Model:
 
         return resp.json()
 
+    def finalize_inferences(self, dataset: Dataset) -> None:
+        return self.client._requests_put_rel_host(
+            f"models/{self.name}/inferences/{dataset.name}/finalize"
+        ).json()
+
 
 class EvalJob:
     def __init__(

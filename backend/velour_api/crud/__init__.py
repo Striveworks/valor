@@ -8,6 +8,7 @@ from ._create import (
     create_predicted_detections,
     create_predicted_image_classifications,
     create_predicted_segmentations,
+    finalize_inferences,
     validate_create_ap_metrics,
     validate_requested_labels_and_get_new_defining_statements_and_missing_labels,
 )
@@ -55,6 +56,7 @@ __all__ = [
     "get_model_metrics",
     "number_of_rows",
     "finalize_dataset",
+    "finalize_inferences",
     "delete_model",
     "delete_dataset",
 ]
