@@ -61,7 +61,10 @@ def mask_bytes_poly_intersection():
 
     intersection_area = (inter_xmax - inter_xmin) * (inter_ymax - inter_ymin)
 
-    return mask_bytes, poly, intersection_area
+    mask_area = (y_max - y_min) * (x_max - x_min)
+    poly_area = (poly_y_max - poly_y_min) * (poly_x_max - poly_x_min)
+
+    return mask_bytes, poly, mask_area, poly_area, intersection_area
 
 
 def _pred_seg_from_bytes(
@@ -93,7 +96,7 @@ def _gt_seg_from_polys(
     return gt_seg
 
 
-def test_area_pred_seg(
+def test__raster_area(
     db: Session, mask_bytes1: bytes, model: models.Model, img: models.Image
 ):
     pred_seg = _pred_seg_from_bytes(
@@ -101,7 +104,7 @@ def test_area_pred_seg(
     )
 
     mask = bytes_to_pil(mask_bytes1)
-    assert ops.seg_area(db, pred_seg) == np.array(mask).sum()
+    assert ops._raster_area(db, pred_seg.shape) == np.array(mask).sum()
 
 
 def test_intersection_area_of_segs(
@@ -192,13 +195,19 @@ def test_intersection_pred_seg_multi_poly_gt_seg(
     )
 
 
-def test_intersection_area_of_gt_seg_and_pred_det(
+def test_iou_and_intersection_area_of_two_segs(
     db: Session,
     model: models.Model,
     img: models.Image,
     mask_bytes_poly_intersection: tuple[bytes, schemas.PolygonWithHole, float],
 ):
-    mask_bytes, poly, intersection_area = mask_bytes_poly_intersection
+    (
+        mask_bytes,
+        poly,
+        mask_area,
+        poly_area,
+        intersection_area,
+    ) = mask_bytes_poly_intersection
 
     pred_seg = _pred_seg_from_bytes(
         db=db, mask_bytes=mask_bytes, model=model, img=img
@@ -210,14 +219,24 @@ def test_intersection_area_of_gt_seg_and_pred_det(
         == intersection_area
     )
 
+    assert ops.iou_two_segs(db, gt_seg, pred_seg) == intersection_area / (
+        mask_area + poly_area - intersection_area
+    )
 
-def test_intersection_area_of_det_and_seg(
+
+def test_iou_det_and_seg(
     db: Session,
     model: models.Model,
     img: models.Image,
     mask_bytes_poly_intersection: tuple[bytes, schemas.PolygonWithHole, float],
 ):
-    mask_bytes, poly, intersection_area = mask_bytes_poly_intersection
+    (
+        mask_bytes,
+        poly,
+        mask_area,
+        poly_area,
+        intersection_area,
+    ) = mask_bytes_poly_intersection
     seg = _pred_seg_from_bytes(
         db=db, mask_bytes=mask_bytes, model=model, img=img
     )
@@ -229,12 +248,13 @@ def test_intersection_area_of_det_and_seg(
     db.add(det)
     db.commit()
 
-    assert (
-        ops.intersection_area_of_det_and_seg(db, det, seg) == intersection_area
+    assert ops.iou_det_and_seg(db, det, seg) == intersection_area / (
+        mask_area + poly_area - intersection_area
     )
 
     # now create a mask that's a triangle and check intersection is correct
     # when computed against a bounding box detection and a polygon detection
+    # that contains the triangle
     mask = np.zeros((10, 30), dtype=bool)
     for i in range(10):
         for j in range(30):
@@ -262,11 +282,21 @@ def test_intersection_area_of_det_and_seg(
     db.add(poly_det)
     db.commit()
 
-    # this should be a little more than the area of the triangle since its contained in the detection
-    assert ops.intersection_area_of_det_and_seg(db, poly_det, seg) == 59.5
+    # the segmentation gets changed to its convex hull. this turns out to have
+    # area 59.5 (honestly not exactly sure why, probably some aliasing thing?)
+    # since the triangle is contained in the detection, that area is also the area
+    # of its intersection
+    area_convex_hull_triangle = 59.5
+    assert ops.iou_det_and_seg(
+        db, poly_det, seg
+    ) == area_convex_hull_triangle / (
+        10 * 20 + area_convex_hull_triangle - area_convex_hull_triangle
+    )
 
-    # this should be the area of the rectangle that circumscribes the triangle
-    assert ops.intersection_area_of_det_and_seg(db, bbox_det, seg) == 10 * 10
+    # this should be the IOU of the reactangle that circumscribes the triangle,
+    # which is a 10x10 square that's contained in the 10x20 bbox_det so
+    # should get .5
+    assert ops.iou_det_and_seg(db, bbox_det, seg) == 0.5
 
 
 def test_iou_two_dets(db: Session, img: models.Image):

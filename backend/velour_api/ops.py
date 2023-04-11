@@ -57,7 +57,9 @@ def iou(
     if isinstance(det_or_seg1, LabeledSegmentationType) and isinstance(
         det_or_seg2, LabeledSegmentationType
     ):
-        return iou_two_segs(db, det_or_seg1, det_or_seg2)
+        return iou_two_segs(
+            db, det_or_seg1.segmentation, det_or_seg2.segmentation
+        )
 
     raise ValueError("Unexpected arguments")
 
@@ -78,11 +80,11 @@ def iou_two_dets(
     elif not det1.is_bbox and det2.is_bbox:
         boundary1 = ST_Envelope(boundary1)
 
-    cap_area = intersection_area_of_det_boundaries(db, boundary1, boundary2)
+    cap_area = _intersection_area_of_det_boundaries(db, boundary1, boundary2)
 
     return cap_area / (
-        det_boundary_area(db, boundary1)
-        + det_boundary_area(db, boundary2)
+        _det_boundary_area(db, boundary1)
+        + _det_boundary_area(db, boundary2)
         - cap_area
     )
 
@@ -91,31 +93,15 @@ def iou_two_segs(
     db: Session, seg1: SegmentationType, seg2: SegmentationType
 ) -> float:
     cap_area = intersection_area_of_segs(db, seg1, seg2)
-    return cap_area / (seg_area(db, seg1) + seg_area(db, seg2) - cap_area)
+    return cap_area / (
+        _raster_area(db, seg1.shape) + _raster_area(db, seg2.shape) - cap_area
+    )
 
 
 def iou_det_and_seg(
     db: Session, det: DetectionType, seg: SegmentationType
 ) -> float:
-    cap_area = intersection_area_of_det_and_seg(db, det=det, seg=seg)
-    return cap_area / (det_area(db, det) + seg_area(db, seg) - cap_area)
-
-
-def intersection_area_of_det_boundaries(
-    db: Session, boundary1: WKBElement, boundary2: WKBElement
-) -> float:
-    """Computes the area of the intersection between two detections
-    If one is a bounding box detection and the other a polygon detection, then
-    the polygon will be converted to a bounding box.
-    """
-
-    return db.scalar(ST_Area(ST_Intersection(boundary1, boundary2)))
-
-
-def intersection_area_of_det_and_seg(
-    db: Session, det: DetectionType, seg: SegmentationType
-):
-    """Computes the intersection area of a detection and segmentation. In the case that
+    """Computes the IOU of a detection and segmentation. In the case that
     the detection is a bounding box, we take the interection of the detection
     with the bounding box that circumscribes the segmentation. If the detection is a polygon
     then we take the intersection of the detection with the convex hull of the segmentation
@@ -125,8 +111,25 @@ def intersection_area_of_det_and_seg(
         seg_boundary = ST_Envelope(seg_boundary)
     else:
         seg_boundary = ST_ConvexHull(ST_Boundary(seg_boundary))
+    cap_area = _intersection_area_of_det_boundaries(
+        db, det.boundary, seg_boundary
+    )
+    return cap_area / (
+        _det_boundary_area(db, det.boundary)
+        + _det_boundary_area(db, seg_boundary)
+        - cap_area
+    )
 
-    return db.scalar(ST_Area(ST_Intersection(det.boundary, seg_boundary)))
+
+def _intersection_area_of_det_boundaries(
+    db: Session, boundary1: WKBElement, boundary2: WKBElement
+) -> float:
+    """Computes the area of the intersection between two detections
+    If one is a bounding box detection and the other a polygon detection, then
+    the polygon will be converted to a bounding box.
+    """
+
+    return db.scalar(ST_Area(ST_Intersection(boundary1, boundary2)))
 
 
 def intersection_area_of_segs(
@@ -143,12 +146,10 @@ def _intersection_area_of_rasters(
     return db.scalar(ST_Count(ST_Intersection(rast1, rast2)))
 
 
-def det_boundary_area(db: Session, boundary: WKBElement) -> float:
+def _det_boundary_area(db: Session, boundary: WKBElement) -> float:
     """Computes the area of the intersection between two detections"""
     return db.scalar(ST_Area(boundary))
 
 
-def seg_area(
-    db: Session, seg: PredictedSegmentation | GroundTruthSegmentation
-) -> float:
-    return db.scalar(ST_Count(seg.shape))
+def _raster_area(db: Session, rast: RasterElement) -> float:
+    return db.scalar(ST_Count(rast))
