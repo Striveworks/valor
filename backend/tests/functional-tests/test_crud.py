@@ -549,7 +549,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     mask = bytes_to_pil(
         b64decode(pred_segs_create.segmentations[0].base64_mask)
     )
-    assert ops.seg_area(db, seg) == np.array(mask).sum()
+    assert ops._raster_area(db, seg.shape) == np.array(mask).sum()
 
     # delete model and check all detections from it are gone
     crud.delete_model(db, model_name)
@@ -597,7 +597,7 @@ def test_segmentation_area_no_hole(
 
     segmentation = db.scalar(select(models.GroundTruthSegmentation))
 
-    assert ops.seg_area(db, segmentation) == math.ceil(
+    assert ops._raster_area(db, segmentation.shape) == math.ceil(
         45.5
     )  # area of mask will be an int
 
@@ -627,7 +627,7 @@ def test_segmentation_area_with_hole(
     segmentation = db.scalar(select(models.GroundTruthSegmentation))
 
     # give tolerance of 2 pixels because of poly -> mask conversion
-    assert (ops.seg_area(db, segmentation) - 92) <= 2
+    assert (ops._raster_area(db, segmentation.shape) - 92) <= 2
 
 
 def test_segmentation_area_multi_polygon(
@@ -659,7 +659,10 @@ def test_segmentation_area_multi_polygon(
 
     # the two shapes don't intersect so area should be sum of the areas
     # give tolerance of 2 pixels because of poly -> mask conversion
-    assert abs(ops.seg_area(db, segmentation) - (math.ceil(45.5) + 92)) <= 2
+    assert (
+        abs(ops._raster_area(db, segmentation.shape) - (math.ceil(45.5) + 92))
+        <= 2
+    )
 
 
 def test__select_statement_from_poly(
