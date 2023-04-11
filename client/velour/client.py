@@ -10,6 +10,7 @@ import PIL.Image
 import requests
 
 from velour.data_types import (
+    BoundingBox,
     BoundingPolygon,
     GroundTruthDetection,
     GroundTruthImageClassification,
@@ -207,8 +208,8 @@ class Client:
         self,
         model: "Model",
         dataset: "Dataset",
-        model_pred_task_type: Task,
-        dataset_gt_task_type: Task,
+        model_pred_task_type: Task = None,
+        dataset_gt_task_type: Task = None,
         iou_thresholds: List[float] = None,
         labels: List[Label] = None,
         min_area: float = None,
@@ -218,8 +219,12 @@ class Client:
             "parameters": {
                 "model_name": model.name,
                 "dataset_name": dataset.name,
-                "model_pred_task_type": model_pred_task_type.value,
-                "dataset_gt_task_type": dataset_gt_task_type.value,
+                "model_pred_task_type": model_pred_task_type.value
+                if model_pred_task_type is not None
+                else None,
+                "dataset_gt_task_type": dataset_gt_task_type.value
+                if dataset_gt_task_type is not None
+                else None,
                 "min_area": min_area,
                 "max_area": max_area,
             }
@@ -311,14 +316,21 @@ class Dataset:
             f"datasets/{self.name}/images/{image_uid}/detections"
         ).json()
 
-        return [
-            GroundTruthDetection(
-                boundary=_list_of_list_to_bounding_polygon(gt["boundary"]),
-                labels=[Label(**label) for label in gt["labels"]],
-                image=Image(**gt["image"]),
-            )
-            for gt in resp
-        ]
+        def _process_single_gt(gt: dict):
+            labels = [Label(**label) for label in gt["labels"]]
+            image = Image(**gt["image"])
+            if gt["bbox"] is not None:
+                return GroundTruthDetection(
+                    image=image, labels=labels, bbox=BoundingBox(*gt["bbox"])
+                )
+            else:
+                return GroundTruthDetection(
+                    image=image,
+                    labels=labels,
+                    boundary=_list_of_list_to_bounding_polygon(gt["boundary"]),
+                )
+
+        return [_process_single_gt(gt) for gt in resp]
 
     def _get_segmentations(
         self, image_uid: str, instance: bool

@@ -129,17 +129,29 @@ def get_groundtruth_detections_in_image(
         uid=uid, height=db_img.height, width=db_img.width, frame=db_img.frame
     )
 
-    return [
-        schemas.GroundTruthDetection(
-            boundary=_boundary_points_from_detection(db, gt_det),
-            image=img,
-            labels=[
-                _db_label_to_schemas_label(labeled_gt_det.label)
-                for labeled_gt_det in gt_det.labeled_ground_truth_detections
-            ],
-        )
-        for gt_det in gt_dets
-    ]
+    def _single_db_gt_to_pydantic_gt(gt_det: models.GroundTruthDetection):
+        labels = [
+            _db_label_to_schemas_label(labeled_gt_det.label)
+            for labeled_gt_det in gt_det.labeled_ground_truth_detections
+        ]
+        boundary = _boundary_points_from_detection(db, gt_det)
+
+        if gt_det.is_bbox:
+            xs = [b[0] for b in boundary]
+            ys = [b[1] for b in boundary]
+            return schemas.GroundTruthDetection(
+                bbox=(min(xs), min(ys), max(xs), max(ys)),
+                image=img,
+                labels=labels,
+            )
+        else:
+            return schemas.GroundTruthDetection(
+                boundary=_boundary_points_from_detection(db, gt_det),
+                image=img,
+                labels=labels,
+            )
+
+    return [_single_db_gt_to_pydantic_gt(gt_det) for gt_det in gt_dets]
 
 
 def get_groundtruth_segmentations_in_image(
