@@ -648,6 +648,16 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
         == db.scalar(ST_AsText(db_dets[1].boundary))
     )
 
+    # check that they can be recovered by the client
+    detections = dataset.get_groundtruth_detections("uid")
+    assert len(detections) == 2
+    assert len([det for det in detections if det.is_bbox]) == 1
+    for det in detections:
+        if det.bbox:
+            assert det == gt_bbox
+        else:
+            assert det == gt_poly
+
 
 def test_create_pred_detections_as_bbox_or_poly(
     db: Session,
