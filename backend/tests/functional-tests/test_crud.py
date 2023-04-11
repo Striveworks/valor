@@ -15,6 +15,7 @@ from velour_api.crud._create import (
     _model_instance_segmentation_preds_statement,
     _model_object_detection_preds_statement,
     _object_detections_in_dataset_statement,
+    _validate_and_update_metric_parameters_task_type_for_detection,
 )
 from velour_api.crud._read import (
     _filter_instance_segmentations_by_area,
@@ -1427,7 +1428,121 @@ def test__filter_object_detections_by_area(db: Session):
     assert "Expected task_for_area_computation to be" in str(exc_info)
 
 
-def test__validate_and_update_metric_parameters_task_type_for_detection(
+def test__validate_and_update_metric_parameters_task_type_for_detection_no_groundtruth(
     db: Session,
 ):
+    """Test runtime error when there's no groundtruth data"""
     crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_model(db, schemas.Model(name=model_name))
+    crud.finalize_dataset(db, dset_name)
+    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
+
+    metric_params = schemas.MetricParameters(
+        model_name=model_name, dataset_name=dset_name
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        _validate_and_update_metric_parameters_task_type_for_detection(
+            db, metric_params
+        )
+    assert "The dataset does not have any annotations to support" in str(
+        exc_info
+    )
+
+
+def test__validate_and_update_metric_parameters_task_type_for_detection_no_predictions(
+    db: Session, gt_dets_create
+):
+    """Test runtime error when there's no prediction data"""
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_model(db, schemas.Model(name=model_name))
+
+    crud.create_groundtruth_detections(db, gt_dets_create)
+
+    crud.finalize_dataset(db, dset_name)
+    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
+
+    metric_params = schemas.MetricParameters(
+        model_name=model_name, dataset_name=dset_name
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        _validate_and_update_metric_parameters_task_type_for_detection(
+            db, metric_params
+        )
+    assert "The model does not have any inferences to support" in str(exc_info)
+
+
+def test__validate_and_update_metric_parameters_task_type_for_detection_multiple_groundtruth_types(
+    db: Session, gt_dets_create, gt_segs_create
+):
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_model(db, schemas.Model(name=model_name))
+
+    crud.create_groundtruth_detections(db, gt_dets_create)
+    crud.create_groundtruth_segmentations(db, gt_segs_create)
+
+    crud.finalize_dataset(db, dset_name)
+    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
+
+    metric_params = schemas.MetricParameters(
+        model_name=model_name, dataset_name=dset_name
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        _validate_and_update_metric_parameters_task_type_for_detection(
+            db, metric_params
+        )
+    assert "The dataset has the following tasks compatible" in str(exc_info)
+
+    # now specify task types for dataset and check we get an error since model
+    # has no inferences
+    metric_params = schemas.MetricParameters(
+        model_name=model_name,
+        dataset_name=dset_name,
+        dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+    )
+    with pytest.raises(RuntimeError) as exc_info:
+        _validate_and_update_metric_parameters_task_type_for_detection(
+            db, metric_params
+        )
+    assert "The model does not have any inferences to support" in str(exc_info)
+
+
+def test__validate_and_update_metric_parameters_task_type_for_detection_multiple_prediction_types(
+    db: Session, gt_dets_create, pred_dets_create, pred_segs_create
+):
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    crud.create_model(db, schemas.Model(name=model_name))
+
+    crud.create_groundtruth_detections(db, gt_dets_create)
+    crud.create_predicted_detections(db, pred_dets_create)
+    crud.create_predicted_segmentations(db, pred_segs_create)
+
+    crud.finalize_dataset(db, dset_name)
+    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
+
+    metric_params = schemas.MetricParameters(
+        model_name=model_name, dataset_name=dset_name
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        _validate_and_update_metric_parameters_task_type_for_detection(
+            db, metric_params
+        )
+    assert "The model has the following tasks compatible" in str(exc_info)
+
+    # now specify task type for model and check there's no error and that
+    # the dataset task type was made explicit
+    metric_params = schemas.MetricParameters(
+        model_name=model_name,
+        dataset_name=dset_name,
+        model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+    )
+    assert metric_params.dataset_gt_task_type is None
+    _validate_and_update_metric_parameters_task_type_for_detection(
+        db, metric_params
+    )
+    assert (
+        metric_params.dataset_gt_task_type == enums.Task.POLY_OBJECT_DETECTION
+    )

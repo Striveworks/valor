@@ -685,7 +685,7 @@ def _validate_and_update_metric_parameters_task_type_for_detection(
         inter = allowable_tasks.intersection(dset_task_types)
         if len(inter) > 1:
             raise RuntimeError(
-                f"The underlying dataset has the following tasks compatible for object detection evaluation: {dset_task_types}. Which one to use must be specified."
+                f"The dataset has the following tasks compatible for object detection evaluation: {dset_task_types}. Which one to use must be specified."
             )
         if len(inter) == 0:
             raise RuntimeError(
@@ -703,9 +703,13 @@ def _validate_and_update_metric_parameters_task_type_for_detection(
         )
         inter = allowable_tasks.intersection(model_task_types)
         if len(inter) > 1:
-            raise
+            raise RuntimeError(
+                f"The model has the following tasks compatible for object detection evaluation: {model_task_types}. Which one to use must be specified."
+            )
         if len(inter) == 0:
-            raise
+            raise RuntimeError(
+                "The model does not have any inferences to support object detection evaluation."
+            )
         metric_params.model_pred_task_type = inter.pop()
     elif metric_params.model_pred_task_type not in allowable_tasks:
         raise ValueError(
