@@ -61,7 +61,10 @@ def mask_bytes_poly_intersection():
 
     intersection_area = (inter_xmax - inter_xmin) * (inter_ymax - inter_ymin)
 
-    return mask_bytes, poly, intersection_area
+    mask_area = (y_max - y_min) * (x_max - x_min)
+    poly_area = (poly_y_max - poly_y_min) * (poly_x_max - poly_x_min)
+
+    return mask_bytes, poly, mask_area, poly_area, intersection_area
 
 
 def _pred_seg_from_bytes(
@@ -93,7 +96,7 @@ def _gt_seg_from_polys(
     return gt_seg
 
 
-def test_area_pred_seg(
+def test__raster_area(
     db: Session, mask_bytes1: bytes, model: models.Model, img: models.Image
 ):
     pred_seg = _pred_seg_from_bytes(
@@ -101,7 +104,7 @@ def test_area_pred_seg(
     )
 
     mask = bytes_to_pil(mask_bytes1)
-    assert ops.seg_area(db, pred_seg) == np.array(mask).sum()
+    assert ops._raster_area(db, pred_seg.shape) == np.array(mask).sum()
 
 
 def test_intersection_area_of_segs(
@@ -192,13 +195,19 @@ def test_intersection_pred_seg_multi_poly_gt_seg(
     )
 
 
-def test_intersection_area_of_gt_seg_and_pred_det(
+def test_iou_and_intersection_area_of_two_segs(
     db: Session,
     model: models.Model,
     img: models.Image,
     mask_bytes_poly_intersection: tuple[bytes, schemas.PolygonWithHole, float],
 ):
-    mask_bytes, poly, intersection_area = mask_bytes_poly_intersection
+    (
+        mask_bytes,
+        poly,
+        mask_area,
+        poly_area,
+        intersection_area,
+    ) = mask_bytes_poly_intersection
 
     pred_seg = _pred_seg_from_bytes(
         db=db, mask_bytes=mask_bytes, model=model, img=img
@@ -210,14 +219,24 @@ def test_intersection_area_of_gt_seg_and_pred_det(
         == intersection_area
     )
 
+    assert ops.iou_two_segs(db, gt_seg, pred_seg) == intersection_area / (
+        mask_area + poly_area - intersection_area
+    )
 
-def test_intersection_area_of_det_and_seg(
+
+def test_iou_det_and_seg(
     db: Session,
     model: models.Model,
     img: models.Image,
     mask_bytes_poly_intersection: tuple[bytes, schemas.PolygonWithHole, float],
 ):
-    mask_bytes, poly, intersection_area = mask_bytes_poly_intersection
+    (
+        mask_bytes,
+        poly,
+        mask_area,
+        poly_area,
+        intersection_area,
+    ) = mask_bytes_poly_intersection
     seg = _pred_seg_from_bytes(
         db=db, mask_bytes=mask_bytes, model=model, img=img
     )
@@ -229,12 +248,13 @@ def test_intersection_area_of_det_and_seg(
     db.add(det)
     db.commit()
 
-    assert (
-        ops.intersection_area_of_det_and_seg(db, det, seg) == intersection_area
+    assert ops.iou_det_and_seg(db, det, seg) == intersection_area / (
+        mask_area + poly_area - intersection_area
     )
 
     # now create a mask that's a triangle and check intersection is correct
     # when computed against a bounding box detection and a polygon detection
+    # that contains the triangle
     mask = np.zeros((10, 30), dtype=bool)
     for i in range(10):
         for j in range(30):
@@ -262,24 +282,40 @@ def test_intersection_area_of_det_and_seg(
     db.add(poly_det)
     db.commit()
 
-    # this should be a little more than the area of the triangle since its contained in the detection
-    assert ops.intersection_area_of_det_and_seg(db, poly_det, seg) == 59.5
+    # the segmentation gets changed to its convex hull. this turns out to have
+    # area 59.5 (honestly not exactly sure why, probably some aliasing thing?)
+    # since the triangle is contained in the detection, that area is also the area
+    # of its intersection
+    area_convex_hull_triangle = 59.5
+    assert ops.iou_det_and_seg(
+        db, poly_det, seg
+    ) == area_convex_hull_triangle / (
+        10 * 20 + area_convex_hull_triangle - area_convex_hull_triangle
+    )
 
-    # this should be the area of the rectangle that circumscribes the triangle
-    assert ops.intersection_area_of_det_and_seg(db, bbox_det, seg) == 10 * 10
+    # this should be the IOU of the reactangle that circumscribes the triangle,
+    # which is a 10x10 square that's contained in the 10x20 bbox_det so
+    # should get .5
+    assert ops.iou_det_and_seg(db, bbox_det, seg) == 0.5
 
 
-def test_intersection_area_of_dets(db: Session, img: models.Image):
+def test_iou_two_dets(db: Session, img: models.Image):
     ymin1, ymax1, xmin1, xmax1 = 50, 80, 20, 30
     ymin2, ymax2, xmin2, xmax2 = 60, 90, 10, 25
-
-    intersection_area = (25 - 20) * (80 - 60)
 
     # poly1 and poly2 are bounding boxes
     poly1 = f"POLYGON({_boundary_points_to_str([(xmin1, ymin1), (xmax1, ymin1), (xmax1, ymax1), (xmin1, ymax1)])})"
     poly2 = f"POLYGON({_boundary_points_to_str([(xmin2, ymin2), (xmax2, ymin2), (xmax2, ymax2), (xmin2, ymax2)])})"
     # triangle thats half of the bounding box poly1
     poly3 = f"POLYGON({_boundary_points_to_str([(xmin1, ymin1), (xmax1, ymin1), (xmax1, ymax1)])})"
+
+    # intersection area of poly1 and poly2
+    poly1_poly2_intersection_area = (25 - 20) * (80 - 60)
+    area_poly1 = (80 - 50) * (30 - 20)
+    area_poly2 = (90 - 60) * (25 - 10)
+    poly1_poly2_iou = poly1_poly2_intersection_area / (
+        area_poly1 + area_poly2 - poly1_poly2_intersection_area
+    )
 
     bbox_det1 = models.GroundTruthDetection(
         boundary=poly1,
@@ -314,29 +350,26 @@ def test_intersection_area_of_dets(db: Session, img: models.Image):
     db.add(poly_det3)
     db.commit()
 
-    assert (
-        ops.intersection_area_of_dets(db, bbox_det1, bbox_det2)
-        == intersection_area
-    )
+    # check IOU of two bounding boxes is usual IOU
+    assert ops.iou_two_dets(db, bbox_det1, bbox_det2) == poly1_poly2_iou
+    # check that we still get the same thing if iou is computed with the second bounding
+    # box as a polygon type
+    assert ops.iou_two_dets(db, bbox_det1, poly_det2) == poly1_poly2_iou
 
-    assert (
-        ops.intersection_area_of_dets(db, bbox_det1, poly_det2)
-        == intersection_area
-    )
-
-    assert (
-        ops.intersection_area_of_dets(db, poly_det1, poly_det2)
-        == intersection_area
-    )
+    # check that we still get the same thing if iou is computed with both bounding boxes
+    # as polygon types
+    assert ops.iou_two_dets(db, poly_det1, poly_det2) == poly1_poly2_iou
 
     # doing intersection of rectangle det as a polygon with triangle should give half the area
-    # of the rectange
-    assert ops.intersection_area_of_dets(db, poly_det1, poly_det3) == 0.5 * (
-        80 - 50
-    ) * (30 - 20)
+    # of the rectangle for the intersection. area of poly_det3 is half the area of poly_det1
+    poly1_poly3_intersection_area = 0.5 * area_poly1
+    area_poly3 = 0.5 * area_poly1
+    assert ops.iou_two_dets(
+        db, poly_det1, poly_det3
+    ) == poly1_poly3_intersection_area / (
+        area_poly1 + area_poly3 - poly1_poly3_intersection_area
+    )
 
-    # doing intersection of rectangle det as a bounding box with triangle should give the area
-    # of the rectange
-    assert ops.intersection_area_of_dets(db, bbox_det1, poly_det3) == (
-        80 - 50
-    ) * (30 - 20)
+    # doing intersection of rectangle det as a bounding box with triangle should give an IOU 1
+    # since the triangle gets converted to the circumsribing bounding box (which is bbox_det1)
+    assert ops.iou_two_dets(db, bbox_det1, poly_det3) == 1.0
