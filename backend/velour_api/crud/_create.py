@@ -1,11 +1,3 @@
-from geoalchemy2.functions import (
-    ST_Area,
-    ST_Boundary,
-    ST_ConvexHull,
-    ST_Count,
-    ST_Envelope,
-    ST_Polygon,
-)
 from sqlalchemy import Select, and_, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -13,7 +5,17 @@ from sqlalchemy.orm import Session
 from velour_api import exceptions, models, schemas
 from velour_api.metrics import compute_ap_metrics
 
-from ._read import get_dataset, get_image, get_model
+from ._read import (
+    _instance_segmentations_in_dataset_statement,
+    _model_instance_segmentation_preds_statement,
+    _model_object_detection_preds_statement,
+    _object_detections_in_dataset_statement,
+    get_dataset,
+    get_dataset_task_types,
+    get_image,
+    get_model,
+    get_model_task_types,
+)
 
 
 def _labels_in_query(
@@ -650,166 +652,69 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     )
 
 
-def _filter_instance_segmentations_by_area(
-    stmt: Select,
-    seg_table: type,
-    task: schemas.Task,
-    min_area: float | None,
-    max_area: float | None,
-) -> Select:
-    if min_area is None and max_area is None:
-        return stmt
-
-    if task == schemas.Task.BBOX_OBJECT_DETECTION:
-        area_fn = lambda x: ST_Area(ST_Envelope(x))  # noqa: E731
-    elif task == schemas.Task.POLY_OBJECT_DETECTION:
-        area_fn = lambda x: ST_Area(  # noqa: E731
-            ST_ConvexHull(ST_Boundary(ST_Polygon(x)))
-        )
-    else:
-        area_fn = ST_Count
-
-    if min_area is not None:
-        stmt = stmt.where(area_fn(seg_table.shape) >= min_area)
-    if max_area is not None:
-        stmt = stmt.where(area_fn(seg_table.shape) <= max_area)
-
-    return stmt
-
-
-def _filter_object_detections_by_area(
-    stmt: Select,
-    det_table: type,
-    task: schemas.Task,
-    min_area: float | None,
-    max_area: float | None,
-) -> Select:
-    if min_area is None and max_area is None:
-        return stmt
-
-    if task == schemas.Task.BBOX_OBJECT_DETECTION:
-        area_fn = lambda x: ST_Area(ST_Envelope(x))  # noqa: E731
-    elif task == schemas.Task.POLY_OBJECT_DETECTION:
-        area_fn = ST_Area
-    else:
-        raise ValueError(
-            f"Expected task to be {schemas.Task.BBOX_OBJECT_DETECTION} or "
-            f"{schemas.Task.POLY_OBJECT_DETECTION} but got {task}."
-        )
-
-    if min_area is not None:
-        stmt = stmt.where(area_fn(det_table.boundary) >= min_area)
-    if max_area is not None:
-        stmt = stmt.where(area_fn(det_table.boundary) <= max_area)
-
-    return stmt
-
-
-def _instance_segmentations_in_dataset_statement(
-    dataset_name: str,
-    min_area: float = None,
-    max_area: float = None,
-    task: schemas.Task = None,
-) -> Select:
-    return _filter_instance_segmentations_by_area(
-        stmt=(
-            select(models.LabeledGroundTruthSegmentation)
-            .join(models.GroundTruthSegmentation)
-            .join(models.Image)
-            .join(models.Dataset)
-            .where(
-                and_(
-                    models.GroundTruthSegmentation.is_instance,
-                    models.Dataset.name == dataset_name,
-                )
-            )
-        ),
-        seg_table=models.GroundTruthSegmentation,
-        task=task,
-        min_area=min_area,
-        max_area=max_area,
-    )
-
-
-def _object_detections_in_dataset_statement(
-    dataset_name: str,
-    min_area: float = None,
-    max_area: float = None,
-    task: schemas.Task = None,
-) -> Select:
-    """returns the select statement for all groundtruth object detections in a dataset.
-    if min_area and/or max_area is None then it will filter accordingly by the area (pixels^2 and not proportion)
+def _validate_and_update_metric_parameters_task_type_for_detection(
+    db: Session, metric_params: schemas.MetricParameters
+) -> None:
+    """If the model or dataset task types are none, then get these from the
+    datasets themselves. In either case verify that these task types are compatible
+    for detection evaluation.
     """
-    return _filter_object_detections_by_area(
-        stmt=(
-            select(models.LabeledGroundTruthDetection)
-            .join(models.GroundTruthDetection)
-            .join(models.Image)
-            .join(models.Dataset)
-            .where(models.Dataset.name == dataset_name)
-        ),
-        det_table=models.GroundTruthDetection,
-        task=task,
-        min_area=min_area,
-        max_area=max_area,
+    dataset_name = metric_params.dataset_name
+    model_name = metric_params.model_name
+    if get_dataset(db, dataset_name).draft:
+        raise exceptions.DatasetIsDraftError(metric_params.dataset_name)
+    # check that inferences are finalized
+    if not _check_finalized_inferences(
+        db, model_name=model_name, dataset_name=dataset_name
+    ):
+        raise exceptions.InferencesAreNotFinalizedError(
+            dataset_name=dataset_name, model_name=model_name
+        )
+
+    # do some validation
+    allowable_tasks = set(
+        [
+            schemas.Task.BBOX_OBJECT_DETECTION,
+            schemas.Task.POLY_OBJECT_DETECTION,
+            schemas.Task.INSTANCE_SEGMENTATION,
+        ]
     )
 
-
-def _model_instance_segmentation_preds_statement(
-    model_name: str,
-    dataset_name: str,
-    min_area: float = None,
-    max_area: float = None,
-    task: schemas.Task = None,
-) -> Select:
-    return _filter_instance_segmentations_by_area(
-        stmt=(
-            select(models.LabeledPredictedSegmentation)
-            .join(models.PredictedSegmentation)
-            .join(models.Image)
-            .join(models.Model)
-            .join(models.Dataset)
-            .where(
-                and_(
-                    models.Model.name == model_name,
-                    models.Dataset.name == dataset_name,
-                    models.PredictedSegmentation.is_instance,
-                )
+    if metric_params.dataset_gt_task_type is None:
+        dset_task_types = get_dataset_task_types(db, dataset_name)
+        inter = allowable_tasks.intersection(dset_task_types)
+        if len(inter) > 1:
+            raise RuntimeError(
+                f"The dataset has the following tasks compatible for object detection evaluation: {dset_task_types}. Which one to use must be specified."
             )
-        ),
-        seg_table=models.PredictedSegmentation,
-        task=task,
-        min_area=min_area,
-        max_area=max_area,
-    )
-
-
-def _model_object_detection_preds_statement(
-    model_name: str,
-    dataset_name,
-    min_area: float = None,
-    max_area: float = None,
-    task: schemas.Task = None,
-) -> Select:
-    return _filter_object_detections_by_area(
-        stmt=(
-            select(models.LabeledPredictedDetection)
-            .join(models.PredictedDetection)
-            .join(models.Image)
-            .join(models.Model)
-            .join(models.Dataset)
-            .where(
-                and_(
-                    models.Model.name == model_name,
-                    models.Dataset.name == dataset_name,
-                )
+        if len(inter) == 0:
+            raise RuntimeError(
+                "The dataset does not have any annotations to support object detection evaluation."
             )
-        ),
-        det_table=models.PredictedDetection,
-        task=task,
-        min_area=min_area,
-        max_area=max_area,
-    )
+        metric_params.dataset_gt_task_type = inter.pop()
+    elif metric_params.dataset_gt_task_type not in allowable_tasks:
+        raise ValueError(
+            f"`dataset_gt_task_type` must be one of {allowable_tasks} but got {metric_params.dataset_gt_task_type}."
+        )
+
+    if metric_params.model_pred_task_type is None:
+        model_task_types = get_model_task_types(
+            db, model_name=model_name, dataset_name=dataset_name
+        )
+        inter = allowable_tasks.intersection(model_task_types)
+        if len(inter) > 1:
+            raise RuntimeError(
+                f"The model has the following tasks compatible for object detection evaluation: {model_task_types}. Which one to use must be specified."
+            )
+        if len(inter) == 0:
+            raise RuntimeError(
+                "The model does not have any inferences to support object detection evaluation."
+            )
+        metric_params.model_pred_task_type = inter.pop()
+    elif metric_params.model_pred_task_type not in allowable_tasks:
+        raise ValueError(
+            f"`pred_type` must be one of {allowable_tasks} but got {metric_params.model_pred_task_type}."
+        )
 
 
 def validate_create_ap_metrics(
@@ -825,35 +730,10 @@ def validate_create_ap_metrics(
         for predictions, third is list of labels that were missing in the predictions, and fourth
         is list of labels in the predictions that were ignored (because they weren't in the groundtruth)
     """
-    dataset_name = request_info.parameters.dataset_name
-    model_name = request_info.parameters.model_name
-    if get_dataset(db, dataset_name).draft:
-        raise exceptions.DatasetIsDraftError(
-            request_info.parameters.dataset_name
-        )
-    # check that inferences are finalized
-    if not _check_finalized_inferences(
-        db, model_name=model_name, dataset_name=dataset_name
-    ):
-        raise exceptions.InferencesAreNotFinalizedError(
-            dataset_name=dataset_name, model_name=model_name
-        )
 
-    # do some validation
-    allowable_tasks = [
-        schemas.Task.BBOX_OBJECT_DETECTION,
-        schemas.Task.POLY_OBJECT_DETECTION,
-        schemas.Task.INSTANCE_SEGMENTATION,
-    ]
-
-    if request_info.parameters.model_pred_task_type not in allowable_tasks:
-        raise ValueError(
-            f"`pred_type` must be one of {allowable_tasks} but got {request_info.parameters.model_pred_task_type}."
-        )
-    if request_info.parameters.dataset_gt_task_type not in allowable_tasks:
-        raise ValueError(
-            f"`dataset_gt_task_type` must be one of {allowable_tasks} but got {request_info.parameters.dataset_gt_task_type}."
-        )
+    _validate_and_update_metric_parameters_task_type_for_detection(
+        db, metric_params=request_info.parameters
+    )
 
     # when computing AP, the fidelity of a detection will drop to the minimum fidelity of the groundtruth and predicted
     # task type. e.g. if one is bounding box detection but the other is polygon object detection, then the polygons will be
@@ -873,31 +753,41 @@ def validate_create_ap_metrics(
         schemas.Task.BBOX_OBJECT_DETECTION,
         schemas.Task.POLY_OBJECT_DETECTION,
     ]:
-        gts_statement_method = _object_detections_in_dataset_statement
+        gts_statement = _object_detections_in_dataset_statement(
+            dataset_name=request_info.parameters.dataset_name,
+            task=request_info.parameters.dataset_gt_task_type,
+            min_area=request_info.parameters.min_area,
+            max_area=request_info.parameters.max_area,
+            task_for_area_computation=common_task,
+        )
     else:
-        gts_statement_method = _instance_segmentations_in_dataset_statement
-    gts_statement = gts_statement_method(
-        request_info.parameters.dataset_name,
-        min_area=request_info.parameters.min_area,
-        max_area=request_info.parameters.max_area,
-        task=common_task,
-    )
+        gts_statement = _instance_segmentations_in_dataset_statement(
+            dataset_name=request_info.parameters.dataset_name,
+            min_area=request_info.parameters.min_area,
+            max_area=request_info.parameters.max_area,
+            task_for_area_computation=common_task,
+        )
 
     if request_info.parameters.model_pred_task_type in [
         schemas.Task.BBOX_OBJECT_DETECTION,
         schemas.Task.POLY_OBJECT_DETECTION,
     ]:
-        preds_statement_method = _model_object_detection_preds_statement
-
+        preds_statement = _model_object_detection_preds_statement(
+            model_name=request_info.parameters.model_name,
+            dataset_name=request_info.parameters.dataset_name,
+            task=request_info.parameters.model_pred_task_type,
+            min_area=request_info.parameters.min_area,
+            max_area=request_info.parameters.max_area,
+            task_for_area_computation=common_task,
+        )
     else:
-        preds_statement_method = _model_instance_segmentation_preds_statement
-    preds_statement = preds_statement_method(
-        model_name=request_info.parameters.model_name,
-        dataset_name=request_info.parameters.dataset_name,
-        min_area=request_info.parameters.min_area,
-        max_area=request_info.parameters.max_area,
-        task=common_task,
-    )
+        preds_statement = _model_instance_segmentation_preds_statement(
+            model_name=request_info.parameters.model_name,
+            dataset_name=request_info.parameters.dataset_name,
+            min_area=request_info.parameters.min_area,
+            max_area=request_info.parameters.max_area,
+            task_for_area_computation=common_task,
+        )
 
     (
         gts_statement,

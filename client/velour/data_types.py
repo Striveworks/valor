@@ -66,7 +66,7 @@ class BoundingPolygon:
         return max(p.y for p in self.points)
 
     @classmethod
-    def from_ymin_xmin_ymax_xmax(cls, ymin, xmin, ymax, xmax):
+    def from_xmin_ymin_xmax_ymax(cls, xmin, ymin, xmax, ymax):
         return cls(
             points=[
                 Point(xmin, ymin),
