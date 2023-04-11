@@ -234,8 +234,8 @@ class MetricParameters(BaseModel):
 
     model_name: str
     dataset_name: str
-    model_pred_task_type: Task
-    dataset_gt_task_type: Task
+    model_pred_task_type: Task = None
+    dataset_gt_task_type: Task = None
     min_area: float = None
     max_area: float = None
 

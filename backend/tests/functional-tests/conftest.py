@@ -170,7 +170,7 @@ def groundtruths(
     db_gts_per_img = [
         [
             schemas.GroundTruthDetection(
-                boundary=bounding_box(*box),
+                bbox=box,
                 labels=[schemas.Label(key="class", value=class_label)],
                 image=image,
             )
@@ -266,7 +266,7 @@ def predictions(
     db_preds_per_img = [
         [
             schemas.PredictedDetection(
-                boundary=bounding_box(*box),
+                bbox=box,
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="class", value=class_label),
