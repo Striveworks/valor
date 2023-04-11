@@ -684,9 +684,13 @@ def _validate_and_update_metric_parameters_task_type_for_detection(
         dset_task_types = get_dataset_task_types(db, dataset_name)
         inter = allowable_tasks.intersection(dset_task_types)
         if len(inter) > 1:
-            raise
+            raise RuntimeError(
+                f"The underlying dataset has the following tasks compatible for object detection evaluation: {dset_task_types}. Which one to use must be specified."
+            )
         if len(inter) == 0:
-            raise
+            raise RuntimeError(
+                "The dataset does not have any annotations to support object detection evaluation."
+            )
         metric_params.dataset_gt_task_type = inter.pop()
     elif metric_params.dataset_gt_task_type not in allowable_tasks:
         raise ValueError(

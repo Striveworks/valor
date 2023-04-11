@@ -1425,3 +1425,9 @@ def test__filter_object_detections_by_area(db: Session):
             max_area=2000,
         )
     assert "Expected task_for_area_computation to be" in str(exc_info)
+
+
+def test__validate_and_update_metric_parameters_task_type_for_detection(
+    db: Session,
+):
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
