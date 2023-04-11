@@ -269,17 +269,23 @@ def test_intersection_area_of_det_and_seg(
     assert ops.intersection_area_of_det_and_seg(db, bbox_det, seg) == 10 * 10
 
 
-def test_intersection_area_of_dets(db: Session, img: models.Image):
+def test_iou_two_dets(db: Session, img: models.Image):
     ymin1, ymax1, xmin1, xmax1 = 50, 80, 20, 30
     ymin2, ymax2, xmin2, xmax2 = 60, 90, 10, 25
-
-    intersection_area = (25 - 20) * (80 - 60)
 
     # poly1 and poly2 are bounding boxes
     poly1 = f"POLYGON({_boundary_points_to_str([(xmin1, ymin1), (xmax1, ymin1), (xmax1, ymax1), (xmin1, ymax1)])})"
     poly2 = f"POLYGON({_boundary_points_to_str([(xmin2, ymin2), (xmax2, ymin2), (xmax2, ymax2), (xmin2, ymax2)])})"
     # triangle thats half of the bounding box poly1
     poly3 = f"POLYGON({_boundary_points_to_str([(xmin1, ymin1), (xmax1, ymin1), (xmax1, ymax1)])})"
+
+    # intersection area of poly1 and poly2
+    poly1_poly2_intersection_area = (25 - 20) * (80 - 60)
+    area_poly1 = (80 - 50) * (30 - 20)
+    area_poly2 = (90 - 60) * (25 - 10)
+    poly1_poly2_iou = poly1_poly2_intersection_area / (
+        area_poly1 + area_poly2 - poly1_poly2_intersection_area
+    )
 
     bbox_det1 = models.GroundTruthDetection(
         boundary=poly1,
@@ -314,29 +320,26 @@ def test_intersection_area_of_dets(db: Session, img: models.Image):
     db.add(poly_det3)
     db.commit()
 
-    assert (
-        ops.intersection_area_of_dets(db, bbox_det1, bbox_det2)
-        == intersection_area
-    )
+    # check IOU of two bounding boxes is usual IOU
+    assert ops.iou_two_dets(db, bbox_det1, bbox_det2) == poly1_poly2_iou
+    # check that we still get the same thing if iou is computed with the second bounding
+    # box as a polygon type
+    assert ops.iou_two_dets(db, bbox_det1, poly_det2) == poly1_poly2_iou
 
-    assert (
-        ops.intersection_area_of_dets(db, bbox_det1, poly_det2)
-        == intersection_area
-    )
-
-    assert (
-        ops.intersection_area_of_dets(db, poly_det1, poly_det2)
-        == intersection_area
-    )
+    # check that we still get the same thing if iou is computed with both bounding boxes
+    # as polygon types
+    assert ops.iou_two_dets(db, poly_det1, poly_det2) == poly1_poly2_iou
 
     # doing intersection of rectangle det as a polygon with triangle should give half the area
-    # of the rectange
-    assert ops.intersection_area_of_dets(db, poly_det1, poly_det3) == 0.5 * (
-        80 - 50
-    ) * (30 - 20)
+    # of the rectangle for the intersection. area of poly_det3 is half the area of poly_det1
+    poly1_poly3_intersection_area = 0.5 * area_poly1
+    area_poly3 = 0.5 * area_poly1
+    assert ops.iou_two_dets(
+        db, poly_det1, poly_det3
+    ) == poly1_poly3_intersection_area / (
+        area_poly1 + area_poly3 - poly1_poly3_intersection_area
+    )
 
-    # doing intersection of rectangle det as a bounding box with triangle should give the area
-    # of the rectange
-    assert ops.intersection_area_of_dets(db, bbox_det1, poly_det3) == (
-        80 - 50
-    ) * (30 - 20)
+    # doing intersection of rectangle det as a bounding box with triangle should give an IOU 1
+    # since the triangle gets converted to the circumsribing bounding box (which is bbox_det1)
+    assert ops.iou_two_dets(db, bbox_det1, poly_det3) == 1.0

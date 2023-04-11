@@ -1,4 +1,4 @@
-from geoalchemy2.elements import RasterElement
+from geoalchemy2.elements import RasterElement, WKBElement
 from geoalchemy2.functions import (
     ST_Area,
     ST_Boundary,
@@ -65,9 +65,26 @@ def iou(
 def iou_two_dets(
     db: Session, det1: DetectionType, det2: DetectionType
 ) -> float:
-    """Computes the IOU between two detections"""
-    cap_area = intersection_area_of_dets(db, det1, det2)
-    return cap_area / (det_area(db, det1) + det_area(db, det2) - cap_area)
+    """Computes the IOU between two detections. If one is a bounding box detection
+    and the other a polygon detection, then the polygon will be converted to a bounding box.
+    """
+    boundary1 = det1.boundary
+    boundary2 = det2.boundary
+
+    # check if any boundaries need to be converted to bboxes
+    if det1.is_bbox and not det2.is_bbox:
+        # convert polygon to a bounding box
+        boundary2 = ST_Envelope(boundary2)
+    elif not det1.is_bbox and det2.is_bbox:
+        boundary1 = ST_Envelope(boundary1)
+
+    cap_area = intersection_area_of_det_boundaries(db, boundary1, boundary2)
+
+    return cap_area / (
+        det_boundary_area(db, boundary1)
+        + det_boundary_area(db, boundary2)
+        - cap_area
+    )
 
 
 def iou_two_segs(
@@ -84,22 +101,13 @@ def iou_det_and_seg(
     return cap_area / (det_area(db, det) + seg_area(db, seg) - cap_area)
 
 
-def intersection_area_of_dets(
-    db: Session, det1: DetectionType, det2: DetectionType
+def intersection_area_of_det_boundaries(
+    db: Session, boundary1: WKBElement, boundary2: WKBElement
 ) -> float:
     """Computes the area of the intersection between two detections
     If one is a bounding box detection and the other a polygon detection, then
     the polygon will be converted to a bounding box.
     """
-    boundary1 = det1.boundary
-    boundary2 = det2.boundary
-
-    # check if any boundaries need to be converted to bboxes
-    if det1.is_bbox and not det2.is_bbox:
-        # convert polygon to a bounding box
-        boundary2 = ST_Envelope(boundary2)
-    elif not det1.is_bbox and det2.is_bbox:
-        boundary1 = ST_Envelope(boundary1)
 
     return db.scalar(ST_Area(ST_Intersection(boundary1, boundary2)))
 
@@ -135,9 +143,9 @@ def _intersection_area_of_rasters(
     return db.scalar(ST_Count(ST_Intersection(rast1, rast2)))
 
 
-def det_area(db: Session, det: DetectionType) -> float:
+def det_boundary_area(db: Session, boundary: WKBElement) -> float:
     """Computes the area of the intersection between two detections"""
-    return db.scalar(ST_Area(det.boundary))
+    return db.scalar(ST_Area(boundary))
 
 
 def seg_area(
