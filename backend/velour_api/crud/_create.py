@@ -860,6 +860,8 @@ def create_ap_metrics(
             "model_id": model_id,
             "model_pred_task_type": request_info.parameters.model_pred_task_type,
             "dataset_gt_task_type": request_info.parameters.dataset_gt_task_type,
+            "min_area": request_info.parameters.min_area,
+            "max_area": request_info.parameters.max_area,
         },
     )
 
