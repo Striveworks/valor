@@ -966,8 +966,8 @@ def test_evaluate_ap(
 
     expected_metrics = [
         {
-            "metric_type": "ap_metric",
-            "parameters": {
+            "type": "AP",
+            "settings": {
                 "model_name": "test model",
                 "dataset_name": "test dataset",
                 "model_pred_task_type": "Bounding Box Object Detection",
@@ -975,15 +975,15 @@ def test_evaluate_ap(
                 "min_area": None,
                 "max_area": None,
             },
-            "metric": {
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
                 "iou": 0.1,
-                "value": 0.504950495049505,
-                "label": {"key": "k1", "value": "v1"},
             },
         },
         {
-            "metric_type": "ap_metric",
-            "parameters": {
+            "type": "AP",
+            "settings": {
                 "model_name": "test model",
                 "dataset_name": "test dataset",
                 "model_pred_task_type": "Bounding Box Object Detection",
@@ -991,10 +991,10 @@ def test_evaluate_ap(
                 "min_area": None,
                 "max_area": None,
             },
-            "metric": {
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
                 "iou": 0.6,
-                "value": 0.504950495049505,
-                "label": {"key": "k1", "value": "v1"},
             },
         },
     ]
@@ -1007,9 +1007,9 @@ def test_evaluate_ap(
 
     # sanity check this should give us the same thing excpet min_area and max_area
     # are not None
-    for ep in expected_metrics:
-        ep["parameters"]["min_area"] = 10
-        ep["parameters"]["max_area"] = 2000
+    for m in expected_metrics:
+        m["settings"]["min_area"] = 10
+        m["settings"]["max_area"] = 2000
     eval_job = client.evaluate_ap(
         model=model,
         dataset=dataset,
@@ -1034,6 +1034,9 @@ def test_evaluate_ap(
         min_area=1200,
     )
     time.sleep(1)
+    for m in expected_metrics:
+        m["settings"]["min_area"] = 1200
+        m["settings"]["max_area"] = None
     assert eval_job.metrics() != expected_metrics
 
     eval_job = client.evaluate_ap(
@@ -1046,6 +1049,9 @@ def test_evaluate_ap(
         max_area=1200,
     )
     time.sleep(1)
+    for m in expected_metrics:
+        m["settings"]["min_area"] = None
+        m["settings"]["max_area"] = 1200
     assert eval_job.metrics() != expected_metrics
 
     eval_job = client.evaluate_ap(
@@ -1059,4 +1065,7 @@ def test_evaluate_ap(
         max_area=1800,
     )
     time.sleep(1)
+    for m in expected_metrics:
+        m["settings"]["min_area"] = 1200
+        m["settings"]["max_area"] = 1800
     assert eval_job.metrics() != expected_metrics

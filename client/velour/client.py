@@ -216,7 +216,7 @@ class Client:
         max_area: float = None,
     ) -> "EvalJob":
         payload = {
-            "parameters": {
+            "settings": {
                 "model_name": model.name,
                 "dataset_name": dataset.name,
                 "model_pred_task_type": model_pred_task_type.value
