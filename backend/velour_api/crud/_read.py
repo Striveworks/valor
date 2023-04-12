@@ -230,9 +230,9 @@ def _get_unique_label_ids_in_image(image: models.Image) -> set[int]:
 
 
 def _db_metric_params_to_pydantic_metric_params(
-    metric_params: models.MetricParameters,
-) -> schemas.MetricParameters:
-    return schemas.MetricParameters(
+    metric_params: models.MetricSettings,
+) -> schemas.MetricSettings:
+    return schemas.MetricSettings(
         model_name=metric_params.model.name,
         dataset_name=metric_params.dataset.name,
         model_pred_task_type=metric_params.model_pred_task_type,
@@ -256,7 +256,7 @@ def _db_metric_to_pydantic_metric(metric: models.APMetric) -> schemas.APMetric:
 
 
 def get_metrics_from_metric_params(
-    metric_params: list[models.MetricParameters],
+    metric_params: list[models.MetricSettings],
 ) -> list[schemas.MetricResponse]:
     return [
         schemas.MetricResponse(
@@ -273,8 +273,8 @@ def get_metrics_from_metric_params_id(
     db: Session, metric_params_id: int
 ) -> list[schemas.MetricResponse]:
     metric_params = db.scalar(
-        select(models.MetricParameters).where(
-            models.MetricParameters.id == metric_params_id
+        select(models.MetricSettings).where(
+            models.MetricSettings.id == metric_params_id
         )
     )
     return get_metrics_from_metric_params([metric_params])
@@ -289,7 +289,7 @@ def get_model_metrics(
     model = get_model(db, model_name)
 
     metric_params = db.scalars(
-        select(models.MetricParameters)
+        select(models.MetricSettings)
         .join(models.Model)
         .where(models.Model.id == model.id)
     )

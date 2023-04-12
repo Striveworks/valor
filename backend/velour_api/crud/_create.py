@@ -526,7 +526,7 @@ def _label_key_value_to_id(
 
 
 def _create_ap_metric_mappings(
-    db: Session, metrics: list[schemas.APMetric], metric_parameters_id: int
+    db: Session, metrics: list[schemas.APMetric], metric_settings_id: int
 ) -> list[dict]:
     label_map = _label_key_value_to_id(
         db=db,
@@ -539,7 +539,7 @@ def _create_ap_metric_mappings(
             "value": metric.value,
             "label_id": label_map[(metric.label.key, metric.label.value)],
             "iou": metric.iou,
-            "metric_parameters_id": metric_parameters_id,
+            "metric_settings_id": metric_settings_id,
         }
         for metric in metrics
     ]
@@ -652,8 +652,8 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     )
 
 
-def _validate_and_update_metric_parameters_task_type_for_detection(
-    db: Session, metric_params: schemas.MetricParameters
+def _validate_and_update_metric_settings_task_type_for_detection(
+    db: Session, metric_params: schemas.MetricSettings
 ) -> None:
     """If the model or dataset task types are none, then get these from the
     datasets themselves. In either case verify that these task types are compatible
@@ -731,7 +731,7 @@ def validate_create_ap_metrics(
         is list of labels in the predictions that were ignored (because they weren't in the groundtruth)
     """
 
-    _validate_and_update_metric_parameters_task_type_for_detection(
+    _validate_and_update_metric_settings_task_type_for_detection(
         db, metric_params=request_info.parameters
     )
 
@@ -854,7 +854,7 @@ def create_ap_metrics(
 
     mp = _get_or_create_row(
         db,
-        models.MetricParameters,
+        models.MetricSettings,
         mapping={
             "dataset_id": dataset_id,
             "model_id": model_id,
@@ -866,7 +866,7 @@ def create_ap_metrics(
     )
 
     ap_metric_mappings = _create_ap_metric_mappings(
-        db=db, metrics=ap_metrics, metric_parameters_id=mp.id
+        db=db, metrics=ap_metrics, metric_settings_id=mp.id
     )
 
     for mapping in ap_metric_mappings:

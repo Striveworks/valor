@@ -365,13 +365,13 @@ class Dataset(Base):
     finalized_inferences = relationship(
         "FinalizedInferences", cascade="all, delete"
     )
-    metric_parameters = relationship(
-        "MetricParameters", cascade="all, delete", back_populates="dataset"
+    metric_settings = relationship(
+        "MetricSettings", cascade="all, delete", back_populates="dataset"
     )
 
 
-class MetricParameters(Base):
-    __tablename__ = "metric_parameters"
+class MetricSettings(Base):
+    __tablename__ = "metric_settings"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
@@ -395,6 +395,20 @@ class APMetric(Base):
     label = relationship(Label)
     iou: Mapped[float] = mapped_column()
     value: Mapped[float] = mapped_column()
-    metric_parameters_id: Mapped[int] = mapped_column(
-        ForeignKey("metric_parameters.id")
+    metric_settings_id: Mapped[int] = mapped_column(
+        ForeignKey("metric_settings.id")
     )
+
+
+# class Metric(Base):
+#     __tablename__ = "metric"
+
+#     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+#     label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
+#     label = relationship(Label)
+#     metric_name: Mapped[str] = mapped_column()
+#     value: Mapped[float] = mapped_column()
+#     parameters: JSON  # {"label": ..., "iou": ..., }
+#     metric_settings_id: Mapped[int] = mapped_column(
+#         ForeignKey("metric_settings.id")
+#     )

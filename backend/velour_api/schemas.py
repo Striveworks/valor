@@ -226,7 +226,7 @@ class User(BaseModel):
     email: str = None
 
 
-class MetricParameters(BaseModel):
+class MetricSettings(BaseModel):
     """General parameters defining any filters of the data such
     as model, dataset, groundtruth and prediction type, model, dataset,
     size constraints, coincidence/intersection constraints, etc.
@@ -243,7 +243,7 @@ class MetricParameters(BaseModel):
 class APRequest(BaseModel):
     """Request to compute average precision"""
 
-    parameters: MetricParameters
+    parameters: MetricSettings
     labels: list[Label] = None
     # (mutable defaults are ok for pydantic models)
     iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
@@ -265,7 +265,7 @@ class MetricResponse(BaseModel):
     """Used for REST responses sending a metric"""
 
     metric_name: str
-    parameters: MetricParameters
+    parameters: MetricSettings
     metric: APMetric | mAPMetric
 
 
