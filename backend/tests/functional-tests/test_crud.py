@@ -841,7 +841,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
 
     def method_to_test(min_area: float = None, max_area: float = None):
         request_info = schemas.APRequest(
-            parameters=schemas.MetricSettings(
+            settings=schemas.MetricSettings(
                 model_name="test model",
                 dataset_name="test dataset",
                 min_area=min_area,
@@ -894,11 +894,11 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         select(models.MetricSettings).where(
             models.MetricSettings.id == metric_params_id
         )
-    ).ap_metrics
+    ).metrics
 
     ap_metric_ids = [m.id for m in metrics]
 
-    assert set([m.iou for m in metrics]) == {0.2, 0.6}
+    assert set([m.parameters["iou"] for m in metrics]) == {0.2, 0.6}
 
     # should be five labels (since thats how many are in groundtruth set)
     assert len(set(m.label_id for m in metrics)) == 5
@@ -912,7 +912,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
             select(models.MetricSettings).where(
                 models.MetricSettings.id == metric_params_id_again
             )
-        ).ap_metrics
+        ).metrics
     ]
     assert sorted(ap_metric_ids) == sorted(ap_metric_ids_again)
 
@@ -922,20 +922,17 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     assert len(metrics_pydantic) == len(metrics)
 
     for m in metrics_pydantic:
-        assert m.parameters.dataset_name == "test dataset"
-        assert m.parameters.model_name == "test model"
+        assert m.settings.dataset_name == "test dataset"
+        assert m.settings.model_name == "test model"
         assert (
-            m.parameters.model_pred_task_type
-            == enums.Task.BBOX_OBJECT_DETECTION
+            m.settings.model_pred_task_type == enums.Task.BBOX_OBJECT_DETECTION
         )
         assert (
-            m.parameters.dataset_gt_task_type
-            == enums.Task.BBOX_OBJECT_DETECTION
+            m.settings.dataset_gt_task_type == enums.Task.BBOX_OBJECT_DETECTION
         )
-        assert m.parameters.min_area is None
-        assert m.parameters.max_area is None
-        assert m.metric_name == "ap_metric"
-        assert isinstance(m.metric, schemas.APMetric)
+        assert m.settings.min_area is None
+        assert m.settings.max_area is None
+        assert m.type == "AP"
 
     # test when min area and max area are specified
     min_area, max_area = 10, 3000
@@ -947,8 +944,8 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
 
     metrics_pydantic = crud.get_model_metrics(db, "test model")
     m = metrics_pydantic[-1]
-    assert m.parameters.min_area == min_area
-    assert m.parameters.max_area == max_area
+    assert m.settings.min_area == min_area
+    assert m.settings.max_area == max_area
 
 
 def test__raster_to_png_b64(db: Session):

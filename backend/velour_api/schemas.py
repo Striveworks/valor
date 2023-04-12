@@ -243,10 +243,18 @@ class MetricSettings(BaseModel):
 class APRequest(BaseModel):
     """Request to compute average precision"""
 
-    parameters: MetricSettings
+    settings: MetricSettings
     labels: list[Label] = None
     # (mutable defaults are ok for pydantic models)
     iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
+
+
+class Metric(BaseModel):
+    type: str
+    settings: MetricSettings
+    parameters: dict
+    value: float
+    label: Label = None
 
 
 class APMetric(BaseModel):
@@ -259,14 +267,6 @@ class mAPMetric(BaseModel):
     iou: float
     value: float
     labels: list[Label]
-
-
-class MetricResponse(BaseModel):
-    """Used for REST responses sending a metric"""
-
-    metric_name: str
-    parameters: MetricSettings
-    metric: APMetric | mAPMetric
 
 
 class CreateMetricsResponse(BaseModel):

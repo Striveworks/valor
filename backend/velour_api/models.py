@@ -1,6 +1,7 @@
 from geoalchemy2 import Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
 from sqlalchemy import Enum, ForeignKey, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -382,33 +383,23 @@ class MetricSettings(Base):
     dataset_gt_task_type: Mapped[str] = mapped_column(Enum(Task))
     min_area: Mapped[float] = mapped_column(nullable=True)
     max_area: Mapped[float] = mapped_column(nullable=True)
-    ap_metrics: Mapped[list["APMetric"]] = relationship(
-        "APMetric", cascade="all, delete"
+    metrics: Mapped[list["Metric"]] = relationship(
+        "Metric", cascade="all, delete"
     )
 
 
-class APMetric(Base):
-    __tablename__ = "ap_metric"
+class Metric(Base):
+    __tablename__ = "metric"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
     label = relationship(Label)
-    iou: Mapped[float] = mapped_column()
+    type: Mapped[str] = mapped_column()
     value: Mapped[float] = mapped_column()
+    parameters = mapped_column(JSONB)  # {"label": ..., "iou": ..., }
+    settings: Mapped[list["Metric"]] = relationship(
+        "MetricSettings", back_populates="metrics"
+    )
     metric_settings_id: Mapped[int] = mapped_column(
         ForeignKey("metric_settings.id")
     )
-
-
-# class Metric(Base):
-#     __tablename__ = "metric"
-
-#     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-#     label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
-#     label = relationship(Label)
-#     metric_name: Mapped[str] = mapped_column()
-#     value: Mapped[float] = mapped_column()
-#     parameters: JSON  # {"label": ..., "iou": ..., }
-#     metric_settings_id: Mapped[int] = mapped_column(
-#         ForeignKey("metric_settings.id")
-#     )

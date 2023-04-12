@@ -538,8 +538,9 @@ def _create_ap_metric_mappings(
         {
             "value": metric.value,
             "label_id": label_map[(metric.label.key, metric.label.value)],
-            "iou": metric.iou,
+            "type": "AP",
             "metric_settings_id": metric_settings_id,
+            "parameters": {"iou": metric.iou},
         }
         for metric in metrics
     ]
@@ -732,15 +733,15 @@ def validate_create_ap_metrics(
     """
 
     _validate_and_update_metric_settings_task_type_for_detection(
-        db, metric_params=request_info.parameters
+        db, metric_params=request_info.settings
     )
 
     # when computing AP, the fidelity of a detection will drop to the minimum fidelity of the groundtruth and predicted
     # task type. e.g. if one is bounding box detection but the other is polygon object detection, then the polygons will be
     # converted to bounding boxes. we want the area filters to operate after this conversion.
     gt_and_pred_tasks = [
-        request_info.parameters.dataset_gt_task_type,
-        request_info.parameters.model_pred_task_type,
+        request_info.settings.dataset_gt_task_type,
+        request_info.settings.model_pred_task_type,
     ]
     if schemas.Task.BBOX_OBJECT_DETECTION in gt_and_pred_tasks:
         common_task = schemas.Task.BBOX_OBJECT_DETECTION
@@ -749,43 +750,43 @@ def validate_create_ap_metrics(
     else:
         common_task = schemas.Task.INSTANCE_SEGMENTATION
 
-    if request_info.parameters.dataset_gt_task_type in [
+    if request_info.settings.dataset_gt_task_type in [
         schemas.Task.BBOX_OBJECT_DETECTION,
         schemas.Task.POLY_OBJECT_DETECTION,
     ]:
         gts_statement = _object_detections_in_dataset_statement(
-            dataset_name=request_info.parameters.dataset_name,
-            task=request_info.parameters.dataset_gt_task_type,
-            min_area=request_info.parameters.min_area,
-            max_area=request_info.parameters.max_area,
+            dataset_name=request_info.settings.dataset_name,
+            task=request_info.settings.dataset_gt_task_type,
+            min_area=request_info.settings.min_area,
+            max_area=request_info.settings.max_area,
             task_for_area_computation=common_task,
         )
     else:
         gts_statement = _instance_segmentations_in_dataset_statement(
-            dataset_name=request_info.parameters.dataset_name,
-            min_area=request_info.parameters.min_area,
-            max_area=request_info.parameters.max_area,
+            dataset_name=request_info.settings.dataset_name,
+            min_area=request_info.settings.min_area,
+            max_area=request_info.settings.max_area,
             task_for_area_computation=common_task,
         )
 
-    if request_info.parameters.model_pred_task_type in [
+    if request_info.settings.model_pred_task_type in [
         schemas.Task.BBOX_OBJECT_DETECTION,
         schemas.Task.POLY_OBJECT_DETECTION,
     ]:
         preds_statement = _model_object_detection_preds_statement(
-            model_name=request_info.parameters.model_name,
-            dataset_name=request_info.parameters.dataset_name,
-            task=request_info.parameters.model_pred_task_type,
-            min_area=request_info.parameters.min_area,
-            max_area=request_info.parameters.max_area,
+            model_name=request_info.settings.model_name,
+            dataset_name=request_info.settings.dataset_name,
+            task=request_info.settings.model_pred_task_type,
+            min_area=request_info.settings.min_area,
+            max_area=request_info.settings.max_area,
             task_for_area_computation=common_task,
         )
     else:
         preds_statement = _model_instance_segmentation_preds_statement(
-            model_name=request_info.parameters.model_name,
-            dataset_name=request_info.parameters.dataset_name,
-            min_area=request_info.parameters.min_area,
-            max_area=request_info.parameters.max_area,
+            model_name=request_info.settings.model_name,
+            dataset_name=request_info.settings.dataset_name,
+            min_area=request_info.settings.min_area,
+            max_area=request_info.settings.max_area,
             task_for_area_computation=common_task,
         )
 
@@ -849,8 +850,8 @@ def create_ap_metrics(
         iou_thresholds=request_info.iou_thresholds,
     )
 
-    dataset_id = get_dataset(db, request_info.parameters.dataset_name).id
-    model_id = get_model(db, request_info.parameters.model_name).id
+    dataset_id = get_dataset(db, request_info.settings.dataset_name).id
+    model_id = get_model(db, request_info.settings.model_name).id
 
     mp = _get_or_create_row(
         db,
@@ -858,10 +859,10 @@ def create_ap_metrics(
         mapping={
             "dataset_id": dataset_id,
             "model_id": model_id,
-            "model_pred_task_type": request_info.parameters.model_pred_task_type,
-            "dataset_gt_task_type": request_info.parameters.dataset_gt_task_type,
-            "min_area": request_info.parameters.min_area,
-            "max_area": request_info.parameters.max_area,
+            "model_pred_task_type": request_info.settings.model_pred_task_type,
+            "dataset_gt_task_type": request_info.settings.dataset_gt_task_type,
+            "min_area": request_info.settings.min_area,
+            "max_area": request_info.settings.max_area,
         },
     )
 
@@ -870,7 +871,7 @@ def create_ap_metrics(
     )
 
     for mapping in ap_metric_mappings:
-        _get_or_create_row(db, models.APMetric, mapping)
+        _get_or_create_row(db, models.Metric, mapping)
     db.commit()
 
     return mp.id

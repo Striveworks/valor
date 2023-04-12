@@ -966,7 +966,7 @@ def test_evaluate_ap(
 
     expected_metrics = [
         {
-            "metric_name": "ap_metric",
+            "metric_type": "ap_metric",
             "parameters": {
                 "model_name": "test model",
                 "dataset_name": "test dataset",
@@ -982,7 +982,7 @@ def test_evaluate_ap(
             },
         },
         {
-            "metric_name": "ap_metric",
+            "metric_type": "ap_metric",
             "parameters": {
                 "model_name": "test model",
                 "dataset_name": "test dataset",
