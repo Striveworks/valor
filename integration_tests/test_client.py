@@ -1005,7 +1005,11 @@ def test_evaluate_ap(
     areas = db.scalars(ST_Area(models.GroundTruthDetection.boundary)).all()
     assert sorted(areas) == [1100.0, 1500.0]
 
-    # sanity check this should give us the same thing
+    # sanity check this should give us the same thing excpet min_area and max_area
+    # are not None
+    for ep in expected_metrics:
+        ep["parameters"]["min_area"] = 10
+        ep["parameters"]["max_area"] = 2000
     eval_job = client.evaluate_ap(
         model=model,
         dataset=dataset,

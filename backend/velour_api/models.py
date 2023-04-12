@@ -380,6 +380,8 @@ class MetricParameters(Base):
     model = relationship(Model)
     model_pred_task_type: Mapped[str] = mapped_column(Enum(Task))
     dataset_gt_task_type: Mapped[str] = mapped_column(Enum(Task))
+    min_area: Mapped[float] = mapped_column(nullable=True)
+    max_area: Mapped[float] = mapped_column(nullable=True)
     ap_metrics: Mapped[list["APMetric"]] = relationship(
         "APMetric", cascade="all, delete"
     )
