@@ -237,6 +237,8 @@ def _db_metric_params_to_pydantic_metric_params(
         dataset_name=metric_params.dataset.name,
         model_pred_task_type=metric_params.model_pred_task_type,
         dataset_gt_task_type=metric_params.dataset_gt_task_type,
+        min_area=metric_params.min_area,
+        max_area=metric_params.max_area,
     )
 
 

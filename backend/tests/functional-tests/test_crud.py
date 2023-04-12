@@ -839,13 +839,13 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     # the groundtruths and predictions arguments are not used but
     # those fixtures create the necessary dataset, model, groundtruths, and predictions
 
-    def method_to_test():
+    def method_to_test(min_area: float = None, max_area: float = None):
         request_info = schemas.APRequest(
             parameters=schemas.MetricParameters(
                 model_name="test model",
                 dataset_name="test dataset",
-                # model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
-                # dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+                min_area=min_area,
+                max_area=max_area,
             ),
             iou_thresholds=[0.2, 0.6],
         )
@@ -932,8 +932,23 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
             m.parameters.dataset_gt_task_type
             == enums.Task.BBOX_OBJECT_DETECTION
         )
+        assert m.parameters.min_area is None
+        assert m.parameters.max_area is None
         assert m.metric_name == "ap_metric"
         assert isinstance(m.metric, schemas.APMetric)
+
+    # test when min area and max area are specified
+    min_area, max_area = 10, 3000
+    (
+        metric_params_id,
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = method_to_test(min_area=min_area, max_area=max_area)
+
+    metrics_pydantic = crud.get_model_metrics(db, "test model")
+    m = metrics_pydantic[-1]
+    assert m.parameters.min_area == min_area
+    assert m.parameters.max_area == max_area
 
 
 def test__raster_to_png_b64(db: Session):
