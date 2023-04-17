@@ -897,17 +897,26 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         )
     ).metrics
 
-    ap_metric_ids = [m.id for m in metrics]
+    metric_ids = [m.id for m in metrics]
 
-    assert set([m.parameters["iou"] for m in metrics]) == {0.2, 0.6}
+    assert set([m.type for m in metrics]) == {
+        "AP",
+        "APAveragedOverIOUs",
+        "mAP",
+        "mAPAveragedOverIOUs",
+    }
+
+    assert set(
+        [m.parameters["iou"] for m in metrics if m.type in {"AP", "mAP"}]
+    ) == {0.2}
 
     # should be five labels (since thats how many are in groundtruth set)
-    assert len(set(m.label_id for m in metrics)) == 5
+    assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 5
 
     # run again and make sure no new ids were created
     metric_params_id_again, _, _ = method_to_test()
     assert metric_params_id == metric_params_id_again
-    ap_metric_ids_again = [
+    metric_ids_again = [
         m.id
         for m in db.scalar(
             select(models.MetricSettings).where(
@@ -915,7 +924,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
             )
         ).metrics
     ]
-    assert sorted(ap_metric_ids) == sorted(ap_metric_ids_again)
+    assert sorted(metric_ids) == sorted(metric_ids_again)
 
     # test crud.get_model_metrics
     metrics_pydantic = crud.get_model_metrics(db, "test model")
@@ -933,7 +942,12 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         )
         assert m.settings.min_area is None
         assert m.settings.max_area is None
-        assert m.type == "AP"
+        assert m.type in {
+            "AP",
+            "APAveragedOverIOUs",
+            "mAP",
+            "mAPAveragedOverIOUs",
+        }
 
     # test when min area and max area are specified
     min_area, max_area = 10, 3000

@@ -279,6 +279,7 @@ def compute_ap_metrics(
 
     # filter out only specified ious
     ap_metrics = [m for m in ap_metrics if m.iou in ious_to_keep]
+    map_metrics = [m for m in map_metrics if m.iou in ious_to_keep]
 
     return (
         ap_metrics
