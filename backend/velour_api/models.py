@@ -392,7 +392,9 @@ class Metric(Base):
     __tablename__ = "metric"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
+    label_id: Mapped[int] = mapped_column(
+        ForeignKey("label.id"), nullable=True
+    )
     label = relationship(Label)
     type: Mapped[str] = mapped_column()
     value: Mapped[float] = mapped_column()

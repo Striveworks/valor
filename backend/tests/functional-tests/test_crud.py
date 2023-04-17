@@ -848,6 +848,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
                 max_area=max_area,
             ),
             iou_thresholds=[0.2, 0.6],
+            ious_to_keep=[0.2],
         )
 
         (

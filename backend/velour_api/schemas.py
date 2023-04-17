@@ -247,6 +247,16 @@ class APRequest(BaseModel):
     labels: list[Label] = None
     # (mutable defaults are ok for pydantic models)
     iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
+    ious_to_keep: set[float] = {0.5, 0.75}
+
+    @root_validator
+    def check_ious(cls, values):
+        for iou in values["ious_to_keep"]:
+            if iou not in values["iou_thresholds"]:
+                raise ValueError(
+                    "`ious_to_keep` must be contained in `iou_thresholds`"
+                )
+        return values
 
 
 class Metric(BaseModel):
@@ -263,10 +273,20 @@ class APMetric(BaseModel):
     label: Label
 
 
+class APMetricAveragedOverIOUs(BaseModel):
+    ious: set[float]
+    value: float
+    label: Label
+
+
 class mAPMetric(BaseModel):
     iou: float
     value: float
-    labels: list[Label]
+
+
+class mAPMetricAveragedOverIOUs(BaseModel):
+    ious: set[float]
+    value: float
 
 
 class CreateMetricsResponse(BaseModel):

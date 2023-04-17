@@ -225,7 +225,13 @@ def compute_ap_metrics(
         list[LabeledGroundTruthDetection | LabeledGroundTruthSegmentation]
     ],
     iou_thresholds: list[float],
-) -> list[schemas.APMetric]:
+    ious_to_keep: list[float],
+) -> list[
+    schemas.APMetric
+    | schemas.APMetricAveragedOverIOUs
+    | schemas.mAPMetric
+    | schemas.mAPMetricAveragedOverIOUs
+]:
     """Computes average precision metrics."""
 
     # check that any segmentations are instance segmentations
@@ -262,18 +268,65 @@ def compute_ap_metrics(
             )
         )
 
-    return ap_metrics
+    # now extend to the averaged AP metrics and mAP metric
+    map_metrics = compute_map_metrics_from_aps(ap_metrics)
+    ap_metrics_ave_over_ious = compute_ap_metrics_ave_over_ious_from_aps(
+        ap_metrics
+    )
+    map_metrics_ave_over_ious = compute_map_metrics_from_aps(
+        ap_metrics_ave_over_ious
+    )
+
+    # filter out only specified ious
+    ap_metrics = [m for m in ap_metrics if m.iou in ious_to_keep]
+
+    return (
+        ap_metrics
+        + map_metrics
+        + ap_metrics_ave_over_ious
+        + map_metrics_ave_over_ious
+    )
+
+
+def compute_ap_metrics_ave_over_ious_from_aps(
+    ap_scores: list[schemas.APMetric],
+) -> list[schemas.APMetricAveragedOverIOUs]:
+    label_tuple_to_values = {}
+    label_tuple_to_ious = {}
+    for ap_score in ap_scores:
+        label_tuple = (ap_score.label.key, ap_score.label.value)
+        if label_tuple not in label_tuple_to_values:
+            label_tuple_to_values[label_tuple] = 0
+            label_tuple_to_ious[label_tuple] = []
+        label_tuple_to_values[label_tuple] += ap_score.value
+        label_tuple_to_ious[label_tuple].append(ap_score.iou)
+
+    ret = []
+    for label_tuple, value in label_tuple_to_values.items():
+        ious = label_tuple_to_ious[label_tuple]
+        ret.append(
+            schemas.APMetricAveragedOverIOUs(
+                ious=set(ious),
+                value=value / len(ious),
+                label=schemas.Label(key=label_tuple[0], value=label_tuple[1]),
+            )
+        )
+
+    return ret
 
 
 def compute_map_metrics_from_aps(
-    ap_scores: list[schemas.APMetric],
+    ap_scores: list[schemas.APMetric | schemas.APMetricAveragedOverIOUs],
 ) -> list[schemas.mAPMetric]:
     """
     Parameters
     ----------
     ap_scores
-        list of AP scores. this should be output from the method `compute_ap_metrics`
+        list of AP scores.
     """
+
+    if len(ap_scores) == 0:
+        return []
 
     def _ave_ignore_minus_one(a):
         num, denom = 0.0, 0.0
@@ -284,25 +337,28 @@ def compute_map_metrics_from_aps(
         return num / denom
 
     # dictionary for mapping an iou threshold to set of APs
-    vals: dict[float, list] = {}
+    vals: dict[float | set[float], list] = {}
     labels: list[schemas.Label] = []
     for ap in ap_scores:
-        # see if metric is AP at single value or averaged
-        if ap.iou not in vals:
-            vals[ap.iou] = []
-        vals[ap.iou].append(ap.value)
+        if hasattr(ap, "iou"):
+            iou = ap.iou
+        else:
+            iou = frozenset(ap.ious)
+        if iou not in vals:
+            vals[iou] = []
+        vals[iou].append(ap.value)
 
         if ap.label not in labels:
             labels.append(ap.label)
 
-    iou_thresholds = list(vals.keys())
-
     # get mAP metrics at the individual IOUs
     map_metrics = [
-        schemas.mAPMetric(
-            iou=iou, value=_ave_ignore_minus_one(vals[iou]), labels=labels
+        schemas.mAPMetric(iou=iou, value=_ave_ignore_minus_one(vals[iou]))
+        if isinstance(iou, float)
+        else schemas.mAPMetricAveragedOverIOUs(
+            ious=iou, value=_ave_ignore_minus_one(vals[iou]), labels=labels
         )
-        for iou in iou_thresholds
+        for iou in vals.keys()
     ]
 
     return map_metrics

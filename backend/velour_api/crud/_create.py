@@ -525,25 +525,108 @@ def _label_key_value_to_id(
     }
 
 
-def _create_ap_metric_mappings(
-    db: Session, metrics: list[schemas.APMetric], metric_settings_id: int
+def _ap_metric_to_mapping(
+    metric: schemas.APMetric, label_id: int, metric_settings_id: int
+) -> dict:
+    return {
+        "value": metric.value,
+        "label_id": label_id,
+        "type": "AP",
+        "metric_settings_id": metric_settings_id,
+        "parameters": {"iou": metric.iou},
+    }
+
+
+def _ap_metric_averaged_over_ious_to_mapping(
+    metric: schemas.APMetricAveragedOverIOUs,
+    label_id: int,
+    metric_settings_id: int,
+) -> dict:
+    return {
+        "value": metric.value,
+        "label_id": label_id,
+        "type": "APAveragedOverIOUs",
+        "metric_settings_id": metric_settings_id,
+        "parameters": {"ious": list(metric.ious)},
+    }
+
+
+def _map_metric_to_mapping(
+    metric: schemas.mAPMetric, metric_settings_id: int
+) -> dict:
+    return {
+        "value": metric.value,
+        "type": "mAP",
+        "metric_settings_id": metric_settings_id,
+        "parameters": {"iou": metric.iou},
+    }
+
+
+def _map_metric_averaged_over_ious_to_mapping(
+    metric: schemas.APMetricAveragedOverIOUs, metric_settings_id: int
+) -> dict:
+    return {
+        "value": metric.value,
+        "type": "mAPAveragedOverIOUs",
+        "metric_settings_id": metric_settings_id,
+        "parameters": {"ious": list(metric.ious)},
+    }
+
+
+def _create_metric_mappings(
+    db: Session,
+    metrics: list[
+        schemas.APMetric
+        | schemas.APMetricAveragedOverIOUs
+        | schemas.mAPMetric
+        | schemas.mAPMetricAveragedOverIOUs
+    ],
+    metric_settings_id: int,
 ) -> list[dict]:
     label_map = _label_key_value_to_id(
         db=db,
         labels=set(
-            [(metric.label.key, metric.label.value) for metric in metrics]
+            [
+                (metric.label.key, metric.label.value)
+                for metric in metrics
+                if hasattr(metric, "label")
+            ]
         ),
     )
-    return [
-        {
-            "value": metric.value,
-            "label_id": label_map[(metric.label.key, metric.label.value)],
-            "type": "AP",
-            "metric_settings_id": metric_settings_id,
-            "parameters": {"iou": metric.iou},
-        }
-        for metric in metrics
-    ]
+    ret = []
+    for metric in metrics:
+        if isinstance(metric, schemas.APMetric):
+            ret.append(
+                _ap_metric_to_mapping(
+                    metric=metric,
+                    label_id=label_map[(metric.label.key, metric.label.value)],
+                    metric_settings_id=metric_settings_id,
+                )
+            )
+        elif isinstance(metric, schemas.APMetricAveragedOverIOUs):
+            ret.append(
+                _ap_metric_averaged_over_ious_to_mapping(
+                    metric=metric,
+                    label_id=label_map[(metric.label.key, metric.label.value)],
+                    metric_settings_id=metric_settings_id,
+                )
+            )
+        elif isinstance(metric, schemas.mAPMetric):
+            ret.append(
+                _map_metric_to_mapping(
+                    metric=metric, metric_settings_id=metric_settings_id
+                )
+            )
+        elif isinstance(metric, schemas.mAPMetricAveragedOverIOUs):
+            ret.append(
+                _map_metric_averaged_over_ious_to_mapping(
+                    metric=metric, metric_settings_id=metric_settings_id
+                )
+            )
+        else:
+            raise ValueError(f"Got an unexpected metric type: {type(metric)}")
+
+    return ret
 
 
 def validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
@@ -843,11 +926,12 @@ def create_ap_metrics(
         all_gts.append(image_id_to_gts.get(image_id, []))
         all_preds.append(image_id_to_preds.get(image_id, []))
 
-    ap_metrics = compute_ap_metrics(
+    metrics = compute_ap_metrics(
         db=db,
         predictions=all_preds,
         groundtruths=all_gts,
         iou_thresholds=request_info.iou_thresholds,
+        ious_to_keep=request_info.ious_to_keep,
     )
 
     dataset_id = get_dataset(db, request_info.settings.dataset_name).id
@@ -866,11 +950,11 @@ def create_ap_metrics(
         },
     )
 
-    ap_metric_mappings = _create_ap_metric_mappings(
-        db=db, metrics=ap_metrics, metric_settings_id=mp.id
+    metric_mappings = _create_metric_mappings(
+        db=db, metrics=metrics, metric_settings_id=mp.id
     )
 
-    for mapping in ap_metric_mappings:
+    for mapping in metric_mappings:
         _get_or_create_row(db, models.Metric, mapping)
     db.commit()
 
