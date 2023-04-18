@@ -447,14 +447,24 @@ def create_predicted_image_classifications(
     )
 
 
-def _get_or_create_row(db: Session, model_class: type, mapping: dict) -> any:
+def _get_or_create_row(
+    db: Session,
+    model_class: type,
+    mapping: dict,
+    columns_to_ignore: list[str] = None,
+) -> any:
     """Tries to get the row defined by mapping. If that exists then
     its mapped object is returned. Otherwise a row is created by `mapping` and the newly created
-    object is returned
+    object is returned. `columns_to_ignore` specifies any columns to ignore in forming the where
+    expression. this can be used for numerical columns that might slightly differ but are essentially the same
+    (and where the other columns serve as unique identifiers)
     """
+    columns_to_ignore = columns_to_ignore or []
     # create the query from the mapping
     where_expressions = [
-        (getattr(model_class, k) == v) for k, v in mapping.items()
+        (getattr(model_class, k) == v)
+        for k, v in mapping.items()
+        if k not in columns_to_ignore
     ]
     where_expression = where_expressions[0]
     for exp in where_expressions[1:]:
@@ -955,7 +965,12 @@ def create_ap_metrics(
     )
 
     for mapping in metric_mappings:
-        _get_or_create_row(db, models.Metric, mapping)
+        # ignore value since the other columns are unique identifiers
+        # and have empircally noticed value can slightly change due to floating
+        # point errors
+        _get_or_create_row(
+            db, models.Metric, mapping, columns_to_ignore=["value"]
+        )
     db.commit()
 
     return mp.id
