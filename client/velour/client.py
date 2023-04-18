@@ -211,6 +211,7 @@ class Client:
         model_pred_task_type: Task = None,
         dataset_gt_task_type: Task = None,
         iou_thresholds: List[float] = None,
+        ious_to_keep: List[float] = None,
         labels: List[Label] = None,
         min_area: float = None,
         max_area: float = None,
@@ -234,6 +235,8 @@ class Client:
             payload["labels"] = [label.__dict__ for label in labels]
         if iou_thresholds is not None:
             payload["iou_thresholds"] = iou_thresholds
+        if ious_to_keep is not None:
+            payload["ious_to_keep"] = ious_to_keep
 
         resp = self._requests_post_rel_host("/ap-metrics", json=payload).json()
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
