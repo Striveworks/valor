@@ -226,7 +226,7 @@ class User(BaseModel):
     email: str = None
 
 
-class MetricParameters(BaseModel):
+class MetricSettings(BaseModel):
     """General parameters defining any filters of the data such
     as model, dataset, groundtruth and prediction type, model, dataset,
     size constraints, coincidence/intersection constraints, etc.
@@ -243,10 +243,28 @@ class MetricParameters(BaseModel):
 class APRequest(BaseModel):
     """Request to compute average precision"""
 
-    parameters: MetricParameters
+    settings: MetricSettings
     labels: list[Label] = None
     # (mutable defaults are ok for pydantic models)
     iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
+    ious_to_keep: set[float] = {0.5, 0.75}
+
+    @root_validator
+    def check_ious(cls, values):
+        for iou in values["ious_to_keep"]:
+            if iou not in values["iou_thresholds"]:
+                raise ValueError(
+                    "`ious_to_keep` must be contained in `iou_thresholds`"
+                )
+        return values
+
+
+class Metric(BaseModel):
+    type: str
+    settings: MetricSettings
+    parameters: dict
+    value: float
+    label: Label = None
 
 
 class APMetric(BaseModel):
@@ -255,18 +273,20 @@ class APMetric(BaseModel):
     label: Label
 
 
+class APMetricAveragedOverIOUs(BaseModel):
+    ious: set[float]
+    value: float
+    label: Label
+
+
 class mAPMetric(BaseModel):
     iou: float
     value: float
-    labels: list[Label]
 
 
-class MetricResponse(BaseModel):
-    """Used for REST responses sending a metric"""
-
-    metric_name: str
-    parameters: MetricParameters
-    metric: APMetric | mAPMetric
+class mAPMetricAveragedOverIOUs(BaseModel):
+    ious: set[float]
+    value: float
 
 
 class CreateMetricsResponse(BaseModel):

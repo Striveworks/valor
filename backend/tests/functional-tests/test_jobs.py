@@ -100,7 +100,7 @@ def test_create_ap_metrics_endpoint(uuid4, crud, client: TestClient):
     uuid4.return_value = "1"
 
     example_json = {
-        "parameters": {
+        "settings": {
             "model_name": "",
             "dataset_name": "",
             "model_pred_task_type": "Bounding Box Object Detection",

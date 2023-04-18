@@ -1,6 +1,7 @@
 from geoalchemy2 import Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
 from sqlalchemy import Enum, ForeignKey, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -365,13 +366,13 @@ class Dataset(Base):
     finalized_inferences = relationship(
         "FinalizedInferences", cascade="all, delete"
     )
-    metric_parameters = relationship(
-        "MetricParameters", cascade="all, delete", back_populates="dataset"
+    metric_settings = relationship(
+        "MetricSettings", cascade="all, delete", back_populates="dataset"
     )
 
 
-class MetricParameters(Base):
-    __tablename__ = "metric_parameters"
+class MetricSettings(Base):
+    __tablename__ = "metric_settings"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
@@ -382,19 +383,25 @@ class MetricParameters(Base):
     dataset_gt_task_type: Mapped[str] = mapped_column(Enum(Task))
     min_area: Mapped[float] = mapped_column(nullable=True)
     max_area: Mapped[float] = mapped_column(nullable=True)
-    ap_metrics: Mapped[list["APMetric"]] = relationship(
-        "APMetric", cascade="all, delete"
+    metrics: Mapped[list["Metric"]] = relationship(
+        "Metric", cascade="all, delete"
     )
 
 
-class APMetric(Base):
-    __tablename__ = "ap_metric"
+class Metric(Base):
+    __tablename__ = "metric"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
+    label_id: Mapped[int] = mapped_column(
+        ForeignKey("label.id"), nullable=True
+    )
     label = relationship(Label)
-    iou: Mapped[float] = mapped_column()
+    type: Mapped[str] = mapped_column()
     value: Mapped[float] = mapped_column()
-    metric_parameters_id: Mapped[int] = mapped_column(
-        ForeignKey("metric_parameters.id")
+    parameters = mapped_column(JSONB)  # {"label": ..., "iou": ..., }
+    settings: Mapped[list["Metric"]] = relationship(
+        "MetricSettings", back_populates="metrics"
+    )
+    metric_settings_id: Mapped[int] = mapped_column(
+        ForeignKey("metric_settings.id")
     )

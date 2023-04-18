@@ -447,14 +447,24 @@ def create_predicted_image_classifications(
     )
 
 
-def _get_or_create_row(db: Session, model_class: type, mapping: dict) -> any:
+def _get_or_create_row(
+    db: Session,
+    model_class: type,
+    mapping: dict,
+    columns_to_ignore: list[str] = None,
+) -> any:
     """Tries to get the row defined by mapping. If that exists then
     its mapped object is returned. Otherwise a row is created by `mapping` and the newly created
-    object is returned
+    object is returned. `columns_to_ignore` specifies any columns to ignore in forming the where
+    expression. this can be used for numerical columns that might slightly differ but are essentially the same
+    (and where the other columns serve as unique identifiers)
     """
+    columns_to_ignore = columns_to_ignore or []
     # create the query from the mapping
     where_expressions = [
-        (getattr(model_class, k) == v) for k, v in mapping.items()
+        (getattr(model_class, k) == v)
+        for k, v in mapping.items()
+        if k not in columns_to_ignore
     ]
     where_expression = where_expressions[0]
     for exp in where_expressions[1:]:
@@ -525,24 +535,108 @@ def _label_key_value_to_id(
     }
 
 
-def _create_ap_metric_mappings(
-    db: Session, metrics: list[schemas.APMetric], metric_parameters_id: int
+def _ap_metric_to_mapping(
+    metric: schemas.APMetric, label_id: int, metric_settings_id: int
+) -> dict:
+    return {
+        "value": metric.value,
+        "label_id": label_id,
+        "type": "AP",
+        "metric_settings_id": metric_settings_id,
+        "parameters": {"iou": metric.iou},
+    }
+
+
+def _ap_metric_averaged_over_ious_to_mapping(
+    metric: schemas.APMetricAveragedOverIOUs,
+    label_id: int,
+    metric_settings_id: int,
+) -> dict:
+    return {
+        "value": metric.value,
+        "label_id": label_id,
+        "type": "APAveragedOverIOUs",
+        "metric_settings_id": metric_settings_id,
+        "parameters": {"ious": list(metric.ious)},
+    }
+
+
+def _map_metric_to_mapping(
+    metric: schemas.mAPMetric, metric_settings_id: int
+) -> dict:
+    return {
+        "value": metric.value,
+        "type": "mAP",
+        "metric_settings_id": metric_settings_id,
+        "parameters": {"iou": metric.iou},
+    }
+
+
+def _map_metric_averaged_over_ious_to_mapping(
+    metric: schemas.APMetricAveragedOverIOUs, metric_settings_id: int
+) -> dict:
+    return {
+        "value": metric.value,
+        "type": "mAPAveragedOverIOUs",
+        "metric_settings_id": metric_settings_id,
+        "parameters": {"ious": list(metric.ious)},
+    }
+
+
+def _create_metric_mappings(
+    db: Session,
+    metrics: list[
+        schemas.APMetric
+        | schemas.APMetricAveragedOverIOUs
+        | schemas.mAPMetric
+        | schemas.mAPMetricAveragedOverIOUs
+    ],
+    metric_settings_id: int,
 ) -> list[dict]:
     label_map = _label_key_value_to_id(
         db=db,
         labels=set(
-            [(metric.label.key, metric.label.value) for metric in metrics]
+            [
+                (metric.label.key, metric.label.value)
+                for metric in metrics
+                if hasattr(metric, "label")
+            ]
         ),
     )
-    return [
-        {
-            "value": metric.value,
-            "label_id": label_map[(metric.label.key, metric.label.value)],
-            "iou": metric.iou,
-            "metric_parameters_id": metric_parameters_id,
-        }
-        for metric in metrics
-    ]
+    ret = []
+    for metric in metrics:
+        if isinstance(metric, schemas.APMetric):
+            ret.append(
+                _ap_metric_to_mapping(
+                    metric=metric,
+                    label_id=label_map[(metric.label.key, metric.label.value)],
+                    metric_settings_id=metric_settings_id,
+                )
+            )
+        elif isinstance(metric, schemas.APMetricAveragedOverIOUs):
+            ret.append(
+                _ap_metric_averaged_over_ious_to_mapping(
+                    metric=metric,
+                    label_id=label_map[(metric.label.key, metric.label.value)],
+                    metric_settings_id=metric_settings_id,
+                )
+            )
+        elif isinstance(metric, schemas.mAPMetric):
+            ret.append(
+                _map_metric_to_mapping(
+                    metric=metric, metric_settings_id=metric_settings_id
+                )
+            )
+        elif isinstance(metric, schemas.mAPMetricAveragedOverIOUs):
+            ret.append(
+                _map_metric_averaged_over_ious_to_mapping(
+                    metric=metric, metric_settings_id=metric_settings_id
+                )
+            )
+        else:
+            raise ValueError(f"Got an unexpected metric type: {type(metric)}")
+
+    return ret
 
 
 def validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
@@ -652,8 +746,8 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     )
 
 
-def _validate_and_update_metric_parameters_task_type_for_detection(
-    db: Session, metric_params: schemas.MetricParameters
+def _validate_and_update_metric_settings_task_type_for_detection(
+    db: Session, metric_params: schemas.MetricSettings
 ) -> None:
     """If the model or dataset task types are none, then get these from the
     datasets themselves. In either case verify that these task types are compatible
@@ -731,16 +825,16 @@ def validate_create_ap_metrics(
         is list of labels in the predictions that were ignored (because they weren't in the groundtruth)
     """
 
-    _validate_and_update_metric_parameters_task_type_for_detection(
-        db, metric_params=request_info.parameters
+    _validate_and_update_metric_settings_task_type_for_detection(
+        db, metric_params=request_info.settings
     )
 
     # when computing AP, the fidelity of a detection will drop to the minimum fidelity of the groundtruth and predicted
     # task type. e.g. if one is bounding box detection but the other is polygon object detection, then the polygons will be
     # converted to bounding boxes. we want the area filters to operate after this conversion.
     gt_and_pred_tasks = [
-        request_info.parameters.dataset_gt_task_type,
-        request_info.parameters.model_pred_task_type,
+        request_info.settings.dataset_gt_task_type,
+        request_info.settings.model_pred_task_type,
     ]
     if schemas.Task.BBOX_OBJECT_DETECTION in gt_and_pred_tasks:
         common_task = schemas.Task.BBOX_OBJECT_DETECTION
@@ -749,43 +843,43 @@ def validate_create_ap_metrics(
     else:
         common_task = schemas.Task.INSTANCE_SEGMENTATION
 
-    if request_info.parameters.dataset_gt_task_type in [
+    if request_info.settings.dataset_gt_task_type in [
         schemas.Task.BBOX_OBJECT_DETECTION,
         schemas.Task.POLY_OBJECT_DETECTION,
     ]:
         gts_statement = _object_detections_in_dataset_statement(
-            dataset_name=request_info.parameters.dataset_name,
-            task=request_info.parameters.dataset_gt_task_type,
-            min_area=request_info.parameters.min_area,
-            max_area=request_info.parameters.max_area,
+            dataset_name=request_info.settings.dataset_name,
+            task=request_info.settings.dataset_gt_task_type,
+            min_area=request_info.settings.min_area,
+            max_area=request_info.settings.max_area,
             task_for_area_computation=common_task,
         )
     else:
         gts_statement = _instance_segmentations_in_dataset_statement(
-            dataset_name=request_info.parameters.dataset_name,
-            min_area=request_info.parameters.min_area,
-            max_area=request_info.parameters.max_area,
+            dataset_name=request_info.settings.dataset_name,
+            min_area=request_info.settings.min_area,
+            max_area=request_info.settings.max_area,
             task_for_area_computation=common_task,
         )
 
-    if request_info.parameters.model_pred_task_type in [
+    if request_info.settings.model_pred_task_type in [
         schemas.Task.BBOX_OBJECT_DETECTION,
         schemas.Task.POLY_OBJECT_DETECTION,
     ]:
         preds_statement = _model_object_detection_preds_statement(
-            model_name=request_info.parameters.model_name,
-            dataset_name=request_info.parameters.dataset_name,
-            task=request_info.parameters.model_pred_task_type,
-            min_area=request_info.parameters.min_area,
-            max_area=request_info.parameters.max_area,
+            model_name=request_info.settings.model_name,
+            dataset_name=request_info.settings.dataset_name,
+            task=request_info.settings.model_pred_task_type,
+            min_area=request_info.settings.min_area,
+            max_area=request_info.settings.max_area,
             task_for_area_computation=common_task,
         )
     else:
         preds_statement = _model_instance_segmentation_preds_statement(
-            model_name=request_info.parameters.model_name,
-            dataset_name=request_info.parameters.dataset_name,
-            min_area=request_info.parameters.min_area,
-            max_area=request_info.parameters.max_area,
+            model_name=request_info.settings.model_name,
+            dataset_name=request_info.settings.dataset_name,
+            min_area=request_info.settings.min_area,
+            max_area=request_info.settings.max_area,
             task_for_area_computation=common_task,
         )
 
@@ -842,35 +936,41 @@ def create_ap_metrics(
         all_gts.append(image_id_to_gts.get(image_id, []))
         all_preds.append(image_id_to_preds.get(image_id, []))
 
-    ap_metrics = compute_ap_metrics(
+    metrics = compute_ap_metrics(
         db=db,
         predictions=all_preds,
         groundtruths=all_gts,
         iou_thresholds=request_info.iou_thresholds,
+        ious_to_keep=request_info.ious_to_keep,
     )
 
-    dataset_id = get_dataset(db, request_info.parameters.dataset_name).id
-    model_id = get_model(db, request_info.parameters.model_name).id
+    dataset_id = get_dataset(db, request_info.settings.dataset_name).id
+    model_id = get_model(db, request_info.settings.model_name).id
 
     mp = _get_or_create_row(
         db,
-        models.MetricParameters,
+        models.MetricSettings,
         mapping={
             "dataset_id": dataset_id,
             "model_id": model_id,
-            "model_pred_task_type": request_info.parameters.model_pred_task_type,
-            "dataset_gt_task_type": request_info.parameters.dataset_gt_task_type,
-            "min_area": request_info.parameters.min_area,
-            "max_area": request_info.parameters.max_area,
+            "model_pred_task_type": request_info.settings.model_pred_task_type,
+            "dataset_gt_task_type": request_info.settings.dataset_gt_task_type,
+            "min_area": request_info.settings.min_area,
+            "max_area": request_info.settings.max_area,
         },
     )
 
-    ap_metric_mappings = _create_ap_metric_mappings(
-        db=db, metrics=ap_metrics, metric_parameters_id=mp.id
+    metric_mappings = _create_metric_mappings(
+        db=db, metrics=metrics, metric_settings_id=mp.id
     )
 
-    for mapping in ap_metric_mappings:
-        _get_or_create_row(db, models.APMetric, mapping)
+    for mapping in metric_mappings:
+        # ignore value since the other columns are unique identifiers
+        # and have empircally noticed value can slightly change due to floating
+        # point errors
+        _get_or_create_row(
+            db, models.Metric, mapping, columns_to_ignore=["value"]
+        )
     db.commit()
 
     return mp.id
