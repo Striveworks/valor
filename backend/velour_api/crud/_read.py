@@ -229,10 +229,10 @@ def _get_unique_label_ids_in_image(image: models.Image) -> set[int]:
     return ret
 
 
-def _db_metric_params_to_pydantic_metric_params(
-    metric_params: models.MetricParameters,
-) -> schemas.MetricParameters:
-    return schemas.MetricParameters(
+def _db_metric_settings_to_pydantic_metric_settings(
+    metric_params: models.MetricSettings,
+) -> schemas.MetricSettings:
+    return schemas.MetricSettings(
         model_name=metric_params.model.name,
         dataset_name=metric_params.dataset.name,
         model_pred_task_type=metric_params.model_pred_task_type,
@@ -243,53 +243,52 @@ def _db_metric_params_to_pydantic_metric_params(
 
 
 def _db_label_to_schemas_label(label: models.Label) -> schemas.Label:
+    if label is None:
+        return None
     return schemas.Label(key=label.key, value=label.value)
 
 
-def _db_metric_to_pydantic_metric(metric: models.APMetric) -> schemas.APMetric:
-    # TODO: this will have to support more metrics
-    return schemas.APMetric(
-        iou=metric.iou,
+def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
+    return schemas.Metric(
+        type=metric.type,
+        parameters=metric.parameters,
+        settings=_db_metric_settings_to_pydantic_metric_settings(
+            metric.settings
+        ),
         value=metric.value,
         label=_db_label_to_schemas_label(metric.label),
     )
 
 
 def get_metrics_from_metric_params(
-    metric_params: list[models.MetricParameters],
-) -> list[schemas.MetricResponse]:
+    metric_settings: list[models.MetricSettings],
+) -> list[schemas.Metric]:
     return [
-        schemas.MetricResponse(
-            metric_name=m.__tablename__,
-            parameters=_db_metric_params_to_pydantic_metric_params(mp),
-            metric=_db_metric_to_pydantic_metric(m),
-        )
-        for mp in metric_params
-        for m in mp.ap_metrics
+        _db_metric_to_pydantic_metric(m)
+        for ms in metric_settings
+        for m in ms.metrics
     ]
 
 
 def get_metrics_from_metric_params_id(
     db: Session, metric_params_id: int
-) -> list[schemas.MetricResponse]:
+) -> list[schemas.Metric]:
     metric_params = db.scalar(
-        select(models.MetricParameters).where(
-            models.MetricParameters.id == metric_params_id
+        select(models.MetricSettings).where(
+            models.MetricSettings.id == metric_params_id
         )
     )
     return get_metrics_from_metric_params([metric_params])
 
 
-def get_model_metrics(
-    db: Session, model_name: str
-) -> list[schemas.MetricResponse]:
+def get_model_metrics(db: Session, model_name: str) -> list[schemas.Metric]:
     # TODO: may return multiple types of metrics
     # use get_model so exception get's raised if model does
     # not exist
     model = get_model(db, model_name)
 
     metric_params = db.scalars(
-        select(models.MetricParameters)
+        select(models.MetricSettings)
         .join(models.Model)
         .where(models.Model.id == model.id)
     )

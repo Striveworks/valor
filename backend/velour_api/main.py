@@ -285,7 +285,7 @@ def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
 )
 def get_model_metrics(
     model_name: str, db: Session = Depends(get_db)
-) -> list[schemas.MetricResponse]:
+) -> list[schemas.Metric]:
     try:
         return crud.get_model_metrics(db, model_name)
     except exceptions.ModelDoesNotExistError as e:
@@ -357,7 +357,7 @@ def get_job(job_id: str) -> schemas.EvalJob:
 @app.get("/jobs/{job_id}/metrics", dependencies=[Depends(token_auth_scheme)])
 def get_job_metrics(
     job_id: str, db: Session = Depends(get_db)
-) -> list[schemas.MetricResponse]:
+) -> list[schemas.Metric]:
     try:
         job = jobs.get_job(job_id)
         if job.status != enums.JobStatus.DONE:
