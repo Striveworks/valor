@@ -657,9 +657,6 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
         the select statement that defines the colllection of labeled groundtruths
     preds_statement
         the select statement that defines the colllection of labeled predictions
-    requested_labels
-        list of labels requested. if this is None then all labels present in the collection
-        defined by `gts_statement` are used.
 
     Returns
     -------
