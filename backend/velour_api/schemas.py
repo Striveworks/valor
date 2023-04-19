@@ -244,7 +244,6 @@ class APRequest(BaseModel):
     """Request to compute average precision"""
 
     settings: MetricSettings
-    labels: list[Label] = None
     # (mutable defaults are ok for pydantic models)
     iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
     ious_to_keep: set[float] = {0.5, 0.75}
