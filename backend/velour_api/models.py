@@ -366,13 +366,13 @@ class Dataset(Base):
     finalized_inferences = relationship(
         "FinalizedInferences", cascade="all, delete"
     )
-    metric_settings = relationship(
-        "MetricSettings", cascade="all, delete", back_populates="dataset"
+    evaluation_settings = relationship(
+        "EvaluationSettings", cascade="all, delete", back_populates="dataset"
     )
 
 
-class MetricSettings(Base):
-    __tablename__ = "metric_settings"
+class EvaluationSettings(Base):
+    __tablename__ = "evaluation_settings"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
@@ -400,8 +400,8 @@ class Metric(Base):
     value: Mapped[float] = mapped_column()
     parameters = mapped_column(JSONB)  # {"label": ..., "iou": ..., }
     settings: Mapped[list["Metric"]] = relationship(
-        "MetricSettings", back_populates="metrics"
+        "EvaluationSettings", back_populates="metrics"
     )
-    metric_settings_id: Mapped[int] = mapped_column(
-        ForeignKey("metric_settings.id")
+    evaluation_settings_id: Mapped[int] = mapped_column(
+        ForeignKey("evaluation_settings.id")
     )

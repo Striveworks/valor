@@ -226,7 +226,7 @@ class User(BaseModel):
     email: str = None
 
 
-class MetricSettings(BaseModel):
+class EvaluationSettings(BaseModel):
     """General parameters defining any filters of the data such
     as model, dataset, groundtruth and prediction type, model, dataset,
     size constraints, coincidence/intersection constraints, etc.
@@ -243,7 +243,7 @@ class MetricSettings(BaseModel):
 class APRequest(BaseModel):
     """Request to compute average precision"""
 
-    settings: MetricSettings
+    settings: EvaluationSettings
     # (mutable defaults are ok for pydantic models)
     iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
     ious_to_keep: set[float] = {0.5, 0.75}
@@ -260,7 +260,7 @@ class APRequest(BaseModel):
 
 class Metric(BaseModel):
     type: str
-    settings: MetricSettings
+    settings: EvaluationSettings
     parameters: dict
     value: float
     label: Label = None

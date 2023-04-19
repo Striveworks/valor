@@ -229,10 +229,10 @@ def _get_unique_label_ids_in_image(image: models.Image) -> set[int]:
     return ret
 
 
-def _db_metric_settings_to_pydantic_metric_settings(
-    metric_params: models.MetricSettings,
-) -> schemas.MetricSettings:
-    return schemas.MetricSettings(
+def _db_evaluation_settings_to_pydantic_evaluation_settings(
+    metric_params: models.EvaluationSettings,
+) -> schemas.EvaluationSettings:
+    return schemas.EvaluationSettings(
         model_name=metric_params.model.name,
         dataset_name=metric_params.dataset.name,
         model_pred_task_type=metric_params.model_pred_task_type,
@@ -252,7 +252,7 @@ def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
     return schemas.Metric(
         type=metric.type,
         parameters=metric.parameters,
-        settings=_db_metric_settings_to_pydantic_metric_settings(
+        settings=_db_evaluation_settings_to_pydantic_evaluation_settings(
             metric.settings
         ),
         value=metric.value,
@@ -261,11 +261,11 @@ def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
 
 
 def get_metrics_from_metric_params(
-    metric_settings: list[models.MetricSettings],
+    evaluation_settings: list[models.EvaluationSettings],
 ) -> list[schemas.Metric]:
     return [
         _db_metric_to_pydantic_metric(m)
-        for ms in metric_settings
+        for ms in evaluation_settings
         for m in ms.metrics
     ]
 
@@ -274,8 +274,8 @@ def get_metrics_from_metric_params_id(
     db: Session, metric_params_id: int
 ) -> list[schemas.Metric]:
     metric_params = db.scalar(
-        select(models.MetricSettings).where(
-            models.MetricSettings.id == metric_params_id
+        select(models.EvaluationSettings).where(
+            models.EvaluationSettings.id == metric_params_id
         )
     )
     return get_metrics_from_metric_params([metric_params])
@@ -288,7 +288,7 @@ def get_model_metrics(db: Session, model_name: str) -> list[schemas.Metric]:
     model = get_model(db, model_name)
 
     metric_params = db.scalars(
-        select(models.MetricSettings)
+        select(models.EvaluationSettings)
         .join(models.Model)
         .where(models.Model.id == model.id)
     )
