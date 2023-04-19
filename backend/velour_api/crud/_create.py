@@ -536,13 +536,13 @@ def _label_key_value_to_id(
 
 
 def _ap_metric_to_mapping(
-    metric: schemas.APMetric, label_id: int, metric_settings_id: int
+    metric: schemas.APMetric, label_id: int, evaluation_settings_id: int
 ) -> dict:
     return {
         "value": metric.value,
         "label_id": label_id,
         "type": "AP",
-        "metric_settings_id": metric_settings_id,
+        "evaluation_settings_id": evaluation_settings_id,
         "parameters": {"iou": metric.iou},
     }
 
@@ -550,35 +550,35 @@ def _ap_metric_to_mapping(
 def _ap_metric_averaged_over_ious_to_mapping(
     metric: schemas.APMetricAveragedOverIOUs,
     label_id: int,
-    metric_settings_id: int,
+    evaluation_settings_id: int,
 ) -> dict:
     return {
         "value": metric.value,
         "label_id": label_id,
         "type": "APAveragedOverIOUs",
-        "metric_settings_id": metric_settings_id,
+        "evaluation_settings_id": evaluation_settings_id,
         "parameters": {"ious": list(metric.ious)},
     }
 
 
 def _map_metric_to_mapping(
-    metric: schemas.mAPMetric, metric_settings_id: int
+    metric: schemas.mAPMetric, evaluation_settings_id: int
 ) -> dict:
     return {
         "value": metric.value,
         "type": "mAP",
-        "metric_settings_id": metric_settings_id,
+        "evaluation_settings_id": evaluation_settings_id,
         "parameters": {"iou": metric.iou},
     }
 
 
 def _map_metric_averaged_over_ious_to_mapping(
-    metric: schemas.APMetricAveragedOverIOUs, metric_settings_id: int
+    metric: schemas.APMetricAveragedOverIOUs, evaluation_settings_id: int
 ) -> dict:
     return {
         "value": metric.value,
         "type": "mAPAveragedOverIOUs",
-        "metric_settings_id": metric_settings_id,
+        "evaluation_settings_id": evaluation_settings_id,
         "parameters": {"ious": list(metric.ious)},
     }
 
@@ -591,7 +591,7 @@ def _create_metric_mappings(
         | schemas.mAPMetric
         | schemas.mAPMetricAveragedOverIOUs
     ],
-    metric_settings_id: int,
+    evaluation_settings_id: int,
 ) -> list[dict]:
     label_map = _label_key_value_to_id(
         db=db,
@@ -610,7 +610,7 @@ def _create_metric_mappings(
                 _ap_metric_to_mapping(
                     metric=metric,
                     label_id=label_map[(metric.label.key, metric.label.value)],
-                    metric_settings_id=metric_settings_id,
+                    evaluation_settings_id=evaluation_settings_id,
                 )
             )
         elif isinstance(metric, schemas.APMetricAveragedOverIOUs):
@@ -618,19 +618,21 @@ def _create_metric_mappings(
                 _ap_metric_averaged_over_ious_to_mapping(
                     metric=metric,
                     label_id=label_map[(metric.label.key, metric.label.value)],
-                    metric_settings_id=metric_settings_id,
+                    evaluation_settings_id=evaluation_settings_id,
                 )
             )
         elif isinstance(metric, schemas.mAPMetric):
             ret.append(
                 _map_metric_to_mapping(
-                    metric=metric, metric_settings_id=metric_settings_id
+                    metric=metric,
+                    evaluation_settings_id=evaluation_settings_id,
                 )
             )
         elif isinstance(metric, schemas.mAPMetricAveragedOverIOUs):
             ret.append(
                 _map_metric_averaged_over_ious_to_mapping(
-                    metric=metric, metric_settings_id=metric_settings_id
+                    metric=metric,
+                    evaluation_settings_id=evaluation_settings_id,
                 )
             )
         else:
@@ -712,8 +714,8 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     )
 
 
-def _validate_and_update_metric_settings_task_type_for_detection(
-    db: Session, metric_params: schemas.MetricSettings
+def _validate_and_update_evaluation_settings_task_type_for_detection(
+    db: Session, metric_params: schemas.EvaluationSettings
 ) -> None:
     """If the model or dataset task types are none, then get these from the
     datasets themselves. In either case verify that these task types are compatible
@@ -791,7 +793,7 @@ def validate_create_ap_metrics(
         is list of labels in the predictions that were ignored (because they weren't in the groundtruth)
     """
 
-    _validate_and_update_metric_settings_task_type_for_detection(
+    _validate_and_update_evaluation_settings_task_type_for_detection(
         db, metric_params=request_info.settings
     )
 
@@ -912,7 +914,7 @@ def create_ap_metrics(
 
     mp = _get_or_create_row(
         db,
-        models.MetricSettings,
+        models.EvaluationSettings,
         mapping={
             "dataset_id": dataset_id,
             "model_id": model_id,
@@ -924,7 +926,7 @@ def create_ap_metrics(
     )
 
     metric_mappings = _create_metric_mappings(
-        db=db, metrics=metrics, metric_settings_id=mp.id
+        db=db, metrics=metrics, evaluation_settings_id=mp.id
     )
 
     for mapping in metric_mappings:
