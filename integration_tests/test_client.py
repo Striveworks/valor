@@ -949,8 +949,7 @@ def test_evaluate_ap(
     model.add_predicted_detections(dataset, pred_dets)
     model.finalize_inferences(dataset)
 
-    eval_job = client.evaluate_ap(
-        model=model,
+    eval_job = model.evaluate_ap(
         dataset=dataset,
         labels=[Label(key="k1", value="v1")],
         iou_thresholds=[0.1, 0.6],
@@ -1067,8 +1066,7 @@ def test_evaluate_ap(
     for m in expected_metrics:
         m["settings"]["min_area"] = 10
         m["settings"]["max_area"] = 2000
-    eval_job = client.evaluate_ap(
-        model=model,
+    eval_job = model.evaluate_ap(
         dataset=dataset,
         model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
         dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
@@ -1082,8 +1080,7 @@ def test_evaluate_ap(
     assert eval_job.metrics() == expected_metrics
 
     # now check we get different things by setting the thresholds accordingly
-    eval_job = client.evaluate_ap(
-        model=model,
+    eval_job = model.evaluate_ap(
         dataset=dataset,
         model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
         dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
@@ -1098,8 +1095,7 @@ def test_evaluate_ap(
         m["settings"]["max_area"] = None
     assert eval_job.metrics() != expected_metrics
 
-    eval_job = client.evaluate_ap(
-        model=model,
+    eval_job = model.evaluate_ap(
         dataset=dataset,
         model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
         dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
@@ -1114,8 +1110,7 @@ def test_evaluate_ap(
         m["settings"]["max_area"] = 1200
     assert eval_job.metrics() != expected_metrics
 
-    eval_job = client.evaluate_ap(
-        model=model,
+    eval_job = model.evaluate_ap(
         dataset=dataset,
         model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
         dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
