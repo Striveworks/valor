@@ -212,7 +212,6 @@ class Client:
         dataset_gt_task_type: Task = None,
         iou_thresholds: List[float] = None,
         ious_to_keep: List[float] = None,
-        labels: List[Label] = None,
         min_area: float = None,
         max_area: float = None,
     ) -> "EvalJob":
@@ -231,8 +230,6 @@ class Client:
             }
         }
 
-        if labels is not None:
-            payload["labels"] = [label.__dict__ for label in labels]
         if iou_thresholds is not None:
             payload["iou_thresholds"] = iou_thresholds
         if ious_to_keep is not None:

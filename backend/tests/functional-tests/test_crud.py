@@ -781,39 +781,6 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
     labels = crud._create._labels_in_query(db, gts_statement)
     assert len(labels) == 2
 
-    # now query just the one with label "k1", "v1"
-    (
-        new_gts_statement,
-        new_preds_statement,
-        missing_pred_labels,
-        ignored_pred_labels,
-    ) = crud.validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
-        db=db,
-        gts_statement=gts_statement,
-        preds_statement=preds_statement,
-        requested_labels=[schemas.Label(key="k1", value="v1")],
-    )
-
-    gts = db.scalars(new_gts_statement).all()
-    preds = db.scalars(new_preds_statement).all()
-
-    assert len(gts) == 2
-    assert (gts[0].label.key, gts[0].label.value) == ("k1", "v1")
-    assert len(preds) == 1
-    assert (preds[0].label.key, preds[0].label.value) == ("k1", "v1")
-    assert missing_pred_labels == []
-    assert ignored_pred_labels == [schemas.Label(key="k2", value="v2")]
-
-    # # check error when requesting a label that doesn't exist
-    with pytest.raises(ValueError) as exc_info:
-        crud.validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
-            db=db,
-            gts_statement=gts_statement,
-            preds_statement=preds_statement,
-            requested_labels=[schemas.Label(key="k1", value="v2")],
-        )
-    assert "The following label key/value pairs are missing" in str(exc_info)
-
     # check get everything if the requested labels argument is empty
     (
         new_gts_statement,
