@@ -230,15 +230,15 @@ def _get_unique_label_ids_in_image(image: models.Image) -> set[int]:
 
 
 def _db_evaluation_settings_to_pydantic_evaluation_settings(
-    metric_params: models.EvaluationSettings,
+    evaluation_settings: models.EvaluationSettings,
 ) -> schemas.EvaluationSettings:
     return schemas.EvaluationSettings(
-        model_name=metric_params.model.name,
-        dataset_name=metric_params.dataset.name,
-        model_pred_task_type=metric_params.model_pred_task_type,
-        dataset_gt_task_type=metric_params.dataset_gt_task_type,
-        min_area=metric_params.min_area,
-        max_area=metric_params.max_area,
+        model_name=evaluation_settings.model.name,
+        dataset_name=evaluation_settings.dataset.name,
+        model_pred_task_type=evaluation_settings.model_pred_task_type,
+        dataset_gt_task_type=evaluation_settings.dataset_gt_task_type,
+        min_area=evaluation_settings.min_area,
+        max_area=evaluation_settings.max_area,
     )
 
 
@@ -260,7 +260,7 @@ def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
     )
 
 
-def get_metrics_from_metric_params(
+def get_metrics_from_evaluation_settings(
     evaluation_settings: list[models.EvaluationSettings],
 ) -> list[schemas.Metric]:
     return [
@@ -270,15 +270,26 @@ def get_metrics_from_metric_params(
     ]
 
 
-def get_metrics_from_metric_params_id(
-    db: Session, metric_params_id: int
-) -> list[schemas.Metric]:
-    metric_params = db.scalar(
+def get_evaluation_settings_from_id(
+    db: Session, evaluation_settings_id: int
+) -> schemas.EvaluationSettings:
+    ms = db.scalar(
         select(models.EvaluationSettings).where(
-            models.EvaluationSettings.id == metric_params_id
+            models.EvaluationSettings.id == evaluation_settings_id
         )
     )
-    return get_metrics_from_metric_params([metric_params])
+    return _db_evaluation_settings_to_pydantic_evaluation_settings(ms)
+
+
+def get_metrics_from_metric_settings_id(
+    db: Session, evaluation_settings_id: int
+) -> list[schemas.Metric]:
+    evaluation_settings = db.scalar(
+        select(models.EvaluationSettings).where(
+            models.EvaluationSettings.id == evaluation_settings_id
+        )
+    )
+    return get_metrics_from_evaluation_settings([evaluation_settings])
 
 
 def get_model_metrics(db: Session, model_name: str) -> list[schemas.Metric]:
@@ -287,13 +298,23 @@ def get_model_metrics(db: Session, model_name: str) -> list[schemas.Metric]:
     # not exist
     model = get_model(db, model_name)
 
-    metric_params = db.scalars(
+    evaluation_settings = db.scalars(
         select(models.EvaluationSettings)
         .join(models.Model)
         .where(models.Model.id == model.id)
     )
 
-    return get_metrics_from_metric_params(metric_params)
+    return get_metrics_from_evaluation_settings(evaluation_settings)
+
+
+def get_model_evaluations(
+    db: Session, model_name: str
+) -> list[schemas.MetricSettings]:
+    pass
+
+
+def get_evaluation_():
+    pass
 
 
 def number_of_rows(db: Session, model_cls: type) -> int:

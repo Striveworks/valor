@@ -74,7 +74,11 @@ def test_wrap_metric_computation():
     assert job.status == JobStatus.PENDING == jobs.get_job(job.uid).status
     wrapped_f()
     assert job.status == JobStatus.DONE == jobs.get_job(job.uid).status
-    assert job.metric_params_id == 1 == jobs.get_job(job.uid).metric_params_id
+    assert (
+        job.evaluation_settings_id
+        == 1
+        == jobs.get_job(job.uid).evaluation_settings_id
+    )
 
     def g():
         assert (
@@ -124,4 +128,4 @@ def test_create_ap_metrics_endpoint(uuid4, crud, client: TestClient):
     assert job_id == "1"
     job = jobs.get_job(job_id)
     assert job.status == JobStatus.DONE
-    assert job.metric_params_id == 2
+    assert job.evaluation_settings_id == 2

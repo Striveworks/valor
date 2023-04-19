@@ -715,16 +715,16 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
 
 
 def _validate_and_update_evaluation_settings_task_type_for_detection(
-    db: Session, metric_params: schemas.EvaluationSettings
+    db: Session, evaluation_settings: schemas.EvaluationSettings
 ) -> None:
     """If the model or dataset task types are none, then get these from the
     datasets themselves. In either case verify that these task types are compatible
     for detection evaluation.
     """
-    dataset_name = metric_params.dataset_name
-    model_name = metric_params.model_name
+    dataset_name = evaluation_settings.dataset_name
+    model_name = evaluation_settings.model_name
     if get_dataset(db, dataset_name).draft:
-        raise exceptions.DatasetIsDraftError(metric_params.dataset_name)
+        raise exceptions.DatasetIsDraftError(evaluation_settings.dataset_name)
     # check that inferences are finalized
     if not _check_finalized_inferences(
         db, model_name=model_name, dataset_name=dataset_name
@@ -742,7 +742,7 @@ def _validate_and_update_evaluation_settings_task_type_for_detection(
         ]
     )
 
-    if metric_params.dataset_gt_task_type is None:
+    if evaluation_settings.dataset_gt_task_type is None:
         dset_task_types = get_dataset_task_types(db, dataset_name)
         inter = allowable_tasks.intersection(dset_task_types)
         if len(inter) > 1:
@@ -753,13 +753,13 @@ def _validate_and_update_evaluation_settings_task_type_for_detection(
             raise RuntimeError(
                 "The dataset does not have any annotations to support object detection evaluation."
             )
-        metric_params.dataset_gt_task_type = inter.pop()
-    elif metric_params.dataset_gt_task_type not in allowable_tasks:
+        evaluation_settings.dataset_gt_task_type = inter.pop()
+    elif evaluation_settings.dataset_gt_task_type not in allowable_tasks:
         raise ValueError(
-            f"`dataset_gt_task_type` must be one of {allowable_tasks} but got {metric_params.dataset_gt_task_type}."
+            f"`dataset_gt_task_type` must be one of {allowable_tasks} but got {evaluation_settings.dataset_gt_task_type}."
         )
 
-    if metric_params.model_pred_task_type is None:
+    if evaluation_settings.model_pred_task_type is None:
         model_task_types = get_model_task_types(
             db, model_name=model_name, dataset_name=dataset_name
         )
@@ -772,10 +772,10 @@ def _validate_and_update_evaluation_settings_task_type_for_detection(
             raise RuntimeError(
                 "The model does not have any inferences to support object detection evaluation."
             )
-        metric_params.model_pred_task_type = inter.pop()
-    elif metric_params.model_pred_task_type not in allowable_tasks:
+        evaluation_settings.model_pred_task_type = inter.pop()
+    elif evaluation_settings.model_pred_task_type not in allowable_tasks:
         raise ValueError(
-            f"`pred_type` must be one of {allowable_tasks} but got {metric_params.model_pred_task_type}."
+            f"`pred_type` must be one of {allowable_tasks} but got {evaluation_settings.model_pred_task_type}."
         )
 
 
@@ -794,7 +794,7 @@ def validate_create_ap_metrics(
     """
 
     _validate_and_update_evaluation_settings_task_type_for_detection(
-        db, metric_params=request_info.settings
+        db, evaluation_settings=request_info.settings
     )
 
     # when computing AP, the fidelity of a detection will drop to the minimum fidelity of the groundtruth and predicted
