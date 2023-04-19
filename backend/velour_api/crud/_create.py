@@ -643,7 +643,6 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     db: Session,
     gts_statement: Select,
     preds_statement: Select,
-    requested_labels: list[schemas.Label] = None,
 ) -> tuple[Select, Select, list[schemas.Label], list[schemas.Label]]:
     """Takes statements defining a collection of labeled groundtruths and labeled predictions,
     and a list of requsted labels and creates a new statement that further
@@ -658,9 +657,6 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
         the select statement that defines the colllection of labeled groundtruths
     preds_statement
         the select statement that defines the colllection of labeled predictions
-    requested_labels
-        list of labels requested. if this is None then all labels present in the collection
-        defined by `gts_statement` are used.
 
     Returns
     -------
@@ -682,53 +678,23 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
 
     available_labels = _labels_in_query(db, gts_statement)
 
-    if requested_labels is None:
-        requested_label_tuples = set(
-            [(label.key, label.value) for label in available_labels]
-        )
-        pred_label_tuples = set(
-            [
-                (label.key, label.value)
-                for label in _labels_in_query(db, preds_statement)
-            ]
-        )
-        labels_to_use_ids = [label.id for label in available_labels]
-    else:
-        pred_labels = _labels_in_query(db, preds_statement)
-
-        # convert available labels and requested labels to key/value tuples to allow easy comparison
-        available_label_tuples = set(
-            [(label.key, label.value) for label in available_labels]
-        )
-        requested_label_tuples = set(
-            [(label.key, label.value) for label in requested_labels]
-        )
-        pred_label_tuples = set(
-            [(label.key, label.value) for label in pred_labels]
-        )
-
-        # filter to those labels specified
-        if not (requested_label_tuples <= available_label_tuples):
-            raise ValueError(
-                f"The following label key/value pairs are missing in the dataset: {requested_label_tuples - available_label_tuples}"
-            )
-
-        labels_to_use_ids = [
-            label.id
-            for label in available_labels
-            if (label.key, label.value) in requested_label_tuples
+    label_tuples = set(
+        [(label.key, label.value) for label in available_labels]
+    )
+    pred_label_tuples = set(
+        [
+            (label.key, label.value)
+            for label in _labels_in_query(db, preds_statement)
         ]
-
-        gts_statement = gts_statement.join(models.Label).where(
-            models.Label.id.in_(labels_to_use_ids)
-        )
+    )
+    labels_to_use_ids = [label.id for label in available_labels]
 
     preds_statement = preds_statement.join(models.Label).where(
         models.Label.id.in_(labels_to_use_ids)
     )
 
-    missing_pred_labels = requested_label_tuples - pred_label_tuples
-    ignored_pred_labels = pred_label_tuples - requested_label_tuples
+    missing_pred_labels = label_tuples - pred_label_tuples
+    ignored_pred_labels = pred_label_tuples - label_tuples
 
     # convert back to labels
     missing_pred_labels = [
@@ -889,10 +855,7 @@ def validate_create_ap_metrics(
         missing_pred_labels,
         ignored_pred_labels,
     ) = validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
-        db=db,
-        gts_statement=gts_statement,
-        preds_statement=preds_statement,
-        requested_labels=request_info.labels,
+        db=db, gts_statement=gts_statement, preds_statement=preds_statement
     )
 
     return (
