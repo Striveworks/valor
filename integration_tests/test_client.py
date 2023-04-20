@@ -963,17 +963,20 @@ def test_evaluate_ap(
     time.sleep(1)
     assert eval_job.status() == "Done"
 
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model_name": "test model",
+        "dataset_name": "test dataset",
+        "model_pred_task_type": "Bounding Box Object Detection",
+        "dataset_gt_task_type": "Bounding Box Object Detection",
+        "min_area": None,
+        "max_area": None,
+    }
+
     expected_metrics = [
         {
             "type": "AP",
-            "settings": {
-                "model_name": "test model",
-                "dataset_name": "test dataset",
-                "model_pred_task_type": "Bounding Box Object Detection",
-                "dataset_gt_task_type": "Bounding Box Object Detection",
-                "min_area": None,
-                "max_area": None,
-            },
             "value": 0.504950495049505,
             "label": {"key": "k1", "value": "v1"},
             "parameters": {
@@ -982,14 +985,6 @@ def test_evaluate_ap(
         },
         {
             "type": "AP",
-            "settings": {
-                "model_name": "test model",
-                "dataset_name": "test dataset",
-                "model_pred_task_type": "Bounding Box Object Detection",
-                "dataset_gt_task_type": "Bounding Box Object Detection",
-                "min_area": None,
-                "max_area": None,
-            },
             "value": 0.504950495049505,
             "label": {"key": "k1", "value": "v1"},
             "parameters": {
@@ -998,56 +993,24 @@ def test_evaluate_ap(
         },
         {
             "type": "mAP",
-            "settings": {
-                "model_name": "test model",
-                "dataset_name": "test dataset",
-                "model_pred_task_type": "Bounding Box Object Detection",
-                "dataset_gt_task_type": "Bounding Box Object Detection",
-                "min_area": None,
-                "max_area": None,
-            },
             "parameters": {"iou": 0.1},
             "value": 0.504950495049505,
             "label": None,
         },
         {
             "type": "mAP",
-            "settings": {
-                "model_name": "test model",
-                "dataset_name": "test dataset",
-                "model_pred_task_type": "Bounding Box Object Detection",
-                "dataset_gt_task_type": "Bounding Box Object Detection",
-                "min_area": None,
-                "max_area": None,
-            },
             "parameters": {"iou": 0.6},
             "value": 0.504950495049505,
             "label": None,
         },
         {
             "type": "APAveragedOverIOUs",
-            "settings": {
-                "model_name": "test model",
-                "dataset_name": "test dataset",
-                "model_pred_task_type": "Bounding Box Object Detection",
-                "dataset_gt_task_type": "Bounding Box Object Detection",
-                "min_area": None,
-                "max_area": None,
-            },
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.504950495049505,
             "label": {"key": "k1", "value": "v1"},
         },
         {
             "type": "mAPAveragedOverIOUs",
-            "settings": {
-                "model_name": "test model",
-                "dataset_name": "test dataset",
-                "model_pred_task_type": "Bounding Box Object Detection",
-                "dataset_gt_task_type": "Bounding Box Object Detection",
-                "min_area": None,
-                "max_area": None,
-            },
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.504950495049505,
             "label": None,
@@ -1062,9 +1025,6 @@ def test_evaluate_ap(
 
     # sanity check this should give us the same thing excpet min_area and max_area
     # are not None
-    for m in expected_metrics:
-        m["settings"]["min_area"] = 10
-        m["settings"]["max_area"] = 2000
     eval_job = model.evaluate_ap(
         dataset=dataset,
         model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
@@ -1075,6 +1035,16 @@ def test_evaluate_ap(
         max_area=2000,
     )
     time.sleep(1)
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model_name": "test model",
+        "dataset_name": "test dataset",
+        "model_pred_task_type": "Bounding Box Object Detection",
+        "dataset_gt_task_type": "Bounding Box Object Detection",
+        "min_area": 10,
+        "max_area": 2000,
+    }
     assert eval_job.metrics() == expected_metrics
 
     # now check we get different things by setting the thresholds accordingly
@@ -1087,9 +1057,18 @@ def test_evaluate_ap(
         min_area=1200,
     )
     time.sleep(1)
-    for m in expected_metrics:
-        m["settings"]["min_area"] = 1200
-        m["settings"]["max_area"] = None
+
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model_name": "test model",
+        "dataset_name": "test dataset",
+        "model_pred_task_type": "Bounding Box Object Detection",
+        "dataset_gt_task_type": "Bounding Box Object Detection",
+        "min_area": 1200,
+        "max_area": None,
+    }
+
     assert eval_job.metrics() != expected_metrics
 
     eval_job = model.evaluate_ap(
@@ -1101,9 +1080,16 @@ def test_evaluate_ap(
         max_area=1200,
     )
     time.sleep(1)
-    for m in expected_metrics:
-        m["settings"]["min_area"] = None
-        m["settings"]["max_area"] = 1200
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model_name": "test model",
+        "dataset_name": "test dataset",
+        "model_pred_task_type": "Bounding Box Object Detection",
+        "dataset_gt_task_type": "Bounding Box Object Detection",
+        "min_area": None,
+        "max_area": 1200,
+    }
     assert eval_job.metrics() != expected_metrics
 
     eval_job = model.evaluate_ap(
@@ -1116,7 +1102,14 @@ def test_evaluate_ap(
         max_area=1800,
     )
     time.sleep(1)
-    for m in expected_metrics:
-        m["settings"]["min_area"] = 1200
-        m["settings"]["max_area"] = 1800
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model_name": "test model",
+        "dataset_name": "test dataset",
+        "model_pred_task_type": "Bounding Box Object Detection",
+        "dataset_gt_task_type": "Bounding Box Object Detection",
+        "min_area": 1200,
+        "max_area": 1800,
+    }
     assert eval_job.metrics() != expected_metrics

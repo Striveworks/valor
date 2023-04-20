@@ -846,6 +846,9 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     with pytest.raises(exceptions.InferencesAreNotFinalizedError):
         method_to_test()
 
+    # verify we have no evaluations yet
+    assert len(crud.get_model_evaluation_settings(db, model_name)) == 0
+
     # finalize inferences and try again
     crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
@@ -854,6 +857,9 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         missing_pred_labels,
         ignored_pred_labels,
     ) = method_to_test()
+
+    # check we have one evaluation
+    assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
 
     assert missing_pred_labels == []
     assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
@@ -894,21 +900,13 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     assert sorted(metric_ids) == sorted(metric_ids_again)
 
     # test crud.get_model_metrics
-    metrics_pydantic = crud.get_model_metrics(db, "test model")
+    metrics_pydantic = crud.get_model_metrics(
+        db, "test model", evaluation_settings_id
+    )
 
     assert len(metrics_pydantic) == len(metrics)
 
     for m in metrics_pydantic:
-        assert m.settings.dataset_name == "test dataset"
-        assert m.settings.model_name == "test model"
-        assert (
-            m.settings.model_pred_task_type == enums.Task.BBOX_OBJECT_DETECTION
-        )
-        assert (
-            m.settings.dataset_gt_task_type == enums.Task.BBOX_OBJECT_DETECTION
-        )
-        assert m.settings.min_area is None
-        assert m.settings.max_area is None
         assert m.type in {
             "AP",
             "APAveragedOverIOUs",
@@ -924,10 +922,36 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         ignored_pred_labels,
     ) = method_to_test(min_area=min_area, max_area=max_area)
 
-    metrics_pydantic = crud.get_model_metrics(db, "test model")
-    m = metrics_pydantic[-1]
-    assert m.settings.min_area == min_area
-    assert m.settings.max_area == max_area
+    metrics_pydantic = crud.get_model_metrics(
+        db, "test model", evaluation_settings_id
+    )
+    for m in metrics_pydantic:
+        assert m.type in {
+            "AP",
+            "APAveragedOverIOUs",
+            "mAP",
+            "mAPAveragedOverIOUs",
+        }
+
+    # check we have the right evaluations
+    model_evals = crud.get_model_evaluation_settings(db, model_name)
+    assert len(model_evals) == 2
+    assert model_evals[0] == schemas.EvaluationSettings(
+        model_name=model_name,
+        dataset_name=dset_name,
+        model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+        id=1,
+    )
+    assert model_evals[1] == schemas.EvaluationSettings(
+        model_name=model_name,
+        dataset_name=dset_name,
+        model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+        min_area=min_area,
+        max_area=max_area,
+        id=2,
+    )
 
 
 def test__raster_to_png_b64(db: Session):

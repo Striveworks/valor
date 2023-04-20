@@ -239,6 +239,7 @@ def _db_evaluation_settings_to_pydantic_evaluation_settings(
         dataset_gt_task_type=evaluation_settings.dataset_gt_task_type,
         min_area=evaluation_settings.min_area,
         max_area=evaluation_settings.max_area,
+        id=evaluation_settings.id,
     )
 
 
@@ -270,6 +271,17 @@ def get_metrics_from_evaluation_settings(
     ]
 
 
+def get_metrics_from_evaluation_settings_id(
+    db: Session, evaluation_settings_id: int
+) -> list[schemas.Metric]:
+    eval_settings = db.scalar(
+        select(models.EvaluationSettings).where(
+            models.EvaluationSettings.id == evaluation_settings_id
+        )
+    )
+    return get_metrics_from_evaluation_settings([eval_settings])
+
+
 def get_evaluation_settings_from_id(
     db: Session, evaluation_settings_id: int
 ) -> schemas.EvaluationSettings:
@@ -281,18 +293,9 @@ def get_evaluation_settings_from_id(
     return _db_evaluation_settings_to_pydantic_evaluation_settings(ms)
 
 
-def get_metrics_from_metric_settings_id(
-    db: Session, evaluation_settings_id: int
+def get_model_metrics(
+    db: Session, model_name: str, evaluation_settings_id: int
 ) -> list[schemas.Metric]:
-    evaluation_settings = db.scalar(
-        select(models.EvaluationSettings).where(
-            models.EvaluationSettings.id == evaluation_settings_id
-        )
-    )
-    return get_metrics_from_evaluation_settings([evaluation_settings])
-
-
-def get_model_metrics(db: Session, model_name: str) -> list[schemas.Metric]:
     # TODO: may return multiple types of metrics
     # use get_model so exception get's raised if model does
     # not exist
@@ -301,20 +304,30 @@ def get_model_metrics(db: Session, model_name: str) -> list[schemas.Metric]:
     evaluation_settings = db.scalars(
         select(models.EvaluationSettings)
         .join(models.Model)
-        .where(models.Model.id == model.id)
+        .where(
+            and_(
+                models.Model.id == model.id,
+                models.EvaluationSettings.id == evaluation_settings_id,
+            )
+        )
     )
 
     return get_metrics_from_evaluation_settings(evaluation_settings)
 
 
-def get_model_evaluations(
+def get_model_evaluation_settings(
     db: Session, model_name: str
-) -> list[schemas.MetricSettings]:
-    pass
-
-
-def get_evaluation_():
-    pass
+) -> list[schemas.EvaluationSettings]:
+    model_id = get_model(db, model_name).id
+    all_eval_settings = db.scalars(
+        select(models.EvaluationSettings).where(
+            models.EvaluationSettings.model_id == model_id
+        )
+    ).all()
+    return [
+        _db_evaluation_settings_to_pydantic_evaluation_settings(eval_settings)
+        for eval_settings in all_eval_settings
+    ]
 
 
 def number_of_rows(db: Session, model_cls: type) -> int:

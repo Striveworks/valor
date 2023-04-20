@@ -386,6 +386,12 @@ class EvalJob:
             f"/jobs/{self._id}/metrics"
         ).json()
 
+    # TODO: replace value with a dataclass?
+    def settings(self) -> dict:
+        return self.client._requests_get_rel_host(
+            f"/jobs/{self._id}/settings"
+        ).json()
+
 
 class Model:
     def __init__(self, client: Client, name: str):
@@ -501,3 +507,9 @@ class Model:
             resp[k] = [Label(**la) for la in resp[k]]
 
         return EvalJob(client=self.client, **resp)
+
+    def get_metrics(self, dataset: Dataset, metric_type):
+        pass
+
+    def get_evaluation_settings(self):
+        pass
