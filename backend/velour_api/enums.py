@@ -9,11 +9,6 @@ class Task(Enum):
     SEMANTIC_SEGMENTATION = "Semantic Segmentation"
 
 
-class MetricType(Enum):
-    AP = "Average Precision"
-    mAP = "Mean Average Precision"
-
-
 class JobStatus(Enum):
     PENDING = "Pending"
     PROCESSING = "Processing"
