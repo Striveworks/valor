@@ -6,6 +6,7 @@ import { LoginButton } from "./login-button";
 import { ModelsPage } from "./models-page";
 import { ModelDetailsPage } from "./model-details-page";
 import { usingAuth } from "./auth";
+import { MetricsPage } from "./metrics-page";
 
 function App() {
   return (
@@ -25,6 +26,10 @@ function App() {
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/models" element={<ModelsPage />} />
       <Route path="/models/:name" element={<ModelDetailsPage />} />
+      <Route
+        path="/models/:name/evaluation-settings/:evalSettingsId"
+        element={<MetricsPage />}
+      />
     </Routes>
   );
 }

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import Typography from "@mui/material/Typography";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import Link from "@mui/material/Link";
 
 type EvaluationSetting = {
   model_name: string;
@@ -17,7 +18,11 @@ type EvaluationSetting = {
 const taskTypeWidth = 250;
 const areaWidth = 175;
 const columns: GridColDef[] = [
-  { field: "dataset_name", headerName: "Dataset" },
+  {
+    field: "dataset_name",
+    headerName: "Dataset",
+    // renderCell: (params) => <a href="google.com">params.row.dataset_name</a>,
+  },
   {
     field: "model_pred_task_type",
     headerName: "Model prediction type",
@@ -37,6 +42,16 @@ const columns: GridColDef[] = [
     field: "max_area",
     headerName: "Max. area of objects",
     width: areaWidth,
+  },
+  {
+    field: "",
+    headerName: "",
+    renderCell: (params) => (
+      <Link href={`evaluation-settings/${params.row.id}`}>view metrics</Link>
+    ),
+    sortable: false,
+    filterable: false,
+    hideable: false,
   },
 ];
 
