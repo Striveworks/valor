@@ -13,6 +13,7 @@ import {
   LinkProps as RouterLinkProps,
 } from "react-router-dom";
 import { LinkProps } from "@mui/material/Link";
+import type {} from "@mui/x-data-grid/themeAugmentation";
 
 const LinkBehavior = React.forwardRef<
   HTMLAnchorElement,
@@ -64,32 +65,22 @@ const theme = createTheme({
     },
   },
   components: {
+    MuiDataGrid: {
+      styleOverrides: {
+        columnHeader: {
+          fontSize: 18,
+          fontWeight: 500,
+          // color: "red",
+        },
+      },
+    },
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          // backgroundImage: `linear-gradient(to right top, #4c4355, #3d323e, #2c2329, #1a1517, #000000)`,
           margin: `15px`,
         },
         html: {
           height: `100%`,
-        },
-        table: {
-          width: `50%`,
-          whiteSpace: `nowrap`,
-          tableLayout: `fixed`,
-          padding: `15px`,
-        },
-        td: {
-          fontWeight: `bold`,
-        },
-        th: {
-          fontWeight: `bolder`,
-          width: `25%`,
-        },
-        "td, th": {
-          textAlign: `left`,
-          verticalAlign: `top`,
-          padding: `0 0px`,
         },
       },
     },
@@ -97,6 +88,12 @@ const theme = createTheme({
       defaultProps: {
         component: LinkBehavior,
       } as LinkProps,
+      styleOverrides: {
+        root: {
+          color: "white",
+          fontWeight: "bold",
+        },
+      },
     },
     MuiButtonBase: {
       defaultProps: {

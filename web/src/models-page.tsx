@@ -1,5 +1,7 @@
 import axios from "axios";
 import { useState, useEffect } from "react";
+import Typography from "@mui/material/Typography";
+import Link from "@mui/material/Link";
 
 type ModelResponse = {
   name: string;
@@ -19,9 +21,11 @@ export const ModelsPage = () => {
 
   return (
     <>
-      <h2>Models</h2>
+      <Typography variant="h2">Models</Typography>
       {models.map((model) => (
-        <p>{model.name}</p>
+        <Link href={`/models/${model.name}`} sx={{ fontSize: 20 }}>
+          {model.name}
+        </Link>
       ))}
     </>
   );
