@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import { CallbackPage } from "./callback-page";
 import { ProfilePage } from "./profile-page";
 import { LoginButton } from "./login-button";
+import { ModelsPage } from "./models-page";
 import { usingAuth } from "./auth";
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
       />
       <Route path="/callback" element={<CallbackPage />} />
       <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/models" element={<ModelsPage />} />
     </Routes>
   );
 }

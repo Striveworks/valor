@@ -6,8 +6,8 @@ html, body, #app, #app>div {
 body {
   background-image: linear-gradient(to right top, #4c4355, #3d323e, #2c2329, #1a1517, #000000);
   font-family: 'Anek Tamil', sans-serif;
-  -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: large;
 }
 
 table {
