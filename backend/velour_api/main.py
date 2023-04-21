@@ -1,6 +1,7 @@
 import os
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -12,6 +13,13 @@ token_auth_scheme = auth.OptionalHTTPBearer()
 
 
 app = FastAPI(root_path=os.getenv("API_ROOT_PATH", ""))
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 create_db()
 
