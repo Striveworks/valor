@@ -4,6 +4,7 @@ import { CallbackPage } from "./callback-page";
 import { ProfilePage } from "./profile-page";
 import { LoginButton } from "./login-button";
 import { ModelsPage } from "./models-page";
+import { ModelDetailsPage } from "./model-details-page";
 import { usingAuth } from "./auth";
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
       <Route path="/callback" element={<CallbackPage />} />
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/models" element={<ModelsPage />} />
+      <Route path="/models/:name" element={<ModelDetailsPage />} />
     </Routes>
   );
 }

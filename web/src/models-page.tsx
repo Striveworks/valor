@@ -6,11 +6,10 @@ type ModelResponse = {
 };
 
 export const ModelsPage = () => {
-  console.log(process.env.REACT_APP_BACKEND_URL);
   const [models, setModels] = useState<ModelResponse[]>([]);
   useEffect(() => {
     const url = `${process.env.REACT_APP_BACKEND_URL}/models`;
-    console.log(`url: ${url}`);
+
     axios.get(url).then((response) => {
       console.log(response);
       setModels(response.data);

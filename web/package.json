@@ -4,6 +4,10 @@
   "private": true,
   "dependencies": {
     "@auth0/auth0-react": "^2.0.1",
+    "@emotion/react": "^11.10.6",
+    "@emotion/styled": "^11.10.6",
+    "@fontsource/anek-tamil": "^4.5.6",
+    "@mui/material": "^5.12.1",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
