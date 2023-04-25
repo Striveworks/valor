@@ -44,7 +44,7 @@ const MetricTypeSelect: React.FC<{
 
   return (
     <FormControl fullWidth>
-      <InputLabel id="select-label">Metric</InputLabel>
+      <InputLabel id="select-label">Metric type</InputLabel>
       <Select
         labelId="select-label"
         id="demo-simple-select"
