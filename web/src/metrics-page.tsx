@@ -60,6 +60,32 @@ const MetricTypeSelect: React.FC<{
   );
 };
 
+const Switch = ({
+  test,
+  children,
+}: {
+  test: string;
+  children: JSX.Element[];
+}): JSX.Element => {
+  const ret = children.find((child) => {
+    return child.props.value === test;
+  });
+  if (ret === undefined) {
+    return <></>;
+  }
+  return ret;
+};
+
+const SwitchElement = ({
+  value,
+  children,
+}: {
+  value: string;
+  children: JSX.Element;
+}): JSX.Element => {
+  return children;
+};
+
 export const MetricsPage = () => {
   let { name, evalSettingsId } = useParams();
   const [selectedMetricType, setSelectedMetricType] = useState("");
@@ -97,35 +123,38 @@ export const MetricsPage = () => {
         selectedMetricType={selectedMetricType}
         setSelectedMetricType={setSelectedMetricType}
       />
-      {selectedMetricType === "AP" ? (
-        <DataGrid
-          rows={APs}
-          columns={APColumns}
-          initialState={{
-            pagination: {
-              paginationModel: {
-                pageSize: 5,
+      <Switch test={selectedMetricType}>
+        <SwitchElement value="AP">
+          <DataGrid
+            rows={APs}
+            columns={APColumns}
+            initialState={{
+              pagination: {
+                paginationModel: {
+                  pageSize: 5,
+                },
               },
-            },
-          }}
-          pageSizeOptions={[5]}
-          disableRowSelectionOnClick
-        />
-      ) : (
-        <DataGrid
-          rows={mAPs}
-          columns={mAPColumns}
-          initialState={{
-            pagination: {
-              paginationModel: {
-                pageSize: 5,
+            }}
+            pageSizeOptions={[5]}
+            disableRowSelectionOnClick
+          />
+        </SwitchElement>
+        <SwitchElement value="mAP">
+          <DataGrid
+            rows={mAPs}
+            columns={mAPColumns}
+            initialState={{
+              pagination: {
+                paginationModel: {
+                  pageSize: 5,
+                },
               },
-            },
-          }}
-          pageSizeOptions={[5]}
-          disableRowSelectionOnClick
-        />
-      )}
+            }}
+            pageSizeOptions={[5]}
+            disableRowSelectionOnClick
+          />
+        </SwitchElement>
+      </Switch>
     </>
   );
 };
