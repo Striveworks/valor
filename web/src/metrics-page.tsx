@@ -34,6 +34,32 @@ const mAPColumns: GridColDef[] = [
   { field: "value", headerName: "Value" },
 ];
 
+const MetricTypeSelect: React.FC<{
+  selectedMetricType: string;
+  setSelectedMetricType: React.Dispatch<React.SetStateAction<string>>;
+}> = ({ selectedMetricType, setSelectedMetricType }) => {
+  const handleChange = (event: SelectChangeEvent) => {
+    setSelectedMetricType(event.target.value as string);
+    console.log(`metric selected: ${selectedMetricType}`);
+  };
+
+  return (
+    <FormControl fullWidth>
+      <InputLabel id="select-label">Metric</InputLabel>
+      <Select
+        labelId="select-label"
+        id="demo-simple-select"
+        value={selectedMetricType}
+        label="Metric"
+        onChange={handleChange}
+      >
+        <MenuItem value={"AP"}>AP</MenuItem>
+        <MenuItem value={"mAP"}>mAP</MenuItem>
+      </Select>
+    </FormControl>
+  );
+};
+
 export const MetricsPage = () => {
   let { name, evalSettingsId } = useParams();
   const [selectedMetricType, setSelectedMetricType] = useState("");
@@ -65,26 +91,12 @@ export const MetricsPage = () => {
     }
   });
 
-  const handleChange = (event: SelectChangeEvent) => {
-    setSelectedMetricType(event.target.value as string);
-    console.log(`metric selected: ${selectedMetricType}`);
-  };
-
   return (
     <>
-      <FormControl fullWidth>
-        <InputLabel id="select-label">Metric</InputLabel>
-        <Select
-          labelId="select-label"
-          id="demo-simple-select"
-          value={selectedMetricType}
-          label="Metric"
-          onChange={handleChange}
-        >
-          <MenuItem value={"AP"}>AP</MenuItem>
-          <MenuItem value={"mAP"}>mAP</MenuItem>
-        </Select>
-      </FormControl>
+      <MetricTypeSelect
+        selectedMetricType={selectedMetricType}
+        setSelectedMetricType={setSelectedMetricType}
+      />
       {selectedMetricType === "AP" ? (
         <DataGrid
           rows={APs}
