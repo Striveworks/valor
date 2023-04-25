@@ -40,7 +40,6 @@ const MetricTypeSelect: React.FC<{
 }> = ({ selectedMetricType, setSelectedMetricType }) => {
   const handleChange = (event: SelectChangeEvent) => {
     setSelectedMetricType(event.target.value as string);
-    console.log(`metric selected: ${selectedMetricType}`);
   };
 
   return (
