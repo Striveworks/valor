@@ -9,21 +9,25 @@ type ModelResponse = {
 
 export const ModelsPage = () => {
   const [models, setModels] = useState<ModelResponse[]>([]);
-  useEffect(() => {
-    const url = `${process.env.REACT_APP_BACKEND_URL}/models`;
+  const url = `${process.env.REACT_APP_BACKEND_URL}/models`;
 
+  useEffect(() => {
     axios.get(url).then((response) => {
       console.log(response);
       setModels(response.data);
     });
-  }, []);
+  }, [url]);
   if (!models) return null;
 
   return (
     <>
       <Typography variant="h2">Models</Typography>
       {models.map((model) => (
-        <Link href={`/models/${model.name}`} sx={{ fontSize: 20 }}>
+        <Link
+          href={`/models/${model.name}`}
+          sx={{ fontSize: 20 }}
+          key={model.name}
+        >
           {model.name}
         </Link>
       ))}

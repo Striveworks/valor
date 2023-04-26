@@ -4,23 +4,10 @@ import { useParams } from "react-router-dom";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
+import Typography from "@mui/material/Typography";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import FormControl from "@mui/material/FormControl";
-
-type Metric = {
-  type: string;
-  parameters: { iou: number; ious: number[] };
-  label?: { key: string; value: string };
-  value: number;
-};
-
-type MetricAtIOU = {
-  labelKey?: string;
-  labelValue?: string;
-  value: number;
-  iou: number;
-  id: number;
-};
+import { EvaluationSetting, Metric, MetricAtIOU } from "./velour-types";
 
 const APColumns: GridColDef[] = [
   { field: "labelKey", headerName: "Label Key" },
@@ -85,7 +72,7 @@ const SwitchElement = ({
   return children;
 };
 
-export const MetricsPage = () => {
+const MetricsSection = () => {
   let { name, evalSettingsId } = useParams();
   const [selectedMetricType, setSelectedMetricType] = useState("");
   const [metrics, setMetrics] = useState<Metric[]>([]);
@@ -157,3 +144,31 @@ export const MetricsPage = () => {
     </>
   );
 };
+
+// const EvalSettingsTable = (evalSetting: EvaluationSetting) {
+
+// }
+
+const InfoSection = () => {
+  let { name, evalSettingsId } = useParams();
+  const [evalSettings, setEvalSettings] = useState<EvaluationSetting>();
+  const url = `${process.env.REACT_APP_BACKEND_URL}/evaluation-settings/${evalSettingsId}`;
+
+  useEffect(() => {
+    axios.get(url).then((response) => {
+      console.log("ok");
+      setEvalSettings(response.data);
+    });
+  }, [url]);
+
+  console.log(`evalSettings: ${evalSettings}`);
+
+  return <Typography variant="h2">{name}</Typography>;
+};
+
+export const MetricsPage = () => (
+  <>
+    <InfoSection />
+    <MetricsSection />
+  </>
+);

@@ -4,16 +4,7 @@ import { useParams } from "react-router-dom";
 import Typography from "@mui/material/Typography";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import Link from "@mui/material/Link";
-
-type EvaluationSetting = {
-  model_name: string;
-  dataset_name: string;
-  model_pred_task_type: string;
-  dataset_gt_task_type: string;
-  min_area: number;
-  max_area: number;
-  id: number;
-};
+import { EvaluationSetting } from "./velour-types";
 
 const taskTypeWidth = 250;
 const areaWidth = 175;
@@ -60,14 +51,12 @@ export const ModelDetailsPage = () => {
   const [allEvalSettings, setAllEvalSettings] = useState<EvaluationSetting[]>(
     []
   );
-
+  const url = `${process.env.REACT_APP_BACKEND_URL}/models/${name}/evaluation-settings`;
   useEffect(() => {
-    const url = `${process.env.REACT_APP_BACKEND_URL}/models/${name}/evaluation-settings`;
-
     axios.get(url).then((response) => {
       setAllEvalSettings(response.data);
     });
-  }, []);
+  }, [url]);
   if (!allEvalSettings) return null;
 
   return (
