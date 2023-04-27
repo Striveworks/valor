@@ -4,6 +4,8 @@ import { LogoutButton } from "./logout-button";
 import SyntaxHighlighter from "react-syntax-highlighter/dist/esm/default-highlight";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { CopyToClipboard } from "react-copy-to-clipboard";
+import Button from "@mui/material/Button";
+import { Wrapper } from "./wrapper";
 
 export const ProfilePage = () => {
   const [accessToken, setAccessToken] = useState("");
@@ -22,7 +24,7 @@ export const ProfilePage = () => {
 
   const fields = ["name", "email"];
   return (
-    <div>
+    <Wrapper>
       <h2>User Information</h2>
       <table>
         <tbody>
@@ -50,7 +52,7 @@ export const ProfilePage = () => {
             text={codeSnippet}
             onCopy={() => setSnippetCopied(true)}
           >
-            <button>Copy code to clipboard</button>
+            <Button variant="contained">Copy code to clipboard</Button>
           </CopyToClipboard>
           {snippetCopied ? (
             <span style={{ fontWeight: "bolder" }}> copied! </span>
@@ -61,6 +63,6 @@ export const ProfilePage = () => {
         <br />
         <LogoutButton />
       </div>
-    </div>
+    </Wrapper>
   );
 };

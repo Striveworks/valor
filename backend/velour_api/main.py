@@ -1,6 +1,7 @@
 import os
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -12,6 +13,13 @@ token_auth_scheme = auth.OptionalHTTPBearer()
 
 
 app = FastAPI(root_path=os.getenv("API_ROOT_PATH", ""))
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 create_db()
 
@@ -300,6 +308,16 @@ def get_model_evaluations(
     model_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.EvaluationSettings]:
     return crud.get_model_evaluation_settings(db, model_name)
+
+
+@app.get(
+    "/evaluation-settings/{evaluation_settings_id}",
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_evaluation_settings(
+    evaluation_settings_id: str, db: Session = Depends(get_db)
+):
+    return crud.get_evaluation_settings_from_id(db, evaluation_settings_id)
 
 
 @app.get(
