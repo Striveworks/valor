@@ -14,7 +14,6 @@ export const ModelsPage = () => {
 
   useEffect(() => {
     axios.get(url).then((response) => {
-      console.log(response);
       setModels(response.data);
     });
   }, [url]);

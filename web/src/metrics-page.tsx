@@ -204,12 +204,9 @@ const InfoSection = () => {
 
   useEffect(() => {
     axios.get(url).then((response) => {
-      console.log("ok");
       setEvalSettings(response.data);
     });
   }, [url]);
-
-  console.log(`evalSettings: ${evalSettings}`);
 
   return <EvalSettingsTable evalSetting={evalSettings} />;
 };
