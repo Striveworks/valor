@@ -2,6 +2,7 @@ import axios from "axios";
 import { useState, useEffect } from "react";
 import Typography from "@mui/material/Typography";
 import Link from "@mui/material/Link";
+import { Wrapper } from "./wrapper";
 
 type ModelResponse = {
   name: string;
@@ -20,7 +21,7 @@ export const ModelsPage = () => {
   if (!models) return null;
 
   return (
-    <>
+    <Wrapper>
       <Typography variant="h2">Models</Typography>
       {models.map((model) => (
         <Link
@@ -31,6 +32,6 @@ export const ModelsPage = () => {
           {model.name}
         </Link>
       ))}
-    </>
+    </Wrapper>
   );
 };

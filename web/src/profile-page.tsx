@@ -5,6 +5,7 @@ import SyntaxHighlighter from "react-syntax-highlighter/dist/esm/default-highlig
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import Button from "@mui/material/Button";
+import { Wrapper } from "./wrapper";
 
 export const ProfilePage = () => {
   const [accessToken, setAccessToken] = useState("");
@@ -23,7 +24,7 @@ export const ProfilePage = () => {
 
   const fields = ["name", "email"];
   return (
-    <div>
+    <Wrapper>
       <h2>User Information</h2>
       <table>
         <tbody>
@@ -62,6 +63,6 @@ export const ProfilePage = () => {
         <br />
         <LogoutButton />
       </div>
-    </div>
+    </Wrapper>
   );
 };

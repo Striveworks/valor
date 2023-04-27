@@ -5,6 +5,7 @@ import Typography from "@mui/material/Typography";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import Link from "@mui/material/Link";
 import { EvaluationSetting } from "./velour-types";
+import { Wrapper } from "./wrapper";
 
 const taskTypeWidth = 250;
 const areaWidth = 175;
@@ -60,7 +61,7 @@ export const ModelDetailsPage = () => {
   if (!allEvalSettings) return null;
 
   return (
-    <>
+    <Wrapper>
       <Typography variant="h2">{name}</Typography>
       <h3>Evaluations</h3>
       <DataGrid
@@ -76,6 +77,6 @@ export const ModelDetailsPage = () => {
         pageSizeOptions={[5]}
         disableRowSelectionOnClick
       />
-    </>
+    </Wrapper>
   );
 };

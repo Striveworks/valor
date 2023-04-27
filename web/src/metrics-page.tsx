@@ -11,12 +11,11 @@ import { EvaluationSetting, Metric, MetricAtIOU } from "./velour-types";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
+import { Wrapper } from "./wrapper";
 
 const APColumns: GridColDef[] = [
   { field: "labelKey", headerName: "Label Key" },
@@ -216,19 +215,21 @@ const InfoSection = () => {
 };
 
 export const MetricsPage = () => (
-  <Box sx={{ flexGrow: 1 }}>
-    <Typography variant="h4">Metrics</Typography>
-    <Grid container spacing={2}>
-      <Grid item xs={4}>
-        <Paper>
-          <InfoSection />
-        </Paper>
+  <Wrapper>
+    <Box sx={{ flexGrow: 1 }}>
+      <Typography variant="h4">Metrics</Typography>
+      <Grid container spacing={2}>
+        <Grid item xs={4}>
+          <Paper>
+            <InfoSection />
+          </Paper>
+        </Grid>
+        <Grid item xs={8}>
+          <Paper>
+            <MetricsSection />
+          </Paper>
+        </Grid>
       </Grid>
-      <Grid item xs={8}>
-        <Paper>
-          <MetricsSection />
-        </Paper>
-      </Grid>
-    </Grid>
-  </Box>
+    </Box>
+  </Wrapper>
 );
