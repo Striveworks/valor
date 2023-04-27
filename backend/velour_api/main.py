@@ -311,6 +311,16 @@ def get_model_evaluations(
 
 
 @app.get(
+    "/evaluation-settings/{evaluation_settings_id}",
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_evaluation_settings(
+    evaluation_settings_id: str, db: Session = Depends(get_db)
+):
+    return crud.get_evaluation_settings_from_id(db, evaluation_settings_id)
+
+
+@app.get(
     "/models/{model_name}/evaluation-settings/{evaluation_settings_id}/metrics",
     dependencies=[Depends(token_auth_scheme)],
 )
