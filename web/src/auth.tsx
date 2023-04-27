@@ -2,6 +2,9 @@ import { Auth0Provider, AppState } from "@auth0/auth0-react";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
+export const usingAuth = () =>
+  !(process.env.REACT_APP_AUTH0_DOMAIN === undefined);
+
 export const Auth0ProviderWithNavigate: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {

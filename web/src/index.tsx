@@ -3,7 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import App from "./App";
-import { Auth0ProviderWithNavigate } from "./auth0-provider-with-navigate";
+import { Auth0ProviderWithNavigate, usingAuth } from "./auth";
 import reportWebVitals from "./reportWebVitals";
 
 const root = ReactDOM.createRoot(
@@ -12,9 +12,13 @@ const root = ReactDOM.createRoot(
 root.render(
   <React.StrictMode>
     <BrowserRouter>
-      <Auth0ProviderWithNavigate>
+      {usingAuth() ? (
+        <Auth0ProviderWithNavigate>
+          <App />
+        </Auth0ProviderWithNavigate>
+      ) : (
         <App />
-      </Auth0ProviderWithNavigate>
+      )}
     </BrowserRouter>
   </React.StrictMode>
 );

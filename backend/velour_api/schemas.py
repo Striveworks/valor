@@ -238,6 +238,7 @@ class EvaluationSettings(BaseModel):
     dataset_gt_task_type: Task = None
     min_area: float = None
     max_area: float = None
+    id: int = None
 
 
 class APRequest(BaseModel):
@@ -260,7 +261,6 @@ class APRequest(BaseModel):
 
 class Metric(BaseModel):
     type: str
-    settings: EvaluationSettings
     parameters: dict
     value: float
     label: Label = None
@@ -297,4 +297,4 @@ class CreateMetricsResponse(BaseModel):
 class EvalJob(BaseModel):
     uid: str = Field(default_factory=lambda: str(uuid4()))
     status: JobStatus = JobStatus.PENDING
-    metric_params_id: int = None
+    evaluation_settings_id: int = None

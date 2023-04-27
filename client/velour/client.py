@@ -204,45 +204,6 @@ class Client:
     def get_all_labels(self) -> List[Label]:
         return self._requests_get_rel_host("labels").json()
 
-    def evaluate_ap(
-        self,
-        model: "Model",
-        dataset: "Dataset",
-        model_pred_task_type: Task = None,
-        dataset_gt_task_type: Task = None,
-        iou_thresholds: List[float] = None,
-        ious_to_keep: List[float] = None,
-        min_area: float = None,
-        max_area: float = None,
-    ) -> "EvalJob":
-        payload = {
-            "settings": {
-                "model_name": model.name,
-                "dataset_name": dataset.name,
-                "model_pred_task_type": model_pred_task_type.value
-                if model_pred_task_type is not None
-                else None,
-                "dataset_gt_task_type": dataset_gt_task_type.value
-                if dataset_gt_task_type is not None
-                else None,
-                "min_area": min_area,
-                "max_area": max_area,
-            }
-        }
-
-        if iou_thresholds is not None:
-            payload["iou_thresholds"] = iou_thresholds
-        if ious_to_keep is not None:
-            payload["ious_to_keep"] = ious_to_keep
-
-        resp = self._requests_post_rel_host("/ap-metrics", json=payload).json()
-        # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
-        # list of label dicts. convert label dicts to Label objects
-        for k in ["missing_pred_labels", "ignored_pred_labels"]:
-            resp[k] = [Label(**la) for la in resp[k]]
-
-        return EvalJob(client=self, **resp)
-
 
 class Dataset:
     def __init__(self, client: Client, name: str):
@@ -403,6 +364,35 @@ class Dataset:
         ]
 
 
+class EvalJob:
+    def __init__(
+        self,
+        client: Client,
+        job_id: str,
+        missing_pred_labels: List[Label],
+        ignored_pred_labels: List[Label],
+    ):
+        self._id = job_id
+        self.missing_pred_labels = missing_pred_labels
+        self.ignored_pred_labels = ignored_pred_labels
+        self.client = client
+
+    def status(self) -> str:
+        resp = self.client._requests_get_rel_host(f"/jobs/{self._id}").json()
+        return resp["status"]
+
+    def metrics(self) -> List[dict]:
+        return self.client._requests_get_rel_host(
+            f"/jobs/{self._id}/metrics"
+        ).json()
+
+    # TODO: replace value with a dataclass?
+    def settings(self) -> dict:
+        return self.client._requests_get_rel_host(
+            f"/jobs/{self._id}/settings"
+        ).json()
+
+
 class Model:
     def __init__(self, client: Client, name: str):
         self.client = client
@@ -478,25 +468,48 @@ class Model:
             f"models/{self.name}/inferences/{dataset.name}/finalize"
         ).json()
 
-
-class EvalJob:
-    def __init__(
+    def evaluate_ap(
         self,
-        client: Client,
-        job_id: str,
-        missing_pred_labels: List[Label],
-        ignored_pred_labels: List[Label],
-    ):
-        self._id = job_id
-        self.missing_pred_labels = missing_pred_labels
-        self.ignored_pred_labels = ignored_pred_labels
-        self.client = client
+        dataset: Dataset,
+        model_pred_task_type: Task = None,
+        dataset_gt_task_type: Task = None,
+        iou_thresholds: List[float] = None,
+        ious_to_keep: List[float] = None,
+        min_area: float = None,
+        max_area: float = None,
+    ) -> "EvalJob":
+        payload = {
+            "settings": {
+                "model_name": self.name,
+                "dataset_name": dataset.name,
+                "model_pred_task_type": model_pred_task_type.value
+                if model_pred_task_type is not None
+                else None,
+                "dataset_gt_task_type": dataset_gt_task_type.value
+                if dataset_gt_task_type is not None
+                else None,
+                "min_area": min_area,
+                "max_area": max_area,
+            }
+        }
 
-    def status(self) -> str:
-        resp = self.client._requests_get_rel_host(f"/jobs/{self._id}").json()
-        return resp["status"]
+        if iou_thresholds is not None:
+            payload["iou_thresholds"] = iou_thresholds
+        if ious_to_keep is not None:
+            payload["ious_to_keep"] = ious_to_keep
 
-    def metrics(self) -> List[dict]:
-        return self.client._requests_get_rel_host(
-            f"/jobs/{self._id}/metrics"
+        resp = self.client._requests_post_rel_host(
+            "/ap-metrics", json=payload
         ).json()
+        # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
+        # list of label dicts. convert label dicts to Label objects
+        for k in ["missing_pred_labels", "ignored_pred_labels"]:
+            resp[k] = [Label(**la) for la in resp[k]]
+
+        return EvalJob(client=self.client, **resp)
+
+    def get_metrics(self, dataset: Dataset, metric_type):
+        pass
+
+    def get_evaluation_settings(self):
+        pass
