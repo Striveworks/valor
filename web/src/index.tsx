@@ -58,22 +58,7 @@ const theme = createTheme({
       paper: StriveColors.backgroundDark,
     },
   },
-  typography: {
-    fontFamily: "Anek Tamil",
-    allVariants: {
-      color: "white",
-    },
-  },
   components: {
-    MuiDataGrid: {
-      styleOverrides: {
-        columnHeader: {
-          fontSize: 18,
-          fontWeight: 500,
-          // color: "red",
-        },
-      },
-    },
     MuiCssBaseline: {
       styleOverrides: {
         body: {

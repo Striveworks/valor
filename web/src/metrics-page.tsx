@@ -8,6 +8,12 @@ import Typography from "@mui/material/Typography";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import FormControl from "@mui/material/FormControl";
 import { EvaluationSetting, Metric, MetricAtIOU } from "./velour-types";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
 
 const APColumns: GridColDef[] = [
   { field: "labelKey", headerName: "Label Key" },
@@ -145,9 +151,46 @@ const MetricsSection = () => {
   );
 };
 
-// const EvalSettingsTable = (evalSetting: EvaluationSetting) {
-
-// }
+const EvalSettingsTable = ({
+  evalSetting,
+}: {
+  evalSetting: EvaluationSetting | undefined;
+}): JSX.Element => {
+  return (
+    <Table>
+      <TableBody>
+        <TableRow>
+          <TableCell variant="head">Dataset</TableCell>
+          <TableCell>{evalSetting?.dataset_name}</TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell variant="head">Dataset task type</TableCell>
+          <TableCell>{evalSetting?.dataset_gt_task_type}</TableCell>
+        </TableRow>
+        <TableRow>
+          <TableCell variant="head">Model task type</TableCell>
+          <TableCell>{evalSetting?.model_pred_task_type}</TableCell>
+        </TableRow>
+        {evalSetting?.min_area ? (
+          <TableRow>
+            <TableCell variant="head">Min object area</TableCell>
+            <TableCell>{evalSetting?.min_area}</TableCell>
+          </TableRow>
+        ) : (
+          <></>
+        )}
+        {evalSetting?.max_area ? (
+          <TableRow>
+            <TableCell variant="head">Max object area</TableCell>
+            <TableCell>{evalSetting?.max_area}</TableCell>
+          </TableRow>
+        ) : (
+          <></>
+        )}
+      </TableBody>
+    </Table>
+  );
+};
 
 const InfoSection = () => {
   let { name, evalSettingsId } = useParams();
@@ -163,7 +206,12 @@ const InfoSection = () => {
 
   console.log(`evalSettings: ${evalSettings}`);
 
-  return <Typography variant="h2">{name}</Typography>;
+  return (
+    <>
+      <Typography variant="h2">{name}</Typography>
+      <EvalSettingsTable evalSetting={evalSettings} />
+    </>
+  );
 };
 
 export const MetricsPage = () => (
