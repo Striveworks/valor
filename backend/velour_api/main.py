@@ -292,6 +292,28 @@ def get_model_metrics(
         raise HTTPException(status_code=404, detail=str(e))
 
 
+@app.get(
+    "/models/{model_name}/evaluation-settings",
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_model_evaluations(
+    model_name: str, db: Session = Depends(get_db)
+) -> list[schemas.EvaluationSettings]:
+    return crud.get_model_evaluation_settings(db, model_name)
+
+
+@app.get(
+    "/models/{model_name}/evaluation-settings/{evaluation_settings_id}/metrics",
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_model_evaluation_metrics(
+    evaluation_settings_id: str, db: Session = Depends(get_db)
+) -> list[schemas.Metric]:
+    return crud.get_metrics_from_evaluation_settings_id(
+        db, evaluation_settings_id
+    )
+
+
 @app.post(
     "/ap-metrics", status_code=202, dependencies=[Depends(token_auth_scheme)]
 )
@@ -365,7 +387,27 @@ def get_job_metrics(
                 status_code=404,
                 detail=f"No metrics for job since its status is {job.status}",
             )
-        return crud.get_metrics_from_metric_params_id(db, job.metric_params_id)
+        return crud.get_metrics_from_evaluation_settings_id(
+            db, job.evaluation_settings_id
+        )
+    except exceptions.JobDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get("/jobs/{job_id}/settings", dependencies=[Depends(token_auth_scheme)])
+def get_job_settings(
+    job_id: str, db: Session = Depends(get_db)
+) -> schemas.EvaluationSettings:
+    try:
+        job = jobs.get_job(job_id)
+        if job.status != enums.JobStatus.DONE:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No settings for job since its status is {job.status}",
+            )
+        return crud.get_evaluation_settings_from_id(
+            db, job.evaluation_settings_id
+        )
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

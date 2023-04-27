@@ -97,12 +97,12 @@ def wrap_metric_computation(fn: callable) -> tuple[EvalJob, callable]:
             add_job(job)
             logger.debug(f"starting computing metrics using {fn}")
             start = perf_counter()
-            metric_params_id = fn(*args, **kwargs)
+            evaluation_settings_id = fn(*args, **kwargs)
             logger.debug(
                 f"finished computing metrics in {perf_counter() - start} seconds"
             )
             job.status = JobStatus.DONE
-            job.metric_params_id = metric_params_id
+            job.evaluation_settings_id = evaluation_settings_id
             add_job(job)
         except Exception as e:
             job.status = JobStatus.FAILED

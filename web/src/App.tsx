@@ -3,6 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import { CallbackPage } from "./callback-page";
 import { ProfilePage } from "./profile-page";
 import { LoginButton } from "./login-button";
+import { usingAuth } from "./auth";
 
 function App() {
   return (
@@ -13,7 +14,7 @@ function App() {
           <div className="App">
             <header className="App-header">
               <h1>velour</h1>
-              <LoginButton />
+              {usingAuth() ? <LoginButton /> : <></>}
             </header>
           </div>
         }
