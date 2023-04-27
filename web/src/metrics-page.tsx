@@ -14,6 +14,9 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
+import Grid from "@mui/material/Grid";
+import Paper from "@mui/material/Paper";
+import Box from "@mui/material/Box";
 
 const APColumns: GridColDef[] = [
   { field: "labelKey", headerName: "Label Key" },
@@ -83,13 +86,12 @@ const MetricsSection = () => {
   const [selectedMetricType, setSelectedMetricType] = useState("");
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const metricsWithIds = metrics.map((m, i) => ({ ...m, id: i }));
+  const url = `${process.env.REACT_APP_BACKEND_URL}/models/${name}/evaluation-settings/${evalSettingsId}/metrics`;
   useEffect(() => {
-    const url = `${process.env.REACT_APP_BACKEND_URL}/models/${name}/evaluation-settings/${evalSettingsId}/metrics`;
-
     axios.get(url).then((response) => {
       setMetrics(response.data);
     });
-  });
+  }, [url]);
   if (!metrics) return null;
 
   const APs: MetricAtIOU[] = [];
@@ -160,6 +162,10 @@ const EvalSettingsTable = ({
     <Table>
       <TableBody>
         <TableRow>
+          <TableCell variant="head">Model</TableCell>
+          <TableCell>{evalSetting?.model_name}</TableCell>
+        </TableRow>
+        <TableRow>
           <TableCell variant="head">Dataset</TableCell>
           <TableCell>{evalSetting?.dataset_name}</TableCell>
         </TableRow>
@@ -193,7 +199,7 @@ const EvalSettingsTable = ({
 };
 
 const InfoSection = () => {
-  let { name, evalSettingsId } = useParams();
+  let { evalSettingsId } = useParams();
   const [evalSettings, setEvalSettings] = useState<EvaluationSetting>();
   const url = `${process.env.REACT_APP_BACKEND_URL}/evaluation-settings/${evalSettingsId}`;
 
@@ -206,17 +212,23 @@ const InfoSection = () => {
 
   console.log(`evalSettings: ${evalSettings}`);
 
-  return (
-    <>
-      <Typography variant="h2">{name}</Typography>
-      <EvalSettingsTable evalSetting={evalSettings} />
-    </>
-  );
+  return <EvalSettingsTable evalSetting={evalSettings} />;
 };
 
 export const MetricsPage = () => (
-  <>
-    <InfoSection />
-    <MetricsSection />
-  </>
+  <Box sx={{ flexGrow: 1 }}>
+    <Typography variant="h4">Metrics</Typography>
+    <Grid container spacing={2}>
+      <Grid item xs={4}>
+        <Paper>
+          <InfoSection />
+        </Paper>
+      </Grid>
+      <Grid item xs={8}>
+        <Paper>
+          <MetricsSection />
+        </Paper>
+      </Grid>
+    </Grid>
+  </Box>
 );
