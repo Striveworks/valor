@@ -48,3 +48,20 @@ def precision_and_recall_f1_at_class_index_from_confusion_matrix(
     else:
         f1 = 2 * prec * recall / f1_denom
     return prec, recall, f1
+
+
+def _binary_roc_auc(groundtruths: list[bool], preds: list[float]) -> float:
+    # sort the arrays by decreasing order of the scores
+    sorted_idxs = np.argsort(preds)[::-1]
+
+    groundtruths = np.array(groundtruths)[sorted_idxs]
+    preds = np.array(preds)[sorted_idxs]
+
+    n_gts = groundtruths.sum()
+    tps = np.cumsum(groundtruths)
+    tprs = tps / n_gts
+
+    fps = np.cumsum(~groundtruths)
+    fprs = fps / (len(groundtruths) - n_gts)
+
+    return np.trapz(x=fprs, y=tprs)
