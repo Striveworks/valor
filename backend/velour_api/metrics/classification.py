@@ -65,3 +65,40 @@ def _binary_roc_auc(groundtruths: list[bool], preds: list[float]) -> float:
     fprs = fps / (len(groundtruths) - n_gts)
 
     return np.trapz(x=fprs, y=tprs)
+
+
+def roc_auc(groundtruths: list[str], preds: list[dict[str, float]]) -> float:
+    """Comptues the area under the ROC curve. Note that for the multi-class setting
+    this does one-vs-rest AUC for each class and then averages those scores.
+
+    Parameters
+    ----------
+    groundtruths
+        list of groundtruth labels
+    preds
+        list of (soft) predictions. each element should be a dictionary with
+        keys equal to the set of unique labels present in groundtruths and values
+        the prediction score for that class
+
+    Returns
+    -------
+    float
+        ROC AUC
+    """
+    if len(groundtruths) != len(preds):
+        raise RuntimeError(
+            "`groundtruths` and `preds` should have the same length."
+        )
+
+    for pred in preds:
+        if abs(sum(pred.values()) - 1) >= 1e-5:
+            raise ValueError("Sum of predictions should be 1.0")
+
+    unique_classes = set(groundtruths)
+    sum_roc_aucs = 0
+    for c in unique_classes:
+        gts = [gt == c for gt in groundtruths]
+        ps = [pred[c] for pred in preds]
+        sum_roc_aucs += _binary_roc_auc(groundtruths=gts, preds=ps)
+
+    return sum_roc_aucs / len(unique_classes)
