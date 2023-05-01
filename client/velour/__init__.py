@@ -1,5 +1,9 @@
 import sys
 
+from .client import Client
+
+__all__ = ["Client"]
+
 if sys.version_info.minor >= 8:
     import importlib.metadata as importlib_metadata
 else:
