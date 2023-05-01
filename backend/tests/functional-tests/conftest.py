@@ -18,6 +18,9 @@ classes = [
 tablenames = [v.__tablename__ for v in classes if hasattr(v, "__tablename__")]
 
 
+np.random.seed(29)
+
+
 def drop_all(db):
     db.execute(text(f"DROP TABLE {', '.join(tablenames)};"))
     db.commit()
@@ -40,6 +43,11 @@ def mask_bytes1():
 @pytest.fixture
 def mask_bytes2():
     return random_mask_bytes(size=(16, 12))
+
+
+@pytest.fixture
+def mask_bytes3():
+    return random_mask_bytes(size=(20, 27))
 
 
 @pytest.fixture
@@ -162,7 +170,7 @@ def groundtruths(
     db_gts_per_img = [
         [
             schemas.GroundTruthDetection(
-                boundary=bounding_box(*box),
+                bbox=box,
                 labels=[schemas.Label(key="class", value=class_label)],
                 image=image,
             )
@@ -258,7 +266,7 @@ def predictions(
     db_preds_per_img = [
         [
             schemas.PredictedDetection(
-                boundary=bounding_box(*box),
+                bbox=box,
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="class", value=class_label),

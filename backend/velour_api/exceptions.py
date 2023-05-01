@@ -37,3 +37,15 @@ class ImageDoesNotExistError(Exception):
         return super().__init__(
             f"Image with uid '{uid}' does not exist in dataset '{dataset_name}'."
         )
+
+
+class JobDoesNotExistError(Exception):
+    def __init__(self, uid: str):
+        return super().__init__(f"Job with uid '{uid} does not exist")
+
+
+class InferencesAreNotFinalizedError(Exception):
+    def __init__(self, dataset_name: str, model_name: str):
+        return super().__init__(
+            f"Inferences for model {model_name} on dataset {dataset_name} are not finalized."
+        )

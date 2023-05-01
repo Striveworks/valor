@@ -5,7 +5,17 @@ from sqlalchemy.orm import Session
 from velour_api import exceptions, models, schemas
 from velour_api.metrics import compute_ap_metrics
 
-from ._read import get_dataset, get_image, get_model
+from ._read import (
+    _instance_segmentations_in_dataset_statement,
+    _model_instance_segmentation_preds_statement,
+    _model_object_detection_preds_statement,
+    _object_detections_in_dataset_statement,
+    get_dataset,
+    get_dataset_task_types,
+    get_image,
+    get_model,
+    get_model_task_types,
+)
 
 
 def _labels_in_query(
@@ -94,6 +104,8 @@ def _create_gt_segmentation_mappings(
     segmentations: list[schemas.GroundTruthSegmentation],
     images: list[models.Image],
 ) -> list[dict[str, str]]:
+    assert len(segmentations) == len(images)
+
     def _create_single_mapping(
         seg: schemas.GroundTruthSegmentation, image: models.Image
     ):
@@ -435,14 +447,24 @@ def create_predicted_image_classifications(
     )
 
 
-def _get_or_create_row(db: Session, model_class: type, mapping: dict) -> any:
+def _get_or_create_row(
+    db: Session,
+    model_class: type,
+    mapping: dict,
+    columns_to_ignore: list[str] = None,
+) -> any:
     """Tries to get the row defined by mapping. If that exists then
     its mapped object is returned. Otherwise a row is created by `mapping` and the newly created
-    object is returned
+    object is returned. `columns_to_ignore` specifies any columns to ignore in forming the where
+    expression. this can be used for numerical columns that might slightly differ but are essentially the same
+    (and where the other columns serve as unique identifiers)
     """
+    columns_to_ignore = columns_to_ignore or []
     # create the query from the mapping
     where_expressions = [
-        (getattr(model_class, k) == v) for k, v in mapping.items()
+        (getattr(model_class, k) == v)
+        for k, v in mapping.items()
+        if k not in columns_to_ignore
     ]
     where_expression = where_expressions[0]
     for exp in where_expressions[1:]:
@@ -513,31 +535,116 @@ def _label_key_value_to_id(
     }
 
 
-def _create_ap_metric_mappings(
-    db: Session, metrics: list[schemas.APMetric], metric_parameters_id: int
+def _ap_metric_to_mapping(
+    metric: schemas.APMetric, label_id: int, evaluation_settings_id: int
+) -> dict:
+    return {
+        "value": metric.value,
+        "label_id": label_id,
+        "type": "AP",
+        "evaluation_settings_id": evaluation_settings_id,
+        "parameters": {"iou": metric.iou},
+    }
+
+
+def _ap_metric_averaged_over_ious_to_mapping(
+    metric: schemas.APMetricAveragedOverIOUs,
+    label_id: int,
+    evaluation_settings_id: int,
+) -> dict:
+    return {
+        "value": metric.value,
+        "label_id": label_id,
+        "type": "APAveragedOverIOUs",
+        "evaluation_settings_id": evaluation_settings_id,
+        "parameters": {"ious": list(metric.ious)},
+    }
+
+
+def _map_metric_to_mapping(
+    metric: schemas.mAPMetric, evaluation_settings_id: int
+) -> dict:
+    return {
+        "value": metric.value,
+        "type": "mAP",
+        "evaluation_settings_id": evaluation_settings_id,
+        "parameters": {"iou": metric.iou},
+    }
+
+
+def _map_metric_averaged_over_ious_to_mapping(
+    metric: schemas.APMetricAveragedOverIOUs, evaluation_settings_id: int
+) -> dict:
+    return {
+        "value": metric.value,
+        "type": "mAPAveragedOverIOUs",
+        "evaluation_settings_id": evaluation_settings_id,
+        "parameters": {"ious": list(metric.ious)},
+    }
+
+
+def _create_metric_mappings(
+    db: Session,
+    metrics: list[
+        schemas.APMetric
+        | schemas.APMetricAveragedOverIOUs
+        | schemas.mAPMetric
+        | schemas.mAPMetricAveragedOverIOUs
+    ],
+    evaluation_settings_id: int,
 ) -> list[dict]:
     label_map = _label_key_value_to_id(
         db=db,
         labels=set(
-            [(metric.label.key, metric.label.value) for metric in metrics]
+            [
+                (metric.label.key, metric.label.value)
+                for metric in metrics
+                if hasattr(metric, "label")
+            ]
         ),
     )
-    return [
-        {
-            "value": metric.value,
-            "label_id": label_map[(metric.label.key, metric.label.value)],
-            "iou": metric.iou,
-            "metric_parameters_id": metric_parameters_id,
-        }
-        for metric in metrics
-    ]
+    ret = []
+    for metric in metrics:
+        if isinstance(metric, schemas.APMetric):
+            ret.append(
+                _ap_metric_to_mapping(
+                    metric=metric,
+                    label_id=label_map[(metric.label.key, metric.label.value)],
+                    evaluation_settings_id=evaluation_settings_id,
+                )
+            )
+        elif isinstance(metric, schemas.APMetricAveragedOverIOUs):
+            ret.append(
+                _ap_metric_averaged_over_ious_to_mapping(
+                    metric=metric,
+                    label_id=label_map[(metric.label.key, metric.label.value)],
+                    evaluation_settings_id=evaluation_settings_id,
+                )
+            )
+        elif isinstance(metric, schemas.mAPMetric):
+            ret.append(
+                _map_metric_to_mapping(
+                    metric=metric,
+                    evaluation_settings_id=evaluation_settings_id,
+                )
+            )
+        elif isinstance(metric, schemas.mAPMetricAveragedOverIOUs):
+            ret.append(
+                _map_metric_averaged_over_ious_to_mapping(
+                    metric=metric,
+                    evaluation_settings_id=evaluation_settings_id,
+                )
+            )
+        else:
+            raise ValueError(f"Got an unexpected metric type: {type(metric)}")
+
+    return ret
 
 
 def validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
     db: Session,
     gts_statement: Select,
     preds_statement: Select,
-    requested_labels: list[schemas.Label] = None,
 ) -> tuple[Select, Select, list[schemas.Label], list[schemas.Label]]:
     """Takes statements defining a collection of labeled groundtruths and labeled predictions,
     and a list of requsted labels and creates a new statement that further
@@ -552,9 +659,6 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
         the select statement that defines the colllection of labeled groundtruths
     preds_statement
         the select statement that defines the colllection of labeled predictions
-    requested_labels
-        list of labels requested. if this is None then all labels present in the collection
-        defined by `gts_statement` are used.
 
     Returns
     -------
@@ -576,53 +680,23 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
 
     available_labels = _labels_in_query(db, gts_statement)
 
-    if requested_labels is None:
-        requested_label_tuples = set(
-            [(label.key, label.value) for label in available_labels]
-        )
-        pred_label_tuples = set(
-            [
-                (label.key, label.value)
-                for label in _labels_in_query(db, preds_statement)
-            ]
-        )
-        labels_to_use_ids = [label.id for label in available_labels]
-    else:
-        pred_labels = _labels_in_query(db, preds_statement)
-
-        # convert available labels and requested labels to key/value tuples to allow easy comparison
-        available_label_tuples = set(
-            [(label.key, label.value) for label in available_labels]
-        )
-        requested_label_tuples = set(
-            [(label.key, label.value) for label in requested_labels]
-        )
-        pred_label_tuples = set(
-            [(label.key, label.value) for label in pred_labels]
-        )
-
-        # filter to those labels specified
-        if not (requested_label_tuples <= available_label_tuples):
-            raise ValueError(
-                f"The following label key/value pairs are missing in the dataset: {requested_label_tuples - available_label_tuples}"
-            )
-
-        labels_to_use_ids = [
-            label.id
-            for label in available_labels
-            if (label.key, label.value) in requested_label_tuples
+    label_tuples = set(
+        [(label.key, label.value) for label in available_labels]
+    )
+    pred_label_tuples = set(
+        [
+            (label.key, label.value)
+            for label in _labels_in_query(db, preds_statement)
         ]
-
-        gts_statement = gts_statement.join(models.Label).where(
-            models.Label.id.in_(labels_to_use_ids)
-        )
+    )
+    labels_to_use_ids = [label.id for label in available_labels]
 
     preds_statement = preds_statement.join(models.Label).where(
         models.Label.id.in_(labels_to_use_ids)
     )
 
-    missing_pred_labels = requested_label_tuples - pred_label_tuples
-    ignored_pred_labels = pred_label_tuples - requested_label_tuples
+    missing_pred_labels = label_tuples - pred_label_tuples
+    ignored_pred_labels = pred_label_tuples - label_tuples
 
     # convert back to labels
     missing_pred_labels = [
@@ -640,116 +714,141 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     )
 
 
-def _instance_segmentations_in_dataset_statement(dataset_name: str) -> Select:
-    return (
-        select(models.LabeledGroundTruthSegmentation)
-        .join(models.GroundTruthSegmentation)
-        .join(models.Image)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.GroundTruthSegmentation.is_instance,
-                models.Dataset.name == dataset_name,
-            )
+def _validate_and_update_evaluation_settings_task_type_for_detection(
+    db: Session, evaluation_settings: schemas.EvaluationSettings
+) -> None:
+    """If the model or dataset task types are none, then get these from the
+    datasets themselves. In either case verify that these task types are compatible
+    for detection evaluation.
+    """
+    dataset_name = evaluation_settings.dataset_name
+    model_name = evaluation_settings.model_name
+    if get_dataset(db, dataset_name).draft:
+        raise exceptions.DatasetIsDraftError(evaluation_settings.dataset_name)
+    # check that inferences are finalized
+    if not _check_finalized_inferences(
+        db, model_name=model_name, dataset_name=dataset_name
+    ):
+        raise exceptions.InferencesAreNotFinalizedError(
+            dataset_name=dataset_name, model_name=model_name
         )
+
+    # do some validation
+    allowable_tasks = set(
+        [
+            schemas.Task.BBOX_OBJECT_DETECTION,
+            schemas.Task.POLY_OBJECT_DETECTION,
+            schemas.Task.INSTANCE_SEGMENTATION,
+        ]
     )
 
-
-def _object_detections_in_dataset_statement(dataset_name: str) -> Select:
-    return (
-        select(models.LabeledGroundTruthDetection)
-        .join(models.GroundTruthDetection)
-        .join(models.Image)
-        .join(models.Dataset)
-        .where(models.Dataset.name == dataset_name)
-    )
-
-
-def _model_instance_segmentation_preds_statement(
-    model_name: str, dataset_name: str
-) -> Select:
-    return (
-        select(models.LabeledPredictedSegmentation)
-        .join(models.PredictedSegmentation)
-        .join(models.Image)
-        .join(models.Model)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Model.name == model_name,
-                models.Dataset.name == dataset_name,
-                models.PredictedSegmentation.is_instance,
+    if evaluation_settings.dataset_gt_task_type is None:
+        dset_task_types = get_dataset_task_types(db, dataset_name)
+        inter = allowable_tasks.intersection(dset_task_types)
+        if len(inter) > 1:
+            raise RuntimeError(
+                f"The dataset has the following tasks compatible for object detection evaluation: {dset_task_types}. Which one to use must be specified."
             )
-        )
-    )
-
-
-def _model_object_detection_preds_statement(
-    model_name: str, dataset_name
-) -> Select:
-    return (
-        select(models.LabeledPredictedDetection)
-        .join(models.PredictedDetection)
-        .join(models.Image)
-        .join(models.Model)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Model.name == model_name,
-                models.Dataset.name == dataset_name,
+        if len(inter) == 0:
+            raise RuntimeError(
+                "The dataset does not have any annotations to support object detection evaluation."
             )
+        evaluation_settings.dataset_gt_task_type = inter.pop()
+    elif evaluation_settings.dataset_gt_task_type not in allowable_tasks:
+        raise ValueError(
+            f"`dataset_gt_task_type` must be one of {allowable_tasks} but got {evaluation_settings.dataset_gt_task_type}."
         )
-    )
+
+    if evaluation_settings.model_pred_task_type is None:
+        model_task_types = get_model_task_types(
+            db, model_name=model_name, dataset_name=dataset_name
+        )
+        inter = allowable_tasks.intersection(model_task_types)
+        if len(inter) > 1:
+            raise RuntimeError(
+                f"The model has the following tasks compatible for object detection evaluation: {model_task_types}. Which one to use must be specified."
+            )
+        if len(inter) == 0:
+            raise RuntimeError(
+                "The model does not have any inferences to support object detection evaluation."
+            )
+        evaluation_settings.model_pred_task_type = inter.pop()
+    elif evaluation_settings.model_pred_task_type not in allowable_tasks:
+        raise ValueError(
+            f"`pred_type` must be one of {allowable_tasks} but got {evaluation_settings.model_pred_task_type}."
+        )
 
 
 def validate_create_ap_metrics(
     db: Session, request_info: schemas.APRequest
-) -> tuple[Select, Select, schemas.CreateMetricsResponse]:
+) -> tuple[Select, Select, list[schemas.Label], list[schemas.Label]]:
     """Validates request_info and produces select statements for grabbing groundtruth and
     prediction data
-    """
-    if get_dataset(db, request_info.parameters.dataset_name).draft:
-        raise exceptions.DatasetIsDraftError(
-            request_info.parameters.dataset_name
-        )
-    # do some validation
-    allowable_tasks = [
-        schemas.Task.OBJECT_DETECTION,
-        schemas.Task.INSTANCE_SEGMENTATION,
-    ]
-    if request_info.parameters.model_pred_task_type not in allowable_tasks:
-        raise ValueError(
-            f"`pred_type` must be one of {allowable_tasks} but got {request_info.parameters.model_pred_task_type}."
-        )
-    if request_info.parameters.dataset_gt_task_type not in allowable_tasks:
-        raise ValueError(
-            f"`dataset_gt_task_type` must be one of {allowable_tasks} but got {request_info.parameters.dataset_gt_task_type}."
-        )
 
-    if (
-        request_info.parameters.dataset_gt_task_type
-        == schemas.Task.OBJECT_DETECTION
-    ):
+    Returns
+    -------
+    tuple[Select, Select, list[schemas.Label], list[schemas.Label]]
+        first element is the select statement for groundtruths, second is the select statement
+        for predictions, third is list of labels that were missing in the predictions, and fourth
+        is list of labels in the predictions that were ignored (because they weren't in the groundtruth)
+    """
+
+    _validate_and_update_evaluation_settings_task_type_for_detection(
+        db, evaluation_settings=request_info.settings
+    )
+
+    # when computing AP, the fidelity of a detection will drop to the minimum fidelity of the groundtruth and predicted
+    # task type. e.g. if one is bounding box detection but the other is polygon object detection, then the polygons will be
+    # converted to bounding boxes. we want the area filters to operate after this conversion.
+    gt_and_pred_tasks = [
+        request_info.settings.dataset_gt_task_type,
+        request_info.settings.model_pred_task_type,
+    ]
+    if schemas.Task.BBOX_OBJECT_DETECTION in gt_and_pred_tasks:
+        common_task = schemas.Task.BBOX_OBJECT_DETECTION
+    elif schemas.Task.POLY_OBJECT_DETECTION in gt_and_pred_tasks:
+        common_task = schemas.Task.POLY_OBJECT_DETECTION
+    else:
+        common_task = schemas.Task.INSTANCE_SEGMENTATION
+
+    if request_info.settings.dataset_gt_task_type in [
+        schemas.Task.BBOX_OBJECT_DETECTION,
+        schemas.Task.POLY_OBJECT_DETECTION,
+    ]:
         gts_statement = _object_detections_in_dataset_statement(
-            request_info.parameters.dataset_name
+            dataset_name=request_info.settings.dataset_name,
+            task=request_info.settings.dataset_gt_task_type,
+            min_area=request_info.settings.min_area,
+            max_area=request_info.settings.max_area,
+            task_for_area_computation=common_task,
         )
     else:
         gts_statement = _instance_segmentations_in_dataset_statement(
-            request_info.parameters.dataset_name
+            dataset_name=request_info.settings.dataset_name,
+            min_area=request_info.settings.min_area,
+            max_area=request_info.settings.max_area,
+            task_for_area_computation=common_task,
         )
 
-    if (
-        request_info.parameters.model_pred_task_type
-        == schemas.Task.OBJECT_DETECTION
-    ):
+    if request_info.settings.model_pred_task_type in [
+        schemas.Task.BBOX_OBJECT_DETECTION,
+        schemas.Task.POLY_OBJECT_DETECTION,
+    ]:
         preds_statement = _model_object_detection_preds_statement(
-            model_name=request_info.parameters.model_name,
-            dataset_name=request_info.parameters.dataset_name,
+            model_name=request_info.settings.model_name,
+            dataset_name=request_info.settings.dataset_name,
+            task=request_info.settings.model_pred_task_type,
+            min_area=request_info.settings.min_area,
+            max_area=request_info.settings.max_area,
+            task_for_area_computation=common_task,
         )
     else:
         preds_statement = _model_instance_segmentation_preds_statement(
-            model_name=request_info.parameters.model_name,
-            dataset_name=request_info.parameters.dataset_name,
+            model_name=request_info.settings.model_name,
+            dataset_name=request_info.settings.dataset_name,
+            min_area=request_info.settings.min_area,
+            max_area=request_info.settings.max_area,
+            task_for_area_computation=common_task,
         )
 
     (
@@ -758,19 +857,14 @@ def validate_create_ap_metrics(
         missing_pred_labels,
         ignored_pred_labels,
     ) = validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
-        db=db,
-        gts_statement=gts_statement,
-        preds_statement=preds_statement,
-        requested_labels=request_info.labels,
+        db=db, gts_statement=gts_statement, preds_statement=preds_statement
     )
 
     return (
         gts_statement,
         preds_statement,
-        schemas.CreateMetricsResponse(
-            missing_pred_labels=missing_pred_labels,
-            ignored_pred_labels=ignored_pred_labels,
-        ),
+        missing_pred_labels,
+        ignored_pred_labels,
     )
 
 
@@ -779,7 +873,7 @@ def create_ap_metrics(
     gts_statement: Select,
     preds_statement: Select,
     request_info: schemas.APRequest,
-):
+) -> int:
     # need to break down preds and gts by image
     gts = db.scalars(gts_statement).all()
     preds = db.scalars(preds_statement).all()
@@ -807,35 +901,83 @@ def create_ap_metrics(
         all_gts.append(image_id_to_gts.get(image_id, []))
         all_preds.append(image_id_to_preds.get(image_id, []))
 
-    ap_metrics = compute_ap_metrics(
+    metrics = compute_ap_metrics(
         db=db,
         predictions=all_preds,
         groundtruths=all_gts,
         iou_thresholds=request_info.iou_thresholds,
+        ious_to_keep=request_info.ious_to_keep,
     )
 
-    dataset_id = get_dataset(db, request_info.parameters.dataset_name).id
-    model_id = get_model(db, request_info.parameters.model_name).id
+    dataset_id = get_dataset(db, request_info.settings.dataset_name).id
+    model_id = get_model(db, request_info.settings.model_name).id
 
     mp = _get_or_create_row(
         db,
-        models.MetricParameters,
+        models.EvaluationSettings,
         mapping={
             "dataset_id": dataset_id,
             "model_id": model_id,
-            "model_pred_task_type": request_info.parameters.model_pred_task_type,
-            "dataset_gt_task_type": request_info.parameters.dataset_gt_task_type,
+            "model_pred_task_type": request_info.settings.model_pred_task_type,
+            "dataset_gt_task_type": request_info.settings.dataset_gt_task_type,
+            "min_area": request_info.settings.min_area,
+            "max_area": request_info.settings.max_area,
         },
     )
 
-    ap_metric_mappings = _create_ap_metric_mappings(
-        db=db, metrics=ap_metrics, metric_parameters_id=mp.id
+    metric_mappings = _create_metric_mappings(
+        db=db, metrics=metrics, evaluation_settings_id=mp.id
     )
 
-    ap_metric_ids = [
-        _get_or_create_row(db, models.APMetric, mapping).id
-        for mapping in ap_metric_mappings
-    ]
+    for mapping in metric_mappings:
+        # ignore value since the other columns are unique identifiers
+        # and have empircally noticed value can slightly change due to floating
+        # point errors
+        _get_or_create_row(
+            db, models.Metric, mapping, columns_to_ignore=["value"]
+        )
     db.commit()
 
-    return ap_metric_ids
+    return mp.id
+
+
+def _check_finalized_inferences(
+    db: Session, model_name: str, dataset_name: str
+) -> bool:
+    """Checks if inferences of model given by `model_name` on dataset given by `dataset_name`
+    are finalized
+    """
+    model_id = get_model(db, model_name).id
+    dataset_id = get_dataset(db, dataset_name).id
+    entries = db.scalars(
+        select(models.FinalizedInferences).where(
+            and_(
+                models.FinalizedInferences.model_id == model_id,
+                models.FinalizedInferences.dataset_id == dataset_id,
+            )
+        )
+    ).all()
+    # this should never happen because of uniqueness constraint
+    if len(entries) > 1:
+        raise RuntimeError(
+            f"got multiple entries for finalized inferences with model id {model_id} "
+            f"and dataset id {dataset_id}, which should never happen"
+        )
+
+    return len(entries) != 0
+
+
+def finalize_inferences(
+    db: Session, model_name: str, dataset_name: str
+) -> None:
+    dataset = get_dataset(db, dataset_name)
+    if dataset.draft:
+        raise exceptions.DatasetIsDraftError(dataset_name)
+
+    model_id = get_model(db, model_name).id
+    dataset_id = dataset.id
+
+    db.add(
+        models.FinalizedInferences(dataset_id=dataset_id, model_id=model_id)
+    )
+    db.commit()

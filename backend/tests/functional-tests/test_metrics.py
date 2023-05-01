@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from velour_api.metrics import compute_ap_metrics, compute_map_metrics_from_aps
+from velour_api.metrics import compute_ap_metrics
 from velour_api.models import (
     LabeledGroundTruthDetection,
     LabeledPredictedDetection,
@@ -23,22 +23,15 @@ def test_compute_ap_metrics(
     groundtruths: list[list[LabeledGroundTruthDetection]],
     predictions: list[list[LabeledPredictedDetection]],
 ):
-    iou_thresholds = [round(0.5 + 0.05 * i, 2) for i in range(10)]
-    ap_metrics = compute_ap_metrics(
+    iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
+    metrics = compute_ap_metrics(
         db=db,
         predictions=predictions,
         groundtruths=groundtruths,
         iou_thresholds=iou_thresholds,
+        ious_to_keep=[0.5, 0.75],
     )
-    map_metrics = compute_map_metrics_from_aps(ap_metrics)
-    metrics = ap_metrics + map_metrics
 
-    # only look at APs at thresholds 0.5 and 0.75 or averaged over all iou thresholds
-    metrics = [
-        m for m in metrics if m.iou in [0.5, 0.75] or isinstance(m.iou, list)
-    ]
-
-    # convert to dicts and round
     metrics = [m.dict() for m in metrics]
     for m in metrics:
         round_dict_(m, 3)
@@ -46,6 +39,7 @@ def test_compute_ap_metrics(
     # cf with torch metrics/pycocotools results listed here:
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231
     expected = [
+        # AP METRICS
         {"iou": 0.5, "value": 0.505, "label": {"key": "class", "value": "2"}},
         {"iou": 0.75, "value": 0.505, "label": {"key": "class", "value": "2"}},
         {"iou": 0.5, "value": 0.79, "label": {"key": "class", "value": "49"}},
@@ -62,30 +56,42 @@ def test_compute_ap_metrics(
         {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "1"}},
         {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "4"}},
         {"iou": 0.75, "value": 1.0, "label": {"key": "class", "value": "4"}},
+        # mAP METRICS
+        {"iou": 0.5, "value": 0.859},
+        {"iou": 0.75, "value": 0.761},
+        # AP METRICS AVERAGED OVER IOUS
         {
-            "iou": 0.5,
-            "value": 0.859,
-            "labels": [
-                {"key": "class", "value": "3"},
-                {"key": "class", "value": "2"},
-                {"key": "class", "value": "4"},
-                {"key": "class", "value": "0"},
-                {"key": "class", "value": "1"},
-                {"key": "class", "value": "49"},
-            ],
+            "ious": iou_thresholds,
+            "value": 0.454,
+            "label": {"key": "class", "value": "2"},
         },
         {
-            "iou": 0.75,
-            "value": 0.761,
-            "labels": [
-                {"key": "class", "value": "3"},
-                {"key": "class", "value": "2"},
-                {"key": "class", "value": "4"},
-                {"key": "class", "value": "0"},
-                {"key": "class", "value": "1"},
-                {"key": "class", "value": "49"},
-            ],
+            "ious": iou_thresholds,
+            "value": 0.555,  # note COCO had 0.556
+            "label": {"key": "class", "value": "49"},
         },
+        {
+            "ious": iou_thresholds,
+            "value": -1.0,
+            "label": {"key": "class", "value": "3"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.725,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.8,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "ious": iou_thresholds,
+            "value": 0.650,
+            "label": {"key": "class", "value": "4"},
+        },
+        # mAP METRICS AVERAGED OVER IOUS
+        {"ious": iou_thresholds, "value": 0.637},
     ]
 
     # sort labels lists

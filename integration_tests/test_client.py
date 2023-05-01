@@ -4,11 +4,12 @@ that is no auth
 
 import io
 import json
+import time
 from typing import Any
 
 import numpy as np
 import pytest
-from geoalchemy2.functions import ST_AsPNG, ST_AsText, ST_Polygon
+from geoalchemy2.functions import ST_Area, ST_AsPNG, ST_AsText, ST_Polygon
 from PIL import Image as PILImage
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
@@ -36,6 +37,17 @@ from velour_api import models, ops
 
 dset_name = "test dataset"
 model_name = "test model"
+
+
+def bbox_to_poly(bbox: BoundingBox) -> BoundingPolygon:
+    return BoundingPolygon(
+        points=[
+            Point(x=bbox.xmin, y=bbox.ymin),
+            Point(x=bbox.xmin, y=bbox.ymax),
+            Point(x=bbox.xmax, y=bbox.ymax),
+            Point(x=bbox.xmax, y=bbox.ymin),
+        ]
+    )
 
 
 def _list_of_points_from_wkt_polygon(
@@ -162,52 +174,31 @@ def db(client: Client) -> Session:
 
 @pytest.fixture
 def rect1():
-    return BoundingPolygon(
-        [
-            Point(x=10, y=10),
-            Point(x=10, y=40),
-            Point(x=60, y=40),
-            Point(x=60, y=10),
-        ]
-    )
+    return BoundingBox(xmin=10, ymin=10, xmax=60, ymax=40)
 
 
 @pytest.fixture
 def rect2():
-    return BoundingPolygon(
-        [
-            Point(x=15, y=0),
-            Point(x=70, y=0),
-            Point(x=70, y=20),
-            Point(x=15, y=20),
-        ]
-    )
+    return BoundingBox(xmin=15, ymin=0, xmax=70, ymax=20)
 
 
 @pytest.fixture
 def rect3():
-    return BoundingPolygon(
-        [
-            Point(x=158, y=10),
-            Point(x=87, y=10),
-            Point(x=87, y=820),
-            Point(x=158, y=820),
-        ]
-    )
+    return BoundingBox(xmin=87, ymin=10, xmax=158, ymax=820)
 
 
 @pytest.fixture
 def gt_dets1(
-    rect1: BoundingPolygon, rect2: BoundingPolygon, img1: Image, img2: Image
+    rect1: BoundingBox, rect2: BoundingBox, img1: Image, img2: Image
 ) -> list[GroundTruthDetection]:
     return [
         GroundTruthDetection(
-            boundary=rect1,
+            bbox=rect1,
             labels=[Label(key="k1", value="v1")],
             image=img1,
         ),
         GroundTruthDetection(
-            boundary=rect2,
+            bbox=rect2,
             labels=[Label(key="k1", value="v1")],
             image=img2,
         ),
@@ -215,12 +206,24 @@ def gt_dets1(
 
 
 @pytest.fixture
-def gt_dets2(
-    rect3: BoundingPolygon, img1: Image
+def gt_poly_dets1(
+    gt_dets1: list[GroundTruthDetection],
 ) -> list[GroundTruthDetection]:
+    """Same thing as gt_dets1 but represented as a polygon instead of bounding box"""
+
     return [
         GroundTruthDetection(
-            boundary=rect3,
+            image=det.image, labels=det.labels, boundary=bbox_to_poly(det.bbox)
+        )
+        for det in gt_dets1
+    ]
+
+
+@pytest.fixture
+def gt_dets2(rect3: BoundingBox, img1: Image) -> list[GroundTruthDetection]:
+    return [
+        GroundTruthDetection(
+            bbox=rect3,
             labels=[Label(key="k2", value="v2")],
             image=img1,
         )
@@ -228,12 +231,10 @@ def gt_dets2(
 
 
 @pytest.fixture
-def gt_dets3(
-    rect3: BoundingPolygon, img8: Image
-) -> list[GroundTruthDetection]:
+def gt_dets3(rect3: BoundingBox, img8: Image) -> list[GroundTruthDetection]:
     return [
         GroundTruthDetection(
-            boundary=rect3,
+            bbox=rect3,
             labels=[Label(key="k3", value="v3")],
             image=img8,
         )
@@ -242,16 +243,20 @@ def gt_dets3(
 
 @pytest.fixture
 def gt_segs1(
-    rect1: BoundingPolygon, rect2: BoundingPolygon, img1: Image, img2: Image
+    rect1: BoundingBox, rect2: BoundingBox, img1: Image, img2: Image
 ) -> list[GroundTruthInstanceSegmentation]:
     return [
         GroundTruthInstanceSegmentation(
-            shape=[PolygonWithHole(polygon=rect1)],
+            shape=[PolygonWithHole(polygon=bbox_to_poly(rect1))],
             labels=[Label(key="k1", value="v1")],
             image=img1,
         ),
         GroundTruthInstanceSegmentation(
-            shape=[PolygonWithHole(polygon=rect2, hole=rect1)],
+            shape=[
+                PolygonWithHole(
+                    polygon=bbox_to_poly(rect2), hole=bbox_to_poly(rect1)
+                )
+            ],
             labels=[Label(key="k1", value="v1")],
             image=img2,
         ),
@@ -260,13 +265,13 @@ def gt_segs1(
 
 @pytest.fixture
 def gt_segs2(
-    rect1: BoundingPolygon, rect3: BoundingPolygon, img1: Image
+    rect1: BoundingBox, rect3: BoundingBox, img1: Image
 ) -> list[GroundTruthSemanticSegmentation]:
     return [
         GroundTruthSemanticSegmentation(
             shape=[
-                PolygonWithHole(polygon=rect3),
-                PolygonWithHole(polygon=rect1),
+                PolygonWithHole(polygon=bbox_to_poly(rect3)),
+                PolygonWithHole(polygon=bbox_to_poly(rect1)),
             ],
             labels=[Label(key="k2", value="v2")],
             image=img1,
@@ -276,11 +281,11 @@ def gt_segs2(
 
 @pytest.fixture
 def gt_segs3(
-    rect3: BoundingPolygon, img9: Image
+    rect3: BoundingBox, img9: Image
 ) -> list[GroundTruthSemanticSegmentation]:
     return [
         GroundTruthSemanticSegmentation(
-            shape=[PolygonWithHole(polygon=rect3)],
+            shape=[PolygonWithHole(polygon=bbox_to_poly(rect3))],
             labels=[Label(key="k3", value="v3")],
             image=img9,
         )
@@ -320,23 +325,37 @@ def gt_clfs3(img8: Image) -> list[GroundTruthImageClassification]:
 
 @pytest.fixture
 def pred_dets(
-    rect1: BoundingPolygon, rect2: BoundingPolygon, img1: Image, img2: Image
+    rect1: BoundingBox, rect2: BoundingBox, img1: Image, img2: Image
 ) -> list[PredictedDetection]:
     return [
         PredictedDetection(
-            boundary=rect1,
+            bbox=rect1,
             scored_labels=[
                 ScoredLabel(label=Label(key="k1", value="v1"), score=0.3)
             ],
             image=img1,
         ),
         PredictedDetection(
-            boundary=rect2,
+            bbox=rect2,
             scored_labels=[
                 ScoredLabel(label=Label(key="k2", value="v2"), score=0.98)
             ],
             image=img2,
         ),
+    ]
+
+
+@pytest.fixture
+def pred_poly_dets(
+    pred_dets: list[PredictedDetection],
+) -> list[PredictedDetection]:
+    return [
+        PredictedDetection(
+            image=det.image,
+            scored_labels=det.scored_labels,
+            boundary=bbox_to_poly(det.bbox),
+        )
+        for det in pred_dets
     ]
 
 
@@ -565,14 +584,14 @@ def test_create_dataset_with_detections(
 
 def test_create_model_with_predicted_detections(
     client: Client,
-    gt_dets1: list[GroundTruthDetection],
-    pred_dets: list[PredictedDetection],
+    gt_poly_dets1: list[GroundTruthDetection],
+    pred_poly_dets: list[PredictedDetection],
     db: Session,
 ):
     labeled_pred_dets = _test_create_model_with_preds(
         client=client,
-        gts=gt_dets1,
-        preds=pred_dets,
+        gts=gt_poly_dets1,
+        preds=pred_poly_dets,
         add_gts_method_name="add_groundtruth_detections",
         add_preds_method_name="add_predicted_detections",
         preds_model_class=models.LabeledPredictedDetection,
@@ -587,7 +606,7 @@ def test_create_model_with_predicted_detections(
         p for p in labeled_pred_dets if p.detection.image.uid == "uid1"
     ][0]
     points = _list_of_points_from_wkt_polygon(db, db_pred.detection)
-    pred = pred_dets[0]
+    pred = pred_poly_dets[0]
 
     assert set(points) == set([(pt.x, pt.y) for pt in pred.boundary.points])
 
@@ -628,6 +647,16 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
         == "POLYGON((10 25,10 50,30 50,30 25,10 25))"
         == db.scalar(ST_AsText(db_dets[1].boundary))
     )
+
+    # check that they can be recovered by the client
+    detections = dataset.get_groundtruth_detections("uid")
+    assert len(detections) == 2
+    assert len([det for det in detections if det.is_bbox]) == 1
+    for det in detections:
+        if det.bbox:
+            assert det == gt_bbox
+        else:
+            assert det == gt_poly
 
 
 def test_create_pred_detections_as_bbox_or_poly(
@@ -849,10 +878,11 @@ def test_boundary(
 ):
     """Test consistency of boundary in backend and client"""
     dataset = client.create_dataset(dset_name)
+    rect1_poly = bbox_to_poly(rect1)
     dataset.add_groundtruth_detections(
         [
             GroundTruthDetection(
-                boundary=rect1,
+                boundary=rect1_poly,
                 labels=[Label(key="k1", value="v1")],
                 image=img1,
             )
@@ -865,7 +895,7 @@ def test_boundary(
     # check boundary
     points = _list_of_points_from_wkt_polygon(db, db_det)
 
-    assert set(points) == set([(pt.x, pt.y) for pt in rect1.points])
+    assert set(points) == set([(pt.x, pt.y) for pt in rect1_poly.points])
 
 
 def test_iou(
@@ -878,10 +908,13 @@ def test_iou(
     dataset = client.create_dataset(dset_name)
     model = client.create_model(model_name)
 
+    rect1_poly = bbox_to_poly(rect1)
+    rect2_poly = bbox_to_poly(rect2)
+
     dataset.add_groundtruth_detections(
         [
             GroundTruthDetection(
-                boundary=rect1, labels=[Label("k", "v")], image=img1
+                boundary=rect1_poly, labels=[Label("k", "v")], image=img1
             )
         ]
     )
@@ -891,7 +924,7 @@ def test_iou(
         dataset,
         [
             PredictedDetection(
-                boundary=rect2,
+                boundary=rect2_poly,
                 scored_labels=[ScoredLabel(label=Label("k", "v"), score=0.6)],
                 image=img1,
             )
@@ -899,7 +932,7 @@ def test_iou(
     )
     db_pred = db.scalar(select(models.PredictedDetection))
 
-    assert ops.iou_two_dets(db, db_gt, db_pred) == iou(rect1, rect2)
+    assert ops.iou_two_dets(db, db_gt, db_pred) == iou(rect1_poly, rect2_poly)
 
 
 def test_evaluate_ap(
@@ -914,16 +947,169 @@ def test_evaluate_ap(
 
     model = client.create_model(model_name)
     model.add_predicted_detections(dataset, pred_dets)
+    model.finalize_inferences(dataset)
 
-    resp = client.evaluate_ap(
-        model=model,
+    eval_job = model.evaluate_ap(
         dataset=dataset,
-        model_pred_task_type=Task.OBJECT_DETECTION,
-        dataset_gt_task_type=Task.OBJECT_DETECTION,
-        labels=[Label(key="k1", value="v1")],
         iou_thresholds=[0.1, 0.6],
+        ious_to_keep=[0.1, 0.6],
     )
 
-    assert set(resp.keys()) == {"missing_pred_labels", "ignored_pred_labels"}
-    assert resp["ignored_pred_labels"] == [Label(key="k2", value="v2")]
-    assert resp["missing_pred_labels"] == []
+    assert eval_job.ignored_pred_labels == [Label(key="k2", value="v2")]
+    assert eval_job.missing_pred_labels == []
+    assert isinstance(eval_job._id, str)
+
+    # sleep to give the backend time to compute
+    time.sleep(1)
+    assert eval_job.status() == "Done"
+
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model_name": "test model",
+        "dataset_name": "test dataset",
+        "model_pred_task_type": "Bounding Box Object Detection",
+        "dataset_gt_task_type": "Bounding Box Object Detection",
+        "min_area": None,
+        "max_area": None,
+    }
+
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.1,
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.6,
+            },
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1},
+            "value": 0.504950495049505,
+            "label": None,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+            "label": None,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+            "label": None,
+        },
+    ]
+
+    assert eval_job.metrics() == expected_metrics
+
+    # now test if we set min_area and/or max_area
+    areas = db.scalars(ST_Area(models.GroundTruthDetection.boundary)).all()
+    assert sorted(areas) == [1100.0, 1500.0]
+
+    # sanity check this should give us the same thing excpet min_area and max_area
+    # are not None
+    eval_job = model.evaluate_ap(
+        dataset=dataset,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
+        iou_thresholds=[0.1, 0.6],
+        ious_to_keep=[0.1, 0.6],
+        min_area=10,
+        max_area=2000,
+    )
+    time.sleep(1)
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model_name": "test model",
+        "dataset_name": "test dataset",
+        "model_pred_task_type": "Bounding Box Object Detection",
+        "dataset_gt_task_type": "Bounding Box Object Detection",
+        "min_area": 10,
+        "max_area": 2000,
+    }
+    assert eval_job.metrics() == expected_metrics
+
+    # now check we get different things by setting the thresholds accordingly
+    eval_job = model.evaluate_ap(
+        dataset=dataset,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
+        iou_thresholds=[0.1, 0.6],
+        ious_to_keep=[0.1, 0.6],
+        min_area=1200,
+    )
+    time.sleep(1)
+
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model_name": "test model",
+        "dataset_name": "test dataset",
+        "model_pred_task_type": "Bounding Box Object Detection",
+        "dataset_gt_task_type": "Bounding Box Object Detection",
+        "min_area": 1200,
+        "max_area": None,
+    }
+
+    assert eval_job.metrics() != expected_metrics
+
+    eval_job = model.evaluate_ap(
+        dataset=dataset,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
+        iou_thresholds=[0.1, 0.6],
+        ious_to_keep=[0.1, 0.6],
+        max_area=1200,
+    )
+    time.sleep(1)
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model_name": "test model",
+        "dataset_name": "test dataset",
+        "model_pred_task_type": "Bounding Box Object Detection",
+        "dataset_gt_task_type": "Bounding Box Object Detection",
+        "min_area": None,
+        "max_area": 1200,
+    }
+    assert eval_job.metrics() != expected_metrics
+
+    eval_job = model.evaluate_ap(
+        dataset=dataset,
+        model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
+        iou_thresholds=[0.1, 0.6],
+        ious_to_keep=[0.1, 0.6],
+        min_area=1200,
+        max_area=1800,
+    )
+    time.sleep(1)
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model_name": "test model",
+        "dataset_name": "test dataset",
+        "model_pred_task_type": "Bounding Box Object Detection",
+        "dataset_gt_task_type": "Bounding Box Object Detection",
+        "min_area": 1200,
+        "max_area": 1800,
+    }
+    assert eval_job.metrics() != expected_metrics

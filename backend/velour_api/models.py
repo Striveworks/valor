@@ -1,6 +1,7 @@
 from geoalchemy2 import Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
 from sqlalchemy import Enum, ForeignKey, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -333,6 +334,23 @@ class Model(Base):
     predicted_segmentations = relationship(
         PredictedSegmentation, cascade="all, delete"
     )
+    finalized_inferences = relationship(
+        "FinalizedInferences", cascade="all, delete"
+    )
+
+
+class FinalizedInferences(Base):
+    """Table keeping track of what evaluation of datasets and models"""
+
+    __tablename__ = "finalized_inferences"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    dataset_id: Mapped[int] = mapped_column(
+        ForeignKey("dataset.id"), index=True
+    )
+    model_id: Mapped[int] = mapped_column(ForeignKey("model.id"), index=True)
+
+    __table_args__ = (UniqueConstraint("dataset_id", "model_id"),)
 
 
 class Dataset(Base):
@@ -345,13 +363,16 @@ class Dataset(Base):
     # whether or not the dataset comes from a video
     from_video: Mapped[bool] = mapped_column(default=False)
     images = relationship("Image", cascade="all, delete")
-    metric_parameters = relationship(
-        "MetricParameters", cascade="all, delete", back_populates="dataset"
+    finalized_inferences = relationship(
+        "FinalizedInferences", cascade="all, delete"
+    )
+    evaluation_settings = relationship(
+        "EvaluationSettings", cascade="all, delete", back_populates="dataset"
     )
 
 
-class MetricParameters(Base):
-    __tablename__ = "metric_parameters"
+class EvaluationSettings(Base):
+    __tablename__ = "evaluation_settings"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
@@ -360,19 +381,27 @@ class MetricParameters(Base):
     model = relationship(Model)
     model_pred_task_type: Mapped[str] = mapped_column(Enum(Task))
     dataset_gt_task_type: Mapped[str] = mapped_column(Enum(Task))
-    ap_metrics: Mapped[list["APMetric"]] = relationship(
-        "APMetric", cascade="all, delete"
+    min_area: Mapped[float] = mapped_column(nullable=True)
+    max_area: Mapped[float] = mapped_column(nullable=True)
+    metrics: Mapped[list["Metric"]] = relationship(
+        "Metric", cascade="all, delete"
     )
 
 
-class APMetric(Base):
-    __tablename__ = "ap_metric"
+class Metric(Base):
+    __tablename__ = "metric"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
+    label_id: Mapped[int] = mapped_column(
+        ForeignKey("label.id"), nullable=True
+    )
     label = relationship(Label)
-    iou: Mapped[float] = mapped_column()
+    type: Mapped[str] = mapped_column()
     value: Mapped[float] = mapped_column()
-    metric_parameters_id: Mapped[int] = mapped_column(
-        ForeignKey("metric_parameters.id")
+    parameters = mapped_column(JSONB)  # {"label": ..., "iou": ..., }
+    settings: Mapped[list["Metric"]] = relationship(
+        "EvaluationSettings", back_populates="metrics"
+    )
+    evaluation_settings_id: Mapped[int] = mapped_column(
+        ForeignKey("evaluation_settings.id")
     )
