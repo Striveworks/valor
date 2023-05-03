@@ -1113,3 +1113,6 @@ def test_evaluate_ap(
         "max_area": 1800,
     }
     assert eval_job.metrics() != expected_metrics
+    import pdb
+
+    pdb.set_trace()
