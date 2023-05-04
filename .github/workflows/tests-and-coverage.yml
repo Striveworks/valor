@@ -60,7 +60,7 @@ jobs:
       - name: install client
         run: pip install -e ".[test]"
         working-directory: ./client
-      - run: coverage run --source="backend/velour_api,client/velour" -m pytest -v integration_tests/test_client.py
+      - run: coverage run --source="backend/velour_api,client/velour" -m pytest -v integration_tests/test_client.py integration_tests/test_enums.py
         working-directory: ./
       - run: coverage report
         working-directory: ./
