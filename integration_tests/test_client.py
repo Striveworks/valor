@@ -547,6 +547,24 @@ def _test_create_model_with_preds(
     return db_preds
 
 
+def test_create_dataset_with_href_and_description(client: Client, db: Session):
+    href = "http://a.com/b"
+    description = "a description"
+    client.create_dataset(dset_name, href=href, description=description)
+    db_dataset = db.scalar(select(models.Dataset))
+    assert db_dataset.href == href
+    assert db_dataset.description == description
+
+
+def test_create_model_with_href_and_description(client: Client, db: Session):
+    href = "http://a.com/b"
+    description = "a description"
+    client.create_model(model_name, href=href, description=description)
+    db_model = db.scalar(select(models.Model))
+    assert db_model.href == href
+    assert db_model.description == description
+
+
 def test_create_dataset_with_detections(
     client: Client,
     gt_dets1: list[GroundTruthDetection],

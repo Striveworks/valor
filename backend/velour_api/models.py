@@ -325,6 +325,8 @@ class Model(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
+    href: Mapped[str] = mapped_column(index=True, nullable=True)
+    description: Mapped[str] = mapped_column(index=True, nullable=True)
     predicted_detections = relationship(
         PredictedDetection, cascade="all, delete"
     )
@@ -358,6 +360,8 @@ class Dataset(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
+    href: Mapped[str] = mapped_column(index=True, nullable=True)
+    description: Mapped[str] = mapped_column(index=True, nullable=True)
     # whether or not the dataset is done being created
     draft: Mapped[bool] = mapped_column(default=True)
     # whether or not the dataset comes from a video

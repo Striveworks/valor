@@ -318,7 +318,6 @@ def create_groundtruth_detections(
     db: Session,
     data: schemas.GroundTruthDetectionsCreate,
 ) -> list[int]:
-
     return _create_gt_dets_or_segs(
         db=db,
         dataset_name=data.dataset_name,
@@ -481,9 +480,7 @@ def _get_or_create_row(
     return db_element
 
 
-def create_dataset(
-    db: Session, dataset: schemas.DatasetCreate, from_video=False
-):
+def create_dataset(db: Session, dataset: schemas.DatasetCreate):
     """Creates a dataset
 
     Raises
@@ -492,11 +489,7 @@ def create_dataset(
         if the dataset name already exists
     """
     try:
-        db.add(
-            models.Dataset(
-                name=dataset.name, draft=True, from_video=from_video
-            )
-        )
+        db.add(models.Dataset(draft=True, **dataset.dict()))
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -512,7 +505,7 @@ def create_model(db: Session, model: schemas.Model):
         if the model uid already exists
     """
     try:
-        db.add(models.Model(name=model.name))
+        db.add(models.Model(**model.dict()))
         db.commit()
     except IntegrityError:
         db.rollback()
