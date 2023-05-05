@@ -259,6 +259,10 @@ class APRequest(BaseModel):
         return values
 
 
+class ClfMetricsRequest(BaseModel):
+    settings: EvaluationSettings
+
+
 class Metric(BaseModel):
     type: str
     parameters: dict

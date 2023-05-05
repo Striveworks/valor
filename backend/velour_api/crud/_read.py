@@ -253,9 +253,6 @@ def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
     return schemas.Metric(
         type=metric.type,
         parameters=metric.parameters,
-        settings=_db_evaluation_settings_to_pydantic_evaluation_settings(
-            metric.settings
-        ),
         value=metric.value,
         label=_db_label_to_schemas_label(metric.label),
     )
@@ -471,6 +468,15 @@ def _object_detections_in_dataset_statement(
     )
 
 
+def _classifications_in_dataset_statement(dataset_name: str) -> Select:
+    return (
+        select(models.GroundTruthImageClassification)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(models.Dataset.name == dataset_name)
+    )
+
+
 def _model_instance_segmentation_preds_statement(
     model_name: str,
     dataset_name: str,
@@ -535,6 +541,23 @@ def _model_object_detection_preds_statement(
         task_for_area_computation=task_for_area_computation,
         min_area=min_area,
         max_area=max_area,
+    )
+
+
+def _model_classifications_preds_statement(
+    model_name: str, dataset_name: str
+) -> Select:
+    return (
+        select(models.PredictedImageClassification)
+        .join(models.Image)
+        .join(models.Model)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Model.name == model_name,
+                models.Dataset.name == dataset_name,
+            )
+        )
     )
 
 

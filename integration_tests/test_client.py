@@ -939,7 +939,7 @@ def test_evaluate_ap(
     client: Client,
     gt_dets1: list[GroundTruthDetection],
     pred_dets: list[PredictedDetection],
-    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
+    db: Session,
 ):
     dataset = client.create_dataset(dset_name)
     dataset.add_groundtruth_detections(gt_dets1)
@@ -1113,3 +1113,26 @@ def test_evaluate_ap(
         "max_area": 1800,
     }
     assert eval_job.metrics() != expected_metrics
+
+
+def test_evaluate_clf(
+    client: Client,
+    gt_clfs1: list[GroundTruthImageClassification],
+    pred_clfs: list[PredictedImageClassification],
+    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
+):
+    dataset = client.create_dataset(dset_name)
+    dataset.add_groundtruth_classifications(gt_clfs1)
+    dataset.finalize()
+
+    model = client.create_model(model_name)
+    model.add_predicted_classifications(dataset, pred_clfs)
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_classification(dataset=dataset)
+
+    assert eval_job.ignored_pred_labels == [
+        Label(key="k12", value="v12"),
+        Label(key="k13", value="v13"),
+    ]
+    assert eval_job.missing_pred_labels == [Label(key="k5", value="v5")]

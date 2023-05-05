@@ -508,6 +508,24 @@ class Model:
 
         return EvalJob(client=self.client, **resp)
 
+    def evaluate_classification(self, dataset: Dataset) -> EvalJob:
+        payload = {
+            "settings": {
+                "model_name": self.name,
+                "dataset_name": dataset.name,
+            }
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "/clf-metrics", json=payload
+        ).json()
+        # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
+        # list of label dicts. convert label dicts to Label objects
+        for k in ["missing_pred_labels", "ignored_pred_labels"]:
+            resp[k] = [Label(**la) for la in resp[k]]
+
+        return EvalJob(client=self.client, **resp)
+
     def get_metrics(self, dataset: Dataset, metric_type):
         pass
 

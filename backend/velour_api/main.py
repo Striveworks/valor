@@ -373,6 +373,48 @@ def create_ap_metrics(
         raise HTTPException(status_code=405, detail=str(e))
 
 
+@app.post(
+    "/clf-metrics", status_code=202, dependencies=[Depends(token_auth_scheme)]
+)
+def create_clf_metrics(
+    data: schemas.ClfMetricsRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> schemas.CreateMetricsResponse:
+    try:
+        (
+            gts_statement,
+            preds_statement,
+            missing_pred_labels,
+            ignored_pred_labels,
+        ) = crud.validate_create_clf_metrics(db, request_info=data)
+
+        job, wrapped_fn = jobs.wrap_metric_computation(crud.create_ap_metrics)
+
+        cm_resp = schemas.CreateMetricsResponse(
+            missing_pred_labels=missing_pred_labels,
+            ignored_pred_labels=ignored_pred_labels,
+            job_id=job.uid,
+        )
+
+        background_tasks.add_task(
+            wrapped_fn,
+            db=db,
+            request_info=data,
+            gts_statement=gts_statement,
+            preds_statement=preds_statement,
+        )
+
+        return cm_resp
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except (
+        exceptions.DatasetIsDraftError,
+        exceptions.InferencesAreNotFinalizedError,
+    ) as e:
+        raise HTTPException(status_code=405, detail=str(e))
+
+
 @app.get("/labels", status_code=200, dependencies=[Depends(token_auth_scheme)])
 def get_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
     return crud.get_all_labels(db)

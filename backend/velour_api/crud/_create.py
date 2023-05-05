@@ -6,7 +6,9 @@ from velour_api import exceptions, models, schemas
 from velour_api.metrics import compute_ap_metrics
 
 from ._read import (
+    _classifications_in_dataset_statement,
     _instance_segmentations_in_dataset_statement,
+    _model_classifications_preds_statement,
     _model_instance_segmentation_preds_statement,
     _model_object_detection_preds_statement,
     _object_detections_in_dataset_statement,
@@ -641,16 +643,14 @@ def _create_metric_mappings(
     return ret
 
 
-def validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+def get_filtered_preds_statmenet_and_missing_labels(
     db: Session,
     gts_statement: Select,
     preds_statement: Select,
 ) -> tuple[Select, Select, list[schemas.Label], list[schemas.Label]]:
     """Takes statements defining a collection of labeled groundtruths and labeled predictions,
-    and a list of requsted labels and creates a new statement that further
-    filters down to those groundtruths and preditions that have labels in the list of requested labels.
-    It also checks that the requested labels are contained in the set of all possible labels
-    and throws a ValueError if not.
+    and creates a new statement for predictions that only have labels in the list of groundtruth labels.
+
 
     Parameters
     ----------
@@ -663,19 +663,12 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     Returns
     -------
     a tuple with the following elements:
-        - select statement defining the filtered groundtruths
-        - select statement defining the filtered predictions
+        - select statement defining the predictions with only those with labels in the groundtruth set
         - list of key/value label tuples of requested labels (or labels in the groundtruth collection
         in the case that `requested_labels` is None) that are not present in the predictions collection
         - list of key/value label tuples of labels that are present in the predictions collection but
         are not in `requested_labels` (or the labels in the groundtruth collection in the case that
         `requested_labels` is None)
-
-    Raises
-    ------
-    ValueError
-        if there are labels in `requested_labels` that are not in the groundtruth annotations defined
-        by `gts_statement`.
     """
 
     available_labels = _labels_in_query(db, gts_statement)
@@ -707,7 +700,6 @@ def validate_requested_labels_and_get_new_defining_statements_and_missing_labels
     ]
 
     return (
-        gts_statement,
         preds_statement,
         missing_pred_labels,
         ignored_pred_labels,
@@ -852,11 +844,36 @@ def validate_create_ap_metrics(
         )
 
     (
+        preds_statement,
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = get_filtered_preds_statmenet_and_missing_labels(
+        db=db, gts_statement=gts_statement, preds_statement=preds_statement
+    )
+
+    return (
         gts_statement,
         preds_statement,
         missing_pred_labels,
         ignored_pred_labels,
-    ) = validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+    )
+
+
+def validate_create_clf_metrics(
+    db: Session, request_info: schemas.ClfMetricsRequest
+):
+    gts_statement = _classifications_in_dataset_statement(
+        request_info.settings.dataset_name
+    )
+    preds_statement = _model_classifications_preds_statement(
+        model_name=request_info.settings.model_name,
+        dataset_name=request_info.settings.dataset_name,
+    )
+    (
+        preds_statement,
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = get_filtered_preds_statmenet_and_missing_labels(
         db=db, gts_statement=gts_statement, preds_statement=preds_statement
     )
 

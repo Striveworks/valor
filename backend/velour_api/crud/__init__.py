@@ -9,8 +9,9 @@ from ._create import (
     create_predicted_image_classifications,
     create_predicted_segmentations,
     finalize_inferences,
+    get_filtered_preds_statmenet_and_missing_labels,
     validate_create_ap_metrics,
-    validate_requested_labels_and_get_new_defining_statements_and_missing_labels,
+    validate_create_clf_metrics,
 )
 from ._delete import delete_dataset, delete_model
 from ._read import (
@@ -41,8 +42,9 @@ __all__ = [
     "create_predicted_image_classifications",
     "create_dataset",
     "create_model",
-    "validate_requested_labels_and_get_new_defining_statements_and_missing_labels",
+    "get_filtered_preds_statmenet_and_missing_labels",
     "validate_create_ap_metrics",
+    "validate_create_clf_metrics",
     "create_ap_metrics",
     "get_datasets",
     "get_dataset",
