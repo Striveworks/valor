@@ -1,4 +1,12 @@
 import numpy as np
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import and_, func, select
+
+from velour_api import models
+from velour_api.models import (
+    GroundTruthImageClassification,
+    PredictedImageClassification,
+)
 
 
 def confusion_matrix(groundtruths: list[str], preds: list[str]) -> np.ndarray:
@@ -102,3 +110,50 @@ def roc_auc(groundtruths: list[str], preds: list[dict[str, float]]) -> float:
         sum_roc_aucs += _binary_roc_auc(groundtruths=gts, preds=ps)
 
     return sum_roc_aucs / len(unique_classes)
+
+
+def compute_clf_metrics(
+    db: Session,
+    predictions: list[list[PredictedImageClassification]],
+    groundtruths: list[list[GroundTruthImageClassification]],
+):
+    # Return: accuracies (one for each label key)
+    # confusion matrices (one for each label key)
+    # roc_auc (one for each label key)
+    pass
+
+
+def get_hard_preds_from_label_key(
+    db: Session, dataset_name: str, label_key: str
+):
+    subquery = (
+        select(
+            func.max(PredictedImageClassification.score).label("max_score"),
+            func.min(PredictedImageClassification.id).label(
+                "min_id"
+            ),  # this is for the corner case where the maximum score occurs twice
+            PredictedImageClassification.image_id.label("image_id"),
+        )
+        .join(models.Label)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Label.key == label_key,
+                models.Dataset.name == dataset_name,
+            )
+        )
+        .group_by(PredictedImageClassification.image_id)
+        .alias()
+    )
+
+    query = select(PredictedImageClassification).join(
+        subquery,
+        and_(
+            PredictedImageClassification.image_id == subquery.c.image_id,
+            PredictedImageClassification.score == subquery.c.max_score,
+            PredictedImageClassification.id == subquery.c.min_id,
+        ),
+    )
+
+    return db.scalars(query).all()
