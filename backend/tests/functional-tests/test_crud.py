@@ -751,7 +751,7 @@ def test_gt_seg_as_mask_or_polys(db: Session):
     assert segs[0].labels == gt1.labels
 
 
-def test_validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+def test_get_filtered_preds_statmenet_and_missing_labels(
     db: Session,
     gt_segs_create: schemas.GroundTruthDetectionsCreate,
     pred_segs_create: schemas.PredictedSegmentationsCreate,
@@ -783,15 +783,14 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
 
     # check get everything if the requested labels argument is empty
     (
-        new_gts_statement,
         new_preds_statement,
         missing_pred_labels,
         ignored_pred_labels,
-    ) = crud.validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+    ) = crud.get_filtered_preds_statmenet_and_missing_labels(
         db=db, gts_statement=gts_statement, preds_statement=preds_statement
     )
 
-    gts = db.scalars(new_gts_statement).all()
+    gts = db.scalars(gts_statement).all()
     preds = db.scalars(new_preds_statement).all()
 
     assert len(gts) == 3
