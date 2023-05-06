@@ -132,7 +132,6 @@ def get_hard_preds_from_label_key(
             func.min(PredictedImageClassification.id).label(
                 "min_id"
             ),  # this is for the corner case where the maximum score occurs twice
-            PredictedImageClassification.image_id.label("image_id"),
         )
         .join(models.Label)
         .join(models.Image)
@@ -150,7 +149,6 @@ def get_hard_preds_from_label_key(
     query = select(PredictedImageClassification).join(
         subquery,
         and_(
-            PredictedImageClassification.image_id == subquery.c.image_id,
             PredictedImageClassification.score == subquery.c.max_score,
             PredictedImageClassification.id == subquery.c.min_id,
         ),
