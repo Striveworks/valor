@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import exceptions, models, schemas
-from velour_api.metrics import compute_ap_metrics
+from velour_api.metrics import compute_ap_metrics, compute_clf_metrics
 
 from ._read import (
     _classifications_in_dataset_statement,
@@ -939,6 +939,73 @@ def create_ap_metrics(
             "dataset_gt_task_type": request_info.settings.dataset_gt_task_type,
             "min_area": request_info.settings.min_area,
             "max_area": request_info.settings.max_area,
+        },
+    )
+
+    metric_mappings = _create_metric_mappings(
+        db=db, metrics=metrics, evaluation_settings_id=mp.id
+    )
+
+    for mapping in metric_mappings:
+        # ignore value since the other columns are unique identifiers
+        # and have empircally noticed value can slightly change due to floating
+        # point errors
+        _get_or_create_row(
+            db, models.Metric, mapping, columns_to_ignore=["value"]
+        )
+    db.commit()
+
+    return mp.id
+
+
+def create_clf_metrics(
+    db: Session,
+    gts_statement: Select,
+    preds_statement: Select,
+    request_info: schemas.ClfMetricsRequest,
+) -> int:
+    # need to break down preds and gts by image
+    gts = db.scalars(gts_statement).all()
+    preds = db.scalars(preds_statement).all()
+
+    image_id_to_gts = {}
+    image_id_to_preds = {}
+    all_image_ids = set()
+    for gt in gts:
+        if gt.image_id not in image_id_to_gts:
+            image_id_to_gts[gt.image_id] = []
+        image_id_to_gts[gt.image_id].append(gt)
+        all_image_ids.add(gt.image_id)
+    for pred in preds:
+        if pred.image_id not in image_id_to_preds:
+            image_id_to_preds[pred.image_id] = []
+        image_id_to_preds[pred.image_id].append(pred)
+        all_image_ids.add(pred.image_id)
+
+    all_image_ids = list(all_image_ids)
+
+    # all_gts and all_preds are list of lists of gts and preds per image
+    all_gts = []
+    all_preds = []
+    for image_id in all_image_ids:
+        all_gts.append(image_id_to_gts.get(image_id, []))
+        all_preds.append(image_id_to_preds.get(image_id, []))
+
+    metrics = compute_clf_metrics(
+        db=db, predictions=all_preds, groundtruths=all_gts
+    )
+
+    dataset_id = get_dataset(db, request_info.settings.dataset_name).id
+    model_id = get_model(db, request_info.settings.model_name).id
+
+    mp = _get_or_create_row(
+        db,
+        models.EvaluationSettings,
+        mapping={
+            "dataset_id": dataset_id,
+            "model_id": model_id,
+            "model_pred_task_type": request_info.settings.model_pred_task_type,
+            "dataset_gt_task_type": request_info.settings.dataset_gt_task_type,
         },
     )
 
