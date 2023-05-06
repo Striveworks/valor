@@ -1131,8 +1131,17 @@ def test_evaluate_clf(
 
     eval_job = model.evaluate_classification(dataset=dataset)
 
-    assert eval_job.ignored_pred_labels == [
+    expected_ignored_pred_labels = [
         Label(key="k12", value="v12"),
         Label(key="k13", value="v13"),
     ]
+    for la in expected_ignored_pred_labels:
+        assert la in eval_job.ignored_pred_labels
+    for la in eval_job.ignored_pred_labels:
+        assert la in expected_ignored_pred_labels
+
     assert eval_job.missing_pred_labels == [Label(key="k5", value="v5")]
+
+    # sleep to give the backend time to compute
+    time.sleep(1)
+    assert eval_job.status() == "Done"

@@ -94,7 +94,7 @@ class GroundTruthDetectionsCreate(BaseModel):
     detections: list[GroundTruthDetection]
 
 
-class ImageClassificationBase(BaseModel):
+class GroundTruthImageClassification(BaseModel):
     image: Image
     labels: list[Label]
 
@@ -106,7 +106,7 @@ class PredictedImageClassification(BaseModel):
 
 class GroundTruthImageClassificationsCreate(BaseModel):
     dataset_name: str
-    classifications: list[ImageClassificationBase]
+    classifications: list[GroundTruthImageClassification]
 
 
 class PredictedImageClassificationsCreate(BaseModel):

@@ -228,14 +228,14 @@ def gt_clfs_create(
     return schemas.GroundTruthImageClassificationsCreate(
         dataset_name=dset_name,
         classifications=[
-            schemas.ImageClassificationBase(
+            schemas.GroundTruthImageClassification(
                 image=img1,
                 labels=[
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
                 ],
             ),
-            schemas.ImageClassificationBase(
+            schemas.GroundTruthImageClassification(
                 image=img2,
                 labels=[schemas.Label(key="k2", value="v2")],
             ),
