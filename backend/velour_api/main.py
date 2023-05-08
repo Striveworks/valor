@@ -168,7 +168,7 @@ def get_dataset_labels(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
     try:
-        labels = crud.get_labels_in_dataset(db, dataset_name)
+        labels = crud.get_all_labels_in_dataset(db, dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return [

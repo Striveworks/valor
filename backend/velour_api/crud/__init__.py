@@ -16,6 +16,7 @@ from ._create import (
 from ._delete import delete_dataset, delete_model
 from ._read import (
     get_all_labels,
+    get_all_labels_in_dataset,
     get_classification_labels_in_dataset,
     get_dataset,
     get_datasets,
@@ -58,10 +59,10 @@ __all__ = [
     "get_image",
     "get_groundtruth_detections_in_image",
     "get_groundtruth_segmentations_in_image",
-    "get_labels_in_dataset",
     "get_all_labels",
     "get_images_in_dataset",
     "get_model_metrics",
+    "get_all_labels_in_dataset",
     "get_classification_labels_in_dataset",
     "get_segmentation_labels_in_dataset",
     "get_detection_labels_in_dataset",

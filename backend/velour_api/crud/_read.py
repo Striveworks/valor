@@ -242,6 +242,16 @@ def get_classification_labels_in_dataset(
     ).all()
 
 
+def get_all_labels_in_dataset(
+    db: Session, dataset_name: str
+) -> set[models.Label]:
+    return (
+        set(get_classification_labels_in_dataset(db, dataset_name))
+        .union(set(get_detection_labels_in_dataset(db, dataset_name)))
+        .union(set(get_segmentation_labels_in_dataset(db, dataset_name)))
+    )
+
+
 def get_all_labels(db: Session) -> list[schemas.Label]:
     return [
         schemas.Label(key=label.key, value=label.value)
