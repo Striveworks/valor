@@ -225,13 +225,7 @@ def confusion_matrix_at_label_key(
 
 
 def accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
-    num, denom = 0, 0
-    for entry in cm.entries:
-        denom += entry.count
-        if entry.prediction == entry.groundtruth:
-            num += entry.count
-
-    return num / denom
+    return cm.matrix.trace() / cm.matrix.sum()
 
 
 def precision_and_recall_f1_at_class_index_from_confusion_matrix(

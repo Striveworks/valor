@@ -1,5 +1,6 @@
 from velour_api import schemas
 from velour_api.metrics.classification import (
+    accuracy_from_cm,
     precision_and_recall_f1_at_class_index_from_confusion_matrix,
 )
 from velour_api.metrics.detection import _match_array
@@ -71,3 +72,7 @@ def test_precision_and_recall_f1_at_class_index_from_confusion_matrix(
     assert prec == 0.0
     assert recall == 0.0
     assert f1 == 0.0
+
+
+def test_accuracy_from_cm(cm: schemas.ConfusionMatrix):
+    assert accuracy_from_cm(cm) == 1 / 3
