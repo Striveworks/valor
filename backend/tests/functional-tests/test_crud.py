@@ -563,12 +563,16 @@ def test_get_labels(
 ):
     crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
     crud.create_groundtruth_detections(db, data=gt_dets_create)
-    labels = crud.get_labels_in_dataset(db, dset_name)
+    labels = crud.get_detection_labels_in_dataset(db, dset_name)
 
     assert len(labels) == 2
     assert set([(label.key, label.value) for label in labels]) == set(
         [("k1", "v1"), ("k2", "v2")]
     )
+
+    assert crud.get_detection_labels_in_dataset(db, "not a dataset") == []
+    assert crud.get_classification_labels_in_dataset(db, dset_name) == []
+    assert crud.get_segmentation_labels_in_dataset(db, dset_name) == []
 
 
 def test_segmentation_area_no_hole(

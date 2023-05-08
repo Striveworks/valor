@@ -16,19 +16,21 @@ from ._create import (
 from ._delete import delete_dataset, delete_model
 from ._read import (
     get_all_labels,
+    get_classification_labels_in_dataset,
     get_dataset,
     get_datasets,
+    get_detection_labels_in_dataset,
     get_evaluation_settings_from_id,
     get_groundtruth_detections_in_image,
     get_groundtruth_segmentations_in_image,
     get_image,
     get_images_in_dataset,
-    get_labels_in_dataset,
     get_metrics_from_evaluation_settings_id,
     get_model,
     get_model_evaluation_settings,
     get_model_metrics,
     get_models,
+    get_segmentation_labels_in_dataset,
     number_of_rows,
 )
 from ._update import finalize_dataset
@@ -60,6 +62,9 @@ __all__ = [
     "get_all_labels",
     "get_images_in_dataset",
     "get_model_metrics",
+    "get_classification_labels_in_dataset",
+    "get_segmentation_labels_in_dataset",
+    "get_detection_labels_in_dataset",
     "number_of_rows",
     "finalize_dataset",
     "finalize_inferences",

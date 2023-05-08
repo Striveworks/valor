@@ -185,17 +185,60 @@ def get_groundtruth_segmentations_in_image(
     ]
 
 
-def get_labels_in_dataset(
+def get_detection_labels_in_dataset(
     db: Session, dataset_name: str
 ) -> list[models.Label]:
-    # TODO must be a better and more SQLy way of doing this
-    dset = get_dataset(db, dataset_name)
-    unique_ids = set()
-    for image in dset.images:
-        unique_ids.update(_get_unique_label_ids_in_image(image))
-
     return db.scalars(
-        select(models.Label).where(models.Label.id.in_(unique_ids))
+        select(models.Label)
+        .join(models.LabeledGroundTruthDetection)
+        .join(models.GroundTruthDetection)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Image.id == models.GroundTruthDetection.image_id,
+            )
+        )
+        .distinct()
+    ).all()
+
+
+def get_segmentation_labels_in_dataset(
+    db: Session, dataset_name: str
+) -> list[models.Label]:
+    return db.scalars(
+        select(models.Label)
+        .join(models.LabeledGroundTruthSegmentation)
+        .join(models.GroundTruthSegmentation)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Image.id == models.GroundTruthSegmentation.image_id,
+            )
+        )
+        .distinct()
+    ).all()
+
+
+def get_classification_labels_in_dataset(
+    db: Session, dataset_name: str
+) -> list[models.Label]:
+    return db.scalars(
+        select(models.Label)
+        .join(models.GroundTruthImageClassification)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Image.id
+                == models.GroundTruthImageClassification.image_id,
+            )
+        )
+        .distinct()
     ).all()
 
 
