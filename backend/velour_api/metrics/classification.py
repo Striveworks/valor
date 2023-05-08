@@ -1,5 +1,5 @@
 import numpy as np
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
 
 from velour_api import models
@@ -123,7 +123,7 @@ def compute_clf_metrics(
     pass
 
 
-def get_hard_preds_from_label_key(
+def confusion_matrix_at_label_key(
     db: Session, dataset_name: str, label_key: str
 ):
     subquery = (
@@ -146,12 +146,45 @@ def get_hard_preds_from_label_key(
         .alias()
     )
 
-    query = select(PredictedImageClassification).join(
-        subquery,
-        and_(
-            PredictedImageClassification.score == subquery.c.max_score,
-            PredictedImageClassification.id == subquery.c.min_id,
-        ),
+    hard_preds_query = (
+        select(
+            models.Label.value.label("pred_label_value"),
+            models.PredictedImageClassification.image_id.label("image_id"),
+        )
+        .join(models.PredictedImageClassification)
+        .join(
+            subquery,
+            and_(
+                PredictedImageClassification.score == subquery.c.max_score,
+                PredictedImageClassification.id == subquery.c.min_id,
+            ),
+        )
+        .alias()
     )
 
-    return db.scalars(query).all()
+    b = Bundle(
+        "cols",
+        hard_preds_query.c.pred_label_value,
+        # hard_preds_query.c.image_id,
+        models.Label.value,
+    )
+
+    total_query = (
+        select(b, func.count())
+        .join(
+            models.GroundTruthImageClassification,
+            models.GroundTruthImageClassification.image_id
+            == hard_preds_query.c.image_id,
+        )
+        .join(
+            models.Label,
+            and_(
+                models.Label.id
+                == models.GroundTruthImageClassification.label_id,
+                models.Label.key == label_key,
+            ),
+        )
+        .group_by(b)
+    )
+
+    return db.execute(total_query).all()
