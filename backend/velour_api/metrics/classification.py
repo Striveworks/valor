@@ -1,4 +1,3 @@
-import numpy as np
 from sqlalchemy import Float, Integer
 from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
@@ -8,26 +7,6 @@ from velour_api.models import (
     GroundTruthImageClassification,
     PredictedImageClassification,
 )
-
-
-def precision_and_recall_f1_at_class_index_from_confusion_matrix(
-    cm: np.ndarray, class_index: int
-) -> float:
-    """Computes the precision, recall, and f1 score at a class index"""
-    true_positives = cm[class_index, class_index]
-    # number of times the class was predicted
-    n_preds = cm[:, class_index].sum()
-    n_gts = cm[class_index, :].sum()
-
-    prec = true_positives / n_preds
-    recall = true_positives / n_gts
-
-    f1_denom = prec + recall
-    if f1_denom == 0:
-        f1 = 0
-    else:
-        f1 = 2 * prec * recall / f1_denom
-    return prec, recall, f1
 
 
 def binary_roc_auc(
@@ -253,3 +232,26 @@ def accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
             num += entry.count
 
     return num / denom
+
+
+def precision_and_recall_f1_at_class_index_from_confusion_matrix(
+    cm: schemas.ConfusionMatrix, label_value: str
+) -> float:
+    """Computes the precision, recall, and f1 score at a class index"""
+    cm_matrix = cm.matrix
+    class_index = cm.label_map[label_value]
+
+    true_positives = cm_matrix[class_index, class_index]
+    # number of times the class was predicted
+    n_preds = cm_matrix[:, class_index].sum()
+    n_gts = cm_matrix[class_index, :].sum()
+
+    prec = true_positives / n_preds
+    recall = true_positives / n_gts
+
+    f1_denom = prec + recall
+    if f1_denom == 0:
+        f1 = 0
+    else:
+        f1 = 2 * prec * recall / f1_denom
+    return prec, recall, f1
