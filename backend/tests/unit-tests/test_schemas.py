@@ -8,11 +8,13 @@ from pydantic import ValidationError
 
 from velour_api.enums import JobStatus
 from velour_api.schemas import (
+    DatasetCreate,
     EvalJob,
     GroundTruthDetection,
     GroundTruthSegmentation,
     Image,
     Label,
+    Model,
     PredictedSegmentation,
 )
 
@@ -115,6 +117,22 @@ def test_predicted_segmentation_validation_format_neg(img: Image):
             is_instance=True,
         )
     assert "Expected image format PNG but got" in str(exc_info)
+
+
+def test_dataset_validation():
+    with pytest.raises(ValueError) as exc_info:
+        DatasetCreate(name="name", href="not valid")
+    assert "`href` must" in str(exc_info)
+
+    assert DatasetCreate(name="name", href="http://a.com")
+
+
+def test_model_validation():
+    with pytest.raises(ValueError) as exc_info:
+        Model(name="name", href="not valid")
+    assert "`href` must" in str(exc_info)
+
+    assert Model(name="name", href="http://a.com")
 
 
 def test_eval_job():

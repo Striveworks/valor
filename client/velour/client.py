@@ -171,8 +171,13 @@ class Client:
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
-    def create_dataset(self, name: str) -> "Dataset":
-        self._requests_post_rel_host("datasets", json={"name": name})
+    def create_dataset(
+        self, name: str, href: str = None, description: str = None
+    ) -> "Dataset":
+        self._requests_post_rel_host(
+            "datasets",
+            json={"name": name, "href": href, "description": description},
+        )
 
         return Dataset(client=self, name=name)
 
@@ -186,8 +191,13 @@ class Client:
     def get_datasets(self) -> List[dict]:
         return self._requests_get_rel_host("datasets").json()
 
-    def create_model(self, name: str) -> "Model":
-        self._requests_post_rel_host("models", json={"name": name})
+    def create_model(
+        self, name: str, href: str = None, description: str = None
+    ) -> "Model":
+        self._requests_post_rel_host(
+            "models",
+            json={"name": name, "href": href, "description": description},
+        )
 
         return Model(client=self, name=name)
 
