@@ -3,6 +3,7 @@ from base64 import b64decode
 from typing import Optional
 from uuid import uuid4
 
+import numpy as np
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
@@ -309,7 +310,30 @@ class ConfusionMatrixEntry(BaseModel):
     groundtruth: str
     count: int
 
+    class Config:
+        allow_mutation = False
 
-class ConfusionMatrix(BaseModel):
+
+class ConfusionMatrix(BaseModel, extra=Extra.allow):
     label_key: str
     entries: list[ConfusionMatrixEntry]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        unique_label_values = set(
+            [entry.groundtruth for entry in self.entries]
+        )
+        self.label_map = {
+            label_value: i
+            for i, label_value in enumerate(sorted(list(unique_label_values)))
+        }
+        n_label_values = len(self.label_map)
+
+        matrix = np.zeros((n_label_values, n_label_values), dtype=int)
+        for entry in self.entries:
+            matrix[
+                self.label_map[entry.groundtruth],
+                self.label_map[entry.prediction],
+            ] = entry.count
+
+        self.matrix = matrix
