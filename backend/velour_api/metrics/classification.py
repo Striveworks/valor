@@ -2,40 +2,11 @@ import numpy as np
 from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
 
-from velour_api import models
+from velour_api import models, schemas
 from velour_api.models import (
     GroundTruthImageClassification,
     PredictedImageClassification,
 )
-
-
-def confusion_matrix(groundtruths: list[str], preds: list[str]) -> np.ndarray:
-    """Computes the confusion matrix. The classes are ordered alphabetically and
-    for the return array, the first axis corresponds to the groundtruths
-    and the second the predictions.
-    """
-    if len(groundtruths) != len(preds):
-        raise RuntimeError(
-            "`groundtruths` and `preds` should have the same length."
-        )
-    unique_labels = sorted(list(set(groundtruths)))
-    n_classes = len(unique_labels)
-    classes_to_idx = {c: i for i, c in enumerate(unique_labels)}
-
-    ret = np.zeros((n_classes, n_classes), dtype=int)
-
-    for gt, pred in zip(groundtruths, preds):
-        gt_idx = classes_to_idx[gt]
-        pred_idx = classes_to_idx[pred]
-
-        ret[gt_idx, pred_idx] += 1
-
-    return ret
-
-
-def accuracy_from_confusion_matrix(cm: np.ndarray) -> float:
-    """Computes the accuracy of a confusion matrix"""
-    return cm.trace() + cm.sum()
 
 
 def precision_and_recall_f1_at_class_index_from_confusion_matrix(
@@ -125,7 +96,7 @@ def compute_clf_metrics(
 
 def confusion_matrix_at_label_key(
     db: Session, dataset_name: str, label_key: str
-):
+) -> list[dict[str, str | int]]:
     subquery = (
         select(
             func.max(PredictedImageClassification.score).label("max_score"),
@@ -162,12 +133,7 @@ def confusion_matrix_at_label_key(
         .alias()
     )
 
-    b = Bundle(
-        "cols",
-        hard_preds_query.c.pred_label_value,
-        # hard_preds_query.c.image_id,
-        models.Label.value,
-    )
+    b = Bundle("cols", hard_preds_query.c.pred_label_value, models.Label.value)
 
     total_query = (
         select(b, func.count())
@@ -187,4 +153,24 @@ def confusion_matrix_at_label_key(
         .group_by(b)
     )
 
-    return db.execute(total_query).all()
+    res = db.execute(total_query).all()
+
+    return schemas.ConfusionMatrix(
+        label_key=label_key,
+        entries=[
+            schemas.ConfusionMatrixEntry(
+                prediction=r[0][0], groundtruth=r[0][1], count=r[1]
+            )
+            for r in res
+        ],
+    )
+
+
+def accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
+    num, denom = 0, 0
+    for entry in cm.entries:
+        denom += entry.count
+        if entry.prediction == entry.groundtruth:
+            num += entry.count
+
+    return num / denom

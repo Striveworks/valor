@@ -302,3 +302,14 @@ class EvalJob(BaseModel):
     uid: str = Field(default_factory=lambda: str(uuid4()))
     status: JobStatus = JobStatus.PENDING
     evaluation_settings_id: int = None
+
+
+class ConfusionMatrixEntry(BaseModel):
+    prediction: str
+    groundtruth: str
+    count: int
+
+
+class ConfusionMatrix(BaseModel):
+    label_key: str
+    entries: list[ConfusionMatrixEntry]

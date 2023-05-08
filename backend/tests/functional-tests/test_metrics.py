@@ -2,7 +2,10 @@ from sqlalchemy.orm import Session
 
 from velour_api import crud, schemas
 from velour_api.metrics import compute_ap_metrics
-from velour_api.metrics.classification import get_hard_preds_from_label_key
+from velour_api.metrics.classification import (
+    accuracy_from_cm,
+    confusion_matrix_at_label_key,
+)
 from velour_api.models import (
     LabeledGroundTruthDetection,
     LabeledPredictedDetection,
@@ -109,7 +112,7 @@ def test_compute_ap_metrics(
         assert m in metrics
 
 
-def test_get_hard_preds_from_label_key(db: Session):
+def test_confusion_matrix_at_label_key(db: Session):
     dataset_name = "test dataset"
     model_name = "test model"
     crud.create_dataset(db, schemas.DatasetCreate(name=dataset_name))
@@ -184,21 +187,51 @@ def test_get_hard_preds_from_label_key(db: Session):
     )
 
     label_key = "animal"
-    preds = get_hard_preds_from_label_key(db, dataset_name, label_key)
-    pred_values = [p.label.value for p in preds]
-    assert pred_values[:5] == ["bird", "cat", "cat", "dog", "cat"]
-    # last one could be dog or cat
-    assert pred_values[-1] in ["cat", "dog"]
+    cm = confusion_matrix_at_label_key(db, dataset_name, label_key)
+    expected_entries = [
+        schemas.ConfusionMatrixEntry(
+            prediction="bird", groundtruth="bird", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            prediction="cat", groundtruth="dog", count=2
+        ),
+        schemas.ConfusionMatrixEntry(
+            prediction="cat", groundtruth="cat", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            prediction="cat", groundtruth="bird", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            prediction="dog", groundtruth="bird", count=1
+        ),
+    ]
+    for entry in cm.entries:
+        assert entry in expected_entries
+    for entry in expected_entries:
+        assert entry in cm.entries
+    assert accuracy_from_cm(cm) == 2 / 6
 
     label_key = "color"
-    preds = get_hard_preds_from_label_key(db, dataset_name, label_key)
-    pred_values = [p.label.value for p in preds]
-    assert pred_values == ["white", "blue", "red", "white", "red", "red"]
-
-    # maybe these two tests the `get_hard_preds_from_label_key` should probably
-    # throw an error instead
-    preds = get_hard_preds_from_label_key(db, "not a dataset", label_key)
-    assert preds == []
-
-    preds = get_hard_preds_from_label_key(db, dataset_name, "not a label key")
-    assert preds == []
+    cm = confusion_matrix_at_label_key(db, dataset_name, label_key)
+    expected_entries = [
+        schemas.ConfusionMatrixEntry(
+            prediction="white", groundtruth="white", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            prediction="white", groundtruth="blue", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            prediction="blue", groundtruth="white", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            prediction="red", groundtruth="red", count=2
+        ),
+        schemas.ConfusionMatrixEntry(
+            prediction="red", groundtruth="black", count=1
+        ),
+    ]
+    for entry in cm.entries:
+        assert entry in expected_entries
+    for entry in expected_entries:
+        assert entry in cm.entries
+    assert accuracy_from_cm(cm) == 3 / 6
