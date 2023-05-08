@@ -23,10 +23,9 @@ from velour.data_types import (
     ScoredLabel,
 )
 
-def pretty_print_json(text: str):
-    print(json.dumps(text, sort_keys=True, indent=4))
-
 def retrieve_chariot_ds(manifest_url: str):
+    """Retrieves and unpacks Chariot dataset annotations from a manifest url."""
+
     chariot_dataset = []  
 
     # Create a temporary file
@@ -53,6 +52,8 @@ def retrieve_chariot_ds(manifest_url: str):
     return chariot_dataset
     
 def parse_chariot_image_classification_annotation(datum: dict) -> GroundTruthImageClassification:
+    """Parses Chariot image classification annotation."""
+
     # Strip UID from URL path
     uid = pathlib.Path(datum['path']).stem
 
@@ -65,6 +66,8 @@ def parse_chariot_image_classification_annotation(datum: dict) -> GroundTruthIma
     return gt_dets
 
 def parse_chariot_image_segmentation_annotation(datum: dict) -> GroundTruthSemanticSegmentation:
+    """Parses Chariot image segmentation annotation."""
+
     # Strip UID from URL path
     uid = pathlib.Path(datum['path']).stem
 
@@ -113,6 +116,8 @@ def parse_chariot_image_segmentation_annotation(datum: dict) -> GroundTruthSeman
     return gt_dets
 
 def parse_chariot_object_detection_annotation(datum: dict) -> GroundTruthDetection:
+    """Parses Chariot object detection annotation."""
+
     # Strip UID from URL path
     uid = pathlib.Path(datum['path']).stem
     
@@ -126,18 +131,39 @@ def parse_chariot_object_detection_annotation(datum: dict) -> GroundTruthDetecti
     return gt_dets
 
 def parse_chariot_text_sentiment_annotation(datum: dict):
+    """Parses Chariot text sentiment annotation."""
     return None
 
 def parse_chariot_text_summarization_annotation(datum: dict):
+    """Parses Chariot text summarization annotation."""
     return None
 
 def parse_chariot_text_token_classification_annotation(datum: dict):
+    """Parses Chariot text token classification annotation."""
     return None
 
 def parse_chariot_text_translation_annotation(datum: dict):
+    """Parses Chariot text translation annotation."""
     return None
 
 def chariot_ds_to_velour_ds(dsv: DatasetVersion, velour_name: str, use_training_manifest=True):
+    """Converts the annotations of a Chariot dataset to velour's format.
+    
+    Parameters
+    ----------
+    dsv
+        Chariot DatasetVerion object 
+    velour_name
+        Name of the new Velour dataset
+    using_training_manifest
+        (OPTIONAL) Defaults to true, setting false will use the evaluation manifest which is a 
+        super set of the training manifest. Not recommended as the evaluation manifest may 
+        contain unlabeled data.
+
+    Returns
+    -------
+    List of Ground Truth Detections
+    """
     
     manifest_url = dsv.get_training_manifest_url() if use_training_manifest else dsv.get_evaluation_manifest_url()
     supported_types = dsv.supported_task_types
@@ -200,9 +226,6 @@ def test_load():
     idx = int(input())
     dsv = datasets[idx].versions[0]
 
-    # print('\n')
-    # print(dsv.summary)
-
     retval = chariot_ds_to_velour_ds(dsv, "Test")
     
 if __name__ == "__main__":
@@ -213,5 +236,3 @@ if __name__ == "__main__":
     connect(host="https://production.chariot.striveworks.us")
 
     test_load()
-
-    # GroundTruthInstanceSegmentation()
