@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy.orm import Session
 
 from velour_api import crud, schemas
@@ -10,6 +11,83 @@ from velour_api.models import (
     LabeledGroundTruthDetection,
     LabeledPredictedDetection,
 )
+
+dataset_name = "test dataset"
+
+
+@pytest.fixture
+def classification_test_data(db: Session):
+    model_name = "test model"
+    crud.create_dataset(db, schemas.DatasetCreate(name=dataset_name))
+    crud.create_model(db, schemas.Model(name=model_name))
+
+    animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
+    animal_preds = [
+        {"bird": 0.6, "dog": 0.2, "cat": 0.2},
+        {"cat": 0.9, "dog": 0.1, "bird": 0.0},
+        {"cat": 0.8, "dog": 0.05, "bird": 0.15},
+        {"dog": 0.75, "cat": 0.1, "bird": 0.15},
+        {"cat": 1.0, "dog": 0.0, "bird": 0.0},
+        {"cat": 0.4, "dog": 0.4, "bird": 0.2},
+    ]
+
+    color_gts = ["white", "white", "red", "blue", "black", "red"]
+    color_preds = [
+        {"white": 0.65, "red": 0.1, "blue": 0.2, "black": 0.05},
+        {"blue": 0.5, "white": 0.3, "red": 0.0, "black": 0.2},
+        {"red": 0.4, "white": 0.2, "blue": 0.1, "black": 0.3},
+        {"white": 1.0, "red": 0.0, "blue": 0.0, "black": 0.0},
+        {"red": 0.8, "white": 0.0, "blue": 0.2, "black": 0.0},
+        {"red": 0.9, "white": 0.06, "blue": 0.01, "black": 0.03},
+    ]
+
+    imgs = [
+        schemas.Image(uid=f"uid{i}", height=128, width=256) for i in range(6)
+    ]
+
+    gts = [
+        schemas.GroundTruthImageClassification(
+            image=imgs[i],
+            labels=[
+                schemas.Label(key="animal", value=animal_gts[i]),
+                schemas.Label(key="color", value=color_gts[i]),
+            ],
+        )
+        for i in range(6)
+    ]
+    preds = [
+        schemas.PredictedImageClassification(
+            image=imgs[i],
+            scored_labels=[
+                schemas.ScoredLabel(
+                    label=schemas.Label(key="animal", value=value), score=score
+                )
+                for value, score in animal_preds[i].items()
+            ]
+            + [
+                schemas.ScoredLabel(
+                    label=schemas.Label(key="color", value=value), score=score
+                )
+                for value, score in color_preds[i].items()
+            ],
+        )
+        for i in range(6)
+    ]
+
+    crud.create_ground_truth_image_classifications(
+        db,
+        data=schemas.GroundTruthImageClassificationsCreate(
+            dataset_name=dataset_name, classifications=gts
+        ),
+    )
+    crud.create_predicted_image_classifications(
+        db,
+        data=schemas.PredictedImageClassificationsCreate(
+            model_name=model_name,
+            dataset_name=dataset_name,
+            classifications=preds,
+        ),
+    )
 
 
 def round_dict_(d: dict, prec: int) -> None:
@@ -112,80 +190,7 @@ def test_compute_ap_metrics(
         assert m in metrics
 
 
-def test_confusion_matrix_at_label_key(db: Session):
-    dataset_name = "test dataset"
-    model_name = "test model"
-    crud.create_dataset(db, schemas.DatasetCreate(name=dataset_name))
-    crud.create_model(db, schemas.Model(name=model_name))
-
-    animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
-    animal_preds = [
-        {"bird": 0.6, "dog": 0.2, "cat": 0.2},
-        {"cat": 0.9, "dog": 0.1, "bird": 0.0},
-        {"cat": 0.8, "dog": 0.05, "bird": 0.15},
-        {"dog": 0.75, "cat": 0.1, "bird": 0.15},
-        {"cat": 1.0, "dog": 0.0, "bird": 0.0},
-        {"cat": 0.4, "dog": 0.4, "bird": 0.2},
-    ]
-
-    color_gts = ["white", "white", "red", "blue", "black", "red"]
-    color_preds = [
-        {"white": 0.65, "red": 0.1, "blue": 0.2, "black": 0.05},
-        {"blue": 0.5, "white": 0.3, "red": 0.0, "black": 0.2},
-        {"red": 0.4, "white": 0.2, "blue": 0.1, "black": 0.3},
-        {"white": 1.0, "red": 0.0, "blue": 0.0, "black": 0.0},
-        {"red": 0.8, "white": 0.0, "blue": 0.2, "black": 0.0},
-        {"red": 0.9, "white": 0.06, "blue": 0.01, "black": 0.03},
-    ]
-
-    imgs = [
-        schemas.Image(uid=f"uid{i}", height=128, width=256) for i in range(6)
-    ]
-
-    gts = [
-        schemas.GroundTruthImageClassification(
-            image=imgs[i],
-            labels=[
-                schemas.Label(key="animal", value=animal_gts[i]),
-                schemas.Label(key="color", value=color_gts[i]),
-            ],
-        )
-        for i in range(6)
-    ]
-    preds = [
-        schemas.PredictedImageClassification(
-            image=imgs[i],
-            scored_labels=[
-                schemas.ScoredLabel(
-                    label=schemas.Label(key="animal", value=value), score=score
-                )
-                for value, score in animal_preds[i].items()
-            ]
-            + [
-                schemas.ScoredLabel(
-                    label=schemas.Label(key="color", value=value), score=score
-                )
-                for value, score in color_preds[i].items()
-            ],
-        )
-        for i in range(6)
-    ]
-
-    crud.create_ground_truth_image_classifications(
-        db,
-        data=schemas.GroundTruthImageClassificationsCreate(
-            dataset_name=dataset_name, classifications=gts
-        ),
-    )
-    crud.create_predicted_image_classifications(
-        db,
-        data=schemas.PredictedImageClassificationsCreate(
-            model_name=model_name,
-            dataset_name=dataset_name,
-            classifications=preds,
-        ),
-    )
-
+def test_confusion_matrix_at_label_key(db: Session, classification_test_data):
     label_key = "animal"
     cm = confusion_matrix_at_label_key(db, dataset_name, label_key)
     expected_entries = [
