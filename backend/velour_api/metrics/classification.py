@@ -1,4 +1,5 @@
 import numpy as np
+from sqlalchemy import Float, Integer
 from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
 
@@ -44,6 +45,97 @@ def _binary_roc_auc(groundtruths: list[bool], preds: list[float]) -> float:
     fprs = fps / (len(groundtruths) - n_gts)
 
     return np.trapz(x=fprs, y=tprs)
+
+
+def binary_roc_auc(db, dataset_name: str, label: schemas.Label) -> float:
+    # query to get the image_ids and label values of groundtruths that have the given label key
+    gts_query = (
+        select(
+            models.GroundTruthImageClassification.image_id.label("image_id"),
+            models.Label.value.label("label_value"),
+        )
+        .join(models.Image)
+        .join(models.Dataset, models.Dataset.name == dataset_name)
+        .join(
+            models.Label,
+            and_(
+                models.Label.key == label.key,
+                models.GroundTruthImageClassification.label_id
+                == models.Label.id,
+            ),
+        )
+    ).subquery()
+
+    # number of groundtruth labels that match the given label value
+    n_pos = db.scalar(
+        select(func.count(gts_query.c.label_value)).where(
+            gts_query.c.label_value == label.value
+        )
+    )
+    # total number of groundtruths
+    n = db.scalar(select(func.count(gts_query.c.label_value)))
+
+    # get the prediction scores for the given label (key and value)
+    preds_query = (
+        select(
+            models.PredictedImageClassification.image_id.label("image_id"),
+            models.PredictedImageClassification.score.label("score"),
+            models.Label.value.label("label_value"),
+        )
+        .join(models.Image)
+        .join(models.Dataset, models.Dataset.name == dataset_name)
+        .join(
+            models.Label,
+            and_(
+                models.Label.key == label.key,
+                models.Label.value == label.value,
+                models.PredictedImageClassification.label_id
+                == models.Label.id,
+            ),
+        )
+    ).subquery()
+
+    # true positive rates
+    tprs = (
+        func.sum(
+            (gts_query.c.label_value == label.value).cast(Integer).cast(Float)
+        ).over(order_by=-preds_query.c.score)
+        / n_pos
+    )
+
+    # false positive rates
+    fprs = func.sum(
+        (gts_query.c.label_value != label.value).cast(Integer).cast(Float)
+    ).over(order_by=-preds_query.c.score) / (n - n_pos)
+
+    tprs_fprs_query = (
+        select(
+            tprs.label("tprs"),
+            fprs.label("fprs"),
+            preds_query.c.score,
+        ).join(preds_query, gts_query.c.image_id == preds_query.c.image_id)
+        # .order_by(preds_query.c.score.desc())
+    ).subquery()
+
+    trap_areas = select(
+        (
+            0.5
+            * (
+                tprs_fprs_query.c.tprs
+                + func.lag(tprs_fprs_query.c.tprs).over(
+                    order_by=-tprs_fprs_query.c.score
+                )
+            )
+            * (
+                tprs_fprs_query.c.fprs
+                - func.lag(tprs_fprs_query.c.fprs).over(
+                    order_by=-tprs_fprs_query.c.score
+                )
+            )
+        ).label("trap_area")
+    ).subquery()
+
+    return db.scalar(func.sum(trap_areas.c.trap_area))
 
 
 def roc_auc(groundtruths: list[str], preds: list[dict[str, float]]) -> float:
