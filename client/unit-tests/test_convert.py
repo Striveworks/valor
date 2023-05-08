@@ -232,26 +232,3 @@ def test_chariot_integration_object_detection():
         chariot_dataset[2]
     )
     assert len(velour_datum) == 0
-
-
-# def test_chariot_load_dataset():
-
-#     from chariot.client import connect
-#     from chariot.datasets.dataset import get_datasets_in_project
-
-#     # List available datasets in project
-#     project_name = "Global"
-#     datasets = get_datasets_in_project(
-#         limit=25, offset=0, project_name=project_name
-#     )
-
-#     dslu = {}
-#     print("Datasets")
-#     for i in range(len(datasets)):
-#         dslu[str(datasets[i].name).strip()] = datasets[i]
-#         print(" " + str(i) + ": " + datasets[i].name)
-
-#     idx = int(input())
-#     dsv = datasets[idx].versions[0]
-
-#     retval = chariot_ds_to_velour_ds(dsv, "Test")
