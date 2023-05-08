@@ -3,7 +3,7 @@ from sqlalchemy import Float, Integer
 from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
 
-from velour_api import models, schemas
+from velour_api import crud, models, schemas
 from velour_api.models import (
     GroundTruthImageClassification,
     PredictedImageClassification,
@@ -30,24 +30,9 @@ def precision_and_recall_f1_at_class_index_from_confusion_matrix(
     return prec, recall, f1
 
 
-def _binary_roc_auc(groundtruths: list[bool], preds: list[float]) -> float:
-    # sort the arrays by decreasing order of the scores
-    sorted_idxs = np.argsort(preds)[::-1]
-
-    groundtruths = np.array(groundtruths)[sorted_idxs]
-    preds = np.array(preds)[sorted_idxs]
-
-    n_gts = groundtruths.sum()
-    tps = np.cumsum(groundtruths)
-    tprs = tps / n_gts
-
-    fps = np.cumsum(~groundtruths)
-    fprs = fps / (len(groundtruths) - n_gts)
-
-    return np.trapz(x=fprs, y=tprs)
-
-
-def binary_roc_auc(db, dataset_name: str, label: schemas.Label) -> float:
+def binary_roc_auc(
+    db: Session, dataset_name: str, label: schemas.Label
+) -> float:
     # query to get the image_ids and label values of groundtruths that have the given label key
     gts_query = (
         select(
@@ -138,41 +123,43 @@ def binary_roc_auc(db, dataset_name: str, label: schemas.Label) -> float:
     return db.scalar(func.sum(trap_areas.c.trap_area))
 
 
-def roc_auc(groundtruths: list[str], preds: list[dict[str, float]]) -> float:
+def roc_auc(db: Session, dataset_name: str, label_key: str) -> float:
     """Comptues the area under the ROC curve. Note that for the multi-class setting
-    this does one-vs-rest AUC for each class and then averages those scores.
+    this does one-vs-rest AUC for each class and then averages those scores. This should give
+    the same thing as `sklearn.metrics.roc_auc_score` with `multi_class="ovr"`.
 
     Parameters
     ----------
-    groundtruths
-        list of groundtruth labels
-    preds
-        list of (soft) predictions. each element should be a dictionary with
-        keys equal to the set of unique labels present in groundtruths and values
-        the prediction score for that class
+    db
+        database session
+    dataset_name
+        name of the dataset to
+    label_key
+        the label key to use
 
     Returns
     -------
     float
         ROC AUC
     """
-    if len(groundtruths) != len(preds):
+
+    labels = [
+        label
+        for label in crud.get_classification_labels_in_dataset(
+            db, dataset_name
+        )
+        if label.key == label_key
+    ]
+    if len(labels) == 0:
         raise RuntimeError(
-            "`groundtruths` and `preds` should have the same length."
+            f"The label key '{label_key}' is not a classification label in the dataset {dataset_name}."
         )
 
-    for pred in preds:
-        if abs(sum(pred.values()) - 1) >= 1e-5:
-            raise ValueError("Sum of predictions should be 1.0")
-
-    unique_classes = set(groundtruths)
     sum_roc_aucs = 0
-    for c in unique_classes:
-        gts = [gt == c for gt in groundtruths]
-        ps = [pred[c] for pred in preds]
-        sum_roc_aucs += _binary_roc_auc(groundtruths=gts, preds=ps)
+    for label in labels:
+        sum_roc_aucs += binary_roc_auc(db, dataset_name, label)
 
-    return sum_roc_aucs / len(unique_classes)
+    return sum_roc_aucs / len(labels)
 
 
 def compute_clf_metrics(
