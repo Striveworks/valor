@@ -10,7 +10,7 @@ from velour_api.models import (
 
 
 def binary_roc_auc(
-    db: Session, dataset_name: str, label: schemas.Label
+    db: Session, dataset_name: str, model_name: str, label: schemas.Label
 ) -> float:
     # query to get the image_ids and label values of groundtruths that have the given label key
     gts_query = (
@@ -48,6 +48,7 @@ def binary_roc_auc(
         )
         .join(models.Image)
         .join(models.Dataset, models.Dataset.name == dataset_name)
+        .join(models.Model, models.Model.name == model_name)
         .join(
             models.Label,
             and_(
@@ -102,7 +103,9 @@ def binary_roc_auc(
     return db.scalar(func.sum(trap_areas.c.trap_area))
 
 
-def roc_auc(db: Session, dataset_name: str, label_key: str) -> float:
+def roc_auc(
+    db: Session, dataset_name: str, model_name: str, label_key: str
+) -> float:
     """Comptues the area under the ROC curve. Note that for the multi-class setting
     this does one-vs-rest AUC for each class and then averages those scores. This should give
     the same thing as `sklearn.metrics.roc_auc_score` with `multi_class="ovr"`.
@@ -136,7 +139,7 @@ def roc_auc(db: Session, dataset_name: str, label_key: str) -> float:
 
     sum_roc_aucs = 0
     for label in labels:
-        sum_roc_aucs += binary_roc_auc(db, dataset_name, label)
+        sum_roc_aucs += binary_roc_auc(db, dataset_name, model_name, label)
 
     return sum_roc_aucs / len(labels)
 
@@ -153,7 +156,7 @@ def compute_clf_metrics(
 
 
 def confusion_matrix_at_label_key(
-    db: Session, dataset_name: str, label_key: str
+    db: Session, dataset_name: str, model_name: str, label_key: str
 ) -> list[dict[str, str | int]]:
     subquery = (
         select(
@@ -165,10 +168,13 @@ def confusion_matrix_at_label_key(
         .join(models.Label)
         .join(models.Image)
         .join(models.Dataset)
+        .join(models.Model)
         .where(
             and_(
                 models.Label.key == label_key,
                 models.Dataset.name == dataset_name,
+                models.Model.id == PredictedImageClassification.model_id,
+                models.Model.name == model_name,
             )
         )
         .group_by(PredictedImageClassification.image_id)

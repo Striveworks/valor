@@ -14,11 +14,11 @@ from velour_api.models import (
 )
 
 dataset_name = "test dataset"
+model_name = "test model"
 
 
 @pytest.fixture
 def classification_test_data(db: Session):
-    model_name = "test model"
     crud.create_dataset(db, schemas.DatasetCreate(name=dataset_name))
     crud.create_model(db, schemas.Model(name=model_name))
 
@@ -193,7 +193,7 @@ def test_compute_ap_metrics(
 
 def test_confusion_matrix_at_label_key(db: Session, classification_test_data):
     label_key = "animal"
-    cm = confusion_matrix_at_label_key(db, dataset_name, label_key)
+    cm = confusion_matrix_at_label_key(db, dataset_name, model_name, label_key)
     expected_entries = [
         schemas.ConfusionMatrixEntry(
             prediction="bird", groundtruth="bird", count=1
@@ -218,7 +218,7 @@ def test_confusion_matrix_at_label_key(db: Session, classification_test_data):
     assert accuracy_from_cm(cm) == 2 / 6
 
     label_key = "color"
-    cm = confusion_matrix_at_label_key(db, dataset_name, label_key)
+    cm = confusion_matrix_at_label_key(db, dataset_name, model_name, label_key)
     expected_entries = [
         schemas.ConfusionMatrixEntry(
             prediction="white", groundtruth="white", count=1
@@ -282,9 +282,12 @@ def test_roc_auc(db, classification_test_data):
     0.43125
     ```
     """
-    assert roc_auc(db, dataset_name, label_key="animal") == 0.8009259259259259
-    assert roc_auc(db, dataset_name, label_key="color") == 0.43125
+    assert (
+        roc_auc(db, dataset_name, model_name, label_key="animal")
+        == 0.8009259259259259
+    )
+    assert roc_auc(db, dataset_name, model_name, label_key="color") == 0.43125
 
     with pytest.raises(RuntimeError) as exc_info:
-        roc_auc(db, dataset_name, label_key="not a key")
+        roc_auc(db, dataset_name, model_name, label_key="not a key")
     assert "is not a classification label" in str(exc_info)
