@@ -236,21 +236,29 @@ def chariot_parse_dataset_version_manifest(
 
         # Text Sentiment
         if chariot_dataset_version.supported_task_types.text_sentiment:
-            pass
+            raise NotImplementedError(
+                "Text-based datasets not currently supported."
+            )
 
         # Text Summarization
         if chariot_dataset_version.supported_task_types.text_summarization:
-            pass
+            raise NotImplementedError(
+                "Text-based datasets not currently supported."
+            )
 
         # Text Token Classifier
         if (
             chariot_dataset_version.supported_task_types.text_token_classification
         ):
-            pass
+            raise NotImplementedError(
+                "Text-based datasets not currently supported."
+            )
 
         # Text Translation
         if chariot_dataset_version.supported_task_types.text_translation:
-            pass
+            raise NotImplementedError(
+                "Text-based datasets not currently supported."
+            )
 
     return groundtruth_annotations
 
