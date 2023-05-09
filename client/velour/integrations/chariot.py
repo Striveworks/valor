@@ -21,6 +21,9 @@ from velour.data_types import (
     PolygonWithHole,
 )
 
+# REMOVE
+placeholder_image_length = -1
+
 
 def retrieve_chariot_manifest(manifest_url: str):
     """Retrieves and unpacks Chariot dataset annotations from a manifest url."""
@@ -60,7 +63,11 @@ def chariot_parse_image_classification_annotation(
     for annotation in datum["annotations"]:
         gt_dets.append(
             GroundTruthImageClassification(
-                image=Image(uid=uid, height=1, width=1),
+                image=Image(
+                    uid=uid,
+                    height=placeholder_image_length,
+                    width=placeholder_image_length,
+                ),
                 labels=[
                     Label(key="class_label", value=annotation["class_label"])
                 ],
@@ -135,7 +142,11 @@ def chariot_parse_image_segmentation_annotation(
             GroundTruthSemanticSegmentation(
                 shape=annotated_regions[label],
                 labels=[Label(key="class_label", value=label)],
-                image=Image(uid=uid, height=1, width=1),
+                image=Image(
+                    uid=uid,
+                    height=placeholder_image_length,
+                    width=placeholder_image_length,
+                ),
             )
         )
     return gt_dets
@@ -162,30 +173,14 @@ def chariot_parse_object_detection_annotation(
                 labels=[
                     Label(key="class_label", value=annotation["class_label"])
                 ],
-                image=Image(uid=uid, height=1, width=1),
+                image=Image(
+                    uid=uid,
+                    height=placeholder_image_length,
+                    width=placeholder_image_length,
+                ),
             )
         )
     return gt_dets
-
-
-def chariot_parse_text_sentiment_annotation(datum: dict):
-    """Parses Chariot text sentiment annotation."""
-    return None
-
-
-def chariot_parse_text_summarization_annotation(datum: dict):
-    """Parses Chariot text summarization annotation."""
-    return None
-
-
-def chariot_parse_text_token_classification_annotation(datum: dict):
-    """Parses Chariot text token classification annotation."""
-    return None
-
-
-def chariot_parse_text_translation_annotation(datum: dict):
-    """Parses Chariot text translation annotation."""
-    return None
 
 
 def chariot_parse_dataset_version_manifest(
@@ -324,8 +319,6 @@ def chariot_ds_to_velour_ds(
     href += "/projects/" + dsv.project_id
     href += "/datasets/" + dsv.dataset_id
     # href += dsv.id
-
-    print(href)
 
     # Create Velour dataset
     velour_dataset = velour_client.create_dataset(
