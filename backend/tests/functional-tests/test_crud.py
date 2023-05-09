@@ -755,7 +755,7 @@ def test_gt_seg_as_mask_or_polys(db: Session):
     assert segs[0].labels == gt1.labels
 
 
-def test_get_filtered_preds_statmenet_and_missing_labels(
+def test_get_filtered_preds_statement_and_missing_labels(
     db: Session,
     gt_segs_create: schemas.GroundTruthDetectionsCreate,
     pred_segs_create: schemas.PredictedSegmentationsCreate,
@@ -790,7 +790,7 @@ def test_get_filtered_preds_statmenet_and_missing_labels(
         new_preds_statement,
         missing_pred_labels,
         ignored_pred_labels,
-    ) = crud.get_filtered_preds_statmenet_and_missing_labels(
+    ) = crud.get_filtered_preds_statement_and_missing_labels(
         db=db, gts_statement=gts_statement, preds_statement=preds_statement
     )
 

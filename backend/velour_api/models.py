@@ -405,3 +405,14 @@ class Metric(Base):
     evaluation_settings_id: Mapped[int] = mapped_column(
         ForeignKey("evaluation_settings.id")
     )
+
+
+class ConfusionMatrix(Base):
+    __tablename__ = "confusion_matrix"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    label_key: Mapped[str] = mapped_column()
+    value = mapped_column(JSONB)
+    evaluation_settings_id: Mapped[int] = mapped_column(
+        ForeignKey("evaluation_settings.id")
+    )

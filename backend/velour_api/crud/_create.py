@@ -2,7 +2,7 @@ from sqlalchemy import Select, and_, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import exceptions, models, schemas
+from velour_api import enums, exceptions, models, schemas
 from velour_api.metrics import compute_ap_metrics, compute_clf_metrics
 
 from ._read import (
@@ -320,7 +320,6 @@ def create_groundtruth_detections(
     db: Session,
     data: schemas.GroundTruthDetectionsCreate,
 ) -> list[int]:
-
     return _create_gt_dets_or_segs(
         db=db,
         dataset_name=data.dataset_name,
@@ -537,54 +536,6 @@ def _label_key_value_to_id(
     }
 
 
-def _ap_metric_to_mapping(
-    metric: schemas.APMetric, label_id: int, evaluation_settings_id: int
-) -> dict:
-    return {
-        "value": metric.value,
-        "label_id": label_id,
-        "type": "AP",
-        "evaluation_settings_id": evaluation_settings_id,
-        "parameters": {"iou": metric.iou},
-    }
-
-
-def _ap_metric_averaged_over_ious_to_mapping(
-    metric: schemas.APMetricAveragedOverIOUs,
-    label_id: int,
-    evaluation_settings_id: int,
-) -> dict:
-    return {
-        "value": metric.value,
-        "label_id": label_id,
-        "type": "APAveragedOverIOUs",
-        "evaluation_settings_id": evaluation_settings_id,
-        "parameters": {"ious": list(metric.ious)},
-    }
-
-
-def _map_metric_to_mapping(
-    metric: schemas.mAPMetric, evaluation_settings_id: int
-) -> dict:
-    return {
-        "value": metric.value,
-        "type": "mAP",
-        "evaluation_settings_id": evaluation_settings_id,
-        "parameters": {"iou": metric.iou},
-    }
-
-
-def _map_metric_averaged_over_ious_to_mapping(
-    metric: schemas.APMetricAveragedOverIOUs, evaluation_settings_id: int
-) -> dict:
-    return {
-        "value": metric.value,
-        "type": "mAPAveragedOverIOUs",
-        "evaluation_settings_id": evaluation_settings_id,
-        "parameters": {"ious": list(metric.ious)},
-    }
-
-
 def _create_metric_mappings(
     db: Session,
     metrics: list[
@@ -607,43 +558,24 @@ def _create_metric_mappings(
     )
     ret = []
     for metric in metrics:
-        if isinstance(metric, schemas.APMetric):
+        if hasattr(metric, "label"):
             ret.append(
-                _ap_metric_to_mapping(
-                    metric=metric,
+                metric.db_mapping(
                     label_id=label_map[(metric.label.key, metric.label.value)],
-                    evaluation_settings_id=evaluation_settings_id,
-                )
-            )
-        elif isinstance(metric, schemas.APMetricAveragedOverIOUs):
-            ret.append(
-                _ap_metric_averaged_over_ious_to_mapping(
-                    metric=metric,
-                    label_id=label_map[(metric.label.key, metric.label.value)],
-                    evaluation_settings_id=evaluation_settings_id,
-                )
-            )
-        elif isinstance(metric, schemas.mAPMetric):
-            ret.append(
-                _map_metric_to_mapping(
-                    metric=metric,
-                    evaluation_settings_id=evaluation_settings_id,
-                )
-            )
-        elif isinstance(metric, schemas.mAPMetricAveragedOverIOUs):
-            ret.append(
-                _map_metric_averaged_over_ious_to_mapping(
-                    metric=metric,
                     evaluation_settings_id=evaluation_settings_id,
                 )
             )
         else:
-            raise ValueError(f"Got an unexpected metric type: {type(metric)}")
+            ret.append(
+                metric.db_mapping(
+                    evaluation_settings_id=evaluation_settings_id
+                )
+            )
 
     return ret
 
 
-def get_filtered_preds_statmenet_and_missing_labels(
+def get_filtered_preds_statement_and_missing_labels(
     db: Session,
     gts_statement: Select,
     preds_statement: Select,
@@ -847,7 +779,7 @@ def validate_create_ap_metrics(
         preds_statement,
         missing_pred_labels,
         ignored_pred_labels,
-    ) = get_filtered_preds_statmenet_and_missing_labels(
+    ) = get_filtered_preds_statement_and_missing_labels(
         db=db, gts_statement=gts_statement, preds_statement=preds_statement
     )
 
@@ -873,16 +805,11 @@ def validate_create_clf_metrics(
         preds_statement,
         missing_pred_labels,
         ignored_pred_labels,
-    ) = get_filtered_preds_statmenet_and_missing_labels(
+    ) = get_filtered_preds_statement_and_missing_labels(
         db=db, gts_statement=gts_statement, preds_statement=preds_statement
     )
 
-    return (
-        gts_statement,
-        preds_statement,
-        missing_pred_labels,
-        ignored_pred_labels,
-    )
+    return missing_pred_labels, ignored_pred_labels
 
 
 def create_ap_metrics(
@@ -960,59 +887,37 @@ def create_ap_metrics(
 
 def create_clf_metrics(
     db: Session,
-    gts_statement: Select,
-    preds_statement: Select,
     request_info: schemas.ClfMetricsRequest,
 ) -> int:
-    # need to break down preds and gts by image
-    gts = db.scalars(gts_statement).all()
-    preds = db.scalars(preds_statement).all()
-
-    image_id_to_gts = {}
-    image_id_to_preds = {}
-    all_image_ids = set()
-    for gt in gts:
-        if gt.image_id not in image_id_to_gts:
-            image_id_to_gts[gt.image_id] = []
-        image_id_to_gts[gt.image_id].append(gt)
-        all_image_ids.add(gt.image_id)
-    for pred in preds:
-        if pred.image_id not in image_id_to_preds:
-            image_id_to_preds[pred.image_id] = []
-        image_id_to_preds[pred.image_id].append(pred)
-        all_image_ids.add(pred.image_id)
-
-    all_image_ids = list(all_image_ids)
-
-    # all_gts and all_preds are list of lists of gts and preds per image
-    all_gts = []
-    all_preds = []
-    for image_id in all_image_ids:
-        all_gts.append(image_id_to_gts.get(image_id, []))
-        all_preds.append(image_id_to_preds.get(image_id, []))
-
-    metrics = compute_clf_metrics(
-        db=db, predictions=all_preds, groundtruths=all_gts
+    confusion_matrices, metrics = compute_clf_metrics(
+        db=db,
+        dataset_name=request_info.settings.dataset_name,
+        model_name=request_info.settings.model_name,
     )
 
     dataset_id = get_dataset(db, request_info.settings.dataset_name).id
     model_id = get_model(db, request_info.settings.model_name).id
 
-    mp = _get_or_create_row(
+    es = _get_or_create_row(
         db,
         models.EvaluationSettings,
         mapping={
             "dataset_id": dataset_id,
             "model_id": model_id,
-            "model_pred_task_type": request_info.settings.model_pred_task_type,
-            "dataset_gt_task_type": request_info.settings.dataset_gt_task_type,
+            "model_pred_task_type": enums.Task.IMAGE_CLASSIFICATION,
+            "dataset_gt_task_type": enums.Task.IMAGE_CLASSIFICATION,
         },
     )
 
-    metric_mappings = _create_metric_mappings(
-        db=db, metrics=metrics, evaluation_settings_id=mp.id
+    confusion_matrices_mappings = _create_metric_mappings(
+        db=db, metrics=confusion_matrices, evaluation_settings_id=es.id
     )
+    for mapping in confusion_matrices_mappings:
+        _get_or_create_row(db, models.ConfusionMatrix, mapping)
 
+    metric_mappings = _create_metric_mappings(
+        db=db, metrics=metrics, evaluation_settings_id=es.id
+    )
     for mapping in metric_mappings:
         # ignore value since the other columns are unique identifiers
         # and have empircally noticed value can slightly change due to floating
@@ -1020,9 +925,10 @@ def create_clf_metrics(
         _get_or_create_row(
             db, models.Metric, mapping, columns_to_ignore=["value"]
         )
+
     db.commit()
 
-    return mp.id
+    return es.id
 
 
 def _check_finalized_inferences(

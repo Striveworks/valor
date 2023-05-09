@@ -260,39 +260,6 @@ class APRequest(BaseModel):
         return values
 
 
-class ClfMetricsRequest(BaseModel):
-    settings: EvaluationSettings
-
-
-class Metric(BaseModel):
-    type: str
-    parameters: dict
-    value: float
-    label: Label = None
-
-
-class APMetric(BaseModel):
-    iou: float
-    value: float
-    label: Label
-
-
-class APMetricAveragedOverIOUs(BaseModel):
-    ious: set[float]
-    value: float
-    label: Label
-
-
-class mAPMetric(BaseModel):
-    iou: float
-    value: float
-
-
-class mAPMetricAveragedOverIOUs(BaseModel):
-    ious: set[float]
-    value: float
-
-
 class CreateMetricsResponse(BaseModel):
     missing_pred_labels: list[Label]
     ignored_pred_labels: list[Label]
@@ -303,6 +270,74 @@ class EvalJob(BaseModel):
     uid: str = Field(default_factory=lambda: str(uuid4()))
     status: JobStatus = JobStatus.PENDING
     evaluation_settings_id: int = None
+
+
+class ClfMetricsRequest(BaseModel):
+    settings: EvaluationSettings
+
+
+# used for responses from API
+class Metric(BaseModel):
+    type: str
+    parameters: dict
+    value: float | dict
+    label: Label = None
+
+
+class APMetric(BaseModel):
+    iou: float
+    value: float
+    label: Label
+
+    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": "AP",
+            "evaluation_settings_id": evaluation_settings_id,
+            "parameters": {"iou": self.iou},
+        }
+
+
+class APMetricAveragedOverIOUs(BaseModel):
+    ious: set[float]
+    value: float
+    label: Label
+
+    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": "APAveragedOverIOUs",
+            "evaluation_settings_id": evaluation_settings_id,
+            "parameters": {"ious": list(self.ious)},
+        }
+
+
+class mAPMetric(BaseModel):
+    iou: float
+    value: float
+
+    def db_mapping(self, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "type": "mAP",
+            "evaluation_settings_id": evaluation_settings_id,
+            "parameters": {"iou": self.iou},
+        }
+
+
+class mAPMetricAveragedOverIOUs(BaseModel):
+    ious: set[float]
+    value: float
+
+    def db_mapping(self, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "type": "mAPAveragedOverIOUs",
+            "evaluation_settings_id": evaluation_settings_id,
+            "parameters": {"ious": list(self.ious)},
+        }
 
 
 class ConfusionMatrixEntry(BaseModel):
@@ -337,3 +372,62 @@ class ConfusionMatrix(BaseModel, extra=Extra.allow):
             ] = entry.count
 
         self.matrix = matrix
+
+    def db_mapping(self, evaluation_settings_id: int) -> dict:
+        return {
+            "label_key": self.label_key,
+            "value": [entry.dict() for entry in self.entries],
+            "evaluation_settings_id": evaluation_settings_id,
+        }
+
+
+class AccuracyMetric(BaseModel):
+    label_key: str
+    value: float
+
+    def db_mapping(self, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "type": "Accuracy",
+            "evaluation_settings_id": evaluation_settings_id,
+            "parameters": {"label_key": self.label_key},
+        }
+
+
+class PrecisionMetric(BaseModel):
+    label: Label
+    value: float
+
+    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": "Precision",
+            "evaluation_settings_id": evaluation_settings_id,
+        }
+
+
+class RecallMetric(BaseModel):
+    label: Label
+    value: float
+
+    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": "Recall",
+            "evaluation_settings_id": evaluation_settings_id,
+        }
+
+
+class F1Metric(BaseModel):
+    label: Label
+    value: float
+
+    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": "F1",
+            "evaluation_settings_id": evaluation_settings_id,
+        }

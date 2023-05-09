@@ -3,10 +3,7 @@ from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
 
 from velour_api import crud, models, schemas
-from velour_api.models import (
-    GroundTruthImageClassification,
-    PredictedImageClassification,
-)
+from velour_api.models import PredictedImageClassification
 
 
 def binary_roc_auc(
@@ -106,7 +103,7 @@ def binary_roc_auc(
 def roc_auc(
     db: Session, dataset_name: str, model_name: str, label_key: str
 ) -> float:
-    """Comptues the area under the ROC curve. Note that for the multi-class setting
+    """Computes the area under the ROC curve. Note that for the multi-class setting
     this does one-vs-rest AUC for each class and then averages those scores. This should give
     the same thing as `sklearn.metrics.roc_auc_score` with `multi_class="ovr"`.
 
@@ -145,19 +142,57 @@ def roc_auc(
 
 
 def compute_clf_metrics(
-    db: Session,
-    predictions: list[list[PredictedImageClassification]],
-    groundtruths: list[list[GroundTruthImageClassification]],
-):
-    # Return: accuracies (one for each label key)
-    # confusion matrices (one for each label key)
-    # roc_auc (one for each label key)
-    pass
+    db: Session, dataset_name: str, model_name: str
+) -> tuple[
+    list[schemas.ConfusionMatrix],
+    list[
+        schemas.ConfusionMatrix
+        | schemas.AccuracyMetric
+        | schemas.PrecisionMetric
+        | schemas.RecallMetric
+        | schemas.F1Metric
+    ],
+]:
+    labels = crud.get_classification_labels_in_dataset(db, dataset_name)
+    unique_label_keys = set([label.key for label in labels])
+
+    confusion_matrices, metrics = [], []
+    for label_key in unique_label_keys:
+        confusion_matrix = confusion_matrix_at_label_key(
+            db, dataset_name, model_name, label_key
+        )
+        confusion_matrices.append(confusion_matrix)
+
+        metrics.append(
+            schemas.AccuracyMetric(
+                label_key=label_key, value=accuracy_from_cm(confusion_matrix)
+            )
+        )
+
+        for label in [label for label in labels if label.key == label_key]:
+            (
+                precision,
+                recall,
+                f1,
+            ) = precision_and_recall_f1_from_confusion_matrix(
+                confusion_matrix, label.value
+            )
+
+            pydantic_label = schemas.Label(key=label.key, value=label.value)
+            metrics.append(
+                schemas.PrecisionMetric(label=pydantic_label, value=precision)
+            )
+            metrics.append(
+                schemas.RecallMetric(label=pydantic_label, value=recall)
+            )
+            metrics.append(schemas.F1Metric(label=pydantic_label, value=f1))
+
+    return confusion_matrices, metrics
 
 
 def confusion_matrix_at_label_key(
     db: Session, dataset_name: str, model_name: str, label_key: str
-) -> list[dict[str, str | int]]:
+) -> schemas.ConfusionMatrix:
     subquery = (
         select(
             func.max(PredictedImageClassification.score).label("max_score"),
@@ -234,9 +269,9 @@ def accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
     return cm.matrix.trace() / cm.matrix.sum()
 
 
-def precision_and_recall_f1_at_class_index_from_confusion_matrix(
+def precision_and_recall_f1_from_confusion_matrix(
     cm: schemas.ConfusionMatrix, label_value: str
-) -> float:
+) -> tuple[float, float, float]:
     """Computes the precision, recall, and f1 score at a class index"""
     cm_matrix = cm.matrix
     class_index = cm.label_map[label_value]

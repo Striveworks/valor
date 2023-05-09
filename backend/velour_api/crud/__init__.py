@@ -1,5 +1,6 @@
 from ._create import (
     create_ap_metrics,
+    create_clf_metrics,
     create_dataset,
     create_ground_truth_image_classifications,
     create_groundtruth_detections,
@@ -9,7 +10,7 @@ from ._create import (
     create_predicted_image_classifications,
     create_predicted_segmentations,
     finalize_inferences,
-    get_filtered_preds_statmenet_and_missing_labels,
+    get_filtered_preds_statement_and_missing_labels,
     validate_create_ap_metrics,
     validate_create_clf_metrics,
 )
@@ -45,10 +46,11 @@ __all__ = [
     "create_predicted_image_classifications",
     "create_dataset",
     "create_model",
-    "get_filtered_preds_statmenet_and_missing_labels",
+    "get_filtered_preds_statement_and_missing_labels",
     "validate_create_ap_metrics",
     "validate_create_clf_metrics",
     "create_ap_metrics",
+    "create_clf_metrics",
     "get_datasets",
     "get_dataset",
     "get_evaluation_settings_from_id",
