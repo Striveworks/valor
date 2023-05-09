@@ -997,10 +997,11 @@ def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
         "Precision",
         "Recall",
         "F1",
+        "ROCAUC",
     }
-    # should have two accuracy metrics (one for each label key) and three of precision
+    # should have two accuracy metrics and ROC AUC scores (one for each label key) and three of precision
     # recall and f1 (one for each label)
-    assert len(metrics) == 2 + 3 + 3 + 3
+    assert len(metrics) == 2 + 2 + 3 + 3 + 3
 
     confusion_matrices = db.scalars(
         select(models.ConfusionMatrix).where(
@@ -1008,6 +1009,7 @@ def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
             == evaluation_settings_id
         )
     ).all()
+
     # should have two confusion matrices, one for each key
     assert len(confusion_matrices) == 2
 
@@ -1020,7 +1022,7 @@ def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
             models.EvaluationSettings.id == evaluation_settings_id
         )
     ).metrics
-    assert len(metrics) == 2 + 3 + 3 + 3
+    assert len(metrics) == 2 + 2 + 3 + 3 + 3
     confusion_matrices = db.scalars(
         select(models.ConfusionMatrix).where(
             models.ConfusionMatrix.evaluation_settings_id

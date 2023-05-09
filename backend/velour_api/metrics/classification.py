@@ -1,3 +1,4 @@
+import numpy as np
 from sqlalchemy import Float, Integer
 from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
@@ -35,6 +36,9 @@ def binary_roc_auc(
     )
     # total number of groundtruths
     n = db.scalar(select(func.count(gts_query.c.label_value)))
+
+    if n - n_pos == 0:
+        return np.nan
 
     # get the prediction scores for the given label (key and value)
     preds_query = (
@@ -97,7 +101,8 @@ def binary_roc_auc(
         ).label("trap_area")
     ).subquery()
 
-    return db.scalar(func.sum(trap_areas.c.trap_area))
+    ret = db.scalar(func.sum(trap_areas.c.trap_area))
+    return ret or np.nan
 
 
 def roc_auc(
@@ -148,12 +153,12 @@ def compute_clf_metrics(
     list[
         schemas.ConfusionMatrix
         | schemas.AccuracyMetric
+        | schemas.ROCAUCMetric
         | schemas.PrecisionMetric
         | schemas.RecallMetric
         | schemas.F1Metric
     ],
 ]:
-    # TODO: add rocauc
     labels = crud.get_classification_labels_in_dataset(db, dataset_name)
     unique_label_keys = set([label.key for label in labels])
 
@@ -167,6 +172,13 @@ def compute_clf_metrics(
         metrics.append(
             schemas.AccuracyMetric(
                 label_key=label_key, value=accuracy_from_cm(confusion_matrix)
+            )
+        )
+
+        metrics.append(
+            schemas.ROCAUCMetric(
+                label_key=label_key,
+                value=roc_auc(db, dataset_name, model_name, label_key),
             )
         )
 

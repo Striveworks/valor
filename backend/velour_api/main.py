@@ -383,13 +383,11 @@ def create_clf_metrics(
 ) -> schemas.CreateMetricsResponse:
     try:
         (
-            gts_statement,
-            preds_statement,
             missing_pred_labels,
             ignored_pred_labels,
         ) = crud.validate_create_clf_metrics(db, request_info=data)
 
-        job, wrapped_fn = jobs.wrap_metric_computation(crud.create_ap_metrics)
+        job, wrapped_fn = jobs.wrap_metric_computation(crud.create_clf_metrics)
 
         cm_resp = schemas.CreateMetricsResponse(
             missing_pred_labels=missing_pred_labels,
@@ -397,13 +395,7 @@ def create_clf_metrics(
             job_id=job.uid,
         )
 
-        background_tasks.add_task(
-            wrapped_fn,
-            db=db,
-            request_info=data,
-            gts_statement=gts_statement,
-            preds_statement=preds_statement,
-        )
+        background_tasks.add_task(wrapped_fn, db=db, request_info=data)
 
         return cm_resp
     except ValueError as e:

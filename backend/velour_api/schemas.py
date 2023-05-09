@@ -429,3 +429,16 @@ class F1Metric(BaseModel):
             "type": "F1",
             "evaluation_settings_id": evaluation_settings_id,
         }
+
+
+class ROCAUCMetric(BaseModel):
+    label_key: str
+    value: float
+
+    def db_mapping(self, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "type": "ROCAUC",
+            "parameters": {"label_key": self.label_key},
+            "evaluation_settings_id": evaluation_settings_id,
+        }
