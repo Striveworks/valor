@@ -177,7 +177,7 @@ if __name__ == "__main__":
         lookup[str(dataset_list[i].name).strip()] = dataset_list[i]
         print(" " + str(i) + ": " + dataset_list[i].name)
 
-    chariot_ds = lookup["CIFAR-10"]
+    chariot_ds = lookup["CIFAR-100"]
 
     print(chariot_ds.name)
 
