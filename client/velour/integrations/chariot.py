@@ -6,6 +6,7 @@ from pathlib import Path
 import requests
 from chariot.config import settings
 from chariot.datasets.dataset import Dataset
+from chariot.datasets.dataset_version import DatasetVersion
 
 from velour.client import Client
 from velour.data_types import (
@@ -59,7 +60,7 @@ def chariot_parse_image_classification_annotation(
     for annotation in datum["annotations"]:
         gt_dets.append(
             GroundTruthImageClassification(
-                image=Image(uid=uid, height=None, width=None),
+                image=Image(uid=uid, height=1, width=1),
                 labels=[
                     Label(key="class_label", value=annotation["class_label"])
                 ],
@@ -134,7 +135,7 @@ def chariot_parse_image_segmentation_annotation(
             GroundTruthSemanticSegmentation(
                 shape=annotated_regions[label],
                 labels=[Label(key="class_label", value=label)],
-                image=Image(uid=uid, height=None, width=None),
+                image=Image(uid=uid, height=1, width=1),
             )
         )
     return gt_dets
@@ -161,7 +162,7 @@ def chariot_parse_object_detection_annotation(
                 labels=[
                     Label(key="class_label", value=annotation["class_label"])
                 ],
-                image=Image(uid=uid, height=None, width=None),
+                image=Image(uid=uid, height=1, width=1),
             )
         )
     return gt_dets
@@ -187,24 +188,96 @@ def chariot_parse_text_translation_annotation(datum: dict):
     return None
 
 
-def chariot_ds_to_velour_ds(
-    client: Client,
-    chariot_ds: Dataset,
-    chariot_ds_version: str = None,
-    velour_ds_name: str = None,
-    use_training_manifest: bool = True,
-):
-    """Converts the annotations of a Chariot dataset to velour's format.
+def chariot_parse_dataset_version_manifest(
+    chariot_dataset_version: DatasetVersion, use_training_manifest: bool = True
+) -> list:
+    """Get chariot dataset annotations.
 
     Parameters
     ----------
-    client
+    chariot_dataset_version
+        Chariot DatasetVersion object of interest.
+    using_training_manifest
+        (OPTIONAL) Defaults to true, setting false will use the evaluation manifest which is a
+        super set of the training manifest. Not recommended as the evaluation manifest may
+        contain unlabeled data.
+
+    Returns
+    -------
+    Chariot annotations in velour format.
+    """
+
+    # Get the manifest url
+    manifest_url = (
+        chariot_dataset_version.get_training_manifest_url()
+        if use_training_manifest
+        else chariot_dataset_version.get_evaluation_manifest_url()
+    )
+
+    # Retrieve the manifest
+    chariot_manifest = retrieve_chariot_manifest(manifest_url)
+
+    # Iterate through each element in the dataset
+    groundtruth_annotations = []
+    for datum in chariot_manifest:
+
+        # Image Classification
+        if chariot_dataset_version.supported_task_types.image_classification:
+            groundtruth_annotations += (
+                chariot_parse_image_classification_annotation(datum)
+            )
+
+        # Image Segmentation
+        if chariot_dataset_version.supported_task_types.image_segmentation:
+            groundtruth_annotations += (
+                chariot_parse_image_segmentation_annotation(datum)
+            )
+
+        # Object Detection
+        if chariot_dataset_version.supported_task_types.object_detection:
+            groundtruth_annotations += (
+                chariot_parse_object_detection_annotation(datum)
+            )
+
+        # Text Sentiment
+        if chariot_dataset_version.supported_task_types.text_sentiment:
+            pass
+
+        # Text Summarization
+        if chariot_dataset_version.supported_task_types.text_summarization:
+            pass
+
+        # Text Token Classifier
+        if (
+            chariot_dataset_version.supported_task_types.text_token_classification
+        ):
+            pass
+
+        # Text Translation
+        if chariot_dataset_version.supported_task_types.text_translation:
+            pass
+
+    return groundtruth_annotations
+
+
+def chariot_ds_to_velour_ds(
+    velour_client: Client,
+    chariot_dataset: Dataset,
+    chariot_dataset_version: str = None,
+    velour_dataset_name: str = None,
+    use_training_manifest: bool = True,
+):
+    """Converts chariot dataset to a velour dataset.
+
+    Parameters
+    ----------
+    velour_client
         Velour client
-    chariot_ds
+    chariot_dataset
         Chariot Dataset object
-    chariot_ds_version
+    chariot_dataset_version
         (OPTIONAL) Chariot Dataset version ID, defaults to latest.
-    velour_ds_name
+    velour_dataset_name
         (OPTIONAL) Defaults to the name of the chariot dataset, setting this will override the
         name of the velour dataset output.
     using_training_manifest
@@ -214,74 +287,37 @@ def chariot_ds_to_velour_ds(
 
     Returns
     -------
-    List of Ground Truth Detections
+    Velour dataset
     """
 
-    if len(chariot_ds.versions) < 1:
+    if len(chariot_dataset.versions) < 1:
         raise ValueError("Chariot Dataset has no existing versions!")
 
     # Get Chariot Datset Version
     dsv = None
-    if chariot_ds_version is not None:
+    if chariot_dataset_version is not None:
         # Attempt to find requested version
-        for datasetversion in chariot_ds.versions:
-            if datasetversion.id == chariot_ds_version:
+        for datasetversion in chariot_dataset.versions:
+            if datasetversion.id == chariot_dataset_version:
                 dsv = datasetversion
                 break
         if dsv is None:
             raise ValueError(
-                "Chariot Dataset does not have specified version!",
-                chariot_ds_version,
+                "Chariot dataset does not have specified version!",
+                chariot_dataset_version,
             )
     else:
         # Use the first version in the list
-        dsv = chariot_ds.versions[0]
+        dsv = chariot_dataset.versions[0]
 
-    # Retrieve the manifest url
-    manifest_url = (
-        dsv.get_training_manifest_url()
-        if use_training_manifest
-        else dsv.get_evaluation_manifest_url()
+    # Get GroundTruth Annotations
+    groundtruth_annotations = chariot_parse_dataset_version_manifest(
+        dsv, use_training_manifest
     )
 
-    # Retrieve the manifest
-    chariot_manifest = retrieve_chariot_manifest(manifest_url)
-    gt_dets = []
-
-    # Iterate through each element in the dataset
-    for datum in chariot_manifest:
-
-        # Image Classification
-        if dsv.supported_task_types.image_classification:
-            gt_dets += chariot_parse_image_classification_annotation(datum)
-
-        # Image Segmentation
-        if dsv.supported_task_types.image_segmentation:
-            gt_dets += chariot_parse_image_segmentation_annotation(datum)
-
-        # Object Detection
-        if dsv.supported_task_types.object_detection:
-            gt_dets += chariot_parse_object_detection_annotation(datum)
-
-        # Text Sentiment
-        if dsv.supported_task_types.text_sentiment:
-            pass
-
-        # Text Summarization
-        if dsv.supported_task_types.text_summarization:
-            pass
-
-        # Text Token Classifier
-        if dsv.supported_task_types.text_token_classification:
-            pass
-
-        # Text Translation
-        if dsv.supported_task_types.text_translation:
-            pass
-
     # Check if name has been overwritten
-    if velour_ds_name is None:
-        velour_ds_name = chariot_ds.name
+    if velour_dataset_name is None:
+        velour_dataset_name = chariot_dataset.name
 
     # Construct url
     href = settings.base_url
@@ -289,9 +325,13 @@ def chariot_ds_to_velour_ds(
     href += "/datasets/" + dsv.dataset_id
     # href += dsv.id
 
-    # Create Velour dataset
-    velour_ds = client.create_dataset(name=velour_ds_name, href=href)
-    velour_ds.add_groundtruth_classifications(gt_dets)
-    velour_ds.finalize()
+    print(href)
 
-    return velour_ds
+    # Create Velour dataset
+    velour_dataset = velour_client.create_dataset(
+        name=velour_dataset_name, href=href
+    )
+    velour_dataset.add_groundtruth_classifications(groundtruth_annotations)
+    velour_dataset.finalize()
+
+    return velour_dataset

@@ -179,9 +179,12 @@ if __name__ == "__main__":
 
     chariot_ds = lookup["CIFAR-100"]
 
-    print(chariot_ds.name)
-
     velour_client = Client(host="http://localhost:8000")
-    velour_ds = chariot_ds_to_velour_ds(velour_client, chariot_ds)
 
-    print(velour_ds)
+    velour_client.delete_dataset(chariot_ds.name)
+
+    velour_ds = chariot_ds_to_velour_ds(
+        velour_client=velour_client, chariot_dataset=chariot_ds
+    )
+
+    velour_client.delete_dataset(velour_ds.name)
