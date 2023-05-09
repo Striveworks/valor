@@ -153,6 +153,7 @@ def compute_clf_metrics(
         | schemas.F1Metric
     ],
 ]:
+    # TODO: add rocauc
     labels = crud.get_classification_labels_in_dataset(db, dataset_name)
     unique_label_keys = set([label.key for label in labels])
 
@@ -254,8 +255,13 @@ def confusion_matrix_at_label_key(
 
     res = db.execute(total_query).all()
 
+    label_values = crud.get_classification_label_values_in_dataset(
+        db, dataset_name, label_key
+    )
+
     return schemas.ConfusionMatrix(
         label_key=label_key,
+        label_values=label_values,
         entries=[
             schemas.ConfusionMatrixEntry(
                 prediction=r[0][0], groundtruth=r[0][1], count=r[1]

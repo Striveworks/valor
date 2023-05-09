@@ -705,7 +705,7 @@ def _validate_and_update_evaluation_settings_task_type_for_detection(
 
 def validate_create_ap_metrics(
     db: Session, request_info: schemas.APRequest
-) -> tuple[Select, Select, list[schemas.Label], list[schemas.Label]]:
+) -> tuple[Select, list[schemas.Label], list[schemas.Label]]:
     """Validates request_info and produces select statements for grabbing groundtruth and
     prediction data
 
@@ -793,7 +793,7 @@ def validate_create_ap_metrics(
 
 def validate_create_clf_metrics(
     db: Session, request_info: schemas.ClfMetricsRequest
-):
+) -> tuple[list[schemas.Label], list[schemas.Label]]:
     gts_statement = _classifications_in_dataset_statement(
         request_info.settings.dataset_name
     )

@@ -237,7 +237,7 @@ def gt_clfs_create(
             ),
             schemas.GroundTruthImageClassification(
                 image=img2,
-                labels=[schemas.Label(key="k2", value="v2")],
+                labels=[schemas.Label(key="k2", value="v3")],
             ),
         ],
     )
@@ -440,7 +440,7 @@ def test_create_ground_truth_classifications_and_delete_dataset(
     # labels and the other has one
     assert crud.number_of_rows(db, models.GroundTruthImageClassification) == 3
     assert crud.number_of_rows(db, models.Image) == 2
-    assert crud.number_of_rows(db, models.Label) == 2
+    assert crud.number_of_rows(db, models.Label) == 3
 
     # delete dataset and check the cascade worked
     crud.delete_dataset(db, dataset_name=dset_name)
@@ -452,7 +452,7 @@ def test_create_ground_truth_classifications_and_delete_dataset(
         assert crud.number_of_rows(db, model_cls) == 0
 
     # make sure labels are still there`
-    assert crud.number_of_rows(db, models.Label) == 2
+    assert crud.number_of_rows(db, models.Label) == 3
 
 
 def test_create_predicted_classifications_and_delete_model(
@@ -955,6 +955,79 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         max_area=max_area,
         id=2,
     )
+
+
+def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
+    crud.create_dataset(db, dataset=schemas.DatasetCreate(name=dset_name))
+    crud.create_ground_truth_image_classifications(db, gt_clfs_create)
+    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_predicted_image_classifications(db, pred_clfs_create)
+    crud.finalize_dataset(db, dset_name)
+    crud.finalize_inferences(db, model_name, dset_name)
+
+    request_info = schemas.ClfMetricsRequest(
+        settings=schemas.EvaluationSettings(
+            model_name=model_name, dataset_name=dset_name
+        )
+    )
+
+    (
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = crud.validate_create_clf_metrics(db, request_info=request_info)
+    assert missing_pred_labels == [schemas.Label(key="k2", value="v3")]
+    assert sorted(ignored_pred_labels, key=lambda x: x.key) == [
+        schemas.Label(key="k3", value="v3"),
+        schemas.Label(key="k4", value="v4"),
+    ]
+
+    evaluation_settings_id = crud.create_clf_metrics(db, request_info)
+    # check we have one evaluation
+    assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
+
+    # get all metrics
+    metrics = db.scalar(
+        select(models.EvaluationSettings).where(
+            models.EvaluationSettings.id == evaluation_settings_id
+        )
+    ).metrics
+
+    assert set([metric.type for metric in metrics]) == {
+        "Accuracy",
+        "Precision",
+        "Recall",
+        "F1",
+    }
+    # should have two accuracy metrics (one for each label key) and three of precision
+    # recall and f1 (one for each label)
+    assert len(metrics) == 2 + 3 + 3 + 3
+
+    confusion_matrices = db.scalars(
+        select(models.ConfusionMatrix).where(
+            models.ConfusionMatrix.evaluation_settings_id
+            == evaluation_settings_id
+        )
+    ).all()
+    # should have two confusion matrices, one for each key
+    assert len(confusion_matrices) == 2
+
+    # run again and check we still have one evaluation and the same number of metrics
+    # and confusion matrices
+    crud.create_clf_metrics(db, request_info)
+    assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
+    metrics = db.scalar(
+        select(models.EvaluationSettings).where(
+            models.EvaluationSettings.id == evaluation_settings_id
+        )
+    ).metrics
+    assert len(metrics) == 2 + 3 + 3 + 3
+    confusion_matrices = db.scalars(
+        select(models.ConfusionMatrix).where(
+            models.ConfusionMatrix.evaluation_settings_id
+            == evaluation_settings_id
+        )
+    ).all()
+    assert len(confusion_matrices) == 2
 
 
 def test__raster_to_png_b64(db: Session):

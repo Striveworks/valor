@@ -242,6 +242,26 @@ def get_classification_labels_in_dataset(
     ).all()
 
 
+def get_classification_label_values_in_dataset(
+    db: Session, dataset_name: str, label_key: str
+) -> list[str]:
+    return db.scalars(
+        select(models.Label.value)
+        .join(models.GroundTruthImageClassification)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Image.id
+                == models.GroundTruthImageClassification.image_id,
+                models.Label.key == label_key,
+            )
+        )
+        .distinct()
+    ).all()
+
+
 def get_all_labels_in_dataset(
     db: Session, dataset_name: str
 ) -> set[models.Label]:
