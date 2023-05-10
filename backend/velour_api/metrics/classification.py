@@ -102,7 +102,9 @@ def binary_roc_auc(
     ).subquery()
 
     ret = db.scalar(func.sum(trap_areas.c.trap_area))
-    return ret or np.nan
+    if ret is None:
+        return np.nan
+    return ret
 
 
 def roc_auc(
