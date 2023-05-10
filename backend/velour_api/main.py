@@ -98,7 +98,6 @@ def create_groundtruth_classifications(
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
-        logger.debug(f"got: {data}")
         return crud.create_ground_truth_image_classifications(db=db, data=data)
     except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -256,7 +255,10 @@ def get_semantic_segmentations(
 )
 def delete_dataset(dataset_name: str, db: Session = Depends(get_db)) -> None:
     logger.debug(f"request to delete dataset {dataset_name}")
-    return crud.delete_dataset(db, dataset_name)
+    try:
+        return crud.delete_dataset(db, dataset_name)
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get("/models", status_code=200, dependencies=[Depends(token_auth_scheme)])

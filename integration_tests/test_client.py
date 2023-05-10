@@ -953,6 +953,12 @@ def test_iou(
     assert ops.iou_two_dets(db, db_gt, db_pred) == iou(rect1_poly, rect2_poly)
 
 
+def test_delete_dataset_exception(client: Client):
+    with pytest.raises(ClientException) as exc_info:
+        client.delete_dataset("non-existent dataset")
+    assert "does not exist" in str(exc_info)
+
+
 def test_evaluate_ap(
     client: Client,
     gt_dets1: list[GroundTruthDetection],
