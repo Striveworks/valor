@@ -258,7 +258,10 @@ def pred_clfs_create(
                         label=schemas.Label(key="k1", value="v1"), score=0.2
                     ),
                     schemas.ScoredLabel(
-                        label=schemas.Label(key="k4", value="v4"), score=0.5
+                        label=schemas.Label(key="k1", value="v2"), score=0.8
+                    ),
+                    schemas.ScoredLabel(
+                        label=schemas.Label(key="k4", value="v4"), score=1.0
                     ),
                 ],
             ),
@@ -266,10 +269,13 @@ def pred_clfs_create(
                 image=img2,
                 scored_labels=[
                     schemas.ScoredLabel(
-                        label=schemas.Label(key="k2", value="v2"), score=0.3
+                        label=schemas.Label(key="k2", value="v2"), score=1.0
                     ),
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k3", value="v3"), score=0.87
+                    ),
+                    schemas.ScoredLabel(
+                        label=schemas.Label(key="k3", value="v0"), score=0.13
                     ),
                 ],
             ),
@@ -478,7 +484,7 @@ def test_create_predicted_classifications_and_delete_model(
     crud.create_predicted_image_classifications(db, pred_clfs_create)
 
     # check db has the added predictions
-    assert crud.number_of_rows(db, models.PredictedImageClassification) == 4
+    assert crud.number_of_rows(db, models.PredictedImageClassification) == 6
 
     # delete model and check all detections from it are gone
     crud.delete_model(db, model_name)
@@ -972,14 +978,11 @@ def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
     )
 
     (
-        missing_pred_labels,
-        ignored_pred_labels,
+        missing_pred_keys,
+        ignored_pred_keys,
     ) = crud.validate_create_clf_metrics(db, request_info=request_info)
-    assert missing_pred_labels == [schemas.Label(key="k2", value="v3")]
-    assert sorted(ignored_pred_labels, key=lambda x: x.key) == [
-        schemas.Label(key="k3", value="v3"),
-        schemas.Label(key="k4", value="v4"),
-    ]
+    assert missing_pred_keys == []
+    assert set(ignored_pred_keys) == {"k3", "k4"}
 
     evaluation_settings_id = crud.create_clf_metrics(db, request_info)
     # check we have one evaluation

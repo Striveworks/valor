@@ -28,6 +28,12 @@ def _labels_in_query(
     ).all()
 
 
+def _label_keys_in_query(db: Session, query_statement: Select) -> list[str]:
+    return db.scalars(
+        (select(models.Label.key).join(query_statement.subquery())).distinct()
+    ).all()
+
+
 def _wkt_polygon_from_detection(det: schemas.DetectionBase) -> str:
     """Returns the "Well-known text" format of a detection"""
     if det.is_bbox:
@@ -793,23 +799,26 @@ def validate_create_ap_metrics(
 
 def validate_create_clf_metrics(
     db: Session, request_info: schemas.ClfMetricsRequest
-) -> tuple[list[schemas.Label], list[schemas.Label]]:
+) -> tuple[list[str], list[str]]:
     gts_statement = _classifications_in_dataset_statement(
         request_info.settings.dataset_name
     )
+    gts_label_keys = _label_keys_in_query(db, gts_statement)
+
     preds_statement = _model_classifications_preds_statement(
         model_name=request_info.settings.model_name,
         dataset_name=request_info.settings.dataset_name,
     )
-    (
-        preds_statement,
-        missing_pred_labels,
-        ignored_pred_labels,
-    ) = get_filtered_preds_statement_and_missing_labels(
-        db=db, gts_statement=gts_statement, preds_statement=preds_statement
-    )
+    preds_label_keys = _label_keys_in_query(db, preds_statement)
 
-    return missing_pred_labels, ignored_pred_labels
+    missing_pred_keys = [
+        k for k in gts_label_keys if k not in preds_label_keys
+    ]
+    ignored_pred_keys = [
+        k for k in preds_label_keys if k not in gts_label_keys
+    ]
+
+    return missing_pred_keys, ignored_pred_keys
 
 
 def create_ap_metrics(

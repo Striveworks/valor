@@ -38,7 +38,7 @@ def binary_roc_auc(
     n = db.scalar(select(func.count(gts_query.c.label_value)))
 
     if n - n_pos == 0:
-        return np.nan
+        return 1.0
 
     # get the prediction scores for the given label (key and value)
     preds_query = (
@@ -169,6 +169,8 @@ def compute_clf_metrics(
         confusion_matrix = confusion_matrix_at_label_key(
             db, dataset_name, model_name, label_key
         )
+        if confusion_matrix is None:
+            continue
         confusion_matrices.append(confusion_matrix)
 
         metrics.append(
@@ -207,7 +209,7 @@ def compute_clf_metrics(
 
 def confusion_matrix_at_label_key(
     db: Session, dataset_name: str, model_name: str, label_key: str
-) -> schemas.ConfusionMatrix:
+) -> schemas.ConfusionMatrix | None:
     subquery = (
         select(
             func.max(PredictedImageClassification.score).label("max_score"),
@@ -268,6 +270,11 @@ def confusion_matrix_at_label_key(
     )
 
     res = db.execute(total_query).all()
+
+    if len(res) == 0:
+        # this means there's no predictions and groundtruths with the label key
+        # for the same image
+        return None
 
     label_values = crud.get_classification_label_values_in_dataset(
         db, dataset_name, label_key

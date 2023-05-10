@@ -104,6 +104,23 @@ class PredictedImageClassification(BaseModel):
     image: Image
     scored_labels: list[ScoredLabel]
 
+    @validator("scored_labels")
+    def check_sum_to_one(cls, v: list[ScoredLabel]):
+        label_keys_to_sum = {}
+        for scored_label in v:
+            label_key = scored_label.label.key
+            if label_key not in label_keys_to_sum:
+                label_keys_to_sum[label_key] = 0.0
+            label_keys_to_sum[label_key] += scored_label.score
+
+        for k, total_score in label_keys_to_sum.items():
+            if abs(total_score - 1) > 1e-5:
+                raise ValueError(
+                    "For each label key, prediction scores must sum to 1, but"
+                    f" for label key {k} got scores summing to {total_score}."
+                )
+        return v
+
 
 class GroundTruthImageClassificationsCreate(BaseModel):
     dataset_name: str
@@ -260,9 +277,15 @@ class APRequest(BaseModel):
         return values
 
 
-class CreateMetricsResponse(BaseModel):
+class CreateAPMetricsResponse(BaseModel):
     missing_pred_labels: list[Label]
     ignored_pred_labels: list[Label]
+    job_id: str
+
+
+class CreateClfMetricsResponse(BaseModel):
+    missing_pred_keys: list[str]
+    ignored_pred_keys: list[str]
     job_id: str
 
 

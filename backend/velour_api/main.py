@@ -339,7 +339,7 @@ def create_ap_metrics(
     data: schemas.APRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-) -> schemas.CreateMetricsResponse:
+) -> schemas.CreateAPMetricsResponse:
     try:
         (
             gts_statement,
@@ -349,7 +349,7 @@ def create_ap_metrics(
         ) = crud.validate_create_ap_metrics(db, request_info=data)
 
         job, wrapped_fn = jobs.wrap_metric_computation(crud.create_ap_metrics)
-        cm_resp = schemas.CreateMetricsResponse(
+        cm_resp = schemas.CreateAPMetricsResponse(
             missing_pred_labels=missing_pred_labels,
             ignored_pred_labels=ignored_pred_labels,
             job_id=job.uid,
@@ -380,18 +380,18 @@ def create_clf_metrics(
     data: schemas.ClfMetricsRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-) -> schemas.CreateMetricsResponse:
+) -> schemas.CreateClfMetricsResponse:
     try:
         (
-            missing_pred_labels,
-            ignored_pred_labels,
+            missing_pred_keys,
+            ignored_pred_keys,
         ) = crud.validate_create_clf_metrics(db, request_info=data)
 
         job, wrapped_fn = jobs.wrap_metric_computation(crud.create_clf_metrics)
 
-        cm_resp = schemas.CreateMetricsResponse(
-            missing_pred_labels=missing_pred_labels,
-            ignored_pred_labels=ignored_pred_labels,
+        cm_resp = schemas.CreateClfMetricsResponse(
+            missing_pred_keys=missing_pred_keys,
+            ignored_pred_keys=ignored_pred_keys,
             job_id=job.uid,
         )
 
@@ -428,7 +428,11 @@ def get_job(job_id: str) -> schemas.EvalJob:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@app.get("/jobs/{job_id}/metrics", dependencies=[Depends(token_auth_scheme)])
+@app.get(
+    "/jobs/{job_id}/metrics",
+    dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
+)
 def get_job_metrics(
     job_id: str, db: Session = Depends(get_db)
 ) -> list[schemas.Metric]:
