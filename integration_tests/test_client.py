@@ -552,6 +552,9 @@ def test_create_dataset_with_href_and_description(client: Client, db: Session):
     description = "a description"
     client.create_dataset(dset_name, href=href, description=description)
     db_dataset = db.scalar(select(models.Dataset))
+    for i in range(10):
+        print("@@@")
+    print("=====>  " + str(db_dataset.href))
     assert db_dataset.href == href
     assert db_dataset.description == description
 

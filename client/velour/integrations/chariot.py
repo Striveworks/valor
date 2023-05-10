@@ -7,8 +7,9 @@ import requests
 from chariot.config import settings
 from chariot.datasets.dataset import Dataset
 from chariot.datasets.dataset_version import DatasetVersion
+from tqdm import tqdm
 
-from velour.client import Client
+from velour.client import Client, ClientException
 from velour.data_types import (
     BoundingBox,
     BoundingPolygon,
@@ -35,10 +36,27 @@ def retrieve_chariot_manifest(manifest_url: str):
 
         # Download compressed jsonl file
         response = requests.get(manifest_url, stream=True)
+
+        # print("Downloading chariot manifest")
+        total_size_in_bytes = int(response.headers.get("content-length", 0))
+        block_size = 1024  # 1 Kibibyte
+        progress_bar = tqdm(
+            total=total_size_in_bytes,
+            unit="iB",
+            unit_scale=True,
+            desc="Download Chariot Manifest",
+        )
+
         if response.status_code == 200:
-            f.write(response.raw.read())
-        f.flush()
-        f.seek(0)
+            for data in response.iter_content(block_size):
+                progress_bar.update(len(data))
+                f.write(data)
+            f.flush()
+            f.seek(0)
+
+        progress_bar.close()
+        if total_size_in_bytes != 0 and progress_bar.n != total_size_in_bytes:
+            raise ValueError("idrk")
 
         # Unzip
         gzf = gzip.GzipFile(mode="rb", fileobj=f)
@@ -328,11 +346,35 @@ def chariot_ds_to_velour_ds(
     href += "/datasets/" + dsv.dataset_id
     # href += dsv.id
 
-    # Create Velour dataset
-    velour_dataset = velour_client.create_dataset(
-        name=velour_dataset_name, href=href
-    )
-    velour_dataset.add_groundtruth_classifications(groundtruth_annotations)
-    velour_dataset.finalize()
+    # Create/Load velour dataset
+    try:
+        velour_dataset = velour_client.create_dataset(
+            name=velour_dataset_name, href=href
+        )
+    except ClientException as e:
+        print(e)
+        velour_dataset = velour_client.get_dataset(velour_dataset_name)
+
+    # Chunk daat
+
+    # Upload velour dataset
+    stepsize = 1000
+    try:
+        # velour_dataset.add_groundtruth_classifications(groundtruth_annotations)
+        for i in tqdm(
+            range(0, len(groundtruth_annotations) - stepsize, stepsize),
+            total=len(groundtruth_annotations) / stepsize,
+            unit="kS",
+            unit_scale=True,
+            desc="Upload Velour Dataset (" + velour_dataset_name.strip() + ")",
+        ):
+            velour_dataset.add_groundtruth_classifications(
+                groundtruth_annotations[i : i + stepsize]
+            )
+        # velour_dataset.finalize()
+    except ValueError as err:
+        print(err.msg)
+        print(err.doc)
+        print(err.pos)
 
     return velour_dataset
