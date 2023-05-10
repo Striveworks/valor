@@ -1003,13 +1003,11 @@ def test_evaluate_ap(
             "type": "mAP",
             "parameters": {"iou": 0.1},
             "value": 0.504950495049505,
-            "label": None,
         },
         {
             "type": "mAP",
             "parameters": {"iou": 0.6},
             "value": 0.504950495049505,
-            "label": None,
         },
         {
             "type": "APAveragedOverIOUs",
@@ -1021,7 +1019,6 @@ def test_evaluate_ap(
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.504950495049505,
-            "label": None,
         },
     ]
 
