@@ -251,6 +251,9 @@ class Dataset:
         if not isinstance(groundtruth, list):
             raise ValueError("GroundTruth argument should be a list.")
 
+        if len(groundtruth) == 0:
+            raise ValueError("Empty list.")
+
         for chunk in self.__generate_chunks(
             groundtruth, chunk_max_size=chunk_max_size
         ):
