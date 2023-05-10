@@ -242,6 +242,27 @@ def get_classification_labels_in_dataset(
     ).all()
 
 
+def get_classification_prediction_labels(
+    db: Session, model_name: str, dataset_name: str
+):
+    return db.scalars(
+        select(models.Label)
+        .join(models.PredictedImageClassification)
+        .join(models.Model)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Image.id
+                == models.PredictedImageClassification.image_id,
+                models.Model.name == model_name,
+            )
+        )
+        .distinct()
+    ).all()
+
+
 def get_classification_label_values_in_dataset(
     db: Session, dataset_name: str, label_key: str
 ) -> list[str]:
@@ -255,6 +276,28 @@ def get_classification_label_values_in_dataset(
                 models.Dataset.name == dataset_name,
                 models.Image.id
                 == models.GroundTruthImageClassification.image_id,
+                models.Label.key == label_key,
+            )
+        )
+        .distinct()
+    ).all()
+
+
+def get_classification_prediction_label_values(
+    db: Session, model_name: str, dataset_name: str, label_key: str
+):
+    return db.scalars(
+        select(models.Label.value)
+        .join(models.PredictedImageClassification)
+        .join(models.Model)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Image.id
+                == models.PredictedImageClassification.image_id,
+                models.Model.name == model_name,
                 models.Label.key == label_key,
             )
         )

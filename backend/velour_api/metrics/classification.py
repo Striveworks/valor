@@ -161,7 +161,11 @@ def compute_clf_metrics(
         | schemas.F1Metric
     ],
 ]:
-    labels = crud.get_classification_labels_in_dataset(db, dataset_name)
+    gt_labels = crud.get_classification_labels_in_dataset(db, dataset_name)
+    pred_labels = crud.get_classification_prediction_labels(
+        db, model_name=model_name, dataset_name=dataset_name
+    )
+    labels = gt_labels + pred_labels
     unique_label_keys = set([label.key for label in labels])
 
     confusion_matrices, metrics = [], []
@@ -210,6 +214,9 @@ def compute_clf_metrics(
 def confusion_matrix_at_label_key(
     db: Session, dataset_name: str, model_name: str, label_key: str
 ) -> schemas.ConfusionMatrix | None:
+    """Returns None in the case that there are not common images in the dataset
+    that have both a groundtruth and prediction with label key `label_key`
+    """
     subquery = (
         select(func.max(PredictedImageClassification.score).label("max_score"))
         .join(models.Label)
@@ -289,9 +296,17 @@ def confusion_matrix_at_label_key(
         # for the same image
         return None
 
-    label_values = crud.get_classification_label_values_in_dataset(
+    gt_label_values = crud.get_classification_label_values_in_dataset(
         db, dataset_name, label_key
     )
+    pred_label_values = crud.get_classification_prediction_label_values(
+        db,
+        model_name=model_name,
+        dataset_name=dataset_name,
+        label_key=label_key,
+    )
+
+    label_values = list(set(gt_label_values).union(pred_label_values))
 
     return schemas.ConfusionMatrix(
         label_key=label_key,
