@@ -98,7 +98,6 @@ def create_groundtruth_classifications(
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
-        logger.debug(f"got: {data}")
         return crud.create_ground_truth_image_classifications(db=db, data=data)
     except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
