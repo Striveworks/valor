@@ -211,12 +211,7 @@ def confusion_matrix_at_label_key(
     db: Session, dataset_name: str, model_name: str, label_key: str
 ) -> schemas.ConfusionMatrix | None:
     subquery = (
-        select(
-            func.max(PredictedImageClassification.score).label("max_score"),
-            func.min(PredictedImageClassification.id).label(
-                "min_id"
-            ),  # this is for the corner case where the maximum score occurs twice
-        )
+        select(func.max(PredictedImageClassification.score).label("max_score"))
         .join(models.Label)
         .join(models.Image)
         .join(models.Dataset)
@@ -230,8 +225,23 @@ def confusion_matrix_at_label_key(
             )
         )
         .group_by(PredictedImageClassification.image_id)
-        .alias()
-    )
+    ).alias()
+
+    # used for the edge case where the max confidence appears twice
+    min_id_query = (
+        select(
+            func.min(models.PredictedImageClassification.id).label("min_id")
+        )
+        .join(models.Label)
+        .join(
+            subquery,
+            and_(
+                PredictedImageClassification.score == subquery.c.max_score,
+                models.Label.key == label_key,
+            ),
+        )
+        .group_by(models.PredictedImageClassification.image_id)
+    ).alias()
 
     hard_preds_query = (
         select(
@@ -243,11 +253,14 @@ def confusion_matrix_at_label_key(
             subquery,
             and_(
                 PredictedImageClassification.score == subquery.c.max_score,
-                PredictedImageClassification.id == subquery.c.min_id,
+                models.Label.key == label_key,
             ),
         )
-        .alias()
-    )
+        .join(
+            min_id_query,
+            PredictedImageClassification.id == min_id_query.c.min_id,
+        )
+    ).alias()
 
     b = Bundle("cols", hard_preds_query.c.pred_label_value, models.Label.value)
 
