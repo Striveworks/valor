@@ -279,7 +279,7 @@ class ClfMetricsRequest(BaseModel):
 # used for responses from API
 class Metric(BaseModel):
     type: str
-    parameters: dict
+    parameters: dict | None
     value: float | dict
     label: Label = None
 

@@ -386,6 +386,9 @@ class EvaluationSettings(Base):
     metrics: Mapped[list["Metric"]] = relationship(
         "Metric", cascade="all, delete"
     )
+    confusion_matrices: Mapped[list["ConfusionMatrix"]] = relationship(
+        "ConfusionMatrix", cascade="all, delete"
+    )
 
 
 class Metric(Base):
@@ -399,7 +402,7 @@ class Metric(Base):
     type: Mapped[str] = mapped_column()
     value: Mapped[float] = mapped_column()
     parameters = mapped_column(JSONB)  # {"label": ..., "iou": ..., }
-    settings: Mapped[list["Metric"]] = relationship(
+    settings: Mapped[EvaluationSettings] = relationship(
         "EvaluationSettings", back_populates="metrics"
     )
     evaluation_settings_id: Mapped[int] = mapped_column(
@@ -413,6 +416,9 @@ class ConfusionMatrix(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     label_key: Mapped[str] = mapped_column()
     value = mapped_column(JSONB)
+    settings: Mapped[EvaluationSettings] = relationship(
+        "EvaluationSettings", back_populates="confusion_matrices"
+    )
     evaluation_settings_id: Mapped[int] = mapped_column(
         ForeignKey("evaluation_settings.id")
     )
