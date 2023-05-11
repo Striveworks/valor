@@ -193,7 +193,9 @@ if __name__ == "__main__":
         print(err)
 
     velour_ds = chariot_ds_to_velour_ds(
-        velour_client=velour_client, chariot_dataset=chariot_ds
+        velour_client=velour_client,
+        chariot_dataset=chariot_ds,
+        chunk_size=1000,
     )
 
     print(velour_ds.get_labels())

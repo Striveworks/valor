@@ -287,6 +287,7 @@ def chariot_ds_to_velour_ds(
     chariot_dataset_version: str = None,
     velour_dataset_name: str = None,
     use_training_manifest: bool = True,
+    chunk_size: int = 1000,
 ):
     """Converts chariot dataset to a velour dataset.
 
@@ -305,6 +306,8 @@ def chariot_ds_to_velour_ds(
         (OPTIONAL) Defaults to true, setting false will use the evaluation manifest which is a
         super set of the training manifest. Not recommended as the evaluation manifest may
         contain unlabeled data.
+    chunk_size
+        (OPTIONAL) Defaults to 1000. chunk_size is related to the upload of the dataset to the backend.
 
     Returns
     -------
@@ -360,7 +363,7 @@ def chariot_ds_to_velour_ds(
     # Upload velour dataset
     try:
         velour_dataset.add_groundtruth(
-            groundtruth_annotations, chunk_max_size=100
+            groundtruth_annotations, chunk_size=chunk_size
         )
         # velour_dataset.finalize()
     except ValueError as err:
