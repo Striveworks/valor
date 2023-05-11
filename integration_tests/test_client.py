@@ -388,13 +388,15 @@ def pred_clfs(img5: Image, img6: Image) -> list[PredictedImageClassification]:
             image=img5,
             scored_labels=[
                 ScoredLabel(label=Label(key="k12", value="v12"), score=0.47),
-                ScoredLabel(label=Label(key="k13", value="v13"), score=0.12),
+                ScoredLabel(label=Label(key="k12", value="v16"), score=0.53),
+                ScoredLabel(label=Label(key="k13", value="v13"), score=1.0),
             ],
         ),
         PredictedImageClassification(
             image=img6,
             scored_labels=[
                 ScoredLabel(label=Label(key="k4", value="v4"), score=0.71),
+                ScoredLabel(label=Label(key="k4", value="v5"), score=0.29),
             ],
         ),
     ]
@@ -887,9 +889,15 @@ def test_create_model_with_predicted_classifications(
         add_gts_method_name="add_groundtruth_classifications",
         add_preds_method_name="add_predicted_classifications",
         preds_model_class=models.PredictedImageClassification,
-        preds_expected_number=3,
-        expected_labels_tuples={("k12", "v12"), ("k13", "v13"), ("k4", "v4")},
-        expected_scores={0.47, 0.12, 0.71},
+        preds_expected_number=5,
+        expected_labels_tuples={
+            ("k12", "v12"),
+            ("k12", "v16"),
+            ("k13", "v13"),
+            ("k4", "v4"),
+            ("k4", "v5"),
+        },
+        expected_scores={0.47, 0.53, 1.0, 0.71, 0.29},
         db=db,
     )
 
@@ -956,11 +964,17 @@ def test_iou(
     assert ops.iou_two_dets(db, db_gt, db_pred) == iou(rect1_poly, rect2_poly)
 
 
+def test_delete_dataset_exception(client: Client):
+    with pytest.raises(ClientException) as exc_info:
+        client.delete_dataset("non-existent dataset")
+    assert "does not exist" in str(exc_info)
+
+
 def test_evaluate_ap(
     client: Client,
     gt_dets1: list[GroundTruthDetection],
     pred_dets: list[PredictedDetection],
-    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
+    db: Session,
 ):
     dataset = client.create_dataset(dset_name)
     dataset.add_groundtruth_detections(gt_dets1)
@@ -1016,13 +1030,11 @@ def test_evaluate_ap(
             "type": "mAP",
             "parameters": {"iou": 0.1},
             "value": 0.504950495049505,
-            "label": None,
         },
         {
             "type": "mAP",
             "parameters": {"iou": 0.6},
             "value": 0.504950495049505,
-            "label": None,
         },
         {
             "type": "APAveragedOverIOUs",
@@ -1034,7 +1046,6 @@ def test_evaluate_ap(
             "type": "mAPAveragedOverIOUs",
             "parameters": {"ious": [0.1, 0.6]},
             "value": 0.504950495049505,
-            "label": None,
         },
     ]
 
@@ -1134,3 +1145,60 @@ def test_evaluate_ap(
         "max_area": 1800,
     }
     assert eval_job.metrics() != expected_metrics
+
+
+def test_evaluate_clf(
+    client: Client,
+    gt_clfs1: list[GroundTruthImageClassification],
+    pred_clfs: list[PredictedImageClassification],
+    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
+):
+    dataset = client.create_dataset(dset_name)
+    dataset.add_groundtruth_classifications(gt_clfs1)
+    dataset.finalize()
+
+    model = client.create_model(model_name)
+    model.add_predicted_classifications(dataset, pred_clfs)
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_classification(dataset=dataset)
+
+    assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
+    assert set(eval_job.missing_pred_keys) == {"k5"}
+
+    # sleep to give the backend time to compute
+    time.sleep(1)
+    assert eval_job.status() == "Done"
+
+    metrics = eval_job.metrics()
+
+    expected_metrics = [
+        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {
+            "type": "Precision",
+            "value": 1.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "Recall",
+            "value": 1.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
+        {"type": "Precision", "label": {"key": "k4", "value": "v5"}},
+        {"type": "Recall", "label": {"key": "k4", "value": "v5"}},
+        {"type": "F1", "label": {"key": "k4", "value": "v5"}},
+    ]
+    for m in metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics
+
+    confusion_matrices = eval_job.confusion_matrices()
+    assert confusion_matrices == [
+        {
+            "label_key": "k4",
+            "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
+        }
+    ]

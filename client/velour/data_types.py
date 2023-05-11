@@ -200,3 +200,21 @@ class GroundTruthImageClassification:
 class PredictedImageClassification:
     image: Image
     scored_labels: List[ScoredLabel]
+
+    def __post_init__(self):
+        # check that for each label key all the predictions sum to ~1
+        # the backend should also do this validation but its good to do
+        # it here on creation, before sending to backend
+        label_keys_to_sum = {}
+        for scored_label in self.scored_labels:
+            label_key = scored_label.label.key
+            if label_key not in label_keys_to_sum:
+                label_keys_to_sum[label_key] = 0.0
+            label_keys_to_sum[label_key] += scored_label.score
+
+        for k, total_score in label_keys_to_sum.items():
+            if abs(total_score - 1) > 1e-5:
+                raise ValueError(
+                    "For each label key, prediction scores must sum to 1, but"
+                    f" for label key {k} got scores summing to {total_score}."
+                )
