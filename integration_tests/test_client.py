@@ -968,7 +968,7 @@ def test_delete_dataset_exception(client: Client):
 
 
 def test_delete_dataset_background_job(
-    client: Client, gt_dets1, gt_dets2, gt_dets3
+    client: Client, gt_dets1, gt_dets2, gt_dets3, db: Session
 ):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
     dataset = client.create_dataset(dset_name)
