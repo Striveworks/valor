@@ -141,7 +141,12 @@ def get_dataset(
 ) -> schemas.Dataset:
     try:
         dset = crud.get_dataset(db, dataset_name=dataset_name)
-        return schemas.Dataset(name=dset.name, draft=dset.draft)
+        return schemas.Dataset(
+            name=dset.name,
+            draft=dset.draft,
+            href=dset.href,
+            description=dset.description,
+        )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -289,8 +294,10 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
 @app.get("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
 def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     try:
-        dset = crud.get_model(db=db, model_name=model_name)
-        return schemas.Model(name=dset.name)
+        model = crud.get_model(db=db, model_name=model_name)
+        return schemas.Model(
+            name=model.name, href=model.href, description=model.description
+        )
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
