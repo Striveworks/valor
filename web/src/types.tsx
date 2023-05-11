@@ -22,3 +22,9 @@ export type MetricAtIOU = {
   iou: number;
   id: number;
 };
+
+export type EntityResponse = {
+  name: string;
+  href: string;
+  description: string;
+};

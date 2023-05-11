@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Typography from "@mui/material/Typography";
 import Link from "@mui/material/Link";
 import { Wrapper } from "./wrapper";
+import { EntityResponse } from "../types";
 
 export const ListingComponent = ({
   name,
@@ -11,7 +12,7 @@ export const ListingComponent = ({
   name: string;
   pageTitle: string;
 }) => {
-  const [entities, setEntities] = useState<{ name: string }[]>([]);
+  const [entities, setEntities] = useState<EntityResponse[]>([]);
   const url = `${process.env.REACT_APP_BACKEND_URL}/${name}`;
 
   useEffect(() => {

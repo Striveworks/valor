@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import Typography from "@mui/material/Typography";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import Link from "@mui/material/Link";
-import { EvaluationSetting } from "./velour-types";
+import { EntityResponse, EvaluationSetting } from "./types";
 import { Wrapper } from "./components/wrapper";
 
 const taskTypeWidth = 250;
@@ -52,18 +52,32 @@ export const ModelDetailsPage = () => {
   const [allEvalSettings, setAllEvalSettings] = useState<EvaluationSetting[]>(
     []
   );
-  const url = `${process.env.REACT_APP_BACKEND_URL}/models/${name}/evaluation-settings`;
+  const [modelDetails, setModelDetails] = useState<EntityResponse>();
+  const modelDetailsUrl = `${process.env.REACT_APP_BACKEND_URL}/models/${name}`;
   useEffect(() => {
-    axios.get(url).then((response) => {
+    axios.get(modelDetailsUrl).then((response) => {
+      setModelDetails(response.data);
+    });
+  }, [modelDetailsUrl]);
+
+  const evalSettingsUrl = `${modelDetailsUrl}/evaluation-settings`;
+  useEffect(() => {
+    axios.get(evalSettingsUrl).then((response) => {
       setAllEvalSettings(response.data);
     });
-  }, [url]);
-  if (!allEvalSettings) return null;
+  }, [evalSettingsUrl]);
 
   return (
     <Wrapper>
       <Typography variant="h2">{name}</Typography>
-      <h3>Evaluations</h3>
+      <br />
+      <Typography>{modelDetails?.description}</Typography>
+      <br />
+      <Link href={modelDetails?.href} target="_blank">
+        <Typography>{modelDetails?.href}</Typography>
+      </Link>
+      <br />
+      <Typography variant="h4">Evaluations</Typography>
       <DataGrid
         rows={allEvalSettings}
         columns={columns}
