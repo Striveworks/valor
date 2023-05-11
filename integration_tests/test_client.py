@@ -138,7 +138,8 @@ def db(client: Client) -> Session:
     """
     if len(client.get_datasets()) > 0:
         raise RuntimeError(
-            "Tests should be run on an empty velour backend but found existing datasets."
+            "Tests should be run on an empty velour backend but found existing datasets.",
+            [ds["name"] for ds in client.get_datasets()],
         )
 
     if len(client.get_models()) > 0:
@@ -1197,3 +1198,7 @@ def test_evaluate_clf(
             "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
         }
     ]
+
+
+if __name__ == "__main__":
+    crud.delete_dataset("test dataset")
