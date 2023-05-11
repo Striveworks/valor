@@ -95,7 +95,9 @@ def wrap_metric_computation(fn: callable) -> tuple[EvalJob, callable]:
         try:
             job.status = JobStatus.PROCESSING
             add_job(job)
-            logger.debug(f"starting computing metrics using {fn}")
+            logger.debug(
+                f"starting computing metrics using {fn} for job {job.uid}"
+            )
             start = perf_counter()
             evaluation_settings_id = fn(*args, **kwargs)
             logger.debug(

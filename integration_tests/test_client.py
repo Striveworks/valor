@@ -549,6 +549,24 @@ def _test_create_model_with_preds(
     return db_preds
 
 
+def test_create_dataset_with_href_and_description(client: Client, db: Session):
+    href = "http://a.com/b"
+    description = "a description"
+    client.create_dataset(dset_name, href=href, description=description)
+    db_dataset = db.scalar(select(models.Dataset))
+    assert db_dataset.href == href
+    assert db_dataset.description == description
+
+
+def test_create_model_with_href_and_description(client: Client, db: Session):
+    href = "http://a.com/b"
+    description = "a description"
+    client.create_model(model_name, href=href, description=description)
+    db_model = db.scalar(select(models.Model))
+    assert db_model.href == href
+    assert db_model.description == description
+
+
 def test_create_dataset_with_detections(
     client: Client,
     gt_dets1: list[GroundTruthDetection],
@@ -941,6 +959,12 @@ def test_iou(
     db_pred = db.scalar(select(models.PredictedDetection))
 
     assert ops.iou_two_dets(db, db_gt, db_pred) == iou(rect1_poly, rect2_poly)
+
+
+def test_delete_dataset_exception(client: Client):
+    with pytest.raises(ClientException) as exc_info:
+        client.delete_dataset("non-existent dataset")
+    assert "does not exist" in str(exc_info)
 
 
 def test_evaluate_ap(

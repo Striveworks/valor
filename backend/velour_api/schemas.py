@@ -16,18 +16,41 @@ def validate_single_polygon(poly: list[tuple[float, float]]):
     return poly
 
 
-class Dataset(BaseModel):
+def _validate_href(v: str | None):
+    if v is None:
+        return v
+    if not (v.startswith("http://") or v.startswith("https://")):
+        raise ValueError("`href` must start with http:// or https://")
+    return v
+
+
+class _BaseDataset(BaseModel):
     name: str
-    draft: bool
     from_video: bool = False
+    href: str = None
+    description: str = None
+
+    @validator("href")
+    def validate_href(cls, v):
+        return _validate_href(v)
 
 
-class DatasetCreate(BaseModel):
-    name: str
+class Dataset(_BaseDataset):
+    draft: bool
+
+
+class DatasetCreate(_BaseDataset):
+    pass
 
 
 class Model(BaseModel):
     name: str
+    href: str = None
+    description: str = None
+
+    @validator("href")
+    def validate_href(cls, v):
+        return _validate_href(v)
 
 
 class Image(BaseModel):
