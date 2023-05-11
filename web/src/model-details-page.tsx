@@ -4,8 +4,9 @@ import { useParams } from "react-router-dom";
 import Typography from "@mui/material/Typography";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import Link from "@mui/material/Link";
-import { EntityResponse, EvaluationSetting } from "./types";
+import { EvaluationSetting } from "./types";
 import { Wrapper } from "./components/wrapper";
+import { EntityDetailsComponent } from "./components/entity-details-component";
 
 const taskTypeWidth = 250;
 const areaWidth = 175;
@@ -13,7 +14,6 @@ const columns: GridColDef[] = [
   {
     field: "dataset_name",
     headerName: "Dataset",
-    // renderCell: (params) => <a href="google.com">params.row.dataset_name</a>,
   },
   {
     field: "model_pred_task_type",
@@ -52,15 +52,7 @@ export const ModelDetailsPage = () => {
   const [allEvalSettings, setAllEvalSettings] = useState<EvaluationSetting[]>(
     []
   );
-  const [modelDetails, setModelDetails] = useState<EntityResponse>();
-  const modelDetailsUrl = `${process.env.REACT_APP_BACKEND_URL}/models/${name}`;
-  useEffect(() => {
-    axios.get(modelDetailsUrl).then((response) => {
-      setModelDetails(response.data);
-    });
-  }, [modelDetailsUrl]);
-
-  const evalSettingsUrl = `${modelDetailsUrl}/evaluation-settings`;
+  const evalSettingsUrl = `${process.env.REACT_APP_BACKEND_URL}/models/${name}/evaluation-settings`;
   useEffect(() => {
     axios.get(evalSettingsUrl).then((response) => {
       setAllEvalSettings(response.data);
@@ -69,13 +61,7 @@ export const ModelDetailsPage = () => {
 
   return (
     <Wrapper>
-      <Typography variant="h2">{name}</Typography>
-      <br />
-      <Typography>{modelDetails?.description}</Typography>
-      <br />
-      <Link href={modelDetails?.href} target="_blank">
-        <Typography>{modelDetails?.href}</Typography>
-      </Link>
+      <EntityDetailsComponent entityType="models" />
       <br />
       <Typography variant="h4">Evaluations</Typography>
       <DataGrid
