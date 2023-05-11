@@ -222,7 +222,7 @@ class Dataset:
         self.client = client
         self.name = name
 
-    def __generate_chunks(self, data: list, chunk_max_size=100):
+    def __generate_chunks(self, data: list, chunk_size=100):
 
         progress_bar = tqdm(
             total=len(data),
@@ -231,20 +231,20 @@ class Dataset:
             desc=f"Chunking ({self.name})",
         )
 
-        number_of_chunks = math.ceil(len(data) / chunk_max_size)
+        number_of_chunks = math.floor(len(data) / chunk_size)
+        remainder = len(data) % chunk_size
 
-        for i in range(0, number_of_chunks - 1, chunk_max_size):
-            progress_bar.update(i)
-            yield data[i : i + chunk_max_size]
+        for i in range(0, number_of_chunks):
+            progress_bar.update(chunk_size)
+            yield data[i * chunk_size : (i + 1) * chunk_size]
 
-        remainder = len(data) % chunk_max_size
         if remainder > 0:
+            progress_bar.update(remainder)
             yield data[-remainder:]
 
-        progress_bar.update(len(data))
         progress_bar.close()
 
-    def add_groundtruth(self, groundtruth: list, chunk_max_size: int = 100):
+    def add_groundtruth(self, groundtruth: list, chunk_size: int = 1000):
 
         log = []
 
@@ -255,7 +255,7 @@ class Dataset:
             raise ValueError("Empty list.")
 
         for chunk in self.__generate_chunks(
-            groundtruth, chunk_max_size=chunk_max_size
+            groundtruth, chunk_size=chunk_size
         ):
 
             # Image Classification
