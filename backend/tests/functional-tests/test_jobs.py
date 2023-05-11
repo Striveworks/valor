@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from velour_api import database, jobs
 from velour_api.enums import JobStatus
 from velour_api.exceptions import JobDoesNotExistError
-from velour_api.schemas import EvalJob
+from velour_api.schemas import Job
 
 
 @pytest.fixture
@@ -37,7 +37,7 @@ def setup_and_teardown():
 
 
 def test_add_job():
-    job = EvalJob()
+    job = Job()
     jobs.add_job(job)
 
     assert jobs.r.get(job.uid) is not None
@@ -47,7 +47,7 @@ def test_get_job():
     """test that we can add a job to redis and get it back and test that
     we get an error if a job with a given uid does not exist
     """
-    job = EvalJob()
+    job = Job()
     jobs.add_job(job)
 
     retrieved_job = jobs.get_job(job.uid)

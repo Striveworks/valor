@@ -182,7 +182,8 @@ class Client:
         return Dataset(client=self, name=name)
 
     def delete_dataset(self, name: str) -> None:
-        self._requests_delete_rel_host(f"datasets/{name}")
+        job_id = self._requests_delete_rel_host(f"datasets/{name}").json()
+        return Job(client=self, job_id=job_id)
 
     def get_dataset(self, name: str) -> "Dataset":
         resp = self._requests_get_rel_host(f"datasets/{name}")
@@ -374,7 +375,7 @@ class Dataset:
         ]
 
 
-class EvalJob:
+class Job:
     def __init__(
         self,
         client: Client,
@@ -391,6 +392,8 @@ class EvalJob:
         resp = self.client._requests_get_rel_host(f"/jobs/{self._id}").json()
         return resp["status"]
 
+
+class EvalJob(Job):
     def metrics(self) -> List[dict]:
         return self.client._requests_get_rel_host(
             f"/jobs/{self._id}/metrics"
