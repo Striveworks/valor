@@ -1,9 +1,9 @@
 import gzip
 import json
 import tempfile
-import requests
-
 from pathlib import Path
+
+import requests
 from tqdm import tqdm
 
 from velour.client import Client, ClientException

@@ -1,7 +1,10 @@
 import PIL.Image
 
-from velour.integrations.convert import chariot_detections_to_velour, coco_rle_to_mask
 from velour.data_types import Image
+from velour.integrations.convert import (
+    chariot_detections_to_velour,
+    coco_rle_to_mask,
+)
 
 
 def test_chariot_detections_to_velour():
