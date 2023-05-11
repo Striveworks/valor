@@ -895,6 +895,14 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     # should be five labels (since thats how many are in groundtruth set)
     assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 5
 
+    # test getting metrics from evaluation settings id
+    pydantic_metrics = crud.get_metrics_from_evaluation_settings_id(
+        db, evaluation_settings_id
+    )
+    for m in pydantic_metrics:
+        assert isinstance(m, schemas.Metric)
+    assert len(pydantic_metrics) == len(metric_ids)
+
     # run again and make sure no new ids were created
     evaluation_settings_id_again, _, _ = method_to_test()
     assert evaluation_settings_id == evaluation_settings_id_again
@@ -1029,6 +1037,33 @@ def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
 
     # should have two confusion matrices, one for each key
     assert len(confusion_matrices) == 2
+
+    # test getting metrics from evaluation settings id
+    pydantic_metrics = crud.get_metrics_from_evaluation_settings_id(
+        db, evaluation_settings_id
+    )
+    for m in pydantic_metrics:
+        assert isinstance(m, schemas.Metric)
+    assert len(pydantic_metrics) == len(metrics)
+
+    # test getting confusion matrices from evaluation settings id
+    cms = crud.get_confusion_matrices_from_evaluation_settings_id(
+        db, evaluation_settings_id
+    )
+    cms = sorted(cms, key=lambda cm: cm.label_key)
+    assert len(cms) == 2
+    assert cms[0].label_key == "k1"
+    assert cms[0].entries == [
+        schemas.ConfusionMatrixEntry(
+            prediction="v2", groundtruth="v1", count=1
+        )
+    ]
+    assert cms[1].label_key == "k2"
+    assert cms[1].entries == [
+        schemas.ConfusionMatrixEntry(
+            prediction="v2", groundtruth="v3", count=1
+        )
+    ]
 
     # run again and check we still have one evaluation and the same number of metrics
     # and confusion matrices

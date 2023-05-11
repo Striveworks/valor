@@ -395,6 +395,27 @@ def get_metrics_from_evaluation_settings_id(
     return get_metrics_from_evaluation_settings([eval_settings])
 
 
+def get_confusion_matrices_from_evaluation_settings_id(
+    db: Session, evaluation_settings_id: int
+) -> list[schemas.ConfusionMatrix]:
+    eval_settings = db.scalar(
+        select(models.EvaluationSettings).where(
+            models.EvaluationSettings.id == evaluation_settings_id
+        )
+    )
+    db_cms = eval_settings.confusion_matrices
+
+    return [
+        schemas.ConfusionMatrix(
+            label_key=db_cm.label_key,
+            entries=[
+                schemas.ConfusionMatrixEntry(**entry) for entry in db_cm.value
+            ],
+        )
+        for db_cm in db_cms
+    ]
+
+
 def get_evaluation_settings_from_id(
     db: Session, evaluation_settings_id: int
 ) -> schemas.EvaluationSettings:
