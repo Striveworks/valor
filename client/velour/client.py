@@ -1,4 +1,5 @@
 import io
+import math
 import os
 from base64 import b64decode, b64encode
 from dataclasses import asdict
@@ -8,6 +9,7 @@ from urllib.parse import urljoin
 import numpy as np
 import PIL.Image
 import requests
+from tqdm import tqdm
 
 from velour.data_types import (
     BoundingBox,
@@ -220,65 +222,113 @@ class Dataset:
         self.client = client
         self.name = name
 
-    def add_groundtruth_detections(self, dets: List[GroundTruthDetection]):
-        payload = {
-            "dataset_name": self.name,
-            "detections": [_det_to_dict(det) for det in dets],
-        }
+    def __generate_chunks(self, data: list, chunk_max_size=100):
 
-        resp = self.client._requests_post_rel_host(
-            "groundtruth-detections", json=payload
+        progress_bar = tqdm(
+            total=len(data),
+            unit="samples",
+            unit_scale=True,
+            desc=f"Chunking ({self.name})",
         )
 
-        return resp.json()
+        number_of_chunks = math.ceil(len(data) / chunk_max_size)
 
-    def add_groundtruth_classifications(
-        self, clfs: List[GroundTruthImageClassification]
-    ):
-        payload = {
-            "dataset_name": self.name,
-            "classifications": [
-                {
-                    "labels": [asdict(label) for label in clf.labels],
-                    "image": asdict(clf.image),
+        for i in range(0, number_of_chunks - 1, chunk_max_size):
+            progress_bar.update(i)
+            yield data[i : i + chunk_max_size]
+
+        remainder = len(data) % chunk_max_size
+        if remainder > 0:
+            yield data[-remainder:]
+
+        progress_bar.update(len(data))
+        progress_bar.close()
+
+    def add_groundtruth(self, groundtruth: list, chunk_max_size: int = 100):
+
+        log = []
+
+        if not isinstance(groundtruth, list):
+            raise ValueError("GroundTruth argument should be a list.")
+
+        if len(groundtruth) == 0:
+            raise ValueError("Empty list.")
+
+        for chunk in self.__generate_chunks(
+            groundtruth, chunk_max_size=chunk_max_size
+        ):
+
+            # Image Classification
+            if isinstance(chunk[0], GroundTruthImageClassification):
+
+                payload = {
+                    "dataset_name": self.name,
+                    "classifications": [
+                        {
+                            "labels": [asdict(label) for label in clf.labels],
+                            "image": asdict(clf.image),
+                        }
+                        for clf in chunk
+                    ],
                 }
-                for clf in clfs
-            ],
-        }
 
-        resp = self.client._requests_post_rel_host(
-            "groundtruth-classifications", json=payload
-        )
+                resp = self.client._requests_post_rel_host(
+                    "groundtruth-classifications", json=payload
+                )
 
-        return resp.json()
+                log += resp
 
-    def add_groundtruth_segmentations(
-        self, segs: List[_GroundTruthSegmentation]
-    ):
-        def _shape_value(shape: Union[List[PolygonWithHole], np.ndarray]):
-            if isinstance(shape, np.ndarray):
-                return _mask_array_to_pil_base64(shape)
+            # Image Segmentation (Semantic, Instance)
+            elif isinstance(chunk[0], _GroundTruthSegmentation):
+
+                def _shape_value(
+                    shape: Union[List[PolygonWithHole], np.ndarray]
+                ):
+                    if isinstance(shape, np.ndarray):
+                        return _mask_array_to_pil_base64(shape)
+                    else:
+                        return _payload_for_polys_with_holes(shape)
+
+                payload = {
+                    "dataset_name": self.name,
+                    "segmentations": [
+                        {
+                            "shape": _shape_value(seg.shape),
+                            "labels": [asdict(label) for label in seg.labels],
+                            "image": asdict(seg.image),
+                            "is_instance": seg._is_instance,
+                        }
+                        for seg in chunk
+                    ],
+                }
+
+                resp = self.client._requests_post_rel_host(
+                    "groundtruth-segmentations", json=payload
+                )
+
+                log += resp
+
+            # Object Detection
+            elif isinstance(chunk[0], GroundTruthDetection):
+
+                payload = {
+                    "dataset_name": self.name,
+                    "detections": [_det_to_dict(det) for det in chunk],
+                }
+
+                resp = self.client._requests_post_rel_host(
+                    "groundtruth-detections", json=payload
+                )
+
+                log += resp
+
+            # Unknown type.
             else:
-                return _payload_for_polys_with_holes(shape)
+                raise NotImplementedError(
+                    f"Received groundtruth with type: '{type(chunk[0])}', which is not currently implemented."
+                )
 
-        payload = {
-            "dataset_name": self.name,
-            "segmentations": [
-                {
-                    "shape": _shape_value(seg.shape),
-                    "labels": [asdict(label) for label in seg.labels],
-                    "image": asdict(seg.image),
-                    "is_instance": seg._is_instance,
-                }
-                for seg in segs
-            ],
-        }
-
-        resp = self.client._requests_post_rel_host(
-            "groundtruth-segmentations", json=payload
-        )
-
-        return resp.json()
+        return log
 
     def get_groundtruth_detections(
         self, image_uid: str
