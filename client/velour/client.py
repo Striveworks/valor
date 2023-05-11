@@ -431,13 +431,13 @@ class EvalJob:
         self,
         client: Client,
         job_id: str,
-        missing_pred_labels: List[Label],
-        ignored_pred_labels: List[Label],
+        **kwargs,
     ):
         self._id = job_id
-        self.missing_pred_labels = missing_pred_labels
-        self.ignored_pred_labels = ignored_pred_labels
         self.client = client
+
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     def status(self) -> str:
         resp = self.client._requests_get_rel_host(f"/jobs/{self._id}").json()
@@ -446,6 +446,11 @@ class EvalJob:
     def metrics(self) -> List[dict]:
         return self.client._requests_get_rel_host(
             f"/jobs/{self._id}/metrics"
+        ).json()
+
+    def confusion_matrices(self) -> List[dict]:
+        return self.client._requests_get_rel_host(
+            f"/jobs/{self._id}/confusion-matrices"
         ).json()
 
     # TODO: replace value with a dataclass?
@@ -567,6 +572,20 @@ class Model:
         # list of label dicts. convert label dicts to Label objects
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
             resp[k] = [Label(**la) for la in resp[k]]
+
+        return EvalJob(client=self.client, **resp)
+
+    def evaluate_classification(self, dataset: Dataset) -> EvalJob:
+        payload = {
+            "settings": {
+                "model_name": self.name,
+                "dataset_name": dataset.name,
+            }
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "/clf-metrics", json=payload
+        ).json()
 
         return EvalJob(client=self.client, **resp)
 
