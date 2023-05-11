@@ -1,12 +1,9 @@
 import gzip
 import json
 import tempfile
-from pathlib import Path
-
 import requests
-from chariot.config import settings
-from chariot.datasets.dataset import Dataset
-from chariot.datasets.dataset_version import DatasetVersion
+
+from pathlib import Path
 from tqdm import tqdm
 
 from velour.client import Client, ClientException
@@ -21,6 +18,13 @@ from velour.data_types import (
     Point,
     PolygonWithHole,
 )
+
+try:
+    from chariot.config import settings
+    from chariot.datasets.dataset import Dataset
+    from chariot.datasets.dataset_version import DatasetVersion
+except ModuleNotFoundError:
+    "`chariot` package not found. if you have an account on Chariot please see https://production.chariot.striveworks.us/docs/sdk/sdk for how to install the python SDK"
 
 # REMOVE
 placeholder_image_length = -1

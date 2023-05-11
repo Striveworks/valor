@@ -1,6 +1,6 @@
 import PIL.Image
 
-from velour.convert import chariot_detections_to_velour, coco_rle_to_mask
+from velour.integrations.convert import chariot_detections_to_velour, coco_rle_to_mask
 from velour.data_types import Image
 
 
