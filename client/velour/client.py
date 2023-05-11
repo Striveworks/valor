@@ -184,7 +184,8 @@ class Client:
         return Dataset(client=self, name=name)
 
     def delete_dataset(self, name: str) -> None:
-        self._requests_delete_rel_host(f"datasets/{name}")
+        job_id = self._requests_delete_rel_host(f"datasets/{name}").json()
+        return Job(client=self, job_id=job_id)
 
     def get_dataset(self, name: str) -> "Dataset":
         resp = self._requests_get_rel_host(f"datasets/{name}")
@@ -233,9 +234,9 @@ class Dataset:
 
         number_of_chunks = math.ceil(len(data) / chunk_max_size)
 
-        for i in range(0, number_of_chunks - 1):
+        for i in range(0, number_of_chunks-1):
             progress_bar.update(chunk_max_size)
-            yield data[i * chunk_max_size : (i + 1) * chunk_max_size]
+            yield data[i * chunk_max_size : (i+1)*chunk_max_size]
 
         remainder = len(data) % chunk_max_size
         if remainder > 0:
@@ -424,7 +425,7 @@ class Dataset:
         ]
 
 
-class EvalJob:
+class Job:
     def __init__(
         self,
         client: Client,
@@ -441,6 +442,8 @@ class EvalJob:
         resp = self.client._requests_get_rel_host(f"/jobs/{self._id}").json()
         return resp["status"]
 
+
+class EvalJob(Job):
     def metrics(self) -> List[dict]:
         return self.client._requests_get_rel_host(
             f"/jobs/{self._id}/metrics"
