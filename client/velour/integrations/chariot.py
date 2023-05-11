@@ -358,19 +358,10 @@ def chariot_ds_to_velour_ds(
     # Chunk daat
 
     # Upload velour dataset
-    stepsize = 1000
     try:
-        # velour_dataset.add_groundtruth_classifications(groundtruth_annotations)
-        for i in tqdm(
-            range(0, len(groundtruth_annotations) - stepsize, stepsize),
-            total=len(groundtruth_annotations) / stepsize,
-            unit="kS",
-            unit_scale=True,
-            desc="Upload Velour Dataset (" + velour_dataset_name.strip() + ")",
-        ):
-            velour_dataset.add_groundtruth_classifications(
-                groundtruth_annotations[i : i + stepsize]
-            )
+        velour_dataset.add_groundtruth(
+            groundtruth_annotations, chunk_max_size=100
+        )
         # velour_dataset.finalize()
     except ValueError as err:
         print(err.msg)

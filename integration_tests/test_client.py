@@ -1198,7 +1198,3 @@ def test_evaluate_clf(
             "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
         }
     ]
-
-
-if __name__ == "__main__":
-    crud.delete_dataset("test dataset")
