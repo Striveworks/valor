@@ -33,7 +33,7 @@ from velour.data_types import (
     ScoredLabel,
 )
 from velour.metrics import Task
-from velour_api import models, ops
+from velour_api import crud, models, ops
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -160,19 +160,7 @@ def db(client: Client) -> Session:
 
     # cleanup by deleting all datasets, models, and labels
     for dataset in client.get_datasets():
-        job = client.delete_dataset(name=dataset["name"])
-        # deletion runs in the background so we need to sleep a little bit
-        # before calling direct db deletion afterwards to avoid race conditions
-        timeout = 5
-        start = time.time()
-        while True:
-            time.sleep(0.2)
-            if job.status() == "Done":
-                break
-            if time.time() - start > timeout:
-                raise RuntimeError(
-                    f"Delete job failed to finish within {timeout} seconds."
-                )
+        crud.delete_dataset(db=sess, dataset_name=dataset["name"])
 
     for model in client.get_models():
         client.delete_model(name=model["name"])
