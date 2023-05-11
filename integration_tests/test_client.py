@@ -407,7 +407,6 @@ def _test_create_dataset_with_gts(
     gts1: list[Any],
     gts2: list[Any],
     gts3: list[Any],
-    add_method_name: str,
     expected_labels_tuples: set[tuple[str, str]],
     expected_image_uids: list[str],
 ) -> Dataset:
@@ -427,8 +426,6 @@ def _test_create_dataset_with_gts(
         list of groundtruth objects (from `velour.data_types`)
     gts3
         list of groundtruth objects (from `velour.data_types`)
-    add_method_name
-        method name of `velour.client.Dataset` to add groundtruth objects
     expected_labels_tuples
         set of tuples of key/value labels to check were added to the database
     expected_image_uids
@@ -440,9 +437,8 @@ def _test_create_dataset_with_gts(
         client.create_dataset(dset_name)
     assert "already exists" in str(exc_info)
 
-    add_method = getattr(dataset, add_method_name)
-    add_method(gts1)
-    add_method(gts2)
+    dataset.add_groundtruth(gts1)
+    dataset.add_groundtruth(gts2)
 
     # check that the dataset has two images
     images = dataset.get_images()
@@ -461,7 +457,7 @@ def _test_create_dataset_with_gts(
     # check that we get an error when trying to add more images
     # to the dataset since it is finalized
     with pytest.raises(ClientException) as exc_info:
-        add_method(gts3)
+        dataset.add_groundtruth(gts3)
     assert "since it is finalized" in str(exc_info)
 
     return dataset
@@ -471,7 +467,6 @@ def _test_create_model_with_preds(
     client: Client,
     gts: list[Any],
     preds: list[Any],
-    add_gts_method_name: str,
     add_preds_method_name: str,
     preds_model_class: type,
     preds_expected_number: int,
@@ -488,8 +483,6 @@ def _test_create_model_with_preds(
         list of groundtruth objects (from `velour.data_types`)
     preds
         list of prediction objects (from `velour.data_types`)
-    add_gts_method_name
-        method name of `velour.client.Dataset` to add groundtruth objects
     add_preds_method_name
         method name of `velour.client.Model` to add prediction objects
     preds_model_class
@@ -523,9 +516,7 @@ def _test_create_model_with_preds(
         add_preds_method(dataset, preds)
     assert "Image with uid" in str(exc_info)
 
-    add_gts_method = getattr(dataset, add_gts_method_name)
-
-    add_gts_method(gts)
+    dataset.add_groundtruth(gts)
     add_preds_method(dataset, preds)
 
     # check predictions have been added
@@ -579,7 +570,6 @@ def test_create_dataset_with_detections(
         gts1=gt_dets1,
         gts2=gt_dets2,
         gts3=gt_dets3,
-        add_method_name="add_groundtruth",
         expected_image_uids={"uid1", "uid2"},
         expected_labels_tuples={
             ("k1", "v1"),
@@ -612,7 +602,6 @@ def test_create_model_with_predicted_detections(
         client=client,
         gts=gt_poly_dets1,
         preds=pred_poly_dets,
-        add_gts_method_name="add_groundtruth",
         add_preds_method_name="add_predicted_detections",
         preds_model_class=models.LabeledPredictedDetection,
         preds_expected_number=2,
@@ -742,7 +731,6 @@ def test_create_dataset_with_segmentations(
         gts1=gt_segs1,
         gts2=gt_segs2,
         gts3=gt_segs3,
-        add_method_name="add_groundtruth",
         expected_image_uids={"uid1", "uid2"},
         expected_labels_tuples={
             ("k1", "v1"),
@@ -831,7 +819,6 @@ def test_create_model_with_predicted_segmentations(
         client=client,
         gts=gt_segs1,
         preds=pred_segs,
-        add_gts_method_name="add_groundtruth",
         add_preds_method_name="add_predicted_segmentations",
         preds_model_class=models.LabeledPredictedSegmentation,
         preds_expected_number=2,
@@ -864,7 +851,6 @@ def test_create_dataset_with_classifications(
         gts1=gt_clfs1,
         gts2=gt_clfs2,
         gts3=gt_clfs3,
-        add_method_name="add_groundtruth",
         expected_image_uids={"uid5", "uid6"},
         expected_labels_tuples={
             ("k5", "v5"),
@@ -883,7 +869,6 @@ def test_create_model_with_predicted_classifications(
         client=client,
         gts=gt_clfs1,
         preds=pred_clfs,
-        add_gts_method_name="add_groundtruth",
         add_preds_method_name="add_predicted_classifications",
         preds_model_class=models.PredictedImageClassification,
         preds_expected_number=5,

@@ -230,7 +230,7 @@ class Dataset:
             total=len(data),
             unit="samples",
             unit_scale=True,
-            desc="Chunking (" + self.name + ")",
+            desc=f"Chunking ({self.name})",
         )
 
         for i in range(0, number_of_chunks - 1, chunk_max_size):
@@ -325,9 +325,7 @@ class Dataset:
             # Unknown type.
             else:
                 raise NotImplementedError(
-                    "Received groundtruth with type: '"
-                    + str(type(chunk[0]))
-                    + "', which is not currently implemented."
+                    f"Received groundtruth with type: '{type(chunk[0])}', which is not currently implemented."
                 )
 
         return log
