@@ -296,21 +296,8 @@ def confusion_matrix_at_label_key(
         # for the same image
         return None
 
-    gt_label_values = crud.get_classification_label_values_in_dataset(
-        db, dataset_name, label_key
-    )
-    pred_label_values = crud.get_classification_prediction_label_values(
-        db,
-        model_name=model_name,
-        dataset_name=dataset_name,
-        label_key=label_key,
-    )
-
-    label_values = list(set(gt_label_values).union(pred_label_values))
-
     return schemas.ConfusionMatrix(
         label_key=label_key,
-        label_values=label_values,
         entries=[
             schemas.ConfusionMatrixEntry(
                 prediction=r[0][0], groundtruth=r[0][1], count=r[1]

@@ -12,7 +12,6 @@ def img() -> schemas.Image:
 def cm() -> schemas.ConfusionMatrix:
     return schemas.ConfusionMatrix(
         label_key="class",
-        label_values=[f"class{i}" for i in range(3)],
         entries=[
             schemas.ConfusionMatrixEntry(
                 groundtruth="class0", prediction="class0", count=1

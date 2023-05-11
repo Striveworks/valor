@@ -374,14 +374,17 @@ class ConfusionMatrixEntry(BaseModel):
 
 class ConfusionMatrix(BaseModel, extra=Extra.allow):
     label_key: str
-    label_values: list[str]
     entries: list[ConfusionMatrixEntry]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        label_values = set(
+            [entry.prediction for entry in self.entries]
+            + [entry.groundtruth for entry in self.entries]
+        )
         self.label_map = {
             label_value: i
-            for i, label_value in enumerate(sorted(self.label_values))
+            for i, label_value in enumerate(sorted(label_values))
         }
         n_label_values = len(self.label_map)
 
