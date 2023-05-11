@@ -224,14 +224,14 @@ class Dataset:
 
     def __generate_chunks(self, data: list, chunk_max_size=100):
 
-        number_of_chunks = math.ceil(len(data) / chunk_max_size)
-
         progress_bar = tqdm(
             total=len(data),
             unit="samples",
             unit_scale=True,
             desc=f"Chunking ({self.name})",
         )
+
+        number_of_chunks = math.ceil(len(data) / chunk_max_size)
 
         for i in range(0, number_of_chunks - 1, chunk_max_size):
             progress_bar.update(i)
