@@ -1145,11 +1145,25 @@ def test_evaluate_clf(
 
     metrics = eval_job.metrics()
 
-    assert len(metrics) == 5
-    assert set([m["type"] for m in metrics]) == {
-        "Accuracy",
-        "Precision",
-        "Recall",
-        "F1",
-        "ROCAUC",
-    }
+    expected_metrics = [
+        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {
+            "type": "Precision",
+            "value": 1.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "Recall",
+            "value": 1.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
+        {"type": "Precision", "label": {"key": "k4", "value": "v5"}},
+        {"type": "Recall", "label": {"key": "k4", "value": "v5"}},
+        {"type": "F1", "label": {"key": "k4", "value": "v5"}},
+    ]
+    for m in metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics
