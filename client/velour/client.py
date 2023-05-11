@@ -230,6 +230,11 @@ class Dataset:
             unit="samples",
             unit_scale=True,
             desc=f"Chunking ({self.name})",
+        progress_bar = tqdm(
+            total=len(data),
+            unit="samples",
+            unit_scale=True,
+            desc=f"Chunking ({self.name})",
         )
 
         number_of_chunks = math.floor(len(data) / chunk_size)
@@ -276,12 +281,26 @@ class Dataset:
                 resp = self.client._requests_post_rel_host(
                     "groundtruth-classifications", json=payload
                 )
+                resp = self.client._requests_post_rel_host(
+                    "groundtruth-classifications", json=payload
+                )
 
                 log += resp
 
             # Image Segmentation (Semantic, Instance)
             elif isinstance(chunk[0], _GroundTruthSegmentation):
+                log += resp
 
+            # Image Segmentation (Semantic, Instance)
+            elif isinstance(chunk[0], _GroundTruthSegmentation):
+
+                def _shape_value(
+                    shape: Union[List[PolygonWithHole], np.ndarray]
+                ):
+                    if isinstance(shape, np.ndarray):
+                        return _mask_array_to_pil_base64(shape)
+                    else:
+                        return _payload_for_polys_with_holes(shape)
                 def _shape_value(
                     shape: Union[List[PolygonWithHole], np.ndarray]
                 ):
@@ -302,11 +321,49 @@ class Dataset:
                         for seg in chunk
                     ],
                 }
+                payload = {
+                    "dataset_name": self.name,
+                    "segmentations": [
+                        {
+                            "shape": _shape_value(seg.shape),
+                            "labels": [asdict(label) for label in seg.labels],
+                            "image": asdict(seg.image),
+                            "is_instance": seg._is_instance,
+                        }
+                        for seg in chunk
+                    ],
+                }
 
                 resp = self.client._requests_post_rel_host(
                     "groundtruth-segmentations", json=payload
                 )
+                resp = self.client._requests_post_rel_host(
+                    "groundtruth-segmentations", json=payload
+                )
 
+                log += resp
+
+            # Object Detection
+            elif isinstance(chunk[0], GroundTruthDetection):
+
+                payload = {
+                    "dataset_name": self.name,
+                    "detections": [_det_to_dict(det) for det in chunk],
+                }
+
+                resp = self.client._requests_post_rel_host(
+                    "groundtruth-detections", json=payload
+                )
+
+                log += resp
+
+            # Unknown type.
+            else:
+                raise NotImplementedError(
+                    f"Received groundtruth with type: '{type(chunk[0])}', which is not currently implemented."
+                )
+
+        return log
                 log += resp
 
             # Object Detection
