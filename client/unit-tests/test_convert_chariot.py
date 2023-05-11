@@ -1,11 +1,15 @@
 import json
 
+import pytest
+
 from velour.data_types import BoundingBox, Point
 from velour.integrations.chariot import (
     chariot_parse_image_classification_annotation,
     chariot_parse_image_segmentation_annotation,
     chariot_parse_object_detection_annotation,
 )
+
+pytest.importorskip("chariot")
 
 
 def test_chariot_parse_image_classification_annotation():
