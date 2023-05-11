@@ -15,7 +15,7 @@ import TableRow from "@mui/material/TableRow";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
-import { Wrapper } from "./wrapper";
+import { Wrapper } from "./components/wrapper";
 
 const APColumns: GridColDef[] = [
   { field: "labelKey", headerName: "Label Key" },

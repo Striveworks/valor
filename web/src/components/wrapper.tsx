@@ -40,6 +40,9 @@ export const Wrapper = ({ children }: { children: React.ReactNode }) => (
           <Link href="/models">Models</Link>
         </ListItem>
         <ListItem>
+          <Link href="/datasets">Datasets</Link>
+        </ListItem>
+        <ListItem>
           <Link href="/profile">Profile</Link>
         </ListItem>
       </List>

@@ -5,7 +5,7 @@ import Typography from "@mui/material/Typography";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import Link from "@mui/material/Link";
 import { EvaluationSetting } from "./velour-types";
-import { Wrapper } from "./wrapper";
+import { Wrapper } from "./components/wrapper";
 
 const taskTypeWidth = 250;
 const areaWidth = 175;

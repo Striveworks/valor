@@ -1156,6 +1156,10 @@ def test_evaluate_ap(
     }
     assert eval_job.metrics() != expected_metrics
 
+    import pdb
+
+    pdb.set_trace()
+
 
 def test_evaluate_clf(
     client: Client,

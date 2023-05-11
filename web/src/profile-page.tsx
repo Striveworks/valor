@@ -5,7 +5,7 @@ import SyntaxHighlighter from "react-syntax-highlighter/dist/esm/default-highlig
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import Button from "@mui/material/Button";
-import { Wrapper } from "./wrapper";
+import { Wrapper } from "./components/wrapper";
 
 export const ProfilePage = () => {
   const [accessToken, setAccessToken] = useState("");
