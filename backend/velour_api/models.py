@@ -400,7 +400,7 @@ class Metric(Base):
     )
     label = relationship(Label)
     type: Mapped[str] = mapped_column()
-    value: Mapped[float] = mapped_column()
+    value: Mapped[float] = mapped_column(nullable=True)
     parameters = mapped_column(JSONB)  # {"label": ..., "iou": ..., }
     settings: Mapped[EvaluationSettings] = relationship(
         "EvaluationSettings", back_populates="metrics"

@@ -303,7 +303,7 @@ class ClfMetricsRequest(BaseModel):
 class Metric(BaseModel):
     type: str
     parameters: dict | None
-    value: float | dict
+    value: float | dict | None
     label: Label = None
 
 
@@ -415,43 +415,35 @@ class AccuracyMetric(BaseModel):
         }
 
 
-class PrecisionMetric(BaseModel):
+class _PrecisionRecallF1Base(BaseModel):
     label: Label
-    value: float
+    value: float | None
+
+    @validator("value")
+    def replace_nan_with_none(cls, v):
+        if np.isnan(v):
+            return None
+        return v
 
     def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
         return {
             "value": self.value,
             "label_id": label_id,
-            "type": "Precision",
+            "type": self.__type__,
             "evaluation_settings_id": evaluation_settings_id,
         }
 
 
-class RecallMetric(BaseModel):
-    label: Label
-    value: float
-
-    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
-        return {
-            "value": self.value,
-            "label_id": label_id,
-            "type": "Recall",
-            "evaluation_settings_id": evaluation_settings_id,
-        }
+class PrecisionMetric(_PrecisionRecallF1Base):
+    __type__ = "Precision"
 
 
-class F1Metric(BaseModel):
-    label: Label
-    value: float
+class RecallMetric(_PrecisionRecallF1Base):
+    __type__ = "Recall"
 
-    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
-        return {
-            "value": self.value,
-            "label_id": label_id,
-            "type": "F1",
-            "evaluation_settings_id": evaluation_settings_id,
-        }
+
+class F1Metric(_PrecisionRecallF1Base):
+    __type__ = "F1"
 
 
 class ROCAUCMetric(BaseModel):
