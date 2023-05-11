@@ -223,7 +223,7 @@ class Dataset:
         self.client = client
         self.name = name
 
-    def __generate_chunks(self, data: list, chunk_size=100):
+    def __generate_chunks(self, data: list, chunk_size=1000):
 
         progress_bar = tqdm(
             total=len(data),
