@@ -1151,7 +1151,7 @@ def test_evaluate_clf(
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     dataset = client.create_dataset(dset_name)
-    dataset.add_groundtruth_classifications(gt_clfs1)
+    dataset.add_groundtruth(gt_clfs1)
     dataset.finalize()
 
     model = client.create_model(model_name)
