@@ -986,11 +986,19 @@ def test_evaluate_ap(
     pred_dets: list[PredictedDetection],
     db: Session,
 ):
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_dataset(
+        dset_name,
+        href="http://url/to/dataset",
+        description="A description of the dataset",
+    )
     dataset.add_groundtruth_detections(gt_dets1)
     dataset.finalize()
 
-    model = client.create_model(model_name)
+    model = client.create_model(
+        model_name,
+        href="http://url/to/model",
+        description="A description of the model",
+    )
     model.add_predicted_detections(dataset, pred_dets)
     model.finalize_inferences(dataset)
 
@@ -1155,10 +1163,6 @@ def test_evaluate_ap(
         "max_area": 1800,
     }
     assert eval_job.metrics() != expected_metrics
-
-    import pdb
-
-    pdb.set_trace()
 
 
 def test_evaluate_clf(
