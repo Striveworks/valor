@@ -185,18 +185,134 @@ def get_groundtruth_segmentations_in_image(
     ]
 
 
-def get_labels_in_dataset(
+def get_detection_labels_in_dataset(
     db: Session, dataset_name: str
 ) -> list[models.Label]:
-    # TODO must be a better and more SQLy way of doing this
-    dset = get_dataset(db, dataset_name)
-    unique_ids = set()
-    for image in dset.images:
-        unique_ids.update(_get_unique_label_ids_in_image(image))
-
     return db.scalars(
-        select(models.Label).where(models.Label.id.in_(unique_ids))
+        select(models.Label)
+        .join(models.LabeledGroundTruthDetection)
+        .join(models.GroundTruthDetection)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Image.id == models.GroundTruthDetection.image_id,
+            )
+        )
+        .distinct()
     ).all()
+
+
+def get_segmentation_labels_in_dataset(
+    db: Session, dataset_name: str
+) -> list[models.Label]:
+    return db.scalars(
+        select(models.Label)
+        .join(models.LabeledGroundTruthSegmentation)
+        .join(models.GroundTruthSegmentation)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Image.id == models.GroundTruthSegmentation.image_id,
+            )
+        )
+        .distinct()
+    ).all()
+
+
+def get_classification_labels_in_dataset(
+    db: Session, dataset_name: str
+) -> list[models.Label]:
+    return db.scalars(
+        select(models.Label)
+        .join(models.GroundTruthImageClassification)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Image.id
+                == models.GroundTruthImageClassification.image_id,
+            )
+        )
+        .distinct()
+    ).all()
+
+
+def get_classification_prediction_labels(
+    db: Session, model_name: str, dataset_name: str
+):
+    return db.scalars(
+        select(models.Label)
+        .join(models.PredictedImageClassification)
+        .join(models.Model)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Image.id
+                == models.PredictedImageClassification.image_id,
+                models.Model.name == model_name,
+            )
+        )
+        .distinct()
+    ).all()
+
+
+def get_classification_label_values_in_dataset(
+    db: Session, dataset_name: str, label_key: str
+) -> list[str]:
+    return db.scalars(
+        select(models.Label.value)
+        .join(models.GroundTruthImageClassification)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Image.id
+                == models.GroundTruthImageClassification.image_id,
+                models.Label.key == label_key,
+            )
+        )
+        .distinct()
+    ).all()
+
+
+def get_classification_prediction_label_values(
+    db: Session, model_name: str, dataset_name: str, label_key: str
+):
+    return db.scalars(
+        select(models.Label.value)
+        .join(models.PredictedImageClassification)
+        .join(models.Model)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Image.id
+                == models.PredictedImageClassification.image_id,
+                models.Model.name == model_name,
+                models.Label.key == label_key,
+            )
+        )
+        .distinct()
+    ).all()
+
+
+def get_all_labels_in_dataset(
+    db: Session, dataset_name: str
+) -> set[models.Label]:
+    return (
+        set(get_classification_labels_in_dataset(db, dataset_name))
+        .union(set(get_detection_labels_in_dataset(db, dataset_name)))
+        .union(set(get_segmentation_labels_in_dataset(db, dataset_name)))
+    )
 
 
 def get_all_labels(db: Session) -> list[schemas.Label]:
@@ -253,9 +369,6 @@ def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
     return schemas.Metric(
         type=metric.type,
         parameters=metric.parameters,
-        settings=_db_evaluation_settings_to_pydantic_evaluation_settings(
-            metric.settings
-        ),
         value=metric.value,
         label=_db_label_to_schemas_label(metric.label),
     )
@@ -280,6 +393,27 @@ def get_metrics_from_evaluation_settings_id(
         )
     )
     return get_metrics_from_evaluation_settings([eval_settings])
+
+
+def get_confusion_matrices_from_evaluation_settings_id(
+    db: Session, evaluation_settings_id: int
+) -> list[schemas.ConfusionMatrix]:
+    eval_settings = db.scalar(
+        select(models.EvaluationSettings).where(
+            models.EvaluationSettings.id == evaluation_settings_id
+        )
+    )
+    db_cms = eval_settings.confusion_matrices
+
+    return [
+        schemas.ConfusionMatrix(
+            label_key=db_cm.label_key,
+            entries=[
+                schemas.ConfusionMatrixEntry(**entry) for entry in db_cm.value
+            ],
+        )
+        for db_cm in db_cms
+    ]
 
 
 def get_evaluation_settings_from_id(
@@ -471,6 +605,15 @@ def _object_detections_in_dataset_statement(
     )
 
 
+def _classifications_in_dataset_statement(dataset_name: str) -> Select:
+    return (
+        select(models.GroundTruthImageClassification)
+        .join(models.Image)
+        .join(models.Dataset)
+        .where(models.Dataset.name == dataset_name)
+    )
+
+
 def _model_instance_segmentation_preds_statement(
     model_name: str,
     dataset_name: str,
@@ -535,6 +678,23 @@ def _model_object_detection_preds_statement(
         task_for_area_computation=task_for_area_computation,
         min_area=min_area,
         max_area=max_area,
+    )
+
+
+def _model_classifications_preds_statement(
+    model_name: str, dataset_name: str
+) -> Select:
+    return (
+        select(models.PredictedImageClassification)
+        .join(models.Image)
+        .join(models.Model)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Model.name == model_name,
+                models.Dataset.name == dataset_name,
+            )
+        )
     )
 
 
