@@ -958,7 +958,7 @@ def test_delete_dataset_background_job(
 ):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
     dataset = client.create_dataset(dset_name)
-    dataset.add_groundtruth_detections(gt_dets1 + gt_dets2 + gt_dets3)
+    dataset.add_groundtruth(gt_dets1 + gt_dets2 + gt_dets3)
 
     job = client.delete_dataset(dset_name)
     assert job.status() == "Processing"
