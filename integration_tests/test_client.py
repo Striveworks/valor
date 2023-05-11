@@ -979,6 +979,19 @@ def test_delete_dataset_exception(client: Client):
     assert "does not exist" in str(exc_info)
 
 
+def test_delete_dataset_background_job(
+    client: Client, gt_dets1, gt_dets2, gt_dets3
+):
+    """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
+    dataset = client.create_dataset(dset_name)
+    dataset.add_groundtruth_detections(gt_dets1 + gt_dets2 + gt_dets3)
+
+    job = client.delete_dataset(dset_name)
+    assert job.status() == "Processing"
+    time.sleep(1.0)
+    assert job.status() == "Done"
+
+
 def test_evaluate_ap(
     client: Client,
     gt_dets1: list[GroundTruthDetection],
