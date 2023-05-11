@@ -5,3 +5,4 @@ build
 .coverage*
 *.ipynb
 .env*
+.vscode

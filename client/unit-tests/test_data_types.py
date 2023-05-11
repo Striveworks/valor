@@ -8,7 +8,10 @@ from velour.data_types import (
     GroundTruthDetection,
     GroundTruthInstanceSegmentation,
     GroundTruthSemanticSegmentation,
+    Label,
     PredictedDetection,
+    PredictedImageClassification,
+    ScoredLabel,
     _GroundTruthSegmentation,
 )
 
@@ -114,4 +117,24 @@ def test_predicted_detection():
         image=None,
         scored_labels=[],
         boundary=BoundingPolygon([]),
+    )
+
+
+def gest_predicted_classification():
+    with pytest.raises(ValueError) as exc_info:
+        PredictedImageClassification(
+            image=None,
+            scored_labels=[
+                ScoredLabel(label=Label("k", "v1"), score=0.2),
+                ScoredLabel(label=Label("k", "v2"), score=0.7),
+            ],
+        )
+    assert "must sum to 1" in str(exc_info)
+
+    assert PredictedImageClassification(
+        image=None,
+        scored_labels=[
+            ScoredLabel(label=Label("k", "v1"), score=0.2),
+            ScoredLabel(label=Label("k", "v2"), score=0.8),
+        ],
     )
