@@ -316,6 +316,8 @@ def precision_and_recall_f1_from_confusion_matrix(
 ) -> tuple[float, float, float]:
     """Computes the precision, recall, and f1 score at a class index"""
     cm_matrix = cm.matrix
+    if label_value not in cm.label_map:
+        return np.nan, np.nan, np.nan
     class_index = cm.label_map[label_value]
 
     true_positives = cm_matrix[class_index, class_index]
