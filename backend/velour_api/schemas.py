@@ -372,10 +372,12 @@ class ConfusionMatrixEntry(BaseModel):
         allow_mutation = False
 
 
-class ConfusionMatrix(BaseModel, extra=Extra.allow):
+class _BaseConfusionMatrix(BaseModel):
     label_key: str
     entries: list[ConfusionMatrixEntry]
 
+
+class ConfusionMatrix(_BaseConfusionMatrix, extra=Extra.allow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         label_values = set(
@@ -403,6 +405,14 @@ class ConfusionMatrix(BaseModel, extra=Extra.allow):
             "value": [entry.dict() for entry in self.entries],
             "evaluation_settings_id": evaluation_settings_id,
         }
+
+
+class ConfusionMatrixResponse(_BaseConfusionMatrix):
+    """used for http response since it won't have the matrix and
+    label map attributes
+    """
+
+    pass
 
 
 class AccuracyMetric(BaseModel):

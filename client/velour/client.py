@@ -386,6 +386,11 @@ class EvalJob:
             f"/jobs/{self._id}/metrics"
         ).json()
 
+    def confusion_matrices(self) -> List[dict]:
+        return self.client._requests_get_rel_host(
+            f"/jobs/{self._id}/confusion-matrices"
+        ).json()
+
     # TODO: replace value with a dataclass?
     def settings(self) -> dict:
         return self.client._requests_get_rel_host(

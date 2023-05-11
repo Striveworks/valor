@@ -1167,3 +1167,11 @@ def test_evaluate_clf(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in metrics
+
+    confusion_matrices = eval_job.confusion_matrices()
+    assert confusion_matrices == [
+        {
+            "label_key": "k4",
+            "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
+        }
+    ]
