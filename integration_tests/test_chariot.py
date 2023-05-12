@@ -39,12 +39,17 @@ if __name__ == "__main__":
     except ClientException as err:
         print(err)
 
-    velour_ds = chariot_ds_to_velour_ds(
-        velour_client=velour_client,
-        chariot_dataset=chariot_ds,
-        chunk_size=1000,
-    )
+
+    # velour_ds = chariot_ds_to_velour_ds(
+    #     velour_client=velour_client,
+    #     chariot_dataset=chariot_ds,
+    #     chunk_size=1000,
+    # )
+
+    velour_ds = velour_client.get_dataset(chariot_ds.name)
 
     print(velour_ds.get_labels())
+
+    print(velour_ds.name == chariot_ds.name)
 
     velour_client.delete_dataset(velour_ds.name)
