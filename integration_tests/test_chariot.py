@@ -50,6 +50,4 @@ if __name__ == "__main__":
 
     print(velour_ds.get_labels())
 
-    print(velour_ds.name == chariot_ds.name)
-
     velour_client.delete_dataset(velour_ds.name)
