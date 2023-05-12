@@ -2,6 +2,8 @@ name: Unit, functional, integration tests and code coverage
 
 on:
   push:
+    tags-ignore:
+      - "**"
 
 jobs:
   backend-functional-tests:
