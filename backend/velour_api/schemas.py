@@ -3,6 +3,7 @@ from base64 import b64decode
 from typing import Optional
 from uuid import uuid4
 
+import numpy as np
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
@@ -117,7 +118,7 @@ class GroundTruthDetectionsCreate(BaseModel):
     detections: list[GroundTruthDetection]
 
 
-class ImageClassificationBase(BaseModel):
+class GroundTruthImageClassification(BaseModel):
     image: Image
     labels: list[Label]
 
@@ -126,10 +127,27 @@ class PredictedImageClassification(BaseModel):
     image: Image
     scored_labels: list[ScoredLabel]
 
+    @validator("scored_labels")
+    def check_sum_to_one(cls, v: list[ScoredLabel]):
+        label_keys_to_sum = {}
+        for scored_label in v:
+            label_key = scored_label.label.key
+            if label_key not in label_keys_to_sum:
+                label_keys_to_sum[label_key] = 0.0
+            label_keys_to_sum[label_key] += scored_label.score
+
+        for k, total_score in label_keys_to_sum.items():
+            if abs(total_score - 1) > 1e-5:
+                raise ValueError(
+                    "For each label key, prediction scores must sum to 1, but"
+                    f" for label key {k} got scores summing to {total_score}."
+                )
+        return v
+
 
 class GroundTruthImageClassificationsCreate(BaseModel):
     dataset_name: str
-    classifications: list[ImageClassificationBase]
+    classifications: list[GroundTruthImageClassification]
 
 
 class PredictedImageClassificationsCreate(BaseModel):
@@ -282,10 +300,35 @@ class APRequest(BaseModel):
         return values
 
 
+class CreateAPMetricsResponse(BaseModel):
+    missing_pred_labels: list[Label]
+    ignored_pred_labels: list[Label]
+    job_id: str
+
+
+class CreateClfMetricsResponse(BaseModel):
+    missing_pred_keys: list[str]
+    ignored_pred_keys: list[str]
+    job_id: str
+
+
+class Job(BaseModel):
+    uid: str = Field(default_factory=lambda: str(uuid4()))
+    status: JobStatus = JobStatus.PENDING
+
+    class Config:
+        extra = Extra.allow
+
+
+class ClfMetricsRequest(BaseModel):
+    settings: EvaluationSettings
+
+
+# used for responses from API
 class Metric(BaseModel):
     type: str
-    parameters: dict
-    value: float
+    parameters: dict | None
+    value: float | dict | None
     label: Label = None
 
 
@@ -294,30 +337,161 @@ class APMetric(BaseModel):
     value: float
     label: Label
 
+    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": "AP",
+            "evaluation_settings_id": evaluation_settings_id,
+            "parameters": {"iou": self.iou},
+        }
+
 
 class APMetricAveragedOverIOUs(BaseModel):
     ious: set[float]
     value: float
     label: Label
 
+    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": "APAveragedOverIOUs",
+            "evaluation_settings_id": evaluation_settings_id,
+            "parameters": {"ious": list(self.ious)},
+        }
+
 
 class mAPMetric(BaseModel):
     iou: float
     value: float
+
+    def db_mapping(self, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "type": "mAP",
+            "evaluation_settings_id": evaluation_settings_id,
+            "parameters": {"iou": self.iou},
+        }
 
 
 class mAPMetricAveragedOverIOUs(BaseModel):
     ious: set[float]
     value: float
 
+    def db_mapping(self, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "type": "mAPAveragedOverIOUs",
+            "evaluation_settings_id": evaluation_settings_id,
+            "parameters": {"ious": list(self.ious)},
+        }
 
-class CreateMetricsResponse(BaseModel):
-    missing_pred_labels: list[Label]
-    ignored_pred_labels: list[Label]
-    job_id: str
+
+class ConfusionMatrixEntry(BaseModel):
+    prediction: str
+    groundtruth: str
+    count: int
+
+    class Config:
+        allow_mutation = False
 
 
-class EvalJob(BaseModel):
-    uid: str = Field(default_factory=lambda: str(uuid4()))
-    status: JobStatus = JobStatus.PENDING
-    evaluation_settings_id: int = None
+class _BaseConfusionMatrix(BaseModel):
+    label_key: str
+    entries: list[ConfusionMatrixEntry]
+
+
+class ConfusionMatrix(_BaseConfusionMatrix, extra=Extra.allow):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        label_values = set(
+            [entry.prediction for entry in self.entries]
+            + [entry.groundtruth for entry in self.entries]
+        )
+        self.label_map = {
+            label_value: i
+            for i, label_value in enumerate(sorted(label_values))
+        }
+        n_label_values = len(self.label_map)
+
+        matrix = np.zeros((n_label_values, n_label_values), dtype=int)
+        for entry in self.entries:
+            matrix[
+                self.label_map[entry.groundtruth],
+                self.label_map[entry.prediction],
+            ] = entry.count
+
+        self.matrix = matrix
+
+    def db_mapping(self, evaluation_settings_id: int) -> dict:
+        return {
+            "label_key": self.label_key,
+            "value": [entry.dict() for entry in self.entries],
+            "evaluation_settings_id": evaluation_settings_id,
+        }
+
+
+class ConfusionMatrixResponse(_BaseConfusionMatrix):
+    """used for http response since it won't have the matrix and
+    label map attributes
+    """
+
+    pass
+
+
+class AccuracyMetric(BaseModel):
+    label_key: str
+    value: float
+
+    def db_mapping(self, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "type": "Accuracy",
+            "evaluation_settings_id": evaluation_settings_id,
+            "parameters": {"label_key": self.label_key},
+        }
+
+
+class _PrecisionRecallF1Base(BaseModel):
+    label: Label
+    value: float | None
+
+    @validator("value")
+    def replace_nan_with_none(cls, v):
+        if np.isnan(v):
+            return None
+        return v
+
+    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": self.__type__,
+            "evaluation_settings_id": evaluation_settings_id,
+        }
+
+
+class PrecisionMetric(_PrecisionRecallF1Base):
+    __type__ = "Precision"
+
+
+class RecallMetric(_PrecisionRecallF1Base):
+    __type__ = "Recall"
+
+
+class F1Metric(_PrecisionRecallF1Base):
+    __type__ = "F1"
+
+
+class ROCAUCMetric(BaseModel):
+    label_key: str
+    value: float
+
+    def db_mapping(self, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "type": "ROCAUC",
+            "parameters": {"label_key": self.label_key},
+            "evaluation_settings_id": evaluation_settings_id,
+        }

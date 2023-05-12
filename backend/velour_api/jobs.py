@@ -7,7 +7,7 @@ import redis
 from velour_api import logger
 from velour_api.enums import JobStatus
 from velour_api.exceptions import JobDoesNotExistError
-from velour_api.schemas import EvalJob
+from velour_api.schemas import Job
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
@@ -54,27 +54,29 @@ def needs_redis(fn):
 
 
 @needs_redis
-def get_job(uid: str) -> EvalJob:
+def get_job(uid: str) -> Job:
     json_str = r.get(uid)
     if json_str is None:
         raise JobDoesNotExistError(uid)
     job_info = json.loads(json_str)
-    return EvalJob(uid=uid, **job_info)
+    return Job(uid=uid, **job_info)
 
 
 @needs_redis
-def get_all_jobs() -> list[EvalJob]:
+def get_all_jobs() -> list[Job]:
     return [get_job(uid) for uid in r.keys()]
 
 
 @needs_redis
-def add_job(job: EvalJob) -> None:
+def add_job(job: Job) -> None:
     """Adds job to redis"""
     r.set(job.uid, job.json(exclude={"uid"}))
 
 
-def wrap_metric_computation(fn: callable) -> tuple[EvalJob, callable]:
-    """This wraps a metric computation method to create and update
+def wrap_method_for_job(
+    fn: callable, job_attribute_name_for_output: str | None = None
+) -> tuple[Job, callable]:
+    """This wraps a method to create and update
     a job stored in redis with its state and output
 
     Parameters
@@ -85,24 +87,24 @@ def wrap_metric_computation(fn: callable) -> tuple[EvalJob, callable]:
 
     Returns
     -------
-    EvalJob, callable
-        returns the created job and the wrapped method
+    Job, callable
     """
-    job = EvalJob()
+    job = Job()
     add_job(job)
 
     def wrapped_method(*args, **kwargs):
         try:
             job.status = JobStatus.PROCESSING
             add_job(job)
-            logger.debug(f"starting computing metrics using {fn}")
+            logger.debug(f"starting method {fn} for job {job.uid}")
             start = perf_counter()
-            evaluation_settings_id = fn(*args, **kwargs)
+            fn_output = fn(*args, **kwargs)
             logger.debug(
-                f"finished computing metrics in {perf_counter() - start} seconds"
+                f"method for job {job.uid} finished in {perf_counter() - start} seconds"
             )
             job.status = JobStatus.DONE
-            job.evaluation_settings_id = evaluation_settings_id
+            if job_attribute_name_for_output is not None:
+                setattr(job, job_attribute_name_for_output, fn_output)
             add_job(job)
         except Exception as e:
             job.status = JobStatus.FAILED
@@ -110,3 +112,12 @@ def wrap_metric_computation(fn: callable) -> tuple[EvalJob, callable]:
             raise e
 
     return job, wrapped_method
+
+
+def wrap_metric_computation(fn: callable) -> tuple[Job, callable]:
+    """Used for wrapping a metric computation. This will set the resulting
+    evaluation_settings_id as an attribute on the job
+    """
+    return wrap_method_for_job(
+        fn=fn, job_attribute_name_for_output="evaluation_settings_id"
+    )
