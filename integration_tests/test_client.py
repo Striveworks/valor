@@ -33,7 +33,7 @@ from velour.data_types import (
     ScoredLabel,
 )
 from velour.metrics import Task
-from velour_api import models, ops
+from velour_api import crud, models, ops
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -160,7 +160,7 @@ def db(client: Client) -> Session:
 
     # cleanup by deleting all datasets, models, and labels
     for dataset in client.get_datasets():
-        client.delete_dataset(name=dataset["name"])
+        crud.delete_dataset(db=sess, dataset_name=dataset["name"])
 
     for model in client.get_models():
         client.delete_model(name=model["name"])
@@ -950,6 +950,19 @@ def test_delete_dataset_exception(client: Client):
     with pytest.raises(ClientException) as exc_info:
         client.delete_dataset("non-existent dataset")
     assert "does not exist" in str(exc_info)
+
+
+def test_delete_dataset_background_job(
+    client: Client, gt_dets1, gt_dets2, gt_dets3, db: Session
+):
+    """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
+    dataset = client.create_dataset(dset_name)
+    dataset.add_groundtruth(gt_dets1 + gt_dets2 + gt_dets3)
+
+    job = client.delete_dataset(dset_name)
+    assert job.status() == "Processing"
+    time.sleep(1.0)
+    assert job.status() == "Done"
 
 
 def test_evaluate_ap(

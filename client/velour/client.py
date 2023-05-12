@@ -184,7 +184,8 @@ class Client:
         return Dataset(client=self, name=name)
 
     def delete_dataset(self, name: str) -> None:
-        self._requests_delete_rel_host(f"datasets/{name}")
+        job_id = self._requests_delete_rel_host(f"datasets/{name}").json()
+        return Job(client=self, job_id=job_id)
 
     def get_dataset(self, name: str) -> "Dataset":
         resp = self._requests_get_rel_host(f"datasets/{name}")
@@ -222,29 +223,31 @@ class Dataset:
         self.client = client
         self.name = name
 
-    def __generate_chunks(self, data: list, chunk_max_size=100):
+    def _generate_chunks(
+        self, data: list, chunk_size=100, progress_bar_title: str = "Chunking"
+    ):
 
         progress_bar = tqdm(
             total=len(data),
             unit="samples",
             unit_scale=True,
-            desc=f"Chunking ({self.name})",
+            desc=f"{progress_bar_title} ({self.name})",
         )
 
-        number_of_chunks = math.ceil(len(data) / chunk_max_size)
+        number_of_chunks = math.floor(len(data) / chunk_size)
+        remainder = len(data) % chunk_size
 
-        for i in range(0, number_of_chunks - 1, chunk_max_size):
-            progress_bar.update(i)
-            yield data[i : i + chunk_max_size]
+        for i in range(0, number_of_chunks):
+            progress_bar.update(chunk_size)
+            yield data[i * chunk_size : (i + 1) * chunk_size]
 
-        remainder = len(data) % chunk_max_size
         if remainder > 0:
+            progress_bar.update(remainder)
             yield data[-remainder:]
 
-        progress_bar.update(len(data))
         progress_bar.close()
 
-    def add_groundtruth(self, groundtruth: list, chunk_max_size: int = 100):
+    def add_groundtruth(self, groundtruth: list, chunk_size: int = 1000):
 
         log = []
 
@@ -254,8 +257,8 @@ class Dataset:
         if len(groundtruth) == 0:
             raise ValueError("Empty list.")
 
-        for chunk in self.__generate_chunks(
-            groundtruth, chunk_max_size=chunk_max_size
+        for chunk in self._generate_chunks(
+            groundtruth, chunk_size=chunk_size, progress_bar_title="Uploading"
         ):
 
             # Image Classification
@@ -424,7 +427,7 @@ class Dataset:
         ]
 
 
-class EvalJob:
+class Job:
     def __init__(
         self,
         client: Client,
@@ -441,6 +444,8 @@ class EvalJob:
         resp = self.client._requests_get_rel_host(f"/jobs/{self._id}").json()
         return resp["status"]
 
+
+class EvalJob(Job):
     def metrics(self) -> List[dict]:
         return self.client._requests_get_rel_host(
             f"/jobs/{self._id}/metrics"
