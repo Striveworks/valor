@@ -3,13 +3,8 @@ import json
 import pytest
 
 from velour.data_types import BoundingBox, Point
-from velour.integrations.chariot import (
-    chariot_parse_image_classification_annotation,
-    chariot_parse_image_segmentation_annotation,
-    chariot_parse_object_detection_annotation,
-)
 
-pytest.importorskip("chariot")
+chariot_integration = pytest.importorskip("velour.integrations.chariot")
 
 
 def test_chariot_parse_image_classification_annotation():
@@ -23,8 +18,10 @@ def test_chariot_parse_image_classification_annotation():
     assert len(chariot_dataset) == 2
 
     # Item 1
-    velour_datum = chariot_parse_image_classification_annotation(
-        chariot_dataset[0]
+    velour_datum = (
+        chariot_integration.chariot_parse_image_classification_annotation(
+            chariot_dataset[0]
+        )
     )
     assert len(velour_datum) == 1
     velour_datum = velour_datum[0]
@@ -36,8 +33,10 @@ def test_chariot_parse_image_classification_annotation():
     assert velour_datum.image.frame is None
 
     # Item 2
-    velour_datum = chariot_parse_image_classification_annotation(
-        chariot_dataset[1]
+    velour_datum = (
+        chariot_integration.chariot_parse_image_classification_annotation(
+            chariot_dataset[1]
+        )
     )
     assert len(velour_datum) == 1
     velour_datum = velour_datum[0]
@@ -60,8 +59,10 @@ def test_chariot_parse_image_segmentation_annotation():
     assert len(chariot_dataset) == 2
 
     # Item 1
-    velour_datum = chariot_parse_image_segmentation_annotation(
-        chariot_dataset[0]
+    velour_datum = (
+        chariot_integration.chariot_parse_image_segmentation_annotation(
+            chariot_dataset[0]
+        )
     )
     assert len(velour_datum) == 1
     velour_datum = velour_datum[0]
@@ -80,8 +81,10 @@ def test_chariot_parse_image_segmentation_annotation():
     assert velour_datum.shape[0].hole is None
 
     # Item 2
-    velour_datum = chariot_parse_image_segmentation_annotation(
-        chariot_dataset[1]
+    velour_datum = (
+        chariot_integration.chariot_parse_image_segmentation_annotation(
+            chariot_dataset[1]
+        )
     )
     assert len(velour_datum) == 1
     velour_datum = velour_datum[0]
@@ -115,8 +118,10 @@ def test_chariot_parse_object_detection_annotation():
     assert len(chariot_dataset) == 3
 
     # Item 1 - Multiple objects of interest
-    velour_datum = chariot_parse_object_detection_annotation(
-        chariot_dataset[0]
+    velour_datum = (
+        chariot_integration.chariot_parse_object_detection_annotation(
+            chariot_dataset[0]
+        )
     )
     assert len(velour_datum) == 2
 
@@ -139,8 +144,10 @@ def test_chariot_parse_object_detection_annotation():
     assert velour_datum[1].bbox == BoundingBox(89, 10, 97, 110)
 
     # Item 2 - Single object of interest
-    velour_datum = chariot_parse_object_detection_annotation(
-        chariot_dataset[1]
+    velour_datum = (
+        chariot_integration.chariot_parse_object_detection_annotation(
+            chariot_dataset[1]
+        )
     )
     assert len(velour_datum) == 1
     velour_datum = velour_datum[0]
@@ -154,7 +161,9 @@ def test_chariot_parse_object_detection_annotation():
     assert velour_datum.bbox == BoundingBox(500, 220, 530, 260)
 
     # Item 3 - No object of interest
-    velour_datum = chariot_parse_object_detection_annotation(
-        chariot_dataset[2]
+    velour_datum = (
+        chariot_integration.chariot_parse_object_detection_annotation(
+            chariot_dataset[2]
+        )
     )
     assert len(velour_datum) == 0
