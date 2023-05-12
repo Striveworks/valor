@@ -154,4 +154,4 @@ def upload_coco_panoptic(
 
     for ann in tqdm(annotations["annotations"]):
         segs = _get_segs_for_single_image(ann)
-        dataset.add_groundtruth_segmentations(segs)
+        dataset.add_groundtruth(segs)
