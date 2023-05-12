@@ -369,10 +369,13 @@ def chariot_ds_to_velour_ds(
         velour_dataset.add_groundtruth(
             groundtruth_annotations, chunk_size=chunk_size
         )
-        # velour_dataset.finalize()
+        velour_dataset.finalize()
+        return velour_dataset
     except ValueError as err:
         print(err.msg)
         print(err.doc)
         print(err.pos)
 
-    return velour_dataset
+    return None
+
+    
