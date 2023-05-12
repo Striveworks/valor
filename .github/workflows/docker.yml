@@ -5,10 +5,10 @@ on:
     paths:
       - backend/**
       - .github/workflows/docker.yml
-    # branches: [main]
+    branches: [main]
 
 jobs:
-  build-docker:
+  build-and-publish-docker:
     runs-on: ubuntu-latest
     defaults:
       run:
