@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 import numpy as np
 import PIL.Image
 import requests
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from velour.data_types import (
     BoundingBox,
@@ -224,7 +224,11 @@ class Dataset:
         self.name = name
 
     def _generate_chunks(
-        self, data: list, chunk_size=100, progress_bar_title: str = "Chunking"
+        self,
+        data: list,
+        chunk_size=100,
+        progress_bar_title: str = "Chunking",
+        show_progress_bar: bool = True,
     ):
 
         progress_bar = tqdm(
@@ -232,6 +236,7 @@ class Dataset:
             unit="samples",
             unit_scale=True,
             desc=f"{progress_bar_title} ({self.name})",
+            disable=not show_progress_bar,
         )
 
         number_of_chunks = math.floor(len(data) / chunk_size)
@@ -247,7 +252,12 @@ class Dataset:
 
         progress_bar.close()
 
-    def add_groundtruth(self, groundtruth: list, chunk_size: int = 1000):
+    def add_groundtruth(
+        self,
+        groundtruth: list,
+        chunk_size: int = 1000,
+        show_progress_bar: bool = True,
+    ):
 
         log = []
 
@@ -258,7 +268,10 @@ class Dataset:
             raise ValueError("Empty list.")
 
         for chunk in self._generate_chunks(
-            groundtruth, chunk_size=chunk_size, progress_bar_title="Uploading"
+            groundtruth,
+            chunk_size=chunk_size,
+            progress_bar_title="Uploading",
+            show_progress_bar=show_progress_bar,
         ):
 
             # Image Classification
