@@ -4,6 +4,7 @@ import pytest
 
 from velour.data_types import BoundingBox, Point
 
+pytest.importorskip("chariot")
 chariot_integration = pytest.importorskip("velour.integrations.chariot")
 
 
