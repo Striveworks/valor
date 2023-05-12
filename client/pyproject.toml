@@ -1,7 +1,8 @@
 [project]
 name = "velour-client"
 dynamic = ["version"]
-description = "Python client for Velour evaluation store"
+description = "Python client for the Velour evaluation store"
+readme = "README.md"
 requires-python = ">=3.7"
 license = {file = "LICENSE"}
 dependencies = ["requests", "Pillow >= 9.1.0", "numpy", "importlib_metadata; python_version < '3.8'", "tqdm"]
