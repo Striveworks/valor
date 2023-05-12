@@ -2,6 +2,7 @@ import gzip
 import json
 import tempfile
 from pathlib import Path
+from typing import List
 
 import requests
 from tqdm import tqdm
@@ -10,13 +11,15 @@ from velour.client import Client, ClientException
 from velour.data_types import (
     BoundingBox,
     BoundingPolygon,
-    GroundTruthDetection,
-    GroundTruthImageClassification,
-    GroundTruthSemanticSegmentation,
     Image,
     Label,
     Point,
-    PolygonWithHole,
+    PolygonWithHole,    
+    ScoredLabel,
+    GroundTruthDetection,
+    GroundTruthImageClassification,
+    GroundTruthSemanticSegmentation,
+    PredictedDetection,
 )
 
 try:
@@ -378,4 +381,38 @@ def chariot_ds_to_velour_ds(
 
     return None
 
-    
+def chariot_detections_to_velour(
+    dets: dict, image: Image, label_key: str = "class"
+) -> List[PredictedDetection]:
+    """Converts the outputs of a Chariot detection model
+    to velour's format
+    """
+    expected_keys = {
+        "num_detections",
+        "detection_classes",
+        "detection_boxes",
+        "detection_scores",
+    }
+    if set(dets.keys()) != expected_keys:
+        raise ValueError(
+            f"Expected `dets` to have keys {expected_keys} but got {dets.keys()}"
+        )
+
+    return [
+        PredictedDetection(
+            bbox=BoundingBox(
+                ymin=box[0], xmin=box[1], ymax=box[2], xmax=box[3]
+            ),
+            scored_labels=[
+                ScoredLabel(
+                    label=Label(key=label_key, value=label), score=score
+                )
+            ],
+            image=image,
+        )
+        for box, score, label in zip(
+            dets["detection_boxes"],
+            dets["detection_scores"],
+            dets["detection_classes"],
+        )
+    ]

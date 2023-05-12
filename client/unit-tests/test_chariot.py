@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from velour.data_types import BoundingBox, Point
+from velour.data_types import BoundingBox, Point, Image
 
 pytest.importorskip("chariot")
 chariot_integration = pytest.importorskip("velour.integrations.chariot")
@@ -168,3 +168,55 @@ def test_chariot_parse_object_detection_annotation():
         )
     )
     assert len(velour_datum) == 0
+
+def test_chariot_detections_to_velour():
+    dets = {
+        "num_detections": 2,
+        "detection_classes": [
+            "person",
+            "car",
+        ],
+        "detection_boxes": [
+            [
+                151.2235107421875,
+                118.97279357910156,
+                377.8422546386719,
+                197.98605346679688,
+            ],
+            [
+                94.09261322021484,
+                266.5445556640625,
+                419.3203430175781,
+                352.9458923339844,
+            ],
+        ],
+        "detection_scores": ["0.99932003", "0.99895525"],
+    }
+
+    velour_dets = chariot_integration.chariot_detections_to_velour(
+        dets, Image(uid="", width=10, height=100)
+    )
+
+    assert len(velour_dets) == 2
+    assert [
+        scored_label.label.key
+        for det in velour_dets
+        for scored_label in det.scored_labels
+    ] == ["class", "class"]
+    assert set(
+        [
+            scored_label.label.value
+            for det in velour_dets
+            for scored_label in det.scored_labels
+        ]
+    ) == {"person", "car"}
+
+    for i, velour_det in enumerate(velour_dets):
+        assert dets["detection_boxes"][i] == [
+            velour_det.bbox.ymin,
+            velour_det.bbox.xmin,
+            velour_det.bbox.ymax,
+            velour_det.bbox.xmax,
+        ]
+
+        assert velour_det.boundary is None
