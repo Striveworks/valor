@@ -253,10 +253,20 @@ def get_semantic_segmentations(
 @app.delete(
     "/datasets/{dataset_name}", dependencies=[Depends(token_auth_scheme)]
 )
-def delete_dataset(dataset_name: str, db: Session = Depends(get_db)) -> None:
+def delete_dataset(
+    dataset_name: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> str:
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
-        return crud.delete_dataset(db, dataset_name)
+        # make sure dataset exists
+        crud.get_dataset(db, dataset_name)
+
+        job, wrapped_fn = jobs.wrap_method_for_job(crud.delete_dataset)
+        background_tasks.add_task(wrapped_fn, db=db, dataset_name=dataset_name)
+
+        return job.uid
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -423,7 +433,7 @@ def user(
 
 
 @app.get("/jobs/{job_id}", dependencies=[Depends(token_auth_scheme)])
-def get_job(job_id: str) -> schemas.EvalJob:
+def get_job(job_id: str) -> schemas.Job:
     try:
         return jobs.get_job(job_id)
     except exceptions.JobDoesNotExistError as e:
