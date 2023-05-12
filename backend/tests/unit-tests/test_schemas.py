@@ -11,10 +11,10 @@ from velour_api.enums import JobStatus
 from velour_api.schemas import (
     ConfusionMatrix,
     DatasetCreate,
-    EvalJob,
     GroundTruthDetection,
     GroundTruthSegmentation,
     Image,
+    Job,
     Label,
     Model,
     PredictedSegmentation,
@@ -138,13 +138,12 @@ def test_model_validation():
 
 
 def test_eval_job():
-    job = EvalJob()
+    job = Job()
     # check that job got a uid of the right form
     assert isinstance(job.uid, str)
     assert len(job.uid.split("-")) == 5
 
     assert job.status == JobStatus.PENDING
-    assert job.evaluation_settings_id is None
 
 
 def test_confusion_matrix(cm: ConfusionMatrix):

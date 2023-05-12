@@ -312,10 +312,12 @@ class CreateClfMetricsResponse(BaseModel):
     job_id: str
 
 
-class EvalJob(BaseModel):
+class Job(BaseModel):
     uid: str = Field(default_factory=lambda: str(uuid4()))
     status: JobStatus = JobStatus.PENDING
-    evaluation_settings_id: int = None
+
+    class Config:
+        extra = Extra.allow
 
 
 class ClfMetricsRequest(BaseModel):
