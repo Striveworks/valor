@@ -1,5 +1,6 @@
 services:
-  web:
+  service:
+    image: ghcr.io/striveworks/velour/velour-service
     build: .
     ports:
       - "8000:8000"
