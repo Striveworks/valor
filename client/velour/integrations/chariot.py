@@ -7,19 +7,19 @@ from typing import List
 import requests
 from tqdm import tqdm
 
-from velour.client import Client, ClientException
+from velour.client import Client
 from velour.data_types import (
     BoundingBox,
     BoundingPolygon,
-    Image,
-    Label,
-    Point,
-    PolygonWithHole,    
-    ScoredLabel,
     GroundTruthDetection,
     GroundTruthImageClassification,
     GroundTruthSemanticSegmentation,
+    Image,
+    Label,
+    Point,
+    PolygonWithHole,
     PredictedDetection,
+    ScoredLabel,
 )
 
 try:
@@ -28,9 +28,6 @@ try:
     from chariot.datasets.dataset_version import DatasetVersion
 except ModuleNotFoundError:
     "`chariot` package not found. if you have an account on Chariot please see https://production.chariot.striveworks.us/docs/sdk/sdk for how to install the python SDK"
-
-# REMOVE
-placeholder_image_length = -1
 
 
 def retrieve_chariot_manifest(manifest_url: str):
@@ -44,7 +41,7 @@ def retrieve_chariot_manifest(manifest_url: str):
         # Download compressed jsonl file
         response = requests.get(manifest_url, stream=True)
 
-        # print("Downloading chariot manifest")
+        # Progress bar
         total_size_in_bytes = int(response.headers.get("content-length", 0))
         block_size = 1024  # 1 Kibibyte
         progress_bar = tqdm(
@@ -54,16 +51,14 @@ def retrieve_chariot_manifest(manifest_url: str):
             desc="Download Chariot Manifest",
         )
 
+        # Write to tempfile if status ok
         if response.status_code == 200:
             for data in response.iter_content(block_size):
                 progress_bar.update(len(data))
                 f.write(data)
             f.flush()
             f.seek(0)
-
         progress_bar.close()
-        if total_size_in_bytes != 0 and progress_bar.n != total_size_in_bytes:
-            raise ValueError("idrk")
 
         # Unzip
         gzf = gzip.GzipFile(mode="rb", fileobj=f)
@@ -90,8 +85,8 @@ def chariot_parse_image_classification_annotation(
             GroundTruthImageClassification(
                 image=Image(
                     uid=uid,
-                    height=placeholder_image_length,
-                    width=placeholder_image_length,
+                    height=-1,
+                    width=-1,
                 ),
                 labels=[
                     Label(key="class_label", value=annotation["class_label"])
@@ -169,8 +164,8 @@ def chariot_parse_image_segmentation_annotation(
                 labels=[Label(key="class_label", value=label)],
                 image=Image(
                     uid=uid,
-                    height=placeholder_image_length,
-                    width=placeholder_image_length,
+                    height=-1,
+                    width=-1,
                 ),
             )
         )
@@ -200,8 +195,8 @@ def chariot_parse_object_detection_annotation(
                 ],
                 image=Image(
                     uid=uid,
-                    height=placeholder_image_length,
-                    width=placeholder_image_length,
+                    height=-1,
+                    width=-1,
                 ),
             )
         )
@@ -237,7 +232,7 @@ def chariot_parse_dataset_version_manifest(
     # Retrieve the manifest
     chariot_manifest = retrieve_chariot_manifest(manifest_url)
 
-    # Iterate through each element in the dataset
+    # Iterate through each element in the dataset manifest
     groundtruth_annotations = []
     for datum in chariot_manifest:
 
@@ -314,7 +309,8 @@ def chariot_ds_to_velour_ds(
         super set of the training manifest. Not recommended as the evaluation manifest may
         contain unlabeled data.
     chunk_size
-        (OPTIONAL) Defaults to 1000. chunk_size is related to the upload of the dataset to the backend.
+        (OPTIONAL) Defaults to 1000. Chunk_size is the maximum number of 'groundtruths' that are 
+        uploaded in one call to the backend.
 
     Returns
     -------
@@ -354,32 +350,21 @@ def chariot_ds_to_velour_ds(
     href = settings.base_url
     href += "/projects/" + dsv.project_id
     href += "/datasets/" + dsv.dataset_id
-    # href += dsv.id
 
-    # Create/Load velour dataset
-    try:
-        velour_dataset = velour_client.create_dataset(
-            name=velour_dataset_name, href=href
-        )
-    except ClientException as e:
-        print(e)
-        velour_dataset = velour_client.get_dataset(velour_dataset_name)
-
-    # Chunk daat
+    # Create velour dataset
+    velour_dataset = velour_client.create_dataset(
+        name=velour_dataset_name, href=href
+    )
 
     # Upload velour dataset
-    try:
-        velour_dataset.add_groundtruth(
-            groundtruth_annotations, chunk_size=chunk_size
-        )
-        velour_dataset.finalize()
-        return velour_dataset
-    except ValueError as err:
-        print(err.msg)
-        print(err.doc)
-        print(err.pos)
+    velour_dataset.add_groundtruth(
+        groundtruth_annotations, chunk_size=chunk_size
+    )
 
-    return None
+    # Finalize and return
+    velour_dataset.finalize()
+    return velour_dataset
+
 
 def chariot_detections_to_velour(
     dets: dict, image: Image, label_key: str = "class"

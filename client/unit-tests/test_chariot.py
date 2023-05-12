@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from velour.data_types import BoundingBox, Point, Image
+from velour.data_types import BoundingBox, Image, Point
 
 pytest.importorskip("chariot")
 chariot_integration = pytest.importorskip("velour.integrations.chariot")
@@ -168,6 +168,7 @@ def test_chariot_parse_object_detection_annotation():
         )
     )
     assert len(velour_datum) == 0
+
 
 def test_chariot_detections_to_velour():
     dets = {
