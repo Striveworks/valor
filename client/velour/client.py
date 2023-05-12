@@ -222,7 +222,7 @@ class Dataset:
         self.client = client
         self.name = name
 
-    def __generate_chunks(self, data: list, chunk_size=100):
+    def _generate_chunks(self, data: list, chunk_size=100):
 
         progress_bar = tqdm(
             total=len(data),
@@ -254,9 +254,7 @@ class Dataset:
         if len(groundtruth) == 0:
             raise ValueError("Empty list.")
 
-        for chunk in self.__generate_chunks(
-            groundtruth, chunk_size=chunk_size
-        ):
+        for chunk in self._generate_chunks(groundtruth, chunk_size=chunk_size):
 
             # Image Classification
             if isinstance(chunk[0], GroundTruthImageClassification):
