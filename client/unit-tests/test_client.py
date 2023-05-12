@@ -38,7 +38,7 @@ def test__generate_chunks(chunk_size: int):
     assert len(chunked_data[0]) == len(data)
 
     # Multiple of chunksize (N = chunksize * M)
-    M = 11
+    M = 101
     data = range(0, chunk_size * M)
     assert len(data) == M * chunk_size
     chunked_data = [arr for arr in Dataset(None, "none")._generate_chunks(data, chunk_size=chunk_size)]
@@ -54,7 +54,7 @@ def test__generate_chunks(chunk_size: int):
     assert idx == len(data)
 
     # Multiple of chunksize N with an offset (N = chunksize * M + K)
-    M = 11
+    M = 101
     K = math.floor(0.5 * chunk_size)
     data = range(0, (chunk_size * M) + K)
     assert len(data) == (M * chunk_size) + K
