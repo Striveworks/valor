@@ -20,6 +20,5 @@ jobs:
         run: pip install build && python -m build
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        run: pip install twine && twine upload dist/*
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
