@@ -27,6 +27,13 @@ dset_name = "test dataset"
 model_name = "test model"
 
 
+def pil_to_bytes(img: Image.Image) -> bytes:
+    f = io.BytesIO()
+    img.save(f, format="PNG")
+    f.seek(0)
+    return f.read()
+
+
 def bytes_to_pil(b: bytes) -> Image.Image:
     f = io.BytesIO(b)
     img = Image.open(f)
@@ -1577,6 +1584,106 @@ def test__filter_object_detections_by_area(db: Session):
             max_area=2000,
         )
     assert "Expected task_for_area_computation to be" in str(exc_info)
+
+
+def test__filter_instance_segmentations_by_area_using_mask(db: Session):
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    # approximate triangle of area 150
+    mask = np.zeros((1000, 2000), dtype=bool)
+    for i in range(10):
+        for j in range(30):
+            if i + j < 20:
+                mask[i, j] = True
+    assert mask.sum() == 155
+    mask_bytes = pil_to_bytes(Image.fromarray(mask))
+    b64_mask = b64encode(mask_bytes).decode()
+
+    # rectangle of area 1050
+    boundary = [(0, 5), (0, 40), (30, 40), (30, 5)]
+
+    img = schemas.Image(uid="", height=1000, width=2000)
+
+    crud.create_groundtruth_segmentations(
+        db,
+        data=schemas.GroundTruthSegmentationsCreate(
+            dataset_name=dset_name,
+            segmentations=[
+                schemas.GroundTruthSegmentation(
+                    shape=b64_mask,
+                    image=img,
+                    labels=[schemas.Label(key="k", value="v")],
+                    is_instance=True,
+                ),
+                schemas.GroundTruthSegmentation(
+                    shape=[schemas.PolygonWithHole(polygon=boundary)],
+                    image=img,
+                    labels=[schemas.Label(key="k", value="v")],
+                    is_instance=True,
+                ),
+            ],
+        ),
+    )
+
+    areas = db.scalars(ST_Count(models.GroundTruthSegmentation.shape)).all()
+    assert sorted(areas) == [155, 1050]
+
+    # check filtering when use area determined by polygon detection task
+    stmt = _filter_instance_segmentations_by_area(
+        select(models.GroundTruthSegmentation),
+        seg_table=models.GroundTruthSegmentation,
+        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+        min_area=100,
+        max_area=2000,
+    )
+    assert len(db.scalars(stmt).all()) == 2
+
+    stmt = _filter_instance_segmentations_by_area(
+        select(models.GroundTruthSegmentation),
+        seg_table=models.GroundTruthSegmentation,
+        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+        min_area=100,
+        max_area=200,
+    )
+    assert len(db.scalars(stmt).all()) == 1
+
+    stmt = _filter_instance_segmentations_by_area(
+        select(models.GroundTruthSegmentation),
+        seg_table=models.GroundTruthSegmentation,
+        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+        min_area=170,  # this won't pass at 156 due to aliasing
+        max_area=2000,
+    )
+    assert len(db.scalars(stmt).all()) == 1
+
+    # now when we use bounding box detection task, the triangle becomes its circumscribing
+    # rectangle (with area 200) so we should get both segmentations
+    stmt = _filter_instance_segmentations_by_area(
+        select(models.GroundTruthSegmentation),
+        seg_table=models.GroundTruthSegmentation,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+        min_area=160,
+        max_area=2000,
+    )
+
+    assert len(db.scalars(stmt).all()) == 2
+
+    stmt = _filter_instance_segmentations_by_area(
+        select(models.GroundTruthSegmentation),
+        seg_table=models.GroundTruthSegmentation,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+        min_area=300,
+        max_area=2000,
+    )
+    assert len(db.scalars(stmt).all()) == 1
+
+    stmt = _filter_instance_segmentations_by_area(
+        select(models.GroundTruthSegmentation),
+        seg_table=models.GroundTruthSegmentation,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+        min_area=3000,
+        max_area=10000,
+    )
+    assert len(db.scalars(stmt).all()) == 0
 
 
 def test__validate_and_update_evaluation_settings_task_type_for_detection_no_groundtruth(

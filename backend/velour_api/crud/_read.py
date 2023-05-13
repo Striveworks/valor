@@ -479,7 +479,7 @@ def _filter_instance_segmentations_by_area(
         return stmt
 
     if task_for_area_computation == schemas.Task.BBOX_OBJECT_DETECTION:
-        area_fn = lambda x: ST_Area(ST_Envelope(x))  # noqa: E731
+        area_fn = lambda x: ST_Area(ST_Envelope(ST_Polygon(x)))  # noqa: E731
     elif task_for_area_computation == schemas.Task.POLY_OBJECT_DETECTION:
         area_fn = lambda x: ST_Area(  # noqa: E731
             ST_ConvexHull(ST_Boundary(ST_Polygon(x)))
