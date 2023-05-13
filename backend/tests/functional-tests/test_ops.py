@@ -1,4 +1,5 @@
 import io
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -292,6 +293,15 @@ def test_iou_det_and_seg(
     ) == area_convex_hull_triangle / (
         10 * 20 + area_convex_hull_triangle - area_convex_hull_triangle
     )
+
+    with patch("velour_api.ops.ST_Polygon", side_effect=Exception()):
+        # check we get something reasonable when the first technique of iou_det_and_seg
+        # errors, which means the detection will be converted to a raster for finding
+        # the intersection
+        area_triangle = 55
+        assert ops.iou_det_and_seg(db, poly_det, seg) == area_triangle / (
+            10 * 20 + area_triangle - area_triangle
+        )
 
     # this should be the IOU of the reactangle that circumscribes the triangle,
     # which is a 10x10 square that's contained in the 10x20 bbox_det so
