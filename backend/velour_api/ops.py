@@ -1,17 +1,12 @@
 from geoalchemy2.elements import RasterElement, WKBElement
 from geoalchemy2.functions import (
     ST_Area,
-    ST_AsRaster,
-    ST_Boundary,
-    ST_ConvexHull,
     ST_Count,
     ST_Envelope,
     ST_Intersection,
-    ST_Polygon,
 )
+from sqlalchemy import text
 from sqlalchemy.orm import Session
-
-from velour_api import logger
 
 from .models import (
     GroundTruthDetection,
@@ -108,33 +103,26 @@ def iou_det_and_seg(
     the detection is a bounding box, we take the interection of the detection
     with the bounding box that circumscribes the segmentation. If the detection is a polygon
     then we take the intersection of the detection with the convex hull of the segmentation
-
-    In some cases, the PostGIS errors when trying to convert the segmentation to a polygon (need
-    to explore this more). When this happens the detection will be converted into a raster
-    and then interseted with the segmentation.
     """
-    try:
-        det_area = _det_boundary_area(db, det.boundary)
-        seg_boundary = ST_Polygon(seg.shape)
-        if det.is_bbox:
-            seg_boundary = ST_Envelope(seg_boundary)
-        else:
-            seg_boundary = ST_ConvexHull(ST_Boundary(seg_boundary))
-        cap_area = _intersection_area_of_det_boundaries(
-            db, det.boundary, seg_boundary
-        )
-        seg_area = _det_boundary_area(db, seg_boundary)
-    except Exception as e:
-        db.rollback()
-        logger.debug(
-            f"Got following exception at `iou_det_and_seg` with `det.id` {det.id} and `seg.id` {seg.id}: {e}"
-            " will cast detection boundary to a raster to compute IOU"
-        )
-
-        det_raster = ST_AsRaster(det.boundary, seg.shape)
-        det_area = _raster_area(db, det_raster)
-        seg_area = _raster_area(db, seg.shape)
-        cap_area = _intersection_area_of_rasters(db, det_raster, seg.shape)
+    if det.is_bbox:
+        first_line = f"SELECT ST_Area(ST_Intersection(ST_Envelope(seg_to_polys), {det.__class__.__tablename__}.boundary)), ST_Area(ST_Envelope(seg_to_polys)), ST_Area({det.__class__.__tablename__}.boundary)"
+    else:
+        first_line = f"SELECT ST_Area(ST_Intersection(seg_to_polys, {det.__class__.__tablename__}.boundary)), ST_Area(seg_to_polys), ST_Area({det.__class__.__tablename__}.boundary)"
+    query = text(
+        first_line
+        + f"""
+        FROM(
+            SELECT ST_Union(geom) as seg_to_polys
+            FROM (
+                SELECT ST_MakeValid((ST_DumpAsPolygons(shape)).geom) as geom
+                FROM {seg.__class__.__tablename__}
+                WHERE {seg.__class__.__tablename__}.id = {seg.id}
+            ) As subquery
+        ) AS subquery2, {det.__class__.__tablename__}
+        WHERE {det.__class__.__tablename__}.id = {det.id}
+        """
+    )
+    cap_area, seg_area, det_area = db.execute(query).first()
 
     return cap_area / (det_area + seg_area - cap_area)
 
