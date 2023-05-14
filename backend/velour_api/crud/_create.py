@@ -1,4 +1,4 @@
-from sqlalchemy import Select, and_, insert, select, text
+from sqlalchemy import Select, TextualSelect, and_, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -20,11 +20,12 @@ from ._read import (
 )
 
 
-def _labels_in_query(
-    db: Session, query_statement: Select
-) -> list[models.Label]:
+def _labels_in_query(db: Session, query_statement: TextualSelect) -> list[str]:
+    label_ids = db.scalars(
+        select(query_statement.alias().c.label_id).distinct()
+    ).all()
     return db.scalars(
-        (select(models.Label).join(query_statement.subquery())).distinct()
+        select(models.Label).where(models.Label.id.in_(label_ids))
     ).all()
 
 
@@ -577,8 +578,8 @@ def _create_metric_mappings(
 
 def get_filtered_preds_statement_and_missing_labels(
     db: Session,
-    gts_statement: Select,
-    preds_statement: Select,
+    gts_statement: TextualSelect,
+    preds_statement: TextualSelect,
 ) -> tuple[Select, Select, list[schemas.Label], list[schemas.Label]]:
     """Takes statements defining a collection of labeled groundtruths and labeled predictions,
     and creates a new statement for predictions that only have labels in the list of groundtruth labels.
@@ -616,10 +617,6 @@ def get_filtered_preds_statement_and_missing_labels(
     )
     labels_to_use_ids = [label.id for label in available_labels]
 
-    preds_statement = preds_statement.join(models.Label).where(
-        models.Label.id.in_(labels_to_use_ids)
-    )
-
     missing_pred_labels = label_tuples - pred_label_tuples
     ignored_pred_labels = pred_label_tuples - label_tuples
 
@@ -630,6 +627,28 @@ def get_filtered_preds_statement_and_missing_labels(
     ignored_pred_labels = [
         schemas.Label.from_key_value_tuple(la) for la in ignored_pred_labels
     ]
+
+    preds_statement = preds_statement.alias()
+
+    seg_or_det_id_col = None
+    if "segmentation_id" in preds_statement.c.keys():
+        seg_or_det_id_col = preds_statement.c.segmentation_id
+    elif "detection_id" in preds_statement.c.keys():
+        seg_or_det_id_col = preds_statement.c.detection_id
+    else:
+        raise RuntimeError(
+            "Expected `preds_statement` to have a column 'segmentation_id' or 'detection_id'."
+        )
+
+    preds_statement = (
+        select(
+            preds_statement.c.id,
+            seg_or_det_id_col,
+            preds_statement.c.label_id,
+        )
+        .select_from(preds_statement)
+        .where(preds_statement.c.label_id.in_(labels_to_use_ids))
+    )
 
     return (
         preds_statement,
@@ -817,13 +836,38 @@ def validate_create_clf_metrics(
 
 def create_ap_metrics(
     db: Session,
-    gts_statement: Select,
-    preds_statement: Select,
+    gts_statement: TextualSelect,
+    preds_statement: TextualSelect,
     request_info: schemas.APRequest,
 ) -> int:
     # need to break down preds and gts by image
-    gts = db.scalars(gts_statement).all()
-    preds = db.scalars(preds_statement).all()
+    if "detection_id" in gts_statement.selected_columns.keys():
+        gts_cls = models.LabeledGroundTruthDetection
+    else:
+        if "segmentation_id" not in gts_statement.selected_columns.keys():
+            raise RuntimeError(
+                "Expected 'detection_id' or 'segmentation_id' to be in the columns of `gts_statement`."
+            )
+        gts_cls = models.LabeledGroundTruthSegmentation
+
+    if "detection_id" in preds_statement.selected_columns.keys():
+        preds_cls = models.LabeledPredictedDetection
+    else:
+        if "segmentation_id" not in preds_statement.selected_columns.keys():
+            raise RuntimeError(
+                "Expected 'detection_id' or 'segmentation_id' to be in the columns of `gts_statement`."
+            )
+        preds_cls = models.LabeledPredictedSegmentation
+
+    gts_stmt_alias = gts_statement.alias()
+    gt_ids = db.scalars(select(gts_stmt_alias.c.id).distinct()).all()
+    gts = db.scalars(select(gts_cls).where(gts_cls.id.in_(gt_ids))).all()
+
+    preds_stmt_alias = preds_statement.alias()
+    pred_ids = db.scalars(select(preds_stmt_alias.c.id).distinct()).all()
+    preds = db.scalars(
+        select(preds_cls).where(preds_cls.id.in_(pred_ids))
+    ).all()
 
     image_id_to_gts = {}
     image_id_to_preds = {}
