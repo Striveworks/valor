@@ -1528,9 +1528,12 @@ def test__filter_object_detections_by_area(db: Session):
     areas = db.scalars(ST_Area(models.GroundTruthDetection.boundary)).all()
     assert sorted(areas) == [150, 1050]
 
+    # make base statement. need WHERE here because of what `_filter_instance_segmentations_by_area` expects
+    base_stmt = "SELECT id FROM ground_truth_detection WHERE ground_truth_detection.id > 0"
+
     # check filtering when use area determined by polygon detection task
     stmt = _filter_object_detections_by_area(
-        select(models.GroundTruthDetection),
+        base_stmt,
         det_table=models.GroundTruthDetection,
         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=100,
@@ -1539,7 +1542,7 @@ def test__filter_object_detections_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 2
 
     stmt = _filter_object_detections_by_area(
-        select(models.GroundTruthDetection),
+        base_stmt,
         det_table=models.GroundTruthDetection,
         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=100,
@@ -1548,7 +1551,7 @@ def test__filter_object_detections_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 1
 
     stmt = _filter_object_detections_by_area(
-        select(models.GroundTruthDetection),
+        base_stmt,
         det_table=models.GroundTruthDetection,
         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=151,
@@ -1559,7 +1562,7 @@ def test__filter_object_detections_by_area(db: Session):
     # now when we use bounding box detection task, the triangle becomes its circumscribing
     # rectangle (with area 300) so we should get both segmentations
     stmt = _filter_object_detections_by_area(
-        select(models.GroundTruthDetection),
+        base_stmt,
         det_table=models.GroundTruthDetection,
         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=299,
@@ -1568,7 +1571,7 @@ def test__filter_object_detections_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 2
 
     stmt = _filter_object_detections_by_area(
-        select(models.GroundTruthDetection),
+        base_stmt,
         det_table=models.GroundTruthDetection,
         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=301,
@@ -1579,7 +1582,7 @@ def test__filter_object_detections_by_area(db: Session):
     # check error if use the wrong task type
     with pytest.raises(ValueError) as exc_info:
         _filter_object_detections_by_area(
-            select(models.GroundTruthDetection),
+            base_stmt,
             det_table=models.GroundTruthDetection,
             task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
             min_area=301,
