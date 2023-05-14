@@ -1425,9 +1425,11 @@ def test__filter_instance_segmentations_by_area(db: Session):
     areas = db.scalars(ST_Count(models.GroundTruthSegmentation.shape)).all()
     assert sorted(areas) == [150, 1050]
 
+    base_stmt = "SELECT id FROM ground_truth_segmentation WHERE ground_truth_segmentation.is_instance"
+
     # check filtering when use area determined by instance segmentation task
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        stmt=base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
         min_area=100,
@@ -1436,7 +1438,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 2
 
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
         min_area=100,
@@ -1445,7 +1447,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 1
 
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
         min_area=151,
@@ -1456,7 +1458,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     # now when we use bounding box detection task, the triangle becomes its circumscribing
     # rectangle (with area ~300) so we should get both segmentations
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=280,
@@ -1465,7 +1467,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 2
 
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=301,
@@ -1476,7 +1478,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     # if we use polygon detection then the areas shouldn't change much (the area
     # of the triangle actually becomes 163-- not sure if this is aliasing or what)
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=149,
@@ -1485,7 +1487,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 2
 
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=164,
@@ -1627,9 +1629,11 @@ def test__filter_instance_segmentations_by_area_using_mask(db: Session):
     areas = db.scalars(ST_Count(models.GroundTruthSegmentation.shape)).all()
     assert sorted(areas) == [155, 1050]
 
+    base_stmt = "SELECT id FROM ground_truth_segmentation WHERE ground_truth_segmentation.is_instance"
+
     # check filtering when use area determined by polygon detection task
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=100,
@@ -1638,7 +1642,7 @@ def test__filter_instance_segmentations_by_area_using_mask(db: Session):
     assert len(db.scalars(stmt).all()) == 2
 
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=100,
@@ -1647,7 +1651,7 @@ def test__filter_instance_segmentations_by_area_using_mask(db: Session):
     assert len(db.scalars(stmt).all()) == 1
 
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=170,  # this won't pass at 156 due to aliasing
@@ -1658,7 +1662,7 @@ def test__filter_instance_segmentations_by_area_using_mask(db: Session):
     # now when we use bounding box detection task, the triangle becomes its circumscribing
     # rectangle (with area 200) so we should get both segmentations
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=160,
@@ -1668,7 +1672,7 @@ def test__filter_instance_segmentations_by_area_using_mask(db: Session):
     assert len(db.scalars(stmt).all()) == 2
 
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=300,
@@ -1677,7 +1681,7 @@ def test__filter_instance_segmentations_by_area_using_mask(db: Session):
     assert len(db.scalars(stmt).all()) == 1
 
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=3000,
