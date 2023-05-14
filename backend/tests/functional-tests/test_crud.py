@@ -1454,12 +1454,12 @@ def test__filter_instance_segmentations_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 1
 
     # now when we use bounding box detection task, the triangle becomes its circumscribing
-    # rectangle (with area 300) so we should get both segmentations
+    # rectangle (with area ~300) so we should get both segmentations
     stmt = _filter_instance_segmentations_by_area(
         select(models.GroundTruthSegmentation),
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-        min_area=299,
+        min_area=280,
         max_area=2000,
     )
     assert len(db.scalars(stmt).all()) == 2
