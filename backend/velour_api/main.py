@@ -98,7 +98,6 @@ def create_groundtruth_classifications(
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
-        logger.debug(f"got: {data}")
         return crud.create_ground_truth_image_classifications(db=db, data=data)
     except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -168,7 +167,7 @@ def get_dataset_labels(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
     try:
-        labels = crud.get_labels_in_dataset(db, dataset_name)
+        labels = crud.get_all_labels_in_dataset(db, dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return [
@@ -254,9 +253,22 @@ def get_semantic_segmentations(
 @app.delete(
     "/datasets/{dataset_name}", dependencies=[Depends(token_auth_scheme)]
 )
-def delete_dataset(dataset_name: str, db: Session = Depends(get_db)) -> None:
+def delete_dataset(
+    dataset_name: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> str:
     logger.debug(f"request to delete dataset {dataset_name}")
-    return crud.delete_dataset(db, dataset_name)
+    try:
+        # make sure dataset exists
+        crud.get_dataset(db, dataset_name)
+
+        job, wrapped_fn = jobs.wrap_method_for_job(crud.delete_dataset)
+        background_tasks.add_task(wrapped_fn, db=db, dataset_name=dataset_name)
+
+        return job.uid
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get("/models", status_code=200, dependencies=[Depends(token_auth_scheme)])
@@ -339,7 +351,7 @@ def create_ap_metrics(
     data: schemas.APRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-) -> schemas.CreateMetricsResponse:
+) -> schemas.CreateAPMetricsResponse:
     try:
         (
             gts_statement,
@@ -349,7 +361,7 @@ def create_ap_metrics(
         ) = crud.validate_create_ap_metrics(db, request_info=data)
 
         job, wrapped_fn = jobs.wrap_metric_computation(crud.create_ap_metrics)
-        cm_resp = schemas.CreateMetricsResponse(
+        cm_resp = schemas.CreateAPMetricsResponse(
             missing_pred_labels=missing_pred_labels,
             ignored_pred_labels=ignored_pred_labels,
             job_id=job.uid,
@@ -362,6 +374,40 @@ def create_ap_metrics(
             gts_statement=gts_statement,
             preds_statement=preds_statement,
         )
+
+        return cm_resp
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except (
+        exceptions.DatasetIsDraftError,
+        exceptions.InferencesAreNotFinalizedError,
+    ) as e:
+        raise HTTPException(status_code=405, detail=str(e))
+
+
+@app.post(
+    "/clf-metrics", status_code=202, dependencies=[Depends(token_auth_scheme)]
+)
+def create_clf_metrics(
+    data: schemas.ClfMetricsRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> schemas.CreateClfMetricsResponse:
+    try:
+        (
+            missing_pred_keys,
+            ignored_pred_keys,
+        ) = crud.validate_create_clf_metrics(db, request_info=data)
+
+        job, wrapped_fn = jobs.wrap_metric_computation(crud.create_clf_metrics)
+
+        cm_resp = schemas.CreateClfMetricsResponse(
+            missing_pred_keys=missing_pred_keys,
+            ignored_pred_keys=ignored_pred_keys,
+            job_id=job.uid,
+        )
+
+        background_tasks.add_task(wrapped_fn, db=db, request_info=data)
 
         return cm_resp
     except ValueError as e:
@@ -387,14 +433,18 @@ def user(
 
 
 @app.get("/jobs/{job_id}", dependencies=[Depends(token_auth_scheme)])
-def get_job(job_id: str) -> schemas.EvalJob:
+def get_job(job_id: str) -> schemas.Job:
     try:
         return jobs.get_job(job_id)
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@app.get("/jobs/{job_id}/metrics", dependencies=[Depends(token_auth_scheme)])
+@app.get(
+    "/jobs/{job_id}/metrics",
+    dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
+)
 def get_job_metrics(
     job_id: str, db: Session = Depends(get_db)
 ) -> list[schemas.Metric]:
@@ -408,6 +458,33 @@ def get_job_metrics(
         return crud.get_metrics_from_evaluation_settings_id(
             db, job.evaluation_settings_id
         )
+    except exceptions.JobDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/jobs/{job_id}/confusion-matrices",
+    dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
+)
+def get_job_confusion_matrices(
+    job_id: str, db: Session = Depends(get_db)
+) -> list[schemas.ConfusionMatrixResponse]:
+    try:
+        job = jobs.get_job(job_id)
+        if job.status != enums.JobStatus.DONE:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No metrics for job since its status is {job.status}",
+            )
+        return [
+            schemas.ConfusionMatrixResponse(
+                label_key=cm.label_key, entries=cm.entries
+            )
+            for cm in crud.get_confusion_matrices_from_evaluation_settings_id(
+                db, job.evaluation_settings_id
+            )
+        ]
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

@@ -27,6 +27,13 @@ dset_name = "test dataset"
 model_name = "test model"
 
 
+def pil_to_bytes(img: Image.Image) -> bytes:
+    f = io.BytesIO()
+    img.save(f, format="PNG")
+    f.seek(0)
+    return f.read()
+
+
 def bytes_to_pil(b: bytes) -> Image.Image:
     f = io.BytesIO(b)
     img = Image.open(f)
@@ -228,16 +235,16 @@ def gt_clfs_create(
     return schemas.GroundTruthImageClassificationsCreate(
         dataset_name=dset_name,
         classifications=[
-            schemas.ImageClassificationBase(
+            schemas.GroundTruthImageClassification(
                 image=img1,
                 labels=[
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
                 ],
             ),
-            schemas.ImageClassificationBase(
+            schemas.GroundTruthImageClassification(
                 image=img2,
-                labels=[schemas.Label(key="k2", value="v2")],
+                labels=[schemas.Label(key="k2", value="v3")],
             ),
         ],
     )
@@ -258,7 +265,10 @@ def pred_clfs_create(
                         label=schemas.Label(key="k1", value="v1"), score=0.2
                     ),
                     schemas.ScoredLabel(
-                        label=schemas.Label(key="k4", value="v4"), score=0.5
+                        label=schemas.Label(key="k1", value="v2"), score=0.8
+                    ),
+                    schemas.ScoredLabel(
+                        label=schemas.Label(key="k4", value="v4"), score=1.0
                     ),
                 ],
             ),
@@ -266,10 +276,13 @@ def pred_clfs_create(
                 image=img2,
                 scored_labels=[
                     schemas.ScoredLabel(
-                        label=schemas.Label(key="k2", value="v2"), score=0.3
+                        label=schemas.Label(key="k2", value="v2"), score=1.0
                     ),
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k3", value="v3"), score=0.87
+                    ),
+                    schemas.ScoredLabel(
+                        label=schemas.Label(key="k3", value="v0"), score=0.13
                     ),
                 ],
             ),
@@ -440,7 +453,7 @@ def test_create_ground_truth_classifications_and_delete_dataset(
     # labels and the other has one
     assert crud.number_of_rows(db, models.GroundTruthImageClassification) == 3
     assert crud.number_of_rows(db, models.Image) == 2
-    assert crud.number_of_rows(db, models.Label) == 2
+    assert crud.number_of_rows(db, models.Label) == 3
 
     # delete dataset and check the cascade worked
     crud.delete_dataset(db, dataset_name=dset_name)
@@ -452,7 +465,7 @@ def test_create_ground_truth_classifications_and_delete_dataset(
         assert crud.number_of_rows(db, model_cls) == 0
 
     # make sure labels are still there`
-    assert crud.number_of_rows(db, models.Label) == 2
+    assert crud.number_of_rows(db, models.Label) == 3
 
 
 def test_create_predicted_classifications_and_delete_model(
@@ -478,7 +491,7 @@ def test_create_predicted_classifications_and_delete_model(
     crud.create_predicted_image_classifications(db, pred_clfs_create)
 
     # check db has the added predictions
-    assert crud.number_of_rows(db, models.PredictedImageClassification) == 4
+    assert crud.number_of_rows(db, models.PredictedImageClassification) == 6
 
     # delete model and check all detections from it are gone
     crud.delete_model(db, model_name)
@@ -563,12 +576,16 @@ def test_get_labels(
 ):
     crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
     crud.create_groundtruth_detections(db, data=gt_dets_create)
-    labels = crud.get_labels_in_dataset(db, dset_name)
+    labels = crud.get_detection_labels_in_dataset(db, dset_name)
 
     assert len(labels) == 2
     assert set([(label.key, label.value) for label in labels]) == set(
         [("k1", "v1"), ("k2", "v2")]
     )
+
+    assert crud.get_detection_labels_in_dataset(db, "not a dataset") == []
+    assert crud.get_classification_labels_in_dataset(db, dset_name) == []
+    assert crud.get_segmentation_labels_in_dataset(db, dset_name) == []
 
 
 def test_segmentation_area_no_hole(
@@ -751,7 +768,7 @@ def test_gt_seg_as_mask_or_polys(db: Session):
     assert segs[0].labels == gt1.labels
 
 
-def test_validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+def test_get_filtered_preds_statement_and_missing_labels(
     db: Session,
     gt_segs_create: schemas.GroundTruthDetectionsCreate,
     pred_segs_create: schemas.PredictedSegmentationsCreate,
@@ -783,15 +800,14 @@ def test_validate_requested_labels_and_get_new_defining_statements_and_missing_l
 
     # check get everything if the requested labels argument is empty
     (
-        new_gts_statement,
         new_preds_statement,
         missing_pred_labels,
         ignored_pred_labels,
-    ) = crud.validate_requested_labels_and_get_new_defining_statements_and_missing_labels(
+    ) = crud.get_filtered_preds_statement_and_missing_labels(
         db=db, gts_statement=gts_statement, preds_statement=preds_statement
     )
 
-    gts = db.scalars(new_gts_statement).all()
+    gts = db.scalars(gts_statement).all()
     preds = db.scalars(new_preds_statement).all()
 
     assert len(gts) == 3
@@ -886,6 +902,14 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     # should be five labels (since thats how many are in groundtruth set)
     assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 5
 
+    # test getting metrics from evaluation settings id
+    pydantic_metrics = crud.get_metrics_from_evaluation_settings_id(
+        db, evaluation_settings_id
+    )
+    for m in pydantic_metrics:
+        assert isinstance(m, schemas.Metric)
+    assert len(pydantic_metrics) == len(metric_ids)
+
     # run again and make sure no new ids were created
     evaluation_settings_id_again, _, _ = method_to_test()
     assert evaluation_settings_id == evaluation_settings_id_again
@@ -952,6 +976,119 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         max_area=max_area,
         id=2,
     )
+
+
+def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
+    crud.create_dataset(db, dataset=schemas.DatasetCreate(name=dset_name))
+    crud.create_ground_truth_image_classifications(db, gt_clfs_create)
+    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_predicted_image_classifications(db, pred_clfs_create)
+    crud.finalize_dataset(db, dset_name)
+    crud.finalize_inferences(db, model_name, dset_name)
+
+    request_info = schemas.ClfMetricsRequest(
+        settings=schemas.EvaluationSettings(
+            model_name=model_name, dataset_name=dset_name
+        )
+    )
+
+    (
+        missing_pred_keys,
+        ignored_pred_keys,
+    ) = crud.validate_create_clf_metrics(db, request_info=request_info)
+    assert missing_pred_keys == []
+    assert set(ignored_pred_keys) == {"k3", "k4"}
+
+    evaluation_settings_id = crud.create_clf_metrics(db, request_info)
+    # check we have one evaluation
+    assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
+
+    # get all metrics
+    metrics = db.scalar(
+        select(models.EvaluationSettings).where(
+            models.EvaluationSettings.id == evaluation_settings_id
+        )
+    ).metrics
+
+    assert set([metric.type for metric in metrics]) == {
+        "Accuracy",
+        "Precision",
+        "Recall",
+        "F1",
+        "ROCAUC",
+    }
+    # should have two accuracy metrics and ROC AUC scores (for label keys "k1" and "k2")
+    # and four recall, precision, and f1, for the labels ("k1", "v1"), ("k2", "v2"),
+    # ("k2", "v3"), ("k1", "v2")
+    for t in ["Accuracy", "ROCAUC"]:
+        ms = [m for m in metrics if m.type == t]
+        assert len(ms) == 2
+        assert set([m.parameters["label_key"] for m in ms]) == {"k1", "k2"}
+
+    for t in ["Precision", "Recall", "F1"]:
+        ms = [m for m in metrics if m.type == t]
+        assert len(ms) == 4
+        assert set([(m.label.key, m.label.value) for m in ms]) == {
+            ("k1", "v1"),
+            ("k2", "v2"),
+            ("k2", "v3"),
+            ("k1", "v2"),
+        }
+
+    confusion_matrices = db.scalars(
+        select(models.ConfusionMatrix).where(
+            models.ConfusionMatrix.evaluation_settings_id
+            == evaluation_settings_id
+        )
+    ).all()
+
+    # should have two confusion matrices, one for each key
+    assert len(confusion_matrices) == 2
+
+    # test getting metrics from evaluation settings id
+    pydantic_metrics = crud.get_metrics_from_evaluation_settings_id(
+        db, evaluation_settings_id
+    )
+    for m in pydantic_metrics:
+        assert isinstance(m, schemas.Metric)
+    assert len(pydantic_metrics) == len(metrics)
+
+    # test getting confusion matrices from evaluation settings id
+    cms = crud.get_confusion_matrices_from_evaluation_settings_id(
+        db, evaluation_settings_id
+    )
+    cms = sorted(cms, key=lambda cm: cm.label_key)
+    assert len(cms) == 2
+    assert cms[0].label_key == "k1"
+    assert cms[0].entries == [
+        schemas.ConfusionMatrixEntry(
+            prediction="v2", groundtruth="v1", count=1
+        )
+    ]
+    assert cms[1].label_key == "k2"
+    assert cms[1].entries == [
+        schemas.ConfusionMatrixEntry(
+            prediction="v2", groundtruth="v3", count=1
+        )
+    ]
+
+    # run again and check we still have one evaluation and the same number of metrics
+    # and confusion matrices
+    crud.create_clf_metrics(db, request_info)
+    assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
+    metrics = db.scalar(
+        select(models.EvaluationSettings).where(
+            models.EvaluationSettings.id == evaluation_settings_id
+        )
+    ).metrics
+    assert len(metrics) == 2 + 2 + 4 + 4 + 4
+    confusion_matrices = db.scalars(
+        select(models.ConfusionMatrix).where(
+            models.ConfusionMatrix.evaluation_settings_id
+            == evaluation_settings_id
+        )
+    ).all()
+    assert len(confusion_matrices) == 2
 
 
 def test__raster_to_png_b64(db: Session):
@@ -1288,9 +1425,11 @@ def test__filter_instance_segmentations_by_area(db: Session):
     areas = db.scalars(ST_Count(models.GroundTruthSegmentation.shape)).all()
     assert sorted(areas) == [150, 1050]
 
+    base_stmt = "SELECT id FROM ground_truth_segmentation WHERE ground_truth_segmentation.is_instance"
+
     # check filtering when use area determined by instance segmentation task
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        stmt=base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
         min_area=100,
@@ -1299,7 +1438,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 2
 
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
         min_area=100,
@@ -1308,7 +1447,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 1
 
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
         min_area=151,
@@ -1317,18 +1456,18 @@ def test__filter_instance_segmentations_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 1
 
     # now when we use bounding box detection task, the triangle becomes its circumscribing
-    # rectangle (with area 300) so we should get both segmentations
+    # rectangle (with area ~300) so we should get both segmentations
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-        min_area=299,
+        min_area=280,
         max_area=2000,
     )
     assert len(db.scalars(stmt).all()) == 2
 
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=301,
@@ -1339,7 +1478,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     # if we use polygon detection then the areas shouldn't change much (the area
     # of the triangle actually becomes 163-- not sure if this is aliasing or what)
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=149,
@@ -1348,7 +1487,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 2
 
     stmt = _filter_instance_segmentations_by_area(
-        select(models.GroundTruthSegmentation),
+        base_stmt,
         seg_table=models.GroundTruthSegmentation,
         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=164,
@@ -1389,9 +1528,12 @@ def test__filter_object_detections_by_area(db: Session):
     areas = db.scalars(ST_Area(models.GroundTruthDetection.boundary)).all()
     assert sorted(areas) == [150, 1050]
 
+    # make base statement. need WHERE here because of what `_filter_instance_segmentations_by_area` expects
+    base_stmt = "SELECT id FROM ground_truth_detection WHERE ground_truth_detection.id > 0"
+
     # check filtering when use area determined by polygon detection task
     stmt = _filter_object_detections_by_area(
-        select(models.GroundTruthDetection),
+        base_stmt,
         det_table=models.GroundTruthDetection,
         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=100,
@@ -1400,7 +1542,7 @@ def test__filter_object_detections_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 2
 
     stmt = _filter_object_detections_by_area(
-        select(models.GroundTruthDetection),
+        base_stmt,
         det_table=models.GroundTruthDetection,
         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=100,
@@ -1409,7 +1551,7 @@ def test__filter_object_detections_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 1
 
     stmt = _filter_object_detections_by_area(
-        select(models.GroundTruthDetection),
+        base_stmt,
         det_table=models.GroundTruthDetection,
         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
         min_area=151,
@@ -1420,7 +1562,7 @@ def test__filter_object_detections_by_area(db: Session):
     # now when we use bounding box detection task, the triangle becomes its circumscribing
     # rectangle (with area 300) so we should get both segmentations
     stmt = _filter_object_detections_by_area(
-        select(models.GroundTruthDetection),
+        base_stmt,
         det_table=models.GroundTruthDetection,
         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=299,
@@ -1429,7 +1571,7 @@ def test__filter_object_detections_by_area(db: Session):
     assert len(db.scalars(stmt).all()) == 2
 
     stmt = _filter_object_detections_by_area(
-        select(models.GroundTruthDetection),
+        base_stmt,
         det_table=models.GroundTruthDetection,
         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
         min_area=301,
@@ -1440,13 +1582,115 @@ def test__filter_object_detections_by_area(db: Session):
     # check error if use the wrong task type
     with pytest.raises(ValueError) as exc_info:
         _filter_object_detections_by_area(
-            select(models.GroundTruthDetection),
+            base_stmt,
             det_table=models.GroundTruthDetection,
             task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
             min_area=301,
             max_area=2000,
         )
     assert "Expected task_for_area_computation to be" in str(exc_info)
+
+
+def test__filter_instance_segmentations_by_area_using_mask(db: Session):
+    crud.create_dataset(db, schemas.DatasetCreate(name=dset_name))
+    # approximate triangle of area 150
+    mask = np.zeros((1000, 2000), dtype=bool)
+    for i in range(10):
+        for j in range(30):
+            if i + j < 20:
+                mask[i, j] = True
+    assert mask.sum() == 155
+    mask_bytes = pil_to_bytes(Image.fromarray(mask))
+    b64_mask = b64encode(mask_bytes).decode()
+
+    # rectangle of area 1050
+    boundary = [(0, 5), (0, 40), (30, 40), (30, 5)]
+
+    img = schemas.Image(uid="", height=1000, width=2000)
+
+    crud.create_groundtruth_segmentations(
+        db,
+        data=schemas.GroundTruthSegmentationsCreate(
+            dataset_name=dset_name,
+            segmentations=[
+                schemas.GroundTruthSegmentation(
+                    shape=b64_mask,
+                    image=img,
+                    labels=[schemas.Label(key="k", value="v")],
+                    is_instance=True,
+                ),
+                schemas.GroundTruthSegmentation(
+                    shape=[schemas.PolygonWithHole(polygon=boundary)],
+                    image=img,
+                    labels=[schemas.Label(key="k", value="v")],
+                    is_instance=True,
+                ),
+            ],
+        ),
+    )
+
+    areas = db.scalars(ST_Count(models.GroundTruthSegmentation.shape)).all()
+    assert sorted(areas) == [155, 1050]
+
+    base_stmt = "SELECT id FROM ground_truth_segmentation WHERE ground_truth_segmentation.is_instance"
+
+    # check filtering when use area determined by polygon detection task
+    stmt = _filter_instance_segmentations_by_area(
+        base_stmt,
+        seg_table=models.GroundTruthSegmentation,
+        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+        min_area=100,
+        max_area=2000,
+    )
+    assert len(db.scalars(stmt).all()) == 2
+
+    stmt = _filter_instance_segmentations_by_area(
+        base_stmt,
+        seg_table=models.GroundTruthSegmentation,
+        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+        min_area=100,
+        max_area=200,
+    )
+    assert len(db.scalars(stmt).all()) == 1
+
+    stmt = _filter_instance_segmentations_by_area(
+        base_stmt,
+        seg_table=models.GroundTruthSegmentation,
+        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+        min_area=170,  # this won't pass at 156 due to aliasing
+        max_area=2000,
+    )
+    assert len(db.scalars(stmt).all()) == 1
+
+    # now when we use bounding box detection task, the triangle becomes its circumscribing
+    # rectangle (with area 200) so we should get both segmentations
+    stmt = _filter_instance_segmentations_by_area(
+        base_stmt,
+        seg_table=models.GroundTruthSegmentation,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+        min_area=160,
+        max_area=2000,
+    )
+
+    assert len(db.scalars(stmt).all()) == 2
+
+    stmt = _filter_instance_segmentations_by_area(
+        base_stmt,
+        seg_table=models.GroundTruthSegmentation,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+        min_area=300,
+        max_area=2000,
+    )
+    assert len(db.scalars(stmt).all()) == 1
+
+    stmt = _filter_instance_segmentations_by_area(
+        base_stmt,
+        seg_table=models.GroundTruthSegmentation,
+        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+        min_area=3000,
+        max_area=10000,
+    )
+    assert len(db.scalars(stmt).all()) == 0
 
 
 def test__validate_and_update_evaluation_settings_task_type_for_detection_no_groundtruth(

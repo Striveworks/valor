@@ -1,4 +1,5 @@
 import io
+import math
 import os
 from base64 import b64decode, b64encode
 from dataclasses import asdict
@@ -8,6 +9,7 @@ from urllib.parse import urljoin
 import numpy as np
 import PIL.Image
 import requests
+from tqdm.auto import tqdm
 
 from velour.data_types import (
     BoundingBox,
@@ -182,7 +184,8 @@ class Client:
         return Dataset(client=self, name=name)
 
     def delete_dataset(self, name: str) -> None:
-        self._requests_delete_rel_host(f"datasets/{name}")
+        job_id = self._requests_delete_rel_host(f"datasets/{name}").json()
+        return Job(client=self, job_id=job_id)
 
     def get_dataset(self, name: str) -> "Dataset":
         resp = self._requests_get_rel_host(f"datasets/{name}")
@@ -220,65 +223,128 @@ class Dataset:
         self.client = client
         self.name = name
 
-    def add_groundtruth_detections(self, dets: List[GroundTruthDetection]):
-        payload = {
-            "dataset_name": self.name,
-            "detections": [_det_to_dict(det) for det in dets],
-        }
+    def _generate_chunks(
+        self,
+        data: list,
+        chunk_size=100,
+        progress_bar_title: str = "Chunking",
+        show_progress_bar: bool = True,
+    ):
 
-        resp = self.client._requests_post_rel_host(
-            "groundtruth-detections", json=payload
+        progress_bar = tqdm(
+            total=len(data),
+            unit="samples",
+            unit_scale=True,
+            desc=f"{progress_bar_title} ({self.name})",
+            disable=not show_progress_bar,
         )
 
-        return resp.json()
+        number_of_chunks = math.floor(len(data) / chunk_size)
+        remainder = len(data) % chunk_size
 
-    def add_groundtruth_classifications(
-        self, clfs: List[GroundTruthImageClassification]
+        for i in range(0, number_of_chunks):
+            progress_bar.update(chunk_size)
+            yield data[i * chunk_size : (i + 1) * chunk_size]
+
+        if remainder > 0:
+            progress_bar.update(remainder)
+            yield data[-remainder:]
+
+        progress_bar.close()
+
+    def add_groundtruth(
+        self,
+        groundtruth: list,
+        chunk_size: int = 1000,
+        show_progress_bar: bool = True,
     ):
-        payload = {
-            "dataset_name": self.name,
-            "classifications": [
-                {
-                    "labels": [asdict(label) for label in clf.labels],
-                    "image": asdict(clf.image),
+
+        log = []
+
+        if not isinstance(groundtruth, list):
+            raise ValueError("GroundTruth argument should be a list.")
+
+        if len(groundtruth) == 0:
+            raise ValueError("Empty list.")
+
+        for chunk in self._generate_chunks(
+            groundtruth,
+            chunk_size=chunk_size,
+            progress_bar_title="Uploading",
+            show_progress_bar=show_progress_bar,
+        ):
+
+            # Image Classification
+            if isinstance(chunk[0], GroundTruthImageClassification):
+
+                payload = {
+                    "dataset_name": self.name,
+                    "classifications": [
+                        {
+                            "labels": [asdict(label) for label in clf.labels],
+                            "image": asdict(clf.image),
+                        }
+                        for clf in chunk
+                    ],
                 }
-                for clf in clfs
-            ],
-        }
 
-        resp = self.client._requests_post_rel_host(
-            "groundtruth-classifications", json=payload
-        )
+                resp = self.client._requests_post_rel_host(
+                    "groundtruth-classifications", json=payload
+                )
 
-        return resp.json()
+                log += resp
 
-    def add_groundtruth_segmentations(
-        self, segs: List[_GroundTruthSegmentation]
-    ):
-        def _shape_value(shape: Union[List[PolygonWithHole], np.ndarray]):
-            if isinstance(shape, np.ndarray):
-                return _mask_array_to_pil_base64(shape)
+            # Image Segmentation (Semantic, Instance)
+            elif isinstance(chunk[0], _GroundTruthSegmentation):
+
+                def _shape_value(
+                    shape: Union[List[PolygonWithHole], np.ndarray]
+                ):
+                    if isinstance(shape, np.ndarray):
+                        return _mask_array_to_pil_base64(shape)
+                    else:
+                        return _payload_for_polys_with_holes(shape)
+
+                payload = {
+                    "dataset_name": self.name,
+                    "segmentations": [
+                        {
+                            "shape": _shape_value(seg.shape),
+                            "labels": [asdict(label) for label in seg.labels],
+                            "image": asdict(seg.image),
+                            "is_instance": seg._is_instance,
+                        }
+                        for seg in chunk
+                    ],
+                }
+
+                resp = self.client._requests_post_rel_host(
+                    "groundtruth-segmentations", json=payload
+                )
+
+                log += resp
+
+            # Object Detection
+            elif isinstance(chunk[0], GroundTruthDetection):
+
+                payload = {
+                    "dataset_name": self.name,
+                    "detections": [_det_to_dict(det) for det in chunk],
+                }
+
+                resp = self.client._requests_post_rel_host(
+                    "groundtruth-detections", json=payload
+                )
+
+                log += resp
+
+            # Unknown type.
             else:
-                return _payload_for_polys_with_holes(shape)
+                raise NotImplementedError(
+                    f"Received groundtruth with type: '{type(chunk[0])}', which is not currently implemented."
+                )
 
-        payload = {
-            "dataset_name": self.name,
-            "segmentations": [
-                {
-                    "shape": _shape_value(seg.shape),
-                    "labels": [asdict(label) for label in seg.labels],
-                    "image": asdict(seg.image),
-                    "is_instance": seg._is_instance,
-                }
-                for seg in segs
-            ],
-        }
-
-        resp = self.client._requests_post_rel_host(
-            "groundtruth-segmentations", json=payload
-        )
-
-        return resp.json()
+        return log
 
     def get_groundtruth_detections(
         self, image_uid: str
@@ -374,26 +440,33 @@ class Dataset:
         ]
 
 
-class EvalJob:
+class Job:
     def __init__(
         self,
         client: Client,
         job_id: str,
-        missing_pred_labels: List[Label],
-        ignored_pred_labels: List[Label],
+        **kwargs,
     ):
         self._id = job_id
-        self.missing_pred_labels = missing_pred_labels
-        self.ignored_pred_labels = ignored_pred_labels
         self.client = client
+
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     def status(self) -> str:
         resp = self.client._requests_get_rel_host(f"/jobs/{self._id}").json()
         return resp["status"]
 
+
+class EvalJob(Job):
     def metrics(self) -> List[dict]:
         return self.client._requests_get_rel_host(
             f"/jobs/{self._id}/metrics"
+        ).json()
+
+    def confusion_matrices(self) -> List[dict]:
+        return self.client._requests_get_rel_host(
+            f"/jobs/{self._id}/confusion-matrices"
         ).json()
 
     # TODO: replace value with a dataclass?
@@ -515,6 +588,20 @@ class Model:
         # list of label dicts. convert label dicts to Label objects
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
             resp[k] = [Label(**la) for la in resp[k]]
+
+        return EvalJob(client=self.client, **resp)
+
+    def evaluate_classification(self, dataset: Dataset) -> EvalJob:
+        payload = {
+            "settings": {
+                "model_name": self.name,
+                "dataset_name": dataset.name,
+            }
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "/clf-metrics", json=payload
+        ).json()
 
         return EvalJob(client=self.client, **resp)
 

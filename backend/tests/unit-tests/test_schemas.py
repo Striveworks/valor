@@ -2,17 +2,19 @@ import os
 from base64 import b64encode
 from tempfile import TemporaryDirectory
 
+import numpy as np
 import PIL.Image
 import pytest
 from pydantic import ValidationError
 
 from velour_api.enums import JobStatus
 from velour_api.schemas import (
+    ConfusionMatrix,
     DatasetCreate,
-    EvalJob,
     GroundTruthDetection,
     GroundTruthSegmentation,
     Image,
+    Job,
     Label,
     Model,
     PredictedSegmentation,
@@ -136,10 +138,18 @@ def test_model_validation():
 
 
 def test_eval_job():
-    job = EvalJob()
+    job = Job()
     # check that job got a uid of the right form
     assert isinstance(job.uid, str)
     assert len(job.uid.split("-")) == 5
 
     assert job.status == JobStatus.PENDING
-    assert job.evaluation_settings_id is None
+
+
+def test_confusion_matrix(cm: ConfusionMatrix):
+    np.testing.assert_array_equal(
+        cm.matrix, np.array([[1, 1, 1], [0, 1, 0], [0, 2, 0]])
+    )
+
+    assert cm.matrix[cm.label_map["class1"], cm.label_map["class2"]] == 0
+    assert cm.matrix[cm.label_map["class1"], cm.label_map["class1"]] == 1
