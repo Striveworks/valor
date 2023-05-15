@@ -15,7 +15,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
-from velour.client import Client, ClientException, Dataset, Model
+from velour.client import Client, ClientException, ImageDataset, Model
 from velour.data_types import (
     BoundingBox,
     BoundingPolygon,
@@ -402,14 +402,14 @@ def pred_clfs(img5: Image, img6: Image) -> list[PredictedImageClassification]:
     ]
 
 
-def _test_create_dataset_with_gts(
+def _test_create_image_dataset_with_gts(
     client: Client,
     gts1: list[Any],
     gts2: list[Any],
     gts3: list[Any],
     expected_labels_tuples: set[tuple[str, str]],
     expected_image_uids: list[str],
-) -> Dataset:
+) -> ImageDataset:
     """This test does the following
     - Creates a dataset
     - Adds groundtruth data to it in two batches
@@ -431,10 +431,10 @@ def _test_create_dataset_with_gts(
     expected_image_uids
         set of image uids to check were added to the database
     """
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
 
     with pytest.raises(ClientException) as exc_info:
-        client.create_dataset(dset_name)
+        client.create_image_dataset(dset_name)
     assert "already exists" in str(exc_info)
 
     dataset.add_groundtruth(gts1)
@@ -500,7 +500,7 @@ def _test_create_model_with_preds(
     the sqlalchemy objects for the created predictions
     """
     model = client.create_model(model_name)
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
 
     add_preds_method = getattr(model, add_preds_method_name)
 
@@ -540,10 +540,12 @@ def _test_create_model_with_preds(
     return db_preds
 
 
-def test_create_dataset_with_href_and_description(client: Client, db: Session):
+def test_create_image_dataset_with_href_and_description(
+    client: Client, db: Session
+):
     href = "http://a.com/b"
     description = "a description"
-    client.create_dataset(dset_name, href=href, description=description)
+    client.create_image_dataset(dset_name, href=href, description=description)
     db_dataset = db.scalar(select(models.Dataset))
     assert db_dataset.href == href
     assert db_dataset.description == description
@@ -558,14 +560,14 @@ def test_create_model_with_href_and_description(client: Client, db: Session):
     assert db_model.description == description
 
 
-def test_create_dataset_with_detections(
+def test_create_image_dataset_with_detections(
     client: Client,
     gt_dets1: list[GroundTruthDetection],
     gt_dets2: list[GroundTruthDetection],
     gt_dets3: list[GroundTruthDetection],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
-    dataset = _test_create_dataset_with_gts(
+    dataset = _test_create_image_dataset_with_gts(
         client=client,
         gts1=gt_dets1,
         gts2=gt_dets2,
@@ -626,7 +628,7 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
     image = Image(uid="uid", height=200, width=150)
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
 
     gt_bbox = GroundTruthDetection(
         image=image,
@@ -678,7 +680,7 @@ def test_create_pred_detections_as_bbox_or_poly(
     or a polygon
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
     model = client.create_model(model_name)
 
     dataset.add_groundtruth(gt_dets1)
@@ -719,14 +721,14 @@ def test_create_pred_detections_as_bbox_or_poly(
     )
 
 
-def test_create_dataset_with_segmentations(
+def test_create_image_dataset_with_segmentations(
     client: Client,
     gt_segs1: list[GroundTruthSemanticSegmentation],
     gt_segs2: list[GroundTruthSemanticSegmentation],
     gt_segs3: list[GroundTruthSemanticSegmentation],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
-    dataset = _test_create_dataset_with_gts(
+    dataset = _test_create_image_dataset_with_gts(
         client=client,
         gts1=gt_segs1,
         gts2=gt_segs2,
@@ -771,7 +773,7 @@ def test_create_gt_segs_as_polys_or_masks(
     """Test that we can create a dataset with groundtruth segmentations that are defined
     both my polygons and mask arrays
     """
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
 
     xmin, xmax, ymin, ymax = 11, 45, 37, 102
     h, w = 900, 300
@@ -839,14 +841,14 @@ def test_create_model_with_predicted_segmentations(
     np.testing.assert_equal(mask_array, pred_segs[0].mask)
 
 
-def test_create_dataset_with_classifications(
+def test_create_image_dataset_with_classifications(
     client: Client,
     gt_clfs1: list[GroundTruthImageClassification],
     gt_clfs2: list[GroundTruthImageClassification],
     gt_clfs3: list[GroundTruthImageClassification],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
-    _test_create_dataset_with_gts(
+    _test_create_image_dataset_with_gts(
         client=client,
         gts1=gt_clfs1,
         gts2=gt_clfs2,
@@ -888,7 +890,7 @@ def test_boundary(
     client: Client, db: Session, rect1: BoundingPolygon, img1: Image
 ):
     """Test consistency of boundary in backend and client"""
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
     rect1_poly = bbox_to_poly(rect1)
     dataset.add_groundtruth(
         [
@@ -916,7 +918,7 @@ def test_iou(
     rect2: BoundingPolygon,
     img1: Image,
 ):
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
     model = client.create_model(model_name)
 
     rect1_poly = bbox_to_poly(rect1)
@@ -956,7 +958,7 @@ def test_delete_dataset_background_job(
     client: Client, gt_dets1, gt_dets2, gt_dets3, db: Session
 ):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
     dataset.add_groundtruth(gt_dets1 + gt_dets2 + gt_dets3)
 
     job = client.delete_dataset(dset_name)
@@ -971,7 +973,7 @@ def test_evaluate_ap(
     pred_dets: list[PredictedDetection],
     db: Session,
 ):
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
     dataset.add_groundtruth(gt_dets1)
     dataset.finalize()
 
@@ -1148,7 +1150,7 @@ def test_evaluate_clf(
     pred_clfs: list[PredictedImageClassification],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
     dataset.add_groundtruth(gt_clfs1)
     dataset.finalize()
 
@@ -1201,5 +1203,5 @@ def test_evaluate_clf(
 
 def test_tabular_data_clf():
     pass
-    # dataset = client.create_dataset(name="", type="tabular")
+    # dataset = client.create_image_dataset(name="", type="tabular")
     # dataset.add_groundtruth()  # either list of list of ScoredLabels (one for each index) or dict going from uid to list of ScoredLabels

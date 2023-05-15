@@ -7,7 +7,7 @@ import numpy as np
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
-from velour_api.enums import JobStatus, Task
+from velour_api.enums import DatumTypes, JobStatus, Task
 
 
 def validate_single_polygon(poly: list[tuple[float, float]]):
@@ -29,6 +29,7 @@ class _BaseDataset(BaseModel):
     from_video: bool = False
     href: str = None
     description: str = None
+    type: DatumTypes
 
     @validator("href")
     def validate_href(cls, v):

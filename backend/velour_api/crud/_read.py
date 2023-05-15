@@ -56,7 +56,9 @@ def _raster_to_png_b64(
 
 def get_datasets(db: Session) -> list[schemas.Dataset]:
     return [
-        schemas.Dataset(name=d.name, draft=d.draft)
+        schemas.Dataset(
+            **{k: getattr(d, k) for k in schemas.Dataset.__fields__}
+        )
         for d in db.scalars(select(models.Dataset))
     ]
 
