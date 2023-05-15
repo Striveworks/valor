@@ -68,10 +68,10 @@ def mask_bytes_poly_intersection():
 
 
 def _pred_seg_from_bytes(
-    db: Session, mask_bytes: bytes, model: models.Model, img: models.Image
+    db: Session, mask_bytes: bytes, model: models.Model, img: models.Datum
 ) -> models.PredictedSegmentation:
     pred_seg = models.PredictedSegmentation(
-        shape=mask_bytes, image_id=img.id, model_id=model.id, is_instance=True
+        shape=mask_bytes, datum_id=img.id, model_id=model.id, is_instance=True
     )
     db.add(pred_seg)
     db.commit()
@@ -79,11 +79,11 @@ def _pred_seg_from_bytes(
 
 
 def _gt_seg_from_polys(
-    db: Session, polys: list[schemas.PolygonWithHole], img: models.Image
+    db: Session, polys: list[schemas.PolygonWithHole], img: models.Datum
 ) -> models.GroundTruthSegmentation:
     mapping = {
         "shape": _select_statement_from_poly(polys),
-        "image_id": img.id,
+        "datum_id": img.id,
         "is_instance": False,
     }
     gt_seg = db.scalar(
@@ -97,7 +97,7 @@ def _gt_seg_from_polys(
 
 
 def test__raster_area(
-    db: Session, mask_bytes1: bytes, model: models.Model, img: models.Image
+    db: Session, mask_bytes1: bytes, model: models.Model, img: models.Datum
 ):
     pred_seg = _pred_seg_from_bytes(
         db=db, mask_bytes=mask_bytes1, model=model, img=img
@@ -108,7 +108,7 @@ def test__raster_area(
 
 
 def test_intersection_area_of_segs(
-    db: Session, model: models.Model, img: models.Image
+    db: Session, model: models.Model, img: models.Datum
 ):
     h, w = 100, 200
     y_min, y_max, x_min, x_max = 50, 80, 20, 30
@@ -142,7 +142,7 @@ def test_intersection_area_of_segs(
 
 
 def test_intersection_pred_seg_multi_poly_gt_seg(
-    db: Session, model: models.Model, img: models.Image
+    db: Session, model: models.Model, img: models.Datum
 ):
     """Tests intersection of a prediction mask with a groundtruth
     that's comprised of two disjoint polygons, with one having a hole
@@ -198,7 +198,7 @@ def test_intersection_pred_seg_multi_poly_gt_seg(
 def test_iou_and_intersection_area_of_two_segs(
     db: Session,
     model: models.Model,
-    img: models.Image,
+    img: models.Datum,
     mask_bytes_poly_intersection: tuple[bytes, schemas.PolygonWithHole, float],
 ):
     (
@@ -227,7 +227,7 @@ def test_iou_and_intersection_area_of_two_segs(
 def test_iou_det_and_seg(
     db: Session,
     model: models.Model,
-    img: models.Image,
+    img: models.Datum,
     mask_bytes_poly_intersection: tuple[bytes, schemas.PolygonWithHole, float],
 ):
     (
@@ -242,7 +242,7 @@ def test_iou_det_and_seg(
     )
     det = models.GroundTruthDetection(
         boundary=f"POLYGON({_boundary_points_to_str(poly.polygon)})",
-        image_id=img.id,
+        datum_id=img.id,
         is_bbox=True,
     )
     db.add(det)
@@ -269,12 +269,12 @@ def test_iou_det_and_seg(
     poly = f"POLYGON({_boundary_points_to_str([(xmin, ymin), (xmax, ymin), (xmax, ymax), (xmin, ymax)])})"
     bbox_det = models.GroundTruthDetection(
         boundary=poly,
-        image_id=img.id,
+        datum_id=img.id,
         is_bbox=True,
     )
     poly_det = models.GroundTruthDetection(
         boundary=poly,
-        image_id=img.id,
+        datum_id=img.id,
         is_bbox=False,
     )
 
@@ -299,7 +299,7 @@ def test_iou_det_and_seg(
     assert ops.iou_det_and_seg(db, bbox_det, seg) == 0.5
 
 
-def test_iou_two_dets(db: Session, img: models.Image):
+def test_iou_two_dets(db: Session, img: models.Datum):
     ymin1, ymax1, xmin1, xmax1 = 50, 80, 20, 30
     ymin2, ymax2, xmin2, xmax2 = 60, 90, 10, 25
 
@@ -319,27 +319,27 @@ def test_iou_two_dets(db: Session, img: models.Image):
 
     bbox_det1 = models.GroundTruthDetection(
         boundary=poly1,
-        image_id=img.id,
+        datum_id=img.id,
         is_bbox=True,
     )
     bbox_det2 = models.GroundTruthDetection(
         boundary=poly2,
-        image_id=img.id,
+        datum_id=img.id,
         is_bbox=True,
     )
     poly_det1 = models.GroundTruthDetection(
         boundary=poly1,
-        image_id=img.id,
+        datum_id=img.id,
         is_bbox=False,
     )
     poly_det2 = models.GroundTruthDetection(
         boundary=poly2,
-        image_id=img.id,
+        datum_id=img.id,
         is_bbox=False,
     )
     poly_det3 = models.GroundTruthDetection(
         boundary=poly3,
-        image_id=img.id,
+        datum_id=img.id,
         is_bbox=False,
     )
 

@@ -10,13 +10,13 @@ from velour_api.models import PredictedImageClassification
 def binary_roc_auc(
     db: Session, dataset_name: str, model_name: str, label: schemas.Label
 ) -> float:
-    # query to get the image_ids and label values of groundtruths that have the given label key
+    # query to get the datum_ids and label values of groundtruths that have the given label key
     gts_query = (
         select(
-            models.GroundTruthImageClassification.image_id.label("image_id"),
+            models.GroundTruthImageClassification.datum_id.label("datum_id"),
             models.Label.value.label("label_value"),
         )
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset, models.Dataset.name == dataset_name)
         .join(
             models.Label,
@@ -43,11 +43,11 @@ def binary_roc_auc(
     # get the prediction scores for the given label (key and value)
     preds_query = (
         select(
-            models.PredictedImageClassification.image_id.label("image_id"),
+            models.PredictedImageClassification.datum_id.label("datum_id"),
             models.PredictedImageClassification.score.label("score"),
             models.Label.value.label("label_value"),
         )
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset, models.Dataset.name == dataset_name)
         .join(models.Model, models.Model.name == model_name)
         .join(
@@ -79,7 +79,7 @@ def binary_roc_auc(
             tprs.label("tprs"),
             fprs.label("fprs"),
             preds_query.c.score,
-        ).join(preds_query, gts_query.c.image_id == preds_query.c.image_id)
+        ).join(preds_query, gts_query.c.datum_id == preds_query.c.datum_id)
         # .order_by(preds_query.c.score.desc())
     ).subquery()
 
@@ -220,7 +220,7 @@ def confusion_matrix_at_label_key(
     subquery = (
         select(func.max(PredictedImageClassification.score).label("max_score"))
         .join(models.Label)
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset)
         .join(models.Model)
         .where(
@@ -231,7 +231,7 @@ def confusion_matrix_at_label_key(
                 models.Model.name == model_name,
             )
         )
-        .group_by(PredictedImageClassification.image_id)
+        .group_by(PredictedImageClassification.datum_id)
     ).alias()
 
     # used for the edge case where the max confidence appears twice
@@ -247,13 +247,13 @@ def confusion_matrix_at_label_key(
                 models.Label.key == label_key,
             ),
         )
-        .group_by(models.PredictedImageClassification.image_id)
+        .group_by(models.PredictedImageClassification.datum_id)
     ).alias()
 
     hard_preds_query = (
         select(
             models.Label.value.label("pred_label_value"),
-            models.PredictedImageClassification.image_id.label("image_id"),
+            models.PredictedImageClassification.datum_id.label("datum_id"),
         )
         .join(models.PredictedImageClassification)
         .join(
@@ -275,8 +275,8 @@ def confusion_matrix_at_label_key(
         select(b, func.count())
         .join(
             models.GroundTruthImageClassification,
-            models.GroundTruthImageClassification.image_id
-            == hard_preds_query.c.image_id,
+            models.GroundTruthImageClassification.datum_id
+            == hard_preds_query.c.datum_id,
         )
         .join(
             models.Label,

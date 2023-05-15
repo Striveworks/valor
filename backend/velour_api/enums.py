@@ -14,3 +14,8 @@ class JobStatus(Enum):
     PROCESSING = "Processing"
     FAILED = "Failed"
     DONE = "Done"
+
+
+class DatumTypes(Enum):
+    IMAGE = "Image"
+    TABULAR = "Tabular"

@@ -49,7 +49,7 @@ def np_to_bytes(arr: np.ndarray) -> bytes:
 
 def check_db_empty(db: Session):
     for model_cls in [
-        models.Image,
+        models.Datum,
         models.GroundTruthDetection,
         models.LabeledGroundTruthDetection,
         models.PredictedDetection,
@@ -355,7 +355,7 @@ def test_create_ground_truth_detections_and_delete_dataset(
     crud.create_groundtruth_detections(db, data=gt_dets_create)
 
     assert crud.number_of_rows(db, models.GroundTruthDetection) == 2
-    assert crud.number_of_rows(db, models.Image) == 1
+    assert crud.number_of_rows(db, models.Datum) == 1
     assert crud.number_of_rows(db, models.LabeledGroundTruthDetection) == 3
     assert crud.number_of_rows(db, models.Label) == 2
 
@@ -369,7 +369,7 @@ def test_create_ground_truth_detections_and_delete_dataset(
     crud.delete_dataset(db, dataset_name=dset_name)
     for model_cls in [
         models.Dataset,
-        models.Image,
+        models.Datum,
         models.GroundTruthDetection,
         models.LabeledGroundTruthDetection,
     ]:
@@ -452,14 +452,14 @@ def test_create_ground_truth_classifications_and_delete_dataset(
     # should have three GroundTruthImageClassification rows since one image has two
     # labels and the other has one
     assert crud.number_of_rows(db, models.GroundTruthImageClassification) == 3
-    assert crud.number_of_rows(db, models.Image) == 2
+    assert crud.number_of_rows(db, models.Datum) == 2
     assert crud.number_of_rows(db, models.Label) == 3
 
     # delete dataset and check the cascade worked
     crud.delete_dataset(db, dataset_name=dset_name)
     for model_cls in [
         models.Dataset,
-        models.Image,
+        models.Datum,
         models.GroundTruthImageClassification,
     ]:
         assert crud.number_of_rows(db, model_cls) == 0
@@ -511,7 +511,7 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
 
     assert crud.number_of_rows(db, models.GroundTruthSegmentation) == 4
-    assert crud.number_of_rows(db, models.Image) == 2
+    assert crud.number_of_rows(db, models.Datum) == 2
     assert crud.number_of_rows(db, models.LabeledGroundTruthSegmentation) == 4
     assert crud.number_of_rows(db, models.Label) == 2
 
@@ -519,7 +519,7 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
     crud.delete_dataset(db, dataset_name=dset_name)
     for model_cls in [
         models.Dataset,
-        models.Image,
+        models.Datum,
         models.GroundTruthSegmentation,
         models.LabeledGroundTruthSegmentation,
     ]:
@@ -683,7 +683,7 @@ def test_segmentation_area_multi_polygon(
 
 
 def test__select_statement_from_poly(
-    db: Session, poly_with_hole: schemas.PolygonWithHole, img: models.Image
+    db: Session, poly_with_hole: schemas.PolygonWithHole, img: models.Datum
 ):
     gt_seg = db.scalar(
         insert(models.GroundTruthSegmentation)
@@ -693,7 +693,7 @@ def test__select_statement_from_poly(
                     "shape": crud._create._select_statement_from_poly(
                         [poly_with_hole]
                     ),
-                    "image_id": img.id,
+                    "datum_id": img.id,
                     "is_instance": True,
                 }
             ]
