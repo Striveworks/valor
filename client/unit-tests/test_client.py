@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from velour.client import Dataset
+from velour.client import ImageDataset
 
 
 @pytest.fixture
@@ -11,13 +11,12 @@ def chunk_size():
 
 
 def test__generate_chunks(chunk_size: int):
-
     # Empty list (N=0)
     data = []
     assert len(data) == 0
     chunked_data = [
         arr
-        for arr in Dataset(None, "none")._generate_chunks(
+        for arr in ImageDataset(None, "none")._generate_chunks(
             data, chunk_size=chunk_size
         )
     ]
@@ -29,7 +28,7 @@ def test__generate_chunks(chunk_size: int):
     assert len(data) == 1
     chunked_data = [
         arr
-        for arr in Dataset(None, "none")._generate_chunks(
+        for arr in ImageDataset(None, "none")._generate_chunks(
             data, chunk_size=chunk_size
         )
     ]
@@ -42,7 +41,7 @@ def test__generate_chunks(chunk_size: int):
     assert len(data) < chunk_size
     chunked_data = [
         arr
-        for arr in Dataset(None, "none")._generate_chunks(
+        for arr in ImageDataset(None, "none")._generate_chunks(
             data, chunk_size=chunk_size
         )
     ]
@@ -55,7 +54,7 @@ def test__generate_chunks(chunk_size: int):
     assert len(data) == chunk_size
     chunked_data = [
         arr
-        for arr in Dataset(None, "none")._generate_chunks(
+        for arr in ImageDataset(None, "none")._generate_chunks(
             data, chunk_size=chunk_size
         )
     ]
@@ -69,7 +68,7 @@ def test__generate_chunks(chunk_size: int):
     assert len(data) == M * chunk_size
     chunked_data = [
         arr
-        for arr in Dataset(None, "none")._generate_chunks(
+        for arr in ImageDataset(None, "none")._generate_chunks(
             data, chunk_size=chunk_size
         )
     ]
@@ -85,7 +84,7 @@ def test__generate_chunks(chunk_size: int):
     assert len(data) == (M * chunk_size) + K
     chunked_data = [
         arr
-        for arr in Dataset(None, "none")._generate_chunks(
+        for arr in ImageDataset(None, "none")._generate_chunks(
             data, chunk_size=chunk_size
         )
     ]
