@@ -11,6 +11,7 @@ from velour_api.enums import JobStatus
 from velour_api.schemas import (
     ConfusionMatrix,
     DatasetCreate,
+    DatumTypes,
     GroundTruthDetection,
     GroundTruthSegmentation,
     Image,
@@ -123,10 +124,12 @@ def test_predicted_segmentation_validation_format_neg(img: Image):
 
 def test_dataset_validation():
     with pytest.raises(ValueError) as exc_info:
-        DatasetCreate(name="name", href="not valid")
+        DatasetCreate(name="name", href="not valid", type=DatumTypes.IMAGE)
     assert "`href` must" in str(exc_info)
 
-    assert DatasetCreate(name="name", href="http://a.com")
+    assert DatasetCreate(
+        name="name", href="http://a.com", type=DatumTypes.IMAGE
+    )
 
 
 def test_model_validation():

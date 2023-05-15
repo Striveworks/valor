@@ -5,7 +5,7 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from velour_api import database, exceptions
-from velour_api.schemas import Dataset, Model
+from velour_api.schemas import Dataset, DatumTypes, Model
 
 
 @pytest.fixture
@@ -173,7 +173,7 @@ def test_post_predicted_classifications(client: TestClient):
 
 
 def test_post_datasets(client: TestClient):
-    example_json = {"name": ""}
+    example_json = {"name": "", "type": DatumTypes.IMAGE.value}
     _test_post_endpoints(
         client=client,
         endpoint="/datasets",
@@ -220,7 +220,9 @@ def test_get_datasets(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_dataset_by_name(crud, client: TestClient):
-    crud.get_dataset.return_value = Dataset(name="", draft=True)
+    crud.get_dataset.return_value = Dataset(
+        name="", draft=True, type=DatumTypes.TABULAR
+    )
 
     resp = client.get("/datasets/dsetname")
     assert resp.status_code == 200
