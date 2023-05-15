@@ -26,7 +26,6 @@ try:
     from chariot.config import settings
     from chariot.datasets.dataset import Dataset
     from chariot.datasets.dataset_version import (
-        DatasetVersion,
         get_latest_vertical_dataset_version,
     )
 
@@ -263,9 +262,9 @@ def chariot_parse_dataset_annotations(
 def chariot_ds_to_velour_ds(
     velour_client: Client,
     chariot_dataset: Dataset,
-    chariot_dataset_version: str = None,
-    velour_dataset_name: str = None,
+    chariot_dataset_version_id: str = None,
     use_training_manifest: bool = True,
+    velour_dataset_name: str = None,
     chunk_size: int = 1000,
 ):
     """Converts chariot dataset to a velour dataset.
@@ -276,15 +275,15 @@ def chariot_ds_to_velour_ds(
         Velour client
     chariot_dataset
         Chariot Dataset object
-    chariot_dataset_version
-        (OPTIONAL) Chariot Dataset version ID, defaults to latest.
-    velour_dataset_name
-        (OPTIONAL) Defaults to the name of the chariot dataset, setting this will override the
-        name of the velour dataset output.
+    chariot_dataset_version_id
+        (OPTIONAL) Chariot Dataset version ID, defaults to latest vertical version.
     using_training_manifest
         (OPTIONAL) Defaults to true, setting false will use the evaluation manifest which is a
         super set of the training manifest. Not recommended as the evaluation manifest may
         contain unlabeled data.
+    velour_dataset_name
+        (OPTIONAL) Defaults to the name of the chariot dataset, setting this will override the
+        name of the velour dataset output.
     chunk_size
         (OPTIONAL) Defaults to 1000. Chunk_size is the maximum number of 'groundtruths' that are
         uploaded in one call to the backend.
@@ -295,30 +294,31 @@ def chariot_ds_to_velour_ds(
     """
 
     if len(chariot_dataset.versions) < 1:
-        raise ValueError("Chariot Dataset has no existing versions!")
+        raise ValueError("Chariot dataset has no existing versions.")
 
     # Get Chariot Datset Version
     dsv = None
-    if chariot_dataset_version is not None:
-        # Attempt to find requested version
-        for datasetversion in chariot_dataset.versions:
-            if datasetversion.id == chariot_dataset_version:
-                dsv = datasetversion
+    if chariot_dataset_version_id is None:
+        # Use the latest version
+        dsv = get_latest_vertical_dataset_version(
+            project_id=chariot_dataset.project_id,
+            dataset_id=chariot_dataset.id,
+        )
+    else:
+        for _dsv in chariot_dataset.versions:
+            if _dsv.id == chariot_dataset_version_id:
+                dsv = _dsv
                 break
         if dsv is None:
             raise ValueError(
-                "Chariot dataset does not have specified version!",
-                chariot_dataset_version,
+                f"Chariot DatasetVersion not found with id: {chariot_dataset_version_id}"
             )
-    else:
-        # Use the first version in the list
-        dsv = chariot_dataset.versions[0]
 
     # Get the manifest url
     manifest_url = (
         dsv.get_training_manifest_url()
         if use_training_manifest
-        else chariot_dataset_version.get_evaluation_manifest_url()
+        else dsv.get_evaluation_manifest_url()
     )
 
     # Retrieve the manifest
