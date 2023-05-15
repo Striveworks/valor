@@ -612,7 +612,7 @@ def test_create_model_with_predicted_detections(
 
     # check boundary
     db_pred = [
-        p for p in labeled_pred_dets if p.detection.image.uid == "uid1"
+        p for p in labeled_pred_dets if p.detection.datum.uid == "uid1"
     ][0]
     points = _list_of_points_from_wkt_polygon(db, db_pred.detection)
     pred = pred_poly_dets[0]
@@ -830,7 +830,7 @@ def test_create_model_with_predicted_segmentations(
     # grab the segmentation from the db, recover the mask, and check
     # its equal to the mask the client sent over
     db_pred = [
-        p for p in labeled_pred_segs if p.segmentation.image.uid == "uid1"
+        p for p in labeled_pred_segs if p.segmentation.datum.uid == "uid1"
     ][0]
     png_from_db = db.scalar(ST_AsPNG(db_pred.segmentation.shape))
     f = io.BytesIO(png_from_db.tobytes())
@@ -1197,3 +1197,9 @@ def test_evaluate_clf(
             "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
         }
     ]
+
+
+def test_tabular_data_clf():
+    pass
+    # dataset = client.create_dataset(name="", type="tabular")
+    # dataset.add_groundtruth()  # either list of list of ScoredLabels (one for each index) or dict going from uid to list of ScoredLabels

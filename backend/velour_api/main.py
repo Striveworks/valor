@@ -184,7 +184,7 @@ def get_dataset_images(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Image]:
     try:
-        images = crud.get_images_in_dataset(db, dataset_name)
+        images = crud.get_datums_in_dataset(db, dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return [

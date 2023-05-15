@@ -322,11 +322,11 @@ def get_all_labels(db: Session) -> list[schemas.Label]:
     ]
 
 
-def get_images_in_dataset(
+def get_datums_in_dataset(
     db: Session, dataset_name: str
 ) -> list[models.Datum]:
     dset = get_dataset(db, dataset_name)
-    return dset.images
+    return dset.datums
 
 
 def _get_unique_label_ids_in_image(image: models.Datum) -> set[int]:

@@ -230,7 +230,6 @@ class Dataset:
         progress_bar_title: str = "Chunking",
         show_progress_bar: bool = True,
     ):
-
         progress_bar = tqdm(
             total=len(data),
             unit="samples",
@@ -258,7 +257,6 @@ class Dataset:
         chunk_size: int = 1000,
         show_progress_bar: bool = True,
     ):
-
         log = []
 
         if not isinstance(groundtruth, list):
@@ -273,10 +271,8 @@ class Dataset:
             progress_bar_title="Uploading",
             show_progress_bar=show_progress_bar,
         ):
-
             # Image Classification
             if isinstance(chunk[0], GroundTruthImageClassification):
-
                 payload = {
                     "dataset_name": self.name,
                     "classifications": [
@@ -326,7 +322,6 @@ class Dataset:
 
             # Object Detection
             elif isinstance(chunk[0], GroundTruthDetection):
-
                 payload = {
                     "dataset_name": self.name,
                     "detections": [_det_to_dict(det) for det in chunk],

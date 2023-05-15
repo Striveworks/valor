@@ -295,10 +295,10 @@ def test_get_dataset_labels(schemas, crud, client: TestClient):
 def test_get_dataset_images(schemas, crud, client: TestClient):
     resp = client.get("/datasets/dsetname/images")
     assert resp.status_code == 200
-    crud.get_images_in_dataset.assert_called_once()
+    crud.get_datums_in_dataset.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_images_in_dataset",
+        "velour_api.main.crud.get_datums_in_dataset",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("datasets/dsetname/images")
