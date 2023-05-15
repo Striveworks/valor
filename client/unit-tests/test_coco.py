@@ -1,6 +1,6 @@
 import PIL.Image
 
-from velour.integrations.convert import coco_rle_to_mask
+from velour.integrations.coco import coco_rle_to_mask
 
 
 def test_coco_rle_to_mask():
