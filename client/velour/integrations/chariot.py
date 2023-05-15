@@ -340,8 +340,6 @@ def chariot_ds_to_velour_ds(
         f"/projects/{dsv.project_id}/datasets/{dsv.dataset_id}",
     )
 
-    print(href)
-
     # Create velour dataset
     velour_dataset = velour_client.create_dataset(
         name=velour_dataset_name, href=href
