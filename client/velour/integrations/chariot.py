@@ -1,6 +1,7 @@
 import gzip
 import json
 import tempfile
+import urllib
 from pathlib import Path
 from typing import List
 
@@ -334,9 +335,10 @@ def chariot_ds_to_velour_ds(
         velour_dataset_name = chariot_dataset.name
 
     # Construct url
-    href = settings.base_url
-    href += "/projects/" + dsv.project_id
-    href += "/datasets/" + dsv.dataset_id
+    href = urllib.urljoin(
+        settings.base_url,
+        f"/projects/{dsv.project_id}/datasets/{dsv.dataset_id}",
+    )
 
     # Create velour dataset
     velour_dataset = velour_client.create_dataset(
