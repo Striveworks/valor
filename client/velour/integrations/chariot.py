@@ -25,7 +25,11 @@ from velour.data_types import (
 try:
     from chariot.config import settings
     from chariot.datasets.dataset import Dataset
-    from chariot.datasets.dataset_version import DatasetVersion
+    from chariot.datasets.dataset_version import (
+        DatasetVersion,
+        get_latest_vertical_dataset_version,
+    )
+
 except ModuleNotFoundError:
     "`chariot` package not found. if you have an account on Chariot please see https://production.chariot.striveworks.us/docs/sdk/sdk for how to install the python SDK"
 
@@ -109,41 +113,22 @@ def chariot_parse_image_segmentation_annotation(
 
         annotation_label = annotation["class_label"]
 
-        # Create PolygonWithHole
-        region = None
-
-        # Contour name changes based on example...
-        contour_key = "contours"
-        if "contours" not in annotation and "contour" in annotation:
-            contour_key = "contour"
-        elif "contours" not in annotation:
-            raise ("Missing contour key!")
-
-        polygon = None
         hole = None
 
-        # Create Bounding Polygon
-        points = []
-        for point in annotation[contour_key][0]:
-            points.append(
-                Point(
-                    x=point["x"],
-                    y=point["y"],
-                )
-            )
+        # Create BoundingPolygon
+        points = [
+            Point(x=point["x"], y=point["y"])
+            for point in annotation["contours"][0]
+        ]
         polygon = BoundingPolygon(points)
 
-        # Check if hole exists
-        if len(annotation[contour_key]) > 1:
-            # Create Bounding Polygon for Hole
-            points = []
-            for point in annotation[contour_key][1]:
-                points.append(
-                    Point(
-                        x=point["x"],
-                        y=point["y"],
-                    )
-                )
+        # Create BoundingPolygon if hole exists
+        hole = None
+        if len(annotation["contours"]) > 1:
+            points = [
+                Point(x=point["x"], y=point["y"])
+                for point in annotation["contours"][1]
+            ]
             hole = BoundingPolygon(points)
 
         # Populate PolygonWithHole
@@ -203,15 +188,17 @@ def chariot_parse_object_detection_annotation(
     return gt_dets
 
 
-def chariot_parse_dataset_version_manifest(
-    chariot_dataset_version: DatasetVersion, use_training_manifest: bool = True
+def chariot_parse_dataset_annotations(
+    chariot_manifest, chariot_task_type, use_training_manifest: bool = True
 ) -> list:
     """Get chariot dataset annotations.
 
     Parameters
     ----------
-    chariot_dataset_version
-        Chariot DatasetVersion object of interest.
+    chariot_manifest
+        List of dictionaries containing data annotations and metadata.
+    chariot_task_type
+        Pass-through property chariot.datasets.dataset_version.DatasetVersion.supported_task_types
     using_training_manifest
         (OPTIONAL) Defaults to true, setting false will use the evaluation manifest which is a
         super set of the training manifest. Not recommended as the evaluation manifest may
@@ -219,66 +206,56 @@ def chariot_parse_dataset_version_manifest(
 
     Returns
     -------
-    Chariot annotations in velour format.
+    Chariot annotations in velour 'groundtruth' format.
     """
 
-    # Get the manifest url
-    manifest_url = (
-        chariot_dataset_version.get_training_manifest_url()
-        if use_training_manifest
-        else chariot_dataset_version.get_evaluation_manifest_url()
-    )
+    # Image Classification
+    if chariot_task_type.image_classification:
+        groundtruth_annotations = [
+            gt
+            for datum in chariot_manifest
+            for gt in chariot_parse_image_classification_annotation(datum)
+        ]
 
-    # Retrieve the manifest
-    chariot_manifest = retrieve_chariot_manifest(manifest_url)
+    # Image Segmentation
+    elif chariot_task_type.image_segmentation:
+        groundtruth_annotations = [
+            gt
+            for datum in chariot_manifest
+            for gt in chariot_parse_image_segmentation_annotation(datum)
+        ]
 
-    # Iterate through each element in the dataset manifest
-    groundtruth_annotations = []
-    for datum in chariot_manifest:
+    # Object Detection
+    elif chariot_task_type.object_detection:
+        groundtruth_annotations = [
+            gt
+            for datum in chariot_manifest
+            for gt in chariot_parse_object_detection_annotation(datum)
+        ]
 
-        # Image Classification
-        if chariot_dataset_version.supported_task_types.image_classification:
-            groundtruth_annotations += (
-                chariot_parse_image_classification_annotation(datum)
-            )
+    # Text Sentiment
+    elif chariot_task_type.text_sentiment:
+        raise NotImplementedError(
+            "Text-based datasets not currently supported."
+        )
 
-        # Image Segmentation
-        if chariot_dataset_version.supported_task_types.image_segmentation:
-            groundtruth_annotations += (
-                chariot_parse_image_segmentation_annotation(datum)
-            )
+    # Text Summarization
+    elif chariot_task_type.text_summarization:
+        raise NotImplementedError(
+            "Text-based datasets not currently supported."
+        )
 
-        # Object Detection
-        if chariot_dataset_version.supported_task_types.object_detection:
-            groundtruth_annotations += (
-                chariot_parse_object_detection_annotation(datum)
-            )
+    # Text Token Classifier
+    elif chariot_task_type.text_token_classification:
+        raise NotImplementedError(
+            "Text-based datasets not currently supported."
+        )
 
-        # Text Sentiment
-        if chariot_dataset_version.supported_task_types.text_sentiment:
-            raise NotImplementedError(
-                "Text-based datasets not currently supported."
-            )
-
-        # Text Summarization
-        if chariot_dataset_version.supported_task_types.text_summarization:
-            raise NotImplementedError(
-                "Text-based datasets not currently supported."
-            )
-
-        # Text Token Classifier
-        if (
-            chariot_dataset_version.supported_task_types.text_token_classification
-        ):
-            raise NotImplementedError(
-                "Text-based datasets not currently supported."
-            )
-
-        # Text Translation
-        if chariot_dataset_version.supported_task_types.text_translation:
-            raise NotImplementedError(
-                "Text-based datasets not currently supported."
-            )
+    # Text Translation
+    elif chariot_task_type.text_translation:
+        raise NotImplementedError(
+            "Text-based datasets not currently supported."
+        )
 
     return groundtruth_annotations
 
@@ -309,7 +286,7 @@ def chariot_ds_to_velour_ds(
         super set of the training manifest. Not recommended as the evaluation manifest may
         contain unlabeled data.
     chunk_size
-        (OPTIONAL) Defaults to 1000. Chunk_size is the maximum number of 'groundtruths' that are 
+        (OPTIONAL) Defaults to 1000. Chunk_size is the maximum number of 'groundtruths' that are
         uploaded in one call to the backend.
 
     Returns
@@ -337,9 +314,19 @@ def chariot_ds_to_velour_ds(
         # Use the first version in the list
         dsv = chariot_dataset.versions[0]
 
+    # Get the manifest url
+    manifest_url = (
+        dsv.get_training_manifest_url()
+        if use_training_manifest
+        else chariot_dataset_version.get_evaluation_manifest_url()
+    )
+
+    # Retrieve the manifest
+    chariot_manifest = retrieve_chariot_manifest(manifest_url)
+
     # Get GroundTruth Annotations
-    groundtruth_annotations = chariot_parse_dataset_version_manifest(
-        dsv, use_training_manifest
+    groundtruth_annotations = chariot_parse_dataset_annotations(
+        chariot_manifest, dsv.supported_task_types, use_training_manifest
     )
 
     # Check if name has been overwritten
