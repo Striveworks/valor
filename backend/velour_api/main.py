@@ -141,7 +141,9 @@ def get_dataset(
 ) -> schemas.Dataset:
     try:
         dset = crud.get_dataset(db, dataset_name=dataset_name)
-        return schemas.Dataset(name=dset.name, draft=dset.draft)
+        return schemas.Dataset(
+            **{k: getattr(dset, k) for k in schemas.Dataset.__fields__}
+        )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

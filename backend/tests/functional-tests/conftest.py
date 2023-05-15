@@ -118,7 +118,12 @@ def groundtruths(
     detections. These detections are taken from a torchmetrics unit test (see test_metrics.py)
     """
     dataset_name = "test dataset"
-    crud.create_dataset(db, dataset=schemas.DatasetCreate(name=dataset_name))
+    crud.create_dataset(
+        db,
+        dataset=schemas.DatasetCreate(
+            name=dataset_name, type=schemas.DatumTypes.IMAGE
+        ),
+    )
     gts_per_img = [
         {"boxes": [[214.1500, 41.2900, 562.4100, 285.0700]], "labels": ["4"]},
         {
