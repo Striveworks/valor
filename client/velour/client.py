@@ -126,8 +126,29 @@ class DatasetBase:
 
 
 class TabularDataset(DatasetBase):
-    def add_groundtruth(groundtruth: Union[List[Label], Dict[str, Label]]):
-        pass
+    def add_groundtruth(
+        self, groundtruth: Union[List[List[Label]], Dict[str, List[Label]]]
+    ):
+        if isinstance(groundtruth, list):
+            # make uids the list indices (as strings)
+            groundtruth = {str(i): gt for i, gt in enumerate(groundtruth)}
+
+        payload = {
+            "dataset_name": self.name,
+            "classifications": [
+                {
+                    "labels": [asdict(label) for label in labels],
+                    "datum": {"uid": uid},
+                }
+                for uid, labels in groundtruth.items()
+            ],
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "groundtruth-classifications", json=payload
+        )
+
+        return resp.json()
 
 
 class ImageDataset(DatasetBase):

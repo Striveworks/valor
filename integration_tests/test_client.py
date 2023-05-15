@@ -1208,7 +1208,34 @@ def test_evaluate_clf(
     ]
 
 
-def test_tabular_data_clf(client: Client, db: Session):
+def test_create_tabular_dataset_and_add_groundtruth(
+    client: Client, db: Session
+):
     dataset = client.create_tabular_dataset(name=dset_name)
     assert isinstance(dataset, TabularDataset)
-    # dataset.add_groundtruth()  # either list of list of ScoredLabels (one for each index) or dict going from uid to list of ScoredLabels
+
+    dataset.add_groundtruth(
+        [
+            [Label(key="k1", value="v1"), Label(key="k2", value="v2")],
+            [Label(key="k1", value="v3")],
+        ]
+    )
+    assert len(db.scalars(select(models.GroundTruthClassification)).all()) == 3
+    # check we have two Datums and they have the correct uids
+    data = db.scalars(select(models.Datum)).all()
+    assert len(data) == 2
+    assert set(d.uid for d in data) == {"0", "1"}
+
+    # check that we can add data with specified uids
+    dataset.add_groundtruth(
+        {
+            "uid1": [Label(key="k1", value="v1")],
+            "uid2": [Label(key="k1", value="v5")],
+        }
+    )
+
+    assert len(db.scalars(select(models.GroundTruthClassification)).all()) == 5
+    # check we have two Datums and they have the correct uids
+    data = db.scalars(select(models.Datum)).all()
+    assert len(data) == 4
+    assert set(d.uid for d in data) == {"0", "1", "uid1", "uid2"}
