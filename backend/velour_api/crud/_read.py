@@ -533,8 +533,8 @@ def _instance_segmentations_in_dataset_statement(
             labeled_ground_truth_segmentation
             JOIN ground_truth_segmentation ON
                 ground_truth_segmentation.id = labeled_ground_truth_segmentation.segmentation_id
-            JOIN image ON image.id = ground_truth_segmentation.datum_id
-            JOIN dataset ON dataset.id = image.dataset_id
+            JOIN datum ON datum.id = ground_truth_segmentation.datum_id
+            JOIN dataset ON dataset.id = datum.dataset_id
         WHERE
             ground_truth_segmentation.is_instance
             AND dataset.name = '{dataset_name}'
@@ -603,8 +603,8 @@ def _object_detections_in_dataset_statement(
             labeled_ground_truth_detection
             JOIN ground_truth_detection ON
                 ground_truth_detection.id = labeled_ground_truth_detection.detection_id
-            JOIN image ON image.id = ground_truth_detection.datum_id
-            JOIN dataset ON dataset.id = image.dataset_id
+            JOIN datum ON datum.id = ground_truth_detection.datum_id
+            JOIN dataset ON dataset.id = datum.dataset_id
         WHERE dataset.name = '{dataset_name}' AND ground_truth_detection.is_bbox = '{(task == enums.Task.BBOX_OBJECT_DETECTION)}'
     """
 
@@ -642,9 +642,9 @@ def _model_instance_segmentation_preds_statement(
             labeled_predicted_segmentation
             JOIN predicted_segmentation ON
                 predicted_segmentation.id = labeled_predicted_segmentation.segmentation_id
-            JOIN image ON image.id = predicted_segmentation.datum_id
+            JOIN datum ON datum.id = predicted_segmentation.datum_id
             JOIN model ON model.id = predicted_segmentation.model_id
-            JOIN dataset ON dataset.id = image.dataset_id
+            JOIN dataset ON dataset.id = datum.dataset_id
         WHERE
             model.name = '{model_name}'
             AND dataset.name = '{dataset_name}'
@@ -685,9 +685,9 @@ def _model_object_detection_preds_statement(
         labeled_predicted_detection
         JOIN predicted_detection ON
             predicted_detection.id = labeled_predicted_detection.detection_id
-        JOIN image ON image.id = predicted_detection.datum_id
+        JOIN datum ON datum.id = predicted_detection.datum_id
         JOIN model ON model.id = predicted_detection.model_id
-        JOIN dataset ON dataset.id = image.dataset_id
+        JOIN dataset ON dataset.id = datum.dataset_id
     WHERE
         model.name = '{model_name}'
         AND dataset.name = '{dataset_name}'
