@@ -335,10 +335,12 @@ def chariot_ds_to_velour_ds(
         velour_dataset_name = chariot_dataset.name
 
     # Construct url
-    href = urllib.urljoin(
+    href = urllib.parse.urljoin(
         settings.base_url,
         f"/projects/{dsv.project_id}/datasets/{dsv.dataset_id}",
     )
+
+    print(href)
 
     # Create velour dataset
     velour_dataset = velour_client.create_dataset(
