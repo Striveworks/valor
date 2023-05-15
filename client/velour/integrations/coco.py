@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Union
 
 import numpy as np
 import PIL.Image
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from velour.client import Dataset
 from velour.data_types import (
@@ -114,4 +114,4 @@ def upload_coco_panoptic(
 
     for ann in tqdm(annotations["annotations"]):
         segs = _get_segs_for_single_image(ann)
-        dataset.add_groundtruth_segmentations(segs)
+        dataset.add_groundtruth(segs, show_progress_bar=False)

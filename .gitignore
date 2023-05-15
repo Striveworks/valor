@@ -6,3 +6,4 @@ build
 *.ipynb
 .env*
 .vscode
+*/dist/*

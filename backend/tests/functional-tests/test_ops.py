@@ -286,7 +286,7 @@ def test_iou_det_and_seg(
     # area 59.5 (honestly not exactly sure why, probably some aliasing thing?)
     # since the triangle is contained in the detection, that area is also the area
     # of its intersection
-    area_convex_hull_triangle = 59.5
+    area_convex_hull_triangle = 55
     assert ops.iou_det_and_seg(
         db, poly_det, seg
     ) == area_convex_hull_triangle / (

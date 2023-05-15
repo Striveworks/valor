@@ -1,13 +1,11 @@
 from geoalchemy2.elements import RasterElement, WKBElement
 from geoalchemy2.functions import (
     ST_Area,
-    ST_Boundary,
-    ST_ConvexHull,
     ST_Count,
     ST_Envelope,
     ST_Intersection,
-    ST_Polygon,
 )
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .models import (
@@ -106,19 +104,27 @@ def iou_det_and_seg(
     with the bounding box that circumscribes the segmentation. If the detection is a polygon
     then we take the intersection of the detection with the convex hull of the segmentation
     """
-    seg_boundary = ST_Polygon(seg.shape)
     if det.is_bbox:
-        seg_boundary = ST_Envelope(seg_boundary)
+        first_line = f"SELECT ST_Area(ST_Intersection(ST_Envelope(seg_to_polys), {det.__class__.__tablename__}.boundary)), ST_Area(ST_Envelope(seg_to_polys)), ST_Area({det.__class__.__tablename__}.boundary)"
     else:
-        seg_boundary = ST_ConvexHull(ST_Boundary(seg_boundary))
-    cap_area = _intersection_area_of_det_boundaries(
-        db, det.boundary, seg_boundary
+        first_line = f"SELECT ST_Area(ST_Intersection(seg_to_polys, {det.__class__.__tablename__}.boundary)), ST_Area(seg_to_polys), ST_Area({det.__class__.__tablename__}.boundary)"
+    query = text(
+        first_line
+        + f"""
+        FROM(
+            SELECT ST_Union(geom) as seg_to_polys
+            FROM (
+                SELECT ST_MakeValid((ST_DumpAsPolygons(shape)).geom) as geom
+                FROM {seg.__class__.__tablename__}
+                WHERE {seg.__class__.__tablename__}.id = {seg.id}
+            ) As subquery
+        ) AS subquery2, {det.__class__.__tablename__}
+        WHERE {det.__class__.__tablename__}.id = {det.id}
+        """
     )
-    return cap_area / (
-        _det_boundary_area(db, det.boundary)
-        + _det_boundary_area(db, seg_boundary)
-        - cap_area
-    )
+    cap_area, seg_area, det_area = db.execute(query).first()
+
+    return cap_area / (det_area + seg_area - cap_area)
 
 
 def _intersection_area_of_det_boundaries(
