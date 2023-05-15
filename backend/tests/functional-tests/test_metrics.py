@@ -19,7 +19,12 @@ model_name = "test model"
 
 @pytest.fixture
 def classification_test_data(db: Session):
-    crud.create_dataset(db, schemas.DatasetCreate(name=dataset_name))
+    crud.create_dataset(
+        db,
+        schemas.DatasetCreate(
+            name=dataset_name, type=schemas.DatumTypes.IMAGE
+        ),
+    )
     crud.create_model(db, schemas.Model(name=model_name))
 
     animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
