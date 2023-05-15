@@ -395,13 +395,13 @@ def create_predicted_segmentations(
     )
 
 
-def create_ground_truth_image_classifications(
-    db: Session, data: schemas.GroundTruthImageClassificationsCreate
+def create_ground_truth_classifications(
+    db: Session, data: schemas.GroundTruthClassificationsCreate
 ):
     images = _add_images_to_dataset(
         db=db,
         dataset_name=data.dataset_name,
-        images=[c.image for c in data.classifications],
+        images=[c.datum for c in data.classifications],
     )
     label_tuple_to_id = _create_label_tuple_to_id_dict(
         db, [label for clf in data.classifications for label in clf.labels]
@@ -413,19 +413,19 @@ def create_ground_truth_image_classifications(
     ]
 
     return _bulk_insert_and_return_ids(
-        db, models.GroundTruthImageClassification, clf_mappings
+        db, models.GroundTruthClassification, clf_mappings
     )
 
 
 def create_predicted_image_classifications(
-    db: Session, data: schemas.PredictedImageClassificationsCreate
+    db: Session, data: schemas.PredictedClassificationsCreate
 ):
     model_id = get_model(db, model_name=data.model_name).id
     # get image ids from uids (these images should already exist)
     datum_ids = [
         get_image(
             db,
-            uid=classification.image.uid,
+            uid=classification.datum.uid,
             dataset_name=data.dataset_name,
         ).id
         for classification in data.classifications
@@ -451,7 +451,7 @@ def create_predicted_image_classifications(
     ]
 
     return _bulk_insert_and_return_ids(
-        db, models.PredictedImageClassification, pred_mappings
+        db, models.PredictedClassification, pred_mappings
     )
 
 

@@ -15,7 +15,13 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
-from velour.client import Client, ClientException, ImageDataset, Model
+from velour.client import (
+    Client,
+    ClientException,
+    ImageDataset,
+    Model,
+    TabularDataset,
+)
 from velour.data_types import (
     BoundingBox,
     BoundingPolygon,
@@ -872,7 +878,7 @@ def test_create_model_with_predicted_classifications(
         gts=gt_clfs1,
         preds=pred_clfs,
         add_preds_method_name="add_predicted_classifications",
-        preds_model_class=models.PredictedImageClassification,
+        preds_model_class=models.PredictedClassification,
         preds_expected_number=5,
         expected_labels_tuples={
             ("k12", "v12"),
@@ -1201,7 +1207,7 @@ def test_evaluate_clf(
     ]
 
 
-def test_tabular_data_clf():
-    pass
-    # dataset = client.create_image_dataset(name="", type="tabular")
+def test_tabular_data_clf(client: Client, db: Session):
+    dataset = client.create_tabular_dataset(name=dset_name)
+    assert isinstance(dataset, TabularDataset)
     # dataset.add_groundtruth()  # either list of list of ScoredLabels (one for each index) or dict going from uid to list of ScoredLabels

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
 
 from velour_api import crud, models, schemas
-from velour_api.models import PredictedImageClassification
+from velour_api.models import PredictedClassification
 
 
 def binary_roc_auc(
@@ -13,7 +13,7 @@ def binary_roc_auc(
     # query to get the datum_ids and label values of groundtruths that have the given label key
     gts_query = (
         select(
-            models.GroundTruthImageClassification.datum_id.label("datum_id"),
+            models.GroundTruthClassification.datum_id.label("datum_id"),
             models.Label.value.label("label_value"),
         )
         .join(models.Datum)
@@ -22,8 +22,7 @@ def binary_roc_auc(
             models.Label,
             and_(
                 models.Label.key == label.key,
-                models.GroundTruthImageClassification.label_id
-                == models.Label.id,
+                models.GroundTruthClassification.label_id == models.Label.id,
             ),
         )
     ).subquery()
@@ -43,8 +42,8 @@ def binary_roc_auc(
     # get the prediction scores for the given label (key and value)
     preds_query = (
         select(
-            models.PredictedImageClassification.datum_id.label("datum_id"),
-            models.PredictedImageClassification.score.label("score"),
+            models.PredictedClassification.datum_id.label("datum_id"),
+            models.PredictedClassification.score.label("score"),
             models.Label.value.label("label_value"),
         )
         .join(models.Datum)
@@ -55,8 +54,7 @@ def binary_roc_auc(
             and_(
                 models.Label.key == label.key,
                 models.Label.value == label.value,
-                models.PredictedImageClassification.label_id
-                == models.Label.id,
+                models.PredictedClassification.label_id == models.Label.id,
             ),
         )
     ).subquery()
@@ -218,7 +216,7 @@ def confusion_matrix_at_label_key(
     that have both a groundtruth and prediction with label key `label_key`
     """
     subquery = (
-        select(func.max(PredictedImageClassification.score).label("max_score"))
+        select(func.max(PredictedClassification.score).label("max_score"))
         .join(models.Label)
         .join(models.Datum)
         .join(models.Dataset)
@@ -227,45 +225,43 @@ def confusion_matrix_at_label_key(
             and_(
                 models.Label.key == label_key,
                 models.Dataset.name == dataset_name,
-                models.Model.id == PredictedImageClassification.model_id,
+                models.Model.id == PredictedClassification.model_id,
                 models.Model.name == model_name,
             )
         )
-        .group_by(PredictedImageClassification.datum_id)
+        .group_by(PredictedClassification.datum_id)
     ).alias()
 
     # used for the edge case where the max confidence appears twice
     min_id_query = (
-        select(
-            func.min(models.PredictedImageClassification.id).label("min_id")
-        )
+        select(func.min(models.PredictedClassification.id).label("min_id"))
         .join(models.Label)
         .join(
             subquery,
             and_(
-                PredictedImageClassification.score == subquery.c.max_score,
+                PredictedClassification.score == subquery.c.max_score,
                 models.Label.key == label_key,
             ),
         )
-        .group_by(models.PredictedImageClassification.datum_id)
+        .group_by(models.PredictedClassification.datum_id)
     ).alias()
 
     hard_preds_query = (
         select(
             models.Label.value.label("pred_label_value"),
-            models.PredictedImageClassification.datum_id.label("datum_id"),
+            models.PredictedClassification.datum_id.label("datum_id"),
         )
-        .join(models.PredictedImageClassification)
+        .join(models.PredictedClassification)
         .join(
             subquery,
             and_(
-                PredictedImageClassification.score == subquery.c.max_score,
+                PredictedClassification.score == subquery.c.max_score,
                 models.Label.key == label_key,
             ),
         )
         .join(
             min_id_query,
-            PredictedImageClassification.id == min_id_query.c.min_id,
+            PredictedClassification.id == min_id_query.c.min_id,
         )
     ).alias()
 
@@ -274,15 +270,14 @@ def confusion_matrix_at_label_key(
     total_query = (
         select(b, func.count())
         .join(
-            models.GroundTruthImageClassification,
-            models.GroundTruthImageClassification.datum_id
+            models.GroundTruthClassification,
+            models.GroundTruthClassification.datum_id
             == hard_preds_query.c.datum_id,
         )
         .join(
             models.Label,
             and_(
-                models.Label.id
-                == models.GroundTruthImageClassification.label_id,
+                models.Label.id == models.GroundTruthClassification.label_id,
                 models.Label.key == label_key,
             ),
         )

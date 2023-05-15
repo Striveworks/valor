@@ -137,13 +137,13 @@ def test_post_groundtruth_classifications(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruth-classifications",
-        crud_method_name="create_ground_truth_image_classifications",
+        crud_method_name="create_ground_truth_classifications",
         example_json=example_json,
     )
 
     # check we get a conflict (409) if the dataset is finalized
     with patch(
-        "velour_api.main.crud.create_ground_truth_image_classifications",
+        "velour_api.main.crud.create_ground_truth_classifications",
         side_effect=exceptions.DatasetIsFinalizedError("dsetname"),
     ):
         resp = client.post("/groundtruth-classifications", json=example_json)

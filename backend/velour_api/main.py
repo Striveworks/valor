@@ -94,11 +94,11 @@ def create_predicted_segmentations(
     "/groundtruth-classifications", dependencies=[Depends(token_auth_scheme)]
 )
 def create_groundtruth_classifications(
-    data: schemas.GroundTruthImageClassificationsCreate,
+    data: schemas.GroundTruthClassificationsCreate,
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
-        return crud.create_ground_truth_image_classifications(db=db, data=data)
+        return crud.create_ground_truth_classifications(db=db, data=data)
     except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -107,7 +107,7 @@ def create_groundtruth_classifications(
     "/predicted-classifications", dependencies=[Depends(token_auth_scheme)]
 )
 def create_predicted_classifications(
-    data: schemas.PredictedImageClassificationsCreate,
+    data: schemas.PredictedClassificationsCreate,
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:

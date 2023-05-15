@@ -54,10 +54,13 @@ class Model(BaseModel):
         return _validate_href(v)
 
 
-class Image(BaseModel):
+class Datum(BaseModel):
     uid: str
-    height: int
-    width: int
+
+
+class Image(Datum):
+    height: int = None
+    width: int = None
     frame: Optional[int] = None
 
 
@@ -119,13 +122,13 @@ class GroundTruthDetectionsCreate(BaseModel):
     detections: list[GroundTruthDetection]
 
 
-class GroundTruthImageClassification(BaseModel):
-    image: Image
+class GroundTruthClassification(BaseModel):
+    datum: Datum
     labels: list[Label]
 
 
-class PredictedImageClassification(BaseModel):
-    image: Image
+class PredictedClassification(BaseModel):
+    datum: Datum
     scored_labels: list[ScoredLabel]
 
     @validator("scored_labels")
@@ -146,15 +149,15 @@ class PredictedImageClassification(BaseModel):
         return v
 
 
-class GroundTruthImageClassificationsCreate(BaseModel):
+class GroundTruthClassificationsCreate(BaseModel):
     dataset_name: str
-    classifications: list[GroundTruthImageClassification]
+    classifications: list[GroundTruthClassification]
 
 
-class PredictedImageClassificationsCreate(BaseModel):
+class PredictedClassificationsCreate(BaseModel):
     model_name: str
     dataset_name: str
-    classifications: list[PredictedImageClassification]
+    classifications: list[PredictedClassification]
 
 
 class PolygonWithHole(BaseModel):

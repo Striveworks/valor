@@ -55,8 +55,8 @@ def check_db_empty(db: Session):
         models.PredictedDetection,
         models.Label,
         models.Dataset,
-        models.GroundTruthImageClassification,
-        models.PredictedImageClassification,
+        models.GroundTruthClassification,
+        models.PredictedClassification,
         models.LabeledGroundTruthSegmentation,
         models.LabeledPredictedDetection,
         models.PredictedSegmentation,
@@ -231,19 +231,19 @@ def pred_segs_create(
 @pytest.fixture
 def gt_clfs_create(
     img1: schemas.Image, img2: schemas.Image
-) -> schemas.GroundTruthImageClassificationsCreate:
-    return schemas.GroundTruthImageClassificationsCreate(
+) -> schemas.GroundTruthClassificationsCreate:
+    return schemas.GroundTruthClassificationsCreate(
         dataset_name=dset_name,
         classifications=[
-            schemas.GroundTruthImageClassification(
-                image=img1,
+            schemas.GroundTruthClassification(
+                datum=img1,
                 labels=[
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
                 ],
             ),
-            schemas.GroundTruthImageClassification(
-                image=img2,
+            schemas.GroundTruthClassification(
+                datum=img2,
                 labels=[schemas.Label(key="k2", value="v3")],
             ),
         ],
@@ -253,13 +253,13 @@ def gt_clfs_create(
 @pytest.fixture
 def pred_clfs_create(
     img1: schemas.Image, img2: schemas.Image
-) -> schemas.PredictedImageClassificationsCreate:
-    return schemas.PredictedImageClassificationsCreate(
+) -> schemas.PredictedClassificationsCreate:
+    return schemas.PredictedClassificationsCreate(
         model_name=model_name,
         dataset_name=dset_name,
         classifications=[
-            schemas.PredictedImageClassification(
-                image=img1,
+            schemas.PredictedClassification(
+                datum=img1,
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k1", value="v1"), score=0.2
@@ -272,8 +272,8 @@ def pred_clfs_create(
                     ),
                 ],
             ),
-            schemas.PredictedImageClassification(
-                image=img2,
+            schemas.PredictedClassification(
+                datum=img2,
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k2", value="v2"), score=1.0
@@ -469,17 +469,17 @@ def test_create_detections_as_bbox_or_poly(db: Session, img1: schemas.Image):
 
 
 def test_create_ground_truth_classifications_and_delete_dataset(
-    db: Session, gt_clfs_create: schemas.GroundTruthImageClassificationsCreate
+    db: Session, gt_clfs_create: schemas.GroundTruthClassificationsCreate
 ):
     crud.create_dataset(
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
-    crud.create_ground_truth_image_classifications(db, gt_clfs_create)
+    crud.create_ground_truth_classifications(db, gt_clfs_create)
 
-    # should have three GroundTruthImageClassification rows since one image has two
+    # should have three GroundTruthClassification rows since one image has two
     # labels and the other has one
-    assert crud.number_of_rows(db, models.GroundTruthImageClassification) == 3
+    assert crud.number_of_rows(db, models.GroundTruthClassification) == 3
     assert crud.number_of_rows(db, models.Datum) == 2
     assert crud.number_of_rows(db, models.Label) == 3
 
@@ -488,7 +488,7 @@ def test_create_ground_truth_classifications_and_delete_dataset(
     for model_cls in [
         models.Dataset,
         models.Datum,
-        models.GroundTruthImageClassification,
+        models.GroundTruthClassification,
     ]:
         assert crud.number_of_rows(db, model_cls) == 0
 
@@ -498,8 +498,8 @@ def test_create_ground_truth_classifications_and_delete_dataset(
 
 def test_create_predicted_classifications_and_delete_model(
     db: Session,
-    pred_clfs_create: schemas.PredictedImageClassification,
-    gt_clfs_create: schemas.GroundTruthImageClassificationsCreate,
+    pred_clfs_create: schemas.PredictedClassification,
+    gt_clfs_create: schemas.GroundTruthClassificationsCreate,
 ):
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
@@ -518,11 +518,11 @@ def test_create_predicted_classifications_and_delete_model(
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
-    crud.create_ground_truth_image_classifications(db, gt_clfs_create)
+    crud.create_ground_truth_classifications(db, gt_clfs_create)
     crud.create_predicted_image_classifications(db, pred_clfs_create)
 
     # check db has the added predictions
-    assert crud.number_of_rows(db, models.PredictedImageClassification) == 6
+    assert crud.number_of_rows(db, models.PredictedClassification) == 6
 
     # delete model and check all detections from it are gone
     crud.delete_model(db, model_name)
@@ -1040,7 +1040,7 @@ def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
             name=dset_name, type=schemas.DatumTypes.IMAGE
         ),
     )
-    crud.create_ground_truth_image_classifications(db, gt_clfs_create)
+    crud.create_ground_truth_classifications(db, gt_clfs_create)
     crud.create_model(db, schemas.Model(name=model_name))
     crud.create_predicted_image_classifications(db, pred_clfs_create)
     crud.finalize_dataset(db, dset_name)

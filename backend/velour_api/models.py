@@ -23,11 +23,11 @@ class Label(Base):
         list["LabeledPredictedDetection"]
     ] = relationship("LabeledPredictedDetection", back_populates="label")
     ground_truth_image_classifications: Mapped[
-        list["GroundTruthImageClassification"]
-    ] = relationship("GroundTruthImageClassification", back_populates="label")
+        list["GroundTruthClassification"]
+    ] = relationship("GroundTruthClassification", back_populates="label")
     predicted_image_classifications: Mapped[
-        list["PredictedImageClassification"]
-    ] = relationship("PredictedImageClassification", back_populates="label")
+        list["PredictedClassification"]
+    ] = relationship("PredictedClassification", back_populates="label")
     labeled_ground_truth_segmentations: Mapped[
         list["LabeledGroundTruthSegmentation"]
     ] = relationship("LabeledGroundTruthSegmentation", back_populates="label")
@@ -142,7 +142,7 @@ class LabeledPredictedDetection(Base):
         return self.detection.datum_id
 
 
-class GroundTruthImageClassification(Base):
+class GroundTruthClassification(Base):
     """Groundtruth for an image classification"""
 
     __tablename__ = "ground_truth_image_classification"
@@ -159,7 +159,7 @@ class GroundTruthImageClassification(Base):
     )
 
 
-class PredictedImageClassification(Base):
+class PredictedClassification(Base):
     """Prediction for image classification from a model"""
 
     __tablename__ = "predicted_image_classification"
@@ -303,11 +303,11 @@ class Datum(Base):
         PredictedDetection, cascade="all, delete"
     )
     ground_truth_classifications: Mapped[
-        list[GroundTruthImageClassification]
-    ] = relationship(GroundTruthImageClassification, cascade="all, delete")
+        list[GroundTruthClassification]
+    ] = relationship(GroundTruthClassification, cascade="all, delete")
     predicted_classifications: Mapped[
-        list[PredictedImageClassification]
-    ] = relationship(PredictedImageClassification, cascade="all, delete")
+        list[PredictedClassification]
+    ] = relationship(PredictedClassification, cascade="all, delete")
     ground_truth_segmentations: Mapped[
         list[GroundTruthSegmentation]
     ] = relationship(GroundTruthSegmentation, cascade="all, delete")
@@ -331,7 +331,7 @@ class Model(Base):
         PredictedDetection, cascade="all, delete"
     )
     predicted_image_classifications = relationship(
-        PredictedImageClassification, cascade="all, delete"
+        PredictedClassification, cascade="all, delete"
     )
     predicted_segmentations = relationship(
         PredictedSegmentation, cascade="all, delete"

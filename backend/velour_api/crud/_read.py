@@ -230,14 +230,13 @@ def get_classification_labels_in_dataset(
 ) -> list[models.Label]:
     return db.scalars(
         select(models.Label)
-        .join(models.GroundTruthImageClassification)
+        .join(models.GroundTruthClassification)
         .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Datum.id
-                == models.GroundTruthImageClassification.datum_id,
+                models.Datum.id == models.GroundTruthClassification.datum_id,
             )
         )
         .distinct()
@@ -249,15 +248,14 @@ def get_classification_prediction_labels(
 ):
     return db.scalars(
         select(models.Label)
-        .join(models.PredictedImageClassification)
+        .join(models.PredictedClassification)
         .join(models.Model)
         .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Datum.id
-                == models.PredictedImageClassification.datum_id,
+                models.Datum.id == models.PredictedClassification.datum_id,
                 models.Model.name == model_name,
             )
         )
@@ -270,14 +268,13 @@ def get_classification_label_values_in_dataset(
 ) -> list[str]:
     return db.scalars(
         select(models.Label.value)
-        .join(models.GroundTruthImageClassification)
+        .join(models.GroundTruthClassification)
         .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Datum.id
-                == models.GroundTruthImageClassification.datum_id,
+                models.Datum.id == models.GroundTruthClassification.datum_id,
                 models.Label.key == label_key,
             )
         )
@@ -290,15 +287,14 @@ def get_classification_prediction_label_values(
 ):
     return db.scalars(
         select(models.Label.value)
-        .join(models.PredictedImageClassification)
+        .join(models.PredictedClassification)
         .join(models.Model)
         .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Datum.id
-                == models.PredictedImageClassification.datum_id,
+                models.Datum.id == models.PredictedClassification.datum_id,
                 models.Model.name == model_name,
                 models.Label.key == label_key,
             )
@@ -621,7 +617,7 @@ def _object_detections_in_dataset_statement(
 
 def _classifications_in_dataset_statement(dataset_name: str) -> Select:
     return (
-        select(models.GroundTruthImageClassification)
+        select(models.GroundTruthClassification)
         .join(models.Datum)
         .join(models.Dataset)
         .where(models.Dataset.name == dataset_name)
@@ -709,7 +705,7 @@ def _model_classifications_preds_statement(
     model_name: str, dataset_name: str
 ) -> Select:
     return (
-        select(models.PredictedImageClassification)
+        select(models.PredictedClassification)
         .join(models.Datum)
         .join(models.Model)
         .join(models.Dataset)

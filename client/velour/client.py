@@ -126,7 +126,7 @@ class DatasetBase:
 
 
 class TabularDataset(DatasetBase):
-    def add_groundtruth():
+    def add_groundtruth(groundtruth: Union[List[Label], Dict[str, Label]]):
         pass
 
 
@@ -186,7 +186,7 @@ class ImageDataset(DatasetBase):
                     "classifications": [
                         {
                             "labels": [asdict(label) for label in clf.labels],
-                            "image": asdict(clf.image),
+                            "datum": asdict(clf.image),
                         }
                         for clf in chunk
                     ],
@@ -434,6 +434,17 @@ class Client:
             description=description,
         )
 
+    def create_tabular_dataset(
+        self, name: str, href: str = None, description: str = None
+    ):
+        return self._create_dataset(
+            name=name,
+            cls=TabularDataset,
+            type_=DatumTypes.TABULAR,
+            href=href,
+            description=description,
+        )
+
     def delete_dataset(self, name: str) -> None:
         job_id = self._requests_delete_rel_host(f"datasets/{name}").json()
         return Job(client=self, job_id=job_id)
@@ -569,7 +580,7 @@ class Model:
                         asdict(scored_label)
                         for scored_label in clf.scored_labels
                     ],
-                    "image": asdict(clf.image),
+                    "datum": asdict(clf.image),
                 }
                 for clf in clfs
             ],
