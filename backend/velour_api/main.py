@@ -342,6 +342,23 @@ def get_model_evaluation_metrics(
     )
 
 
+@app.get(
+    "/models/{model_name}/evaluation-settings/{evaluation_settings_id}/confusion-matrices",
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_model_confusion_matrices(
+    evaluation_settings_id: str, db: Session = Depends(get_db)
+) -> list[schemas.ConfusionMatrixResponse]:
+    return [
+        schemas.ConfusionMatrixResponse(
+            label_key=cm.label_key, entries=cm.entries
+        )
+        for cm in crud.get_confusion_matrices_from_evaluation_settings_id(
+            db, evaluation_settings_id
+        )
+    ]
+
+
 @app.post(
     "/ap-metrics", status_code=202, dependencies=[Depends(token_auth_scheme)]
 )

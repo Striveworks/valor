@@ -434,6 +434,13 @@ class ModelBase:
             ).json()
         ]
 
+    def get_confusion_matrices_at_evaluation_settings_id(
+        self, eval_settings_id: int
+    ) -> List[dict]:
+        return self.client._requests_get_rel_host(
+            f"/models/{self.name}/evaluation-settings/{eval_settings_id}/confusion-matrices"
+        ).json()
+
     def get_metric_dataframes(self):
         try:
             import pandas as pd
