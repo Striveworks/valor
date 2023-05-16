@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from velour.client import _generate_chunks
+from velour.client import ModelBase, _generate_chunks
 
 
 @pytest.fixture
@@ -75,3 +75,52 @@ def test__generate_chunks(chunk_size: int):
         assert len(chunk) == chunk_size
     assert len(chunked_data[-1]) == K
     assert data == [d for chunk in chunked_data for d in chunk]
+
+
+def test__group_evaluation_settings():
+    eval_settings = [
+        {
+            "model_name": "model",
+            "dataset_name": "dset1",
+            "model_pred_task_type": "Classification",
+            "dataset_gt_task_type": "Classification",
+            "id": 1,
+        },
+        {
+            "model_name": "model",
+            "dataset_name": "dset3",
+            "model_pred_task_type": "Classification",
+            "dataset_gt_task_type": "Other Task",
+            "id": 2,
+        },
+        {
+            "model_name": "model",
+            "dataset_name": "dset2",
+            "model_pred_task_type": "Classification",
+            "dataset_gt_task_type": "Classification",
+            "id": 3,
+        },
+    ]
+
+    groupings = ModelBase._group_evaluation_settings(eval_settings)
+
+    assert len(groupings) == 2
+
+    assert groupings == [
+        {
+            "ids": [1, 3],
+            "settings": {
+                "model_pred_task_type": "Classification",
+                "dataset_gt_task_type": "Classification",
+            },
+            "datasets": ["dset1", "dset2"],
+        },
+        {
+            "ids": [2],
+            "settings": {
+                "model_pred_task_type": "Classification",
+                "dataset_gt_task_type": "Other Task",
+            },
+            "datasets": ["dset3"],
+        },
+    ]

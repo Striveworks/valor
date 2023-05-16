@@ -1389,3 +1389,17 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
             ],
         }
     ]
+
+    eval_settings = model.get_evaluation_settings()
+    assert len(eval_settings) == 1
+    es_id = eval_settings[0].pop("id")
+    assert eval_settings[0] == {
+        "model_name": "test model",
+        "dataset_name": "test dataset",
+        "model_pred_task_type": "Classification",
+        "dataset_gt_task_type": "Classification",
+    }
+
+    assert (
+        model.get_metrics_at_evaluation_settings_id(es_id) == expected_metrics
+    )

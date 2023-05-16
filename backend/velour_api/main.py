@@ -305,25 +305,16 @@ def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
 
 
 @app.get(
-    "/models/{model_name}/metrics", dependencies=[Depends(token_auth_scheme)]
-)
-def get_model_metrics(
-    model_name: str, db: Session = Depends(get_db)
-) -> list[schemas.Metric]:
-    try:
-        return crud.get_model_metrics(db, model_name)
-    except exceptions.ModelDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
     "/models/{model_name}/evaluation-settings",
     dependencies=[Depends(token_auth_scheme)],
 )
 def get_model_evaluations(
     model_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.EvaluationSettings]:
-    return crud.get_model_evaluation_settings(db, model_name)
+    try:
+        return crud.get_model_evaluation_settings(db, model_name)
+    except exceptions.ModelDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
@@ -333,7 +324,10 @@ def get_model_evaluations(
 def get_evaluation_settings(
     evaluation_settings_id: str, db: Session = Depends(get_db)
 ):
-    return crud.get_evaluation_settings_from_id(db, evaluation_settings_id)
+    try:
+        return crud.get_evaluation_settings_from_id(db, evaluation_settings_id)
+    except exceptions.ModelDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
