@@ -215,8 +215,12 @@ def confusion_matrix_at_label_key(
     """Returns None in the case that there are not common images in the dataset
     that have both a groundtruth and prediction with label key `label_key`
     """
-    subquery = (
-        select(func.max(PredictedClassification.score).label("max_score"))
+    # this query get's the max score for each Datum for the given label key
+    q1 = (
+        select(
+            func.max(PredictedClassification.score).label("max_score"),
+            PredictedClassification.datum_id,
+        )
         .join(models.Label)
         .join(models.Datum)
         .join(models.Dataset)
@@ -230,23 +234,27 @@ def confusion_matrix_at_label_key(
             )
         )
         .group_by(PredictedClassification.datum_id)
-    ).alias()
+    )
+    subquery = q1.alias()
 
     # used for the edge case where the max confidence appears twice
-    min_id_query = (
+    # the result of this query is all of the hard predictions
+    q2 = (
         select(func.min(models.PredictedClassification.id).label("min_id"))
         .join(models.Label)
         .join(
             subquery,
             and_(
                 PredictedClassification.score == subquery.c.max_score,
-                models.Label.key == label_key,
+                PredictedClassification.datum_id == subquery.c.datum_id,
             ),
         )
+        .where(models.Label.key == label_key)
         .group_by(models.PredictedClassification.datum_id)
-    ).alias()
+    )
+    min_id_query = q2.alias()
 
-    hard_preds_query = (
+    q3 = (
         select(
             models.Label.value.label("pred_label_value"),
             models.PredictedClassification.datum_id.label("datum_id"),
@@ -256,14 +264,16 @@ def confusion_matrix_at_label_key(
             subquery,
             and_(
                 PredictedClassification.score == subquery.c.max_score,
-                models.Label.key == label_key,
+                PredictedClassification.datum_id == subquery.c.datum_id,
             ),
         )
         .join(
             min_id_query,
             PredictedClassification.id == min_id_query.c.min_id,
         )
-    ).alias()
+        .where(models.Label.key == label_key)
+    )
+    hard_preds_query = q3.alias()
 
     b = Bundle("cols", hard_preds_query.c.pred_label_value, models.Label.value)
 

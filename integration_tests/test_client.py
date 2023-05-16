@@ -1149,7 +1149,7 @@ def test_evaluate_ap(
     assert eval_job.metrics() != expected_metrics
 
 
-def test_evaluate_clf(
+def test_evaluate_image_clf(
     client: Client,
     gt_clfs1: list[GroundTruthImageClassification],
     pred_clfs: list[PredictedImageClassification],
@@ -1272,3 +1272,120 @@ def test_create_tabular_model_with_predicted_classifications(
         expected_scores={0.6, 0.4, 1.0, 0.1, 0.9},
         db=db,
     )
+
+
+def test_evaluate_tabular_clf(client: Session, db: Session):
+    y_true = [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
+    preds = [
+        [0.37, 0.35, 0.28],
+        [0.24, 0.61, 0.15],
+        [0.03, 0.88, 0.09],
+        [0.97, 0.03, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.01, 0.96, 0.03],
+        [0.28, 0.02, 0.7],
+        [0.78, 0.21, 0.01],
+        [0.45, 0.11, 0.44],
+    ]
+
+    dataset = client.create_tabular_dataset(name=dset_name)
+    model = client.create_tabular_model(name=model_name)
+
+    dataset.add_groundtruth(
+        [[Label(key="class", value=str(t))] for t in y_true]
+    )
+    model.add_predictions(
+        dataset,
+        [
+            [
+                ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
+                for i in range(len(pred))
+            ]
+            for pred in preds
+        ],
+    )
+
+    eval_job = model.evaluate_classification(dataset=dataset)
+
+    assert eval_job.ignored_pred_keys == []
+    assert eval_job.missing_pred_keys == []
+
+    # sleep to give the backend time to compute
+    time.sleep(1)
+    assert eval_job.status() == "Done"
+
+    metrics = eval_job.metrics()
+
+    expected_metrics = [
+        {
+            "type": "Accuracy",
+            "parameters": {"label_key": "class"},
+            "value": 0.5,
+        },
+        {
+            "type": "ROCAUC",
+            "parameters": {"label_key": "class"},
+            "value": 0.7685185185185185,
+        },
+        {
+            "type": "Precision",
+            "value": 0.6666666666666666,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.3333333333333333,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "F1",
+            "value": 0.4444444444444444,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "class", "value": "2"}},
+        {
+            "type": "Precision",
+            "value": 0.5,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "type": "Recall",
+            "value": 1.0,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "type": "F1",
+            "value": 0.6666666666666666,
+            "label": {"key": "class", "value": "0"},
+        },
+    ]
+    for m in metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics
+
+    confusion_matrices = eval_job.confusion_matrices()
+
+    assert confusion_matrices == [
+        {
+            "label_key": "class",
+            "entries": [
+                {"prediction": "0", "groundtruth": "0", "count": 3},
+                {"prediction": "0", "groundtruth": "1", "count": 3},
+                {"prediction": "1", "groundtruth": "1", "count": 2},
+                {"prediction": "1", "groundtruth": "2", "count": 1},
+                {"prediction": "2", "groundtruth": "1", "count": 1},
+            ],
+        }
+    ]
