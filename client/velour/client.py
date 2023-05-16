@@ -3,6 +3,7 @@ import math
 import os
 from base64 import b64decode, b64encode
 from dataclasses import asdict
+from enum import Enum
 from typing import Dict, List, Union
 from urllib.parse import urljoin
 
@@ -24,10 +25,23 @@ from velour.data_types import (
     PolygonWithHole,
     PredictedDetection,
     PredictedImageClassification,
+    ScoredLabel,
     _GroundTruthSegmentation,
     _PredictedSegmentation,
 )
 from velour.metrics import Task
+
+
+class DatumTypes(Enum):
+    IMAGE = "Image"
+    TABULAR = "Tabular"
+
+    @classmethod
+    def invert(cls, value: str):
+        for member in cls:
+            if member.value == value:
+                return member
+        raise ValueError(f"the value {value} is not in enum {cls.__name__}.")
 
 
 def _mask_array_to_pil_base64(mask: np.ndarray) -> str:
@@ -96,126 +110,53 @@ class ClientException(Exception):
     pass
 
 
-class Client:
-    """Client for interacting with the velour backend"""
+class DatasetBase:
+    def __init__(self, client: "Client", name: str):
+        self.client = client
+        self.name = name
 
-    def __init__(self, host: str, access_token: str = None):
-        """
-        Parameters
-        ----------
-        host
-            the host to connect to. Should start with "http://" or "https://"
-        access_token
-            the access token if the host requires authentication
-        """
-        if not (host.startswith("http://") or host.startswith("https://")):
-            raise ValueError(
-                f"host must stat with 'http://' or 'https://' but got {host}"
-            )
+    def get_labels(self) -> List[Label]:
+        labels = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/labels"
+        ).json()
 
-        if not host.endswith("/"):
-            host += "/"
-        self.host = host
-        self.access_token = os.getenv("VELOUR_ACCESS_TOKEN", access_token)
+        return [
+            Label(key=label["key"], value=label["value"]) for label in labels
+        ]
 
-        # check the connection by hitting the users endpoint
-        email = self._get_users_email()
-        success_str = f"Succesfully connected to {self.host}"
-        if email is None:
-            print(f"{success_str}.")
-        else:
-            print(f"{success_str} with user {email}.")
+    def finalize(self):
+        return self.client._requests_put_rel_host(
+            f"datasets/{self.name}/finalize"
+        )
 
-    def _get_users_email(self) -> Union[str, None]:
-        """Gets the users e-mail address (in the case when auth is enabled)
-        or returns None in the case of a no-auth backend.
-        """
-        resp = self._requests_get_rel_host("user").json()
-        return resp["email"]
+    def delete(self):
+        return self.client.delete_dataset(self.name)
 
-    def _requests_wrapper(
-        self, method_name: str, endpoint: str, *args, **kwargs
+
+class TabularDataset(DatasetBase):
+    def add_groundtruth(
+        self, groundtruth: Union[List[List[Label]], Dict[str, List[Label]]]
     ):
-        assert method_name in ["get", "post", "put", "delete"]
+        if isinstance(groundtruth, list):
+            # make uids the list indices (as strings)
+            groundtruth = {str(i): gt for i, gt in enumerate(groundtruth)}
 
-        url = urljoin(self.host, endpoint)
-        requests_method = getattr(requests, method_name)
+        payload = {
+            "dataset_name": self.name,
+            "classifications": [
+                {
+                    "labels": [asdict(label) for label in labels],
+                    "datum": {"uid": uid},
+                }
+                for uid, labels in groundtruth.items()
+            ],
+        }
 
-        if self.access_token is not None:
-            headers = {"Authorization": f"Bearer {self.access_token}"}
-        else:
-            headers = None
-        resp = requests_method(url, headers=headers, *args, **kwargs)
-        if not resp.ok:
-            if resp.status_code == 500:
-                resp.raise_for_status()
-            raise ClientException(resp.json()["detail"])
-
-        return resp
-
-    def _requests_post_rel_host(self, endpoint: str, *args, **kwargs):
-        return self._requests_wrapper(
-            method_name="post", endpoint=endpoint, *args, **kwargs
+        resp = self.client._requests_post_rel_host(
+            "groundtruth-classifications", json=payload
         )
 
-    def _requests_get_rel_host(self, endpoint: str, *args, **kwargs):
-        return self._requests_wrapper(
-            method_name="get", endpoint=endpoint, *args, **kwargs
-        )
-
-    def _requests_put_rel_host(self, endpoint: str, *args, **kwargs):
-        return self._requests_wrapper(
-            method_name="put", endpoint=endpoint, *args, **kwargs
-        )
-
-    def _requests_delete_rel_host(self, endpoint: str, *args, **kwargs):
-        return self._requests_wrapper(
-            method_name="delete", endpoint=endpoint, *args, **kwargs
-        )
-
-    def create_dataset(
-        self, name: str, href: str = None, description: str = None
-    ) -> "Dataset":
-        self._requests_post_rel_host(
-            "datasets",
-            json={"name": name, "href": href, "description": description},
-        )
-
-        return Dataset(client=self, name=name)
-
-    def delete_dataset(self, name: str) -> None:
-        job_id = self._requests_delete_rel_host(f"datasets/{name}").json()
-        return Job(client=self, job_id=job_id)
-
-    def get_dataset(self, name: str) -> "Dataset":
-        resp = self._requests_get_rel_host(f"datasets/{name}")
-        return Dataset(client=self, name=resp.json()["name"])
-
-    def get_datasets(self) -> List[dict]:
-        return self._requests_get_rel_host("datasets").json()
-
-    def create_model(
-        self, name: str, href: str = None, description: str = None
-    ) -> "Model":
-        self._requests_post_rel_host(
-            "models",
-            json={"name": name, "href": href, "description": description},
-        )
-
-        return Model(client=self, name=name)
-
-    def delete_model(self, name: str) -> None:
-        self._requests_delete_rel_host(f"models/{name}")
-
-    def get_model(self, name: str) -> "Model":
-        resp = self._requests_get_rel_host(f"models/{name}")
-        return Model(client=self, name=resp.json()["name"])
-
-    def get_models(self) -> List[dict]:
-        return self._requests_get_rel_host("models").json()
-
-    def get_all_labels(self) -> List[Label]:
-        return self._requests_get_rel_host("labels").json()
+        return resp.json()
 
 
 def _generate_chunks(
@@ -247,11 +188,7 @@ def _generate_chunks(
     progress_bar.close()
 
 
-class Dataset:
-    def __init__(self, client: Client, name: str):
-        self.client = client
-        self.name = name
-
+class ImageDataset(DatasetBase):
     def add_groundtruth(
         self,
         groundtruth: list,
@@ -280,7 +217,7 @@ class Dataset:
                     "classifications": [
                         {
                             "labels": [asdict(label) for label in clf.labels],
-                            "image": asdict(clf.image),
+                            "datum": asdict(clf.image),
                         }
                         for clf in chunk
                     ],
@@ -407,14 +344,6 @@ class Dataset:
     ) -> List[GroundTruthSemanticSegmentation]:
         return self._get_segmentations(image_uid, instance=False)
 
-    def finalize(self):
-        return self.client._requests_put_rel_host(
-            f"datasets/{self.name}/finalize"
-        )
-
-    def delete(self):
-        return self.client.delete_dataset(self.name)
-
     def get_images(self) -> List[Image]:
         images = self.client._requests_get_rel_host(
             f"datasets/{self.name}/images"
@@ -427,60 +356,36 @@ class Dataset:
             for image in images
         ]
 
-    def get_labels(self) -> List[Label]:
-        labels = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/labels"
-        ).json()
 
-        return [
-            Label(key=label["key"], value=label["value"]) for label in labels
-        ]
-
-
-class Job:
-    def __init__(
-        self,
-        client: Client,
-        job_id: str,
-        **kwargs,
-    ):
-        self._id = job_id
-        self.client = client
-
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
-    def status(self) -> str:
-        resp = self.client._requests_get_rel_host(f"/jobs/{self._id}").json()
-        return resp["status"]
-
-
-class EvalJob(Job):
-    def metrics(self) -> List[dict]:
-        return self.client._requests_get_rel_host(
-            f"/jobs/{self._id}/metrics"
-        ).json()
-
-    def confusion_matrices(self) -> List[dict]:
-        return self.client._requests_get_rel_host(
-            f"/jobs/{self._id}/confusion-matrices"
-        ).json()
-
-    # TODO: replace value with a dataclass?
-    def settings(self) -> dict:
-        return self.client._requests_get_rel_host(
-            f"/jobs/{self._id}/settings"
-        ).json()
-
-
-class Model:
-    def __init__(self, client: Client, name: str):
+class ModelBase:
+    def __init__(self, client: "Client", name: str):
         self.client = client
         self.name = name
 
+    def finalize_inferences(self, dataset: DatasetBase) -> None:
+        return self.client._requests_put_rel_host(
+            f"models/{self.name}/inferences/{dataset.name}/finalize"
+        ).json()
+
+    def evaluate_classification(self, dataset: DatasetBase) -> "EvalJob":
+        payload = {
+            "settings": {
+                "model_name": self.name,
+                "dataset_name": dataset.name,
+            }
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "/clf-metrics", json=payload
+        ).json()
+
+        return EvalJob(client=self.client, **resp)
+
+
+class ImageModel(ModelBase):
     def add_predictions(
         self,
-        dataset: Dataset,
+        dataset: ImageDataset,
         predictions: list,
         chunk_size: int = 1000,
         show_progress_bar: bool = True,
@@ -511,7 +416,7 @@ class Model:
                                 asdict(scored_label)
                                 for scored_label in clf.scored_labels
                             ],
-                            "image": asdict(clf.image),
+                            "datum": asdict(clf.image),
                         }
                         for clf in predictions
                     ],
@@ -570,14 +475,9 @@ class Model:
 
         return log
 
-    def finalize_inferences(self, dataset: Dataset) -> None:
-        return self.client._requests_put_rel_host(
-            f"models/{self.name}/inferences/{dataset.name}/finalize"
-        ).json()
-
     def evaluate_ap(
         self,
-        dataset: Dataset,
+        dataset: ImageDataset,
         model_pred_task_type: Task = None,
         dataset_gt_task_type: Task = None,
         iou_thresholds: List[float] = None,
@@ -615,22 +515,268 @@ class Model:
 
         return EvalJob(client=self.client, **resp)
 
-    def evaluate_classification(self, dataset: Dataset) -> EvalJob:
+
+class TabularModel(ModelBase):
+    def add_predictions(
+        self,
+        dataset: TabularDataset,
+        predictions: Union[
+            List[List[ScoredLabel]], Dict[str, List[ScoredLabel]]
+        ],
+    ):
+        if isinstance(predictions, list):
+            # make uids the list indices (as strings)
+            predictions = {str(i): gt for i, gt in enumerate(predictions)}
+
         payload = {
-            "settings": {
-                "model_name": self.name,
-                "dataset_name": dataset.name,
-            }
+            "model_name": self.name,
+            "dataset_name": dataset.name,
+            "classifications": [
+                {
+                    "scored_labels": [
+                        asdict(scored_label) for scored_label in scored_labels
+                    ],
+                    "datum": {"uid": uid},
+                }
+                for uid, scored_labels in predictions.items()
+            ],
         }
 
         resp = self.client._requests_post_rel_host(
-            "/clf-metrics", json=payload
+            "predicted-classifications", json=payload
+        )
+
+        return resp.json()
+
+
+class Client:
+    """Client for interacting with the velour backend"""
+
+    datum_type_and_entity_to_class = {
+        "models": {
+            DatumTypes.IMAGE: ImageModel,
+            DatumTypes.TABULAR: TabularModel,
+        },
+        "datasets": {
+            DatumTypes.IMAGE: ImageDataset,
+            DatumTypes.TABULAR: TabularDataset,
+        },
+    }
+
+    def __init__(self, host: str, access_token: str = None):
+        """
+        Parameters
+        ----------
+        host
+            the host to connect to. Should start with "http://" or "https://"
+        access_token
+            the access token if the host requires authentication
+        """
+        if not (host.startswith("http://") or host.startswith("https://")):
+            raise ValueError(
+                f"host must stat with 'http://' or 'https://' but got {host}"
+            )
+
+        if not host.endswith("/"):
+            host += "/"
+        self.host = host
+        self.access_token = os.getenv("VELOUR_ACCESS_TOKEN", access_token)
+
+        # check the connection by hitting the users endpoint
+        email = self._get_users_email()
+        success_str = f"Succesfully connected to {self.host}"
+        if email is None:
+            print(f"{success_str}.")
+        else:
+            print(f"{success_str} with user {email}.")
+
+    def _get_users_email(self) -> Union[str, None]:
+        """Gets the users e-mail address (in the case when auth is enabled)
+        or returns None in the case of a no-auth backend.
+        """
+        resp = self._requests_get_rel_host("user").json()
+        return resp["email"]
+
+    def _requests_wrapper(
+        self, method_name: str, endpoint: str, *args, **kwargs
+    ):
+        assert method_name in ["get", "post", "put", "delete"]
+
+        url = urljoin(self.host, endpoint)
+        requests_method = getattr(requests, method_name)
+
+        if self.access_token is not None:
+            headers = {"Authorization": f"Bearer {self.access_token}"}
+        else:
+            headers = None
+        resp = requests_method(url, headers=headers, *args, **kwargs)
+        if not resp.ok:
+            if resp.status_code == 500:
+                resp.raise_for_status()
+            raise ClientException(resp.json()["detail"])
+
+        return resp
+
+    def _requests_post_rel_host(self, endpoint: str, *args, **kwargs):
+        return self._requests_wrapper(
+            method_name="post", endpoint=endpoint, *args, **kwargs
+        )
+
+    def _requests_get_rel_host(self, endpoint: str, *args, **kwargs):
+        return self._requests_wrapper(
+            method_name="get", endpoint=endpoint, *args, **kwargs
+        )
+
+    def _requests_put_rel_host(self, endpoint: str, *args, **kwargs):
+        return self._requests_wrapper(
+            method_name="put", endpoint=endpoint, *args, **kwargs
+        )
+
+    def _requests_delete_rel_host(self, endpoint: str, *args, **kwargs):
+        return self._requests_wrapper(
+            method_name="delete", endpoint=endpoint, *args, **kwargs
+        )
+
+    def _create_model_or_dataset(
+        self,
+        entity_type: str,
+        datum_type: DatumTypes,
+        name: str,
+        href: str = None,
+        description: str = None,
+    ):
+        entity_types = list(self.datum_type_and_entity_to_class.keys())
+        if entity_type not in entity_types:
+            raise ValueError(f"Expected `entity_type` to be in {entity_types}")
+
+        class_ = self.datum_type_and_entity_to_class[entity_type][datum_type]
+
+        self._requests_post_rel_host(
+            entity_type,
+            json={
+                "name": name,
+                "href": href,
+                "description": description,
+                "type": datum_type.value,
+            },
+        )
+
+        return class_(client=self, name=name)
+
+    def create_image_dataset(
+        self, name: str, href: str = None, description: str = None
+    ):
+        return self._create_model_or_dataset(
+            entity_type="datasets",
+            datum_type=DatumTypes.IMAGE,
+            name=name,
+            href=href,
+            description=description,
+        )
+
+    def create_tabular_dataset(
+        self, name: str, href: str = None, description: str = None
+    ):
+        return self._create_model_or_dataset(
+            entity_type="datasets",
+            datum_type=DatumTypes.TABULAR,
+            name=name,
+            href=href,
+            description=description,
+        )
+
+    def delete_dataset(self, name: str) -> None:
+        job_id = self._requests_delete_rel_host(f"datasets/{name}").json()
+        return Job(client=self, job_id=job_id)
+
+    def _get_model_or_dataset(
+        self,
+        entity_type: str,
+        name: str,
+    ):
+        entity_types = list(self.datum_type_and_entity_to_class.keys())
+        if entity_type not in entity_types:
+            raise ValueError(f"Expected `entity_type` to be in {entity_types}")
+
+        resp = self._requests_get_rel_host(f"{entity_type}/{name}").json()
+
+        datum_type = DatumTypes.invert(resp["type"])
+        class_ = self.datum_type_and_entity_to_class[entity_type][datum_type]
+
+        return class_(client=self, name=resp["name"])
+
+    def get_model(self, name: str) -> ModelBase:
+        return self._get_model_or_dataset(entity_type="models", name=name)
+
+    def get_dataset(self, name: str) -> DatasetBase:
+        return self._get_model_or_dataset(entity_type="datasets", name=name)
+
+    def get_datasets(self) -> List[dict]:
+        return self._requests_get_rel_host("datasets").json()
+
+    def create_image_model(
+        self, name: str, href: str = None, description: str = None
+    ):
+        return self._create_model_or_dataset(
+            entity_type="models",
+            datum_type=DatumTypes.IMAGE,
+            name=name,
+            href=href,
+            description=description,
+        )
+
+    def create_tabular_model(
+        self, name: str, href: str = None, description: str = None
+    ):
+        return self._create_model_or_dataset(
+            entity_type="models",
+            datum_type=DatumTypes.TABULAR,
+            name=name,
+            href=href,
+            description=description,
+        )
+
+    def delete_model(self, name: str) -> None:
+        self._requests_delete_rel_host(f"models/{name}")
+
+    def get_models(self) -> List[dict]:
+        return self._requests_get_rel_host("models").json()
+
+    def get_all_labels(self) -> List[Label]:
+        return self._requests_get_rel_host("labels").json()
+
+
+class Job:
+    def __init__(
+        self,
+        client: Client,
+        job_id: str,
+        **kwargs,
+    ):
+        self._id = job_id
+        self.client = client
+
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    def status(self) -> str:
+        resp = self.client._requests_get_rel_host(f"/jobs/{self._id}").json()
+        return resp["status"]
+
+
+class EvalJob(Job):
+    def metrics(self) -> List[dict]:
+        return self.client._requests_get_rel_host(
+            f"/jobs/{self._id}/metrics"
         ).json()
 
-        return EvalJob(client=self.client, **resp)
+    def confusion_matrices(self) -> List[dict]:
+        return self.client._requests_get_rel_host(
+            f"/jobs/{self._id}/confusion-matrices"
+        ).json()
 
-    def get_metrics(self, dataset: Dataset, metric_type):
-        pass
-
-    def get_evaluation_settings(self):
-        pass
+    # TODO: replace value with a dataclass?
+    def settings(self) -> dict:
+        return self.client._requests_get_rel_host(
+            f"/jobs/{self._id}/settings"
+        ).json()

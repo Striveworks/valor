@@ -15,7 +15,13 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
-from velour.client import Client, ClientException, Dataset, Model
+from velour.client import (
+    Client,
+    ClientException,
+    DatumTypes,
+    ImageDataset,
+    TabularDataset,
+)
 from velour.data_types import (
     BoundingBox,
     BoundingPolygon,
@@ -403,14 +409,14 @@ def pred_clfs(img5: Image, img6: Image) -> list[PredictedImageClassification]:
     ]
 
 
-def _test_create_dataset_with_gts(
+def _test_create_image_dataset_with_gts(
     client: Client,
     gts1: list[Any],
     gts2: list[Any],
     gts3: list[Any],
     expected_labels_tuples: set[tuple[str, str]],
     expected_image_uids: list[str],
-) -> Dataset:
+) -> ImageDataset:
     """This test does the following
     - Creates a dataset
     - Adds groundtruth data to it in two batches
@@ -432,10 +438,10 @@ def _test_create_dataset_with_gts(
     expected_image_uids
         set of image uids to check were added to the database
     """
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
 
     with pytest.raises(ClientException) as exc_info:
-        client.create_dataset(dset_name)
+        client.create_image_dataset(dset_name)
     assert "already exists" in str(exc_info)
 
     dataset.add_groundtruth(gts1)
@@ -466,6 +472,7 @@ def _test_create_dataset_with_gts(
 
 def _test_create_model_with_preds(
     client: Client,
+    datum_type: DatumTypes,
     gts: list[Any],
     preds: list[Any],
     preds_model_class: type,
@@ -497,13 +504,17 @@ def _test_create_model_with_preds(
     -------
     the sqlalchemy objects for the created predictions
     """
-    model = client.create_model(model_name)
-    dataset = client.create_dataset(dset_name)
+    if datum_type == DatumTypes.IMAGE:
+        model = client.create_image_model(model_name)
+        dataset = client.create_image_dataset(dset_name)
+    else:
+        model = client.create_tabular_model(model_name)
+        dataset = client.create_tabular_dataset(dset_name)
 
     # verify we get an error if we try to create another model
     # with the same name
     with pytest.raises(ClientException) as exc_info:
-        client.create_model(model_name)
+        client.create_image_model(model_name)
     assert "already exists" in str(exc_info)
 
     # check that if we try to add detections we get an error
@@ -530,16 +541,18 @@ def _test_create_model_with_preds(
 
     # check that the get_model method works
     retrieved_model = client.get_model(model_name)
-    assert isinstance(retrieved_model, Model)
+    assert isinstance(retrieved_model, type(model))
     assert retrieved_model.name == model_name
 
     return db_preds
 
 
-def test_create_dataset_with_href_and_description(client: Client, db: Session):
+def test_create_image_dataset_with_href_and_description(
+    client: Client, db: Session
+):
     href = "http://a.com/b"
     description = "a description"
-    client.create_dataset(dset_name, href=href, description=description)
+    client.create_image_dataset(dset_name, href=href, description=description)
     db_dataset = db.scalar(select(models.Dataset))
     assert db_dataset.href == href
     assert db_dataset.description == description
@@ -548,20 +561,20 @@ def test_create_dataset_with_href_and_description(client: Client, db: Session):
 def test_create_model_with_href_and_description(client: Client, db: Session):
     href = "http://a.com/b"
     description = "a description"
-    client.create_model(model_name, href=href, description=description)
+    client.create_image_model(model_name, href=href, description=description)
     db_model = db.scalar(select(models.Model))
     assert db_model.href == href
     assert db_model.description == description
 
 
-def test_create_dataset_with_detections(
+def test_create_image_dataset_with_detections(
     client: Client,
     gt_dets1: list[GroundTruthDetection],
     gt_dets2: list[GroundTruthDetection],
     gt_dets3: list[GroundTruthDetection],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
-    dataset = _test_create_dataset_with_gts(
+    dataset = _test_create_image_dataset_with_gts(
         client=client,
         gts1=gt_dets1,
         gts2=gt_dets2,
@@ -588,7 +601,7 @@ def test_create_dataset_with_detections(
     assert dets2 == gt_dets_uid2
 
 
-def test_create_model_with_predicted_detections(
+def test_create_image_model_with_predicted_detections(
     client: Client,
     gt_poly_dets1: list[GroundTruthDetection],
     pred_poly_dets: list[PredictedDetection],
@@ -596,6 +609,7 @@ def test_create_model_with_predicted_detections(
 ):
     labeled_pred_dets = _test_create_model_with_preds(
         client=client,
+        datum_type=DatumTypes.IMAGE,
         gts=gt_poly_dets1,
         preds=pred_poly_dets,
         preds_model_class=models.LabeledPredictedDetection,
@@ -607,7 +621,7 @@ def test_create_model_with_predicted_detections(
 
     # check boundary
     db_pred = [
-        p for p in labeled_pred_dets if p.detection.image.uid == "uid1"
+        p for p in labeled_pred_dets if p.detection.datum.uid == "uid1"
     ][0]
     points = _list_of_points_from_wkt_polygon(db, db_pred.detection)
     pred = pred_poly_dets[0]
@@ -621,7 +635,7 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
     image = Image(uid="uid", height=200, width=150)
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
 
     gt_bbox = GroundTruthDetection(
         image=image,
@@ -673,8 +687,8 @@ def test_create_pred_detections_as_bbox_or_poly(
     or a polygon
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
-    dataset = client.create_dataset(dset_name)
-    model = client.create_model(model_name)
+    dataset = client.create_image_dataset(dset_name)
+    model = client.create_image_model(model_name)
 
     dataset.add_groundtruth(gt_dets1)
 
@@ -712,14 +726,14 @@ def test_create_pred_detections_as_bbox_or_poly(
     )
 
 
-def test_create_dataset_with_segmentations(
+def test_create_image_dataset_with_segmentations(
     client: Client,
     gt_segs1: list[GroundTruthSemanticSegmentation],
     gt_segs2: list[GroundTruthSemanticSegmentation],
     gt_segs3: list[GroundTruthSemanticSegmentation],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
-    dataset = _test_create_dataset_with_gts(
+    dataset = _test_create_image_dataset_with_gts(
         client=client,
         gts1=gt_segs1,
         gts2=gt_segs2,
@@ -764,7 +778,7 @@ def test_create_gt_segs_as_polys_or_masks(
     """Test that we can create a dataset with groundtruth segmentations that are defined
     both my polygons and mask arrays
     """
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
 
     xmin, xmax, ymin, ymax = 11, 45, 37, 102
     h, w = 900, 300
@@ -810,6 +824,7 @@ def test_create_model_with_predicted_segmentations(
     """Tests that we can create a predicted segmentation from a mask array"""
     labeled_pred_segs = _test_create_model_with_preds(
         client=client,
+        datum_type=DatumTypes.IMAGE,
         gts=gt_segs1,
         preds=pred_segs,
         preds_model_class=models.LabeledPredictedSegmentation,
@@ -822,7 +837,7 @@ def test_create_model_with_predicted_segmentations(
     # grab the segmentation from the db, recover the mask, and check
     # its equal to the mask the client sent over
     db_pred = [
-        p for p in labeled_pred_segs if p.segmentation.image.uid == "uid1"
+        p for p in labeled_pred_segs if p.segmentation.datum.uid == "uid1"
     ][0]
     png_from_db = db.scalar(ST_AsPNG(db_pred.segmentation.shape))
     f = io.BytesIO(png_from_db.tobytes())
@@ -831,14 +846,14 @@ def test_create_model_with_predicted_segmentations(
     np.testing.assert_equal(mask_array, pred_segs[0].mask)
 
 
-def test_create_dataset_with_classifications(
+def test_create_image_dataset_with_classifications(
     client: Client,
     gt_clfs1: list[GroundTruthImageClassification],
     gt_clfs2: list[GroundTruthImageClassification],
     gt_clfs3: list[GroundTruthImageClassification],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
-    _test_create_dataset_with_gts(
+    _test_create_image_dataset_with_gts(
         client=client,
         gts1=gt_clfs1,
         gts2=gt_clfs2,
@@ -851,7 +866,7 @@ def test_create_dataset_with_classifications(
     )
 
 
-def test_create_model_with_predicted_classifications(
+def test_create_image_model_with_predicted_classifications(
     client: Client,
     gt_clfs1: list[GroundTruthDetection],
     pred_clfs: list[PredictedDetection],
@@ -859,9 +874,10 @@ def test_create_model_with_predicted_classifications(
 ):
     _test_create_model_with_preds(
         client=client,
+        datum_type=DatumTypes.IMAGE,
         gts=gt_clfs1,
         preds=pred_clfs,
-        preds_model_class=models.PredictedImageClassification,
+        preds_model_class=models.PredictedClassification,
         preds_expected_number=5,
         expected_labels_tuples={
             ("k12", "v12"),
@@ -879,7 +895,7 @@ def test_boundary(
     client: Client, db: Session, rect1: BoundingPolygon, img1: Image
 ):
     """Test consistency of boundary in backend and client"""
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
     rect1_poly = bbox_to_poly(rect1)
     dataset.add_groundtruth(
         [
@@ -907,8 +923,8 @@ def test_iou(
     rect2: BoundingPolygon,
     img1: Image,
 ):
-    dataset = client.create_dataset(dset_name)
-    model = client.create_model(model_name)
+    dataset = client.create_image_dataset(dset_name)
+    model = client.create_image_model(model_name)
 
     rect1_poly = bbox_to_poly(rect1)
     rect2_poly = bbox_to_poly(rect2)
@@ -947,7 +963,7 @@ def test_delete_dataset_background_job(
     client: Client, gt_dets1, gt_dets2, gt_dets3, db: Session
 ):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
     dataset.add_groundtruth(gt_dets1 + gt_dets2 + gt_dets3)
 
     job = client.delete_dataset(dset_name)
@@ -962,11 +978,11 @@ def test_evaluate_ap(
     pred_dets: list[PredictedDetection],
     db: Session,
 ):
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
     dataset.add_groundtruth(gt_dets1)
     dataset.finalize()
 
-    model = client.create_model(model_name)
+    model = client.create_image_model(model_name)
     model.add_predictions(dataset, pred_dets)
     model.finalize_inferences(dataset)
 
@@ -1133,17 +1149,17 @@ def test_evaluate_ap(
     assert eval_job.metrics() != expected_metrics
 
 
-def test_evaluate_clf(
+def test_evaluate_image_clf(
     client: Client,
     gt_clfs1: list[GroundTruthImageClassification],
     pred_clfs: list[PredictedImageClassification],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
-    dataset = client.create_dataset(dset_name)
+    dataset = client.create_image_dataset(dset_name)
     dataset.add_groundtruth(gt_clfs1)
     dataset.finalize()
 
-    model = client.create_model(model_name)
+    model = client.create_image_model(model_name)
     model.add_predictions(dataset, pred_clfs)
     model.finalize_inferences(dataset)
 
@@ -1186,5 +1202,190 @@ def test_evaluate_clf(
         {
             "label_key": "k4",
             "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
+        }
+    ]
+
+
+def test_create_tabular_dataset_and_add_groundtruth(
+    client: Client, db: Session
+):
+    dataset = client.create_tabular_dataset(name=dset_name)
+    assert isinstance(dataset, TabularDataset)
+
+    dataset.add_groundtruth(
+        [
+            [Label(key="k1", value="v1"), Label(key="k2", value="v2")],
+            [Label(key="k1", value="v3")],
+        ]
+    )
+    assert len(db.scalars(select(models.GroundTruthClassification)).all()) == 3
+    # check we have two Datums and they have the correct uids
+    data = db.scalars(select(models.Datum)).all()
+    assert len(data) == 2
+    assert set(d.uid for d in data) == {"0", "1"}
+
+    # check that we can add data with specified uids
+    dataset.add_groundtruth(
+        {
+            "uid1": [Label(key="k1", value="v1")],
+            "uid2": [Label(key="k1", value="v5")],
+        }
+    )
+
+    assert len(db.scalars(select(models.GroundTruthClassification)).all()) == 5
+    # check we have two Datums and they have the correct uids
+    data = db.scalars(select(models.Datum)).all()
+    assert len(data) == 4
+    assert set(d.uid for d in data) == {"0", "1", "uid1", "uid2"}
+
+
+def test_create_tabular_model_with_predicted_classifications(
+    client: Client,
+    db: Session,
+):
+    _test_create_model_with_preds(
+        client=client,
+        datum_type=DatumTypes.TABULAR,
+        gts=[
+            [Label(key="k1", value="v1"), Label(key="k2", value="v2")],
+            [Label(key="k1", value="v3")],
+        ],
+        preds=[
+            [
+                ScoredLabel(label=Label(key="k1", value="v1"), score=0.6),
+                ScoredLabel(label=Label(key="k1", value="v2"), score=0.4),
+                ScoredLabel(label=Label(key="k2", value="v6"), score=1.0),
+            ],
+            [
+                ScoredLabel(label=Label(key="k1", value="v1"), score=0.1),
+                ScoredLabel(label=Label(key="k1", value="v2"), score=0.9),
+            ],
+        ],
+        preds_model_class=models.PredictedClassification,
+        preds_expected_number=5,
+        expected_labels_tuples={
+            ("k1", "v1"),
+            ("k1", "v2"),
+            ("k2", "v6"),
+            ("k1", "v2"),
+        },
+        expected_scores={0.6, 0.4, 1.0, 0.1, 0.9},
+        db=db,
+    )
+
+
+def test_evaluate_tabular_clf(client: Session, db: Session):
+    y_true = [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
+    preds = [
+        [0.37, 0.35, 0.28],
+        [0.24, 0.61, 0.15],
+        [0.03, 0.88, 0.09],
+        [0.97, 0.03, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.01, 0.96, 0.03],
+        [0.28, 0.02, 0.7],
+        [0.78, 0.21, 0.01],
+        [0.45, 0.11, 0.44],
+    ]
+
+    dataset = client.create_tabular_dataset(name=dset_name)
+    model = client.create_tabular_model(name=model_name)
+
+    dataset.add_groundtruth(
+        [[Label(key="class", value=str(t))] for t in y_true]
+    )
+    model.add_predictions(
+        dataset,
+        [
+            [
+                ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
+                for i in range(len(pred))
+            ]
+            for pred in preds
+        ],
+    )
+
+    eval_job = model.evaluate_classification(dataset=dataset)
+
+    assert eval_job.ignored_pred_keys == []
+    assert eval_job.missing_pred_keys == []
+
+    # sleep to give the backend time to compute
+    time.sleep(1)
+    assert eval_job.status() == "Done"
+
+    metrics = eval_job.metrics()
+
+    expected_metrics = [
+        {
+            "type": "Accuracy",
+            "parameters": {"label_key": "class"},
+            "value": 0.5,
+        },
+        {
+            "type": "ROCAUC",
+            "parameters": {"label_key": "class"},
+            "value": 0.7685185185185185,
+        },
+        {
+            "type": "Precision",
+            "value": 0.6666666666666666,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.3333333333333333,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "F1",
+            "value": 0.4444444444444444,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "class", "value": "2"}},
+        {
+            "type": "Precision",
+            "value": 0.5,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "type": "Recall",
+            "value": 1.0,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "type": "F1",
+            "value": 0.6666666666666666,
+            "label": {"key": "class", "value": "0"},
+        },
+    ]
+    for m in metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics
+
+    confusion_matrices = eval_job.confusion_matrices()
+
+    assert confusion_matrices == [
+        {
+            "label_key": "class",
+            "entries": [
+                {"prediction": "0", "groundtruth": "0", "count": 3},
+                {"prediction": "0", "groundtruth": "1", "count": 3},
+                {"prediction": "1", "groundtruth": "1", "count": 2},
+                {"prediction": "1", "groundtruth": "2", "count": 1},
+                {"prediction": "2", "groundtruth": "1", "count": 1},
+            ],
         }
     ]

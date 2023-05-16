@@ -94,11 +94,11 @@ def create_predicted_segmentations(
     "/groundtruth-classifications", dependencies=[Depends(token_auth_scheme)]
 )
 def create_groundtruth_classifications(
-    data: schemas.GroundTruthImageClassificationsCreate,
+    data: schemas.GroundTruthClassificationsCreate,
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
-        return crud.create_ground_truth_image_classifications(db=db, data=data)
+        return crud.create_ground_truth_classifications(db=db, data=data)
     except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -107,7 +107,7 @@ def create_groundtruth_classifications(
     "/predicted-classifications", dependencies=[Depends(token_auth_scheme)]
 )
 def create_predicted_classifications(
-    data: schemas.PredictedImageClassificationsCreate,
+    data: schemas.PredictedClassificationsCreate,
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
@@ -141,7 +141,9 @@ def get_dataset(
 ) -> schemas.Dataset:
     try:
         dset = crud.get_dataset(db, dataset_name=dataset_name)
-        return schemas.Dataset(name=dset.name, draft=dset.draft)
+        return schemas.Dataset(
+            **{k: getattr(dset, k) for k in schemas.Dataset.__fields__}
+        )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -184,7 +186,7 @@ def get_dataset_images(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Image]:
     try:
-        images = crud.get_images_in_dataset(db, dataset_name)
+        images = crud.get_datums_in_dataset(db, dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return [
@@ -289,8 +291,10 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
 @app.get("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
 def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     try:
-        dset = crud.get_model(db=db, model_name=model_name)
-        return schemas.Model(name=dset.name)
+        model = crud.get_model(db=db, model_name=model_name)
+        return schemas.Model(
+            **{k: getattr(model, k) for k in schemas.Model.__fields__}
+        )
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

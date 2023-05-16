@@ -7,7 +7,7 @@ import numpy as np
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
-from velour_api.enums import JobStatus, Task
+from velour_api.enums import DatumTypes, JobStatus, Task
 
 
 def validate_single_polygon(poly: list[tuple[float, float]]):
@@ -29,6 +29,7 @@ class _BaseDataset(BaseModel):
     from_video: bool = False
     href: str = None
     description: str = None
+    type: DatumTypes
 
     @validator("href")
     def validate_href(cls, v):
@@ -47,16 +48,20 @@ class Model(BaseModel):
     name: str
     href: str = None
     description: str = None
+    type: DatumTypes
 
     @validator("href")
     def validate_href(cls, v):
         return _validate_href(v)
 
 
-class Image(BaseModel):
+class Datum(BaseModel):
     uid: str
-    height: int
-    width: int
+
+
+class Image(Datum):
+    height: int = None
+    width: int = None
     frame: Optional[int] = None
 
 
@@ -118,13 +123,13 @@ class GroundTruthDetectionsCreate(BaseModel):
     detections: list[GroundTruthDetection]
 
 
-class GroundTruthImageClassification(BaseModel):
-    image: Image
+class GroundTruthClassification(BaseModel):
+    datum: Datum
     labels: list[Label]
 
 
-class PredictedImageClassification(BaseModel):
-    image: Image
+class PredictedClassification(BaseModel):
+    datum: Datum
     scored_labels: list[ScoredLabel]
 
     @validator("scored_labels")
@@ -145,15 +150,15 @@ class PredictedImageClassification(BaseModel):
         return v
 
 
-class GroundTruthImageClassificationsCreate(BaseModel):
+class GroundTruthClassificationsCreate(BaseModel):
     dataset_name: str
-    classifications: list[GroundTruthImageClassification]
+    classifications: list[GroundTruthClassification]
 
 
-class PredictedImageClassificationsCreate(BaseModel):
+class PredictedClassificationsCreate(BaseModel):
     model_name: str
     dataset_name: str
-    classifications: list[PredictedImageClassification]
+    classifications: list[PredictedClassification]
 
 
 class PolygonWithHole(BaseModel):
