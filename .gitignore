@@ -7,3 +7,5 @@ build
 .env*
 .vscode
 */dist/*
+sample_notebooks/coco/*
+.DS_Store
