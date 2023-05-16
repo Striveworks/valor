@@ -18,8 +18,8 @@ from sqlalchemy.sql import text
 from velour.client import (
     Client,
     ClientException,
+    DatumTypes,
     ImageDataset,
-    ImageModel,
     TabularDataset,
 )
 from velour.data_types import (
@@ -470,8 +470,9 @@ def _test_create_image_dataset_with_gts(
     return dataset
 
 
-def _test_create_image_model_with_preds(
+def _test_create_model_with_preds(
     client: Client,
+    datum_type: DatumTypes,
     gts: list[Any],
     preds: list[Any],
     preds_model_class: type,
@@ -503,8 +504,12 @@ def _test_create_image_model_with_preds(
     -------
     the sqlalchemy objects for the created predictions
     """
-    model = client.create_image_model(model_name)
-    dataset = client.create_image_dataset(dset_name)
+    if datum_type == DatumTypes.IMAGE:
+        model = client.create_image_model(model_name)
+        dataset = client.create_image_dataset(dset_name)
+    else:
+        model = client.create_tabular_model(model_name)
+        dataset = client.create_tabular_dataset(dset_name)
 
     # verify we get an error if we try to create another model
     # with the same name
@@ -536,7 +541,7 @@ def _test_create_image_model_with_preds(
 
     # check that the get_model method works
     retrieved_model = client.get_model(model_name)
-    assert isinstance(retrieved_model, ImageModel)
+    assert isinstance(retrieved_model, type(model))
     assert retrieved_model.name == model_name
 
     return db_preds
@@ -602,8 +607,9 @@ def test_create_image_model_with_predicted_detections(
     pred_poly_dets: list[PredictedDetection],
     db: Session,
 ):
-    labeled_pred_dets = _test_create_image_model_with_preds(
+    labeled_pred_dets = _test_create_model_with_preds(
         client=client,
+        datum_type=DatumTypes.IMAGE,
         gts=gt_poly_dets1,
         preds=pred_poly_dets,
         preds_model_class=models.LabeledPredictedDetection,
@@ -816,8 +822,9 @@ def test_create_model_with_predicted_segmentations(
     db: Session,
 ):
     """Tests that we can create a predicted segmentation from a mask array"""
-    labeled_pred_segs = _test_create_image_model_with_preds(
+    labeled_pred_segs = _test_create_model_with_preds(
         client=client,
+        datum_type=DatumTypes.IMAGE,
         gts=gt_segs1,
         preds=pred_segs,
         preds_model_class=models.LabeledPredictedSegmentation,
@@ -859,14 +866,15 @@ def test_create_image_dataset_with_classifications(
     )
 
 
-def test_create_model_with_predicted_classifications(
+def test_create_image_model_with_predicted_classifications(
     client: Client,
     gt_clfs1: list[GroundTruthDetection],
     pred_clfs: list[PredictedDetection],
     db: Session,
 ):
-    _test_create_image_model_with_preds(
+    _test_create_model_with_preds(
         client=client,
+        datum_type=DatumTypes.IMAGE,
         gts=gt_clfs1,
         preds=pred_clfs,
         preds_model_class=models.PredictedClassification,
@@ -1229,3 +1237,38 @@ def test_create_tabular_dataset_and_add_groundtruth(
     data = db.scalars(select(models.Datum)).all()
     assert len(data) == 4
     assert set(d.uid for d in data) == {"0", "1", "uid1", "uid2"}
+
+
+def test_create_tabular_model_with_predicted_classifications(
+    client: Client,
+    db: Session,
+):
+    _test_create_model_with_preds(
+        client=client,
+        datum_type=DatumTypes.TABULAR,
+        gts=[
+            [Label(key="k1", value="v1"), Label(key="k2", value="v2")],
+            [Label(key="k1", value="v3")],
+        ],
+        preds=[
+            [
+                ScoredLabel(label=Label(key="k1", value="v1"), score=0.6),
+                ScoredLabel(label=Label(key="k1", value="v2"), score=0.4),
+                ScoredLabel(label=Label(key="k2", value="v6"), score=1.0),
+            ],
+            [
+                ScoredLabel(label=Label(key="k1", value="v1"), score=0.1),
+                ScoredLabel(label=Label(key="k1", value="v2"), score=0.9),
+            ],
+        ],
+        preds_model_class=models.PredictedClassification,
+        preds_expected_number=5,
+        expected_labels_tuples={
+            ("k1", "v1"),
+            ("k1", "v2"),
+            ("k2", "v6"),
+            ("k1", "v2"),
+        },
+        expected_scores={0.6, 0.4, 1.0, 0.1, 0.9},
+        db=db,
+    )

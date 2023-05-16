@@ -25,6 +25,7 @@ from velour.data_types import (
     PolygonWithHole,
     PredictedDetection,
     PredictedImageClassification,
+    ScoredLabel,
     _GroundTruthSegmentation,
     _PredictedSegmentation,
 )
@@ -516,7 +517,36 @@ class ImageModel(ModelBase):
 
 
 class TabularModel(ModelBase):
-    pass
+    def add_predictions(
+        self,
+        dataset: TabularDataset,
+        predictions: Union[
+            List[List[ScoredLabel]], Dict[str, List[ScoredLabel]]
+        ],
+    ):
+        if isinstance(predictions, list):
+            # make uids the list indices (as strings)
+            predictions = {str(i): gt for i, gt in enumerate(predictions)}
+
+        payload = {
+            "model_name": self.name,
+            "dataset_name": dataset.name,
+            "classifications": [
+                {
+                    "scored_labels": [
+                        asdict(scored_label) for scored_label in scored_labels
+                    ],
+                    "datum": {"uid": uid},
+                }
+                for uid, scored_labels in predictions.items()
+            ],
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "predicted-classifications", json=payload
+        )
+
+        return resp.json()
 
 
 class Client:
