@@ -1377,7 +1377,7 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
 
     confusion_matrices = eval_job.confusion_matrices()
 
-    assert confusion_matrices == [
+    expected_confusion_matrices = [
         {
             "label_key": "class",
             "entries": [
@@ -1389,3 +1389,24 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
             ],
         }
     ]
+
+    assert confusion_matrices == expected_confusion_matrices
+
+    eval_settings = model.get_evaluation_settings()
+    assert len(eval_settings) == 1
+    es_id = eval_settings[0].pop("id")
+    assert eval_settings[0] == {
+        "model_name": "test model",
+        "dataset_name": "test dataset",
+        "model_pred_task_type": "Classification",
+        "dataset_gt_task_type": "Classification",
+    }
+
+    assert (
+        model.get_metrics_at_evaluation_settings_id(es_id) == expected_metrics
+    )
+
+    assert (
+        model.get_confusion_matrices_at_evaluation_settings_id(es_id)
+        == expected_confusion_matrices
+    )

@@ -951,8 +951,8 @@ def create_clf_metrics(
         mapping={
             "dataset_id": dataset_id,
             "model_id": model_id,
-            "model_pred_task_type": enums.Task.IMAGE_CLASSIFICATION,
-            "dataset_gt_task_type": enums.Task.IMAGE_CLASSIFICATION,
+            "model_pred_task_type": enums.Task.CLASSIFICATION,
+            "dataset_gt_task_type": enums.Task.CLASSIFICATION,
         },
     )
 

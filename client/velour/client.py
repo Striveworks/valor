@@ -1,4 +1,5 @@
 import io
+import json
 import math
 import os
 from base64 import b64decode, b64encode
@@ -357,6 +358,10 @@ class ImageDataset(DatasetBase):
         ]
 
 
+def _remove_none_from_dict(d: dict) -> dict:
+    return {k: v for k, v in d.items() if v is not None}
+
+
 class ModelBase:
     def __init__(self, client: "Client", name: str):
         self.client = client
@@ -380,6 +385,90 @@ class ModelBase:
         ).json()
 
         return EvalJob(client=self.client, **resp)
+
+    def get_evaluation_settings(self) -> List[dict]:
+        # TODO: should probably have a dataclass for the output
+        ret = self.client._requests_get_rel_host(
+            f"models/{self.name}/evaluation-settings"
+        ).json()
+
+        return [_remove_none_from_dict(es) for es in ret]
+
+    @staticmethod
+    def _group_evaluation_settings(eval_settings: List[dict]):
+        # return list of dicts with keys ids and (common) eval settings
+        ret = []
+
+        for es in eval_settings:
+            es_without_id_dset_model = {
+                k: v
+                for k, v in es.items()
+                if k not in ["id", "dataset_name", "model_name"]
+            }
+            found = False
+            for grp in ret:
+                if es_without_id_dset_model == grp["settings"]:
+                    grp["ids"].append(es["id"])
+                    grp["datasets"].append(es["dataset_name"])
+                    found = True
+                    break
+
+            if not found:
+                ret.append(
+                    {
+                        "ids": [es["id"]],
+                        "settings": es_without_id_dset_model,
+                        "datasets": [es["dataset_name"]],
+                    }
+                )
+
+        return ret
+
+    def get_metrics_at_evaluation_settings_id(
+        self, eval_settings_id: int
+    ) -> List[dict]:
+        return [
+            _remove_none_from_dict(m)
+            for m in self.client._requests_get_rel_host(
+                f"models/{self.name}/evaluation-settings/{eval_settings_id}/metrics"
+            ).json()
+        ]
+
+    def get_confusion_matrices_at_evaluation_settings_id(
+        self, eval_settings_id: int
+    ) -> List[dict]:
+        return self.client._requests_get_rel_host(
+            f"/models/{self.name}/evaluation-settings/{eval_settings_id}/confusion-matrices"
+        ).json()
+
+    def get_metric_dataframes(self):
+        try:
+            import pandas as pd
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError(
+                "Must have pandas installed to use `get_metric_dataframes`."
+            )
+        eval_setting_groups = self._group_evaluation_settings(
+            self.get_evaluation_settings()
+        )
+
+        ret = []
+        for grp in eval_setting_groups:
+            metrics = [
+                {**m, "dataset": dataset}
+                for id_, dataset in zip(grp["ids"], grp["datasets"])
+                for m in self.get_metrics_at_evaluation_settings_id(id_)
+            ]
+            df = pd.DataFrame(metrics)
+            for k in ["label", "parameters"]:
+                df[k] = df[k].fillna("n/a")
+            df["parameters"] = df["parameters"].apply(json.dumps)
+            df["label"] = df["label"].apply(
+                lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
+            )
+            ret.append({"settings": grp["settings"], "df": df})
+
+        return ret
 
 
 class ImageModel(ModelBase):

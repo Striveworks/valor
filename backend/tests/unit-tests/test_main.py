@@ -346,22 +346,3 @@ def test_get_labels(crud, client: TestClient):
 def test_user(client: TestClient):
     resp = client.get("/user")
     assert resp.json() == {"email": None}
-
-
-@patch("velour_api.main.crud")
-@patch("velour_api.main.schemas")
-def test_get_model_metrics(schemas, crud, client: TestClient):
-    crud.get_model_metrics.return_value = []
-    resp = client.get("/models/modelname/metrics")
-    assert resp.status_code == 200
-    crud.get_model_metrics.assert_called_once()
-
-    with patch(
-        "velour_api.main.crud.get_model_metrics",
-        side_effect=exceptions.ModelDoesNotExistError(""),
-    ):
-        resp = client.get("models/modelname/metrics")
-        assert resp.status_code == 404
-
-    resp = client.post("/models/modelname/metrics")
-    assert resp.status_code == 405
