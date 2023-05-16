@@ -14,7 +14,7 @@ Currently `velour` supports the following groundtruth label types:
 Each case has the notion of a label, which is a key/value pair. This is used (instead of forcing labels to be strings) to support things such as
 
 - multi-label classification. e.g. a dataset of cropped vehicles that have make, model, and year labels
-- additional attributes, such as COCO's `isCrow` attribute.
+- additional attributes, such as COCO's `isCrowd` attribute.
 
 ## Client
 
