@@ -192,7 +192,7 @@ def test_post_datasets(client: TestClient):
 
 
 def test_post_models(client: TestClient):
-    example_json = {"name": ""}
+    example_json = {"name": "", "type": DatumTypes.IMAGE.value}
     _test_post_endpoints(
         client=client,
         endpoint="/models",
@@ -241,7 +241,7 @@ def test_get_dataset_by_name(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_model_by_name(crud, client: TestClient):
-    crud.get_model.return_value = Model(name="")
+    crud.get_model.return_value = Model(name="", type=DatumTypes.IMAGE.value)
     resp = client.get("/models/modelname")
     assert resp.status_code == 200
     crud.get_model.assert_called_once()

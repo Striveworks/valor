@@ -137,7 +137,7 @@ def test_model_validation():
         Model(name="name", href="not valid")
     assert "`href` must" in str(exc_info)
 
-    assert Model(name="name", href="http://a.com")
+    assert Model(name="name", href="http://a.com", type=DatumTypes.IMAGE)
 
 
 def test_eval_job():
