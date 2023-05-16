@@ -468,7 +468,6 @@ def _test_create_model_with_preds(
     client: Client,
     gts: list[Any],
     preds: list[Any],
-    add_preds_method_name: str,
     preds_model_class: type,
     preds_expected_number: int,
     expected_labels_tuples: set[tuple[str, str]],
@@ -484,8 +483,6 @@ def _test_create_model_with_preds(
         list of groundtruth objects (from `velour.data_types`)
     preds
         list of prediction objects (from `velour.data_types`)
-    add_preds_method_name
-        method name of `velour.client.Model` to add prediction objects
     preds_model_class
         class in `velour_api.models` that specifies the labeled predictions
     preds_expected_number
@@ -503,8 +500,6 @@ def _test_create_model_with_preds(
     model = client.create_model(model_name)
     dataset = client.create_dataset(dset_name)
 
-    add_preds_method = getattr(model, add_preds_method_name)
-
     # verify we get an error if we try to create another model
     # with the same name
     with pytest.raises(ClientException) as exc_info:
@@ -514,11 +509,11 @@ def _test_create_model_with_preds(
     # check that if we try to add detections we get an error
     # since we haven't added any images yet
     with pytest.raises(ClientException) as exc_info:
-        add_preds_method(dataset, preds)
+        model.add_predictions(dataset, preds)
     assert "Image with uid" in str(exc_info)
 
     dataset.add_groundtruth(gts)
-    add_preds_method(dataset, preds)
+    model.add_predictions(dataset, preds)
 
     # check predictions have been added
     db_preds = db.scalars(select(preds_model_class)).all()
@@ -603,7 +598,6 @@ def test_create_model_with_predicted_detections(
         client=client,
         gts=gt_poly_dets1,
         preds=pred_poly_dets,
-        add_preds_method_name="add_predicted_detections",
         preds_model_class=models.LabeledPredictedDetection,
         preds_expected_number=2,
         expected_labels_tuples={("k1", "v1"), ("k2", "v2")},
@@ -706,9 +700,7 @@ def test_create_pred_detections_as_bbox_or_poly(
         ),
     )
 
-    model.add_predicted_detections(
-        dataset=dataset, dets=[pred_bbox, pred_poly]
-    )
+    model.add_predictions(dataset=dataset, predictions=[pred_bbox, pred_poly])
 
     db_dets = db.scalars(select(models.PredictedDetection)).all()
     assert len(db_dets) == 2
@@ -820,7 +812,6 @@ def test_create_model_with_predicted_segmentations(
         client=client,
         gts=gt_segs1,
         preds=pred_segs,
-        add_preds_method_name="add_predicted_segmentations",
         preds_model_class=models.LabeledPredictedSegmentation,
         preds_expected_number=2,
         expected_labels_tuples={("k1", "v1"), ("k2", "v2")},
@@ -870,7 +861,6 @@ def test_create_model_with_predicted_classifications(
         client=client,
         gts=gt_clfs1,
         preds=pred_clfs,
-        add_preds_method_name="add_predicted_classifications",
         preds_model_class=models.PredictedImageClassification,
         preds_expected_number=5,
         expected_labels_tuples={
@@ -932,7 +922,7 @@ def test_iou(
     )
     db_gt = db.scalar(select(models.GroundTruthDetection))
 
-    model.add_predicted_detections(
+    model.add_predictions(
         dataset,
         [
             PredictedDetection(
@@ -977,7 +967,7 @@ def test_evaluate_ap(
     dataset.finalize()
 
     model = client.create_model(model_name)
-    model.add_predicted_detections(dataset, pred_dets)
+    model.add_predictions(dataset, pred_dets)
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_ap(
@@ -1154,7 +1144,7 @@ def test_evaluate_clf(
     dataset.finalize()
 
     model = client.create_model(model_name)
-    model.add_predicted_classifications(dataset, pred_clfs)
+    model.add_predictions(dataset, pred_clfs)
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_classification(dataset=dataset)
