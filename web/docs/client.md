@@ -2,6 +2,8 @@
 
 Here we cover the basic concepts involved in interacting with the `velour` service via the Python client.
 
+Additionally, sample Jupyter notebooks are available [here](https://github.com/Striveworks/velour/tree/main/sample_notebooks).
+
 ## Supported tasks
 
 Currently `velour` supports the following groundtruth label types:
