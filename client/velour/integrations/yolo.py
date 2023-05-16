@@ -38,14 +38,14 @@ def parse_image_classification(result: Results):
         for key, probability in list(zip(labels, probabilities))
     ]
 
-    return PredictedImageClassification(
+    return [PredictedImageClassification(
         image=Image(
             uid=image_uid,
             height=image_height,
             width=image_width,
         ),
         scored_labels=scored_labels,
-    )
+    )]
 
 
 def _convert_yolo_segmentation(
@@ -191,15 +191,14 @@ def upload_inferences(
     predictions = []
     for result in results:
         if "masks" in result.keys and "boxes" in result.keys:
-            predictions.append(
-                parse_image_segmentation(
-                    result=result, resample=segmentation_resample
+            predictions += parse_image_segmentation(
+                result=result, 
+                resample=segmentation_resample
                 )
-            )
         elif "boxes" in result.keys:
-            predictions.append(parse_object_detection(result=result))
+            predictions += parse_object_detection(result)
         elif "probs" in result.keys:
-            predictions.append(parse_image_classification(result=result))
+            predictions += parse_image_classification(result)
 
     # Create & Populate Model
     model = Model(client=client, name=model_name)
