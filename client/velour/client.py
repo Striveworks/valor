@@ -218,39 +218,39 @@ class Client:
         return self._requests_get_rel_host("labels").json()
 
 
+def _generate_chunks(
+    name: str,
+    data: list,
+    chunk_size=100,
+    progress_bar_title: str = "Chunking",
+    show_progress_bar: bool = True,
+):
+    progress_bar = tqdm(
+        total=len(data),
+        unit="samples",
+        unit_scale=True,
+        desc=f"{progress_bar_title} ({name})",
+        disable=not show_progress_bar,
+    )
+
+    number_of_chunks = math.floor(len(data) / chunk_size)
+    remainder = len(data) % chunk_size
+
+    for i in range(0, number_of_chunks):
+        progress_bar.update(chunk_size)
+        yield data[i * chunk_size : (i + 1) * chunk_size]
+
+    if remainder > 0:
+        progress_bar.update(remainder)
+        yield data[-remainder:]
+
+    progress_bar.close()
+
+
 class Dataset:
     def __init__(self, client: Client, name: str):
         self.client = client
         self.name = name
-
-    def _generate_chunks(
-        self,
-        data: list,
-        chunk_size=100,
-        progress_bar_title: str = "Chunking",
-        show_progress_bar: bool = True,
-    ):
-
-        progress_bar = tqdm(
-            total=len(data),
-            unit="samples",
-            unit_scale=True,
-            desc=f"{progress_bar_title} ({self.name})",
-            disable=not show_progress_bar,
-        )
-
-        number_of_chunks = math.floor(len(data) / chunk_size)
-        remainder = len(data) % chunk_size
-
-        for i in range(0, number_of_chunks):
-            progress_bar.update(chunk_size)
-            yield data[i * chunk_size : (i + 1) * chunk_size]
-
-        if remainder > 0:
-            progress_bar.update(remainder)
-            yield data[-remainder:]
-
-        progress_bar.close()
 
     def add_groundtruth(
         self,
@@ -258,7 +258,6 @@ class Dataset:
         chunk_size: int = 1000,
         show_progress_bar: bool = True,
     ):
-
         log = []
 
         if not isinstance(groundtruth, list):
@@ -267,16 +266,15 @@ class Dataset:
         if len(groundtruth) == 0:
             raise ValueError("Empty list.")
 
-        for chunk in self._generate_chunks(
+        for chunk in _generate_chunks(
+            self.name,
             groundtruth,
             chunk_size=chunk_size,
             progress_bar_title="Uploading",
             show_progress_bar=show_progress_bar,
         ):
-
             # Image Classification
             if isinstance(chunk[0], GroundTruthImageClassification):
-
                 payload = {
                     "dataset_name": self.name,
                     "classifications": [
@@ -326,7 +324,6 @@ class Dataset:
 
             # Object Detection
             elif isinstance(chunk[0], GroundTruthDetection):
-
                 payload = {
                     "dataset_name": self.name,
                     "detections": [_det_to_dict(det) for det in chunk],
