@@ -218,39 +218,39 @@ class Client:
         return self._requests_get_rel_host("labels").json()
 
 
+def _generate_chunks(
+    name: str,
+    data: list,
+    chunk_size=100,
+    progress_bar_title: str = "Chunking",
+    show_progress_bar: bool = True,
+):
+    progress_bar = tqdm(
+        total=len(data),
+        unit="samples",
+        unit_scale=True,
+        desc=f"{progress_bar_title} ({name})",
+        disable=not show_progress_bar,
+    )
+
+    number_of_chunks = math.floor(len(data) / chunk_size)
+    remainder = len(data) % chunk_size
+
+    for i in range(0, number_of_chunks):
+        progress_bar.update(chunk_size)
+        yield data[i * chunk_size : (i + 1) * chunk_size]
+
+    if remainder > 0:
+        progress_bar.update(remainder)
+        yield data[-remainder:]
+
+    progress_bar.close()
+
+
 class Dataset:
     def __init__(self, client: Client, name: str):
         self.client = client
         self.name = name
-
-    def _generate_chunks(
-        self,
-        data: list,
-        chunk_size=100,
-        progress_bar_title: str = "Chunking",
-        show_progress_bar: bool = True,
-    ):
-
-        progress_bar = tqdm(
-            total=len(data),
-            unit="samples",
-            unit_scale=True,
-            desc=f"{progress_bar_title} ({self.name})",
-            disable=not show_progress_bar,
-        )
-
-        number_of_chunks = math.floor(len(data) / chunk_size)
-        remainder = len(data) % chunk_size
-
-        for i in range(0, number_of_chunks):
-            progress_bar.update(chunk_size)
-            yield data[i * chunk_size : (i + 1) * chunk_size]
-
-        if remainder > 0:
-            progress_bar.update(remainder)
-            yield data[-remainder:]
-
-        progress_bar.close()
 
     def add_groundtruth(
         self,
@@ -258,7 +258,6 @@ class Dataset:
         chunk_size: int = 1000,
         show_progress_bar: bool = True,
     ):
-
         log = []
 
         if not isinstance(groundtruth, list):
@@ -267,16 +266,15 @@ class Dataset:
         if len(groundtruth) == 0:
             raise ValueError("Empty list.")
 
-        for chunk in self._generate_chunks(
+        for chunk in _generate_chunks(
+            self.name,
             groundtruth,
             chunk_size=chunk_size,
             progress_bar_title="Uploading",
             show_progress_bar=show_progress_bar,
         ):
-
             # Image Classification
             if isinstance(chunk[0], GroundTruthImageClassification):
-
                 payload = {
                     "dataset_name": self.name,
                     "classifications": [
@@ -326,7 +324,6 @@ class Dataset:
 
             # Object Detection
             elif isinstance(chunk[0], GroundTruthDetection):
-
                 payload = {
                     "dataset_name": self.name,
                     "detections": [_det_to_dict(det) for det in chunk],
@@ -481,70 +478,97 @@ class Model:
         self.client = client
         self.name = name
 
-    def add_predicted_detections(
-        self, dataset: Dataset, dets: List[PredictedDetection]
-    ) -> None:
-        payload = {
-            "model_name": self.name,
-            "dataset_name": dataset.name,
-            "detections": [_det_to_dict(det) for det in dets],
-        }
+    def add_predictions(
+        self,
+        dataset: Dataset,
+        predictions: list,
+        chunk_size: int = 1000,
+        show_progress_bar: bool = True,
+    ):
+        log = []
 
-        resp = self.client._requests_post_rel_host(
-            "predicted-detections", json=payload
-        )
+        if not isinstance(predictions, list):
+            raise ValueError("GroundTruth argument should be a list.")
 
-        return resp.json()
+        if len(predictions) == 0:
+            raise ValueError("Empty list.")
 
-    def add_predicted_segmentations(
-        self, dataset: Dataset, segs: List[_PredictedSegmentation]
-    ) -> None:
-        payload = {
-            "model_name": self.name,
-            "dataset_name": dataset.name,
-            "segmentations": [
-                {
-                    "base64_mask": _mask_array_to_pil_base64(seg.mask),
-                    "scored_labels": [
-                        asdict(scored_label)
-                        for scored_label in seg.scored_labels
+        for chunk in _generate_chunks(
+            self.name,
+            predictions,
+            chunk_size=chunk_size,
+            progress_bar_title="Uploading",
+            show_progress_bar=show_progress_bar,
+        ):
+            # Image Classification
+            if isinstance(chunk[0], PredictedImageClassification):
+                payload = {
+                    "model_name": self.name,
+                    "dataset_name": dataset.name,
+                    "classifications": [
+                        {
+                            "scored_labels": [
+                                asdict(scored_label)
+                                for scored_label in clf.scored_labels
+                            ],
+                            "image": asdict(clf.image),
+                        }
+                        for clf in predictions
                     ],
-                    "image": asdict(seg.image),
-                    "is_instance": seg._is_instance,
                 }
-                for seg in segs
-            ],
-        }
 
-        resp = self.client._requests_post_rel_host(
-            "predicted-segmentations", json=payload
-        )
+                resp = self.client._requests_post_rel_host(
+                    "predicted-classifications", json=payload
+                )
 
-        return resp.json()
+                log += resp
 
-    def add_predicted_classifications(
-        self, dataset: Dataset, clfs: List[PredictedImageClassification]
-    ) -> None:
-        payload = {
-            "model_name": self.name,
-            "dataset_name": dataset.name,
-            "classifications": [
-                {
-                    "scored_labels": [
-                        asdict(scored_label)
-                        for scored_label in clf.scored_labels
+            # Image Segmentation (Semantic, Instance)
+            elif isinstance(chunk[0], _PredictedSegmentation):
+                payload = {
+                    "model_name": self.name,
+                    "dataset_name": dataset.name,
+                    "segmentations": [
+                        {
+                            "base64_mask": _mask_array_to_pil_base64(seg.mask),
+                            "scored_labels": [
+                                asdict(scored_label)
+                                for scored_label in seg.scored_labels
+                            ],
+                            "image": asdict(seg.image),
+                            "is_instance": seg._is_instance,
+                        }
+                        for seg in predictions
                     ],
-                    "image": asdict(clf.image),
                 }
-                for clf in clfs
-            ],
-        }
 
-        resp = self.client._requests_post_rel_host(
-            "predicted-classifications", json=payload
-        )
+                resp = self.client._requests_post_rel_host(
+                    "predicted-segmentations", json=payload
+                )
 
-        return resp.json()
+                log += resp
+
+            # Object Detection
+            elif isinstance(chunk[0], PredictedDetection):
+                payload = {
+                    "model_name": self.name,
+                    "dataset_name": dataset.name,
+                    "detections": [_det_to_dict(det) for det in predictions],
+                }
+
+                resp = self.client._requests_post_rel_host(
+                    "predicted-detections", json=payload
+                )
+
+                log += resp
+
+            # Unknown type.
+            else:
+                raise NotImplementedError(
+                    f"Received predictions with type: '{type(chunk[0])}', which is not currently implemented."
+                )
+
+        return log
 
     def finalize_inferences(self, dataset: Dataset) -> None:
         return self.client._requests_put_rel_host(
