@@ -158,35 +158,36 @@ class TabularDataset(DatasetBase):
         return resp.json()
 
 
+def _generate_chunks(
+    name: str,
+    data: list,
+    chunk_size=100,
+    progress_bar_title: str = "Chunking",
+    show_progress_bar: bool = True,
+):
+    progress_bar = tqdm(
+        total=len(data),
+        unit="samples",
+        unit_scale=True,
+        desc=f"{progress_bar_title} ({name})",
+        disable=not show_progress_bar,
+    )
+
+    number_of_chunks = math.floor(len(data) / chunk_size)
+    remainder = len(data) % chunk_size
+
+    for i in range(0, number_of_chunks):
+        progress_bar.update(chunk_size)
+        yield data[i * chunk_size : (i + 1) * chunk_size]
+
+    if remainder > 0:
+        progress_bar.update(remainder)
+        yield data[-remainder:]
+
+    progress_bar.close()
+
+
 class ImageDataset(DatasetBase):
-    def _generate_chunks(
-        self,
-        data: list,
-        chunk_size=100,
-        progress_bar_title: str = "Chunking",
-        show_progress_bar: bool = True,
-    ):
-        progress_bar = tqdm(
-            total=len(data),
-            unit="samples",
-            unit_scale=True,
-            desc=f"{progress_bar_title} ({self.name})",
-            disable=not show_progress_bar,
-        )
-
-        number_of_chunks = math.floor(len(data) / chunk_size)
-        remainder = len(data) % chunk_size
-
-        for i in range(0, number_of_chunks):
-            progress_bar.update(chunk_size)
-            yield data[i * chunk_size : (i + 1) * chunk_size]
-
-        if remainder > 0:
-            progress_bar.update(remainder)
-            yield data[-remainder:]
-
-        progress_bar.close()
-
     def add_groundtruth(
         self,
         groundtruth: list,
@@ -201,7 +202,8 @@ class ImageDataset(DatasetBase):
         if len(groundtruth) == 0:
             raise ValueError("Empty list.")
 
-        for chunk in self._generate_chunks(
+        for chunk in _generate_chunks(
+            self.name,
             groundtruth,
             chunk_size=chunk_size,
             progress_bar_title="Uploading",
@@ -364,6 +366,114 @@ class ModelBase:
             f"models/{self.name}/inferences/{dataset.name}/finalize"
         ).json()
 
+    def evaluate_classification(self, dataset: DatasetBase) -> "EvalJob":
+        payload = {
+            "settings": {
+                "model_name": self.name,
+                "dataset_name": dataset.name,
+            }
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "/clf-metrics", json=payload
+        ).json()
+
+        return EvalJob(client=self.client, **resp)
+
+
+class ImageModel(ModelBase):
+    def add_predictions(
+        self,
+        dataset: ImageDataset,
+        predictions: list,
+        chunk_size: int = 1000,
+        show_progress_bar: bool = True,
+    ):
+        log = []
+
+        if not isinstance(predictions, list):
+            raise ValueError("GroundTruth argument should be a list.")
+
+        if len(predictions) == 0:
+            raise ValueError("Empty list.")
+
+        for chunk in _generate_chunks(
+            self.name,
+            predictions,
+            chunk_size=chunk_size,
+            progress_bar_title="Uploading",
+            show_progress_bar=show_progress_bar,
+        ):
+            # Image Classification
+            if isinstance(chunk[0], PredictedImageClassification):
+                payload = {
+                    "model_name": self.name,
+                    "dataset_name": dataset.name,
+                    "classifications": [
+                        {
+                            "scored_labels": [
+                                asdict(scored_label)
+                                for scored_label in clf.scored_labels
+                            ],
+                            "datum": asdict(clf.image),
+                        }
+                        for clf in predictions
+                    ],
+                }
+
+                resp = self.client._requests_post_rel_host(
+                    "predicted-classifications", json=payload
+                )
+
+                log += resp
+
+            # Image Segmentation (Semantic, Instance)
+            elif isinstance(chunk[0], _PredictedSegmentation):
+                payload = {
+                    "model_name": self.name,
+                    "dataset_name": dataset.name,
+                    "segmentations": [
+                        {
+                            "base64_mask": _mask_array_to_pil_base64(seg.mask),
+                            "scored_labels": [
+                                asdict(scored_label)
+                                for scored_label in seg.scored_labels
+                            ],
+                            "image": asdict(seg.image),
+                            "is_instance": seg._is_instance,
+                        }
+                        for seg in predictions
+                    ],
+                }
+
+                resp = self.client._requests_post_rel_host(
+                    "predicted-segmentations", json=payload
+                )
+
+                log += resp
+
+            # Object Detection
+            elif isinstance(chunk[0], PredictedDetection):
+                payload = {
+                    "model_name": self.name,
+                    "dataset_name": dataset.name,
+                    "detections": [_det_to_dict(det) for det in predictions],
+                }
+
+                resp = self.client._requests_post_rel_host(
+                    "predicted-detections", json=payload
+                )
+
+                log += resp
+
+            # Unknown type.
+            else:
+                raise NotImplementedError(
+                    f"Received predictions with type: '{type(chunk[0])}', which is not currently implemented."
+                )
+
+        return log
+
     def evaluate_ap(
         self,
         dataset: ImageDataset,
@@ -403,87 +513,6 @@ class ModelBase:
             resp[k] = [Label(**la) for la in resp[k]]
 
         return EvalJob(client=self.client, **resp)
-
-    def evaluate_classification(self, dataset: DatasetBase) -> "EvalJob":
-        payload = {
-            "settings": {
-                "model_name": self.name,
-                "dataset_name": dataset.name,
-            }
-        }
-
-        resp = self.client._requests_post_rel_host(
-            "/clf-metrics", json=payload
-        ).json()
-
-        return EvalJob(client=self.client, **resp)
-
-
-class ImageModel(ModelBase):
-    def add_predicted_detections(
-        self, dataset: ImageDataset, dets: List[PredictedDetection]
-    ) -> None:
-        payload = {
-            "model_name": self.name,
-            "dataset_name": dataset.name,
-            "detections": [_det_to_dict(det) for det in dets],
-        }
-
-        resp = self.client._requests_post_rel_host(
-            "predicted-detections", json=payload
-        )
-
-        return resp.json()
-
-    def add_predicted_segmentations(
-        self, dataset: ImageDataset, segs: List[_PredictedSegmentation]
-    ) -> None:
-        payload = {
-            "model_name": self.name,
-            "dataset_name": dataset.name,
-            "segmentations": [
-                {
-                    "base64_mask": _mask_array_to_pil_base64(seg.mask),
-                    "scored_labels": [
-                        asdict(scored_label)
-                        for scored_label in seg.scored_labels
-                    ],
-                    "image": asdict(seg.image),
-                    "is_instance": seg._is_instance,
-                }
-                for seg in segs
-            ],
-        }
-
-        resp = self.client._requests_post_rel_host(
-            "predicted-segmentations", json=payload
-        )
-
-        return resp.json()
-
-    def add_predicted_classifications(
-        self, dataset: DatasetBase, clfs: List[PredictedImageClassification]
-    ) -> None:
-        payload = {
-            "model_name": self.name,
-            "dataset_name": dataset.name,
-            "classifications": [
-                {
-                    "scored_labels": [
-                        asdict(scored_label)
-                        for scored_label in clf.scored_labels
-                    ],
-                    "datum": asdict(clf.image),
-                }
-                for clf in clfs
-            ],
-        }
-
-        resp = self.client._requests_post_rel_host(
-            "predicted-classifications", json=payload
-        )
-
-        return resp.json()
 
 
 class TabularModel(ModelBase):
