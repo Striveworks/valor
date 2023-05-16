@@ -40,7 +40,7 @@ export const Wrapper = ({ children }: { children: React.ReactNode }) => (
         </ListItem>
         <Divider />
         <ListItem>
-          <Link href="/docs" component="a" target="_blank">
+          <Link href="/docs/" component="a" target="_blank">
             Docs <OpenInNewIcon />
           </Link>
         </ListItem>
