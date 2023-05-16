@@ -321,17 +321,23 @@ def test_create_and_get_datasets(db: Session):
 
 
 def test_create_and_get_models(db: Session):
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
 
     all_models = db.scalars(select(models.Model)).all()
     assert len(all_models) == 1
     assert all_models[0].name == model_name
 
     with pytest.raises(exceptions.ModelAlreadyExistsError) as exc_info:
-        crud.create_model(db, schemas.Model(name=model_name))
+        crud.create_model(
+            db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+        )
     assert "already exists" in str(exc_info)
 
-    crud.create_model(db, schemas.Model(name="other model"))
+    crud.create_model(
+        db, schemas.Model(name="other model", type=schemas.DatumTypes.IMAGE)
+    )
     db_models = crud.get_models(db)
     assert len(db_models) == 2
     assert set([m.name for m in db_models]) == {model_name, "other model"}
@@ -355,7 +361,9 @@ def test_get_model(db: Session):
         crud.get_model(db, model_name)
     assert "does not exist" in str(exc_info)
 
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
     model = crud.get_model(db, model_name)
     assert model.name == model_name
 
@@ -408,7 +416,9 @@ def test_create_predicted_detections_and_delete_model(
         crud.create_predicted_detections(db, pred_dets_create)
     assert "does not exist" in str(exc_info)
 
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
@@ -506,7 +516,9 @@ def test_create_predicted_classifications_and_delete_model(
         crud.create_predicted_image_classifications(db, pred_clfs_create)
     assert "does not exist" in str(exc_info)
 
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
@@ -573,7 +585,9 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
         crud.create_predicted_segmentations(db, pred_segs_create)
     assert "does not exist" in str(exc_info)
 
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
@@ -829,7 +843,9 @@ def test_get_filtered_preds_statement_and_missing_labels(
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
 
     # add three total ground truth segmentations, two of which are instance segmentations with
     # the same label.
@@ -1041,7 +1057,9 @@ def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
         ),
     )
     crud.create_ground_truth_classifications(db, gt_clfs_create)
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
     crud.create_predicted_image_classifications(db, pred_clfs_create)
     crud.finalize_dataset(db, dset_name)
     crud.finalize_inferences(db, model_name, dset_name)
@@ -1251,7 +1269,9 @@ def test___model_instance_segmentation_preds_statement(
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
     crud.create_predicted_segmentations(db, pred_segs_create)
 
@@ -1779,7 +1799,9 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_no_gro
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
     crud.finalize_dataset(db, dset_name)
     crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
@@ -1804,7 +1826,9 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_no_pre
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
 
     crud.create_groundtruth_detections(db, gt_dets_create)
 
@@ -1829,7 +1853,9 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_multip
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
 
     crud.create_groundtruth_detections(db, gt_dets_create)
     crud.create_groundtruth_segmentations(db, gt_segs_create)
@@ -1868,7 +1894,9 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_multip
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
 
     crud.create_groundtruth_detections(db, gt_dets_create)
     crud.create_predicted_detections(db, pred_dets_create)

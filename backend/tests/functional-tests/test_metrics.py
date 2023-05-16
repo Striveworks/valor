@@ -25,7 +25,9 @@ def classification_test_data(db: Session):
             name=dataset_name, type=schemas.DatumTypes.IMAGE
         ),
     )
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
 
     animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
     animal_preds = [

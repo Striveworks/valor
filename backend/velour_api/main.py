@@ -291,8 +291,10 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
 @app.get("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
 def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     try:
-        dset = crud.get_model(db=db, model_name=model_name)
-        return schemas.Model(name=dset.name)
+        model = crud.get_model(db=db, model_name=model_name)
+        return schemas.Model(
+            **{k: getattr(model, k) for k in schemas.Model.__fields__}
+        )
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

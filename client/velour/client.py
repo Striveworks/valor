@@ -35,6 +35,13 @@ class DatumTypes(Enum):
     IMAGE = "Image"
     TABULAR = "Tabular"
 
+    @classmethod
+    def invert(cls, value: str):
+        for member in cls:
+            if member.value == value:
+                return member
+        raise ValueError(f"the value {value} is not in enum {cls.__name__}.")
+
 
 def _mask_array_to_pil_base64(mask: np.ndarray) -> str:
     f = io.BytesIO()
@@ -347,8 +354,155 @@ class ImageDataset(DatasetBase):
         ]
 
 
+class ModelBase:
+    def __init__(self, client: "Client", name: str):
+        self.client = client
+        self.name = name
+
+    def finalize_inferences(self, dataset: DatasetBase) -> None:
+        return self.client._requests_put_rel_host(
+            f"models/{self.name}/inferences/{dataset.name}/finalize"
+        ).json()
+
+    def evaluate_ap(
+        self,
+        dataset: ImageDataset,
+        model_pred_task_type: Task = None,
+        dataset_gt_task_type: Task = None,
+        iou_thresholds: List[float] = None,
+        ious_to_keep: List[float] = None,
+        min_area: float = None,
+        max_area: float = None,
+    ) -> "EvalJob":
+        payload = {
+            "settings": {
+                "model_name": self.name,
+                "dataset_name": dataset.name,
+                "model_pred_task_type": model_pred_task_type.value
+                if model_pred_task_type is not None
+                else None,
+                "dataset_gt_task_type": dataset_gt_task_type.value
+                if dataset_gt_task_type is not None
+                else None,
+                "min_area": min_area,
+                "max_area": max_area,
+            }
+        }
+
+        if iou_thresholds is not None:
+            payload["iou_thresholds"] = iou_thresholds
+        if ious_to_keep is not None:
+            payload["ious_to_keep"] = ious_to_keep
+
+        resp = self.client._requests_post_rel_host(
+            "/ap-metrics", json=payload
+        ).json()
+        # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
+        # list of label dicts. convert label dicts to Label objects
+        for k in ["missing_pred_labels", "ignored_pred_labels"]:
+            resp[k] = [Label(**la) for la in resp[k]]
+
+        return EvalJob(client=self.client, **resp)
+
+    def evaluate_classification(self, dataset: DatasetBase) -> "EvalJob":
+        payload = {
+            "settings": {
+                "model_name": self.name,
+                "dataset_name": dataset.name,
+            }
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "/clf-metrics", json=payload
+        ).json()
+
+        return EvalJob(client=self.client, **resp)
+
+
+class ImageModel(ModelBase):
+    def add_predicted_detections(
+        self, dataset: ImageDataset, dets: List[PredictedDetection]
+    ) -> None:
+        payload = {
+            "model_name": self.name,
+            "dataset_name": dataset.name,
+            "detections": [_det_to_dict(det) for det in dets],
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "predicted-detections", json=payload
+        )
+
+        return resp.json()
+
+    def add_predicted_segmentations(
+        self, dataset: ImageDataset, segs: List[_PredictedSegmentation]
+    ) -> None:
+        payload = {
+            "model_name": self.name,
+            "dataset_name": dataset.name,
+            "segmentations": [
+                {
+                    "base64_mask": _mask_array_to_pil_base64(seg.mask),
+                    "scored_labels": [
+                        asdict(scored_label)
+                        for scored_label in seg.scored_labels
+                    ],
+                    "image": asdict(seg.image),
+                    "is_instance": seg._is_instance,
+                }
+                for seg in segs
+            ],
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "predicted-segmentations", json=payload
+        )
+
+        return resp.json()
+
+    def add_predicted_classifications(
+        self, dataset: DatasetBase, clfs: List[PredictedImageClassification]
+    ) -> None:
+        payload = {
+            "model_name": self.name,
+            "dataset_name": dataset.name,
+            "classifications": [
+                {
+                    "scored_labels": [
+                        asdict(scored_label)
+                        for scored_label in clf.scored_labels
+                    ],
+                    "datum": asdict(clf.image),
+                }
+                for clf in clfs
+            ],
+        }
+
+        resp = self.client._requests_post_rel_host(
+            "predicted-classifications", json=payload
+        )
+
+        return resp.json()
+
+
+class TabularModel(ModelBase):
+    pass
+
+
 class Client:
     """Client for interacting with the velour backend"""
+
+    datum_type_and_entity_to_class = {
+        "models": {
+            DatumTypes.IMAGE: ImageModel,
+            DatumTypes.TABULAR: TabularModel,
+        },
+        "datasets": {
+            DatumTypes.IMAGE: ImageDataset,
+            DatumTypes.TABULAR: TabularDataset,
+        },
+    }
 
     def __init__(self, host: str, access_token: str = None):
         """
@@ -424,33 +578,39 @@ class Client:
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
-    def _create_dataset(
+    def _create_model_or_dataset(
         self,
+        entity_type: str,
+        datum_type: DatumTypes,
         name: str,
-        cls: type,
-        type_: DatumTypes,
         href: str = None,
         description: str = None,
-    ) -> DatasetBase:
+    ):
+        entity_types = list(self.datum_type_and_entity_to_class.keys())
+        if entity_type not in entity_types:
+            raise ValueError(f"Expected `entity_type` to be in {entity_types}")
+
+        class_ = self.datum_type_and_entity_to_class[entity_type][datum_type]
+
         self._requests_post_rel_host(
-            "datasets",
+            entity_type,
             json={
                 "name": name,
                 "href": href,
                 "description": description,
-                "type": type_.value,
+                "type": datum_type.value,
             },
         )
 
-        return cls(client=self, name=name)
+        return class_(client=self, name=name)
 
     def create_image_dataset(
         self, name: str, href: str = None, description: str = None
     ):
-        return self._create_dataset(
+        return self._create_model_or_dataset(
+            entity_type="datasets",
+            datum_type=DatumTypes.IMAGE,
             name=name,
-            cls=ImageDataset,
-            type_=DatumTypes.IMAGE,
             href=href,
             description=description,
         )
@@ -458,10 +618,10 @@ class Client:
     def create_tabular_dataset(
         self, name: str, href: str = None, description: str = None
     ):
-        return self._create_dataset(
+        return self._create_model_or_dataset(
+            entity_type="datasets",
+            datum_type=DatumTypes.TABULAR,
             name=name,
-            cls=TabularDataset,
-            type_=DatumTypes.TABULAR,
             href=href,
             description=description,
         )
@@ -470,35 +630,55 @@ class Client:
         job_id = self._requests_delete_rel_host(f"datasets/{name}").json()
         return Job(client=self, job_id=job_id)
 
+    def _get_model_or_dataset(
+        self,
+        entity_type: str,
+        name: str,
+    ):
+        entity_types = list(self.datum_type_and_entity_to_class.keys())
+        if entity_type not in entity_types:
+            raise ValueError(f"Expected `entity_type` to be in {entity_types}")
+
+        resp = self._requests_get_rel_host(f"{entity_type}/{name}").json()
+
+        datum_type = DatumTypes.invert(resp["type"])
+        class_ = self.datum_type_and_entity_to_class[entity_type][datum_type]
+
+        return class_(client=self, name=resp["name"])
+
+    def get_model(self, name: str) -> ModelBase:
+        return self._get_model_or_dataset(entity_type="models", name=name)
+
     def get_dataset(self, name: str) -> DatasetBase:
-        resp = self._requests_get_rel_host(f"datasets/{name}")
-        if resp["type"] == DatumTypes.IMAGE:
-            class_ = ImageDataset
-        elif resp["type"] == DatumTypes.TABULAR:
-            class_ = TabularDataset
-        else:
-            raise RuntimeError(f"Got unexpected type: {resp['type']}")
-        return class_(client=self, name=resp.json()["name"])
+        return self._get_model_or_dataset(entity_type="datasets", name=name)
 
     def get_datasets(self) -> List[dict]:
         return self._requests_get_rel_host("datasets").json()
 
-    def create_model(
+    def create_image_model(
         self, name: str, href: str = None, description: str = None
-    ) -> "Model":
-        self._requests_post_rel_host(
-            "models",
-            json={"name": name, "href": href, "description": description},
+    ):
+        return self._create_model_or_dataset(
+            entity_type="models",
+            datum_type=DatumTypes.IMAGE,
+            name=name,
+            href=href,
+            description=description,
         )
 
-        return Model(client=self, name=name)
+    def create_tabular_model(
+        self, name: str, href: str = None, description: str = None
+    ):
+        return self._create_model_or_dataset(
+            entity_type="models",
+            datum_type=DatumTypes.TABULAR,
+            name=name,
+            href=href,
+            description=description,
+        )
 
     def delete_model(self, name: str) -> None:
         self._requests_delete_rel_host(f"models/{name}")
-
-    def get_model(self, name: str) -> "Model":
-        resp = self._requests_get_rel_host(f"models/{name}")
-        return Model(client=self, name=resp.json()["name"])
 
     def get_models(self) -> List[dict]:
         return self._requests_get_rel_host("models").json()
@@ -541,133 +721,3 @@ class EvalJob(Job):
         return self.client._requests_get_rel_host(
             f"/jobs/{self._id}/settings"
         ).json()
-
-
-class Model:
-    def __init__(self, client: Client, name: str):
-        self.client = client
-        self.name = name
-
-    def add_predicted_detections(
-        self, dataset: ImageDataset, dets: List[PredictedDetection]
-    ) -> None:
-        payload = {
-            "model_name": self.name,
-            "dataset_name": dataset.name,
-            "detections": [_det_to_dict(det) for det in dets],
-        }
-
-        resp = self.client._requests_post_rel_host(
-            "predicted-detections", json=payload
-        )
-
-        return resp.json()
-
-    def add_predicted_segmentations(
-        self, dataset: ImageDataset, segs: List[_PredictedSegmentation]
-    ) -> None:
-        payload = {
-            "model_name": self.name,
-            "dataset_name": dataset.name,
-            "segmentations": [
-                {
-                    "base64_mask": _mask_array_to_pil_base64(seg.mask),
-                    "scored_labels": [
-                        asdict(scored_label)
-                        for scored_label in seg.scored_labels
-                    ],
-                    "image": asdict(seg.image),
-                    "is_instance": seg._is_instance,
-                }
-                for seg in segs
-            ],
-        }
-
-        resp = self.client._requests_post_rel_host(
-            "predicted-segmentations", json=payload
-        )
-
-        return resp.json()
-
-    def add_predicted_classifications(
-        self, dataset: DatasetBase, clfs: List[PredictedImageClassification]
-    ) -> None:
-        payload = {
-            "model_name": self.name,
-            "dataset_name": dataset.name,
-            "classifications": [
-                {
-                    "scored_labels": [
-                        asdict(scored_label)
-                        for scored_label in clf.scored_labels
-                    ],
-                    "datum": asdict(clf.image),
-                }
-                for clf in clfs
-            ],
-        }
-
-        resp = self.client._requests_post_rel_host(
-            "predicted-classifications", json=payload
-        )
-
-        return resp.json()
-
-    def finalize_inferences(self, dataset: DatasetBase) -> None:
-        return self.client._requests_put_rel_host(
-            f"models/{self.name}/inferences/{dataset.name}/finalize"
-        ).json()
-
-    def evaluate_ap(
-        self,
-        dataset: ImageDataset,
-        model_pred_task_type: Task = None,
-        dataset_gt_task_type: Task = None,
-        iou_thresholds: List[float] = None,
-        ious_to_keep: List[float] = None,
-        min_area: float = None,
-        max_area: float = None,
-    ) -> "EvalJob":
-        payload = {
-            "settings": {
-                "model_name": self.name,
-                "dataset_name": dataset.name,
-                "model_pred_task_type": model_pred_task_type.value
-                if model_pred_task_type is not None
-                else None,
-                "dataset_gt_task_type": dataset_gt_task_type.value
-                if dataset_gt_task_type is not None
-                else None,
-                "min_area": min_area,
-                "max_area": max_area,
-            }
-        }
-
-        if iou_thresholds is not None:
-            payload["iou_thresholds"] = iou_thresholds
-        if ious_to_keep is not None:
-            payload["ious_to_keep"] = ious_to_keep
-
-        resp = self.client._requests_post_rel_host(
-            "/ap-metrics", json=payload
-        ).json()
-        # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
-        # list of label dicts. convert label dicts to Label objects
-        for k in ["missing_pred_labels", "ignored_pred_labels"]:
-            resp[k] = [Label(**la) for la in resp[k]]
-
-        return EvalJob(client=self.client, **resp)
-
-    def evaluate_classification(self, dataset: DatasetBase) -> EvalJob:
-        payload = {
-            "settings": {
-                "model_name": self.name,
-                "dataset_name": dataset.name,
-            }
-        }
-
-        resp = self.client._requests_post_rel_host(
-            "/clf-metrics", json=payload
-        ).json()
-
-        return EvalJob(client=self.client, **resp)

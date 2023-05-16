@@ -327,6 +327,9 @@ class Model(Base):
     name: Mapped[str] = mapped_column(index=True, unique=True)
     href: Mapped[str] = mapped_column(index=True, nullable=True)
     description: Mapped[str] = mapped_column(index=True, nullable=True)
+    type: Mapped[str] = mapped_column(
+        Enum(DatumTypes), default=DatumTypes.IMAGE
+    )
     predicted_detections = relationship(
         PredictedDetection, cascade="all, delete"
     )

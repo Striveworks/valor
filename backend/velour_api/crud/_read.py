@@ -75,7 +75,8 @@ def get_dataset(db: Session, dataset_name: str) -> models.Dataset:
 
 def get_models(db: Session) -> list[schemas.Model]:
     return [
-        schemas.Model(name=m.name) for m in db.scalars(select(models.Model))
+        schemas.Model(**{k: getattr(m, k) for k in schemas.Model.__fields__})
+        for m in db.scalars(select(models.Model))
     ]
 
 

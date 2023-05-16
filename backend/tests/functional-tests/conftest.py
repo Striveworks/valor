@@ -210,7 +210,9 @@ def predictions(
     """
     model_name = "test model"
     dset_name = "test dataset"
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
 
     # predictions for four images taken from
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L59

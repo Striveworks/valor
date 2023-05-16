@@ -19,7 +19,7 @@ from velour.client import (
     Client,
     ClientException,
     ImageDataset,
-    Model,
+    ImageModel,
     TabularDataset,
 )
 from velour.data_types import (
@@ -470,7 +470,7 @@ def _test_create_image_dataset_with_gts(
     return dataset
 
 
-def _test_create_model_with_preds(
+def _test_create_image_model_with_preds(
     client: Client,
     gts: list[Any],
     preds: list[Any],
@@ -491,7 +491,7 @@ def _test_create_model_with_preds(
     preds
         list of prediction objects (from `velour.data_types`)
     add_preds_method_name
-        method name of `velour.client.Model` to add prediction objects
+        method name of `velour.client.ImageModel` to add prediction objects
     preds_model_class
         class in `velour_api.models` that specifies the labeled predictions
     preds_expected_number
@@ -506,7 +506,7 @@ def _test_create_model_with_preds(
     -------
     the sqlalchemy objects for the created predictions
     """
-    model = client.create_model(model_name)
+    model = client.create_image_model(model_name)
     dataset = client.create_image_dataset(dset_name)
 
     add_preds_method = getattr(model, add_preds_method_name)
@@ -514,7 +514,7 @@ def _test_create_model_with_preds(
     # verify we get an error if we try to create another model
     # with the same name
     with pytest.raises(ClientException) as exc_info:
-        client.create_model(model_name)
+        client.create_image_model(model_name)
     assert "already exists" in str(exc_info)
 
     # check that if we try to add detections we get an error
@@ -541,7 +541,7 @@ def _test_create_model_with_preds(
 
     # check that the get_model method works
     retrieved_model = client.get_model(model_name)
-    assert isinstance(retrieved_model, Model)
+    assert isinstance(retrieved_model, ImageModel)
     assert retrieved_model.name == model_name
 
     return db_preds
@@ -561,7 +561,7 @@ def test_create_image_dataset_with_href_and_description(
 def test_create_model_with_href_and_description(client: Client, db: Session):
     href = "http://a.com/b"
     description = "a description"
-    client.create_model(model_name, href=href, description=description)
+    client.create_image_model(model_name, href=href, description=description)
     db_model = db.scalar(select(models.Model))
     assert db_model.href == href
     assert db_model.description == description
@@ -601,13 +601,13 @@ def test_create_image_dataset_with_detections(
     assert dets2 == gt_dets_uid2
 
 
-def test_create_model_with_predicted_detections(
+def test_create_image_model_with_predicted_detections(
     client: Client,
     gt_poly_dets1: list[GroundTruthDetection],
     pred_poly_dets: list[PredictedDetection],
     db: Session,
 ):
-    labeled_pred_dets = _test_create_model_with_preds(
+    labeled_pred_dets = _test_create_image_model_with_preds(
         client=client,
         gts=gt_poly_dets1,
         preds=pred_poly_dets,
@@ -688,7 +688,7 @@ def test_create_pred_detections_as_bbox_or_poly(
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
     dataset = client.create_image_dataset(dset_name)
-    model = client.create_model(model_name)
+    model = client.create_image_model(model_name)
 
     dataset.add_groundtruth(gt_dets1)
 
@@ -824,7 +824,7 @@ def test_create_model_with_predicted_segmentations(
     db: Session,
 ):
     """Tests that we can create a predicted segmentation from a mask array"""
-    labeled_pred_segs = _test_create_model_with_preds(
+    labeled_pred_segs = _test_create_image_model_with_preds(
         client=client,
         gts=gt_segs1,
         preds=pred_segs,
@@ -874,7 +874,7 @@ def test_create_model_with_predicted_classifications(
     pred_clfs: list[PredictedDetection],
     db: Session,
 ):
-    _test_create_model_with_preds(
+    _test_create_image_model_with_preds(
         client=client,
         gts=gt_clfs1,
         preds=pred_clfs,
@@ -926,7 +926,7 @@ def test_iou(
     img1: Image,
 ):
     dataset = client.create_image_dataset(dset_name)
-    model = client.create_model(model_name)
+    model = client.create_image_model(model_name)
 
     rect1_poly = bbox_to_poly(rect1)
     rect2_poly = bbox_to_poly(rect2)
@@ -984,7 +984,7 @@ def test_evaluate_ap(
     dataset.add_groundtruth(gt_dets1)
     dataset.finalize()
 
-    model = client.create_model(model_name)
+    model = client.create_image_model(model_name)
     model.add_predicted_detections(dataset, pred_dets)
     model.finalize_inferences(dataset)
 
@@ -1161,7 +1161,7 @@ def test_evaluate_clf(
     dataset.add_groundtruth(gt_clfs1)
     dataset.finalize()
 
-    model = client.create_model(model_name)
+    model = client.create_image_model(model_name)
     model.add_predicted_classifications(dataset, pred_clfs)
     model.finalize_inferences(dataset)
 

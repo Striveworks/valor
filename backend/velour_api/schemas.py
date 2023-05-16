@@ -48,6 +48,7 @@ class Model(BaseModel):
     name: str
     href: str = None
     description: str = None
+    type: DatumTypes
 
     @validator("href")
     def validate_href(cls, v):
