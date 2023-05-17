@@ -14,6 +14,17 @@ from velour.integrations.yolo import (
 )
 
 
+class BoxOnGPU(object):
+    def __init__(
+        self,
+        datum,
+    ):
+        self.datum = datum
+
+    def cpu(self):
+        return self.datum
+
+
 class Boxes(object):
     def __init__(self, boxes, orig_shape: tuple):
         self.data = boxes
@@ -21,7 +32,7 @@ class Boxes(object):
 
     @property
     def xyxy(self):
-        return self.data[:, :4]
+        return [BoxOnGPU(datum) for datum in self.data[:, :4]]
 
     @property
     def conf(self):
@@ -32,13 +43,24 @@ class Boxes(object):
         return self.data[:, -1]
 
 
+class MaskOnGPU(object):
+    def __init__(
+        self,
+        mask,
+    ):
+        self.mask = mask
+
+    def cpu(self):
+        return self.mask
+
+
 class Masks(object):
     def __init__(
         self,
         masks,
         orig_shape: tuple,
     ):
-        self.data = masks
+        self.data = [MaskOnGPU(mask) for mask in masks]
         self.orig_shape = orig_shape
 
 
@@ -210,6 +232,7 @@ def test_parse_image_classification(image, names):
 
 
 def test__convert_yolo_segmentation(image, yolo_mask, velour_mask):
+    yolo_mask = MaskOnGPU(yolo_mask)
     output = _convert_yolo_segmentation(
         yolo_mask, image["height"], image["width"]
     )

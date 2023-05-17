@@ -54,7 +54,7 @@ def _convert_yolo_segmentation(
     resample: Resampling = Resampling.BILINEAR,
 ):
     """Resizes the raw binary mask provided by the YOLO inference to the original image size."""
-    mask = numpy.asarray(raw)  # .cpu().numpy()
+    mask = numpy.asarray(raw.cpu())
     mask[mask == 1.0] = 255
     img = PIL.Image.fromarray(numpy.uint8(mask))
     img = img.resize((width, height), resample=resample)
@@ -115,9 +115,7 @@ def parse_object_detection(results, uid: str):
     image_width = results.orig_shape[1]
     probabilities = [conf.item() for conf in results.boxes.conf]
     labels = [results.names[int(pred.item())] for pred in results.boxes.cls]
-    bboxes = [
-        numpy.asarray(box) for box in results.boxes.xyxy
-    ]  # .cpu().numpy()
+    bboxes = [numpy.asarray(box.cpu()) for box in results.boxes.xyxy]
 
     # Create scored label list
     scored_labels = [
