@@ -657,17 +657,13 @@ def get_filtered_preds_statement_and_missing_labels(
     )
 
 
-def _validate_and_update_evaluation_settings_task_type_for_detection(
+def _check_dataset_and_inferences_finalized(
     db: Session, evaluation_settings: schemas.EvaluationSettings
-) -> None:
-    """If the model or dataset task types are none, then get these from the
-    datasets themselves. In either case verify that these task types are compatible
-    for detection evaluation.
-    """
+):
     dataset_name = evaluation_settings.dataset_name
     model_name = evaluation_settings.model_name
     if get_dataset(db, dataset_name).draft:
-        raise exceptions.DatasetIsDraftError(evaluation_settings.dataset_name)
+        raise exceptions.DatasetIsDraftError(dataset_name)
     # check that inferences are finalized
     if not _check_finalized_inferences(
         db, model_name=model_name, dataset_name=dataset_name
@@ -675,6 +671,19 @@ def _validate_and_update_evaluation_settings_task_type_for_detection(
         raise exceptions.InferencesAreNotFinalizedError(
             dataset_name=dataset_name, model_name=model_name
         )
+
+
+def _validate_and_update_evaluation_settings_task_type_for_detection(
+    db: Session, evaluation_settings: schemas.EvaluationSettings
+) -> None:
+    """If the model or dataset task types are none, then get these from the
+    datasets themselves. In either case verify that these task types are compatible
+    for detection evaluation.
+    """
+    _check_dataset_and_inferences_finalized(db, evaluation_settings)
+
+    dataset_name = evaluation_settings.dataset_name
+    model_name = evaluation_settings.model_name
 
     # do some validation
     allowable_tasks = set(
@@ -813,6 +822,8 @@ def validate_create_ap_metrics(
 def validate_create_clf_metrics(
     db: Session, request_info: schemas.ClfMetricsRequest
 ) -> tuple[list[str], list[str]]:
+    _check_dataset_and_inferences_finalized(db, request_info.settings)
+
     gts_statement = _classifications_in_dataset_statement(
         request_info.settings.dataset_name
     )
