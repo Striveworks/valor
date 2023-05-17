@@ -158,7 +158,7 @@ def upload_inferences(
     results: list,
     uids: List[str],
     model_href: str = None,
-    model_description: str = None,    
+    model_description: str = None,
     segmentation_resample: Resampling = Resampling.BILINEAR,
     chunk_size: int = 1000,
     show_progress_bar: bool = True,
@@ -209,7 +209,9 @@ def upload_inferences(
             predictions += parse_image_classification(result, uid)
 
     # Create & Populate Model
-    model = client.create_image_model(model_name, href=model_href, description=model_description)
+    model = client.create_image_model(
+        model_name, href=model_href, description=model_description
+    )
     model.add_predictions(
         dataset=dataset,
         predictions=predictions,

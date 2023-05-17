@@ -24,11 +24,8 @@ from velour.data_types import (
 )
 
 try:
-    import chariot.datasets 
+    import chariot.datasets
     from chariot.config import settings
-    from chariot.datasets.dataset_version import (
-        get_latest_vertical_dataset_version,
-    )
 
 except ModuleNotFoundError:
     "`chariot` package not found. if you have an account on Chariot please see https://production.chariot.striveworks.us/docs/sdk/sdk for how to install the python SDK"
@@ -198,7 +195,7 @@ def _parse_chariot_annotations(
     chariot_manifest
         List of dictionaries containing data annotations and metadata.
     chariot_task_type
-        Pass-through property chariot.datasets.dataset_version.DatasetVersion.supported_task_types
+        Pass-through property chariot.datasets.DatasetVersion.supported_task_types
     using_training_manifest
         (OPTIONAL) Defaults to true, setting false will use the evaluation manifest which is a
         super set of the training manifest. Not recommended as the evaluation manifest may
@@ -262,7 +259,7 @@ def _parse_chariot_annotations(
 
 def upload_dataset(
     client: Client,
-    dataset: chariot.datasets.dataset.Dataset,
+    dataset: chariot.datasets.Dataset,
     dataset_version_id: str = None,
     name: str = None,
     use_training_manifest: bool = True,
@@ -305,7 +302,7 @@ def upload_dataset(
     dsv = None
     if dataset_version_id is None:
         # Use the latest version
-        dsv = get_latest_vertical_dataset_version(
+        dsv = chariot.datasets.get_latest_vertical_dataset_version(
             project_id=dataset.project_id,
             dataset_id=dataset.id,
         )
