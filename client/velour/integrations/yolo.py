@@ -157,6 +157,8 @@ def upload_inferences(
     dataset: ImageDataset,
     results: list,
     uids: List[str],
+    model_href: str = None,
+    model_description: str = None,    
     segmentation_resample: Resampling = Resampling.BILINEAR,
     chunk_size: int = 1000,
     show_progress_bar: bool = True,
@@ -169,6 +171,10 @@ def upload_inferences(
         Velour Client object.
     model_name
         Model name.
+    model_href
+        Model href
+    model_description
+        Model description
     dataset
         Velour Dataset object.
     results
@@ -203,7 +209,7 @@ def upload_inferences(
             predictions += parse_image_classification(result, uid)
 
     # Create & Populate Model
-    model = ImageModel(client=client, name=model_name)
+    model = client.create_image_model(model_name, href=model_href, description=model_description)
     model.add_predictions(
         dataset=dataset,
         predictions=predictions,
