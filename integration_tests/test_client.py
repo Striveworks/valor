@@ -1423,6 +1423,6 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
         == expected_confusion_matrices
     )
 
-    client.delete_model()
+    client.delete_model(model_name)
 
     assert len(client.get_models()) == 0
