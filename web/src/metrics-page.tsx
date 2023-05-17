@@ -89,7 +89,7 @@ const MetricsSection = () => {
     let config = {};
     if (usingAuth()) {
       const token = sessionStorage.getItem("token");
-      config = { headers: { Authorization: token } };
+      config = { headers: { Authorization: `Bearer ${token}` } };
 
       if (token === "null") {
         console.log("token is null");
@@ -214,7 +214,7 @@ const InfoSection = () => {
     let config = {};
     if (usingAuth()) {
       const token = sessionStorage.getItem("token");
-      config = { headers: { Authorization: token } };
+      config = { headers: { Authorization: `Bearer ${token}` } };
 
       if (token === "null") {
         console.log("token is null");
