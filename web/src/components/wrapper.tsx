@@ -8,6 +8,7 @@ import Box from "@mui/material/Box";
 import React from "react";
 import { useEffect } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 
 const drawerWidth = 240;
 
@@ -49,11 +50,18 @@ export const Wrapper = ({ children }: { children: React.ReactNode }) => (
         <ListItem>
           <Link href="/models">Models</Link>
         </ListItem>
+        <Divider />
         <ListItem>
           <Link href="/datasets">Datasets</Link>
         </ListItem>
         <ListItem>
           <Link href="/profile">Profile</Link>
+        </ListItem>
+        <Divider />
+        <ListItem>
+          <Link href="/docs/" component="a" target="_blank">
+            Docs <OpenInNewIcon />
+          </Link>
         </ListItem>
       </List>
     </Drawer>
