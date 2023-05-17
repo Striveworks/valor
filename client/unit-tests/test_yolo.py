@@ -6,7 +6,6 @@ from velour.data_types import (
     PredictedImageClassification,
     PredictedInstanceSegmentation,
 )
-
 from velour.integrations.yolo import (
     _convert_yolo_segmentation,
     parse_image_classification,
@@ -14,10 +13,9 @@ from velour.integrations.yolo import (
     parse_object_detection,
 )
 
-torch = pytest.importorskip('torch')
 
 class Boxes(object):
-    def __init__(self, boxes: torch.Tensor, orig_shape: tuple):
+    def __init__(self, boxes, orig_shape: tuple):
         self.data = boxes
         self.orig_shape = orig_shape
 
@@ -37,7 +35,7 @@ class Boxes(object):
 class Masks(object):
     def __init__(
         self,
-        masks: torch.Tensor,
+        masks,
         orig_shape: tuple,
     ):
         self.data = masks
@@ -47,12 +45,12 @@ class Masks(object):
 class Results(object):
     def __init__(
         self,
-        orig_img: torch.Tensor,
+        orig_img,
         path: str,
         names: dict,
-        probs: torch.Tensor = None,
-        boxes: torch.Tensor = None,
-        masks: torch.Tensor = None,
+        probs=None,
+        boxes=None,
+        masks=None,
     ):
         self.orig_img = orig_img
         self.orig_shape = orig_img.shape[:2]
@@ -135,7 +133,7 @@ def bbox3(names):
 @pytest.fixture
 def bboxes(bbox1, bbox2, bbox3):
 
-    boxes = torch.zeros(3, 6)
+    boxes = numpy.zeros((3, 6))
 
     boxes[0][0] = bbox1["xmin"]
     boxes[0][1] = bbox1["ymin"]
@@ -163,10 +161,12 @@ def bboxes(bbox1, bbox2, bbox3):
 
 @pytest.fixture
 def yolo_mask(image):
-    x = torch.zeros(image["mask_height"], image["mask_width"], dtype=float)
+    x = numpy.zeros(
+        (image["mask_height"], image["mask_width"]), dtype=numpy.float32
+    )
     x[int(image["mask_height"] / 2) :, int(image["mask_width"] / 2) :] = 1.0
     # One-quarter of the image is colored.
-    assert x[x >= 0.5].numel() / x.numel() == 0.25
+    assert x[x >= 0.5].size / x.size == 0.25
     return x
 
 
@@ -181,16 +181,20 @@ def velour_mask(image):
 
 def test_parse_image_classification(image, names):
 
-    probs = torch.Tensor([0.82, 0.08, 0.1])
+    probs = numpy.asarray([0.82, 0.08, 0.1])
 
     results = Results(
-        orig_img=torch.rand(image["height"], image["width"], 3),
+        orig_img=numpy.random.rand(image["height"], image["width"], 3),
         path=image["path"],
         names=names,
         probs=probs,
     )
 
-    prediction = parse_image_classification(results, image["uid"])[0]
+    predictions = parse_image_classification(results, image["uid"])
+
+    assert len(predictions) == 1
+
+    prediction = predictions[0]
 
     assert isinstance(prediction, PredictedImageClassification)
 
@@ -216,8 +220,8 @@ def test__convert_yolo_segmentation(image, yolo_mask, velour_mask):
 def test_parse_image_segmentation(
     image, names, bboxes, yolo_mask, velour_mask
 ):
-    img = torch.rand(image["height"], image["width"], 3)
-    masks = torch.stack([yolo_mask, yolo_mask, yolo_mask])
+    img = numpy.random.rand(image["height"], image["width"], 3)
+    masks = numpy.stack([yolo_mask, yolo_mask, yolo_mask])
 
     results = Results(
         orig_img=img,
@@ -229,7 +233,7 @@ def test_parse_image_segmentation(
 
     predictions = parse_image_segmentation(results, image["uid"])
 
-    assert len(predictions) == bboxes.size(dim=0)
+    assert len(predictions) == bboxes.shape[0]
     for i in range(len(predictions)):
         assert isinstance(predictions[i], PredictedInstanceSegmentation)
         assert predictions[i].image.uid == image["uid"]
@@ -244,7 +248,7 @@ def test_parse_image_segmentation(
 
 
 def test_parse_object_detection(image, bboxes, names):
-    img = torch.rand(image["height"], image["width"], 3)
+    img = numpy.random.rand(image["height"], image["width"], 3)
 
     results = Results(
         orig_img=img, path=image["path"], names=names, boxes=bboxes
@@ -252,7 +256,7 @@ def test_parse_object_detection(image, bboxes, names):
 
     predictions = parse_object_detection(results, image["uid"])
 
-    assert len(predictions) == bboxes.size(dim=0)
+    assert len(predictions) == bboxes.shape[0]
     for i in range(len(predictions)):
         assert isinstance(predictions[i], PredictedDetection)
         assert predictions[i].image.uid == image["uid"]

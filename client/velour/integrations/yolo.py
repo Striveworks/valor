@@ -2,7 +2,6 @@ from typing import List
 
 import numpy
 import PIL
-import torch
 from PIL.Image import Resampling
 
 from velour.client import Client, ImageDataset, ImageModel
@@ -49,13 +48,13 @@ def parse_image_classification(results, uid: str):
 
 
 def _convert_yolo_segmentation(
-    raw: torch.Tensor,
+    raw,
     height: int,
     width: int,
     resample: Resampling = Resampling.BILINEAR,
 ):
     """Resizes the raw binary mask provided by the YOLO inference to the original image size."""
-    mask = raw.cpu().numpy()
+    mask = numpy.asarray(raw)  # .cpu().numpy()
     mask[mask == 1.0] = 255
     img = PIL.Image.fromarray(numpy.uint8(mask))
     img = img.resize((width, height), resample=resample)
@@ -116,7 +115,9 @@ def parse_object_detection(results, uid: str):
     image_width = results.orig_shape[1]
     probabilities = [conf.item() for conf in results.boxes.conf]
     labels = [results.names[int(pred.item())] for pred in results.boxes.cls]
-    bboxes = [box.cpu().numpy() for box in results.boxes.xyxy]
+    bboxes = [
+        numpy.asarray(box) for box in results.boxes.xyxy
+    ]  # .cpu().numpy()
 
     # Create scored label list
     scored_labels = [
