@@ -13,7 +13,7 @@ export const ProfilePage = () => {
 
   const codeSnippet = `from velour.client import Client\n\nclient = Client("${
     process.env.REACT_APP_BACKEND_URL
-  }", access_token="${localStorage.getItem("token")}")`;
+  }", access_token="${sessionStorage.getItem("token")}")`;
 
   const fields = ["name", "email"];
   return (

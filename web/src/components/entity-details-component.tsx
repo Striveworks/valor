@@ -18,7 +18,7 @@ export const EntityDetailsComponent = ({
   useEffect(() => {
     let config = {};
     if (usingAuth()) {
-      const token = localStorage.getItem("token");
+      const token = sessionStorage.getItem("token");
       config = { headers: { Authorization: token } };
 
       if (token === "null") {
