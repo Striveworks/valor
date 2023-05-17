@@ -342,6 +342,9 @@ class Model(Base):
     finalized_inferences = relationship(
         "FinalizedInferences", cascade="all, delete"
     )
+    evaluation_settings = relationship(
+        "EvaluationSettings", cascade="all, delete"
+    )
 
 
 class FinalizedInferences(Base):
