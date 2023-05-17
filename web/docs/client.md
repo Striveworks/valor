@@ -4,6 +4,14 @@ Here we cover the basic concepts involved in interacting with the `velour` servi
 
 Additionally, sample Jupyter notebooks are available [here](https://github.com/Striveworks/velour/tree/main/sample_notebooks).
 
+## Installation
+
+The client is hosted on PyPI and can be installed via
+
+```shell
+pip install velour-client
+```
+
 ## Supported tasks
 
 Currently `velour` supports the following groundtruth label types:
@@ -12,6 +20,7 @@ Currently `velour` supports the following groundtruth label types:
 - object detections
 - instance segmentations
 - semantic segmentations
+- tabular data classifications
 
 Each case has the notion of a label, which is a key/value pair. This is used (instead of forcing labels to be strings) to support things such as
 
@@ -23,7 +32,7 @@ Each case has the notion of a label, which is a key/value pair. This is used (in
 The `velour.Client` class gives an object that is used to communicate with the `velour` backend. It can be instantiated via
 
 ```py
-from velour import Client
+from velour.client import Client
 
 client = Client(HOST_URL)
 ```
