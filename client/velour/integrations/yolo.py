@@ -16,21 +16,16 @@ from velour.data_types import (
     ScoredLabel,
 )
 
-try:
-    from ultralytics.yolo.engine.results import Results
-except ModuleNotFoundError:
-    "'ultralytics' package not found. You can find the project at https://github.com/ultralytics/ultralytics"
 
-
-def parse_image_classification(result: Results, uid: str):
+def parse_image_classification(results, uid: str):
     """Parses Ultralytic's results for an image classification task."""
 
     # Extract data
     image_uid = uid
-    image_height = result.orig_shape[0]
-    image_width = result.orig_shape[1]
-    probabilities = result.probs
-    labels = result.names
+    image_height = results.orig_shape[0]
+    image_width = results.orig_shape[1]
+    probabilities = results.probs
+    labels = results.names
 
     # Create scored label list
     scored_labels = [
@@ -69,17 +64,17 @@ def _convert_yolo_segmentation(
 
 
 def parse_image_segmentation(
-    result: Results, uid: str, resample: Resampling = Resampling.BILINEAR
+    results, uid: str, resample: Resampling = Resampling.BILINEAR
 ):
     """Parses Ultralytic's results for an image segmentation task."""
 
     # Extract data
     image_uid = uid
-    image_height = result.orig_shape[0]
-    image_width = result.orig_shape[1]
-    probabilities = [conf.item() for conf in result.boxes.conf]
-    labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
-    masks = [mask for mask in result.masks.data]
+    image_height = results.orig_shape[0]
+    image_width = results.orig_shape[1]
+    probabilities = [conf.item() for conf in results.boxes.conf]
+    labels = [results.names[int(pred.item())] for pred in results.boxes.cls]
+    masks = [mask for mask in results.masks.data]
 
     # Create scored label list
     scored_labels = [
@@ -95,7 +90,7 @@ def parse_image_segmentation(
         _convert_yolo_segmentation(
             raw, height=image_height, width=image_width, resample=resample
         )
-        for raw in result.masks.data
+        for raw in results.masks.data
     ]
 
     return [
@@ -112,16 +107,16 @@ def parse_image_segmentation(
     ]
 
 
-def parse_object_detection(result: Results, uid: str):
+def parse_object_detection(results, uid: str):
     """Parses Ultralytic's results for an object detection task."""
 
     # Extract data
     image_uid = uid
-    image_height = result.orig_shape[0]
-    image_width = result.orig_shape[1]
-    probabilities = [conf.item() for conf in result.boxes.conf]
-    labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
-    bboxes = [box.cpu().numpy() for box in result.boxes.xyxy]
+    image_height = results.orig_shape[0]
+    image_width = results.orig_shape[1]
+    probabilities = [conf.item() for conf in results.boxes.conf]
+    labels = [results.names[int(pred.item())] for pred in results.boxes.cls]
+    bboxes = [box.cpu().numpy() for box in results.boxes.xyxy]
 
     # Create scored label list
     scored_labels = [
@@ -161,7 +156,7 @@ def upload_inferences(
     client: Client,
     model_name: str,
     dataset: ImageDataset,
-    results: List[Results],
+    results: list,
     uids: List[str],
     segmentation_resample: Resampling = Resampling.BILINEAR,
     chunk_size: int = 1000,
