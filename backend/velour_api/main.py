@@ -335,8 +335,9 @@ def get_evaluation_settings(
     dependencies=[Depends(token_auth_scheme)],
 )
 def get_model_evaluation_metrics(
-    evaluation_settings_id: str, db: Session = Depends(get_db)
+    model_name: str, evaluation_settings_id: str, db: Session = Depends(get_db)
 ) -> list[schemas.Metric]:
+    # TODO: verify evaluation_settings_id corresponds to given model_name
     return crud.get_metrics_from_evaluation_settings_id(
         db, evaluation_settings_id
     )
