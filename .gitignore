@@ -3,9 +3,8 @@ __pycache__
 build
 .tox
 .coverage*
-*.ipynb
 .env*
 .vscode
 */dist/*
-test
-runs
+sample_notebooks/coco/*
+.DS_Store
