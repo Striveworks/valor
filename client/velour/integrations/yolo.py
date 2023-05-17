@@ -126,6 +126,8 @@ def parse_object_detection(results, uid: str):
         for label, probability in list(zip(labels, probabilities))
     ]
 
+    assert len()
+
     # Extract Bounding Boxes
     bboxes = [
         BoundingBox(
@@ -196,12 +198,15 @@ def upload_inferences(
     Velour image model.
     """
 
+    # Check uids map to results
+    assert len(uids) == len(results)
+
     # Parse inferences
     predictions = []
     for result, uid in list(zip(results, uids)):
         if "masks" in result.keys and "boxes" in result.keys:
             predictions += parse_image_segmentation(
-                result=result, uid=uid, resample=segmentation_resample
+                result, uid=uid, resample=segmentation_resample
             )
         elif "boxes" in result.keys:
             predictions += parse_object_detection(result, uid)
