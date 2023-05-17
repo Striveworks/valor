@@ -3,7 +3,6 @@ __pycache__
 build
 .tox
 .coverage*
-*.ipynb
 .env*
 .vscode
 */dist/*
