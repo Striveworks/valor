@@ -24,7 +24,7 @@ from velour.data_types import (
 )
 
 try:
-    import chariot
+    import chariot.datasets 
     from chariot.config import settings
     from chariot.datasets.dataset_version import (
         get_latest_vertical_dataset_version,
@@ -347,7 +347,7 @@ def upload_dataset(
     )
 
     # Create velour dataset
-    velour_dataset = client.create_dataset(name=name, href=href)
+    velour_dataset = client.create_image_dataset(name=name, href=href)
 
     # Upload velour dataset
     velour_dataset.add_groundtruth(
