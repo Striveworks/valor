@@ -126,8 +126,6 @@ def parse_object_detection(results, uid: str):
         for label, probability in list(zip(labels, probabilities))
     ]
 
-    assert len()
-
     # Extract Bounding Boxes
     bboxes = [
         BoundingBox(
