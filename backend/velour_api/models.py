@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from velour_api.database import Base
-from velour_api.enums import Task
+from velour_api.enums import DatumTypes, Task
 
 
 class Label(Base):
@@ -23,11 +23,11 @@ class Label(Base):
         list["LabeledPredictedDetection"]
     ] = relationship("LabeledPredictedDetection", back_populates="label")
     ground_truth_image_classifications: Mapped[
-        list["GroundTruthImageClassification"]
-    ] = relationship("GroundTruthImageClassification", back_populates="label")
+        list["GroundTruthClassification"]
+    ] = relationship("GroundTruthClassification", back_populates="label")
     predicted_image_classifications: Mapped[
-        list["PredictedImageClassification"]
-    ] = relationship("PredictedImageClassification", back_populates="label")
+        list["PredictedClassification"]
+    ] = relationship("PredictedClassification", back_populates="label")
     labeled_ground_truth_segmentations: Mapped[
         list["LabeledGroundTruthSegmentation"]
     ] = relationship("LabeledGroundTruthSegmentation", back_populates="label")
@@ -49,7 +49,7 @@ class GroundTruthDetection(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     boundary = mapped_column(Geometry("POLYGON"))
     is_bbox: Mapped[bool] = mapped_column(nullable=False)
-    image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
+    datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"))
     labeled_ground_truth_detections: Mapped[
         list["LabeledGroundTruthDetection"]
     ] = relationship(
@@ -73,9 +73,9 @@ class PredictedDetection(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     boundary = mapped_column(Geometry("POLYGON"))
     is_bbox: Mapped[bool] = mapped_column(nullable=False)
-    image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
-    image: Mapped["Image"] = relationship(
-        "Image", back_populates="predicted_detections"
+    datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"))
+    datum: Mapped["Datum"] = relationship(
+        "Datum", back_populates="predicted_detections"
     )
     labeled_predicted_detections = relationship(
         "LabeledPredictedDetection",
@@ -110,10 +110,10 @@ class LabeledGroundTruthDetection(Base):
         "Label", back_populates="labeled_ground_truth_detections"
     )
 
-    # add image_id property for easier access
+    # add datum_id property for easier access
     @property
-    def image_id(self):
-        return self.detection.image_id
+    def datum_id(self):
+        return self.detection.datum_id
 
 
 class LabeledPredictedDetection(Base):
@@ -136,22 +136,22 @@ class LabeledPredictedDetection(Base):
     )
     score: Mapped[float]
 
-    # add image_id property for easier access
+    # add datum_id property for easier access
     @property
-    def image_id(self):
-        return self.detection.image_id
+    def datum_id(self):
+        return self.detection.datum_id
 
 
-class GroundTruthImageClassification(Base):
+class GroundTruthClassification(Base):
     """Groundtruth for an image classification"""
 
     __tablename__ = "ground_truth_image_classification"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     # need some uniquess for labels (a key can only appear once for a given image)
-    image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
-    image: Mapped["Image"] = relationship(
-        "Image", back_populates="ground_truth_classifications"
+    datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"))
+    datum: Mapped["Datum"] = relationship(
+        "Datum", back_populates="ground_truth_classifications"
     )
     label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
     label = relationship(
@@ -159,7 +159,7 @@ class GroundTruthImageClassification(Base):
     )
 
 
-class PredictedImageClassification(Base):
+class PredictedClassification(Base):
     """Prediction for image classification from a model"""
 
     __tablename__ = "predicted_image_classification"
@@ -167,9 +167,9 @@ class PredictedImageClassification(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     score: Mapped[float]
     # need some uniquess for labels (a key can only appear once for a given image)
-    image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
-    image: Mapped["Image"] = relationship(
-        "Image", back_populates="predicted_classifications"
+    datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"))
+    datum: Mapped["Datum"] = relationship(
+        "Datum", back_populates="predicted_classifications"
     )
     label_id: Mapped[int] = mapped_column(ForeignKey("label.id"))
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
@@ -199,8 +199,8 @@ class GroundTruthSegmentation(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     is_instance: Mapped[bool] = mapped_column(nullable=False)
     shape = mapped_column(GDALRaster)
-    image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
-    image = relationship("Image", back_populates="ground_truth_segmentations")
+    datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"))
+    datum = relationship("Datum", back_populates="ground_truth_segmentations")
     labeled_ground_truth_segmentations: Mapped[
         list["LabeledGroundTruthSegmentation"]
     ] = relationship(
@@ -218,9 +218,9 @@ class PredictedSegmentation(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     is_instance: Mapped[bool] = mapped_column(nullable=False)
     shape = mapped_column(GDALRaster)
-    image_id: Mapped[int] = mapped_column(ForeignKey("image.id"))
-    image: Mapped["Image"] = relationship(
-        "Image", back_populates="predicted_segmentations"
+    datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"))
+    datum: Mapped["Datum"] = relationship(
+        "Datum", back_populates="predicted_segmentations"
     )
     labeled_predicted_segmentations = relationship(
         "LabeledPredictedSegmentation",
@@ -251,10 +251,10 @@ class LabeledGroundTruthSegmentation(Base):
         "Label", back_populates="labeled_ground_truth_segmentations"
     )
 
-    # add image_id property for easier access
+    # add datum_id property for easier access
     @property
-    def image_id(self):
-        return self.segmentation.image_id
+    def datum_id(self):
+        return self.segmentation.datum_id
 
 
 class LabeledPredictedSegmentation(Base):
@@ -277,24 +277,24 @@ class LabeledPredictedSegmentation(Base):
     )
     score: Mapped[float]
 
-    # add image_id property for easier access
+    # add datum_id property for easier access
     @property
-    def image_id(self):
-        return self.segmentation.image_id
+    def datum_id(self):
+        return self.segmentation.datum_id
 
 
-class Image(Base):
+class Datum(Base):
     """Represents an image"""
 
-    __tablename__ = "image"
+    __tablename__ = "datum"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(
         ForeignKey("dataset.id"), index=True
     )
     uid: Mapped[str] = mapped_column(index=True)
-    height: Mapped[int] = mapped_column()
-    width: Mapped[int] = mapped_column()
+    height: Mapped[int] = mapped_column(nullable=True)
+    width: Mapped[int] = mapped_column(nullable=True)
     frame: Mapped[int] = mapped_column(nullable=True)
     ground_truth_detections: Mapped[list[GroundTruthDetection]] = relationship(
         GroundTruthDetection, cascade="all, delete"
@@ -303,11 +303,11 @@ class Image(Base):
         PredictedDetection, cascade="all, delete"
     )
     ground_truth_classifications: Mapped[
-        list[GroundTruthImageClassification]
-    ] = relationship(GroundTruthImageClassification, cascade="all, delete")
+        list[GroundTruthClassification]
+    ] = relationship(GroundTruthClassification, cascade="all, delete")
     predicted_classifications: Mapped[
-        list[PredictedImageClassification]
-    ] = relationship(PredictedImageClassification, cascade="all, delete")
+        list[PredictedClassification]
+    ] = relationship(PredictedClassification, cascade="all, delete")
     ground_truth_segmentations: Mapped[
         list[GroundTruthSegmentation]
     ] = relationship(GroundTruthSegmentation, cascade="all, delete")
@@ -327,11 +327,14 @@ class Model(Base):
     name: Mapped[str] = mapped_column(index=True, unique=True)
     href: Mapped[str] = mapped_column(index=True, nullable=True)
     description: Mapped[str] = mapped_column(index=True, nullable=True)
+    type: Mapped[str] = mapped_column(
+        Enum(DatumTypes), default=DatumTypes.IMAGE
+    )
     predicted_detections = relationship(
         PredictedDetection, cascade="all, delete"
     )
     predicted_image_classifications = relationship(
-        PredictedImageClassification, cascade="all, delete"
+        PredictedClassification, cascade="all, delete"
     )
     predicted_segmentations = relationship(
         PredictedSegmentation, cascade="all, delete"
@@ -362,11 +365,14 @@ class Dataset(Base):
     name: Mapped[str] = mapped_column(index=True, unique=True)
     href: Mapped[str] = mapped_column(index=True, nullable=True)
     description: Mapped[str] = mapped_column(index=True, nullable=True)
+    type: Mapped[str] = mapped_column(
+        Enum(DatumTypes), default=DatumTypes.IMAGE
+    )
     # whether or not the dataset is done being created
     draft: Mapped[bool] = mapped_column(default=True)
     # whether or not the dataset comes from a video
     from_video: Mapped[bool] = mapped_column(default=False)
-    images = relationship("Image", cascade="all, delete")
+    datums = relationship("Datum", cascade="all, delete")
     finalized_inferences = relationship(
         "FinalizedInferences", cascade="all, delete"
     )

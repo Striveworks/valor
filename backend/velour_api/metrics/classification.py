@@ -4,26 +4,25 @@ from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
 
 from velour_api import crud, models, schemas
-from velour_api.models import PredictedImageClassification
+from velour_api.models import PredictedClassification
 
 
 def binary_roc_auc(
     db: Session, dataset_name: str, model_name: str, label: schemas.Label
 ) -> float:
-    # query to get the image_ids and label values of groundtruths that have the given label key
+    # query to get the datum_ids and label values of groundtruths that have the given label key
     gts_query = (
         select(
-            models.GroundTruthImageClassification.image_id.label("image_id"),
+            models.GroundTruthClassification.datum_id.label("datum_id"),
             models.Label.value.label("label_value"),
         )
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset, models.Dataset.name == dataset_name)
         .join(
             models.Label,
             and_(
                 models.Label.key == label.key,
-                models.GroundTruthImageClassification.label_id
-                == models.Label.id,
+                models.GroundTruthClassification.label_id == models.Label.id,
             ),
         )
     ).subquery()
@@ -43,11 +42,11 @@ def binary_roc_auc(
     # get the prediction scores for the given label (key and value)
     preds_query = (
         select(
-            models.PredictedImageClassification.image_id.label("image_id"),
-            models.PredictedImageClassification.score.label("score"),
+            models.PredictedClassification.datum_id.label("datum_id"),
+            models.PredictedClassification.score.label("score"),
             models.Label.value.label("label_value"),
         )
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset, models.Dataset.name == dataset_name)
         .join(models.Model, models.Model.name == model_name)
         .join(
@@ -55,8 +54,7 @@ def binary_roc_auc(
             and_(
                 models.Label.key == label.key,
                 models.Label.value == label.value,
-                models.PredictedImageClassification.label_id
-                == models.Label.id,
+                models.PredictedClassification.label_id == models.Label.id,
             ),
         )
     ).subquery()
@@ -79,7 +77,7 @@ def binary_roc_auc(
             tprs.label("tprs"),
             fprs.label("fprs"),
             preds_query.c.score,
-        ).join(preds_query, gts_query.c.image_id == preds_query.c.image_id)
+        ).join(preds_query, gts_query.c.datum_id == preds_query.c.datum_id)
         # .order_by(preds_query.c.score.desc())
     ).subquery()
 
@@ -217,72 +215,79 @@ def confusion_matrix_at_label_key(
     """Returns None in the case that there are not common images in the dataset
     that have both a groundtruth and prediction with label key `label_key`
     """
-    subquery = (
-        select(func.max(PredictedImageClassification.score).label("max_score"))
+    # this query get's the max score for each Datum for the given label key
+    q1 = (
+        select(
+            func.max(PredictedClassification.score).label("max_score"),
+            PredictedClassification.datum_id,
+        )
         .join(models.Label)
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset)
         .join(models.Model)
         .where(
             and_(
                 models.Label.key == label_key,
                 models.Dataset.name == dataset_name,
-                models.Model.id == PredictedImageClassification.model_id,
+                models.Model.id == PredictedClassification.model_id,
                 models.Model.name == model_name,
             )
         )
-        .group_by(PredictedImageClassification.image_id)
-    ).alias()
+        .group_by(PredictedClassification.datum_id)
+    )
+    subquery = q1.alias()
 
     # used for the edge case where the max confidence appears twice
-    min_id_query = (
-        select(
-            func.min(models.PredictedImageClassification.id).label("min_id")
-        )
+    # the result of this query is all of the hard predictions
+    q2 = (
+        select(func.min(models.PredictedClassification.id).label("min_id"))
         .join(models.Label)
         .join(
             subquery,
             and_(
-                PredictedImageClassification.score == subquery.c.max_score,
-                models.Label.key == label_key,
+                PredictedClassification.score == subquery.c.max_score,
+                PredictedClassification.datum_id == subquery.c.datum_id,
             ),
         )
-        .group_by(models.PredictedImageClassification.image_id)
-    ).alias()
+        .where(models.Label.key == label_key)
+        .group_by(models.PredictedClassification.datum_id)
+    )
+    min_id_query = q2.alias()
 
-    hard_preds_query = (
+    q3 = (
         select(
             models.Label.value.label("pred_label_value"),
-            models.PredictedImageClassification.image_id.label("image_id"),
+            models.PredictedClassification.datum_id.label("datum_id"),
         )
-        .join(models.PredictedImageClassification)
+        .join(models.PredictedClassification)
         .join(
             subquery,
             and_(
-                PredictedImageClassification.score == subquery.c.max_score,
-                models.Label.key == label_key,
+                PredictedClassification.score == subquery.c.max_score,
+                PredictedClassification.datum_id == subquery.c.datum_id,
             ),
         )
         .join(
             min_id_query,
-            PredictedImageClassification.id == min_id_query.c.min_id,
+            PredictedClassification.id == min_id_query.c.min_id,
         )
-    ).alias()
+        .where(models.Label.key == label_key)
+    )
+    hard_preds_query = q3.alias()
 
     b = Bundle("cols", hard_preds_query.c.pred_label_value, models.Label.value)
 
     total_query = (
         select(b, func.count())
         .join(
-            models.GroundTruthImageClassification,
-            models.GroundTruthImageClassification.image_id
-            == hard_preds_query.c.image_id,
+            models.GroundTruthClassification,
+            models.GroundTruthClassification.datum_id
+            == hard_preds_query.c.datum_id,
         )
         .join(
             models.Label,
             and_(
-                models.Label.id
-                == models.GroundTruthImageClassification.label_id,
+                models.Label.id == models.GroundTruthClassification.label_id,
                 models.Label.key == label_key,
             ),
         )

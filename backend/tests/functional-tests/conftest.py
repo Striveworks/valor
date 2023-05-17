@@ -90,8 +90,8 @@ def dset(db: Session) -> models.Dataset:
 
 
 @pytest.fixture
-def img(db: Session, dset: models.Dataset) -> models.Image:
-    img = models.Image(uid="uid", dataset_id=dset.id, height=1000, width=2000)
+def img(db: Session, dset: models.Dataset) -> models.Datum:
+    img = models.Datum(uid="uid", dataset_id=dset.id, height=1000, width=2000)
     db.add(img)
     db.commit()
 
@@ -118,7 +118,12 @@ def groundtruths(
     detections. These detections are taken from a torchmetrics unit test (see test_metrics.py)
     """
     dataset_name = "test dataset"
-    crud.create_dataset(db, dataset=schemas.DatasetCreate(name=dataset_name))
+    crud.create_dataset(
+        db,
+        dataset=schemas.DatasetCreate(
+            name=dataset_name, type=schemas.DatumTypes.IMAGE
+        ),
+    )
     gts_per_img = [
         {"boxes": [[214.1500, 41.2900, 562.4100, 285.0700]], "labels": ["4"]},
         {
@@ -205,7 +210,9 @@ def predictions(
     """
     model_name = "test model"
     dset_name = "test dataset"
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
 
     # predictions for four images taken from
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L59

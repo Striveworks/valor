@@ -6,6 +6,7 @@ the backend should depend on the client?
 from enum import EnumMeta
 
 from velour import metrics
+from velour.client import DatumTypes
 from velour_api import enums as backend_enums
 
 
@@ -15,3 +16,7 @@ def _enum_to_dict(enum: EnumMeta) -> dict:
 
 def test_task_enum():
     assert _enum_to_dict(metrics.Task) == _enum_to_dict(backend_enums.Task)
+
+
+def test_datum_types_enum():
+    assert _enum_to_dict(DatumTypes) == _enum_to_dict(backend_enums.DatumTypes)

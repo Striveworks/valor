@@ -3,18 +3,18 @@ import json
 from base64 import b64encode
 
 from geoalchemy2 import RasterElement
-from geoalchemy2.functions import (
-    ST_Area,
-    ST_AsGeoJSON,
-    ST_AsPNG,
-    ST_Boundary,
-    ST_ConvexHull,
-    ST_Count,
-    ST_Envelope,
-    ST_Polygon,
-)
+from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
 from PIL import Image
-from sqlalchemy import Select, and_, func, select
+from sqlalchemy import (
+    Float,
+    Integer,
+    Select,
+    TextClause,
+    and_,
+    func,
+    select,
+    text,
+)
 from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, models, schemas
@@ -56,7 +56,9 @@ def _raster_to_png_b64(
 
 def get_datasets(db: Session) -> list[schemas.Dataset]:
     return [
-        schemas.Dataset(name=d.name, draft=d.draft)
+        schemas.Dataset(
+            **{k: getattr(d, k) for k in schemas.Dataset.__fields__}
+        )
         for d in db.scalars(select(models.Dataset))
     ]
 
@@ -73,7 +75,8 @@ def get_dataset(db: Session, dataset_name: str) -> models.Dataset:
 
 def get_models(db: Session) -> list[schemas.Model]:
     return [
-        schemas.Model(name=m.name) for m in db.scalars(select(models.Model))
+        schemas.Model(**{k: getattr(m, k) for k in schemas.Model.__fields__})
+        for m in db.scalars(select(models.Model))
     ]
 
 
@@ -87,14 +90,14 @@ def get_model(db: Session, model_name: str) -> models.Model:
     return ret
 
 
-def get_image(db: Session, uid: str, dataset_name: str) -> models.Image:
+def get_image(db: Session, uid: str, dataset_name: str) -> models.Datum:
     ret = db.scalar(
-        select(models.Image)
+        select(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
-                models.Image.uid == uid,
-                models.Image.dataset_id == models.Dataset.id,
+                models.Datum.uid == uid,
+                models.Datum.dataset_id == models.Dataset.id,
                 models.Dataset.name == dataset_name,
             )
         )
@@ -161,7 +164,7 @@ def get_groundtruth_segmentations_in_image(
     gt_segs = db.scalars(
         select(models.GroundTruthSegmentation).where(
             and_(
-                models.GroundTruthSegmentation.image_id == db_img.id,
+                models.GroundTruthSegmentation.datum_id == db_img.id,
                 models.GroundTruthSegmentation.is_instance == are_instance,
             )
         )
@@ -192,12 +195,12 @@ def get_detection_labels_in_dataset(
         select(models.Label)
         .join(models.LabeledGroundTruthDetection)
         .join(models.GroundTruthDetection)
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Image.id == models.GroundTruthDetection.image_id,
+                models.Datum.id == models.GroundTruthDetection.datum_id,
             )
         )
         .distinct()
@@ -211,12 +214,12 @@ def get_segmentation_labels_in_dataset(
         select(models.Label)
         .join(models.LabeledGroundTruthSegmentation)
         .join(models.GroundTruthSegmentation)
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Image.id == models.GroundTruthSegmentation.image_id,
+                models.Datum.id == models.GroundTruthSegmentation.datum_id,
             )
         )
         .distinct()
@@ -228,14 +231,13 @@ def get_classification_labels_in_dataset(
 ) -> list[models.Label]:
     return db.scalars(
         select(models.Label)
-        .join(models.GroundTruthImageClassification)
-        .join(models.Image)
+        .join(models.GroundTruthClassification)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Image.id
-                == models.GroundTruthImageClassification.image_id,
+                models.Datum.id == models.GroundTruthClassification.datum_id,
             )
         )
         .distinct()
@@ -247,15 +249,14 @@ def get_classification_prediction_labels(
 ):
     return db.scalars(
         select(models.Label)
-        .join(models.PredictedImageClassification)
+        .join(models.PredictedClassification)
         .join(models.Model)
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Image.id
-                == models.PredictedImageClassification.image_id,
+                models.Datum.id == models.PredictedClassification.datum_id,
                 models.Model.name == model_name,
             )
         )
@@ -268,14 +269,13 @@ def get_classification_label_values_in_dataset(
 ) -> list[str]:
     return db.scalars(
         select(models.Label.value)
-        .join(models.GroundTruthImageClassification)
-        .join(models.Image)
+        .join(models.GroundTruthClassification)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Image.id
-                == models.GroundTruthImageClassification.image_id,
+                models.Datum.id == models.GroundTruthClassification.datum_id,
                 models.Label.key == label_key,
             )
         )
@@ -288,15 +288,14 @@ def get_classification_prediction_label_values(
 ):
     return db.scalars(
         select(models.Label.value)
-        .join(models.PredictedImageClassification)
+        .join(models.PredictedClassification)
         .join(models.Model)
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Image.id
-                == models.PredictedImageClassification.image_id,
+                models.Datum.id == models.PredictedClassification.datum_id,
                 models.Model.name == model_name,
                 models.Label.key == label_key,
             )
@@ -322,14 +321,14 @@ def get_all_labels(db: Session) -> list[schemas.Label]:
     ]
 
 
-def get_images_in_dataset(
+def get_datums_in_dataset(
     db: Session, dataset_name: str
-) -> list[models.Image]:
+) -> list[models.Datum]:
     dset = get_dataset(db, dataset_name)
-    return dset.images
+    return dset.datums
 
 
-def _get_unique_label_ids_in_image(image: models.Image) -> set[int]:
+def _get_unique_label_ids_in_image(image: models.Datum) -> set[int]:
     ret = set()
     for det in image.ground_truth_detections:
         for labeled_det in det.labeled_ground_truth_detections:
@@ -469,39 +468,43 @@ def number_of_rows(db: Session, model_cls: type) -> int:
 
 
 def _filter_instance_segmentations_by_area(
-    stmt: Select,
+    stmt: str,
     seg_table: type,
     task_for_area_computation: schemas.Task,
     min_area: float | None,
     max_area: float | None,
-) -> Select:
+) -> TextClause:
     if min_area is None and max_area is None:
-        return stmt
+        return text(stmt)
 
     if task_for_area_computation == schemas.Task.BBOX_OBJECT_DETECTION:
-        area_fn = lambda x: ST_Area(ST_Envelope(x))  # noqa: E731
+        area_stmt = f"(SELECT ST_Area(ST_Envelope(ST_Union(polygon))) FROM (SELECT ST_MakeValid((ST_DumpAsPolygons({seg_table.__tablename__}.shape)).geom) AS polygon) as subq)"
     elif task_for_area_computation == schemas.Task.POLY_OBJECT_DETECTION:
-        area_fn = lambda x: ST_Area(  # noqa: E731
-            ST_ConvexHull(ST_Boundary(ST_Polygon(x)))
-        )
+        # add convex hull?
+        area_stmt = f"(SELECT ST_Area(ST_ConvexHull(ST_Union(polygon))) FROM (SELECT ST_MakeValid((ST_DumpAsPolygons({seg_table.__tablename__}.shape)).geom) AS polygon) as subq)"
+    elif task_for_area_computation == schemas.Task.INSTANCE_SEGMENTATION:
+        # segmentation
+        area_stmt = f"ST_Count({seg_table.__tablename__}.shape)"
     else:
-        area_fn = ST_Count
+        raise ValueError(
+            f"Got invalid value {task_for_area_computation} for `task_for_area_computation`."
+        )
 
     if min_area is not None:
-        stmt = stmt.where(area_fn(seg_table.shape) >= min_area)
+        stmt += f" AND {area_stmt} >= {min_area}"
     if max_area is not None:
-        stmt = stmt.where(area_fn(seg_table.shape) <= max_area)
+        stmt += f" AND {area_stmt} <= {max_area}"
 
-    return stmt
+    return text(stmt)
 
 
 def _instance_segmentations_in_dataset_statement(
     dataset_name: str,
     min_area: float = None,
     max_area: float = None,
-    task_for_area_computation: schemas.Task = None,
-) -> Select:
-    """Produces the select statement to get all instance segmentations in a dataset,
+    task_for_area_computation: schemas.Task = schemas.Task.INSTANCE_SEGMENTATION,
+) -> TextClause:
+    """Produces the text query to get all instance segmentations ids in a dataset,
     optionally filtered by area.
 
     Parameters
@@ -519,40 +522,46 @@ def _instance_segmentations_in_dataset_statement(
         if Task.POLY_OBJECT_DETECTION then the area of the convex hull of the segmentation is used
         if Task.INSTANCE_SEGMENTATION then the area of the segmentation itself is used.
     """
+
+    stmt = f"""
+        SELECT
+            labeled_ground_truth_segmentation.id,
+            labeled_ground_truth_segmentation.segmentation_id,
+            labeled_ground_truth_segmentation.label_id
+        FROM
+            labeled_ground_truth_segmentation
+            JOIN ground_truth_segmentation ON
+                ground_truth_segmentation.id = labeled_ground_truth_segmentation.segmentation_id
+            JOIN datum ON datum.id = ground_truth_segmentation.datum_id
+            JOIN dataset ON dataset.id = datum.dataset_id
+        WHERE
+            ground_truth_segmentation.is_instance
+            AND dataset.name = '{dataset_name}'
+        """
+
     return _filter_instance_segmentations_by_area(
-        stmt=(
-            select(models.LabeledGroundTruthSegmentation)
-            .join(models.GroundTruthSegmentation)
-            .join(models.Image)
-            .join(models.Dataset)
-            .where(
-                and_(
-                    models.GroundTruthSegmentation.is_instance,
-                    models.Dataset.name == dataset_name,
-                )
-            )
-        ),
+        stmt=stmt,
         seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=task_for_area_computation,
         min_area=min_area,
         max_area=max_area,
-    )
+        task_for_area_computation=task_for_area_computation,
+    ).columns(id=Integer, segmentation_id=Integer, label_id=Integer)
 
 
 def _filter_object_detections_by_area(
-    stmt: Select,
+    stmt: str,
     det_table: type,
     task_for_area_computation: schemas.Task | None,
     min_area: float | None,
     max_area: float | None,
-) -> Select:
+) -> TextClause:
     if min_area is None and max_area is None:
-        return stmt
+        return text(stmt)
 
     if task_for_area_computation == schemas.Task.BBOX_OBJECT_DETECTION:
-        area_fn = lambda x: ST_Area(ST_Envelope(x))  # noqa: E731
+        area_stmt = f"ST_Area(ST_Envelope({det_table.__tablename__}.boundary))"
     elif task_for_area_computation == schemas.Task.POLY_OBJECT_DETECTION:
-        area_fn = ST_Area
+        area_stmt = f"ST_Area({det_table.__tablename__}.boundary)"
     else:
         raise ValueError(
             f"Expected task_for_area_computation to be {schemas.Task.BBOX_OBJECT_DETECTION} or "
@@ -560,11 +569,11 @@ def _filter_object_detections_by_area(
         )
 
     if min_area is not None:
-        stmt = stmt.where(area_fn(det_table.boundary) >= min_area)
+        stmt += f" AND {area_stmt} >= {min_area}"
     if max_area is not None:
-        stmt = stmt.where(area_fn(det_table.boundary) <= max_area)
+        stmt += f" AND {area_stmt} <= {max_area}"
 
-    return stmt
+    return text(stmt)
 
 
 def _object_detections_in_dataset_statement(
@@ -584,31 +593,33 @@ def _object_detections_in_dataset_statement(
         raise ValueError(
             f"Expected task to be a detection task but got {task}"
         )
+    stmt = f"""
+        SELECT
+            labeled_ground_truth_detection.id,
+            labeled_ground_truth_detection.detection_id,
+            labeled_ground_truth_detection.label_id
+        FROM
+            labeled_ground_truth_detection
+            JOIN ground_truth_detection ON
+                ground_truth_detection.id = labeled_ground_truth_detection.detection_id
+            JOIN datum ON datum.id = ground_truth_detection.datum_id
+            JOIN dataset ON dataset.id = datum.dataset_id
+        WHERE dataset.name = '{dataset_name}' AND ground_truth_detection.is_bbox = '{(task == enums.Task.BBOX_OBJECT_DETECTION)}'
+    """
+
     return _filter_object_detections_by_area(
-        stmt=(
-            select(models.LabeledGroundTruthDetection)
-            .join(models.GroundTruthDetection)
-            .join(models.Image)
-            .join(models.Dataset)
-            .where(
-                and_(
-                    models.Dataset.name == dataset_name,
-                    models.GroundTruthDetection.is_bbox
-                    == (task == enums.Task.BBOX_OBJECT_DETECTION),
-                )
-            )
-        ),
+        stmt=stmt,
         det_table=models.GroundTruthDetection,
         task_for_area_computation=task_for_area_computation,
         min_area=min_area,
         max_area=max_area,
-    )
+    ).columns(id=Integer, detection_id=Integer, label_id=Integer)
 
 
 def _classifications_in_dataset_statement(dataset_name: str) -> Select:
     return (
-        select(models.GroundTruthImageClassification)
-        .join(models.Image)
+        select(models.GroundTruthClassification)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(models.Dataset.name == dataset_name)
     )
@@ -619,28 +630,32 @@ def _model_instance_segmentation_preds_statement(
     dataset_name: str,
     min_area: float = None,
     max_area: float = None,
-    task_for_area_computation: schemas.Task = None,
+    task_for_area_computation: schemas.Task = schemas.Task.INSTANCE_SEGMENTATION,
 ) -> Select:
+    stmt = f"""
+        SELECT
+            labeled_predicted_segmentation.id,
+            labeled_predicted_segmentation.segmentation_id,
+            labeled_predicted_segmentation.label_id
+        FROM
+            labeled_predicted_segmentation
+            JOIN predicted_segmentation ON
+                predicted_segmentation.id = labeled_predicted_segmentation.segmentation_id
+            JOIN datum ON datum.id = predicted_segmentation.datum_id
+            JOIN model ON model.id = predicted_segmentation.model_id
+            JOIN dataset ON dataset.id = datum.dataset_id
+        WHERE
+            model.name = '{model_name}'
+            AND dataset.name = '{dataset_name}'
+            AND predicted_segmentation.is_instance
+    """
     return _filter_instance_segmentations_by_area(
-        stmt=(
-            select(models.LabeledPredictedSegmentation)
-            .join(models.PredictedSegmentation)
-            .join(models.Image)
-            .join(models.Model)
-            .join(models.Dataset)
-            .where(
-                and_(
-                    models.Model.name == model_name,
-                    models.Dataset.name == dataset_name,
-                    models.PredictedSegmentation.is_instance,
-                )
-            )
-        ),
+        stmt=stmt,
         seg_table=models.PredictedSegmentation,
         task_for_area_computation=task_for_area_computation,
         min_area=min_area,
         max_area=max_area,
-    )
+    ).columns(id=Integer, segmentation_id=Integer, label_id=Integer)
 
 
 def _model_object_detection_preds_statement(
@@ -658,35 +673,41 @@ def _model_object_detection_preds_statement(
         raise ValueError(
             f"Expected task to be a detection task but got {task}"
         )
+
+    stmt = f"""
+    SELECT
+        labeled_predicted_detection.id,
+        labeled_predicted_detection.detection_id,
+        labeled_predicted_detection.label_id,
+        labeled_predicted_detection.score
+    FROM
+        labeled_predicted_detection
+        JOIN predicted_detection ON
+            predicted_detection.id = labeled_predicted_detection.detection_id
+        JOIN datum ON datum.id = predicted_detection.datum_id
+        JOIN model ON model.id = predicted_detection.model_id
+        JOIN dataset ON dataset.id = datum.dataset_id
+    WHERE
+        model.name = '{model_name}'
+        AND dataset.name = '{dataset_name}'
+        AND predicted_detection.is_bbox = '{task == enums.Task.BBOX_OBJECT_DETECTION}'
+    """
+
     return _filter_object_detections_by_area(
-        stmt=(
-            select(models.LabeledPredictedDetection)
-            .join(models.PredictedDetection)
-            .join(models.Image)
-            .join(models.Model)
-            .join(models.Dataset)
-            .where(
-                and_(
-                    models.Model.name == model_name,
-                    models.Dataset.name == dataset_name,
-                    models.PredictedDetection.is_bbox
-                    == (task == enums.Task.BBOX_OBJECT_DETECTION),
-                )
-            )
-        ),
+        stmt=stmt,
         det_table=models.PredictedDetection,
         task_for_area_computation=task_for_area_computation,
         min_area=min_area,
         max_area=max_area,
-    )
+    ).columns(id=Integer, detection_id=Integer, label_id=Integer, score=Float)
 
 
 def _model_classifications_preds_statement(
     model_name: str, dataset_name: str
 ) -> Select:
     return (
-        select(models.PredictedImageClassification)
-        .join(models.Image)
+        select(models.PredictedClassification)
+        .join(models.Datum)
         .join(models.Model)
         .join(models.Dataset)
         .where(

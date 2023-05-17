@@ -94,11 +94,11 @@ def create_predicted_segmentations(
     "/groundtruth-classifications", dependencies=[Depends(token_auth_scheme)]
 )
 def create_groundtruth_classifications(
-    data: schemas.GroundTruthImageClassificationsCreate,
+    data: schemas.GroundTruthClassificationsCreate,
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
-        return crud.create_ground_truth_image_classifications(db=db, data=data)
+        return crud.create_ground_truth_classifications(db=db, data=data)
     except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -107,7 +107,7 @@ def create_groundtruth_classifications(
     "/predicted-classifications", dependencies=[Depends(token_auth_scheme)]
 )
 def create_predicted_classifications(
-    data: schemas.PredictedImageClassificationsCreate,
+    data: schemas.PredictedClassificationsCreate,
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
@@ -142,10 +142,7 @@ def get_dataset(
     try:
         dset = crud.get_dataset(db, dataset_name=dataset_name)
         return schemas.Dataset(
-            name=dset.name,
-            draft=dset.draft,
-            href=dset.href,
-            description=dset.description,
+            **{k: getattr(dset, k) for k in schemas.Dataset.__fields__}
         )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -189,7 +186,7 @@ def get_dataset_images(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Image]:
     try:
-        images = crud.get_images_in_dataset(db, dataset_name)
+        images = crud.get_datums_in_dataset(db, dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return [
@@ -296,7 +293,7 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     try:
         model = crud.get_model(db=db, model_name=model_name)
         return schemas.Model(
-            name=model.name, href=model.href, description=model.description
+            **{k: getattr(model, k) for k in schemas.Model.__fields__}
         )
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -308,25 +305,16 @@ def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
 
 
 @app.get(
-    "/models/{model_name}/metrics", dependencies=[Depends(token_auth_scheme)]
-)
-def get_model_metrics(
-    model_name: str, db: Session = Depends(get_db)
-) -> list[schemas.Metric]:
-    try:
-        return crud.get_model_metrics(db, model_name)
-    except exceptions.ModelDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
     "/models/{model_name}/evaluation-settings",
     dependencies=[Depends(token_auth_scheme)],
 )
 def get_model_evaluations(
     model_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.EvaluationSettings]:
-    return crud.get_model_evaluation_settings(db, model_name)
+    try:
+        return crud.get_model_evaluation_settings(db, model_name)
+    except exceptions.ModelDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
@@ -336,7 +324,10 @@ def get_model_evaluations(
 def get_evaluation_settings(
     evaluation_settings_id: str, db: Session = Depends(get_db)
 ):
-    return crud.get_evaluation_settings_from_id(db, evaluation_settings_id)
+    try:
+        return crud.get_evaluation_settings_from_id(db, evaluation_settings_id)
+    except exceptions.ModelDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
@@ -349,6 +340,23 @@ def get_model_evaluation_metrics(
     return crud.get_metrics_from_evaluation_settings_id(
         db, evaluation_settings_id
     )
+
+
+@app.get(
+    "/models/{model_name}/evaluation-settings/{evaluation_settings_id}/confusion-matrices",
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_model_confusion_matrices(
+    evaluation_settings_id: str, db: Session = Depends(get_db)
+) -> list[schemas.ConfusionMatrixResponse]:
+    return [
+        schemas.ConfusionMatrixResponse(
+            label_key=cm.label_key, entries=cm.entries
+        )
+        for cm in crud.get_confusion_matrices_from_evaluation_settings_id(
+            db, evaluation_settings_id
+        )
+    ]
 
 
 @app.post(
