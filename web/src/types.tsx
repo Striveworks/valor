@@ -10,7 +10,7 @@ export type EvaluationSetting = {
 
 export type Metric = {
   type: string;
-  parameters: { iou: number; ious: number[] };
+  parameters: object;
   label?: { key: string; value: string };
   value: number;
 };

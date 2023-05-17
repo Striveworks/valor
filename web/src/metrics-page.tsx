@@ -7,7 +7,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Typography from "@mui/material/Typography";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import FormControl from "@mui/material/FormControl";
-import { EvaluationSetting, Metric, MetricAtIOU } from "./types";
+import { EvaluationSetting, Metric } from "./types";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -17,22 +17,17 @@ import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
 import { Wrapper } from "./components/wrapper";
 
-const APColumns: GridColDef[] = [
-  { field: "labelKey", headerName: "Label Key" },
-  { field: "labelValue", headerName: "Label Value" },
-  { field: "iou", headerName: "IOU" },
-  { field: "value", headerName: "Value" },
-];
-
-const mAPColumns: GridColDef[] = [
-  { field: "iou", headerName: "IOU" },
+const metricColumns: GridColDef[] = [
+  { field: "label", headerName: "Label", width: 200 },
+  { field: "parameters", headerName: "Parameters", width: 200 },
   { field: "value", headerName: "Value" },
 ];
 
 const MetricTypeSelect: React.FC<{
   selectedMetricType: string;
   setSelectedMetricType: React.Dispatch<React.SetStateAction<string>>;
-}> = ({ selectedMetricType, setSelectedMetricType }) => {
+  metricTypes: string[];
+}> = ({ selectedMetricType, setSelectedMetricType, metricTypes }) => {
   const handleChange = (event: SelectChangeEvent) => {
     setSelectedMetricType(event.target.value as string);
   };
@@ -42,13 +37,14 @@ const MetricTypeSelect: React.FC<{
       <InputLabel id="select-label">Metric type</InputLabel>
       <Select
         labelId="select-label"
-        id="demo-simple-select"
+        id="simple-select"
         value={selectedMetricType}
         label="Metric"
         onChange={handleChange}
       >
-        <MenuItem value={"AP"}>AP</MenuItem>
-        <MenuItem value={"mAP"}>mAP</MenuItem>
+        {metricTypes.map((t) => (
+          <MenuItem value={t}>{t}</MenuItem>
+        ))}
       </Select>
     </FormControl>
   );
@@ -93,21 +89,33 @@ const MetricsSection = () => {
   }, [url]);
   if (!metrics) return null;
 
-  const APs: MetricAtIOU[] = [];
-  const mAPs: MetricAtIOU[] = [];
-
-  metricsWithIds.forEach((x) => {
-    if (x.type === "AP") {
-      APs.push({
-        labelKey: x.label?.key,
-        labelValue: x.label?.value,
-        value: x.value,
-        iou: x.parameters.iou,
-        id: x.id,
-      });
-    } else if (x.type === "mAP") {
-      mAPs.push({ value: x.value, iou: x.parameters.iou, id: x.id });
+  const stringifyIfObject = (x: any) => {
+    if (typeof x === "object") {
+      return JSON.stringify(x);
     }
+    return x;
+  };
+
+  const stringifyObjectValues = (obj: any) => {
+    Object.keys(obj).forEach((k) => {
+      obj[k] = stringifyIfObject(obj[k]);
+    });
+    return obj;
+  };
+
+  const metricsByType: { [key: string]: any[] } = metrics.reduce((obj, c) => {
+    obj[c.type] = [];
+    return obj;
+  }, {} as { [key: string]: any[] });
+
+  metricsWithIds.forEach((m) => {
+    metricsByType[m["type"]].push(m);
+  });
+
+  Object.keys(metricsByType).forEach((metricType) => {
+    metricsByType[metricType] = metricsByType[metricType].map(
+      stringifyObjectValues
+    );
   });
 
   return (
@@ -115,38 +123,26 @@ const MetricsSection = () => {
       <MetricTypeSelect
         selectedMetricType={selectedMetricType}
         setSelectedMetricType={setSelectedMetricType}
+        metricTypes={Object.keys(metricsByType)}
       />
       <Switch test={selectedMetricType}>
-        <SwitchElement value="AP">
-          <DataGrid
-            rows={APs}
-            columns={APColumns}
-            initialState={{
-              pagination: {
-                paginationModel: {
-                  pageSize: 5,
+        {Object.keys(metricsByType).map((metricType) => (
+          <SwitchElement value={metricType}>
+            <DataGrid
+              rows={metricsByType[metricType]}
+              columns={metricColumns}
+              initialState={{
+                pagination: {
+                  paginationModel: {
+                    pageSize: 5,
+                  },
                 },
-              },
-            }}
-            pageSizeOptions={[5]}
-            disableRowSelectionOnClick
-          />
-        </SwitchElement>
-        <SwitchElement value="mAP">
-          <DataGrid
-            rows={mAPs}
-            columns={mAPColumns}
-            initialState={{
-              pagination: {
-                paginationModel: {
-                  pageSize: 5,
-                },
-              },
-            }}
-            pageSizeOptions={[5]}
-            disableRowSelectionOnClick
-          />
-        </SwitchElement>
+              }}
+              pageSizeOptions={[5]}
+              disableRowSelectionOnClick
+            />
+          </SwitchElement>
+        ))}
       </Switch>
     </>
   );
