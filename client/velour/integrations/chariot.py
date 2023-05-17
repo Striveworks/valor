@@ -8,7 +8,7 @@ from typing import List
 import requests
 from tqdm import tqdm
 
-from velour.client import Client
+from velour.client import Client, ImageDataset, ImageModel
 from velour.data_types import (
     BoundingBox,
     BoundingPolygon,
@@ -24,8 +24,8 @@ from velour.data_types import (
 )
 
 try:
+    import chariot
     from chariot.config import settings
-    from chariot.datasets.dataset import Dataset
     from chariot.datasets.dataset_version import (
         get_latest_vertical_dataset_version,
     )
@@ -34,7 +34,7 @@ except ModuleNotFoundError:
     "`chariot` package not found. if you have an account on Chariot please see https://production.chariot.striveworks.us/docs/sdk/sdk for how to install the python SDK"
 
 
-def retrieve_chariot_manifest(manifest_url: str):
+def _retrieve_chariot_annotations(manifest_url: str):
     """Retrieves and unpacks Chariot dataset annotations from a manifest url."""
 
     chariot_dataset = []
@@ -75,7 +75,7 @@ def retrieve_chariot_manifest(manifest_url: str):
     return chariot_dataset
 
 
-def chariot_parse_image_classification_annotation(
+def parse_image_classification(
     datum: dict,
 ) -> GroundTruthImageClassification:
     """Parses Chariot image classification annotation."""
@@ -100,7 +100,7 @@ def chariot_parse_image_classification_annotation(
     return gt_dets
 
 
-def chariot_parse_image_segmentation_annotation(
+def parse_image_segmentation(
     datum: dict,
 ) -> GroundTruthSemanticSegmentation:
     """Parses Chariot image segmentation annotation."""
@@ -157,7 +157,7 @@ def chariot_parse_image_segmentation_annotation(
     return gt_dets
 
 
-def chariot_parse_object_detection_annotation(
+def parse_object_detection(
     datum: dict,
 ) -> GroundTruthDetection:
     """Parses Chariot object detection annotation."""
@@ -188,7 +188,7 @@ def chariot_parse_object_detection_annotation(
     return gt_dets
 
 
-def chariot_parse_dataset_annotations(
+def _parse_chariot_annotations(
     chariot_manifest, chariot_task_type, use_training_manifest: bool = True
 ) -> list:
     """Get chariot dataset annotations.
@@ -214,7 +214,7 @@ def chariot_parse_dataset_annotations(
         groundtruth_annotations = [
             gt
             for datum in chariot_manifest
-            for gt in chariot_parse_image_classification_annotation(datum)
+            for gt in parse_image_classification(datum)
         ]
 
     # Image Segmentation
@@ -222,7 +222,7 @@ def chariot_parse_dataset_annotations(
         groundtruth_annotations = [
             gt
             for datum in chariot_manifest
-            for gt in chariot_parse_image_segmentation_annotation(datum)
+            for gt in parse_image_segmentation(datum)
         ]
 
     # Object Detection
@@ -230,7 +230,7 @@ def chariot_parse_dataset_annotations(
         groundtruth_annotations = [
             gt
             for datum in chariot_manifest
-            for gt in chariot_parse_object_detection_annotation(datum)
+            for gt in parse_object_detection(datum)
         ]
 
     # Text Sentiment
@@ -260,59 +260,63 @@ def chariot_parse_dataset_annotations(
     return groundtruth_annotations
 
 
-def chariot_ds_to_velour_ds(
-    velour_client: Client,
-    chariot_dataset: Dataset,
-    chariot_dataset_version_id: str = None,
+def upload_dataset(
+    client: Client,
+    dataset: chariot.datasets.dataset.Dataset,
+    dataset_version_id: str = None,
+    name: str = None,
     use_training_manifest: bool = True,
-    velour_dataset_name: str = None,
     chunk_size: int = 1000,
+    show_progress_bar: bool = True,
 ):
     """Converts chariot dataset to a velour dataset.
 
     Parameters
     ----------
-    velour_client
-        Velour client
-    chariot_dataset
+    client
+        Velour client object
+    dataset
         Chariot Dataset object
-    chariot_dataset_version_id
+    dataset_version_id
         (OPTIONAL) Chariot Dataset version ID, defaults to latest vertical version.
+    name
+        (OPTIONAL) Defaults to the name of the chariot dataset, setting this will override the
+        name of the velour dataset.
     using_training_manifest
         (OPTIONAL) Defaults to true, setting false will use the evaluation manifest which is a
         super set of the training manifest. Not recommended as the evaluation manifest may
         contain unlabeled data.
-    velour_dataset_name
-        (OPTIONAL) Defaults to the name of the chariot dataset, setting this will override the
-        name of the velour dataset output.
     chunk_size
         (OPTIONAL) Defaults to 1000. Chunk_size is the maximum number of 'groundtruths' that are
         uploaded in one call to the backend.
+    show_progress_bar
+        (OPTIONAL) Defaults to True. Controls whether a tqdm progress bar is displayed
+        to show upload progress.
 
     Returns
     -------
-    Velour dataset
+    Velour image dataset
     """
 
-    if len(chariot_dataset.versions) < 1:
+    if len(dataset.versions) < 1:
         raise ValueError("Chariot dataset has no existing versions.")
 
     # Get Chariot Datset Version
     dsv = None
-    if chariot_dataset_version_id is None:
+    if dataset_version_id is None:
         # Use the latest version
         dsv = get_latest_vertical_dataset_version(
-            project_id=chariot_dataset.project_id,
-            dataset_id=chariot_dataset.id,
+            project_id=dataset.project_id,
+            dataset_id=dataset.id,
         )
     else:
-        for _dsv in chariot_dataset.versions:
-            if _dsv.id == chariot_dataset_version_id:
+        for _dsv in dataset.versions:
+            if _dsv.id == dataset_version_id:
                 dsv = _dsv
                 break
         if dsv is None:
             raise ValueError(
-                f"Chariot DatasetVersion not found with id: {chariot_dataset_version_id}"
+                f"Chariot DatasetVersion not found with id: {dataset_version_id}"
             )
 
     # Get the manifest url
@@ -323,16 +327,18 @@ def chariot_ds_to_velour_ds(
     )
 
     # Retrieve the manifest
-    chariot_manifest = retrieve_chariot_manifest(manifest_url)
+    chariot_annotations = _retrieve_chariot_annotations(manifest_url)
 
     # Get GroundTruth Annotations
-    groundtruth_annotations = chariot_parse_dataset_annotations(
-        chariot_manifest, dsv.supported_task_types, use_training_manifest
+    groundtruth_annotations = _parse_chariot_annotations(
+        chariot_annotations,
+        dsv.supported_task_types,
+        use_training_manifest,
     )
 
     # Check if name has been overwritten
-    if velour_dataset_name is None:
-        velour_dataset_name = chariot_dataset.name
+    if name is None:
+        name = dataset.name
 
     # Construct url
     href = urllib.parse.urljoin(
@@ -341,13 +347,12 @@ def chariot_ds_to_velour_ds(
     )
 
     # Create velour dataset
-    velour_dataset = velour_client.create_dataset(
-        name=velour_dataset_name, href=href
-    )
+    velour_dataset = client.create_dataset(name=name, href=href)
 
     # Upload velour dataset
     velour_dataset.add_groundtruth(
-        groundtruth_annotations, chunk_size=chunk_size
+        groundtruth_annotations,
+        chunk_size=chunk_size,
     )
 
     # Finalize and return
@@ -355,18 +360,19 @@ def chariot_ds_to_velour_ds(
     return velour_dataset
 
 
-def chariot_detections_to_velour(
-    dets: dict, image: Image, label_key: str = "class"
+def _parse_chariot_detections(
+    dets: dict,
+    image: Image,
+    label_key: str = "class",
 ) -> List[PredictedDetection]:
-    """Converts the outputs of a Chariot detection model
-    to velour's format
-    """
+
     expected_keys = {
         "num_detections",
         "detection_classes",
         "detection_boxes",
         "detection_scores",
     }
+
     if set(dets.keys()) != expected_keys:
         raise ValueError(
             f"Expected `dets` to have keys {expected_keys} but got {dets.keys()}"
@@ -390,3 +396,55 @@ def chariot_detections_to_velour(
             dets["detection_classes"],
         )
     ]
+
+
+def upload_inferences(
+    client: Client,
+    model_name: str,
+    dataset: ImageDataset,
+    dets: dict,
+    image: Image,
+    label_key: str = "class",
+    chunk_size: int = 1000,
+    show_progress_bar: bool = True,
+) -> ImageModel:
+    """Converts the outputs of a Chariot detection model to velour's format
+
+    Parameters
+    ----------
+    client
+        Velour client object
+    dataset
+        Velour Dataset object
+    model_name:
+        Name of the model used to generate these inferences.
+    dets:
+        Chariot detections.
+    image:
+        Velour Image object.
+    label_key:
+        (OPTIONAL) Defaults to 'class'. Key to class label of inference.
+    chunk_size
+        (OPTIONAL) Defaults to 1000. Chunk_size is the maximum number of 'groundtruths' that are
+        uploaded in one call to the backend.
+    show_progress_bar
+        (OPTIONAL) Defaults to True. Controls whether a tqdm progress bar is displayed
+        to show upload progress.
+
+    Returns
+    -------
+    Velour image model.
+    """
+
+    predictions = _parse_chariot_detections(dets, image, label_key)
+
+    # Create & Populate Model
+    model = ImageModel(client=client, name=model_name)
+    model.add_predictions(
+        dataset=dataset,
+        predictions=predictions,
+        chunk_size=chunk_size,
+        show_progress_bar=show_progress_bar,
+    )
+    model.finalize_inferences()
+    return model

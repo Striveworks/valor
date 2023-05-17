@@ -193,7 +193,7 @@ def upload_inferences(
 
     Returns
     -------
-    Velour Model.
+    Velour image model.
     """
 
     # Parse inferences
