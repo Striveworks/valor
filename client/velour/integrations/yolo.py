@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import List
 
 import numpy
@@ -6,7 +5,7 @@ import PIL
 import torch
 from PIL.Image import Resampling
 
-from velour.client import Client, Dataset, Model
+from velour.client import Client, ImageDataset, ImageModel
 from velour.data_types import (
     BoundingBox,
     Image,
@@ -23,11 +22,11 @@ except ModuleNotFoundError:
     "'ultralytics' package not found. You can find the project at https://github.com/ultralytics/ultralytics"
 
 
-def parse_image_classification(result: Results):
+def parse_image_classification(result: Results, uid: str):
     """Parses Ultralytic's results for an image classification task."""
 
     # Extract data
-    image_uid = Path(result.path).stem
+    image_uid = uid
     image_height = result.orig_shape[0]
     image_width = result.orig_shape[1]
     probabilities = result.probs
@@ -70,12 +69,12 @@ def _convert_yolo_segmentation(
 
 
 def parse_image_segmentation(
-    result: Results, resample: Resampling = Resampling.BILINEAR
+    result: Results, uid: str, resample: Resampling = Resampling.BILINEAR
 ):
     """Parses Ultralytic's results for an image segmentation task."""
 
     # Extract data
-    image_uid = Path(result.path).stem
+    image_uid = uid
     image_height = result.orig_shape[0]
     image_width = result.orig_shape[1]
     probabilities = [conf.item() for conf in result.boxes.conf]
@@ -113,11 +112,11 @@ def parse_image_segmentation(
     ]
 
 
-def parse_object_detection(result: Results):
+def parse_object_detection(result: Results, uid: str):
     """Parses Ultralytic's results for an object detection task."""
 
     # Extract data
-    image_uid = Path(result.path).stem
+    image_uid = uid
     image_height = result.orig_shape[0]
     image_width = result.orig_shape[1]
     probabilities = [conf.item() for conf in result.boxes.conf]
@@ -161,12 +160,13 @@ def parse_object_detection(result: Results):
 def upload_inferences(
     client: Client,
     model_name: str,
-    dataset: Dataset,
+    dataset: ImageDataset,
     results: List[Results],
+    uids: List[str],
     segmentation_resample: Resampling = Resampling.BILINEAR,
     chunk_size: int = 1000,
     show_progress_bar: bool = True,
-) -> Model:
+) -> ImageModel:
     """Upload Ultralytic's YOLO model inferences to Velour.
 
     Parameters
@@ -178,7 +178,9 @@ def upload_inferences(
     dataset
         Velour Dataset object.
     results
-        YOLO Inferences
+        List of YOLO Results objects
+    uids
+        List of Image UID's. One-to-one mapping with YOLO results.
     segmentation_resample
         (OPTIONAL) Defaults to Resampling.BILINEAR filter. This is used when resizing
         masks from output size to orginal image size.
@@ -196,18 +198,18 @@ def upload_inferences(
 
     # Parse inferences
     predictions = []
-    for result in results:
+    for result, uid in list(zip(results, uids)):
         if "masks" in result.keys and "boxes" in result.keys:
             predictions += parse_image_segmentation(
-                result=result, resample=segmentation_resample
+                result=result, uid=uid, resample=segmentation_resample
             )
         elif "boxes" in result.keys:
-            predictions += parse_object_detection(result)
+            predictions += parse_object_detection(result, uid)
         elif "probs" in result.keys:
-            predictions += parse_image_classification(result)
+            predictions += parse_image_classification(result, uid)
 
     # Create & Populate Model
-    model = Model(client=client, name=model_name)
+    model = ImageModel(client=client, name=model_name)
     model.add_predictions(
         dataset=dataset,
         predictions=predictions,

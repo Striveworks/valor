@@ -123,7 +123,9 @@ def test_parse_image_classification(image, names):
         probs=probs,
     )
 
-    prediction = velour_yolo.parse_image_classification(results)[0]
+    prediction = velour_yolo.parse_image_classification(results, image["uid"])[
+        0
+    ]
 
     assert isinstance(prediction, PredictedImageClassification)
 
@@ -160,7 +162,7 @@ def test_parse_image_segmentation(
         masks=masks,
     )
 
-    predictions = velour_yolo.parse_image_segmentation(results)
+    predictions = velour_yolo.parse_image_segmentation(results, image["uid"])
 
     assert len(predictions) == bboxes.size(dim=0)
     for i in range(len(predictions)):
@@ -183,7 +185,7 @@ def test_parse_object_detection(image, bboxes, names):
         orig_img=img, path=image["path"], names=names, boxes=bboxes
     )
 
-    predictions = velour_yolo.parse_object_detection(results)
+    predictions = velour_yolo.parse_object_detection(results, image["uid"])
 
     assert len(predictions) == bboxes.size(dim=0)
     for i in range(len(predictions)):
