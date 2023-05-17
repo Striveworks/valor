@@ -5,7 +5,6 @@ import numpy
 import PIL
 import torch
 from PIL.Image import Resampling
-from ultralytics.yolo.engine.results import Results
 
 from velour.client import Client, Dataset, Model
 from velour.data_types import (
@@ -17,6 +16,11 @@ from velour.data_types import (
     PredictedInstanceSegmentation,
     ScoredLabel,
 )
+
+try:
+    from ultralytics.yolo.engine.results import Results
+except ModuleNotFoundError:
+    "'ultralytics' package not found. You can find the project at https://github.com/ultralytics/ultralytics"
 
 
 def parse_image_classification(result: Results):
@@ -38,14 +42,16 @@ def parse_image_classification(result: Results):
         for key, probability in list(zip(labels, probabilities))
     ]
 
-    return [PredictedImageClassification(
-        image=Image(
-            uid=image_uid,
-            height=image_height,
-            width=image_width,
-        ),
-        scored_labels=scored_labels,
-    )]
+    return [
+        PredictedImageClassification(
+            image=Image(
+                uid=image_uid,
+                height=image_height,
+                width=image_width,
+            ),
+            scored_labels=scored_labels,
+        )
+    ]
 
 
 def _convert_yolo_segmentation(
@@ -140,14 +146,15 @@ def parse_object_detection(result: Results):
 
     return [
         PredictedDetection(
-            scored_labels=scored_labels,
+            scored_labels=scored_label,
             image=Image(
                 uid=image_uid,
                 height=image_height,
                 width=image_width,
             ),
-            bbox=bboxes,
+            bbox=bbox,
         )
+        for bbox, scored_label in list(zip(bboxes, scored_labels))
     ]
 
 
@@ -192,9 +199,8 @@ def upload_inferences(
     for result in results:
         if "masks" in result.keys and "boxes" in result.keys:
             predictions += parse_image_segmentation(
-                result=result, 
-                resample=segmentation_resample
-                )
+                result=result, resample=segmentation_resample
+            )
         elif "boxes" in result.keys:
             predictions += parse_object_detection(result)
         elif "probs" in result.keys:
