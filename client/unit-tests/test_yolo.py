@@ -1,12 +1,12 @@
 import numpy
 import pytest
-import torch
 
 from velour.data_types import (
     PredictedDetection,
     PredictedImageClassification,
     PredictedInstanceSegmentation,
 )
+
 from velour.integrations.yolo import (
     _convert_yolo_segmentation,
     parse_image_classification,
@@ -14,6 +14,7 @@ from velour.integrations.yolo import (
     parse_object_detection,
 )
 
+torch = pytest.importorskip('torch')
 
 class Boxes(object):
     def __init__(self, boxes: torch.Tensor, orig_shape: tuple):
