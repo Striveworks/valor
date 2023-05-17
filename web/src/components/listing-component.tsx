@@ -4,6 +4,7 @@ import Typography from "@mui/material/Typography";
 import Link from "@mui/material/Link";
 import { Wrapper } from "./wrapper";
 import { EntityResponse } from "../types";
+import { usingAuth } from "../auth";
 
 export const ListingComponent = ({
   name,
@@ -16,7 +17,17 @@ export const ListingComponent = ({
   const url = `${process.env.REACT_APP_BACKEND_URL}/${name}`;
 
   useEffect(() => {
-    axios.get(url).then((response) => {
+    let config = {};
+    if (usingAuth()) {
+      const token = localStorage.getItem("token");
+      config = { headers: { Authorization: token } };
+
+      if (token === "null") {
+        console.log("token is null");
+      }
+    }
+
+    axios.get(url, config).then((response) => {
       setEntities(response.data);
     });
   }, [url]);

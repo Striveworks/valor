@@ -6,12 +6,28 @@ import ListItem from "@mui/material/ListItem";
 import Link from "@mui/material/Link";
 import Box from "@mui/material/Box";
 import React from "react";
+import { useEffect } from "react";
+import { useAuth0 } from "@auth0/auth0-react";
 
 const drawerWidth = 240;
 
+const SetTokenComponent = () => {
+  const { getAccessTokenSilently } = useAuth0();
+
+  useEffect(() => {
+    const getToken = async () => {
+      const token = await getAccessTokenSilently();
+      sessionStorage.setItem("token", token);
+    };
+    getToken();
+  });
+
+  return <></>;
+};
+
 export const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <Box sx={{ display: "flex" }}>
-    {" "}
+    <SetTokenComponent />
     <Drawer
       sx={{
         width: drawerWidth,

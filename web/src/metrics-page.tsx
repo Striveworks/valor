@@ -16,6 +16,7 @@ import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
 import { Wrapper } from "./components/wrapper";
+import { usingAuth } from "./auth";
 
 const metricColumns: GridColDef[] = [
   { field: "label", headerName: "Label", width: 300 },
@@ -85,7 +86,16 @@ const MetricsSection = () => {
   const metricsWithIds = metrics.map((m, i) => ({ ...m, id: i }));
   const url = `${process.env.REACT_APP_BACKEND_URL}/models/${name}/evaluation-settings/${evalSettingsId}/metrics`;
   useEffect(() => {
-    axios.get(url).then((response) => {
+    let config = {};
+    if (usingAuth()) {
+      const token = localStorage.getItem("token");
+      config = { headers: { Authorization: token } };
+
+      if (token === "null") {
+        console.log("token is null");
+      }
+    }
+    axios.get(url, config).then((response) => {
       setMetrics(response.data);
     });
   }, [url]);
@@ -201,7 +211,17 @@ const InfoSection = () => {
   const url = `${process.env.REACT_APP_BACKEND_URL}/evaluation-settings/${evalSettingsId}`;
 
   useEffect(() => {
-    axios.get(url).then((response) => {
+    let config = {};
+    if (usingAuth()) {
+      const token = localStorage.getItem("token");
+      config = { headers: { Authorization: token } };
+
+      if (token === "null") {
+        console.log("token is null");
+      }
+    }
+
+    axios.get(url, config).then((response) => {
       setEvalSettings(response.data);
     });
   }, [url]);

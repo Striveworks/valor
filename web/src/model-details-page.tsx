@@ -7,6 +7,7 @@ import Link from "@mui/material/Link";
 import { EvaluationSetting } from "./types";
 import { Wrapper } from "./components/wrapper";
 import { EntityDetailsComponent } from "./components/entity-details-component";
+import { usingAuth } from "./auth";
 
 const taskTypeWidth = 250;
 const areaWidth = 175;
@@ -54,7 +55,17 @@ export const ModelDetailsPage = () => {
   );
   const evalSettingsUrl = `${process.env.REACT_APP_BACKEND_URL}/models/${name}/evaluation-settings`;
   useEffect(() => {
-    axios.get(evalSettingsUrl).then((response) => {
+    let config = {};
+    if (usingAuth()) {
+      const token = localStorage.getItem("token");
+      config = { headers: { Authorization: token } };
+
+      if (token === "null") {
+        console.log("token is null");
+      }
+    }
+
+    axios.get(evalSettingsUrl, config).then((response) => {
       setAllEvalSettings(response.data);
     });
   }, [evalSettingsUrl]);

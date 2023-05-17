@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { EntityResponse } from "../types";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
+import { usingAuth } from "../auth";
 
 export const EntityDetailsComponent = ({
   entityType,
@@ -15,7 +16,17 @@ export const EntityDetailsComponent = ({
   const [entityDetails, setEntityDetails] = useState<EntityResponse>();
   const entityDetailsUrl = `${process.env.REACT_APP_BACKEND_URL}/${entityType}/${name}`;
   useEffect(() => {
-    axios.get(entityDetailsUrl).then((response) => {
+    let config = {};
+    if (usingAuth()) {
+      const token = localStorage.getItem("token");
+      config = { headers: { Authorization: token } };
+
+      if (token === "null") {
+        console.log("token is null");
+      }
+    }
+
+    axios.get(entityDetailsUrl, config).then((response) => {
       setEntityDetails(response.data);
     });
   }, [entityDetailsUrl]);
