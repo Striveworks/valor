@@ -43,7 +43,9 @@ const MetricTypeSelect: React.FC<{
         onChange={handleChange}
       >
         {metricTypes.map((t) => (
-          <MenuItem value={t}>{t}</MenuItem>
+          <MenuItem value={t} key={t}>
+            {t}
+          </MenuItem>
         ))}
       </Select>
     </FormControl>
@@ -127,7 +129,7 @@ const MetricsSection = () => {
       />
       <Switch test={selectedMetricType}>
         {Object.keys(metricsByType).map((metricType) => (
-          <SwitchElement value={metricType}>
+          <SwitchElement value={metricType} key={metricType}>
             <DataGrid
               rows={metricsByType[metricType]}
               columns={metricColumns}
