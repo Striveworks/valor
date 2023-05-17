@@ -87,12 +87,12 @@ def _bulk_insert_and_return_ids(
 
 
 def _create_detection_mappings(
-    detections: list[schemas.DetectionBase], images: list[models.Image]
+    detections: list[schemas.DetectionBase], images: list[models.Datum]
 ) -> list[dict[str, str]]:
     return [
         {
             "boundary": _wkt_polygon_from_detection(detection),
-            "image_id": image.id,
+            "datum_id": image.id,
             "is_bbox": detection.is_bbox,
         }
         for detection, image in zip(detections, images)
@@ -111,12 +111,12 @@ def _select_statement_from_poly(
 
 def _create_gt_segmentation_mappings(
     segmentations: list[schemas.GroundTruthSegmentation],
-    images: list[models.Image],
+    images: list[models.Datum],
 ) -> list[dict[str, str]]:
     assert len(segmentations) == len(images)
 
     def _create_single_mapping(
-        seg: schemas.GroundTruthSegmentation, image: models.Image
+        seg: schemas.GroundTruthSegmentation, image: models.Datum
     ):
         if seg.is_poly:
             shape = _select_statement_from_poly(seg.shape)
@@ -126,7 +126,7 @@ def _create_gt_segmentation_mappings(
         return {
             "is_instance": seg.is_instance,
             "shape": shape,
-            "image_id": image.id,
+            "datum_id": image.id,
         }
 
     return [
@@ -137,13 +137,13 @@ def _create_gt_segmentation_mappings(
 
 def _create_pred_segmentation_mappings(
     segmentations: list[schemas.PredictedSegmentation],
-    images: list[models.Image],
+    images: list[models.Datum],
 ) -> list[dict[str, str]]:
     return [
         {
             "is_instance": segmentation.is_instance,
             "shape": segmentation.mask_bytes,
-            "image_id": image.id,
+            "datum_id": image.id,
         }
         for segmentation, image in zip(segmentations, images)
     ]
@@ -168,7 +168,7 @@ def _create_label_tuple_to_id_dict(
 
 def _add_images_to_dataset(
     db: Session, dataset_name, images: list[schemas.Image]
-) -> list[models.Image]:
+) -> list[models.Datum]:
     """Adds images defined by URIs to a dataset (creating the Image rows if they don't exist),
     returning the list of image ids"""
     dset = get_dataset(db, dataset_name=dataset_name)
@@ -179,7 +179,7 @@ def _add_images_to_dataset(
     return [
         _get_or_create_row(
             db=db,
-            model_class=models.Image,
+            model_class=models.Datum,
             mapping={"dataset_id": dset_id, **img.dict()},
         )
         for img in images
@@ -395,37 +395,37 @@ def create_predicted_segmentations(
     )
 
 
-def create_ground_truth_image_classifications(
-    db: Session, data: schemas.GroundTruthImageClassificationsCreate
+def create_ground_truth_classifications(
+    db: Session, data: schemas.GroundTruthClassificationsCreate
 ):
     images = _add_images_to_dataset(
         db=db,
         dataset_name=data.dataset_name,
-        images=[c.image for c in data.classifications],
+        images=[c.datum for c in data.classifications],
     )
     label_tuple_to_id = _create_label_tuple_to_id_dict(
         db, [label for clf in data.classifications for label in clf.labels]
     )
     clf_mappings = [
-        {"label_id": label_tuple_to_id[tuple(label)], "image_id": image.id}
+        {"label_id": label_tuple_to_id[tuple(label)], "datum_id": image.id}
         for clf, image in zip(data.classifications, images)
         for label in clf.labels
     ]
 
     return _bulk_insert_and_return_ids(
-        db, models.GroundTruthImageClassification, clf_mappings
+        db, models.GroundTruthClassification, clf_mappings
     )
 
 
 def create_predicted_image_classifications(
-    db: Session, data: schemas.PredictedImageClassificationsCreate
+    db: Session, data: schemas.PredictedClassificationsCreate
 ):
     model_id = get_model(db, model_name=data.model_name).id
     # get image ids from uids (these images should already exist)
-    image_ids = [
+    datum_ids = [
         get_image(
             db,
-            uid=classification.image.uid,
+            uid=classification.datum.uid,
             dataset_name=data.dataset_name,
         ).id
         for classification in data.classifications
@@ -443,15 +443,15 @@ def create_predicted_image_classifications(
         {
             "label_id": label_tuple_to_id[tuple(scored_label.label)],
             "score": scored_label.score,
-            "image_id": image_id,
+            "datum_id": datum_id,
             "model_id": model_id,
         }
-        for clf, image_id in zip(data.classifications, image_ids)
+        for clf, datum_id in zip(data.classifications, datum_ids)
         for scored_label in clf.scored_labels
     ]
 
     return _bulk_insert_and_return_ids(
-        db, models.PredictedImageClassification, pred_mappings
+        db, models.PredictedClassification, pred_mappings
     )
 
 
@@ -657,17 +657,13 @@ def get_filtered_preds_statement_and_missing_labels(
     )
 
 
-def _validate_and_update_evaluation_settings_task_type_for_detection(
+def _check_dataset_and_inferences_finalized(
     db: Session, evaluation_settings: schemas.EvaluationSettings
-) -> None:
-    """If the model or dataset task types are none, then get these from the
-    datasets themselves. In either case verify that these task types are compatible
-    for detection evaluation.
-    """
+):
     dataset_name = evaluation_settings.dataset_name
     model_name = evaluation_settings.model_name
     if get_dataset(db, dataset_name).draft:
-        raise exceptions.DatasetIsDraftError(evaluation_settings.dataset_name)
+        raise exceptions.DatasetIsDraftError(dataset_name)
     # check that inferences are finalized
     if not _check_finalized_inferences(
         db, model_name=model_name, dataset_name=dataset_name
@@ -675,6 +671,19 @@ def _validate_and_update_evaluation_settings_task_type_for_detection(
         raise exceptions.InferencesAreNotFinalizedError(
             dataset_name=dataset_name, model_name=model_name
         )
+
+
+def _validate_and_update_evaluation_settings_task_type_for_detection(
+    db: Session, evaluation_settings: schemas.EvaluationSettings
+) -> None:
+    """If the model or dataset task types are none, then get these from the
+    datasets themselves. In either case verify that these task types are compatible
+    for detection evaluation.
+    """
+    _check_dataset_and_inferences_finalized(db, evaluation_settings)
+
+    dataset_name = evaluation_settings.dataset_name
+    model_name = evaluation_settings.model_name
 
     # do some validation
     allowable_tasks = set(
@@ -813,6 +822,8 @@ def validate_create_ap_metrics(
 def validate_create_clf_metrics(
     db: Session, request_info: schemas.ClfMetricsRequest
 ) -> tuple[list[str], list[str]]:
+    _check_dataset_and_inferences_finalized(db, request_info.settings)
+
     gts_statement = _classifications_in_dataset_statement(
         request_info.settings.dataset_name
     )
@@ -869,28 +880,28 @@ def create_ap_metrics(
         select(preds_cls).where(preds_cls.id.in_(pred_ids))
     ).all()
 
-    image_id_to_gts = {}
-    image_id_to_preds = {}
-    all_image_ids = set()
+    datum_id_to_gts = {}
+    datum_id_to_preds = {}
+    all_datum_ids = set()
     for gt in gts:
-        if gt.image_id not in image_id_to_gts:
-            image_id_to_gts[gt.image_id] = []
-        image_id_to_gts[gt.image_id].append(gt)
-        all_image_ids.add(gt.image_id)
+        if gt.datum_id not in datum_id_to_gts:
+            datum_id_to_gts[gt.datum_id] = []
+        datum_id_to_gts[gt.datum_id].append(gt)
+        all_datum_ids.add(gt.datum_id)
     for pred in preds:
-        if pred.image_id not in image_id_to_preds:
-            image_id_to_preds[pred.image_id] = []
-        image_id_to_preds[pred.image_id].append(pred)
-        all_image_ids.add(pred.image_id)
+        if pred.datum_id not in datum_id_to_preds:
+            datum_id_to_preds[pred.datum_id] = []
+        datum_id_to_preds[pred.datum_id].append(pred)
+        all_datum_ids.add(pred.datum_id)
 
-    all_image_ids = list(all_image_ids)
+    all_datum_ids = list(all_datum_ids)
 
     # all_gts and all_preds are list of lists of gts and preds per image
     all_gts = []
     all_preds = []
-    for image_id in all_image_ids:
-        all_gts.append(image_id_to_gts.get(image_id, []))
-        all_preds.append(image_id_to_preds.get(image_id, []))
+    for datum_id in all_datum_ids:
+        all_gts.append(datum_id_to_gts.get(datum_id, []))
+        all_preds.append(datum_id_to_preds.get(datum_id, []))
 
     metrics = compute_ap_metrics(
         db=db,
@@ -951,8 +962,8 @@ def create_clf_metrics(
         mapping={
             "dataset_id": dataset_id,
             "model_id": model_id,
-            "model_pred_task_type": enums.Task.IMAGE_CLASSIFICATION,
-            "dataset_gt_task_type": enums.Task.IMAGE_CLASSIFICATION,
+            "model_pred_task_type": enums.Task.CLASSIFICATION,
+            "dataset_gt_task_type": enums.Task.CLASSIFICATION,
         },
     )
 

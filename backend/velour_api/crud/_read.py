@@ -56,7 +56,9 @@ def _raster_to_png_b64(
 
 def get_datasets(db: Session) -> list[schemas.Dataset]:
     return [
-        schemas.Dataset(name=d.name, draft=d.draft)
+        schemas.Dataset(
+            **{k: getattr(d, k) for k in schemas.Dataset.__fields__}
+        )
         for d in db.scalars(select(models.Dataset))
     ]
 
@@ -73,7 +75,8 @@ def get_dataset(db: Session, dataset_name: str) -> models.Dataset:
 
 def get_models(db: Session) -> list[schemas.Model]:
     return [
-        schemas.Model(name=m.name) for m in db.scalars(select(models.Model))
+        schemas.Model(**{k: getattr(m, k) for k in schemas.Model.__fields__})
+        for m in db.scalars(select(models.Model))
     ]
 
 
@@ -87,14 +90,14 @@ def get_model(db: Session, model_name: str) -> models.Model:
     return ret
 
 
-def get_image(db: Session, uid: str, dataset_name: str) -> models.Image:
+def get_image(db: Session, uid: str, dataset_name: str) -> models.Datum:
     ret = db.scalar(
-        select(models.Image)
+        select(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
-                models.Image.uid == uid,
-                models.Image.dataset_id == models.Dataset.id,
+                models.Datum.uid == uid,
+                models.Datum.dataset_id == models.Dataset.id,
                 models.Dataset.name == dataset_name,
             )
         )
@@ -161,7 +164,7 @@ def get_groundtruth_segmentations_in_image(
     gt_segs = db.scalars(
         select(models.GroundTruthSegmentation).where(
             and_(
-                models.GroundTruthSegmentation.image_id == db_img.id,
+                models.GroundTruthSegmentation.datum_id == db_img.id,
                 models.GroundTruthSegmentation.is_instance == are_instance,
             )
         )
@@ -192,12 +195,12 @@ def get_detection_labels_in_dataset(
         select(models.Label)
         .join(models.LabeledGroundTruthDetection)
         .join(models.GroundTruthDetection)
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Image.id == models.GroundTruthDetection.image_id,
+                models.Datum.id == models.GroundTruthDetection.datum_id,
             )
         )
         .distinct()
@@ -211,12 +214,12 @@ def get_segmentation_labels_in_dataset(
         select(models.Label)
         .join(models.LabeledGroundTruthSegmentation)
         .join(models.GroundTruthSegmentation)
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Image.id == models.GroundTruthSegmentation.image_id,
+                models.Datum.id == models.GroundTruthSegmentation.datum_id,
             )
         )
         .distinct()
@@ -228,14 +231,13 @@ def get_classification_labels_in_dataset(
 ) -> list[models.Label]:
     return db.scalars(
         select(models.Label)
-        .join(models.GroundTruthImageClassification)
-        .join(models.Image)
+        .join(models.GroundTruthClassification)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Image.id
-                == models.GroundTruthImageClassification.image_id,
+                models.Datum.id == models.GroundTruthClassification.datum_id,
             )
         )
         .distinct()
@@ -247,15 +249,14 @@ def get_classification_prediction_labels(
 ):
     return db.scalars(
         select(models.Label)
-        .join(models.PredictedImageClassification)
+        .join(models.PredictedClassification)
         .join(models.Model)
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Image.id
-                == models.PredictedImageClassification.image_id,
+                models.Datum.id == models.PredictedClassification.datum_id,
                 models.Model.name == model_name,
             )
         )
@@ -268,14 +269,13 @@ def get_classification_label_values_in_dataset(
 ) -> list[str]:
     return db.scalars(
         select(models.Label.value)
-        .join(models.GroundTruthImageClassification)
-        .join(models.Image)
+        .join(models.GroundTruthClassification)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Image.id
-                == models.GroundTruthImageClassification.image_id,
+                models.Datum.id == models.GroundTruthClassification.datum_id,
                 models.Label.key == label_key,
             )
         )
@@ -288,15 +288,14 @@ def get_classification_prediction_label_values(
 ):
     return db.scalars(
         select(models.Label.value)
-        .join(models.PredictedImageClassification)
+        .join(models.PredictedClassification)
         .join(models.Model)
-        .join(models.Image)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.Image.id
-                == models.PredictedImageClassification.image_id,
+                models.Datum.id == models.PredictedClassification.datum_id,
                 models.Model.name == model_name,
                 models.Label.key == label_key,
             )
@@ -322,14 +321,14 @@ def get_all_labels(db: Session) -> list[schemas.Label]:
     ]
 
 
-def get_images_in_dataset(
+def get_datums_in_dataset(
     db: Session, dataset_name: str
-) -> list[models.Image]:
+) -> list[models.Datum]:
     dset = get_dataset(db, dataset_name)
-    return dset.images
+    return dset.datums
 
 
-def _get_unique_label_ids_in_image(image: models.Image) -> set[int]:
+def _get_unique_label_ids_in_image(image: models.Datum) -> set[int]:
     ret = set()
     for det in image.ground_truth_detections:
         for labeled_det in det.labeled_ground_truth_detections:
@@ -533,8 +532,8 @@ def _instance_segmentations_in_dataset_statement(
             labeled_ground_truth_segmentation
             JOIN ground_truth_segmentation ON
                 ground_truth_segmentation.id = labeled_ground_truth_segmentation.segmentation_id
-            JOIN image ON image.id = ground_truth_segmentation.image_id
-            JOIN dataset ON dataset.id = image.dataset_id
+            JOIN datum ON datum.id = ground_truth_segmentation.datum_id
+            JOIN dataset ON dataset.id = datum.dataset_id
         WHERE
             ground_truth_segmentation.is_instance
             AND dataset.name = '{dataset_name}'
@@ -603,8 +602,8 @@ def _object_detections_in_dataset_statement(
             labeled_ground_truth_detection
             JOIN ground_truth_detection ON
                 ground_truth_detection.id = labeled_ground_truth_detection.detection_id
-            JOIN image ON image.id = ground_truth_detection.image_id
-            JOIN dataset ON dataset.id = image.dataset_id
+            JOIN datum ON datum.id = ground_truth_detection.datum_id
+            JOIN dataset ON dataset.id = datum.dataset_id
         WHERE dataset.name = '{dataset_name}' AND ground_truth_detection.is_bbox = '{(task == enums.Task.BBOX_OBJECT_DETECTION)}'
     """
 
@@ -619,8 +618,8 @@ def _object_detections_in_dataset_statement(
 
 def _classifications_in_dataset_statement(dataset_name: str) -> Select:
     return (
-        select(models.GroundTruthImageClassification)
-        .join(models.Image)
+        select(models.GroundTruthClassification)
+        .join(models.Datum)
         .join(models.Dataset)
         .where(models.Dataset.name == dataset_name)
     )
@@ -642,9 +641,9 @@ def _model_instance_segmentation_preds_statement(
             labeled_predicted_segmentation
             JOIN predicted_segmentation ON
                 predicted_segmentation.id = labeled_predicted_segmentation.segmentation_id
-            JOIN image ON image.id = predicted_segmentation.image_id
+            JOIN datum ON datum.id = predicted_segmentation.datum_id
             JOIN model ON model.id = predicted_segmentation.model_id
-            JOIN dataset ON dataset.id = image.dataset_id
+            JOIN dataset ON dataset.id = datum.dataset_id
         WHERE
             model.name = '{model_name}'
             AND dataset.name = '{dataset_name}'
@@ -685,9 +684,9 @@ def _model_object_detection_preds_statement(
         labeled_predicted_detection
         JOIN predicted_detection ON
             predicted_detection.id = labeled_predicted_detection.detection_id
-        JOIN image ON image.id = predicted_detection.image_id
+        JOIN datum ON datum.id = predicted_detection.datum_id
         JOIN model ON model.id = predicted_detection.model_id
-        JOIN dataset ON dataset.id = image.dataset_id
+        JOIN dataset ON dataset.id = datum.dataset_id
     WHERE
         model.name = '{model_name}'
         AND dataset.name = '{dataset_name}'
@@ -707,8 +706,8 @@ def _model_classifications_preds_statement(
     model_name: str, dataset_name: str
 ) -> Select:
     return (
-        select(models.PredictedImageClassification)
-        .join(models.Image)
+        select(models.PredictedClassification)
+        .join(models.Datum)
         .join(models.Model)
         .join(models.Dataset)
         .where(

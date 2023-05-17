@@ -19,8 +19,15 @@ model_name = "test model"
 
 @pytest.fixture
 def classification_test_data(db: Session):
-    crud.create_dataset(db, schemas.DatasetCreate(name=dataset_name))
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_dataset(
+        db,
+        schemas.DatasetCreate(
+            name=dataset_name, type=schemas.DatumTypes.IMAGE
+        ),
+    )
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
 
     animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
     animal_preds = [
@@ -47,8 +54,8 @@ def classification_test_data(db: Session):
     ]
 
     gts = [
-        schemas.GroundTruthImageClassification(
-            image=imgs[i],
+        schemas.GroundTruthClassification(
+            datum=imgs[i],
             labels=[
                 schemas.Label(key="animal", value=animal_gts[i]),
                 schemas.Label(key="color", value=color_gts[i]),
@@ -57,8 +64,8 @@ def classification_test_data(db: Session):
         for i in range(6)
     ]
     preds = [
-        schemas.PredictedImageClassification(
-            image=imgs[i],
+        schemas.PredictedClassification(
+            datum=imgs[i],
             scored_labels=[
                 schemas.ScoredLabel(
                     label=schemas.Label(key="animal", value=value), score=score
@@ -75,15 +82,15 @@ def classification_test_data(db: Session):
         for i in range(6)
     ]
 
-    crud.create_ground_truth_image_classifications(
+    crud.create_ground_truth_classifications(
         db,
-        data=schemas.GroundTruthImageClassificationsCreate(
+        data=schemas.GroundTruthClassificationsCreate(
             dataset_name=dataset_name, classifications=gts
         ),
     )
     crud.create_predicted_image_classifications(
         db,
-        data=schemas.PredictedImageClassificationsCreate(
+        data=schemas.PredictedClassificationsCreate(
             model_name=model_name,
             dataset_name=dataset_name,
             classifications=preds,
