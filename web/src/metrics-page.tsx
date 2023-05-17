@@ -18,8 +18,8 @@ import Box from "@mui/material/Box";
 import { Wrapper } from "./components/wrapper";
 
 const metricColumns: GridColDef[] = [
-  { field: "label", headerName: "Label", width: 200 },
-  { field: "parameters", headerName: "Parameters", width: 200 },
+  { field: "label", headerName: "Label", width: 300 },
+  { field: "parameters", headerName: "Parameters", width: 300 },
   { field: "value", headerName: "Value" },
 ];
 
@@ -136,7 +136,7 @@ const MetricsSection = () => {
               initialState={{
                 pagination: {
                   paginationModel: {
-                    pageSize: 5,
+                    pageSize: 20,
                   },
                 },
               }}
