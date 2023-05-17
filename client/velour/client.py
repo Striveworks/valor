@@ -466,6 +466,10 @@ class ModelBase:
             df["label"] = df["label"].apply(
                 lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
             )
+
+            df = df.pivot(
+                index=["type", "parameters", "label"], columns=["dataset"]
+            )
             ret.append({"settings": grp["settings"], "df": df})
 
         return ret

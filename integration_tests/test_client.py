@@ -1306,6 +1306,18 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
         ],
     )
 
+    with pytest.raises(ClientException) as exc_info:
+        model.evaluate_classification(dataset=dataset)
+    assert "Cannot evaluate against dataset" in str(exc_info)
+
+    dataset.finalize()
+
+    with pytest.raises(ClientException) as exc_info:
+        model.evaluate_classification(dataset=dataset)
+    assert "Inferences for model" in str(exc_info)
+
+    model.finalize_inferences(dataset)
+
     eval_job = model.evaluate_classification(dataset=dataset)
 
     assert eval_job.ignored_pred_keys == []
