@@ -5,7 +5,7 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from velour_api import database, exceptions
-from velour_api.schemas import Dataset, Model
+from velour_api.schemas import Dataset, DatumTypes, Model
 
 
 @pytest.fixture
@@ -137,13 +137,13 @@ def test_post_groundtruth_classifications(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruth-classifications",
-        crud_method_name="create_ground_truth_image_classifications",
+        crud_method_name="create_ground_truth_classifications",
         example_json=example_json,
     )
 
     # check we get a conflict (409) if the dataset is finalized
     with patch(
-        "velour_api.main.crud.create_ground_truth_image_classifications",
+        "velour_api.main.crud.create_ground_truth_classifications",
         side_effect=exceptions.DatasetIsFinalizedError("dsetname"),
     ):
         resp = client.post("/groundtruth-classifications", json=example_json)
@@ -173,7 +173,7 @@ def test_post_predicted_classifications(client: TestClient):
 
 
 def test_post_datasets(client: TestClient):
-    example_json = {"name": ""}
+    example_json = {"name": "", "type": DatumTypes.IMAGE.value}
     _test_post_endpoints(
         client=client,
         endpoint="/datasets",
@@ -192,7 +192,7 @@ def test_post_datasets(client: TestClient):
 
 
 def test_post_models(client: TestClient):
-    example_json = {"name": ""}
+    example_json = {"name": "", "type": DatumTypes.IMAGE.value}
     _test_post_endpoints(
         client=client,
         endpoint="/models",
@@ -220,7 +220,9 @@ def test_get_datasets(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_dataset_by_name(crud, client: TestClient):
-    crud.get_dataset.return_value = Dataset(name="", draft=True)
+    crud.get_dataset.return_value = Dataset(
+        name="", draft=True, type=DatumTypes.TABULAR
+    )
 
     resp = client.get("/datasets/dsetname")
     assert resp.status_code == 200
@@ -239,7 +241,7 @@ def test_get_dataset_by_name(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_model_by_name(crud, client: TestClient):
-    crud.get_model.return_value = Model(name="")
+    crud.get_model.return_value = Model(name="", type=DatumTypes.IMAGE.value)
     resp = client.get("/models/modelname")
     assert resp.status_code == 200
     crud.get_model.assert_called_once()
@@ -295,10 +297,10 @@ def test_get_dataset_labels(schemas, crud, client: TestClient):
 def test_get_dataset_images(schemas, crud, client: TestClient):
     resp = client.get("/datasets/dsetname/images")
     assert resp.status_code == 200
-    crud.get_images_in_dataset.assert_called_once()
+    crud.get_datums_in_dataset.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_images_in_dataset",
+        "velour_api.main.crud.get_datums_in_dataset",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("datasets/dsetname/images")
@@ -344,22 +346,3 @@ def test_get_labels(crud, client: TestClient):
 def test_user(client: TestClient):
     resp = client.get("/user")
     assert resp.json() == {"email": None}
-
-
-@patch("velour_api.main.crud")
-@patch("velour_api.main.schemas")
-def test_get_model_metrics(schemas, crud, client: TestClient):
-    crud.get_model_metrics.return_value = []
-    resp = client.get("/models/modelname/metrics")
-    assert resp.status_code == 200
-    crud.get_model_metrics.assert_called_once()
-
-    with patch(
-        "velour_api.main.crud.get_model_metrics",
-        side_effect=exceptions.ModelDoesNotExistError(""),
-    ):
-        resp = client.get("models/modelname/metrics")
-        assert resp.status_code == 404
-
-    resp = client.post("/models/modelname/metrics")
-    assert resp.status_code == 405
