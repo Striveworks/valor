@@ -15,6 +15,11 @@ REDIS_DB = os.getenv("REDIS_DB", 0)
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 REDIS_USERNAME = os.getenv("REDIS_USERNAME")
 
+logger.debug(
+    f"REDIS_HOST: {REDIS_HOST}, REDIS_PORT: {REDIS_PORT}, REDIS_DB: {REDIS_DB}, "
+    f"REDIS_PASSWORD: {'null' if REDIS_PASSWORD is None else 'not null'}, REDIS_USERNAME: {REDIS_USERNAME} "
+)
+
 # global connection to redis
 r: redis.Redis = None
 
