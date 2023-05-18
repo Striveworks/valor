@@ -37,13 +37,16 @@ export const ListingComponent = ({
     <Wrapper>
       <Typography variant="h2">{pageTitle}</Typography>
       {entities.map((entity) => (
-        <Link
-          href={`/${name}/${entity.name}`}
-          sx={{ fontSize: 20 }}
-          key={entity.name}
-        >
-          {entity.name}
-        </Link>
+        <>
+          <Link
+            href={`/${name}/${entity.name}`}
+            sx={{ fontSize: 20 }}
+            key={entity.name}
+          >
+            {entity.name}
+          </Link>
+          <br />
+        </>
       ))}
     </Wrapper>
   );
