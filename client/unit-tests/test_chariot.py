@@ -134,46 +134,60 @@ def _test_obj_det_ds(velour_dataset):
     assert velour_datum.bbox == BoundingBox(500, 220, 530, 260)
 
 
-def test_parse_image_classification(img_clf_ds: str):
+def test__parse_image_classification_groundtruth(img_clf_ds: str):
     chariot_dataset = img_clf_ds
-    item1 = chariot_integration.parse_image_classification(chariot_dataset[0])
+    item1 = chariot_integration._parse_image_classification_groundtruth(
+        chariot_dataset[0]
+    )
     assert len(item1) == 1
-    item2 = chariot_integration.parse_image_classification(chariot_dataset[1])
+    item2 = chariot_integration._parse_image_classification_groundtruth(
+        chariot_dataset[1]
+    )
     assert len(item2) == 1
     velour_dataset = item1 + item2
     _test_img_clf_ds(velour_dataset=velour_dataset)
 
 
-def test_parse_image_segmentation(img_seg_ds: str):
+def test__parse_image_segmentation_groundtruth(img_seg_ds: str):
     chariot_dataset = img_seg_ds
-    item1 = chariot_integration.parse_image_segmentation(chariot_dataset[0])
+    item1 = chariot_integration._parse_image_segmentation_groundtruth(
+        chariot_dataset[0]
+    )
     assert len(item1) == 1
-    item2 = chariot_integration.parse_image_segmentation(chariot_dataset[1])
+    item2 = chariot_integration._parse_image_segmentation_groundtruth(
+        chariot_dataset[1]
+    )
     assert len(item2) == 1
     velour_dataset = item1 + item2
     _test_img_seg_ds(velour_dataset=velour_dataset)
 
 
-def test_parse_object_detection(obj_det_ds: str):
+def test__parse_object_detection_groundtruth(obj_det_ds: str):
     chariot_dataset = obj_det_ds
 
     # Item 1 - Multiple objects of interest
-    item1 = chariot_integration.parse_object_detection(chariot_dataset[0])
+    item1 = chariot_integration._parse_object_detection_groundtruth(
+        chariot_dataset[0]
+    )
     assert len(item1) == 2
 
     # Item 2 - Single object of interest
-    item2 = chariot_integration.parse_object_detection(chariot_dataset[1])
+    item2 = chariot_integration._parse_object_detection_groundtruth(
+        chariot_dataset[1]
+    )
     assert len(item2) == 1
 
     # Item 3 - No object of interest
-    item3 = chariot_integration.parse_object_detection(chariot_dataset[2])
+    item3 = chariot_integration._parse_object_detection_groundtruth(
+        chariot_dataset[2]
+    )
     assert len(item3) == 0
 
     velour_dataset = item1 + item2 + item3
     _test_obj_det_ds(velour_dataset=velour_dataset)
 
 
-def test_parse_dataset_version_manifest(
+def test__parse_dataset_version_manifest(
     img_clf_ds: str, img_seg_ds: str, obj_det_ds: str
 ):
     @dataclass
@@ -216,7 +230,7 @@ def test_parse_dataset_version_manifest(
     chariot_task_type.object_detection = False
 
 
-def test__parse_chariot_detections():
+def test_parse_chariot_object_detection():
     dets = {
         "num_detections": 2,
         "detection_classes": [
@@ -240,7 +254,7 @@ def test__parse_chariot_detections():
         "detection_scores": ["0.99932003", "0.99895525"],
     }
 
-    velour_dets = chariot_integration._parse_chariot_detections(
+    velour_dets = chariot_integration.parse_chariot_object_detection(
         dets, Image(uid="", width=10, height=100)
     )
 

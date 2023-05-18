@@ -8,7 +8,13 @@ from typing import Union
 import requests
 from tqdm import tqdm
 
-from velour.client import Client, ImageDataset, ImageModel, TabularModel
+from velour.client import (
+    Client,
+    ImageDataset,
+    ImageModel,
+    TabularDataset,
+    TabularModel,
+)
 from velour.data_types import (
     BoundingBox,
     BoundingPolygon,
@@ -91,7 +97,7 @@ def _retrieve_chariot_annotations(manifest_url: str):
     return chariot_dataset
 
 
-def parse_image_classification(
+def _parse_image_classification_groundtruth(
     datum: dict,
 ) -> GroundTruthImageClassification:
     """Parses Chariot image classification annotation."""
@@ -116,7 +122,7 @@ def parse_image_classification(
     return gt_dets
 
 
-def parse_image_segmentation(
+def _parse_image_segmentation_groundtruth(
     datum: dict,
 ) -> GroundTruthSemanticSegmentation:
     """Parses Chariot image segmentation annotation."""
@@ -172,7 +178,7 @@ def parse_image_segmentation(
     return gt_dets
 
 
-def parse_object_detection(
+def _parse_object_detection_groundtruth(
     datum: dict,
 ) -> GroundTruthDetection:
     """Parses Chariot object detection annotation."""
@@ -229,7 +235,7 @@ def _parse_chariot_annotations(
         groundtruth_annotations = [
             gt
             for datum in chariot_manifest
-            for gt in parse_image_classification(datum)
+            for gt in _parse_image_classification_groundtruth(datum)
         ]
 
     # Image Segmentation
@@ -237,7 +243,7 @@ def _parse_chariot_annotations(
         groundtruth_annotations = [
             gt
             for datum in chariot_manifest
-            for gt in parse_image_segmentation(datum)
+            for gt in _parse_image_segmentation_groundtruth(datum)
         ]
 
     # Object Detection
@@ -245,7 +251,7 @@ def _parse_chariot_annotations(
         groundtruth_annotations = [
             gt
             for datum in chariot_manifest
-            for gt in parse_object_detection(datum)
+            for gt in _parse_object_detection_groundtruth(datum)
         ]
 
     # Text Sentiment
@@ -275,7 +281,7 @@ def _parse_chariot_annotations(
     return groundtruth_annotations
 
 
-def create_dataset(
+def create_dataset_from_chariot(
     client: Client,
     dataset: ChariotDataset,
     dataset_version_id: str = None,
@@ -283,7 +289,7 @@ def create_dataset(
     use_training_manifest: bool = True,
     chunk_size: int = 1000,
     show_progress_bar: bool = True,
-):
+) -> Union[ImageDataset, TabularDataset]:
     """Converts chariot dataset to a velour dataset.
 
     Parameters
@@ -372,13 +378,51 @@ def create_dataset(
     return velour_dataset
 
 
-def create_model(
+def parse_chariot_object_detection(
+    detection: dict,
+    image: Image,
+    label_key: str = "class",
+) -> PredictedDetection:
+
+    expected_keys = {
+        "num_detections",
+        "detection_classes",
+        "detection_boxes",
+        "detection_scores",
+    }
+
+    if set(detection.keys()) != expected_keys:
+        raise ValueError(
+            f"Expected `dets` to have keys {expected_keys} but got {detection.keys()}"
+        )
+
+    return [
+        PredictedDetection(
+            bbox=BoundingBox(
+                ymin=box[0], xmin=box[1], ymax=box[2], xmax=box[3]
+            ),
+            scored_labels=[
+                ScoredLabel(
+                    label=Label(key=label_key, value=label), score=score
+                )
+            ],
+            image=image,
+        )
+        for box, score, label in zip(
+            detection["detection_boxes"],
+            detection["detection_scores"],
+            detection["detection_classes"],
+        )
+    ]
+
+
+def create_model_from_chariot(
     client: Client,
     model: ChariotModel,
     name: str = None,
     description: str = None,
-) -> Union(ImageModel, TabularModel):
-    """Converts chariot dataset to a velour dataset.
+) -> Union[ImageModel, TabularModel]:
+    """Converts chariot model to a velour model.
 
     Parameters
     ----------
@@ -386,6 +430,10 @@ def create_model(
         Velour client object
     model
         Chariot model object
+    name
+        (OPTIONAL) Defaults to Chariot model name.
+    description
+        (OPTIONAL) Defaults to Chariot model description.
 
     Returns
     -------
@@ -438,86 +486,3 @@ def create_model(
         raise NotImplementedError(
             f"Task type {model.task} is currently not supported."
         )
-
-
-def parse_chariot_detection(
-    detection: dict,
-    image: Image,
-    label_key: str = "class",
-) -> PredictedDetection:
-
-    expected_keys = {
-        "num_detections",
-        "detection_classes",
-        "detection_boxes",
-        "detection_scores",
-    }
-
-    if set(detection.keys()) != expected_keys:
-        raise ValueError(
-            f"Expected `dets` to have keys {expected_keys} but got {detection.keys()}"
-        )
-
-    return [
-        PredictedDetection(
-            bbox=BoundingBox(
-                ymin=box[0], xmin=box[1], ymax=box[2], xmax=box[3]
-            ),
-            scored_labels=[
-                ScoredLabel(
-                    label=Label(key=label_key, value=label), score=score
-                )
-            ],
-            image=image,
-        )
-        for box, score, label in zip(
-            detection["detection_boxes"],
-            detection["detection_scores"],
-            detection["detection_classes"],
-        )
-    ]
-
-
-def upload_inferences(
-    model: ImageModel,
-    dataset: ImageDataset,
-    inferences: list,
-    chunk_size: int = 1000,
-    show_progress_bar: bool = True,
-) -> ImageModel:
-    """Converts the outputs of a Chariot detection model to velour's format
-
-    Parameters
-    ----------
-    client
-        Velour client object
-    dataset
-        Velour Dataset object
-    model_name:
-        Name of the model used to generate these inferences.
-    dets:
-        Chariot detections.
-    image:
-        Velour Image object.
-    label_key:
-        (OPTIONAL) Defaults to 'class'. Key to class label of inference.
-    chunk_size
-        (OPTIONAL) Defaults to 1000. Chunk_size is the maximum number of 'groundtruths' that are
-        uploaded in one call to the backend.
-    show_progress_bar
-        (OPTIONAL) Defaults to True. Controls whether a tqdm progress bar is displayed
-        to show upload progress.
-
-    Returns
-    -------
-    Velour image model.
-    """
-
-    # Create & Populate Model
-    model.add_predictions(
-        dataset=dataset,
-        predictions=inferences,
-        chunk_size=chunk_size,
-        show_progress_bar=show_progress_bar,
-    )
-    model.finalize_inferences()

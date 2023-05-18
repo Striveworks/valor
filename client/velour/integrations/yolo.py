@@ -1,10 +1,11 @@
-from typing import List
+from pathlib import Path
+from typing import Union
 
 import numpy
 import PIL
 from PIL.Image import Resampling
 
-from velour.client import Client, ImageDataset, ImageModel
+from velour.client import Client, ImageModel
 from velour.data_types import (
     BoundingBox,
     Image,
@@ -16,15 +17,15 @@ from velour.data_types import (
 )
 
 
-def parse_image_classification(results, uid: str):
-    """Parses Ultralytic's results for an image classification task."""
+def parse_yolo_image_classification(result, uid: str):
+    """Parses Ultralytic's result for an image classification task."""
 
     # Extract data
     image_uid = uid
-    image_height = results.orig_shape[0]
-    image_width = results.orig_shape[1]
-    probabilities = results.probs
-    labels = results.names
+    image_height = result.orig_shape[0]
+    image_width = result.orig_shape[1]
+    probabilities = result.probs
+    labels = result.names
 
     # Create scored label list
     scored_labels = [
@@ -62,18 +63,18 @@ def _convert_yolo_segmentation(
     return mask
 
 
-def parse_image_segmentation(
-    results, uid: str, resample: Resampling = Resampling.BILINEAR
+def parse_yolo_image_segmentation(
+    result, uid: str, resample: Resampling = Resampling.BILINEAR
 ):
-    """Parses Ultralytic's results for an image segmentation task."""
+    """Parses Ultralytic's result for an image segmentation task."""
 
     # Extract data
     image_uid = uid
-    image_height = results.orig_shape[0]
-    image_width = results.orig_shape[1]
-    probabilities = [conf.item() for conf in results.boxes.conf]
-    labels = [results.names[int(pred.item())] for pred in results.boxes.cls]
-    masks = [mask for mask in results.masks.data]
+    image_height = result.orig_shape[0]
+    image_width = result.orig_shape[1]
+    probabilities = [conf.item() for conf in result.boxes.conf]
+    labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
+    masks = [mask for mask in result.masks.data]
 
     # Create scored label list
     scored_labels = [
@@ -89,7 +90,7 @@ def parse_image_segmentation(
         _convert_yolo_segmentation(
             raw, height=image_height, width=image_width, resample=resample
         )
-        for raw in results.masks.data
+        for raw in result.masks.data
     ]
 
     return [
@@ -106,16 +107,16 @@ def parse_image_segmentation(
     ]
 
 
-def parse_object_detection(results, uid: str):
-    """Parses Ultralytic's results for an object detection task."""
+def parse_yolo_object_detection(result, uid: str):
+    """Parses Ultralytic's result for an object detection task."""
 
     # Extract data
     image_uid = uid
-    image_height = results.orig_shape[0]
-    image_width = results.orig_shape[1]
-    probabilities = [conf.item() for conf in results.boxes.conf]
-    labels = [results.names[int(pred.item())] for pred in results.boxes.cls]
-    bboxes = [numpy.asarray(box.cpu()) for box in results.boxes.xyxy]
+    image_height = result.orig_shape[0]
+    image_width = result.orig_shape[1]
+    probabilities = [conf.item() for conf in result.boxes.conf]
+    labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
+    bboxes = [numpy.asarray(box.cpu()) for box in result.boxes.xyxy]
 
     # Create scored label list
     scored_labels = [
@@ -151,75 +152,67 @@ def parse_object_detection(results, uid: str):
     ]
 
 
-def upload_inferences(
-    client: Client,
-    model_name: str,
-    dataset: ImageDataset,
-    results: list,
-    uids: List[str],
-    model_href: str = None,
-    model_description: str = None,
+def parse_yolo_results(
+    results,
+    uid: str,
     segmentation_resample: Resampling = Resampling.BILINEAR,
-    chunk_size: int = 1000,
-    show_progress_bar: bool = True,
+) -> Union[
+    PredictedDetection,
+    PredictedImageClassification,
+    PredictedInstanceSegmentation,
+]:
+    """Automatically chooses correct parser for Ultralytic YOLO model inferences.
+
+    Parameters
+    ----------
+    result
+        YOLO Model Result
+    uid
+        Image uid
+
+    Returns
+    -------
+    Velour prediction.
+    """
+
+    if "masks" in results.keys and "boxes" in results.keys:
+        return parse_yolo_image_segmentation(
+            results, uid=uid, resample=segmentation_resample
+        )
+    elif "boxes" in results.keys:
+        return parse_yolo_object_detection(results, uid)
+    elif "probs" in results.keys:
+        return parse_yolo_image_classification(results, uid)
+    else:
+        raise ValueError(
+            "Input arguement 'result' does not contain identifiable information."
+        )
+
+
+def create_model_from_yolo(
+    client: Client, model, name: str = None, description: str = None
 ) -> ImageModel:
-    """Upload Ultralytic's YOLO model inferences to Velour.
+    """Converts yolo model to a velour model.
 
     Parameters
     ----------
     client
-        Velour Client object.
-    model_name
-        Model name.
-    model_href
-        Model href
-    model_description
-        Model description
-    dataset
-        Velour Dataset object.
-    results
-        List of YOLO Results objects
-    uids
-        List of Image UID's. One-to-one mapping with YOLO results.
-    segmentation_resample
-        (OPTIONAL) Defaults to Resampling.BILINEAR filter. This is used when resizing
-        masks from output size to orginal image size.
-    chunk_size
-        (OPTIONAL) Defaults to 1000. Chunk_size is the maximum number of elements that are
-        uploaded in one call to the backend.
-    show_progress_bar
-        (OPTIONAL) Defaults to True. Controls whether a tqdm progress bar is displayed
-        to show upload progress.
+        Velour client object
+    model
+        Chariot model object
+    name
+        (OPTIONAL) Defaults to Chariot model name.
+    description
+        (OPTIONAL) Defaults to Chariot model description.
 
     Returns
     -------
-    Velour image model.
+    Velour image model
     """
 
-    # Check uids map to results
-    assert len(uids) == len(results)
+    if name is None:
+        # Strip model name from yaml path
+        path = model.model.yaml["yaml_file"]
+        name = Path(path).stem
 
-    # Parse inferences
-    predictions = []
-    for result, uid in list(zip(results, uids)):
-        if "masks" in result.keys and "boxes" in result.keys:
-            predictions += parse_image_segmentation(
-                result, uid=uid, resample=segmentation_resample
-            )
-        elif "boxes" in result.keys:
-            predictions += parse_object_detection(result, uid)
-        elif "probs" in result.keys:
-            predictions += parse_image_classification(result, uid)
-
-    # Create & Populate Model
-    model = client.create_image_model(
-        model_name, href=model_href, description=model_description
-    )
-    model.add_predictions(
-        dataset=dataset,
-        predictions=predictions,
-        chunk_size=chunk_size,
-        show_progress_bar=show_progress_bar,
-    )
-    model.finalize_inferences()
-    return model
+    return client.create_image_model(name, href=None, description=description)

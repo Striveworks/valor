@@ -8,9 +8,9 @@ from velour.data_types import (
 )
 from velour.integrations.yolo import (
     _convert_yolo_segmentation,
-    parse_image_classification,
-    parse_image_segmentation,
-    parse_object_detection,
+    parse_yolo_image_classification,
+    parse_yolo_image_segmentation,
+    parse_yolo_object_detection,
 )
 
 
@@ -201,7 +201,7 @@ def velour_mask(image):
     return x >= 128
 
 
-def test_parse_image_classification(image, names):
+def test_parse_yolo_image_classification(image, names):
 
     probs = numpy.asarray([0.82, 0.08, 0.1])
 
@@ -212,7 +212,7 @@ def test_parse_image_classification(image, names):
         probs=probs,
     )
 
-    predictions = parse_image_classification(results, image["uid"])
+    predictions = parse_yolo_image_classification(results, image["uid"])
 
     assert len(predictions) == 1
 
@@ -240,7 +240,7 @@ def test__convert_yolo_segmentation(image, yolo_mask, velour_mask):
     assert (output == velour_mask).all()
 
 
-def test_parse_image_segmentation(
+def test_parse_yolo_image_segmentation(
     image, names, bboxes, yolo_mask, velour_mask
 ):
     img = numpy.random.rand(image["height"], image["width"], 3)
@@ -254,7 +254,7 @@ def test_parse_image_segmentation(
         masks=masks,
     )
 
-    predictions = parse_image_segmentation(results, image["uid"])
+    predictions = parse_yolo_image_segmentation(results, image["uid"])
 
     assert len(predictions) == bboxes.shape[0]
     for i in range(len(predictions)):
@@ -270,14 +270,14 @@ def test_parse_image_segmentation(
         assert (predictions[i].mask == velour_mask).all()
 
 
-def test_parse_object_detection(image, bboxes, names):
+def test_parse_yolo_object_detection(image, bboxes, names):
     img = numpy.random.rand(image["height"], image["width"], 3)
 
     results = Results(
         orig_img=img, path=image["path"], names=names, boxes=bboxes
     )
 
-    predictions = parse_object_detection(results, image["uid"])
+    predictions = parse_yolo_object_detection(results, image["uid"])
 
     assert len(predictions) == bboxes.shape[0]
     for i in range(len(predictions)):
