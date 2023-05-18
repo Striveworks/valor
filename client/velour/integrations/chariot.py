@@ -3,12 +3,12 @@ import json
 import tempfile
 import urllib
 from pathlib import Path
-from typing import List
+from typing import Union
 
 import requests
 from tqdm import tqdm
 
-from velour.client import Client, ImageDataset, ImageModel
+from velour.client import Client, ImageDataset, ImageModel, TabularModel
 from velour.data_types import (
     BoundingBox,
     BoundingPolygon,
@@ -24,11 +24,31 @@ from velour.data_types import (
 )
 
 try:
-    import chariot.datasets
-    from chariot.config import settings
-
+    import chariot
+    from chariot.datasets import Dataset as ChariotDataset
+    from chariot.models import Model as ChariotModel
+    from chariot.models import TaskType as ChariotTaskType
 except ModuleNotFoundError:
     "`chariot` package not found. if you have an account on Chariot please see https://production.chariot.striveworks.us/docs/sdk/sdk for how to install the python SDK"
+
+
+def _construct_url(
+    project_id: str, dataset_id: str = None, model_id: str = None
+):
+
+    if dataset_id is not None and model_id is not None:
+        raise ValueError("Please provide EITHER model id or dataset id.")
+    elif dataset_id is not None:
+        href = f"/projects/{project_id}/datasets/{dataset_id}"
+    elif model_id is not None:
+        href = f"/projects/{project_id}/models/{model_id}"
+    else:
+        href = f"/projects/{project_id}"
+
+    return urllib.parse.urljoin(
+        chariot.config.settings.base_url,
+        href,
+    )
 
 
 def _retrieve_chariot_annotations(manifest_url: str):
@@ -257,9 +277,9 @@ def _parse_chariot_annotations(
     return groundtruth_annotations
 
 
-def upload_dataset(
+def create_dataset(
     client: Client,
-    dataset: chariot.datasets.Dataset,
+    dataset: ChariotDataset,
     dataset_version_id: str = None,
     name: str = None,
     use_training_manifest: bool = True,
@@ -338,10 +358,7 @@ def upload_dataset(
         name = dataset.name
 
     # Construct url
-    href = urllib.parse.urljoin(
-        settings.base_url,
-        f"/projects/{dsv.project_id}/datasets/{dsv.dataset_id}",
-    )
+    href = _construct_url(project_id=dsv.project_id, dataset_id=dsv.dataset_id)
 
     # Create velour dataset
     velour_dataset = client.create_image_dataset(name=name, href=href)
@@ -357,11 +374,79 @@ def upload_dataset(
     return velour_dataset
 
 
-def _parse_chariot_detections(
-    dets: dict,
+def create_model(
+    client: Client,
+    model: ChariotModel,
+    name: str = None,
+    description: str = None,
+) -> Union(ImageModel, TabularModel):
+    """Converts chariot dataset to a velour dataset.
+
+    Parameters
+    ----------
+    client
+        Velour client object
+    model
+        Chariot model object
+
+    Returns
+    -------
+    Velour image model
+    """
+
+    cv_tasks = [
+        ChariotTaskType.IMAGE_AUTOENCODER,
+        ChariotTaskType.IMAGE_CLASSIFICATION,
+        ChariotTaskType.IMAGE_EMBEDDING,
+        ChariotTaskType.IMAGE_GENERATION,
+        ChariotTaskType.IMAGE_SEGMENTATION,
+        ChariotTaskType.OBJECT_DETECTION,
+        ChariotTaskType.OTHER_COMPUTER_VISION,
+    ]
+
+    tabular_tasks = [
+        ChariotTaskType.STRUCTURED_DATA_CLASSIFICATION,
+        ChariotTaskType.STRUCTURED_DATA_REGRESSION,
+        ChariotTaskType.OTHER_STRUCTURED_DATA,
+    ]
+
+    nlp_tasks = [
+        ChariotTaskType.TEXT_CLASSIFICATION,
+        ChariotTaskType.TEXT_FILL_MASK,
+        ChariotTaskType.TEXT_GENERATION,
+        ChariotTaskType.TOKEN_CLASSIFICATION,
+        ChariotTaskType.TRANSLATION,
+        ChariotTaskType.OTHER_NATURAL_LANGUAGE,
+    ]
+
+    if name is None:
+        name = model.name
+
+    if description is None:
+        # Chariot model does not expose its description at this time
+        pass
+
+    href = _construct_url(project_id=model.project_id, model_id=model.id)
+
+    if model.task in cv_tasks:
+        return client.create_image_model(name, href, description)
+    elif model.task in tabular_tasks:
+        return client.create_tabular_model(name, href, description)
+    elif model.task in nlp_tasks:
+        raise NotImplementedError(
+            f"NLP tasks are currently not supported. '{model.task}'"
+        )
+    else:
+        raise NotImplementedError(
+            f"Task type {model.task} is currently not supported."
+        )
+
+
+def parse_chariot_detection(
+    detection: dict,
     image: Image,
     label_key: str = "class",
-) -> List[PredictedDetection]:
+) -> PredictedDetection:
 
     expected_keys = {
         "num_detections",
@@ -370,9 +455,9 @@ def _parse_chariot_detections(
         "detection_scores",
     }
 
-    if set(dets.keys()) != expected_keys:
+    if set(detection.keys()) != expected_keys:
         raise ValueError(
-            f"Expected `dets` to have keys {expected_keys} but got {dets.keys()}"
+            f"Expected `dets` to have keys {expected_keys} but got {detection.keys()}"
         )
 
     return [
@@ -388,20 +473,17 @@ def _parse_chariot_detections(
             image=image,
         )
         for box, score, label in zip(
-            dets["detection_boxes"],
-            dets["detection_scores"],
-            dets["detection_classes"],
+            detection["detection_boxes"],
+            detection["detection_scores"],
+            detection["detection_classes"],
         )
     ]
 
 
 def upload_inferences(
-    client: Client,
-    model_name: str,
+    model: ImageModel,
     dataset: ImageDataset,
-    dets: dict,
-    image: Image,
-    label_key: str = "class",
+    inferences: list,
     chunk_size: int = 1000,
     show_progress_bar: bool = True,
 ) -> ImageModel:
@@ -433,15 +515,11 @@ def upload_inferences(
     Velour image model.
     """
 
-    predictions = _parse_chariot_detections(dets, image, label_key)
-
     # Create & Populate Model
-    model = ImageModel(client=client, name=model_name)
     model.add_predictions(
         dataset=dataset,
-        predictions=predictions,
+        predictions=inferences,
         chunk_size=chunk_size,
         show_progress_bar=show_progress_bar,
     )
     model.finalize_inferences()
-    return model
