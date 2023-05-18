@@ -25,11 +25,7 @@ from velour.data_types import (
 
 try:
     from chariot.config import settings
-    from chariot.datasets.dataset import Dataset
-    from chariot.datasets.dataset_version import (
-        get_latest_vertical_dataset_version,
-    )
-
+    from chariot.datasets import Dataset, get_latest_vertical_dataset_version
 except ModuleNotFoundError:
     ***REMOVED***
 
@@ -41,7 +37,6 @@ def retrieve_chariot_manifest(manifest_url: str):
 
     # Create a temporary file
     with tempfile.TemporaryFile(mode="w+b") as f:
-
         # Download compressed jsonl file
         response = requests.get(manifest_url, stream=True)
 
@@ -110,7 +105,6 @@ def chariot_parse_image_segmentation_annotation(
 
     annotated_regions = {}
     for annotation in datum["annotations"]:
-
         annotation_label = annotation["class_label"]
 
         hole = None
