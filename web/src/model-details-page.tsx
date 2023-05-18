@@ -15,6 +15,7 @@ const columns: GridColDef[] = [
   {
     field: "dataset_name",
     headerName: "Dataset",
+    width: 150,
   },
   {
     field: "model_pred_task_type",
