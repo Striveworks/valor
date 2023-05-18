@@ -58,7 +58,6 @@ def _retrieve_chariot_annotations(manifest_url: str):
 
     # Create a temporary file
     with tempfile.TemporaryFile(mode="w+b") as f:
-
         # Download compressed jsonl file
         response = requests.get(manifest_url, stream=True)
 
@@ -127,7 +126,6 @@ def parse_image_segmentation(
 
     annotated_regions = {}
     for annotation in datum["annotations"]:
-
         annotation_label = annotation["class_label"]
 
         hole = None
