@@ -255,6 +255,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#supported-tasks" class="md-nav__link">
     Supported tasks
   </a>
@@ -456,6 +463,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#supported-tasks" class="md-nav__link">
     Supported tasks
   </a>
@@ -565,6 +579,10 @@
 <h1 id="working-with-the-python-client">Working with the Python client</h1>
 <p>Here we cover the basic concepts involved in interacting with the <code>velour</code> service via the Python client.</p>
 <p>Additionally, sample Jupyter notebooks are available <a href="https://github.com/Striveworks/velour/tree/main/sample_notebooks">here</a>.</p>
+<h2 id="installation">Installation</h2>
+<p>The client is hosted on PyPI and can be installed via</p>
+<div class="language-shell highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pip<span class="w"> </span>install<span class="w"> </span>velour-client
+</span></code></pre></div>
 <h2 id="supported-tasks">Supported tasks</h2>
 <p>Currently <code>velour</code> supports the following groundtruth label types:</p>
 <ul>
@@ -572,6 +590,7 @@
 <li>object detections</li>
 <li>instance segmentations</li>
 <li>semantic segmentations</li>
+<li>tabular data classifications</li>
 </ul>
 <p>Each case has the notion of a label, which is a key/value pair. This is used (instead of forcing labels to be strings) to support things such as</p>
 <ul>
@@ -580,15 +599,15 @@
 </ul>
 <h2 id="client">Client</h2>
 <p>The <code>velour.Client</code> class gives an object that is used to communicate with the <code>velour</code> backend. It can be instantiated via</p>
-<div class="language-py highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span> <span class="nn">velour</span> <span class="kn">import</span> <span class="n">Client</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">HOST_URL</span><span class="p">)</span>
+<div class="language-py highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span> <span class="nn">velour.client</span> <span class="kn">import</span> <span class="n">Client</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">client</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">HOST_URL</span><span class="p">)</span>
 </span></code></pre></div>
 <p>In the case that the host uses authentication, then the argument <code>access_token</code> should also be passed to <code>Client</code>.</p>
 <h2 id="dataset">Dataset</h2>
 <p><code>velour</code> stores metadata and annotations associated to a machine learning dataset. For example, in the case of a computer vision dataset, <code>velour</code> needs unique identifiers for images, height and width of images, and annotations (such as image classifications, bounding boxes, segmentation masks, etc.) but the underlying images themselves are not stored or needed by velour.</p>
 <p>The process of creating a new dataset to be used in velour is to first create an empty dataset via</p>
-<div class="language-py highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">dataset</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">DATASET_NAME</span><span class="p">)</span> <span class="c1"># DATASET_NAME a string.</span>
+<div class="language-py highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">dataset</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">create_dataset</span><span class="p">(</span><span class="n">DATASET_NAME</span><span class="p">)</span> <span class="c1"># DATASET_NAME a string.</span>
 </span></code></pre></div>
 <p><code>dataset</code> is then a <code>velour.Dataset</code> object and can be used to add groundtruth labels.</p>
 <h3 id="image">Image</h3>
@@ -625,24 +644,24 @@
 </tbody>
 </table>
 <p>For example:</p>
-<div class="language-py highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span> <span class="nn">velour.data_types</span> <span class="kn">import</span> <span class="n">Image</span>
-</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">uid</span><span class="o">=</span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
+<div class="language-py highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span> <span class="nn">velour.data_types</span> <span class="kn">import</span> <span class="n">Image</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">img</span> <span class="o">=</span> <span class="n">Image</span><span class="p">(</span><span class="n">uid</span><span class="o">=</span><span class="s2">&quot;abc123&quot;</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">256</span><span class="p">)</span>
 </span></code></pre></div>
 <p>Note: this creates an image object but is not yet uploaded to the backend service.</p>
 <h3 id="adding-annotations">Adding annotations</h3>
 <p>Data structures and methods are provided for adding annotations to an image and then adding the image metadata and annotations to the backend service. We now go over the different types of supported annotations</p>
 <h4 id="image-classification">Image classification</h4>
 <p>An image classification is specified by a <code>velour.data_types.Image</code> object and a list of labels. Each label is of type <code>velour.data_types.Label</code> which consists of a key/value pairs of strings. For example:</p>
-<div class="language-py highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span> <span class="nn">velour.data_types</span> <span class="kn">import</span> <span class="n">Label</span><span class="p">,</span> <span class="n">GroundTruthImageClassification</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
-</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">label1</span> <span class="o">=</span> <span class="n">Label</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;occluded&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;yes&quot;</span><span class="p">)</span>
-</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">label2</span> <span class="o">=</span> <span class="n">Label</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;class_name&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;truck&quot;</span><span class="p">)</span>
-</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
-</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">gt_cls</span> <span class="o">=</span> <span class="n">GroundTruthImageClassification</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">img</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="n">label1</span><span class="p">,</span> <span class="n">label2</span><span class="p">])</span>
+<div class="language-py highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span> <span class="nn">velour.data_types</span> <span class="kn">import</span> <span class="n">Label</span><span class="p">,</span> <span class="n">GroundTruthImageClassification</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">label1</span> <span class="o">=</span> <span class="n">Label</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;occluded&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;yes&quot;</span><span class="p">)</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">label2</span> <span class="o">=</span> <span class="n">Label</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;class_name&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="s2">&quot;truck&quot;</span><span class="p">)</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">gt_cls</span> <span class="o">=</span> <span class="n">GroundTruthImageClassification</span><span class="p">(</span><span class="n">image</span><span class="o">=</span><span class="n">img</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="n">label1</span><span class="p">,</span> <span class="n">label2</span><span class="p">])</span>
 </span></code></pre></div>
 <p>To associate ground truth image classifications (and in particular also the underlying <code>Image</code> objects) to a dataset, we use the <code>velour.Dataset.add_groundtruth_classifications</code> method which takes a list of image classifications</p>
-<div class="language-py highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">dataset</span><span class="o">.</span><span class="n">add_groundtruth_classifications</span><span class="p">([</span><span class="n">gt_cls</span><span class="p">])</span>
+<div class="language-py highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">dataset</span><span class="o">.</span><span class="n">add_groundtruth_classifications</span><span class="p">([</span><span class="n">gt_cls</span><span class="p">])</span>
 </span></code></pre></div>
 <p>This will post the annotations to the backend velour service.</p>
 <h4 id="object-detection">Object Detection</h4>
