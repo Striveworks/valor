@@ -7,7 +7,6 @@ import { ModelDetailsPage } from "./model-details-page";
 import { MetricsPage } from "./metrics-page";
 import { HomePage } from "./home-page";
 import { ListingComponent } from "./components/listing-component";
-import { EntityDetailsComponent } from "./components/entity-details-component";
 import { DatasetDetailsPage } from "./dataset-details-page";
 
 function App() {
