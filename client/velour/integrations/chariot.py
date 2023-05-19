@@ -469,8 +469,7 @@ def create_model_from_chariot(
         name = model.name
 
     if description is None:
-        # Chariot model does not expose its description at this time
-        pass
+        name = model._meta.summary
 
     href = _construct_url(project_id=model.project_id, model_id=model.id)
 
