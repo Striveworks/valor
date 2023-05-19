@@ -187,32 +187,3 @@ def parse_yolo_results(
         raise ValueError(
             "Input arguement 'result' does not contain identifiable information."
         )
-
-
-def create_model_from_yolo(
-    client: Client, model, name: str = None, description: str = None
-) -> ImageModel:
-    """Converts yolo model to a velour model.
-
-    Parameters
-    ----------
-    client
-        Velour client object
-    model
-        YOLO model object
-    name
-        (OPTIONAL) Defaults to YOLO model name.
-    description
-        (OPTIONAL) Defaults to YOLO model description.
-
-    Returns
-    -------
-    Velour image model
-    """
-
-    if name is None:
-        # Strip model name from yaml path
-        path = model.model.yaml["yaml_file"]
-        name = Path(path).stem
-
-    return client.create_image_model(name, href=None, description=description)
