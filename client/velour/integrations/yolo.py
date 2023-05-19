@@ -199,11 +199,11 @@ def create_model_from_yolo(
     client
         Velour client object
     model
-        Chariot model object
+        YOLO model object
     name
-        (OPTIONAL) Defaults to Chariot model name.
+        (OPTIONAL) Defaults to YOLO model name.
     description
-        (OPTIONAL) Defaults to Chariot model description.
+        (OPTIONAL) Defaults to YOLO model description.
 
     Returns
     -------
