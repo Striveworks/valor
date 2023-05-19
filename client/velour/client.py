@@ -381,7 +381,7 @@ class ModelBase:
         }
 
         resp = self.client._requests_post_rel_host(
-            "/clf-metrics", json=payload
+            "clf-metrics", json=payload
         ).json()
 
         return EvalJob(client=self.client, **resp)
@@ -438,7 +438,7 @@ class ModelBase:
         self, eval_settings_id: int
     ) -> List[dict]:
         return self.client._requests_get_rel_host(
-            f"/models/{self.name}/evaluation-settings/{eval_settings_id}/confusion-matrices"
+            f"models/{self.name}/evaluation-settings/{eval_settings_id}/confusion-matrices"
         ).json()
 
     def get_metric_dataframes(self):
@@ -599,7 +599,7 @@ class ImageModel(ModelBase):
             payload["ious_to_keep"] = ious_to_keep
 
         resp = self.client._requests_post_rel_host(
-            "/ap-metrics", json=payload
+            "ap-metrics", json=payload
         ).json()
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
         # list of label dicts. convert label dicts to Label objects
@@ -695,6 +695,11 @@ class Client:
     ):
         assert method_name in ["get", "post", "put", "delete"]
 
+        if endpoint[0] == "/":
+            raise ValueError(
+                "`endpoint` should not start with a forward slash."
+            )
+
         url = urljoin(self.host, endpoint)
         requests_method = getattr(requests, method_name)
 
@@ -704,9 +709,10 @@ class Client:
             headers = None
         resp = requests_method(url, headers=headers, *args, **kwargs)
         if not resp.ok:
-            if resp.status_code == 500:
+            try:
+                raise ClientException(resp.json()["detail"])
+            except (requests.exceptions.JSONDecodeError, KeyError):
                 resp.raise_for_status()
-            raise ClientException(resp.json()["detail"])
 
         return resp
 
@@ -853,23 +859,23 @@ class Job:
             setattr(self, k, v)
 
     def status(self) -> str:
-        resp = self.client._requests_get_rel_host(f"/jobs/{self._id}").json()
+        resp = self.client._requests_get_rel_host(f"jobs/{self._id}").json()
         return resp["status"]
 
 
 class EvalJob(Job):
     def metrics(self) -> List[dict]:
         return self.client._requests_get_rel_host(
-            f"/jobs/{self._id}/metrics"
+            f"jobs/{self._id}/metrics"
         ).json()
 
     def confusion_matrices(self) -> List[dict]:
         return self.client._requests_get_rel_host(
-            f"/jobs/{self._id}/confusion-matrices"
+            f"jobs/{self._id}/confusion-matrices"
         ).json()
 
     # TODO: replace value with a dataclass?
     def settings(self) -> dict:
         return self.client._requests_get_rel_host(
-            f"/jobs/{self._id}/settings"
+            f"jobs/{self._id}/settings"
         ).json()
