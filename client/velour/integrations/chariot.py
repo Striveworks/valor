@@ -3,7 +3,7 @@ import json
 import tempfile
 import urllib
 from pathlib import Path
-from typing import Union
+from typing import Dict, List, Union
 
 import requests
 from tqdm import tqdm
@@ -97,7 +97,7 @@ def _retrieve_chariot_annotations(manifest_url: str):
     return chariot_dataset
 
 
-def _parse_image_classification_groundtruth(
+def _parse_image_classification_groundtruths(
     datum: dict,
 ) -> GroundTruthImageClassification:
     """Parses Chariot image classification annotation."""
@@ -122,7 +122,7 @@ def _parse_image_classification_groundtruth(
     return gt_dets
 
 
-def _parse_image_segmentation_groundtruth(
+def _parse_image_segmentation_groundtruths(
     datum: dict,
 ) -> GroundTruthSemanticSegmentation:
     """Parses Chariot image segmentation annotation."""
@@ -178,7 +178,7 @@ def _parse_image_segmentation_groundtruth(
     return gt_dets
 
 
-def _parse_object_detection_groundtruth(
+def _parse_object_detection_groundtruths(
     datum: dict,
 ) -> GroundTruthDetection:
     """Parses Chariot object detection annotation."""
@@ -235,7 +235,7 @@ def _parse_chariot_annotations(
         groundtruth_annotations = [
             gt
             for datum in chariot_manifest
-            for gt in _parse_image_classification_groundtruth(datum)
+            for gt in _parse_image_classification_groundtruths(datum)
         ]
 
     # Image Segmentation
@@ -243,7 +243,7 @@ def _parse_chariot_annotations(
         groundtruth_annotations = [
             gt
             for datum in chariot_manifest
-            for gt in _parse_image_segmentation_groundtruth(datum)
+            for gt in _parse_image_segmentation_groundtruths(datum)
         ]
 
     # Object Detection
@@ -251,7 +251,7 @@ def _parse_chariot_annotations(
         groundtruth_annotations = [
             gt
             for datum in chariot_manifest
-            for gt in _parse_object_detection_groundtruth(datum)
+            for gt in _parse_object_detection_groundtruths(datum)
         ]
 
     # Text Sentiment
@@ -378,7 +378,7 @@ def create_dataset_from_chariot(
     return velour_dataset
 
 
-def parse_chariot_object_detection(
+def _parse_chariot_object_detections(
     detection: dict,
     image: Image,
     label_key: str = "class",
@@ -413,6 +413,30 @@ def parse_chariot_object_detection(
             detection["detection_scores"],
             detection["detection_classes"],
         )
+    ]
+
+
+def parse_chariot_object_detections(
+    detections: Union[Dict, List[Dict]],
+    images: Union[Image, List[Image]],
+    label_key: str = "class",
+):
+
+    if not isinstance(detections, list):
+        detections = [detections]
+
+    if not isinstance(images, list):
+        images = [images]
+
+    assert len(detections) == len(images)
+
+    return [
+        _parse_chariot_object_detections(
+            detection,
+            image,
+            label_key,
+        )
+        for detection, image in zip(detections, images)
     ]
 
 
@@ -466,10 +490,10 @@ def create_model_from_chariot(
     ]
 
     if name is None:
-        name = model.name
+        name = f"chariot-{model.name}-v{model.version}"
 
     if description is None:
-        name = model._meta.summary
+        description = model._meta.summary
 
     href = _construct_url(project_id=model.project_id, model_id=model.id)
 
