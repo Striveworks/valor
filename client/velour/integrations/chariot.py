@@ -428,15 +428,20 @@ def parse_chariot_object_detections(
     if not isinstance(images, list):
         images = [images]
 
-    assert len(detections) == len(images)
+    assert len(detections) == len(images), "length mismatch"
 
-    return [
+    velour_detections = [
         _parse_chariot_object_detections(
             detection,
             image,
             label_key,
         )
         for detection, image in zip(detections, images)
+    ]
+    return [
+        detection
+        for image_detections in velour_detections
+        for detection in image_detections
     ]
 
 
