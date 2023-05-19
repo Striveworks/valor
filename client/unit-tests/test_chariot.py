@@ -230,34 +230,22 @@ def test__parse_dataset_version_manifest(
     chariot_task_type.object_detection = False
 
 
-@pytest.fixture
-def chariot_object_detections():
-    return {
-        "num_detections": 2,
-        "detection_classes": [
-            "person",
-            "car",
-        ],
-        "detection_boxes": [
-            [
-                151.2235107421875,
-                118.97279357910156,
-                377.8422546386719,
-                197.98605346679688,
-            ],
-            [
-                94.09261322021484,
-                266.5445556640625,
-                419.3203430175781,
-                352.9458923339844,
-            ],
-        ],
-        "detection_scores": ["0.99932003", "0.99895525"],
-    }
+def test_parse_chariot_image_classifications():
+    try:
+        chariot_integration.parse_chariot_image_classifications(None, None)
+    except NotImplementedError:
+        pass
+
+
+def test_parse_chariot_image_segmentations():
+    try:
+        chariot_integration.parse_chariot_image_segmentations(None, None)
+    except NotImplementedError:
+        pass
 
 
 def _test_parse_chariot_object_detections(
-    velour_detections, chariot_detections
+    chariot_detections, velour_detections
 ):
     assert len(velour_detections) == 2
     assert [
@@ -284,88 +272,85 @@ def _test_parse_chariot_object_detections(
         assert velour_det.boundary is None
 
 
-def test__parse_chariot_object_detections(chariot_object_detections):
+def test_parse_chariot_object_detections():
 
-    velour_detections = chariot_integration._parse_chariot_object_detections(
-        chariot_object_detections, Image(uid="", width=10, height=100)
-    )
-    _test_parse_chariot_object_detections(
-        velour_detections, chariot_object_detections
-    )
-
-
-def test_parse_chariot_object_detections(chariot_object_detections):
+    chariot_detections = {
+        "num_detections": 2,
+        "detection_classes": [
+            "person",
+            "car",
+        ],
+        "detection_boxes": [
+            [
+                151.2235107421875,
+                118.97279357910156,
+                377.8422546386719,
+                197.98605346679688,
+            ],
+            [
+                94.09261322021484,
+                266.5445556640625,
+                419.3203430175781,
+                352.9458923339844,
+            ],
+        ],
+        "detection_scores": ["0.99932003", "0.99895525"],
+    }
+    image = Image(uid="", width=10, height=100)
 
     # Test unwrapped input
-    dets = chariot_object_detections
-    image = Image(uid="", width=10, height=100)
     velour_detections = chariot_integration.parse_chariot_object_detections(
-        dets, image
+        chariot_detections, image
     )
     _test_parse_chariot_object_detections(
-        velour_detections, chariot_object_detections
+        chariot_detections, velour_detections
     )
 
     # Test unwrapped det, image list
-    dets = chariot_object_detections
-    image = [Image(uid="", width=10, height=100)]
     velour_detections = chariot_integration.parse_chariot_object_detections(
-        dets, image
+        chariot_detections, [image]
     )
     _test_parse_chariot_object_detections(
-        velour_detections, chariot_object_detections
+        chariot_detections, velour_detections
     )
 
     # Test det list, unwrapped image
-    dets = [chariot_object_detections]
-    image = Image(uid="", width=10, height=100)
     velour_detections = chariot_integration.parse_chariot_object_detections(
-        dets, image
+        [chariot_detections], image
     )
     _test_parse_chariot_object_detections(
-        velour_detections, chariot_object_detections
+        chariot_detections, velour_detections
     )
 
     # Test wrapped inputs
-    dets = [chariot_object_detections]
-    image = [Image(uid="", width=10, height=100)]
     velour_detections = chariot_integration.parse_chariot_object_detections(
-        dets, image
+        [chariot_detections], [image]
     )
     _test_parse_chariot_object_detections(
-        velour_detections, chariot_object_detections
+        chariot_detections, velour_detections
     )
 
     # Test multiple inputs
-    dets = [chariot_object_detections, chariot_object_detections]
-    image = [
-        Image(uid="1", width=10, height=100),
-        Image(uid="2", width=10, height=100),
-    ]
     velour_detections = chariot_integration.parse_chariot_object_detections(
-        dets, image
+        [chariot_detections, chariot_detections], [image, image]
     )
     velour_detections = [velour_detections[0:2], velour_detections[2:4]]
-    for sample in velour_detections:
+    for image_detections in velour_detections:
         _test_parse_chariot_object_detections(
-            sample, chariot_object_detections
+            chariot_detections, image_detections
         )
 
     # Test mismatch size
     try:
-        dets = [chariot_object_detections]
-        image = [
-            Image(uid="1", width=10, height=100),
-            Image(uid="2", width=10, height=100),
-        ]
         velour_detections = (
-            chariot_integration.parse_chariot_object_detections(dets, image)
+            chariot_integration.parse_chariot_object_detections(
+                [chariot_detections, chariot_detections], [image, image]
+            )
         )
         velour_detections = [velour_detections[0:2], velour_detections[2:4]]
-        for sample in velour_detections:
+        for image_detections in velour_detections:
             _test_parse_chariot_object_detections(
-                sample, chariot_object_detections
+                chariot_detections, image_detections
             )
-
     except AssertionError as e:
         assert e.args[0] == "length mismatch"

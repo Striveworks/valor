@@ -378,42 +378,20 @@ def create_dataset_from_chariot(
     return velour_dataset
 
 
-def _parse_chariot_object_detections(
-    detection: dict,
-    image: Image,
+def parse_chariot_image_classifications(
+    classifications: Union[Dict, List[Dict]],
+    images: Union[Image, List[Image]],
     label_key: str = "class",
-) -> PredictedDetection:
+):
+    raise NotImplementedError
 
-    expected_keys = {
-        "num_detections",
-        "detection_classes",
-        "detection_boxes",
-        "detection_scores",
-    }
 
-    if set(detection.keys()) != expected_keys:
-        raise ValueError(
-            f"Expected `dets` to have keys {expected_keys} but got {detection.keys()}"
-        )
-
-    return [
-        PredictedDetection(
-            bbox=BoundingBox(
-                ymin=box[0], xmin=box[1], ymax=box[2], xmax=box[3]
-            ),
-            scored_labels=[
-                ScoredLabel(
-                    label=Label(key=label_key, value=label), score=score
-                )
-            ],
-            image=image,
-        )
-        for box, score, label in zip(
-            detection["detection_boxes"],
-            detection["detection_scores"],
-            detection["detection_classes"],
-        )
-    ]
+def parse_chariot_image_segmentations(
+    segmentations: Union[Dict, List[Dict]],
+    images: Union[Image, List[Image]],
+    label_key: str = "class",
+):
+    raise NotImplementedError
 
 
 def parse_chariot_object_detections(
@@ -430,19 +408,40 @@ def parse_chariot_object_detections(
 
     assert len(detections) == len(images), "length mismatch"
 
-    velour_detections = [
-        _parse_chariot_object_detections(
-            detection,
-            image,
-            label_key,
-        )
-        for detection, image in zip(detections, images)
-    ]
-    return [
-        detection
-        for image_detections in velour_detections
-        for detection in image_detections
-    ]
+    velour_detections = []
+    for detection, image in zip(detections, images):
+        expected_keys = {
+            "num_detections",
+            "detection_classes",
+            "detection_boxes",
+            "detection_scores",
+        }
+
+        if set(detection.keys()) != expected_keys:
+            raise ValueError(
+                f"Expected `dets` to have keys {expected_keys} but got {detection.keys()}"
+            )
+
+        velour_detections += [
+            PredictedDetection(
+                bbox=BoundingBox(
+                    ymin=box[0], xmin=box[1], ymax=box[2], xmax=box[3]
+                ),
+                scored_labels=[
+                    ScoredLabel(
+                        label=Label(key=label_key, value=label), score=score
+                    )
+                ],
+                image=image,
+            )
+            for box, score, label in zip(
+                detection["detection_boxes"],
+                detection["detection_scores"],
+                detection["detection_classes"],
+            )
+        ]
+
+    return velour_detections
 
 
 def create_model_from_chariot(
