@@ -391,7 +391,7 @@ class EvaluationSettings(Base):
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
     dataset = relationship(Dataset, viewonly=True)
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
-    model = relationship(Model)
+    model = relationship(Model, back_populates="evaluation_settings")
     model_pred_task_type: Mapped[str] = mapped_column(Enum(Task))
     dataset_gt_task_type: Mapped[str] = mapped_column(Enum(Task))
     min_area: Mapped[float] = mapped_column(nullable=True)
