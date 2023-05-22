@@ -8,3 +8,4 @@ build
 */dist/*
 sample_notebooks/coco/*
 .DS_Store
+.pt
