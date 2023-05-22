@@ -2,7 +2,7 @@ name: Builds and publishes docs to GitHub pages
 
 on:
   push:
-    branches: [main]
+  #   branches: [main]
 
 jobs:
   build-and-publish-docs:
