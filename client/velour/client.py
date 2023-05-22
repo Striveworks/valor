@@ -489,7 +489,7 @@ class ImageModel(ModelBase):
             raise ValueError("GroundTruth argument should be a list.")
 
         if len(predictions) == 0:
-            raise ValueError("Empty list.")
+            return ["Empty list."]
 
         for chunk in _generate_chunks(
             self.name,
