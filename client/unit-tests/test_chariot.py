@@ -134,13 +134,13 @@ def _test_obj_det_ds(velour_dataset):
     assert velour_datum.bbox == BoundingBox(500, 220, 530, 260)
 
 
-def test_chariot_parse_image_classification_annotation(img_clf_ds: str):
+def test__parse_image_classification_groundtruths(img_clf_ds: str):
     chariot_dataset = img_clf_ds
-    item1 = chariot_integration.chariot_parse_image_classification_annotation(
+    item1 = chariot_integration._parse_image_classification_groundtruths(
         chariot_dataset[0]
     )
     assert len(item1) == 1
-    item2 = chariot_integration.chariot_parse_image_classification_annotation(
+    item2 = chariot_integration._parse_image_classification_groundtruths(
         chariot_dataset[1]
     )
     assert len(item2) == 1
@@ -148,13 +148,13 @@ def test_chariot_parse_image_classification_annotation(img_clf_ds: str):
     _test_img_clf_ds(velour_dataset=velour_dataset)
 
 
-def test_chariot_parse_image_segmentation_annotation(img_seg_ds: str):
+def test__parse_image_segmentation_groundtruths(img_seg_ds: str):
     chariot_dataset = img_seg_ds
-    item1 = chariot_integration.chariot_parse_image_segmentation_annotation(
+    item1 = chariot_integration._parse_image_segmentation_groundtruths(
         chariot_dataset[0]
     )
     assert len(item1) == 1
-    item2 = chariot_integration.chariot_parse_image_segmentation_annotation(
+    item2 = chariot_integration._parse_image_segmentation_groundtruths(
         chariot_dataset[1]
     )
     assert len(item2) == 1
@@ -162,23 +162,23 @@ def test_chariot_parse_image_segmentation_annotation(img_seg_ds: str):
     _test_img_seg_ds(velour_dataset=velour_dataset)
 
 
-def test_chariot_parse_object_detection_annotation(obj_det_ds: str):
+def test__parse_object_detection_groundtruths(obj_det_ds: str):
     chariot_dataset = obj_det_ds
 
     # Item 1 - Multiple objects of interest
-    item1 = chariot_integration.chariot_parse_object_detection_annotation(
+    item1 = chariot_integration._parse_object_detection_groundtruths(
         chariot_dataset[0]
     )
     assert len(item1) == 2
 
     # Item 2 - Single object of interest
-    item2 = chariot_integration.chariot_parse_object_detection_annotation(
+    item2 = chariot_integration._parse_object_detection_groundtruths(
         chariot_dataset[1]
     )
     assert len(item2) == 1
 
     # Item 3 - No object of interest
-    item3 = chariot_integration.chariot_parse_object_detection_annotation(
+    item3 = chariot_integration._parse_object_detection_groundtruths(
         chariot_dataset[2]
     )
     assert len(item3) == 0
@@ -187,7 +187,7 @@ def test_chariot_parse_object_detection_annotation(obj_det_ds: str):
     _test_obj_det_ds(velour_dataset=velour_dataset)
 
 
-def test_chariot_parse_dataset_version_manifest(
+def test__parse_dataset_version_manifest(
     img_clf_ds: str, img_seg_ds: str, obj_det_ds: str
 ):
     @dataclass
@@ -205,7 +205,7 @@ def test_chariot_parse_dataset_version_manifest(
     # Image classification
     chariot_task_type.image_classification = True
     _test_img_clf_ds(
-        chariot_integration.chariot_parse_dataset_annotations(
+        chariot_integration._parse_chariot_annotations(
             img_clf_ds, chariot_task_type
         )
     )
@@ -214,7 +214,7 @@ def test_chariot_parse_dataset_version_manifest(
     # Image Semantic Segmentation
     chariot_task_type.image_segmentation = True
     _test_img_seg_ds(
-        chariot_integration.chariot_parse_dataset_annotations(
+        chariot_integration._parse_chariot_annotations(
             img_seg_ds, chariot_task_type
         )
     )
@@ -223,15 +223,58 @@ def test_chariot_parse_dataset_version_manifest(
     # Object Detection
     chariot_task_type.object_detection = True
     _test_obj_det_ds(
-        chariot_integration.chariot_parse_dataset_annotations(
+        chariot_integration._parse_chariot_annotations(
             obj_det_ds, chariot_task_type
         )
     )
     chariot_task_type.object_detection = False
 
 
-def test_chariot_detections_to_velour():
-    dets = {
+def test_parse_chariot_image_classifications():
+    try:
+        chariot_integration.parse_chariot_image_classifications(None, None)
+    except NotImplementedError:
+        pass
+
+
+def test_parse_chariot_image_segmentations():
+    try:
+        chariot_integration.parse_chariot_image_segmentations(None, None)
+    except NotImplementedError:
+        pass
+
+
+def _test_parse_chariot_object_detections(
+    chariot_detections, velour_detections
+):
+    assert len(velour_detections) == 2
+    assert [
+        scored_label.label.key
+        for det in velour_detections
+        for scored_label in det.scored_labels
+    ] == ["class", "class"]
+    assert set(
+        [
+            scored_label.label.value
+            for det in velour_detections
+            for scored_label in det.scored_labels
+        ]
+    ) == {"person", "car"}
+
+    for i, velour_det in enumerate(velour_detections):
+        assert chariot_detections["detection_boxes"][i] == [
+            velour_det.bbox.ymin,
+            velour_det.bbox.xmin,
+            velour_det.bbox.ymax,
+            velour_det.bbox.xmax,
+        ]
+
+        assert velour_det.boundary is None
+
+
+def test_parse_chariot_object_detections():
+
+    chariot_detections = {
         "num_detections": 2,
         "detection_classes": [
             "person",
@@ -253,31 +296,61 @@ def test_chariot_detections_to_velour():
         ],
         "detection_scores": ["0.99932003", "0.99895525"],
     }
+    image = Image(uid="", width=10, height=100)
 
-    velour_dets = chariot_integration.chariot_detections_to_velour(
-        dets, Image(uid="", width=10, height=100)
+    # Test unwrapped input
+    velour_detections = chariot_integration.parse_chariot_object_detections(
+        chariot_detections, image
+    )
+    _test_parse_chariot_object_detections(
+        chariot_detections, velour_detections
     )
 
-    assert len(velour_dets) == 2
-    assert [
-        scored_label.label.key
-        for det in velour_dets
-        for scored_label in det.scored_labels
-    ] == ["class", "class"]
-    assert set(
-        [
-            scored_label.label.value
-            for det in velour_dets
-            for scored_label in det.scored_labels
-        ]
-    ) == {"person", "car"}
+    # Test unwrapped det, image list
+    velour_detections = chariot_integration.parse_chariot_object_detections(
+        chariot_detections, [image]
+    )
+    _test_parse_chariot_object_detections(
+        chariot_detections, velour_detections
+    )
 
-    for i, velour_det in enumerate(velour_dets):
-        assert dets["detection_boxes"][i] == [
-            velour_det.bbox.ymin,
-            velour_det.bbox.xmin,
-            velour_det.bbox.ymax,
-            velour_det.bbox.xmax,
-        ]
+    # Test det list, unwrapped image
+    velour_detections = chariot_integration.parse_chariot_object_detections(
+        [chariot_detections], image
+    )
+    _test_parse_chariot_object_detections(
+        chariot_detections, velour_detections
+    )
 
-        assert velour_det.boundary is None
+    # Test wrapped inputs
+    velour_detections = chariot_integration.parse_chariot_object_detections(
+        [chariot_detections], [image]
+    )
+    _test_parse_chariot_object_detections(
+        chariot_detections, velour_detections
+    )
+
+    # Test multiple inputs
+    velour_detections = chariot_integration.parse_chariot_object_detections(
+        [chariot_detections, chariot_detections], [image, image]
+    )
+    velour_detections = [velour_detections[0:2], velour_detections[2:4]]
+    for image_detections in velour_detections:
+        _test_parse_chariot_object_detections(
+            chariot_detections, image_detections
+        )
+
+    # Test mismatch size
+    try:
+        velour_detections = (
+            chariot_integration.parse_chariot_object_detections(
+                [chariot_detections, chariot_detections], [image, image]
+            )
+        )
+        velour_detections = [velour_detections[0:2], velour_detections[2:4]]
+        for image_detections in velour_detections:
+            _test_parse_chariot_object_detections(
+                chariot_detections, image_detections
+            )
+    except AssertionError as e:
+        assert e.args[0] == "length mismatch"
