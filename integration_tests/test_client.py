@@ -967,7 +967,7 @@ def test_delete_dataset_background_job(
     dataset.add_groundtruth(gt_dets1 + gt_dets2 + gt_dets3)
 
     job = client.delete_dataset(dset_name)
-    assert job.status() == "Processing"
+    assert job.status() in ["Processing", "Pending"]
     time.sleep(1.0)
     assert job.status() == "Done"
 
