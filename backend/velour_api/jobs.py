@@ -14,11 +14,8 @@ REDIS_PORT = os.getenv("REDIS_PORT", 6379)
 REDIS_DB = os.getenv("REDIS_DB", 0)
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 REDIS_USERNAME = os.getenv("REDIS_USERNAME")
+REDIS_SSL = bool(os.getenv("REDIS_SSL"))
 
-logger.debug(
-    f"REDIS_HOST: {REDIS_HOST}, REDIS_PORT: {REDIS_PORT}, REDIS_DB: {REDIS_DB}, "
-    f"REDIS_PASSWORD: {'null' if REDIS_PASSWORD is None else 'not null'}, REDIS_USERNAME: {REDIS_USERNAME} "
-)
 
 # global connection to redis
 r: redis.Redis = None
@@ -36,6 +33,7 @@ def connect_to_redis():
             port=REDIS_PORT,
             password=REDIS_PASSWORD,
             username=REDIS_USERNAME,
+            ssl=REDIS_SSL,
         )
         r.ping()
         logger.info(
@@ -43,8 +41,9 @@ def connect_to_redis():
         )
     except Exception as e:
         logger.debug(
-            f"error connecting to redis instance at {REDIS_HOST}:{REDIS_PORT} "
-            f"with username {REDIS_USERNAME} and password {'null' if REDIS_PASSWORD is None else 'not null'}"
+            f"REDIS_HOST: {REDIS_HOST}, REDIS_PORT: {REDIS_PORT}, REDIS_DB: {REDIS_DB}, "
+            f"REDIS_PASSWORD: {'null' if REDIS_PASSWORD is None else 'not null'}, "
+            f"REDIS_USERNAME: {REDIS_USERNAME}, REDIS_SSL: {REDIS_SSL}"
         )
         raise e
 
