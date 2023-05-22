@@ -41,7 +41,7 @@ def parse_yolo_image_classification(result, uid: str):
                 height=image_height,
                 width=image_width,
             ),
-            scored_labels=[scored_labels],
+            scored_labels=scored_labels,
         )
     ]
 
