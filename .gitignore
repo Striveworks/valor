@@ -8,5 +8,5 @@ build
 */dist/*
 sample_notebooks/coco/*
 .DS_Store
-.pt
+sample_notebooks/*.pt
 site/*
