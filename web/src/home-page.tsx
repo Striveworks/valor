@@ -1,6 +1,6 @@
 import { usingAuth } from "./auth";
 import Typography from "@mui/material/Typography";
-import { Wrapper } from "./wrapper";
+import { Wrapper } from "./components/wrapper";
 import { LoginButton } from "./login-button";
 import { useAuth0 } from "@auth0/auth0-react";
 

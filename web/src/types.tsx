@@ -10,7 +10,7 @@ export type EvaluationSetting = {
 
 export type Metric = {
   type: string;
-  parameters: { iou: number; ious: number[] };
+  parameters: object;
   label?: { key: string; value: string };
   value: number;
 };
@@ -21,4 +21,10 @@ export type MetricAtIOU = {
   value: number;
   iou: number;
   id: number;
+};
+
+export type EntityResponse = {
+  name: string;
+  href: string;
+  description: string;
 };
