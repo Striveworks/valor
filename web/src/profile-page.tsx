@@ -1,26 +1,19 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { LogoutButton } from "./logout-button";
 import SyntaxHighlighter from "react-syntax-highlighter/dist/esm/default-highlight";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import Button from "@mui/material/Button";
-import { Wrapper } from "./wrapper";
+import { Wrapper } from "./components/wrapper";
 
 export const ProfilePage = () => {
-  const [accessToken, setAccessToken] = useState("");
-  const { user, getAccessTokenSilently } = useAuth0();
+  const { user } = useAuth0();
   const [snippetCopied, setSnippetCopied] = useState(false);
 
-  const codeSnippet = `from velour.client import Client\n\nclient = Client("${process.env.REACT_APP_BACKEND_URL}", access_token="${accessToken}")`;
-
-  useEffect(() => {
-    const getToken = async () => {
-      const token = await getAccessTokenSilently();
-      setAccessToken(token);
-    };
-    getToken();
-  });
+  const codeSnippet = `from velour.client import Client\n\nclient = Client("${
+    process.env.REACT_APP_BACKEND_URL
+  }", access_token="${sessionStorage.getItem("token")}")`;
 
   const fields = ["name", "email"];
   return (

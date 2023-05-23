@@ -4,8 +4,10 @@ import { useParams } from "react-router-dom";
 import Typography from "@mui/material/Typography";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import Link from "@mui/material/Link";
-import { EvaluationSetting } from "./velour-types";
-import { Wrapper } from "./wrapper";
+import { EvaluationSetting } from "./types";
+import { Wrapper } from "./components/wrapper";
+import { EntityDetailsComponent } from "./components/entity-details-component";
+import { usingAuth } from "./auth";
 
 const taskTypeWidth = 250;
 const areaWidth = 175;
@@ -13,7 +15,7 @@ const columns: GridColDef[] = [
   {
     field: "dataset_name",
     headerName: "Dataset",
-    // renderCell: (params) => <a href="google.com">params.row.dataset_name</a>,
+    width: 150,
   },
   {
     field: "model_pred_task_type",
@@ -52,18 +54,28 @@ export const ModelDetailsPage = () => {
   const [allEvalSettings, setAllEvalSettings] = useState<EvaluationSetting[]>(
     []
   );
-  const url = `${process.env.REACT_APP_BACKEND_URL}/models/${name}/evaluation-settings`;
+  const evalSettingsUrl = `${process.env.REACT_APP_BACKEND_URL}/models/${name}/evaluation-settings`;
   useEffect(() => {
-    axios.get(url).then((response) => {
+    let config = {};
+    if (usingAuth()) {
+      const token = sessionStorage.getItem("token");
+      config = { headers: { Authorization: `Bearer ${token}` } };
+
+      if (token === "null") {
+        console.log("token is null");
+      }
+    }
+
+    axios.get(evalSettingsUrl, config).then((response) => {
       setAllEvalSettings(response.data);
     });
-  }, [url]);
-  if (!allEvalSettings) return null;
+  }, [evalSettingsUrl]);
 
   return (
     <Wrapper>
-      <Typography variant="h2">{name}</Typography>
-      <h3>Evaluations</h3>
+      <EntityDetailsComponent entityType="models" />
+      <br />
+      <Typography variant="h4">Evaluations</Typography>
       <DataGrid
         rows={allEvalSettings}
         columns={columns}
