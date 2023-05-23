@@ -1,11 +1,9 @@
-from pathlib import Path
 from typing import Union
 
 import numpy
 import PIL
 from PIL.Image import Resampling
 
-from velour.client import Client, ImageModel
 from velour.data_types import (
     BoundingBox,
     Image,
@@ -96,7 +94,7 @@ def parse_yolo_image_segmentation(
     return [
         PredictedInstanceSegmentation(
             mask=mask,
-            scored_labels=scored_label,
+            scored_labels=[scored_label],
             image=Image(
                 uid=image_uid,
                 height=image_height,
@@ -130,17 +128,17 @@ def parse_yolo_object_detection(result, uid: str):
     # Extract Bounding Boxes
     bboxes = [
         BoundingBox(
-            xmin=box[0],
-            ymin=box[1],
-            xmax=box[2],
-            ymax=box[3],
+            xmin=int(box[0]),
+            ymin=int(box[1]),
+            xmax=int(box[2]),
+            ymax=int(box[3]),
         )
         for box in bboxes
     ]
 
     return [
         PredictedDetection(
-            scored_labels=scored_label,
+            scored_labels=[scored_label],
             image=Image(
                 uid=image_uid,
                 height=image_height,

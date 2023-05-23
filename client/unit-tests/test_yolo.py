@@ -263,9 +263,9 @@ def test_parse_yolo_image_segmentation(
         assert predictions[i].image.height == image["height"]
         assert predictions[i].image.width == image["width"]
         assert predictions[i].image.frame is None
-        assert predictions[i].scored_labels.label.key == "class_label"
-        assert predictions[i].scored_labels.label.value == names[i]
-        assert predictions[i].scored_labels.score == bboxes[i][4]
+        assert predictions[i].scored_labels[0].label.key == "class_label"
+        assert predictions[i].scored_labels[0].label.value == names[i]
+        assert predictions[i].scored_labels[0].score == bboxes[i][4]
         assert predictions[i].mask.shape == velour_mask.shape
         assert (predictions[i].mask == velour_mask).all()
 
@@ -286,9 +286,9 @@ def test_parse_yolo_object_detection(image, bboxes, names):
         assert predictions[i].image.height == image["height"]
         assert predictions[i].image.width == image["width"]
         assert predictions[i].image.frame is None
-        assert predictions[i].scored_labels.label.key == "class_label"
-        assert predictions[i].scored_labels.label.value == names[i]
-        assert predictions[i].scored_labels.score == bboxes[i][4]
+        assert predictions[i].scored_labels[0].label.key == "class_label"
+        assert predictions[i].scored_labels[0].label.value == names[i]
+        assert predictions[i].scored_labels[0].score == bboxes[i][4]
         assert predictions[i].bbox.xmin == bboxes[i][0]
         assert predictions[i].bbox.ymin == bboxes[i][1]
         assert predictions[i].bbox.xmax == bboxes[i][2]

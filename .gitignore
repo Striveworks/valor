@@ -3,9 +3,10 @@ __pycache__
 build
 .tox
 .coverage*
-.env*
+.env-*
 .vscode
 */dist/*
 sample_notebooks/coco/*
 .DS_Store
+sample_notebooks/*.pt
 site/*
