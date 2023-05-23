@@ -3,7 +3,7 @@ __pycache__
 build
 .tox
 .coverage*
-.env*
+.env-*
 .vscode
 */dist/*
 sample_notebooks/coco/*
