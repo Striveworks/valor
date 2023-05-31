@@ -166,8 +166,8 @@ def _create_label_tuple_to_id_dict(
     return label_tuple_to_id
 
 
-def _add_images_to_dataset(
-    db: Session, dataset_name, images: list[schemas.Image]
+def _add_datums_to_dataset(
+    db: Session, dataset_name, datums: list[schemas.Datum]
 ) -> list[models.Datum]:
     """Adds images defined by URIs to a dataset (creating the Image rows if they don't exist),
     returning the list of image ids"""
@@ -176,14 +176,19 @@ def _add_images_to_dataset(
         raise exceptions.DatasetIsFinalizedError(dataset_name)
     dset_id = dset.id
 
-    return [
+    datums = [
         _get_or_create_row(
             db=db,
             model_class=models.Datum,
-            mapping={"dataset_id": dset_id, **img.dict()},
+            mapping={
+                "dataset_id": dset_id,
+                **datum.dict(exclude={"metadata"}),
+            },
         )
-        for img in images
+        for datum in datums
     ]
+
+    return datums
 
 
 def _create_gt_dets_or_segs(
@@ -197,10 +202,10 @@ def _create_gt_dets_or_segs(
     model_cls: type,
     labeled_model_cls: type,
 ):
-    images = _add_images_to_dataset(
+    images = _add_datums_to_dataset(
         db=db,
         dataset_name=dataset_name,
-        images=[d_or_s.image for d_or_s in dets_or_segs],
+        datums=[d_or_s.image for d_or_s in dets_or_segs],
     )
     mappings = mapping_method(dets_or_segs, images)
 
@@ -398,10 +403,10 @@ def create_predicted_segmentations(
 def create_ground_truth_classifications(
     db: Session, data: schemas.GroundTruthClassificationsCreate
 ):
-    images = _add_images_to_dataset(
+    images = _add_datums_to_dataset(
         db=db,
         dataset_name=data.dataset_name,
-        images=[c.datum for c in data.classifications],
+        datums=[c.datum for c in data.classifications],
     )
     label_tuple_to_id = _create_label_tuple_to_id_dict(
         db, [label for clf in data.classifications for label in clf.labels]
