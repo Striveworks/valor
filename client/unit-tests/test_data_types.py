@@ -9,6 +9,7 @@ from velour.data_types import (
     GroundTruthInstanceSegmentation,
     GroundTruthSemanticSegmentation,
     Label,
+    Metadatum,
     PredictedDetection,
     PredictedImageClassification,
     ScoredLabel,
@@ -138,3 +139,13 @@ def gest_predicted_classification():
             ScoredLabel(label=Label("k", "v2"), score=0.8),
         ],
     )
+
+
+def test_metadatum_validation():
+    md = Metadatum(name="name", value={"a": 3})
+    assert md.value == {"a": 3}
+
+    with pytest.raises(ValueError) as exc_info:
+        Metadatum(name="", value={"a": {3}})
+
+    assert "must be valid GeoJSON" in str(exc_info)

@@ -1,3 +1,4 @@
+import json
 from abc import ABC
 from dataclasses import dataclass, field
 from typing import List, Tuple, Union
@@ -6,11 +7,28 @@ import numpy as np
 
 
 @dataclass
+class Metadatum:
+    name: str
+    value: Union[float, str, dict]
+
+    def __post_init__(self):
+        if isinstance(self.value, dict):
+            # check that the dict is JSON serializable
+            try:
+                json.dumps(self.value)
+            except TypeError:
+                raise ValueError(
+                    f"if a dict, `value` must be valid GeoJSON but got {self.value}"
+                )
+
+
+@dataclass
 class Image:
     uid: str
     height: int
     width: int
     frame: int = None
+    metadata: List[Metadatum] = field(default_factory=list)
 
 
 @dataclass
