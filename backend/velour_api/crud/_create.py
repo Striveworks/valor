@@ -1,3 +1,6 @@
+import json
+
+from geoalchemy2.functions import ST_GeomFromGeoJSON
 from sqlalchemy import Select, TextualSelect, and_, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -176,7 +179,7 @@ def _metadatum_mapping(
     elif isinstance(val, float):
         ret["numeric_value"] = val
     elif isinstance(val, dict):
-        ret["geo"] = val
+        ret["geo"] = ST_GeomFromGeoJSON(json.dumps(val))
     else:
         raise ValueError(
             f"Got unexpected value {metadatum.value} for metadatum"
@@ -212,7 +215,7 @@ def _add_datums_to_dataset(
                 db=db,
                 model_class=models.DatumMetadatum,
                 mapping=_metadatum_mapping(
-                    metadatum=metadatum, datum_id=datum.id
+                    metadatum=metadatum, datum_id=db_datum.id
                 ),
             )
 

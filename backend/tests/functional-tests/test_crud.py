@@ -1,10 +1,17 @@
 import io
+import json
 import math
 from base64 import b64decode, b64encode
 
 import numpy as np
 import pytest
-from geoalchemy2.functions import ST_Area, ST_AsText, ST_Count, ST_Polygon
+from geoalchemy2.functions import (
+    ST_Area,
+    ST_AsGeoJSON,
+    ST_AsText,
+    ST_Count,
+    ST_Polygon,
+)
 from PIL import Image, ImageDraw
 from sqlalchemy import func, insert, select
 from sqlalchemy.orm import Session
@@ -1930,3 +1937,55 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_multip
         evaluation_settings.dataset_gt_task_type
         == enums.Task.POLY_OBJECT_DETECTION
     )
+
+
+def test_create_image_with_metadata(db: Session):
+    crud.create_dataset(
+        db,
+        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.TABULAR),
+    )
+
+    datums = [
+        schemas.Datum(
+            uid="uid1",
+            metadata=[schemas.DatumMetadatum(name="name1", value=0.7)],
+        ),
+        schemas.Datum(
+            uid="uid2",
+            metadata=[
+                schemas.DatumMetadatum(name="name1", value="a string"),
+                schemas.DatumMetadatum(
+                    name="name2",
+                    value={
+                        "type": "Point",
+                        "coordinates": [-48.23456, 20.12345],
+                    },
+                ),
+            ],
+        ),
+    ]
+    crud._create._add_datums_to_dataset(db, dset_name, datums)
+    db_datums = crud.get_datums_in_dataset(db, dset_name)
+
+    assert len(db_datums) == 2
+
+    md1 = db_datums[0].metadatums[0]
+    assert md1.name == "name1"
+    assert md1.numeric_value == 0.7
+    assert md1.string_value is None
+    assert md1.geo is None
+
+    md2 = db_datums[1].metadatums[0]
+    assert md2.name == "name1"
+    assert md2.numeric_value is None
+    assert md2.string_value == "a string"
+    assert md2.geo is None
+
+    md3 = db_datums[1].metadatums[1]
+    assert md3.name == "name2"
+    assert md3.numeric_value is None
+    assert md3.string_value is None
+    assert json.loads(db.scalar(ST_AsGeoJSON(md3.geo))) == {
+        "type": "Point",
+        "coordinates": [-48.23456, 20.12345],
+    }
