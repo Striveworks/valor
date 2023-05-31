@@ -1,6 +1,6 @@
-from geoalchemy2 import Geometry, Raster
+from geoalchemy2 import Geography, Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
-from sqlalchemy import Enum, ForeignKey, UniqueConstraint
+from sqlalchemy import CheckConstraint, Enum, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -283,6 +283,23 @@ class LabeledPredictedSegmentation(Base):
         return self.segmentation.datum_id
 
 
+class DatumMetadatum(Base):
+    __tablename__ = "datum_metadata"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column()
+
+    string_value: Mapped[str] = mapped_column(nullable=True)
+    numeric_value: Mapped[float] = mapped_column(nullable=True)
+    geo = mapped_column(Geography(), nullable=True)
+    datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"))
+    datum: Mapped["Datum"] = relationship("Datum", back_populates="metadatums")
+
+    __table_args__ = (
+        CheckConstraint("num_nonnulls(string_value, numeric_value, geo) = 1"),
+    )
+
+
 class Datum(Base):
     """Represents an image"""
 
@@ -296,6 +313,10 @@ class Datum(Base):
     height: Mapped[int] = mapped_column(nullable=True)
     width: Mapped[int] = mapped_column(nullable=True)
     frame: Mapped[int] = mapped_column(nullable=True)
+
+    metadatums: Mapped[list[DatumMetadatum]] = relationship(
+        DatumMetadatum, cascade="all, delete"
+    )
     ground_truth_detections: Mapped[list[GroundTruthDetection]] = relationship(
         GroundTruthDetection, cascade="all, delete"
     )

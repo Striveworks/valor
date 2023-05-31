@@ -166,6 +166,24 @@ def _create_label_tuple_to_id_dict(
     return label_tuple_to_id
 
 
+def _metadatum_mapping(
+    metadatum: schemas.DatumMetadatum, datum_id: int
+) -> dict:
+    ret = {"name": metadatum.name, "datum_id": datum_id}
+    val = metadatum.value
+    if isinstance(val, str):
+        ret["string_value"] = val
+    elif isinstance(val, float):
+        ret["numeric_value"] = val
+    elif isinstance(val, dict):
+        ret["geo"] = val
+    else:
+        raise ValueError(
+            f"Got unexpected value {metadatum.value} for metadatum"
+        )
+    return ret
+
+
 def _add_datums_to_dataset(
     db: Session, dataset_name, datums: list[schemas.Datum]
 ) -> list[models.Datum]:
@@ -176,7 +194,7 @@ def _add_datums_to_dataset(
         raise exceptions.DatasetIsFinalizedError(dataset_name)
     dset_id = dset.id
 
-    datums = [
+    db_datums = [
         _get_or_create_row(
             db=db,
             model_class=models.Datum,
@@ -188,7 +206,17 @@ def _add_datums_to_dataset(
         for datum in datums
     ]
 
-    return datums
+    for datum, db_datum in zip(datums, db_datums):
+        for metadatum in datum.metadata:
+            _get_or_create_row(
+                db=db,
+                model_class=models.DatumMetadatum,
+                mapping=_metadatum_mapping(
+                    metadatum=metadatum, datum_id=datum.id
+                ),
+            )
+
+    return db_datums
 
 
 def _create_gt_dets_or_segs(
