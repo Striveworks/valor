@@ -780,7 +780,7 @@ class Client:
 
     def create_image_dataset(
         self, name: str, href: str = None, description: str = None
-    ):
+    ) -> ImageDataset:
         return self._create_model_or_dataset(
             entity_type="datasets",
             datum_type=DatumTypes.IMAGE,
@@ -791,7 +791,7 @@ class Client:
 
     def create_tabular_dataset(
         self, name: str, href: str = None, description: str = None
-    ):
+    ) -> TabularDataset:
         return self._create_model_or_dataset(
             entity_type="datasets",
             datum_type=DatumTypes.TABULAR,
