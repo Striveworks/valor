@@ -22,6 +22,7 @@ from velour.data_types import (
     GroundTruthSemanticSegmentation,
     Image,
     Label,
+    Metadatum,
     Point,
     PolygonWithHole,
     PredictedDetection,
@@ -136,7 +137,11 @@ class DatasetBase:
 
 class TabularDataset(DatasetBase):
     def add_groundtruth(
-        self, groundtruth: Union[List[List[Label]], Dict[str, List[Label]]]
+        self,
+        groundtruth: Union[
+            List[List[Union[Label, Metadatum]]],
+            Dict[str, List[Union[Label, Metadatum]]],
+        ],
     ):
         if isinstance(groundtruth, list):
             # make uids the list indices (as strings)
@@ -146,10 +151,21 @@ class TabularDataset(DatasetBase):
             "dataset_name": self.name,
             "classifications": [
                 {
-                    "labels": [asdict(label) for label in labels],
-                    "datum": {"uid": uid},
+                    "labels": [
+                        asdict(x)
+                        for x in labels_and_metadata
+                        if isinstance(x, Label)
+                    ],
+                    "datum": {
+                        "uid": uid,
+                        "metadata": [
+                            asdict(x)
+                            for x in labels_and_metadata
+                            if isinstance(x, Metadatum)
+                        ],
+                    },
                 }
-                for uid, labels in groundtruth.items()
+                for uid, labels_and_metadata in groundtruth.items()
             ],
         }
 

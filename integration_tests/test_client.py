@@ -9,7 +9,13 @@ from typing import Any
 
 import numpy as np
 import pytest
-from geoalchemy2.functions import ST_Area, ST_AsPNG, ST_AsText, ST_Polygon
+from geoalchemy2.functions import (
+    ST_Area,
+    ST_AsGeoJSON,
+    ST_AsPNG,
+    ST_AsText,
+    ST_Polygon,
+)
 from PIL import Image as PILImage
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
@@ -31,6 +37,7 @@ from velour.data_types import (
     GroundTruthSemanticSegmentation,
     Image,
     Label,
+    Metadatum,
     Point,
     PolygonWithHole,
     PredictedDetection,
@@ -1214,8 +1221,22 @@ def test_create_tabular_dataset_and_add_groundtruth(
 
     dataset.add_groundtruth(
         [
-            [Label(key="k1", value="v1"), Label(key="k2", value="v2")],
-            [Label(key="k1", value="v3")],
+            [
+                Label(key="k1", value="v1"),
+                Label(key="k2", value="v2"),
+                Metadatum(
+                    name="metadatum name1",
+                    value={
+                        "type": "Point",
+                        "coordinates": [-48.23456, 20.12345],
+                    },
+                ),
+            ],
+            [
+                Label(key="k1", value="v3"),
+                Metadatum(name="metadatum name2", value="a string"),
+                Metadatum(name="metadatum name3", value=0.45),
+            ],
         ]
     )
     assert len(db.scalars(select(models.GroundTruthClassification)).all()) == 3
@@ -1223,6 +1244,21 @@ def test_create_tabular_dataset_and_add_groundtruth(
     data = db.scalars(select(models.Datum)).all()
     assert len(data) == 2
     assert set(d.uid for d in data) == {"0", "1"}
+
+    # check metadata is there
+    metadata1 = data[0].metadatums
+    assert len(metadata1) == 1
+    assert metadata1[0].name == "metadatum name1"
+    assert json.loads(db.scalar(ST_AsGeoJSON(metadata1[0].geo))) == {
+        "type": "Point",
+        "coordinates": [-48.23456, 20.12345],
+    }
+    metadata2 = data[1].metadatums
+    assert len(metadata2) == 2
+    assert metadata2[0].name == "metadatum name2"
+    assert metadata2[0].string_value == "a string"
+    assert metadata2[1].name == "metadatum name3"
+    assert metadata2[1].numeric_value == 0.45
 
     # check that we can add data with specified uids
     dataset.add_groundtruth(
@@ -1426,3 +1462,11 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
     client.delete_model(model_name)
 
     assert len(client.get_models()) == 0
+
+
+def test_create_images_with_metadata():
+    pass
+
+
+def test_create_tabular_data_with_metadata():
+    pass

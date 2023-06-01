@@ -1939,7 +1939,7 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_multip
     )
 
 
-def test_create_image_with_metadata(db: Session):
+def test_create_datums_with_metadata(db: Session):
     crud.create_dataset(
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.TABULAR),
