@@ -11,6 +11,7 @@ from velour_api.enums import JobStatus
 from velour_api.schemas import (
     ConfusionMatrix,
     DatasetCreate,
+    DatumMetadatum,
     DatumTypes,
     GroundTruthDetection,
     GroundTruthSegmentation,
@@ -156,3 +157,21 @@ def test_confusion_matrix(cm: ConfusionMatrix):
 
     assert cm.matrix[cm.label_map["class1"], cm.label_map["class2"]] == 0
     assert cm.matrix[cm.label_map["class1"], cm.label_map["class1"]] == 1
+
+
+def test_datum_metadatum_validation():
+    md = DatumMetadatum(name="meta name", value=1)
+    assert md.value == 1
+
+    md = DatumMetadatum(name="meta name", value="a string")
+    assert md.value == "a string"
+
+    md = DatumMetadatum(name="meta name", value={"a": 1, "b": "c"})
+    assert md.value == {"a": 1, "b": "c"}
+
+    # check we get a JSON serialization error since a set
+    # is not JSON serializable
+    with pytest.raises(ValidationError) as exc_info:
+        DatumMetadatum(name="meta name", value={"a": {1, 2}})
+
+    assert "type set is not JSON serializable" in str(exc_info)

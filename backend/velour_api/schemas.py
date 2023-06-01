@@ -1,4 +1,5 @@
 import io
+import json
 from base64 import b64decode
 from typing import Optional
 from uuid import uuid4
@@ -55,8 +56,21 @@ class Model(BaseModel):
         return _validate_href(v)
 
 
+class DatumMetadatum(BaseModel):
+    name: str
+    value: float | str | dict
+
+    @validator("value")
+    def check_json(cls, v):
+        # TODO: add more validation that the dict is valid geoJSON?
+        if isinstance(v, dict):
+            json.dumps(v)
+        return v
+
+
 class Datum(BaseModel):
     uid: str
+    metadata: list[DatumMetadatum] = []
 
 
 class Image(Datum):

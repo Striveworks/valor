@@ -9,7 +9,13 @@ from typing import Any
 
 import numpy as np
 import pytest
-from geoalchemy2.functions import ST_Area, ST_AsPNG, ST_AsText, ST_Polygon
+from geoalchemy2.functions import (
+    ST_Area,
+    ST_AsGeoJSON,
+    ST_AsPNG,
+    ST_AsText,
+    ST_Polygon,
+)
 from PIL import Image as PILImage
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
@@ -31,6 +37,7 @@ from velour.data_types import (
     GroundTruthSemanticSegmentation,
     Image,
     Label,
+    Metadatum,
     Point,
     PolygonWithHole,
     PredictedDetection,
@@ -99,6 +106,22 @@ def iou(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
     """Computes the "intersection over union" of two rectangles"""
     inter_area = intersection_area(rect1, rect2)
     return inter_area / (area(rect1) + area(rect2) - inter_area)
+
+
+@pytest.fixture
+def metadata():
+    """Some sample metadata of different types"""
+    return [
+        Metadatum(
+            name="metadatum name1",
+            value={
+                "type": "Point",
+                "coordinates": [-48.23456, 20.12345],
+            },
+        ),
+        Metadatum(name="metadatum name2", value="a string"),
+        Metadatum(name="metadatum name3", value=0.45),
+    ]
 
 
 @pytest.fixture
@@ -960,7 +983,7 @@ def test_delete_dataset_exception(client: Client):
 
 
 def test_delete_dataset_background_job(
-    client: Client, gt_dets1, gt_dets2, gt_dets3, db: Session
+    client: Client, gt_dets1: list, gt_dets2: list, gt_dets3: list, db: Session
 ):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
     dataset = client.create_image_dataset(dset_name)
@@ -1207,15 +1230,17 @@ def test_evaluate_image_clf(
 
 
 def test_create_tabular_dataset_and_add_groundtruth(
-    client: Client, db: Session
+    client: Client, db: Session, metadata: list[Metadatum]
 ):
     dataset = client.create_tabular_dataset(name=dset_name)
     assert isinstance(dataset, TabularDataset)
 
+    md1, md2, md3 = metadata
+
     dataset.add_groundtruth(
         [
-            [Label(key="k1", value="v1"), Label(key="k2", value="v2")],
-            [Label(key="k1", value="v3")],
+            [Label(key="k1", value="v1"), Label(key="k2", value="v2"), md1],
+            [Label(key="k1", value="v3"), md2, md3],
         ]
     )
     assert len(db.scalars(select(models.GroundTruthClassification)).all()) == 3
@@ -1223,6 +1248,21 @@ def test_create_tabular_dataset_and_add_groundtruth(
     data = db.scalars(select(models.Datum)).all()
     assert len(data) == 2
     assert set(d.uid for d in data) == {"0", "1"}
+
+    # check metadata is there
+    metadata1 = data[0].metadatums
+    assert len(metadata1) == 1
+    assert metadata1[0].name == "metadatum name1"
+    assert json.loads(db.scalar(ST_AsGeoJSON(metadata1[0].geo))) == {
+        "type": "Point",
+        "coordinates": [-48.23456, 20.12345],
+    }
+    metadata2 = data[1].metadatums
+    assert len(metadata2) == 2
+    assert metadata2[0].name == "metadatum name2"
+    assert metadata2[0].string_value == "a string"
+    assert metadata2[1].name == "metadatum name3"
+    assert metadata2[1].numeric_value == 0.45
 
     # check that we can add data with specified uids
     dataset.add_groundtruth(
@@ -1426,3 +1466,46 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
     client.delete_model(model_name)
 
     assert len(client.get_models()) == 0
+
+
+def test_create_images_with_metadata(
+    client: Client, db: Session, metadata: list[Metadatum], rect1
+):
+    dataset = client.create_image_dataset(dset_name)
+
+    md1, md2, md3 = metadata
+    img1 = Image(uid="uid1", metadata=[md1], height=100, width=200)
+    img2 = Image(uid="uid2", metadata=[md2, md3], height=100, width=200)
+
+    dataset.add_groundtruth(
+        groundtruth=[
+            GroundTruthDetection(
+                bbox=rect1, labels=[Label(key="k", value="v")], image=img1
+            )
+        ]
+    )
+    dataset.add_groundtruth(
+        groundtruth=[
+            GroundTruthImageClassification(
+                image=img2, labels=[Label(key="k", value="v")]
+            )
+        ]
+    )
+
+    data = db.scalars(select(models.Datum)).all()
+    assert len(data) == 2
+    assert set(d.uid for d in data) == {"uid1", "uid2"}
+
+    metadata1 = data[0].metadatums
+    assert len(metadata1) == 1
+    assert metadata1[0].name == "metadatum name1"
+    assert json.loads(db.scalar(ST_AsGeoJSON(metadata1[0].geo))) == {
+        "type": "Point",
+        "coordinates": [-48.23456, 20.12345],
+    }
+    metadata2 = data[1].metadatums
+    assert len(metadata2) == 2
+    assert metadata2[0].name == "metadatum name2"
+    assert metadata2[0].string_value == "a string"
+    assert metadata2[1].name == "metadatum name3"
+    assert metadata2[1].numeric_value == 0.45
