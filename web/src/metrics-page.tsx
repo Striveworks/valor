@@ -84,7 +84,7 @@ const MetricsSection = () => {
   const [selectedMetricType, setSelectedMetricType] = useState("");
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const metricsWithIds = metrics.map((m, i) => ({ ...m, id: i }));
-  const url = `${process.env.REACT_APP_BACKEND_URL}/models/${name}/evaluation-settings/${evalSettingsId}/metrics`;
+  const url = `${import.meta.env.VITE_BACKEND_URL}/models/${name}/evaluation-settings/${evalSettingsId}/metrics`;
   useEffect(() => {
     let config = {};
     if (usingAuth()) {
@@ -208,7 +208,7 @@ const EvalSettingsTable = ({
 const InfoSection = () => {
   let { evalSettingsId } = useParams();
   const [evalSettings, setEvalSettings] = useState<EvaluationSetting>();
-  const url = `${process.env.REACT_APP_BACKEND_URL}/evaluation-settings/${evalSettingsId}`;
+  const url = `${import.meta.env.VITE_BACKEND_URL}/evaluation-settings/${evalSettingsId}`;
 
   useEffect(() => {
     let config = {};

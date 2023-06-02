@@ -3,12 +3,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig(() => {
   return {
-    build: {
-      outDir: 'build',
-    },
-    define: {
-      'process.env': {},
-    },
     plugins: [react()],
+    server: {
+      port: 3000,
+    },
   };
 });
