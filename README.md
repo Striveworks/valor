@@ -90,13 +90,13 @@ AUTH0_ALGORITHMS="RS256"
 
 ### Frontend
 
-For the web UI either set the environment variables `REACT_APP_AUTH0_DOMAIN`, `REACT_APP_AUTH0_CLIENT_ID`, `REACT_APP_AUTH0_CALLBACK_URL` and `REACT_APP_AUTH0_AUDIENCE` or put them in a file named `.env` in the `web` directory. An example of such a file is:
+For the web UI either set the environment variables `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`, `VITE_AUTH0_CALLBACK_URL` and `VITE_AUTH0_AUDIENCE` or put them in a file named `.env` in the `web` directory. An example of such a file is:
 
 ```
-REACT_APP_AUTH0_DOMAIN=velour.us.auth0.com
-REACT_APP_AUTH0_CLIENT_ID=JHsL3WgCueWyKi0mnBl8o47r0Ux6XG8P
-REACT_APP_AUTH0_CALLBACK_URL=http://localhost:3000/callback
-REACT_APP_AUTH0_AUDIENCE=https://velour.striveworks.us/
+VITE_AUTH0_DOMAIN=velour.us.auth0.com
+VITE_AUTH0_CLIENT_ID=JHsL3WgCueWyKi0mnBl8o47r0Ux6XG8P
+VITE_AUTH0_CALLBACK_URL=http://localhost:3000/callback
+VITE_AUTH0_AUDIENCE=https://velour.striveworks.us/
 ```
 
 ### Testing auth

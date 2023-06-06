@@ -1,10 +1,10 @@
-import axios from "axios";
-import { useState, useEffect } from "react";
-import Typography from "@mui/material/Typography";
-import Link from "@mui/material/Link";
-import { Wrapper } from "./wrapper";
-import { EntityResponse } from "../types";
-import { usingAuth } from "../auth";
+import axios from 'axios';
+import { useState, useEffect } from 'react';
+import Typography from '@mui/material/Typography';
+import Link from '@mui/material/Link';
+import { Wrapper } from './wrapper';
+import { EntityResponse } from '../types';
+import { usingAuth } from '../auth';
 
 export const ListingComponent = ({
   name,
@@ -14,16 +14,16 @@ export const ListingComponent = ({
   pageTitle: string;
 }) => {
   const [entities, setEntities] = useState<EntityResponse[]>([]);
-  const url = `${process.env.REACT_APP_BACKEND_URL}/${name}`;
+  const url = `${import.meta.env.VITE_BACKEND_URL}/${name}`;
 
   useEffect(() => {
     let config = {};
     if (usingAuth()) {
-      const token = sessionStorage.getItem("token");
+      const token = sessionStorage.getItem('token');
       config = { headers: { Authorization: `Bearer ${token}` } };
 
-      if (token === "null") {
-        console.log("token is null");
+      if (token === 'null') {
+        console.log('token is null');
       }
     }
 
@@ -35,7 +35,7 @@ export const ListingComponent = ({
 
   return (
     <Wrapper>
-      <Typography variant="h2">{pageTitle}</Typography>
+      <Typography variant='h2'>{pageTitle}</Typography>
       {entities.map((entity) => (
         <>
           <Link
