@@ -1,45 +1,45 @@
-import axios from "axios";
-import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import Typography from "@mui/material/Typography";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import Link from "@mui/material/Link";
-import { EvaluationSetting } from "./types";
-import { Wrapper } from "./components/wrapper";
-import { EntityDetailsComponent } from "./components/entity-details-component";
-import { usingAuth } from "./auth";
+import axios from 'axios';
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import Typography from '@mui/material/Typography';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import Link from '@mui/material/Link';
+import { EvaluationSetting } from './types';
+import { Wrapper } from './components/wrapper';
+import { EntityDetailsComponent } from './components/entity-details-component';
+import { usingAuth } from './auth';
 
 const taskTypeWidth = 250;
 const areaWidth = 175;
 const columns: GridColDef[] = [
   {
-    field: "dataset_name",
-    headerName: "Dataset",
+    field: 'dataset_name',
+    headerName: 'Dataset',
     width: 150,
   },
   {
-    field: "model_pred_task_type",
-    headerName: "Model prediction type",
+    field: 'model_pred_task_type',
+    headerName: 'Model prediction type',
     width: taskTypeWidth,
   },
   {
-    field: "dataset_gt_task_type",
-    headerName: "Dataset annotation type",
+    field: 'dataset_gt_task_type',
+    headerName: 'Dataset annotation type',
     width: taskTypeWidth,
   },
   {
-    field: "min_area",
-    headerName: "Min. area of objects",
+    field: 'min_area',
+    headerName: 'Min. area of objects',
     width: areaWidth,
   },
   {
-    field: "max_area",
-    headerName: "Max. area of objects",
+    field: 'max_area',
+    headerName: 'Max. area of objects',
     width: areaWidth,
   },
   {
-    field: "",
-    headerName: "",
+    field: '',
+    headerName: '',
     renderCell: (params) => (
       <Link href={`evaluation-settings/${params.row.id}`}>view metrics</Link>
     ),
@@ -54,15 +54,17 @@ export const ModelDetailsPage = () => {
   const [allEvalSettings, setAllEvalSettings] = useState<EvaluationSetting[]>(
     []
   );
-  const evalSettingsUrl = `${process.env.REACT_APP_BACKEND_URL}/models/${name}/evaluation-settings`;
+  const evalSettingsUrl = `${
+    import.meta.env.VITE_BACKEND_URL
+  }/models/${name}/evaluation-settings`;
   useEffect(() => {
     let config = {};
     if (usingAuth()) {
-      const token = sessionStorage.getItem("token");
+      const token = sessionStorage.getItem('token');
       config = { headers: { Authorization: `Bearer ${token}` } };
 
-      if (token === "null") {
-        console.log("token is null");
+      if (token === 'null') {
+        console.log('token is null');
       }
     }
 
@@ -73,9 +75,9 @@ export const ModelDetailsPage = () => {
 
   return (
     <Wrapper>
-      <EntityDetailsComponent entityType="models" />
+      <EntityDetailsComponent entityType='models' />
       <br />
-      <Typography variant="h4">Evaluations</Typography>
+      <Typography variant='h4'>Evaluations</Typography>
       <DataGrid
         rows={allEvalSettings}
         columns={columns}
