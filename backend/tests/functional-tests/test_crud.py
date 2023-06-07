@@ -1948,14 +1948,17 @@ def test_create_datums_with_metadata(db: Session):
     datums = [
         schemas.Datum(
             uid="uid1",
-            metadata=[schemas.DatumMetadatum(name="name1", value=0.7)],
+            metadata=[
+                schemas.DatumMetadatum(name="name1", value=0.7),
+                schemas.DatumMetadatum(name="name2", value="a string"),
+            ],
         ),
         schemas.Datum(
             uid="uid2",
             metadata=[
-                schemas.DatumMetadatum(name="name1", value="a string"),
+                schemas.DatumMetadatum(name="name2", value="a string"),
                 schemas.DatumMetadatum(
-                    name="name2",
+                    name="name3",
                     value={
                         "type": "Point",
                         "coordinates": [-48.23456, 20.12345],
@@ -1965,24 +1968,28 @@ def test_create_datums_with_metadata(db: Session):
         ),
     ]
     crud._create._add_datums_to_dataset(db, dset_name, datums)
+
+    # check there should only be three unique metadatums since two are the same
+    assert len(db.scalars(select(models.Metadatum)).all()) == 3
+
     db_datums = crud.get_datums_in_dataset(db, dset_name)
 
     assert len(db_datums) == 2
 
-    md1 = db_datums[0].metadatums[0]
+    md1 = db_datums[0].datum_metadatum_links[0].metadatum
     assert md1.name == "name1"
     assert md1.numeric_value == 0.7
     assert md1.string_value is None
     assert md1.geo is None
 
-    md2 = db_datums[1].metadatums[0]
-    assert md2.name == "name1"
+    md2 = db_datums[1].datum_metadatum_links[0].metadatum
+    assert md2.name == "name2"
     assert md2.numeric_value is None
     assert md2.string_value == "a string"
     assert md2.geo is None
 
-    md3 = db_datums[1].metadatums[1]
-    assert md3.name == "name2"
+    md3 = db_datums[1].datum_metadatum_links[1].metadatum
+    assert md3.name == "name3"
     assert md3.numeric_value is None
     assert md3.string_value is None
     assert json.loads(db.scalar(ST_AsGeoJSON(md3.geo))) == {

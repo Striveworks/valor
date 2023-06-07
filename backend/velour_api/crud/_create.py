@@ -169,10 +169,8 @@ def _create_label_tuple_to_id_dict(
     return label_tuple_to_id
 
 
-def _metadatum_mapping(
-    metadatum: schemas.DatumMetadatum, datum_id: int
-) -> dict:
-    ret = {"name": metadatum.name, "datum_id": datum_id}
+def _metadatum_mapping(metadatum: schemas.DatumMetadatum) -> dict:
+    ret = {"name": metadatum.name}
     val = metadatum.value
     if isinstance(val, str):
         ret["string_value"] = val
@@ -211,14 +209,19 @@ def _add_datums_to_dataset(
 
     for datum, db_datum in zip(datums, db_datums):
         for metadatum in datum.metadata:
-            _get_or_create_row(
+            metadatum_id = _get_or_create_row(
                 db=db,
-                model_class=models.DatumMetadatum,
-                mapping=_metadatum_mapping(
-                    metadatum=metadatum, datum_id=db_datum.id
-                ),
+                model_class=models.Metadatum,
+                mapping=_metadatum_mapping(metadatum=metadatum),
+            ).id
+
+            db.add(
+                models.DatumMetadatumLink(
+                    datum_id=db_datum.id, metadatum_id=metadatum_id
+                )
             )
 
+    db.commit()
     return db_datums
 
 
