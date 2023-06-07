@@ -292,8 +292,6 @@ class Metadatum(Base):
     string_value: Mapped[str] = mapped_column(nullable=True)
     numeric_value: Mapped[float] = mapped_column(nullable=True)
     geo = mapped_column(Geography(), nullable=True)
-    # datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"))
-    # datum: Mapped["Datum"] = relationship("Datum", back_populates="metadatums")
 
     __table_args__ = (
         CheckConstraint("num_nonnulls(string_value, numeric_value, geo) = 1"),
