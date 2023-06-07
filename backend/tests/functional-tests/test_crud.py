@@ -1989,3 +1989,52 @@ def test_create_datums_with_metadata(db: Session):
         "type": "Point",
         "coordinates": [-48.23456, 20.12345],
     }
+
+
+def test_get_unique_metadata_string_values(db: Session):
+    crud.create_dataset(
+        db,
+        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.TABULAR),
+    )
+
+    datums = [
+        schemas.Datum(
+            uid="uid1",
+            metadata=[schemas.DatumMetadatum(name="md1", value=0.7)],
+        ),
+        schemas.Datum(
+            uid="uid2",
+            metadata=[
+                schemas.DatumMetadatum(name="md1", value="md1-val1"),
+                schemas.DatumMetadatum(name="md2", value="md2-val1"),
+            ],
+        ),
+        schemas.Datum(
+            uid="uid3",
+            metadata=[
+                schemas.DatumMetadatum(name="md1", value="md1-val1"),
+            ],
+        ),
+        schemas.Datum(
+            uid="uid4",
+            metadata=[
+                schemas.DatumMetadatum(name="md1", value="md1-val2"),
+            ],
+        ),
+    ]
+    crud._create._add_datums_to_dataset(db, dset_name, datums)
+
+    unique_vals = crud.get_unique_metadata_string_values(
+        db, dset_name, metadata_name="md1"
+    )
+    assert unique_vals == ["md1-val1", "md1-val2"]
+
+    unique_vals = crud.get_unique_metadata_string_values(
+        db, dset_name, metadata_name="md2"
+    )
+    assert unique_vals == ["md2-val1"]
+
+    unique_vals = crud.get_unique_metadata_string_values(
+        db, dset_name, metadata_name="md3"
+    )
+    assert unique_vals == []
