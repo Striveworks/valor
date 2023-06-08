@@ -283,8 +283,8 @@ class LabeledPredictedSegmentation(Base):
         return self.segmentation.datum_id
 
 
-class DatumMetadatum(Base):
-    __tablename__ = "datum_metadata"
+class Metadatum(Base):
+    __tablename__ = "metadatum"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column()
@@ -292,12 +292,23 @@ class DatumMetadatum(Base):
     string_value: Mapped[str] = mapped_column(nullable=True)
     numeric_value: Mapped[float] = mapped_column(nullable=True)
     geo = mapped_column(Geography(), nullable=True)
-    datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"))
-    datum: Mapped["Datum"] = relationship("Datum", back_populates="metadatums")
 
     __table_args__ = (
         CheckConstraint("num_nonnulls(string_value, numeric_value, geo) = 1"),
     )
+
+
+class DatumMetadatumLink(Base):
+    __tablename__ = "datum_meta_datum_link"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"))
+    datum: Mapped["Datum"] = relationship(
+        "Datum", back_populates="datum_metadatum_links"
+    )
+    # TODO: if there's no links to a given metadatum then we should delete it
+    metadatum_id: Mapped[int] = mapped_column(ForeignKey("metadatum.id"))
+    metadatum: Mapped["Metadatum"] = relationship("Metadatum")
 
 
 class Datum(Base):
@@ -314,8 +325,8 @@ class Datum(Base):
     width: Mapped[int] = mapped_column(nullable=True)
     frame: Mapped[int] = mapped_column(nullable=True)
 
-    metadatums: Mapped[list[DatumMetadatum]] = relationship(
-        DatumMetadatum, cascade="all, delete"
+    datum_metadatum_links: Mapped[list[DatumMetadatumLink]] = relationship(
+        DatumMetadatumLink, cascade="all, delete"
     )
     ground_truth_detections: Mapped[list[GroundTruthDetection]] = relationship(
         GroundTruthDetection, cascade="all, delete"
