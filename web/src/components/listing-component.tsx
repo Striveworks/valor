@@ -1,10 +1,10 @@
-import axios from 'axios';
-import { useState, useEffect } from 'react';
-import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
-import { Wrapper } from './wrapper';
-import { EntityResponse } from '../types';
+import Typography from '@mui/material/Typography';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
 import { usingAuth } from '../auth';
+import { EntityResponse } from '../types';
+import { Wrapper } from './wrapper';
 
 export const ListingComponent = ({
 	name,

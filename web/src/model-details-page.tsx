@@ -50,7 +50,7 @@ const columns: GridColDef[] = [
 ];
 
 export const ModelDetailsPage = () => {
-	let { name } = useParams();
+	const { name } = useParams();
 	const [allEvalSettings, setAllEvalSettings] = useState<EvaluationSetting[]>([]);
 	const evalSettingsUrl = `${
 		import.meta.env.VITE_BACKEND_URL

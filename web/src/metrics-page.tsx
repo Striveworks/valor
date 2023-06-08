@@ -69,18 +69,12 @@ const Switch = ({
 	return ret;
 };
 
-const SwitchElement = ({
-	value,
-	children
-}: {
-	value: string;
-	children: JSX.Element;
-}): JSX.Element => {
+const SwitchElement = ({ children }: { children: JSX.Element }): JSX.Element => {
 	return children;
 };
 
 const MetricsSection = () => {
-	let { name, evalSettingsId } = useParams();
+	const { name, evalSettingsId } = useParams();
 	const [selectedMetricType, setSelectedMetricType] = useState('');
 	const [metrics, setMetrics] = useState<Metric[]>([]);
 	const metricsWithIds = metrics.map((m, i) => ({ ...m, id: i }));
@@ -103,23 +97,26 @@ const MetricsSection = () => {
 	}, [url]);
 	if (!metrics) return null;
 
-	const stringifyIfObject = (x: any) => {
+	const stringifyIfObject = (x: unknown) => {
 		if (typeof x === 'object') {
 			return JSON.stringify(x);
 		}
 		return x;
 	};
 
-	const stringifyObjectValues = (obj: any) => {
+	const stringifyObjectValues = (obj: Record<string, unknown>) => {
 		Object.keys(obj).forEach((k) => {
 			obj[k] = stringifyIfObject(obj[k]);
 		});
 		return obj;
 	};
 
+	// TODO: Follow-up on any typing within this variable
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const metricsByType: { [key: string]: any[] } = metrics.reduce((obj, c) => {
 		obj[c.type] = [];
 		return obj;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	}, {} as { [key: string]: any[] });
 
 	metricsWithIds.forEach((m) => {
@@ -139,7 +136,7 @@ const MetricsSection = () => {
 			/>
 			<Switch test={selectedMetricType}>
 				{Object.keys(metricsByType).map((metricType) => (
-					<SwitchElement value={metricType} key={metricType}>
+					<SwitchElement key={metricType}>
 						<DataGrid
 							rows={metricsByType[metricType]}
 							columns={metricColumns}
@@ -206,7 +203,7 @@ const EvalSettingsTable = ({
 };
 
 const InfoSection = () => {
-	let { evalSettingsId } = useParams();
+	const { evalSettingsId } = useParams();
 	const [evalSettings, setEvalSettings] = useState<EvaluationSetting>();
 	const url = `${import.meta.env.VITE_BACKEND_URL}/evaluation-settings/${evalSettingsId}`;
 
