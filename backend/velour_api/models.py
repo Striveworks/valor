@@ -306,6 +306,7 @@ class DatumMetadatumLink(Base):
     datum: Mapped["Datum"] = relationship(
         "Datum", back_populates="datum_metadatum_links"
     )
+    # TODO: if there's no links to a given metadatum then we should delete it
     metadatum_id: Mapped[int] = mapped_column(ForeignKey("metadatum.id"))
     metadatum: Mapped["Metadatum"] = relationship("Metadatum")
 
