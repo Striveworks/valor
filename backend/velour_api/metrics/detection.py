@@ -1,197 +1,92 @@
 import heapq
 from dataclasses import dataclass
+from typing import List, Dict, Optional
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import ProgrammingError
+from sqlalchemy import text
 
-from velour_api import ops, schemas
-from velour_api.models import (
-    Label,
-    LabeledGroundTruthDetection,
-    LabeledGroundTruthSegmentation,
-    LabeledPredictedDetection,
-    LabeledPredictedSegmentation,
+from velour_api import schemas
+from velour_api.sql import (
+    convert_polygons_to_bbox,
+    convert_raster_to_bbox,
+    convert_raster_to_polygons,
+    join_labels,
+    join_tables,
+    compute_iou,
+    get_labels,
+    get_number_of_ground_truths,
+    get_sorted_ranked_pairs,
+    function_find_ranked_pairs,
 )
-
-
-def _match_array(
-    ious: list[list[float]],
-    iou_thres: float,
-) -> list[int | None]:
-    """
-    Parameters
-    ----------
-    ious
-        ious[i][j] should be the iou between predicted detection i and groundtruth detection j
-        an important assumption is that the predicted detections are sorted by confidence
-
-    Returns
-    -------
-    array of match indices. value at index i is the index of the groundtruth object that
-    best matches the ith detection, or None if that detection has no match
-    """
-    matches = []
-    for i in range(len(ious)):
-        best_match_idx, current_max_iou = None, None
-        for j, iou in enumerate(ious[i]):
-            if iou >= iou_thres and j not in matches:
-                if best_match_idx is None or iou > current_max_iou:
-                    best_match_idx = j
-                    current_max_iou = iou
-
-        matches.append(best_match_idx)
-
-    return matches
-
-
-def _cumsum(a: list) -> list:
-    ret = [0]
-    for x in a:
-        ret.append(ret[-1] + x)
-
-    return ret[1:]
-
+from velour_api.enums import AnnotationType
 
 @dataclass
-class DetectionMatchInfo:
-    tp: bool
+class RankedPair:
+    gt_id: int
+    pd_id: int
     score: float
-    # add ids and iou here and then store this informatoin?
-
-
-def _get_tp_fp_single_image_single_class(
-    predictions: list[LabeledPredictedDetection],
-    iou_threshold: float,
-    ious: list[list[float]],
-) -> list[DetectionMatchInfo]:
-    matches = _match_array(ious, iou_threshold)
-
-    return [
-        DetectionMatchInfo(tp=(match is not None), score=prediction.score)
-        for match, prediction in zip(matches, predictions)
-    ]
-
-
-def iou_matrix(
-    db: Session,
-    predictions: list[
-        LabeledPredictedDetection | LabeledPredictedSegmentation
-    ],
-    groundtruths: list[
-        LabeledGroundTruthDetection | LabeledGroundTruthSegmentation
-    ],
-) -> list[list[float]]:
-    """Returns a list of lists where the entry at [i][j]
-    is the iou between `predictions[i]` and `groundtruths[j]`.
-    """
-    return [
-        [ops.iou(db, pred, gt) for gt in groundtruths] for pred in predictions
-    ]
-
-
-def _db_label_to_pydantic_label(label: Label):
-    return schemas.Label(key=label.key, value=label.value)
-
+    iou: float
 
 def ap(
-    db: Session,
-    predictions: list[
-        list[LabeledPredictedDetection | LabeledPredictedSegmentation]
-    ],
-    groundtruths: list[
-        list[LabeledGroundTruthDetection | LabeledGroundTruthSegmentation]
-    ],
-    label: Label,
+    sorted_ranked_pairs: Dict[int, List[RankedPair]],
+    number_of_ground_truths: int,
+    labels: Dict[int, schemas.Label],
     iou_thresholds: list[float],
+    score_threshold: float
 ) -> list[schemas.APMetric]:
     """Computes the average precision. Return is a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
     `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
     of the scores across all of the IoU thresholds.
     """
-    assert len(predictions) == len(groundtruths)
 
-    predictions = [
-        [p for p in preds if p.label == label] for preds in predictions
-    ]
-    groundtruths = [
-        [gt for gt in gts if gt.label == label] for gts in groundtruths
-    ]
+    ap_metrics = []
+    for iou_threshold in iou_thresholds:
+        for label_id in sorted_ranked_pairs:
 
-    predictions = [
-        sorted(
-            preds,
-            key=lambda p: p.score,
-            reverse=True,
-        )
-        for preds in predictions
-    ]
-
-    # total number of groundtruth objects across all images
-    n_gt = sum([len(gts) for gts in groundtruths])
-
-    ret = []
-    if n_gt == 0:
-        ret.extend(
-            [
-                schemas.APMetric(
-                    iou=iou_thres,
-                    value=-1.0,
-                    label=_db_label_to_pydantic_label(label),
+            if not number_of_ground_truths[label_id]:
+                ap_metrics.extend(
+                    [
+                        schemas.APMetric(
+                            iou=iou_thres,
+                            value=-1.0,
+                            label=labels[label_id],
+                        )
+                        for iou_thres in iou_thresholds
+                    ]
                 )
-                for iou_thres in iou_thresholds
-            ]
-        )
-    else:
-        # TODO: for large datasets is this going to be a memory problem?
-        # these should often be sparse so maybe use sparse matrices?
-        # or use something like redis?
-        iou_matrices = [
-            iou_matrix(db=db, groundtruths=gts, predictions=preds)
-            for preds, gts in zip(predictions, groundtruths)
-        ]
-        for iou_thres in iou_thresholds:
-            match_infos = []
-            for preds, ious in zip(predictions, iou_matrices):
-                match_infos.extend(
-                    _get_tp_fp_single_image_single_class(
-                        predictions=preds,
-                        iou_threshold=iou_thres,
-                        ious=ious,
+            else:
+                precisions = []
+                recalls = []
+                cnt_tp = 0
+                cnt_fp = 0
+                for row in sorted_ranked_pairs[label_id]:
+                    if row.score >= score_threshold and row.iou >= iou_threshold:
+                        cnt_tp += 1
+                    else:
+                        cnt_fp += 1
+                    cnt_fn = number_of_ground_truths[label_id] - cnt_tp
+
+                    precisions.append(cnt_tp / (cnt_tp + cnt_fp))
+                    recalls.append(cnt_tp / (cnt_tp + cnt_fn))
+
+                ap_metrics.append(
+                    schemas.APMetric(
+                        iou=iou_threshold,
+                        value=calculate_ap_101_pt_interp(
+                            precisions=precisions, recalls=recalls
+                        ),
+                        label=labels[label_id],
                     )
                 )
-
-            match_infos = sorted(
-                match_infos, key=lambda m: m.score, reverse=True
-            )
-
-            tp = [float(m.tp) for m in match_infos]
-            fp = [float(not m.tp) for m in match_infos]
-
-            cum_tp = _cumsum(tp)
-            cum_fp = _cumsum(fp)
-
-            precisions = [
-                ctp / (ctp + cfp) for ctp, cfp in zip(cum_tp, cum_fp)
-            ]
-            recalls = [ctp / n_gt for ctp in cum_tp]
-
-            ret.append(
-                schemas.APMetric(
-                    iou=iou_thres,
-                    value=calculate_ap_101_pt_interp(
-                        precisions=precisions, recalls=recalls
-                    ),
-                    label=_db_label_to_pydantic_label(label),
-                )
-            )
-
-    return ret
+    return ap_metrics
 
 
 def calculate_ap_101_pt_interp(precisions, recalls) -> float:
     """Use the 101 point interpolation method (following torchmetrics)"""
+    
     assert len(precisions) == len(recalls)
-
     if len(precisions) == 0:
         return 0
 
@@ -202,9 +97,7 @@ def calculate_ap_101_pt_interp(precisions, recalls) -> float:
     prec_heap.sort()
 
     cutoff_idx = 0
-
     ret = 0
-
     for r in [0.01 * i for i in range(101)]:
         while cutoff_idx < len(data) and data[cutoff_idx][1] < r:
             cutoff_idx += 1
@@ -215,17 +108,18 @@ def calculate_ap_101_pt_interp(precisions, recalls) -> float:
         ret -= prec_heap[0][0]
     return ret / 101
 
-
 def compute_ap_metrics(
     db: Session,
-    predictions: list[
-        list[LabeledPredictedDetection | LabeledPredictedSegmentation]
-    ],
-    groundtruths: list[
-        list[LabeledGroundTruthDetection | LabeledGroundTruthSegmentation]
-    ],
+    dataset_id: int,
+    model_id: int,
+    gt_type: schemas.Task,
+    pd_type: schemas.Task,
+    label_key: str,
     iou_thresholds: list[float],
     ious_to_keep: list[float],
+    min_area: Optional[float] = None,
+    max_area: Optional[float] = None,
+    score_threshold: float = 0.0,
 ) -> list[
     schemas.APMetric
     | schemas.APMetricAveragedOverIOUs
@@ -234,39 +128,123 @@ def compute_ap_metrics(
 ]:
     """Computes average precision metrics."""
 
-    # check that any segmentations are instance segmentations
-    for pred in predictions:
-        if isinstance(pred, LabeledPredictedSegmentation):
-            if not pred.segmentation.is_instance:
-                raise RuntimeError(
-                    "Found predicted segmentation that is a semantic segmentation."
-                    " AP metrics are only defined for instance segmentation."
-                )
-    for gt in groundtruths:
-        if isinstance(gt, LabeledGroundTruthSegmentation):
-            if not gt.segmentation.is_instance:
-                raise RuntimeError(
-                    "Found groundtruth segmentation that is a semantic segmentation."
-                    " AP metrics are only defined for instance segmentation."
-                )
+    taskTypes = {
+        schemas.Task.BBOX_OBJECT_DETECTION: 'detection',
+        schemas.Task.POLY_OBJECT_DETECTION: 'detection',
+        schemas.Task.INSTANCE_SEGMENTATION: 'segmentation',
+    }
 
-    iou_thresholds = sorted(iou_thresholds)
-    labels = set(
-        [pred.label for preds in predictions for pred in preds]
-    ).union([gt.label for gts in groundtruths for gt in gts])
+    # Generate select 
+    gt_select = f"select * from ground_truth_{taskTypes[gt_type]}"
+    pd_select = f"select * from predicted_{taskTypes[pd_type]}"
+    
+    # Apply type conversion query (if applicable)
+    if schemas.Task.BBOX_OBJECT_DETECTION in [gt_type, pd_type]:
+        common_task = schemas.Task.BBOX_OBJECT_DETECTION
 
-    ap_metrics = []
+        if gt_type in [schemas.Task.BBOX_OBJECT_DETECTION, schemas.Task.POLY_OBJECT_DETECTION]:
+            gt_select = convert_polygons_to_bbox('ground_truth_detection', dataset_id=dataset_id, min_area=min_area, max_area=max_area)
+        elif gt_type == schemas.Task.INSTANCE_SEGMENTATION:
+            gt_select = convert_raster_to_bbox('ground_truth_segmentation', dataset_id=dataset_id, min_area=min_area, max_area=max_area)
+        else:
+            raise ValueError("Ground Truth data is of a unsupported type.")
+            
+        if pd_type in [schemas.Task.BBOX_OBJECT_DETECTION, schemas.Task.POLY_OBJECT_DETECTION]:
+            pd_select = convert_polygons_to_bbox('predicted_detection', model_id=model_id, min_area=min_area, max_area=max_area)
+        elif pd_type == schemas.Task.INSTANCE_SEGMENTATION:
+            pd_select = convert_raster_to_bbox('predicted_segmentation', model_id=model_id, min_area=min_area, max_area=max_area)
+        else:
+            raise ValueError("Predicted data is of a unsupported type.")
+        
+        print("bounding box task")
+        
+    elif schemas.Task.POLY_OBJECT_DETECTION in [gt_type, pd_type]:
+        common_task = schemas.Task.POLY_OBJECT_DETECTION
+        
+        if gt_type == schemas.Task.INSTANCE_SEGMENTATION:
+            gt_select = convert_raster_to_polygons('ground_truth_segmentation', dataset_id=dataset_id, min_area=min_area, max_area=max_area)
+        else:
+            raise ValueError("Ground Truth data is of a unsupported type.")
+        
+        if pd_type == schemas.Task.INSTANCE_SEGMENTATION:
+            pd_select = convert_raster_to_polygons('predicted_segmentation', model_id=model_id, min_area=min_area, max_area=max_area)
+        else:
+            raise ValueError("Predicted data is of a unsupported type.")
+            
+    else:
+        common_task = schemas.Task.INSTANCE_SEGMENTATION
 
-    for label in labels:
-        ap_metrics.extend(
-            ap(
-                db=db,
-                predictions=predictions,
-                groundtruths=groundtruths,
-                label=label,
-                iou_thresholds=iou_thresholds,
+    print(pd_select)
+    print(gt_select)
+            
+    # Join labels
+    labeled_gt_select = join_labels(
+        subquery=gt_select, 
+        label_table=f"labeled_ground_truth_{taskTypes[gt_type]}", 
+        column=f"{taskTypes[gt_type]}_id",
+        label_key=label_key,
+        is_prediction=False,
+    )
+    labeled_pd_select = join_labels(
+        subquery=pd_select, 
+        label_table=f"labeled_predicted_{taskTypes[pd_type]}", 
+        column=f"{taskTypes[pd_type]}_id",
+        label_key=label_key,
+        is_prediction=True,
+    )
+
+    # Join gt with pd
+    annotationType = {
+        schemas.Task.BBOX_OBJECT_DETECTION: AnnotationType.BBOX,
+        schemas.Task.POLY_OBJECT_DETECTION: AnnotationType.BOUNDARY,
+        schemas.Task.INSTANCE_SEGMENTATION: AnnotationType.RASTER,
+    }   
+    joint_table = join_tables(labeled_gt_select, labeled_pd_select, annotationType[common_task])
+
+    # Compute IOU's
+    ious = compute_iou(joint_table, annotationType[common_task])
+
+    # Load IOU's into a temporary table
+    ious_table = f"create temporary table iou as ({ious})"
+    try:
+        db.execute(text('drop table iou'))
+    except ProgrammingError:
+        db.rollback()
+    db.execute(text(ious_table))
+
+    # Create 'find_ranked_pairs' function
+    db.execute(text(function_find_ranked_pairs()))
+
+    # Get params
+    labels = {row[0] : schemas.Label(key=row[1], value=row[2]) for row in db.execute(text(get_labels())).fetchall()}
+    number_of_ground_truths = {row[0] : row[1] for row in db.execute(text(get_number_of_ground_truths()))}
+    
+    # Load ranked_pairs
+    pairs = {}
+    for row in db.execute(text(get_sorted_ranked_pairs())).fetchall():
+        label_id = row[0]
+        if label_id not in pairs:
+            pairs[label_id] = []
+        pairs[label_id].append(
+            RankedPair(
+                gt_id=row[1],
+                pd_id=row[2],
+                score=row[3],
+                iou=row[4]
             )
         )
+
+    # Clear the session
+    db.commit()
+
+    # Compute AP
+    ap_metrics = ap(
+        sorted_ranked_pairs=pairs,
+        number_of_ground_truths=number_of_ground_truths,
+        labels=labels,
+        iou_thresholds=iou_thresholds,
+        score_threshold=score_threshold,
+    )
 
     # now extend to the averaged AP metrics and mAP metric
     map_metrics = compute_map_metrics_from_aps(ap_metrics)

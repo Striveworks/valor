@@ -886,68 +886,29 @@ def validate_create_clf_metrics(
 
 def create_ap_metrics(
     db: Session,
-    gts_statement: TextualSelect,
-    preds_statement: TextualSelect,
     request_info: schemas.APRequest,
 ) -> int:
-    # need to break down preds and gts by image
-    if "detection_id" in gts_statement.selected_columns.keys():
-        gts_cls = models.LabeledGroundTruthDetection
-    else:
-        if "segmentation_id" not in gts_statement.selected_columns.keys():
-            raise RuntimeError(
-                "Expected 'detection_id' or 'segmentation_id' to be in the columns of `gts_statement`."
-            )
-        gts_cls = models.LabeledGroundTruthSegmentation
+    
+    dataset_id = get_dataset(db, request_info.settings.dataset_name).id
+    model_id = get_model(db, request_info.settings.model_name).id
+    min_area     = request_info.settings.min_area
+    max_area     = request_info.settings.max_area
+    gt_type      = request_info.settings.dataset_gt_task_type
+    pd_type      = request_info.settings.model_pred_task_type
 
-    if "detection_id" in preds_statement.selected_columns.keys():
-        preds_cls = models.LabeledPredictedDetection
-    else:
-        if "segmentation_id" not in preds_statement.selected_columns.keys():
-            raise RuntimeError(
-                "Expected 'detection_id' or 'segmentation_id' to be in the columns of `gts_statement`."
-            )
-        preds_cls = models.LabeledPredictedSegmentation
-
-    gts_stmt_alias = gts_statement.alias()
-    gt_ids = db.scalars(select(gts_stmt_alias.c.id).distinct()).all()
-    gts = db.scalars(select(gts_cls).where(gts_cls.id.in_(gt_ids))).all()
-
-    preds_stmt_alias = preds_statement.alias()
-    pred_ids = db.scalars(select(preds_stmt_alias.c.id).distinct()).all()
-    preds = db.scalars(
-        select(preds_cls).where(preds_cls.id.in_(pred_ids))
-    ).all()
-
-    datum_id_to_gts = {}
-    datum_id_to_preds = {}
-    all_datum_ids = set()
-    for gt in gts:
-        if gt.datum_id not in datum_id_to_gts:
-            datum_id_to_gts[gt.datum_id] = []
-        datum_id_to_gts[gt.datum_id].append(gt)
-        all_datum_ids.add(gt.datum_id)
-    for pred in preds:
-        if pred.datum_id not in datum_id_to_preds:
-            datum_id_to_preds[pred.datum_id] = []
-        datum_id_to_preds[pred.datum_id].append(pred)
-        all_datum_ids.add(pred.datum_id)
-
-    all_datum_ids = list(all_datum_ids)
-
-    # all_gts and all_preds are list of lists of gts and preds per image
-    all_gts = []
-    all_preds = []
-    for datum_id in all_datum_ids:
-        all_gts.append(datum_id_to_gts.get(datum_id, []))
-        all_preds.append(datum_id_to_preds.get(datum_id, []))
+    print(max_area)
 
     metrics = compute_ap_metrics(
         db=db,
-        predictions=all_preds,
-        groundtruths=all_gts,
+        dataset_id=dataset_id,
+        model_id=model_id,
+        gt_type=gt_type,
+        pd_type=pd_type,
+        label_key='name',
         iou_thresholds=request_info.iou_thresholds,
         ious_to_keep=request_info.ious_to_keep,
+        min_area=min_area,
+        max_area=max_area,
     )
 
     dataset_id = get_dataset(db, request_info.settings.dataset_name).id
@@ -959,8 +920,8 @@ def create_ap_metrics(
         mapping={
             "dataset_id": dataset_id,
             "model_id": model_id,
-            "model_pred_task_type": request_info.settings.model_pred_task_type,
-            "dataset_gt_task_type": request_info.settings.dataset_gt_task_type,
+            "model_pred_task_type": pd_type,
+            "dataset_gt_task_type": gt_type,
             "min_area": request_info.settings.min_area,
             "max_area": request_info.settings.max_area,
         },
@@ -980,7 +941,6 @@ def create_ap_metrics(
     db.commit()
 
     return mp.id
-
 
 def create_clf_metrics(
     db: Session,
