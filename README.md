@@ -4,6 +4,8 @@
 
 This repo contains the python [client](client) and [backend](backend) packages.
 
+Docs are [here](https://striveworks.github.io/velour/).
+
 ## Tests
 
 There are integration tests, backend unit tests, and backend functional tests.
