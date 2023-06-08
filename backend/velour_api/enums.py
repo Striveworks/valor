@@ -19,3 +19,10 @@ class JobStatus(Enum):
 class DatumTypes(Enum):
     IMAGE = "Image"
     TABULAR = "Tabular"
+
+class AnnotationType(Enum):
+    CLASSIFICATION = "classification"
+    BBOX = "bbox"
+    BOUNDARY = "boundary"
+    RASTER = "raster"
+    UNDEFINED = "undefined"

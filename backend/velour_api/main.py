@@ -358,7 +358,7 @@ def get_model_confusion_matrices(
             db, evaluation_settings_id
         )
     ]
-
+    
 
 @app.post(
     "/ap-metrics", status_code=202, dependencies=[Depends(token_auth_scheme)]
@@ -387,8 +387,6 @@ def create_ap_metrics(
             wrapped_fn,
             db=db,
             request_info=data,
-            gts_statement=gts_statement,
-            preds_statement=preds_statement,
         )
 
         return cm_resp
