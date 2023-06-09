@@ -96,7 +96,7 @@ For the web UI either set the environment variables `VITE_AUTH0_DOMAIN`, `VITE_A
 
 ```
 VITE_AUTH0_DOMAIN=velour.us.auth0.com
-VITE_AUTH0_CLIENT_ID=JHsL3WgCueWyKi0mnBl8o47r0Ux6XG8P
+VITE_AUTH0_CLIENT_ID=<AUTH0 CLIENT ID>
 VITE_AUTH0_CALLBACK_URL=http://localhost:3000/callback
 VITE_AUTH0_AUDIENCE=https://velour.striveworks.us/
 ```
