@@ -888,13 +888,13 @@ def create_ap_metrics(
     db: Session,
     request_info: schemas.APRequest,
 ) -> int:
-    
+
     dataset_id = get_dataset(db, request_info.settings.dataset_name).id
     model_id = get_model(db, request_info.settings.model_name).id
-    min_area     = request_info.settings.min_area
-    max_area     = request_info.settings.max_area
-    gt_type      = request_info.settings.dataset_gt_task_type
-    pd_type      = request_info.settings.model_pred_task_type
+    min_area = request_info.settings.min_area
+    max_area = request_info.settings.max_area
+    gt_type = request_info.settings.dataset_gt_task_type
+    pd_type = request_info.settings.model_pred_task_type
 
     print(max_area)
 
@@ -904,7 +904,7 @@ def create_ap_metrics(
         model_id=model_id,
         gt_type=gt_type,
         pd_type=pd_type,
-        label_key='name',
+        label_key="name",
         iou_thresholds=request_info.iou_thresholds,
         ious_to_keep=request_info.ious_to_keep,
         min_area=min_area,
@@ -941,6 +941,7 @@ def create_ap_metrics(
     db.commit()
 
     return mp.id
+
 
 def create_clf_metrics(
     db: Session,

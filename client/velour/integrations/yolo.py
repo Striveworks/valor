@@ -15,7 +15,9 @@ from velour.data_types import (
 )
 
 
-def parse_yolo_image_classification(result, uid: str, label_key: str = 'class'):
+def parse_yolo_image_classification(
+    result, uid: str, label_key: str = "class"
+):
     """Parses Ultralytic's result for an image classification task."""
 
     # Extract data
@@ -62,7 +64,10 @@ def _convert_yolo_segmentation(
 
 
 def parse_yolo_image_segmentation(
-    result, uid: str, label_key: str = 'class', resample: Resampling = Resampling.BILINEAR
+    result,
+    uid: str,
+    label_key: str = "class",
+    resample: Resampling = Resampling.BILINEAR,
 ):
     """Parses Ultralytic's result for an image segmentation task."""
 
@@ -108,7 +113,7 @@ def parse_yolo_image_segmentation(
     ]
 
 
-def parse_yolo_object_detection(result, uid: str, label_key: str = 'class'):
+def parse_yolo_object_detection(result, uid: str, label_key: str = "class"):
     """Parses Ultralytic's result for an object detection task."""
 
     # Extract data
@@ -156,7 +161,7 @@ def parse_yolo_object_detection(result, uid: str, label_key: str = 'class'):
 def parse_yolo_results(
     results,
     uid: str,
-    label_key: str = 'class',
+    label_key: str = "class",
     segmentation_resample: Resampling = Resampling.BILINEAR,
 ) -> Union[
     PredictedDetection,
@@ -179,12 +184,17 @@ def parse_yolo_results(
 
     if "masks" in results.keys and "boxes" in results.keys:
         return parse_yolo_image_segmentation(
-            results, uid=uid, label_key=label_key, resample=segmentation_resample
+            results,
+            uid=uid,
+            label_key=label_key,
+            resample=segmentation_resample,
         )
     elif "boxes" in results.keys:
         return parse_yolo_object_detection(results, uid, label_key=label_key)
     elif "probs" in results.keys:
-        return parse_yolo_image_classification(results, uid, label_key=label_key)
+        return parse_yolo_image_classification(
+            results, uid, label_key=label_key
+        )
     else:
         raise ValueError(
             "Input arguement 'result' does not contain identifiable information."

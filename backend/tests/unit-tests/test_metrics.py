@@ -3,57 +3,80 @@ from velour_api.metrics.classification import (
     accuracy_from_cm,
     precision_and_recall_f1_from_confusion_matrix,
 )
-from velour_api.metrics.detection import (
-    _ap, 
-    RankedPair,
-)
+from velour_api.metrics.detection import RankedPair, _ap
+
 
 def truncate_float(x: float) -> str:
     return f"{int(x)}.{int((x - int(x)) * 100)}"
 
+
 def test__ap():
 
     pairs = {
-        '0' : [ 
-            RankedPair(1,1, score=0.8, iou=0.6),
-            RankedPair(2,2, score=0.6, iou=0.8),
-            RankedPair(3,3, score=0.4, iou=1.0),
+        "0": [
+            RankedPair(1, 1, score=0.8, iou=0.6),
+            RankedPair(2, 2, score=0.6, iou=0.8),
+            RankedPair(3, 3, score=0.4, iou=1.0),
         ],
-        '1' : [
-            RankedPair(0,0, score=0.2, iou=1.0),
-            RankedPair(2,2, score=0.04, iou=1.0),
+        "1": [
+            RankedPair(0, 0, score=0.2, iou=1.0),
+            RankedPair(2, 2, score=0.04, iou=1.0),
         ],
-        '2' : [
-            RankedPair(0,0, score=1.0, iou=1.0),
-        ]
+        "2": [
+            RankedPair(0, 0, score=1.0, iou=1.0),
+        ],
     }
 
     labels = {
-        '0' : schemas.Label(key='name', value='car'),
-        '1' : schemas.Label(key='name', value='dog'),
-        '2' : schemas.Label(key='name', value='person'),
+        "0": schemas.Label(key="name", value="car"),
+        "1": schemas.Label(key="name", value="dog"),
+        "2": schemas.Label(key="name", value="person"),
     }
 
     number_of_ground_truths = {
-        '0' : 3,
-        '1' : 2,
-        '2' : 4,
+        "0": 3,
+        "1": 2,
+        "2": 4,
     }
 
     iou_thresholds = [0.5, 0.75, 0.9]
     score_threshold = 0.25
-    
+
     # Calculated by hand
     reference_metrics = [
-        schemas.APMetric(iou=0.5, value=1.0, label=schemas.Label(key='name', value='car')),
-        schemas.APMetric(iou=0.5, value=0.0, label=schemas.Label(key='name', value='dog')),
-        schemas.APMetric(iou=0.5, value=0.25, label=schemas.Label(key='name', value='person')),
-        schemas.APMetric(iou=0.75, value=0.44, label=schemas.Label(key='name', value='car')),
-        schemas.APMetric(iou=0.75, value=0.0, label=schemas.Label(key='name', value='dog')),
-        schemas.APMetric(iou=0.75, value=0.25, label=schemas.Label(key='name', value='person')),
-        schemas.APMetric(iou=0.9, value=0.11, label=schemas.Label(key='name', value='car')),
-        schemas.APMetric(iou=0.9, value=0.0, label=schemas.Label(key='name', value='dog')),
-        schemas.APMetric(iou=0.9, value=0.25, label=schemas.Label(key='name', value='person')),
+        schemas.APMetric(
+            iou=0.5, value=1.0, label=schemas.Label(key="name", value="car")
+        ),
+        schemas.APMetric(
+            iou=0.5, value=0.0, label=schemas.Label(key="name", value="dog")
+        ),
+        schemas.APMetric(
+            iou=0.5,
+            value=0.25,
+            label=schemas.Label(key="name", value="person"),
+        ),
+        schemas.APMetric(
+            iou=0.75, value=0.44, label=schemas.Label(key="name", value="car")
+        ),
+        schemas.APMetric(
+            iou=0.75, value=0.0, label=schemas.Label(key="name", value="dog")
+        ),
+        schemas.APMetric(
+            iou=0.75,
+            value=0.25,
+            label=schemas.Label(key="name", value="person"),
+        ),
+        schemas.APMetric(
+            iou=0.9, value=0.11, label=schemas.Label(key="name", value="car")
+        ),
+        schemas.APMetric(
+            iou=0.9, value=0.0, label=schemas.Label(key="name", value="dog")
+        ),
+        schemas.APMetric(
+            iou=0.9,
+            value=0.25,
+            label=schemas.Label(key="name", value="person"),
+        ),
     ]
 
     ap_metrics = _ap(
@@ -69,6 +92,7 @@ def test__ap():
         assert pd.iou == gt.iou
         assert truncate_float(pd.value) == truncate_float(gt.value)
         assert pd.label == gt.label
+
 
 def test_precision_and_recall_f1_from_confusion_matrix(
     cm: schemas.ConfusionMatrix,

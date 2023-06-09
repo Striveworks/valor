@@ -1,25 +1,26 @@
 import heapq
 from dataclasses import dataclass
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import ProgrammingError
 from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.orm import Session
 
 from velour_api import schemas
+from velour_api.enums import AnnotationType
 from velour_api.sql import (
+    compute_iou,
     convert_polygons_to_bbox,
     convert_raster_to_bbox,
     convert_raster_to_polygons,
-    join_labels,
-    join_tables,
-    compute_iou,
+    function_find_ranked_pairs,
     get_labels,
     get_number_of_ground_truths,
     get_sorted_ranked_pairs,
-    function_find_ranked_pairs,
+    join_labels,
+    join_tables,
 )
-from velour_api.enums import AnnotationType
+
 
 @dataclass
 class RankedPair:
@@ -28,12 +29,13 @@ class RankedPair:
     score: float
     iou: float
 
-def ap(
+
+def _ap(
     sorted_ranked_pairs: Dict[int, List[RankedPair]],
     number_of_ground_truths: int,
     labels: Dict[int, schemas.Label],
     iou_thresholds: list[float],
-    score_threshold: float
+    score_threshold: float,
 ) -> list[schemas.APMetric]:
     """Computes the average precision. Return is a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
@@ -62,7 +64,10 @@ def ap(
                 cnt_tp = 0
                 cnt_fp = 0
                 for row in sorted_ranked_pairs[label_id]:
-                    if row.score >= score_threshold and row.iou >= iou_threshold:
+                    if (
+                        row.score >= score_threshold
+                        and row.iou >= iou_threshold
+                    ):
                         cnt_tp += 1
                     else:
                         cnt_fp += 1
@@ -85,7 +90,7 @@ def ap(
 
 def calculate_ap_101_pt_interp(precisions, recalls) -> float:
     """Use the 101 point interpolation method (following torchmetrics)"""
-    
+
     assert len(precisions) == len(recalls)
     if len(precisions) == 0:
         return 0
@@ -108,6 +113,7 @@ def calculate_ap_101_pt_interp(precisions, recalls) -> float:
         ret -= prec_heap[0][0]
     return ret / 101
 
+
 def compute_ap_metrics(
     db: Session,
     dataset_id: int,
@@ -129,65 +135,96 @@ def compute_ap_metrics(
     """Computes average precision metrics."""
 
     taskTypes = {
-        schemas.Task.BBOX_OBJECT_DETECTION: 'detection',
-        schemas.Task.POLY_OBJECT_DETECTION: 'detection',
-        schemas.Task.INSTANCE_SEGMENTATION: 'segmentation',
+        schemas.Task.BBOX_OBJECT_DETECTION: "detection",
+        schemas.Task.POLY_OBJECT_DETECTION: "detection",
+        schemas.Task.INSTANCE_SEGMENTATION: "segmentation",
     }
 
-    # Generate select 
+    # Generate select
     gt_select = f"select * from ground_truth_{taskTypes[gt_type]}"
     pd_select = f"select * from predicted_{taskTypes[pd_type]}"
-    
+
     # Apply type conversion query (if applicable)
     if schemas.Task.BBOX_OBJECT_DETECTION in [gt_type, pd_type]:
         common_task = schemas.Task.BBOX_OBJECT_DETECTION
 
-        if gt_type in [schemas.Task.BBOX_OBJECT_DETECTION, schemas.Task.POLY_OBJECT_DETECTION]:
-            gt_select = convert_polygons_to_bbox('ground_truth_detection', dataset_id=dataset_id, min_area=min_area, max_area=max_area)
+        if gt_type in [
+            schemas.Task.BBOX_OBJECT_DETECTION,
+            schemas.Task.POLY_OBJECT_DETECTION,
+        ]:
+            gt_select = convert_polygons_to_bbox(
+                "ground_truth_detection",
+                dataset_id=dataset_id,
+                min_area=min_area,
+                max_area=max_area,
+            )
         elif gt_type == schemas.Task.INSTANCE_SEGMENTATION:
-            gt_select = convert_raster_to_bbox('ground_truth_segmentation', dataset_id=dataset_id, min_area=min_area, max_area=max_area)
+            gt_select = convert_raster_to_bbox(
+                "ground_truth_segmentation",
+                dataset_id=dataset_id,
+                min_area=min_area,
+                max_area=max_area,
+            )
         else:
             raise ValueError("Ground Truth data is of a unsupported type.")
-            
-        if pd_type in [schemas.Task.BBOX_OBJECT_DETECTION, schemas.Task.POLY_OBJECT_DETECTION]:
-            pd_select = convert_polygons_to_bbox('predicted_detection', model_id=model_id, min_area=min_area, max_area=max_area)
+
+        if pd_type in [
+            schemas.Task.BBOX_OBJECT_DETECTION,
+            schemas.Task.POLY_OBJECT_DETECTION,
+        ]:
+            pd_select = convert_polygons_to_bbox(
+                "predicted_detection",
+                model_id=model_id,
+                min_area=min_area,
+                max_area=max_area,
+            )
         elif pd_type == schemas.Task.INSTANCE_SEGMENTATION:
-            pd_select = convert_raster_to_bbox('predicted_segmentation', model_id=model_id, min_area=min_area, max_area=max_area)
+            pd_select = convert_raster_to_bbox(
+                "predicted_segmentation",
+                model_id=model_id,
+                min_area=min_area,
+                max_area=max_area,
+            )
         else:
             raise ValueError("Predicted data is of a unsupported type.")
-        
-        print("bounding box task")
-        
+
     elif schemas.Task.POLY_OBJECT_DETECTION in [gt_type, pd_type]:
         common_task = schemas.Task.POLY_OBJECT_DETECTION
-        
+
         if gt_type == schemas.Task.INSTANCE_SEGMENTATION:
-            gt_select = convert_raster_to_polygons('ground_truth_segmentation', dataset_id=dataset_id, min_area=min_area, max_area=max_area)
+            gt_select = convert_raster_to_polygons(
+                "ground_truth_segmentation",
+                dataset_id=dataset_id,
+                min_area=min_area,
+                max_area=max_area,
+            )
         else:
             raise ValueError("Ground Truth data is of a unsupported type.")
-        
+
         if pd_type == schemas.Task.INSTANCE_SEGMENTATION:
-            pd_select = convert_raster_to_polygons('predicted_segmentation', model_id=model_id, min_area=min_area, max_area=max_area)
+            pd_select = convert_raster_to_polygons(
+                "predicted_segmentation",
+                model_id=model_id,
+                min_area=min_area,
+                max_area=max_area,
+            )
         else:
             raise ValueError("Predicted data is of a unsupported type.")
-            
+
     else:
         common_task = schemas.Task.INSTANCE_SEGMENTATION
 
-    print(pd_select)
-    print(gt_select)
-            
     # Join labels
     labeled_gt_select = join_labels(
-        subquery=gt_select, 
-        label_table=f"labeled_ground_truth_{taskTypes[gt_type]}", 
+        subquery=gt_select,
+        label_table=f"labeled_ground_truth_{taskTypes[gt_type]}",
         column=f"{taskTypes[gt_type]}_id",
         label_key=label_key,
         is_prediction=False,
     )
     labeled_pd_select = join_labels(
-        subquery=pd_select, 
-        label_table=f"labeled_predicted_{taskTypes[pd_type]}", 
+        subquery=pd_select,
+        label_table=f"labeled_predicted_{taskTypes[pd_type]}",
         column=f"{taskTypes[pd_type]}_id",
         label_key=label_key,
         is_prediction=True,
@@ -198,8 +235,10 @@ def compute_ap_metrics(
         schemas.Task.BBOX_OBJECT_DETECTION: AnnotationType.BBOX,
         schemas.Task.POLY_OBJECT_DETECTION: AnnotationType.BOUNDARY,
         schemas.Task.INSTANCE_SEGMENTATION: AnnotationType.RASTER,
-    }   
-    joint_table = join_tables(labeled_gt_select, labeled_pd_select, annotationType[common_task])
+    }
+    joint_table = join_tables(
+        labeled_gt_select, labeled_pd_select, annotationType[common_task]
+    )
 
     # Compute IOU's
     ious = compute_iou(joint_table, annotationType[common_task])
@@ -207,7 +246,7 @@ def compute_ap_metrics(
     # Load IOU's into a temporary table
     ious_table = f"create temporary table iou as ({ious})"
     try:
-        db.execute(text('drop table iou'))
+        db.execute(text("drop table iou"))
     except ProgrammingError:
         db.rollback()
     db.execute(text(ious_table))
@@ -216,9 +255,15 @@ def compute_ap_metrics(
     db.execute(text(function_find_ranked_pairs()))
 
     # Get params
-    labels = {row[0] : schemas.Label(key=row[1], value=row[2]) for row in db.execute(text(get_labels())).fetchall()}
-    number_of_ground_truths = {row[0] : row[1] for row in db.execute(text(get_number_of_ground_truths()))}
-    
+    labels = {
+        row[0]: schemas.Label(key=row[1], value=row[2])
+        for row in db.execute(text(get_labels())).fetchall()
+    }
+    number_of_ground_truths = {
+        row[0]: row[1]
+        for row in db.execute(text(get_number_of_ground_truths()))
+    }
+
     # Load ranked_pairs
     pairs = {}
     for row in db.execute(text(get_sorted_ranked_pairs())).fetchall():
@@ -226,19 +271,14 @@ def compute_ap_metrics(
         if label_id not in pairs:
             pairs[label_id] = []
         pairs[label_id].append(
-            RankedPair(
-                gt_id=row[1],
-                pd_id=row[2],
-                score=row[3],
-                iou=row[4]
-            )
+            RankedPair(gt_id=row[1], pd_id=row[2], score=row[3], iou=row[4])
         )
 
     # Clear the session
     db.commit()
 
     # Compute AP
-    ap_metrics = ap(
+    ap_metrics = _ap(
         sorted_ranked_pairs=pairs,
         number_of_ground_truths=number_of_ground_truths,
         labels=labels,

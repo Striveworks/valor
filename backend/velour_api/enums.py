@@ -20,6 +20,7 @@ class DatumTypes(Enum):
     IMAGE = "Image"
     TABULAR = "Tabular"
 
+
 class AnnotationType(Enum):
     CLASSIFICATION = "classification"
     BBOX = "bbox"

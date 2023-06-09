@@ -2,25 +2,27 @@ from typing import Optional
 
 from velour_api.enums import AnnotationType
 
+
 def get_dataset_id_from_datum_id(datum_id: str):
-    """ SQL subquery to retrieve dataset id from datum id. """
+    """SQL subquery to retrieve dataset id from datum id."""
     return f"(select dataset_id from datum where id = {datum_id} limit 1)"
 
+
 def convert_polygons_to_bbox(
-    tablename: str, 
-    dataset_id: int = None, 
-    model_id: int = None, 
+    tablename: str,
+    dataset_id: int = None,
+    model_id: int = None,
     min_area: Optional[float] = None,
     max_area: Optional[float] = None,
 ):
-    """ Takes either 'ground_truth_detection' or 'predicted_detection' as tablename. """
+    """Takes either 'ground_truth_detection' or 'predicted_detection' as tablename."""
 
-    criteria_id = ''
+    criteria_id = ""
     if dataset_id is not None and model_id is None:
         criteria_id = f"(select {get_dataset_id_from_datum_id('datum_id')} limit 1) =  {dataset_id}"
     elif dataset_id is None and model_id is not None:
         criteria_id = f"model_id =  {model_id}"
-    elif dataset_id is not None and model_id is not None:    
+    elif dataset_id is not None and model_id is not None:
         raise ValueError
 
     subquery = f"""
@@ -40,7 +42,7 @@ def convert_polygons_to_bbox(
         criteria_area.append(f"ST_AREA(bbox) >= {min_area}")
     if max_area is not None:
         criteria_area.append(f"ST_AREA(bbox) <= {max_area}")
-    
+
     if criteria_area:
         return f"""
         SELECT id, bbox, datum_id
@@ -50,21 +52,22 @@ def convert_polygons_to_bbox(
     else:
         return subquery
 
+
 def convert_raster_to_polygons(
-    tablename: str, 
-    dataset_id: int = None, 
-    model_id: int = None, 
+    tablename: str,
+    dataset_id: int = None,
+    model_id: int = None,
     min_area: Optional[float] = None,
     max_area: Optional[float] = None,
 ):
-    """ Takes either 'ground_truth_segmentation' or 'predicted_segmentation' as tablename. """
+    """Takes either 'ground_truth_segmentation' or 'predicted_segmentation' as tablename."""
 
-    criteria_id = ''
+    criteria_id = ""
     if dataset_id is not None and model_id is None:
         criteria_id = f"(select {get_dataset_id_from_datum_id('datum_id')} limit 1) =  {dataset_id}"
     elif dataset_id is None and model_id is not None:
         criteria_id = f"model_id =  {model_id}"
-    elif dataset_id is not None and model_id is not None:    
+    elif dataset_id is not None and model_id is not None:
         raise ValueError
 
     subquery = f"""
@@ -75,7 +78,7 @@ def convert_raster_to_polygons(
             SELECT id, ST_MakeValid((ST_DumpAsPolygons(shape)).geom) as geom
             FROM {tablename}
             {f"WHERE ({criteria_id})" if criteria_id != '' else ''}
-        ) AS conversion 
+        ) AS conversion
         GROUP BY id
     )
     AS subquery
@@ -88,7 +91,7 @@ def convert_raster_to_polygons(
         criteria_area.append(f"ST_AREA(boundary) >= {min_area}")
     if max_area is not None:
         criteria_area.append(f"ST_AREA(boundary) <= {max_area}")
-    
+
     if criteria_area:
         return f"""
         SELECT id, is_instance, boundary, datum_id
@@ -100,21 +103,21 @@ def convert_raster_to_polygons(
 
 
 def convert_raster_to_bbox(
-    tablename: str, 
-    dataset_id: int = None, 
-    model_id: int = None, 
+    tablename: str,
+    dataset_id: int = None,
+    model_id: int = None,
     min_area: Optional[float] = None,
     max_area: Optional[float] = None,
 ):
-    """ Takes either 'ground_truth_segmentation' or 'predicted_segmentation' as tablename. """
+    """Takes either 'ground_truth_segmentation' or 'predicted_segmentation' as tablename."""
 
-    criteria_id = ''
+    criteria_id = ""
 
     if dataset_id is not None and model_id is None:
         criteria_id = f"(select {get_dataset_id_from_datum_id('datum_id')} limit 1) =  {dataset_id}"
     elif dataset_id is None and model_id is not None:
         criteria_id = f"model_id =  {model_id}"
-    elif dataset_id is not None and model_id is not None:    
+    elif dataset_id is not None and model_id is not None:
         raise ValueError
 
     subquery = f"""
@@ -125,7 +128,7 @@ def convert_raster_to_bbox(
             SELECT id, ST_MakeValid((ST_DumpAsPolygons(shape)).geom) as geom
             FROM {tablename}
             {f"WHERE ({criteria_id})" if criteria_id != '' else ''}
-        ) AS conversion 
+        ) AS conversion
         GROUP BY id
     )
     AS subquery
@@ -138,10 +141,10 @@ def convert_raster_to_bbox(
         criteria_area.append(f"ST_AREA(bbox) >= {min_area}")
     if max_area is not None:
         criteria_area.append(f"ST_AREA(bbox) <= {max_area}")
-    
+
     if criteria_area:
         return f"""
-        SELECT id, is_instance, bbox, datum_id 
+        SELECT id, is_instance, bbox, datum_id
         FROM ({subquery}) AS subquery
         WHERE {' AND '.join(criteria_area)}
         """
@@ -150,23 +153,24 @@ def convert_raster_to_bbox(
 
 
 def filter_by_label_key(tablename, label_key):
-    """ SQL query to filter labels by category. """
-    
+    """SQL query to filter labels by category."""
+
     return f"""
-    SELECT * 
+    SELECT *
     FROM {tablename}
     WHERE (select key from label where id = label_id) = '{label_key}'
     """
 
+
 def join_labels(
     subquery: str,
-    label_table: str, 
-    column: str, 
-    label_key: str, 
-    is_prediction: bool = False
+    label_table: str,
+    column: str,
+    label_key: str,
+    is_prediction: bool = False,
 ):
-    """ SQL query to join labels to annotations. """
-    
+    """SQL query to join labels to annotations."""
+
     return f"""
     SELECT annotation.*, label_id{', score' if is_prediction else ''}
     FROM ({subquery}) AS annotation
@@ -174,70 +178,75 @@ def join_labels(
     ON annotation.id = subquery.{column}
     """
 
+
 def join_tables(
-    gt_subquery: str, 
-    pd_subquery: str, 
-    datatype: AnnotationType = AnnotationType.BBOX
+    gt_subquery: str,
+    pd_subquery: str,
+    datatype: AnnotationType = AnnotationType.BBOX,
 ):
-    """ SQL query to join labeled table data. """
-    
+    """SQL query to join labeled table data."""
+
     return f"""
-        WITH 
-        gt AS ({gt_subquery}), 
+        WITH
+        gt AS ({gt_subquery}),
         pd AS ({pd_subquery})
-        SELECT 
-            gt.datum_id, 
-            gt.id as gt_id, 
-            pd.id as pd_id, 
-            gt.label_id as gt_label_id, 
-            pd.label_id as pd_label_id, 
-            gt.{datatype.value} as gt_{datatype.value}, 
-            pd.{datatype.value} as pd_{datatype.value}, 
+        SELECT
+            gt.datum_id,
+            gt.id as gt_id,
+            pd.id as pd_id,
+            gt.label_id as gt_label_id,
+            pd.label_id as pd_label_id,
+            gt.{datatype.value} as gt_{datatype.value},
+            pd.{datatype.value} as pd_{datatype.value},
             pd.score
         FROM gt
         FULL JOIN pd
         ON gt.datum_id = pd.datum_id AND gt.label_id = pd.label_id
     """
 
+
 def compute_iou(subquery: str, datatype: AnnotationType = AnnotationType.BBOX):
-    """ SQL query to generate iou table from a joint table. """
+    """SQL query to generate iou table from a joint table."""
 
     if datatype == AnnotationType.BBOX or datatype == AnnotationType.BOUNDARY:
-        return f"""     
-        SELECT 
+        return f"""
+        SELECT
         datum_id,
-        gt_id, 
-        pd_id, 
+        gt_id,
+        pd_id,
         gt_label_id,
         pd_label_id,
         score,
-        ST_Area(ST_Intersection(gt_{datatype.value}, pd_{datatype.value})) / ST_Area(ST_Union(gt_{datatype.value}, pd_{datatype.value})) iou 
+        ST_Area(ST_Intersection(gt_{datatype.value}, pd_{datatype.value})) / ST_Area(ST_Union(gt_{datatype.value}, pd_{datatype.value})) iou
         FROM ({subquery}) AS subquery
         """
     elif datatype == AnnotationType.RASTER:
-        return f"""     
-        SELECT 
+        return f"""
+        SELECT
         datum_id,
-        gt_id, 
-        pd_id, 
+        gt_id,
+        pd_id,
         gt_label_id,
         pd_label_id,
         score,
-        ST_Count(ST_Intersection(gt_{datatype.value}, pd_{datatype.value})) / 
-        (ST_Count(gt_{datatype.value}) + ST_Count(pd_{datatype.value}) - ST_Count(ST_Intersection(gt_{datatype.value}, pd_{datatype.value}))) iou 
+        ST_Count(ST_Intersection(gt_{datatype.value}, pd_{datatype.value})) /
+        (ST_Count(gt_{datatype.value}) + ST_Count(pd_{datatype.value}) - ST_Count(ST_Intersection(gt_{datatype.value}, pd_{datatype.value}))) iou
         FROM ({subquery}) AS subquery
         """
     else:
-        raise NotImplemented(f"AnnotationType {datatype} not implemented.")
+        raise NotImplementedError(
+            f"AnnotationType {datatype} not implemented."
+        )
+
 
 def function_find_ranked_pairs():
-    """ SQL create function to find ranked ground truth/prediction pairs. """
+    """SQL create function to find ranked ground truth/prediction pairs."""
 
-    return f"""
-    CREATE OR REPLACE FUNCTION find_ranked_pairs() RETURNS TABLE (label_id int, gt_id int, pd_id int, score float, iou float) AS 
+    return """
+    CREATE OR REPLACE FUNCTION find_ranked_pairs() RETURNS TABLE (label_id int, gt_id int, pd_id int, score float, iou float) AS
     $BODY$
         DECLARE
-            row record;	
+            row record;
         BEGIN
 
             CREATE TEMPORARY TABLE ranked AS
@@ -248,40 +257,43 @@ def function_find_ranked_pairs():
             FOR row IN (SELECT ranked.gt_id, ranked.pd_id FROM ranked ORDER BY -ranked.score, -ranked.iou)
             LOOP
                 DELETE FROM ranked WHERE ranked.gt_id = row.gt_id and ranked.pd_id != row.pd_id;
-                DELETE FROM ranked WHERE ranked.gt_id != row.gt_id and ranked.pd_id = row.pd_id;                
+                DELETE FROM ranked WHERE ranked.gt_id != row.gt_id and ranked.pd_id = row.pd_id;
             END LOOP;
 
-            RETURN QUERY SELECT ranked.label_id, ranked.gt_id, ranked.pd_id, ranked.score, ranked.iou FROM ranked; 
+            RETURN QUERY SELECT ranked.label_id, ranked.gt_id, ranked.pd_id, ranked.score, ranked.iou FROM ranked;
 
             DROP TABLE ranked;
-            
+
         END;
     $BODY$
     LANGUAGE plpgsql;
     """
 
-def get_labels():
-    """ SQL query returns label table. """
 
-    return f"""
+def get_labels():
+    """SQL query returns label table."""
+
+    return """
     SELECT id, key, value
     FROM label;
     """
 
-def get_number_of_ground_truths():
-    """ SQL query returns # of distinct ground truths grouped by label ID. """
 
-    return f"""
+def get_number_of_ground_truths():
+    """SQL query returns # of distinct ground truths grouped by label ID."""
+
+    return """
     SELECT gt_label_id as label_id, count(distinct(gt_id))
-    FROM iou 
+    FROM iou
     WHERE gt_label_id IS NOT NULL
     GROUP BY gt_label_id
     """
 
-def get_sorted_ranked_pairs():
-    """ SQL query returns ranked gt/pd pairs ordered by score, iou. """
 
-    return f"""
+def get_sorted_ranked_pairs():
+    """SQL query returns ranked gt/pd pairs ordered by score, iou."""
+
+    return """
     SELECT label_id, gt_id, pd_id, score, iou
     FROM find_ranked_pairs()
     ORDER BY -score, -iou
