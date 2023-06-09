@@ -17,6 +17,7 @@ import { useParams } from 'react-router-dom';
 import { usingAuth } from './auth';
 import { Wrapper } from './components/wrapper';
 import { EvaluationSetting, Metric } from './types';
+import TextField from '@mui/material/TextField';
 
 const metricColumns: GridColDef[] = [
 	{ field: 'label', headerName: 'Label', width: 300 },
@@ -29,18 +30,19 @@ const MetricTypeSelect: React.FC<{
 	setSelectedMetricType: React.Dispatch<React.SetStateAction<string>>;
 	metricTypes: string[];
 }> = ({ selectedMetricType, setSelectedMetricType, metricTypes }) => {
-	const handleChange = (event: SelectChangeEvent) => {
+	const handleChange = (
+		event: ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>
+	) => {
 		setSelectedMetricType(event.target.value as string);
 	};
 
 	return (
 		<FormControl fullWidth>
-			<InputLabel id='select-label'>Metric type</InputLabel>
-			<Select
-				labelId='select-label'
+			<TextField
+				select
 				id='simple-select'
 				value={selectedMetricType}
-				label='Metric'
+				label='Metric type'
 				onChange={handleChange}
 			>
 				{metricTypes.map((t) => (
@@ -48,7 +50,7 @@ const MetricTypeSelect: React.FC<{
 						{t}
 					</MenuItem>
 				))}
-			</Select>
+			</TextField>
 		</FormControl>
 	);
 };
@@ -106,6 +108,8 @@ const MetricsSection = () => {
 	Object.keys(metricsByType).forEach((metricType) => {
 		metricsByType[metricType] = metricsByType[metricType].map(stringifyObjectValues);
 	});
+
+	// console.log(metricsByType['Accuracy'][0]);
 
 	return (
 		<>
