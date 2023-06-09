@@ -53,26 +53,6 @@ const MetricTypeSelect: React.FC<{
 	);
 };
 
-const Switch = ({
-	test,
-	children
-}: {
-	test: string;
-	children: JSX.Element[];
-}): JSX.Element => {
-	const ret = children.find((child) => {
-		return child.props.value === test;
-	});
-	if (ret === undefined) {
-		return <></>;
-	}
-	return ret;
-};
-
-const SwitchElement = ({ children }: { children: JSX.Element }): JSX.Element => {
-	return children;
-};
-
 const MetricsSection = () => {
 	const { name, evalSettingsId } = useParams();
 	const [selectedMetricType, setSelectedMetricType] = useState('');
@@ -134,25 +114,21 @@ const MetricsSection = () => {
 				setSelectedMetricType={setSelectedMetricType}
 				metricTypes={Object.keys(metricsByType)}
 			/>
-			<Switch test={selectedMetricType}>
-				{Object.keys(metricsByType).map((metricType) => (
-					<SwitchElement key={metricType}>
-						<DataGrid
-							rows={metricsByType[metricType]}
-							columns={metricColumns}
-							initialState={{
-								pagination: {
-									paginationModel: {
-										pageSize: 20
-									}
-								}
-							}}
-							pageSizeOptions={[5]}
-							disableRowSelectionOnClick
-						/>
-					</SwitchElement>
-				))}
-			</Switch>
+			{metricsByType[selectedMetricType] && (
+				<DataGrid
+					rows={metricsByType[selectedMetricType]}
+					columns={metricColumns}
+					initialState={{
+						pagination: {
+							paginationModel: {
+								pageSize: 20
+							}
+						}
+					}}
+					pageSizeOptions={[5]}
+					disableRowSelectionOnClick
+				/>
+			)}
 		</>
 	);
 };
