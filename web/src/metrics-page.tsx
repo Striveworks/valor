@@ -1,23 +1,21 @@
 import Box from '@mui/material/Box';
 import FormControl from '@mui/material/FormControl';
 import Grid from '@mui/material/Grid';
-import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
-import Select, { SelectChangeEvent } from '@mui/material/Select';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableRow from '@mui/material/TableRow';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { ChangeEvent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { usingAuth } from './auth';
 import { Wrapper } from './components/wrapper';
 import { EvaluationSetting, Metric } from './types';
-import TextField from '@mui/material/TextField';
 
 const metricColumns: GridColDef[] = [
 	{ field: 'label', headerName: 'Label', width: 300 },
@@ -30,10 +28,8 @@ const MetricTypeSelect: React.FC<{
 	setSelectedMetricType: React.Dispatch<React.SetStateAction<string>>;
 	metricTypes: string[];
 }> = ({ selectedMetricType, setSelectedMetricType, metricTypes }) => {
-	const handleChange = (
-		event: ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>
-	) => {
-		setSelectedMetricType(event.target.value as string);
+	const handleChange = (event: ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
+		setSelectedMetricType(event?.target?.value);
 	};
 
 	return (
@@ -108,8 +104,6 @@ const MetricsSection = () => {
 	Object.keys(metricsByType).forEach((metricType) => {
 		metricsByType[metricType] = metricsByType[metricType].map(stringifyObjectValues);
 	});
-
-	// console.log(metricsByType['Accuracy'][0]);
 
 	return (
 		<>
