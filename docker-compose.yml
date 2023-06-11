@@ -1,7 +1,7 @@
 services:
   service:
     image: ghcr.io/striveworks/velour/velour-service
-    build: .
+    build: ./backend
     ports:
       - "8000:8000"
     environment:
@@ -21,3 +21,7 @@ services:
     image: "redis"
     ports:
       - "6379:6379"
+  web:
+    build: ./web
+    ports:
+      - "3000:3000"
