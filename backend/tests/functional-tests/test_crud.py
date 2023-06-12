@@ -896,167 +896,167 @@ def test_get_filtered_preds_statement_and_missing_labels(
     assert ignored_pred_labels == [schemas.Label(key="k2", value="v2")]
 
 
-# def test_create_ap_metrics(db: Session, groundtruths, predictions):
-#     # the groundtruths and predictions arguments are not used but
-#     # those fixtures create the necessary dataset, model, groundtruths, and predictions
+def test_create_ap_metrics(db: Session, groundtruths, predictions):
+    # the groundtruths and predictions arguments are not used but
+    # those fixtures create the necessary dataset, model, groundtruths, and predictions
 
-#     from sqlalchemy import text
+    from sqlalchemy import text
 
-#     db.execute(text("select * from test"))
+    db.execute(text("select * from test"))
 
-#     def method_to_test(min_area: float = None, max_area: float = None):
-#         request_info = schemas.APRequest(
-#             settings=schemas.EvaluationSettings(
-#                 model_name="test model",
-#                 dataset_name="test dataset",
-#                 min_area=min_area,
-#                 max_area=max_area,
-#             ),
-#             iou_thresholds=[0.2, 0.6],
-#             ious_to_keep=[0.2],
-#         )
+    def method_to_test(min_area: float = None, max_area: float = None):
+        request_info = schemas.APRequest(
+            settings=schemas.EvaluationSettings(
+                model_name="test model",
+                dataset_name="test dataset",
+                min_area=min_area,
+                max_area=max_area,
+            ),
+            iou_thresholds=[0.2, 0.6],
+            ious_to_keep=[0.2],
+        )
 
-#         (
-#             gts_statement,
-#             preds_statement,
-#             missing_pred_labels,
-#             ignored_pred_labels,
-#         ) = crud.validate_create_ap_metrics(db, request_info)
+        (
+            gts_statement,
+            preds_statement,
+            missing_pred_labels,
+            ignored_pred_labels,
+        ) = crud.validate_create_ap_metrics(db, request_info)
 
-#         return (
-#             crud.create_ap_metrics(
-#                 db,
-#                 request_info=request_info,
-#             ),
-#             missing_pred_labels,
-#             ignored_pred_labels,
-#         )
+        return (
+            crud.create_ap_metrics(
+                db,
+                request_info=request_info,
+            ),
+            missing_pred_labels,
+            ignored_pred_labels,
+        )
 
-#     # check we get an error since the dataset is still a draft
-#     with pytest.raises(exceptions.DatasetIsDraftError):
-#         method_to_test()
+    # check we get an error since the dataset is still a draft
+    with pytest.raises(exceptions.DatasetIsDraftError):
+        method_to_test()
 
-#     # finalize dataset
-#     crud.finalize_dataset(db, "test dataset")
+    # finalize dataset
+    crud.finalize_dataset(db, "test dataset")
 
-#     # now if we try again we should get an error that inferences aren't finalized
-#     with pytest.raises(exceptions.InferencesAreNotFinalizedError):
-#         method_to_test()
+    # now if we try again we should get an error that inferences aren't finalized
+    with pytest.raises(exceptions.InferencesAreNotFinalizedError):
+        method_to_test()
 
-#     # verify we have no evaluations yet
-#     assert len(crud.get_model_evaluation_settings(db, model_name)) == 0
+    # verify we have no evaluations yet
+    assert len(crud.get_model_evaluation_settings(db, model_name)) == 0
 
-#     # finalize inferences and try again
-#     crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
+    # finalize inferences and try again
+    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
-#     (
-#         evaluation_settings_id,
-#         missing_pred_labels,
-#         ignored_pred_labels,
-#     ) = method_to_test()
+    (
+        evaluation_settings_id,
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = method_to_test()
 
-#     # check we have one evaluation
-#     assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
+    # check we have one evaluation
+    assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
 
-#     assert missing_pred_labels == []
-#     assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
+    assert missing_pred_labels == []
+    assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
 
-#     metrics = db.scalar(
-#         select(models.EvaluationSettings).where(
-#             models.EvaluationSettings.id == evaluation_settings_id
-#         )
-#     ).metrics
+    metrics = db.scalar(
+        select(models.EvaluationSettings).where(
+            models.EvaluationSettings.id == evaluation_settings_id
+        )
+    ).metrics
 
-#     metric_ids = [m.id for m in metrics]
+    metric_ids = [m.id for m in metrics]
 
-#     assert set([m.type for m in metrics]) == {
-#         "AP",
-#         "APAveragedOverIOUs",
-#         "mAP",
-#         "mAPAveragedOverIOUs",
-#     }
+    assert set([m.type for m in metrics]) == {
+        "AP",
+        "APAveragedOverIOUs",
+        "mAP",
+        "mAPAveragedOverIOUs",
+    }
 
-#     assert set(
-#         [m.parameters["iou"] for m in metrics if m.type in {"AP", "mAP"}]
-#     ) == {0.2}
+    assert set(
+        [m.parameters["iou"] for m in metrics if m.type in {"AP", "mAP"}]
+    ) == {0.2}
 
-#     # should be five labels (since thats how many are in groundtruth set)
-#     assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 5
+    # should be five labels (since thats how many are in groundtruth set)
+    assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 5
 
-#     # test getting metrics from evaluation settings id
-#     pydantic_metrics = crud.get_metrics_from_evaluation_settings_id(
-#         db, evaluation_settings_id
-#     )
-#     for m in pydantic_metrics:
-#         assert isinstance(m, schemas.Metric)
-#     assert len(pydantic_metrics) == len(metric_ids)
+    # test getting metrics from evaluation settings id
+    pydantic_metrics = crud.get_metrics_from_evaluation_settings_id(
+        db, evaluation_settings_id
+    )
+    for m in pydantic_metrics:
+        assert isinstance(m, schemas.Metric)
+    assert len(pydantic_metrics) == len(metric_ids)
 
-#     # run again and make sure no new ids were created
-#     evaluation_settings_id_again, _, _ = method_to_test()
-#     assert evaluation_settings_id == evaluation_settings_id_again
-#     metric_ids_again = [
-#         m.id
-#         for m in db.scalar(
-#             select(models.EvaluationSettings).where(
-#                 models.EvaluationSettings.id == evaluation_settings_id_again
-#             )
-#         ).metrics
-#     ]
-#     assert sorted(metric_ids) == sorted(metric_ids_again)
+    # run again and make sure no new ids were created
+    evaluation_settings_id_again, _, _ = method_to_test()
+    assert evaluation_settings_id == evaluation_settings_id_again
+    metric_ids_again = [
+        m.id
+        for m in db.scalar(
+            select(models.EvaluationSettings).where(
+                models.EvaluationSettings.id == evaluation_settings_id_again
+            )
+        ).metrics
+    ]
+    assert sorted(metric_ids) == sorted(metric_ids_again)
 
-#     # test crud.get_model_metrics
-#     metrics_pydantic = crud.get_model_metrics(
-#         db, "test model", evaluation_settings_id
-#     )
+    # test crud.get_model_metrics
+    metrics_pydantic = crud.get_model_metrics(
+        db, "test model", evaluation_settings_id
+    )
 
-#     assert len(metrics_pydantic) == len(metrics)
+    assert len(metrics_pydantic) == len(metrics)
 
-#     for m in metrics_pydantic:
-#         assert m.type in {
-#             "AP",
-#             "APAveragedOverIOUs",
-#             "mAP",
-#             "mAPAveragedOverIOUs",
-#         }
+    for m in metrics_pydantic:
+        assert m.type in {
+            "AP",
+            "APAveragedOverIOUs",
+            "mAP",
+            "mAPAveragedOverIOUs",
+        }
 
-#     # test when min area and max area are specified
-#     min_area, max_area = 10, 3000
-#     (
-#         evaluation_settings_id,
-#         missing_pred_labels,
-#         ignored_pred_labels,
-#     ) = method_to_test(min_area=min_area, max_area=max_area)
+    # test when min area and max area are specified
+    min_area, max_area = 10, 3000
+    (
+        evaluation_settings_id,
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = method_to_test(min_area=min_area, max_area=max_area)
 
-#     metrics_pydantic = crud.get_model_metrics(
-#         db, "test model", evaluation_settings_id
-#     )
-#     for m in metrics_pydantic:
-#         assert m.type in {
-#             "AP",
-#             "APAveragedOverIOUs",
-#             "mAP",
-#             "mAPAveragedOverIOUs",
-#         }
+    metrics_pydantic = crud.get_model_metrics(
+        db, "test model", evaluation_settings_id
+    )
+    for m in metrics_pydantic:
+        assert m.type in {
+            "AP",
+            "APAveragedOverIOUs",
+            "mAP",
+            "mAPAveragedOverIOUs",
+        }
 
-#     # check we have the right evaluations
-#     model_evals = crud.get_model_evaluation_settings(db, model_name)
-#     assert len(model_evals) == 2
-#     assert model_evals[0] == schemas.EvaluationSettings(
-#         model_name=model_name,
-#         dataset_name=dset_name,
-#         model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
-#         dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
-#         id=1,
-#     )
-#     assert model_evals[1] == schemas.EvaluationSettings(
-#         model_name=model_name,
-#         dataset_name=dset_name,
-#         model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
-#         dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
-#         min_area=min_area,
-#         max_area=max_area,
-#         id=2,
-#     )
+    # check we have the right evaluations
+    model_evals = crud.get_model_evaluation_settings(db, model_name)
+    assert len(model_evals) == 2
+    assert model_evals[0] == schemas.EvaluationSettings(
+        model_name=model_name,
+        dataset_name=dset_name,
+        model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+        id=1,
+    )
+    assert model_evals[1] == schemas.EvaluationSettings(
+        model_name=model_name,
+        dataset_name=dset_name,
+        model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+        dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+        min_area=min_area,
+        max_area=max_area,
+        id=2,
+    )
 
 
 def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
