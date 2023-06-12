@@ -1250,19 +1250,23 @@ def test_create_tabular_dataset_and_add_groundtruth(
     assert set(d.uid for d in data) == {"0", "1"}
 
     # check metadata is there
-    metadata1 = data[0].metadatums
-    assert len(metadata1) == 1
-    assert metadata1[0].name == "metadatum name1"
-    assert json.loads(db.scalar(ST_AsGeoJSON(metadata1[0].geo))) == {
+    metadata_links = data[0].datum_metadatum_links
+    assert len(metadata_links) == 1
+    metadatum = metadata_links[0].metadatum
+    assert metadatum.name == "metadatum name1"
+    assert json.loads(db.scalar(ST_AsGeoJSON(metadatum.geo))) == {
         "type": "Point",
         "coordinates": [-48.23456, 20.12345],
     }
-    metadata2 = data[1].metadatums
-    assert len(metadata2) == 2
-    assert metadata2[0].name == "metadatum name2"
-    assert metadata2[0].string_value == "a string"
-    assert metadata2[1].name == "metadatum name3"
-    assert metadata2[1].numeric_value == 0.45
+
+    metadata_links = data[1].datum_metadatum_links
+    assert len(metadata_links) == 2
+    metadatum1 = metadata_links[0].metadatum
+    metadatum2 = metadata_links[1].metadatum
+    assert metadatum1.name == "metadatum name2"
+    assert metadatum1.string_value == "a string"
+    assert metadatum2.name == "metadatum name3"
+    assert metadatum2.numeric_value == 0.45
 
     # check that we can add data with specified uids
     dataset.add_groundtruth(
@@ -1496,16 +1500,19 @@ def test_create_images_with_metadata(
     assert len(data) == 2
     assert set(d.uid for d in data) == {"uid1", "uid2"}
 
-    metadata1 = data[0].metadatums
-    assert len(metadata1) == 1
-    assert metadata1[0].name == "metadatum name1"
-    assert json.loads(db.scalar(ST_AsGeoJSON(metadata1[0].geo))) == {
+    metadata_links = data[0].datum_metadatum_links
+    assert len(metadata_links) == 1
+    metadatum = metadata_links[0].metadatum
+    assert metadata_links[0].metadatum.name == "metadatum name1"
+    assert json.loads(db.scalar(ST_AsGeoJSON(metadatum.geo))) == {
         "type": "Point",
         "coordinates": [-48.23456, 20.12345],
     }
-    metadata2 = data[1].metadatums
-    assert len(metadata2) == 2
-    assert metadata2[0].name == "metadatum name2"
-    assert metadata2[0].string_value == "a string"
-    assert metadata2[1].name == "metadatum name3"
-    assert metadata2[1].numeric_value == 0.45
+    metadata_links = data[1].datum_metadatum_links
+    assert len(metadata_links) == 2
+    metadatum1 = metadata_links[0].metadatum
+    metadatum2 = metadata_links[1].metadatum
+    assert metadatum1.name == "metadatum name2"
+    assert metadatum1.string_value == "a string"
+    assert metadatum2.name == "metadatum name3"
+    assert metadatum2.numeric_value == 0.45
