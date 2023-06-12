@@ -299,7 +299,7 @@ class Metadatum(Base):
 
 
 class DatumMetadatumLink(Base):
-    __tablename__ = "datum_meta_datum_link"
+    __tablename__ = "datum_metadatum_link"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"))
