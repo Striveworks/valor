@@ -246,7 +246,7 @@ def compute_ap_metrics(
     # Load IOU's into a temporary table
     ious_table = f"create temporary table iou as ({ious})"
     try:
-        db.execute(text(ious_table))
+        db.execute(text("drop table iou"))
     except ProgrammingError:
         db.rollback()
     db.execute(text(ious_table))
