@@ -114,11 +114,21 @@ def test_compute_ap_metrics(
     groundtruths: list[list[LabeledGroundTruthDetection]],
     predictions: list[list[LabeledPredictedDetection]],
 ):
+
+    model_name = "test model"
+    dataset_name = "test dataset"
+
+    dataset_id = crud.get_dataset(db, dataset_name).id
+    model_id = crud.get_model(db, model_name).id
+
     iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
     metrics = compute_ap_metrics(
         db=db,
-        predictions=predictions,
-        groundtruths=groundtruths,
+        dataset_id=dataset_id,
+        model_id=model_id,
+        gt_type=schemas.Task.BBOX_OBJECT_DETECTION,
+        pd_type=schemas.Task.BBOX_OBJECT_DETECTION,
+        label_key="class",
         iou_thresholds=iou_thresholds,
         ious_to_keep=[0.5, 0.75],
     )
