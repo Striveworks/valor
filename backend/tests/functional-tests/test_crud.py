@@ -951,6 +951,8 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         ignored_pred_labels,
     ) = method_to_test()
 
+    assert evaluation_settings_id == 1
+
     # check we have one evaluation
     assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
 
@@ -964,8 +966,6 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     ).metrics
 
     metric_ids = [m.id for m in metrics]
-
-    assert metrics is None
 
     assert set([m.type for m in metrics]) == {
         "AP",
