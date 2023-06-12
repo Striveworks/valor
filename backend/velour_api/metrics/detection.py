@@ -47,8 +47,7 @@ def _ap(
     for iou_threshold in iou_thresholds:
         for label_id in labels:
 
-            if not number_of_ground_truths[label_id]:
-
+            if label_id not in number_of_ground_truths:
                 ap_metrics.extend(
                     [
                         schemas.APMetric(

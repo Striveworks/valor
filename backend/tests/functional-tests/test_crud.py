@@ -917,8 +917,6 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         )
 
         (
-            gts_statement,
-            preds_statement,
             missing_pred_labels,
             ignored_pred_labels,
         ) = crud.validate_create_ap_metrics(db, request_info)
