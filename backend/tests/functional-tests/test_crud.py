@@ -907,6 +907,8 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
                 dataset_name="test dataset",
                 min_area=min_area,
                 max_area=max_area,
+                dataset_gt_task_type=schemas.Task.BBOX_OBJECT_DETECTION,
+                model_pred_task_type=schemas.Task.BBOX_OBJECT_DETECTION,
             ),
             iou_thresholds=[0.2, 0.6],
             ious_to_keep=[0.2],
@@ -957,13 +959,11 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     assert missing_pred_labels == []
     assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
 
-    metrics = db.scalar(select(models.EvaluationSettings)).metrics
-
-    # .where(
-    #         models.EvaluationSettings.id == evaluation_settings_id
-    #     )
-
-    assert metrics is None
+    metrics = db.scalar(
+        select(models.EvaluationSettings).where(
+            models.EvaluationSettings.id == evaluation_settings_id
+        )
+    ).metrics
 
     metric_ids = [m.id for m in metrics]
 
