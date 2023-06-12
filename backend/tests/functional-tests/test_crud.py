@@ -900,10 +900,6 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     # the groundtruths and predictions arguments are not used but
     # those fixtures create the necessary dataset, model, groundtruths, and predictions
 
-    from sqlalchemy import text
-
-    db.execute(text("select * from test"))
-
     def method_to_test(min_area: float = None, max_area: float = None):
         request_info = schemas.APRequest(
             settings=schemas.EvaluationSettings(
