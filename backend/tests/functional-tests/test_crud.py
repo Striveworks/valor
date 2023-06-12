@@ -963,7 +963,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         )
     ).metrics
 
-    assert isinstance(metrics.metrics, models.Metric)
+    assert isinstance(metrics, models.Metric)
 
     metric_ids = [m.id for m in metrics]
 
