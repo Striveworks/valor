@@ -222,37 +222,28 @@ def confusion_matrix_at_label_key(
     that have both a groundtruth and prediction with label key `label_key`
     """
     # this query get's the max score for each Datum for the given label key
+    q1 = (
+        select(
+            func.max(PredictedClassification.score).label("max_score"),
+            PredictedClassification.datum_id,
+        )
+        .join(models.Label)
+        .join(models.Datum)
+        .join(models.Dataset)
+        .join(models.Model)
+    )
     if metadatum_id is None:
-        q1 = (
-            select(
-                func.max(PredictedClassification.score).label("max_score"),
-                PredictedClassification.datum_id,
+        q1 = q1.where(
+            and_(
+                models.Label.key == label_key,
+                models.Dataset.name == dataset_name,
+                models.Model.id == PredictedClassification.model_id,
+                models.Model.name == model_name,
             )
-            .join(models.Label)
-            .join(models.Datum)
-            .join(models.Dataset)
-            .join(models.Model)
-            .where(
-                and_(
-                    models.Label.key == label_key,
-                    models.Dataset.name == dataset_name,
-                    models.Model.id == PredictedClassification.model_id,
-                    models.Model.name == model_name,
-                )
-            )
-            .group_by(PredictedClassification.datum_id)
         )
     else:
         q1 = (
-            select(
-                func.max(PredictedClassification.score).label("max_score"),
-                PredictedClassification.datum_id,
-            )
-            .join(models.Label)
-            .join(models.Datum)
-            .join(models.Dataset)
-            .join(models.Model)
-            .join(models.DatumMetadatumLink)
+            q1.join(models.DatumMetadatumLink)
             .join(models.Metadatum)
             .where(
                 and_(
@@ -264,8 +255,9 @@ def confusion_matrix_at_label_key(
                     models.Datum.id == models.DatumMetadatumLink.datum_id,
                 )
             )
-            .group_by(PredictedClassification.datum_id)
         )
+
+    q1 = q1.group_by(PredictedClassification.datum_id)
     subquery = q1.alias()
 
     # used for the edge case where the max confidence appears twice
