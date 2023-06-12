@@ -961,11 +961,9 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         select(models.EvaluationSettings).where(
             models.EvaluationSettings.id == evaluation_settings_id
         )
-    )
+    ).metrics
 
-    assert isinstance(metrics, models.Metric)
-
-    metrics = metrics.metrics
+    assert isinstance(metrics.metrics, models.Metric)
 
     metric_ids = [m.id for m in metrics]
 
