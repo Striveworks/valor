@@ -990,6 +990,7 @@ def create_clf_metrics(
         db=db,
         dataset_name=request_info.settings.dataset_name,
         model_name=request_info.settings.model_name,
+        group_by=request_info.settings.group_by,
     )
 
     dataset_id = get_dataset(db, request_info.settings.dataset_name).id
@@ -1003,6 +1004,7 @@ def create_clf_metrics(
             "model_id": model_id,
             "model_pred_task_type": enums.Task.CLASSIFICATION,
             "dataset_gt_task_type": enums.Task.CLASSIFICATION,
+            "group_by": request_info.settings.group_by,
         },
     )
 

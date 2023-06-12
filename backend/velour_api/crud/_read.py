@@ -227,21 +227,32 @@ def get_segmentation_labels_in_dataset(
 
 
 def get_classification_labels_in_dataset(
-    db: Session, dataset_name: str
+    db: Session, dataset_name: str, metadatum_id: int = None
 ) -> list[models.Label]:
-    return db.scalars(
+    query = (
         select(models.Label)
         .join(models.GroundTruthClassification)
         .join(models.Datum)
         .join(models.Dataset)
-        .where(
+    )
+
+    if metadatum_id is not None:
+        query = query.join(models.DatumMetadatumLink).where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Datum.id == models.GroundTruthClassification.datum_id,
+                models.DatumMetadatumLink.metadatum_id == metadatum_id,
+            )
+        )
+    else:
+        query = query.where(
             and_(
                 models.Dataset.name == dataset_name,
                 models.Datum.id == models.GroundTruthClassification.datum_id,
             )
         )
-        .distinct()
-    ).all()
+
+    return db.scalars(query.distinct()).all()
 
 
 def get_classification_prediction_labels(

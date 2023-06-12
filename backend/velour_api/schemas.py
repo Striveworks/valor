@@ -510,6 +510,7 @@ class F1Metric(_PrecisionRecallF1Base):
 class ROCAUCMetric(BaseModel):
     label_key: str
     value: float
+    group_by: DatumMetadatum = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
