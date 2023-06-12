@@ -47,7 +47,8 @@ def _ap(
     for iou_threshold in iou_thresholds:
         for label_id in labels:
 
-            if label_id not in sorted_ranked_pairs:
+            if not number_of_ground_truths[label_id]:
+
                 ap_metrics.extend(
                     [
                         schemas.APMetric(
@@ -63,6 +64,7 @@ def _ap(
                 recalls = []
                 cnt_tp = 0
                 cnt_fp = 0
+
                 for row in sorted_ranked_pairs[label_id]:
                     if (
                         row.score >= score_threshold
@@ -244,7 +246,7 @@ def compute_ap_metrics(
     ious = compute_iou(joint_table, annotationType[common_task])
 
     # Load IOU's into a temporary table
-    ious_table = f"create temporary table iou as ({ious})"
+    ious_table = f"create table iou as ({ious})"
     try:
         db.execute(text("drop table iou"))
     except ProgrammingError:
@@ -254,11 +256,13 @@ def compute_ap_metrics(
     # Create 'find_ranked_pairs' function
     db.execute(text(function_find_ranked_pairs()))
 
-    # Get params
+    # Get a list of all ground truth labels
     labels = {
         row[0]: schemas.Label(key=row[1], value=row[2])
         for row in db.execute(text(get_labels(taskTypes[gt_type]))).fetchall()
     }
+
+    # Get the number of ground truths per label id
     number_of_ground_truths = {
         row[0]: row[1]
         for row in db.execute(text(get_number_of_ground_truths()))

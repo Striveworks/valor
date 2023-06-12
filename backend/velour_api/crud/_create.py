@@ -851,8 +851,6 @@ def validate_create_ap_metrics(
     )
 
     return (
-        gts_statement,
-        preds_statement,
         missing_pred_labels,
         ignored_pred_labels,
     )

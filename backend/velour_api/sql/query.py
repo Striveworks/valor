@@ -247,20 +247,31 @@ def function_find_ranked_pairs():
             row record;
         BEGIN
 
-            CREATE TEMPORARY TABLE ranked AS
-            SELECT iou.gt_label_id as label_id, iou.gt_id, iou.pd_id, iou.score, iou.iou
-            FROM iou
-            WHERE iou.gt_id IS NOT NULL AND iou.pd_id IS NOT NULL AND iou.iou > 0;
+            CREATE TEMPORARY TABLE pairs (
+                label_id int not null,
+                gtid int not null,
+                pdid int not null,
+                score float not null,
+                iou float not null,
+                UNIQUE (gtid),
+                UNIQUE (pdid)
+            );
 
-            FOR row IN (SELECT ranked.gt_id, ranked.pd_id FROM ranked ORDER BY -ranked.score, -ranked.iou)
+            FOR row IN (
+                SELECT  iou.gt_label_id as label_id, iou.gt_id, iou.pd_id, iou.score, iou.iou
+                FROM iou
+                WHERE iou.gt_id IS NOT NULL AND iou.pd_id IS NOT NULL AND iou.iou > 0
+                ORDER BY -iou.score, -iou.iou
+            )
             LOOP
-                DELETE FROM ranked WHERE ranked.gt_id = row.gt_id and ranked.pd_id != row.pd_id;
-                DELETE FROM ranked WHERE ranked.gt_id != row.gt_id and ranked.pd_id = row.pd_id;
+                INSERT INTO pairs (label_id, gtid, pdid, score, iou)
+                VALUES (row.label_id, row.gt_id, row.pd_id, row.score, row.iou)
+                ON CONFLICT DO NOTHING;
             END LOOP;
 
-            RETURN QUERY SELECT ranked.label_id, ranked.gt_id, ranked.pd_id, ranked.score, ranked.iou FROM ranked;
+            RETURN QUERY SELECT pairs.label_id, pairs.gtid, pairs.pdid, pairs.score, pairs.iou FROM pairs;
 
-            DROP TABLE ranked;
+            DROP TABLE pairs;
 
         END;
     $BODY$

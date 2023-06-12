@@ -131,6 +131,7 @@ def test_compute_ap_metrics(
         label_key="class",
         iou_thresholds=iou_thresholds,
         ious_to_keep=[0.5, 0.75],
+        score_threshold=0.0,
     )
 
     metrics = [m.dict() for m in metrics]
@@ -150,8 +151,8 @@ def test_compute_ap_metrics(
             "value": 0.576,
             "label": {"key": "class", "value": "49"},
         },
-        {"iou": 0.5, "value": -1.0, "label": {"key": "class", "value": "3"}},
-        {"iou": 0.75, "value": -1.0, "label": {"key": "class", "value": "3"}},
+        # {"iou": 0.5, "value": -1.0, "label": {"key": "class", "value": "3"}},
+        # {"iou": 0.75, "value": -1.0, "label": {"key": "class", "value": "3"}},
         {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "0"}},
         {"iou": 0.75, "value": 0.723, "label": {"key": "class", "value": "0"}},
         {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "1"}},
@@ -172,11 +173,11 @@ def test_compute_ap_metrics(
             "value": 0.555,  # note COCO had 0.556
             "label": {"key": "class", "value": "49"},
         },
-        {
-            "ious": iou_thresholds,
-            "value": -1.0,
-            "label": {"key": "class", "value": "3"},
-        },
+        # {
+        #     "ious": iou_thresholds,
+        #     "value": -1.0,
+        #     "label": {"key": "class", "value": "3"},
+        # },
         {
             "ious": iou_thresholds,
             "value": 0.725,
@@ -195,6 +196,8 @@ def test_compute_ap_metrics(
         # mAP METRICS AVERAGED OVER IOUS
         {"ious": iou_thresholds, "value": 0.637},
     ]
+
+    assert len(metrics) == len(expected)
 
     # sort labels lists
     for m in metrics + expected:
