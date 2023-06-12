@@ -9,11 +9,10 @@ from velour_api.metrics.classification import (
     confusion_matrix_at_label_key,
     roc_auc,
 )
-
-# from velour_api.models import (
-#     LabeledGroundTruthDetection,
-#     LabeledPredictedDetection,
-# )
+from velour_api.models import (
+    LabeledGroundTruthDetection,
+    LabeledPredictedDetection,
+)
 
 dataset_name = "test dataset"
 model_name = "test model"
@@ -111,23 +110,18 @@ def round_dict_(d: dict, prec: int) -> None:
             round_dict_(v, prec)
 
 
-def test_running_sql(db: Session):
-    from sqlalchemy import text
+def test_compute_ap_metrics(
+    db: Session,
+    groundtruths: list[list[LabeledGroundTruthDetection]],
+    predictions: list[list[LabeledPredictedDetection]],
+):
 
-    db.execute(text("CREATE TABLE testtest (id int)"))
+    model_name = "test model"
+    dataset_name = "test dataset"
 
+    crud.get_dataset(db, dataset_name).id
+    crud.get_model(db, model_name).id
 
-# def test_compute_ap_metrics(
-#     db: Session,
-#     groundtruths: list[list[LabeledGroundTruthDetection]],
-#     predictions: list[list[LabeledPredictedDetection]],
-# ):
-
-#     model_name = "test model"
-#     dataset_name = "test dataset"
-
-#     dataset_id = crud.get_dataset(db, dataset_name).id
-#     model_id = crud.get_model(db, model_name).id
 
 #     iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
 #     metrics = compute_ap_metrics(
