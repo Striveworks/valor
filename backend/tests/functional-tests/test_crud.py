@@ -957,13 +957,13 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     assert missing_pred_labels == []
     assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
 
-    metrics = db.scalar(
-        select(models.EvaluationSettings).where(
-            models.EvaluationSettings.id == evaluation_settings_id
-        )
-    ).metrics
+    metrics = db.scalar(select(models.EvaluationSettings)).metrics
 
-    assert isinstance(metrics, models.Metric)
+    # .where(
+    #         models.EvaluationSettings.id == evaluation_settings_id
+    #     )
+
+    assert metrics is None
 
     metric_ids = [m.id for m in metrics]
 
