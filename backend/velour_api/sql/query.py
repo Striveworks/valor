@@ -42,7 +42,6 @@ def convert_polygons_to_bbox(
         criteria_area.append(f"ST_AREA(bbox) >= {min_area}")
     if max_area is not None:
         criteria_area.append(f"ST_AREA(bbox) <= {max_area}")
-
     if criteria_area:
         return f"""
         SELECT id, bbox, datum_id
@@ -91,7 +90,6 @@ def convert_raster_to_polygons(
         criteria_area.append(f"ST_AREA(boundary) >= {min_area}")
     if max_area is not None:
         criteria_area.append(f"ST_AREA(boundary) <= {max_area}")
-
     if criteria_area:
         return f"""
         SELECT id, is_instance, boundary, datum_id
