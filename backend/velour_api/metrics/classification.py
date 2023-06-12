@@ -210,31 +210,60 @@ def compute_clf_metrics(
 
 
 def confusion_matrix_at_label_key(
-    db: Session, dataset_name: str, model_name: str, label_key: str
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    label_key: str,
+    metadatum_id: int = None,
 ) -> schemas.ConfusionMatrix | None:
     """Returns None in the case that there are not common images in the dataset
     that have both a groundtruth and prediction with label key `label_key`
     """
     # this query get's the max score for each Datum for the given label key
-    q1 = (
-        select(
-            func.max(PredictedClassification.score).label("max_score"),
-            PredictedClassification.datum_id,
-        )
-        .join(models.Label)
-        .join(models.Datum)
-        .join(models.Dataset)
-        .join(models.Model)
-        .where(
-            and_(
-                models.Label.key == label_key,
-                models.Dataset.name == dataset_name,
-                models.Model.id == PredictedClassification.model_id,
-                models.Model.name == model_name,
+    if metadatum_id is None:
+        q1 = (
+            select(
+                func.max(PredictedClassification.score).label("max_score"),
+                PredictedClassification.datum_id,
             )
+            .join(models.Label)
+            .join(models.Datum)
+            .join(models.Dataset)
+            .join(models.Model)
+            .where(
+                and_(
+                    models.Label.key == label_key,
+                    models.Dataset.name == dataset_name,
+                    models.Model.id == PredictedClassification.model_id,
+                    models.Model.name == model_name,
+                )
+            )
+            .group_by(PredictedClassification.datum_id)
         )
-        .group_by(PredictedClassification.datum_id)
-    )
+    else:
+        q1 = (
+            select(
+                func.max(PredictedClassification.score).label("max_score"),
+                PredictedClassification.datum_id,
+            )
+            .join(models.Label)
+            .join(models.Datum)
+            .join(models.Dataset)
+            .join(models.Model)
+            .join(models.DatumMetadatumLink)
+            .join(models.Metadatum)
+            .where(
+                and_(
+                    models.Label.key == label_key,
+                    models.Dataset.name == dataset_name,
+                    models.Model.id == PredictedClassification.model_id,
+                    models.Model.name == model_name,
+                    models.Metadatum.id == metadatum_id,
+                    models.Datum.id == models.DatumMetadatumLink.datum_id,
+                )
+            )
+            .group_by(PredictedClassification.datum_id)
+        )
     subquery = q1.alias()
 
     # used for the edge case where the max confidence appears twice
@@ -249,7 +278,6 @@ def confusion_matrix_at_label_key(
                 PredictedClassification.datum_id == subquery.c.datum_id,
             ),
         )
-        .where(models.Label.key == label_key)
         .group_by(models.PredictedClassification.datum_id)
     )
     min_id_query = q2.alias()
@@ -271,7 +299,6 @@ def confusion_matrix_at_label_key(
             min_id_query,
             PredictedClassification.id == min_id_query.c.min_id,
         )
-        .where(models.Label.key == label_key)
     )
     hard_preds_query = q3.alias()
 

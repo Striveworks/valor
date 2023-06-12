@@ -1,7 +1,8 @@
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, schemas
+from velour_api import crud, models, schemas
 from velour_api.metrics import compute_ap_metrics
 from velour_api.metrics.classification import (
     accuracy_from_cm,
@@ -50,7 +51,16 @@ def classification_test_data(db: Session):
     ]
 
     imgs = [
-        schemas.Image(uid=f"uid{i}", height=128, width=256) for i in range(6)
+        schemas.Image(
+            uid=f"uid{i}",
+            height=128,
+            width=256,
+            metadata=[
+                schemas.DatumMetadatum(name="md1", value=f"md1-val{i % 2}"),
+                schemas.DatumMetadatum(name="md2", value=f"md1-val{i % 3}"),
+            ],
+        )
+        for i in range(6)
     ]
 
     gts = [
@@ -248,6 +258,43 @@ def test_confusion_matrix_at_label_key(db: Session, classification_test_data):
     for entry in expected_entries:
         assert entry in cm.entries
     assert accuracy_from_cm(cm) == 3 / 6
+
+
+def test_confusion_matrix_at_label_key_and_group(
+    db: Session, classification_test_data  # unused except for cleanup
+):
+    mds = db.scalars(
+        select(models.Metadatum).where(models.Metadatum.name == "md1")
+    ).all()
+
+    md0 = mds[0]
+    assert md0.string_value == "md1-val0"
+
+    cm = confusion_matrix_at_label_key(
+        db,
+        dataset_name=dataset_name,
+        model_name=model_name,
+        label_key="animal",
+        metadatum_id=md0.id,
+    )
+
+    # for this metadatum and label id we have the gts
+    # ["bird", "bird", "cat"] and the preds ["bird", "cat", "cat"]
+    expected_entries = [
+        schemas.ConfusionMatrixEntry(
+            groundtruth="bird", prediction="bird", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="bird", prediction="cat", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="cat", prediction="cat", count=1
+        ),
+    ]
+
+    assert len(cm.entries) == 3
+    for e in expected_entries:
+        assert e in cm.entries
 
 
 def test_roc_auc(db, classification_test_data):
