@@ -268,12 +268,19 @@ def function_find_ranked_pairs():
     """
 
 
-def get_labels():
+def get_labels(annotationType: AnnotationType):
     """SQL query returns label table."""
 
-    return """
-    SELECT id, key, value
-    FROM label;
+    return f"""
+    SELECT l.id, l.key, l.value
+    FROM labeled_ground_truth_{annotationType} AS lgt
+    JOIN label AS l
+    ON lgt.label_id = l.id
+    JOIN ground_truth_{annotationType} AS gt
+    ON lgt.{annotationType}_id = gt.id
+    JOIN datum
+    ON gt.datum_id = datum.id
+    WHERE dataset_id = 1
     """
 
 

@@ -886,6 +886,7 @@ def validate_create_clf_metrics(
 
 def create_ap_metrics(
     db: Session,
+    label_key: str,
     request_info: schemas.APRequest,
 ) -> int:
 
@@ -896,15 +897,13 @@ def create_ap_metrics(
     gt_type = request_info.settings.dataset_gt_task_type
     pd_type = request_info.settings.model_pred_task_type
 
-    print(max_area)
-
     metrics = compute_ap_metrics(
         db=db,
         dataset_id=dataset_id,
         model_id=model_id,
         gt_type=gt_type,
         pd_type=pd_type,
-        label_key="name",
+        label_key=label_key,
         iou_thresholds=request_info.iou_thresholds,
         ious_to_keep=request_info.ious_to_keep,
         min_area=min_area,

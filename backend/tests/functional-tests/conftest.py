@@ -69,6 +69,7 @@ def db():
     inspector = inspect(db.connection())
     for tablename in tablenames:
         if inspector.has_table(tablename):
+            drop_all(db)
             raise RuntimeError(
                 f"Table {tablename} already exists; "
                 "functional tests should be run with an empty db."

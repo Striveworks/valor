@@ -45,9 +45,9 @@ def _ap(
 
     ap_metrics = []
     for iou_threshold in iou_thresholds:
-        for label_id in sorted_ranked_pairs:
+        for label_id in labels:
 
-            if not number_of_ground_truths[label_id]:
+            if label_id not in sorted_ranked_pairs:
                 ap_metrics.extend(
                     [
                         schemas.APMetric(
@@ -257,7 +257,7 @@ def compute_ap_metrics(
     # Get params
     labels = {
         row[0]: schemas.Label(key=row[1], value=row[2])
-        for row in db.execute(text(get_labels())).fetchall()
+        for row in db.execute(text(get_labels(taskTypes[gt_type]))).fetchall()
     }
     number_of_ground_truths = {
         row[0]: row[1]
@@ -276,7 +276,6 @@ def compute_ap_metrics(
 
     # Clear the session
     db.execute(text("DROP TABLE iou"))
-    # db.commit()
 
     # Compute AP
     ap_metrics = _ap(

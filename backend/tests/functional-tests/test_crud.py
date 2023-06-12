@@ -900,7 +900,9 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     # the groundtruths and predictions arguments are not used but
     # those fixtures create the necessary dataset, model, groundtruths, and predictions
 
-    def method_to_test(min_area: float = None, max_area: float = None):
+    def method_to_test(
+        label_key: str, min_area: float = None, max_area: float = None
+    ):
         request_info = schemas.APRequest(
             settings=schemas.EvaluationSettings(
                 model_name="test model",
@@ -924,6 +926,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         return (
             crud.create_ap_metrics(
                 db,
+                label_key=label_key,
                 request_info=request_info,
             ),
             missing_pred_labels,
@@ -932,14 +935,14 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
 
     # check we get an error since the dataset is still a draft
     with pytest.raises(exceptions.DatasetIsDraftError):
-        method_to_test()
+        method_to_test(label_key="class")
 
     # finalize dataset
     crud.finalize_dataset(db, "test dataset")
 
     # now if we try again we should get an error that inferences aren't finalized
     with pytest.raises(exceptions.InferencesAreNotFinalizedError):
-        method_to_test()
+        method_to_test(label_key="class")
 
     # verify we have no evaluations yet
     assert len(crud.get_model_evaluation_settings(db, model_name)) == 0
@@ -951,7 +954,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         evaluation_settings_id,
         missing_pred_labels,
         ignored_pred_labels,
-    ) = method_to_test()
+    ) = method_to_test(label_key="class")
 
     # check we have one evaluation
     assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
@@ -990,7 +993,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     assert len(pydantic_metrics) == len(metric_ids)
 
     # run again and make sure no new ids were created
-    evaluation_settings_id_again, _, _ = method_to_test()
+    evaluation_settings_id_again, _, _ = method_to_test(label_key="class")
     assert evaluation_settings_id == evaluation_settings_id_again
     metric_ids_again = [
         m.id
@@ -1023,7 +1026,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         evaluation_settings_id,
         missing_pred_labels,
         ignored_pred_labels,
-    ) = method_to_test(min_area=min_area, max_area=max_area)
+    ) = method_to_test(label_key="class", min_area=min_area, max_area=max_area)
 
     metrics_pydantic = crud.get_model_metrics(
         db, "test model", evaluation_settings_id
