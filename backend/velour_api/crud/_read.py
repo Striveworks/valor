@@ -769,16 +769,16 @@ def get_model_task_types(
     return ret
 
 
-def get_string_metadata_ids(
+def get_string_metadata_ids_and_vals(
     db: Session, dataset_name: str, metadata_name: str
-) -> list[int]:
+) -> list[tuple[int, str]]:
     """Returns the ids of all metadata (for a given metadata name) in a dataset that
     have string values
     """
-    return db.scalars(
+    return db.execute(
         text(
             f"""
-        SELECT DISTINCT datum_metadatum_link.metadatum_id
+        SELECT DISTINCT datum_metadatum_link.metadatum_id, metadatum.string_value
         FROM datum_metadatum_link
         JOIN metadatum ON datum_metadatum_link.metadatum_id=metadatum.id
         JOIN datum ON datum_metadatum_link.datum_id=datum.id
