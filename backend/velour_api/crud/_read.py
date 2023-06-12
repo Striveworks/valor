@@ -769,20 +769,23 @@ def get_model_task_types(
     return ret
 
 
-def get_unique_metadata_string_values(
+def get_string_metadata_ids(
     db: Session, dataset_name: str, metadata_name: str
-) -> list[str]:
-    """Returns the unique (non-null) string values for metadata associated to data in a given dataset"""
-    vals = db.scalars(
+) -> list[int]:
+    """Returns the ids of all metadata (for a given metadata name) in a dataset that
+    have string values
+    """
+    return db.scalars(
         text(
             f"""
-        SELECT DISTINCT string_value
-        FROM datum_metadata
-        JOIN datum ON datum_metadata.datum_id=datum.id
+        SELECT DISTINCT datum_metadatum_link.metadatum_id
+        FROM datum_metadatum_link
+        JOIN metadatum ON datum_metadatum_link.metadatum_id=metadatum.id
+        JOIN datum ON datum_metadatum_link.datum_id=datum.id
         JOIN dataset ON datum.dataset_id=dataset.id
-        WHERE dataset.name='{dataset_name}' AND datum_metadata.name='{metadata_name}'
+        WHERE dataset.name='{dataset_name}'
+            AND metadatum.name='{metadata_name}'
+            AND metadatum.string_value IS NOT NULL
         """
         )
     ).all()
-
-    return [v for v in vals if v is not None]

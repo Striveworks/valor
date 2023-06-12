@@ -1998,7 +1998,7 @@ def test_create_datums_with_metadata(db: Session):
     }
 
 
-def test_get_unique_metadata_string_values(db: Session):
+def test_get_string_metadata_ids(db: Session):
     crud.create_dataset(
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.TABULAR),
@@ -2031,17 +2031,18 @@ def test_get_unique_metadata_string_values(db: Session):
     ]
     crud._create._add_datums_to_dataset(db, dset_name, datums)
 
-    unique_vals = crud.get_unique_metadata_string_values(
+    string_ids = crud.get_string_metadata_ids(
         db, dset_name, metadata_name="md1"
     )
-    assert unique_vals == ["md1-val1", "md1-val2"]
 
-    unique_vals = crud.get_unique_metadata_string_values(
+    assert len(string_ids) == 2
+
+    string_ids = crud.get_string_metadata_ids(
         db, dset_name, metadata_name="md2"
     )
-    assert unique_vals == ["md2-val1"]
+    assert len(string_ids) == 1
 
-    unique_vals = crud.get_unique_metadata_string_values(
+    string_ids = crud.get_string_metadata_ids(
         db, dset_name, metadata_name="md3"
     )
-    assert unique_vals == []
+    assert string_ids == []
