@@ -370,6 +370,8 @@ def create_ap_metrics(
 ) -> schemas.CreateAPMetricsResponse:
     try:
         (
+            unused1,
+            unused2,
             missing_pred_labels,
             ignored_pred_labels,
         ) = crud.validate_create_ap_metrics(db, request_info=data)

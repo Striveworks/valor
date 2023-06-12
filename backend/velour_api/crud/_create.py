@@ -772,7 +772,7 @@ def _validate_and_update_evaluation_settings_task_type_for_detection(
 
 def validate_create_ap_metrics(
     db: Session, request_info: schemas.APRequest
-) -> tuple[Select, list[schemas.Label], list[schemas.Label]]:
+) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """Validates request_info and produces select statements for grabbing groundtruth and
     prediction data
 

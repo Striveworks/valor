@@ -121,6 +121,7 @@ def test_create_ap_metrics_endpoint(uuid4, crud, client: TestClient):
     crud.create_ap_metrics = patch_create_ap_metrics
 
     resp = client.post("/ap-metrics", json=example_json)
+    print(resp.content)
     assert resp.status_code == 202
 
     cm_resp = resp.json()
