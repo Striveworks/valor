@@ -346,18 +346,14 @@ def get_model_evaluation_metrics(
 @app.get(
     "/models/{model_name}/evaluation-settings/{evaluation_settings_id}/confusion-matrices",
     dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
 )
 def get_model_confusion_matrices(
     evaluation_settings_id: str, db: Session = Depends(get_db)
 ) -> list[schemas.ConfusionMatrixResponse]:
-    return [
-        schemas.ConfusionMatrixResponse(
-            label_key=cm.label_key, entries=cm.entries
-        )
-        for cm in crud.get_confusion_matrices_from_evaluation_settings_id(
-            db, evaluation_settings_id
-        )
-    ]
+    return crud.get_confusion_matrices_from_evaluation_settings_id(
+        db, evaluation_settings_id
+    )
 
 
 @app.post(
@@ -493,14 +489,10 @@ def get_job_confusion_matrices(
                 status_code=404,
                 detail=f"No metrics for job since its status is {job.status}",
             )
-        return [
-            schemas.ConfusionMatrixResponse(
-                label_key=cm.label_key, entries=cm.entries
-            )
-            for cm in crud.get_confusion_matrices_from_evaluation_settings_id(
-                db, job.evaluation_settings_id
-            )
-        ]
+        return crud.get_confusion_matrices_from_evaluation_settings_id(
+            db, job.evaluation_settings_id
+        )
+
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

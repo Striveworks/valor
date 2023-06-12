@@ -215,6 +215,8 @@ def confusion_matrix_at_label_key(
     model_name: str,
     label_key: str,
     metadatum_id: int = None,
+    metadatum_value: str = None,
+    metadatum_name: str = None,
 ) -> schemas.ConfusionMatrix | None:
     """Returns None in the case that there are not common images in the dataset
     that have both a groundtruth and prediction with label key `label_key`
@@ -328,6 +330,13 @@ def confusion_matrix_at_label_key(
         # for the same image
         return None
 
+    if metadatum_id is not None:
+        metadatum = schemas.DatumMetadatum(
+            name=metadatum_name, value=metadatum_value
+        )
+    else:
+        metadatum = None
+
     return schemas.ConfusionMatrix(
         label_key=label_key,
         entries=[
@@ -336,6 +345,7 @@ def confusion_matrix_at_label_key(
             )
             for r in res
         ],
+        metadatum=metadatum,
     )
 
 

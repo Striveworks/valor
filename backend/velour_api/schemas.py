@@ -298,6 +298,7 @@ class EvaluationSettings(BaseModel):
     dataset_gt_task_type: Task = None
     min_area: float = None
     max_area: float = None
+    group_by: str = None
     id: int = None
 
 
@@ -419,6 +420,7 @@ class ConfusionMatrixEntry(BaseModel):
 class _BaseConfusionMatrix(BaseModel):
     label_key: str
     entries: list[ConfusionMatrixEntry]
+    metadatum: DatumMetadatum = None
 
 
 class ConfusionMatrix(_BaseConfusionMatrix, extra=Extra.allow):
@@ -462,6 +464,7 @@ class ConfusionMatrixResponse(_BaseConfusionMatrix):
 class AccuracyMetric(BaseModel):
     label_key: str
     value: float
+    group_by: DatumMetadatum = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
@@ -475,6 +478,7 @@ class AccuracyMetric(BaseModel):
 class _PrecisionRecallF1Base(BaseModel):
     label: Label
     value: float | None
+    group_by: DatumMetadatum = None
 
     @validator("value")
     def replace_nan_with_none(cls, v):
