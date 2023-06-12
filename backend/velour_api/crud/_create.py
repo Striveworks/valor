@@ -909,8 +909,6 @@ def create_ap_metrics(
         ious_to_keep=request_info.ious_to_keep,
         min_area=min_area,
         max_area=max_area,
-        min_area=min_area,
-        max_area=max_area,
     )
 
     dataset_id = get_dataset(db, request_info.settings.dataset_name).id
