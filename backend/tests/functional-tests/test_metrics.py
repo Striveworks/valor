@@ -114,7 +114,7 @@ def round_dict_(d: dict, prec: int) -> None:
 def test_running_sql(db: Session):
     from sqlalchemy import text
 
-    db.execute(text("select * from test"))
+    db.execute(text("CREATE TABLE testtest (id int)"))
 
 
 # def test_compute_ap_metrics(
