@@ -275,7 +275,8 @@ def compute_ap_metrics(
         )
 
     # Clear the session
-    db.commit()
+    db.execute(text("DROP TABLE iou"))
+    # db.commit()
 
     # Compute AP
     ap_metrics = _ap(
