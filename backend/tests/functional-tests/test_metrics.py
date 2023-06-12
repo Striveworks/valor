@@ -2,8 +2,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from velour_api import crud, schemas
-
-# from velour_api.metrics import compute_ap_metrics
+from velour_api.metrics import compute_ap_metrics
 from velour_api.metrics.classification import (
     accuracy_from_cm,
     confusion_matrix_at_label_key,
@@ -119,23 +118,24 @@ def test_compute_ap_metrics(
     model_name = "test model"
     dataset_name = "test dataset"
 
-    crud.get_dataset(db, dataset_name).id
-    crud.get_model(db, model_name).id
+    dataset_id = crud.get_dataset(db, dataset_name).id
+    model_id = crud.get_model(db, model_name).id
+
+    iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
+    metrics = compute_ap_metrics(
+        db=db,
+        dataset_id=dataset_id,
+        model_id=model_id,
+        gt_type=schemas.Task.BBOX_OBJECT_DETECTION,
+        pd_type=schemas.Task.BBOX_OBJECT_DETECTION,
+        label_key="class",
+        iou_thresholds=iou_thresholds,
+        ious_to_keep=[0.5, 0.75],
+    )
+
+    metrics = [m.dict() for m in metrics]
 
 
-#     iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
-#     metrics = compute_ap_metrics(
-#         db=db,
-#         dataset_id=dataset_id,
-#         model_id=model_id,
-#         gt_type=schemas.Task.BBOX_OBJECT_DETECTION,
-#         pd_type=schemas.Task.BBOX_OBJECT_DETECTION,
-#         label_key="class",
-#         iou_thresholds=iou_thresholds,
-#         ious_to_keep=[0.5, 0.75],
-#     )
-
-#     metrics = [m.dict() for m in metrics]
 #     for m in metrics:
 #         round_dict_(m, 3)
 
