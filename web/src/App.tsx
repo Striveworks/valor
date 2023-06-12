@@ -9,27 +9,27 @@ import { ModelDetailsPage } from './model-details-page';
 import { ProfilePage } from './profile-page';
 
 function App() {
-	return (
-		<Routes>
-			<Route path='/' element={<HomePage />} />
-			<Route path='/callback' element={<CallbackPage />} />
-			<Route path='/profile' element={<ProfilePage />} />
-			<Route
-				path='/models'
-				element={<ListingComponent name='models' pageTitle='Models' />}
-			/>
-			<Route
-				path='/datasets'
-				element={<ListingComponent name='datasets' pageTitle='Datasets' />}
-			/>
-			<Route path='/models/:name' element={<ModelDetailsPage />} />
-			<Route path='/datasets/:name' element={<DatasetDetailsPage />} />
-			<Route
-				path='/models/:name/evaluation-settings/:evalSettingsId'
-				element={<MetricsPage />}
-			/>
-		</Routes>
-	);
+  return (
+    <Routes>
+      <Route path='/' element={<HomePage />} />
+      <Route path='/callback' element={<CallbackPage />} />
+      <Route path='/profile' element={<ProfilePage />} />
+      <Route
+        path='/models'
+        element={<ListingComponent name='models' pageTitle='Models' />}
+      />
+      <Route
+        path='/datasets'
+        element={<ListingComponent name='datasets' pageTitle='Datasets' />}
+      />
+      <Route path='/models/:name' element={<ModelDetailsPage />} />
+      <Route path='/datasets/:name' element={<DatasetDetailsPage />} />
+      <Route
+        path='/models/:name/evaluation-settings/:evalSettingsId'
+        element={<MetricsPage />}
+      />
+    </Routes>
+  );
 }
 
 export default App;

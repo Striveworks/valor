@@ -1,3 +1,3 @@
 export const CallbackPage = () => {
-	return <></>;
+  return <></>;
 };
