@@ -17,8 +17,6 @@ classes = [
 ]
 tablenames = [v.__tablename__ for v in classes if hasattr(v, "__tablename__")]
 
-tablenames.append("iou")
-
 
 np.random.seed(29)
 
