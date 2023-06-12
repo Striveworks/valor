@@ -146,6 +146,65 @@ def roc_auc(
     return sum_roc_aucs / len(labels)
 
 
+def get_confusion_matrix_and_metrics_at_label_key(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    label_key: str,
+    labels: list[models.Label],
+    metadatum_id: int = None,
+    metadatum_value: str = None,
+    metadatum_name: str = None,
+) -> tuple[schemas.ConfusionMatrix, list[schemas.Metric]] | None:
+    confusion_matrix = confusion_matrix_at_label_key(
+        db=db,
+        dataset_name=dataset_name,
+        model_name=model_name,
+        label_key=label_key,
+        metadatum_id=metadatum_id,
+        metadatum_value=metadatum_value,
+        metadatum_name=metadatum_name,
+    )
+
+    if confusion_matrix is None:
+        return None
+
+    # aggregate metrics (over all label values)
+    metrics = [
+        schemas.AccuracyMetric(
+            label_key=label_key,
+            value=accuracy_from_cm(confusion_matrix),
+            group_by=confusion_matrix.metadatum,
+        ),
+        schemas.ROCAUCMetric(
+            label_key=label_key,
+            value=roc_auc(db, dataset_name, model_name, label_key),
+            group_by=confusion_matrix.metadatum,
+        ),
+    ]
+
+    # metrics that are per label
+    for label in [label for label in labels if label.key == label_key]:
+        (
+            precision,
+            recall,
+            f1,
+        ) = precision_and_recall_f1_from_confusion_matrix(
+            confusion_matrix, label.value
+        )
+
+        pydantic_label = schemas.Label(key=label.key, value=label.value)
+        metrics.append(
+            schemas.PrecisionMetric(label=pydantic_label, value=precision)
+        )
+        metrics.append(
+            schemas.RecallMetric(label=pydantic_label, value=recall)
+        )
+        metrics.append(schemas.F1Metric(label=pydantic_label, value=f1))
+
+    return confusion_matrix, metrics
+
+
 def compute_clf_metrics(
     db: Session, dataset_name: str, model_name: str
 ) -> tuple[
