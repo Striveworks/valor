@@ -965,6 +965,8 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
 
     metric_ids = [m.id for m in metrics]
 
+    assert metrics is None
+
     assert set([m.type for m in metrics]) == {
         "AP",
         "APAveragedOverIOUs",
