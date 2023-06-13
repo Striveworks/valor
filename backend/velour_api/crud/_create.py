@@ -884,7 +884,6 @@ def validate_create_clf_metrics(
 
 def create_ap_metrics(
     db: Session,
-    label_key: str,
     request_info: schemas.APRequest,
 ) -> int:
 
@@ -894,6 +893,7 @@ def create_ap_metrics(
     max_area = request_info.settings.max_area
     gt_type = request_info.settings.dataset_gt_task_type
     pd_type = request_info.settings.model_pred_task_type
+    label_key = request_info.settings.label_key
 
     metrics = compute_ap_metrics(
         db=db,
@@ -901,11 +901,11 @@ def create_ap_metrics(
         model_id=model_id,
         gt_type=gt_type,
         pd_type=pd_type,
-        label_key=label_key,
         iou_thresholds=request_info.iou_thresholds,
         ious_to_keep=request_info.ious_to_keep,
         min_area=min_area,
         max_area=max_area,
+        label_key=label_key,
     )
 
     dataset_id = get_dataset(db, request_info.settings.dataset_name).id
@@ -923,6 +923,7 @@ def create_ap_metrics(
             "dataset_gt_task_type": gt_type,
             "min_area": request_info.settings.min_area,
             "max_area": request_info.settings.max_area,
+            "label_key": label_key,
         },
     )
 

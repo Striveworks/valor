@@ -1013,7 +1013,12 @@ def test_evaluate_ap(
         dataset=dataset,
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
+        label_key="k1",
     )
+
+    # import time
+    # while True:
+    #     time.sleep(0.5)
 
     assert eval_job.ignored_pred_labels == [Label(key="k2", value="v2")]
     assert eval_job.missing_pred_labels == []
@@ -1032,6 +1037,7 @@ def test_evaluate_ap(
         "dataset_gt_task_type": "Bounding Box Object Detection",
         "min_area": None,
         "max_area": None,
+        "label_key": "k1",
     }
 
     expected_metrics = [
@@ -1088,6 +1094,7 @@ def test_evaluate_ap(
         dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
+        label_key="k1",
         min_area=10,
         max_area=2000,
     )
@@ -1099,6 +1106,7 @@ def test_evaluate_ap(
         "dataset_name": "test dataset",
         "model_pred_task_type": "Bounding Box Object Detection",
         "dataset_gt_task_type": "Bounding Box Object Detection",
+        "label_key": "k1",
         "min_area": 10,
         "max_area": 2000,
     }
@@ -1111,6 +1119,7 @@ def test_evaluate_ap(
         dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
+        label_key="k1",
         min_area=1200,
     )
     time.sleep(1)
@@ -1122,6 +1131,7 @@ def test_evaluate_ap(
         "dataset_name": "test dataset",
         "model_pred_task_type": "Bounding Box Object Detection",
         "dataset_gt_task_type": "Bounding Box Object Detection",
+        "label_key": "k1",
         "min_area": 1200,
         "max_area": None,
     }
@@ -1134,6 +1144,7 @@ def test_evaluate_ap(
         dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
+        label_key="k1",
         max_area=1200,
     )
     time.sleep(1)
@@ -1144,6 +1155,7 @@ def test_evaluate_ap(
         "dataset_name": "test dataset",
         "model_pred_task_type": "Bounding Box Object Detection",
         "dataset_gt_task_type": "Bounding Box Object Detection",
+        "label_key": "k1",
         "min_area": None,
         "max_area": 1200,
     }
@@ -1155,6 +1167,7 @@ def test_evaluate_ap(
         dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
+        label_key="k1",
         min_area=1200,
         max_area=1800,
     )
@@ -1166,6 +1179,7 @@ def test_evaluate_ap(
         "dataset_name": "test dataset",
         "model_pred_task_type": "Bounding Box Object Detection",
         "dataset_gt_task_type": "Bounding Box Object Detection",
+        "label_key": "k1",
         "min_area": 1200,
         "max_area": 1800,
     }

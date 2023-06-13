@@ -279,7 +279,7 @@ def function_find_ranked_pairs():
     """
 
 
-def get_labels(annotationType: AnnotationType):
+def get_labels(dataset_id: int, annotationType: AnnotationType):
     """SQL query returns label table."""
 
     return f"""
@@ -291,7 +291,7 @@ def get_labels(annotationType: AnnotationType):
     ON lgt.{annotationType}_id = gt.id
     JOIN datum
     ON gt.datum_id = datum.id
-    WHERE dataset_id = 1
+    WHERE dataset_id = {dataset_id}
     """
 
 

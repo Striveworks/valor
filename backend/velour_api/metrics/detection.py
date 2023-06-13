@@ -47,7 +47,7 @@ def _ap(
     for iou_threshold in iou_thresholds:
         for label_id in labels:
 
-            if label_id not in number_of_ground_truths:
+            if label_id not in sorted_ranked_pairs:
                 ap_metrics.extend(
                     [
                         schemas.APMetric(
@@ -258,7 +258,9 @@ def compute_ap_metrics(
     # Get a list of all ground truth labels
     labels = {
         row[0]: schemas.Label(key=row[1], value=row[2])
-        for row in db.execute(text(get_labels(taskTypes[gt_type]))).fetchall()
+        for row in db.execute(
+            text(get_labels(dataset_id, taskTypes[gt_type]))
+        ).fetchall()
     }
 
     # Get the number of ground truths per label id
@@ -347,16 +349,21 @@ def compute_map_metrics_from_aps(
         list of AP scores.
     """
 
+    for score in ap_scores:
+        print(score)
+
     if len(ap_scores) == 0:
         return []
 
     def _ave_ignore_minus_one(a):
         num, denom = 0.0, 0.0
+        div0_flag = True
         for x in a:
             if x != -1:
+                div0_flag = False
                 num += x
                 denom += 1
-        return num / denom
+        return -1 if div0_flag else num / denom
 
     # dictionary for mapping an iou threshold to set of APs
     vals: dict[float | set[float], list] = {}
