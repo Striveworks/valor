@@ -432,6 +432,29 @@ def pred_clfs(img5: Image, img6: Image) -> list[PredictedImageClassification]:
     ]
 
 
+@pytest.fixture
+def y_true() -> list[int]:
+    """groundtruth for a tabular classification task"""
+    return [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
+
+
+@pytest.fixture
+def tabular_preds() -> list[list[float]]:
+    """predictions for a tabular classification task"""
+    return [
+        [0.37, 0.35, 0.28],
+        [0.24, 0.61, 0.15],
+        [0.03, 0.88, 0.09],
+        [0.97, 0.03, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.01, 0.96, 0.03],
+        [0.28, 0.02, 0.7],
+        [0.78, 0.21, 0.01],
+        [0.45, 0.11, 0.44],
+    ]
+
+
 def _test_create_image_dataset_with_gts(
     client: Client,
     gts1: list[Any],
@@ -1030,8 +1053,6 @@ def test_evaluate_ap(
         "dataset_name": "test dataset",
         "model_pred_task_type": "Bounding Box Object Detection",
         "dataset_gt_task_type": "Bounding Box Object Detection",
-        "min_area": None,
-        "max_area": None,
     }
 
     expected_metrics = [
@@ -1123,7 +1144,6 @@ def test_evaluate_ap(
         "model_pred_task_type": "Bounding Box Object Detection",
         "dataset_gt_task_type": "Bounding Box Object Detection",
         "min_area": 1200,
-        "max_area": None,
     }
 
     assert eval_job.metrics() != expected_metrics
@@ -1144,7 +1164,6 @@ def test_evaluate_ap(
         "dataset_name": "test dataset",
         "model_pred_task_type": "Bounding Box Object Detection",
         "dataset_gt_task_type": "Bounding Box Object Detection",
-        "min_area": None,
         "max_area": 1200,
     }
     assert eval_job.metrics() != expected_metrics
@@ -1318,21 +1337,12 @@ def test_create_tabular_model_with_predicted_classifications(
     )
 
 
-def test_evaluate_tabular_clf(client: Session, db: Session):
-    y_true = [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
-    preds = [
-        [0.37, 0.35, 0.28],
-        [0.24, 0.61, 0.15],
-        [0.03, 0.88, 0.09],
-        [0.97, 0.03, 0.0],
-        [1.0, 0.0, 0.0],
-        [1.0, 0.0, 0.0],
-        [0.01, 0.96, 0.03],
-        [0.28, 0.02, 0.7],
-        [0.78, 0.21, 0.01],
-        [0.45, 0.11, 0.44],
-    ]
-
+def test_evaluate_tabular_clf(
+    client: Session,
+    db: Session,
+    y_true: list[int],
+    tabular_preds: list[list[float]],
+):
     dataset = client.create_tabular_dataset(name=dset_name)
     model = client.create_tabular_model(name=model_name)
 
@@ -1346,7 +1356,7 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
                 ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
                 for i in range(len(pred))
             ]
-            for pred in preds
+            for pred in tabular_preds
         ],
     )
 
@@ -1458,9 +1468,14 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
         "dataset_gt_task_type": "Classification",
     }
 
-    assert (
-        model.get_metrics_at_evaluation_settings_id(es_id) == expected_metrics
+    metrics_from_eval_settings_id = (
+        model.get_metrics_at_evaluation_settings_id(es_id)
     )
+    assert len(metrics_from_eval_settings_id) == len(expected_metrics)
+    for m in metrics_from_eval_settings_id:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics_from_eval_settings_id
 
     assert (
         model.get_confusion_matrices_at_evaluation_settings_id(es_id)
@@ -1473,7 +1488,7 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
 
 
 def test_create_images_with_metadata(
-    client: Client, db: Session, metadata: list[Metadatum], rect1
+    client: Client, db: Session, metadata: list[Metadatum], rect1: BoundingBox
 ):
     dataset = client.create_image_dataset(dset_name)
 

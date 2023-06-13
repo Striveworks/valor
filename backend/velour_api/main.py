@@ -307,6 +307,7 @@ def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
 @app.get(
     "/models/{model_name}/evaluation-settings",
     dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
 )
 def get_model_evaluations(
     model_name: str, db: Session = Depends(get_db)
@@ -320,6 +321,7 @@ def get_model_evaluations(
 @app.get(
     "/evaluation-settings/{evaluation_settings_id}",
     dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
 )
 def get_evaluation_settings(
     evaluation_settings_id: str, db: Session = Depends(get_db)
@@ -497,7 +499,11 @@ def get_job_confusion_matrices(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@app.get("/jobs/{job_id}/settings", dependencies=[Depends(token_auth_scheme)])
+@app.get(
+    "/jobs/{job_id}/settings",
+    dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
+)
 def get_job_settings(
     job_id: str, db: Session = Depends(get_db)
 ) -> schemas.EvaluationSettings:
