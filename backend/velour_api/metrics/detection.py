@@ -35,7 +35,6 @@ def _ap(
     number_of_ground_truths: int,
     labels: Dict[int, schemas.Label],
     iou_thresholds: list[float],
-    score_threshold: float,
 ) -> list[schemas.APMetric]:
     """Computes the average precision. Return is a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
@@ -53,7 +52,7 @@ def _ap(
 
             for row in sorted_ranked_pairs[label_id]:
                 if (
-                    row.score >= score_threshold
+                    row.score > 0
                     and row.iou >= iou_threshold
                 ):
                     cnt_tp += 1
@@ -113,7 +112,6 @@ def compute_ap_metrics(
     ious_to_keep: list[float],
     min_area: Optional[float] = None,
     max_area: Optional[float] = None,
-    score_threshold: float = 0.0,
 ) -> list[
     schemas.APMetric
     | schemas.APMetricAveragedOverIOUs
@@ -122,15 +120,15 @@ def compute_ap_metrics(
 ]:
     """Computes average precision metrics."""
 
-    taskTypes = {
+    task_types = {
         schemas.Task.BBOX_OBJECT_DETECTION: "detection",
         schemas.Task.POLY_OBJECT_DETECTION: "detection",
         schemas.Task.INSTANCE_SEGMENTATION: "segmentation",
     }
 
     # Generate select
-    gt_select = f"select * from ground_truth_{taskTypes[gt_type]}"
-    pd_select = f"select * from predicted_{taskTypes[pd_type]}"
+    gt_select = f"select * from ground_truth_{task_types[gt_type]}"
+    pd_select = f"select * from predicted_{task_types[pd_type]}"
 
     # Apply type conversion query (if applicable)
     if schemas.Task.BBOX_OBJECT_DETECTION in [gt_type, pd_type]:
@@ -205,31 +203,31 @@ def compute_ap_metrics(
     # Join labels
     labeled_gt_select = join_labels(
         subquery=gt_select,
-        label_table=f"labeled_ground_truth_{taskTypes[gt_type]}",
-        column=f"{taskTypes[gt_type]}_id",
+        label_table=f"labeled_ground_truth_{task_types[gt_type]}",
+        column=f"{task_types[gt_type]}_id",
         label_key=label_key,
         is_prediction=False,
     )
     labeled_pd_select = join_labels(
         subquery=pd_select,
-        label_table=f"labeled_predicted_{taskTypes[pd_type]}",
-        column=f"{taskTypes[pd_type]}_id",
+        label_table=f"labeled_predicted_{task_types[pd_type]}",
+        column=f"{task_types[pd_type]}_id",
         label_key=label_key,
         is_prediction=True,
     )
 
     # Join gt with pd
-    annotationType = {
+    annotation_types = {
         schemas.Task.BBOX_OBJECT_DETECTION: AnnotationType.BBOX,
         schemas.Task.POLY_OBJECT_DETECTION: AnnotationType.BOUNDARY,
         schemas.Task.INSTANCE_SEGMENTATION: AnnotationType.RASTER,
     }
     joint_table = join_tables(
-        labeled_gt_select, labeled_pd_select, annotationType[common_task]
+        labeled_gt_select, labeled_pd_select, annotation_types[common_task]
     )
 
     # Compute IOU's
-    ious = compute_iou(joint_table, annotationType[common_task])
+    ious = compute_iou(joint_table, annotation_types[common_task])
 
     # Load IOU's into a temporary table
     ious_table = f"create table iou as ({ious})"
@@ -246,7 +244,7 @@ def compute_ap_metrics(
     labels = {
         row[0]: schemas.Label(key=row[1], value=row[2])
         for row in db.execute(
-            text(get_labels(dataset_id, taskTypes[gt_type]))
+            text(get_labels(dataset_id, task_types[gt_type]))
         ).fetchall()
     }
 
@@ -275,7 +273,6 @@ def compute_ap_metrics(
         number_of_ground_truths=number_of_ground_truths,
         labels=labels,
         iou_thresholds=iou_thresholds,
-        score_threshold=score_threshold,
     )
 
     # now extend to the averaged AP metrics and mAP metric

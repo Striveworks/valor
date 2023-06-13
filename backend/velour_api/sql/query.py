@@ -17,7 +17,6 @@ def convert_polygons_to_bbox(
 ):
     """Takes either 'ground_truth_detection' or 'predicted_detection' as tablename."""
 
-    criteria_id = ""
     if dataset_id is not None and model_id is None:
         criteria_id = f"(select {get_dataset_id_from_datum_id('datum_id')} limit 1) =  {dataset_id}"
     elif dataset_id is None and model_id is not None:
@@ -61,7 +60,6 @@ def convert_raster_to_polygons(
 ):
     """Takes either 'ground_truth_segmentation' or 'predicted_segmentation' as tablename."""
 
-    criteria_id = ""
     if dataset_id is not None and model_id is None:
         criteria_id = f"(select {get_dataset_id_from_datum_id('datum_id')} limit 1) =  {dataset_id}"
     elif dataset_id is None and model_id is not None:
@@ -108,8 +106,6 @@ def convert_raster_to_bbox(
     max_area: Optional[float] = None,
 ):
     """Takes either 'ground_truth_segmentation' or 'predicted_segmentation' as tablename."""
-
-    criteria_id = ""
 
     if dataset_id is not None and model_id is None:
         criteria_id = f"(select {get_dataset_id_from_datum_id('datum_id')} limit 1) =  {dataset_id}"
