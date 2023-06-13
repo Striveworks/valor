@@ -388,11 +388,14 @@ class ModelBase:
             f"models/{self.name}/inferences/{dataset.name}/finalize"
         ).json()
 
-    def evaluate_classification(self, dataset: DatasetBase) -> "EvalJob":
+    def evaluate_classification(
+        self, dataset: DatasetBase, group_by: str = None
+    ) -> "EvalJob":
         payload = {
             "settings": {
                 "model_name": self.name,
                 "dataset_name": dataset.name,
+                "group_by": group_by,
             }
         }
 

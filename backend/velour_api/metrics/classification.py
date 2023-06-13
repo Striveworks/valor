@@ -8,7 +8,11 @@ from velour_api.models import PredictedClassification
 
 
 def binary_roc_auc(
-    db: Session, dataset_name: str, model_name: str, label: schemas.Label
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    label: schemas.Label,
+    metadatum_id: int = None,
 ) -> float:
     # query to get the datum_ids and label values of groundtruths that have the given label key
     gts_query = (
@@ -25,7 +29,21 @@ def binary_roc_auc(
                 models.GroundTruthClassification.label_id == models.Label.id,
             ),
         )
-    ).subquery()
+    )
+
+    if metadatum_id is not None:
+        gts_query = (
+            gts_query.join(models.DatumMetadatumLink)
+            .join(models.Metadatum)
+            .where(
+                and_(
+                    models.Metadatum.id == metadatum_id,
+                    models.Datum.id == models.DatumMetadatumLink.datum_id,
+                )
+            )
+        )
+
+    gts_query = gts_query.subquery()
 
     # number of groundtruth labels that match the given label value
     n_pos = db.scalar(
@@ -57,7 +75,21 @@ def binary_roc_auc(
                 models.PredictedClassification.label_id == models.Label.id,
             ),
         )
-    ).subquery()
+    )
+
+    if metadatum_id is not None:
+        preds_query = (
+            preds_query.join(models.DatumMetadatumLink)
+            .join(models.Metadatum)
+            .where(
+                and_(
+                    models.Metadatum.id == metadatum_id,
+                    models.Datum.id == models.DatumMetadatumLink.datum_id,
+                )
+            )
+        )
+
+    preds_query = preds_query.subquery()
 
     # true positive rates
     tprs = (
@@ -106,7 +138,11 @@ def binary_roc_auc(
 
 
 def roc_auc(
-    db: Session, dataset_name: str, model_name: str, label_key: str
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    label_key: str,
+    metadatum_id: int = None,
 ) -> float:
     """Computes the area under the ROC curve. Note that for the multi-class setting
     this does one-vs-rest AUC for each class and then averages those scores. This should give
@@ -130,7 +166,7 @@ def roc_auc(
     labels = [
         label
         for label in crud.get_classification_labels_in_dataset(
-            db, dataset_name
+            db, dataset_name, metadatum_id
         )
         if label.key == label_key
     ]
@@ -140,10 +176,17 @@ def roc_auc(
         )
 
     sum_roc_aucs = 0
+    label_count = 0
     for label in labels:
-        sum_roc_aucs += binary_roc_auc(db, dataset_name, model_name, label)
+        bin_roc = binary_roc_auc(
+            db, dataset_name, model_name, label, metadatum_id
+        )
 
-    return sum_roc_aucs / len(labels)
+        if bin_roc is not None:
+            sum_roc_aucs += bin_roc
+            label_count += 1
+
+    return sum_roc_aucs / label_count
 
 
 def get_confusion_matrix_and_metrics_at_label_key(
@@ -178,7 +221,13 @@ def get_confusion_matrix_and_metrics_at_label_key(
         ),
         schemas.ROCAUCMetric(
             label_key=label_key,
-            value=roc_auc(db, dataset_name, model_name, label_key),
+            value=roc_auc(
+                db,
+                dataset_name,
+                model_name,
+                label_key,
+                metadatum_id=metadatum_id,
+            ),
             group_by=confusion_matrix.metadatum,
         ),
     ]
@@ -206,7 +255,7 @@ def get_confusion_matrix_and_metrics_at_label_key(
 
 
 def compute_clf_metrics(
-    db: Session, dataset_name: str, model_name: str
+    db: Session, dataset_name: str, model_name: str, group_by: str
 ) -> tuple[
     list[schemas.ConfusionMatrix],
     list[
@@ -225,45 +274,38 @@ def compute_clf_metrics(
     labels = gt_labels + pred_labels
     unique_label_keys = set([label.key for label in labels])
 
+    if group_by is not None:
+        metadata_ids_and_vals = crud.get_string_metadata_ids_and_vals(
+            db, dataset_name, metadata_name=group_by
+        )
+
     confusion_matrices, metrics = [], []
+
     for label_key in unique_label_keys:
-        confusion_matrix = confusion_matrix_at_label_key(
-            db, dataset_name, model_name, label_key
-        )
-        if confusion_matrix is None:
-            continue
-        confusion_matrices.append(confusion_matrix)
 
-        metrics.append(
-            schemas.AccuracyMetric(
-                label_key=label_key, value=accuracy_from_cm(confusion_matrix)
-            )
-        )
-
-        metrics.append(
-            schemas.ROCAUCMetric(
+        def _add_confusion_matrix_and_metrics(**extra_kwargs):
+            cm_and_metrics = get_confusion_matrix_and_metrics_at_label_key(
+                db,
+                dataset_name=dataset_name,
+                model_name=model_name,
                 label_key=label_key,
-                value=roc_auc(db, dataset_name, model_name, label_key),
-            )
-        )
-
-        for label in [label for label in labels if label.key == label_key]:
-            (
-                precision,
-                recall,
-                f1,
-            ) = precision_and_recall_f1_from_confusion_matrix(
-                confusion_matrix, label.value
+                labels=labels,
+                **extra_kwargs,
             )
 
-            pydantic_label = schemas.Label(key=label.key, value=label.value)
-            metrics.append(
-                schemas.PrecisionMetric(label=pydantic_label, value=precision)
-            )
-            metrics.append(
-                schemas.RecallMetric(label=pydantic_label, value=recall)
-            )
-            metrics.append(schemas.F1Metric(label=pydantic_label, value=f1))
+            if cm_and_metrics is not None:
+                confusion_matrices.append(cm_and_metrics[0])
+                metrics.extend(cm_and_metrics[1])
+
+        if group_by is None:
+            _add_confusion_matrix_and_metrics()
+        else:
+            for md_id, md_val in metadata_ids_and_vals:
+                _add_confusion_matrix_and_metrics(
+                    metadatum_id=md_id,
+                    metadatum_value=md_val,
+                    metadatum_name=group_by,
+                )
 
     return confusion_matrices, metrics
 
