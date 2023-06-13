@@ -1,14 +1,14 @@
-import axios from 'axios';
-import { useState, useEffect } from 'react';
-import Typography from '@mui/material/Typography';
 import Link from '@mui/material/Link';
-import { Wrapper } from './wrapper';
-import { EntityResponse } from '../types';
+import Typography from '@mui/material/Typography';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
 import { usingAuth } from '../auth';
+import { EntityResponse } from '../types';
+import { Wrapper } from './wrapper';
 
 export const ListingComponent = ({
   name,
-  pageTitle,
+  pageTitle
 }: {
   name: string;
   pageTitle: string;
@@ -38,11 +38,7 @@ export const ListingComponent = ({
       <Typography variant='h2'>{pageTitle}</Typography>
       {entities.map((entity) => (
         <>
-          <Link
-            href={`/${name}/${entity.name}`}
-            sx={{ fontSize: 20 }}
-            key={entity.name}
-          >
+          <Link href={`/${name}/${entity.name}`} sx={{ fontSize: 20 }} key={entity.name}>
             {entity.name}
           </Link>
           <br />
