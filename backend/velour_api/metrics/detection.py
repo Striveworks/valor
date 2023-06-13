@@ -46,46 +46,33 @@ def _ap(
     ap_metrics = []
     for iou_threshold in iou_thresholds:
         for label_id in sorted_ranked_pairs:
+            precisions = []
+            recalls = []
+            cnt_tp = 0
+            cnt_fp = 0
 
-            if False: #label_id not in sorted_ranked_pairs:
-                ap_metrics.extend(
-                    [
-                        schemas.APMetric(
-                            iou=iou_thres,
-                            value=-1.0,
-                            label=labels[label_id],
-                        )
-                        for iou_thres in iou_thresholds
-                    ]
+            for row in sorted_ranked_pairs[label_id]:
+                if (
+                    row.score >= score_threshold
+                    and row.iou >= iou_threshold
+                ):
+                    cnt_tp += 1
+                else:
+                    cnt_fp += 1
+                cnt_fn = number_of_ground_truths[label_id] - cnt_tp
+
+                precisions.append(cnt_tp / (cnt_tp + cnt_fp))
+                recalls.append(cnt_tp / (cnt_tp + cnt_fn))
+
+            ap_metrics.append(
+                schemas.APMetric(
+                    iou=iou_threshold,
+                    value=calculate_ap_101_pt_interp(
+                        precisions=precisions, recalls=recalls
+                    ),
+                    label=labels[label_id],
                 )
-            else:
-                precisions = []
-                recalls = []
-                cnt_tp = 0
-                cnt_fp = 0
-
-                for row in sorted_ranked_pairs[label_id]:
-                    if (
-                        row.score >= score_threshold
-                        and row.iou >= iou_threshold
-                    ):
-                        cnt_tp += 1
-                    else:
-                        cnt_fp += 1
-                    cnt_fn = number_of_ground_truths[label_id] - cnt_tp
-
-                    precisions.append(cnt_tp / (cnt_tp + cnt_fp))
-                    recalls.append(cnt_tp / (cnt_tp + cnt_fn))
-
-                ap_metrics.append(
-                    schemas.APMetric(
-                        iou=iou_threshold,
-                        value=calculate_ap_101_pt_interp(
-                            precisions=precisions, recalls=recalls
-                        ),
-                        label=labels[label_id],
-                    )
-                )
+            )
     return ap_metrics
 
 
