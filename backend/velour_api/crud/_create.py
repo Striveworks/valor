@@ -903,7 +903,7 @@ def create_ap_metrics(
         pd_type=pd_type,
         iou_thresholds=request_info.iou_thresholds,
         ious_to_keep=request_info.ious_to_keep,
-        label_key="name",
+        label_key=label_key,
         min_area=min_area,
         max_area=max_area,
     )

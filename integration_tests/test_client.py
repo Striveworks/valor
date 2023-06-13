@@ -1035,9 +1035,9 @@ def test_evaluate_ap(
         "dataset_name": "test dataset",
         "model_pred_task_type": "Bounding Box Object Detection",
         "dataset_gt_task_type": "Bounding Box Object Detection",
-        "min_area": None,
-        "max_area": None,
         "label_key": "k1",
+        "min_area": None,
+        "max_area": None,        
     }
 
     expected_metrics = [

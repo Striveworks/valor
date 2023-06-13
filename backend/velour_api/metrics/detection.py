@@ -45,9 +45,9 @@ def _ap(
 
     ap_metrics = []
     for iou_threshold in iou_thresholds:
-        for label_id in labels:
+        for label_id in sorted_ranked_pairs:
 
-            if label_id not in sorted_ranked_pairs:
+            if False: #label_id not in sorted_ranked_pairs:
                 ap_metrics.extend(
                     [
                         schemas.APMetric(
@@ -348,9 +348,6 @@ def compute_map_metrics_from_aps(
     ap_scores
         list of AP scores.
     """
-
-    for score in ap_scores:
-        print(score)
 
     if len(ap_scores) == 0:
         return []

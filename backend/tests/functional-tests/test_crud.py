@@ -911,6 +911,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
                 max_area=max_area,
                 dataset_gt_task_type=schemas.Task.BBOX_OBJECT_DETECTION,
                 model_pred_task_type=schemas.Task.BBOX_OBJECT_DETECTION,
+                label_key=label_key,
             ),
             iou_thresholds=[0.2, 0.6],
             ious_to_keep=[0.2],
@@ -924,7 +925,6 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         return (
             crud.create_ap_metrics(
                 db,
-                label_key=label_key,
                 request_info=request_info,
             ),
             missing_pred_labels,
@@ -1045,6 +1045,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         dataset_name=dset_name,
         model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
         dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+        label_key="class",
         id=1,
     )
     assert model_evals[1] == schemas.EvaluationSettings(
@@ -1052,6 +1053,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         dataset_name=dset_name,
         model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
         dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+        label_key="class",
         min_area=min_area,
         max_area=max_area,
         id=2,
