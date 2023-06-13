@@ -19,8 +19,8 @@ def test__ap():
             RankedPair(3, 3, score=0.4, iou=1.0),
         ],
         "1": [
-            RankedPair(0, 0, score=0.2, iou=1.0),
-            RankedPair(2, 2, score=0.04, iou=1.0),
+            RankedPair(0, 0, score=0.0, iou=1.0),
+            RankedPair(2, 2, score=0.0, iou=1.0),
         ],
         "2": [
             RankedPair(0, 0, score=1.0, iou=1.0),
@@ -40,7 +40,6 @@ def test__ap():
     }
 
     iou_thresholds = [0.5, 0.75, 0.9]
-    score_threshold = 0.25
 
     # Calculated by hand
     reference_metrics = [
@@ -84,7 +83,6 @@ def test__ap():
         number_of_ground_truths=number_of_ground_truths,
         labels=labels,
         iou_thresholds=iou_thresholds,
-        score_threshold=score_threshold,
     )
 
     assert len(reference_metrics) == len(ap_metrics)

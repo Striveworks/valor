@@ -131,7 +131,6 @@ def test_compute_ap_metrics(
         label_key="class",
         iou_thresholds=iou_thresholds,
         ious_to_keep=[0.5, 0.75],
-        score_threshold=0.0,
     )
 
     metrics = [m.dict() for m in metrics]
