@@ -354,6 +354,7 @@ def _db_evaluation_settings_to_pydantic_evaluation_settings(
         dataset_gt_task_type=evaluation_settings.dataset_gt_task_type,
         min_area=evaluation_settings.min_area,
         max_area=evaluation_settings.max_area,
+        label_key=evaluation_settings.label_key,
         id=evaluation_settings.id,
     )
 

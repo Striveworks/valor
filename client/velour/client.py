@@ -5,7 +5,7 @@ import os
 from base64 import b64decode, b64encode
 from dataclasses import asdict
 from enum import Enum
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import numpy as np
@@ -593,6 +593,7 @@ class ImageModel(ModelBase):
         ious_to_keep: List[float] = None,
         min_area: float = None,
         max_area: float = None,
+        label_key: Optional[str] = None,
     ) -> "EvalJob":
         payload = {
             "settings": {
@@ -606,6 +607,7 @@ class ImageModel(ModelBase):
                 else None,
                 "min_area": min_area,
                 "max_area": max_area,
+                "label_key": label_key,
             }
         }
 

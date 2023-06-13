@@ -298,6 +298,7 @@ class EvaluationSettings(BaseModel):
     dataset_gt_task_type: Task = None
     min_area: float = None
     max_area: float = None
+    label_key: str = None
     id: int = None
 
 

@@ -99,7 +99,7 @@ def test_create_ap_metrics_endpoint(uuid4, crud, client: TestClient):
     """This tests the create AP metrics endpoint, making sure the background tasks
     and job status functions properly.
     """
-    crud.validate_create_ap_metrics.return_value = (None, None, [], [])
+    crud.validate_create_ap_metrics.return_value = ([], [])
     # prescribe the job id so the job itself knows what it is
     uuid4.return_value = "1"
 
@@ -109,6 +109,7 @@ def test_create_ap_metrics_endpoint(uuid4, crud, client: TestClient):
             "dataset_name": "",
             "model_pred_task_type": "Bounding Box Object Detection",
             "dataset_gt_task_type": "Bounding Box Object Detection",
+            "label_key": "class"
         },
     }
 
