@@ -2,8 +2,7 @@ import { AppState, Auth0Provider } from '@auth0/auth0-react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export const usingAuth = () =>
-  !(import.meta.env.VITE_AUTH0_DOMAIN === undefined);
+export const usingAuth = () => !(import.meta.env.VITE_AUTH0_DOMAIN === undefined);
 
 export const Auth0ProviderWithNavigate: React.FC<{
   children: React.ReactNode;
@@ -28,7 +27,7 @@ export const Auth0ProviderWithNavigate: React.FC<{
       clientId={clientId}
       authorizationParams={{
         audience: import.meta.env.VITE_AUTH0_AUDIENCE,
-        redirect_uri: redirectUri,
+        redirect_uri: redirectUri
       }}
       onRedirectCallback={onRedirectCallback}
     >

@@ -1,22 +1,16 @@
-import axios from 'axios';
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { EntityResponse } from '../types';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { usingAuth } from '../auth';
+import { EntityResponse } from '../types';
 
-export const EntityDetailsComponent = ({
-  entityType,
-}: {
-  entityType: string;
-}) => {
-  let { name } = useParams();
+export const EntityDetailsComponent = ({ entityType }: { entityType: string }) => {
+  const { name } = useParams();
 
   const [entityDetails, setEntityDetails] = useState<EntityResponse>();
-  const entityDetailsUrl = `${
-    import.meta.env.VITE_BACKEND_URL
-  }/${entityType}/${name}`;
+  const entityDetailsUrl = `${import.meta.env.VITE_BACKEND_URL}/${entityType}/${name}`;
   useEffect(() => {
     let config = {};
     if (usingAuth()) {
@@ -39,10 +33,7 @@ export const EntityDetailsComponent = ({
       <br />
       <Typography>{entityDetails?.description}</Typography>
       <br />
-      <Link
-        href={entityDetails?.href}
-        target='_blank'
-      >
+      <Link href={entityDetails?.href} target='_blank'>
         <Typography>{entityDetails?.href}</Typography>
       </Link>
     </>
