@@ -38,12 +38,36 @@ class Label:
 
     def tuple(self) -> Tuple[str, str]:
         return (self.key, self.value)
+    
+    def __eq__(self, other):
+        if hasattr(other, 'key') and hasattr(other, 'value'):
+            return self.key == other.key and self.value == other.value
+        return False
 
+
+    def __hash__(self) -> int:
+        return hash(f"key:{self.key},value:{self.value}")
 
 @dataclass
 class ScoredLabel:
     label: Label
     score: float
+
+    @property
+    def key(self):
+        return self.label.key
+    
+    @property
+    def value(self):
+        return self.label.value
+    
+    def __eq__(self, other):
+        if hasattr(other, 'label') and hasattr(other, 'score'):
+            return self.score == other.score and self.label == other.label
+        return False
+
+    def __hash__(self) -> int:
+        return hash(f"key:{self.key},value:{self.value},score:{self.score}")
 
 
 @dataclass

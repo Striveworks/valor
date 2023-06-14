@@ -14,6 +14,7 @@ from sqlalchemy import (
     func,
     select,
     text,
+    union_all,
 )
 from sqlalchemy.orm import Session
 
@@ -312,6 +313,104 @@ def get_all_labels_in_dataset(
         .union(set(get_detection_labels_in_dataset(db, dataset_name)))
         .union(set(get_segmentation_labels_in_dataset(db, dataset_name)))
     )
+
+
+def get_all_labels_in_model(
+    db: Session, model_name: str
+) -> set[models.Label]:
+    return set()
+
+
+def get_dataset_label_distribution(
+    db: Session, dataset_name: str
+) -> dict[schemas.LabelDistribution, int]:
+    
+    # Concatenate label_id's, datum_id's from all ground truth tables
+    subquery_classification = db.query(
+        models.GroundTruthClassification.label_id.label("label_id"), 
+        models.GroundTruthClassification.datum_id.label("datum_id")
+    )        
+    subquery_detection = db.query(
+        models.LabeledGroundTruthDetection.label_id.label("label_id"), 
+        models.GroundTruthDetection.datum_id.label("datum_id")
+    ).join(models.GroundTruthDetection, models.GroundTruthDetection.id == models.LabeledGroundTruthDetection.detection_id)
+    subquery_segmentation = db.query(
+        models.LabeledGroundTruthSegmentation.label_id.label("label_id"), 
+        models.GroundTruthSegmentation.datum_id.label("datum_id")
+    ).join(models.GroundTruthSegmentation, models.GroundTruthSegmentation.id == models.LabeledGroundTruthSegmentation.segmentation_id)
+    subquery_groundtruths = union_all(subquery_classification, subquery_detection, subquery_segmentation).subquery()    
+    
+    # Get distribution of labels across dataset
+    subquery = (
+        db.query(subquery_groundtruths.c.label_id, func.count(subquery_groundtruths.c.datum_id))
+            .join(models.Datum, models.Datum.id == subquery_groundtruths.c.datum_id)
+            .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+            .where(models.Dataset.name == dataset_name)
+            .group_by(subquery_groundtruths.c.label_id)
+            .subquery()
+    )
+    
+    # Join to label key, value
+    query = (
+        db.query(models.Label.key, models.Label.value, subquery.c.count)
+            .select_from(subquery)
+            .join(models.Label, models.Label.id == subquery.c.label_id)
+            .order_by(models.Label.key)
+    )
+
+    return [schemas.LabelDistribution(label=schemas.Label(key=row[0], value=row[1]), count=row[2]) for row in query.all()]
+
+
+def get_model_label_distribution(
+    db: Session, model_name: str
+) -> dict[schemas.ScoredLabelDistribution, int]:
+    
+    # Concatenate label_id's, datum_id's from all ground truth tables
+    subquery_classification = db.query(
+        models.PredictedClassification.label_id.label("label_id"),
+        models.PredictedClassification.score.label("score"),
+        models.PredictedClassification.model_id.label("model_id")
+    )
+    subquery_detection = db.query(
+        models.LabeledPredictedDetection.label_id.label("label_id"),        
+        models.LabeledPredictedDetection.score.label("score"),
+        models.PredictedDetection.model_id.label("model_id")
+    ).join(models.PredictedDetection, models.PredictedDetection.id == models.LabeledPredictedDetection.detection_id)
+    subquery_segmentation = db.query(
+        models.LabeledPredictedSegmentation.label_id.label("label_id"),        
+        models.LabeledPredictedSegmentation.score.label("score"),
+        models.PredictedSegmentation.model_id.label("model_id")
+    ).join(models.PredictedSegmentation, models.PredictedSegmentation.id == models.LabeledPredictedSegmentation.segmentation_id)
+    subquery_groundtruths = union_all(subquery_classification, subquery_detection, subquery_segmentation).subquery()    
+    
+    # Get distribution of labels across dataset
+    subquery = (
+        db.query(subquery_groundtruths.c.label_id, func.count(subquery_groundtruths.c.score))
+            .join(models.Model, models.Model.id == subquery_groundtruths.c.model_id)
+            .where(models.Model.name == model_name)
+            .group_by(subquery_groundtruths.c.label_id)
+            .subquery()
+    )
+    
+    # Join to label key, value
+    query = (db.query(models.Label.key, models.Label.value, subquery.c.count, subquery_groundtruths.c.score)
+        .select_from(subquery)
+        .join(models.Label, models.Label.id == subquery.c.label_id)
+        .join(subquery_groundtruths, subquery_groundtruths.c.label_id == models.Label.id)
+        .join(models.Model, models.Model.id == subquery_groundtruths.c.model_id)
+        .where(models.Model.name == model_name)
+        .order_by(models.Label.key)
+    )
+    
+    distribution = {}
+    for row in query.all():
+        label = schemas.Label(key=row[0], value=row[1])
+        if label not in distribution:
+            distribution[label] = schemas.ScoredLabelDistribution(label=label, count=row[2], scores=[row[3]])
+        else:
+            distribution[label].scores.append(row[3])
+
+    return list(distribution.values())
 
 
 def get_all_labels(db: Session) -> list[schemas.Label]:

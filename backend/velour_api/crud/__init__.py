@@ -18,6 +18,8 @@ from ._delete import delete_dataset, delete_model
 from ._read import (
     get_all_labels,
     get_all_labels_in_dataset,
+    get_dataset_label_distribution,
+    get_model_label_distribution,
     get_classification_label_values_in_dataset,
     get_classification_labels_in_dataset,
     get_classification_prediction_label_values,
@@ -70,6 +72,8 @@ __all__ = [
     "get_datums_in_dataset",
     "get_model_metrics",
     "get_all_labels_in_dataset",
+    "get_dataset_label_distribution",
+    "get_model_label_distribution",
     "get_classification_labels_in_dataset",
     "get_classification_prediction_labels",
     "get_classification_label_values_in_dataset",
