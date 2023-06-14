@@ -176,6 +176,7 @@ def get_dataset_labels(
         schemas.Label(key=label.key, value=label.value) for label in labels
     ]
 
+
 @app.get(
     "/datasets/{dataset_name}/labels/distribution",
     status_code=200,
@@ -315,6 +316,20 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 @app.delete("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
 def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
     return crud.delete_model(db, model_name)
+
+
+@app.get(
+    "/models/{model_name}/labels",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_model_labels(
+    model_name: str, db: Session = Depends(get_db)
+) -> list[schemas.Label]:
+    try:
+        return crud.get_all_labels_in_model(db, model_name)
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
