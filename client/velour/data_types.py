@@ -260,3 +260,12 @@ class PredictedImageClassification:
                     "For each label key, prediction scores must sum to 1, but"
                     f" for label key {k} got scores summing to {total_score}."
                 )
+
+
+@dataclass
+class Metadata:
+    type: str
+    number_of_classifications: int
+    number_of_detections: int
+    number_of_segmentations: int
+    associated: list[str]

@@ -192,6 +192,20 @@ def get_dataset_label_distribution(
 
 
 @app.get(
+    "/datasets/{dataset_name}/metadata",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_dataset_metadata(
+    dataset_name: str, db: Session = Depends(get_db)
+) -> schemas.Metadata:
+    try:
+        return crud.get_dataset_metadata(db, dataset_name)
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
     "/datasets/{dataset_name}/images",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
@@ -342,6 +356,20 @@ def get_model_label_distribution(
 ) -> list[schemas.ScoredLabelDistribution]:
     try:
         return crud.get_model_label_distribution(db, model_name=model_name)
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/models/{model_name}/metadata",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_model_metadata(
+    model_name: str, db: Session = Depends(get_db)
+) -> schemas.Metadata:
+    try:
+        return crud.get_model_metadata(db, model_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

@@ -22,6 +22,7 @@ from velour.data_types import (
     GroundTruthSemanticSegmentation,
     Image,
     Label,
+    Metadata,
     Metadatum,
     Point,
     PolygonWithHole,
@@ -145,6 +146,39 @@ class DatasetBase:
             ): label["count"]
             for label in distribution
         }
+
+    def get_metadata(self) -> Metadata:
+        resp = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/metadata"
+        ).json()
+
+        return Metadata(
+            type=resp["type"],
+            number_of_classifications=resp["number_of_classifications"],
+            number_of_detections=resp["number_of_detections"],
+            number_of_segmentations=resp["number_of_segmentations"],
+            associated=resp["associated"],
+        )
+
+    @property
+    def type(self):
+        return self.get_metadata().type
+
+    @property
+    def number_of_classifications(self):
+        return self.get_metadata().number_of_classifications
+
+    @property
+    def number_of_detections(self):
+        return self.get_metadata().number_of_detections
+
+    @property
+    def number_of_segmentations(self):
+        return self.get_metadata().number_of_segmentations
+
+    @property
+    def associated_models(self):
+        return self.get_metadata().associated
 
     def finalize(self):
         return self.client._requests_put_rel_host(
@@ -539,6 +573,39 @@ class ModelBase:
             }
             for label in distribution
         }
+
+    def get_metadata(self) -> Metadata:
+        resp = self.client._requests_get_rel_host(
+            f"models/{self.name}/metadata"
+        ).json()
+
+        return Metadata(
+            type=resp["type"],
+            number_of_classifications=resp["number_of_classifications"],
+            number_of_detections=resp["number_of_detections"],
+            number_of_segmentations=resp["number_of_segmentations"],
+            associated=resp["associated"],
+        )
+
+    @property
+    def type(self):
+        return self.get_metadata().type
+
+    @property
+    def number_of_classifications(self):
+        return self.get_metadata().number_of_classifications
+
+    @property
+    def number_of_detections(self):
+        return self.get_metadata().number_of_detections
+
+    @property
+    def number_of_segmentations(self):
+        return self.get_metadata().number_of_segmentations
+
+    @property
+    def associated_datasets(self):
+        return self.get_metadata().associated
 
 
 class ImageModel(ModelBase):

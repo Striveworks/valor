@@ -534,3 +534,11 @@ class ROCAUCMetric(BaseModel):
             "parameters": {"label_key": self.label_key},
             "evaluation_settings_id": evaluation_settings_id,
         }
+
+
+class Metadata(BaseModel):
+    type: str
+    number_of_classifications: int
+    number_of_detections: int
+    number_of_segmentations: int
+    associated: list[str]

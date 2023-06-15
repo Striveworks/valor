@@ -21,6 +21,90 @@ from sqlalchemy.orm import Session
 from velour_api import enums, exceptions, models, schemas
 
 
+def _get_associated_models(db: Session, dataset_name: str):
+
+    subquery_classifications = (
+        select(models.PredictedClassification.model_id)
+        .join(
+            models.Datum,
+            models.Datum.id == models.PredictedClassification.datum_id,
+        )
+        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+        .where(models.Dataset.name == dataset_name)
+    )
+
+    subquery_detections = (
+        select(models.PredictedDetection.model_id)
+        .join(
+            models.Datum, models.Datum.id == models.PredictedDetection.datum_id
+        )
+        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+        .where(models.Dataset.name == dataset_name)
+    )
+
+    subquery_segmentations = (
+        select(models.PredictedSegmentation.model_id)
+        .join(
+            models.Datum,
+            models.Datum.id == models.PredictedSegmentation.datum_id,
+        )
+        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+        .where(models.Dataset.name == dataset_name)
+    )
+
+    subquery = union_all(
+        subquery_classifications, subquery_detections, subquery_segmentations
+    ).subquery()
+
+    # Join to label key, value
+    return db.scalars(
+        select(models.Model.name.distinct())
+        .select_from(subquery)
+        .join(models.Model, models.Model.id == subquery.c.model_id)
+    ).all()
+
+
+def _get_associated_datasets(db: Session, model_name: str):
+
+    subquery_classifications = (
+        select(models.PredictedClassification.datum_id)
+        .join(
+            models.Model,
+            models.Model.id == models.PredictedClassification.model_id,
+        )
+        .where(models.Model.name == model_name)
+    )
+
+    subquery_detections = (
+        select(models.PredictedDetection.datum_id)
+        .join(
+            models.Model, models.Model.id == models.PredictedDetection.model_id
+        )
+        .where(models.Model.name == model_name)
+    )
+
+    subquery_segmentations = (
+        select(models.PredictedSegmentation.datum_id)
+        .join(
+            models.Model,
+            models.Model.id == models.PredictedSegmentation.model_id,
+        )
+        .where(models.Model.name == model_name)
+    )
+
+    subquery = union_all(
+        subquery_classifications, subquery_detections, subquery_segmentations
+    ).subquery()
+
+    # Join to label key, value
+    return db.scalars(
+        select(models.Dataset.name.distinct())
+        .select_from(subquery)
+        .join(models.Datum, models.Datum.id == subquery.c.datum_id)
+        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+    ).all()
+
+
 def _get_bounding_box_of_raster(
     db: Session, raster: RasterElement
 ) -> tuple[int, int, int, int]:
@@ -74,6 +158,74 @@ def get_dataset(db: Session, dataset_name: str) -> models.Dataset:
     return ret
 
 
+def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
+
+    associated_models = _get_associated_models(db, dataset_name)
+
+    number_of_classifications = db.scalar(
+        select(func.count(models.GroundTruthClassification.id))
+        .join(
+            models.Datum,
+            models.Datum.id == models.GroundTruthClassification.datum_id,
+        )
+        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+        .where(models.Dataset.name == dataset_name)
+    )
+
+    number_of_detections = db.scalar(
+        select(func.count(models.LabeledGroundTruthDetection.id))
+        .join(
+            models.GroundTruthDetection,
+            models.GroundTruthDetection.id
+            == models.LabeledGroundTruthDetection.detection_id,
+        )
+        .join(
+            models.Datum,
+            models.Datum.id == models.GroundTruthDetection.datum_id,
+        )
+        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+        .where(models.Dataset.name == dataset_name)
+    )
+
+    number_of_segmentations = db.scalar(
+        select(func.count(models.LabeledGroundTruthSegmentation.id))
+        .join(
+            models.GroundTruthSegmentation,
+            models.GroundTruthSegmentation.id
+            == models.LabeledGroundTruthSegmentation.segmentation_id,
+        )
+        .join(
+            models.Datum,
+            models.Datum.id == models.GroundTruthSegmentation.datum_id,
+        )
+        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+        .where(models.Dataset.name == dataset_name)
+    )
+
+    model_type_list = []
+    if number_of_classifications > 0:
+        model_type_list.append("CLASSIFICATION")
+    if number_of_detections > 0:
+        model_type_list.append("DETECTION")
+    if number_of_segmentations > 0:
+        model_type_list.append("SEGMENTATION")
+
+    if len(model_type_list) == 0:
+        model_type = "NONE"
+    elif len(model_type_list) == 1:
+        model_type = model_type_list[0]
+    else:
+        model_type = "MIXED"
+
+    return schemas.Metadata(
+        type=model_type,
+        number_of_classifications=number_of_classifications,
+        number_of_detections=number_of_detections,
+        number_of_segmentations=number_of_segmentations,
+        associated=associated_models,
+    )
+
+
 def get_models(db: Session) -> list[schemas.Model]:
     return [
         schemas.Model(**{k: getattr(m, k) for k in schemas.Model.__fields__})
@@ -89,6 +241,70 @@ def get_model(db: Session, model_name: str) -> models.Model:
         raise exceptions.ModelDoesNotExistError(model_name)
 
     return ret
+
+
+def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
+
+    associated_datasets = _get_associated_datasets(db, model_name)
+
+    number_of_classifications = db.scalar(
+        select(func.count(models.PredictedClassification.id))
+        .join(
+            models.Model,
+            models.Model.id == models.PredictedClassification.model_id,
+        )
+        .where(models.Model.name == model_name)
+    )
+
+    number_of_detections = db.scalar(
+        select(func.count(models.LabeledPredictedDetection.id))
+        .join(
+            models.PredictedDetection,
+            models.PredictedDetection.id
+            == models.LabeledPredictedDetection.detection_id,
+        )
+        .join(
+            models.Model, models.Model.id == models.PredictedDetection.model_id
+        )
+        .where(models.Model.name == model_name)
+    )
+
+    number_of_segmentations = db.scalar(
+        select(func.count(models.LabeledPredictedSegmentation.id))
+        .join(
+            models.PredictedSegmentation,
+            models.PredictedSegmentation.id
+            == models.LabeledPredictedSegmentation.segmentation_id,
+        )
+        .join(
+            models.Model,
+            models.Model.id == models.PredictedSegmentation.model_id,
+        )
+        .where(models.Model.name == model_name)
+    )
+
+    model_type_list = []
+    if number_of_classifications > 0:
+        model_type_list.append("CLASSIFICATION")
+    if number_of_detections > 0:
+        model_type_list.append("DETECTION")
+    if number_of_segmentations > 0:
+        model_type_list.append("SEGMENTATION")
+
+    if len(model_type_list) == 0:
+        model_type = "NONE"
+    elif len(model_type_list) == 1:
+        model_type = model_type_list[0]
+    else:
+        model_type = "MIXED"
+
+    return schemas.Metadata(
+        type=model_type,
+        number_of_classifications=number_of_classifications,
+        number_of_detections=number_of_detections,
+        number_of_segmentations=number_of_segmentations,
+        associated=associated_datasets,
+    )
 
 
 def get_image(db: Session, uid: str, dataset_name: str) -> models.Datum:
@@ -370,7 +586,7 @@ def get_dataset_label_distribution(
     db: Session, dataset_name: str
 ) -> dict[schemas.LabelDistribution, int]:
 
-    # Concatenate label_id's, datum_id's from all ground truth tables
+    # Join groundtruths with labels
     subquery_classification = db.query(
         models.GroundTruthClassification.label_id.label("label_id"),
         models.GroundTruthClassification.datum_id.label("datum_id"),
@@ -430,7 +646,7 @@ def get_model_label_distribution(
     db: Session, model_name: str
 ) -> dict[schemas.ScoredLabelDistribution, int]:
 
-    # Concatenate label_id's, datum_id's from all ground truth tables
+    # Join predictions with labels
     subquery_classification = db.query(
         models.PredictedClassification.label_id.label("label_id"),
         models.PredictedClassification.score.label("score"),
@@ -454,21 +670,19 @@ def get_model_label_distribution(
         models.PredictedSegmentation.id
         == models.LabeledPredictedSegmentation.segmentation_id,
     )
-    subquery_groundtruths = union_all(
+    subquery_predictions = union_all(
         subquery_classification, subquery_detection, subquery_segmentation
     ).subquery()
 
     # Get distribution of labels across dataset
     subquery = (
         db.query(
-            subquery_groundtruths.c.label_id,
-            func.count(subquery_groundtruths.c.score),
+            subquery_predictions.c.label_id,
+            func.count(subquery_predictions.c.score),
         )
-        .join(
-            models.Model, models.Model.id == subquery_groundtruths.c.model_id
-        )
+        .join(models.Model, models.Model.id == subquery_predictions.c.model_id)
         .where(models.Model.name == model_name)
-        .group_by(subquery_groundtruths.c.label_id)
+        .group_by(subquery_predictions.c.label_id)
         .subquery()
     )
 
@@ -478,17 +692,15 @@ def get_model_label_distribution(
             models.Label.key,
             models.Label.value,
             subquery.c.count,
-            subquery_groundtruths.c.score,
+            subquery_predictions.c.score,
         )
         .select_from(subquery)
         .join(models.Label, models.Label.id == subquery.c.label_id)
         .join(
-            subquery_groundtruths,
-            subquery_groundtruths.c.label_id == models.Label.id,
+            subquery_predictions,
+            subquery_predictions.c.label_id == models.Label.id,
         )
-        .join(
-            models.Model, models.Model.id == subquery_groundtruths.c.model_id
-        )
+        .join(models.Model, models.Model.id == subquery_predictions.c.model_id)
         .where(models.Model.name == model_name)
         .order_by(models.Label.key)
     )
