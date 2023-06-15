@@ -161,7 +161,7 @@ class DatasetBase:
         )
 
     @property
-    def type(self):
+    def annotation_type(self):
         return self.get_metadata().type
 
     @property
@@ -588,7 +588,7 @@ class ModelBase:
         )
 
     @property
-    def type(self):
+    def annotation_type(self):
         return self.get_metadata().type
 
     @property
