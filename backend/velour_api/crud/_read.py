@@ -218,7 +218,7 @@ def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
         model_type = "MIXED"
 
     return schemas.Metadata(
-        type=model_type,
+        annotation_type=model_type,
         number_of_classifications=number_of_classifications,
         number_of_detections=number_of_detections,
         number_of_segmentations=number_of_segmentations,
@@ -299,7 +299,7 @@ def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
         model_type = "MIXED"
 
     return schemas.Metadata(
-        type=model_type,
+        annotation_type=model_type,
         number_of_classifications=number_of_classifications,
         number_of_detections=number_of_detections,
         number_of_segmentations=number_of_segmentations,

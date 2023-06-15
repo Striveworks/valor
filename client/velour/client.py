@@ -153,7 +153,7 @@ class DatasetBase:
         ).json()
 
         return Metadata(
-            type=resp["type"],
+            annotation_type=resp["annotation_type"],
             number_of_classifications=resp["number_of_classifications"],
             number_of_detections=resp["number_of_detections"],
             number_of_segmentations=resp["number_of_segmentations"],
@@ -162,7 +162,7 @@ class DatasetBase:
 
     @property
     def annotation_type(self):
-        return self.get_metadata().type
+        return self.get_metadata().annotation_type
 
     @property
     def number_of_classifications(self):
@@ -580,7 +580,7 @@ class ModelBase:
         ).json()
 
         return Metadata(
-            type=resp["type"],
+            annotation_type=resp["annotation_type"],
             number_of_classifications=resp["number_of_classifications"],
             number_of_detections=resp["number_of_detections"],
             number_of_segmentations=resp["number_of_segmentations"],
@@ -589,7 +589,7 @@ class ModelBase:
 
     @property
     def annotation_type(self):
-        return self.get_metadata().type
+        return self.get_metadata().annotation_type
 
     @property
     def number_of_classifications(self):
