@@ -268,4 +268,4 @@ class Metadata:
     number_of_classifications: int
     number_of_detections: int
     number_of_segmentations: int
-    associated: list[str]
+    associated: List[str]
