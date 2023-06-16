@@ -9,13 +9,13 @@ from ._create import (
     create_predicted_detections,
     create_predicted_image_classifications,
     create_predicted_segmentations,
-    finalize_inferences,
     get_filtered_preds_statement_and_missing_labels,
     validate_create_ap_metrics,
     validate_create_clf_metrics,
 )
 from ._delete import delete_dataset, delete_model
 from ._read import (
+    check_if_finalized,
     get_all_labels,
     get_all_labels_in_dataset,
     get_classification_label_values_in_dataset,
@@ -39,9 +39,10 @@ from ._read import (
     get_segmentation_labels_in_dataset,
     number_of_rows,
 )
-from ._update import finalize_dataset
+from ._update import finalize_dataset, finalize_inferences
 
 __all__ = [
+    "check_if_finalized",
     "create_groundtruth_detections",
     "create_predicted_detections",
     "create_groundtruth_segmentations",

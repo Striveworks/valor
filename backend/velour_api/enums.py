@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, IntEnum
 
 
 class Task(Enum):
@@ -27,3 +27,10 @@ class AnnotationType(Enum):
     BOUNDARY = "boundary"
     RASTER = "raster"
     UNDEFINED = "undefined"
+
+
+class TableStatus(IntEnum):
+    CREATING = 0
+    READY = 1
+    EVALUATING = 2
+    DELETING = 3

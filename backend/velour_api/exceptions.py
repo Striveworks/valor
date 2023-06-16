@@ -20,16 +20,26 @@ class DatasetIsFinalizedError(Exception):
         )
 
 
-class DatasetIsDraftError(Exception):
+class DatasetIsNotFinalizedError(Exception):
     def __init__(self, name: str):
         return super().__init__(
-            f"Cannot evaluate against dataset '{name}' since it is still a draft."
+            f"Cannot evaluate against dataset '{name}' since it is not finalized."
         )
 
 
 class ModelDoesNotExistError(Exception):
     def __init__(self, name: str):
         return super().__init__(f"Model with name '{name}' does not exist.")
+
+
+class ModelIsFinalizedError(Exception):
+    def __init__(self, name: str):
+        return super().__init__(f"Model with name '{name}' is not editable.")
+
+
+class ModelIsNotFinalizedError(Exception):
+    def __init__(self, name: str):
+        return super().__init__(f"Model with name '{name}' is not finalized.")
 
 
 class ImageDoesNotExistError(Exception):

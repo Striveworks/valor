@@ -51,10 +51,7 @@ def _ap(
             cnt_fp = 0
 
             for row in sorted_ranked_pairs[label_id]:
-                if (
-                    row.score > 0
-                    and row.iou >= iou_threshold
-                ):
+                if row.score > 0 and row.iou >= iou_threshold:
                     cnt_tp += 1
                 else:
                     cnt_fp += 1

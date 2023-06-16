@@ -1,14 +1,14 @@
 import io
 import json
 from base64 import b64decode
-from typing import Optional
+from typing import Dict, Optional
 from uuid import uuid4
 
 import numpy as np
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
-from velour_api.enums import DatumTypes, JobStatus, Task
+from velour_api.enums import DatumTypes, JobStatus, TableStatus, Task
 
 
 def validate_single_polygon(poly: list[tuple[float, float]]):
@@ -25,24 +25,17 @@ def _validate_href(v: str | None):
     return v
 
 
-class _BaseDataset(BaseModel):
+class Dataset(BaseModel):
     name: str
     from_video: bool = False
     href: str = None
     description: str = None
     type: DatumTypes
+    finalized: bool = False
 
     @validator("href")
     def validate_href(cls, v):
         return _validate_href(v)
-
-
-class Dataset(_BaseDataset):
-    draft: bool
-
-
-class DatasetCreate(_BaseDataset):
-    pass
 
 
 class Model(BaseModel):
@@ -50,6 +43,7 @@ class Model(BaseModel):
     href: str = None
     description: str = None
     type: DatumTypes
+    finalized: bool = False
 
     @validator("href")
     def validate_href(cls, v):
@@ -338,6 +332,18 @@ class Job(BaseModel):
 
     class Config:
         extra = Extra.allow
+
+
+class DatasetStatus(BaseModel):
+    dataset_name: str
+    status: TableStatus = TableStatus.CREATING
+
+
+class InferenceStatus(BaseModel):
+    model_name: str
+
+    # Map dataset_name to TableStatus
+    status: Dict[str, TableStatus]
 
 
 class ClfMetricsRequest(BaseModel):
