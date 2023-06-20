@@ -1531,3 +1531,85 @@ def test_create_images_with_metadata(
     assert metadatum1.string_value == "a string"
     assert metadatum2.name == "metadatum name3"
     assert metadatum2.numeric_value == 0.45
+
+
+def test_stratify_clf_metrics(
+    client: Session,
+    db: Session,
+    y_true: list[int],
+    tabular_preds: list[list[float]],
+):
+    dataset = client.create_tabular_dataset(name=dset_name)
+    model = client.create_tabular_model(name=model_name)
+
+    # create data and two-different defining groups of cohorts
+    gt_with_metadata = [
+        [
+            Label(key="class", value=str(t)),
+            Metadatum(name="md1", value=f"md1-val{i % 3}"),
+            Metadatum(name="md2", value=f"md2-val{i % 4}"),
+        ]
+        for i, t in enumerate(y_true)
+    ]
+
+    dataset.add_groundtruth(gt_with_metadata)
+    model.add_predictions(
+        dataset,
+        [
+            [
+                ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
+                for i in range(len(pred))
+            ]
+            for pred in tabular_preds
+        ],
+    )
+
+    dataset.finalize()
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
+    time.sleep(2)
+
+    metrics = eval_job.metrics()
+
+    for m in metrics:
+        assert m["group"] in [
+            {"name": "md1", "value": "md1-val0"},
+            {"name": "md1", "value": "md1-val1"},
+            {"name": "md1", "value": "md1-val2"},
+        ]
+
+    # for value 0: the gts are [1, 0, 1, 1] and the preds are
+    # [[0.37, 0.35, 0.28], [0.97, 0.03, 0.0], [0.01, 0.96, 0.03], [0.45, 0.11, 0.44]]
+    # [
+    #     {
+    #         "type": "Accuracy",
+    #         "parameters": {"label_key": "class"},
+    #         "value": 0.5,
+    #         "group": {"name": "md1", "value": "val0"},
+    #     },
+    #     {
+    #         "type": "ROCAUC",
+    #         "parameters": {"label_key": "class"},
+    #         "value": 0.7685185185185185,
+    #         "group": {"name": "md1", "value": "val0"},
+    #     },
+    #     {
+    #         "type": "Precision",
+    #         "value": 0.6666666666666666,
+    #         "label": {"key": "class", "value": "1"},
+    #         "group": {"name": "md1", "value": "val0"},
+    #     },
+    #     {
+    #         "type": "Recall",
+    #         "value": 0.3333333333333333,
+    #         "label": {"key": "class", "value": "1"},
+    #         "group": {"name": "md1", "value": "val0"},
+    #     },
+    #     {
+    #         "type": "F1",
+    #         "value": 0.4444444444444444,
+    #         "label": {"key": "class", "value": "1"},
+    #         "group": {"name": "md1", "value": "val0"},
+    #     },
+    # ]

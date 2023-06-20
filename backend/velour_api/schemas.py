@@ -344,12 +344,14 @@ class ClfMetricsRequest(BaseModel):
     settings: EvaluationSettings
 
 
-# used for responses from API
 class Metric(BaseModel):
+    """This is used for responses from the API"""
+
     type: str
     parameters: dict | None
     value: float | dict | None
     label: Label = None
+    group: DatumMetadatum = None
 
 
 class APMetric(BaseModel):
@@ -420,7 +422,8 @@ class ConfusionMatrixEntry(BaseModel):
 class _BaseConfusionMatrix(BaseModel):
     label_key: str
     entries: list[ConfusionMatrixEntry]
-    metadatum: DatumMetadatum = None
+    group: DatumMetadatum = None
+    group_id: int = None
 
 
 class ConfusionMatrix(_BaseConfusionMatrix, extra=Extra.allow):
@@ -464,7 +467,8 @@ class ConfusionMatrixResponse(_BaseConfusionMatrix):
 class AccuracyMetric(BaseModel):
     label_key: str
     value: float
-    group_by: DatumMetadatum = None
+    group: DatumMetadatum = None
+    group_id: int = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
@@ -472,13 +476,15 @@ class AccuracyMetric(BaseModel):
             "type": "Accuracy",
             "evaluation_settings_id": evaluation_settings_id,
             "parameters": {"label_key": self.label_key},
+            "group_id": self.group_id,
         }
 
 
 class _PrecisionRecallF1Base(BaseModel):
     label: Label
     value: float | None
-    group_by: DatumMetadatum = None
+    group: DatumMetadatum = None
+    group_id: int = None
 
     @validator("value")
     def replace_nan_with_none(cls, v):
@@ -492,6 +498,7 @@ class _PrecisionRecallF1Base(BaseModel):
             "label_id": label_id,
             "type": self.__type__,
             "evaluation_settings_id": evaluation_settings_id,
+            "group_id": self.group_id,
         }
 
 
@@ -510,7 +517,8 @@ class F1Metric(_PrecisionRecallF1Base):
 class ROCAUCMetric(BaseModel):
     label_key: str
     value: float
-    group_by: DatumMetadatum = None
+    group: DatumMetadatum = None
+    group_id: int = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
@@ -518,4 +526,5 @@ class ROCAUCMetric(BaseModel):
             "type": "ROCAUC",
             "parameters": {"label_key": self.label_key},
             "evaluation_settings_id": evaluation_settings_id,
+            "group_id": self.group_id,
         }

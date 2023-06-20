@@ -454,6 +454,10 @@ class Metric(Base):
     evaluation_settings_id: Mapped[int] = mapped_column(
         ForeignKey("evaluation_settings.id")
     )
+    group_id: Mapped[int] = mapped_column(
+        ForeignKey("metadatum.id"), nullable=True
+    )
+    group = relationship(Metadatum)
 
 
 class ConfusionMatrix(Base):

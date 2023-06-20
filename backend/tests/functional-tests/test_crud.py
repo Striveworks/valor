@@ -1998,7 +1998,7 @@ def test_create_datums_with_metadata(db: Session):
     }
 
 
-def test_get_string_metadata_ids_and_vals(db: Session):
+def test_get_string_metadata_ids(db: Session):
     crud.create_dataset(
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.TABULAR),
@@ -2031,20 +2031,20 @@ def test_get_string_metadata_ids_and_vals(db: Session):
     ]
     crud._create._add_datums_to_dataset(db, dset_name, datums)
 
-    string_vals_and_ids = crud.get_string_metadata_ids_and_vals(
+    string_ids = crud.get_string_metadata_ids(
         db, dset_name, metadata_name="md1"
     )
 
-    assert len(string_vals_and_ids) == 2
-    assert set([s[1] for s in string_vals_and_ids]) == {"md1-val1", "md1-val2"}
+    assert len(string_ids) == 2
+    # assert set([s[1] for s in string_vals_and_ids]) == {"md1-val1", "md1-val2"}
 
-    string_vals_and_ids = crud.get_string_metadata_ids_and_vals(
+    string_ids = crud.get_string_metadata_ids(
         db, dset_name, metadata_name="md2"
     )
-    assert len(string_vals_and_ids) == 1
-    assert [s[1] for s in string_vals_and_ids] == ["md2-val1"]
+    assert len(string_ids) == 1
+    # assert [s[1] for s in string_vals_and_ids] == ["md2-val1"]
 
-    string_vals_and_ids = crud.get_string_metadata_ids_and_vals(
+    string_ids = crud.get_string_metadata_ids(
         db, dset_name, metadata_name="md3"
     )
-    assert string_vals_and_ids == []
+    assert string_ids == []

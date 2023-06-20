@@ -375,12 +375,27 @@ def _db_label_to_schemas_label(label: models.Label) -> schemas.Label:
     return schemas.Label(key=label.key, value=label.value)
 
 
+def _db_metadatum_to_schemas_metadatum(
+    metadatum: models.Metadatum,
+) -> schemas.DatumMetadatum:
+    if metadatum is None:
+        return None
+    if metadatum.string_value is not None:
+        value = metadatum.string_value
+    elif metadatum.numeric_value is not None:
+        value = metadatum.numeric_value
+    else:
+        value = metadatum.geo
+    return schemas.DatumMetadatum(name=metadatum.name, value=value)
+
+
 def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
     return schemas.Metric(
         type=metric.type,
         parameters=metric.parameters,
         value=metric.value,
         label=_db_label_to_schemas_label(metric.label),
+        group=_db_metadatum_to_schemas_metadatum(metric.group),
     )
 
 
@@ -780,16 +795,16 @@ def get_model_task_types(
     return ret
 
 
-def get_string_metadata_ids_and_vals(
+def get_string_metadata_ids(
     db: Session, dataset_name: str, metadata_name: str
-) -> list[tuple[int, str]]:
+) -> list[int]:
     """Returns the ids of all metadata (for a given metadata name) in a dataset that
     have string values
     """
-    return db.execute(
+    return db.scalars(
         text(
             f"""
-        SELECT DISTINCT datum_metadatum_link.metadatum_id, metadatum.string_value
+        SELECT DISTINCT datum_metadatum_link.metadatum_id
         FROM datum_metadatum_link
         JOIN metadatum ON datum_metadatum_link.metadatum_id=metadatum.id
         JOIN datum ON datum_metadatum_link.datum_id=datum.id

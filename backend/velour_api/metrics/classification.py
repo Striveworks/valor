@@ -205,8 +205,6 @@ def get_confusion_matrix_and_metrics_at_label_key(
         model_name=model_name,
         label_key=label_key,
         metadatum_id=metadatum_id,
-        metadatum_value=metadatum_value,
-        metadatum_name=metadatum_name,
     )
 
     if confusion_matrix is None:
@@ -217,7 +215,7 @@ def get_confusion_matrix_and_metrics_at_label_key(
         schemas.AccuracyMetric(
             label_key=label_key,
             value=accuracy_from_cm(confusion_matrix),
-            group_by=confusion_matrix.metadatum,
+            group_id=confusion_matrix.group_id,
         ),
         schemas.ROCAUCMetric(
             label_key=label_key,
@@ -228,7 +226,7 @@ def get_confusion_matrix_and_metrics_at_label_key(
                 label_key,
                 metadatum_id=metadatum_id,
             ),
-            group_by=confusion_matrix.metadatum,
+            group_id=confusion_matrix.group_id,
         ),
     ]
 
@@ -244,12 +242,26 @@ def get_confusion_matrix_and_metrics_at_label_key(
 
         pydantic_label = schemas.Label(key=label.key, value=label.value)
         metrics.append(
-            schemas.PrecisionMetric(label=pydantic_label, value=precision)
+            schemas.PrecisionMetric(
+                label=pydantic_label,
+                value=precision,
+                group_id=confusion_matrix.group_id,
+            )
         )
         metrics.append(
-            schemas.RecallMetric(label=pydantic_label, value=recall)
+            schemas.RecallMetric(
+                label=pydantic_label,
+                value=recall,
+                group_id=confusion_matrix.group_id,
+            )
         )
-        metrics.append(schemas.F1Metric(label=pydantic_label, value=f1))
+        metrics.append(
+            schemas.F1Metric(
+                label=pydantic_label,
+                value=f1,
+                group_id=confusion_matrix.group_id,
+            )
+        )
 
     return confusion_matrix, metrics
 
@@ -275,7 +287,7 @@ def compute_clf_metrics(
     unique_label_keys = set([label.key for label in labels])
 
     if group_by is not None:
-        metadata_ids_and_vals = crud.get_string_metadata_ids_and_vals(
+        metadata_ids = crud.get_string_metadata_ids(
             db, dataset_name, metadata_name=group_by
         )
 
@@ -300,12 +312,8 @@ def compute_clf_metrics(
         if group_by is None:
             _add_confusion_matrix_and_metrics()
         else:
-            for md_id, md_val in metadata_ids_and_vals:
-                _add_confusion_matrix_and_metrics(
-                    metadatum_id=md_id,
-                    metadatum_value=md_val,
-                    metadatum_name=group_by,
-                )
+            for md_id in metadata_ids:
+                _add_confusion_matrix_and_metrics(metadatum_id=md_id)
 
     return confusion_matrices, metrics
 
@@ -316,8 +324,6 @@ def confusion_matrix_at_label_key(
     model_name: str,
     label_key: str,
     metadatum_id: int = None,
-    metadatum_value: str = None,
-    metadatum_name: str = None,
 ) -> schemas.ConfusionMatrix | None:
     """Returns None in the case that there are not common images in the dataset
     that have both a groundtruth and prediction with label key `label_key`
@@ -423,12 +429,12 @@ def confusion_matrix_at_label_key(
         # for the same image
         return None
 
-    if metadatum_id is not None:
-        metadatum = schemas.DatumMetadatum(
-            name=metadatum_name, value=metadatum_value
-        )
-    else:
-        metadatum = None
+    # if metadatum_id is not None:
+    #     metadatum = schemas.DatumMetadatum(
+    #         name=metadatum_name, value=metadatum_value
+    #     )
+    # else:
+    #     metadatum = None
 
     return schemas.ConfusionMatrix(
         label_key=label_key,
@@ -438,7 +444,7 @@ def confusion_matrix_at_label_key(
             )
             for r in res
         ],
-        metadatum=metadatum,
+        group_id=metadatum_id,
     )
 
 
