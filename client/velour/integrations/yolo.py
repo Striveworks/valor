@@ -15,7 +15,9 @@ from velour.data_types import (
 )
 
 
-def parse_yolo_image_classification(result, uid: str):
+def parse_yolo_image_classification(
+    result, uid: str, label_key: str = "class"
+):
     """Parses Ultralytic's result for an image classification task."""
 
     # Extract data
@@ -28,7 +30,7 @@ def parse_yolo_image_classification(result, uid: str):
     # Create scored label list
     scored_labels = [
         ScoredLabel(
-            label=Label(key="class_label", value=labels[key]),
+            label=Label(key=label_key, value=labels[key]),
             score=probability.item(),
         )
         for key, probability in list(zip(labels, probabilities))
@@ -62,9 +64,15 @@ def _convert_yolo_segmentation(
 
 
 def parse_yolo_image_segmentation(
-    result, uid: str, resample: Resampling = Resampling.BILINEAR
+    result,
+    uid: str,
+    label_key: str = "class",
+    resample: Resampling = Resampling.BILINEAR,
 ):
     """Parses Ultralytic's result for an image segmentation task."""
+
+    if result.masks.data is None:
+        return []
 
     # Extract data
     image_uid = uid
@@ -77,7 +85,7 @@ def parse_yolo_image_segmentation(
     # Create scored label list
     scored_labels = [
         ScoredLabel(
-            label=Label(key="class_label", value=label),
+            label=Label(key=label_key, value=label),
             score=probability,
         )
         for label, probability in list(zip(labels, probabilities))
@@ -105,7 +113,7 @@ def parse_yolo_image_segmentation(
     ]
 
 
-def parse_yolo_object_detection(result, uid: str):
+def parse_yolo_object_detection(result, uid: str, label_key: str = "class"):
     """Parses Ultralytic's result for an object detection task."""
 
     # Extract data
@@ -119,7 +127,7 @@ def parse_yolo_object_detection(result, uid: str):
     # Create scored label list
     scored_labels = [
         ScoredLabel(
-            label=Label(key="class_label", value=label),
+            label=Label(key=label_key, value=label),
             score=probability,
         )
         for label, probability in list(zip(labels, probabilities))
@@ -153,6 +161,7 @@ def parse_yolo_object_detection(result, uid: str):
 def parse_yolo_results(
     results,
     uid: str,
+    label_key: str = "class",
     segmentation_resample: Resampling = Resampling.BILINEAR,
 ) -> Union[
     PredictedDetection,
@@ -175,12 +184,17 @@ def parse_yolo_results(
 
     if "masks" in results.keys and "boxes" in results.keys:
         return parse_yolo_image_segmentation(
-            results, uid=uid, resample=segmentation_resample
+            results,
+            uid=uid,
+            label_key=label_key,
+            resample=segmentation_resample,
         )
     elif "boxes" in results.keys:
-        return parse_yolo_object_detection(results, uid)
+        return parse_yolo_object_detection(results, uid, label_key=label_key)
     elif "probs" in results.keys:
-        return parse_yolo_image_classification(results, uid)
+        return parse_yolo_image_classification(
+            results, uid, label_key=label_key
+        )
     else:
         raise ValueError(
             "Input arguement 'result' does not contain identifiable information."

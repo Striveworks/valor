@@ -1,13 +1,13 @@
-import axios from 'axios';
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import Link from '@mui/material/Link';
-import { EvaluationSetting } from './types';
-import { Wrapper } from './components/wrapper';
-import { EntityDetailsComponent } from './components/entity-details-component';
+import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { usingAuth } from './auth';
+import { EntityDetailsComponent } from './components/entity-details-component';
+import { Wrapper } from './components/wrapper';
+import { EvaluationSetting } from './types';
 
 const taskTypeWidth = 250;
 const areaWidth = 175;
@@ -15,27 +15,27 @@ const columns: GridColDef[] = [
   {
     field: 'dataset_name',
     headerName: 'Dataset',
-    width: 150,
+    width: 150
   },
   {
     field: 'model_pred_task_type',
     headerName: 'Model prediction type',
-    width: taskTypeWidth,
+    width: taskTypeWidth
   },
   {
     field: 'dataset_gt_task_type',
     headerName: 'Dataset annotation type',
-    width: taskTypeWidth,
+    width: taskTypeWidth
   },
   {
     field: 'min_area',
     headerName: 'Min. area of objects',
-    width: areaWidth,
+    width: areaWidth
   },
   {
     field: 'max_area',
     headerName: 'Max. area of objects',
-    width: areaWidth,
+    width: areaWidth
   },
   {
     field: '',
@@ -45,15 +45,13 @@ const columns: GridColDef[] = [
     ),
     sortable: false,
     filterable: false,
-    hideable: false,
-  },
+    hideable: false
+  }
 ];
 
 export const ModelDetailsPage = () => {
-  let { name } = useParams();
-  const [allEvalSettings, setAllEvalSettings] = useState<EvaluationSetting[]>(
-    []
-  );
+  const { name } = useParams();
+  const [allEvalSettings, setAllEvalSettings] = useState<EvaluationSetting[]>([]);
   const evalSettingsUrl = `${
     import.meta.env.VITE_BACKEND_URL
   }/models/${name}/evaluation-settings`;
@@ -84,9 +82,9 @@ export const ModelDetailsPage = () => {
         initialState={{
           pagination: {
             paginationModel: {
-              pageSize: 5,
-            },
-          },
+              pageSize: 5
+            }
+          }
         }}
         pageSizeOptions={[5]}
         disableRowSelectionOnClick

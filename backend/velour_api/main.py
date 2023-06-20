@@ -368,8 +368,6 @@ def create_ap_metrics(
 ) -> schemas.CreateAPMetricsResponse:
     try:
         (
-            gts_statement,
-            preds_statement,
             missing_pred_labels,
             ignored_pred_labels,
         ) = crud.validate_create_ap_metrics(db, request_info=data)
@@ -385,8 +383,6 @@ def create_ap_metrics(
             wrapped_fn,
             db=db,
             request_info=data,
-            gts_statement=gts_statement,
-            preds_statement=preds_statement,
         )
 
         return cm_resp

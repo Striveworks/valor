@@ -429,6 +429,7 @@ class EvaluationSettings(Base):
     min_area: Mapped[float] = mapped_column(nullable=True)
     max_area: Mapped[float] = mapped_column(nullable=True)
     group_by: Mapped[str] = mapped_column(nullable=True)
+    label_key: Mapped[str] = mapped_column(nullable=True)
     metrics: Mapped[list["Metric"]] = relationship(
         "Metric", cascade="all, delete"
     )

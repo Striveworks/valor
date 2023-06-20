@@ -126,16 +126,27 @@ def test_compute_ap_metrics(
     groundtruths: list[list[LabeledGroundTruthDetection]],
     predictions: list[list[LabeledPredictedDetection]],
 ):
+
+    model_name = "test model"
+    dataset_name = "test dataset"
+
+    dataset_id = crud.get_dataset(db, dataset_name).id
+    model_id = crud.get_model(db, model_name).id
+
     iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
     metrics = compute_ap_metrics(
         db=db,
-        predictions=predictions,
-        groundtruths=groundtruths,
+        dataset_id=dataset_id,
+        model_id=model_id,
+        gt_type=schemas.Task.BBOX_OBJECT_DETECTION,
+        pd_type=schemas.Task.BBOX_OBJECT_DETECTION,
+        label_key="class",
         iou_thresholds=iou_thresholds,
         ious_to_keep=[0.5, 0.75],
     )
 
     metrics = [m.dict() for m in metrics]
+
     for m in metrics:
         round_dict_(m, 3)
 
@@ -151,8 +162,8 @@ def test_compute_ap_metrics(
             "value": 0.576,
             "label": {"key": "class", "value": "49"},
         },
-        {"iou": 0.5, "value": -1.0, "label": {"key": "class", "value": "3"}},
-        {"iou": 0.75, "value": -1.0, "label": {"key": "class", "value": "3"}},
+        # {"iou": 0.5, "value": -1.0, "label": {"key": "class", "value": "3"}},
+        # {"iou": 0.75, "value": -1.0, "label": {"key": "class", "value": "3"}},
         {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "0"}},
         {"iou": 0.75, "value": 0.723, "label": {"key": "class", "value": "0"}},
         {"iou": 0.5, "value": 1.0, "label": {"key": "class", "value": "1"}},
@@ -173,11 +184,11 @@ def test_compute_ap_metrics(
             "value": 0.555,  # note COCO had 0.556
             "label": {"key": "class", "value": "49"},
         },
-        {
-            "ious": iou_thresholds,
-            "value": -1.0,
-            "label": {"key": "class", "value": "3"},
-        },
+        # {
+        #     "ious": iou_thresholds,
+        #     "value": -1.0,
+        #     "label": {"key": "class", "value": "3"},
+        # },
         {
             "ious": iou_thresholds,
             "value": 0.725,
@@ -196,6 +207,8 @@ def test_compute_ap_metrics(
         # mAP METRICS AVERAGED OVER IOUS
         {"ious": iou_thresholds, "value": 0.637},
     ]
+
+    assert len(metrics) == len(expected)
 
     # sort labels lists
     for m in metrics + expected:

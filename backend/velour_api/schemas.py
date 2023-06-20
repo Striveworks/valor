@@ -299,6 +299,7 @@ class EvaluationSettings(BaseModel):
     min_area: float = None
     max_area: float = None
     group_by: str = None
+    label_key: str = None
     id: int = None
 
 
