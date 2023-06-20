@@ -284,8 +284,6 @@ def test_confusion_matrix_at_label_key_and_group(
         model_name=model_name,
         label_key="animal",
         metadatum_id=metadatum_id,
-        metadatum_name="md1",
-        metadatum_value="md1-val0",
     )
 
     # for this metadatum and label id we have the gts
