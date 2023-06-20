@@ -1579,37 +1579,83 @@ def test_stratify_clf_metrics(
             {"name": "md1", "value": "md1-val2"},
         ]
 
-    # for value 0: the gts are [1, 0, 1, 1] and the preds are
-    # [[0.37, 0.35, 0.28], [0.97, 0.03, 0.0], [0.01, 0.96, 0.03], [0.45, 0.11, 0.44]]
-    # [
-    #     {
-    #         "type": "Accuracy",
-    #         "parameters": {"label_key": "class"},
-    #         "value": 0.5,
-    #         "group": {"name": "md1", "value": "val0"},
-    #     },
-    #     {
-    #         "type": "ROCAUC",
-    #         "parameters": {"label_key": "class"},
-    #         "value": 0.7685185185185185,
-    #         "group": {"name": "md1", "value": "val0"},
-    #     },
-    #     {
-    #         "type": "Precision",
-    #         "value": 0.6666666666666666,
-    #         "label": {"key": "class", "value": "1"},
-    #         "group": {"name": "md1", "value": "val0"},
-    #     },
-    #     {
-    #         "type": "Recall",
-    #         "value": 0.3333333333333333,
-    #         "label": {"key": "class", "value": "1"},
-    #         "group": {"name": "md1", "value": "val0"},
-    #     },
-    #     {
-    #         "type": "F1",
-    #         "value": 0.4444444444444444,
-    #         "label": {"key": "class", "value": "1"},
-    #         "group": {"name": "md1", "value": "val0"},
-    #     },
-    # ]
+    val2_metrics = [
+        m
+        for m in metrics
+        if m["group"] == {"name": "md1", "value": "md1-val2"}
+    ]
+
+    # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
+    # TODO: handle NaN
+    expected_metrics = [
+        {
+            "type": "Accuracy",
+            "parameters": {"label_key": "class"},
+            "value": 0.3333333333333333,
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "ROCAUC",
+            "parameters": {"label_key": "class"},
+            "value": 0.8333333333333334,
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "class", "value": "1"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "1"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "label": {"key": "class", "value": "1"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Precision",
+            "label": {"key": "class", "value": "2"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "F1",
+            "label": {"key": "class", "value": "2"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.5,
+            "label": {"key": "class", "value": "0"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Recall",
+            "value": 1.0,
+            "label": {"key": "class", "value": "0"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "F1",
+            "value": 0.6666666666666666,
+            "label": {"key": "class", "value": "0"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+    ]
+
+    assert len(val2_metrics) == len(expected_metrics)
+    for m in val2_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in val2_metrics
