@@ -1609,7 +1609,6 @@ def test_stratify_clf_metrics(
 
     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
     # (hard preds [1, 0, 0])
-    # TODO: handle NaN
     expected_metrics = [
         {
             "type": "Accuracy",
