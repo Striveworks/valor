@@ -1244,9 +1244,17 @@ def test_evaluate_image_clf(
             "label": {"key": "k4", "value": "v4"},
         },
         {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
-        {"type": "Precision", "label": {"key": "k4", "value": "v5"}},
-        {"type": "Recall", "label": {"key": "k4", "value": "v5"}},
-        {"type": "F1", "label": {"key": "k4", "value": "v5"}},
+        {
+            "type": "Precision",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {
+            "type": "Recall",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
     ]
     for m in metrics:
         assert m in expected_metrics
