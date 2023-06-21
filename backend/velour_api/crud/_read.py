@@ -229,6 +229,22 @@ def get_segmentation_labels_in_dataset(
 def get_classification_labels_in_dataset(
     db: Session, dataset_name: str, metadatum_id: int = None
 ) -> list[models.Label]:
+    """Gets all the labels in a dataset
+
+    Parameters
+    ----------
+    db
+        db session
+    dataset_name
+        name of dataset to get labels of
+    metadatum_id
+        if this is not None then only get labels associated to datums
+        that have this metadatum_id as a metadatum
+
+    Returns
+    -------
+    list[models.Label]
+    """
     query = (
         select(models.Label)
         .join(models.GroundTruthClassification)

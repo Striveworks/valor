@@ -14,6 +14,25 @@ def binary_roc_auc(
     label: schemas.Label,
     metadatum_id: int = None,
 ) -> float:
+    """Computes the binary ROC AUC score of a dataset and label
+
+    Parameters
+    ----------
+    dataset_name
+        name of the dataset
+    model_name
+        name of the model
+    label
+        the label that represents the positive class. all other labels with
+        the same key as `label` will represent the negative class
+    metadatum_id
+        if not None, then filter out to just the datums that have this as a metadatum
+
+    Returns
+    -------
+    float
+        the binary ROC AUC score
+    """
     # query to get the datum_ids and label values of groundtruths that have the given label key
     gts_query = (
         select(
@@ -156,6 +175,8 @@ def roc_auc(
         name of the dataset to
     label_key
         the label key to use
+    metadatum_id
+        if not None, then filter out to just the datums that have this as a metadatum
 
     Returns
     -------
@@ -196,7 +217,50 @@ def get_confusion_matrix_and_metrics_at_label_key(
     label_key: str,
     labels: list[models.Label],
     metadatum_id: int = None,
-) -> tuple[schemas.ConfusionMatrix, list[schemas.Metric]] | None:
+) -> (
+    tuple[
+        schemas.ConfusionMatrix,
+        list[
+            schemas.AccuracyMetric
+            | schemas.ROCAUCMetric
+            | schemas.PrecisionMetric
+            | schemas.RecallMetric
+            | schemas.F1Metric
+        ],
+    ]
+    | None
+):
+    """Computes the confusion matrix and all metrics for a given label key
+
+    Parameters
+    ----------
+    dataset_name
+        name of the dataset
+    model_name
+        name of the model
+    label_key
+        the label key to compute metrics under
+    labels
+        all of the labels in both the groundtruths and predictions that have key
+        equal to `label_key`
+    metadatum_id
+        if not None, then filter out to just the datums that have this as a metadatum
+
+    Returns
+    -------
+    tuple[schemas.ConfusionMatrix, list[schemas.AccuracyMetric | schemas.ROCAUCMetric | schemas.PrecisionMetric
+                                        | schemas.RecallMetric | schemas.F1Metric]] | None
+        returns None if there are no predictions and groundtruths with the given label
+        key for the same datum. Otherwise returns a tuple, with the first element the confusion
+        matrix and the second a list of all metrics (accuracy, ROC AUC, precisions, recalls, and f1s)
+    """
+
+    for label in labels:
+        if label.key != label_key:
+            raise ValueError(
+                f"Expected all elements of `labels` to have label key equal to {label_key} but got label {label}."
+            )
+
     confusion_matrix = confusion_matrix_at_label_key(
         db=db,
         dataset_name=dataset_name,
@@ -229,7 +293,7 @@ def get_confusion_matrix_and_metrics_at_label_key(
     ]
 
     # metrics that are per label
-    for label in [label for label in labels if label.key == label_key]:
+    for label in labels:
         (
             precision,
             recall,
@@ -299,7 +363,7 @@ def compute_clf_metrics(
                 dataset_name=dataset_name,
                 model_name=model_name,
                 label_key=label_key,
-                labels=labels,
+                labels=[label for label in labels if label.key == label_key],
                 **extra_kwargs,
             )
 
@@ -323,8 +387,25 @@ def confusion_matrix_at_label_key(
     label_key: str,
     metadatum_id: int = None,
 ) -> schemas.ConfusionMatrix | None:
-    """Returns None in the case that there are not common images in the dataset
-    that have both a groundtruth and prediction with label key `label_key`
+    """Computes the confusion matrix at a label_key.
+
+    Parameters
+    ----------
+    dataset_name
+        name of the dataset
+    model_name
+        name of the model
+    label_key
+        the label key to compute metrics under
+    metadatum_id
+        if not None, then filter out to just the datums that have this as a metadatum
+
+    Returns
+    -------
+    schemas.ConfusionMatrix | None
+        returns None in the case that there are no common images in the dataset
+        that have both a groundtruth and prediction with label key `label_key`. Otherwise
+        returns the confusion matrix
     """
     # this query get's the max score for each Datum for the given label key
     q1 = (
