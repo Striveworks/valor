@@ -21,9 +21,7 @@ model_name = "test model"
 def classification_test_data(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(
-            name=dataset_name, type=schemas.DatumTypes.IMAGE
-        ),
+        schemas.Dataset(name=dataset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)

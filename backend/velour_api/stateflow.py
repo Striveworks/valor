@@ -15,6 +15,7 @@ from velour_api.schemas import (
     GroundTruthClassificationsCreate,
     GroundTruthDetectionsCreate,
     GroundTruthSegmentationsCreate,
+    Model,
     PredictedClassificationsCreate,
     PredictedDetectionsCreate,
     PredictedSegmentationsCreate,
@@ -260,17 +261,21 @@ def create(fn: callable) -> callable:
     @wraps(fn)
     def wrapper(*args, **kwargs):
 
-        if len(args) > 0:
-            raise SyntaxError(
-                "Please define the keyword argument for each input."
-            )
+        if len(args) < 2:
+            if "dataset" in kwargs:
+                _create_dataset(kwargs["dataset"])
+            elif "model" in kwargs:
+                pass
+            elif "data" in kwargs:
+                _create_data(kwargs["data"])
+        elif len(args) == 2:
+            if isinstance(args[1], Dataset):
+                _create_dataset(args[1])
+            elif isinstance(args[1], Model):
+                pass
+            else:
+                _create_data(args[1])
 
-        if "dataset" in kwargs:
-            _create_dataset(kwargs["dataset"])
-        elif "model" in kwargs:
-            pass
-        elif "data" in kwargs:
-            _create_data(kwargs["data"])
         return fn(*args, **kwargs)
 
     return wrapper

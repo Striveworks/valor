@@ -300,7 +300,7 @@ def pred_clfs_create(
 def test_create_and_get_datasets(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
 
     all_datasets = db.scalars(select(models.Dataset)).all()
@@ -310,17 +310,13 @@ def test_create_and_get_datasets(db: Session):
     with pytest.raises(exceptions.DatasetAlreadyExistsError) as exc_info:
         crud.create_dataset(
             db,
-            schemas.DatasetCreate(
-                name=dset_name, type=schemas.DatumTypes.IMAGE
-            ),
+            schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
         )
     assert "already exists" in str(exc_info)
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(
-            name="other dataset", type=schemas.DatumTypes.IMAGE
-        ),
+        schemas.Dataset(name="other dataset", type=schemas.DatumTypes.IMAGE),
     )
     datasets = crud.get_datasets(db)
     assert len(datasets) == 2
@@ -357,7 +353,7 @@ def test_get_dataset(db: Session):
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     dset = crud.get_dataset(db, dset_name)
     assert dset.name == dset_name
@@ -383,7 +379,7 @@ def test_create_ground_truth_detections_and_delete_dataset(
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
 
     crud.create_groundtruth_detections(db, data=gt_dets_create)
@@ -435,7 +431,7 @@ def test_create_predicted_detections_and_delete_model(
     # create dataset, add images, and add predictions
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_detections(db, gt_dets_create)
     crud.create_predicted_detections(db, pred_dets_create)
@@ -466,7 +462,7 @@ def test_create_detections_as_bbox_or_poly(db: Session, img1: schemas.Image):
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_detections(
         db,
@@ -490,7 +486,7 @@ def test_create_ground_truth_classifications_and_delete_dataset(
 ):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_ground_truth_classifications(db, gt_clfs_create)
 
@@ -535,7 +531,7 @@ def test_create_predicted_classifications_and_delete_model(
     # create dataset, add images, and add predictions
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_ground_truth_classifications(db, gt_clfs_create)
     crud.create_predicted_image_classifications(db, pred_clfs_create)
@@ -558,7 +554,7 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
 
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
@@ -604,7 +600,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     # create dataset, add images, and add predictions
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(db, gt_segs_create)
     crud.create_predicted_segmentations(db, pred_segs_create)
@@ -634,7 +630,7 @@ def test_get_labels(
 ):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_detections(db, data=gt_dets_create)
     labels = crud.get_detection_labels_in_dataset(db, dset_name)
@@ -659,7 +655,7 @@ def test_segmentation_area_no_hole(
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(
         db,
@@ -691,7 +687,7 @@ def test_segmentation_area_with_hole(
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(
         db,
@@ -725,7 +721,7 @@ def test_segmentation_area_multi_polygon(
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(
         db,
@@ -811,7 +807,7 @@ def test_gt_seg_as_mask_or_polys(db: Session):
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(
         db,
@@ -848,7 +844,7 @@ def test_get_filtered_preds_statement_and_missing_labels(
 ):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
@@ -1063,9 +1059,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
 def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
     crud.create_dataset(
         db,
-        dataset=schemas.DatasetCreate(
-            name=dset_name, type=schemas.DatumTypes.IMAGE
-        ),
+        dataset=schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_ground_truth_classifications(db, gt_clfs_create)
     crud.create_model(
@@ -1196,7 +1190,7 @@ def test__raster_to_png_b64(db: Session):
     image = schemas.Image(uid="uid", height=h, width=w)
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(
         db,
@@ -1223,7 +1217,7 @@ def test__instance_segmentations_in_dataset_statement(
 ):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
 
@@ -1278,7 +1272,7 @@ def test___model_instance_segmentation_preds_statement(
 ):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
@@ -1493,7 +1487,7 @@ def test__model_object_detection_preds_statement(
 def test__filter_instance_segmentations_by_area(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     # triangle of area 150
     poly1 = schemas.PolygonWithHole(polygon=[(10, 20), (10, 40), (25, 20)])
@@ -1603,7 +1597,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
 def test__filter_object_detections_by_area(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     # triangle of area 150
     boundary1 = [(10, 20), (10, 40), (25, 20)]
@@ -1700,7 +1694,7 @@ def test__filter_object_detections_by_area(db: Session):
 def test__filter_instance_segmentations_by_area_using_mask(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     # approximate triangle of area 150
     mask = np.zeros((1000, 2000), dtype=bool)
@@ -1808,7 +1802,7 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_no_gro
     """Test runtime error when there's no groundtruth data"""
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
@@ -1835,7 +1829,7 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_no_pre
     """Test runtime error when there's no prediction data"""
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
@@ -1862,7 +1856,7 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_multip
 ):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
@@ -1903,7 +1897,7 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_multip
 ):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
@@ -1946,7 +1940,7 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_multip
 def test_create_datums_with_metadata(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.TABULAR),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.TABULAR),
     )
 
     datums = [
