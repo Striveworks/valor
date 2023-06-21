@@ -65,7 +65,7 @@ def set_dataset_status(dataset_name: str, state: TableStatus):
         # Check if new state is valid
         if state not in status.datasets[dataset_name].status.next():
             raise InvalidStateError(
-                f"{state} is not a valid next state. Valid next states: {status.datasets[dataset_name].status}."
+                f"Dataset ({dataset_name}): {status.datasets[dataset_name].status} =/=> {state}"
             )
 
         # Check if inferences (if they exist) allow the next state
@@ -75,6 +75,11 @@ def set_dataset_status(dataset_name: str, state: TableStatus):
             )
 
         # Update the state
+        if state == TableStatus.DELETE:
+            for model_name in status.datasets[dataset_name].models:
+                status.datasets[dataset_name].models[
+                    model_name
+                ] = TableStatus.DELETE
         status.datasets[dataset_name].status = state
 
     set_status(status)
@@ -137,9 +142,9 @@ def remove_dataset(dataset_name: str):
         raise DatasetDoesNotExistError(dataset_name)
 
 
-def remove_inference(dataset_name: str, model_name: str):
+def remove_model(model_name: str):
     status = get_status()
-    if dataset_name in status.datasets:
+    for dataset_name in status.datasets:
         if model_name in status.datasets[dataset_name].models:
             if (
                 status.datasets[dataset_name].models[model_name]
@@ -153,13 +158,6 @@ def remove_inference(dataset_name: str, model_name: str):
                 )
         if TableStatus.READY in status.datasets[dataset_name].next():
             set_dataset_status(dataset_name, TableStatus.READY)
-
-
-def remove_model(model_name: str):
-    status = get_status()
-    for dataset_name in status.datasets:
-        if model_name in status.datasets[dataset_name].models:
-            remove_inference(dataset_name=dataset_name, model_name=model_name)
 
 
 def _create_dataset(dataset: Dataset):
@@ -231,14 +229,6 @@ def _evaluate_inference_finished(data):
     )
 
 
-def _delete_inference(model_name: str, dataset_name: str):
-    set_inference_status(
-        model_name=model_name,
-        dataset_name=dataset_name,
-        state=TableStatus.DELETE,
-    )
-
-
 def _delete_dataset(dataset_name: str):
     set_dataset_status(dataset_name=dataset_name, state=TableStatus.DELETE)
 
@@ -247,18 +237,16 @@ def _delete_model(model_name: str):
     status = get_status()
     for dataset_name in status.datasets:
         if model_name in status.datasets[dataset_name].models:
-            _delete_inference(dataset_name=dataset_name, model_name=model_name)
+            set_inference_status(
+                model_name=model_name,
+                dataset_name=dataset_name,
+                state=TableStatus.DELETE,
+            )
 
 
 def _dereference_dataset(dataset_name: str):
     assert isinstance(dataset_name, str)
     remove_dataset(dataset_name)
-
-
-def _dereference_inference(dataset_name: str, model_name: str):
-    assert isinstance(dataset_name, str)
-    assert isinstance(model_name, str)
-    remove_inference(dataset_name=dataset_name, model_name=model_name)
 
 
 def _dereference_model(model_name: str):
@@ -271,6 +259,12 @@ def create(fn: callable) -> callable:
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
+
+        if len(args) > 0:
+            raise SyntaxError(
+                "Please define the keyword argument for each input."
+            )
+
         if "dataset" in kwargs:
             _create_dataset(kwargs["dataset"])
         elif "model" in kwargs:
@@ -287,13 +281,30 @@ def finalize(fn: callable) -> callable:
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        if "model_name" in kwargs and "dataset_name" in kwargs:
+
+        # Check if dataset_name exists
+        dataset_name = None
+        if "dataset_name" in kwargs:
+            dataset_name = kwargs["dataset_name"]
+        elif len(args) >= 2:
+            dataset_name = args[1]
+
+        # Check if model_name exists
+        model_name = None
+        if "model_name" in kwargs:
+            model_name = kwargs["model_name"]
+        elif len(args) == 3:
+            model_name = args[2]
+
+        # Stateflow
+        if model_name is not None and dataset_name is not None:
             _finalize_inference(
-                dataset_name=kwargs["dataset_name"],
-                model_name=kwargs["model_name"],
+                dataset_name=dataset_name,
+                model_name=model_name,
             )
-        elif "dataset_name" in kwargs:
-            _finalize_dataset(kwargs["dataset_name"])
+        elif dataset_name is not None:
+            _finalize_dataset(dataset_name=dataset_name)
+
         return fn(*args, **kwargs)
 
     return wrapper
@@ -304,12 +315,17 @@ def evaluate(fn: callable) -> callable:
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
+
+        data = None
         if "data" in kwargs:
-            _evaluate_inference(kwargs["data"])
-            print("Starting evaluation")
+            data = kwargs["data"]
+        elif len(args) == 2:
+            data = args[1]
+
+        if data is not None:
+            _evaluate_inference(data)
             results = fn(*args, **kwargs)
-            _evaluate_inference_finished(kwargs["data"])
-            print("Finished Evaluation")
+            _evaluate_inference_finished(data)
             return results
         else:
             return fn(*args, **kwargs)
@@ -323,13 +339,13 @@ def delete(fn: callable) -> callable:
     @wraps(fn)
     def wrapper(*args, **kwargs):
 
-        # Block while performing deletion
-        if "model_name" in kwargs and "dataset_name" in kwargs:
-            _delete_inference(
-                dataset_name=kwargs["dataset_name"],
-                model_name=kwargs["model_name"],
+        if len(args) > 1:
+            raise SyntaxError(
+                "Please define the keyword [dataset_name, model_name] for input name."
             )
-        elif "dataset_name" in kwargs:
+
+        # Block while performing deletion
+        if "dataset_name" in kwargs:
             _delete_dataset(kwargs["dataset_name"])
         elif "model_name" in kwargs:
             _delete_model(kwargs["model_name"])
@@ -337,12 +353,7 @@ def delete(fn: callable) -> callable:
         results = fn(*args, **kwargs)
 
         # Remove references to deleted data
-        if "model_name" in kwargs and "dataset_name" in kwargs:
-            _dereference_inference(
-                dataset_name=kwargs["dataset_name"],
-                model_name=kwargs["model_name"],
-            )
-        elif "dataset_name" in kwargs:
+        if "dataset_name" in kwargs:
             _dereference_dataset(kwargs["dataset_name"])
         elif "model_name" in kwargs:
             _dereference_model(kwargs["model_name"])

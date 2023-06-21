@@ -339,7 +339,10 @@ class DatasetStatus(BaseModel):
 
     def next(self) -> List[TableStatus]:
         if len(self.models) > 0:
-            return [TableStatus.EVALUATE]
+            for model_name in self.models:
+                if self.models[model_name] != TableStatus.READY:
+                    return [TableStatus.EVALUATE]
+            return [TableStatus.EVALUATE, TableStatus.DELETE]
         else:
             return self.status.next()
 

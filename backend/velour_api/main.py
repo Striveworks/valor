@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-import velour_api.stateflow as stateflow
 from velour_api import auth, crud, enums, exceptions, jobs, logger, schemas
 from velour_api.database import create_db, make_session
 from velour_api.settings import auth_settings
@@ -39,7 +38,6 @@ def get_db():
 
 # should move the following routes to be behind /datasets/{dataset}/ ?
 @app.post("/groundtruth-detections", dependencies=[Depends(token_auth_scheme)])
-@stateflow.create
 def create_groundtruth_detections(
     data: schemas.GroundTruthDetectionsCreate, db: Session = Depends(get_db)
 ) -> list[int]:
@@ -50,7 +48,6 @@ def create_groundtruth_detections(
 
 
 @app.post("/predicted-detections", dependencies=[Depends(token_auth_scheme)])
-@stateflow.create
 def create_predicted_detections(
     data: schemas.PredictedDetectionsCreate,
     db: Session = Depends(get_db),
@@ -67,7 +64,6 @@ def create_predicted_detections(
 @app.post(
     "/groundtruth-segmentations", dependencies=[Depends(token_auth_scheme)]
 )
-@stateflow.create
 def create_groundtruth_segmentations(
     data: schemas.GroundTruthSegmentationsCreate,
     db: Session = Depends(get_db),
@@ -84,7 +80,6 @@ def create_groundtruth_segmentations(
 @app.post(
     "/predicted-segmentations", dependencies=[Depends(token_auth_scheme)]
 )
-@stateflow.create
 def create_predicted_segmentations(
     data: schemas.PredictedSegmentationsCreate,
     db: Session = Depends(get_db),
@@ -98,7 +93,6 @@ def create_predicted_segmentations(
 @app.post(
     "/groundtruth-classifications", dependencies=[Depends(token_auth_scheme)]
 )
-@stateflow.create
 def create_groundtruth_classifications(
     data: schemas.GroundTruthClassificationsCreate,
     db: Session = Depends(get_db),
@@ -112,7 +106,6 @@ def create_groundtruth_classifications(
 @app.post(
     "/predicted-classifications", dependencies=[Depends(token_auth_scheme)]
 )
-@stateflow.create
 def create_predicted_classifications(
     data: schemas.PredictedClassificationsCreate,
     db: Session = Depends(get_db),
@@ -133,7 +126,6 @@ def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
 @app.post(
     "/datasets", status_code=201, dependencies=[Depends(token_auth_scheme)]
 )
-@stateflow.create
 def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     try:
         crud.create_dataset(db=db, dataset=dataset)
@@ -159,10 +151,9 @@ def get_dataset(
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
-@stateflow.finalize
 def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     try:
-        crud.finalize_dataset(db, dataset_name)
+        crud.finalize_dataset(db=db, dataset_name=dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -172,13 +163,12 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
-@stateflow.finalize
 def finalize_inferences(
     dataset_name: str, model_name: str, db: Session = Depends(get_db)
 ):
     try:
         crud.finalize_inferences(
-            db, model_name=model_name, dataset_name=dataset_name
+            db=db, model_name=model_name, dataset_name=dataset_name
         )
     except (
         exceptions.DatasetDoesNotExistError,
@@ -292,19 +282,12 @@ def delete_dataset(
         # make sure dataset exists
         crud.get_dataset(db, dataset_name)
 
-        # check if dataset is finalized
-        crud.check_if_finalized(db, dataset_name=dataset_name)
+        job, wrapped_fn = jobs.wrap_method_for_job(crud.delete_dataset)
 
-        job, wrapped_fn = jobs.wrap_method_for_job(
-            stateflow.delete(crud.delete_dataset)
-        )
         background_tasks.add_task(wrapped_fn, db=db, dataset_name=dataset_name)
 
         return job.uid
-    except (
-        exceptions.DatasetDoesNotExistError,
-        exceptions.DatasetIsNotFinalized,
-    ) as e:
+    except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -316,7 +299,6 @@ def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
 @app.post(
     "/models", status_code=201, dependencies=[Depends(token_auth_scheme)]
 )
-@stateflow.create
 def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     try:
         crud.create_model(db=db, model=model)
@@ -340,16 +322,10 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 
 
 @app.delete("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
-@stateflow.delete
 def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
     try:
-        crud.check_if_finalized(db, model_name=model_name)
-        return crud.delete_model(db, model_name)
-
-    except (
-        exceptions.DatasetDoesNotExistError,
-        exceptions.DatasetIsNotFinalized,
-    ) as e:
+        return crud.delete_model(db=db, model_name=model_name)
+    except (exceptions.DatasetDoesNotExistError,) as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -426,9 +402,7 @@ def create_ap_metrics(
             ignored_pred_labels,
         ) = crud.validate_create_ap_metrics(db, request_info=data)
 
-        job, wrapped_fn = jobs.wrap_metric_computation(
-            stateflow.evaluate(crud.create_ap_metrics)
-        )
+        job, wrapped_fn = jobs.wrap_metric_computation(crud.create_ap_metrics)
         cm_resp = schemas.CreateAPMetricsResponse(
             missing_pred_labels=missing_pred_labels,
             ignored_pred_labels=ignored_pred_labels,
@@ -466,9 +440,7 @@ def create_clf_metrics(
             ignored_pred_keys,
         ) = crud.validate_create_clf_metrics(db, request_info=data)
 
-        job, wrapped_fn = jobs.wrap_metric_computation(
-            stateflow.evaluate(crud.create_clf_metrics)
-        )
+        job, wrapped_fn = jobs.wrap_metric_computation(crud.create_clf_metrics)
 
         cm_resp = schemas.CreateClfMetricsResponse(
             missing_pred_keys=missing_pred_keys,

@@ -5,6 +5,7 @@ from sqlalchemy import Select, TextualSelect, and_, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+import velour_api.stateflow as stateflow
 from velour_api import enums, exceptions, models, schemas
 from velour_api.metrics import compute_ap_metrics, compute_clf_metrics
 
@@ -362,6 +363,7 @@ def _create_labeled_pred_segmentation_mappings(
     ]
 
 
+@stateflow.create
 def create_groundtruth_detections(
     db: Session,
     data: schemas.GroundTruthDetectionsCreate,
@@ -377,6 +379,7 @@ def create_groundtruth_detections(
     )
 
 
+@stateflow.create
 def create_predicted_detections(
     db: Session, data: schemas.PredictedDetectionsCreate
 ) -> list[int]:
@@ -398,6 +401,7 @@ def create_predicted_detections(
     )
 
 
+@stateflow.create
 def create_groundtruth_segmentations(
     db: Session,
     data: schemas.GroundTruthSegmentationsCreate,
@@ -413,6 +417,7 @@ def create_groundtruth_segmentations(
     )
 
 
+@stateflow.create
 def create_predicted_segmentations(
     db: Session, data: schemas.PredictedSegmentationsCreate
 ) -> list[int]:
@@ -434,6 +439,7 @@ def create_predicted_segmentations(
     )
 
 
+@stateflow.create
 def create_ground_truth_classifications(
     db: Session, data: schemas.GroundTruthClassificationsCreate
 ):
@@ -456,6 +462,7 @@ def create_ground_truth_classifications(
     )
 
 
+@stateflow.create
 def create_predicted_image_classifications(
     db: Session, data: schemas.PredictedClassificationsCreate
 ):
@@ -528,6 +535,7 @@ def _get_or_create_row(
     return db_element
 
 
+@stateflow.create
 def create_dataset(db: Session, dataset: schemas.Dataset):
     """Creates a dataset
 
@@ -544,6 +552,7 @@ def create_dataset(db: Session, dataset: schemas.Dataset):
         raise exceptions.DatasetAlreadyExistsError(dataset.name)
 
 
+@stateflow.create
 def create_model(db: Session, model: schemas.Model):
     """Creates a dataset
 
@@ -864,6 +873,7 @@ def validate_create_clf_metrics(
     return missing_pred_keys, ignored_pred_keys
 
 
+@stateflow.evaluate
 def create_ap_metrics(
     db: Session,
     request_info: schemas.APRequest,
@@ -923,6 +933,7 @@ def create_ap_metrics(
     return mp.id
 
 
+@stateflow.evaluate
 def create_clf_metrics(
     db: Session,
     request_info: schemas.ClfMetricsRequest,
