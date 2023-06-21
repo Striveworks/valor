@@ -196,8 +196,6 @@ def get_confusion_matrix_and_metrics_at_label_key(
     label_key: str,
     labels: list[models.Label],
     metadatum_id: int = None,
-    metadatum_value: str = None,
-    metadatum_name: str = None,
 ) -> tuple[schemas.ConfusionMatrix, list[schemas.Metric]] | None:
     confusion_matrix = confusion_matrix_at_label_key(
         db=db,
@@ -428,13 +426,6 @@ def confusion_matrix_at_label_key(
         # this means there's no predictions and groundtruths with the label key
         # for the same image
         return None
-
-    # if metadatum_id is not None:
-    #     metadatum = schemas.DatumMetadatum(
-    #         name=metadatum_name, value=metadatum_value
-    #     )
-    # else:
-    #     metadatum = None
 
     return schemas.ConfusionMatrix(
         label_key=label_key,

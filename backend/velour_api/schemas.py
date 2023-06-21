@@ -488,9 +488,9 @@ class _PrecisionRecallF1Base(BaseModel):
     group_id: int = None
 
     @validator("value")
-    def replace_nan_with_none(cls, v):
+    def replace_nan_with_neg_1(cls, v):
         if np.isnan(v):
-            return None
+            return -1
         return v
 
     def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
