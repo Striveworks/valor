@@ -383,9 +383,10 @@ class ModelBase:
         self.client = client
         self.name = name
 
-    def finalize(self) -> None:
+    def finalize(self, dataset: DatasetBase):
+        # @TODO Make sure datatypes match
         return self.client._requests_put_rel_host(
-            f"models/{self.name}/finalize"
+            f"datasets/{dataset.name}/finalize/{self.name}"
         ).json()
 
     def evaluate_classification(self, dataset: DatasetBase) -> "EvalJob":
