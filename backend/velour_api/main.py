@@ -282,7 +282,6 @@ def get_semantic_segmentations(
 @app.delete(
     "/datasets/{dataset_name}", dependencies=[Depends(token_auth_scheme)]
 )
-@stateflow.delete
 def delete_dataset(
     dataset_name: str,
     background_tasks: BackgroundTasks,
@@ -296,7 +295,9 @@ def delete_dataset(
         # check if dataset is finalized
         crud.check_if_finalized(db, dataset_name=dataset_name)
 
-        job, wrapped_fn = jobs.wrap_method_for_job(crud.delete_dataset)
+        job, wrapped_fn = jobs.wrap_method_for_job(
+            stateflow.delete(crud.delete_dataset)
+        )
         background_tasks.add_task(wrapped_fn, db=db, dataset_name=dataset_name)
 
         return job.uid
@@ -315,6 +316,7 @@ def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
 @app.post(
     "/models", status_code=201, dependencies=[Depends(token_auth_scheme)]
 )
+@stateflow.create
 def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     try:
         crud.create_model(db=db, model=model)
@@ -328,7 +330,7 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
         model = crud.get_model(db=db, model_name=model_name)
 
         # check if dataset is finalized
-        crud.check_if_finalized(model_name=model_name)
+        crud.check_if_finalized(db=db, model_name=model_name)
 
         return schemas.Model(
             **{k: getattr(model, k) for k in schemas.Model.__fields__}
@@ -338,11 +340,10 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 
 
 @app.delete("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
+@stateflow.delete
 def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
     try:
-
         crud.check_if_finalized(db, model_name=model_name)
-
         return crud.delete_model(db, model_name)
 
     except (
@@ -411,7 +412,6 @@ def get_model_confusion_matrices(
 @app.post(
     "/ap-metrics", status_code=202, dependencies=[Depends(token_auth_scheme)]
 )
-@stateflow.evaluate
 def create_ap_metrics(
     data: schemas.APRequest,
     background_tasks: BackgroundTasks,
@@ -426,7 +426,9 @@ def create_ap_metrics(
             ignored_pred_labels,
         ) = crud.validate_create_ap_metrics(db, request_info=data)
 
-        job, wrapped_fn = jobs.wrap_metric_computation(crud.create_ap_metrics)
+        job, wrapped_fn = jobs.wrap_metric_computation(
+            stateflow.evaluate(crud.create_ap_metrics)
+        )
         cm_resp = schemas.CreateAPMetricsResponse(
             missing_pred_labels=missing_pred_labels,
             ignored_pred_labels=ignored_pred_labels,
@@ -453,7 +455,6 @@ def create_ap_metrics(
 @app.post(
     "/clf-metrics", status_code=202, dependencies=[Depends(token_auth_scheme)]
 )
-@stateflow.evaluate
 def create_clf_metrics(
     data: schemas.ClfMetricsRequest,
     background_tasks: BackgroundTasks,
@@ -465,7 +466,9 @@ def create_clf_metrics(
             ignored_pred_keys,
         ) = crud.validate_create_clf_metrics(db, request_info=data)
 
-        job, wrapped_fn = jobs.wrap_metric_computation(crud.create_clf_metrics)
+        job, wrapped_fn = jobs.wrap_metric_computation(
+            stateflow.evaluate(crud.create_clf_metrics)
+        )
 
         cm_resp = schemas.CreateClfMetricsResponse(
             missing_pred_keys=missing_pred_keys,

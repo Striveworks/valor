@@ -1,14 +1,13 @@
 import json
 import os
 from time import perf_counter
-from typing import Optional
 
 import redis
 
 from velour_api import logger
-from velour_api.enums import JobStatus, TableStatus
+from velour_api.enums import JobStatus
 from velour_api.exceptions import JobDoesNotExistError
-from velour_api.schemas import DatasetStatus, InferenceStatus, Job
+from velour_api.schemas import Job, VelourStatus
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
@@ -129,43 +128,14 @@ def wrap_metric_computation(fn: callable) -> tuple[Job, callable]:
 
 
 @needs_redis
-def get_dataset_status(dataset_name: str) -> Optional[TableStatus]:
-    json_str = r.get(dataset_name)
+def get_status() -> VelourStatus:
+    json_str = r.get("stateflow")
     if json_str is None:
-        return None
+        return VelourStatus(datasets={})
     info = json.loads(json_str)
-    return DatasetStatus(dataset_name=dataset_name, **info).status
+    return VelourStatus(**info)
 
 
 @needs_redis
-def set_dataset_status(dataset_name: str, status: TableStatus):
-    r.set(status.dataset_name, status.json(exclude={"dataset_name"}))
-
-
-@needs_redis
-def get_inference_status(
-    model_name: str, dataset_name: str
-) -> Optional[TableStatus]:
-    json_str = r.get(model_name)
-    if json_str is None:
-        return None
-    info = json.loads(json_str)
-    model = InferenceStatus(model_name=model_name, **info)
-    return model.status[dataset_name] if dataset_name in model.status else None
-
-
-@needs_redis
-def set_inference_status(
-    model_name: str, dataset_name: str, status: TableStatus
-):
-    json_str = r.get(model_name)
-    if json_str is None:
-        status = {dataset_name: status}
-        r.set(
-            model_name, InferenceStatus(model_name=model_name, status=status)
-        )
-        return
-    info = json.loads(json_str)
-    model = InferenceStatus(model_name=model_name, **info)
-    model.status[dataset_name] = status
-    r.set(model_name, model.json(exclued={"model_name"}))
+def set_status(status: VelourStatus):
+    r.set("stateflow", status.json())

@@ -1,4 +1,4 @@
-from enum import Enum, IntEnum
+from enum import Enum
 
 
 class Task(Enum):
@@ -29,8 +29,20 @@ class AnnotationType(Enum):
     UNDEFINED = "undefined"
 
 
-class TableStatus(IntEnum):
-    CREATING = 0
-    READY = 1
-    EVALUATING = 2
-    DELETING = 3
+class TableStatus(Enum):
+    CREATE = "creating"
+    READY = "ready"
+    EVALUATE = "evaluating"
+    DELETE = "deleting"
+
+    def next(self):
+        if self == self.CREATE:
+            return [self.CREATE, self.READY]
+        elif self == self.READY:
+            return [self.READY, self.EVALUATE, self.DELETE]
+        elif self == self.EVALUATE:
+            return [self.EVALUATE, self.READY]
+        elif self == self.DELETE:
+            return [self.DELETE]
+        else:
+            raise NotImplementedError

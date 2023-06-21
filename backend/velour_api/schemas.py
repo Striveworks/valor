@@ -1,7 +1,7 @@
 import io
 import json
 from base64 import b64decode
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from uuid import uuid4
 
 import numpy as np
@@ -43,7 +43,6 @@ class Model(BaseModel):
     href: str = None
     description: str = None
     type: DatumTypes
-    finalized: bool = False
 
     @validator("href")
     def validate_href(cls, v):
@@ -335,15 +334,38 @@ class Job(BaseModel):
 
 
 class DatasetStatus(BaseModel):
-    dataset_name: str
-    status: TableStatus = TableStatus.CREATING
+    status: TableStatus
+    models: Dict[str, TableStatus]
+
+    def next(self) -> List[TableStatus]:
+        if len(self.models) > 0:
+            return [TableStatus.EVALUATE]
+        else:
+            return self.status.next()
+
+    def __setitem__(self, key, value):
+        assert isinstance(key, str)
+        assert isinstance(value, TableStatus)
+        self.models[key] = value
+
+    def __getitem__(self, key):
+        if key not in self.inferences:
+            return None
+        return self.inferences[key]
 
 
-class InferenceStatus(BaseModel):
-    model_name: str
+class VelourStatus(BaseModel):
+    datasets: Dict[str, DatasetStatus]
 
-    # Map dataset_name to TableStatus
-    status: Dict[str, TableStatus]
+    def __setitem__(self, key, value):
+        assert isinstance(key, str)
+        assert isinstance(value, DatasetStatus)
+        self.datasets[key] = value
+
+    def __getitem__(self, key):
+        if key not in self.datasets:
+            return None
+        return self.datasets[key]
 
 
 class ClfMetricsRequest(BaseModel):

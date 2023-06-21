@@ -528,7 +528,7 @@ def _get_or_create_row(
     return db_element
 
 
-def create_dataset(db: Session, dataset: schemas.DatasetCreate):
+def create_dataset(db: Session, dataset: schemas.Dataset):
     """Creates a dataset
 
     Raises

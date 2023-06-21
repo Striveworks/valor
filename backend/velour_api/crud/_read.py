@@ -54,8 +54,9 @@ def check_if_finalized(
             ).all()
             != []
         ):
-            if not get_model(db, model_name).finalized:
-                raise exceptions.ModelIsNotFinalizedError
+            pass
+            # if not get_model(db, model_name).finalized:
+            # raise exceptions.ModelIsNotFinalizedError
         else:
             raise exceptions.ModelDoesNotExistError
 
