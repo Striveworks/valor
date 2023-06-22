@@ -64,13 +64,6 @@ class InferencesAreNotFinalizedError(Exception):
         )
 
 
-class InvalidStateTransitionError(Exception):
-    def __init__(self, current: TableStatus, attempted: TableStatus):
-        return super().__init__(
-            f"Requested blocked state transition: {current} =/=> {attempted}"
-        )
-
-
 class InferenceAlreadyExistsError(Exception):
     def __init__(self, dataset_name: str, model_name: str):
         return super().__init__(
@@ -85,6 +78,13 @@ class InferenceDoesNotExistError(Exception):
         )
 
 
-class InvalidStateError(Exception):
+class StateflowError(Exception):
     def __init__(self, msg: str):
         return super().__init__(msg)
+
+
+class InvalidStateTransitionError(Exception):
+    def __init__(self, current: TableStatus, next: TableStatus):
+        return super().__init__(
+            f"Invalid state transition from {current.value} to {next.value}."
+        )

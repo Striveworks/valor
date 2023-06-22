@@ -363,7 +363,7 @@ def _create_labeled_pred_segmentation_mappings(
     ]
 
 
-@stateflow.create
+@stateflow.create_dataset
 def create_groundtruth_detections(
     db: Session,
     data: schemas.GroundTruthDetectionsCreate,
@@ -379,7 +379,7 @@ def create_groundtruth_detections(
     )
 
 
-@stateflow.create
+@stateflow.create_model
 def create_predicted_detections(
     db: Session, data: schemas.PredictedDetectionsCreate
 ) -> list[int]:
@@ -401,7 +401,7 @@ def create_predicted_detections(
     )
 
 
-@stateflow.create
+@stateflow.create_dataset
 def create_groundtruth_segmentations(
     db: Session,
     data: schemas.GroundTruthSegmentationsCreate,
@@ -417,7 +417,7 @@ def create_groundtruth_segmentations(
     )
 
 
-@stateflow.create
+@stateflow.create_model
 def create_predicted_segmentations(
     db: Session, data: schemas.PredictedSegmentationsCreate
 ) -> list[int]:
@@ -439,7 +439,7 @@ def create_predicted_segmentations(
     )
 
 
-@stateflow.create
+@stateflow.create_dataset
 def create_ground_truth_classifications(
     db: Session, data: schemas.GroundTruthClassificationsCreate
 ):
@@ -462,7 +462,7 @@ def create_ground_truth_classifications(
     )
 
 
-@stateflow.create
+@stateflow.create_model
 def create_predicted_image_classifications(
     db: Session, data: schemas.PredictedClassificationsCreate
 ):
@@ -535,7 +535,7 @@ def _get_or_create_row(
     return db_element
 
 
-@stateflow.create
+@stateflow.create_dataset
 def create_dataset(db: Session, dataset: schemas.Dataset):
     """Creates a dataset
 
@@ -552,7 +552,7 @@ def create_dataset(db: Session, dataset: schemas.Dataset):
         raise exceptions.DatasetAlreadyExistsError(dataset.name)
 
 
-@stateflow.create
+@stateflow.create_model
 def create_model(db: Session, model: schemas.Model):
     """Creates a dataset
 

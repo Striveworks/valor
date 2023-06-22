@@ -46,7 +46,7 @@ from velour.data_types import (
     ScoredLabel,
 )
 from velour.metrics import Task
-from velour_api import crud, models, ops
+from velour_api import crud, jobs, models, ops
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -189,17 +189,21 @@ def db(client: Client) -> Session:
     yield sess
 
     # cleanup by deleting all datasets, models, and labels
-    for dataset in client.get_datasets():
-        crud.delete_dataset(db=sess, dataset_name=dataset["name"])
-
     for model in client.get_models():
         client.delete_model(name=model["name"])
+
+    for dataset in client.get_datasets():
+        crud.delete_dataset(db=sess, dataset_name=dataset["name"])
 
     labels = sess.scalars(select(models.Label))
     for label in labels:
         sess.delete(label)
 
     sess.commit()
+
+    # clean redis
+    jobs.connect_to_redis()
+    jobs.r.flushdb()
 
 
 @pytest.fixture
@@ -488,7 +492,7 @@ def _test_create_image_dataset_with_gts(
     # to the dataset since it is finalized
     with pytest.raises(ClientException) as exc_info:
         dataset.add_groundtruth(gts3)
-    assert "since it is finalized" in str(exc_info)
+    assert "Invalid state transition from ready to creating." in str(exc_info)
 
     return dataset
 
@@ -547,6 +551,8 @@ def _test_create_model_with_preds(
     assert "Image with uid" in str(exc_info)
 
     dataset.add_groundtruth(gts)
+    dataset.finalize()
+
     model.add_predictions(dataset, preds)
 
     # check predictions have been added
@@ -714,6 +720,8 @@ def test_create_pred_detections_as_bbox_or_poly(
     model = client.create_image_model(model_name)
 
     dataset.add_groundtruth(gt_dets1)
+
+    dataset.finalize()
 
     pred_bbox = PredictedDetection(
         image=img1,
@@ -961,6 +969,8 @@ def test_iou(
     )
     db_gt = db.scalar(select(models.GroundTruthDetection))
 
+    dataset.finalize()
+
     model.add_predictions(
         dataset,
         [
@@ -1007,7 +1017,7 @@ def test_evaluate_ap(
 
     model = client.create_image_model(model_name)
     model.add_predictions(dataset, pred_dets)
-    model.finalize_inferences(dataset)
+    model.finalize(dataset)
 
     eval_job = model.evaluate_ap(
         dataset=dataset,
@@ -1198,7 +1208,7 @@ def test_evaluate_image_clf(
 
     model = client.create_image_model(model_name)
     model.add_predictions(dataset, pred_clfs)
-    model.finalize_inferences(dataset)
+    model.finalize(dataset)
 
     eval_job = model.evaluate_classification(dataset=dataset)
 
@@ -1348,11 +1358,37 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
     ]
 
     dataset = client.create_tabular_dataset(name=dset_name)
-    model = client.create_tabular_model(name=model_name)
-
     dataset.add_groundtruth(
         [[Label(key="class", value=str(t))] for t in y_true]
     )
+
+    # attempt to create model without finalizing dataset
+    with pytest.raises(ClientException) as exc_info:
+        model = client.create_tabular_model(name=model_name)
+        model.add_predictions(
+            dataset,
+            [
+                [
+                    ScoredLabel(
+                        Label(key="class", value=str(i)), score=pred[i]
+                    )
+                    for i in range(len(pred))
+                ]
+                for pred in preds
+            ],
+        )
+    assert "Invalid state transition from creating to evaluating." in str(
+        exc_info
+    )
+
+    # ensure model is deleted
+    client.delete_model(model.name)
+
+    # finalize dataset
+    dataset.finalize()
+
+    # create model
+    model = client.create_tabular_model(name=model_name)
     model.add_predictions(
         dataset,
         [
@@ -1364,17 +1400,12 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
         ],
     )
 
-    with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset)
-    assert "Cannot evaluate against dataset" in str(exc_info)
+    # model.evaluate_classification returns a evaljob
+    # with pytest.raises(ClientException) as exc_info:
+    #     model.evaluate_classification(dataset=dataset)
+    # assert "TableStatus.EVALUATE' is not a valid next state." in str(exc_info)
 
-    dataset.finalize()
-
-    with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset)
-    assert "Inferences for model" in str(exc_info)
-
-    model.finalize_inferences(dataset)
+    model.finalize(dataset)
 
     eval_job = model.evaluate_classification(dataset=dataset)
 

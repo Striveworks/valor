@@ -86,6 +86,7 @@ def classification_test_data(db: Session):
             dataset_name=dataset_name, classifications=gts
         ),
     )
+    crud.finalize_dataset(db, dataset_name=dataset_name)
     crud.create_predicted_image_classifications(
         db,
         data=schemas.PredictedClassificationsCreate(
@@ -93,6 +94,9 @@ def classification_test_data(db: Session):
             dataset_name=dataset_name,
             classifications=preds,
         ),
+    )
+    crud.finalize_inferences(
+        db, model_name=model_name, dataset_name=dataset_name
     )
 
 

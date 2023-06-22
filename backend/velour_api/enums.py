@@ -37,7 +37,7 @@ class TableStatus(Enum):
 
     def next(self):
         if self == self.CREATE:
-            return [self.CREATE, self.READY]
+            return [self.CREATE, self.READY, self.DELETE]
         elif self == self.READY:
             return [self.READY, self.EVALUATE, self.DELETE]
         elif self == self.EVALUATE:

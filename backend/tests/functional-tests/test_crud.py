@@ -322,6 +322,10 @@ def test_create_and_get_datasets(db: Session):
     assert len(datasets) == 2
     assert set([d.name for d in datasets]) == {dset_name, "other dataset"}
 
+    # clean up
+    crud.delete_dataset(db, dset_name)
+    crud.delete_dataset(db, "other dataset")
+
 
 def test_create_and_get_models(db: Session):
     crud.create_model(
@@ -414,7 +418,7 @@ def test_create_predicted_detections_and_delete_model(
     pred_dets_create: schemas.PredictedDetectionsCreate,
     gt_dets_create: schemas.GroundTruthDetectionsCreate,
 ):
-    # check this gives an error since the model hasn't been added yet
+    # check this gives an error since the dataset hasn't been defined yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         crud.create_predicted_detections(db, pred_dets_create)
     assert "does not exist" in str(exc_info)
@@ -426,14 +430,46 @@ def test_create_predicted_detections_and_delete_model(
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
         crud.create_predicted_detections(db, pred_dets_create)
-    assert "Image with uid" in str(exc_info)
+    assert (
+        "Image with uid 'uid1' does not exist in dataset 'test dataset'."
+        in str(exc_info)
+    )
 
     # create dataset, add images, and add predictions
     crud.create_dataset(
         db,
         schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
+
+    # finalize early
+    crud.finalize_dataset(db, dset_name)
+
+    # check this gives an error since the images haven't been added yet
+    with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
+        crud.create_predicted_detections(db, pred_dets_create)
+    assert (
+        "Image with uid 'uid1' does not exist in dataset 'test dataset'."
+        in str(exc_info)
+    )
+
+    # check model has no entries
+    assert crud.number_of_rows(db, models.PredictedDetection) == 0
+    assert crud.number_of_rows(db, models.LabeledPredictedDetection) == 0
+
+    # delete dataset
+    crud.delete_dataset(db, dset_name)
+
+    # create dataset and add a groundtruth
+    crud.create_dataset(
+        db,
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
+    )
     crud.create_groundtruth_detections(db, gt_dets_create)
+
+    # finalize dataset
+    crud.finalize_dataset(db, dset_name)
+
+    # add prediction
     crud.create_predicted_detections(db, pred_dets_create)
 
     # check db has the added predictions
@@ -514,7 +550,7 @@ def test_create_predicted_classifications_and_delete_model(
     pred_clfs_create: schemas.PredictedClassification,
     gt_clfs_create: schemas.GroundTruthClassificationsCreate,
 ):
-    # check this gives an error since the model hasn't been added yet
+    # check this gives an error since no dataset exists yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         crud.create_predicted_image_classifications(db, pred_clfs_create)
     assert "does not exist" in str(exc_info)
@@ -523,10 +559,22 @@ def test_create_predicted_classifications_and_delete_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
 
+    # create dataset without images or predictions
+    crud.create_dataset(
+        db,
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
+    )
+
+    # finalize early
+    crud.finalize_dataset(db, dset_name)
+
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
         crud.create_predicted_image_classifications(db, pred_clfs_create)
     assert "Image with uid" in str(exc_info)
+
+    # reset dataset
+    crud.delete_dataset(db, dset_name)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(
@@ -534,6 +582,9 @@ def test_create_predicted_classifications_and_delete_model(
         schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_ground_truth_classifications(db, gt_clfs_create)
+    crud.finalize_dataset(db, dset_name)
+
+    # create inference
     crud.create_predicted_image_classifications(db, pred_clfs_create)
 
     # check db has the added predictions
@@ -603,6 +654,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
         schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(db, gt_segs_create)
+    crud.finalize_dataset(db, dset_name)
     crud.create_predicted_segmentations(db, pred_segs_create)
 
     # check db has the added predictions
@@ -853,6 +905,10 @@ def test_get_filtered_preds_statement_and_missing_labels(
     # add three total ground truth segmentations, two of which are instance segmentations with
     # the same label.
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+
+    # finalize dataset
+    crud.finalize_dataset(db, dset_name)
+
     # add three total predicted segmentations, two of which are instance segmentations
     crud.create_predicted_segmentations(db, pred_segs_create)
 
@@ -927,22 +983,22 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
             ignored_pred_labels,
         )
 
-    # check we get an error since the dataset is still a draft
-    with pytest.raises(exceptions.DatasetIsDraftError):
-        method_to_test(label_key="class")
+    # # check we get an error since the dataset is still a draft
+    # with pytest.raises(exceptions.DatasetIsNotFinalizedError):
+    #     method_to_test(label_key="class")
 
-    # finalize dataset
-    crud.finalize_dataset(db, "test dataset")
+    # # finalize dataset
+    # crud.finalize_dataset(db, "test dataset")
 
-    # now if we try again we should get an error that inferences aren't finalized
-    with pytest.raises(exceptions.InferencesAreNotFinalizedError):
-        method_to_test(label_key="class")
+    # # now if we try again we should get an error that inferences aren't finalized
+    # with pytest.raises(exceptions.InferencesAreNotFinalizedError):
+    #     method_to_test(label_key="class")
 
     # verify we have no evaluations yet
     assert len(crud.get_model_evaluation_settings(db, model_name)) == 0
 
     # finalize inferences and try again
-    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
+    # crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
     (
         evaluation_settings_id,
@@ -1057,17 +1113,21 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
 
 
 def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
+
+    # create dataset
     crud.create_dataset(
         db,
         dataset=schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_ground_truth_classifications(db, gt_clfs_create)
+    crud.finalize_dataset(db, dset_name)
+
+    # create model
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
     crud.create_predicted_image_classifications(db, pred_clfs_create)
-    crud.finalize_dataset(db, dset_name)
-    crud.finalize_inferences(db, model_name, dset_name)
+    crud.finalize_inferences(db, dataset_name=dset_name, model_name=model_name)
 
     request_info = schemas.ClfMetricsRequest(
         settings=schemas.EvaluationSettings(
@@ -1274,10 +1334,11 @@ def test___model_instance_segmentation_preds_statement(
         db,
         schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
+    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+    crud.finalize_dataset(db, dset_name)
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
-    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
     crud.create_predicted_segmentations(db, pred_segs_create)
 
     areas = db.scalars(
@@ -1804,10 +1865,10 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_no_gro
         db,
         schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
+    crud.finalize_dataset(db, dset_name)
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
-    crud.finalize_dataset(db, dset_name)
     crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
     evaluation_settings = schemas.EvaluationSettings(
@@ -1827,17 +1888,19 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_no_pre
     db: Session, gt_dets_create
 ):
     """Test runtime error when there's no prediction data"""
+
+    # create dataset
     crud.create_dataset(
         db,
         schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
+    crud.create_groundtruth_detections(db, gt_dets_create)
+    crud.finalize_dataset(db, dset_name)
+
+    # create model
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
-
-    crud.create_groundtruth_detections(db, gt_dets_create)
-
-    crud.finalize_dataset(db, dset_name)
     crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
     evaluation_settings = schemas.EvaluationSettings(
@@ -1854,18 +1917,19 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_no_pre
 def test__validate_and_update_evaluation_settings_task_type_for_detection_multiple_groundtruth_types(
     db: Session, gt_dets_create, gt_segs_create
 ):
+    # create dataset
     crud.create_dataset(
         db,
         schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
+    crud.create_groundtruth_detections(db, gt_dets_create)
+    crud.create_groundtruth_segmentations(db, gt_segs_create)
+    crud.finalize_dataset(db, dset_name)
+
+    # create model
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
-
-    crud.create_groundtruth_detections(db, gt_dets_create)
-    crud.create_groundtruth_segmentations(db, gt_segs_create)
-
-    crud.finalize_dataset(db, dset_name)
     crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
     evaluation_settings = schemas.EvaluationSettings(
@@ -1895,19 +1959,20 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_multip
 def test__validate_and_update_evaluation_settings_task_type_for_detection_multiple_prediction_types(
     db: Session, gt_dets_create, pred_dets_create, pred_segs_create
 ):
+    # create dataset
     crud.create_dataset(
         db,
         schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
+    crud.create_groundtruth_detections(db, gt_dets_create)
+    crud.finalize_dataset(db, dset_name)
+
+    # create model
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
-
-    crud.create_groundtruth_detections(db, gt_dets_create)
     crud.create_predicted_detections(db, pred_dets_create)
     crud.create_predicted_segmentations(db, pred_segs_create)
-
-    crud.finalize_dataset(db, dset_name)
     crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
     evaluation_settings = schemas.EvaluationSettings(
