@@ -27,6 +27,8 @@ from velour_api.crud._create import (
 from velour_api.crud._read import (
     _filter_instance_segmentations_by_area,
     _filter_object_detections_by_area,
+    _get_associated_datasets,
+    _get_associated_models,
     _raster_to_png_b64,
 )
 
@@ -2000,3 +2002,159 @@ def test_create_datums_with_metadata(db: Session):
         "type": "Point",
         "coordinates": [-48.23456, 20.12345],
     }
+
+
+def test__get_associated_models(
+    db: Session,
+    gt_dets_create: schemas.GroundTruthDetectionsCreate,
+    pred_dets_create: schemas.PredictedDetectionsCreate,
+):
+
+    datasets = ["dataset1", "dataset2"]
+    models = ["model1", "model2"]
+
+    for name in datasets:
+        crud.create_dataset(
+            db,
+            schemas.DatasetCreate(
+                name=name,
+                type=enums.DatumTypes.IMAGE,
+            ),
+        )
+        gts = gt_dets_create
+        gts.dataset_name = name
+        crud.create_groundtruth_detections(db, gt_dets_create)
+        crud.finalize_dataset(db, name)
+
+    # Link model 1 to dataset 1 and 2
+    crud.create_model(
+        db, model=schemas.Model(name=models[0], type=enums.DatumTypes.IMAGE)
+    )
+    crud.create_model(
+        db, model=schemas.Model(name=models[1], type=enums.DatumTypes.IMAGE)
+    )
+
+    # Link model1 to dataset1
+    pds = pred_dets_create
+    pds.dataset_name = datasets[0]
+    pds.model_name = models[0]
+    crud.create_predicted_detections(db, pds)
+    crud.finalize_inferences(
+        db, model_name=models[0], dataset_name=datasets[0]
+    )
+
+    # Link model1 to dataset2
+    pds = pred_dets_create
+    pds.dataset_name = datasets[1]
+    pds.model_name = models[0]
+    crud.create_predicted_detections(db, pds)
+    crud.finalize_inferences(
+        db, model_name=models[0], dataset_name=datasets[1]
+    )
+
+    # Link model2 to dataset2
+    pds = pred_dets_create
+    pds.dataset_name = datasets[1]
+    pds.model_name = models[1]
+    crud.create_predicted_detections(db, pds)
+    crud.finalize_inferences(
+        db, model_name=models[1], dataset_name=datasets[1]
+    )
+
+    # Check model associations
+    assert _get_associated_models(db, datasets[0]) == ["model1"]
+    assert _get_associated_models(db, datasets[1]) == ["model1", "model2"]
+
+    # clean up
+    crud.delete_model(db, models[0])
+    crud.delete_model(db, models[1])
+    crud.delete_dataset(db, datasets[0])
+    crud.delete_dataset(db, datasets[1])
+
+
+def test__get_associated_datasets(
+    db: Session,
+    gt_dets_create: schemas.GroundTruthDetectionsCreate,
+    pred_dets_create: schemas.PredictedDetectionsCreate,
+):
+
+    datasets = ["dataset1", "dataset2"]
+    models = ["model1", "model2"]
+
+    for name in datasets:
+        crud.create_dataset(
+            db,
+            schemas.DatasetCreate(
+                name=name,
+                type=enums.DatumTypes.IMAGE,
+            ),
+        )
+        gts = gt_dets_create
+        gts.dataset_name = name
+        crud.create_groundtruth_detections(db, gt_dets_create)
+        crud.finalize_dataset(db, name)
+
+    # Link model 1 to dataset 1 and 2
+    crud.create_model(
+        db, model=schemas.Model(name=models[0], type=enums.DatumTypes.IMAGE)
+    )
+    crud.create_model(
+        db, model=schemas.Model(name=models[1], type=enums.DatumTypes.IMAGE)
+    )
+
+    # Link model1 to dataset1
+    pds = pred_dets_create
+    pds.dataset_name = datasets[0]
+    pds.model_name = models[0]
+    crud.create_predicted_detections(db, pds)
+    crud.finalize_inferences(
+        db, model_name=models[0], dataset_name=datasets[0]
+    )
+
+    # Link model1 to dataset2
+    pds = pred_dets_create
+    pds.dataset_name = datasets[1]
+    pds.model_name = models[0]
+    crud.create_predicted_detections(db, pds)
+    crud.finalize_inferences(
+        db, model_name=models[0], dataset_name=datasets[1]
+    )
+
+    # Link model2 to dataset2
+    pds = pred_dets_create
+    pds.dataset_name = datasets[1]
+    pds.model_name = models[1]
+    crud.create_predicted_detections(db, pds)
+    crud.finalize_inferences(
+        db, model_name=models[1], dataset_name=datasets[1]
+    )
+
+    # Check model associations
+    assert _get_associated_datasets(db, models[0]) == ["dataset1", "dataset2"]
+    assert _get_associated_datasets(db, models[1]) == ["dataset2"]
+
+    # clean up
+    crud.delete_model(db, models[0])
+    crud.delete_model(db, models[1])
+    crud.delete_dataset(db, datasets[0])
+    crud.delete_dataset(db, datasets[1])
+
+
+def test_get_dataset_metadata(db: Session):
+    assert False
+
+
+def test_get_model_metadata(db: Session):
+    assert False
+
+
+def test_get_all_labels_in_model(db: Session):
+    assert False
+
+
+def test_get_dataset_label_distribution(db: Session):
+    assert False
+
+
+def test_get_model_label_distribution(db: Session):
+    assert False

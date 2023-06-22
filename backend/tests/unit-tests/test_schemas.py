@@ -18,8 +18,11 @@ from velour_api.schemas import (
     Image,
     Job,
     Label,
+    LabelDistribution,
     Model,
     PredictedSegmentation,
+    ScoredLabel,
+    ScoredLabelDistribution,
 )
 
 
@@ -175,3 +178,33 @@ def test_datum_metadatum_validation():
         DatumMetadatum(name="meta name", value={"a": {1, 2}})
 
     assert "type set is not JSON serializable" in str(exc_info)
+
+
+def test_label_types():
+    l1 = Label(key="key1", value="value1")
+    l2 = Label(key="key2", value="value2")
+    l3 = Label(key="key1", value="value1")
+
+    # test equality
+    assert l1 != l2
+    assert l1 == l3
+    l3.value = "value3"
+    assert l1 != l3
+
+    # test as key
+    d = {l3: "testing"}
+    assert d[l3] == "testing"
+
+    assert l1.json() == '{"key": "key1", "value": "value1"}'
+    assert (
+        ScoredLabel(label=l1, score=0.5).json()
+        == '{"label": {"key": "key1", "value": "value1"}, "score": 0.5}'
+    )
+    assert (
+        LabelDistribution(label=l1, count=1).json()
+        == '{"label": {"key": "key1", "value": "value1"}, "count": 1}'
+    )
+    assert (
+        ScoredLabelDistribution(label=l1, scores=[0.1, 0.9], count=2).json()
+        == '{"label": {"key": "key1", "value": "value1"}, "scores": [0.1, 0.9], "count": 2}'
+    )
