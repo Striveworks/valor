@@ -949,6 +949,7 @@ def create_clf_metrics(
         db=db,
         dataset_name=request_info.settings.dataset_name,
         model_name=request_info.settings.model_name,
+        group_by=request_info.settings.group_by,
     )
 
     dataset_id = get_dataset(db, request_info.settings.dataset_name).id
@@ -962,6 +963,7 @@ def create_clf_metrics(
             "model_id": model_id,
             "model_pred_task_type": enums.Task.CLASSIFICATION,
             "dataset_gt_task_type": enums.Task.CLASSIFICATION,
+            "group_by": request_info.settings.group_by,
         },
     )
 
@@ -976,7 +978,7 @@ def create_clf_metrics(
     )
     for mapping in metric_mappings:
         # ignore value since the other columns are unique identifiers
-        # and have empircally noticed value can slightly change due to floating
+        # and have empirically noticed value can slightly change due to floating
         # point errors
         _get_or_create_row(
             db, models.Metric, mapping, columns_to_ignore=["value"]
