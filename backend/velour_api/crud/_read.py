@@ -227,21 +227,48 @@ def get_segmentation_labels_in_dataset(
 
 
 def get_classification_labels_in_dataset(
-    db: Session, dataset_name: str
+    db: Session, dataset_name: str, metadatum_id: int = None
 ) -> list[models.Label]:
-    return db.scalars(
+    """Gets all the labels in a dataset
+
+    Parameters
+    ----------
+    db
+        db session
+    dataset_name
+        name of dataset to get labels of
+    metadatum_id
+        if this is not None then only get labels associated to datums
+        that have this metadatum_id as a metadatum
+
+    Returns
+    -------
+    list[models.Label]
+    """
+    query = (
         select(models.Label)
         .join(models.GroundTruthClassification)
         .join(models.Datum)
         .join(models.Dataset)
-        .where(
+    )
+
+    if metadatum_id is not None:
+        query = query.join(models.DatumMetadatumLink).where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Datum.id == models.GroundTruthClassification.datum_id,
+                models.DatumMetadatumLink.metadatum_id == metadatum_id,
+            )
+        )
+    else:
+        query = query.where(
             and_(
                 models.Dataset.name == dataset_name,
                 models.Datum.id == models.GroundTruthClassification.datum_id,
             )
         )
-        .distinct()
-    ).all()
+
+    return db.scalars(query.distinct()).all()
 
 
 def get_classification_prediction_labels(
@@ -365,12 +392,27 @@ def _db_label_to_schemas_label(label: models.Label) -> schemas.Label:
     return schemas.Label(key=label.key, value=label.value)
 
 
+def _db_metadatum_to_schemas_metadatum(
+    metadatum: models.Metadatum,
+) -> schemas.DatumMetadatum:
+    if metadatum is None:
+        return None
+    if metadatum.string_value is not None:
+        value = metadatum.string_value
+    elif metadatum.numeric_value is not None:
+        value = metadatum.numeric_value
+    else:
+        value = metadatum.geo
+    return schemas.DatumMetadatum(name=metadatum.name, value=value)
+
+
 def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
     return schemas.Metric(
         type=metric.type,
         parameters=metric.parameters,
         value=metric.value,
         label=_db_label_to_schemas_label(metric.label),
+        group=_db_metadatum_to_schemas_metadatum(metric.group),
     )
 
 
@@ -768,3 +810,25 @@ def get_model_task_types(
             ret.add(task)
 
     return ret
+
+
+def get_string_metadata_ids(
+    db: Session, dataset_name: str, metadata_name: str
+) -> list[int]:
+    """Returns the ids of all metadata (for a given metadata name) in a dataset that
+    have string values
+    """
+    return db.scalars(
+        text(
+            f"""
+        SELECT DISTINCT datum_metadatum_link.metadatum_id
+        FROM datum_metadatum_link
+        JOIN metadatum ON datum_metadatum_link.metadatum_id=metadatum.id
+        JOIN datum ON datum_metadatum_link.datum_id=datum.id
+        JOIN dataset ON datum.dataset_id=dataset.id
+        WHERE dataset.name='{dataset_name}'
+            AND metadatum.name='{metadata_name}'
+            AND metadatum.string_value IS NOT NULL
+        """
+        )
+    ).all()

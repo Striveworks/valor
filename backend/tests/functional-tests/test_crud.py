@@ -2000,3 +2000,55 @@ def test_create_datums_with_metadata(db: Session):
         "type": "Point",
         "coordinates": [-48.23456, 20.12345],
     }
+
+
+def test_get_string_metadata_ids(db: Session):
+    crud.create_dataset(
+        db,
+        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.TABULAR),
+    )
+
+    datums = [
+        schemas.Datum(
+            uid="uid1",
+            metadata=[schemas.DatumMetadatum(name="md1", value=0.7)],
+        ),
+        schemas.Datum(
+            uid="uid2",
+            metadata=[
+                schemas.DatumMetadatum(name="md1", value="md1-val1"),
+                schemas.DatumMetadatum(name="md2", value="md2-val1"),
+            ],
+        ),
+        schemas.Datum(
+            uid="uid3",
+            metadata=[
+                schemas.DatumMetadatum(name="md1", value="md1-val1"),
+            ],
+        ),
+        schemas.Datum(
+            uid="uid4",
+            metadata=[
+                schemas.DatumMetadatum(name="md1", value="md1-val2"),
+            ],
+        ),
+    ]
+    crud._create._add_datums_to_dataset(db, dset_name, datums)
+
+    string_ids = crud.get_string_metadata_ids(
+        db, dset_name, metadata_name="md1"
+    )
+
+    assert len(string_ids) == 2
+    # assert set([s[1] for s in string_vals_and_ids]) == {"md1-val1", "md1-val2"}
+
+    string_ids = crud.get_string_metadata_ids(
+        db, dset_name, metadata_name="md2"
+    )
+    assert len(string_ids) == 1
+    # assert [s[1] for s in string_vals_and_ids] == ["md2-val1"]
+
+    string_ids = crud.get_string_metadata_ids(
+        db, dset_name, metadata_name="md3"
+    )
+    assert string_ids == []

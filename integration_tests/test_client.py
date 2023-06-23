@@ -432,6 +432,29 @@ def pred_clfs(img5: Image, img6: Image) -> list[PredictedImageClassification]:
     ]
 
 
+@pytest.fixture
+def y_true() -> list[int]:
+    """groundtruth for a tabular classification task"""
+    return [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
+
+
+@pytest.fixture
+def tabular_preds() -> list[list[float]]:
+    """predictions for a tabular classification task"""
+    return [
+        [0.37, 0.35, 0.28],
+        [0.24, 0.61, 0.15],
+        [0.03, 0.88, 0.09],
+        [0.97, 0.03, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.01, 0.96, 0.03],
+        [0.28, 0.02, 0.7],
+        [0.78, 0.21, 0.01],
+        [0.45, 0.11, 0.44],
+    ]
+
+
 def _test_create_image_dataset_with_gts(
     client: Client,
     gts1: list[Any],
@@ -1036,8 +1059,6 @@ def test_evaluate_ap(
         "model_pred_task_type": "Bounding Box Object Detection",
         "dataset_gt_task_type": "Bounding Box Object Detection",
         "label_key": "k1",
-        "min_area": None,
-        "max_area": None,        
     }
 
     expected_metrics = [
@@ -1133,7 +1154,6 @@ def test_evaluate_ap(
         "dataset_gt_task_type": "Bounding Box Object Detection",
         "label_key": "k1",
         "min_area": 1200,
-        "max_area": None,
     }
 
     assert eval_job.metrics() != expected_metrics
@@ -1156,7 +1176,6 @@ def test_evaluate_ap(
         "model_pred_task_type": "Bounding Box Object Detection",
         "dataset_gt_task_type": "Bounding Box Object Detection",
         "label_key": "k1",
-        "min_area": None,
         "max_area": 1200,
     }
     assert eval_job.metrics() != expected_metrics
@@ -1225,9 +1244,17 @@ def test_evaluate_image_clf(
             "label": {"key": "k4", "value": "v4"},
         },
         {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
-        {"type": "Precision", "label": {"key": "k4", "value": "v5"}},
-        {"type": "Recall", "label": {"key": "k4", "value": "v5"}},
-        {"type": "F1", "label": {"key": "k4", "value": "v5"}},
+        {
+            "type": "Precision",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {
+            "type": "Recall",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
     ]
     for m in metrics:
         assert m in expected_metrics
@@ -1332,21 +1359,12 @@ def test_create_tabular_model_with_predicted_classifications(
     )
 
 
-def test_evaluate_tabular_clf(client: Session, db: Session):
-    y_true = [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
-    preds = [
-        [0.37, 0.35, 0.28],
-        [0.24, 0.61, 0.15],
-        [0.03, 0.88, 0.09],
-        [0.97, 0.03, 0.0],
-        [1.0, 0.0, 0.0],
-        [1.0, 0.0, 0.0],
-        [0.01, 0.96, 0.03],
-        [0.28, 0.02, 0.7],
-        [0.78, 0.21, 0.01],
-        [0.45, 0.11, 0.44],
-    ]
-
+def test_evaluate_tabular_clf(
+    client: Session,
+    db: Session,
+    y_true: list[int],
+    tabular_preds: list[list[float]],
+):
     dataset = client.create_tabular_dataset(name=dset_name)
     model = client.create_tabular_model(name=model_name)
 
@@ -1360,7 +1378,7 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
                 ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
                 for i in range(len(pred))
             ]
-            for pred in preds
+            for pred in tabular_preds
         ],
     )
 
@@ -1472,9 +1490,14 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
         "dataset_gt_task_type": "Classification",
     }
 
-    assert (
-        model.get_metrics_at_evaluation_settings_id(es_id) == expected_metrics
+    metrics_from_eval_settings_id = (
+        model.get_metrics_at_evaluation_settings_id(es_id)
     )
+    assert len(metrics_from_eval_settings_id) == len(expected_metrics)
+    for m in metrics_from_eval_settings_id:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics_from_eval_settings_id
 
     assert (
         model.get_confusion_matrices_at_evaluation_settings_id(es_id)
@@ -1487,7 +1510,7 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
 
 
 def test_create_images_with_metadata(
-    client: Client, db: Session, metadata: list[Metadatum], rect1
+    client: Client, db: Session, metadata: list[Metadatum], rect1: BoundingBox
 ):
     dataset = client.create_image_dataset(dset_name)
 
@@ -1530,3 +1553,133 @@ def test_create_images_with_metadata(
     assert metadatum1.string_value == "a string"
     assert metadatum2.name == "metadatum name3"
     assert metadatum2.numeric_value == 0.45
+
+
+def test_stratify_clf_metrics(
+    client: Session,
+    db: Session,
+    y_true: list[int],
+    tabular_preds: list[list[float]],
+):
+    dataset = client.create_tabular_dataset(name=dset_name)
+    model = client.create_tabular_model(name=model_name)
+
+    # create data and two-different defining groups of cohorts
+    gt_with_metadata = [
+        [
+            Label(key="class", value=str(t)),
+            Metadatum(name="md1", value=f"md1-val{i % 3}"),
+            Metadatum(name="md2", value=f"md2-val{i % 4}"),
+        ]
+        for i, t in enumerate(y_true)
+    ]
+
+    dataset.add_groundtruth(gt_with_metadata)
+    model.add_predictions(
+        dataset,
+        [
+            [
+                ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
+                for i in range(len(pred))
+            ]
+            for pred in tabular_preds
+        ],
+    )
+
+    dataset.finalize()
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
+    time.sleep(2)
+
+    metrics = eval_job.metrics()
+
+    for m in metrics:
+        assert m["group"] in [
+            {"name": "md1", "value": "md1-val0"},
+            {"name": "md1", "value": "md1-val1"},
+            {"name": "md1", "value": "md1-val2"},
+        ]
+
+    val2_metrics = [
+        m
+        for m in metrics
+        if m["group"] == {"name": "md1", "value": "md1-val2"}
+    ]
+
+    # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
+    # (hard preds [1, 0, 0])
+    expected_metrics = [
+        {
+            "type": "Accuracy",
+            "parameters": {"label_key": "class"},
+            "value": 0.3333333333333333,
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "ROCAUC",
+            "parameters": {"label_key": "class"},
+            "value": 0.8333333333333334,
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "class", "value": "1"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "1"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "label": {"key": "class", "value": "1"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Precision",
+            "value": -1,
+            "label": {"key": "class", "value": "2"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "F1",
+            "value": -1,
+            "label": {"key": "class", "value": "2"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.5,
+            "label": {"key": "class", "value": "0"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Recall",
+            "value": 1.0,
+            "label": {"key": "class", "value": "0"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "F1",
+            "value": 0.6666666666666666,
+            "label": {"key": "class", "value": "0"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+    ]
+
+    assert len(val2_metrics) == len(expected_metrics)
+    for m in val2_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in val2_metrics
