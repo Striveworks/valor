@@ -183,7 +183,7 @@ def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.GroundTruthDetection.is_bbox == True,
+                models.GroundTruthDetection.is_bbox,
             )
         )
     )
@@ -198,7 +198,7 @@ def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.GroundTruthDetection.is_bbox == False,
+                not models.GroundTruthDetection.is_bbox,
             )
         )
     )
@@ -276,7 +276,7 @@ def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
         .where(
             and_(
                 models.Model.name == model_name,
-                models.PredictedDetection.is_bbox == True,
+                models.PredictedDetection.is_bbox,
             )
         )
     )
@@ -289,7 +289,7 @@ def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
         .where(
             and_(
                 models.Model.name == model_name,
-                models.PredictedDetection.is_bbox == False,
+                not models.PredictedDetection.is_bbox,
             )
         )
     )
@@ -462,7 +462,7 @@ def get_labels_from_dataset(
                 and_(
                     models.Dataset.name == dataset_name,
                     models.Datum.id == models.GroundTruthDetection.datum_id,
-                    models.GroundTruthDetection.is_bbox == True,
+                    models.GroundTruthDetection.is_bbox,
                 )
             )
             .distinct()
@@ -481,7 +481,7 @@ def get_labels_from_dataset(
                 and_(
                     models.Dataset.name == dataset_name,
                     models.Datum.id == models.GroundTruthDetection.datum_id,
-                    models.GroundTruthDetection.is_bbox == False,
+                    not models.GroundTruthDetection.is_bbox,
                 )
             )
             .distinct()
@@ -565,7 +565,7 @@ def get_labels_from_model(
             .where(
                 and_(
                     models.Model.name == model_name,
-                    models.PredictedDetection.is_bbox == True,
+                    models.PredictedDetection.is_bbox,
                 )
             )
             .distinct()
@@ -582,7 +582,7 @@ def get_labels_from_model(
             .where(
                 and_(
                     models.Model.name == model_name,
-                    models.PredictedDetection.is_bbox == False,
+                    not models.PredictedDetection.is_bbox,
                 )
             )
             .distinct()
