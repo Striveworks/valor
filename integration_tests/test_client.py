@@ -1472,9 +1472,11 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
         "dataset_gt_task_type": "Classification",
     }
 
-    assert (
-        model.get_metrics_at_evaluation_settings_id(es_id) == expected_metrics
-    )
+    metrics = model.get_metrics_at_evaluation_settings_id(es_id)
+    for m in metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics
 
     assert (
         model.get_confusion_matrices_at_evaluation_settings_id(es_id)
