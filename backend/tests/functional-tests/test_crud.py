@@ -2131,7 +2131,7 @@ def test_get_model_metadata(
     dataset_model_associations_create,
 ):
     md_meta1 = get_model_metadata(db, model_names[0])
-    assert md_meta1.annotation_type == "DETECTION"
+    assert md_meta1.annotation_type == ["DETECTION"]
     assert md_meta1.number_of_classifications == 0
     assert md_meta1.number_of_bounding_boxes == 0
     assert md_meta1.number_of_bounding_polygons == 4
@@ -2139,7 +2139,7 @@ def test_get_model_metadata(
     assert md_meta1.associated == [dataset_names[0], dataset_names[1]]
 
     md_meta2 = get_model_metadata(db, model_names[1])
-    assert md_meta2.annotation_type == "DETECTION"
+    assert md_meta2.annotation_type == ["DETECTION"]
     assert md_meta2.number_of_classifications == 0
     assert md_meta2.number_of_bounding_boxes == 0
     assert md_meta2.number_of_bounding_polygons == 2
@@ -2225,6 +2225,7 @@ def test_get_labels_from_model(
     md1 = get_labels_from_model(
         db,
         model_name=model_names[0],
+        metadatum_id=None,
         of_type=[
             enums.AnnotationType.CLASSIFICATION,
             enums.AnnotationType.BBOX,
@@ -2237,6 +2238,7 @@ def test_get_labels_from_model(
     md1 = get_labels_from_model(
         db,
         model_name=model_names[0],
+        metadatum_id=None,
         of_type=[enums.AnnotationType.POLYGON],
     )
     assert len(md1) == 2

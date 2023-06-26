@@ -161,6 +161,9 @@ def get_dataset(db: Session, dataset_name: str) -> models.Dataset:
 
 def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
 
+    is_bbox = True
+    is_polygon = False
+
     associated_models = _get_associated_models(db, dataset_name)
 
     number_of_classifications = db.scalar(
@@ -183,7 +186,7 @@ def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.GroundTruthDetection.is_bbox is True,
+                models.GroundTruthDetection.is_bbox == is_bbox,
             )
         )
     )
@@ -198,7 +201,7 @@ def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.GroundTruthDetection.is_bbox is False,
+                models.GroundTruthDetection.is_bbox == is_polygon,
             )
         )
     )
@@ -250,6 +253,9 @@ def get_model(db: Session, model_name: str) -> models.Model:
 
 def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
 
+    is_bbox = True
+    is_polygon = False
+
     associated_datasets = _get_associated_datasets(db, model_name)
 
     number_of_classifications = db.scalar(
@@ -269,7 +275,7 @@ def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
         .where(
             and_(
                 models.Model.name == model_name,
-                models.PredictedDetection.is_bbox is True,
+                models.PredictedDetection.is_bbox == is_bbox,
             )
         )
     )
@@ -282,7 +288,7 @@ def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
         .where(
             and_(
                 models.Model.name == model_name,
-                models.PredictedDetection.is_bbox is False,
+                models.PredictedDetection.is_bbox == is_polygon,
             )
         )
     )
@@ -304,15 +310,8 @@ def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
     if number_of_segmentation_rasters > 0:
         type_list.append("SEGMENTATION")
 
-    if len(type_list) == 0:
-        model_type = "NONE"
-    elif len(type_list) == 1:
-        model_type = type_list[0]
-    else:
-        model_type = "MIXED"
-
     return schemas.Metadata(
-        annotation_type=model_type,
+        annotation_type=type_list,
         number_of_classifications=number_of_classifications,
         number_of_bounding_boxes=number_of_bounding_boxes,
         number_of_bounding_polygons=number_of_bounding_polygons,
@@ -444,6 +443,9 @@ def get_labels_from_dataset(
     list[schemas.Label]
     """
 
+    is_bbox = True
+    is_polygon = False
+
     classifications_query = (
         select(models.Label)
         .join(models.GroundTruthClassification)
@@ -488,7 +490,7 @@ def get_labels_from_dataset(
                 and_(
                     models.Dataset.name == dataset_name,
                     models.Datum.id == models.GroundTruthDetection.datum_id,
-                    models.GroundTruthDetection.is_bbox is True,
+                    models.GroundTruthDetection.is_bbox == is_bbox,
                     models.DatumMetadatumLink.metadatum_id == metadatum_id,
                 )
             )
@@ -501,7 +503,7 @@ def get_labels_from_dataset(
                 and_(
                     models.Dataset.name == dataset_name,
                     models.Datum.id == models.GroundTruthDetection.datum_id,
-                    models.GroundTruthDetection.is_bbox is False,
+                    models.GroundTruthDetection.is_bbox == is_polygon,
                     models.DatumMetadatumLink.metadatum_id == metadatum_id,
                 )
             )
@@ -533,7 +535,7 @@ def get_labels_from_dataset(
             and_(
                 models.Dataset.name == dataset_name,
                 models.Datum.id == models.GroundTruthDetection.datum_id,
-                models.GroundTruthDetection.is_bbox is True,
+                models.GroundTruthDetection.is_bbox == is_bbox,
             )
         ).distinct()
 
@@ -541,7 +543,7 @@ def get_labels_from_dataset(
             and_(
                 models.Dataset.name == dataset_name,
                 models.Datum.id == models.GroundTruthDetection.datum_id,
-                models.GroundTruthDetection.is_bbox is False,
+                models.GroundTruthDetection.is_bbox == is_polygon,
             )
         ).distinct()
 
@@ -607,7 +609,7 @@ def get_labels_from_dataset(
 def get_labels_from_model(
     db: Session,
     model_name: str,
-    metadatum_id: Optional[int],
+    metadatum_id: Optional[int] = None,
     of_type: Optional[List[enums.AnnotationType]] = None,
 ) -> list[schemas.Label]:
     """Gets all the labels in a model
@@ -628,6 +630,9 @@ def get_labels_from_model(
     -------
     list[schemas.Label]
     """
+
+    is_bbox = True
+    is_polygon = False
 
     classification_query = (
         select(models.Label)
@@ -669,7 +674,7 @@ def get_labels_from_model(
             .where(
                 and_(
                     models.Model.name == model_name,
-                    models.PredictedDetection.is_bbox is True,
+                    models.PredictedDetection.is_bbox == is_bbox,
                     models.Metadatum.id == metadatum_id,
                 )
             )
@@ -682,7 +687,7 @@ def get_labels_from_model(
             .where(
                 and_(
                     models.Model.name == model_name,
-                    models.PredictedDetection.is_bbox is False,
+                    models.PredictedDetection.is_bbox == is_polygon,
                     models.Metadatum.id == metadatum_id,
                 )
             )
@@ -710,14 +715,14 @@ def get_labels_from_model(
         bounding_box_query = bounding_query.where(
             and_(
                 models.Model.name == model_name,
-                models.PredictedDetection.is_bbox is True,
+                models.PredictedDetection.is_bbox == is_bbox,
             )
         ).distinct()
 
         bounding_polygon_query = bounding_query.where(
             and_(
                 models.Model.name == model_name,
-                models.PredictedDetection.is_bbox is False,
+                models.PredictedDetection.is_bbox == is_polygon,
             )
         ).distinct()
 
