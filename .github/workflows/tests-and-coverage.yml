@@ -51,9 +51,9 @@ jobs:
         with:
           python-version: "3.10"
       - name: install api
-        run: pip install -e ".[test]"
+        run: pip install -e "./backend/.[test]"
       - name: install client
-        run: pip install -e ".[test]"
+        run: pip install -e "./backend/.[test]"
         working-directory: ./client
       - run: coverage run --source="backend/velour_api,client/velour" -m pytest -v integration_tests/test_client.py integration_tests/test_enums.py
       - run: coverage report
