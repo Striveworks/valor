@@ -37,6 +37,7 @@ from ._read import (
     get_model_metadata,
     get_model_metrics,
     get_models,
+    get_string_metadata_ids,
     number_of_rows,
 )
 from ._update import finalize_dataset
@@ -81,4 +82,5 @@ __all__ = [
     "finalize_inferences",
     "delete_model",
     "delete_dataset",
+    "get_string_metadata_ids",
 ]

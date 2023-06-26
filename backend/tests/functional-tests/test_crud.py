@@ -1157,6 +1157,7 @@ def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
     assert set(ignored_pred_keys) == {"k3", "k4"}
 
     evaluation_settings_id = crud.create_clf_metrics(db, request_info)
+
     # check we have one evaluation
     assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
 
@@ -2107,7 +2108,7 @@ def test_get_dataset_metadata(
     dataset_model_associations_create,
 ):
     ds_meta1 = get_dataset_metadata(db, dataset_names[0])
-    assert ds_meta1.annotation_type == "DETECTION"
+    assert ds_meta1.annotation_type == ["DETECTION"]
     assert ds_meta1.number_of_classifications == 0
     assert ds_meta1.number_of_bounding_boxes == 0
     assert ds_meta1.number_of_bounding_polygons == 2
@@ -2115,7 +2116,7 @@ def test_get_dataset_metadata(
     assert ds_meta1.associated == [model_names[0]]
 
     ds_meta2 = get_dataset_metadata(db, dataset_names[1])
-    assert ds_meta2.annotation_type == "DETECTION"
+    assert ds_meta2.annotation_type == ["DETECTION"]
     assert ds_meta2.number_of_classifications == 0
     assert ds_meta2.number_of_bounding_boxes == 0
     assert ds_meta2.number_of_bounding_polygons == 2
@@ -2345,3 +2346,55 @@ def test_get_label_distribution_from_model(
     assert md2[1] == schemas.ScoredLabelDistribution(
         label=schemas.Label(key="k2", value="v2"), scores=[0.2, 0.9], count=2
     )
+
+
+def test_get_string_metadata_ids(db: Session):
+    crud.create_dataset(
+        db,
+        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.TABULAR),
+    )
+
+    datums = [
+        schemas.Datum(
+            uid="uid1",
+            metadata=[schemas.DatumMetadatum(name="md1", value=0.7)],
+        ),
+        schemas.Datum(
+            uid="uid2",
+            metadata=[
+                schemas.DatumMetadatum(name="md1", value="md1-val1"),
+                schemas.DatumMetadatum(name="md2", value="md2-val1"),
+            ],
+        ),
+        schemas.Datum(
+            uid="uid3",
+            metadata=[
+                schemas.DatumMetadatum(name="md1", value="md1-val1"),
+            ],
+        ),
+        schemas.Datum(
+            uid="uid4",
+            metadata=[
+                schemas.DatumMetadatum(name="md1", value="md1-val2"),
+            ],
+        ),
+    ]
+    crud._create._add_datums_to_dataset(db, dset_name, datums)
+
+    string_ids = crud.get_string_metadata_ids(
+        db, dset_name, metadata_name="md1"
+    )
+
+    assert len(string_ids) == 2
+    # assert set([s[1] for s in string_vals_and_ids]) == {"md1-val1", "md1-val2"}
+
+    string_ids = crud.get_string_metadata_ids(
+        db, dset_name, metadata_name="md2"
+    )
+    assert len(string_ids) == 1
+    # assert [s[1] for s in string_vals_and_ids] == ["md2-val1"]
+
+    string_ids = crud.get_string_metadata_ids(
+        db, dset_name, metadata_name="md3"
+    )
+    assert string_ids == []

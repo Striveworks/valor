@@ -455,11 +455,29 @@ class ModelBase:
             f"models/{self.name}/inferences/{dataset.name}/finalize"
         ).json()
 
-    def evaluate_classification(self, dataset: DatasetBase) -> "EvalJob":
+    def evaluate_classification(
+        self, dataset: DatasetBase, group_by: str = None
+    ) -> "EvalJob":
+        """Start a classification evaluation job
+
+        Parameters
+        ----------
+        dataset
+            the dataset to evaluate against
+        group_by
+            optional name of metadatum to group the results by
+
+        Returns
+        -------
+        EvalJob
+            a job object that can be used to track the status of the job
+            and get the metrics of it upon completion
+        """
         payload = {
             "settings": {
                 "model_name": self.name,
                 "dataset_name": dataset.name,
+                "group_by": group_by,
             }
         }
 

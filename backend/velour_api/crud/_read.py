@@ -183,7 +183,7 @@ def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.GroundTruthDetection.is_bbox,
+                models.GroundTruthDetection.is_bbox is True,
             )
         )
     )
@@ -198,7 +198,7 @@ def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                not models.GroundTruthDetection.is_bbox,
+                models.GroundTruthDetection.is_bbox is False,
             )
         )
     )
@@ -221,15 +221,8 @@ def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
     if number_of_segmentation_rasters > 0:
         type_list.append("SEGMENTATION")
 
-    if len(type_list) == 0:
-        dataset_type = "NONE"
-    elif len(type_list) == 1:
-        dataset_type = type_list[0]
-    else:
-        dataset_type = "MIXED"
-
     return schemas.Metadata(
-        annotation_type=dataset_type,
+        annotation_type=type_list,
         number_of_classifications=number_of_classifications,
         number_of_bounding_boxes=number_of_bounding_boxes,
         number_of_bounding_polygons=number_of_bounding_polygons,
@@ -276,7 +269,7 @@ def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
         .where(
             and_(
                 models.Model.name == model_name,
-                models.PredictedDetection.is_bbox,
+                models.PredictedDetection.is_bbox is True,
             )
         )
     )
@@ -289,7 +282,7 @@ def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
         .where(
             and_(
                 models.Model.name == model_name,
-                not models.PredictedDetection.is_bbox,
+                models.PredictedDetection.is_bbox is False,
             )
         )
     )
@@ -429,81 +422,154 @@ def get_groundtruth_segmentations_in_image(
 def get_labels_from_dataset(
     db: Session,
     dataset_name: str,
+    metadatum_id: Optional[int] = None,
     of_type: Optional[List[enums.AnnotationType]] = None,
 ) -> list[schemas.Label]:
+    """Gets all the labels in a dataset
 
-    classification_labels = set(
-        schemas.Label(key=row.key, value=row.value)
-        for row in db.scalars(
-            select(models.Label)
-            .join(models.GroundTruthClassification)
-            .join(models.Datum)
-            .join(models.Dataset)
+    Parameters
+    ----------
+    db
+        db session
+    dataset_name
+        name of dataset to get labels of
+    metadatum_id
+        if this is not None then only get labels associated to datums
+        that have this metadatum_id as a metadatum
+    of_type
+        filters by annotation type, defaults to all types
+
+    Returns
+    -------
+    list[schemas.Label]
+    """
+
+    classifications_query = (
+        select(models.Label)
+        .join(models.GroundTruthClassification)
+        .join(models.Datum)
+        .join(models.Dataset)
+    )
+
+    bounding_query = (
+        select(models.Label)
+        .join(models.LabeledGroundTruthDetection)
+        .join(models.GroundTruthDetection)
+        .join(models.Datum)
+        .join(models.Dataset)
+    )
+
+    segmentation_query = (
+        select(models.Label)
+        .join(models.LabeledGroundTruthSegmentation)
+        .join(models.GroundTruthSegmentation)
+        .join(models.Datum)
+        .join(models.Dataset)
+    )
+
+    if metadatum_id is not None:
+
+        classifications_query = (
+            classifications_query.join(models.DatumMetadatumLink)
             .where(
                 and_(
                     models.Dataset.name == dataset_name,
                     models.Datum.id
                     == models.GroundTruthClassification.datum_id,
+                    models.DatumMetadatumLink.metadatum_id == metadatum_id,
                 )
             )
             .distinct()
-        ).all()
-    )
+        )
 
-    bounding_box_labels = set(
-        schemas.Label(key=row.key, value=row.value)
-        for row in db.scalars(
-            select(models.Label)
-            .join(models.LabeledGroundTruthDetection)
-            .join(models.GroundTruthDetection)
-            .join(models.Datum)
-            .join(models.Dataset)
+        bounding_box_query = (
+            bounding_query.join(models.DatumMetadatumLink)
             .where(
                 and_(
                     models.Dataset.name == dataset_name,
                     models.Datum.id == models.GroundTruthDetection.datum_id,
-                    models.GroundTruthDetection.is_bbox,
+                    models.GroundTruthDetection.is_bbox is True,
+                    models.DatumMetadatumLink.metadatum_id == metadatum_id,
                 )
             )
             .distinct()
-        ).all()
-    )
+        )
 
-    bounding_polygon_labels = set(
-        schemas.Label(key=row.key, value=row.value)
-        for row in db.scalars(
-            select(models.Label)
-            .join(models.LabeledGroundTruthDetection)
-            .join(models.GroundTruthDetection)
-            .join(models.Datum)
-            .join(models.Dataset)
+        bounding_polygon_query = (
+            bounding_query.join(models.DatumMetadatumLink)
             .where(
                 and_(
                     models.Dataset.name == dataset_name,
                     models.Datum.id == models.GroundTruthDetection.datum_id,
-                    not models.GroundTruthDetection.is_bbox,
+                    models.GroundTruthDetection.is_bbox is False,
+                    models.DatumMetadatumLink.metadatum_id == metadatum_id,
                 )
             )
             .distinct()
-        ).all()
-    )
+        )
 
-    segmentation_labels = set(
-        schemas.Label(key=row.key, value=row.value)
-        for row in db.scalars(
-            select(models.Label)
-            .join(models.LabeledGroundTruthSegmentation)
-            .join(models.GroundTruthSegmentation)
-            .join(models.Datum)
-            .join(models.Dataset)
+        segmentation_query = (
+            segmentation_query.join(models.DatumMetadatumLink)
             .where(
                 and_(
                     models.Dataset.name == dataset_name,
                     models.Datum.id == models.GroundTruthSegmentation.datum_id,
+                    models.DatumMetadatumLink.metadatum_id == metadatum_id,
                 )
             )
             .distinct()
-        ).all()
+        )
+
+    else:
+
+        classifications_query = classifications_query.where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Datum.id == models.GroundTruthClassification.datum_id,
+            )
+        ).distinct()
+
+        bounding_box_query = bounding_query.where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Datum.id == models.GroundTruthDetection.datum_id,
+                models.GroundTruthDetection.is_bbox is True,
+            )
+        ).distinct()
+
+        bounding_polygon_query = bounding_query.where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Datum.id == models.GroundTruthDetection.datum_id,
+                models.GroundTruthDetection.is_bbox is False,
+            )
+        ).distinct()
+
+        segmentation_query = segmentation_query.where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.Datum.id == models.GroundTruthSegmentation.datum_id,
+            )
+        ).distinct()
+
+    classification_labels = set(
+        schemas.Label(key=row.key, value=row.value)
+        for row in db.scalars(classifications_query).all()
+    )
+
+    bounding_box_labels = set(
+        schemas.Label(key=row.key, value=row.value)
+        for row in db.scalars(bounding_box_query).all()
+    )
+
+    bounding_polygon_labels = set(
+        schemas.Label(key=row.key, value=row.value)
+        for row in db.scalars(bounding_polygon_query).all()
+    )
+
+    segmentation_labels = set(
+        schemas.Label(key=row.key, value=row.value)
+        for row in db.scalars(segmentation_query).all()
     )
 
     if of_type is None:
@@ -541,64 +607,142 @@ def get_labels_from_dataset(
 def get_labels_from_model(
     db: Session,
     model_name: str,
+    metadatum_id: Optional[int],
     of_type: Optional[List[enums.AnnotationType]] = None,
 ) -> list[schemas.Label]:
+    """Gets all the labels in a model
+
+    Parameters
+    ----------
+    db
+        db session
+    model_name
+        name of dataset to get labels of
+    metadatum_id
+        if this is not None then only get labels associated to datums
+        that have this metadatum_id as a metadatum
+    of_type
+        filters by annotation type, defaults to all types
+
+    Returns
+    -------
+    list[schemas.Label]
+    """
+
+    classification_query = (
+        select(models.Label)
+        .join(models.PredictedClassification)
+        .join(models.Model)
+    )
+
+    bounding_query = (
+        select(models.Label)
+        .join(models.LabeledPredictedDetection)
+        .join(models.PredictedDetection)
+        .join(models.Model)
+    )
+
+    segmentation_query = (
+        select(models.Label)
+        .join(models.LabeledPredictedSegmentation)
+        .join(models.PredictedSegmentation)
+        .join(models.Model)
+    )
+
+    if metadatum_id is not None:
+
+        classification_query = (
+            classification_query.join(models.Datum)
+            .join(models.Metadatum)
+            .where(
+                and_(
+                    models.Model.name == model_name,
+                    models.Metadatum.id == metadatum_id,
+                )
+            )
+            .distinct()
+        )
+
+        bounding_box_query = (
+            bounding_query.join(models.Datum)
+            .join(models.Metadatum)
+            .where(
+                and_(
+                    models.Model.name == model_name,
+                    models.PredictedDetection.is_bbox is True,
+                    models.Metadatum.id == metadatum_id,
+                )
+            )
+            .distinct()
+        )
+
+        bounding_polygon_query = (
+            bounding_query.join(models.Datum)
+            .join(models.Metadatum)
+            .where(
+                and_(
+                    models.Model.name == model_name,
+                    models.PredictedDetection.is_bbox is False,
+                    models.Metadatum.id == metadatum_id,
+                )
+            )
+            .distinct()
+        )
+
+        segmentation_query = (
+            segmentation_query.join(models.Datum)
+            .join(models.Metadatum)
+            .where(
+                and_(
+                    models.Model.name == model_name,
+                    models.Metadatum.id == metadatum_id,
+                )
+            )
+            .distinct()
+        )
+
+    else:
+
+        classification_query = classification_query.where(
+            models.Model.name == model_name
+        ).distinct()
+
+        bounding_box_query = bounding_query.where(
+            and_(
+                models.Model.name == model_name,
+                models.PredictedDetection.is_bbox is True,
+            )
+        ).distinct()
+
+        bounding_polygon_query = bounding_query.where(
+            and_(
+                models.Model.name == model_name,
+                models.PredictedDetection.is_bbox is False,
+            )
+        ).distinct()
+
+        segmentation_query = segmentation_query.where(
+            models.Model.name == model_name
+        ).distinct()
 
     classification_labels = set(
         schemas.Label(key=row.key, value=row.value)
-        for row in db.scalars(
-            select(models.Label)
-            .join(models.PredictedClassification)
-            .join(models.Model)
-            .where(models.Model.name == model_name)
-            .distinct()
-        ).all()
+        for row in db.scalars(classification_query).all()
     )
 
     bounding_box_labels = set(
         schemas.Label(key=row.key, value=row.value)
-        for row in db.scalars(
-            select(models.Label)
-            .join(models.LabeledPredictedDetection)
-            .join(models.PredictedDetection)
-            .join(models.Model)
-            .where(
-                and_(
-                    models.Model.name == model_name,
-                    models.PredictedDetection.is_bbox,
-                )
-            )
-            .distinct()
-        ).all()
+        for row in db.scalars(bounding_box_query).all()
     )
 
     bounding_polygon_labels = set(
         schemas.Label(key=row.key, value=row.value)
-        for row in db.scalars(
-            select(models.Label)
-            .join(models.LabeledPredictedDetection)
-            .join(models.PredictedDetection)
-            .join(models.Model)
-            .where(
-                and_(
-                    models.Model.name == model_name,
-                    not models.PredictedDetection.is_bbox,
-                )
-            )
-            .distinct()
-        ).all()
+        for row in db.scalars(bounding_polygon_query).all()
     )
 
     segmentation_labels = set(
         schemas.Label(key=row.key, value=row.value)
-        for row in db.scalars(
-            select(models.Label)
-            .join(models.LabeledPredictedSegmentation)
-            .join(models.PredictedSegmentation)
-            .join(models.Model)
-            .where(models.Model.name == model_name)
-            .distinct()
-        ).all()
+        for row in db.scalars(segmentation_query).all()
     )
 
     if of_type is None:
@@ -637,14 +781,25 @@ def get_joint_labels(
     db: Session,
     model_name: str,
     dataset_name: str,
+    metadatum_id: Optional[int] = None,
     of_type: Optional[List[enums.AnnotationType]] = None,
 ) -> list[schemas.Label]:
 
     ds_set = set(
-        get_labels_from_dataset(db, dataset_name=dataset_name, of_type=of_type)
+        get_labels_from_dataset(
+            db,
+            dataset_name=dataset_name,
+            metadatum_id=metadatum_id,
+            of_type=of_type,
+        )
     )
     md_set = set(
-        get_labels_from_model(db, model_name=model_name, of_type=of_type)
+        get_labels_from_model(
+            db,
+            model_name=model_name,
+            metadatum_id=metadatum_id,
+            of_type=of_type,
+        )
     )
     return list(ds_set.intersection(md_set))
 
@@ -836,12 +991,27 @@ def _db_label_to_schemas_label(label: models.Label) -> schemas.Label:
     return schemas.Label(key=label.key, value=label.value)
 
 
+def _db_metadatum_to_schemas_metadatum(
+    metadatum: models.Metadatum,
+) -> schemas.DatumMetadatum:
+    if metadatum is None:
+        return None
+    if metadatum.string_value is not None:
+        value = metadatum.string_value
+    elif metadatum.numeric_value is not None:
+        value = metadatum.numeric_value
+    else:
+        value = metadatum.geo
+    return schemas.DatumMetadatum(name=metadatum.name, value=value)
+
+
 def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
     return schemas.Metric(
         type=metric.type,
         parameters=metric.parameters,
         value=metric.value,
         label=_db_label_to_schemas_label(metric.label),
+        group=_db_metadatum_to_schemas_metadatum(metric.group),
     )
 
 
@@ -1239,3 +1409,25 @@ def get_model_task_types(
             ret.add(task)
 
     return ret
+
+
+def get_string_metadata_ids(
+    db: Session, dataset_name: str, metadata_name: str
+) -> list[int]:
+    """Returns the ids of all metadata (for a given metadata name) in a dataset that
+    have string values
+    """
+    return db.scalars(
+        text(
+            f"""
+        SELECT DISTINCT datum_metadatum_link.metadatum_id
+        FROM datum_metadatum_link
+        JOIN metadatum ON datum_metadatum_link.metadatum_id=metadatum.id
+        JOIN datum ON datum_metadatum_link.datum_id=datum.id
+        JOIN dataset ON datum.dataset_id=dataset.id
+        WHERE dataset.name='{dataset_name}'
+            AND metadatum.name='{metadata_name}'
+            AND metadatum.string_value IS NOT NULL
+        """
+        )
+    ).all()

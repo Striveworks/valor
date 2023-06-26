@@ -317,6 +317,7 @@ class EvaluationSettings(BaseModel):
     dataset_gt_task_type: Task = None
     min_area: float = None
     max_area: float = None
+    group_by: str = None
     label_key: str = None
     id: int = None
 
@@ -363,12 +364,14 @@ class ClfMetricsRequest(BaseModel):
     settings: EvaluationSettings
 
 
-# used for responses from API
 class Metric(BaseModel):
+    """This is used for responses from the API"""
+
     type: str
     parameters: dict | None
     value: float | dict | None
     label: Label = None
+    group: DatumMetadatum = None
 
 
 class APMetric(BaseModel):
@@ -439,6 +442,8 @@ class ConfusionMatrixEntry(BaseModel):
 class _BaseConfusionMatrix(BaseModel):
     label_key: str
     entries: list[ConfusionMatrixEntry]
+    group: DatumMetadatum = None
+    group_id: int = None
 
 
 class ConfusionMatrix(_BaseConfusionMatrix, extra=Extra.allow):
@@ -482,6 +487,8 @@ class ConfusionMatrixResponse(_BaseConfusionMatrix):
 class AccuracyMetric(BaseModel):
     label_key: str
     value: float
+    group: DatumMetadatum = None
+    group_id: int = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
@@ -489,17 +496,20 @@ class AccuracyMetric(BaseModel):
             "type": "Accuracy",
             "evaluation_settings_id": evaluation_settings_id,
             "parameters": {"label_key": self.label_key},
+            "group_id": self.group_id,
         }
 
 
 class _PrecisionRecallF1Base(BaseModel):
     label: Label
     value: float | None
+    group: DatumMetadatum = None
+    group_id: int = None
 
     @validator("value")
-    def replace_nan_with_none(cls, v):
+    def replace_nan_with_neg_1(cls, v):
         if np.isnan(v):
-            return None
+            return -1
         return v
 
     def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
@@ -508,6 +518,7 @@ class _PrecisionRecallF1Base(BaseModel):
             "label_id": label_id,
             "type": self.__type__,
             "evaluation_settings_id": evaluation_settings_id,
+            "group_id": self.group_id,
         }
 
 
@@ -526,6 +537,8 @@ class F1Metric(_PrecisionRecallF1Base):
 class ROCAUCMetric(BaseModel):
     label_key: str
     value: float
+    group: DatumMetadatum = None
+    group_id: int = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
@@ -533,11 +546,12 @@ class ROCAUCMetric(BaseModel):
             "type": "ROCAUC",
             "parameters": {"label_key": self.label_key},
             "evaluation_settings_id": evaluation_settings_id,
+            "group_id": self.group_id,
         }
 
 
 class Metadata(BaseModel):
-    annotation_type: str
+    annotation_type: list[str]
     number_of_classifications: int
     number_of_bounding_boxes: int
     number_of_bounding_polygons: int
