@@ -1075,7 +1075,7 @@ def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
     crud.finalize_dataset(db, dset_name)
     crud.finalize_inferences(db, model_name, dset_name)
 
-    request_info = schemas.ClfMetricsRequest(
+    request_info = schemas.ClfOrSemanticSegMetricsRequest(
         settings=schemas.EvaluationSettings(
             model_name=model_name, dataset_name=dset_name
         )

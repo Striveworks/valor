@@ -399,10 +399,10 @@ def create_ap_metrics(
     "/clf-metrics", status_code=202, dependencies=[Depends(token_auth_scheme)]
 )
 def create_clf_metrics(
-    data: schemas.ClfMetricsRequest,
+    data: schemas.ClfOrSemanticSegMetricsRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-) -> schemas.CreateClfMetricsResponse:
+) -> schemas.CreateClfOrSemanticSegMetricsResponse:
     try:
         (
             missing_pred_keys,
@@ -411,7 +411,7 @@ def create_clf_metrics(
 
         job, wrapped_fn = jobs.wrap_metric_computation(crud.create_clf_metrics)
 
-        cm_resp = schemas.CreateClfMetricsResponse(
+        cm_resp = schemas.CreateClfOrSemanticSegMetricsResponse(
             missing_pred_keys=missing_pred_keys,
             ignored_pred_keys=ignored_pred_keys,
             job_id=job.uid,

@@ -668,6 +668,21 @@ def _classifications_in_dataset_statement(dataset_name: str) -> Select:
     )
 
 
+def _semantic_segmentations_in_dataset_statement(dataset_name: str) -> Select:
+    return (
+        select(models.GroundTruthSegmentation)
+        .join(models.Datum)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.GroundTruthSegmentation.is_instance
+                == False,  # noqa E712
+            )
+        )
+    )
+
+
 def _model_instance_segmentation_preds_statement(
     model_name: str,
     dataset_name: str,
@@ -757,6 +772,24 @@ def _model_classifications_preds_statement(
             and_(
                 models.Model.name == model_name,
                 models.Dataset.name == dataset_name,
+            )
+        )
+    )
+
+
+def _model_semantic_segmentations_preds_statement(
+    model_name: str, dataset_name: str
+) -> Select:
+    return (
+        select(models.PredictedSegmentation)
+        .join(models.Datum)
+        .join(models.Model)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Model.name == model_name,
+                models.Dataset.name == dataset_name,
+                models.PredictedSegmentation.is_instance == False,  # noqa E712
             )
         )
     )

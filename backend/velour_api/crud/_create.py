@@ -14,7 +14,9 @@ from ._read import (
     _model_classifications_preds_statement,
     _model_instance_segmentation_preds_statement,
     _model_object_detection_preds_statement,
+    _model_semantic_segmentations_preds_statement,
     _object_detections_in_dataset_statement,
+    _semantic_segmentations_in_dataset_statement,
     get_dataset,
     get_dataset_task_types,
     get_image,
@@ -856,20 +858,15 @@ def validate_create_ap_metrics(
     )
 
 
-def validate_create_clf_metrics(
-    db: Session, request_info: schemas.ClfMetricsRequest
-) -> tuple[list[str], list[str]]:
+def _validate_create_clf_or_semantic_seg_metrics(
+    db: Session,
+    request_info: schemas.ClfOrSemanticSegMetricsRequest
+    | schemas.SemanticSegMetricsRequest,
+    gts_statement: Select,
+    preds_statement: Select,
+):
     _check_dataset_and_inferences_finalized(db, request_info.settings)
-
-    gts_statement = _classifications_in_dataset_statement(
-        request_info.settings.dataset_name
-    )
     gts_label_keys = _label_keys_in_query(db, gts_statement)
-
-    preds_statement = _model_classifications_preds_statement(
-        model_name=request_info.settings.model_name,
-        dataset_name=request_info.settings.dataset_name,
-    )
     preds_label_keys = _label_keys_in_query(db, preds_statement)
 
     missing_pred_keys = [
@@ -882,11 +879,50 @@ def validate_create_clf_metrics(
     return missing_pred_keys, ignored_pred_keys
 
 
+def validate_create_clf_metrics(
+    db: Session, request_info: schemas.ClfOrSemanticSegMetricsRequest
+) -> tuple[list[str], list[str]]:
+    gts_statement = _classifications_in_dataset_statement(
+        request_info.settings.dataset_name
+    )
+
+    preds_statement = _model_classifications_preds_statement(
+        model_name=request_info.settings.model_name,
+        dataset_name=request_info.settings.dataset_name,
+    )
+
+    return _validate_create_clf_or_semantic_seg_metrics(
+        db,
+        request_info=request_info,
+        gts_statement=gts_statement,
+        preds_statement=preds_statement,
+    )
+
+
+def validate_create_semantic_seg_metrics(
+    db: Session, request_info: schemas.SemanticSegMetricsRequest
+):
+    gts_statement = _semantic_segmentations_in_dataset_statement(
+        request_info.settings.dataset_name
+    )
+
+    preds_statement = _model_semantic_segmentations_preds_statement(
+        model_name=request_info.settings.model_name,
+        dataset_name=request_info.settings.dataset_name,
+    )
+
+    return _validate_create_clf_or_semantic_seg_metrics(
+        db,
+        request_info=request_info,
+        gts_statement=gts_statement,
+        preds_statement=preds_statement,
+    )
+
+
 def create_ap_metrics(
     db: Session,
     request_info: schemas.APRequest,
 ) -> int:
-
     dataset_id = get_dataset(db, request_info.settings.dataset_name).id
     model_id = get_model(db, request_info.settings.model_name).id
     min_area = request_info.settings.min_area
@@ -943,7 +979,7 @@ def create_ap_metrics(
 
 def create_clf_metrics(
     db: Session,
-    request_info: schemas.ClfMetricsRequest,
+    request_info: schemas.ClfOrSemanticSegMetricsRequest,
 ) -> int:
     confusion_matrices, metrics = compute_clf_metrics(
         db=db,

@@ -327,7 +327,7 @@ class CreateAPMetricsResponse(BaseModel):
     job_id: str
 
 
-class CreateClfMetricsResponse(BaseModel):
+class CreateClfOrSemanticSegMetricsResponse(BaseModel):
     missing_pred_keys: list[str]
     ignored_pred_keys: list[str]
     job_id: str
@@ -341,7 +341,7 @@ class Job(BaseModel):
         extra = Extra.allow
 
 
-class ClfMetricsRequest(BaseModel):
+class ClfOrSemanticSegMetricsRequest(BaseModel):
     settings: EvaluationSettings
 
 
