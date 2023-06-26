@@ -1,6 +1,7 @@
 import io
 import json
 from base64 import b64encode
+from typing import List, Optional
 
 from geoalchemy2 import RasterElement
 from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
@@ -21,7 +22,7 @@ from sqlalchemy.orm import Session
 from velour_api import enums, exceptions, models, schemas
 
 
-def _get_associated_models(db: Session, dataset_name: str):
+def _get_associated_models(db: Session, dataset_name: str) -> list[str]:
 
     subquery_classifications = (
         select(models.PredictedClassification.model_id)
@@ -64,7 +65,7 @@ def _get_associated_models(db: Session, dataset_name: str):
     ).all()
 
 
-def _get_associated_datasets(db: Session, model_name: str):
+def _get_associated_datasets(db: Session, model_name: str) -> list[str]:
 
     subquery_classifications = (
         select(models.PredictedClassification.datum_id)
@@ -172,28 +173,38 @@ def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
         .where(models.Dataset.name == dataset_name)
     )
 
-    number_of_detections = db.scalar(
-        select(func.count(models.LabeledGroundTruthDetection.id))
-        .join(
-            models.GroundTruthDetection,
-            models.GroundTruthDetection.id
-            == models.LabeledGroundTruthDetection.detection_id,
-        )
+    number_of_bounding_boxes = db.scalar(
+        select(func.count(models.GroundTruthDetection.id))
         .join(
             models.Datum,
             models.Datum.id == models.GroundTruthDetection.datum_id,
         )
         .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
-        .where(models.Dataset.name == dataset_name)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.GroundTruthDetection.is_bbox == True,
+            )
+        )
     )
 
-    number_of_segmentations = db.scalar(
-        select(func.count(models.LabeledGroundTruthSegmentation.id))
+    number_of_bounding_polygons = db.scalar(
+        select(func.count(models.GroundTruthDetection.id))
         .join(
-            models.GroundTruthSegmentation,
-            models.GroundTruthSegmentation.id
-            == models.LabeledGroundTruthSegmentation.segmentation_id,
+            models.Datum,
+            models.Datum.id == models.GroundTruthDetection.datum_id,
         )
+        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.GroundTruthDetection.is_bbox == False,
+            )
+        )
+    )
+
+    number_of_segmentation_rasters = db.scalar(
+        select(func.count(models.GroundTruthSegmentation.id))
         .join(
             models.Datum,
             models.Datum.id == models.GroundTruthSegmentation.datum_id,
@@ -202,26 +213,27 @@ def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
         .where(models.Dataset.name == dataset_name)
     )
 
-    model_type_list = []
+    type_list = []
     if number_of_classifications > 0:
-        model_type_list.append("CLASSIFICATION")
-    if number_of_detections > 0:
-        model_type_list.append("DETECTION")
-    if number_of_segmentations > 0:
-        model_type_list.append("SEGMENTATION")
+        type_list.append("CLASSIFICATION")
+    if number_of_bounding_boxes > 0 or number_of_bounding_polygons > 0:
+        type_list.append("DETECTION")
+    if number_of_segmentation_rasters > 0:
+        type_list.append("SEGMENTATION")
 
-    if len(model_type_list) == 0:
-        model_type = "NONE"
-    elif len(model_type_list) == 1:
-        model_type = model_type_list[0]
+    if len(type_list) == 0:
+        dataset_type = "NONE"
+    elif len(type_list) == 1:
+        dataset_type = type_list[0]
     else:
-        model_type = "MIXED"
+        dataset_type = "MIXED"
 
     return schemas.Metadata(
-        annotation_type=model_type,
+        annotation_type=dataset_type,
         number_of_classifications=number_of_classifications,
-        number_of_detections=number_of_detections,
-        number_of_segmentations=number_of_segmentations,
+        number_of_bounding_boxes=number_of_bounding_boxes,
+        number_of_bounding_polygons=number_of_bounding_polygons,
+        number_of_segmentation_rasters=number_of_segmentation_rasters,
         associated=associated_models,
     )
 
@@ -256,26 +268,34 @@ def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
         .where(models.Model.name == model_name)
     )
 
-    number_of_detections = db.scalar(
-        select(func.count(models.LabeledPredictedDetection.id))
-        .join(
-            models.PredictedDetection,
-            models.PredictedDetection.id
-            == models.LabeledPredictedDetection.detection_id,
-        )
+    number_of_bounding_boxes = db.scalar(
+        select(func.count(models.PredictedDetection.id))
         .join(
             models.Model, models.Model.id == models.PredictedDetection.model_id
         )
-        .where(models.Model.name == model_name)
+        .where(
+            and_(
+                models.Model.name == model_name,
+                models.PredictedDetection.is_bbox == True,
+            )
+        )
     )
 
-    number_of_segmentations = db.scalar(
-        select(func.count(models.LabeledPredictedSegmentation.id))
+    number_of_bounding_polygons = db.scalar(
+        select(func.count(models.PredictedDetection.id))
         .join(
-            models.PredictedSegmentation,
-            models.PredictedSegmentation.id
-            == models.LabeledPredictedSegmentation.segmentation_id,
+            models.Model, models.Model.id == models.PredictedDetection.model_id
         )
+        .where(
+            and_(
+                models.Model.name == model_name,
+                models.PredictedDetection.is_bbox == False,
+            )
+        )
+    )
+
+    number_of_segmentation_rasters = db.scalar(
+        select(func.count(models.PredictedSegmentation.id))
         .join(
             models.Model,
             models.Model.id == models.PredictedSegmentation.model_id,
@@ -283,26 +303,27 @@ def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
         .where(models.Model.name == model_name)
     )
 
-    model_type_list = []
+    type_list = []
     if number_of_classifications > 0:
-        model_type_list.append("CLASSIFICATION")
-    if number_of_detections > 0:
-        model_type_list.append("DETECTION")
-    if number_of_segmentations > 0:
-        model_type_list.append("SEGMENTATION")
+        type_list.append("CLASSIFICATION")
+    if number_of_bounding_boxes > 0 or number_of_bounding_polygons > 0:
+        type_list.append("DETECTION")
+    if number_of_segmentation_rasters > 0:
+        type_list.append("SEGMENTATION")
 
-    if len(model_type_list) == 0:
+    if len(type_list) == 0:
         model_type = "NONE"
-    elif len(model_type_list) == 1:
-        model_type = model_type_list[0]
+    elif len(type_list) == 1:
+        model_type = type_list[0]
     else:
         model_type = "MIXED"
 
     return schemas.Metadata(
         annotation_type=model_type,
         number_of_classifications=number_of_classifications,
-        number_of_detections=number_of_detections,
-        number_of_segmentations=number_of_segmentations,
+        number_of_bounding_boxes=number_of_bounding_boxes,
+        number_of_bounding_polygons=number_of_bounding_polygons,
+        number_of_segmentation_rasters=number_of_segmentation_rasters,
         associated=associated_datasets,
     )
 
@@ -405,184 +426,230 @@ def get_groundtruth_segmentations_in_image(
     ]
 
 
-def get_detection_labels_in_dataset(
-    db: Session, dataset_name: str
-) -> list[models.Label]:
-    return db.scalars(
-        select(models.Label)
-        .join(models.LabeledGroundTruthDetection)
-        .join(models.GroundTruthDetection)
-        .join(models.Datum)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Dataset.name == dataset_name,
-                models.Datum.id == models.GroundTruthDetection.datum_id,
-            )
-        )
-        .distinct()
-    ).all()
-
-
-def get_segmentation_labels_in_dataset(
-    db: Session, dataset_name: str
-) -> list[models.Label]:
-    return db.scalars(
-        select(models.Label)
-        .join(models.LabeledGroundTruthSegmentation)
-        .join(models.GroundTruthSegmentation)
-        .join(models.Datum)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Dataset.name == dataset_name,
-                models.Datum.id == models.GroundTruthSegmentation.datum_id,
-            )
-        )
-        .distinct()
-    ).all()
-
-
-def get_classification_labels_in_dataset(
-    db: Session, dataset_name: str
-) -> list[models.Label]:
-    return db.scalars(
-        select(models.Label)
-        .join(models.GroundTruthClassification)
-        .join(models.Datum)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Dataset.name == dataset_name,
-                models.Datum.id == models.GroundTruthClassification.datum_id,
-            )
-        )
-        .distinct()
-    ).all()
-
-
-def get_classification_prediction_labels(
-    db: Session, model_name: str, dataset_name: str
-):
-    return db.scalars(
-        select(models.Label)
-        .join(models.PredictedClassification)
-        .join(models.Model)
-        .join(models.Datum)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Dataset.name == dataset_name,
-                models.Datum.id == models.PredictedClassification.datum_id,
-                models.Model.name == model_name,
-            )
-        )
-        .distinct()
-    ).all()
-
-
-def get_classification_label_values_in_dataset(
-    db: Session, dataset_name: str, label_key: str
-) -> list[str]:
-    return db.scalars(
-        select(models.Label.value)
-        .join(models.GroundTruthClassification)
-        .join(models.Datum)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Dataset.name == dataset_name,
-                models.Datum.id == models.GroundTruthClassification.datum_id,
-                models.Label.key == label_key,
-            )
-        )
-        .distinct()
-    ).all()
-
-
-def get_classification_prediction_label_values(
-    db: Session, model_name: str, dataset_name: str, label_key: str
-):
-    return db.scalars(
-        select(models.Label.value)
-        .join(models.PredictedClassification)
-        .join(models.Model)
-        .join(models.Datum)
-        .join(models.Dataset)
-        .where(
-            and_(
-                models.Dataset.name == dataset_name,
-                models.Datum.id == models.PredictedClassification.datum_id,
-                models.Model.name == model_name,
-                models.Label.key == label_key,
-            )
-        )
-        .distinct()
-    ).all()
-
-
-def get_all_labels_in_dataset(
-    db: Session, dataset_name: str
-) -> set[models.Label]:
-    return (
-        set(get_classification_labels_in_dataset(db, dataset_name))
-        .union(set(get_detection_labels_in_dataset(db, dataset_name)))
-        .union(set(get_segmentation_labels_in_dataset(db, dataset_name)))
-    )
-
-
-def get_all_labels_in_model(
-    db: Session, model_name: str
+def get_labels_from_dataset(
+    db: Session,
+    dataset_name: str,
+    of_type: Optional[List[enums.AnnotationType]] = None,
 ) -> list[schemas.Label]:
 
-    # Concatenate label_id's, datum_id's from all ground truth tables
-    subquery_classification = db.query(
-        models.PredictedClassification.label_id.label("label_id"),
-        models.PredictedClassification.model_id.label("model_id"),
+    classification_labels = set(
+        schemas.Label(key=row.key, value=row.value)
+        for row in db.scalars(
+            select(models.Label)
+            .join(models.GroundTruthClassification)
+            .join(models.Datum)
+            .join(models.Dataset)
+            .where(
+                and_(
+                    models.Dataset.name == dataset_name,
+                    models.Datum.id
+                    == models.GroundTruthClassification.datum_id,
+                )
+            )
+            .distinct()
+        ).all()
     )
-    subquery_detection = db.query(
-        models.LabeledPredictedDetection.label_id.label("label_id"),
-        models.PredictedDetection.model_id.label("model_id"),
-    ).join(
-        models.PredictedDetection,
-        models.PredictedDetection.id
-        == models.LabeledPredictedDetection.detection_id,
-    )
-    subquery_segmentation = db.query(
-        models.LabeledPredictedSegmentation.label_id.label("label_id"),
-        models.PredictedSegmentation.model_id.label("model_id"),
-    ).join(
-        models.PredictedSegmentation,
-        models.PredictedSegmentation.id
-        == models.LabeledPredictedSegmentation.segmentation_id,
-    )
-    subquery_groundtruths = union_all(
-        subquery_classification, subquery_detection, subquery_segmentation
-    ).subquery()
 
-    # Get distribution of labels across dataset
-    subquery = (
-        db.query(subquery_groundtruths.c.label_id)
-        .distinct()
-        .join(
-            models.Model, models.Model.id == subquery_groundtruths.c.model_id
+    bounding_box_labels = set(
+        schemas.Label(key=row.key, value=row.value)
+        for row in db.scalars(
+            select(models.Label)
+            .join(models.LabeledGroundTruthDetection)
+            .join(models.GroundTruthDetection)
+            .join(models.Datum)
+            .join(models.Dataset)
+            .where(
+                and_(
+                    models.Dataset.name == dataset_name,
+                    models.Datum.id == models.GroundTruthDetection.datum_id,
+                    models.GroundTruthDetection.is_bbox == True,
+                )
+            )
+            .distinct()
+        ).all()
+    )
+
+    bounding_polygon_labels = set(
+        schemas.Label(key=row.key, value=row.value)
+        for row in db.scalars(
+            select(models.Label)
+            .join(models.LabeledGroundTruthDetection)
+            .join(models.GroundTruthDetection)
+            .join(models.Datum)
+            .join(models.Dataset)
+            .where(
+                and_(
+                    models.Dataset.name == dataset_name,
+                    models.Datum.id == models.GroundTruthDetection.datum_id,
+                    models.GroundTruthDetection.is_bbox == False,
+                )
+            )
+            .distinct()
+        ).all()
+    )
+
+    segmentation_labels = set(
+        schemas.Label(key=row.key, value=row.value)
+        for row in db.scalars(
+            select(models.Label)
+            .join(models.LabeledGroundTruthSegmentation)
+            .join(models.GroundTruthSegmentation)
+            .join(models.Datum)
+            .join(models.Dataset)
+            .where(
+                and_(
+                    models.Dataset.name == dataset_name,
+                    models.Datum.id == models.GroundTruthSegmentation.datum_id,
+                )
+            )
+            .distinct()
+        ).all()
+    )
+
+    if of_type is None:
+        return list(
+            classification_labels.union(bounding_box_labels)
+            .union(bounding_polygon_labels)
+            .union(segmentation_labels)
         )
-        .where(models.Model.name == model_name)
-        .subquery()
+    else:
+        return list(
+            set()
+            .union(
+                classification_labels
+                if enums.AnnotationType.CLASSIFICATION in of_type
+                else set()
+            )
+            .union(
+                bounding_box_labels
+                if enums.AnnotationType.BBOX in of_type
+                else set()
+            )
+            .union(
+                bounding_polygon_labels
+                if enums.AnnotationType.POLYGON in of_type
+                else set()
+            )
+            .union(
+                segmentation_labels
+                if enums.AnnotationType.RASTER in of_type
+                else set()
+            )
+        )
+
+
+def get_labels_from_model(
+    db: Session,
+    model_name: str,
+    of_type: Optional[List[enums.AnnotationType]] = None,
+) -> list[schemas.Label]:
+
+    classification_labels = set(
+        schemas.Label(key=row.key, value=row.value)
+        for row in db.scalars(
+            select(models.Label)
+            .join(models.PredictedClassification)
+            .join(models.Model)
+            .where(models.Model.name == model_name)
+            .distinct()
+        ).all()
     )
 
-    # Join to label key, value
-    query = (
-        db.query(models.Label.key, models.Label.value)
-        .select_from(subquery)
-        .join(models.Label, models.Label.id == subquery.c.label_id)
-        .order_by(models.Label.key)
+    bounding_box_labels = set(
+        schemas.Label(key=row.key, value=row.value)
+        for row in db.scalars(
+            select(models.Label)
+            .join(models.LabeledPredictedDetection)
+            .join(models.PredictedDetection)
+            .join(models.Model)
+            .where(
+                and_(
+                    models.Model.name == model_name,
+                    models.PredictedDetection.is_bbox == True,
+                )
+            )
+            .distinct()
+        ).all()
     )
 
-    return [schemas.Label(key=row[0], value=row[1]) for row in query.all()]
+    bounding_polygon_labels = set(
+        schemas.Label(key=row.key, value=row.value)
+        for row in db.scalars(
+            select(models.Label)
+            .join(models.LabeledPredictedDetection)
+            .join(models.PredictedDetection)
+            .join(models.Model)
+            .where(
+                and_(
+                    models.Model.name == model_name,
+                    models.PredictedDetection.is_bbox == False,
+                )
+            )
+            .distinct()
+        ).all()
+    )
+
+    segmentation_labels = set(
+        schemas.Label(key=row.key, value=row.value)
+        for row in db.scalars(
+            select(models.Label)
+            .join(models.LabeledPredictedSegmentation)
+            .join(models.PredictedSegmentation)
+            .join(models.Model)
+            .where(models.Model.name == model_name)
+            .distinct()
+        ).all()
+    )
+
+    if of_type is None:
+        return list(
+            classification_labels.union(bounding_box_labels)
+            .union(bounding_polygon_labels)
+            .union(segmentation_labels)
+        )
+    else:
+        return list(
+            set()
+            .union(
+                classification_labels
+                if enums.AnnotationType.CLASSIFICATION in of_type
+                else set()
+            )
+            .union(
+                bounding_box_labels
+                if enums.AnnotationType.BBOX in of_type
+                else set()
+            )
+            .union(
+                bounding_polygon_labels
+                if enums.AnnotationType.POLYGON in of_type
+                else set()
+            )
+            .union(
+                segmentation_labels
+                if enums.AnnotationType.RASTER in of_type
+                else set()
+            )
+        )
 
 
-def get_dataset_label_distribution(
+def get_joint_labels(
+    db: Session,
+    model_name: str,
+    dataset_name: str,
+    of_type: Optional[List[enums.AnnotationType]] = None,
+) -> list[schemas.Label]:
+
+    ds_set = set(
+        get_labels_from_dataset(db, dataset_name=dataset_name, of_type=of_type)
+    )
+    md_set = set(
+        get_labels_from_model(db, model_name=model_name, of_type=of_type)
+    )
+    return list(ds_set.intersection(md_set))
+
+
+def get_label_distribution_from_dataset(
     db: Session, dataset_name: str
 ) -> dict[schemas.LabelDistribution, int]:
 
@@ -642,7 +709,7 @@ def get_dataset_label_distribution(
     ]
 
 
-def get_model_label_distribution(
+def get_label_distribution_from_model(
     db: Session, model_name: str
 ) -> dict[schemas.ScoredLabelDistribution, int]:
 

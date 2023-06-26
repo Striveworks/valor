@@ -266,6 +266,7 @@ class PredictedImageClassification:
 class Metadata:
     annotation_type: str
     number_of_classifications: int
-    number_of_detections: int
+    number_of_bounding_boxes: int
+    number_of_bounding_polygons: int
     number_of_segmentations: int
     associated: List[str]

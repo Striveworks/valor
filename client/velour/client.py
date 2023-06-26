@@ -155,8 +155,9 @@ class DatasetBase:
         return Metadata(
             annotation_type=resp["annotation_type"],
             number_of_classifications=resp["number_of_classifications"],
-            number_of_detections=resp["number_of_detections"],
-            number_of_segmentations=resp["number_of_segmentations"],
+            number_of_bounding_boxes=resp["number_of_bounding_boxes"],
+            number_of_bounding_polygons=resp["number_of_bounding_polygons"],
+            number_of_segmentations=resp["number_of_segmentation_rasters"],
             associated=resp["associated"],
         )
 
@@ -169,8 +170,12 @@ class DatasetBase:
         return self.get_metadata().number_of_classifications
 
     @property
-    def number_of_detections(self):
-        return self.get_metadata().number_of_detections
+    def number_of_bounding_boxes(self):
+        return self.get_metadata().number_of_bounding_boxes
+
+    @property
+    def number_of_bounding_polygons(self):
+        return self.get_metadata().number_of_bounding_polygons
 
     @property
     def number_of_segmentations(self):
@@ -582,8 +587,9 @@ class ModelBase:
         return Metadata(
             annotation_type=resp["annotation_type"],
             number_of_classifications=resp["number_of_classifications"],
-            number_of_detections=resp["number_of_detections"],
-            number_of_segmentations=resp["number_of_segmentations"],
+            number_of_bounding_boxes=resp["number_of_bounding_boxes"],
+            number_of_bounding_polygons=resp["number_of_bounding_polygons"],
+            number_of_segmentations=resp["number_of_segmentation_rasters"],
             associated=resp["associated"],
         )
 
@@ -596,8 +602,12 @@ class ModelBase:
         return self.get_metadata().number_of_classifications
 
     @property
-    def number_of_detections(self):
-        return self.get_metadata().number_of_detections
+    def number_of_bounding_boxes(self):
+        return self.get_metadata().number_of_bounding_boxes
+
+    @property
+    def number_of_bounding_polygons(self):
+        return self.get_metadata().number_of_bounding_polygons
 
     @property
     def number_of_segmentations(self):

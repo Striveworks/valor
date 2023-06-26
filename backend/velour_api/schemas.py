@@ -539,6 +539,7 @@ class ROCAUCMetric(BaseModel):
 class Metadata(BaseModel):
     annotation_type: str
     number_of_classifications: int
-    number_of_detections: int
-    number_of_segmentations: int
+    number_of_bounding_boxes: int
+    number_of_bounding_polygons: int
+    number_of_segmentation_rasters: int
     associated: list[str]
