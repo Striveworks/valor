@@ -860,8 +860,7 @@ def validate_create_ap_metrics(
 
 def _validate_create_clf_or_semantic_seg_metrics(
     db: Session,
-    request_info: schemas.ClfOrSemanticSegMetricsRequest
-    | schemas.SemanticSegMetricsRequest,
+    request_info: schemas.ClfOrSemanticSegMetricsRequest,
     gts_statement: Select,
     preds_statement: Select,
 ):
@@ -900,7 +899,7 @@ def validate_create_clf_metrics(
 
 
 def validate_create_semantic_seg_metrics(
-    db: Session, request_info: schemas.SemanticSegMetricsRequest
+    db: Session, request_info: schemas.ClfOrSemanticSegMetricsRequest
 ):
     gts_statement = _semantic_segmentations_in_dataset_statement(
         request_info.settings.dataset_name
@@ -1023,6 +1022,13 @@ def create_clf_metrics(
     db.commit()
 
     return es.id
+
+
+def create_semantic_seg_metrics(
+    db: Session,
+    request_info: schemas.ClfOrSemanticSegMetricsRequest,
+) -> int:
+    pass
 
 
 def _check_finalized_inferences(
