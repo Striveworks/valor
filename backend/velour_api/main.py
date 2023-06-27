@@ -365,7 +365,7 @@ def get_label_distribution_from_model(
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
-def get_model_metadata(
+def get_model_info(
     model_name: str, db: Session = Depends(get_db)
 ) -> schemas.Info:
     try:
