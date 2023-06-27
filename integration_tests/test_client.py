@@ -1722,7 +1722,7 @@ def test_get_info_and_label_distributions(
     md.add_predictions(ds, pred_segs)
     md.finalize_inferences(ds)
 
-    ds_info = ds.info
+    ds_info = ds.get_info()
     assert ds_info.annotation_type == [
         "CLASSIFICATION",
         "DETECTION",
@@ -1732,9 +1732,9 @@ def test_get_info_and_label_distributions(
     assert ds_info.number_of_bounding_boxes == 2
     assert ds_info.number_of_bounding_polygons == 2
     assert ds_info.number_of_segmentations == 2
-    assert ds_info.associated == ["info_test_model"]
+    assert ds_info.associated_models == ["info_test_model"]
 
-    md_info = md.info
+    md_info = md.get_info()
     assert md_info.annotation_type == [
         "CLASSIFICATION",
         "DETECTION",
@@ -1744,7 +1744,7 @@ def test_get_info_and_label_distributions(
     assert md_info.number_of_bounding_boxes == 2
     assert md_info.number_of_bounding_polygons == 2
     assert md_info.number_of_segmentations == 2
-    assert md_info.associated == ["info_test_dataset"]
+    assert md_info.associated_datasets == ["info_test_dataset"]
 
     ds_dist = ds.get_label_distribution()
     assert len(ds_dist) == 3
