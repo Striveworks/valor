@@ -269,4 +269,5 @@ class Info:
     number_of_bounding_boxes: int
     number_of_bounding_polygons: int
     number_of_segmentations: int
-    associated: List[str]
+    associated_datasets: List[str]
+    associated_models: List[str]

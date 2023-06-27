@@ -147,8 +147,7 @@ class DatasetBase:
             for label in distribution
         }
 
-    @property
-    def info(self) -> Info:
+    def get_info(self) -> Info:
         resp = self.client._requests_get_rel_host(
             f"datasets/{self.name}/info"
         ).json()
@@ -159,7 +158,8 @@ class DatasetBase:
             number_of_bounding_boxes=resp["number_of_bounding_boxes"],
             number_of_bounding_polygons=resp["number_of_bounding_polygons"],
             number_of_segmentations=resp["number_of_segmentation_rasters"],
-            associated=resp["associated"],
+            associated_datasets=None,
+            associated_models=resp["associated"],
         )
 
     def finalize(self):
@@ -574,8 +574,7 @@ class ModelBase:
             for label in distribution
         }
 
-    @property
-    def info(self) -> Info:
+    def get_info(self) -> Info:
         resp = self.client._requests_get_rel_host(
             f"models/{self.name}/info"
         ).json()
@@ -586,7 +585,8 @@ class ModelBase:
             number_of_bounding_boxes=resp["number_of_bounding_boxes"],
             number_of_bounding_polygons=resp["number_of_bounding_polygons"],
             number_of_segmentations=resp["number_of_segmentation_rasters"],
-            associated=resp["associated"],
+            associated_datasets=resp["associated"],
+            associated_models=None,
         )
 
 
