@@ -51,10 +51,7 @@ def _ap(
             cnt_fp = 0
 
             for row in sorted_ranked_pairs[label_id]:
-                if (
-                    row.score > 0
-                    and row.iou >= iou_threshold
-                ):
+                if row.score > 0 and row.iou >= iou_threshold:
                     cnt_tp += 1
                 else:
                     cnt_fp += 1
@@ -219,7 +216,7 @@ def compute_ap_metrics(
     # Join gt with pd
     annotation_types = {
         schemas.Task.BBOX_OBJECT_DETECTION: AnnotationType.BBOX,
-        schemas.Task.POLY_OBJECT_DETECTION: AnnotationType.BOUNDARY,
+        schemas.Task.POLY_OBJECT_DETECTION: AnnotationType.POLYGON,
         schemas.Task.INSTANCE_SEGMENTATION: AnnotationType.RASTER,
     }
     joint_table = join_tables(
