@@ -90,6 +90,15 @@ def dset(db: Session) -> models.Dataset:
 
 
 @pytest.fixture
+def model(db: Session) -> models.Model:
+    model = models.Model(name="model")
+    db.add(model)
+    db.commit()
+
+    return model
+
+
+@pytest.fixture
 def img(db: Session, dset: models.Dataset) -> models.Datum:
     img = models.Datum(uid="uid", dataset_id=dset.id, height=1000, width=2000)
     db.add(img)

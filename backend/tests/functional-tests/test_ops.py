@@ -27,15 +27,6 @@ def pil_to_bytes(img: Image.Image) -> bytes:
 
 
 @pytest.fixture
-def model(db: Session) -> models.Model:
-    model = models.Model(name="model")
-    db.add(model)
-    db.commit()
-
-    return model
-
-
-@pytest.fixture
 def mask_bytes_poly_intersection():
     """Returns a bytes mask, a polygon, and the area of intersection of them."""
     h, w = 100, 200
