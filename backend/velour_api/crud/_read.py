@@ -159,7 +159,7 @@ def get_dataset(db: Session, dataset_name: str) -> models.Dataset:
     return ret
 
 
-def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Info:
+def get_dataset_info(db: Session, dataset_name: str) -> schemas.Info:
 
     is_bbox = True
     is_polygon = False
