@@ -195,7 +195,7 @@ def get_label_distribution_from_dataset(
 )
 def get_dataset_metadata(
     dataset_name: str, db: Session = Depends(get_db)
-) -> schemas.Metadata:
+) -> schemas.Info:
     try:
         return crud.get_dataset_metadata(db, dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
@@ -367,7 +367,7 @@ def get_label_distribution_from_model(
 )
 def get_model_metadata(
     model_name: str, db: Session = Depends(get_db)
-) -> schemas.Metadata:
+) -> schemas.Info:
     try:
         return crud.get_model_metadata(db, model_name)
     except exceptions.DatasetDoesNotExistError as e:

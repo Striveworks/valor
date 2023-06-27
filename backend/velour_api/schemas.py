@@ -550,7 +550,7 @@ class ROCAUCMetric(BaseModel):
         }
 
 
-class Metadata(BaseModel):
+class Info(BaseModel):
     annotation_type: list[str]
     number_of_classifications: int
     number_of_bounding_boxes: int

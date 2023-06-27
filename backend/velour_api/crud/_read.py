@@ -159,7 +159,7 @@ def get_dataset(db: Session, dataset_name: str) -> models.Dataset:
     return ret
 
 
-def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
+def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Info:
 
     is_bbox = True
     is_polygon = False
@@ -224,7 +224,7 @@ def get_dataset_metadata(db: Session, dataset_name: str) -> schemas.Metadata:
     if number_of_segmentation_rasters > 0:
         type_list.append("SEGMENTATION")
 
-    return schemas.Metadata(
+    return schemas.Info(
         annotation_type=type_list,
         number_of_classifications=number_of_classifications,
         number_of_bounding_boxes=number_of_bounding_boxes,
@@ -251,7 +251,7 @@ def get_model(db: Session, model_name: str) -> models.Model:
     return ret
 
 
-def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
+def get_model_metadata(db: Session, model_name: str) -> schemas.Info:
 
     is_bbox = True
     is_polygon = False
@@ -310,7 +310,7 @@ def get_model_metadata(db: Session, model_name: str) -> schemas.Metadata:
     if number_of_segmentation_rasters > 0:
         type_list.append("SEGMENTATION")
 
-    return schemas.Metadata(
+    return schemas.Info(
         annotation_type=type_list,
         number_of_classifications=number_of_classifications,
         number_of_bounding_boxes=number_of_bounding_boxes,

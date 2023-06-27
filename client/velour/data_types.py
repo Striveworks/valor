@@ -263,8 +263,8 @@ class PredictedImageClassification:
 
 
 @dataclass
-class Metadata:
-    annotation_type: str
+class Info:
+    annotation_type: List[str]
     number_of_classifications: int
     number_of_bounding_boxes: int
     number_of_bounding_polygons: int

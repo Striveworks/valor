@@ -21,8 +21,8 @@ from velour.data_types import (
     GroundTruthInstanceSegmentation,
     GroundTruthSemanticSegmentation,
     Image,
+    Info,
     Label,
-    Metadata,
     Metadatum,
     Point,
     PolygonWithHole,
@@ -147,12 +147,13 @@ class DatasetBase:
             for label in distribution
         }
 
-    def get_metadata(self) -> Metadata:
+    @property
+    def info(self) -> Info:
         resp = self.client._requests_get_rel_host(
             f"datasets/{self.name}/metadata"
         ).json()
 
-        return Metadata(
+        return Info(
             annotation_type=resp["annotation_type"],
             number_of_classifications=resp["number_of_classifications"],
             number_of_bounding_boxes=resp["number_of_bounding_boxes"],
@@ -160,30 +161,6 @@ class DatasetBase:
             number_of_segmentations=resp["number_of_segmentation_rasters"],
             associated=resp["associated"],
         )
-
-    @property
-    def annotation_type(self):
-        return self.get_metadata().annotation_type
-
-    @property
-    def number_of_classifications(self):
-        return self.get_metadata().number_of_classifications
-
-    @property
-    def number_of_bounding_boxes(self):
-        return self.get_metadata().number_of_bounding_boxes
-
-    @property
-    def number_of_bounding_polygons(self):
-        return self.get_metadata().number_of_bounding_polygons
-
-    @property
-    def number_of_segmentations(self):
-        return self.get_metadata().number_of_segmentations
-
-    @property
-    def associated_models(self):
-        return self.get_metadata().associated
 
     def finalize(self):
         return self.client._requests_put_rel_host(
@@ -597,12 +574,13 @@ class ModelBase:
             for label in distribution
         }
 
-    def get_metadata(self) -> Metadata:
+    @property
+    def info(self) -> Info:
         resp = self.client._requests_get_rel_host(
             f"models/{self.name}/metadata"
         ).json()
 
-        return Metadata(
+        return Info(
             annotation_type=resp["annotation_type"],
             number_of_classifications=resp["number_of_classifications"],
             number_of_bounding_boxes=resp["number_of_bounding_boxes"],
@@ -610,30 +588,6 @@ class ModelBase:
             number_of_segmentations=resp["number_of_segmentation_rasters"],
             associated=resp["associated"],
         )
-
-    @property
-    def annotation_type(self):
-        return self.get_metadata().annotation_type
-
-    @property
-    def number_of_classifications(self):
-        return self.get_metadata().number_of_classifications
-
-    @property
-    def number_of_bounding_boxes(self):
-        return self.get_metadata().number_of_bounding_boxes
-
-    @property
-    def number_of_bounding_polygons(self):
-        return self.get_metadata().number_of_bounding_polygons
-
-    @property
-    def number_of_segmentations(self):
-        return self.get_metadata().number_of_segmentations
-
-    @property
-    def associated_datasets(self):
-        return self.get_metadata().associated
 
 
 class ImageModel(ModelBase):
