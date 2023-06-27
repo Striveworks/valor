@@ -193,7 +193,7 @@ def get_label_distribution_from_dataset(
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
-def get_dataset_metadata(
+def get_dataset_info(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> schemas.Info:
     try:
