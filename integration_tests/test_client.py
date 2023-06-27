@@ -436,6 +436,29 @@ def pred_clfs(img5: Image, img6: Image) -> list[PredictedImageClassification]:
     ]
 
 
+@pytest.fixture
+def y_true() -> list[int]:
+    """groundtruth for a tabular classification task"""
+    return [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
+
+
+@pytest.fixture
+def tabular_preds() -> list[list[float]]:
+    """predictions for a tabular classification task"""
+    return [
+        [0.37, 0.35, 0.28],
+        [0.24, 0.61, 0.15],
+        [0.03, 0.88, 0.09],
+        [0.97, 0.03, 0.0],
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+        [0.01, 0.96, 0.03],
+        [0.28, 0.02, 0.7],
+        [0.78, 0.21, 0.01],
+        [0.45, 0.11, 0.44],
+    ]
+
+
 def _test_create_image_dataset_with_gts(
     client: Client,
     gts1: list[Any],
@@ -1046,8 +1069,6 @@ def test_evaluate_ap(
         "model_pred_task_type": "Bounding Box Object Detection",
         "dataset_gt_task_type": "Bounding Box Object Detection",
         "label_key": "k1",
-        "min_area": None,
-        "max_area": None,
     }
 
     expected_metrics = [
@@ -1143,7 +1164,6 @@ def test_evaluate_ap(
         "dataset_gt_task_type": "Bounding Box Object Detection",
         "label_key": "k1",
         "min_area": 1200,
-        "max_area": None,
     }
 
     assert eval_job.metrics() != expected_metrics
@@ -1166,7 +1186,6 @@ def test_evaluate_ap(
         "model_pred_task_type": "Bounding Box Object Detection",
         "dataset_gt_task_type": "Bounding Box Object Detection",
         "label_key": "k1",
-        "min_area": None,
         "max_area": 1200,
     }
     assert eval_job.metrics() != expected_metrics
@@ -1235,9 +1254,17 @@ def test_evaluate_image_clf(
             "label": {"key": "k4", "value": "v4"},
         },
         {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
-        {"type": "Precision", "label": {"key": "k4", "value": "v5"}},
-        {"type": "Recall", "label": {"key": "k4", "value": "v5"}},
-        {"type": "F1", "label": {"key": "k4", "value": "v5"}},
+        {
+            "type": "Precision",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {
+            "type": "Recall",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
     ]
     for m in metrics:
         assert m in expected_metrics
@@ -1342,21 +1369,12 @@ def test_create_tabular_model_with_predicted_classifications(
     )
 
 
-def test_evaluate_tabular_clf(client: Session, db: Session):
-    y_true = [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
-    preds = [
-        [0.37, 0.35, 0.28],
-        [0.24, 0.61, 0.15],
-        [0.03, 0.88, 0.09],
-        [0.97, 0.03, 0.0],
-        [1.0, 0.0, 0.0],
-        [1.0, 0.0, 0.0],
-        [0.01, 0.96, 0.03],
-        [0.28, 0.02, 0.7],
-        [0.78, 0.21, 0.01],
-        [0.45, 0.11, 0.44],
-    ]
-
+def test_evaluate_tabular_clf(
+    client: Session,
+    db: Session,
+    y_true: list[int],
+    tabular_preds: list[list[float]],
+):
     dataset = client.create_tabular_dataset(name=dset_name)
     dataset.add_groundtruth(
         [[Label(key="class", value=str(t))] for t in y_true]
@@ -1374,7 +1392,7 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
                     )
                     for i in range(len(pred))
                 ]
-                for pred in preds
+                for pred in tabular_preds
             ],
         )
     assert "Invalid state transition from creating to evaluating." in str(
@@ -1387,18 +1405,9 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
     # finalize dataset
     dataset.finalize()
 
-    # create model
-    model = client.create_tabular_model(name=model_name)
-    model.add_predictions(
-        dataset,
-        [
-            [
-                ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
-                for i in range(len(pred))
-            ]
-            for pred in preds
-        ],
-    )
+    with pytest.raises(ClientException) as exc_info:
+        model.evaluate_classification(dataset=dataset)
+    assert "Inferences for model" in str(exc_info)
 
     # model.evaluate_classification returns a evaljob
     # with pytest.raises(ClientException) as exc_info:
@@ -1503,9 +1512,14 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
         "dataset_gt_task_type": "Classification",
     }
 
-    assert (
-        model.get_metrics_at_evaluation_settings_id(es_id) == expected_metrics
+    metrics_from_eval_settings_id = (
+        model.get_metrics_at_evaluation_settings_id(es_id)
     )
+    assert len(metrics_from_eval_settings_id) == len(expected_metrics)
+    for m in metrics_from_eval_settings_id:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics_from_eval_settings_id
 
     assert (
         model.get_confusion_matrices_at_evaluation_settings_id(es_id)
@@ -1518,7 +1532,7 @@ def test_evaluate_tabular_clf(client: Session, db: Session):
 
 
 def test_create_images_with_metadata(
-    client: Client, db: Session, metadata: list[Metadatum], rect1
+    client: Client, db: Session, metadata: list[Metadatum], rect1: BoundingBox
 ):
     dataset = client.create_image_dataset(dset_name)
 
@@ -1561,3 +1575,251 @@ def test_create_images_with_metadata(
     assert metadatum1.string_value == "a string"
     assert metadatum2.name == "metadatum name3"
     assert metadatum2.numeric_value == 0.45
+
+
+def test_stratify_clf_metrics(
+    client: Session,
+    db: Session,
+    y_true: list[int],
+    tabular_preds: list[list[float]],
+):
+    dataset = client.create_tabular_dataset(name=dset_name)
+    model = client.create_tabular_model(name=model_name)
+
+    # create data and two-different defining groups of cohorts
+    gt_with_metadata = [
+        [
+            Label(key="class", value=str(t)),
+            Metadatum(name="md1", value=f"md1-val{i % 3}"),
+            Metadatum(name="md2", value=f"md2-val{i % 4}"),
+        ]
+        for i, t in enumerate(y_true)
+    ]
+
+    dataset.add_groundtruth(gt_with_metadata)
+    model.add_predictions(
+        dataset,
+        [
+            [
+                ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
+                for i in range(len(pred))
+            ]
+            for pred in tabular_preds
+        ],
+    )
+
+    dataset.finalize()
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
+    time.sleep(2)
+
+    metrics = eval_job.metrics()
+
+    for m in metrics:
+        assert m["group"] in [
+            {"name": "md1", "value": "md1-val0"},
+            {"name": "md1", "value": "md1-val1"},
+            {"name": "md1", "value": "md1-val2"},
+        ]
+
+    val2_metrics = [
+        m
+        for m in metrics
+        if m["group"] == {"name": "md1", "value": "md1-val2"}
+    ]
+
+    # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
+    # (hard preds [1, 0, 0])
+    expected_metrics = [
+        {
+            "type": "Accuracy",
+            "parameters": {"label_key": "class"},
+            "value": 0.3333333333333333,
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "ROCAUC",
+            "parameters": {"label_key": "class"},
+            "value": 0.8333333333333334,
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "class", "value": "1"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "1"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "label": {"key": "class", "value": "1"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Precision",
+            "value": -1,
+            "label": {"key": "class", "value": "2"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "F1",
+            "value": -1,
+            "label": {"key": "class", "value": "2"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.5,
+            "label": {"key": "class", "value": "0"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "Recall",
+            "value": 1.0,
+            "label": {"key": "class", "value": "0"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+        {
+            "type": "F1",
+            "value": 0.6666666666666666,
+            "label": {"key": "class", "value": "0"},
+            "group": {"name": "md1", "value": "md1-val2"},
+        },
+    ]
+
+    assert len(val2_metrics) == len(expected_metrics)
+    for m in val2_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in val2_metrics
+
+
+def test_get_info_and_label_distributions(
+    client: Client,
+    gt_clfs1: list[GroundTruthImageClassification],
+    gt_dets1: list[GroundTruthDetection],
+    gt_poly_dets1: list[GroundTruthDetection],
+    gt_segs1: list[GroundTruthInstanceSegmentation],
+    pred_clfs: list[PredictedImageClassification],
+    pred_dets: list[PredictedDetection],
+    pred_poly_dets: list[PredictedDetection],
+    pred_segs: list[PredictedInstanceSegmentation],
+    db: Session,
+):
+    """Tests that the client can retrieve info about datasets and models.
+
+    Parameters
+    ----------
+    client
+    gts
+        list of groundtruth objects (from `velour.data_types`) of each type
+    preds
+        list of prediction objects (from `velour.data_types`) of each type
+    """
+
+    ds = client.create_image_dataset("info_test_dataset")
+    ds.add_groundtruth(gt_clfs1)
+    ds.add_groundtruth(gt_dets1)
+    ds.add_groundtruth(gt_poly_dets1)
+    ds.add_groundtruth(gt_segs1)
+    ds.finalize()
+
+    md = client.create_image_model("info_test_model")
+    md.add_predictions(ds, pred_clfs)
+    md.add_predictions(ds, pred_dets)
+    md.add_predictions(ds, pred_poly_dets)
+    md.add_predictions(ds, pred_segs)
+    md.finalize_inferences(ds)
+
+    ds_info = ds.get_info()
+    assert ds_info.annotation_type == [
+        "CLASSIFICATION",
+        "DETECTION",
+        "SEGMENTATION",
+    ]
+    assert ds_info.number_of_classifications == 2
+    assert ds_info.number_of_bounding_boxes == 2
+    assert ds_info.number_of_bounding_polygons == 2
+    assert ds_info.number_of_segmentations == 2
+    assert ds_info.associated_models == ["info_test_model"]
+
+    md_info = md.get_info()
+    assert md_info.annotation_type == [
+        "CLASSIFICATION",
+        "DETECTION",
+        "SEGMENTATION",
+    ]
+    assert md_info.number_of_classifications == 5
+    assert md_info.number_of_bounding_boxes == 2
+    assert md_info.number_of_bounding_polygons == 2
+    assert md_info.number_of_segmentations == 2
+    assert md_info.associated_datasets == ["info_test_dataset"]
+
+    ds_dist = ds.get_label_distribution()
+    assert len(ds_dist) == 3
+    assert ds_dist[Label(key="k1", value="v1")] == 6
+    assert ds_dist[Label(key="k4", value="v4")] == 1
+    assert ds_dist[Label(key="k5", value="v5")] == 1
+
+    md_dist = md.get_label_distribution()
+    assert len(md_dist) == 7
+    assert md_dist[Label(key="k1", value="v1")] == {
+        "count": 3,
+        "scores": [0.3, 0.3, 0.87],
+    }
+    assert md_dist[Label(key="k12", value="v12")] == {
+        "count": 1,
+        "scores": [0.47],
+    }
+    assert md_dist[Label(key="k12", value="v16")] == {
+        "count": 1,
+        "scores": [0.53],
+    }
+    assert md_dist[Label(key="k13", value="v13")] == {
+        "count": 1,
+        "scores": [1.0],
+    }
+    assert md_dist[Label(key="k2", value="v2")] == {
+        "count": 3,
+        "scores": [0.98, 0.98, 0.92],
+    }
+    assert md_dist[Label(key="k4", value="v5")] == {
+        "count": 1,
+        "scores": [0.29],
+    }
+    assert md_dist[Label(key="k4", value="v4")] == {
+        "count": 1,
+        "scores": [0.71],
+    }
+
+    # Check that info is consistent with distribution
+    N_ds_info = (
+        ds_info.number_of_classifications
+        + ds_info.number_of_bounding_boxes
+        + ds_info.number_of_bounding_polygons
+        + ds_info.number_of_segmentations
+    )
+    N_ds_dist = sum([ds_dist[label] for label in ds_dist])
+    assert N_ds_info == N_ds_dist
+
+    N_md_info = (
+        md_info.number_of_classifications
+        + md_info.number_of_bounding_boxes
+        + md_info.number_of_bounding_polygons
+        + md_info.number_of_segmentations
+    )
+    N_md_dist = sum([md_dist[label]["count"] for label in md_dist])
+    assert N_md_info == N_md_dist

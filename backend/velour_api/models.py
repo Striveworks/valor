@@ -299,7 +299,7 @@ class Metadatum(Base):
 
 
 class DatumMetadatumLink(Base):
-    __tablename__ = "datum_meta_datum_link"
+    __tablename__ = "datum_metadatum_link"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"))
@@ -428,6 +428,7 @@ class EvaluationSettings(Base):
     dataset_gt_task_type: Mapped[str] = mapped_column(Enum(Task))
     min_area: Mapped[float] = mapped_column(nullable=True)
     max_area: Mapped[float] = mapped_column(nullable=True)
+    group_by: Mapped[str] = mapped_column(nullable=True)
     label_key: Mapped[str] = mapped_column(nullable=True)
     metrics: Mapped[list["Metric"]] = relationship(
         "Metric", cascade="all, delete"
@@ -454,6 +455,18 @@ class Metric(Base):
     evaluation_settings_id: Mapped[int] = mapped_column(
         ForeignKey("evaluation_settings.id")
     )
+    group_id: Mapped[int] = mapped_column(
+        ForeignKey("metadatum.id"), nullable=True
+    )
+    group = relationship(Metadatum)
+
+    def __str__(self):
+        return f"""
+        id: {self.id}
+        label: {f"key={self.label.key}, value={self.label.value}" if self.label is not None else "None"}
+        type: {self.type}
+        value: {self.value}
+        """
 
 
 class ConfusionMatrix(Base):

@@ -39,11 +39,35 @@ class Label:
     def tuple(self) -> Tuple[str, str]:
         return (self.key, self.value)
 
+    def __eq__(self, other):
+        if hasattr(other, "key") and hasattr(other, "value"):
+            return self.key == other.key and self.value == other.value
+        return False
+
+    def __hash__(self) -> int:
+        return hash(f"key:{self.key},value:{self.value}")
+
 
 @dataclass
 class ScoredLabel:
     label: Label
     score: float
+
+    @property
+    def key(self):
+        return self.label.key
+
+    @property
+    def value(self):
+        return self.label.value
+
+    def __eq__(self, other):
+        if hasattr(other, "label") and hasattr(other, "score"):
+            return self.score == other.score and self.label == other.label
+        return False
+
+    def __hash__(self) -> int:
+        return hash(f"key:{self.key},value:{self.value},score:{self.score}")
 
 
 @dataclass
@@ -236,3 +260,14 @@ class PredictedImageClassification:
                     "For each label key, prediction scores must sum to 1, but"
                     f" for label key {k} got scores summing to {total_score}."
                 )
+
+
+@dataclass
+class Info:
+    annotation_type: List[str]
+    number_of_classifications: int
+    number_of_bounding_boxes: int
+    number_of_bounding_polygons: int
+    number_of_segmentations: int
+    associated_datasets: List[str]
+    associated_models: List[str]
