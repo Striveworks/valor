@@ -427,7 +427,7 @@ class ModelBase:
         self.href = href
         self.description = description
 
-    def finalize(self, dataset: DatasetBase):
+    def finalize_inferences(self, dataset: DatasetBase):
         # @TODO Make sure datatypes match
         return self.client._requests_put_rel_host(
             f"datasets/{dataset.name}/finalize/{self.name}"

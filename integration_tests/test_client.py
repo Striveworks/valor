@@ -1040,7 +1040,7 @@ def test_evaluate_ap(
 
     model = client.create_image_model(model_name)
     model.add_predictions(dataset, pred_dets)
-    model.finalize(dataset)
+    model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_ap(
         dataset=dataset,
@@ -1227,7 +1227,7 @@ def test_evaluate_image_clf(
 
     model = client.create_image_model(model_name)
     model.add_predictions(dataset, pred_clfs)
-    model.finalize(dataset)
+    model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_classification(dataset=dataset)
 
@@ -1408,7 +1408,7 @@ def test_evaluate_tabular_clf(
     assert eval_job.status() == "Failed"
 
     # finalize model
-    model.finalize(dataset)
+    model.finalize_inferences(dataset)
 
     # evaluate
     eval_job = model.evaluate_classification(dataset=dataset)
@@ -1602,7 +1602,7 @@ def test_stratify_clf_metrics(
             for pred in tabular_preds
         ],
     )
-    model.finalize(dataset)
+    model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
     time.sleep(2)
@@ -1735,7 +1735,7 @@ def test_get_info_and_label_distributions(
     md.add_predictions(ds, pred_dets)
     md.add_predictions(ds, pred_poly_dets)
     md.add_predictions(ds, pred_segs)
-    md.finalize(ds)
+    md.finalize_inferences(ds)
 
     ds_info = ds.get_info()
     assert ds_info.annotation_type == [
