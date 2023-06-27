@@ -30,12 +30,12 @@ from velour_api.crud._read import (
     _get_associated_datasets,
     _get_associated_models,
     _raster_to_png_b64,
-    get_dataset_metadata,
+    get_dataset_info,
     get_label_distribution_from_dataset,
     get_label_distribution_from_model,
     get_labels_from_dataset,
     get_labels_from_model,
-    get_model_metadata,
+    get_model_info,
 )
 
 dset_name = "test dataset"
@@ -2101,13 +2101,13 @@ def test__get_associated_datasets(
     assert _get_associated_datasets(db, "doesnt exist") == []
 
 
-def test_get_dataset_metadata(
+def test_get_dataset_info(
     db: Session,
     dataset_names: list[str],
     model_names: list[str],
     dataset_model_associations_create,
 ):
-    ds_meta1 = get_dataset_metadata(db, dataset_names[0])
+    ds_meta1 = get_dataset_info(db, dataset_names[0])
     assert ds_meta1.annotation_type == ["DETECTION"]
     assert ds_meta1.number_of_classifications == 0
     assert ds_meta1.number_of_bounding_boxes == 0
@@ -2115,7 +2115,7 @@ def test_get_dataset_metadata(
     assert ds_meta1.number_of_segmentation_rasters == 0
     assert ds_meta1.associated == [model_names[0]]
 
-    ds_meta2 = get_dataset_metadata(db, dataset_names[1])
+    ds_meta2 = get_dataset_info(db, dataset_names[1])
     assert ds_meta2.annotation_type == ["DETECTION"]
     assert ds_meta2.number_of_classifications == 0
     assert ds_meta2.number_of_bounding_boxes == 0
@@ -2124,13 +2124,13 @@ def test_get_dataset_metadata(
     assert ds_meta2.associated == [model_names[0], model_names[1]]
 
 
-def test_get_model_metadata(
+def test_get_model_info(
     db: Session,
     dataset_names: list[str],
     model_names: list[str],
     dataset_model_associations_create,
 ):
-    md_meta1 = get_model_metadata(db, model_names[0])
+    md_meta1 = get_model_info(db, model_names[0])
     assert md_meta1.annotation_type == ["DETECTION"]
     assert md_meta1.number_of_classifications == 0
     assert md_meta1.number_of_bounding_boxes == 0
@@ -2138,7 +2138,7 @@ def test_get_model_metadata(
     assert md_meta1.number_of_segmentation_rasters == 0
     assert md_meta1.associated == [dataset_names[0], dataset_names[1]]
 
-    md_meta2 = get_model_metadata(db, model_names[1])
+    md_meta2 = get_model_info(db, model_names[1])
     assert md_meta2.annotation_type == ["DETECTION"]
     assert md_meta2.number_of_classifications == 0
     assert md_meta2.number_of_bounding_boxes == 0
