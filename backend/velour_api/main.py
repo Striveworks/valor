@@ -361,7 +361,7 @@ def get_label_distribution_from_model(
 
 
 @app.get(
-    "/models/{model_name}/metadata",
+    "/models/{model_name}/info",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
