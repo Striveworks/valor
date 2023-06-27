@@ -160,20 +160,6 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# @app.get(
-#     "/datasets/{dataset_name}/labels",
-#     status_code=200,
-#     dependencies=[Depends(token_auth_scheme)],
-# )
-# def get_dataset_labels(
-#     dataset_name: str, db: Session = Depends(get_db)
-# ) -> list[schemas.Label]:
-#     try:
-#         return crud.get_labels_from_dataset(db, dataset_name)
-#     except exceptions.DatasetDoesNotExistError as e:
-#         raise HTTPException(status_code=404, detail=str(e))
-
-
 @app.get(
     "/datasets/{dataset_name}/labels",
     status_code=200,
