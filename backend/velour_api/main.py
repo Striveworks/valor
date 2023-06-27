@@ -197,7 +197,7 @@ def get_dataset_info(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> schemas.Info:
     try:
-        return crud.get_dataset_metadata(db, dataset_name)
+        return crud.get_dataset_info(db, dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -369,7 +369,7 @@ def get_model_info(
     model_name: str, db: Session = Depends(get_db)
 ) -> schemas.Info:
     try:
-        return crud.get_model_metadata(db, model_name)
+        return crud.get_model_info(db, model_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
