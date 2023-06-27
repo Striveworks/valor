@@ -330,7 +330,7 @@ def dataset_model_associations_create(
     for name in datasets:
         crud.create_dataset(
             db,
-            schemas.DatasetCreate(
+            schemas.Dataset(
                 name=name,
                 type=enums.DatumTypes.IMAGE,
             ),
@@ -375,13 +375,13 @@ def dataset_model_associations_create(
         db, model_name=models[1], dataset_name=datasets[1]
     )
 
-    yield
+    # yield
 
-    # clean up
-    crud.delete_model(db, models[0])
-    crud.delete_model(db, models[1])
-    crud.delete_dataset(db, datasets[0])
-    crud.delete_dataset(db, datasets[1])
+    # # clean up
+    # crud.delete_model(db, models[0])
+    # crud.delete_model(db, models[1])
+    # crud.delete_dataset(db, datasets[0])
+    # crud.delete_dataset(db, datasets[1])
 
 
 def test_create_and_get_datasets(db: Session):
@@ -772,16 +772,37 @@ def test_get_labels(
         schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_detections(db, data=gt_dets_create)
-    labels = crud.get_detection_labels_in_dataset(db, dset_name)
+    labels = crud.get_labels_from_dataset(
+        db,
+        dset_name,
+        of_type=[enums.AnnotationType.BBOX, enums.AnnotationType.POLYGON],
+    )
 
     assert len(labels) == 2
     assert set([(label.key, label.value) for label in labels]) == set(
         [("k1", "v1"), ("k2", "v2")]
     )
 
-    assert crud.get_detection_labels_in_dataset(db, "not a dataset") == []
-    assert crud.get_classification_labels_in_dataset(db, dset_name) == []
-    assert crud.get_segmentation_labels_in_dataset(db, dset_name) == []
+    assert (
+        crud.get_labels_from_dataset(
+            db, dset_name, of_type=[enums.AnnotationType.CLASSIFICATION]
+        )
+        == []
+    )
+    assert (
+        crud.get_labels_from_dataset(
+            db,
+            "not a dataset",
+            of_type=[enums.AnnotationType.BBOX, enums.AnnotationType.POLYGON],
+        )
+        == []
+    )
+    assert (
+        crud.get_labels_from_dataset(
+            db, dset_name, of_type=[enums.AnnotationType.RASTER]
+        )
+        == []
+    )
 
 
 def test_segmentation_area_no_hole(
@@ -2230,7 +2251,7 @@ def test_get_all_labels(
 ):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_detections(db, data=gt_dets_create)
     labels = crud.get_all_labels(db)
@@ -2431,7 +2452,7 @@ def test_get_label_distribution_from_model(
 def test_get_string_metadata_ids(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.TABULAR),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.TABULAR),
     )
 
     datums = [

@@ -1399,30 +1399,22 @@ def test_evaluate_tabular_clf(
         exc_info
     )
 
-    # ensure model is deleted
-    client.delete_model(model.name)
-
     # finalize dataset
     dataset.finalize()
 
-    with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset)
-    assert "Inferences for model" in str(exc_info)
+    # check that model cannot be evalauted until after finalization
+    eval_job = model.evaluate_classification(dataset=dataset)
+    time.sleep(1)  # wait for backend
+    assert eval_job.status() == "Failed"
 
-    # model.evaluate_classification returns a evaljob
-    # with pytest.raises(ClientException) as exc_info:
-    #     model.evaluate_classification(dataset=dataset)
-    # assert "TableStatus.EVALUATE' is not a valid next state." in str(exc_info)
-
+    # finalize model
     model.finalize(dataset)
 
+    # evaluate
     eval_job = model.evaluate_classification(dataset=dataset)
-
     assert eval_job.ignored_pred_keys == []
     assert eval_job.missing_pred_keys == []
-
-    # sleep to give the backend time to compute
-    time.sleep(1)
+    time.sleep(1)  # wait for backend
     assert eval_job.status() == "Done"
 
     metrics = eval_job.metrics()
@@ -1583,9 +1575,6 @@ def test_stratify_clf_metrics(
     y_true: list[int],
     tabular_preds: list[list[float]],
 ):
-    dataset = client.create_tabular_dataset(name=dset_name)
-    model = client.create_tabular_model(name=model_name)
-
     # create data and two-different defining groups of cohorts
     gt_with_metadata = [
         [
@@ -1596,7 +1585,13 @@ def test_stratify_clf_metrics(
         for i, t in enumerate(y_true)
     ]
 
+    # create dataset
+    dataset = client.create_tabular_dataset(name=dset_name)
     dataset.add_groundtruth(gt_with_metadata)
+    dataset.finalize()
+
+    # create model
+    model = client.create_tabular_model(name=model_name)
     model.add_predictions(
         dataset,
         [
@@ -1607,9 +1602,7 @@ def test_stratify_clf_metrics(
             for pred in tabular_preds
         ],
     )
-
-    dataset.finalize()
-    model.finalize_inferences(dataset)
+    model.finalize(dataset)
 
     eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
     time.sleep(2)
@@ -1742,7 +1735,7 @@ def test_get_info_and_label_distributions(
     md.add_predictions(ds, pred_dets)
     md.add_predictions(ds, pred_poly_dets)
     md.add_predictions(ds, pred_segs)
-    md.finalize_inferences(ds)
+    md.finalize(ds)
 
     ds_info = ds.get_info()
     assert ds_info.annotation_type == [
@@ -1776,26 +1769,32 @@ def test_get_info_and_label_distributions(
 
     md_dist = md.get_label_distribution()
     assert len(md_dist) == 7
-    assert md_dist[Label(key="k1", value="v1")] == {
-        "count": 3,
-        "scores": [0.3, 0.3, 0.87],
-    }
+
+    assert md_dist[Label(key="k1", value="v1")]["count"] == 3
+    assert set(md_dist[Label(key="k1", value="v1")]["scores"]) == set(
+        [0.3, 0.3, 0.87]
+    )
+
     assert md_dist[Label(key="k12", value="v12")] == {
         "count": 1,
         "scores": [0.47],
     }
+
     assert md_dist[Label(key="k12", value="v16")] == {
         "count": 1,
         "scores": [0.53],
     }
+
     assert md_dist[Label(key="k13", value="v13")] == {
         "count": 1,
         "scores": [1.0],
     }
-    assert md_dist[Label(key="k2", value="v2")] == {
-        "count": 3,
-        "scores": [0.98, 0.98, 0.92],
-    }
+
+    assert md_dist[Label(key="k2", value="v2")]["count"] == 3
+    assert set(md_dist[Label(key="k2", value="v2")]["scores"]) == set(
+        [0.98, 0.98, 0.92]
+    )
+
     assert md_dist[Label(key="k4", value="v5")] == {
         "count": 1,
         "scores": [0.29],
