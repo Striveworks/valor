@@ -189,7 +189,7 @@ def get_label_distribution_from_dataset(
 
 
 @app.get(
-    "/datasets/{dataset_name}/metadata",
+    "/datasets/{dataset_name}/info",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
