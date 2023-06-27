@@ -577,7 +577,7 @@ class ModelBase:
     @property
     def info(self) -> Info:
         resp = self.client._requests_get_rel_host(
-            f"models/{self.name}/metadata"
+            f"models/{self.name}/info"
         ).json()
 
         return Info(
