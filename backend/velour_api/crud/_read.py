@@ -251,7 +251,7 @@ def get_model(db: Session, model_name: str) -> models.Model:
     return ret
 
 
-def get_model_metadata(db: Session, model_name: str) -> schemas.Info:
+def get_model_info(db: Session, model_name: str) -> schemas.Info:
 
     is_bbox = True
     is_polygon = False
