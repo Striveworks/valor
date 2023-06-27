@@ -24,6 +24,6 @@ class DatumTypes(Enum):
 class AnnotationType(Enum):
     CLASSIFICATION = "classification"
     BBOX = "bbox"
-    BOUNDARY = "boundary"
+    POLYGON = "polygon"
     RASTER = "raster"
     UNDEFINED = "undefined"

@@ -1683,3 +1683,121 @@ def test_stratify_clf_metrics(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in val2_metrics
+
+
+def test_get_info_and_label_distributions(
+    client: Client,
+    gt_clfs1: list[GroundTruthImageClassification],
+    gt_dets1: list[GroundTruthDetection],
+    gt_poly_dets1: list[GroundTruthDetection],
+    gt_segs1: list[GroundTruthInstanceSegmentation],
+    pred_clfs: list[PredictedImageClassification],
+    pred_dets: list[PredictedDetection],
+    pred_poly_dets: list[PredictedDetection],
+    pred_segs: list[PredictedInstanceSegmentation],
+    db: Session,
+):
+    """Tests that the client can retrieve info about datasets and models.
+
+    Parameters
+    ----------
+    client
+    gts
+        list of groundtruth objects (from `velour.data_types`) of each type
+    preds
+        list of prediction objects (from `velour.data_types`) of each type
+    """
+
+    ds = client.create_image_dataset("info_test_dataset")
+    ds.add_groundtruth(gt_clfs1)
+    ds.add_groundtruth(gt_dets1)
+    ds.add_groundtruth(gt_poly_dets1)
+    ds.add_groundtruth(gt_segs1)
+    ds.finalize()
+
+    md = client.create_image_model("info_test_model")
+    md.add_predictions(ds, pred_clfs)
+    md.add_predictions(ds, pred_dets)
+    md.add_predictions(ds, pred_poly_dets)
+    md.add_predictions(ds, pred_segs)
+    md.finalize_inferences(ds)
+
+    ds_info = ds.get_info()
+    assert ds_info.annotation_type == [
+        "CLASSIFICATION",
+        "DETECTION",
+        "SEGMENTATION",
+    ]
+    assert ds_info.number_of_classifications == 2
+    assert ds_info.number_of_bounding_boxes == 2
+    assert ds_info.number_of_bounding_polygons == 2
+    assert ds_info.number_of_segmentations == 2
+    assert ds_info.associated_models == ["info_test_model"]
+
+    md_info = md.get_info()
+    assert md_info.annotation_type == [
+        "CLASSIFICATION",
+        "DETECTION",
+        "SEGMENTATION",
+    ]
+    assert md_info.number_of_classifications == 5
+    assert md_info.number_of_bounding_boxes == 2
+    assert md_info.number_of_bounding_polygons == 2
+    assert md_info.number_of_segmentations == 2
+    assert md_info.associated_datasets == ["info_test_dataset"]
+
+    ds_dist = ds.get_label_distribution()
+    assert len(ds_dist) == 3
+    assert ds_dist[Label(key="k1", value="v1")] == 6
+    assert ds_dist[Label(key="k4", value="v4")] == 1
+    assert ds_dist[Label(key="k5", value="v5")] == 1
+
+    md_dist = md.get_label_distribution()
+    assert len(md_dist) == 7
+    assert md_dist[Label(key="k1", value="v1")] == {
+        "count": 3,
+        "scores": [0.3, 0.3, 0.87],
+    }
+    assert md_dist[Label(key="k12", value="v12")] == {
+        "count": 1,
+        "scores": [0.47],
+    }
+    assert md_dist[Label(key="k12", value="v16")] == {
+        "count": 1,
+        "scores": [0.53],
+    }
+    assert md_dist[Label(key="k13", value="v13")] == {
+        "count": 1,
+        "scores": [1.0],
+    }
+    assert md_dist[Label(key="k2", value="v2")] == {
+        "count": 3,
+        "scores": [0.98, 0.98, 0.92],
+    }
+    assert md_dist[Label(key="k4", value="v5")] == {
+        "count": 1,
+        "scores": [0.29],
+    }
+    assert md_dist[Label(key="k4", value="v4")] == {
+        "count": 1,
+        "scores": [0.71],
+    }
+
+    # Check that info is consistent with distribution
+    N_ds_info = (
+        ds_info.number_of_classifications
+        + ds_info.number_of_bounding_boxes
+        + ds_info.number_of_bounding_polygons
+        + ds_info.number_of_segmentations
+    )
+    N_ds_dist = sum([ds_dist[label] for label in ds_dist])
+    assert N_ds_info == N_ds_dist
+
+    N_md_info = (
+        md_info.number_of_classifications
+        + md_info.number_of_bounding_boxes
+        + md_info.number_of_bounding_polygons
+        + md_info.number_of_segmentations
+    )
+    N_md_dist = sum([md_dist[label]["count"] for label in md_dist])
+    assert N_md_info == N_md_dist

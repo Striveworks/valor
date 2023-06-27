@@ -460,6 +460,14 @@ class Metric(Base):
     )
     group = relationship(Metadatum)
 
+    def __str__(self):
+        return f"""
+        id: {self.id}
+        label: {f"key={self.label.key}, value={self.label.value}" if self.label is not None else "None"}
+        type: {self.type}
+        value: {self.value}
+        """
+
 
 class ConfusionMatrix(Base):
     __tablename__ = "confusion_matrix"

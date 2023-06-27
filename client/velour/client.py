@@ -21,6 +21,7 @@ from velour.data_types import (
     GroundTruthInstanceSegmentation,
     GroundTruthSemanticSegmentation,
     Image,
+    Info,
     Label,
     Metadatum,
     Point,
@@ -113,9 +114,17 @@ class ClientException(Exception):
 
 
 class DatasetBase:
-    def __init__(self, client: "Client", name: str):
+    def __init__(
+        self,
+        client: "Client",
+        name: str,
+        href: Optional[str] = None,
+        description: Optional[str] = None,
+    ):
         self.client = client
         self.name = name
+        self.href = href
+        self.description = description
 
     def get_labels(self) -> List[Label]:
         labels = self.client._requests_get_rel_host(
@@ -125,6 +134,33 @@ class DatasetBase:
         return [
             Label(key=label["key"], value=label["value"]) for label in labels
         ]
+
+    def get_label_distribution(self) -> Dict[Label, int]:
+        distribution = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/labels/distribution"
+        ).json()
+
+        return {
+            Label(
+                key=label["label"]["key"], value=label["label"]["value"]
+            ): label["count"]
+            for label in distribution
+        }
+
+    def get_info(self) -> Info:
+        resp = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/info"
+        ).json()
+
+        return Info(
+            annotation_type=resp["annotation_type"],
+            number_of_classifications=resp["number_of_classifications"],
+            number_of_bounding_boxes=resp["number_of_bounding_boxes"],
+            number_of_bounding_polygons=resp["number_of_bounding_polygons"],
+            number_of_segmentations=resp["number_of_segmentation_rasters"],
+            associated_datasets=None,
+            associated_models=resp["associated"],
+        )
 
     def finalize(self):
         return self.client._requests_put_rel_host(
@@ -379,9 +415,17 @@ def _remove_none_from_dict(d: dict) -> dict:
 
 
 class ModelBase:
-    def __init__(self, client: "Client", name: str):
+    def __init__(
+        self,
+        client: "Client",
+        name: str,
+        href: Optional[str] = None,
+        description: Optional[str] = None,
+    ):
         self.client = client
         self.name = name
+        self.href = href
+        self.description = description
 
     def finalize_inferences(self, dataset: DatasetBase) -> None:
         return self.client._requests_put_rel_host(
@@ -507,6 +551,43 @@ class ModelBase:
             ret.append({"settings": grp["settings"], "df": df})
 
         return ret
+
+    def get_labels(self) -> List[Label]:
+        labels = self.client._requests_get_rel_host(
+            f"models/{self.name}/labels"
+        ).json()
+
+        return [
+            Label(key=label["key"], value=label["value"]) for label in labels
+        ]
+
+    def get_label_distribution(self) -> Dict[Label, int]:
+        distribution = self.client._requests_get_rel_host(
+            f"models/{self.name}/labels/distribution"
+        ).json()
+
+        return {
+            Label(key=label["label"]["key"], value=label["label"]["value"]): {
+                "count": label["count"],
+                "scores": label["scores"],
+            }
+            for label in distribution
+        }
+
+    def get_info(self) -> Info:
+        resp = self.client._requests_get_rel_host(
+            f"models/{self.name}/info"
+        ).json()
+
+        return Info(
+            annotation_type=resp["annotation_type"],
+            number_of_classifications=resp["number_of_classifications"],
+            number_of_bounding_boxes=resp["number_of_bounding_boxes"],
+            number_of_bounding_polygons=resp["number_of_bounding_polygons"],
+            number_of_segmentations=resp["number_of_segmentation_rasters"],
+            associated_datasets=resp["associated"],
+            associated_models=None,
+        )
 
 
 class ImageModel(ModelBase):
@@ -796,7 +877,9 @@ class Client:
             },
         )
 
-        return class_(client=self, name=name)
+        return class_(
+            client=self, name=name, href=href, description=description
+        )
 
     def create_image_dataset(
         self, name: str, href: str = None, description: str = None
@@ -838,7 +921,12 @@ class Client:
         datum_type = DatumTypes.invert(resp["type"])
         class_ = self.datum_type_and_entity_to_class[entity_type][datum_type]
 
-        return class_(client=self, name=resp["name"])
+        return class_(
+            client=self,
+            name=resp["name"],
+            href=resp["href"],
+            description=resp["description"],
+        )
 
     def get_model(self, name: str) -> ModelBase:
         return self._get_model_or_dataset(entity_type="models", name=name)

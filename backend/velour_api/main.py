@@ -169,12 +169,37 @@ def get_dataset_labels(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
     try:
-        labels = crud.get_all_labels_in_dataset(db, dataset_name)
+        return crud.get_labels_from_dataset(db, dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    return [
-        schemas.Label(key=label.key, value=label.value) for label in labels
-    ]
+
+
+@app.get(
+    "/datasets/{dataset_name}/labels/distribution",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_label_distribution_from_dataset(
+    dataset_name: str, db: Session = Depends(get_db)
+) -> list[schemas.LabelDistribution]:
+    try:
+        return crud.get_label_distribution_from_dataset(db, dataset_name)
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/datasets/{dataset_name}/info",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_dataset_info(
+    dataset_name: str, db: Session = Depends(get_db)
+) -> schemas.Info:
+    try:
+        return crud.get_dataset_info(db, dataset_name)
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
@@ -186,13 +211,14 @@ def get_dataset_images(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Image]:
     try:
-        images = crud.get_datums_in_dataset(db, dataset_name)
+        return [
+            schemas.Image(
+                uid=image.uid, height=image.height, width=image.width
+            )
+            for image in crud.get_datums_in_dataset(db, dataset_name)
+        ]
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    return [
-        schemas.Image(uid=image.uid, height=image.height, width=image.width)
-        for image in images
-    ]
 
 
 @app.get(
@@ -302,6 +328,50 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 @app.delete("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
 def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
     return crud.delete_model(db, model_name)
+
+
+@app.get(
+    "/models/{model_name}/labels",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_model_labels(
+    model_name: str, db: Session = Depends(get_db)
+) -> list[schemas.Label]:
+    try:
+        return crud.get_labels_from_model(db, model_name)
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/models/{model_name}/labels/distribution",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_label_distribution_from_model(
+    model_name: str, db: Session = Depends(get_db)
+) -> list[schemas.ScoredLabelDistribution]:
+    try:
+        return crud.get_label_distribution_from_model(
+            db, model_name=model_name
+        )
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/models/{model_name}/info",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_model_info(
+    model_name: str, db: Session = Depends(get_db)
+) -> schemas.Info:
+    try:
+        return crud.get_model_info(db, model_name)
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
