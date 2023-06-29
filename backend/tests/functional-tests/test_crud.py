@@ -187,14 +187,14 @@ def gt_instance_segs_create(
 
 @pytest.fixture
 def pred_instance_segs_create(
-    mask_bytes1: bytes,
-    mask_bytes2: bytes,
-    mask_bytes3: bytes,
+    pred_mask_bytes1: bytes,
+    pred_mask_bytes2: bytes,
+    pred_mask_bytes3: bytes,
     img1: schemas.Image,
 ) -> schemas.PredictedSegmentationsCreate:
-    b64_mask1 = b64encode(mask_bytes1).decode()
-    b64_mask2 = b64encode(mask_bytes2).decode()
-    b64_mask3 = b64encode(mask_bytes3).decode()
+    b64_mask1 = b64encode(pred_mask_bytes1).decode()
+    b64_mask2 = b64encode(pred_mask_bytes2).decode()
+    b64_mask3 = b64encode(pred_mask_bytes3).decode()
     return schemas.PredictedSegmentationsCreate(
         model_name=model_name,
         dataset_name=dset_name,
@@ -1370,9 +1370,9 @@ def test___model_instance_segmentation_preds_statement(
     db: Session,
     gt_instance_segs_create: schemas.GroundTruthSegmentationsCreate,
     pred_instance_segs_create: schemas.PredictedSegmentationsCreate,
-    mask_bytes1: bytes,
-    mask_bytes2: bytes,
-    mask_bytes3: bytes,
+    pred_mask_bytes1: bytes,
+    pred_mask_bytes2: bytes,
+    pred_mask_bytes3: bytes,
 ):
     crud.create_dataset(
         db,
@@ -1393,9 +1393,9 @@ def test___model_instance_segmentation_preds_statement(
     areas = sorted(areas)
     assert areas == sorted(
         [
-            np.array(bytes_to_pil(mask_bytes1)).sum(),
-            np.array(bytes_to_pil(mask_bytes2)).sum(),
-            np.array(bytes_to_pil(mask_bytes3)).sum(),
+            np.array(bytes_to_pil(pred_mask_bytes1)).sum(),
+            np.array(bytes_to_pil(pred_mask_bytes2)).sum(),
+            np.array(bytes_to_pil(pred_mask_bytes3)).sum(),
         ]
     )
 

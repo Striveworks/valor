@@ -88,13 +88,16 @@ def _gt_seg_from_polys(
 
 
 def test__raster_area(
-    db: Session, mask_bytes1: bytes, model: models.Model, img: models.Datum
+    db: Session,
+    pred_mask_bytes1: bytes,
+    model: models.Model,
+    img: models.Datum,
 ):
     pred_seg = _pred_seg_from_bytes(
-        db=db, mask_bytes=mask_bytes1, model=model, img=img
+        db=db, mask_bytes=pred_mask_bytes1, model=model, img=img
     )
 
-    mask = bytes_to_pil(mask_bytes1)
+    mask = bytes_to_pil(pred_mask_bytes1)
     assert ops._raster_area(db, pred_seg.shape) == np.array(mask).sum()
 
 
