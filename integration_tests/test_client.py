@@ -43,6 +43,7 @@ from velour.data_types import (
     PredictedDetection,
     PredictedImageClassification,
     PredictedInstanceSegmentation,
+    PredictedSemanticSegmentation,
     ScoredLabel,
 )
 from velour.metrics import Task
@@ -390,7 +391,9 @@ def pred_poly_dets(
 
 
 @pytest.fixture
-def pred_segs(img1: Image, img2: Image) -> list[PredictedInstanceSegmentation]:
+def pred_instance_segs(
+    img1: Image, img2: Image
+) -> list[PredictedInstanceSegmentation]:
     mask_1 = np.random.randint(0, 2, size=(64, 32), dtype=bool)
     mask_2 = np.random.randint(0, 2, size=(12, 23), dtype=bool)
     return [
@@ -406,6 +409,26 @@ def pred_segs(img1: Image, img2: Image) -> list[PredictedInstanceSegmentation]:
             scored_labels=[
                 ScoredLabel(label=Label(key="k2", value="v2"), score=0.92)
             ],
+            image=img2,
+        ),
+    ]
+
+
+@pytest.fixture
+def pred_semantic_segs(
+    img1: Image, img2: Image
+) -> list[PredictedSemanticSegmentation]:
+    mask_1 = np.random.randint(0, 2, size=(64, 32), dtype=bool)
+    mask_2 = np.random.randint(0, 2, size=(12, 23), dtype=bool)
+    return [
+        PredictedSemanticSegmentation(
+            mask=mask_1,
+            labels=[Label(key="k1", value="v1")],
+            image=img1,
+        ),
+        PredictedSemanticSegmentation(
+            mask=mask_2,
+            labels=[Label(key="k2", value="v2")],
             image=img2,
         ),
     ]
@@ -563,7 +586,7 @@ def _test_create_model_with_preds(
         client.create_image_model(model_name)
     assert "already exists" in str(exc_info)
 
-    # check that if we try to add detections we get an error
+    # check that if we try to add predictions we get an error
     # since we haven't added any images yet
     with pytest.raises(ClientException) as exc_info:
         model.add_predictions(dataset, preds)
@@ -861,18 +884,18 @@ def test_create_gt_segs_as_polys_or_masks(
         )
 
 
-def test_create_model_with_predicted_segmentations(
+def test_create_model_with_predicted_instance_segmentations(
     client: Client,
     gt_segs1: list[GroundTruthInstanceSegmentation],
-    pred_segs: list[PredictedInstanceSegmentation],
+    pred_instance_segs: list[PredictedInstanceSegmentation],
     db: Session,
 ):
     """Tests that we can create a predicted segmentation from a mask array"""
-    labeled_pred_segs = _test_create_model_with_preds(
+    labeled_pred_instance_segs = _test_create_model_with_preds(
         client=client,
         datum_type=DatumTypes.IMAGE,
         gts=gt_segs1,
-        preds=pred_segs,
+        preds=pred_instance_segs,
         preds_model_class=models.LabeledPredictedSegmentation,
         preds_expected_number=2,
         expected_labels_tuples={("k1", "v1"), ("k2", "v2")},
@@ -883,13 +906,48 @@ def test_create_model_with_predicted_segmentations(
     # grab the segmentation from the db, recover the mask, and check
     # its equal to the mask the client sent over
     db_pred = [
-        p for p in labeled_pred_segs if p.segmentation.datum.uid == "uid1"
+        p
+        for p in labeled_pred_instance_segs
+        if p.segmentation.datum.uid == "uid1"
     ][0]
     png_from_db = db.scalar(ST_AsPNG(db_pred.segmentation.shape))
     f = io.BytesIO(png_from_db.tobytes())
     mask_array = np.array(PILImage.open(f))
 
-    np.testing.assert_equal(mask_array, pred_segs[0].mask)
+    np.testing.assert_equal(mask_array, pred_instance_segs[0].mask)
+
+
+def test_create_model_with_predicted_semantic_segmentations(
+    client: Client,
+    gt_segs1: list[GroundTruthInstanceSegmentation],
+    pred_semantic_segs: list[PredictedInstanceSegmentation],
+    db: Session,
+):
+    """Tests that we can create a predicted segmentation from a mask array"""
+    labeled_pred_semantic_segs = _test_create_model_with_preds(
+        client=client,
+        datum_type=DatumTypes.IMAGE,
+        gts=gt_segs1,
+        preds=pred_semantic_segs,
+        preds_model_class=models.LabeledPredictedSegmentation,
+        preds_expected_number=2,
+        expected_labels_tuples={("k1", "v1"), ("k2", "v2")},
+        expected_scores={None},
+        db=db,
+    )
+
+    # grab the segmentation from the db, recover the mask, and check
+    # its equal to the mask the client sent over
+    db_pred = [
+        p
+        for p in labeled_pred_semantic_segs
+        if p.segmentation.datum.uid == "uid1"
+    ][0]
+    png_from_db = db.scalar(ST_AsPNG(db_pred.segmentation.shape))
+    f = io.BytesIO(png_from_db.tobytes())
+    mask_array = np.array(PILImage.open(f))
+
+    np.testing.assert_equal(mask_array, pred_semantic_segs[0].mask)
 
 
 def test_create_image_dataset_with_classifications(
@@ -1683,3 +1741,121 @@ def test_stratify_clf_metrics(
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in val2_metrics
+
+
+def test_get_info_and_label_distributions(
+    client: Client,
+    gt_clfs1: list[GroundTruthImageClassification],
+    gt_dets1: list[GroundTruthDetection],
+    gt_poly_dets1: list[GroundTruthDetection],
+    gt_segs1: list[GroundTruthInstanceSegmentation],
+    pred_clfs: list[PredictedImageClassification],
+    pred_dets: list[PredictedDetection],
+    pred_poly_dets: list[PredictedDetection],
+    pred_instance_segs: list[PredictedInstanceSegmentation],
+    db: Session,
+):
+    """Tests that the client can retrieve info about datasets and models.
+
+    Parameters
+    ----------
+    client
+    gts
+        list of groundtruth objects (from `velour.data_types`) of each type
+    preds
+        list of prediction objects (from `velour.data_types`) of each type
+    """
+
+    ds = client.create_image_dataset("info_test_dataset")
+    ds.add_groundtruth(gt_clfs1)
+    ds.add_groundtruth(gt_dets1)
+    ds.add_groundtruth(gt_poly_dets1)
+    ds.add_groundtruth(gt_segs1)
+    ds.finalize()
+
+    md = client.create_image_model("info_test_model")
+    md.add_predictions(ds, pred_clfs)
+    md.add_predictions(ds, pred_dets)
+    md.add_predictions(ds, pred_poly_dets)
+    md.add_predictions(ds, pred_instance_segs)
+    md.finalize_inferences(ds)
+
+    ds_info = ds.get_info()
+    assert ds_info.annotation_type == [
+        "CLASSIFICATION",
+        "DETECTION",
+        "SEGMENTATION",
+    ]
+    assert ds_info.number_of_classifications == 2
+    assert ds_info.number_of_bounding_boxes == 2
+    assert ds_info.number_of_bounding_polygons == 2
+    assert ds_info.number_of_segmentations == 2
+    assert ds_info.associated_models == ["info_test_model"]
+
+    md_info = md.get_info()
+    assert md_info.annotation_type == [
+        "CLASSIFICATION",
+        "DETECTION",
+        "SEGMENTATION",
+    ]
+    assert md_info.number_of_classifications == 5
+    assert md_info.number_of_bounding_boxes == 2
+    assert md_info.number_of_bounding_polygons == 2
+    assert md_info.number_of_segmentations == 2
+    assert md_info.associated_datasets == ["info_test_dataset"]
+
+    ds_dist = ds.get_label_distribution()
+    assert len(ds_dist) == 3
+    assert ds_dist[Label(key="k1", value="v1")] == 6
+    assert ds_dist[Label(key="k4", value="v4")] == 1
+    assert ds_dist[Label(key="k5", value="v5")] == 1
+
+    md_dist = md.get_label_distribution()
+    assert len(md_dist) == 7
+    assert md_dist[Label(key="k1", value="v1")] == {
+        "count": 3,
+        "scores": [0.3, 0.3, 0.87],
+    }
+    assert md_dist[Label(key="k12", value="v12")] == {
+        "count": 1,
+        "scores": [0.47],
+    }
+    assert md_dist[Label(key="k12", value="v16")] == {
+        "count": 1,
+        "scores": [0.53],
+    }
+    assert md_dist[Label(key="k13", value="v13")] == {
+        "count": 1,
+        "scores": [1.0],
+    }
+    assert md_dist[Label(key="k2", value="v2")] == {
+        "count": 3,
+        "scores": [0.98, 0.98, 0.92],
+    }
+    assert md_dist[Label(key="k4", value="v5")] == {
+        "count": 1,
+        "scores": [0.29],
+    }
+    assert md_dist[Label(key="k4", value="v4")] == {
+        "count": 1,
+        "scores": [0.71],
+    }
+
+    # Check that info is consistent with distribution
+    N_ds_info = (
+        ds_info.number_of_classifications
+        + ds_info.number_of_bounding_boxes
+        + ds_info.number_of_bounding_polygons
+        + ds_info.number_of_segmentations
+    )
+    N_ds_dist = sum([ds_dist[label] for label in ds_dist])
+    assert N_ds_info == N_ds_dist
+
+    N_md_info = (
+        md_info.number_of_classifications
+        + md_info.number_of_bounding_boxes
+        + md_info.number_of_bounding_polygons
+        + md_info.number_of_segmentations
+    )
+    N_md_dist = sum([md_dist[label]["count"] for label in md_dist])
+    assert N_md_info == N_md_dist

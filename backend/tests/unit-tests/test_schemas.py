@@ -18,8 +18,11 @@ from velour_api.schemas import (
     Image,
     Job,
     Label,
+    LabelDistribution,
     Model,
-    PredictedSegmentation,
+    ScoredLabel,
+    ScoredLabelDistribution,
+    _PredictedSegmentation,
 )
 
 
@@ -89,8 +92,8 @@ def test_ground_truth_segmentation_validation(img: Image):
 def test_predicted_segmentation_validation_pos(img: Image):
     base64_mask = _create_b64_mask(mode="1", ext="png")
 
-    pred_seg = PredictedSegmentation(
-        base64_mask=base64_mask, image=img, scored_labels=[], is_instance=True
+    pred_seg = _PredictedSegmentation(
+        base64_mask=base64_mask, image=img, scored_labels=[]
     )
     assert pred_seg.base64_mask == base64_mask
 
@@ -100,7 +103,7 @@ def test_predicted_segmentation_validation_mode_neg(img: Image):
     base64_mask = _create_b64_mask(mode="RGB", ext="png")
 
     with pytest.raises(ValueError) as exc_info:
-        PredictedSegmentation(
+        _PredictedSegmentation(
             base64_mask=base64_mask,
             image=img,
             scored_labels=[],
@@ -114,7 +117,7 @@ def test_predicted_segmentation_validation_format_neg(img: Image):
     base64_mask = _create_b64_mask(mode="1", ext="jpg")
 
     with pytest.raises(ValueError) as exc_info:
-        PredictedSegmentation(
+        _PredictedSegmentation(
             base64_mask=base64_mask,
             image=img,
             scored_labels=[],
@@ -175,3 +178,33 @@ def test_datum_metadatum_validation():
         DatumMetadatum(name="meta name", value={"a": {1, 2}})
 
     assert "type set is not JSON serializable" in str(exc_info)
+
+
+def test_label_types():
+    l1 = Label(key="key1", value="value1")
+    l2 = Label(key="key2", value="value2")
+    l3 = Label(key="key1", value="value1")
+
+    # test equality
+    assert l1 != l2
+    assert l1 == l3
+    l3.value = "value3"
+    assert l1 != l3
+
+    # test as key
+    d = {l3: "testing"}
+    assert d[l3] == "testing"
+
+    assert l1.json() == '{"key": "key1", "value": "value1"}'
+    assert (
+        ScoredLabel(label=l1, score=0.5).json()
+        == '{"label": {"key": "key1", "value": "value1"}, "score": 0.5}'
+    )
+    assert (
+        LabelDistribution(label=l1, count=1).json()
+        == '{"label": {"key": "key1", "value": "value1"}, "count": 1}'
+    )
+    assert (
+        ScoredLabelDistribution(label=l1, scores=[0.1, 0.9], count=2).json()
+        == '{"label": {"key": "key1", "value": "value1"}, "scores": [0.1, 0.9], "count": 2}'
+    )

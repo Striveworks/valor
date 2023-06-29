@@ -275,7 +275,8 @@ class LabeledPredictedSegmentation(Base):
     label = relationship(
         "Label", back_populates="labeled_predicted_segmentations"
     )
-    score: Mapped[float]
+    # this should be null if and only if its a semantic segmentation
+    score: Mapped[float] = mapped_column(nullable=True)
 
     # add datum_id property for easier access
     @property
@@ -459,6 +460,14 @@ class Metric(Base):
         ForeignKey("metadatum.id"), nullable=True
     )
     group = relationship(Metadatum)
+
+    def __str__(self):
+        return f"""
+        id: {self.id}
+        label: {f"key={self.label.key}, value={self.label.value}" if self.label is not None else "None"}
+        type: {self.type}
+        value: {self.value}
+        """
 
 
 class ConfusionMatrix(Base):

@@ -277,12 +277,13 @@ def test_finalize_datasets(crud, client: TestClient):
 @patch("velour_api.main.crud")
 @patch("velour_api.main.schemas")
 def test_get_dataset_labels(schemas, crud, client: TestClient):
+    crud.get_labels_from_dataset.return_value = []
     resp = client.get("/datasets/dsetname/labels")
     assert resp.status_code == 200
-    crud.get_all_labels_in_dataset.assert_called_once()
+    crud.get_labels_from_dataset.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_all_labels_in_dataset",
+        "velour_api.main.crud.get_labels_from_dataset",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("datasets/dsetname/labels")

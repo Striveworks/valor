@@ -87,10 +87,29 @@ class Label(BaseModel):
     def from_key_value_tuple(cls, kv_tuple: tuple[str, str]):
         return cls(key=kv_tuple[0], value=kv_tuple[1])
 
+    def __eq__(self, other):
+        if hasattr(other, "key") and hasattr(other, "value"):
+            return self.key == other.key and self.value == other.value
+        return False
+
+    def __hash__(self) -> int:
+        return hash(f"key:{self.key},value:{self.value}")
+
 
 class ScoredLabel(BaseModel):
     label: Label
     score: float
+
+
+class LabelDistribution(BaseModel):
+    label: Label
+    count: int
+
+
+class ScoredLabelDistribution(BaseModel):
+    label: Label
+    scores: list[float]
+    count: int
 
 
 class DetectionBase(BaseModel):
@@ -238,11 +257,9 @@ class GroundTruthSegmentation(BaseModel):
         return _mask_bytes_to_pil(self.mask_bytes)
 
 
-class PredictedSegmentation(BaseModel):
+class _PredictedSegmentation(BaseModel):
     base64_mask: str = Field(allow_mutation=False)
     image: Image
-    scored_labels: list[ScoredLabel]
-    is_instance: bool
 
     class Config:
         extra = Extra.allow
@@ -271,6 +288,14 @@ class PredictedSegmentation(BaseModel):
         return v
 
 
+class PredictedInstanceSegmentation(_PredictedSegmentation):
+    scored_labels: list[ScoredLabel]
+
+
+class PredictedSemanticSegmentation(_PredictedSegmentation):
+    labels: list[Label]
+
+
 class GroundTruthSegmentationsCreate(BaseModel):
     dataset_name: str
     segmentations: list[GroundTruthSegmentation]
@@ -279,7 +304,9 @@ class GroundTruthSegmentationsCreate(BaseModel):
 class PredictedSegmentationsCreate(BaseModel):
     model_name: str
     dataset_name: str
-    segmentations: list[PredictedSegmentation]
+    segmentations: list[
+        PredictedInstanceSegmentation | PredictedSemanticSegmentation
+    ]
 
 
 class User(BaseModel):
@@ -529,3 +556,12 @@ class ROCAUCMetric(BaseModel):
             "evaluation_settings_id": evaluation_settings_id,
             "group_id": self.group_id,
         }
+
+
+class Info(BaseModel):
+    annotation_type: list[str]
+    number_of_classifications: int
+    number_of_bounding_boxes: int
+    number_of_bounding_polygons: int
+    number_of_segmentation_rasters: int
+    associated: list[str]
