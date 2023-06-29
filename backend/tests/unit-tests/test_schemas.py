@@ -20,9 +20,9 @@ from velour_api.schemas import (
     Label,
     LabelDistribution,
     Model,
-    PredictedSegmentation,
     ScoredLabel,
     ScoredLabelDistribution,
+    _PredictedSegmentation,
 )
 
 
@@ -92,8 +92,8 @@ def test_ground_truth_segmentation_validation(img: Image):
 def test_predicted_segmentation_validation_pos(img: Image):
     base64_mask = _create_b64_mask(mode="1", ext="png")
 
-    pred_seg = PredictedSegmentation(
-        base64_mask=base64_mask, image=img, scored_labels=[], is_instance=True
+    pred_seg = _PredictedSegmentation(
+        base64_mask=base64_mask, image=img, scored_labels=[]
     )
     assert pred_seg.base64_mask == base64_mask
 
@@ -103,7 +103,7 @@ def test_predicted_segmentation_validation_mode_neg(img: Image):
     base64_mask = _create_b64_mask(mode="RGB", ext="png")
 
     with pytest.raises(ValueError) as exc_info:
-        PredictedSegmentation(
+        _PredictedSegmentation(
             base64_mask=base64_mask,
             image=img,
             scored_labels=[],
@@ -117,7 +117,7 @@ def test_predicted_segmentation_validation_format_neg(img: Image):
     base64_mask = _create_b64_mask(mode="1", ext="jpg")
 
     with pytest.raises(ValueError) as exc_info:
-        PredictedSegmentation(
+        _PredictedSegmentation(
             base64_mask=base64_mask,
             image=img,
             scored_labels=[],
