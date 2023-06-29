@@ -18,7 +18,7 @@ classes = [
 tablenames = [v.__tablename__ for v in classes if hasattr(v, "__tablename__")]
 
 
-np.random.seed(29)
+rng = np.random.default_rng(29)
 
 
 def drop_all(db):
@@ -27,7 +27,7 @@ def drop_all(db):
 
 
 def random_mask_bytes(size: tuple[int, int]) -> bytes:
-    mask = np.random.randint(0, 2, size=size, dtype=bool)
+    mask = rng.integers(0, 2, size=size, dtype=bool)
     mask = Image.fromarray(mask)
     f = io.BytesIO()
     mask.save(f, format="PNG")
