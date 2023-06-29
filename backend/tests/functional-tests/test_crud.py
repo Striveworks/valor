@@ -151,7 +151,7 @@ def pred_dets_create(img1: schemas.Image) -> schemas.PredictedDetectionsCreate:
 
 
 @pytest.fixture
-def gt_segs_create(
+def gt_instance_segs_create(
     poly_with_hole, poly_without_hole, img1, img2
 ) -> schemas.GroundTruthSegmentationsCreate:
     return schemas.GroundTruthSegmentationsCreate(
@@ -226,40 +226,6 @@ def pred_instance_segs_create(
                         label=schemas.Label(key="k2", value="v2"), score=0.14
                     )
                 ],
-            ),
-        ],
-    )
-
-
-@pytest.fixture
-def pred_semantic_segs_create(
-    mask_bytes1: bytes,
-    mask_bytes2: bytes,
-    mask_bytes3: bytes,
-    img1: schemas.Image,
-) -> schemas.PredictedSegmentationsCreate:
-    b64_mask1 = b64encode(mask_bytes1).decode()
-    b64_mask2 = b64encode(mask_bytes2).decode()
-    b64_mask3 = b64encode(mask_bytes3).decode()
-    return schemas.PredictedSegmentationsCreate(
-        model_name=model_name,
-        dataset_name=dset_name,
-        segmentations=[
-            schemas.PredictedSemanticSegmentation(
-                base64_mask=b64_mask1,
-                image=img1,
-                labels=[schemas.Label(key="k1", value="v1")],
-            ),
-            schemas.PredictedSemanticSegmentation(
-                base64_mask=b64_mask2,
-                image=img1,
-                labels=[schemas.Label(key="k2", value="v2")],
-            ),
-            schemas.PredictedSemanticSegmentation(
-                base64_mask=b64_mask3,
-                is_instance=True,
-                image=img1,
-                labels=[schemas.Label(key="k2", value="v2")],
             ),
         ],
     )
@@ -659,7 +625,8 @@ def test_create_predicted_classifications_and_delete_model(
 
 
 def test_create_ground_truth_segmentations_and_delete_dataset(
-    db: Session, gt_segs_create: schemas.GroundTruthSegmentationsCreate
+    db: Session,
+    gt_instance_segs_create: schemas.GroundTruthSegmentationsCreate,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -669,7 +636,7 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
 
-    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+    crud.create_groundtruth_segmentations(db, data=gt_instance_segs_create)
 
     assert crud.number_of_rows(db, models.GroundTruthSegmentation) == 4
     assert crud.number_of_rows(db, models.Datum) == 2
@@ -693,7 +660,7 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
 def test_create_predicted_instance_segmentations_check_area_and_delete_model(
     db: Session,
     pred_instance_segs_create: schemas.PredictedSegmentationsCreate,
-    gt_segs_create: schemas.GroundTruthSegmentationsCreate,
+    gt_instance_segs_create: schemas.GroundTruthSegmentationsCreate,
 ):
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
@@ -714,7 +681,7 @@ def test_create_predicted_instance_segmentations_check_area_and_delete_model(
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
-    crud.create_groundtruth_segmentations(db, gt_segs_create)
+    crud.create_groundtruth_segmentations(db, gt_instance_segs_create)
     crud.create_predicted_segmentations(db, pred_instance_segs_create)
 
     # check db has the added predictions
@@ -740,7 +707,7 @@ def test_create_predicted_instance_segmentations_check_area_and_delete_model(
 def test_create_predicted_semantic_segmentations_check_area_and_delete_model(
     db: Session,
     pred_semantic_segs_create: schemas.PredictedSegmentationsCreate,
-    gt_segs_create: schemas.GroundTruthSegmentationsCreate,
+    gt_instance_segs_create: schemas.GroundTruthSegmentationsCreate,
 ):
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
@@ -751,7 +718,7 @@ def test_create_predicted_semantic_segmentations_check_area_and_delete_model(
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
-    crud.create_groundtruth_segmentations(db, gt_segs_create)
+    crud.create_groundtruth_segmentations(db, gt_instance_segs_create)
     crud.create_predicted_segmentations(db, pred_semantic_segs_create)
 
     # check db has the added predictions
@@ -968,7 +935,7 @@ def test_gt_seg_as_mask_or_polys(db: Session):
 
 def test_get_filtered_preds_statement_and_missing_labels(
     db: Session,
-    gt_segs_create: schemas.GroundTruthDetectionsCreate,
+    gt_instance_segs_create: schemas.GroundTruthDetectionsCreate,
     pred_instance_segs_create: schemas.PredictedSegmentationsCreate,
 ):
     crud.create_dataset(
@@ -981,7 +948,7 @@ def test_get_filtered_preds_statement_and_missing_labels(
 
     # add three total ground truth segmentations, two of which are instance segmentations with
     # the same label.
-    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+    crud.create_groundtruth_segmentations(db, data=gt_instance_segs_create)
     # add three total predicted segmentations, two of which are instance segmentations
     crud.create_predicted_segmentations(db, pred_instance_segs_create)
 
@@ -1346,13 +1313,14 @@ def test__raster_to_png_b64(db: Session):
 
 
 def test__instance_segmentations_in_dataset_statement(
-    db: Session, gt_segs_create: schemas.GroundTruthSegmentationsCreate
+    db: Session,
+    gt_instance_segs_create: schemas.GroundTruthSegmentationsCreate,
 ):
     crud.create_dataset(
         db,
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
-    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+    crud.create_groundtruth_segmentations(db, data=gt_instance_segs_create)
 
     areas = db.scalars(
         select(ST_Count(models.GroundTruthSegmentation.shape)).where(
@@ -1400,7 +1368,7 @@ def test__instance_segmentations_in_dataset_statement(
 
 def test___model_instance_segmentation_preds_statement(
     db: Session,
-    gt_segs_create: schemas.GroundTruthSegmentationsCreate,
+    gt_instance_segs_create: schemas.GroundTruthSegmentationsCreate,
     pred_instance_segs_create: schemas.PredictedSegmentationsCreate,
     mask_bytes1: bytes,
     mask_bytes2: bytes,
@@ -1413,7 +1381,7 @@ def test___model_instance_segmentation_preds_statement(
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
-    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+    crud.create_groundtruth_segmentations(db, data=gt_instance_segs_create)
     crud.create_predicted_segmentations(db, pred_instance_segs_create)
 
     areas = db.scalars(
@@ -1997,7 +1965,7 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_no_pre
 
 
 def test__validate_and_update_evaluation_settings_task_type_for_detection_multiple_groundtruth_types(
-    db: Session, gt_dets_create, gt_segs_create
+    db: Session, gt_dets_create, gt_instance_segs_create
 ):
     crud.create_dataset(
         db,
@@ -2008,7 +1976,7 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_multip
     )
 
     crud.create_groundtruth_detections(db, gt_dets_create)
-    crud.create_groundtruth_segmentations(db, gt_segs_create)
+    crud.create_groundtruth_segmentations(db, gt_instance_segs_create)
 
     crud.finalize_dataset(db, dset_name)
     crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)

@@ -1,4 +1,5 @@
 import io
+from base64 import b64encode
 
 import numpy as np
 import pytest
@@ -19,6 +20,9 @@ tablenames = [v.__tablename__ for v in classes if hasattr(v, "__tablename__")]
 
 
 rng = np.random.default_rng(29)
+
+dset_name = "test dataset"
+model_name = "test model"
 
 
 def drop_all(db):
@@ -311,3 +315,37 @@ def predictions(
         [db.get(models.LabeledPredictedDetection, det_id) for det_id in ids]
         for ids in created_ids
     ]
+
+
+@pytest.fixture
+def pred_semantic_segs_create(
+    mask_bytes1: bytes,
+    mask_bytes2: bytes,
+    mask_bytes3: bytes,
+    img1: schemas.Image,
+) -> schemas.PredictedSegmentationsCreate:
+    b64_mask1 = b64encode(mask_bytes1).decode()
+    b64_mask2 = b64encode(mask_bytes2).decode()
+    b64_mask3 = b64encode(mask_bytes3).decode()
+    return schemas.PredictedSegmentationsCreate(
+        model_name=model_name,
+        dataset_name=dset_name,
+        segmentations=[
+            schemas.PredictedSemanticSegmentation(
+                base64_mask=b64_mask1,
+                image=img1,
+                labels=[schemas.Label(key="k1", value="v1")],
+            ),
+            schemas.PredictedSemanticSegmentation(
+                base64_mask=b64_mask2,
+                image=img1,
+                labels=[schemas.Label(key="k2", value="v2")],
+            ),
+            schemas.PredictedSemanticSegmentation(
+                base64_mask=b64_mask3,
+                is_instance=True,
+                image=img1,
+                labels=[schemas.Label(key="k2", value="v2")],
+            ),
+        ],
+    )
