@@ -139,12 +139,17 @@ def _create_gt_segmentation_mappings(
 
 
 def _create_pred_segmentation_mappings(
-    segmentations: list[schemas.PredictedSegmentation],
+    segmentations: list[
+        schemas.PredictedInstanceSegmentation
+        | schemas.PredictedSemanticSegmentation
+    ],
     images: list[models.Datum],
 ) -> list[dict[str, str]]:
     return [
         {
-            "is_instance": segmentation.is_instance,
+            "is_instance": isinstance(
+                segmentation, schemas.PredictedInstanceSegmentation
+            ),
             "shape": segmentation.mask_bytes,
             "datum_id": image.id,
         }
@@ -263,7 +268,9 @@ def _create_pred_dets_or_segs(
     model_name: str,
     dataset_name: str,
     dets_or_segs: list[
-        schemas.PredictedDetection | schemas.PredictedSegmentation
+        schemas.PredictedDetection
+        | schemas.PredictedInstanceSegmentation
+        | schemas.PredictedSemanticSegmentation
     ],
     mapping_method: callable,
     labeled_mapping_method: callable,
@@ -282,12 +289,23 @@ def _create_pred_dets_or_segs(
 
     ids = _bulk_insert_and_return_ids(db, model_cls, mappings)
 
+    def _get_labels_from_pred(
+        pred: schemas.PredictedDetection
+        | schemas.PredictedInstanceSegmentation
+        | schemas.PredictedSemanticSegmentation,
+    ) -> list[schemas.Label]:
+        # gets the label from a prediction. semantic segmentations are treated differently
+        # since right now they only support hard predictions
+        if isinstance(pred, schemas.PredictedSemanticSegmentation):
+            return pred.labels
+        return [scored_label.label for scored_label in pred.scored_labels]
+
     label_tuple_to_id = _create_label_tuple_to_id_dict(
         db,
         [
-            scored_label.label
+            label
             for d_or_s in dets_or_segs
-            for scored_label in d_or_s.scored_labels
+            for label in _get_labels_from_pred(d_or_s)
         ],
     )
 
@@ -348,17 +366,39 @@ def _create_labeled_pred_detection_mappings(
 
 def _create_labeled_pred_segmentation_mappings(
     label_tuple_to_id,
-    gt_det_ids: list[int],
-    segmentations: list[schemas.PredictedSegmentation],
+    gt_seg_ids: list[int],
+    segmentations: list[
+        schemas.PredictedInstanceSegmentation
+        | schemas.PredictedSemanticSegmentation
+    ],
 ):
+    def _mappings_for_single_seg(
+        seg: schemas.PredictedInstanceSegmentation
+        | schemas.PredictedSemanticSegmentation,
+        seg_id,
+    ) -> list[dict]:
+        if isinstance(seg, schemas.PredictedInstanceSegmentation):
+            return [
+                {
+                    "segmentation_id": seg_id,
+                    "label_id": label_tuple_to_id[tuple(scored_label.label)],
+                    "score": scored_label.score,
+                }
+                for scored_label in seg.scored_labels
+            ]
+
+        return [
+            {
+                "segmentation_id": seg_id,
+                "label_id": label_tuple_to_id[tuple(label)],
+            }
+            for label in seg.labels
+        ]
+
     return [
-        {
-            "segmentation_id": gt_id,
-            "label_id": label_tuple_to_id[tuple(scored_label.label)],
-            "score": scored_label.score,
-        }
-        for gt_id, segmentation in zip(gt_det_ids, segmentations)
-        for scored_label in segmentation.scored_labels
+        mapping
+        for gt_id, segmentation in zip(gt_seg_ids, segmentations)
+        for mapping in _mappings_for_single_seg(segmentation, gt_id)
     ]
 
 
@@ -886,7 +926,6 @@ def create_ap_metrics(
     db: Session,
     request_info: schemas.APRequest,
 ) -> int:
-
     dataset_id = get_dataset(db, request_info.settings.dataset_name).id
     model_id = get_model(db, request_info.settings.model_name).id
     min_area = request_info.settings.min_area

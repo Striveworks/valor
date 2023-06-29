@@ -275,7 +275,8 @@ class LabeledPredictedSegmentation(Base):
     label = relationship(
         "Label", back_populates="labeled_predicted_segmentations"
     )
-    score: Mapped[float]
+    # this should be null if and only if its a semantic segmentation
+    score: Mapped[float] = mapped_column(nullable=True)
 
     # add datum_id property for easier access
     @property

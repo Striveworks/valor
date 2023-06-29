@@ -186,7 +186,7 @@ def gt_segs_create(
 
 
 @pytest.fixture
-def pred_segs_create(
+def pred_instance_segs_create(
     mask_bytes1: bytes,
     mask_bytes2: bytes,
     mask_bytes3: bytes,
@@ -199,9 +199,8 @@ def pred_segs_create(
         model_name=model_name,
         dataset_name=dset_name,
         segmentations=[
-            schemas.PredictedSegmentation(
+            schemas.PredictedInstanceSegmentation(
                 base64_mask=b64_mask1,
-                is_instance=True,
                 image=img1,
                 scored_labels=[
                     schemas.ScoredLabel(
@@ -209,19 +208,8 @@ def pred_segs_create(
                     )
                 ],
             ),
-            schemas.PredictedSegmentation(
+            schemas.PredictedInstanceSegmentation(
                 base64_mask=b64_mask2,
-                is_instance=False,
-                image=img1,
-                scored_labels=[
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k2", value="v2"), score=0.97
-                    )
-                ],
-            ),
-            schemas.PredictedSegmentation(
-                base64_mask=b64_mask2,
-                is_instance=True,
                 image=img1,
                 scored_labels=[
                     schemas.ScoredLabel(
@@ -229,7 +217,7 @@ def pred_segs_create(
                     )
                 ],
             ),
-            schemas.PredictedSegmentation(
+            schemas.PredictedInstanceSegmentation(
                 base64_mask=b64_mask3,
                 is_instance=True,
                 image=img1,
@@ -238,6 +226,40 @@ def pred_segs_create(
                         label=schemas.Label(key="k2", value="v2"), score=0.14
                     )
                 ],
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def pred_semantic_segs_create(
+    mask_bytes1: bytes,
+    mask_bytes2: bytes,
+    mask_bytes3: bytes,
+    img1: schemas.Image,
+) -> schemas.PredictedSegmentationsCreate:
+    b64_mask1 = b64encode(mask_bytes1).decode()
+    b64_mask2 = b64encode(mask_bytes2).decode()
+    b64_mask3 = b64encode(mask_bytes3).decode()
+    return schemas.PredictedSegmentationsCreate(
+        model_name=model_name,
+        dataset_name=dset_name,
+        segmentations=[
+            schemas.PredictedSemanticSegmentation(
+                base64_mask=b64_mask1,
+                image=img1,
+                labels=[schemas.Label(key="k1", value="v1")],
+            ),
+            schemas.PredictedSemanticSegmentation(
+                base64_mask=b64_mask2,
+                image=img1,
+                labels=[schemas.Label(key="k2", value="v2")],
+            ),
+            schemas.PredictedSemanticSegmentation(
+                base64_mask=b64_mask3,
+                is_instance=True,
+                image=img1,
+                labels=[schemas.Label(key="k2", value="v2")],
             ),
         ],
     )
@@ -323,7 +345,6 @@ def dataset_model_associations_create(
     dataset_names: list[str],
     model_names: list[str],
 ):
-
     datasets = dataset_names
     models = model_names
 
@@ -669,14 +690,14 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
     assert crud.number_of_rows(db, models.Label) == 2
 
 
-def test_create_predicted_segmentations_check_area_and_delete_model(
+def test_create_predicted_instance_segmentations_check_area_and_delete_model(
     db: Session,
-    pred_segs_create: schemas.PredictedSegmentationsCreate,
+    pred_instance_segs_create: schemas.PredictedSegmentationsCreate,
     gt_segs_create: schemas.GroundTruthSegmentationsCreate,
 ):
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        crud.create_predicted_segmentations(db, pred_segs_create)
+        crud.create_predicted_segmentations(db, pred_instance_segs_create)
     assert "does not exist" in str(exc_info)
 
     crud.create_model(
@@ -685,7 +706,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
-        crud.create_predicted_segmentations(db, pred_segs_create)
+        crud.create_predicted_segmentations(db, pred_instance_segs_create)
     assert "Image with uid" in str(exc_info)
 
     # create dataset, add images, and add predictions
@@ -694,18 +715,55 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(db, gt_segs_create)
-    crud.create_predicted_segmentations(db, pred_segs_create)
+    crud.create_predicted_segmentations(db, pred_instance_segs_create)
 
     # check db has the added predictions
-    assert crud.number_of_rows(db, models.PredictedSegmentation) == 4
-    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 4
+    assert crud.number_of_rows(db, models.PredictedSegmentation) == 3
+    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 3
 
     # grab the first one and check that the area of the raster
     # matches the area of the image
     img = crud.get_image(db, "uid1", dset_name)
     seg = img.predicted_segmentations[0]
     mask = bytes_to_pil(
-        b64decode(pred_segs_create.segmentations[0].base64_mask)
+        b64decode(pred_instance_segs_create.segmentations[0].base64_mask)
+    )
+    assert ops._raster_area(db, seg.shape) == np.array(mask).sum()
+
+    # delete model and check all detections from it are gone
+    crud.delete_model(db, model_name)
+    assert crud.number_of_rows(db, models.Model) == 0
+    assert crud.number_of_rows(db, models.PredictedSegmentation) == 0
+    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 0
+
+
+def test_create_predicted_semantic_segmentations_check_area_and_delete_model(
+    db: Session,
+    pred_semantic_segs_create: schemas.PredictedSegmentationsCreate,
+    gt_segs_create: schemas.GroundTruthSegmentationsCreate,
+):
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
+
+    # create dataset, add images, and add predictions
+    crud.create_dataset(
+        db,
+        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+    )
+    crud.create_groundtruth_segmentations(db, gt_segs_create)
+    crud.create_predicted_segmentations(db, pred_semantic_segs_create)
+
+    # check db has the added predictions
+    assert crud.number_of_rows(db, models.PredictedSegmentation) == 3
+    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 3
+
+    # grab the first one and check that the area of the raster
+    # matches the area of the image
+    img = crud.get_image(db, "uid1", dset_name)
+    seg = img.predicted_segmentations[0]
+    mask = bytes_to_pil(
+        b64decode(pred_semantic_segs_create.segmentations[0].base64_mask)
     )
     assert ops._raster_area(db, seg.shape) == np.array(mask).sum()
 
@@ -911,7 +969,7 @@ def test_gt_seg_as_mask_or_polys(db: Session):
 def test_get_filtered_preds_statement_and_missing_labels(
     db: Session,
     gt_segs_create: schemas.GroundTruthDetectionsCreate,
-    pred_segs_create: schemas.PredictedSegmentationsCreate,
+    pred_instance_segs_create: schemas.PredictedSegmentationsCreate,
 ):
     crud.create_dataset(
         db,
@@ -925,7 +983,7 @@ def test_get_filtered_preds_statement_and_missing_labels(
     # the same label.
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
     # add three total predicted segmentations, two of which are instance segmentations
-    crud.create_predicted_segmentations(db, pred_segs_create)
+    crud.create_predicted_segmentations(db, pred_instance_segs_create)
 
     gts_statement = crud._create._instance_segmentations_in_dataset_statement(
         dset_name
@@ -1343,7 +1401,10 @@ def test__instance_segmentations_in_dataset_statement(
 def test___model_instance_segmentation_preds_statement(
     db: Session,
     gt_segs_create: schemas.GroundTruthSegmentationsCreate,
-    pred_segs_create: schemas.PredictedSegmentationsCreate,
+    pred_instance_segs_create: schemas.PredictedSegmentationsCreate,
+    mask_bytes1: bytes,
+    mask_bytes2: bytes,
+    mask_bytes3: bytes,
 ):
     crud.create_dataset(
         db,
@@ -1353,7 +1414,7 @@ def test___model_instance_segmentation_preds_statement(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
-    crud.create_predicted_segmentations(db, pred_segs_create)
+    crud.create_predicted_segmentations(db, pred_instance_segs_create)
 
     areas = db.scalars(
         select(ST_Count(models.PredictedSegmentation.shape)).where(
@@ -1361,7 +1422,16 @@ def test___model_instance_segmentation_preds_statement(
         )
     ).all()
 
-    assert sorted(areas) == [95, 279, 1077]
+    areas = sorted(areas)
+    assert areas == sorted(
+        [
+            np.array(bytes_to_pil(mask_bytes1)).sum(),
+            np.array(bytes_to_pil(mask_bytes2)).sum(),
+            np.array(bytes_to_pil(mask_bytes3)).sum(),
+        ]
+    )
+
+    min_area, mid_area, max_area = areas
 
     # sanity check no min_area and max_area arguments
     stmt = _model_instance_segmentation_preds_statement(
@@ -1371,22 +1441,22 @@ def test___model_instance_segmentation_preds_statement(
 
     # check min_area arg
     stmt = _model_instance_segmentation_preds_statement(
-        dataset_name=dset_name, model_name=model_name, min_area=94
+        dataset_name=dset_name, model_name=model_name, min_area=min_area - 1
     )
     assert len(db.scalars(stmt).all()) == 3
     stmt = _model_instance_segmentation_preds_statement(
-        dataset_name=dset_name, model_name=model_name, min_area=1078
+        dataset_name=dset_name, model_name=model_name, min_area=max_area + 1
     )
     assert len(db.scalars(stmt).all()) == 0
 
     # check max_area argument
     stmt = _model_instance_segmentation_preds_statement(
-        dataset_name=dset_name, model_name=model_name, max_area=94
+        dataset_name=dset_name, model_name=model_name, max_area=min_area - 1
     )
     assert len(db.scalars(stmt).all()) == 0
 
     stmt = _model_instance_segmentation_preds_statement(
-        dataset_name=dset_name, model_name=model_name, max_area=1078
+        dataset_name=dset_name, model_name=model_name, max_area=max_area + 1
     )
     assert len(db.scalars(stmt).all()) == 3
 
@@ -1394,15 +1464,15 @@ def test___model_instance_segmentation_preds_statement(
     stmt = _model_instance_segmentation_preds_statement(
         dataset_name=dset_name,
         model_name=model_name,
-        min_area=94,
-        max_area=1078,
+        min_area=min_area - 1,
+        max_area=max_area + 1,
     )
     assert len(db.scalars(stmt).all()) == 3
     stmt = _model_instance_segmentation_preds_statement(
         dataset_name=dset_name,
         model_name=model_name,
-        min_area=200,
-        max_area=300,
+        min_area=mid_area - 1,
+        max_area=mid_area + 1,
     )
     assert len(db.scalars(stmt).all()) == 1
 
@@ -1968,7 +2038,7 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_multip
 
 
 def test__validate_and_update_evaluation_settings_task_type_for_detection_multiple_prediction_types(
-    db: Session, gt_dets_create, pred_dets_create, pred_segs_create
+    db: Session, gt_dets_create, pred_dets_create, pred_instance_segs_create
 ):
     crud.create_dataset(
         db,
@@ -1980,7 +2050,7 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_multip
 
     crud.create_groundtruth_detections(db, gt_dets_create)
     crud.create_predicted_detections(db, pred_dets_create)
-    crud.create_predicted_segmentations(db, pred_segs_create)
+    crud.create_predicted_segmentations(db, pred_instance_segs_create)
 
     crud.finalize_dataset(db, dset_name)
     crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
@@ -2168,7 +2238,6 @@ def test_get_labels_from_dataset(
     dataset_names: list[str],
     dataset_model_associations_create,
 ):
-
     # Test get all from dataset 1
     ds1 = get_labels_from_dataset(db, dataset_name=dataset_names[0])
     assert len(ds1) == 2
@@ -2328,7 +2397,6 @@ def test_get_label_distribution_from_model(
     model_names: list[str],
     dataset_model_associations_create,
 ):
-
     md1 = get_label_distribution_from_model(db, model_names[0])
     assert len(md1) == 2
     assert md1[0] == schemas.ScoredLabelDistribution(

@@ -257,11 +257,9 @@ class GroundTruthSegmentation(BaseModel):
         return _mask_bytes_to_pil(self.mask_bytes)
 
 
-class PredictedSegmentation(BaseModel):
+class _PredictedSegmentation(BaseModel):
     base64_mask: str = Field(allow_mutation=False)
     image: Image
-    scored_labels: list[ScoredLabel]
-    is_instance: bool
 
     class Config:
         extra = Extra.allow
@@ -290,6 +288,14 @@ class PredictedSegmentation(BaseModel):
         return v
 
 
+class PredictedInstanceSegmentation(_PredictedSegmentation):
+    scored_labels: list[ScoredLabel]
+
+
+class PredictedSemanticSegmentation(_PredictedSegmentation):
+    labels: list[Label]
+
+
 class GroundTruthSegmentationsCreate(BaseModel):
     dataset_name: str
     segmentations: list[GroundTruthSegmentation]
@@ -298,7 +304,9 @@ class GroundTruthSegmentationsCreate(BaseModel):
 class PredictedSegmentationsCreate(BaseModel):
     model_name: str
     dataset_name: str
-    segmentations: list[PredictedSegmentation]
+    segmentations: list[
+        PredictedInstanceSegmentation | PredictedSemanticSegmentation
+    ]
 
 
 class User(BaseModel):
