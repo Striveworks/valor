@@ -43,6 +43,7 @@ from velour.data_types import (
     PredictedDetection,
     PredictedImageClassification,
     PredictedInstanceSegmentation,
+    PredictedSemanticSegmentation,
     ScoredLabel,
 )
 from velour.metrics import Task
@@ -390,7 +391,9 @@ def pred_poly_dets(
 
 
 @pytest.fixture
-def pred_segs(img1: Image, img2: Image) -> list[PredictedInstanceSegmentation]:
+def pred_instance_segs(
+    img1: Image, img2: Image
+) -> list[PredictedInstanceSegmentation]:
     mask_1 = np.random.randint(0, 2, size=(64, 32), dtype=bool)
     mask_2 = np.random.randint(0, 2, size=(12, 23), dtype=bool)
     return [
@@ -406,6 +409,26 @@ def pred_segs(img1: Image, img2: Image) -> list[PredictedInstanceSegmentation]:
             scored_labels=[
                 ScoredLabel(label=Label(key="k2", value="v2"), score=0.92)
             ],
+            image=img2,
+        ),
+    ]
+
+
+@pytest.fixture
+def pred_semantic_segs(
+    img1: Image, img2: Image
+) -> list[PredictedSemanticSegmentation]:
+    mask_1 = np.random.randint(0, 2, size=(64, 32), dtype=bool)
+    mask_2 = np.random.randint(0, 2, size=(12, 23), dtype=bool)
+    return [
+        PredictedSemanticSegmentation(
+            mask=mask_1,
+            labels=[Label(key="k1", value="v1")],
+            image=img1,
+        ),
+        PredictedSemanticSegmentation(
+            mask=mask_2,
+            labels=[Label(key="k2", value="v2")],
             image=img2,
         ),
     ]
@@ -563,7 +586,7 @@ def _test_create_model_with_preds(
         client.create_image_model(model_name)
     assert "already exists" in str(exc_info)
 
-    # check that if we try to add detections we get an error
+    # check that if we try to add predictions we get an error
     # since we haven't added any images yet
     with pytest.raises(ClientException) as exc_info:
         model.add_predictions(dataset, preds)
@@ -861,18 +884,18 @@ def test_create_gt_segs_as_polys_or_masks(
         )
 
 
-def test_create_model_with_predicted_segmentations(
+def test_create_model_with_predicted_instance_segmentations(
     client: Client,
     gt_segs1: list[GroundTruthInstanceSegmentation],
-    pred_segs: list[PredictedInstanceSegmentation],
+    pred_instance_segs: list[PredictedInstanceSegmentation],
     db: Session,
 ):
     """Tests that we can create a predicted segmentation from a mask array"""
-    labeled_pred_segs = _test_create_model_with_preds(
+    labeled_pred_instance_segs = _test_create_model_with_preds(
         client=client,
         datum_type=DatumTypes.IMAGE,
         gts=gt_segs1,
-        preds=pred_segs,
+        preds=pred_instance_segs,
         preds_model_class=models.LabeledPredictedSegmentation,
         preds_expected_number=2,
         expected_labels_tuples={("k1", "v1"), ("k2", "v2")},
@@ -883,13 +906,48 @@ def test_create_model_with_predicted_segmentations(
     # grab the segmentation from the db, recover the mask, and check
     # its equal to the mask the client sent over
     db_pred = [
-        p for p in labeled_pred_segs if p.segmentation.datum.uid == "uid1"
+        p
+        for p in labeled_pred_instance_segs
+        if p.segmentation.datum.uid == "uid1"
     ][0]
     png_from_db = db.scalar(ST_AsPNG(db_pred.segmentation.shape))
     f = io.BytesIO(png_from_db.tobytes())
     mask_array = np.array(PILImage.open(f))
 
-    np.testing.assert_equal(mask_array, pred_segs[0].mask)
+    np.testing.assert_equal(mask_array, pred_instance_segs[0].mask)
+
+
+def test_create_model_with_predicted_semantic_segmentations(
+    client: Client,
+    gt_segs1: list[GroundTruthInstanceSegmentation],
+    pred_semantic_segs: list[PredictedInstanceSegmentation],
+    db: Session,
+):
+    """Tests that we can create a predicted segmentation from a mask array"""
+    labeled_pred_semantic_segs = _test_create_model_with_preds(
+        client=client,
+        datum_type=DatumTypes.IMAGE,
+        gts=gt_segs1,
+        preds=pred_semantic_segs,
+        preds_model_class=models.LabeledPredictedSegmentation,
+        preds_expected_number=2,
+        expected_labels_tuples={("k1", "v1"), ("k2", "v2")},
+        expected_scores={None},
+        db=db,
+    )
+
+    # grab the segmentation from the db, recover the mask, and check
+    # its equal to the mask the client sent over
+    db_pred = [
+        p
+        for p in labeled_pred_semantic_segs
+        if p.segmentation.datum.uid == "uid1"
+    ][0]
+    png_from_db = db.scalar(ST_AsPNG(db_pred.segmentation.shape))
+    f = io.BytesIO(png_from_db.tobytes())
+    mask_array = np.array(PILImage.open(f))
+
+    np.testing.assert_equal(mask_array, pred_semantic_segs[0].mask)
 
 
 def test_create_image_dataset_with_classifications(
@@ -1694,7 +1752,7 @@ def test_get_info_and_label_distributions(
     pred_clfs: list[PredictedImageClassification],
     pred_dets: list[PredictedDetection],
     pred_poly_dets: list[PredictedDetection],
-    pred_segs: list[PredictedInstanceSegmentation],
+    pred_instance_segs: list[PredictedInstanceSegmentation],
     db: Session,
 ):
     """Tests that the client can retrieve info about datasets and models.
@@ -1719,7 +1777,7 @@ def test_get_info_and_label_distributions(
     md.add_predictions(ds, pred_clfs)
     md.add_predictions(ds, pred_dets)
     md.add_predictions(ds, pred_poly_dets)
-    md.add_predictions(ds, pred_segs)
+    md.add_predictions(ds, pred_instance_segs)
     md.finalize_inferences(ds)
 
     ds_info = ds.get_info()

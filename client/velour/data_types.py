@@ -212,7 +212,6 @@ class GroundTruthSemanticSegmentation(_GroundTruthSegmentation):
 @dataclass
 class _PredictedSegmentation(ABC):
     mask: np.ndarray
-    scored_labels: List[ScoredLabel]
     image: Image
     _is_instance: bool
 
@@ -224,11 +223,13 @@ class _PredictedSegmentation(ABC):
 
 @dataclass
 class PredictedInstanceSegmentation(_PredictedSegmentation):
+    scored_labels: List[ScoredLabel]
     _is_instance: bool = field(default=True, init=False)
 
 
 @dataclass
 class PredictedSemanticSegmentation(_PredictedSegmentation):
+    labels: List[Label]
     _is_instance: bool = field(default=False, init=False)
 
 

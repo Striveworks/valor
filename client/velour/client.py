@@ -638,20 +638,26 @@ class ImageModel(ModelBase):
 
             # Image Segmentation (Semantic, Instance)
             elif isinstance(chunk[0], _PredictedSegmentation):
+
+                def _seg_to_dict(seg: _PredictedSegmentation) -> dict:
+                    ret = {
+                        "base64_mask": _mask_array_to_pil_base64(seg.mask),
+                        "image": asdict(seg.image),
+                    }
+                    if seg._is_instance:
+                        ret["scored_labels"] = [
+                            asdict(scored_label)
+                            for scored_label in seg.scored_labels
+                        ]
+                    else:
+                        ret["labels"] = [asdict(label) for label in seg.labels]
+                    return ret
+
                 payload = {
                     "model_name": self.name,
                     "dataset_name": dataset.name,
                     "segmentations": [
-                        {
-                            "base64_mask": _mask_array_to_pil_base64(seg.mask),
-                            "scored_labels": [
-                                asdict(scored_label)
-                                for scored_label in seg.scored_labels
-                            ],
-                            "image": asdict(seg.image),
-                            "is_instance": seg._is_instance,
-                        }
-                        for seg in predictions
+                        _seg_to_dict(seg) for seg in predictions
                     ],
                 }
 
