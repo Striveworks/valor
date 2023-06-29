@@ -62,7 +62,7 @@ Base = declarative_base()
 
 @retry_connection
 def create_db():
-    from . import models
+    from .backend.data import models
 
     db = make_session()
     # create postgis and raster extensions if they don't exist
