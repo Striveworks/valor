@@ -187,14 +187,14 @@ def gt_instance_segs_create(
 
 @pytest.fixture
 def pred_instance_segs_create(
-    pred_mask_bytes1: bytes,
-    pred_mask_bytes2: bytes,
-    pred_mask_bytes3: bytes,
+    img1_pred_mask_bytes1: bytes,
+    img1_pred_mask_bytes2: bytes,
+    img1_pred_mask_bytes3: bytes,
     img1: schemas.Image,
 ) -> schemas.PredictedSegmentationsCreate:
-    b64_mask1 = b64encode(pred_mask_bytes1).decode()
-    b64_mask2 = b64encode(pred_mask_bytes2).decode()
-    b64_mask3 = b64encode(pred_mask_bytes3).decode()
+    b64_mask1 = b64encode(img1_pred_mask_bytes1).decode()
+    b64_mask2 = b64encode(img1_pred_mask_bytes2).decode()
+    b64_mask3 = b64encode(img1_pred_mask_bytes3).decode()
     return schemas.PredictedSegmentationsCreate(
         model_name=model_name,
         dataset_name=dset_name,
@@ -706,7 +706,7 @@ def test_create_predicted_instance_segmentations_check_area_and_delete_model(
 
 def test_create_predicted_semantic_segmentations_check_area_and_delete_model(
     db: Session,
-    pred_semantic_segs_create: schemas.PredictedSegmentationsCreate,
+    pred_semantic_segs_img1_create: schemas.PredictedSegmentationsCreate,
     gt_instance_segs_create: schemas.GroundTruthSegmentationsCreate,
 ):
     crud.create_model(
@@ -719,7 +719,7 @@ def test_create_predicted_semantic_segmentations_check_area_and_delete_model(
         schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(db, gt_instance_segs_create)
-    crud.create_predicted_segmentations(db, pred_semantic_segs_create)
+    crud.create_predicted_segmentations(db, pred_semantic_segs_img1_create)
 
     # check db has the added predictions
     assert crud.number_of_rows(db, models.PredictedSegmentation) == 3
@@ -730,7 +730,7 @@ def test_create_predicted_semantic_segmentations_check_area_and_delete_model(
     img = crud.get_image(db, "uid1", dset_name)
     seg = img.predicted_segmentations[0]
     mask = bytes_to_pil(
-        b64decode(pred_semantic_segs_create.segmentations[0].base64_mask)
+        b64decode(pred_semantic_segs_img1_create.segmentations[0].base64_mask)
     )
     assert ops._raster_area(db, seg.shape) == np.array(mask).sum()
 
@@ -1370,9 +1370,9 @@ def test___model_instance_segmentation_preds_statement(
     db: Session,
     gt_instance_segs_create: schemas.GroundTruthSegmentationsCreate,
     pred_instance_segs_create: schemas.PredictedSegmentationsCreate,
-    pred_mask_bytes1: bytes,
-    pred_mask_bytes2: bytes,
-    pred_mask_bytes3: bytes,
+    img1_pred_mask_bytes1: bytes,
+    img1_pred_mask_bytes2: bytes,
+    img1_pred_mask_bytes3: bytes,
 ):
     crud.create_dataset(
         db,
@@ -1393,9 +1393,9 @@ def test___model_instance_segmentation_preds_statement(
     areas = sorted(areas)
     assert areas == sorted(
         [
-            np.array(bytes_to_pil(pred_mask_bytes1)).sum(),
-            np.array(bytes_to_pil(pred_mask_bytes2)).sum(),
-            np.array(bytes_to_pil(pred_mask_bytes3)).sum(),
+            np.array(bytes_to_pil(img1_pred_mask_bytes1)).sum(),
+            np.array(bytes_to_pil(img1_pred_mask_bytes2)).sum(),
+            np.array(bytes_to_pil(img1_pred_mask_bytes3)).sum(),
         ]
     )
 

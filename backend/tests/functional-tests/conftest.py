@@ -44,17 +44,17 @@ img2_size = (80, 32)
 
 
 @pytest.fixture
-def pred_mask_bytes1():
+def img1_pred_mask_bytes1():
     return random_mask_bytes(size=img1_size)
 
 
 @pytest.fixture
-def pred_mask_bytes2():
+def img1_pred_mask_bytes2():
     return random_mask_bytes(size=img1_size)
 
 
 @pytest.fixture
-def pred_mask_bytes3():
+def img1_pred_mask_bytes3():
     return random_mask_bytes(size=img1_size)
 
 
@@ -337,15 +337,15 @@ def predictions(
 
 
 @pytest.fixture
-def pred_semantic_segs_create(
-    pred_mask_bytes1: bytes,
-    pred_mask_bytes2: bytes,
-    pred_mask_bytes3: bytes,
+def pred_semantic_segs_img1_create(
+    img1_pred_mask_bytes1: bytes,
+    img1_pred_mask_bytes2: bytes,
+    img1_pred_mask_bytes3: bytes,
     img1: schemas.Image,
 ) -> schemas.PredictedSegmentationsCreate:
-    b64_mask1 = b64encode(pred_mask_bytes1).decode()
-    b64_mask2 = b64encode(pred_mask_bytes2).decode()
-    b64_mask3 = b64encode(pred_mask_bytes3).decode()
+    b64_mask1 = b64encode(img1_pred_mask_bytes1).decode()
+    b64_mask2 = b64encode(img1_pred_mask_bytes2).decode()
+    b64_mask3 = b64encode(img1_pred_mask_bytes3).decode()
     return schemas.PredictedSegmentationsCreate(
         model_name=model_name,
         dataset_name=dset_name,
