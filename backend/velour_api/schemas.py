@@ -1,14 +1,14 @@
 import io
 import json
 from base64 import b64decode
-from typing import Optional
+from typing import Dict, List, Optional
 from uuid import uuid4
 
 import numpy as np
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
-from velour_api.enums import DatumTypes, JobStatus, Task
+from velour_api.enums import DatumTypes, JobStatus, TableStatus, Task
 
 
 def validate_single_polygon(poly: list[tuple[float, float]]):
@@ -25,24 +25,17 @@ def _validate_href(v: str | None):
     return v
 
 
-class _BaseDataset(BaseModel):
+class Dataset(BaseModel):
     name: str
     from_video: bool = False
     href: str = None
     description: str = None
     type: DatumTypes
+    finalized: bool = False
 
     @validator("href")
     def validate_href(cls, v):
         return _validate_href(v)
-
-
-class Dataset(_BaseDataset):
-    draft: bool
-
-
-class DatasetCreate(_BaseDataset):
-    pass
 
 
 class Model(BaseModel):
@@ -87,10 +80,29 @@ class Label(BaseModel):
     def from_key_value_tuple(cls, kv_tuple: tuple[str, str]):
         return cls(key=kv_tuple[0], value=kv_tuple[1])
 
+    def __eq__(self, other):
+        if hasattr(other, "key") and hasattr(other, "value"):
+            return self.key == other.key and self.value == other.value
+        return False
+
+    def __hash__(self) -> int:
+        return hash(f"key:{self.key},value:{self.value}")
+
 
 class ScoredLabel(BaseModel):
     label: Label
     score: float
+
+
+class LabelDistribution(BaseModel):
+    label: Label
+    count: int
+
+
+class ScoredLabelDistribution(BaseModel):
+    label: Label
+    scores: list[float]
+    count: int
 
 
 class DetectionBase(BaseModel):
@@ -341,6 +353,44 @@ class Job(BaseModel):
         extra = Extra.allow
 
 
+class DatasetStatus(BaseModel):
+    status: TableStatus
+    models: Dict[str, TableStatus]
+
+    def next(self) -> List[TableStatus]:
+        if len(self.models) > 0:
+            for model_name in self.models:
+                if self.models[model_name] != TableStatus.READY:
+                    return [TableStatus.EVALUATE]
+            return [TableStatus.EVALUATE, TableStatus.DELETE]
+        else:
+            return self.status.next()
+
+    def __setitem__(self, key, value):
+        assert isinstance(key, str)
+        assert isinstance(value, TableStatus)
+        self.models[key] = value
+
+    def __getitem__(self, key):
+        if key not in self.inferences:
+            return None
+        return self.inferences[key]
+
+
+class VelourStatus(BaseModel):
+    datasets: Dict[str, DatasetStatus]
+
+    def __setitem__(self, key, value):
+        assert isinstance(key, str)
+        assert isinstance(value, DatasetStatus)
+        self.datasets[key] = value
+
+    def __getitem__(self, key):
+        if key not in self.datasets:
+            return None
+        return self.datasets[key]
+
+
 class ClfMetricsRequest(BaseModel):
     settings: EvaluationSettings
 
@@ -529,3 +579,12 @@ class ROCAUCMetric(BaseModel):
             "evaluation_settings_id": evaluation_settings_id,
             "group_id": self.group_id,
         }
+
+
+class Info(BaseModel):
+    annotation_type: list[str]
+    number_of_classifications: int
+    number_of_bounding_boxes: int
+    number_of_bounding_polygons: int
+    number_of_segmentation_rasters: int
+    associated: list[str]

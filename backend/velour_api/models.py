@@ -404,7 +404,7 @@ class Dataset(Base):
         Enum(DatumTypes), default=DatumTypes.IMAGE
     )
     # whether or not the dataset is done being created
-    draft: Mapped[bool] = mapped_column(default=True)
+    finalized: Mapped[bool] = mapped_column(default=False)
     # whether or not the dataset comes from a video
     from_video: Mapped[bool] = mapped_column(default=False)
     datums = relationship("Datum", cascade="all, delete")
@@ -459,6 +459,14 @@ class Metric(Base):
         ForeignKey("metadatum.id"), nullable=True
     )
     group = relationship(Metadatum)
+
+    def __str__(self):
+        return f"""
+        id: {self.id}
+        label: {f"key={self.label.key}, value={self.label.value}" if self.label is not None else "None"}
+        type: {self.type}
+        value: {self.value}
+        """
 
 
 class ConfusionMatrix(Base):

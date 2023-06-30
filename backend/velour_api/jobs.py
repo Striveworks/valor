@@ -7,7 +7,7 @@ import redis
 from velour_api import logger
 from velour_api.enums import JobStatus
 from velour_api.exceptions import JobDoesNotExistError
-from velour_api.schemas import Job
+from velour_api.schemas import Job, VelourStatus
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
@@ -125,3 +125,17 @@ def wrap_metric_computation(fn: callable) -> tuple[Job, callable]:
     return wrap_method_for_job(
         fn=fn, job_attribute_name_for_output="evaluation_settings_id"
     )
+
+
+@needs_redis
+def get_status() -> VelourStatus:
+    json_str = r.get("stateflow")
+    if json_str is None:
+        return VelourStatus(datasets={})
+    info = json.loads(json_str)
+    return VelourStatus(**info)
+
+
+@needs_redis
+def set_status(status: VelourStatus):
+    r.set("stateflow", status.json())

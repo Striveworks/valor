@@ -24,6 +24,25 @@ class DatumTypes(Enum):
 class AnnotationType(Enum):
     CLASSIFICATION = "classification"
     BBOX = "bbox"
-    BOUNDARY = "boundary"
+    POLYGON = "polygon"
     RASTER = "raster"
     UNDEFINED = "undefined"
+
+
+class TableStatus(Enum):
+    CREATE = "creating"
+    READY = "ready"
+    EVALUATE = "evaluating"
+    DELETE = "deleting"
+
+    def next(self):
+        if self == self.CREATE:
+            return [self.CREATE, self.READY, self.DELETE]
+        elif self == self.READY:
+            return [self.READY, self.EVALUATE, self.DELETE]
+        elif self == self.EVALUATE:
+            return [self.EVALUATE, self.READY]
+        elif self == self.DELETE:
+            return [self.DELETE]
+        else:
+            raise NotImplementedError

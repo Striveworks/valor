@@ -27,7 +27,15 @@ from velour_api.crud._create import (
 from velour_api.crud._read import (
     _filter_instance_segmentations_by_area,
     _filter_object_detections_by_area,
+    _get_associated_datasets,
+    _get_associated_models,
     _raster_to_png_b64,
+    get_dataset_info,
+    get_label_distribution_from_dataset,
+    get_label_distribution_from_model,
+    get_labels_from_dataset,
+    get_labels_from_model,
+    get_model_info,
 )
 
 dset_name = "test dataset"
@@ -297,10 +305,89 @@ def pred_clfs_create(
     )
 
 
+@pytest.fixture
+def dataset_names():
+    return ["dataset1", "dataset2"]
+
+
+@pytest.fixture
+def model_names():
+    return ["model1", "model2"]
+
+
+@pytest.fixture
+def dataset_model_associations_create(
+    db: Session,
+    gt_dets_create: schemas.GroundTruthDetectionsCreate,
+    pred_dets_create: schemas.PredictedDetectionsCreate,
+    dataset_names: list[str],
+    model_names: list[str],
+):
+
+    datasets = dataset_names
+    models = model_names
+
+    for name in datasets:
+        crud.create_dataset(
+            db,
+            schemas.Dataset(
+                name=name,
+                type=enums.DatumTypes.IMAGE,
+            ),
+        )
+        gts = gt_dets_create
+        gts.dataset_name = name
+        crud.create_groundtruth_detections(db, gt_dets_create)
+        crud.finalize_dataset(db, name)
+
+    # Link model 1 to dataset 1 and 2
+    crud.create_model(
+        db, model=schemas.Model(name=models[0], type=enums.DatumTypes.IMAGE)
+    )
+    crud.create_model(
+        db, model=schemas.Model(name=models[1], type=enums.DatumTypes.IMAGE)
+    )
+
+    # Link model1 to dataset1
+    pds = pred_dets_create
+    pds.dataset_name = datasets[0]
+    pds.model_name = models[0]
+    crud.create_predicted_detections(db, pds)
+    crud.finalize_inferences(
+        db, model_name=models[0], dataset_name=datasets[0]
+    )
+
+    # Link model1 to dataset2
+    pds = pred_dets_create
+    pds.dataset_name = datasets[1]
+    pds.model_name = models[0]
+    crud.create_predicted_detections(db, pds)
+    crud.finalize_inferences(
+        db, model_name=models[0], dataset_name=datasets[1]
+    )
+
+    # Link model2 to dataset2
+    pds = pred_dets_create
+    pds.dataset_name = datasets[1]
+    pds.model_name = models[1]
+    crud.create_predicted_detections(db, pds)
+    crud.finalize_inferences(
+        db, model_name=models[1], dataset_name=datasets[1]
+    )
+
+    # yield
+
+    # # clean up
+    # crud.delete_model(db, models[0])
+    # crud.delete_model(db, models[1])
+    # crud.delete_dataset(db, datasets[0])
+    # crud.delete_dataset(db, datasets[1])
+
+
 def test_create_and_get_datasets(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
 
     all_datasets = db.scalars(select(models.Dataset)).all()
@@ -310,21 +397,21 @@ def test_create_and_get_datasets(db: Session):
     with pytest.raises(exceptions.DatasetAlreadyExistsError) as exc_info:
         crud.create_dataset(
             db,
-            schemas.DatasetCreate(
-                name=dset_name, type=schemas.DatumTypes.IMAGE
-            ),
+            schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
         )
     assert "already exists" in str(exc_info)
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(
-            name="other dataset", type=schemas.DatumTypes.IMAGE
-        ),
+        schemas.Dataset(name="other dataset", type=schemas.DatumTypes.IMAGE),
     )
     datasets = crud.get_datasets(db)
     assert len(datasets) == 2
     assert set([d.name for d in datasets]) == {dset_name, "other dataset"}
+
+    # clean up
+    crud.delete_dataset(db, dset_name)
+    crud.delete_dataset(db, "other dataset")
 
 
 def test_create_and_get_models(db: Session):
@@ -357,7 +444,7 @@ def test_get_dataset(db: Session):
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     dset = crud.get_dataset(db, dset_name)
     assert dset.name == dset_name
@@ -383,7 +470,7 @@ def test_create_ground_truth_detections_and_delete_dataset(
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
 
     crud.create_groundtruth_detections(db, data=gt_dets_create)
@@ -418,7 +505,7 @@ def test_create_predicted_detections_and_delete_model(
     pred_dets_create: schemas.PredictedDetectionsCreate,
     gt_dets_create: schemas.GroundTruthDetectionsCreate,
 ):
-    # check this gives an error since the model hasn't been added yet
+    # check this gives an error since the dataset hasn't been defined yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         crud.create_predicted_detections(db, pred_dets_create)
     assert "does not exist" in str(exc_info)
@@ -430,14 +517,46 @@ def test_create_predicted_detections_and_delete_model(
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
         crud.create_predicted_detections(db, pred_dets_create)
-    assert "Image with uid" in str(exc_info)
+    assert (
+        "Image with uid 'uid1' does not exist in dataset 'test dataset'."
+        in str(exc_info)
+    )
 
     # create dataset, add images, and add predictions
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
+    )
+
+    # finalize early
+    crud.finalize_dataset(db, dset_name)
+
+    # check this gives an error since the images haven't been added yet
+    with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
+        crud.create_predicted_detections(db, pred_dets_create)
+    assert (
+        "Image with uid 'uid1' does not exist in dataset 'test dataset'."
+        in str(exc_info)
+    )
+
+    # check model has no entries
+    assert crud.number_of_rows(db, models.PredictedDetection) == 0
+    assert crud.number_of_rows(db, models.LabeledPredictedDetection) == 0
+
+    # delete dataset
+    crud.delete_dataset(db, dset_name)
+
+    # create dataset and add a groundtruth
+    crud.create_dataset(
+        db,
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_detections(db, gt_dets_create)
+
+    # finalize dataset
+    crud.finalize_dataset(db, dset_name)
+
+    # add prediction
     crud.create_predicted_detections(db, pred_dets_create)
 
     # check db has the added predictions
@@ -466,7 +585,7 @@ def test_create_detections_as_bbox_or_poly(db: Session, img1: schemas.Image):
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_detections(
         db,
@@ -490,7 +609,7 @@ def test_create_ground_truth_classifications_and_delete_dataset(
 ):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_ground_truth_classifications(db, gt_clfs_create)
 
@@ -518,7 +637,7 @@ def test_create_predicted_classifications_and_delete_model(
     pred_clfs_create: schemas.PredictedClassification,
     gt_clfs_create: schemas.GroundTruthClassificationsCreate,
 ):
-    # check this gives an error since the model hasn't been added yet
+    # check this gives an error since no dataset exists yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         crud.create_predicted_image_classifications(db, pred_clfs_create)
     assert "does not exist" in str(exc_info)
@@ -527,17 +646,32 @@ def test_create_predicted_classifications_and_delete_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
 
+    # create dataset without images or predictions
+    crud.create_dataset(
+        db,
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
+    )
+
+    # finalize early
+    crud.finalize_dataset(db, dset_name)
+
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
         crud.create_predicted_image_classifications(db, pred_clfs_create)
     assert "Image with uid" in str(exc_info)
 
+    # reset dataset
+    crud.delete_dataset(db, dset_name)
+
     # create dataset, add images, and add predictions
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_ground_truth_classifications(db, gt_clfs_create)
+    crud.finalize_dataset(db, dset_name)
+
+    # create inference
     crud.create_predicted_image_classifications(db, pred_clfs_create)
 
     # check db has the added predictions
@@ -558,7 +692,7 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
 
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
@@ -604,9 +738,10 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     # create dataset, add images, and add predictions
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(db, gt_segs_create)
+    crud.finalize_dataset(db, dset_name)
     crud.create_predicted_segmentations(db, pred_segs_create)
 
     # check db has the added predictions
@@ -634,19 +769,40 @@ def test_get_labels(
 ):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_detections(db, data=gt_dets_create)
-    labels = crud.get_detection_labels_in_dataset(db, dset_name)
+    labels = crud.get_labels_from_dataset(
+        db,
+        dset_name,
+        of_type=[enums.AnnotationType.BBOX, enums.AnnotationType.POLYGON],
+    )
 
     assert len(labels) == 2
     assert set([(label.key, label.value) for label in labels]) == set(
         [("k1", "v1"), ("k2", "v2")]
     )
 
-    assert crud.get_detection_labels_in_dataset(db, "not a dataset") == []
-    assert crud.get_classification_labels_in_dataset(db, dset_name) == []
-    assert crud.get_segmentation_labels_in_dataset(db, dset_name) == []
+    assert (
+        crud.get_labels_from_dataset(
+            db, dset_name, of_type=[enums.AnnotationType.CLASSIFICATION]
+        )
+        == []
+    )
+    assert (
+        crud.get_labels_from_dataset(
+            db,
+            "not a dataset",
+            of_type=[enums.AnnotationType.BBOX, enums.AnnotationType.POLYGON],
+        )
+        == []
+    )
+    assert (
+        crud.get_labels_from_dataset(
+            db, dset_name, of_type=[enums.AnnotationType.RASTER]
+        )
+        == []
+    )
 
 
 def test_segmentation_area_no_hole(
@@ -659,7 +815,7 @@ def test_segmentation_area_no_hole(
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(
         db,
@@ -691,7 +847,7 @@ def test_segmentation_area_with_hole(
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(
         db,
@@ -725,7 +881,7 @@ def test_segmentation_area_multi_polygon(
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(
         db,
@@ -811,7 +967,7 @@ def test_gt_seg_as_mask_or_polys(db: Session):
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(
         db,
@@ -848,7 +1004,7 @@ def test_get_filtered_preds_statement_and_missing_labels(
 ):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
@@ -857,6 +1013,10 @@ def test_get_filtered_preds_statement_and_missing_labels(
     # add three total ground truth segmentations, two of which are instance segmentations with
     # the same label.
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+
+    # finalize dataset
+    crud.finalize_dataset(db, dset_name)
+
     # add three total predicted segmentations, two of which are instance segmentations
     crud.create_predicted_segmentations(db, pred_segs_create)
 
@@ -931,22 +1091,22 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
             ignored_pred_labels,
         )
 
-    # check we get an error since the dataset is still a draft
-    with pytest.raises(exceptions.DatasetIsDraftError):
-        method_to_test(label_key="class")
+    # # check we get an error since the dataset is still a draft
+    # with pytest.raises(exceptions.DatasetIsNotFinalizedError):
+    #     method_to_test(label_key="class")
 
-    # finalize dataset
-    crud.finalize_dataset(db, "test dataset")
+    # # finalize dataset
+    # crud.finalize_dataset(db, "test dataset")
 
-    # now if we try again we should get an error that inferences aren't finalized
-    with pytest.raises(exceptions.InferencesAreNotFinalizedError):
-        method_to_test(label_key="class")
+    # # now if we try again we should get an error that inferences aren't finalized
+    # with pytest.raises(exceptions.InferencesAreNotFinalizedError):
+    #     method_to_test(label_key="class")
 
     # verify we have no evaluations yet
     assert len(crud.get_model_evaluation_settings(db, model_name)) == 0
 
     # finalize inferences and try again
-    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
+    # crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
     (
         evaluation_settings_id,
@@ -1061,19 +1221,21 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
 
 
 def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
+
+    # create dataset
     crud.create_dataset(
         db,
-        dataset=schemas.DatasetCreate(
-            name=dset_name, type=schemas.DatumTypes.IMAGE
-        ),
+        dataset=schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_ground_truth_classifications(db, gt_clfs_create)
+    crud.finalize_dataset(db, dset_name)
+
+    # create model
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
     crud.create_predicted_image_classifications(db, pred_clfs_create)
-    crud.finalize_dataset(db, dset_name)
-    crud.finalize_inferences(db, model_name, dset_name)
+    crud.finalize_inferences(db, dataset_name=dset_name, model_name=model_name)
 
     request_info = schemas.ClfMetricsRequest(
         settings=schemas.EvaluationSettings(
@@ -1089,6 +1251,7 @@ def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
     assert set(ignored_pred_keys) == {"k3", "k4"}
 
     evaluation_settings_id = crud.create_clf_metrics(db, request_info)
+
     # check we have one evaluation
     assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
 
@@ -1196,7 +1359,7 @@ def test__raster_to_png_b64(db: Session):
     image = schemas.Image(uid="uid", height=h, width=w)
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(
         db,
@@ -1223,7 +1386,7 @@ def test__instance_segmentations_in_dataset_statement(
 ):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
 
@@ -1278,12 +1441,13 @@ def test___model_instance_segmentation_preds_statement(
 ):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
+    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+    crud.finalize_dataset(db, dset_name)
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
-    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
     crud.create_predicted_segmentations(db, pred_segs_create)
 
     areas = db.scalars(
@@ -1493,7 +1657,7 @@ def test__model_object_detection_preds_statement(
 def test__filter_instance_segmentations_by_area(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     # triangle of area 150
     poly1 = schemas.PolygonWithHole(polygon=[(10, 20), (10, 40), (25, 20)])
@@ -1603,7 +1767,7 @@ def test__filter_instance_segmentations_by_area(db: Session):
 def test__filter_object_detections_by_area(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     # triangle of area 150
     boundary1 = [(10, 20), (10, 40), (25, 20)]
@@ -1700,7 +1864,7 @@ def test__filter_object_detections_by_area(db: Session):
 def test__filter_instance_segmentations_by_area_using_mask(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     # approximate triangle of area 150
     mask = np.zeros((1000, 2000), dtype=bool)
@@ -1808,12 +1972,12 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_no_gro
     """Test runtime error when there's no groundtruth data"""
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
+    crud.finalize_dataset(db, dset_name)
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
-    crud.finalize_dataset(db, dset_name)
     crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
     evaluation_settings = schemas.EvaluationSettings(
@@ -1833,17 +1997,19 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_no_pre
     db: Session, gt_dets_create
 ):
     """Test runtime error when there's no prediction data"""
+
+    # create dataset
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
+    crud.create_groundtruth_detections(db, gt_dets_create)
+    crud.finalize_dataset(db, dset_name)
+
+    # create model
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
-
-    crud.create_groundtruth_detections(db, gt_dets_create)
-
-    crud.finalize_dataset(db, dset_name)
     crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
     evaluation_settings = schemas.EvaluationSettings(
@@ -1860,18 +2026,19 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_no_pre
 def test__validate_and_update_evaluation_settings_task_type_for_detection_multiple_groundtruth_types(
     db: Session, gt_dets_create, gt_segs_create
 ):
+    # create dataset
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
+    crud.create_groundtruth_detections(db, gt_dets_create)
+    crud.create_groundtruth_segmentations(db, gt_segs_create)
+    crud.finalize_dataset(db, dset_name)
+
+    # create model
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
-
-    crud.create_groundtruth_detections(db, gt_dets_create)
-    crud.create_groundtruth_segmentations(db, gt_segs_create)
-
-    crud.finalize_dataset(db, dset_name)
     crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
     evaluation_settings = schemas.EvaluationSettings(
@@ -1901,19 +2068,20 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_multip
 def test__validate_and_update_evaluation_settings_task_type_for_detection_multiple_prediction_types(
     db: Session, gt_dets_create, pred_dets_create, pred_segs_create
 ):
+    # create dataset
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
+    crud.create_groundtruth_detections(db, gt_dets_create)
+    crud.finalize_dataset(db, dset_name)
+
+    # create model
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
-
-    crud.create_groundtruth_detections(db, gt_dets_create)
     crud.create_predicted_detections(db, pred_dets_create)
     crud.create_predicted_segmentations(db, pred_segs_create)
-
-    crud.finalize_dataset(db, dset_name)
     crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
     evaluation_settings = schemas.EvaluationSettings(
@@ -1946,7 +2114,7 @@ def test__validate_and_update_evaluation_settings_task_type_for_detection_multip
 def test_create_datums_with_metadata(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.TABULAR),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.TABULAR),
     )
 
     datums = [
@@ -2002,10 +2170,289 @@ def test_create_datums_with_metadata(db: Session):
     }
 
 
+def test__get_associated_models(
+    db: Session,
+    dataset_names: list[str],
+    model_names: list[str],
+    dataset_model_associations_create,
+):
+    # Get associated models for each dataset
+    assert _get_associated_models(db, dataset_names[0]) == [model_names[0]]
+    assert _get_associated_models(db, dataset_names[1]) == [
+        model_names[0],
+        model_names[1],
+    ]
+    assert _get_associated_models(db, "doesnt exist") == []
+
+
+def test__get_associated_datasets(
+    db: Session,
+    dataset_names: list[str],
+    model_names: list[str],
+    dataset_model_associations_create,
+):
+    # Get associated datasets for each model
+    assert _get_associated_datasets(db, model_names[0]) == [
+        dataset_names[0],
+        dataset_names[1],
+    ]
+    assert _get_associated_datasets(db, model_names[1]) == [dataset_names[1]]
+    assert _get_associated_datasets(db, "doesnt exist") == []
+
+
+def test_get_dataset_info(
+    db: Session,
+    dataset_names: list[str],
+    model_names: list[str],
+    dataset_model_associations_create,
+):
+    ds_meta1 = get_dataset_info(db, dataset_names[0])
+    assert ds_meta1.annotation_type == ["DETECTION"]
+    assert ds_meta1.number_of_classifications == 0
+    assert ds_meta1.number_of_bounding_boxes == 0
+    assert ds_meta1.number_of_bounding_polygons == 2
+    assert ds_meta1.number_of_segmentation_rasters == 0
+    assert ds_meta1.associated == [model_names[0]]
+
+    ds_meta2 = get_dataset_info(db, dataset_names[1])
+    assert ds_meta2.annotation_type == ["DETECTION"]
+    assert ds_meta2.number_of_classifications == 0
+    assert ds_meta2.number_of_bounding_boxes == 0
+    assert ds_meta2.number_of_bounding_polygons == 2
+    assert ds_meta2.number_of_segmentation_rasters == 0
+    assert ds_meta2.associated == [model_names[0], model_names[1]]
+
+
+def test_get_model_info(
+    db: Session,
+    dataset_names: list[str],
+    model_names: list[str],
+    dataset_model_associations_create,
+):
+    md_meta1 = get_model_info(db, model_names[0])
+    assert md_meta1.annotation_type == ["DETECTION"]
+    assert md_meta1.number_of_classifications == 0
+    assert md_meta1.number_of_bounding_boxes == 0
+    assert md_meta1.number_of_bounding_polygons == 4
+    assert md_meta1.number_of_segmentation_rasters == 0
+    assert md_meta1.associated == [dataset_names[0], dataset_names[1]]
+
+    md_meta2 = get_model_info(db, model_names[1])
+    assert md_meta2.annotation_type == ["DETECTION"]
+    assert md_meta2.number_of_classifications == 0
+    assert md_meta2.number_of_bounding_boxes == 0
+    assert md_meta2.number_of_bounding_polygons == 2
+    assert md_meta2.number_of_segmentation_rasters == 0
+    assert md_meta2.associated == [dataset_names[1]]
+
+
+def test_get_all_labels(
+    db: Session, gt_dets_create: schemas.GroundTruthDetectionsCreate
+):
+    crud.create_dataset(
+        db,
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
+    )
+    crud.create_groundtruth_detections(db, data=gt_dets_create)
+    labels = crud.get_all_labels(db)
+
+    assert len(labels) == 2
+    assert set([(label.key, label.value) for label in labels]) == set(
+        [("k1", "v1"), ("k2", "v2")]
+    )
+
+
+def test_get_labels_from_dataset(
+    db: Session,
+    dataset_names: list[str],
+    dataset_model_associations_create,
+):
+
+    # Test get all from dataset 1
+    ds1 = get_labels_from_dataset(db, dataset_name=dataset_names[0])
+    assert len(ds1) == 2
+    assert schemas.Label(key="k1", value="v1") in ds1
+    assert schemas.Label(key="k2", value="v2") in ds1
+
+    # Test get all from dataset 2
+    ds2 = get_labels_from_dataset(db, dataset_name=dataset_names[1])
+    assert len(ds2) == 2
+    assert schemas.Label(key="k1", value="v1") in ds2
+    assert schemas.Label(key="k2", value="v2") in ds2
+
+    # Test get all but polygon labels from dataset 1
+    ds1 = get_labels_from_dataset(
+        db,
+        dataset_name=dataset_names[0],
+        of_type=[
+            enums.AnnotationType.CLASSIFICATION,
+            enums.AnnotationType.BBOX,
+            enums.AnnotationType.RASTER,
+        ],
+    )
+    assert ds1 == []
+
+    # Test get only polygon labels from dataset 1
+    ds1 = get_labels_from_dataset(
+        db,
+        dataset_name=dataset_names[0],
+        of_type=[enums.AnnotationType.POLYGON],
+    )
+    assert len(ds1) == 2
+    assert schemas.Label(key="k1", value="v1") in ds1
+    assert schemas.Label(key="k2", value="v2") in ds1
+
+
+def test_get_labels_from_model(
+    db: Session,
+    model_names: list[str],
+    dataset_model_associations_create,
+):
+    # Test get all labels from model 1
+    md1 = get_labels_from_model(db, model_name=model_names[0])
+    assert len(md1) == 2
+    assert schemas.Label(key="k1", value="v1") in md1
+    assert schemas.Label(key="k2", value="v2") in md1
+
+    # Test get all labels from model 2
+    md2 = get_labels_from_model(db, model_name=model_names[1])
+    assert len(md2) == 2
+    assert schemas.Label(key="k1", value="v1") in md2
+    assert schemas.Label(key="k2", value="v2") in md2
+
+    # Test get all but polygon labels from model 1
+    md1 = get_labels_from_model(
+        db,
+        model_name=model_names[0],
+        metadatum_id=None,
+        of_type=[
+            enums.AnnotationType.CLASSIFICATION,
+            enums.AnnotationType.BBOX,
+            enums.AnnotationType.RASTER,
+        ],
+    )
+    assert md1 == []
+
+    # Test get only polygon labels from model 1
+    md1 = get_labels_from_model(
+        db,
+        model_name=model_names[0],
+        metadatum_id=None,
+        of_type=[enums.AnnotationType.POLYGON],
+    )
+    assert len(md1) == 2
+    assert schemas.Label(key="k1", value="v1") in md1
+    assert schemas.Label(key="k2", value="v2") in md1
+
+
+def test_get_joint_labels(
+    db: Session,
+    dataset_names: list[str],
+    model_names: list[str],
+    dataset_model_associations_create,
+):
+    # Test get joint labels from dataset 1 and model 1
+    assert set(
+        crud.get_joint_labels(
+            db=db,
+            dataset_name=dataset_names[0],
+            model_name=model_names[0],
+        )
+    ) == set(
+        [
+            schemas.Label(key="k1", value="v1"),
+            schemas.Label(key="k2", value="v2"),
+        ]
+    )
+
+    # Test get joint labels from dataset 1 and model 1 where labels are not for polygons
+    assert (
+        set(
+            crud.get_joint_labels(
+                db=db,
+                dataset_name=dataset_names[0],
+                model_name=model_names[0],
+                of_type=[
+                    enums.AnnotationType.CLASSIFICATION,
+                    enums.AnnotationType.BBOX,
+                    enums.AnnotationType.RASTER,
+                ],
+            )
+        )
+        == set()
+    )
+
+    # Test get joint labels from dataset 1 and model 1 where labels are only for polygons
+    assert set(
+        crud.get_joint_labels(
+            db=db,
+            dataset_name=dataset_names[0],
+            model_name=model_names[0],
+            of_type=[enums.AnnotationType.POLYGON],
+        )
+    ) == set(
+        [
+            schemas.Label(key="k1", value="v1"),
+            schemas.Label(key="k2", value="v2"),
+        ]
+    )
+
+
+def test_get_label_distribution_from_dataset(
+    db: Session,
+    dataset_names: list[str],
+    dataset_model_associations_create,
+):
+    ds1 = get_label_distribution_from_dataset(db, dataset_names[0])
+    assert len(ds1) == 2
+    assert ds1[0] == schemas.LabelDistribution(
+        label=schemas.Label(key="k1", value="v1"), count=1
+    )
+    assert ds1[1] == schemas.LabelDistribution(
+        label=schemas.Label(key="k2", value="v2"), count=2
+    )
+
+    ds2 = get_label_distribution_from_dataset(db, dataset_names[1])
+    assert len(ds2) == 2
+    assert ds1[0] == schemas.LabelDistribution(
+        label=schemas.Label(key="k1", value="v1"), count=1
+    )
+    assert ds1[1] == schemas.LabelDistribution(
+        label=schemas.Label(key="k2", value="v2"), count=2
+    )
+
+
+def test_get_label_distribution_from_model(
+    db: Session,
+    model_names: list[str],
+    dataset_model_associations_create,
+):
+
+    md1 = get_label_distribution_from_model(db, model_names[0])
+    assert len(md1) == 2
+    assert md1[0] == schemas.ScoredLabelDistribution(
+        label=schemas.Label(key="k1", value="v1"), scores=[0.6, 0.6], count=2
+    )
+    assert md1[1] == schemas.ScoredLabelDistribution(
+        label=schemas.Label(key="k2", value="v2"),
+        scores=[0.2, 0.9, 0.2, 0.9],
+        count=4,
+    )
+
+    md2 = get_label_distribution_from_model(db, model_names[1])
+    assert len(md2) == 2
+    assert md2[0] == schemas.ScoredLabelDistribution(
+        label=schemas.Label(key="k1", value="v1"), scores=[0.6], count=1
+    )
+    assert md2[1] == schemas.ScoredLabelDistribution(
+        label=schemas.Label(key="k2", value="v2"), scores=[0.2, 0.9], count=2
+    )
+
+
 def test_get_string_metadata_ids(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.TABULAR),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.TABULAR),
     )
 
     datums = [

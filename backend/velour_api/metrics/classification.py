@@ -3,7 +3,7 @@ from sqlalchemy import Float, Integer
 from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
 
-from velour_api import crud, models, schemas
+from velour_api import crud, enums, models, schemas
 from velour_api.models import PredictedClassification
 
 
@@ -186,8 +186,11 @@ def roc_auc(
 
     labels = [
         label
-        for label in crud.get_classification_labels_in_dataset(
-            db, dataset_name, metadatum_id
+        for label in crud.get_labels_from_dataset(
+            db,
+            dataset_name,
+            metadatum_id,
+            of_type=[enums.AnnotationType.CLASSIFICATION],
         )
         if label.key == label_key
     ]
@@ -341,9 +344,17 @@ def compute_clf_metrics(
         | schemas.F1Metric
     ],
 ]:
-    gt_labels = crud.get_classification_labels_in_dataset(db, dataset_name)
-    pred_labels = crud.get_classification_prediction_labels(
-        db, model_name=model_name, dataset_name=dataset_name
+    gt_labels = crud.get_labels_from_dataset(
+        db,
+        dataset_name,
+        metadatum_id=None,
+        of_type=[enums.AnnotationType.CLASSIFICATION],
+    )
+    pred_labels = crud.get_labels_from_model(
+        db,
+        model_name=model_name,
+        metadatum_id=None,
+        of_type=[enums.AnnotationType.CLASSIFICATION],
     )
     labels = gt_labels + pred_labels
     unique_label_keys = set([label.key for label in labels])

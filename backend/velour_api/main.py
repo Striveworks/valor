@@ -43,7 +43,11 @@ def create_groundtruth_detections(
 ) -> list[int]:
     try:
         return crud.create_groundtruth_detections(db=db, data=data)
-    except exceptions.DatasetIsFinalizedError as e:
+    except (
+        exceptions.DatasetIsFinalizedError,
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -59,6 +63,11 @@ def create_predicted_detections(
         exceptions.ImageDoesNotExistError,
     ) as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except (
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.post(
@@ -73,7 +82,11 @@ def create_groundtruth_segmentations(
             f"got: {len(data.segmentations)} segmentations for dataset {data.dataset_name}"
         )
         return crud.create_groundtruth_segmentations(db=db, data=data)
-    except exceptions.DatasetIsFinalizedError as e:
+    except (
+        exceptions.DatasetIsFinalizedError,
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -88,6 +101,11 @@ def create_predicted_segmentations(
         return crud.create_predicted_segmentations(db=db, data=data)
     except exceptions.ImageDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except (
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.post(
@@ -99,7 +117,11 @@ def create_groundtruth_classifications(
 ) -> list[int]:
     try:
         return crud.create_ground_truth_classifications(db=db, data=data)
-    except exceptions.DatasetIsFinalizedError as e:
+    except (
+        exceptions.DatasetIsFinalizedError,
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -114,6 +136,11 @@ def create_predicted_classifications(
         return crud.create_predicted_image_classifications(db=db, data=data)
     except exceptions.ImageDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except (
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.get(
@@ -126,12 +153,14 @@ def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
 @app.post(
     "/datasets", status_code=201, dependencies=[Depends(token_auth_scheme)]
 )
-def create_dataset(
-    dataset: schemas.DatasetCreate, db: Session = Depends(get_db)
-):
+def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     try:
         crud.create_dataset(db=db, dataset=dataset)
-    except exceptions.DatasetAlreadyExistsError as e:
+    except (
+        exceptions.DatasetAlreadyExistsError,
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -155,9 +184,38 @@ def get_dataset(
 )
 def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     try:
-        crud.finalize_dataset(db, dataset_name)
+        crud.finalize_dataset(db=db, dataset_name=dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except (
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@app.put(
+    "/datasets/{dataset_name}/finalize/{model_name}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def finalize_inferences(
+    dataset_name: str, model_name: str, db: Session = Depends(get_db)
+):
+    try:
+        crud.finalize_inferences(
+            db=db, model_name=model_name, dataset_name=dataset_name
+        )
+    except (
+        exceptions.DatasetDoesNotExistError,
+        exceptions.ModelDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.get(
@@ -169,12 +227,37 @@ def get_dataset_labels(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
     try:
-        labels = crud.get_all_labels_in_dataset(db, dataset_name)
+        return crud.get_labels_from_dataset(db, dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    return [
-        schemas.Label(key=label.key, value=label.value) for label in labels
-    ]
+
+
+@app.get(
+    "/datasets/{dataset_name}/labels/distribution",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_label_distribution_from_dataset(
+    dataset_name: str, db: Session = Depends(get_db)
+) -> list[schemas.LabelDistribution]:
+    try:
+        return crud.get_label_distribution_from_dataset(db, dataset_name)
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/datasets/{dataset_name}/info",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_dataset_info(
+    dataset_name: str, db: Session = Depends(get_db)
+) -> schemas.Info:
+    try:
+        return crud.get_dataset_info(db, dataset_name)
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
@@ -186,13 +269,14 @@ def get_dataset_images(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Image]:
     try:
-        images = crud.get_datums_in_dataset(db, dataset_name)
+        return [
+            schemas.Image(
+                uid=image.uid, height=image.height, width=image.width
+            )
+            for image in crud.get_datums_in_dataset(db, dataset_name)
+        ]
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    return [
-        schemas.Image(uid=image.uid, height=image.height, width=image.width)
-        for image in images
-    ]
 
 
 @app.get(
@@ -266,11 +350,17 @@ def delete_dataset(
         crud.get_dataset(db, dataset_name)
 
         job, wrapped_fn = jobs.wrap_method_for_job(crud.delete_dataset)
+
         background_tasks.add_task(wrapped_fn, db=db, dataset_name=dataset_name)
 
         return job.uid
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except (
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.get("/models", status_code=200, dependencies=[Depends(token_auth_scheme)])
@@ -284,7 +374,11 @@ def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
 def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     try:
         crud.create_model(db=db, model=model)
-    except exceptions.ModelAlreadyExistsError as e:
+    except (
+        exceptions.ModelAlreadyExistsError,
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -292,6 +386,10 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
 def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     try:
         model = crud.get_model(db=db, model_name=model_name)
+
+        # check if dataset is finalized
+        crud.check_if_finalized(db=db, model_name=model_name)
+
         return schemas.Model(
             **{k: getattr(model, k) for k in schemas.Model.__fields__}
         )
@@ -301,7 +399,59 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 
 @app.delete("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
 def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
-    return crud.delete_model(db, model_name)
+    try:
+        return crud.delete_model(db=db, model_name=model_name)
+    except (exceptions.DatasetDoesNotExistError,) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@app.get(
+    "/models/{model_name}/labels",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_model_labels(
+    model_name: str, db: Session = Depends(get_db)
+) -> list[schemas.Label]:
+    try:
+        return crud.get_labels_from_model(db, model_name)
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/models/{model_name}/labels/distribution",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_label_distribution_from_model(
+    model_name: str, db: Session = Depends(get_db)
+) -> list[schemas.ScoredLabelDistribution]:
+    try:
+        return crud.get_label_distribution_from_model(
+            db, model_name=model_name
+        )
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/models/{model_name}/info",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_model_info(
+    model_name: str, db: Session = Depends(get_db)
+) -> schemas.Info:
+    try:
+        return crud.get_model_info(db, model_name)
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
@@ -367,6 +517,9 @@ def create_ap_metrics(
     db: Session = Depends(get_db),
 ) -> schemas.CreateAPMetricsResponse:
     try:
+
+        crud.check_if_finalized(db, request_info=data)
+
         (
             missing_pred_labels,
             ignored_pred_labels,
@@ -389,10 +542,16 @@ def create_ap_metrics(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except (
-        exceptions.DatasetIsDraftError,
+        exceptions.DatasetIsNotFinalizedError,
+        exceptions.ModelIsNotFinalizedError,
         exceptions.InferencesAreNotFinalizedError,
     ) as e:
         raise HTTPException(status_code=405, detail=str(e))
+    except (
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.post(
@@ -427,6 +586,11 @@ def create_clf_metrics(
         exceptions.InferencesAreNotFinalizedError,
     ) as e:
         raise HTTPException(status_code=405, detail=str(e))
+    except (
+        exceptions.StateflowError,
+        exceptions.InvalidStateTransitionError,
+    ) as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.get("/labels", status_code=200, dependencies=[Depends(token_auth_scheme)])
@@ -468,7 +632,14 @@ def get_job_metrics(
         return crud.get_metrics_from_evaluation_settings_id(
             db, job.evaluation_settings_id
         )
-    except exceptions.JobDoesNotExistError as e:
+    except (
+        exceptions.JobDoesNotExistError,
+        AttributeError,
+    ) as e:
+        if "'NoneType' object has no attribute 'metrics'" in str(e):
+            raise HTTPException(
+                status_code=404, detail="Evaluation ID does not exist."
+            )
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -514,23 +685,4 @@ def get_job_settings(
             db, job.evaluation_settings_id
         )
     except exceptions.JobDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.put(
-    "/models/{model_name}/inferences/{dataset_name}/finalize",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-)
-def finalize_inferences(
-    model_name: str, dataset_name: str, db: Session = Depends(get_db)
-):
-    try:
-        crud.finalize_inferences(
-            db, model_name=model_name, dataset_name=dataset_name
-        )
-    except (
-        exceptions.DatasetDoesNotExistError,
-        exceptions.ModelDoesNotExistError,
-    ) as e:
         raise HTTPException(status_code=404, detail=str(e))

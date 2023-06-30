@@ -6,7 +6,7 @@ from PIL import Image
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
-from velour_api import crud, models, schemas
+from velour_api import crud, jobs, models, schemas
 from velour_api.database import Base, create_db, make_session
 
 # get all velour table names
@@ -22,6 +22,12 @@ np.random.seed(29)
 
 
 def drop_all(db):
+
+    # clear redis
+    jobs.connect_to_redis()
+    jobs.r.flushdb()
+
+    # clear postgres
     db.execute(text(f"DROP TABLE {', '.join(tablenames)};"))
     db.commit()
 
@@ -120,7 +126,7 @@ def groundtruths(
     dataset_name = "test dataset"
     crud.create_dataset(
         db,
-        dataset=schemas.DatasetCreate(
+        dataset=schemas.Dataset(
             name=dataset_name, type=schemas.DatumTypes.IMAGE
         ),
     )
@@ -193,6 +199,9 @@ def groundtruths(
         )
         for gts in db_gts_per_img
     ]
+
+    crud.finalize_dataset(db, dataset_name=dataset_name)
+
     return [
         [db.get(models.LabeledGroundTruthDetection, det_id) for det_id in ids]
         for ids in created_ids
@@ -298,6 +307,9 @@ def predictions(
         )
         for preds in db_preds_per_img
     ]
+
+    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
+
     return [
         [db.get(models.LabeledPredictedDetection, det_id) for det_id in ids]
         for ids in created_ids
