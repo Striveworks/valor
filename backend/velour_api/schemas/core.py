@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 
 from pydantic import BaseModel, validator
@@ -8,56 +9,53 @@ from velour_api.schemas.label import Label, ScoredLabel
 from velour_api.schemas.metadata import MetaDatum
 
 
-def _validate_href(v: str | None):
-    if v is None:
+def format_name(name: str):
+    allowed_special = ['-', '_']
+    pattern = re.compile(f"[^a-zA-Z0-9{''.join(allowed_special)}]")
+    return re.sub(pattern, '', name)
+
+
+class DatasetID(BaseModel):
+    id: int = None
+    name: str
+
+    @validator("name")
+    def check_name_valid(cls, v):
+        v = format_name(v)
+        if len(v) == 0:
+            raise ValueError
         return v
-    if not (v.startswith("http://") or v.startswith("https://")):
-        raise ValueError("`href` must start with http:// or https://")
-    return v
+
+
+class ModelID(BaseModel):
+    id: int = None
+    name: str
+
+    @validator("name")
+    def check_name_valid(cls, v):
+        v = format_name(v)
+        if len(v) == 0:
+            raise ValueError
+        return v
 
 
 class Datum(BaseModel):
+    dataset_id: DatasetID
     uid: str
     metadata: list[MetaDatum] = []
-
-
-class Dataset(BaseModel):
-    name: str
-    href: str = None
-    description: str = None
-    type: DatumTypes
-    label: Label
-    metadata: list[MetaDatum]
-
-    @validator("href")
-    def validate_href(cls, v):
-        return _validate_href(v)
-
-
-class Model(BaseModel):
-    name: str
-    href: str = None
-    description: str = None
-    type: DatumTypes
-    metadata: list[MetaDatum]
-
-    @validator("href")
-    def validate_href(cls, v):
-        return _validate_href(v)
-
+    
 
 class GroundTruth(BaseModel):
     task_type: Optional[TaskType] = None
     labels: list[Label]
     annotation: Optional[GeometricAnnotation] = None
-    metadata: list[MetaDatum]
 
 
 class Prediction(BaseModel):
+    model_id: ModelID
     task_type: TaskType
     scored_labels: list[ScoredLabel]
     annotation: Optional[GeometricAnnotation] = None
-    metadata: list[MetaDatum]
 
     @validator("scored_labels")
     def check_sum_to_one(cls, v: list[ScoredLabel]):
@@ -77,22 +75,24 @@ class Prediction(BaseModel):
         return v
 
 
-class GroundTruthDatumCreate(BaseModel):
+class DatumGroundTruth(BaseModel):
     datum: Datum
     gts: list[GroundTruth]
 
 
-class DatasetCreate(BaseModel):
-    dataset: Dataset
-    datums: list[GroundTruthDatumCreate]
-
-
-class PredictionDatumCreate(BaseModel):
+class DatumPrediction(BaseModel):
     datum: Datum
     pds: list[Prediction]
 
 
-class ModelCreate(BaseModel):
-    model: Model
-    dataset: Dataset
-    datums: list[PredictionDatumCreate]
+class Dataset(BaseModel):
+    dataset_id: DatasetID
+    datums: list[DatumGroundTruth]
+    metadata: list[MetaDatum]
+
+
+class Model(BaseModel):
+    model_id: ModelID
+    dataset_id: DatasetID
+    datums: list[DatumPrediction]
+    metadata: list[MetaDatum]
