@@ -48,7 +48,7 @@ def check_if_finalized(
             raise exceptions.DatasetDoesNotExistError
 
     if model_name is not None:
-        if (
+        if not (
             db.scalars(
                 select(models.Model).where(
                     models.Model.name.contains(model_name)
@@ -56,10 +56,6 @@ def check_if_finalized(
             ).all()
             != []
         ):
-            pass
-            # if not get_model(db, model_name).finalized:
-            # raise exceptions.ModelIsNotFinalizedError
-        else:
             raise exceptions.ModelDoesNotExistError
 
 

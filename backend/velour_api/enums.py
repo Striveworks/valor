@@ -36,13 +36,13 @@ class TableStatus(Enum):
     DELETE = "deleting"
 
     def next(self):
-        if self == self.CREATE:
+        if self.value == self.CREATE:
             return [self.CREATE, self.READY, self.DELETE]
-        elif self == self.READY:
+        elif self.value == self.READY:
             return [self.READY, self.EVALUATE, self.DELETE]
-        elif self == self.EVALUATE:
+        elif self.value == self.EVALUATE:
             return [self.EVALUATE, self.READY]
-        elif self == self.DELETE:
+        elif self.value == self.DELETE:
             return [self.DELETE]
         else:
             raise NotImplementedError
