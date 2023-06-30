@@ -5,6 +5,7 @@ from sqlalchemy import Select, TextualSelect, and_, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+import velour_api.stateflow as stateflow
 from velour_api import enums, exceptions, models, schemas
 from velour_api.metrics import compute_ap_metrics, compute_clf_metrics
 
@@ -191,7 +192,7 @@ def _add_datums_to_dataset(
     """Adds images defined by URIs to a dataset (creating the Image rows if they don't exist),
     returning the list of image ids"""
     dset = get_dataset(db, dataset_name=dataset_name)
-    if not dset.draft:
+    if dset.finalized:
         raise exceptions.DatasetIsFinalizedError(dataset_name)
     dset_id = dset.id
 
@@ -362,6 +363,7 @@ def _create_labeled_pred_segmentation_mappings(
     ]
 
 
+@stateflow.create_dataset
 def create_groundtruth_detections(
     db: Session,
     data: schemas.GroundTruthDetectionsCreate,
@@ -377,6 +379,7 @@ def create_groundtruth_detections(
     )
 
 
+@stateflow.create_model
 def create_predicted_detections(
     db: Session, data: schemas.PredictedDetectionsCreate
 ) -> list[int]:
@@ -398,6 +401,7 @@ def create_predicted_detections(
     )
 
 
+@stateflow.create_dataset
 def create_groundtruth_segmentations(
     db: Session,
     data: schemas.GroundTruthSegmentationsCreate,
@@ -413,6 +417,7 @@ def create_groundtruth_segmentations(
     )
 
 
+@stateflow.create_model
 def create_predicted_segmentations(
     db: Session, data: schemas.PredictedSegmentationsCreate
 ) -> list[int]:
@@ -434,6 +439,7 @@ def create_predicted_segmentations(
     )
 
 
+@stateflow.create_dataset
 def create_ground_truth_classifications(
     db: Session, data: schemas.GroundTruthClassificationsCreate
 ):
@@ -456,6 +462,7 @@ def create_ground_truth_classifications(
     )
 
 
+@stateflow.create_model
 def create_predicted_image_classifications(
     db: Session, data: schemas.PredictedClassificationsCreate
 ):
@@ -528,7 +535,8 @@ def _get_or_create_row(
     return db_element
 
 
-def create_dataset(db: Session, dataset: schemas.DatasetCreate):
+@stateflow.create_dataset
+def create_dataset(db: Session, dataset: schemas.Dataset):
     """Creates a dataset
 
     Raises
@@ -537,13 +545,14 @@ def create_dataset(db: Session, dataset: schemas.DatasetCreate):
         if the dataset name already exists
     """
     try:
-        db.add(models.Dataset(draft=True, **dataset.dict()))
+        db.add(models.Dataset(**dataset.dict()))
         db.commit()
     except IntegrityError:
         db.rollback()
         raise exceptions.DatasetAlreadyExistsError(dataset.name)
 
 
+@stateflow.create_model
 def create_model(db: Session, model: schemas.Model):
     """Creates a dataset
 
@@ -696,22 +705,6 @@ def get_filtered_preds_statement_and_missing_labels(
     )
 
 
-def _check_dataset_and_inferences_finalized(
-    db: Session, evaluation_settings: schemas.EvaluationSettings
-):
-    dataset_name = evaluation_settings.dataset_name
-    model_name = evaluation_settings.model_name
-    if get_dataset(db, dataset_name).draft:
-        raise exceptions.DatasetIsDraftError(dataset_name)
-    # check that inferences are finalized
-    if not _check_finalized_inferences(
-        db, model_name=model_name, dataset_name=dataset_name
-    ):
-        raise exceptions.InferencesAreNotFinalizedError(
-            dataset_name=dataset_name, model_name=model_name
-        )
-
-
 def _validate_and_update_evaluation_settings_task_type_for_detection(
     db: Session, evaluation_settings: schemas.EvaluationSettings
 ) -> None:
@@ -719,7 +712,6 @@ def _validate_and_update_evaluation_settings_task_type_for_detection(
     datasets themselves. In either case verify that these task types are compatible
     for detection evaluation.
     """
-    _check_dataset_and_inferences_finalized(db, evaluation_settings)
 
     dataset_name = evaluation_settings.dataset_name
     model_name = evaluation_settings.model_name
@@ -859,7 +851,6 @@ def validate_create_ap_metrics(
 def validate_create_clf_metrics(
     db: Session, request_info: schemas.ClfMetricsRequest
 ) -> tuple[list[str], list[str]]:
-    _check_dataset_and_inferences_finalized(db, request_info.settings)
 
     gts_statement = _classifications_in_dataset_statement(
         request_info.settings.dataset_name
@@ -882,6 +873,7 @@ def validate_create_clf_metrics(
     return missing_pred_keys, ignored_pred_keys
 
 
+@stateflow.evaluate
 def create_ap_metrics(
     db: Session,
     request_info: schemas.APRequest,
@@ -941,6 +933,7 @@ def create_ap_metrics(
     return mp.id
 
 
+@stateflow.evaluate
 def create_clf_metrics(
     db: Session,
     request_info: schemas.ClfMetricsRequest,
@@ -987,45 +980,3 @@ def create_clf_metrics(
     db.commit()
 
     return es.id
-
-
-def _check_finalized_inferences(
-    db: Session, model_name: str, dataset_name: str
-) -> bool:
-    """Checks if inferences of model given by `model_name` on dataset given by `dataset_name`
-    are finalized
-    """
-    model_id = get_model(db, model_name).id
-    dataset_id = get_dataset(db, dataset_name).id
-    entries = db.scalars(
-        select(models.FinalizedInferences).where(
-            and_(
-                models.FinalizedInferences.model_id == model_id,
-                models.FinalizedInferences.dataset_id == dataset_id,
-            )
-        )
-    ).all()
-    # this should never happen because of uniqueness constraint
-    if len(entries) > 1:
-        raise RuntimeError(
-            f"got multiple entries for finalized inferences with model id {model_id} "
-            f"and dataset id {dataset_id}, which should never happen"
-        )
-
-    return len(entries) != 0
-
-
-def finalize_inferences(
-    db: Session, model_name: str, dataset_name: str
-) -> None:
-    dataset = get_dataset(db, dataset_name)
-    if dataset.draft:
-        raise exceptions.DatasetIsDraftError(dataset_name)
-
-    model_id = get_model(db, model_name).id
-    dataset_id = dataset.id
-
-    db.add(
-        models.FinalizedInferences(dataset_id=dataset_id, model_id=model_id)
-    )
-    db.commit()

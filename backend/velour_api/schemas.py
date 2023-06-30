@@ -1,14 +1,14 @@
 import io
 import json
 from base64 import b64decode
-from typing import Optional
+from typing import Dict, List, Optional
 from uuid import uuid4
 
 import numpy as np
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
-from velour_api.enums import DatumTypes, JobStatus, Task
+from velour_api.enums import DatumTypes, JobStatus, TableStatus, Task
 
 
 def validate_single_polygon(poly: list[tuple[float, float]]):
@@ -25,24 +25,17 @@ def _validate_href(v: str | None):
     return v
 
 
-class _BaseDataset(BaseModel):
+class Dataset(BaseModel):
     name: str
     from_video: bool = False
     href: str = None
     description: str = None
     type: DatumTypes
+    finalized: bool = False
 
     @validator("href")
     def validate_href(cls, v):
         return _validate_href(v)
-
-
-class Dataset(_BaseDataset):
-    draft: bool
-
-
-class DatasetCreate(_BaseDataset):
-    pass
 
 
 class Model(BaseModel):
@@ -358,6 +351,44 @@ class Job(BaseModel):
 
     class Config:
         extra = Extra.allow
+
+
+class DatasetStatus(BaseModel):
+    status: TableStatus
+    models: Dict[str, TableStatus]
+
+    def next(self) -> List[TableStatus]:
+        if len(self.models) > 0:
+            for model_name in self.models:
+                if self.models[model_name] != TableStatus.READY:
+                    return [TableStatus.EVALUATE]
+            return [TableStatus.EVALUATE, TableStatus.DELETE]
+        else:
+            return self.status.next()
+
+    def __setitem__(self, key, value):
+        assert isinstance(key, str)
+        assert isinstance(value, TableStatus)
+        self.models[key] = value
+
+    def __getitem__(self, key):
+        if key not in self.inferences:
+            return None
+        return self.inferences[key]
+
+
+class VelourStatus(BaseModel):
+    datasets: Dict[str, DatasetStatus]
+
+    def __setitem__(self, key, value):
+        assert isinstance(key, str)
+        assert isinstance(value, DatasetStatus)
+        self.datasets[key] = value
+
+    def __getitem__(self, key):
+        if key not in self.datasets:
+            return None
+        return self.datasets[key]
 
 
 class ClfMetricsRequest(BaseModel):
