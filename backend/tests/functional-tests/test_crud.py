@@ -717,6 +717,14 @@ def test_create_ground_truth_segmentations_and_delete_dataset(
 
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
 
+    with pytest.raises(RuntimeError) as exc_info:
+        crud.create_groundtruth_segmentations(db, data=gt_segs_create)
+
+    assert (
+        "Semantic segmentation with label key='k1' value='v1' for image with uid uid2 already exists."
+        in str(exc_info)
+    )
+
     assert crud.number_of_rows(db, models.GroundTruthSegmentation) == 4
     assert crud.number_of_rows(db, models.Datum) == 2
     assert crud.number_of_rows(db, models.LabeledGroundTruthSegmentation) == 4
