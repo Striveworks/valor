@@ -1,5 +1,10 @@
+import io
+from base64 import b64encode
+
+import numpy as np
 import pytest
-from sqlalchemy import select
+from PIL import Image
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from velour_api import crud, models, schemas
@@ -9,6 +14,7 @@ from velour_api.metrics.classification import (
     confusion_matrix_at_label_key,
     roc_auc,
 )
+from velour_api.metrics.segmentation import tp_count
 from velour_api.models import (
     LabeledGroundTruthDetection,
     LabeledPredictedDetection,
@@ -16,6 +22,12 @@ from velour_api.models import (
 
 dataset_name = "test dataset"
 model_name = "test model"
+
+
+def bytes_to_array(b: bytes) -> np.ndarray:
+    f = io.BytesIO(b)
+    img = Image.open(f)
+    return np.array(img)
 
 
 @pytest.fixture
@@ -110,6 +122,50 @@ def classification_test_data(db: Session):
     )
 
 
+@pytest.fixture
+def gt_semantic_segs_create(
+    img1_gt_mask_bytes1: bytes,
+    img1_gt_mask_bytes2: bytes,
+    img1_gt_mask_bytes3: bytes,
+    img2_gt_mask_bytes1,
+    img1: schemas.Image,
+    img2: schemas.Image,
+) -> schemas.GroundTruthSegmentationsCreate:
+    b64_mask1 = b64encode(img1_gt_mask_bytes1).decode()
+    b64_mask2 = b64encode(img1_gt_mask_bytes2).decode()
+    b64_mask3 = b64encode(img1_gt_mask_bytes3).decode()
+    b64_mask4 = b64encode(img2_gt_mask_bytes1).decode()
+    return schemas.GroundTruthSegmentationsCreate(
+        dataset_name=dataset_name,
+        segmentations=[
+            schemas.GroundTruthSegmentation(
+                is_instance=False,
+                shape=b64_mask1,
+                image=img1,
+                labels=[schemas.Label(key="k1", value="v1")],
+            ),
+            schemas.GroundTruthSegmentation(
+                is_instance=False,
+                shape=b64_mask2,
+                image=img1,
+                labels=[schemas.Label(key="k1", value="v1")],
+            ),
+            schemas.GroundTruthSegmentation(
+                is_instance=False,
+                shape=b64_mask3,
+                image=img1,
+                labels=[schemas.Label(key="k3", value="v3")],
+            ),
+            schemas.GroundTruthSegmentation(
+                is_instance=False,
+                shape=b64_mask4,
+                image=img2,
+                labels=[schemas.Label(key="k1", value="v1")],
+            ),
+        ],
+    )
+
+
 def round_dict_(d: dict, prec: int) -> None:
     """Modifies a dictionary in place by rounding every float in it
     to three decimal places
@@ -126,7 +182,6 @@ def test_compute_ap_metrics(
     groundtruths: list[list[LabeledGroundTruthDetection]],
     predictions: list[list[LabeledPredictedDetection]],
 ):
-
     model_name = "test model"
     dataset_name = "test dataset"
 
@@ -413,3 +468,66 @@ def test_roc_auc_groupby_metadata(db, classification_test_data):
         )
         == (0.5 + 2 / 3) / 2
     )
+
+
+def test_tp_count(
+    db: Session,
+    gt_semantic_segs_create: schemas.GroundTruthSegmentationsCreate,
+    pred_semantic_segs_img1_create: schemas.PredictedSegmentationsCreate,
+    pred_semantic_segs_img2_create: schemas.PredictedSegmentationsCreate,
+    img1_gt_mask_bytes1: bytes,
+    img1_gt_mask_bytes2: bytes,
+    img1_pred_mask_bytes1: bytes,
+    img2_gt_mask_bytes1: bytes,
+    img2_pred_mask_bytes1: bytes,
+):
+    crud.create_dataset(
+        db,
+        schemas.DatasetCreate(
+            name=dataset_name, type=schemas.DatumTypes.IMAGE
+        ),
+    )
+    crud.create_model(
+        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+    )
+    crud.create_groundtruth_segmentations(db, gt_semantic_segs_create)
+    crud.create_predicted_segmentations(db, pred_semantic_segs_img1_create)
+    crud.create_predicted_segmentations(db, pred_semantic_segs_img2_create)
+
+    # preds = db.scalars(select(models.PredictedSegmentation)).all()
+    # gts = db.scalars(select(models.GroundTruthSegmentation)).all()
+
+    # pred = preds[0]
+    # gt = gts[0]
+
+    # from geoalchemy2.functions import ST_Area, ST_Count, ST_MapAlgebra
+
+    # c = db.scalar(
+    #     ST_Count(ST_MapAlgebra(gt.shape, pred.shape, "[rast1]*[rast2]"))
+    # )
+
+    # gt_mask1_arr = bytes_to_array(img1_gt_mask_bytes1)
+    # pred_mask1_arr = bytes_to_array(img1_pred_mask_bytes1)
+    # assert c == (gt_mask1_arr * pred_mask1_arr).sum()
+
+    # check we get the correct tp count for the label ("k1", "v1").
+    # For img1 this has groundtruth img1_gt_mask_bytes1, img1_gt_mask_bytes2 and prediction img1_pred_mask_bytes1
+    # and for img2 this has groundtruth img2_gt_mask_bytes1 and prediction img2_pred_mask_bytes1
+
+    label_id = db.scalar(
+        select(models.Label).where(
+            and_(models.Label.key == "k1", models.Label.value == "v1")
+        )
+    ).id
+
+    tps = tp_count(db, dataset_name, model_name, label_id).all()
+
+    # img1_gt_mask_arr1 = bytes_to_array(img1_gt_mask_bytes1)
+    # img1_gt_mask_arr2 = bytes_to_array(img1_gt_mask_bytes2)
+    # img1_pred_mask_arr1 = (bytes_to_array(img1_pred_mask_bytes1),)
+    # img2_gt_mask_arr1 = bytes_to_array(img2_gt_mask_bytes1)
+    # img2_pred_mask_arr1 = bytes_to_array(img2_pred_mask_bytes1)
+
+    # img1_tps = (img1_gt_mask_arr1 *  )
+
+    print(len(tps))

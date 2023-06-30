@@ -59,18 +59,33 @@ def img1_pred_mask_bytes3():
 
 
 @pytest.fixture
-def gt_mask_bytes1():
+def img1_gt_mask_bytes1():
     return random_mask_bytes(size=img1_size)
 
 
 @pytest.fixture
-def gt_mask_bytes2():
+def img1_gt_mask_bytes2():
     return random_mask_bytes(size=img1_size)
 
 
 @pytest.fixture
-def gt_mask_bytes3():
+def img1_gt_mask_bytes3():
     return random_mask_bytes(size=img1_size)
+
+
+@pytest.fixture
+def img2_pred_mask_bytes1():
+    return random_mask_bytes(size=img2_size)
+
+
+@pytest.fixture
+def img2_pred_mask_bytes2():
+    return random_mask_bytes(size=img2_size)
+
+
+@pytest.fixture
+def img2_gt_mask_bytes1():
+    return random_mask_bytes(size=img2_size)
 
 
 @pytest.fixture
@@ -365,6 +380,32 @@ def pred_semantic_segs_img1_create(
                 is_instance=True,
                 image=img1,
                 labels=[schemas.Label(key="k2", value="v2")],
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def pred_semantic_segs_img2_create(
+    img2_pred_mask_bytes1: bytes,
+    img2_pred_mask_bytes2: bytes,
+    img2: schemas.Image,
+) -> schemas.PredictedSegmentationsCreate:
+    b64_mask1 = b64encode(img2_pred_mask_bytes1).decode()
+    b64_mask2 = b64encode(img2_pred_mask_bytes2).decode()
+    return schemas.PredictedSegmentationsCreate(
+        model_name=model_name,
+        dataset_name=dset_name,
+        segmentations=[
+            schemas.PredictedSemanticSegmentation(
+                base64_mask=b64_mask1,
+                image=img2,
+                labels=[schemas.Label(key="k1", value="v1")],
+            ),
+            schemas.PredictedSemanticSegmentation(
+                base64_mask=b64_mask2,
+                image=img2,
+                labels=[schemas.Label(key="k2", value="v3")],
             ),
         ],
     )
