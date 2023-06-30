@@ -308,6 +308,26 @@ class PredictedSegmentationsCreate(BaseModel):
         PredictedInstanceSegmentation | PredictedSemanticSegmentation
     ]
 
+    @validator("segmentations")
+    def check_single_label(
+        cls,
+        segs: PredictedInstanceSegmentation | PredictedSemanticSegmentation,
+    ):
+        uid_to_labels = {}
+        for seg in segs:
+            if isinstance(seg, PredictedSemanticSegmentation):
+                if seg.image.uid not in uid_to_labels:
+                    uid_to_labels[seg.image.uid] = []
+
+                for label in seg.labels:
+                    if label in uid_to_labels[seg.image.uid]:
+                        raise ValueError(
+                            f"Got multiple semantic segmentations with label {label}"
+                        )
+                    else:
+                        uid_to_labels[seg.image.uid].append(label)
+        return segs
+
 
 class User(BaseModel):
     email: str = None

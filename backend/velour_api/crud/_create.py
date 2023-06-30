@@ -1,7 +1,7 @@
 import json
 
 from geoalchemy2.functions import ST_GeomFromGeoJSON
-from sqlalchemy import Select, TextualSelect, and_, insert, select, text
+from sqlalchemy import Select, TextualSelect, and_, func, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -230,6 +230,15 @@ def _add_datums_to_dataset(
     return db_datums
 
 
+def _validate_groundtruth_semantic_segmentation(
+    db: Session,
+    seg: schemas.PredictedSemanticSegmentation,
+    model_name: str,
+    dataset_name: str,
+):
+    pass
+
+
 def _create_gt_dets_or_segs(
     db: Session,
     dataset_name: str,
@@ -261,6 +270,39 @@ def _create_gt_dets_or_segs(
     return _bulk_insert_and_return_ids(
         db, labeled_model_cls, labeled_gt_mappings
     )
+
+
+def _validate_predicted_semantic_segmentation(
+    db: Session,
+    seg: schemas.PredictedSemanticSegmentation,
+    model_name: str,
+    dataset_name: str,
+):
+    """Checks if a semantic segmentation for the given image and label has already been added or not"""
+    for label in seg.labels:
+        if (
+            db.scalar(
+                select(func.count(models.LabeledPredictedSegmentation.id))
+                .join(models.PredictedSegmentation)
+                .join(models.Datum)
+                .join(models.Label)
+                .join(models.Dataset)
+                .join(models.Model)
+                .where(
+                    and_(
+                        models.Datum.uid == seg.image.uid,
+                        models.Label.key == label.key,
+                        models.Label.value == label.value,
+                        models.Dataset.name == dataset_name,
+                        models.Model.name == model_name,
+                    )
+                )
+            )
+            > 0
+        ):
+            raise RuntimeError(
+                f"Semantic segmentation with label {label} for image with uid {seg.image.uid} already exists."
+            )
 
 
 def _create_pred_dets_or_segs(
@@ -462,6 +504,17 @@ def create_predicted_segmentations(
     ModelDoesNotExistError
         if the model with name `data.model_name` does not exist
     """
+
+    for seg in data.segmentations:
+        # check if any already exist
+        if isinstance(seg, schemas.PredictedSemanticSegmentation):
+            _validate_predicted_semantic_segmentation(
+                db,
+                seg=seg,
+                model_name=data.model_name,
+                dataset_name=data.dataset_name,
+            )
+
     return _create_pred_dets_or_segs(
         db=db,
         model_name=data.model_name,

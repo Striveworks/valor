@@ -257,9 +257,8 @@ def pred_semantic_segs_create(
             ),
             schemas.PredictedSemanticSegmentation(
                 base64_mask=b64_mask3,
-                is_instance=True,
                 image=img1,
-                labels=[schemas.Label(key="k2", value="v2")],
+                labels=[schemas.Label(key="k3", value="v3")],
             ),
         ],
     )
@@ -753,6 +752,12 @@ def test_create_predicted_semantic_segmentations_check_area_and_delete_model(
     )
     crud.create_groundtruth_segmentations(db, gt_segs_create)
     crud.create_predicted_segmentations(db, pred_semantic_segs_create)
+    with pytest.raises(RuntimeError) as exc_info:
+        crud.create_predicted_segmentations(db, pred_semantic_segs_create)
+    assert (
+        "Semantic segmentation with label key='k1' value='v1' for image with uid uid1 already exists."
+        in str(exc_info)
+    )
 
     # check db has the added predictions
     assert crud.number_of_rows(db, models.PredictedSegmentation) == 3
