@@ -17,3 +17,4 @@ site/*
 *.ipynb
 !coco-panoptic.ipynb
 !tabular.ipynb
+.venv
