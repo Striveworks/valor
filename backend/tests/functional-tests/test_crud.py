@@ -761,8 +761,8 @@ def test_create_predicted_instance_segmentations_check_area_and_delete_model(
         schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(db, gt_segs_create)
-    crud.create_predicted_segmentations(db, pred_instance_segs_create)
     crud.finalize_dataset(db, dset_name)
+    crud.create_predicted_segmentations(db, pred_instance_segs_create)
 
     # check db has the added predictions
     assert crud.number_of_rows(db, models.PredictedSegmentation) == 3
@@ -796,9 +796,10 @@ def test_create_predicted_semantic_segmentations_check_area_and_delete_model(
     # create dataset, add images, and add predictions
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_groundtruth_segmentations(db, gt_segs_create)
+    crud.finalize_dataset(db, dset_name)
     crud.create_predicted_segmentations(db, pred_semantic_segs_create)
     with pytest.raises(RuntimeError) as exc_info:
         crud.create_predicted_segmentations(db, pred_semantic_segs_create)
@@ -1284,7 +1285,6 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
 
 
 def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
-
     # create dataset
     crud.create_dataset(
         db,
@@ -1511,10 +1511,10 @@ def test___model_instance_segmentation_preds_statement(
     )
     crud.create_groundtruth_segmentations(db, data=gt_segs_create)
     crud.finalize_dataset(db, dset_name)
+
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
     )
-    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
     crud.create_predicted_segmentations(db, pred_instance_segs_create)
 
     areas = db.scalars(
