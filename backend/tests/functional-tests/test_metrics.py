@@ -22,9 +22,7 @@ model_name = "test model"
 def classification_test_data(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(
-            name=dataset_name, type=schemas.DatumTypes.IMAGE
-        ),
+        schemas.Dataset(name=dataset_name, type=schemas.DatumTypes.IMAGE),
     )
     crud.create_model(
         db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
@@ -100,6 +98,7 @@ def classification_test_data(db: Session):
             dataset_name=dataset_name, classifications=gts
         ),
     )
+    crud.finalize_dataset(db, dataset_name=dataset_name)
     crud.create_predicted_image_classifications(
         db,
         data=schemas.PredictedClassificationsCreate(
@@ -107,6 +106,9 @@ def classification_test_data(db: Session):
             dataset_name=dataset_name,
             classifications=preds,
         ),
+    )
+    crud.finalize_inferences(
+        db, model_name=model_name, dataset_name=dataset_name
     )
 
 
