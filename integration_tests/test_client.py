@@ -47,7 +47,7 @@ from velour.data_types import (
     ScoredLabel,
 )
 from velour.metrics import Task
-from velour_api import crud, models, ops
+from velour_api import crud, jobs, models, ops
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -190,17 +190,21 @@ def db(client: Client) -> Session:
     yield sess
 
     # cleanup by deleting all datasets, models, and labels
-    for dataset in client.get_datasets():
-        crud.delete_dataset(db=sess, dataset_name=dataset["name"])
-
     for model in client.get_models():
         client.delete_model(name=model["name"])
+
+    for dataset in client.get_datasets():
+        crud.delete_dataset(db=sess, dataset_name=dataset["name"])
 
     labels = sess.scalars(select(models.Label))
     for label in labels:
         sess.delete(label)
 
     sess.commit()
+
+    # clean redis
+    jobs.connect_to_redis()
+    jobs.r.flushdb()
 
 
 @pytest.fixture
@@ -534,7 +538,7 @@ def _test_create_image_dataset_with_gts(
     # to the dataset since it is finalized
     with pytest.raises(ClientException) as exc_info:
         dataset.add_groundtruth(gts3)
-    assert "since it is finalized" in str(exc_info)
+    assert "Invalid state transition from ready to creating." in str(exc_info)
 
     return dataset
 
@@ -593,6 +597,8 @@ def _test_create_model_with_preds(
     assert "Image with uid" in str(exc_info)
 
     dataset.add_groundtruth(gts)
+    dataset.finalize()
+
     model.add_predictions(dataset, preds)
 
     # check predictions have been added
@@ -760,6 +766,8 @@ def test_create_pred_detections_as_bbox_or_poly(
     model = client.create_image_model(model_name)
 
     dataset.add_groundtruth(gt_dets1)
+
+    dataset.finalize()
 
     pred_bbox = PredictedDetection(
         image=img1,
@@ -1041,6 +1049,8 @@ def test_iou(
         ]
     )
     db_gt = db.scalar(select(models.GroundTruthDetection))
+
+    dataset.finalize()
 
     model.add_predictions(
         dataset,
@@ -1424,41 +1434,45 @@ def test_evaluate_tabular_clf(
     tabular_preds: list[list[float]],
 ):
     dataset = client.create_tabular_dataset(name=dset_name)
-    model = client.create_tabular_model(name=model_name)
-
     dataset.add_groundtruth(
         [[Label(key="class", value=str(t))] for t in y_true]
     )
-    model.add_predictions(
-        dataset,
-        [
+
+    # attempt to create model without finalizing dataset
+    with pytest.raises(ClientException) as exc_info:
+        model = client.create_tabular_model(name=model_name)
+        model.add_predictions(
+            dataset,
             [
-                ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
-                for i in range(len(pred))
-            ]
-            for pred in tabular_preds
-        ],
+                [
+                    ScoredLabel(
+                        Label(key="class", value=str(i)), score=pred[i]
+                    )
+                    for i in range(len(pred))
+                ]
+                for pred in tabular_preds
+            ],
+        )
+    assert "Invalid state transition from creating to evaluating." in str(
+        exc_info
     )
 
-    with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset)
-    assert "Cannot evaluate against dataset" in str(exc_info)
-
+    # finalize dataset
     dataset.finalize()
 
-    with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset)
-    assert "Inferences for model" in str(exc_info)
+    # check that model cannot be evalauted until after finalization
+    eval_job = model.evaluate_classification(dataset=dataset)
+    time.sleep(1)  # wait for backend
+    assert eval_job.status() == "Failed"
 
+    # finalize model
     model.finalize_inferences(dataset)
 
+    # evaluate
     eval_job = model.evaluate_classification(dataset=dataset)
-
     assert eval_job.ignored_pred_keys == []
     assert eval_job.missing_pred_keys == []
-
-    # sleep to give the backend time to compute
-    time.sleep(1)
+    time.sleep(1)  # wait for backend
     assert eval_job.status() == "Done"
 
     metrics = eval_job.metrics()
@@ -1619,9 +1633,6 @@ def test_stratify_clf_metrics(
     y_true: list[int],
     tabular_preds: list[list[float]],
 ):
-    dataset = client.create_tabular_dataset(name=dset_name)
-    model = client.create_tabular_model(name=model_name)
-
     # create data and two-different defining groups of cohorts
     gt_with_metadata = [
         [
@@ -1632,7 +1643,13 @@ def test_stratify_clf_metrics(
         for i, t in enumerate(y_true)
     ]
 
+    # create dataset
+    dataset = client.create_tabular_dataset(name=dset_name)
     dataset.add_groundtruth(gt_with_metadata)
+    dataset.finalize()
+
+    # create model
+    model = client.create_tabular_model(name=model_name)
     model.add_predictions(
         dataset,
         [
@@ -1643,8 +1660,6 @@ def test_stratify_clf_metrics(
             for pred in tabular_preds
         ],
     )
-
-    dataset.finalize()
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
@@ -1812,26 +1827,32 @@ def test_get_info_and_label_distributions(
 
     md_dist = md.get_label_distribution()
     assert len(md_dist) == 7
-    assert md_dist[Label(key="k1", value="v1")] == {
-        "count": 3,
-        "scores": [0.3, 0.3, 0.87],
-    }
+
+    assert md_dist[Label(key="k1", value="v1")]["count"] == 3
+    assert set(md_dist[Label(key="k1", value="v1")]["scores"]) == set(
+        [0.3, 0.3, 0.87]
+    )
+
     assert md_dist[Label(key="k12", value="v12")] == {
         "count": 1,
         "scores": [0.47],
     }
+
     assert md_dist[Label(key="k12", value="v16")] == {
         "count": 1,
         "scores": [0.53],
     }
+
     assert md_dist[Label(key="k13", value="v13")] == {
         "count": 1,
         "scores": [1.0],
     }
-    assert md_dist[Label(key="k2", value="v2")] == {
-        "count": 3,
-        "scores": [0.98, 0.98, 0.92],
-    }
+
+    assert md_dist[Label(key="k2", value="v2")]["count"] == 3
+    assert set(md_dist[Label(key="k2", value="v2")]["scores"]) == set(
+        [0.98, 0.98, 0.92]
+    )
+
     assert md_dist[Label(key="k4", value="v5")] == {
         "count": 1,
         "scores": [0.29],

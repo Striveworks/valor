@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from velour_api.enums import JobStatus
 from velour_api.schemas import (
     ConfusionMatrix,
-    DatasetCreate,
+    Dataset,
     DatumMetadatum,
     DatumTypes,
     GroundTruthDetection,
@@ -281,12 +281,10 @@ def test_predicted_segmentations_create_validation():
 
 def test_dataset_validation():
     with pytest.raises(ValueError) as exc_info:
-        DatasetCreate(name="name", href="not valid", type=DatumTypes.IMAGE)
+        Dataset(name="name", href="not valid", type=DatumTypes.IMAGE)
     assert "`href` must" in str(exc_info)
 
-    assert DatasetCreate(
-        name="name", href="http://a.com", type=DatumTypes.IMAGE
-    )
+    assert Dataset(name="name", href="http://a.com", type=DatumTypes.IMAGE)
 
 
 def test_model_validation():

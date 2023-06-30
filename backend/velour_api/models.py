@@ -405,7 +405,7 @@ class Dataset(Base):
         Enum(DatumTypes), default=DatumTypes.IMAGE
     )
     # whether or not the dataset is done being created
-    draft: Mapped[bool] = mapped_column(default=True)
+    finalized: Mapped[bool] = mapped_column(default=False)
     # whether or not the dataset comes from a video
     from_video: Mapped[bool] = mapped_column(default=False)
     datums = relationship("Datum", cascade="all, delete")

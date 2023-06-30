@@ -427,9 +427,10 @@ class ModelBase:
         self.href = href
         self.description = description
 
-    def finalize_inferences(self, dataset: DatasetBase) -> None:
+    def finalize_inferences(self, dataset: DatasetBase):
+        # @TODO Make sure datatypes match
         return self.client._requests_put_rel_host(
-            f"models/{self.name}/inferences/{dataset.name}/finalize"
+            f"datasets/{dataset.name}/finalize/{self.name}"
         ).json()
 
     def evaluate_classification(

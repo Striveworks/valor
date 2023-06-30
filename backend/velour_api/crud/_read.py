@@ -22,6 +22,43 @@ from sqlalchemy.orm import Session
 from velour_api import enums, exceptions, models, schemas
 
 
+def check_if_finalized(
+    db: Session,
+    request_info: schemas.APRequest = None,
+    dataset_name=None,
+    model_name=None,
+):
+
+    if request_info is not None:
+        dataset_name = request_info.settings.dataset_name
+        model_name = request_info.settings.model_name
+
+    if dataset_name is not None:
+        if (
+            db.scalars(
+                select(models.Dataset).where(
+                    models.Dataset.name.contains(dataset_name)
+                )
+            ).all()
+            != []
+        ):
+            if not get_dataset(db, dataset_name).finalized:
+                raise exceptions.DatasetIsNotFinalizedError
+        else:
+            raise exceptions.DatasetDoesNotExistError
+
+    if model_name is not None:
+        if not (
+            db.scalars(
+                select(models.Model).where(
+                    models.Model.name.contains(model_name)
+                )
+            ).all()
+            != []
+        ):
+            raise exceptions.ModelDoesNotExistError
+
+
 def _get_associated_models(db: Session, dataset_name: str) -> list[str]:
 
     subquery_classifications = (
