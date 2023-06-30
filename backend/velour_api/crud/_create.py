@@ -231,13 +231,51 @@ def _add_datums_to_dataset(
     return db_datums
 
 
-def _validate_groundtruth_semantic_segmentation(
+def _validate_semantic_segmentation(
     db: Session,
-    seg: schemas.PredictedSemanticSegmentation,
-    model_name: str,
+    seg: schemas.PredictedSemanticSegmentation
+    | schemas.GroundTruthSegmentation,
     dataset_name: str,
+    model_name: str = None,
 ):
-    pass
+    if isinstance(seg, schemas.PredictedSemanticSegmentation):
+        seg_model = models.PredictedSegmentation
+        labeled_seg_model = models.LabeledPredictedSegmentation
+    elif isinstance(seg, schemas.GroundTruthSegmentation):
+        seg_model = models.GroundTruthSegmentation
+        labeled_seg_model = models.LabeledGroundTruthSegmentation
+    else:
+        raise ValueError(f"Got unexpected type {type(seg)}")
+
+    for label in seg.labels:
+        q = (
+            select(func.count(labeled_seg_model.id))
+            .join(seg_model)
+            .join(models.Datum)
+            .join(models.Label)
+            .join(models.Dataset)
+        )
+        wheres = (
+            models.Datum.uid == seg.image.uid,
+            models.Label.key == label.key,
+            models.Label.value == label.value,
+            models.Dataset.name == dataset_name,
+            seg_model.is_instance == False,  # noqa: E712
+        )
+
+        if isinstance(seg, schemas.PredictedSemanticSegmentation):
+            if model_name is None:
+                raise ValueError(
+                    "Expected `model_name` since `seg` is a predicted segmentation."
+                )
+            # need to filter by model
+            q = q.join(models.Model)
+            wheres = wheres + (models.Model.name == model_name,)
+
+        if db.scalar(q.where(and_(*wheres))) > 0:
+            raise RuntimeError(
+                f"Semantic segmentation with label {label} for image with uid {seg.image.uid} already exists."
+            )
 
 
 def _create_gt_dets_or_segs(
@@ -271,39 +309,6 @@ def _create_gt_dets_or_segs(
     return _bulk_insert_and_return_ids(
         db, labeled_model_cls, labeled_gt_mappings
     )
-
-
-def _validate_predicted_semantic_segmentation(
-    db: Session,
-    seg: schemas.PredictedSemanticSegmentation,
-    model_name: str,
-    dataset_name: str,
-):
-    """Checks if a semantic segmentation for the given image and label has already been added or not"""
-    for label in seg.labels:
-        if (
-            db.scalar(
-                select(func.count(models.LabeledPredictedSegmentation.id))
-                .join(models.PredictedSegmentation)
-                .join(models.Datum)
-                .join(models.Label)
-                .join(models.Dataset)
-                .join(models.Model)
-                .where(
-                    and_(
-                        models.Datum.uid == seg.image.uid,
-                        models.Label.key == label.key,
-                        models.Label.value == label.value,
-                        models.Dataset.name == dataset_name,
-                        models.Model.name == model_name,
-                    )
-                )
-            )
-            > 0
-        ):
-            raise RuntimeError(
-                f"Semantic segmentation with label {label} for image with uid {seg.image.uid} already exists."
-            )
 
 
 def _create_pred_dets_or_segs(
@@ -488,6 +493,15 @@ def create_groundtruth_segmentations(
     db: Session,
     data: schemas.GroundTruthSegmentationsCreate,
 ) -> list[int]:
+    for seg in data.segmentations:
+        # check if any already exist
+        if not seg.is_instance:
+            _validate_semantic_segmentation(
+                db,
+                seg=seg,
+                dataset_name=data.dataset_name,
+            )
+
     return _create_gt_dets_or_segs(
         db=db,
         dataset_name=data.dataset_name,
@@ -513,7 +527,7 @@ def create_predicted_segmentations(
     for seg in data.segmentations:
         # check if any already exist
         if isinstance(seg, schemas.PredictedSemanticSegmentation):
-            _validate_predicted_semantic_segmentation(
+            _validate_semantic_segmentation(
                 db,
                 seg=seg,
                 model_name=data.model_name,
@@ -944,7 +958,6 @@ def validate_create_ap_metrics(
 def validate_create_clf_metrics(
     db: Session, request_info: schemas.ClfMetricsRequest
 ) -> tuple[list[str], list[str]]:
-
     gts_statement = _classifications_in_dataset_statement(
         request_info.settings.dataset_name
     )
