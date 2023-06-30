@@ -313,6 +313,7 @@ class PredictedSegmentationsCreate(BaseModel):
         cls,
         segs: PredictedInstanceSegmentation | PredictedSemanticSegmentation,
     ):
+        """This makes sure that for semantic segmentation, any label appears only once"""
         uid_to_labels = {}
         for seg in segs:
             if isinstance(seg, PredictedSemanticSegmentation):

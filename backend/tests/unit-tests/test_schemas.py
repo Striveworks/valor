@@ -20,6 +20,9 @@ from velour_api.schemas import (
     Label,
     LabelDistribution,
     Model,
+    PredictedInstanceSegmentation,
+    PredictedSegmentationsCreate,
+    PredictedSemanticSegmentation,
     ScoredLabel,
     ScoredLabelDistribution,
     _PredictedSegmentation,
@@ -124,6 +127,156 @@ def test_predicted_segmentation_validation_format_neg(img: Image):
             is_instance=True,
         )
     assert "Expected image format PNG but got" in str(exc_info)
+
+
+def test_predicted_segmentations_create_validation():
+    """Check validation on semantic segmentation labels"""
+    img1 = Image(uid="uid1", height=1098, width=4591)
+    img2 = Image(uid="uid2", height=180, width=23)
+    base64_mask1 = _create_b64_mask(mode="1", ext="png")
+    base64_mask2 = _create_b64_mask(mode="1", ext="png")
+
+    # positive case 1
+    segs_create = PredictedSegmentationsCreate(
+        model_name="",
+        dataset_name="",
+        segmentations=[
+            PredictedSemanticSegmentation(
+                base64_mask=base64_mask1,
+                image=img1,
+                labels=[
+                    Label(key="k1", value="v1"),
+                    Label(key="k2", value="v1"),
+                ],
+            ),
+            PredictedSemanticSegmentation(
+                base64_mask=base64_mask2,
+                image=img2,
+                labels=[Label(key="k1", value="v2")],
+            ),
+        ],
+    )
+    assert len(segs_create.segmentations) == 2
+
+    # positive case 2
+    segs_create = PredictedSegmentationsCreate(
+        model_name="",
+        dataset_name="",
+        segmentations=[
+            PredictedSemanticSegmentation(
+                base64_mask=base64_mask1,
+                image=img1,
+                labels=[
+                    Label(key="k1", value="v1"),
+                    Label(key="k2", value="v1"),
+                ],
+            ),
+            PredictedSemanticSegmentation(
+                base64_mask=base64_mask2,
+                image=img1,
+                labels=[Label(key="k1", value="v2")],
+            ),
+        ],
+    )
+    assert len(segs_create.segmentations) == 2
+
+    # negative case 1
+    with pytest.raises(ValueError) as exc_info:
+        PredictedSegmentationsCreate(
+            model_name="",
+            dataset_name="",
+            segmentations=[
+                PredictedSemanticSegmentation(
+                    base64_mask=base64_mask1,
+                    image=img1,
+                    labels=[
+                        Label(key="k1", value="v1"),
+                        Label(key="k1", value="v1"),
+                    ],
+                ),
+                PredictedSemanticSegmentation(
+                    base64_mask=base64_mask2,
+                    image=img2,
+                    labels=[Label(key="k1", value="v2")],
+                ),
+            ],
+        )
+    assert (
+        "Got multiple semantic segmentations with label key='k1' value='v1'"
+        in str(exc_info)
+    )
+
+    # negative case 2 (note same image and label)
+    with pytest.raises(ValueError) as exc_info:
+        PredictedSegmentationsCreate(
+            model_name="",
+            dataset_name="",
+            segmentations=[
+                PredictedSemanticSegmentation(
+                    base64_mask=base64_mask1,
+                    image=img1,
+                    labels=[
+                        Label(key="k1", value="v1"),
+                    ],
+                ),
+                PredictedSemanticSegmentation(
+                    base64_mask=base64_mask2,
+                    image=img1,
+                    labels=[Label(key="k1", value="v1")],
+                ),
+            ],
+        )
+    assert (
+        "Got multiple semantic segmentations with label key='k1' value='v1'"
+        in str(exc_info)
+    )
+
+    # check if we switch to instance segmentations these two negative cases above don't
+    # cause an issue
+    segs_create = PredictedSegmentationsCreate(
+        model_name="",
+        dataset_name="",
+        segmentations=[
+            PredictedInstanceSegmentation(
+                base64_mask=base64_mask1,
+                image=img1,
+                scored_labels=[
+                    ScoredLabel(label=Label(key="k1", value="v1"), score=0.9),
+                    ScoredLabel(label=Label(key="k1", value="v1"), score=0.7),
+                ],
+            ),
+            PredictedInstanceSegmentation(
+                base64_mask=base64_mask2,
+                image=img2,
+                scored_labels=[
+                    ScoredLabel(label=Label(key="k1", value="v2"), score=0.65)
+                ],
+            ),
+        ],
+    )
+    assert len(segs_create.segmentations) == 2
+
+    segs_create = PredictedSegmentationsCreate(
+        model_name="",
+        dataset_name="",
+        segmentations=[
+            PredictedInstanceSegmentation(
+                base64_mask=base64_mask1,
+                image=img1,
+                scored_labels=[
+                    ScoredLabel(label=Label(key="k1", value="v1"), score=0.9),
+                ],
+            ),
+            PredictedInstanceSegmentation(
+                base64_mask=base64_mask2,
+                image=img1,
+                scored_labels=[
+                    ScoredLabel(label=Label(key="k1", value="v1"), score=0.9)
+                ],
+            ),
+        ],
+    )
+    assert len(segs_create.segmentations) == 2
 
 
 def test_dataset_validation():
