@@ -38,7 +38,7 @@ class DatasetMetadata(BaseModel):
     labels: list[LabelDistribution]
     associated_models: list[str]
     metadata: list[MetaDatum]
-    
+
     @validator("href")
     def validate_href(cls, v):
         return _validate_href(v)
@@ -52,7 +52,7 @@ class ModelMetadata(BaseModel):
     labels: list[ScoredLabelDistribution]
     associated_datasets: list[str]
     metadata: list[MetaDatum]
-    
+
     @validator("href")
     def validate_href(cls, v):
         return _validate_href(v)

@@ -10,9 +10,9 @@ from velour_api.schemas.metadata import MetaDatum
 
 
 def format_name(name: str):
-    allowed_special = ['-', '_']
+    allowed_special = ["-", "_"]
     pattern = re.compile(f"[^a-zA-Z0-9{''.join(allowed_special)}]")
-    return re.sub(pattern, '', name)
+    return re.sub(pattern, "", name)
 
 
 class DatasetID(BaseModel):
@@ -43,7 +43,7 @@ class Datum(BaseModel):
     dataset_id: DatasetID
     uid: str
     metadata: list[MetaDatum] = []
-    
+
 
 class GroundTruth(BaseModel):
     task_type: Optional[TaskType] = None

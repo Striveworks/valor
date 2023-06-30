@@ -1,4 +1,4 @@
-from .core import GroundTruth, Prediction, Dataset, Model
+from .core import Dataset, GroundTruth, Model, Prediction
 
 __all__ = [
     "Dataset",
