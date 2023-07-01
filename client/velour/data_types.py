@@ -7,27 +7,37 @@ import numpy as np
 
 
 @dataclass
-class Metadatum:
-    name: str
-    value: Union[float, str, dict]
+class GeographicFeature():
+    region: dict
 
     def __post_init__(self):
-        if isinstance(self.value, dict):
+        if isinstance(self.region, dict):
             # check that the dict is JSON serializable
             try:
-                json.dumps(self.value)
+                json.dumps(self.region)
             except TypeError:
                 raise ValueError(
-                    f"if a dict, `value` must be valid GeoJSON but got {self.value}"
+                    f"if a dict, `region` must be valid GeoJSON but got {self.region}"
                 )
 
 
 @dataclass
-class Image:
+class ImageMetadata:
     uid: str
     height: int
     width: int
-    frame: int = None
+    frame: int = None  
+
+
+@dataclass
+class Metadatum:
+    name: str
+    value: Union[int, float, str, ImageMetadata, GeographicFeature]
+
+
+@dataclass
+class Datum:
+    uid: str
     metadata: List[Metadatum] = field(default_factory=list)
 
 
