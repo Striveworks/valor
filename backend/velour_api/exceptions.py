@@ -83,7 +83,6 @@ class DatasetStateFlowError(Exception):
         self,
         dataset_name: str,
         current: TableStatus = None,
-        attempted: TableStatus = None,
     ):
         # Current event
         if current == TableStatus.CREATE:
@@ -94,10 +93,7 @@ class DatasetStateFlowError(Exception):
             errmsg = f"Cannot perform any action on dataset '{dataset_name}' until all models are finalized and/or evaluations are finished."
         elif current == TableStatus.DELETE:
             errmsg = f"Dataset '{dataset_name}' is currently being deleted."
-        # Attempted event
-        elif attempted == TableStatus.CREATE:
-            errmsg = f"Cannot add ground truths to dataset '{dataset_name}' as it has been finalized."
-        # Other event
+        # Unknown event
         else:
             errmsg = f"{dataset_name} does not exist."
         return super().__init__(errmsg)
@@ -108,7 +104,6 @@ class ModelStateFlowError(Exception):
         self,
         model_name: str,
         current: TableStatus = None,
-        attempted: TableStatus = None,
     ):
         # Current event
         if current == TableStatus.CREATE:
@@ -119,10 +114,7 @@ class ModelStateFlowError(Exception):
             errmsg = f"Cannot perform any action on model '{model_name}' until evaluations are finished."
         elif current == TableStatus.DELETE:
             errmsg = f"Model '{model_name}' is currently being deleted."
-        # Attempted event
-        elif attempted == TableStatus.CREATE:
-            errmsg = f"Cannot add predictions to model '{model_name}' as it has been finalized."
-        # Other event
+        # Unknown event
         else:
             errmsg = f"{model_name} does not exist."
         return super().__init__(errmsg)
