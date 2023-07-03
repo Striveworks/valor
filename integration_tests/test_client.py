@@ -515,7 +515,7 @@ def _test_create_image_dataset_with_gts(
     # to the dataset since it is finalized
     with pytest.raises(ClientException) as exc_info:
         dataset.add_groundtruth(gts3)
-    assert "Invalid state transition from ready to creating." in str(exc_info)
+    assert "cannot be modified as it has been finalized" in str(exc_info)
 
     return dataset
 
@@ -571,7 +571,7 @@ def _test_create_model_with_preds(
     # since we haven't added any images yet
     with pytest.raises(ClientException) as exc_info:
         model.add_predictions(dataset, preds)
-    assert "Image with uid" in str(exc_info)
+    assert "has not been finalized" in str(exc_info)
 
     dataset.add_groundtruth(gts)
     dataset.finalize()
@@ -1395,9 +1395,7 @@ def test_evaluate_tabular_clf(
                 for pred in tabular_preds
             ],
         )
-    assert "Invalid state transition from creating to evaluating." in str(
-        exc_info
-    )
+    assert "has not been finalized" in str(exc_info)
 
     # finalize dataset
     dataset.finalize()
@@ -1406,6 +1404,18 @@ def test_evaluate_tabular_clf(
     eval_job = model.evaluate_classification(dataset=dataset)
     time.sleep(1)  # wait for backend
     assert eval_job.status() == "Failed"
+
+    # add inferences
+    model.add_predictions(
+        dataset,
+        [
+            [
+                ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
+                for i in range(len(pred))
+            ]
+            for pred in tabular_preds
+        ],
+    )
 
     # finalize model
     model.finalize_inferences(dataset)

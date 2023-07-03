@@ -506,7 +506,7 @@ def test_create_predicted_detections_and_delete_model(
     gt_dets_create: schemas.GroundTruthDetectionsCreate,
 ):
     # check this gives an error since the dataset hasn't been defined yet
-    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
         crud.create_predicted_detections(db, pred_dets_create)
     assert "does not exist" in str(exc_info)
 
@@ -515,12 +515,9 @@ def test_create_predicted_detections_and_delete_model(
     )
 
     # check this gives an error since the images haven't been added yet
-    with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
         crud.create_predicted_detections(db, pred_dets_create)
-    assert (
-        "Image with uid 'uid1' does not exist in dataset 'test dataset'."
-        in str(exc_info)
-    )
+    assert "does not exist" in str(exc_info)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(
@@ -544,6 +541,7 @@ def test_create_predicted_detections_and_delete_model(
     assert crud.number_of_rows(db, models.LabeledPredictedDetection) == 0
 
     # delete dataset
+    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
     crud.delete_dataset(db, dset_name)
 
     # create dataset and add a groundtruth
@@ -638,7 +636,7 @@ def test_create_predicted_classifications_and_delete_model(
     gt_clfs_create: schemas.GroundTruthClassificationsCreate,
 ):
     # check this gives an error since no dataset exists yet
-    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
         crud.create_predicted_image_classifications(db, pred_clfs_create)
     assert "does not exist" in str(exc_info)
 
@@ -659,6 +657,9 @@ def test_create_predicted_classifications_and_delete_model(
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
         crud.create_predicted_image_classifications(db, pred_clfs_create)
     assert "Image with uid" in str(exc_info)
+
+    # finalize
+    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
 
     # reset dataset
     crud.delete_dataset(db, dset_name)
@@ -722,7 +723,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     gt_segs_create: schemas.GroundTruthSegmentationsCreate,
 ):
     # check this gives an error since the model hasn't been added yet
-    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
         crud.create_predicted_segmentations(db, pred_segs_create)
     assert "does not exist" in str(exc_info)
 
@@ -731,9 +732,9 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     )
 
     # check this gives an error since the images haven't been added yet
-    with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
         crud.create_predicted_segmentations(db, pred_segs_create)
-    assert "Image with uid" in str(exc_info)
+    assert "does not exist" in str(exc_info)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(
