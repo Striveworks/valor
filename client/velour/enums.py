@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class DataType(Enum):
-    IMAGE = "image",
+    IMAGE = ("image",)
     TABULAR = "tabular"
 
 

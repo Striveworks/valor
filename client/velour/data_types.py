@@ -7,7 +7,7 @@ import numpy as np
 
 
 @dataclass
-class GeographicFeature():
+class GeographicFeature:
     region: dict
 
     def __post_init__(self):
@@ -26,7 +26,7 @@ class ImageMetadata:
     uid: str
     height: int
     width: int
-    frame: int = None  
+    frame: int = None
 
 
 @dataclass
