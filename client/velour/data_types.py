@@ -166,7 +166,7 @@ class GroundTruthDetection:
 @dataclass
 class PredictedDetection:
     scored_labels: List[ScoredLabel]
-    image: Image
+    image: ImageMetadata
     boundary: BoundingPolygon = None
     bbox: BoundingBox = None
 
@@ -199,7 +199,7 @@ def _validate_mask(mask: np.ndarray):
 class _GroundTruthSegmentation(ABC):
     shape: Union[List[PolygonWithHole], np.ndarray]
     labels: List[Label]
-    image: Image
+    image: ImageMetadata
     _is_instance: bool
 
     def __post_init__(self):
@@ -223,7 +223,7 @@ class GroundTruthSemanticSegmentation(_GroundTruthSegmentation):
 class _PredictedSegmentation(ABC):
     mask: np.ndarray
     scored_labels: List[ScoredLabel]
-    image: Image
+    image: ImageMetadata
     _is_instance: bool
 
     def __post_init__(self):
