@@ -1,16 +1,10 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import exceptions
-from velour_api.backend import models, state
-from velour_api.schemas.core import DatasetCreate
+from velour_api.backend import state
 
 
 @state.update
-def add_groundtruth():
+def update_something():
     pass
 
-
-@state.update
-def add_prediction():
-    pass

@@ -1,10 +1,6 @@
 import json
-from typing import Optional
 
 from pydantic import BaseModel, validator
-
-from velour_api.schemas.annotation import GeometricAnnotation
-from velour_api.schemas.core import Dataset, Datum, Model
 
 
 class GeographicFeature(BaseModel):

@@ -3,26 +3,31 @@ from sqlalchemy.orm import Session
 
 from velour_api import exceptions
 from velour_api.backend import models, state
-from velour_api.schemas.core import DatasetCreate
+from velour_api.schemas import (
+    Dataset,
+    DatasetInfo,
+    Model,
+    ModelInfo,
+)
 
 
 @state.read
-def get_datasets():
+def get_datasets() -> list[DatasetInfo]:
     pass
 
 
 @state.read
-def get_dataset():
+def get_dataset() -> Dataset:
     pass
 
 
 @state.read
-def get_models():
+def get_models() -> list[ModelInfo]:
     pass
 
 
 @state.read
-def get_model():
+def get_model() -> Model:
     pass
 
 

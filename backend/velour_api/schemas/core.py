@@ -15,7 +15,7 @@ def format_name(name: str):
     return re.sub(pattern, "", name)
 
 
-class DatasetID(BaseModel):
+class DatasetInfo(BaseModel):
     id: int = None
     name: str
 
@@ -27,7 +27,7 @@ class DatasetID(BaseModel):
         return v
 
 
-class ModelID(BaseModel):
+class ModelInfo(BaseModel):
     id: int = None
     name: str
 
@@ -40,7 +40,7 @@ class ModelID(BaseModel):
 
 
 class Datum(BaseModel):
-    dataset_id: DatasetID
+    dataset_id: DatasetInfo
     uid: str
     metadata: list[MetaDatum] = []
 
@@ -52,7 +52,7 @@ class GroundTruth(BaseModel):
 
 
 class Prediction(BaseModel):
-    model_id: ModelID
+    model_id: ModelInfo
     task_type: TaskType
     scored_labels: list[ScoredLabel]
     annotation: Optional[GeometricAnnotation] = None
@@ -86,13 +86,13 @@ class DatumPrediction(BaseModel):
 
 
 class Dataset(BaseModel):
-    dataset_id: DatasetID
+    dataset_id: DatasetInfo
     datums: list[DatumGroundTruth]
     metadata: list[MetaDatum]
 
 
 class Model(BaseModel):
-    model_id: ModelID
-    dataset_id: DatasetID
+    model_id: ModelInfo
+    dataset_id: DatasetInfo
     datums: list[DatumPrediction]
     metadata: list[MetaDatum]

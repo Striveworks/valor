@@ -5,8 +5,9 @@ from sqlalchemy import Select, TextualSelect, and_, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import enums, exceptions, models, schemas
-from velour_api.metrics import compute_ap_metrics, compute_clf_metrics
+from velour_api import enums, exceptions, schemas
+from velour_api.backend import models
+from velour_api.backend.metrics import compute_ap_metrics, compute_clf_metrics
 
 from ._read import (
     _classifications_in_dataset_statement,

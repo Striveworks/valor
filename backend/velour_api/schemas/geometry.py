@@ -4,9 +4,7 @@ from base64 import b64decode
 from uuid import uuid4
 
 import PIL.Image
-from pydantic import BaseModel, Field, root_validator, validator
-
-from velour_api.schemas.metadata import ImageMetadata
+from pydantic import BaseModel, Field, Extra, root_validator, validator
 
 
 class Point(BaseModel):
@@ -123,7 +121,7 @@ class MultiPolygon(BaseModel):
         return v
 
     @validator("holes")
-    def check_polygon(cls, v):
+    def check_holes(cls, v):
         if v:
             for hole in v:
                 _validate_single_polygon(hole)
@@ -229,6 +227,10 @@ class Raster(BaseModel):
     mask: str = Field(allow_mutation=False)
     height: int | float
     widht: int | float
+
+    class Config:
+        extra = Extra.allow
+        validate_assignment = True
 
     @root_validator
     def correct_mask_shape(cls, values):

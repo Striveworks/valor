@@ -3,8 +3,8 @@ from sqlalchemy import Float, Integer
 from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
 
-from velour_api import crud, enums, models, schemas
-from velour_api.models import PredictedClassification
+from velour_api import crud, enums, schemas
+from velour_api.backend import models
 
 
 def binary_roc_auc(

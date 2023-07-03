@@ -1,12 +1,23 @@
 from sqlalchemy.orm import Session
 
-from velour_api.backend import models, state
-from velour_api.schemas.geometry import (
-    BoundingBox,
-    MultiPolygon,
-    Polygon,
-    Raster,
-)
+from velour_api import schemas
+from velour_api.backend import models
+
+
+def add_bounding_box(bbox: schemas.BoundingBox):
+    pass
+
+
+def add_bounding_polygon(polygon: schemas.Polygon):
+    pass
+
+
+def add_segmentation_raster_from_multipolygon(polygons: schemas.MultiPolygon):
+    pass
+
+
+def add_segmentation_raster(raster: schemas.Raster):
+    pass
 
 
 def convert_polygon_to_bounding_box(
@@ -36,22 +47,6 @@ def convert_raster_to_bounding_polygon(
     annotation_id: int = None,
 ):
     """Converts annotation column 'raster' into column 'polygon'."""
-    pass
-
-
-def add_bounding_box(bbox: BoundingBox):
-    pass
-
-
-def add_bounding_polygon(polygon: Polygon):
-    pass
-
-
-def add_segmentation_raster_from_multipolygon(polygons: MultiPolygon):
-    pass
-
-
-def add_segmentation_raster(raster: Raster):
     pass
 
 

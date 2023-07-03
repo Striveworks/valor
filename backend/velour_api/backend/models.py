@@ -7,8 +7,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from velour_api.database import Base
-from velour_api.enums import DatumTypes, Task
+from velour_api.enums import DatumTypes, TaskType
+from velour_api.backend.database import Base
 
 
 class Label(Base):
@@ -50,9 +50,9 @@ class GeometricAnnotation(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     tasktype: Mapped[str] = mapped_column(nullable=True)
-    box: mapped_column(Geometry("BOX"), nullable=True)
-    polygon: mapped_column(Geometry("POLYGON"), nullable=True)
-    raster: mapped_column(GDALRaster, nullable=True)
+    box = mapped_column(Geometry("BOX"), nullable=True)
+    polygon = mapped_column(Geometry("POLYGON"), nullable=True)
+    raster = mapped_column(GDALRaster, nullable=True)
 
     # relationships
     metadatums: Mapped["MetaDatum"] = relationship(cascade="all, delete")
@@ -124,6 +124,7 @@ class Datum(Base):
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    uid: Mapped[str] = mapped_column(nullable=False)
     dataset_id: Mapped[int] = mapped_column(
         ForeignKey("dataset.id"), index=True
     )
@@ -146,22 +147,21 @@ class MetaDatum(Base):
     __tablename__ = "metadatum"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(nullable=False)
 
     # targets
-    dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
-    datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"))
-    model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
+    dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"), nullable=True)
+    datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"), nullable=True)
+    model_id: Mapped[int] = mapped_column(ForeignKey("model.id"), nullable=True)
     geometry_id: Mapped[int] = mapped_column(
-        ForeignKey("geometric_annotation.id")
+        ForeignKey("geometric_annotation.id"), nullable=True
     )
 
     # metadata
-    name: Mapped[str] = mapped_column(nullable=False)
-    uid: Mapped[str] = mapped_column(index=True)
     string_value: Mapped[str] = mapped_column(nullable=True)
     numeric_value: Mapped[float] = mapped_column(nullable=True)
     geo = mapped_column(Geography(), nullable=True)
-    image_id: Mapped[Optional["ImageMetadata"]] = mapped_column(
+    image_id: Mapped[int] = mapped_column(
         ForeignKey("image.id"), nullable=True
     )
 
@@ -227,8 +227,8 @@ class EvaluationSettings(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
-    model_pred_task_type: Mapped[str] = mapped_column(Enum(Task))
-    dataset_gt_task_type: Mapped[str] = mapped_column(Enum(Task))
+    model_pred_task_type: Mapped[str] = mapped_column(Enum(TaskType))
+    dataset_gt_task_type: Mapped[str] = mapped_column(Enum(TaskType))
     min_area: Mapped[float] = mapped_column(nullable=True)
     max_area: Mapped[float] = mapped_column(nullable=True)
     group_by: Mapped[str] = mapped_column(nullable=True)

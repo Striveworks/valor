@@ -40,4 +40,10 @@ def create_model(db: Session, model: schemas.Model):
 
 
 @state.create
-def create_ground_truth_for_dataset(db: Session, schemas.GroundTruth)
+def create_groundtruth(db: Session, gt: schemas.GroundTruth):
+    pass
+
+
+@state.create
+def create_prediction(db: Session, pd: schemas.Prediction):
+    pass
