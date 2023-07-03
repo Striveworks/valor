@@ -71,15 +71,17 @@ def set_dataset_status(dataset_name: str, state: TableStatus):
         # Check if inferences (if they exist) allow the next state
         if state not in status.datasets[dataset_name].next():
             raise exceptions.StateflowError(
-                "State transition blocked by existing inferences."
+                f"State transition blocked by existing inferences. {status.datasets[dataset_name].models.keys()} {status.datasets[dataset_name].next()}"
             )
 
         # Update the state
         if state == TableStatus.DELETE:
             for model_name in status.datasets[dataset_name].models:
-                status.datasets[dataset_name].models[
-                    model_name
-                ] = TableStatus.DELETE
+                set_inference_status(
+                    dataset_name=dataset_name,
+                    model_name=model_name,
+                    state=TableStatus.DELETE,
+                )
         status.datasets[dataset_name].status = state
 
     set_status(status)
@@ -215,6 +217,7 @@ def _finalize_inference(model_name: str, dataset_name: str):
         dataset_name=dataset_name,
         state=TableStatus.READY,
     )
+    set_dataset_status(dataset_name=dataset_name, state=TableStatus.READY)
 
 
 def _finalize_dataset(dataset_name: str):
@@ -224,6 +227,10 @@ def _finalize_dataset(dataset_name: str):
 
 def _evaluate_inference(request_info):
     assert isinstance(request_info, (APRequest, ClfMetricsRequest))
+    set_dataset_status(
+        dataset_name=request_info.settings.dataset_name,
+        state=TableStatus.EVALUATE,
+    )
     set_inference_status(
         model_name=request_info.settings.model_name,
         dataset_name=request_info.settings.dataset_name,
@@ -231,11 +238,15 @@ def _evaluate_inference(request_info):
     )
 
 
-def _evaluate_inference_finished(data):
-    assert isinstance(data, (APRequest, ClfMetricsRequest))
+def _evaluate_inference_finished(request_info):
+    assert isinstance(request_info, (APRequest, ClfMetricsRequest))
     set_inference_status(
-        model_name=data.settings.model_name,
-        dataset_name=data.settings.dataset_name,
+        model_name=request_info.settings.model_name,
+        dataset_name=request_info.settings.dataset_name,
+        state=TableStatus.READY,
+    )
+    set_dataset_status(
+        dataset_name=request_info.settings.dataset_name,
         state=TableStatus.READY,
     )
 

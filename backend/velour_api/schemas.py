@@ -358,11 +358,21 @@ class DatasetStatus(BaseModel):
     models: Dict[str, TableStatus]
 
     def next(self) -> List[TableStatus]:
-        if len(self.models) > 0:
-            for model_name in self.models:
-                if self.models[model_name] != TableStatus.READY:
-                    return [TableStatus.EVALUATE]
-            return [TableStatus.EVALUATE, TableStatus.DELETE]
+        status_set = set(
+            [self.models[model_name].value for model_name in self.models]
+        )
+
+        if set(TableStatus.READY.value) == status_set:
+            return TableStatus.READY.next()
+        if (
+            len(
+                set(
+                    [TableStatus.CREATE.value, TableStatus.EVALUATE.value]
+                ).intersection(status_set)
+            )
+            > 0
+        ):
+            return [TableStatus.EVALUATE]
         else:
             return self.status.next()
 
