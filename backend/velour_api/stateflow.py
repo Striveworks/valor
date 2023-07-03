@@ -24,8 +24,8 @@ def get_dataset_status(dataset_name: str):
     if dataset_name not in status:
         raise exceptions.DatasetDoesNotExistError(dataset_name)
     elif not status.datasets[dataset_name].valid():
-        raise exceptions.StateflowError(
-            f"'{dataset_name}' is in a invalid state."
+        raise exceptions.DatasetStateFlowError(
+            dataset_name=dataset_name,
         )
     return status.datasets[dataset_name].status
 
@@ -35,9 +35,7 @@ def get_inference_status(dataset_name: str, model_name: str):
     if dataset_name not in status.datasets:
         raise exceptions.DatasetDoesNotExistError(dataset_name)
     elif not status.datasets[dataset_name].valid():
-        raise exceptions.StateflowError(
-            f"'{dataset_name}' is in a invalid state."
-        )
+        raise exceptions.DatasetStateFlowError(dataset_name=dataset_name)
     elif model_name not in status.datasets[dataset_name].models:
         raise exceptions.InferenceDoesNotExistError(dataset_name, model_name)
     return status.datasets[dataset_name].models[model_name]
@@ -64,22 +62,26 @@ def set_dataset_status(dataset_name: str, state: TableStatus):
 
         # Check if new state is valid
         if state not in status.datasets[dataset_name].status.next():
-            raise exceptions.InvalidStateTransitionError(
-                status.datasets[dataset_name].status, state
+            raise exceptions.DatasetStateFlowError(
+                dataset_name=dataset_name,
+                current=status.datasets[dataset_name].status,
             )
 
         # Check if inferences (if they exist) allow the next state
         if state not in status.datasets[dataset_name].next():
-            raise exceptions.StateflowError(
-                "State transition blocked by existing inferences."
+            raise exceptions.DatasetStateFlowError(
+                dataset_name=dataset_name,
+                current=TableStatus.EVALUATE,
             )
 
         # Update the state
         if state == TableStatus.DELETE:
             for model_name in status.datasets[dataset_name].models:
-                status.datasets[dataset_name].models[
-                    model_name
-                ] = TableStatus.DELETE
+                set_inference_status(
+                    dataset_name=dataset_name,
+                    model_name=model_name,
+                    state=TableStatus.DELETE,
+                )
         status.datasets[dataset_name].status = state
 
     set_status(status)
@@ -99,8 +101,9 @@ def set_inference_status(
         if status.datasets[dataset_name].status == TableStatus.READY:
             set_dataset_status(dataset_name, TableStatus.EVALUATE)
         else:
-            raise exceptions.StateflowError(
-                f"dataset '{dataset_name}' is not in evaluation state."
+            raise exceptions.DatasetStateFlowError(
+                dataset_name,
+                current=status.datasets[dataset_name].status,
             )
 
     # Check if inference does not exist
@@ -126,8 +129,9 @@ def set_inference_status(
             state
             not in status.datasets[dataset_name].models[model_name].next()
         ):
-            raise exceptions.StateflowError(
-                f"'{state}' is not a valid next state."
+            raise exceptions.ModelStateFlowError(
+                model_name=model_name,
+                current=status.datasets[dataset_name].models[model_name],
             )
 
         # Update the state
@@ -143,8 +147,9 @@ def remove_dataset(dataset_name: str):
             del status.datasets[dataset_name]
             set_status(status)
         else:
-            raise exceptions.StateflowError(
-                "Attempted to delete dataset that was not in 'DELETE' state."
+            raise exceptions.DatasetStateFlowError(
+                dataset_name=dataset_name,
+                current=status.datasets[dataset_name].status,
             )
     else:
         raise exceptions.DatasetDoesNotExistError(dataset_name)
@@ -161,8 +166,9 @@ def remove_model(model_name: str):
                 del status.datasets[dataset_name].models[model_name]
                 set_status(status)
             else:
-                raise exceptions.StateflowError(
-                    f"Attempted to delete inference ({dataset_name}, {model_name}) that was not in 'DELETE' state."
+                raise exceptions.ModelStateFlowError(
+                    model_name=model_name,
+                    current=status.datasets[dataset_name].models[model_name],
                 )
         if TableStatus.READY in status.datasets[dataset_name].next():
             set_dataset_status(dataset_name, TableStatus.READY)
@@ -215,6 +221,7 @@ def _finalize_inference(model_name: str, dataset_name: str):
         dataset_name=dataset_name,
         state=TableStatus.READY,
     )
+    set_dataset_status(dataset_name=dataset_name, state=TableStatus.READY)
 
 
 def _finalize_dataset(dataset_name: str):
@@ -224,6 +231,10 @@ def _finalize_dataset(dataset_name: str):
 
 def _evaluate_inference(request_info):
     assert isinstance(request_info, (APRequest, ClfMetricsRequest))
+    set_dataset_status(
+        dataset_name=request_info.settings.dataset_name,
+        state=TableStatus.EVALUATE,
+    )
     set_inference_status(
         model_name=request_info.settings.model_name,
         dataset_name=request_info.settings.dataset_name,
@@ -231,11 +242,15 @@ def _evaluate_inference(request_info):
     )
 
 
-def _evaluate_inference_finished(data):
-    assert isinstance(data, (APRequest, ClfMetricsRequest))
+def _evaluate_inference_finished(request_info):
+    assert isinstance(request_info, (APRequest, ClfMetricsRequest))
     set_inference_status(
-        model_name=data.settings.model_name,
-        dataset_name=data.settings.dataset_name,
+        model_name=request_info.settings.model_name,
+        dataset_name=request_info.settings.dataset_name,
+        state=TableStatus.READY,
+    )
+    set_dataset_status(
+        dataset_name=request_info.settings.dataset_name,
         state=TableStatus.READY,
     )
 
@@ -293,8 +308,6 @@ def create_model(fn: callable) -> callable:
     @wraps(fn)
     def wrapper(*args, **kwargs):
 
-        results = fn(*args, **kwargs)
-
         if len(args) < 2:
             if "model" in kwargs:
                 pass
@@ -306,7 +319,7 @@ def create_model(fn: callable) -> callable:
             else:
                 _create_prediction(args[1])
 
-        return results
+        return fn(*args, **kwargs)
 
     return wrapper
 
