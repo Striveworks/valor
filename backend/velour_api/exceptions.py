@@ -78,13 +78,51 @@ class InferenceDoesNotExistError(Exception):
         )
 
 
-class StateflowError(Exception):
-    def __init__(self, msg: str):
-        return super().__init__(msg)
+class DatasetStateFlowError(Exception):
+    def __init__(
+        self,
+        dataset_name: str,
+        current: TableStatus = None,
+        attempted: TableStatus = None,
+    ):
+        # Current event
+        if current == TableStatus.CREATE:
+            errmsg = f"Cannot perform any action on dataset '{dataset_name}' as it has not been finalized."
+        elif current == TableStatus.READY:
+            errmsg = f"Dataset '{dataset_name}' cannot be modified as it has been finalized."
+        elif current == TableStatus.EVALUATE:
+            errmsg = f"Cannot perform any action on dataset '{dataset_name}' until all models are finalized and/or evaluations are finished."
+        elif current == TableStatus.DELETE:
+            errmsg = f"Dataset '{dataset_name}' is currently being deleted."
+        # Attempted event
+        elif attempted == TableStatus.CREATE:
+            errmsg = f"Cannot add ground truths to dataset '{dataset_name}' as it has been finalized."
+        # Other event
+        else:
+            errmsg = f"{dataset_name} does not exist."
+        return super().__init__(errmsg)
 
 
-class InvalidStateTransitionError(Exception):
-    def __init__(self, current: TableStatus, next: TableStatus):
-        return super().__init__(
-            f"Invalid state transition from {current.value} to {next.value}."
-        )
+class ModelStateFlowError(Exception):
+    def __init__(
+        self,
+        model_name: str,
+        current: TableStatus = None,
+        attempted: TableStatus = None,
+    ):
+        # Current event
+        if current == TableStatus.CREATE:
+            errmsg = f"Cannot perform any action on model '{model_name}' as it has not been finalized."
+        elif current == TableStatus.READY:
+            errmsg = f"Model '{model_name}' cannot be modified as it has been finalized."
+        elif current == TableStatus.EVALUATE:
+            errmsg = f"Cannot perform any action on model '{model_name}' until evaluations are finished."
+        elif current == TableStatus.DELETE:
+            errmsg = f"Model '{model_name}' is currently being deleted."
+        # Attempted event
+        elif attempted == TableStatus.CREATE:
+            errmsg = f"Cannot add predictions to model '{model_name}' as it has been finalized."
+        # Other event
+        else:
+            errmsg = f"{model_name} does not exist."
+        return super().__init__(errmsg)

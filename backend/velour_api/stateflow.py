@@ -24,8 +24,8 @@ def get_dataset_status(dataset_name: str):
     if dataset_name not in status:
         raise exceptions.DatasetDoesNotExistError(dataset_name)
     elif not status.datasets[dataset_name].valid():
-        raise exceptions.StateflowError(
-            f"'{dataset_name}' is in a invalid state."
+        raise exceptions.DatasetStateFlowError(
+            dataset_name=dataset_name,
         )
     return status.datasets[dataset_name].status
 
@@ -35,9 +35,7 @@ def get_inference_status(dataset_name: str, model_name: str):
     if dataset_name not in status.datasets:
         raise exceptions.DatasetDoesNotExistError(dataset_name)
     elif not status.datasets[dataset_name].valid():
-        raise exceptions.StateflowError(
-            f"'{dataset_name}' is in a invalid state."
-        )
+        raise exceptions.DatasetStateFlowError(dataset_name=dataset_name)
     elif model_name not in status.datasets[dataset_name].models:
         raise exceptions.InferenceDoesNotExistError(dataset_name, model_name)
     return status.datasets[dataset_name].models[model_name]
@@ -64,14 +62,16 @@ def set_dataset_status(dataset_name: str, state: TableStatus):
 
         # Check if new state is valid
         if state not in status.datasets[dataset_name].status.next():
-            raise exceptions.InvalidStateTransitionError(
-                status.datasets[dataset_name].status, state
+            raise exceptions.DatasetStateFlowError(
+                dataset_name=dataset_name,
+                current=status.datasets[dataset_name].status,
             )
 
         # Check if inferences (if they exist) allow the next state
         if state not in status.datasets[dataset_name].next():
-            raise exceptions.StateflowError(
-                f"State transition blocked by existing inferences. {status.datasets[dataset_name].models.keys()} {status.datasets[dataset_name].next()}"
+            raise exceptions.DatasetStateFlowError(
+                dataset_name=dataset_name,
+                current=TableStatus.EVALUATE,
             )
 
         # Update the state
@@ -101,8 +101,9 @@ def set_inference_status(
         if status.datasets[dataset_name].status == TableStatus.READY:
             set_dataset_status(dataset_name, TableStatus.EVALUATE)
         else:
-            raise exceptions.StateflowError(
-                f"dataset '{dataset_name}' is not in evaluation state."
+            raise exceptions.DatasetStateFlowError(
+                dataset_name,
+                current=status.datasets[dataset_name].status,
             )
 
     # Check if inference does not exist
@@ -128,8 +129,9 @@ def set_inference_status(
             state
             not in status.datasets[dataset_name].models[model_name].next()
         ):
-            raise exceptions.StateflowError(
-                f"'{state}' is not a valid next state."
+            raise exceptions.ModelStateFlowError(
+                model_name=model_name,
+                current=status.datasets[dataset_name].models[model_name],
             )
 
         # Update the state
@@ -145,8 +147,9 @@ def remove_dataset(dataset_name: str):
             del status.datasets[dataset_name]
             set_status(status)
         else:
-            raise exceptions.StateflowError(
-                "Attempted to delete dataset that was not in 'DELETE' state."
+            raise exceptions.DatasetStateFlowError(
+                dataset_name=dataset_name,
+                current=status.datasets[dataset_name].status,
             )
     else:
         raise exceptions.DatasetDoesNotExistError(dataset_name)
@@ -163,8 +166,9 @@ def remove_model(model_name: str):
                 del status.datasets[dataset_name].models[model_name]
                 set_status(status)
             else:
-                raise exceptions.StateflowError(
-                    f"Attempted to delete inference ({dataset_name}, {model_name}) that was not in 'DELETE' state."
+                raise exceptions.ModelStateFlowError(
+                    model_name=model_name,
+                    current=status.datasets[dataset_name].models[model_name],
                 )
         if TableStatus.READY in status.datasets[dataset_name].next():
             set_dataset_status(dataset_name, TableStatus.READY)
