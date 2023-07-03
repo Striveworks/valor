@@ -293,8 +293,6 @@ def create_model(fn: callable) -> callable:
     @wraps(fn)
     def wrapper(*args, **kwargs):
 
-        results = fn(*args, **kwargs)
-
         if len(args) < 2:
             if "model" in kwargs:
                 pass
@@ -306,7 +304,7 @@ def create_model(fn: callable) -> callable:
             else:
                 _create_prediction(args[1])
 
-        return results
+        return fn(*args, **kwargs)
 
     return wrapper
 
