@@ -102,7 +102,7 @@ VITE_AUTH0_AUDIENCE=https://velour.striveworks.us/
 ```
 
 Currently, the Striveworks UI Library, Minerva, is closed-source.  This requires access to the Striveworks Repo and an access token.
-In order to get access to the application, a .npmrc file is required.  Replace `GITHUB AUTH TOKEN` in the following example file:
+In order start the web container for Velour, a `.npmrc` file is required in the `web` directory.  Replace `GITHUB AUTH TOKEN` in the following example file:
 
 ```
 @striveworks:registry = "https://npm.pkg.github.com/"
