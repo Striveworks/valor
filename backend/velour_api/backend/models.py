@@ -7,8 +7,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from velour_api.enums import DatumTypes, TaskType
 from velour_api.backend.database import Base
+from velour_api.enums import DatumTypes, TaskType
 
 
 class Label(Base):
@@ -150,9 +150,15 @@ class MetaDatum(Base):
     name: Mapped[str] = mapped_column(nullable=False)
 
     # targets
-    dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"), nullable=True)
-    datum_id: Mapped[int] = mapped_column(ForeignKey("datum.id"), nullable=True)
-    model_id: Mapped[int] = mapped_column(ForeignKey("model.id"), nullable=True)
+    dataset_id: Mapped[int] = mapped_column(
+        ForeignKey("dataset.id"), nullable=True
+    )
+    datum_id: Mapped[int] = mapped_column(
+        ForeignKey("datum.id"), nullable=True
+    )
+    model_id: Mapped[int] = mapped_column(
+        ForeignKey("model.id"), nullable=True
+    )
     geometry_id: Mapped[int] = mapped_column(
         ForeignKey("geometric_annotation.id"), nullable=True
     )

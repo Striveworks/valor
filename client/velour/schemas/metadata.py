@@ -1,6 +1,6 @@
 import json
 from dataclasses import dataclass, field
-from typing import List, Tuple, Union, Optional
+from typing import List, Optional, Tuple, Union
 
 
 @dataclass
@@ -30,5 +30,3 @@ class ImageMetadata:
 class Metadatum:
     name: str
     value: Union[int, float, str, ImageMetadata, GeographicFeature]
-
-

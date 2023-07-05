@@ -1,26 +1,29 @@
 from .core import (
-    Dataset, 
+    Dataset,
     DatasetInfo,
-    Model, 
-    ModelInfo,
-    GroundTruth, 
-    Prediction,
+    GroundTruth,
     Label,
+    Model,
+    ModelInfo,
+    Prediction,
     ScoredLabel,
 )
-from .metrics import (
-    ConfusionMatrix,
-    AccuracyMetric,
-    ROCAUCMetric,
-    PrecisionMetric,
-    RecallMetric,
-    F1Metric,
+from .annotation import (
+    GeometricAnnotation,
 )
 from .geometry import (
-    BoundingBox,
-    Polygon,
-    MultiPolygon,
+    BoundingBox, 
+    MultiPolygon, 
+    Polygon, 
     Raster,
+)
+from .metrics import (
+    AccuracyMetric,
+    ConfusionMatrix,
+    F1Metric,
+    PrecisionMetric,
+    RecallMetric,
+    ROCAUCMetric,
 )
 
 __all__ = [
@@ -32,14 +35,15 @@ __all__ = [
     "Prediction",
     "Label",
     "ScoredLabel",
-    "ConfusionMatrix",
+    "GeometricAnnotation",
+    "BoundingBox", 
+    "MultiPolygon", 
+    "Polygon", 
+    "Raster",
     "AccuracyMetric",
+    "ConfusionMatrix",
     "ROCAUCMetric",
     "PrecisionMetric",
     "RecallMetric",
     "F1Metric",
-    "BoundingBox",
-    "Polygon",
-    "MultiPolygon",
-    "Raster",
 ]

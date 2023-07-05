@@ -7,4 +7,3 @@ from velour_api.backend import state
 @state.update
 def update_something():
     pass
-

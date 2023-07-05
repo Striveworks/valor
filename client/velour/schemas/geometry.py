@@ -1,7 +1,7 @@
 import json
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import List, Tuple, Union, Optional
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -67,7 +67,8 @@ class Polygon:
                 Point(xmax, ymin),
             ]
         )
-    
+
+
 @dataclass
 class MultiPolygon:
     polygon: List[Polygon]

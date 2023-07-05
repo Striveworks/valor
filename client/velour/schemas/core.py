@@ -1,11 +1,17 @@
 import json
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import List, Tuple, Union, Optional
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 
-from velour.schemas import BoundingBox, Polygon, MultiPolygon, Raster, Metadatum
+from velour.schemas import (
+    BoundingBox,
+    Metadatum,
+    MultiPolygon,
+    Polygon,
+    Raster,
+)
 
 
 @dataclass
@@ -31,14 +37,16 @@ class Datum:
 
 @dataclass
 class Annotation:
-    geometry: Optional[Union[BoundingBox, Polygon, MultiPolygon, Raster]] = None
+    geometry: Optional[
+        Union[BoundingBox, Polygon, MultiPolygon, Raster]
+    ] = None
     # other type of annotation
     metadata: List[Metadatum]
 
     def __post_init__(self):
         # check at least one attribute is not None
         if self.geometry is None:
-            raise ValueError 
+            raise ValueError
 
 
 @dataclass
@@ -78,7 +86,7 @@ class ScoredLabel:
 
     def __hash__(self) -> int:
         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
-    
+
 
 @dataclass
 class GroundTruth:

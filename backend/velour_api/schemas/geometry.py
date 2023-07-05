@@ -4,12 +4,15 @@ from base64 import b64decode
 from uuid import uuid4
 
 import PIL.Image
-from pydantic import BaseModel, Field, Extra, root_validator, validator
+from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 
 class Point(BaseModel):
     x: float
     y: float
+
+    def __str__(self) -> str:
+        return f"({self.x}, {self.y})"
 
     def __hash__(self):
         return hash((self.x, self.y))
@@ -79,53 +82,61 @@ class LineSegment(BaseModel):
         return d1 == Point(x=d2.y, y=d2.x)
 
 
-def _validate_single_polygon(points: list[Point]):
-    if len(set(points)) < 3:
-        raise ValueError(
-            "Polygon must be composed of at least three unique points."
-        )
-
-    # @TODO (maybe) implement self-intersection check?
-
-
-def _validate_box_polygon(poly: list[Point]):
-    if len(poly) != 4:
-        raise ValueError("Box Polygon is composed of exactly four points.")
-    elif poly[0] == poly[-1]:
-        raise ValueError("Box Polygon requires four unique points.")
-
-
-class Polygon(BaseModel):
+class BasicPolygon(BaseModel):
     points: list[Point]
 
     @validator("points")
     def check_points(cls, v):
         if v is not None:
-            _validate_single_polygon(v)
+            if len(set(v)) < 3:
+                raise ValueError(
+                    "Polygon must be composed of at least three unique points."
+                )
+            # @TODO (maybe) implement self-intersection check?
         return v
 
     @property
     def segments(self):
         plist = self.points + self.points[0]
         return [(plist[i], plist[i + 1]) for i in range(len(self.points))]
+    
+    def __str__(self):
+        # in PostGIS polygon has to begin and end at the same point
+        pts = self.points
+        if pts[0] != pts[-1]:
+            pts = pts + [pts[0]]
+        return (
+            "("
+            + ", ".join([" ".join([str(pt.x), str(pt.y)]) for pt in pts])
+            + ")"
+        )
+
+    @property
+    def wkt(self) -> str:
+        return f"POLYGON ({str(self)})"
+    
+
+class Polygon(BaseModel):
+    polygon: BasicPolygon
+    holes: list[BasicPolygon] = None
+
+    def __str__(self):
+        polys = [str(self.polygon)]
+        for hole in self.holes:
+            polys.append(str(hole))
+        return f"({', '.join(polys)})"
+
+    @property
+    def wkt(self) -> str:
+        return f"POLYGON {str(self)}"
 
 
 class MultiPolygon(BaseModel):
     polygons: list[Polygon]
-    holes: list[Polygon] = []
-
-    @validator("polygons")
-    def check_polygon(cls, v):
-        for poly in v:
-            _validate_single_polygon(poly)
-        return v
-
-    @validator("holes")
-    def check_holes(cls, v):
-        if v:
-            for hole in v:
-                _validate_single_polygon(hole)
-        return v
+    
+    @property
+    def wkt(self) -> str:
+        return f"MULTIPOLYGON ({', '.join(self.polygons)})"
 
 
 class Box(BaseModel):
@@ -139,6 +150,16 @@ class Box(BaseModel):
         elif values["max"].y <= values["min"].y:
             raise ValueError("Invalid extrema (y-axis).")
         return values
+    
+    @property
+    def wkt(self) -> str:
+        pts = [
+            (self.min.x, self.min.y),
+            (self.max.x, self.min.y),
+            (self.max.x, self.max.y),
+            (self.min.x, self.max.y),
+        ]
+        return BasicPolygon(points=pts).wkt
 
 
 class BoundingBox(BaseModel):
@@ -154,8 +175,8 @@ class BoundingBox(BaseModel):
     @validator("polygon")
     def enough_pts(cls, v):
         if v is not None:
-            _validate_single_polygon(v)
-            _validate_box_polygon(v)
+            if len(set(v)) != 4:
+                raise ValueError("Box polygon must have 4 unique points.")
         return v
 
     @property
@@ -216,11 +237,15 @@ class BoundingBox(BaseModel):
     @property
     def is_skewed(self):
         return not (self.is_rotated or self.is_rectangular)
-
-
-def _mask_bytes_to_pil(mask_bytes: bytes) -> PIL.Image.Image:
-    with io.BytesIO(mask_bytes) as f:
-        return PIL.Image.open(f)
+    
+    @property
+    def wkt(self) -> str:
+        if self.polygon is not None:
+            return self.polygon.wkt
+        elif self.box is not None:
+            return self.box.wkt
+        else:
+            raise RuntimeError
 
 
 class Raster(BaseModel):
@@ -234,6 +259,11 @@ class Raster(BaseModel):
 
     @root_validator
     def correct_mask_shape(cls, values):
+
+        def _mask_bytes_to_pil(mask_bytes):
+            with io.BytesIO(mask_bytes) as f:
+                return PIL.Image.open(f)
+
         mask_size = _mask_bytes_to_pil(b64decode(values["mask"])).size
         image_size = (values["width"], values["height"])
         if mask_size != image_size:
@@ -266,4 +296,5 @@ class Raster(BaseModel):
 
     @property
     def pil_mask(self) -> PIL.Image:
-        return _mask_bytes_to_pil(self.mask_bytes)
+        with io.BytesIO(self.mask_bytes) as f:
+            return PIL.Image.open(f)

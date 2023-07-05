@@ -7,7 +7,6 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
 from velour_api import schemas
-from velour_api.enums import AnnotationType
 from velour_api.backend.core.ap import (
     compute_iou,
     function_find_ranked_pairs,
@@ -22,6 +21,7 @@ from velour_api.backend.core.geometry import (
     convert_raster_to_bbox,
     convert_raster_to_polygons,
 )
+from velour_api.enums import AnnotationType
 
 
 @dataclass
