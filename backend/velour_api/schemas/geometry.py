@@ -99,7 +99,7 @@ class BasicPolygon(BaseModel):
     def segments(self):
         plist = self.points + self.points[0]
         return [(plist[i], plist[i + 1]) for i in range(len(self.points))]
-    
+
     def __str__(self):
         # in PostGIS polygon has to begin and end at the same point
         pts = self.points
@@ -114,7 +114,7 @@ class BasicPolygon(BaseModel):
     @property
     def wkt(self) -> str:
         return f"POLYGON ({str(self)})"
-    
+
 
 class Polygon(BaseModel):
     polygon: BasicPolygon
@@ -133,7 +133,7 @@ class Polygon(BaseModel):
 
 class MultiPolygon(BaseModel):
     polygons: list[Polygon]
-    
+
     @property
     def wkt(self) -> str:
         return f"MULTIPOLYGON ({', '.join(self.polygons)})"
@@ -150,7 +150,7 @@ class Box(BaseModel):
         elif values["max"].y <= values["min"].y:
             raise ValueError("Invalid extrema (y-axis).")
         return values
-    
+
     @property
     def wkt(self) -> str:
         pts = [
@@ -237,7 +237,7 @@ class BoundingBox(BaseModel):
     @property
     def is_skewed(self):
         return not (self.is_rotated or self.is_rectangular)
-    
+
     @property
     def wkt(self) -> str:
         if self.polygon is not None:
@@ -259,7 +259,6 @@ class Raster(BaseModel):
 
     @root_validator
     def correct_mask_shape(cls, values):
-
         def _mask_bytes_to_pil(mask_bytes):
             with io.BytesIO(mask_bytes) as f:
                 return PIL.Image.open(f)

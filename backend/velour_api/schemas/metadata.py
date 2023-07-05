@@ -32,7 +32,3 @@ class MetaDatum(BaseModel):
             raise ValueError
         return v
 
-
-class Datum(BaseModel):
-    uid: str
-    metadata: list[MetaDatum] = []

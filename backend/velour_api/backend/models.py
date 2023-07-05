@@ -153,11 +153,11 @@ class MetaDatum(Base):
     dataset_id: Mapped[int] = mapped_column(
         ForeignKey("dataset.id"), nullable=True
     )
-    datum_id: Mapped[int] = mapped_column(
-        ForeignKey("datum.id"), nullable=True
-    )
     model_id: Mapped[int] = mapped_column(
         ForeignKey("model.id"), nullable=True
+    )
+    datum_id: Mapped[int] = mapped_column(
+        ForeignKey("datum.id"), nullable=True
     )
     geometry_id: Mapped[int] = mapped_column(
         ForeignKey("geometric_annotation.id"), nullable=True
@@ -172,14 +172,14 @@ class MetaDatum(Base):
     )
 
     # relationships
-    images: Mapped["ImageMetadata"] = relationship(cascade="all, delete")
+    images: Mapped["ImageMetadatum"] = relationship(cascade="all, delete")
 
     __table_args__ = (
         CheckConstraint("num_nonnulls(string_value, numeric_value, geo) = 1"),
     )
 
 
-class ImageMetadata(Base):
+class ImageMetadatum(Base):
     __tablename__ = "metadatum_image"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)

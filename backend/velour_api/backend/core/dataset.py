@@ -1,7 +1,102 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import select, insert
 
-from velour_api import schemas
+from velour_api import schemas, exceptions
 from velour_api.backend import models
+
+from velour_api.backend.core.metadata import create_metadata
+from velour_api.backend.core.label import create_label
+from velour_api.backend.core.geometry import create_geometry
+
+
+def get_dataset_info(
+    db: Session,
+    dataset_id: int,
+) -> schemas.DatasetInfo:
+    # return dataset info with all assoiated metadata
+    pass
+
+
+def get_dataset_id(
+    db: Session,
+    dataset: schemas.DatasetInfo,
+):
+    return db.scalar(
+        select(models.Dataset.id)
+        .where(models.Dataset.name == dataset.name)
+    )
+
+
+def create_dataset_info(
+    db: Session,
+    info: schemas.DatasetInfo,
+):
+    mapping = {
+        "name": info.name,
+    }
+    dataset_id = db.scalar(
+        insert(models.Dataset)
+        .values(mapping)
+        .returning(models.Dataset.id)
+    )
+    db.commit()
+    create_metadata(db, info.metadata, dataset_id=dataset_id)
+    return dataset_id
+
+
+def create_datum(
+    db: Session, 
+    datum: schemas.Datum,
+    dataset_id: int,
+):
+    mapping = {
+        "uid": datum.uid,
+        "dataset_id": dataset_id,
+    }
+    datum_id = db.scalar(
+        insert(models.Datum)
+        .values(mapping)
+        .returning(models.Datum.id)
+    )
+    db.commit()
+    create_metadata(db, datum.metadata, dataset_id=dataset_id, datum_id=datum_id)
+    return datum_id
+
+
+def create_groundtruths(
+    db: Session,
+    gts: schemas.GroundTruth,
+    dataset_id: int,
+    datum_id: int,
+):
+    
+    # @TODO: Need to iterate through each label and assign same annotation, datum, dataset to it.
+    mapping = [
+        {
+        "dataset_id": dataset_id,
+        "datum_id": datum_id,
+        "geometry_id": create_geometry(db, gt.annotation),
+        "label_id": create_label(db, gt.label)
+        }
+        for gt in gts
+    ]
+
+
+def create_dataset(
+    db: Session,
+    dataset: schemas.Dataset,
+) -> int:
+    
+    # Check if dataset already exists.
+    if get_dataset_id(db, dataset.info):
+        raise exceptions.DatasetAlreadyExistsError(dataset.info.name)
+    
+    # Create dataset
+    dataset_id = create_dataset_info(db, dataset.info)
+    for datum in dataset.datums:
+        datum_id = create_datum(db, datum, dataset_id)
+        create_groundtruths(db, datum.gts, dataset_id=dataset_id, datum_id=datum_id)
+
 
 
 def _add_datums_to_dataset(

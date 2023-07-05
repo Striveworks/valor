@@ -18,6 +18,7 @@ def format_name(name: str):
 class DatasetInfo(BaseModel):
     id: int = None
     name: str
+    metadata: list[MetaDatum]
 
     @validator("name")
     def check_name_valid(cls, v):
@@ -30,6 +31,7 @@ class DatasetInfo(BaseModel):
 class ModelInfo(BaseModel):
     id: int = None
     name: str
+    metadata: list[MetaDatum]
 
     @validator("name")
     def check_name_valid(cls, v):
@@ -40,15 +42,14 @@ class ModelInfo(BaseModel):
 
 
 class Datum(BaseModel):
-    dataset_id: DatasetInfo
     uid: str
     metadata: list[MetaDatum] = []
 
 
 class GroundTruth(BaseModel):
-    task_type: Optional[TaskType] = None
+    task_type: TaskType = None
     labels: list[Label]
-    annotation: Optional[GeometricAnnotation] = None
+    annotation: GeometricAnnotation = None
 
 
 class Prediction(BaseModel):
@@ -75,24 +76,22 @@ class Prediction(BaseModel):
         return v
 
 
-class DatumGroundTruth(BaseModel):
+class DatumGroundTruths(BaseModel):
     datum: Datum
     gts: list[GroundTruth]
 
 
-class DatumPrediction(BaseModel):
+class DatumPredictions(BaseModel):
     datum: Datum
     pds: list[Prediction]
 
 
 class Dataset(BaseModel):
-    dataset_id: DatasetInfo
-    datums: list[DatumGroundTruth]
-    metadata: list[MetaDatum]
+    info: DatasetInfo
+    datums: list[DatumGroundTruths]
 
 
 class Model(BaseModel):
-    model_id: ModelInfo
-    dataset_id: DatasetInfo
-    datums: list[DatumPrediction]
-    metadata: list[MetaDatum]
+    model_info: ModelInfo
+    dataset_info: DatasetInfo
+    datums: list[DatumPredictions]

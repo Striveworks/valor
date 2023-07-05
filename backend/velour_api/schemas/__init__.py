@@ -1,6 +1,8 @@
+from .annotation import GeometricAnnotation
 from .core import (
     Dataset,
     DatasetInfo,
+    Datum,
     GroundTruth,
     Label,
     Model,
@@ -8,15 +10,8 @@ from .core import (
     Prediction,
     ScoredLabel,
 )
-from .annotation import (
-    GeometricAnnotation,
-)
-from .geometry import (
-    BoundingBox, 
-    MultiPolygon, 
-    Polygon, 
-    Raster,
-)
+from .geometry import BoundingBox, MultiPolygon, Polygon, Raster
+from .metadata import MetaDatum, GeographicFeature, ImageMetadata
 from .metrics import (
     AccuracyMetric,
     ConfusionMatrix,
@@ -29,6 +24,7 @@ from .metrics import (
 __all__ = [
     "Dataset",
     "DatasetInfo",
+    "Datum",
     "Model",
     "ModelInfo",
     "GroundTruth",
@@ -36,10 +32,13 @@ __all__ = [
     "Label",
     "ScoredLabel",
     "GeometricAnnotation",
-    "BoundingBox", 
-    "MultiPolygon", 
-    "Polygon", 
+    "BoundingBox",
+    "MultiPolygon",
+    "Polygon",
     "Raster",
+    "MetaDatum",
+    "GeographicFeature",
+    "ImageMetadata",
     "AccuracyMetric",
     "ConfusionMatrix",
     "ROCAUCMetric",

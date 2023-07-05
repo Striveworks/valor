@@ -30,48 +30,6 @@ from ._read import (
 # @MARK: SQL to SQL Conversion
 
 
-def convert_polygons_to_bbox(
-    tablename: str,
-    dataset_id: int = None,
-    model_id: int = None,
-    min_area: Optional[float] = None,
-    max_area: Optional[float] = None,
-):
-    """Takes either 'ground_truth_detection' or 'predicted_detection' as tablename."""
-
-    if dataset_id is not None and model_id is None:
-        criteria_id = f"(select {get_dataset_id_from_datum_id('datum_id')} limit 1) =  {dataset_id}"
-    elif dataset_id is None and model_id is not None:
-        criteria_id = f"model_id =  {model_id}"
-    elif dataset_id is not None and model_id is not None:
-        raise ValueError
-
-    subquery = f"""
-    SELECT subquery.id as id, bbox, datum_id
-    FROM(
-        SELECT id, ST_Envelope(ST_Union(boundary)) as bbox
-        FROM {tablename}
-        {f"WHERE ({criteria_id})" if criteria_id else ''}
-        GROUP BY id
-    ) AS subquery
-    CROSS JOIN {tablename}
-    WHERE {tablename}.id = subquery.id
-    """
-
-    criteria_area = []
-    if min_area is not None:
-        criteria_area.append(f"ST_AREA(bbox) >= {min_area}")
-    if max_area is not None:
-        criteria_area.append(f"ST_AREA(bbox) <= {max_area}")
-    if criteria_area:
-        return f"""
-        SELECT id, bbox, datum_id
-        FROM ({subquery}) AS subquery
-        WHERE {' AND '.join(criteria_area)}
-        """
-    else:
-        return subquery
-
 
 def convert_raster_to_polygons(
     tablename: str,
@@ -139,13 +97,7 @@ def convert_raster_to_bbox(
     subquery = f"""
     SELECT subquery.id AS id, is_instance, bbox, datum_id
     FROM(
-        SELECT id, ST_Envelope(ST_Union(geom)) as bbox
-        FROM (
-            SELECT id, ST_MakeValid((ST_DumpAsPolygons(shape)).geom) as geom
-            FROM {tablename}
-            {f"WHERE ({criteria_id})" if criteria_id != '' else ''}
-        ) AS conversion
-        GROUP BY id
+        
     )
     AS subquery
     CROSS JOIN {tablename}
