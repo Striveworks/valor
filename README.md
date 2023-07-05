@@ -101,6 +101,14 @@ VITE_AUTH0_CALLBACK_URL=http://localhost:3000/callback
 VITE_AUTH0_AUDIENCE=https://velour.striveworks.us/
 ```
 
+Currently, the Striveworks UI Library, Minerva, is closed-source.  This requires access to the Striveworks Repo and an access token.
+In order to get access to the application, a .npmrc file is required.  Replace `GITHUB AUTH TOKEN` in the following example file:
+
+```
+@striveworks:registry = "https://npm.pkg.github.com/"
+//npm.pkg.github.com/:_authToken = <GITHUB AUTH TOKEN>
+```
+
 ### Testing auth
 
 All tests mentioned above run without authentication except for `integration_tests/test_client_auth.py`. Running this test requires setting the envionment variables `AUTH0_DOMAIN`, `AUTH0_AUDIENCE`, `AUTH0_CLIENT_ID`, and `AUTH0_CLIENT_SECRET` accordingly.
