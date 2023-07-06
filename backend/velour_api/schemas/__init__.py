@@ -1,5 +1,5 @@
-from .annotation import GeometricAnnotation
 from .core import (
+    Annotation,
     Dataset,
     DatasetInfo,
     Datum,
@@ -22,6 +22,7 @@ from .metrics import (
 )
 
 __all__ = [
+    "Annotation",
     "Dataset",
     "DatasetInfo",
     "Datum",
@@ -31,7 +32,6 @@ __all__ = [
     "Prediction",
     "Label",
     "ScoredLabel",
-    "GeometricAnnotation",
     "BoundingBox",
     "MultiPolygon",
     "Polygon",
@@ -41,8 +41,8 @@ __all__ = [
     "ImageMetadata",
     "AccuracyMetric",
     "ConfusionMatrix",
-    "ROCAUCMetric",
+    "F1Metric",
     "PrecisionMetric",
     "RecallMetric",
-    "F1Metric",
+    "ROCAUCMetric",
 ]

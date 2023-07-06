@@ -10,84 +10,87 @@ from velour_api.backend import models
 
 def create_image_metadatum(
     db: Session,
-    image: schemas.ImageMetadatum,
-):
-    mapping =  {
-        "height": image.height,
-        "width": image.width,
-        "frame": image.frame,
-    }
-
-    added_id = db.scalars(
-        insert(models.MetaDatum)
-        .values(mapping)
-        .returning(models.MetaDatum.id)
+    image: schemas.ImageMetadata,
+) -> models.ImageMetadata:
+    image_metadatum_row = models.ImageMetadata(
+        height=image.height,
+        width=image.width,
+        frame=image.frame,
     )
+    db.add(image_metadatum_row)
     db.commit()
-    return added_id.one()
+    return image_metadatum_row
 
 
-
-def create_metadatum_mapping(
+def create_metadatum(
     db: Session,
     metadatum: schemas.MetaDatum,
-    dataset_id: int = None,
-    model_id: int = None,
-    datum_id: int = None,
-    geometry_id: int = None,
+    dataset: models.Dataset = None,
+    model: models.Model = None,
+    datum: models.Datum = None,
+    geometry: models.GeometricAnnotation = None,
+    commit: bool = True,
 ) -> dict:
 
-    if not (dataset_id or model_id or datum_id or geometry_id):
+    if not (dataset or model or datum or geometry):
         raise ValueError("Need some target to attach metadatum to.")
     
-    ret = {
+    mapping = {
         "name": metadatum.name,
-        "dataset_id": dataset_id,
-        "model_id": model_id,
-        "datum_id": datum_id,
-        "geometry_id": geometry_id,
+        "dataset_id": dataset.id if dataset else None,
+        "model_id": model.id if model else None,
+        "datum_id": datum.id if datum else None,
+        "geometry_id": geometry.id if geometry else None,
         "string_value": None,
         "numeric_value": None,
         "geo": None,
         "image_id": None,
     }
 
+    # Check value type
     if isinstance(metadatum.value, str):
-        ret["string_value"] = metadatum.value
+        mapping["string_value"] = metadatum.value
     elif isinstance(metadatum.value, float):
-        ret["numeric_value"] = metadatum.value
+        mapping["numeric_value"] = metadatum.value
     elif isinstance(metadatum.value, schemas.GeographicFeature):
-        ret["geo"] = ST_GeomFromGeoJSON(json.dumps(metadatum.value.geography))
+        mapping["geo"] = ST_GeomFromGeoJSON(json.dumps(metadatum.value.geography))
     elif isinstance(metadatum.value, schemas.ImageMetadata):
-        ret["image_id"] = create_image_metadatum(metadatum.value)
+        mapping["image_id"] = create_image_metadatum(metadatum.value).id
     else:
         raise ValueError(
             f"Got unexpected value of type '{type(metadatum.value)}' for metadatum"
         )
-    return ret
+    
+    row = models.MetaDatum(**mapping)
+    if commit:
+        db.add(row)
+        db.commit()
+    return row
 
 
 def create_metadata(
     db: Session,
     metadata: list[schemas.MetaDatum],
-    dataset_id: int = None,
-    model_id: int = None,
-    datum_id: int = None,
-    annotation_id: int = None,
-):
-
-    mapping = [
-        create_metadatum_mapping(metadatum)
+    dataset: models.Dataset = None,
+    model: models.Model = None,
+    datum: models.Datum = None,
+    geometry: models.GeometricAnnotation = None,
+) -> list[models.MetaDatum]:
+    rows = [
+        create_metadatum(
+            db,
+            metadatum,
+            dataset=dataset,
+            model=model,
+            datum=datum,
+            geometry=geometry,
+            commit=False,
+        )
         for metadatum in metadata
     ]
-
-    added_ids = db.scalars(
-        insert(models.MetaDatum)
-        .values(mapping)
-        .returning(models.MetaDatum.id)
-    )
+    db.add_all(rows)
     db.commit()
-    return added_ids.all()
+    return rows
 
 
 def query_by_metadata(metadata: list[schemas.MetaDatum]):

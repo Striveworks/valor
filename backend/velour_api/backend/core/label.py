@@ -9,44 +9,52 @@ def get_label(
     db: Session,
     label_id: int,
 ) -> schemas.Label:
-    label = db.scalar(
-        select(models.Label)
-        .where(models.Label.id == label_id)
-    )
-    return schemas.Label(key=label.key, value=label.value)
+    label = db.query(models.Label).where(models.Label.id == label_id).one_or_none()
+    return schemas.Label(key=label.key, value=label.value) if label else None
 
 
 def get_label_id(
     db: Session,
     label: schemas.Label,
 ) -> int:
-    return db.scalar(
-        select(models.Label.id)
-        .where(and_(models.Label.key == label.key, models.Label.value == label.value))
-    )
+    return db.query(models.Label).where(
+        and_(
+            models.Label.key == label.key, 
+            models.Label.value == label.value
+        )
+    ).one_or_none()
 
 
 def create_label(
     db: Session,
     label: schemas.Label,
-) -> int:
-    # Get id if label already exists
-    existing_id = get_label_id(db, label)
-    if existing_id:
-        return existing_id
+) -> models.Label:
+    """Create label always commits a new label as it operates as a Many-To-One mapping."""
+    
+    # Get label if it already exists
+    if label_row := db.query(models.Label).where(
+        and_(
+            models.Label.key == label.key, 
+            models.Label.value == label.value
+        )
+    ).one_or_none():
+        return label_row
 
     # Otherwise, create new label
-    mapping = {
-        "key": label.key,
-        "value": label.value,
-    }
-    added_id = db.scalar(
-        insert(models.MetaDatum)
-        .values(mapping)
-        .returning(models.MetaDatum.id)
-    )
+    label_row = models.Label(key=label.key, value=label.value)
+    db.add(label_row)
     db.commit()
-    return added_id
+    return label_row
+
+
+def create_labels(
+    db: Session,
+    labels: list[schemas.Label],
+) -> list[models.Label]:
+    return [
+        create_label(label)
+        for label in labels
+    ]
 
 
 def get_labels_from_query(

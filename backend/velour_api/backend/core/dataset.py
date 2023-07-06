@@ -1,139 +1,92 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import select, insert
+from sqlalchemy import select, insert, and_
 
 from velour_api import schemas, exceptions
 from velour_api.backend import models
 
 from velour_api.backend.core.metadata import create_metadata
-from velour_api.backend.core.label import create_label
-from velour_api.backend.core.geometry import create_geometry
+from velour_api.backend.core.label import create_labels
+from velour_api.backend.core.geometry import create_geometric_annotation
 
 
 def get_dataset_info(
     db: Session,
-    dataset_id: int,
+    name: str,
 ) -> schemas.DatasetInfo:
     # return dataset info with all assoiated metadata
     pass
 
 
-def get_dataset_id(
+def get_datum(
     db: Session,
-    dataset: schemas.DatasetInfo,
-):
-    return db.scalar(
-        select(models.Dataset.id)
-        .where(models.Dataset.name == dataset.name)
-    )
+    datum: schemas.Datum,
+) -> models.Datum:
+    return db.query(models.Datum).where(models.Datum.uid == datum.uid).one_or_none()
 
 
 def create_dataset_info(
     db: Session,
     info: schemas.DatasetInfo,
-):
-    mapping = {
-        "name": info.name,
-    }
-    dataset_id = db.scalar(
-        insert(models.Dataset)
-        .values(mapping)
-        .returning(models.Dataset.id)
-    )
+) -> models.Dataset:
+    
+    # Create dataset
+    row = models.Dataset(name=info.name)
+    db.add(row)
     db.commit()
-    create_metadata(db, info.metadata, dataset_id=dataset_id)
-    return dataset_id
+
+    # Create metadata
+    create_metadata(db, info.metadata, dataset=row)
+    return row
 
 
 def create_datum(
     db: Session, 
     datum: schemas.Datum,
-    dataset_id: int,
-):
-    mapping = {
-        "uid": datum.uid,
-        "dataset_id": dataset_id,
-    }
-    datum_id = db.scalar(
-        insert(models.Datum)
-        .values(mapping)
-        .returning(models.Datum.id)
-    )
+    dataset: models.Dataset,
+) -> models.Datum:
+    
+    # Create datum
+    row = models.Datum(uid=datum.uid, dataset=dataset.id)
+    db.add(row)
     db.commit()
-    create_metadata(db, datum.metadata, dataset_id=dataset_id, datum_id=datum_id)
-    return datum_id
+
+    # Create metadata
+    create_metadata(db, datum.metadata, datum_id=row)
+    return row
 
 
 def create_groundtruths(
     db: Session,
-    gts: schemas.GroundTruth,
-    dataset_id: int,
-    datum_id: int,
-):
-    
-    # @TODO: Need to iterate through each label and assign same annotation, datum, dataset to it.
-    mapping = [
-        {
-        "dataset_id": dataset_id,
-        "datum_id": datum_id,
-        "geometry_id": create_geometry(db, gt.annotation),
-        "label_id": create_label(db, gt.label)
-        }
-        for gt in gts
-    ]
+    gts: list[schemas.GroundTruth],
+    datum: models.Datum,
+) -> list[models.GroundTruth]:
+    rows = []
+    for gt in gts:
+        geometry = create_geometric_annotation(db, gt.geometry) if gt.geometry else None
+        rows += [
+            models.GroundTruth(
+                datum_id=datum.id,
+                task_type=gt.task_type,
+                geometry=geometry.id,
+                label=label.id,
+            )
+            for label in create_labels(db, gt.labels)
+        ]
+    db.add_all(rows)
+    db.commit()
+    return rows
 
 
 def create_dataset(
     db: Session,
     dataset: schemas.Dataset,
-) -> int:
-    
+):
     # Check if dataset already exists.
-    if get_dataset_id(db, dataset.info):
+    if not db.query(models.Dataset).where(models.Dataset.name == dataset.info.name).one_or_none():
         raise exceptions.DatasetAlreadyExistsError(dataset.info.name)
     
-    # Create dataset
-    dataset_id = create_dataset_info(db, dataset.info)
+    dataset_row = create_dataset_info(db, dataset.info)                             # Create dataset
     for datum in dataset.datums:
-        datum_id = create_datum(db, datum, dataset_id)
-        create_groundtruths(db, datum.gts, dataset_id=dataset_id, datum_id=datum_id)
+        datum_row = create_datum(db, datum, dataset=dataset_row)                    # Create datums
+        create_groundtruths(db, datum.gts, dataset=dataset_row, datum=datum_row)    # Create groundtruths
 
-
-
-def _add_datums_to_dataset(
-    db: Session, dataset_name, datums: list[schemas.Datum]
-) -> list[models.Datum]:
-    """Adds images defined by URIs to a dataset (creating the Image rows if they don't exist),
-    returning the list of image ids"""
-    dset = get_dataset(db, dataset_name=dataset_name)
-    if not dset.draft:
-        raise exceptions.DatasetIsFinalizedError(dataset_name)
-    dset_id = dset.id
-
-    db_datums = [
-        _get_or_create_row(
-            db=db,
-            model_class=models.Datum,
-            mapping={
-                "dataset_id": dset_id,
-                **datum.dict(exclude={"metadata"}),
-            },
-        )
-        for datum in datums
-    ]
-
-    for datum, db_datum in zip(datums, db_datums):
-        for metadatum in datum.metadata:
-            metadatum_id = _get_or_create_row(
-                db=db,
-                model_class=models.Metadatum,
-                mapping=_metadatum_mapping(metadatum=metadatum),
-            ).id
-
-            db.add(
-                models.DatumMetadatumLink(
-                    datum_id=db_datum.id, metadatum_id=metadatum_id
-                )
-            )
-
-    db.commit()
-    return db_datums

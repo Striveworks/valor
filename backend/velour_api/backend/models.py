@@ -172,14 +172,14 @@ class MetaDatum(Base):
     )
 
     # relationships
-    images: Mapped["ImageMetadatum"] = relationship(cascade="all, delete")
+    images: Mapped["ImageMetadata"] = relationship(cascade="all, delete")
 
     __table_args__ = (
         CheckConstraint("num_nonnulls(string_value, numeric_value, geo) = 1"),
     )
 
 
-class ImageMetadatum(Base):
+class ImageMetadata(Base):
     __tablename__ = "metadatum_image"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)

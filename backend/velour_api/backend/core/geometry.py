@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from velour_api import schemas
 from velour_api.backend import models
 
+from velour_api.backend.core.metadata import create_metadata
+
 
 def wkt_multipolygon_to_raster(data: schemas.MultiPolygon):
     return select(
@@ -11,48 +13,55 @@ def wkt_multipolygon_to_raster(data: schemas.MultiPolygon):
     )
 
 
-def create_geometry_mapping(
-    data: schemas.BoundingBox
-    | schemas.Polygon
-    | schemas.MultiPolygon
-    | schemas.Raster,
-) -> dict:
+def create_geometric_annotation(
+    db: Session,
+    annotation: schemas.Annotation,
+    commit: bool = True
+) -> models.GeometricAnnotation:
+    
+    # Check if annotation contains geometry
+    if not annotation.geometry:
+        return None
 
     box = None
     polygon = None
     raster = None
 
-    if isinstance(data, schemas.BoundingBox):
-        box = data.wkt
-    elif isinstance(data, schemas.Polygon):
-        polygon = data.wkt
-    elif isinstance(data, schemas.MultiPolygon):
-        raster = wkt_multipolygon_to_raster(data.wkt)
-    elif isinstance(data, schemas.Raster):
-        raster = data.mask_bytes
+    if isinstance(annotation.geometry, schemas.BoundingBox):
+        box = annotation.geometry.wkt
+    elif isinstance(annotation.geometry, schemas.Polygon):
+        polygon = annotation.geometry.wkt
+    elif isinstance(annotation.geometry, schemas.MultiPolygon):
+        raster = wkt_multipolygon_to_raster(annotation.geometry.wkt)
+    elif isinstance(annotation.geometry, schemas.Raster):
+        raster = annotation.geometry.mask_bytes
     else:
-        raise ValueError("Unknown geometric type.")
+        raise ValueError(f"Unknown geometry with type '{type(annotation.geometry)}'.")
 
-    return {
+    mapping = {
         "box": box,
         "polygon": polygon,
         "raster": raster,
     }
+    row = models.GeometricAnnotation(**mapping)
+    create_metadata(db, annotation.metadata, geometry=row)
+    if commit:
+        db.add(row)
+        db.commit()
+    return row
 
 
-def create_geometry(
-    db: Session, data: list[schemas.GeometricAnnotation]
-) -> list[int]:
-
-    mapping = [create_geometry_mapping(datum.geometry) for datum in data]
-
-    added_ids = db.scalars(
-        insert(models.GeometricAnnotation)
-        .values(mapping)
-        .returning(models.GeometricAnnotation.id)
-    )
+def create_geometric_annotations(
+    db: Session, 
+    annotations: list[schemas.Annotation],
+) -> list[models.GeometricAnnotation]:
+    rows = [
+        create_geometric_annotation(db, annotation, commit=False)
+        for annotation in annotations
+    ]
+    db.add_all(rows)
     db.commit()
-    return added_ids.all()
+    return rows
 
 
 def convert_polygon_to_box(
