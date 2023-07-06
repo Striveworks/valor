@@ -11,7 +11,7 @@ from .core import (
     ScoredLabel,
 )
 from .geometry import BoundingBox, MultiPolygon, Polygon, Raster
-from .metadata import MetaDatum, GeographicFeature, ImageMetadata
+from .metadata import GeographicFeature, ImageMetadata, MetaDatum
 from .metrics import (
     AccuracyMetric,
     ConfusionMatrix,

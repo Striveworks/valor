@@ -1,8 +1,8 @@
 import json
 
-from sqlalchemy.orm import Session
-from sqlalchemy import select, text, insert
 from geoalchemy2.functions import ST_GeomFromGeoJSON
+from sqlalchemy import insert, select, text
+from sqlalchemy.orm import Session
 
 from velour_api import schemas
 from velour_api.backend import models
@@ -34,7 +34,7 @@ def create_metadatum(
 
     if not (dataset or model or datum or geometry):
         raise ValueError("Need some target to attach metadatum to.")
-    
+
     mapping = {
         "name": metadatum.name,
         "dataset_id": dataset.id if dataset else None,
@@ -53,14 +53,16 @@ def create_metadatum(
     elif isinstance(metadatum.value, float):
         mapping["numeric_value"] = metadatum.value
     elif isinstance(metadatum.value, schemas.GeographicFeature):
-        mapping["geo"] = ST_GeomFromGeoJSON(json.dumps(metadatum.value.geography))
+        mapping["geo"] = ST_GeomFromGeoJSON(
+            json.dumps(metadatum.value.geography)
+        )
     elif isinstance(metadatum.value, schemas.ImageMetadata):
         mapping["image_id"] = create_image_metadatum(metadatum.value).id
     else:
         raise ValueError(
             f"Got unexpected value of type '{type(metadatum.value)}' for metadatum"
         )
-    
+
     row = models.MetaDatum(**mapping)
     if commit:
         db.add(row)

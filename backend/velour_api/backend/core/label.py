@@ -1,15 +1,17 @@
-from sqlalchemy import Select, TextualSelect, select, insert, and_
+from sqlalchemy import Select, TextualSelect, and_, insert, select
 from sqlalchemy.orm import Session
 
+from velour_api import exceptions, schemas
 from velour_api.backend import models, state, x
-from velour_api import schemas, exceptions
 
 
 def get_label(
     db: Session,
     label_id: int,
 ) -> schemas.Label:
-    label = db.query(models.Label).where(models.Label.id == label_id).one_or_none()
+    label = (
+        db.query(models.Label).where(models.Label.id == label_id).one_or_none()
+    )
     return schemas.Label(key=label.key, value=label.value) if label else None
 
 
@@ -17,12 +19,16 @@ def get_label_id(
     db: Session,
     label: schemas.Label,
 ) -> int:
-    return db.query(models.Label).where(
-        and_(
-            models.Label.key == label.key, 
-            models.Label.value == label.value
+    return (
+        db.query(models.Label)
+        .where(
+            and_(
+                models.Label.key == label.key,
+                models.Label.value == label.value,
+            )
         )
-    ).one_or_none()
+        .one_or_none()
+    )
 
 
 def create_label(
@@ -30,14 +36,18 @@ def create_label(
     label: schemas.Label,
 ) -> models.Label:
     """Create label always commits a new label as it operates as a Many-To-One mapping."""
-    
+
     # Get label if it already exists
-    if label_row := db.query(models.Label).where(
-        and_(
-            models.Label.key == label.key, 
-            models.Label.value == label.value
+    if (
+        label_row := db.query(models.Label)
+        .where(
+            and_(
+                models.Label.key == label.key,
+                models.Label.value == label.value,
+            )
         )
-    ).one_or_none():
+        .one_or_none()
+    ):
         return label_row
 
     # Otherwise, create new label
@@ -51,10 +61,7 @@ def create_labels(
     db: Session,
     labels: list[schemas.Label],
 ) -> list[models.Label]:
-    return [
-        create_label(label)
-        for label in labels
-    ]
+    return [create_label(label) for label in labels]
 
 
 def get_labels_from_query(

@@ -4,7 +4,12 @@ from typing import Optional
 from pydantic import BaseModel, validator
 
 from velour_api.enums import AnnotationType, DatumTypes, TaskType
-from velour_api.schemas.geometry import BoundingBox, Polygon, MultiPolygon, Raster
+from velour_api.schemas.geometry import (
+    BoundingBox,
+    MultiPolygon,
+    Polygon,
+    Raster,
+)
 from velour_api.schemas.label import Label, ScoredLabel
 from velour_api.schemas.metadata import MetaDatum
 

@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 
 from velour_api import schemas
 from velour_api.backend import models
-
 from velour_api.backend.core.metadata import create_metadata
 
 
@@ -14,11 +13,9 @@ def wkt_multipolygon_to_raster(data: schemas.MultiPolygon):
 
 
 def create_geometric_annotation(
-    db: Session,
-    annotation: schemas.Annotation,
-    commit: bool = True
+    db: Session, annotation: schemas.Annotation, commit: bool = True
 ) -> models.GeometricAnnotation:
-    
+
     # Check if annotation contains geometry
     if not annotation.geometry:
         return None
@@ -36,7 +33,9 @@ def create_geometric_annotation(
     elif isinstance(annotation.geometry, schemas.Raster):
         raster = annotation.geometry.mask_bytes
     else:
-        raise ValueError(f"Unknown geometry with type '{type(annotation.geometry)}'.")
+        raise ValueError(
+            f"Unknown geometry with type '{type(annotation.geometry)}'."
+        )
 
     mapping = {
         "box": box,
@@ -52,7 +51,7 @@ def create_geometric_annotation(
 
 
 def create_geometric_annotations(
-    db: Session, 
+    db: Session,
     annotations: list[schemas.Annotation],
 ) -> list[models.GeometricAnnotation]:
     rows = [
@@ -92,7 +91,6 @@ def convert_raster_to_box(
     # ) AS conversion
     # GROUP BY id
     pass
-
 
 
 def convert_raster_to_polygon(
