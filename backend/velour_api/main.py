@@ -37,19 +37,19 @@ def get_db():
 
 
 # should move the following routes to be behind /datasets/{dataset}/ ?
-@app.post("/groundtruth-detections", dependencies=[Depends(token_auth_scheme)])
-def create_groundtruth_detections(
-    data: schemas.GroundTruthDetectionsCreate, db: Session = Depends(get_db)
+@app.post("/groundtruths", dependencies=[Depends(token_auth_scheme)])
+def create_groundtruths(
+    data: list[schemas.AnnotatedDatum], db: Session = Depends(get_db)
 ) -> list[int]:
     try:
-        return crud.create_groundtruth_detections(db=db, data=data)
+        return crud.create_groundtruths(db=db, data=data)
     except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@app.post("/predicted-detections", dependencies=[Depends(token_auth_scheme)])
-def create_predicted_detections(
-    data: schemas.PredictedDetectionsCreate,
+@app.post("/predictions", dependencies=[Depends(token_auth_scheme)])
+def create_predictions(
+    data: list[schemas.AnnotatedDatum],
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
@@ -61,65 +61,10 @@ def create_predicted_detections(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@app.post(
-    "/groundtruth-segmentations", dependencies=[Depends(token_auth_scheme)]
-)
-def create_groundtruth_segmentations(
-    data: schemas.GroundTruthSegmentationsCreate,
-    db: Session = Depends(get_db),
-) -> list[int]:
-    try:
-        logger.debug(
-            f"got: {len(data.segmentations)} segmentations for dataset {data.dataset_name}"
-        )
-        return crud.create_groundtruth_segmentations(db=db, data=data)
-    except exceptions.DatasetIsFinalizedError as e:
-        raise HTTPException(status_code=409, detail=str(e))
-
-
-@app.post(
-    "/predicted-segmentations", dependencies=[Depends(token_auth_scheme)]
-)
-def create_predicted_segmentations(
-    data: schemas.PredictedSegmentationsCreate,
-    db: Session = Depends(get_db),
-) -> list[int]:
-    try:
-        return crud.create_predicted_segmentations(db=db, data=data)
-    except exceptions.ImageDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.post(
-    "/groundtruth-classifications", dependencies=[Depends(token_auth_scheme)]
-)
-def create_groundtruth_classifications(
-    data: schemas.GroundTruthClassificationsCreate,
-    db: Session = Depends(get_db),
-) -> list[int]:
-    try:
-        return crud.create_ground_truth_classifications(db=db, data=data)
-    except exceptions.DatasetIsFinalizedError as e:
-        raise HTTPException(status_code=409, detail=str(e))
-
-
-@app.post(
-    "/predicted-classifications", dependencies=[Depends(token_auth_scheme)]
-)
-def create_predicted_classifications(
-    data: schemas.PredictedClassificationsCreate,
-    db: Session = Depends(get_db),
-) -> list[int]:
-    try:
-        return crud.create_predicted_image_classifications(db=db, data=data)
-    except exceptions.ImageDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
 @app.get(
     "/datasets", status_code=200, dependencies=[Depends(token_auth_scheme)]
 )
-def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
+def get_datasets(db: Session = Depends(get_db)) -> list[schemas.DatasetInfo]:
     return crud.get_datasets(db)
 
 

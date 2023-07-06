@@ -1,5 +1,6 @@
-from sqlalchemy import Select, TextualSelect, and_, insert, select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import Select, TextualSelect, and_, select
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models, state, x
@@ -39,7 +40,7 @@ def create_label(
 
     # Get label if it already exists
     if (
-        label_row := db.query(models.Label)
+        row := db.query(models.Label)
         .where(
             and_(
                 models.Label.key == label.key,
@@ -48,13 +49,17 @@ def create_label(
         )
         .one_or_none()
     ):
-        return label_row
+        return row
 
     # Otherwise, create new label
-    label_row = models.Label(key=label.key, value=label.value)
-    db.add(label_row)
-    db.commit()
-    return label_row
+    row = models.Label(key=label.key, value=label.value)
+    try:
+        db.add(row)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise RuntimeError # this should never be called
+    return row
 
 
 def create_labels(

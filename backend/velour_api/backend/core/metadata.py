@@ -1,10 +1,11 @@
 import json
 
-from geoalchemy2.functions import ST_GeomFromGeoJSON
-from sqlalchemy import insert, select, text
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import insert, select, text
+from geoalchemy2.functions import ST_GeomFromGeoJSON
 
-from velour_api import schemas
+from velour_api import schemas, exceptions
 from velour_api.backend import models
 
 
@@ -12,14 +13,19 @@ def create_image_metadatum(
     db: Session,
     image: schemas.ImageMetadata,
 ) -> models.ImageMetadata:
-    image_metadatum_row = models.ImageMetadata(
+    row = models.ImageMetadata(
         height=image.height,
         width=image.width,
         frame=image.frame,
     )
-    db.add(image_metadatum_row)
-    db.commit()
-    return image_metadatum_row
+    try:
+        db.add(row)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise RuntimeError 
+        # This should never be called as duplicates are allowed
+    return row
 
 
 def create_metadatum(
@@ -30,7 +36,7 @@ def create_metadatum(
     datum: models.Datum = None,
     geometry: models.GeometricAnnotation = None,
     commit: bool = True,
-) -> dict:
+) -> models.MetaDatum:
 
     if not (dataset or model or datum or geometry):
         raise ValueError("Need some target to attach metadatum to.")
@@ -65,8 +71,12 @@ def create_metadatum(
 
     row = models.MetaDatum(**mapping)
     if commit:
-        db.add(row)
-        db.commit()
+        try:
+            db.add(row)
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise exceptions.MetaDatumAlreadyExistsError
     return row
 
 
@@ -90,8 +100,12 @@ def create_metadata(
         )
         for metadatum in metadata
     ]
-    db.add_all(rows)
-    db.commit()
+    try:
+        db.add_all(rows)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.MetaDatumAlreadyExistsError
     return rows
 
 

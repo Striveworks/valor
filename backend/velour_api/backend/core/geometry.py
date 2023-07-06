@@ -1,7 +1,8 @@
-from sqlalchemy import insert, select, text
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select, text
 
-from velour_api import schemas
+from velour_api import schemas, exceptions
 from velour_api.backend import models
 from velour_api.backend.core.metadata import create_metadata
 
@@ -45,8 +46,12 @@ def create_geometric_annotation(
     row = models.GeometricAnnotation(**mapping)
     create_metadata(db, annotation.metadata, geometry=row)
     if commit:
-        db.add(row)
-        db.commit()
+        try:
+            db.add(row)
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise exceptions.AnnotationAlreadyExistsError
     return row
 
 
@@ -58,8 +63,12 @@ def create_geometric_annotations(
         create_geometric_annotation(db, annotation, commit=False)
         for annotation in annotations
     ]
-    db.add_all(rows)
-    db.commit()
+    try:
+        db.add_all(rows)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.AnnotationAlreadyExistsError
     return rows
 
 

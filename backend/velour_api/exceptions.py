@@ -49,3 +49,21 @@ class InferencesAreNotFinalizedError(Exception):
         return super().__init__(
             f"Inferences for model {model_name} on dataset {dataset_name} are not finalized."
         )
+
+class DatumAlreadyExistsError(Exception):
+    def __init__(self, uid: str):
+        return super().__init__(
+            f"Datum with uid: '{uid}' already exists."
+        )
+    
+class GroundTruthAlreadyExistsError(Exception):
+    pass
+
+class PredictionAlreadyExistsError(Exception):
+    pass
+
+class AnnotationAlreadyExistsError(Exception):
+    pass
+
+class MetaDatumAlreadyExistsError(Exception):
+    pass

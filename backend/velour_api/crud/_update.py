@@ -1,9 +1,9 @@
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ._read import get_dataset
+from velour_api.backend import state
 
 
-def finalize_dataset(db: Session, dataset_name: str) -> None:
-    dset = get_dataset(db, dataset_name)
-    dset.draft = False
-    db.commit()
+@state.update
+def update_something():
+    pass

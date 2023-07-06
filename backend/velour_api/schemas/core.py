@@ -86,22 +86,17 @@ class Prediction(BaseModel):
         return v
 
 
-class DatumGroundTruths(BaseModel):
+class AnnotatedDatum(BaseModel):
     datum: Datum
-    gts: list[GroundTruth]
-
-
-class DatumPredictions(BaseModel):
-    datum: Datum
-    pds: list[Prediction]
+    groundtruths: list[GroundTruth] = None
+    predictions: list[Prediction] = None
 
 
 class Dataset(BaseModel):
     info: DatasetInfo
-    datums: list[DatumGroundTruths]
+    datums: list[AnnotatedDatum]
 
 
 class Model(BaseModel):
-    model_info: ModelInfo
-    dataset_info: DatasetInfo
-    datums: list[DatumPredictions]
+    info: ModelInfo
+    datums: list[AnnotatedDatum]

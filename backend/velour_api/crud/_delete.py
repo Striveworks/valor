@@ -1,17 +1,22 @@
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ._read import get_dataset, get_model
+from velour_api import exceptions
+from velour_api.backend import models, state
+from velour_api.schemas.core import DatasetInfo, ModelInfo
 
 
-def delete_dataset(db: Session, dataset_name: str):
-    dset = get_dataset(db, dataset_name)
-
-    db.delete(dset)
-    db.commit()
+@state.delete
+def delete_dataset(dataset: DatasetInfo):
+    pass
 
 
-def delete_model(db: Session, model_name: str):
-    model = get_model(db, model_name)
+@state.delete
+def delete_model(model: ModelInfo):
+    pass
 
-    db.delete(model)
-    db.commit()
+
+@state.delete
+def prune_labels():
+    """@TODO (maybe) Prunes orphans."""
+    pass

@@ -1,19 +1,18 @@
-from sqlalchemy import and_, insert, select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
 from velour_api.backend.core.geometry import create_geometric_annotation
 from velour_api.backend.core.label import create_labels
 from velour_api.backend.core.metadata import create_metadata
+    
 
-
-def get_dataset_info(
+def get_dataset(
     db: Session,
     name: str,
-) -> schemas.DatasetInfo:
-    # return dataset info with all assoiated metadata
-    pass
+) -> models.Dataset:
+    return db.query(models.Dataset).where(models.Dataset.name == name).one_or_none()
 
 
 def get_datum(
@@ -34,8 +33,12 @@ def create_dataset_info(
 
     # Create dataset
     row = models.Dataset(name=info.name)
-    db.add(row)
-    db.commit()
+    try:
+        db.add(row)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.DatasetAlreadyExistsError(info.name)
 
     # Create metadata
     create_metadata(db, info.metadata, dataset=row)
@@ -50,8 +53,12 @@ def create_datum(
 
     # Create datum
     row = models.Datum(uid=datum.uid, dataset=dataset.id)
-    db.add(row)
-    db.commit()
+    try:
+        db.add(row)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.DatumAlreadyExistsError(datum.uid)
 
     # Create metadata
     create_metadata(db, datum.metadata, datum_id=row)
@@ -60,27 +67,34 @@ def create_datum(
 
 def create_groundtruths(
     db: Session,
-    gts: list[schemas.GroundTruth],
-    datum: models.Datum,
-) -> list[models.GroundTruth]:
+    dataset: models.Dataset,
+    annotated_datums: list[schemas.AnnotatedDatum],
+):
     rows = []
-    for gt in gts:
-        geometry = (
-            create_geometric_annotation(db, gt.geometry)
-            if gt.geometry
-            else None
-        )
-        rows += [
-            models.GroundTruth(
-                datum_id=datum.id,
-                task_type=gt.task_type,
-                geometry=geometry.id,
-                label=label.id,
+    for annotated_datum in annotated_datums:
+        datum = create_datum(db, datum=annotated_datum.datum, dataset=dataset)
+        for gt in annotated_datum.groundtruths:
+            geometry = (
+                create_geometric_annotation(db, gt.geometry)
+                if gt.geometry
+                else None
             )
-            for label in create_labels(db, gt.labels)
-        ]
-    db.add_all(rows)
-    db.commit()
+            rows += [
+                models.GroundTruth(
+                    datum_id=datum.id,
+                    task_type=gt.task_type,
+                    geometry=geometry.id,
+                    label=label.id,
+                )
+                for label in create_labels(db, gt.labels)
+            ]
+    try:
+        db.add_all(rows)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.GroundTruthAlreadyExistsError
+    
     return rows
 
 
@@ -96,11 +110,5 @@ def create_dataset(
     ):
         raise exceptions.DatasetAlreadyExistsError(dataset.info.name)
 
-    dataset_row = create_dataset_info(db, dataset.info)  # Create dataset
-    for datum in dataset.datums:
-        datum_row = create_datum(
-            db, datum, dataset=dataset_row
-        )  # Create datums
-        create_groundtruths(
-            db, datum.gts, dataset=dataset_row, datum=datum_row
-        )  # Create groundtruths
+    row = create_dataset_info(db, dataset.info)
+    create_groundtruths(db, dataset=row, annotated_datums=dataset.datums)

@@ -1,5 +1,6 @@
-from sqlalchemy import and_
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import and_
 
 from velour_api import schemas, exceptions
 from velour_api.backend import models
@@ -13,8 +14,12 @@ def create_model_info(db: Session, info: schemas.ModelInfo) -> models.Model:
 
     # Create model
     row = models.Model(name=info.name)
-    db.add(row)
-    db.commit()
+    try:
+        db.add(row)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.ModelAlreadyExistsError(info.name)
 
     # Create metadata
     create_metadata(db, info.metadata, model=row)
@@ -23,30 +28,35 @@ def create_model_info(db: Session, info: schemas.ModelInfo) -> models.Model:
 
 def create_predictions(
     db: Session,
-    pds: list[schemas.Prediction],
+    annotated_datums: list[schemas.AnnotatedDatum],
     model: models.Model,
-    datum: models.Datum,
-) -> list(models.Prediction):
+):
     rows = []
-    for pd in pds:
-        geometry = (
-            create_geometric_annotation(db, pd.geometry)
-            if pd.geometry
-            else None
-        )
-        rows += [
-            models.GroundTruth(
-                datum_id=datum.id,
-                model_id=model.id,
-                task_type=pd.task_type,
-                geometry=geometry.id,
-                label=create_label(db, scored_label.label).id,
-                score=scored_label.score
+    for annotated_datum in annotated_datums:
+        datum = get_datum(db, annotated_datum.datum)
+        for pd in annotated_datum.pds:
+            geometry = (
+                create_geometric_annotation(db, pd.geometry)
+                if pd.geometry
+                else None
             )
-            for scored_label in pd.scored_labels
-        ]
-    db.add_all(rows)
-    db.commit()
+            rows += [
+                models.GroundTruth(
+                    datum_id=datum.id,
+                    model_id=model.id,
+                    task_type=pd.task_type,
+                    geometry=geometry.id,
+                    label=create_label(db, scored_label.label).id,
+                    score=scored_label.score
+                )
+                for scored_label in pd.scored_labels
+            ]
+    try:
+        db.add_all(rows)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.PredictionAlreadyExistsError
     return rows
 
 
@@ -62,12 +72,5 @@ def create_model(
     ):
         raise exceptions.DatasetAlreadyExistsError(model.info.name)
 
-    model_row = create_model_info(db, model.info)
-    for datum in model.datums:
-        datum_row = get_datum(db, datum)
-        create_predictions(
-            db, 
-            datum.pds, 
-            model=model_row, 
-            datum=datum_row,
-        )
+    md = create_model_info(db, model.info)
+    create_predictions(db, annotated_datums=model.datums, model=md)
