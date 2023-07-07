@@ -1,18 +1,22 @@
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
 from velour_api.backend.core.geometry import create_geometric_annotation
 from velour_api.backend.core.label import create_labels
 from velour_api.backend.core.metadata import create_metadata
-    
+
 
 def get_dataset(
     db: Session,
     name: str,
 ) -> models.Dataset:
-    return db.query(models.Dataset).where(models.Dataset.name == name).one_or_none()
+    return (
+        db.query(models.Dataset)
+        .where(models.Dataset.name == name)
+        .one_or_none()
+    )
 
 
 def get_datum(
@@ -94,7 +98,7 @@ def create_groundtruths(
     except IntegrityError:
         db.rollback()
         raise exceptions.GroundTruthAlreadyExistsError
-    
+
     return rows
 
 
@@ -112,3 +116,10 @@ def create_dataset(
 
     row = create_dataset_info(db, dataset.info)
     create_groundtruths(db, dataset=row, annotated_datums=dataset.datums)
+
+
+def delete_dataset(
+    db: Session,
+    name: str,
+):
+    pass

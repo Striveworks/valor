@@ -1,28 +1,34 @@
 from .core import (
     Annotation,
-    Dataset,
+    Datum,
+    DatasetInfo,
     GroundTruth,
     Label,
-    Model,
+    ModelInfo,
     Prediction,
     ScoredLabel,
+    LabelDistribution,
+    ScoredLabelDistribution,
 )
-from .geometry import BoundingBox, MultiPolygon, Polygon, Raster
+from .geometry import Box, MultiPolygon, Polygon, Raster
 from .metadata import GeographicFeature, ImageMetadata, Metadatum
 
 __all__ = [
-    "Dataset",
-    "Model",
+    "Datum",
+    "DatasetInfo",
+    "ModelInfo",
     "Label",
     "ScoredLabel",
     "Annotation",
     "GroundTruth",
     "Prediction",
-    "BoundingBox",
+    "Box",
     "Polygon",
     "MultiPolygon",
     "Raster",
     "Metadatum",
     "ImageMetadata",
     "GeographicFeature",
+    "LabelDistribution",
+    "ScoredLabelDistribution",
 ]

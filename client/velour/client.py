@@ -1,112 +1,69 @@
-import io
 import json
 import math
 import os
-from base64 import b64decode, b64encode
+
 from dataclasses import asdict
-from enum import Enum
 from typing import Dict, List, Optional, Union
 from urllib.parse import urljoin
 
-import numpy as np
-import PIL.Image
 import requests
 from tqdm.auto import tqdm
 
-from velour.data_types import (
-    BoundingBox,
-    BoundingPolygon,
-    GroundTruthDetection,
-    GroundTruthImageClassification,
-    GroundTruthInstanceSegmentation,
-    GroundTruthSemanticSegmentation,
-    Image,
-    Info,
-    Label,
-    Metadatum,
-    Point,
-    PolygonWithHole,
-    PredictedDetection,
-    PredictedImageClassification,
-    ScoredLabel,
-    _GroundTruthSegmentation,
-    _PredictedSegmentation,
-)
+from velour import schemas, enums
 from velour.metrics import Task
 
 
-class DatumTypes(Enum):
-    IMAGE = "Image"
-    TABULAR = "Tabular"
-
-    @classmethod
-    def invert(cls, value: str):
-        for member in cls:
-            if member.value == value:
-                return member
-        raise ValueError(f"the value {value} is not in enum {cls.__name__}.")
+# def _payload_for_bounding_polygon(poly: BoundingPolygon) -> List[List[int]]:
+#     """For converting a BoundingPolygon to list of list of ints expected
+#     by the backend servce
+#     """
+#     return [[pt.x, pt.y] for pt in poly.points]
 
 
-def _mask_array_to_pil_base64(mask: np.ndarray) -> str:
-    f = io.BytesIO()
-    PIL.Image.fromarray(mask).save(f, format="PNG")
-    f.seek(0)
-    mask_bytes = f.read()
-    f.close()
-    return b64encode(mask_bytes).decode()
+# def _list_of_list_to_bounding_polygon(points: List[List[int]]):
+#     """Inverse of the above method"""
+#     # backend should return a polygon with the same first and last entries
+#     # but probably should change the backend to omit the last entry
+#     # instead of doing it here
+#     if points[0] != points[-1]:
+#         raise ValueError("Expected points[0] == points[-1]")
+
+#     return BoundingPolygon(points=[Point(*pt) for pt in points[:-1]])
 
 
-def _payload_for_bounding_polygon(poly: BoundingPolygon) -> List[List[int]]:
-    """For converting a BoundingPolygon to list of list of ints expected
-    by the backend servce
-    """
-    return [[pt.x, pt.y] for pt in poly.points]
+# def _payload_for_polys_with_holes(
+#     polys_with_holes: List[PolygonWithHole],
+# ) -> List[Dict[str, List[List[int]]]]:
+#     return [
+#         {
+#             "polygon": _payload_for_bounding_polygon(sh.polygon),
+#             "hole": _payload_for_bounding_polygon(sh.hole)
+#             if sh.hole is not None
+#             else None,
+#         }
+#         for sh in polys_with_holes
+#     ]
 
 
-def _list_of_list_to_bounding_polygon(points: List[List[int]]):
-    """Inverse of the above method"""
-    # backend should return a polygon with the same first and last entries
-    # but probably should change the backend to omit the last entry
-    # instead of doing it here
-    if points[0] != points[-1]:
-        raise ValueError("Expected points[0] == points[-1]")
+# def _det_to_dict(det: Union[PredictedDetection, GroundTruthDetection]) -> dict:
+    # labels_key = (
+    #     "scored_labels" if isinstance(det, PredictedDetection) else "labels"
+    # )
+    # ret = {
+    #     labels_key: [asdict(label) for label in getattr(det, labels_key)],
+    #     "image": asdict(det.image),
+    # }
+    # if det.is_bbox:
+    #     ret["bbox"] = [
+    #         det.bbox.xmin,
+    #         det.bbox.ymin,
+    #         det.bbox.xmax,
+    #         det.bbox.ymax,
+    #     ]
+    # else:
+    #     ret["boundary"] = _payload_for_bounding_polygon(det.boundary)
 
-    return BoundingPolygon(points=[Point(*pt) for pt in points[:-1]])
-
-
-def _payload_for_polys_with_holes(
-    polys_with_holes: List[PolygonWithHole],
-) -> List[Dict[str, List[List[int]]]]:
-    return [
-        {
-            "polygon": _payload_for_bounding_polygon(sh.polygon),
-            "hole": _payload_for_bounding_polygon(sh.hole)
-            if sh.hole is not None
-            else None,
-        }
-        for sh in polys_with_holes
-    ]
-
-
-def _det_to_dict(det: Union[PredictedDetection, GroundTruthDetection]) -> dict:
-    labels_key = (
-        "scored_labels" if isinstance(det, PredictedDetection) else "labels"
-    )
-    ret = {
-        labels_key: [asdict(label) for label in getattr(det, labels_key)],
-        "image": asdict(det.image),
-    }
-    if det.is_bbox:
-        ret["bbox"] = [
-            det.bbox.xmin,
-            det.bbox.ymin,
-            det.bbox.xmax,
-            det.bbox.ymax,
-        ]
-    else:
-        ret["boundary"] = _payload_for_bounding_polygon(det.boundary)
-
-    return ret
+    # return ret
 
 
 class ClientException(Exception):
@@ -126,33 +83,49 @@ class DatasetBase:
         self.href = href
         self.description = description
 
-    def get_labels(self) -> List[Label]:
+    def add_groundtruth(
+        self,
+        groundtruth: schemas.GroundTruth,
+        chunk_size: int = 1000,
+        show_progress_bar: bool = True,
+    ):
+
+        if not isinstance(groundtruth, schemas.GroundTruth):
+            raise ValueError
+        
+        payload = json.dumps(asdict(groundtruth))
+        return self.client._requests_post_rel_host(
+            "groundtruth", json=payload
+        )
+    
+    def get_groundtruth(
+        self, image_uid: str
+    ) -> schemas.GroundTruth:
+        resp = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/images/{image_uid}/groundtruth"
+        ).json()
+        return [schemas.GroundTruth(**gt) for gt in resp]
+
+    def get_labels(self) -> List[schemas.LabelDistribution]:
         labels = self.client._requests_get_rel_host(
             f"datasets/{self.name}/labels"
         ).json()
 
         return [
-            Label(key=label["key"], value=label["value"]) for label in labels
+            schemas.LabelDistribution(
+                key=label["key"],
+                value=label["value"],
+                count=label["count"]
+            )
+            for label in labels
         ]
-
-    def get_label_distribution(self) -> Dict[Label, int]:
-        distribution = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/labels/distribution"
-        ).json()
-
-        return {
-            Label(
-                key=label["label"]["key"], value=label["label"]["value"]
-            ): label["count"]
-            for label in distribution
-        }
-
-    def get_info(self) -> Info:
+    
+    def get_info(self) -> schemas.DatasetInfo:
         resp = self.client._requests_get_rel_host(
             f"datasets/{self.name}/info"
         ).json()
 
-        return Info(
+        return schemas.DatasetInfo(
             annotation_type=resp["annotation_type"],
             number_of_classifications=resp["number_of_classifications"],
             number_of_bounding_boxes=resp["number_of_bounding_boxes"],
@@ -171,239 +144,14 @@ class DatasetBase:
         return self.client.delete_dataset(self.name)
 
 
-class TabularDataset(DatasetBase):
-    def add_groundtruth(
-        self,
-        groundtruth: Union[
-            List[List[Union[Label, Metadatum]]],
-            Dict[str, List[Union[Label, Metadatum]]],
-        ],
-    ):
-        if isinstance(groundtruth, list):
-            # make uids the list indices (as strings)
-            groundtruth = {str(i): gt for i, gt in enumerate(groundtruth)}
-
-        payload = {
-            "dataset_name": self.name,
-            "classifications": [
-                {
-                    "labels": [
-                        asdict(x)
-                        for x in labels_and_metadata
-                        if isinstance(x, Label)
-                    ],
-                    "datum": {
-                        "uid": uid,
-                        "metadata": [
-                            asdict(x)
-                            for x in labels_and_metadata
-                            if isinstance(x, Metadatum)
-                        ],
-                    },
-                }
-                for uid, labels_and_metadata in groundtruth.items()
-            ],
-        }
-
-        resp = self.client._requests_post_rel_host(
-            "groundtruth-classifications", json=payload
-        )
-
-        return resp.json()
-
-
-def _generate_chunks(
-    name: str,
-    data: list,
-    chunk_size=100,
-    progress_bar_title: str = "Chunking",
-    show_progress_bar: bool = True,
-):
-    progress_bar = tqdm(
-        total=len(data),
-        unit="samples",
-        unit_scale=True,
-        desc=f"{progress_bar_title} ({name})",
-        disable=not show_progress_bar,
-    )
-
-    number_of_chunks = math.floor(len(data) / chunk_size)
-    remainder = len(data) % chunk_size
-
-    for i in range(0, number_of_chunks):
-        progress_bar.update(chunk_size)
-        yield data[i * chunk_size : (i + 1) * chunk_size]
-
-    if remainder > 0:
-        progress_bar.update(remainder)
-        yield data[-remainder:]
-
-    progress_bar.close()
-
-
 class ImageDataset(DatasetBase):
-    def add_groundtruth(
-        self,
-        groundtruth: list,
-        chunk_size: int = 1000,
-        show_progress_bar: bool = True,
-    ):
-        log = []
-
-        if not isinstance(groundtruth, list):
-            raise ValueError("GroundTruth argument should be a list.")
-
-        if len(groundtruth) == 0:
-            raise ValueError("Empty list.")
-
-        for chunk in _generate_chunks(
-            self.name,
-            groundtruth,
-            chunk_size=chunk_size,
-            progress_bar_title="Uploading",
-            show_progress_bar=show_progress_bar,
-        ):
-            # Image Classification
-            if isinstance(chunk[0], GroundTruthImageClassification):
-                payload = {
-                    "dataset_name": self.name,
-                    "classifications": [
-                        {
-                            "labels": [asdict(label) for label in clf.labels],
-                            "datum": asdict(clf.image),
-                        }
-                        for clf in chunk
-                    ],
-                }
-
-                resp = self.client._requests_post_rel_host(
-                    "groundtruth-classifications", json=payload
-                )
-
-                log += resp
-
-            # Image Segmentation (Semantic, Instance)
-            elif isinstance(chunk[0], _GroundTruthSegmentation):
-
-                def _shape_value(
-                    shape: Union[List[PolygonWithHole], np.ndarray]
-                ):
-                    if isinstance(shape, np.ndarray):
-                        return _mask_array_to_pil_base64(shape)
-                    else:
-                        return _payload_for_polys_with_holes(shape)
-
-                payload = {
-                    "dataset_name": self.name,
-                    "segmentations": [
-                        {
-                            "shape": _shape_value(seg.shape),
-                            "labels": [asdict(label) for label in seg.labels],
-                            "image": asdict(seg.image),
-                            "is_instance": seg._is_instance,
-                        }
-                        for seg in chunk
-                    ],
-                }
-
-                resp = self.client._requests_post_rel_host(
-                    "groundtruth-segmentations", json=payload
-                )
-
-                log += resp
-
-            # Object Detection
-            elif isinstance(chunk[0], GroundTruthDetection):
-                payload = {
-                    "dataset_name": self.name,
-                    "detections": [_det_to_dict(det) for det in chunk],
-                }
-
-                resp = self.client._requests_post_rel_host(
-                    "groundtruth-detections", json=payload
-                )
-
-                log += resp
-
-            # Unknown type.
-            else:
-                raise NotImplementedError(
-                    f"Received groundtruth with type: '{type(chunk[0])}', which is not currently implemented."
-                )
-
-        return log
-
-    def get_groundtruth_detections(
-        self, image_uid: str
-    ) -> List[GroundTruthDetection]:
-        resp = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/images/{image_uid}/detections"
-        ).json()
-
-        def _process_single_gt(gt: dict):
-            labels = [Label(**label) for label in gt["labels"]]
-            image = Image(**gt["image"])
-            if gt["bbox"] is not None:
-                return GroundTruthDetection(
-                    image=image, labels=labels, bbox=BoundingBox(*gt["bbox"])
-                )
-            else:
-                return GroundTruthDetection(
-                    image=image,
-                    labels=labels,
-                    boundary=_list_of_list_to_bounding_polygon(gt["boundary"]),
-                )
-
-        return [_process_single_gt(gt) for gt in resp]
-
-    def _get_segmentations(
-        self, image_uid: str, instance: bool
-    ) -> Union[
-        GroundTruthSemanticSegmentation, GroundTruthInstanceSegmentation
-    ]:
-        resp = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/images/{image_uid}/{'instance' if instance else 'semantic'}-segmentations"
-        ).json()
-
-        def _b64_mask_to_array(b64_mask: str) -> np.ndarray:
-            mask = b64decode(b64_mask)
-            with io.BytesIO(mask) as f:
-                img = PIL.Image.open(f)
-
-                return np.array(img)
-
-        data_cls = (
-            GroundTruthInstanceSegmentation
-            if instance
-            else GroundTruthSemanticSegmentation
-        )
-
-        return [
-            data_cls(
-                shape=_b64_mask_to_array(gt["shape"]),
-                labels=[Label(**label) for label in gt["labels"]],
-                image=Image(**gt["image"]),
-            )
-            for gt in resp
-        ]
-
-    def get_groundtruth_instance_segmentations(
-        self, image_uid: str
-    ) -> List[GroundTruthInstanceSegmentation]:
-        return self._get_segmentations(image_uid, instance=True)
-
-    def get_groundtruth_semantic_segmentations(
-        self, image_uid: str
-    ) -> List[GroundTruthSemanticSegmentation]:
-        return self._get_segmentations(image_uid, instance=False)
-
-    def get_images(self) -> List[Image]:
+    def get_images(self) -> List[schemas.ImageMetadata]:
         images = self.client._requests_get_rel_host(
             f"datasets/{self.name}/images"
         ).json()
 
         return [
-            Image(
+            schemas.ImageMetadata(
                 uid=image["uid"], height=image["height"], width=image["width"]
             )
             for image in images
@@ -552,34 +300,34 @@ class ModelBase:
 
         return ret
 
-    def get_labels(self) -> List[Label]:
+    def get_labels(self) -> List[schemas.Label]:
         labels = self.client._requests_get_rel_host(
             f"models/{self.name}/labels"
         ).json()
 
         return [
-            Label(key=label["key"], value=label["value"]) for label in labels
+            schemas.Label(key=label["key"], value=label["value"]) for label in labels
         ]
 
-    def get_label_distribution(self) -> Dict[Label, int]:
+    def get_label_distribution(self) -> Dict[schemas.Label, int]:
         distribution = self.client._requests_get_rel_host(
             f"models/{self.name}/labels/distribution"
         ).json()
 
         return {
-            Label(key=label["label"]["key"], value=label["label"]["value"]): {
+            schemas.Label(key=label["label"]["key"], value=label["label"]["value"]): {
                 "count": label["count"],
                 "scores": label["scores"],
             }
             for label in distribution
         }
 
-    def get_info(self) -> Info:
+    def get_info(self) -> schemas.ModelInfo:
         resp = self.client._requests_get_rel_host(
             f"models/{self.name}/info"
         ).json()
 
-        return Info(
+        return schemas.ModelInfo(
             annotation_type=resp["annotation_type"],
             number_of_classifications=resp["number_of_classifications"],
             number_of_bounding_boxes=resp["number_of_bounding_boxes"],
@@ -598,90 +346,7 @@ class ImageModel(ModelBase):
         chunk_size: int = 1000,
         show_progress_bar: bool = True,
     ):
-        log = []
-
-        if not isinstance(predictions, list):
-            raise ValueError("GroundTruth argument should be a list.")
-
-        if len(predictions) == 0:
-            return []
-
-        for chunk in _generate_chunks(
-            self.name,
-            predictions,
-            chunk_size=chunk_size,
-            progress_bar_title="Uploading",
-            show_progress_bar=show_progress_bar,
-        ):
-            # Image Classification
-            if isinstance(chunk[0], PredictedImageClassification):
-                payload = {
-                    "model_name": self.name,
-                    "dataset_name": dataset.name,
-                    "classifications": [
-                        {
-                            "scored_labels": [
-                                asdict(scored_label)
-                                for scored_label in clf.scored_labels
-                            ],
-                            "datum": asdict(clf.image),
-                        }
-                        for clf in predictions
-                    ],
-                }
-
-                resp = self.client._requests_post_rel_host(
-                    "predicted-classifications", json=payload
-                )
-
-                log += resp
-
-            # Image Segmentation (Semantic, Instance)
-            elif isinstance(chunk[0], _PredictedSegmentation):
-                payload = {
-                    "model_name": self.name,
-                    "dataset_name": dataset.name,
-                    "segmentations": [
-                        {
-                            "base64_mask": _mask_array_to_pil_base64(seg.mask),
-                            "scored_labels": [
-                                asdict(scored_label)
-                                for scored_label in seg.scored_labels
-                            ],
-                            "image": asdict(seg.image),
-                            "is_instance": seg._is_instance,
-                        }
-                        for seg in predictions
-                    ],
-                }
-
-                resp = self.client._requests_post_rel_host(
-                    "predicted-segmentations", json=payload
-                )
-
-                log += resp
-
-            # Object Detection
-            elif isinstance(chunk[0], PredictedDetection):
-                payload = {
-                    "model_name": self.name,
-                    "dataset_name": dataset.name,
-                    "detections": [_det_to_dict(det) for det in predictions],
-                }
-
-                resp = self.client._requests_post_rel_host(
-                    "predicted-detections", json=payload
-                )
-
-                log += resp
-
-            # Unknown type.
-            else:
-                raise NotImplementedError(
-                    f"Received predictions with type: '{type(chunk[0])}', which is not currently implemented."
-                )
-
-        return log
+        return []
 
     def evaluate_ap(
         self,
@@ -721,57 +386,13 @@ class ImageModel(ModelBase):
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
         # list of label dicts. convert label dicts to Label objects
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
-            resp[k] = [Label(**la) for la in resp[k]]
+            resp[k] = [schemas.Label(**la) for la in resp[k]]
 
         return EvalJob(client=self.client, **resp)
 
 
-class TabularModel(ModelBase):
-    def add_predictions(
-        self,
-        dataset: TabularDataset,
-        predictions: Union[
-            List[List[ScoredLabel]], Dict[str, List[ScoredLabel]]
-        ],
-    ):
-        if isinstance(predictions, list):
-            # make uids the list indices (as strings)
-            predictions = {str(i): gt for i, gt in enumerate(predictions)}
-
-        payload = {
-            "model_name": self.name,
-            "dataset_name": dataset.name,
-            "classifications": [
-                {
-                    "scored_labels": [
-                        asdict(scored_label) for scored_label in scored_labels
-                    ],
-                    "datum": {"uid": uid},
-                }
-                for uid, scored_labels in predictions.items()
-            ],
-        }
-
-        resp = self.client._requests_post_rel_host(
-            "predicted-classifications", json=payload
-        )
-
-        return resp.json()
-
-
 class Client:
     """Client for interacting with the velour backend"""
-
-    datum_type_and_entity_to_class = {
-        "models": {
-            DatumTypes.IMAGE: ImageModel,
-            DatumTypes.TABULAR: TabularModel,
-        },
-        "datasets": {
-            DatumTypes.IMAGE: ImageDataset,
-            DatumTypes.TABULAR: TabularDataset,
-        },
-    }
 
     def __init__(self, host: str, access_token: str = None):
         """
@@ -856,7 +477,7 @@ class Client:
     def _create_model_or_dataset(
         self,
         entity_type: str,
-        datum_type: DatumTypes,
+        datum_type: enums.DatumTypes,
         name: str,
         href: str = None,
         description: str = None,
@@ -883,21 +504,10 @@ class Client:
 
     def create_image_dataset(
         self, name: str, href: str = None, description: str = None
-    ) -> ImageDataset:
+    ) -> DatasetBase:
         return self._create_model_or_dataset(
             entity_type="datasets",
-            datum_type=DatumTypes.IMAGE,
-            name=name,
-            href=href,
-            description=description,
-        )
-
-    def create_tabular_dataset(
-        self, name: str, href: str = None, description: str = None
-    ) -> TabularDataset:
-        return self._create_model_or_dataset(
-            entity_type="datasets",
-            datum_type=DatumTypes.TABULAR,
+            datum_type=enums.DatumTypes.IMAGE,
             name=name,
             href=href,
             description=description,
@@ -937,23 +547,12 @@ class Client:
     def get_datasets(self) -> List[dict]:
         return self._requests_get_rel_host("datasets").json()
 
-    def create_image_model(
+    def create_model(
         self, name: str, href: str = None, description: str = None
     ):
         return self._create_model_or_dataset(
             entity_type="models",
             datum_type=DatumTypes.IMAGE,
-            name=name,
-            href=href,
-            description=description,
-        )
-
-    def create_tabular_model(
-        self, name: str, href: str = None, description: str = None
-    ):
-        return self._create_model_or_dataset(
-            entity_type="models",
-            datum_type=DatumTypes.TABULAR,
             name=name,
             href=href,
             description=description,
@@ -965,7 +564,7 @@ class Client:
     def get_models(self) -> List[dict]:
         return self._requests_get_rel_host("models").json()
 
-    def get_all_labels(self) -> List[Label]:
+    def get_all_labels(self) -> List[schemas.Label]:
         return self._requests_get_rel_host("labels").json()
 
 

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.sql import text
 
 from velour_api import logger
+from velour_api.backend import models
 
 POSTGRES_HOST = os.getenv("POSTGRES_HOST")
 POSTGRES_USERNAME = os.getenv("POSTGRES_USERNAME", "postgres")
@@ -62,8 +63,6 @@ Base = declarative_base()
 
 @retry_connection
 def create_db():
-    from .backend.data import models
-
     db = make_session()
     # create postgis and raster extensions if they don't exist
     for extension in ["postgis", "postgis_raster"]:

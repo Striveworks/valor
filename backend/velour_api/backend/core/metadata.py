@@ -1,11 +1,11 @@
 import json
 
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy import insert, select, text
 from geoalchemy2.functions import ST_GeomFromGeoJSON
+from sqlalchemy import insert, select, text
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
-from velour_api import schemas, exceptions
+from velour_api import exceptions, schemas
 from velour_api.backend import models
 
 
@@ -23,7 +23,7 @@ def create_image_metadatum(
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise RuntimeError 
+        raise RuntimeError
         # This should never be called as duplicates are allowed
     return row
 

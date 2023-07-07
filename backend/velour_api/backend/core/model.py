@@ -1,13 +1,13 @@
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
-from velour_api import schemas, exceptions
+from velour_api import exceptions, schemas
 from velour_api.backend import models
 from velour_api.backend.core.dataset import get_datum
-from velour_api.backend.core.metadata import create_metadata
 from velour_api.backend.core.geometry import create_geometric_annotation
 from velour_api.backend.core.label import create_label
+from velour_api.backend.core.metadata import create_metadata
 
 
 def create_model_info(db: Session, info: schemas.ModelInfo) -> models.Model:
@@ -47,7 +47,7 @@ def create_predictions(
                     task_type=pd.task_type,
                     geometry=geometry.id,
                     label=create_label(db, scored_label.label).id,
-                    score=scored_label.score
+                    score=scored_label.score,
                 )
                 for scored_label in pd.scored_labels
             ]
@@ -74,3 +74,10 @@ def create_model(
 
     md = create_model_info(db, model.info)
     create_predictions(db, annotated_datums=model.datums, model=md)
+
+
+def delete_model(
+    db: Session,
+    name: str,
+):
+    pass

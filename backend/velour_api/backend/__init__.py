@@ -1,27 +1,27 @@
-from .crud import (
+from .core import (
     create_dataset,
-    create_groundtruth,
+    create_groundtruths,
     create_model,
-    create_prediction,
+    create_predictions,
     delete_dataset,
     delete_model,
-    get_dataset,
-    get_datasets,
-    get_labels,
-    get_model,
-    get_models,
+)
+from .io import (
+    request_datasets,
+    request_dataset,
+    request_models,
+    request_model,
 )
 
 __all__ = [
     "create_dataset",
     "create_model",
-    "create_groundtruth",
-    "create_prediction",
-    "get_datasets",
-    "get_dataset",
-    "get_models",
-    "get_model",
-    "get_labels",
+    "create_groundtruths",
+    "create_predictions",
+    "request_datasets",
+    "request_dataset",
+    "request_models",
+    "request_model",
     "delete_dataset",
     "delete_model",
 ]

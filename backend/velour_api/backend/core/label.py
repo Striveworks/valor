@@ -1,9 +1,9 @@
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import Select, TextualSelect, and_, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
-from velour_api import exceptions, schemas
-from velour_api.backend import models, state, x
+from velour_api import schemas
+from velour_api.backend import models
 
 
 def get_label(
@@ -58,7 +58,7 @@ def create_label(
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise RuntimeError # this should never be called
+        raise RuntimeError  # this should never be called
     return row
 
 
@@ -90,6 +90,6 @@ def get_label_keys_from_query(
     ).all()
 
 
-def query_by_labels(labels: list[Label]):
+def query_by_labels(labels: list[schemas.Label]):
     """Returns a subquery of ground truths / predictions grouped by the list of provided labels."""
     pass

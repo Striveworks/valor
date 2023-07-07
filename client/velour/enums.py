@@ -1,9 +1,21 @@
 from enum import Enum
 
 
+# class DataType(Enum):
+#     IMAGE = ("image",)
+#     TABULAR = "tabular"
+
+
 class DataType(Enum):
-    IMAGE = ("image",)
-    TABULAR = "tabular"
+    IMAGE = "Image"
+    TABULAR = "Tabular"
+
+    @classmethod
+    def invert(cls, value: str):
+        for member in cls:
+            if member.value == value:
+                return member
+        raise ValueError(f"the value {value} is not in enum {cls.__name__}.")
 
 
 class AnnotationType(Enum):

@@ -1,5 +1,5 @@
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import List, Optional, Tuple, Union
 
 
@@ -16,6 +16,8 @@ class GeographicFeature:
                 raise ValueError(
                     f"if a dict, `region` must be valid GeoJSON but got {self.region}"
                 )
+            
+    
 
 
 @dataclass

@@ -5,32 +5,43 @@ from typing import List, Optional, Tuple, Union
 
 import numpy as np
 
-from velour.schemas import (
-    BoundingBox,
-    Metadatum,
+from velour import enums
+from velour.schemas.geometry import (
+    Box,
     MultiPolygon,
     Polygon,
     Raster,
 )
+from velour.schemas.metadata import Metadatum
 
 
 @dataclass
-class DatasetID:
-    id: Optional[int] = None
+class DatasetInfo:
     name: str
+    id: int = None
+    href: str = None
+    description: str = None
+    type: enums.DataType = None
+    annotation_types: list[enums.AnnotationType] = field(default_factory=list)
+    associated_models: list[str] = field(default_factory=list)
     metadata: List[Metadatum] = field(default_factory=list)
-
+    
 
 @dataclass
-class ModelID:
-    id: Optional[int] = None
+class ModelInfo:
     name: str
+    id: int = None
+    href: str = None
+    description: str = None
+    type: enums.DataType = None
+    annotation_types: list[enums.AnnotationType] = field(default_factory=list)
+    associated_datasets: list[str] = field(default_factory=list)
     metadata: List[Metadatum] = field(default_factory=list)
 
 
 @dataclass
 class Datum:
-    dataset: DatasetID
+    dataset: DatasetInfo
     uid: str
     metadata: List[Metadatum] = field(default_factory=list)
 
@@ -38,10 +49,10 @@ class Datum:
 @dataclass
 class Annotation:
     geometry: Optional[
-        Union[BoundingBox, Polygon, MultiPolygon, Raster]
+        Union[Box, Polygon, MultiPolygon, Raster]
     ] = None
     # other type of annotation
-    metadata: List[Metadatum]
+    metadata: List[Metadatum] = field(default_factory=list)
 
     def __post_init__(self):
         # check at least one attribute is not None
@@ -86,20 +97,39 @@ class ScoredLabel:
 
     def __hash__(self) -> int:
         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
+    
+
+@dataclass
+class LabelDistribution:
+    label: Label
+    count: int
+
+
+@dataclass
+class ScoredLabelDistribution:
+    label: Label
+    count: int
+    scores: list[float] = field(default_factory=list)
 
 
 @dataclass
 class GroundTruth:
     datum: Datum
-    labels: List[Label]
-    annotation: Optional[Annotation]
+    labels: List[Label] = field(default_factory=list)
+    annotation: Annotation = None
+
+
+@dataclass
+class AnnotationDistribution:
+    annotation_type: enums.AnnotationType
+    count: int
 
 
 @dataclass
 class Prediction:
     datum: Datum
-    scored_labels: List[ScoredLabel]
-    annotation: Optional[Annotation]
+    scored_labels: List[ScoredLabel] = field(default_factory=list)
+    annotation: Annotation = None
 
     def __post_init__(self):
         # check that for each label key all the predictions sum to ~1

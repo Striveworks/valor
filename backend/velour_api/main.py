@@ -5,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from velour_api import auth, crud, enums, exceptions, jobs, logger, schemas
-from velour_api.database import create_db, make_session
+from velour_api import auth, crud, enums, exceptions, logger, schemas
+from velour_api.backend import database, jobs
 from velour_api.settings import auth_settings
 
 token_auth_scheme = auth.OptionalHTTPBearer()
@@ -21,7 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-create_db()
+database.create_db()
 
 logger.info(
     f"API started {'WITHOUT' if auth_settings.no_auth else 'WITH'} authentication"
@@ -29,7 +29,7 @@ logger.info(
 
 
 def get_db():
-    db = make_session()
+    db = database.make_session()
     try:
         yield db
     finally:
@@ -72,7 +72,7 @@ def get_datasets(db: Session = Depends(get_db)) -> list[schemas.DatasetInfo]:
     "/datasets", status_code=201, dependencies=[Depends(token_auth_scheme)]
 )
 def create_dataset(
-    dataset: schemas.DatasetCreate, db: Session = Depends(get_db)
+    dataset: schemas.Dataset, db: Session = Depends(get_db)
 ):
     try:
         crud.create_dataset(db=db, dataset=dataset)
@@ -85,10 +85,7 @@ def get_dataset(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> schemas.Dataset:
     try:
-        dset = crud.get_dataset(db, dataset_name=dataset_name)
-        return schemas.Dataset(
-            **{k: getattr(dset, k) for k in schemas.Dataset.__fields__}
-        )
+        return crud.get_dataset(db, dataset_name=dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -112,39 +109,25 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
 )
 def get_dataset_labels(
     dataset_name: str, db: Session = Depends(get_db)
-) -> list[schemas.Label]:
-    try:
-        return crud.get_labels_from_dataset(db, dataset_name)
-    except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/datasets/{dataset_name}/labels/distribution",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-)
-def get_label_distribution_from_dataset(
-    dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.LabelDistribution]:
     try:
-        return crud.get_label_distribution_from_dataset(db, dataset_name)
+        return crud.get_dataset_labels(db, dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@app.get(
-    "/datasets/{dataset_name}/info",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-)
-def get_dataset_info(
-    dataset_name: str, db: Session = Depends(get_db)
-) -> schemas.Info:
-    try:
-        return crud.get_dataset_info(db, dataset_name)
-    except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+# @app.get(
+#     "/datasets/{dataset_name}/info",
+#     status_code=200,
+#     dependencies=[Depends(token_auth_scheme)],
+# )
+# def get_dataset_info(
+#     dataset_name: str, db: Session = Depends(get_db)
+# ) -> schemas.Info:
+#     try:
+#         return crud.get_dataset_info(db, dataset_name)
+#     except exceptions.DatasetDoesNotExistError as e:
+#         raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
@@ -154,7 +137,7 @@ def get_dataset_info(
 )
 def get_dataset_images(
     dataset_name: str, db: Session = Depends(get_db)
-) -> list[schemas.Image]:
+) -> list[schemas.MetaDatum]:
     try:
         return [
             schemas.Image(
@@ -167,54 +150,16 @@ def get_dataset_images(
 
 
 @app.get(
-    "/datasets/{dataset_name}/images/{image_uid}/detections",
+    "/datasets/{dataset_name}/images/{image_uid}/annotations",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
 def get_image_detections(
     dataset_name: str, image_uid: str, db: Session = Depends(get_db)
-) -> list[schemas.GroundTruthDetection]:
+) -> schemas.AnnotatedDatum:
     try:
         return crud.get_groundtruth_detections_in_image(
             db, uid=image_uid, dataset_name=dataset_name
-        )
-    except (
-        exceptions.ImageDoesNotExistError,
-        exceptions.DatasetDoesNotExistError,
-    ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/datasets/{dataset_name}/images/{image_uid}/instance-segmentations",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-)
-def get_instance_segmentations(
-    dataset_name: str, image_uid: str, db: Session = Depends(get_db)
-) -> list[schemas.GroundTruthSegmentation]:
-    try:
-        return crud.get_groundtruth_segmentations_in_image(
-            db, uid=image_uid, dataset_name=dataset_name, are_instance=True
-        )
-    except (
-        exceptions.ImageDoesNotExistError,
-        exceptions.DatasetDoesNotExistError,
-    ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/datasets/{dataset_name}/images/{image_uid}/semantic-segmentations",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-)
-def get_semantic_segmentations(
-    dataset_name: str, image_uid: str, db: Session = Depends(get_db)
-) -> list[schemas.GroundTruthSegmentation]:
-    try:
-        return crud.get_groundtruth_segmentations_in_image(
-            db, uid=image_uid, dataset_name=dataset_name, are_instance=False
         )
     except (
         exceptions.ImageDoesNotExistError,
@@ -233,13 +178,7 @@ def delete_dataset(
 ) -> str:
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
-        # make sure dataset exists
-        crud.get_dataset(db, dataset_name)
-
-        job, wrapped_fn = jobs.wrap_method_for_job(crud.delete_dataset)
-        background_tasks.add_task(wrapped_fn, db=db, dataset_name=dataset_name)
-
-        return job.uid
+        return crud.delete_dataset(db, dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -282,39 +221,9 @@ def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
 )
 def get_model_labels(
     model_name: str, db: Session = Depends(get_db)
-) -> list[schemas.Label]:
-    try:
-        return crud.get_labels_from_model(db, model_name)
-    except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/models/{model_name}/labels/distribution",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-)
-def get_label_distribution_from_model(
-    model_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.ScoredLabelDistribution]:
     try:
-        return crud.get_label_distribution_from_model(
-            db, model_name=model_name
-        )
-    except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/models/{model_name}/info",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-)
-def get_model_info(
-    model_name: str, db: Session = Depends(get_db)
-) -> schemas.Info:
-    try:
-        return crud.get_model_info(db, model_name)
+        return crud.get_labels_from_model(db, model_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

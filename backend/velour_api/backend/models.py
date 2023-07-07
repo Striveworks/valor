@@ -50,7 +50,7 @@ class GeometricAnnotation(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     tasktype: Mapped[str] = mapped_column(nullable=True)
-    box = mapped_column(Geometry("BOX"), nullable=True)
+    box = mapped_column(Geometry("POLYGON"), nullable=True)
     polygon = mapped_column(Geometry("POLYGON"), nullable=True)
     raster = mapped_column(GDALRaster, nullable=True)
 
@@ -69,7 +69,7 @@ class GroundTruth(Base):
         ForeignKey("datum.id"), nullable=False
     )
     geometry_id: Mapped[int] = mapped_column(
-        ForeignKey("geometry.id"), nullable=True
+        ForeignKey("geometric_annotation.id"), nullable=True
     )
     label_id: Mapped[int] = mapped_column(
         ForeignKey("label.id"), nullable=False
@@ -168,7 +168,7 @@ class MetaDatum(Base):
     numeric_value: Mapped[float] = mapped_column(nullable=True)
     geo = mapped_column(Geography(), nullable=True)
     image_id: Mapped[int] = mapped_column(
-        ForeignKey("image.id"), nullable=True
+        ForeignKey("metadatum_image.id"), nullable=True
     )
 
     # relationships
@@ -198,11 +198,8 @@ class Model(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
-    href: Mapped[str] = mapped_column(index=True, nullable=True)
-    description: Mapped[str] = mapped_column(index=True, nullable=True)
-    type: Mapped[str] = mapped_column(
-        Enum(DatumTypes), default=DatumTypes.IMAGE
-    )
+
+    # relationships
     predictions = relationship(Prediction, cascade="all, delete")
     evaluation_settings = relationship(
         "EvaluationSettings", cascade="all, delete"
@@ -214,11 +211,6 @@ class Dataset(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
-    href: Mapped[str] = mapped_column(index=True, nullable=True)
-    description: Mapped[str] = mapped_column(index=True, nullable=True)
-    type: Mapped[str] = mapped_column(
-        Enum(DatumTypes), default=DatumTypes.IMAGE
-    )
 
     # relationships
     datums = relationship("Datum", cascade="all, delete")

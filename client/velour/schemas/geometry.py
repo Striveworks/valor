@@ -1,29 +1,18 @@
+import io
 import json
 from abc import ABC
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple, Union
 
+from base64 import b64decode, b64encode
 import numpy as np
-
-
-@dataclass
-class BoundingBox:
-    xmin: float
-    ymin: float
-    xmax: float
-    ymax: float
-
-    def __post_init__(self):
-        if self.xmin > self.xmax:
-            raise ValueError("Cannot have xmin > xmax")
-        if self.ymin > self.ymax:
-            raise ValueError("Cannot have ymin > ymax")
+import PIL.Image
 
 
 @dataclass
 class Point:
-    x: float
-    y: float
+    x: int | float
+    y: int | float
 
     def resize(
         self, og_img_h: int, og_img_w: int, new_img_h: int, new_img_w: int
@@ -33,7 +22,19 @@ class Point:
 
 
 @dataclass
-class Polygon:
+class Box:
+    min: Point
+    max: Point
+
+    def __post_init__(self):
+        if self.min.x > self.max.x:
+            raise ValueError("Cannot have xmin > xmax")
+        if self.min.y > self.max.y:
+            raise ValueError("Cannot have ymin > ymax")
+
+
+@dataclass
+class BasicPolygon:
     """Class for representing a bounding region."""
 
     points: List[Point]
@@ -58,29 +59,46 @@ class Polygon:
         return max(p.y for p in self.points)
 
     @classmethod
-    def from_xmin_ymin_xmax_ymax(cls, xmin, ymin, xmax, ymax):
+    def from_box(cls, box: Box):
         return cls(
             points=[
-                Point(xmin, ymin),
-                Point(xmin, ymax),
-                Point(xmax, ymax),
-                Point(xmax, ymin),
+                Point(box.min.x, box.min.y),
+                Point(box.min.x, box.max.y),
+                Point(box.max.x, box.max.y),
+                Point(box.max.x, box.min.y),
             ]
         )
+    
+
+@dataclass
+class Polygon:
+    boundary: BasicPolygon
+    holes: list[BasicPolygon]
 
 
 @dataclass
 class MultiPolygon:
-    polygon: List[Polygon]
-    hole: Optional[List[Polygon]] = None
+    polygons: list[Polygon]
 
 
 @dataclass
 class Raster:
-    mask: np.ndarray
-
-    def __post_init__(self):
+    mask: str
+    
+    def encode(self, mask: np.ndarray) -> str:
         if self.mask.dtype != bool:
             raise ValueError(
                 f"Expecting a binary mask (i.e. of dtype bool) but got dtype {self.mask.dtype}"
             )
+        f = io.BytesIO()
+        PIL.Image.fromarray(self.mask).save(f, format="PNG")
+        f.seek(0)
+        mask_bytes = f.read()
+        f.close()
+        return b64encode(mask_bytes).decode()
+
+    def decode(self) -> np.ndarray:
+        mask_bytes = b64decode(self.mask)
+        with io.BytesIO(mask_bytes) as f:
+            img = PIL.Image.open(f)
+            return np.array(img)
