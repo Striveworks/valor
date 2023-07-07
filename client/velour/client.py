@@ -474,43 +474,12 @@ class Client:
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
-    def _create_model_or_dataset(
-        self,
-        entity_type: str,
-        datum_type: enums.DatumTypes,
-        name: str,
-        href: str = None,
-        description: str = None,
+    def create_dataset(
+        self, name: str
     ):
-        entity_types = list(self.datum_type_and_entity_to_class.keys())
-        if entity_type not in entity_types:
-            raise ValueError(f"Expected `entity_type` to be in {entity_types}")
-
-        class_ = self.datum_type_and_entity_to_class[entity_type][datum_type]
-
-        self._requests_post_rel_host(
-            entity_type,
-            json={
-                "name": name,
-                "href": href,
-                "description": description,
-                "type": datum_type.value,
-            },
-        )
-
-        return class_(
-            client=self, name=name, href=href, description=description
-        )
-
-    def create_image_dataset(
-        self, name: str, href: str = None, description: str = None
-    ) -> DatasetBase:
-        return self._create_model_or_dataset(
-            entity_type="datasets",
-            datum_type=enums.DatumTypes.IMAGE,
-            name=name,
-            href=href,
-            description=description,
+        return self._requests_post_rel_host(
+            "datasets",
+            json=,
         )
 
     def delete_dataset(self, name: str) -> None:
@@ -528,7 +497,7 @@ class Client:
 
         resp = self._requests_get_rel_host(f"{entity_type}/{name}").json()
 
-        datum_type = DatumTypes.invert(resp["type"])
+        datum_type = enums.DataType.invert(resp["type"])
         class_ = self.datum_type_and_entity_to_class[entity_type][datum_type]
 
         return class_(
@@ -552,7 +521,7 @@ class Client:
     ):
         return self._create_model_or_dataset(
             entity_type="models",
-            datum_type=DatumTypes.IMAGE,
+            datum_type=enums.DataType.IMAGE,
             name=name,
             href=href,
             description=description,
