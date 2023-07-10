@@ -475,11 +475,20 @@ class Client:
         )
 
     def create_dataset(
-        self, name: str
+        self,
+        name: str,
+        metadata: List[schemas.Metadatum] = [],
     ):
         return self._requests_post_rel_host(
             "datasets",
-            json=,
+            json={
+                "info":{
+                    "name": name, 
+                    "id": None,
+                    "metadata": metadata, 
+                },
+                "datums": [],
+            }
         )
 
     def delete_dataset(self, name: str) -> None:

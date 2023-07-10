@@ -48,12 +48,12 @@ def request_model(
                     )
                 )
 
-    return schemas.ModelInfo(id=model.id, name=model.name, metadata=metadata)
+    return schemas.Model(id=model.id, name=model.name, metadata=metadata)
 
 
 def request_models(
     db: Session,
-) -> list[schemas.ModelInfo]:
+) -> list[schemas.Model]:
     return [
         request_model(db, name)
         for name in db.query(models.Model.name).all()

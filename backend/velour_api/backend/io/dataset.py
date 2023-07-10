@@ -7,7 +7,7 @@ from velour_api.backend import models
 def request_dataset(
     db: Session,
     name: str,
-) -> schemas.DatasetInfo:
+) -> schemas.Dataset:
 
     dataset = db.query(models.Dataset).where(models.Dataset.name == name).one_or_none()
     if not dataset:
@@ -49,12 +49,12 @@ def request_dataset(
                     )
                 )
 
-    return schemas.DatasetInfo(id=dataset.id, name=dataset.name, metadata=metadata)
+    return schemas.Dataset(id=dataset.id, name=dataset.name, metadata=metadata)
 
 
 def request_datasets(
     db: Session,
-) -> list[schemas.DatasetInfo]:
+) -> list[schemas.Dataset]:
     return [
         request_dataset(db, name)
         for name in db.query(models.Dataset.name).all()

@@ -7,23 +7,7 @@ from velour_api.backend import models
 from velour_api.backend.core.dataset import get_datum
 from velour_api.backend.core.geometry import create_geometric_annotation
 from velour_api.backend.core.label import create_label
-from velour_api.backend.core.metadata import create_metadata
-
-
-def create_model_info(db: Session, info: schemas.ModelInfo) -> models.Model:
-
-    # Create model
-    row = models.Model(name=info.name)
-    try:
-        db.add(row)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise exceptions.ModelAlreadyExistsError(info.name)
-
-    # Create metadata
-    create_metadata(db, info.metadata, model=row)
-    return row
+from velour_api.backend.core.metadata import create_metadata 
 
 
 def create_predictions(
@@ -66,18 +50,33 @@ def create_model(
 ):
     # Check if dataset already exists.
     if (
-        not db.query(models.Model)
-        .where(models.Model.name == model.info.name)
+        db.query(models.Model)
+        .where(models.Model.name == model.name)
         .one_or_none()
     ):
-        raise exceptions.DatasetAlreadyExistsError(model.info.name)
+        raise exceptions.DatasetAlreadyExistsError(model.name)
 
-    md = create_model_info(db, model.info)
-    create_predictions(db, annotated_datums=model.datums, model=md)
+    # Create model
+    row = models.Model(name=model.name)
+    try:
+        db.add(row)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.ModelAlreadyExistsError(model.name)
+
+    # Create metadata
+    create_metadata(db, model.metadata, model=row)
+    return row
 
 
 def delete_model(
     db: Session,
     name: str,
 ):
-    pass
+    try:
+        db.delete(models.Model).where(models.Model.name == name)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise RuntimeError

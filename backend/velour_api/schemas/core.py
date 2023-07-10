@@ -20,7 +20,7 @@ def format_name(name: str):
     return re.sub(pattern, "", name)
 
 
-class DatasetInfo(BaseModel):
+class Dataset(BaseModel):
     id: int = None
     name: str
     metadata: list[MetaDatum]
@@ -33,7 +33,7 @@ class DatasetInfo(BaseModel):
         return v
 
 
-class ModelInfo(BaseModel):
+class Model(BaseModel):
     id: int = None
     name: str
     metadata: list[MetaDatum]
@@ -63,7 +63,7 @@ class GroundTruth(BaseModel):
 
 
 class Prediction(BaseModel):
-    model_id: ModelInfo
+    model_id: Model
     task_type: TaskType
     scored_labels: list[ScoredLabel]
     annotation: Annotation = None
@@ -90,13 +90,3 @@ class AnnotatedDatum(BaseModel):
     datum: Datum
     groundtruths: list[GroundTruth] = None
     predictions: list[Prediction] = None
-
-
-class Dataset(BaseModel):
-    info: DatasetInfo
-    datums: list[AnnotatedDatum]
-
-
-class Model(BaseModel):
-    info: ModelInfo
-    datums: list[AnnotatedDatum]

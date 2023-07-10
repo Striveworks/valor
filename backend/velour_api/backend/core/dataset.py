@@ -1,4 +1,4 @@
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
@@ -30,25 +30,6 @@ def get_datum(
     )
 
 
-def create_dataset_info(
-    db: Session,
-    info: schemas.DatasetInfo,
-) -> models.Dataset:
-
-    # Create dataset
-    row = models.Dataset(name=info.name)
-    try:
-        db.add(row)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise exceptions.DatasetAlreadyExistsError(info.name)
-
-    # Create metadata
-    create_metadata(db, info.metadata, dataset=row)
-    return row
-
-
 def create_datum(
     db: Session,
     datum: schemas.Datum,
@@ -56,8 +37,8 @@ def create_datum(
 ) -> models.Datum:
 
     # Create datum
-    row = models.Datum(uid=datum.uid, dataset=dataset.id)
     try:
+        row = models.Datum(uid=datum.uid, dataset=dataset.id)
         db.add(row)
         db.commit()
     except IntegrityError:
@@ -108,18 +89,33 @@ def create_dataset(
 ):
     # Check if dataset already exists.
     if (
-        not db.query(models.Dataset)
-        .where(models.Dataset.name == dataset.info.name)
+        db.query(models.Dataset)
+        .where(models.Dataset.name == dataset.name)
         .one_or_none()
     ):
-        raise exceptions.DatasetAlreadyExistsError(dataset.info.name)
+        raise exceptions.DatasetAlreadyExistsError(dataset.name)
 
-    row = create_dataset_info(db, dataset.info)
-    create_groundtruths(db, dataset=row, annotated_datums=dataset.datums)
+    # Create dataset
+    try:
+        row = models.Dataset(name=dataset.name)
+        db.add(row)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.DatasetAlreadyExistsError(dataset.name)
+
+    # Create metadata
+    create_metadata(db, dataset.metadata, dataset=row)
+    return row
 
 
 def delete_dataset(
     db: Session,
     name: str,
 ):
-    pass
+    try:
+        db.delete(models.Dataset).where(models.Dataset.name == name)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise RuntimeError

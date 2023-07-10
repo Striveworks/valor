@@ -64,7 +64,7 @@ def create_predictions(
 @app.get(
     "/datasets", status_code=200, dependencies=[Depends(token_auth_scheme)]
 )
-def get_datasets(db: Session = Depends(get_db)) -> list[schemas.DatasetInfo]:
+def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
     return crud.get_datasets(db)
 
 
