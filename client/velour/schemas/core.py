@@ -16,32 +16,31 @@ from velour.schemas.metadata import Metadatum
 
 
 @dataclass
-class DatasetInfo:
+class Dataset:
     name: str
     id: int = None
-    href: str = None
-    description: str = None
-    type: enums.DataType = None
-    annotation_types: list[enums.AnnotationType] = field(default_factory=list)
-    associated_models: list[str] = field(default_factory=list)
     metadata: List[Metadatum] = field(default_factory=list)
     
 
 @dataclass
-class ModelInfo:
+class Model:
     name: str
     id: int = None
+    metadata: List[Metadatum] = field(default_factory=list)
+
+
+@dataclass
+class Info:
     href: str = None
     description: str = None
     type: enums.DataType = None
     annotation_types: list[enums.AnnotationType] = field(default_factory=list)
     associated_datasets: list[str] = field(default_factory=list)
-    metadata: List[Metadatum] = field(default_factory=list)
 
 
 @dataclass
 class Datum:
-    dataset: DatasetInfo
+    dataset: Dataset
     uid: str
     metadata: List[Metadatum] = field(default_factory=list)
 

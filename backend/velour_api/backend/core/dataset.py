@@ -114,7 +114,8 @@ def delete_dataset(
     name: str,
 ):
     try:
-        db.delete(models.Dataset).where(models.Dataset.name == name)
+        ds = db.query(models.Dataset).where(models.Dataset.name == name).one_or_none()
+        db.delete(ds)
         db.commit()
     except IntegrityError:
         db.rollback()

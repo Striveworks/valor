@@ -6,7 +6,7 @@ import numpy as np
 import PIL.Image
 from tqdm.auto import tqdm
 
-from velour.client import ImageDataset
+from velour.client import Dataset
 from velour.data_types import (
     GroundTruthInstanceSegmentation,
     GroundTruthSemanticSegmentation,
@@ -54,7 +54,7 @@ def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
 
 
 def upload_coco_panoptic(
-    dataset: ImageDataset,
+    dataset: Dataset,
     annotations: Union[str, PosixPath, dict],
     masks_path: str,
 ) -> None:
