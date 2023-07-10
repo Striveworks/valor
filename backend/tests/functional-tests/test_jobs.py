@@ -52,7 +52,7 @@ def test_get_job():
 
     retrieved_job = jobs.get_job(job.uid)
 
-    assert retrieved_job.dict() == job.dict()
+    assert retrieved_job.model_dump() == job.model_dump()
 
     with pytest.raises(JobDoesNotExistError) as exc_info:
         jobs.get_job("asdasd")

@@ -28,7 +28,6 @@ def check_if_finalized(
     dataset_name=None,
     model_name=None,
 ):
-
     if request_info is not None:
         dataset_name = request_info.settings.dataset_name
         model_name = request_info.settings.model_name
@@ -60,7 +59,6 @@ def check_if_finalized(
 
 
 def _get_associated_models(db: Session, dataset_name: str) -> list[str]:
-
     subquery_classifications = (
         select(models.PredictedClassification.model_id)
         .join(
@@ -103,7 +101,6 @@ def _get_associated_models(db: Session, dataset_name: str) -> list[str]:
 
 
 def _get_associated_datasets(db: Session, model_name: str) -> list[str]:
-
     subquery_classifications = (
         select(models.PredictedClassification.datum_id)
         .join(
@@ -180,7 +177,7 @@ def _raster_to_png_b64(
 def get_datasets(db: Session) -> list[schemas.Dataset]:
     return [
         schemas.Dataset(
-            **{k: getattr(d, k) for k in schemas.Dataset.__fields__}
+            **{k: getattr(d, k) for k in schemas.Dataset.model_fields}
         )
         for d in db.scalars(select(models.Dataset))
     ]
@@ -197,7 +194,6 @@ def get_dataset(db: Session, dataset_name: str) -> models.Dataset:
 
 
 def get_dataset_info(db: Session, dataset_name: str) -> schemas.Info:
-
     is_bbox = True
     is_polygon = False
 
@@ -273,7 +269,7 @@ def get_dataset_info(db: Session, dataset_name: str) -> schemas.Info:
 
 def get_models(db: Session) -> list[schemas.Model]:
     return [
-        schemas.Model(**{k: getattr(m, k) for k in schemas.Model.__fields__})
+        schemas.Model(**{k: getattr(m, k) for k in schemas.Model.model_fields})
         for m in db.scalars(select(models.Model))
     ]
 
@@ -289,7 +285,6 @@ def get_model(db: Session, model_name: str) -> models.Model:
 
 
 def get_model_info(db: Session, model_name: str) -> schemas.Info:
-
     is_bbox = True
     is_polygon = False
 
@@ -507,7 +502,6 @@ def get_labels_from_dataset(
     )
 
     if metadatum_id is not None:
-
         classifications_query = (
             classifications_query.join(models.DatumMetadatumLink)
             .where(
@@ -560,7 +554,6 @@ def get_labels_from_dataset(
         )
 
     else:
-
         classifications_query = classifications_query.where(
             and_(
                 models.Dataset.name == dataset_name,
@@ -692,7 +685,6 @@ def get_labels_from_model(
     )
 
     if metadatum_id is not None:
-
         classification_query = (
             classification_query.join(models.Datum)
             .join(models.Metadatum)
@@ -744,7 +736,6 @@ def get_labels_from_model(
         )
 
     else:
-
         classification_query = classification_query.where(
             models.Model.name == model_name
         ).distinct()
@@ -826,7 +817,6 @@ def get_joint_labels(
     metadatum_id: Optional[int] = None,
     of_type: Optional[List[enums.AnnotationType]] = None,
 ) -> list[schemas.Label]:
-
     ds_set = set(
         get_labels_from_dataset(
             db,
@@ -849,7 +839,6 @@ def get_joint_labels(
 def get_label_distribution_from_dataset(
     db: Session, dataset_name: str
 ) -> dict[schemas.LabelDistribution, int]:
-
     # Join groundtruths with labels
     subquery_classification = db.query(
         models.GroundTruthClassification.label_id.label("label_id"),
@@ -909,7 +898,6 @@ def get_label_distribution_from_dataset(
 def get_label_distribution_from_model(
     db: Session, model_name: str
 ) -> dict[schemas.ScoredLabelDistribution, int]:
-
     # Join predictions with labels
     subquery_classification = db.query(
         models.PredictedClassification.label_id.label("label_id"),
