@@ -12,6 +12,7 @@ import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import '@striveworks/minerva/style.css';
 import { Profile } from './pages/Profile';
+import { Models } from './pages/Models';
 
 function App() {
   const { isAuthenticated } = useAuth0();
@@ -21,21 +22,18 @@ function App() {
       <ChariotLayoutTemplate sidebar={<SideMenu />}>
         <Routes>
           <Route path='/' element={<Home />} />
-          <Route
-            path='/models'
-            element={<ListingComponent name='models' pageTitle='Models' />}
-          />
+          <Route path='/models' element={<Models />} />
+          <Route path='/models/:name' element={<ModelDetailsPage />} />
           <Route
             path='/datasets'
             element={<ListingComponent name='datasets' pageTitle='Datasets' />}
           />
-          <Route path='/models/:name' element={<ModelDetailsPage />} />
           <Route path='/datasets/:name' element={<DatasetDetailsPage />} />
-          <Route path='/profile' element={<Profile />} />
           <Route
             path='/models/:name/evaluation-settings/:evalSettingsId'
             element={<MetricsPage />}
           />
+          <Route path='/profile' element={<Profile />} />
         </Routes>
       </ChariotLayoutTemplate>
     );
