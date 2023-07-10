@@ -92,13 +92,14 @@ AUTH0_ALGORITHMS="RS256"
 
 ### Frontend
 
-For the web UI either set the environment variables `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`, `VITE_AUTH0_CALLBACK_URL` and `VITE_AUTH0_AUDIENCE` or put them in a file named `.env` in the `web` directory. An example of such a file is:
+For the web UI either set the environment variables `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`, `VITE_AUTH0_CALLBACK_URL` and `VITE_AUTH0_AUDIENCE` or put them in a file named `.env` in the `web` directory. The URL to the should also be provided under the `VITE_BACKEND_URL`.  An example of such a file is:
 
 ```
 VITE_AUTH0_DOMAIN=velour.us.auth0.com
 VITE_AUTH0_CLIENT_ID=<AUTH0 CLIENT ID>
 VITE_AUTH0_CALLBACK_URL=http://localhost:3000/callback
 VITE_AUTH0_AUDIENCE=https://velour.striveworks.us/
+VITE_BACKEND_URL=http://localhost:8000
 ```
 
 Currently, the Striveworks UI Library, Minerva, is closed-source.  This requires access to the Striveworks Repo and an access token.
