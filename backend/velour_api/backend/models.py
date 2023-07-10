@@ -41,18 +41,18 @@ class GDALRaster(Raster):
         )
 
 
-class GeometricAnnotation(Base):
-    __tablename__ = "geometric_annotation"
+class Annotation(Base):
+    __tablename__ = "annotation"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    tasktype: Mapped[str] = mapped_column(nullable=True)
+    task_type: Mapped[str] = mapped_column(nullable=True)
     box = mapped_column(Geometry("POLYGON"), nullable=True)
     polygon = mapped_column(Geometry("POLYGON"), nullable=True)
     raster = mapped_column(GDALRaster, nullable=True)
 
     # relationships
-    groundtruth: Mapped["GroundTruth"] = relationship(back_populates="geometry", cascade="all, delete")
-    prediction: Mapped["Prediction"] = relationship(back_populates="geometry", cascade="all, delete")
+    groundtruth: Mapped["GroundTruth"] = relationship(back_populates="annotation", cascade="all, delete")
+    prediction: Mapped["Prediction"] = relationship(back_populates="annotation", cascade="all, delete")
     metadatums: Mapped["MetaDatum"] = relationship(cascade="all, delete")
 
 
@@ -63,16 +63,16 @@ class GroundTruth(Base):
     datum_id: Mapped[int] = mapped_column(
         ForeignKey("datum.id"), nullable=False
     )
-    geometry_id: Mapped[int] = mapped_column(
-        ForeignKey("geometric_annotation.id"), nullable=True
+    annotation_id: Mapped[int] = mapped_column(
+        ForeignKey("annotation.id"), nullable=True
     )
     label_id: Mapped[int] = mapped_column(
         ForeignKey("label.id"), nullable=False
     )
 
     # relationships
-    datum: Mapped["Datum"] = relationship(cascade="all, delete")
-    geometry: Mapped["GeometricAnnotation"] = relationship(cascade="all, delete")
+    datum: Mapped["Datum"] = relationship(back_populates="groundtruths", cascade="all, delete")
+    annotation: Mapped["Annotation"] = relationship(cascade="all, delete")
     label: Mapped["Label"] = relationship(cascade="all, delete")
 
 
@@ -86,8 +86,8 @@ class Prediction(Base):
     model_id: Mapped[int] = mapped_column(
         ForeignKey("model.id"), nullable=False
     )
-    geometry_id: Mapped[int] = mapped_column(
-        ForeignKey("geometric_annotation.id"), nullable=True
+    annotation_id: Mapped[int] = mapped_column(
+        ForeignKey("annotation.id"), nullable=True
     )
     label_id: Mapped[int] = mapped_column(
         ForeignKey("label.id"), nullable=False
@@ -95,8 +95,9 @@ class Prediction(Base):
     score: Mapped[float] = mapped_column(nullable=False)
 
     # relationships
+    model: Mapped["Model"] = relationship(back_populates="predictions", cascade="all, delete")
     datum: Mapped["Datum"] = relationship(cascade="all, delete")
-    geometry: Mapped["GeometricAnnotation"] = relationship(cascade="all, delete")
+    annotation: Mapped["Annotation"] = relationship(cascade="all, delete")
     label: Mapped["Label"] = relationship(cascade="all, delete")
 
 
@@ -113,7 +114,8 @@ class Datum(Base):
     )
 
     # relationship
-    ground_truths: Mapped[list[GroundTruth]] = relationship(
+    dataset: Mapped["Dataset"] = relationship(back_populates="datums", cascade="all, delete")
+    groundtruths: Mapped[list[GroundTruth]] = relationship(
         back_populates="datum", cascade="all, delete"
     )
     predictions: Mapped[list[Prediction]] = relationship(
@@ -140,8 +142,8 @@ class MetaDatum(Base):
     datum_id: Mapped[int] = mapped_column(
         ForeignKey("datum.id"), nullable=True
     )
-    geometry_id: Mapped[int] = mapped_column(
-        ForeignKey("geometric_annotation.id"), nullable=True
+    annotation_id: Mapped[int] = mapped_column(
+        ForeignKey("annotation.id"), nullable=True
     )
 
     # metadata
@@ -153,9 +155,10 @@ class MetaDatum(Base):
     )
 
     # relationships
-    dataset: Mapped["Dataset"] = relationship(cascade="all, delete")
-    model: Mapped["Model"] = relationship(cascade="all, delete")
-    datum: Mapped["Datum"] = relationship(cascade="all, delete")
+    dataset: Mapped["Dataset"] = relationship(back_populates="metadatums", cascade="all, delete")
+    model: Mapped["Model"] = relationship(back_populates="metadatums", cascade="all, delete")
+    datum: Mapped["Datum"] = relationship(back_populates="metadatums", cascade="all, delete")
+    annotation: Mapped["Annotation"] = relationship(back_populates="metadatums", cascade="all, delete")
     image: Mapped["ImageMetadata"] = relationship(cascade="all, delete")
 
     __table_args__ = (
@@ -184,7 +187,8 @@ class Model(Base):
     name: Mapped[str] = mapped_column(unique=True)
 
     # relationships
-    predictions = relationship(Prediction, cascade="all, delete")
+    predictions: Mapped[list[Prediction]] = relationship(cascade="all, delete")
+    metadatums: Mapped[list["MetaDatum"]] = relationship(back_populates="model", cascade="all, delete")
     evaluation_settings = relationship(
         "EvaluationSettings", cascade="all, delete"
     )
@@ -197,7 +201,8 @@ class Dataset(Base):
     name: Mapped[str] = mapped_column(index=True, unique=True)
 
     # relationships
-    datums = relationship("Datum", cascade="all, delete")
+    datums: Mapped[list[Datum]] = relationship(cascade="all, delete")
+    metadatums: Mapped[list[MetaDatum]] = relationship(cascade="all, delete")
     evaluation_settings = relationship(
         "EvaluationSettings", cascade="all, delete", back_populates="dataset"
     )

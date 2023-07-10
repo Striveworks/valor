@@ -34,36 +34,36 @@ def create_metadatum(
     dataset: models.Dataset = None,
     model: models.Model = None,
     datum: models.Datum = None,
-    geometry: models.GeometricAnnotation = None,
+    annotation: models.Annotation = None,
     commit: bool = True,
 ) -> models.MetaDatum:
 
-    if not (dataset or model or datum or geometry):
+    if not (dataset or model or datum or annotation):
         raise ValueError("Need some target to attach metadatum to.")
 
     mapping = {
         "name": metadatum.name,
-        "dataset_id": dataset.id if dataset else None,
-        "model_id": model.id if model else None,
-        "datum_id": datum.id if datum else None,
-        "geometry_id": geometry.id if geometry else None,
+        "dataset": dataset if dataset else None,
+        "model": model if model else None,
+        "datum": datum if datum else None,
+        "annotation": annotation if annotation else None,
         "string_value": None,
         "numeric_value": None,
         "geo": None,
-        "image_id": None,
+        "image": None,
     }
 
     # Check value type
     if isinstance(metadatum.value, str):
         mapping["string_value"] = metadatum.value
-    elif isinstance(metadatum.value, float):
+    elif isinstance(metadatum.value, float | int):
         mapping["numeric_value"] = metadatum.value
     elif isinstance(metadatum.value, schemas.GeographicFeature):
         mapping["geo"] = ST_GeomFromGeoJSON(
             json.dumps(metadatum.value.geography)
         )
     elif isinstance(metadatum.value, schemas.ImageMetadata):
-        mapping["image_id"] = create_image_metadatum(metadatum.value).id
+        mapping["image"] = create_image_metadatum(metadatum.value).id
     else:
         raise ValueError(
             f"Got unexpected value of type '{type(metadatum.value)}' for metadatum"
@@ -86,8 +86,10 @@ def create_metadata(
     dataset: models.Dataset = None,
     model: models.Model = None,
     datum: models.Datum = None,
-    geometry: models.GeometricAnnotation = None,
+    annotation: models.Annotation = None,
 ) -> list[models.MetaDatum]:
+    if not metadata:
+        return None
     rows = [
         create_metadatum(
             db,
@@ -95,7 +97,7 @@ def create_metadata(
             dataset=dataset,
             model=model,
             datum=datum,
-            geometry=geometry,
+            annotation=annotation,
             commit=False,
         )
         for metadatum in metadata

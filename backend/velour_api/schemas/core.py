@@ -52,21 +52,20 @@ class Datum(BaseModel):
 
 
 class Annotation(BaseModel):
+    task_type: str
     geometry: BoundingBox | Polygon | MultiPolygon | Raster = None
-    metadata: list[MetaDatum]
+    metadata: list[MetaDatum] = None
 
 
-class GroundTruth(BaseModel):
-    task_type: TaskType = None
+class GroundTruthAnnotation(BaseModel):
     labels: list[Label]
-    annotation: Annotation = None
+    annotation: Annotation
 
 
-class Prediction(BaseModel):
+class PredictedAnnotation(BaseModel):
     model_id: Model
-    task_type: TaskType
     scored_labels: list[ScoredLabel]
-    annotation: Annotation = None
+    annotation: Annotation
 
     @validator("scored_labels")
     def check_sum_to_one(cls, v: list[ScoredLabel]):
@@ -86,7 +85,11 @@ class Prediction(BaseModel):
         return v
 
 
-class AnnotatedDatum(BaseModel):
+class GroundTruth(BaseModel):
     datum: Datum
-    groundtruths: list[GroundTruth] = None
-    predictions: list[Prediction] = None
+    annotations: list[GroundTruthAnnotation]
+
+
+class Prediction(BaseModel):
+    datum: Datum
+    annotations: list[PredictedAnnotation]

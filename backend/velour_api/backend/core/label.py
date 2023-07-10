@@ -66,7 +66,7 @@ def create_labels(
     db: Session,
     labels: list[schemas.Label],
 ) -> list[models.Label]:
-    return [create_label(label) for label in labels]
+    return [create_label(db, label) for label in labels]
 
 
 def get_labels_from_query(

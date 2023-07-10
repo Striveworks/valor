@@ -17,8 +17,6 @@ class GeographicFeature:
                     f"if a dict, `region` must be valid GeoJSON but got {self.region}"
                 )
             
-    
-
 
 @dataclass
 class ImageMetadata:

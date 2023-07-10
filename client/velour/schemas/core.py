@@ -40,23 +40,18 @@ class Info:
 
 @dataclass
 class Datum:
-    dataset: Dataset
     uid: str
     metadata: List[Metadatum] = field(default_factory=list)
 
 
 @dataclass
 class Annotation:
+    task_type: enums.TaskType
     geometry: Optional[
         Union[Box, Polygon, MultiPolygon, Raster]
     ] = None
     # other type of annotation
     metadata: List[Metadatum] = field(default_factory=list)
-
-    def __post_init__(self):
-        # check at least one attribute is not None
-        if self.geometry is None:
-            raise ValueError
 
 
 @dataclass
@@ -112,23 +107,21 @@ class ScoredLabelDistribution:
 
 
 @dataclass
-class GroundTruth:
-    datum: Datum
-    labels: List[Label] = field(default_factory=list)
-    annotation: Annotation = None
-
-
-@dataclass
 class AnnotationDistribution:
     annotation_type: enums.AnnotationType
     count: int
 
 
 @dataclass
-class Prediction:
-    datum: Datum
+class GroundTruthAnnotation:
+    annotation: Annotation
+    labels: List[Label] = field(default_factory=list)
+
+
+@dataclass
+class PredictedAnnotation:
+    annotation: Annotation
     scored_labels: List[ScoredLabel] = field(default_factory=list)
-    annotation: Annotation = None
 
     def __post_init__(self):
         # check that for each label key all the predictions sum to ~1
@@ -147,3 +140,15 @@ class Prediction:
                     "For each label key, prediction scores must sum to 1, but"
                     f" for label key {k} got scores summing to {total_score}."
                 )
+
+
+@dataclass
+class GroundTruth:
+    datum: Datum
+    annotations: list[GroundTruthAnnotation] = field(default_factory=list)
+
+
+@dataclass
+class Prediction:
+    datum: Datum
+    annotations: list[PredictedAnnotation] = field(default_factory=list)

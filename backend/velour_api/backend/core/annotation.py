@@ -13,13 +13,9 @@ def wkt_multipolygon_to_raster(data: schemas.MultiPolygon):
     )
 
 
-def create_geometric_annotation(
+def create_annotation(
     db: Session, annotation: schemas.Annotation, commit: bool = True
-) -> models.GeometricAnnotation:
-
-    # Check if annotation contains geometry
-    if not annotation.geometry:
-        return None
+) -> models.Annotation:
 
     box = None
     polygon = None
@@ -33,18 +29,16 @@ def create_geometric_annotation(
         raster = wkt_multipolygon_to_raster(annotation.geometry.wkt)
     elif isinstance(annotation.geometry, schemas.Raster):
         raster = annotation.geometry.mask_bytes
-    else:
-        raise ValueError(
-            f"Unknown geometry with type '{type(annotation.geometry)}'."
-        )
+    # @TODO: Add more annotation types
 
     mapping = {
+        "task_type": annotation.task_type,
         "box": box,
         "polygon": polygon,
         "raster": raster,
     }
-    row = models.GeometricAnnotation(**mapping)
-    create_metadata(db, annotation.metadata, geometry=row)
+    row = models.Annotation(**mapping)
+    create_metadata(db, annotation.metadata, annotation=row)
     if commit:
         try:
             db.add(row)
@@ -55,12 +49,12 @@ def create_geometric_annotation(
     return row
 
 
-def create_geometric_annotations(
+def create_annotations(
     db: Session,
     annotations: list[schemas.Annotation],
-) -> list[models.GeometricAnnotation]:
+) -> list[models.Annotation]:
     rows = [
-        create_geometric_annotation(db, annotation, commit=False)
+        create_annotation(db, annotation, commit=False)
         for annotation in annotations
     ]
     try:

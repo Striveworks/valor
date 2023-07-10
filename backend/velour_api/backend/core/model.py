@@ -5,14 +5,14 @@ from sqlalchemy.orm import Session
 from velour_api import exceptions, schemas
 from velour_api.backend import models
 from velour_api.backend.core.dataset import get_datum
-from velour_api.backend.core.geometry import create_geometric_annotation
+from velour_api.backend.core.annotation import create_annotation
 from velour_api.backend.core.label import create_label
 from velour_api.backend.core.metadata import create_metadata 
 
 
 def create_predictions(
     db: Session,
-    annotated_datums: list[schemas.AnnotatedDatum],
+    annotated_datums: list[schemas.Prediction],
     model: models.Model,
 ):
     rows = []

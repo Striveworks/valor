@@ -1,6 +1,8 @@
 import os
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -27,7 +29,6 @@ logger.info(
     f"API started {'WITHOUT' if auth_settings.no_auth else 'WITH'} authentication"
 )
 
-
 def get_db():
     db = database.make_session()
     try:
@@ -36,20 +37,20 @@ def get_db():
         db.close()
 
 
-# should move the following routes to be behind /datasets/{dataset}/ ?
-@app.post("/groundtruths", dependencies=[Depends(token_auth_scheme)])
+@app.post("/groundtruth", dependencies=[Depends(token_auth_scheme)])
 def create_groundtruths(
-    data: list[schemas.AnnotatedDatum], db: Session = Depends(get_db)
-) -> list[int]:
+    data: dict, 
+    db: Session = Depends(get_db)
+):
     try:
-        return crud.create_groundtruths(db=db, data=data)
+        crud.create_groundtruths(db=db, data=data)
     except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@app.post("/predictions", dependencies=[Depends(token_auth_scheme)])
+@app.post("/prediction", dependencies=[Depends(token_auth_scheme)])
 def create_predictions(
-    data: list[schemas.AnnotatedDatum],
+    data: list[schemas.Prediction],
     db: Session = Depends(get_db),
 ) -> list[int]:
     try:
@@ -85,7 +86,7 @@ def get_dataset(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> schemas.Dataset:
     try:
-        return crud.get_dataset(db, dataset_name=dataset_name)
+        return crud.get_dataset(db, name=dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -156,7 +157,7 @@ def get_dataset_images(
 )
 def get_image_detections(
     dataset_name: str, image_uid: str, db: Session = Depends(get_db)
-) -> schemas.AnnotatedDatum:
+) -> schemas.GroundTruth:
     try:
         return crud.get_groundtruth_detections_in_image(
             db, uid=image_uid, dataset_name=dataset_name

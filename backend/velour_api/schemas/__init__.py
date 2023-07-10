@@ -1,6 +1,7 @@
 from .auth import User
 from .core import (
-    AnnotatedDatum,
+    GroundTruthAnnotation,
+    PredictedAnnotation,
     Annotation,
     Dataset,
     Datum,
@@ -36,6 +37,8 @@ from .jobs import (
 )
 
 __all__ = [
+    "GroundTruthAnnotation",
+    "PredictedAnnotation",
     "Annotation",
     "Dataset",
     "Datum",

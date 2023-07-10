@@ -26,7 +26,7 @@ class AnnotationType(Enum):
     RASTER = "raster"
 
 
-class TaskType(Enum):
+class TaskType(str, Enum):
     CLASSIFICATION = "classification"
     DETECTION = "detection"
     INSTANCE_SEGMENTATION = "instance_segmentation"

@@ -3,7 +3,7 @@ import math
 import os
 
 from dataclasses import asdict
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from urllib.parse import urljoin
 
 import requests
@@ -154,67 +154,104 @@ class Dataset:
     def __init__(
         self,
         client: Client,
+        info: schemas.Dataset,
+    ):
+        self.client = client
+        self.info = info
+        self._metadata = {
+            metadatum.name : metadatum.value
+            for metadatum in info.metadata
+        }
+
+    @property
+    def id(self):
+        return self.info.id
+    
+    @property
+    def name(self):
+        return self.info.name
+    
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        return self._metadata
+
+    @classmethod
+    def create(
+        cls,
+        client: Client, 
         name: str,
         href: Optional[str] = None,
         description: Optional[str] = None,
     ):
-        self.client = client
-        self.name = name
-        self.metadata = []
-
+        # Create the dataset on server side first to get ID info
+        ds = schemas.Dataset(
+            name=name,
+            metadata=[],
+        )
         if href:
-            self.metadata.append(
+            ds.metadata.append(
                 schemas.Metadatum(
                     name="href",
                     value=href,
                 )
             )
         if description:
-            self.metadata.append(
+            ds.metadata.append(
                 schemas.Metadatum(
                     name="description",
                     value=description,
                 )
             )
-
-        resp = self.client._requests_post_rel_host(
+        resp = client._requests_post_rel_host(
             "datasets",
-            json=asdict(
-                schemas.Dataset(
-                    name = self.name,
-                    metadata=self.metadata,
-                )
-            )
+            json=asdict(ds)
         )
-        # @TODO: Handle this response 
+        # @TODO: Handle this response
+
+        # Retrive newly created dataset with its ID 
+        return cls.get(client, name)
 
     @classmethod
     def get(cls, client: Client, name: str):
         resp = client._requests_get_rel_host(f"datasets/{name}").json()
+        metadata = [
+            schemas.Metadatum(
+                name=metadatum["name"],
+                value=metadatum["value"],
+            )
+            for metadatum in resp["metadata"]
+        ]
+        info = schemas.Dataset(
+            name=resp["name"],
+            id=resp["id"],
+            metadata=metadata,
+        )
         return cls(
             client=client,
-            id=resp["id"],
-            name=resp["name"],
-            metadata=resp["metadata"],
+            info=info,
         )
+    
+    @staticmethod
+    def prune(client: Client, name: str):
+        job_id = client._requests_delete_rel_host(f"datasets/{name}").json()
+        return Job(client=client, job_id=job_id)
    
     def add_metadatum(self, metadatum: schemas.Metadatum):
         # @TODO: Add endpoint to allow adding custom metadatums
-        pass
+        self.info.metadata.append(metadatum)
+        self.__metadata__[metadatum.name] = metadatum
 
     def add_groundtruth(
         self,
         groundtruth: schemas.GroundTruth,
-        chunk_size: int = 1000,
-        show_progress_bar: bool = True,
     ):
-
-        if not isinstance(groundtruth, schemas.GroundTruth):
-            raise ValueError
-        
-        payload = json.dumps(asdict(groundtruth))
+        assert isinstance(groundtruth, schemas.GroundTruth)
         return self.client._requests_post_rel_host(
-            "groundtruth", json=payload
+            f"groundtruth",
+            json={
+                "name": self.info.name,
+                "data": asdict(groundtruth),
+            }
         )
     
     def get_groundtruth(
@@ -259,10 +296,9 @@ class Dataset:
         )
 
     def delete(self):
-        job_id = self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
-        return Job(client=self, job_id=job_id)
+        self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
+        del self
     
-
     def get_images(self) -> List[schemas.ImageMetadata]:
         """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
         images = self.client._requests_get_rel_host(
@@ -286,6 +322,7 @@ class Model:
         description: Optional[str] = None,
     ):
         self.client = client
+        self.id = None
         self.name = name
         self.metadata = []
 
@@ -318,12 +355,13 @@ class Model:
     @classmethod
     def get(cls, client: Client, name: str):
         resp = client._requests_get_rel_host(f"models/{name}").json()
-        return cls(
+        md = cls(
             client=client,
-            id=resp["id"],
             name=resp["name"],
-            metadata=resp["metadata"],
         )
+        md.id = resp["id"]
+        md.metadata = resp["metadata"]
+        return md
 
     def finalize_inferences(self, dataset: "Dataset") -> None:
         return self.client._requests_put_rel_host(

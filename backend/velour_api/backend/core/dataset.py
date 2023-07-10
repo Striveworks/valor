@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.geometry import create_geometric_annotation
+from velour_api.backend.core.annotation import create_annotation
 from velour_api.backend.core.label import create_labels
 from velour_api.backend.core.metadata import create_metadata
 
@@ -35,10 +35,10 @@ def create_datum(
     datum: schemas.Datum,
     dataset: models.Dataset,
 ) -> models.Datum:
-
+    
     # Create datum
     try:
-        row = models.Datum(uid=datum.uid, dataset=dataset.id)
+        row = models.Datum(uid=datum.uid, dataset_id=dataset.id)
         db.add(row)
         db.commit()
     except IntegrityError:
@@ -46,33 +46,28 @@ def create_datum(
         raise exceptions.DatumAlreadyExistsError(datum.uid)
 
     # Create metadata
-    create_metadata(db, datum.metadata, datum_id=row)
+    create_metadata(db, datum.metadata, datum=row)
     return row
 
 
 def create_groundtruths(
     db: Session,
+    groundtruths: schemas.GroundTruth,
     dataset: models.Dataset,
-    annotated_datums: list[schemas.AnnotatedDatum],
 ):
+    datum = create_datum(db, datum=groundtruths.datum, dataset=dataset)
+    
     rows = []
-    for annotated_datum in annotated_datums:
-        datum = create_datum(db, datum=annotated_datum.datum, dataset=dataset)
-        for gt in annotated_datum.groundtruths:
-            geometry = (
-                create_geometric_annotation(db, gt.geometry)
-                if gt.geometry
-                else None
+    for annotation in groundtruths.annotations:
+        arow = create_annotation(db, annotation.annotation)
+        rows += [
+            models.GroundTruth(
+                datum=datum,
+                annotation=arow,
+                label=label,
             )
-            rows += [
-                models.GroundTruth(
-                    datum_id=datum.id,
-                    task_type=gt.task_type,
-                    geometry=geometry.id,
-                    label=label.id,
-                )
-                for label in create_labels(db, gt.labels)
-            ]
+            for label in create_labels(db, annotation.labels)
+        ]
     try:
         db.add_all(rows)
         db.commit()
