@@ -6,7 +6,15 @@ from uuid import uuid4
 
 import numpy as np
 import PIL.Image
-from pydantic import BaseModel, Extra, Field, root_validator, validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Extra,
+    Field,
+    field_validator,
+    model_validator,
+    root_validator,
+)
 
 from velour_api.enums import DatumTypes, JobStatus, TableStatus, Task
 
@@ -33,7 +41,8 @@ class Dataset(BaseModel):
     type: DatumTypes
     finalized: bool = False
 
-    @validator("href")
+    @field_validator("href")
+    @classmethod
     def validate_href(cls, v):
         return _validate_href(v)
 
@@ -44,7 +53,8 @@ class Model(BaseModel):
     description: str = None
     type: DatumTypes
 
-    @validator("href")
+    @field_validator("href")
+    @classmethod
     def validate_href(cls, v):
         return _validate_href(v)
 
@@ -53,7 +63,8 @@ class DatumMetadatum(BaseModel):
     name: str
     value: float | str | dict
 
-    @validator("value")
+    @field_validator("value")
+    @classmethod
     def check_json(cls, v):
         # TODO: add more validation that the dict is valid geoJSON?
         if isinstance(v, dict):
@@ -112,14 +123,16 @@ class DetectionBase(BaseModel):
     bbox: tuple[float, float, float, float] = None
     image: Image
 
-    @root_validator(skip_on_failure=True)
+    @model_validator(skip_on_failure=True)
+    @classmethod
     def boundary_or_bbox(cls, values):
         if (values["boundary"] is None) == (values["bbox"] is None):
             raise ValueError("Must have exactly one of boundary or bbox")
 
         return values
 
-    @validator("boundary")
+    @field_validator("boundary")
+    @classmethod
     def enough_pts(cls, v):
         if v is not None:
             return validate_single_polygon(v)
@@ -158,7 +171,8 @@ class PredictedClassification(BaseModel):
     datum: Datum
     scored_labels: list[ScoredLabel]
 
-    @validator("scored_labels")
+    @field_validator("scored_labels")
+    @classmethod
     def check_sum_to_one(cls, v: list[ScoredLabel]):
         label_keys_to_sum = {}
         for scored_label in v:
@@ -191,7 +205,8 @@ class PolygonWithHole(BaseModel):
     polygon: list[tuple[float, float]]
     hole: list[tuple[float, float]] = None
 
-    @validator("polygon")
+    @field_validator("polygon")
+    @classmethod
     def enough_pts_outer(cls, v):
         return validate_single_polygon(v)
 
@@ -203,16 +218,14 @@ def _mask_bytes_to_pil(mask_bytes: bytes) -> PIL.Image.Image:
 
 class GroundTruthSegmentation(BaseModel):
     # multipolygon or base64 mask
-    shape: str | list[PolygonWithHole] = Field(allow_mutation=False)
+    shape: str | list[PolygonWithHole] = Field(frozen=True)
     image: Image
     labels: list[Label]
     is_instance: bool
+    model_config = ConfigDict(extra="allow", validate_assignment=True)
 
-    class Config:
-        extra = Extra.allow
-        validate_assignment = True
-
-    @validator("shape")
+    @field_validator("shape")
+    @classmethod
     def non_empty(cls, v):
         if len(v) == 0:
             raise ValueError("shape must have at least one element.")
@@ -251,14 +264,11 @@ class GroundTruthSegmentation(BaseModel):
 
 
 class PredictedSegmentation(BaseModel):
-    base64_mask: str = Field(allow_mutation=False)
+    base64_mask: str = Field(frozen=True)
     image: Image
     scored_labels: list[ScoredLabel]
     is_instance: bool
-
-    class Config:
-        extra = Extra.allow
-        validate_assignment = True
+    model_config = ConfigDict(extra="allow", validate_assignment=True)
 
     @property
     def mask_bytes(self) -> bytes:
@@ -266,7 +276,8 @@ class PredictedSegmentation(BaseModel):
             self._mask_bytes = b64decode(self.base64_mask)
         return self._mask_bytes
 
-    @validator("base64_mask")
+    @field_validator("base64_mask")
+    @classmethod
     def check_png_and_mode(cls, v):
         """Check that the bytes are for a png file and is binary"""
         f = io.BytesIO(b64decode(v))
@@ -348,9 +359,7 @@ class CreateClfMetricsResponse(BaseModel):
 class Job(BaseModel):
     uid: str = Field(default_factory=lambda: str(uuid4()))
     status: JobStatus = JobStatus.PENDING
-
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
 
 class DatasetStatus(BaseModel):
@@ -409,8 +418,8 @@ class Metric(BaseModel):
     """This is used for responses from the API"""
 
     type: str
-    parameters: dict | None
-    value: float | dict | None
+    parameters: dict | None = None
+    value: float | dict | None = None
     label: Label = None
     group: DatumMetadatum = None
 
@@ -475,9 +484,9 @@ class ConfusionMatrixEntry(BaseModel):
     prediction: str
     groundtruth: str
     count: int
-
-    class Config:
-        allow_mutation = False
+    # TODO[pydantic]: The following keys were removed: `allow_mutation`.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-config for more information.
+    model_config = ConfigDict(allow_mutation=False)
 
 
 class _BaseConfusionMatrix(BaseModel):
@@ -543,11 +552,12 @@ class AccuracyMetric(BaseModel):
 
 class _PrecisionRecallF1Base(BaseModel):
     label: Label
-    value: float | None
+    value: float | None = None
     group: DatumMetadatum = None
     group_id: int = None
 
-    @validator("value")
+    @field_validator("value")
+    @classmethod
     def replace_nan_with_neg_1(cls, v):
         if np.isnan(v):
             return -1

@@ -1,4 +1,5 @@
-from pydantic import BaseSettings
+from pydantic import ConfigDict
+from pydantic_settings import BaseSettings
 
 
 class LogConfig(BaseSettings):
@@ -42,10 +43,7 @@ class AuthConfig(BaseSettings):
     domain: str = None
     audience: str = None
     algorithms: str = None
-
-    class Config:
-        env_file = ".env.auth"
-        env_prefix = "auth0_"
+    model_config = ConfigDict(env_file=".env.auth", env_prefix="auth0_")
 
     @property
     def no_auth(self) -> bool:
