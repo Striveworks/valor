@@ -1,18 +1,18 @@
 import { useAuth0 } from '@auth0/auth0-react';
 import { ChariotLayoutTemplate } from '@striveworks/minerva';
+import '@striveworks/minerva/style.css';
 import { Route, Routes } from 'react-router-dom';
 import './App.css';
 import { usingAuth } from './auth';
-import { ListingComponent } from './components/listing-component';
 import { SideMenu } from './components/SideMenu';
 import { DatasetDetailsPage } from './dataset-details-page';
 import { MetricsPage } from './metrics-page';
 import { ModelDetailsPage } from './model-details-page';
+import { Datasets } from './pages/Datasets';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
-import '@striveworks/minerva/style.css';
-import { Profile } from './pages/Profile';
 import { Models } from './pages/Models';
+import { Profile } from './pages/Profile';
 
 function App() {
   const { isAuthenticated } = useAuth0();
@@ -24,10 +24,7 @@ function App() {
           <Route path='/' element={<Home />} />
           <Route path='/models' element={<Models />} />
           <Route path='/models/:name' element={<ModelDetailsPage />} />
-          <Route
-            path='/datasets'
-            element={<ListingComponent name='datasets' pageTitle='Datasets' />}
-          />
+          <Route path='/datasets' element={<Datasets />} />
           <Route path='/datasets/:name' element={<DatasetDetailsPage />} />
           <Route
             path='/models/:name/evaluation-settings/:evalSettingsId'

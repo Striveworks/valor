@@ -1,9 +1,9 @@
 import { Page, Typography } from '@striveworks/minerva';
 import { Loading } from '../components/Loading';
-import { useModels } from '../hooks/useGetModels';
+import { useGetModels } from '../hooks/useGetModels';
 
 export function Models() {
-  const { isLoading, isError } = useModels();
+  const { isLoading, isError } = useGetModels();
 
   if (isLoading) {
     return <Loading />;
