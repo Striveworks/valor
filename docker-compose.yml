@@ -25,3 +25,5 @@ services:
     build: ./web
     ports:
       - "3000:3000"
+    volumes:
+      - "./web:/web"
