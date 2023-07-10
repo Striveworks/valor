@@ -74,7 +74,7 @@ def get_all_jobs() -> list[Job]:
 @needs_redis
 def add_job(job: Job) -> None:
     """Adds job to redis"""
-    r.set(job.uid, job.json(exclude={"uid"}))
+    r.set(job.uid, job.model_dump_json(exclude={"uid"}))
 
 
 def wrap_method_for_job(

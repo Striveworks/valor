@@ -165,7 +165,7 @@ def get_dataset(
     try:
         dset = crud.get_dataset(db, dataset_name=dataset_name)
         return schemas.Dataset(
-            **{k: getattr(dset, k) for k in schemas.Dataset.__fields__}
+            **{k: getattr(dset, k) for k in schemas.Dataset.model_fields}
         )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -385,7 +385,7 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
         crud.check_if_finalized(db=db, model_name=model_name)
 
         return schemas.Model(
-            **{k: getattr(model, k) for k in schemas.Model.__fields__}
+            **{k: getattr(model, k) for k in schemas.Model.model_fields}
         )
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -511,7 +511,6 @@ def create_ap_metrics(
     db: Session = Depends(get_db),
 ) -> schemas.CreateAPMetricsResponse:
     try:
-
         crud.check_if_finalized(db, request_info=data)
 
         (

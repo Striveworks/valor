@@ -9,11 +9,9 @@ import PIL.Image
 from pydantic import (
     BaseModel,
     ConfigDict,
-    Extra,
     Field,
     field_validator,
     model_validator,
-    root_validator,
 )
 
 from velour_api.enums import DatumTypes, JobStatus, TableStatus, Task
@@ -36,8 +34,8 @@ def _validate_href(v: str | None):
 class Dataset(BaseModel):
     name: str
     from_video: bool = False
-    href: str = None
-    description: str = None
+    href: str | None = None
+    description: str | None = None
     type: DatumTypes
     finalized: bool = False
 
@@ -49,8 +47,8 @@ class Dataset(BaseModel):
 
 class Model(BaseModel):
     name: str
-    href: str = None
-    description: str = None
+    href: str | None = None
+    description: str | None = None
     type: DatumTypes
 
     @field_validator("href")
@@ -123,13 +121,12 @@ class DetectionBase(BaseModel):
     bbox: tuple[float, float, float, float] = None
     image: Image
 
-    @model_validator(skip_on_failure=True)
-    @classmethod
-    def boundary_or_bbox(cls, values):
-        if (values["boundary"] is None) == (values["bbox"] is None):
+    @model_validator(mode="after")
+    def boundary_or_bbox(cls, data):
+        if (data.boundary is None) == (data.bbox is None):
             raise ValueError("Must have exactly one of boundary or bbox")
 
-        return values
+        return data
 
     @field_validator("boundary")
     @classmethod
@@ -155,6 +152,10 @@ class PredictedDetectionsCreate(BaseModel):
     model_name: str
     dataset_name: str
     detections: list[PredictedDetection]
+
+    # this prevents a warning since we're using a field that starts with `"model_"`, which
+    # is a pydantic protected namespace
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class GroundTruthDetectionsCreate(BaseModel):
@@ -200,6 +201,10 @@ class PredictedClassificationsCreate(BaseModel):
     dataset_name: str
     classifications: list[PredictedClassification]
 
+    # this prevents a warning since we're using a field that starts with `"model_"`, which
+    # is a pydantic protected namespace
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class PolygonWithHole(BaseModel):
     polygon: list[tuple[float, float]]
@@ -231,7 +236,7 @@ class GroundTruthSegmentation(BaseModel):
             raise ValueError("shape must have at least one element.")
         return v
 
-    @root_validator
+    @model_validator(mode="before")
     def correct_mask_shape(cls, values):
         if isinstance(values["shape"], list):
             return values
@@ -304,9 +309,13 @@ class PredictedSegmentationsCreate(BaseModel):
     dataset_name: str
     segmentations: list[PredictedSegmentation]
 
+    # this prevents a warning since we're using a field that starts with `"model_"`, which
+    # is a pydantic protected namespace
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class User(BaseModel):
-    email: str = None
+    email: str | None = None
 
 
 class EvaluationSettings(BaseModel):
@@ -325,6 +334,10 @@ class EvaluationSettings(BaseModel):
     label_key: str = None
     id: int = None
 
+    # this prevents a warning since we're using a field that starts with `"model_"`, which
+    # is a pydantic protected namespace
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class APRequest(BaseModel):
     """Request to compute average precision"""
@@ -334,7 +347,7 @@ class APRequest(BaseModel):
     iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
     ious_to_keep: set[float] = {0.5, 0.75}
 
-    @root_validator
+    @model_validator(mode="before")
     def check_ious(cls, values):
         for iou in values["ious_to_keep"]:
             if iou not in values["iou_thresholds"]:
@@ -420,8 +433,8 @@ class Metric(BaseModel):
     type: str
     parameters: dict | None = None
     value: float | dict | None = None
-    label: Label = None
-    group: DatumMetadatum = None
+    label: Label | None = None
+    group: DatumMetadatum | None = None
 
 
 class APMetric(BaseModel):
@@ -486,17 +499,17 @@ class ConfusionMatrixEntry(BaseModel):
     count: int
     # TODO[pydantic]: The following keys were removed: `allow_mutation`.
     # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-config for more information.
-    model_config = ConfigDict(allow_mutation=False)
+    model_config = ConfigDict(frozen=True)
 
 
 class _BaseConfusionMatrix(BaseModel):
     label_key: str
     entries: list[ConfusionMatrixEntry]
-    group: DatumMetadatum = None
-    group_id: int = None
+    group: DatumMetadatum | None = None
+    group_id: int | None = None
 
 
-class ConfusionMatrix(_BaseConfusionMatrix, extra=Extra.allow):
+class ConfusionMatrix(_BaseConfusionMatrix, extra="allow"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         label_values = set(
@@ -521,7 +534,7 @@ class ConfusionMatrix(_BaseConfusionMatrix, extra=Extra.allow):
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
             "label_key": self.label_key,
-            "value": [entry.dict() for entry in self.entries],
+            "value": [entry.model_dump() for entry in self.entries],
             "evaluation_settings_id": evaluation_settings_id,
         }
 

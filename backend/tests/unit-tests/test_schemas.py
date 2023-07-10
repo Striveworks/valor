@@ -172,7 +172,7 @@ def test_datum_metadatum_validation():
 
     # check we get a JSON serialization error since a set
     # is not JSON serializable
-    with pytest.raises(ValidationError) as exc_info:
+    with pytest.raises(TypeError) as exc_info:
         DatumMetadatum(name="meta name", value={"a": {1, 2}})
 
     assert "type set is not JSON serializable" in str(exc_info)
@@ -193,16 +193,18 @@ def test_label_types():
     d = {l3: "testing"}
     assert d[l3] == "testing"
 
-    assert l1.json() == '{"key": "key1", "value": "value1"}'
+    assert l1.model_dump_json() == '{"key":"key1","value":"value1"}'
     assert (
-        ScoredLabel(label=l1, score=0.5).json()
-        == '{"label": {"key": "key1", "value": "value1"}, "score": 0.5}'
+        ScoredLabel(label=l1, score=0.5).model_dump_json()
+        == '{"label":{"key":"key1","value":"value1"},"score":0.5}'
     )
     assert (
-        LabelDistribution(label=l1, count=1).json()
-        == '{"label": {"key": "key1", "value": "value1"}, "count": 1}'
+        LabelDistribution(label=l1, count=1).model_dump_json()
+        == '{"label":{"key":"key1","value":"value1"},"count":1}'
     )
     assert (
-        ScoredLabelDistribution(label=l1, scores=[0.1, 0.9], count=2).json()
-        == '{"label": {"key": "key1", "value": "value1"}, "scores": [0.1, 0.9], "count": 2}'
+        ScoredLabelDistribution(
+            label=l1, scores=[0.1, 0.9], count=2
+        ).model_dump_json()
+        == '{"label":{"key":"key1","value":"value1"},"scores":[0.1,0.9],"count":2}'
     )
