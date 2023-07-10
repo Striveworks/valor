@@ -1,7 +1,7 @@
 import io
 import json
 from base64 import b64decode
-from typing import Dict, List, Optional
+from typing import Dict, List
 from uuid import uuid4
 
 import numpy as np
@@ -76,9 +76,9 @@ class Datum(BaseModel):
 
 
 class Image(Datum):
-    height: int = None
-    width: int = None
-    frame: Optional[int] = None
+    height: int | None = None
+    width: int | None = None
+    frame: int | None = None
 
 
 class Label(BaseModel):
@@ -208,7 +208,7 @@ class PredictedClassificationsCreate(BaseModel):
 
 class PolygonWithHole(BaseModel):
     polygon: list[tuple[float, float]]
-    hole: list[tuple[float, float]] = None
+    hole: list[tuple[float, float]] | None = None
 
     @field_validator("polygon")
     @classmethod
@@ -236,17 +236,17 @@ class GroundTruthSegmentation(BaseModel):
             raise ValueError("shape must have at least one element.")
         return v
 
-    @model_validator(mode="before")
-    def correct_mask_shape(cls, values):
-        if isinstance(values["shape"], list):
-            return values
-        mask_size = _mask_bytes_to_pil(b64decode(values["shape"])).size
-        image_size = (values["image"].width, values["image"].height)
+    @model_validator(mode="after")
+    def correct_mask_shape(cls, data):
+        if isinstance(data.shape, list):
+            return data
+        mask_size = _mask_bytes_to_pil(b64decode(data.shape)).size
+        image_size = (data.image.width, data.image.height)
         if mask_size != image_size:
             raise ValueError(
                 f"Expected mask and image to have the same size, but got size {mask_size} for the mask and {image_size} for image."
             )
-        return values
+        return data
 
     @property
     def is_poly(self) -> bool:
