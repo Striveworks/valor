@@ -138,4 +138,4 @@ def get_status() -> VelourStatus:
 
 @needs_redis
 def set_status(status: VelourStatus):
-    r.set("stateflow", status.json())
+    r.set("stateflow", status.model_dump_json())

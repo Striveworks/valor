@@ -326,12 +326,12 @@ class EvaluationSettings(BaseModel):
 
     model_name: str
     dataset_name: str
-    model_pred_task_type: Task = None
-    dataset_gt_task_type: Task = None
-    min_area: float = None
-    max_area: float = None
-    group_by: str = None
-    label_key: str = None
+    model_pred_task_type: Task | None = None
+    dataset_gt_task_type: Task | None = None
+    min_area: float | None = None
+    max_area: float | None = None
+    group_by: str | None = None
+    label_key: str | None = None
     id: int = None
 
     # this prevents a warning since we're using a field that starts with `"model_"`, which
@@ -347,14 +347,14 @@ class APRequest(BaseModel):
     iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
     ious_to_keep: set[float] = {0.5, 0.75}
 
-    @model_validator(mode="before")
-    def check_ious(cls, values):
-        for iou in values["ious_to_keep"]:
-            if iou not in values["iou_thresholds"]:
+    @model_validator(mode="after")
+    def check_ious(cls, data):
+        for iou in data.ious_to_keep:
+            if iou not in data.iou_thresholds:
                 raise ValueError(
                     "`ious_to_keep` must be contained in `iou_thresholds`"
                 )
-        return values
+        return data
 
 
 class CreateAPMetricsResponse(BaseModel):
@@ -550,8 +550,8 @@ class ConfusionMatrixResponse(_BaseConfusionMatrix):
 class AccuracyMetric(BaseModel):
     label_key: str
     value: float
-    group: DatumMetadatum = None
-    group_id: int = None
+    group: DatumMetadatum | None = None
+    group_id: int | None = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
@@ -566,8 +566,8 @@ class AccuracyMetric(BaseModel):
 class _PrecisionRecallF1Base(BaseModel):
     label: Label
     value: float | None = None
-    group: DatumMetadatum = None
-    group_id: int = None
+    group: DatumMetadatum | None = None
+    group_id: int | None = None
 
     @field_validator("value")
     @classmethod
@@ -601,8 +601,8 @@ class F1Metric(_PrecisionRecallF1Base):
 class ROCAUCMetric(BaseModel):
     label_key: str
     value: float
-    group: DatumMetadatum = None
-    group_id: int = None
+    group: DatumMetadatum | None = None
+    group_id: int | None = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
