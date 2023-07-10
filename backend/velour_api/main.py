@@ -45,8 +45,7 @@ def create_groundtruth_detections(
         return crud.create_groundtruth_detections(db=db, data=data)
     except (
         exceptions.DatasetIsFinalizedError,
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
+        exceptions.DatasetStateFlowError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -64,8 +63,8 @@ def create_predicted_detections(
     ) as e:
         raise HTTPException(status_code=404, detail=str(e))
     except (
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
+        exceptions.DatasetStateFlowError,
+        exceptions.ModelStateFlowError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -84,8 +83,7 @@ def create_groundtruth_segmentations(
         return crud.create_groundtruth_segmentations(db=db, data=data)
     except (
         exceptions.DatasetIsFinalizedError,
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
+        exceptions.DatasetStateFlowError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -102,8 +100,8 @@ def create_predicted_segmentations(
     except exceptions.ImageDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except (
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
+        exceptions.DatasetStateFlowError,
+        exceptions.ModelStateFlowError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -119,8 +117,8 @@ def create_groundtruth_classifications(
         return crud.create_ground_truth_classifications(db=db, data=data)
     except (
         exceptions.DatasetIsFinalizedError,
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
+        exceptions.DatasetStateFlowError,
+        exceptions.ModelStateFlowError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -136,10 +134,7 @@ def create_predicted_classifications(
         return crud.create_predicted_image_classifications(db=db, data=data)
     except exceptions.ImageDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except (
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
-    ) as e:
+    except (exceptions.DatasetStateFlowError,) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -158,8 +153,7 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
         crud.create_dataset(db=db, dataset=dataset)
     except (
         exceptions.DatasetAlreadyExistsError,
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
+        exceptions.DatasetStateFlowError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -188,8 +182,8 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except (
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
+        exceptions.DatasetStateFlowError,
+        exceptions.ModelStateFlowError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -212,8 +206,8 @@ def finalize_inferences(
     ) as e:
         raise HTTPException(status_code=404, detail=str(e))
     except (
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
+        exceptions.DatasetStateFlowError,
+        exceptions.ModelStateFlowError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -357,8 +351,8 @@ def delete_dataset(
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except (
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
+        exceptions.DatasetStateFlowError,
+        exceptions.ModelStateFlowError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -376,8 +370,8 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
         crud.create_model(db=db, model=model)
     except (
         exceptions.ModelAlreadyExistsError,
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
+        exceptions.DatasetStateFlowError,
+        exceptions.ModelStateFlowError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -404,8 +398,8 @@ def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
     except (exceptions.DatasetDoesNotExistError,) as e:
         raise HTTPException(status_code=404, detail=str(e))
     except (
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
+        exceptions.DatasetStateFlowError,
+        exceptions.ModelStateFlowError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -548,8 +542,8 @@ def create_ap_metrics(
     ) as e:
         raise HTTPException(status_code=405, detail=str(e))
     except (
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
+        exceptions.DatasetStateFlowError,
+        exceptions.ModelStateFlowError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -587,8 +581,8 @@ def create_clf_metrics(
     ) as e:
         raise HTTPException(status_code=405, detail=str(e))
     except (
-        exceptions.StateflowError,
-        exceptions.InvalidStateTransitionError,
+        exceptions.DatasetStateFlowError,
+        exceptions.ModelStateFlowError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
