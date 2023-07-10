@@ -7,7 +7,7 @@ import numpy as np
 
 from velour import enums
 from velour.schemas.geometry import (
-    Box,
+    BoundingBox,
     MultiPolygon,
     Polygon,
     Raster,
@@ -47,11 +47,23 @@ class Datum:
 @dataclass
 class Annotation:
     task_type: enums.TaskType
-    geometry: Optional[
-        Union[Box, Polygon, MultiPolygon, Raster]
-    ] = None
-    # other type of annotation
     metadata: List[Metadatum] = field(default_factory=list)
+    
+    # geometric types
+    bounding_box: BoundingBox = None
+    polygon: Polygon = None
+    multipolygon: MultiPolygon = None
+    raster: Raster = None
+
+    def __post_init__(self):
+        if self.bounding_box:
+            assert isinstance(self.bounding_box, BoundingBox)
+        if self.polygon:
+            assert isinstance(self.polygon, Polygon)
+        if self.multipolygon:
+            assert isinstance(self.multipolygon, MultiPolygon)
+        if self.raster:
+            assert isinstance(self.raster, Raster)
 
 
 @dataclass

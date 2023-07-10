@@ -8,8 +8,20 @@ from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 
 class Point(BaseModel):
-    x: float
-    y: float
+    x: float | int
+    y: float | int
+
+    @validator("x")
+    def has_x(cls, v):
+        if not isinstance(v, int | float):
+            raise ValueError
+        return v
+    
+    @validator("y")
+    def has_y(cls, v):
+        if not isinstance(v, int | float):
+            raise ValueError
+        return v
 
     def __str__(self) -> str:
         return f"({self.x}, {self.y})"
@@ -117,13 +129,14 @@ class BasicPolygon(BaseModel):
 
 
 class Polygon(BaseModel):
-    polygon: BasicPolygon
-    holes: list[BasicPolygon] = None
+    boundary: BasicPolygon
+    holes: list[BasicPolygon] = Field(default_factory=list)
 
     def __str__(self):
-        polys = [str(self.polygon)]
-        for hole in self.holes:
-            polys.append(str(hole))
+        polys = [str(self.boundary)]
+        if self.holes:
+            for hole in self.holes:
+                polys.append(str(hole))
         return f"({', '.join(polys)})"
 
     @property
@@ -154,29 +167,26 @@ class Box(BaseModel):
     @property
     def wkt(self) -> str:
         pts = [
-            (self.min.x, self.min.y),
-            (self.max.x, self.min.y),
-            (self.max.x, self.max.y),
-            (self.min.x, self.max.y),
+            Point(x=self.min.x, y=self.min.y),
+            Point(x=self.max.x, y=self.min.y),
+            Point(x=self.max.x, y=self.max.y),
+            Point(x=self.min.x, y=self.max.y),
         ]
         return BasicPolygon(points=pts).wkt
 
 
 class BoundingBox(BaseModel):
-    polygon: Polygon
-    box: Box
+    shape: Box | Polygon
 
-    @root_validator(skip_on_failure=True)
-    def rigid_or_skewed(cls, values):
-        if (values["polygon"] is None) == (values["box"] is None):
-            raise ValueError("Must define either polygon or box.")
-        return values
-
-    @validator("polygon")
+    @validator("shape")
     def enough_pts(cls, v):
+        print(v)
         if v is not None:
-            if len(set(v)) != 4:
-                raise ValueError("Box polygon must have 4 unique points.")
+            if isinstance(v, Polygon):
+                if len(set(v)) != 4:
+                    raise ValueError("Box polygon must have 4 unique points.")
+            if not isinstance(v, Box | Polygon):
+                raise ValueError
         return v
 
     @property
@@ -190,16 +200,16 @@ class BoundingBox(BaseModel):
 
         segments = [
             LineSegment(
-                points=(self.polygon.points[0], self.polygon.points[1])
+                points=(self.polygon.boundary.points[0], self.polygon.boundary.points[1])
             ),
             LineSegment(
-                points=(self.polygon.points[1], self.polygon.points[2])
+                points=(self.polygon.boundary.points[1], self.polygon.boundary.points[2])
             ),
             LineSegment(
-                points=(self.polygon.points[2], self.polygon.points[3])
+                points=(self.polygon.boundary.points[2], self.polygon.boundary.points[3])
             ),
             LineSegment(
-                points=(self.polygon.points[3], self.polygon.points[0])
+                points=(self.polygon.boundary.points[3], self.polygon.boundary.points[0])
             ),
         ]
 
@@ -297,3 +307,32 @@ class Raster(BaseModel):
     def pil_mask(self) -> PIL.Image:
         with io.BytesIO(self.mask_bytes) as f:
             return PIL.Image.open(f)
+
+data = {
+    "shape": {
+        "boundary": {
+            "points": [
+                {
+                    "x": 1,
+                    "y": 1
+                },
+                {
+                    "x": 1,
+                    "y": 0
+                },
+                {
+                    "x": 0,
+                    "y": 0
+                },
+                {
+                    "x": 0,
+                    "y": 1
+                }
+            ]
+        },
+        "holes": []
+    }
+}
+
+p = BoundingBox(**data)
+print(p)

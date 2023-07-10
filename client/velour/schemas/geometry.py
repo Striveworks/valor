@@ -37,7 +37,7 @@ class Box:
 class BasicPolygon:
     """Class for representing a bounding region."""
 
-    points: List[Point]
+    points: List[Point] = field(default_factory=list)
 
     def xy_list(self):
         return [(pt.x, pt.y) for pt in self.points]
@@ -73,7 +73,17 @@ class BasicPolygon:
 @dataclass
 class Polygon:
     boundary: BasicPolygon
-    holes: list[BasicPolygon]
+    holes: list[BasicPolygon] = None
+
+
+@dataclass
+class BoundingBox:
+    polygon: Polygon = None
+    box: Box = None
+
+    def __post_init__(self):
+        if self.polygon == self.box:
+            raise ValueError
 
 
 @dataclass

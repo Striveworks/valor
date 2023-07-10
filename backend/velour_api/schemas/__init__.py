@@ -11,7 +11,7 @@ from .core import (
     Prediction,
     ScoredLabel,
 )
-from .geometry import BoundingBox, MultiPolygon, Polygon, Raster
+from .geometry import Box, BoundingBox, MultiPolygon, Polygon, Raster
 from .metadata import GeographicFeature, ImageMetadata, MetaDatum
 from .info import (
     LabelDistribution,
@@ -37,6 +37,7 @@ from .jobs import (
 )
 
 __all__ = [
+    "Box",
     "GroundTruthAnnotation",
     "PredictedAnnotation",
     "Annotation",

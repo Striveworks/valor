@@ -53,8 +53,13 @@ class Datum(BaseModel):
 
 class Annotation(BaseModel):
     task_type: str
-    geometry: BoundingBox | Polygon | MultiPolygon | Raster = None
     metadata: list[MetaDatum] = None
+
+    # Geometric types``
+    bounding_box: BoundingBox = None
+    polygon: Polygon = None
+    multipolygon: MultiPolygon = None
+    raster: Raster = None
 
 
 class GroundTruthAnnotation(BaseModel):

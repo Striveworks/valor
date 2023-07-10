@@ -13,10 +13,13 @@ from .core import (
     LabelDistribution,
     ScoredLabelDistribution,
 )
-from .geometry import Box, MultiPolygon, Polygon, Raster
+from .geometry import Point, Box, BasicPolygon, BoundingBox, MultiPolygon, Polygon, Raster
 from .metadata import GeographicFeature, ImageMetadata, Metadatum
 
 __all__ = [
+    "Box",
+    "BasicPolygon",
+    "Point",
     "GroundTruthAnnotation",
     "PredictedAnnotation",
     "Dataset",
@@ -28,7 +31,7 @@ __all__ = [
     "Annotation",
     "GroundTruth",
     "Prediction",
-    "Box",
+    "BoundingBox",
     "Polygon",
     "MultiPolygon",
     "Raster",

@@ -21,14 +21,14 @@ def create_annotation(
     polygon = None
     raster = None
 
-    if isinstance(annotation.geometry, schemas.BoundingBox):
-        box = annotation.geometry.wkt
-    elif isinstance(annotation.geometry, schemas.Polygon):
-        polygon = annotation.geometry.wkt
-    elif isinstance(annotation.geometry, schemas.MultiPolygon):
-        raster = wkt_multipolygon_to_raster(annotation.geometry.wkt)
-    elif isinstance(annotation.geometry, schemas.Raster):
-        raster = annotation.geometry.mask_bytes
+    if isinstance(annotation.bounding_box, schemas.BoundingBox):
+        box = annotation.bounding_box.wkt
+    elif isinstance(annotation.polygon, schemas.Polygon):
+        polygon = annotation.polygon.wkt
+    elif isinstance(annotation.multipolygon, schemas.MultiPolygon):
+        raster = wkt_multipolygon_to_raster(annotation.multipolygon.wkt)
+    elif isinstance(annotation.raster, schemas.Raster):
+        raster = annotation.raster.mask_bytes
     # @TODO: Add more annotation types
 
     mapping = {
