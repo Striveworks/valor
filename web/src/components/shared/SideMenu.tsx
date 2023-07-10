@@ -11,17 +11,16 @@ export function SideMenu() {
     <Sidebar>
       <Sidebar.Logo>Velour</Sidebar.Logo>
       <Sidebar.Nav>
-        <Link to={'/'}>
+        <Link to={'/'} style={{ textDecoration: 'none' }}>
           <Sidebar.Tab
             iconName='home'
             tooltip='Home'
             isSelected={basePath === '' ? true : false}
-            href={''}
           >
             Home
           </Sidebar.Tab>
         </Link>
-        <Link to={'/models'}>
+        <Link to={'/models'} style={{ textDecoration: 'none' }}>
           <Sidebar.Tab
             iconName='model'
             tooltip='Models'
@@ -30,7 +29,7 @@ export function SideMenu() {
             Model
           </Sidebar.Tab>
         </Link>
-        <Link to={'/datasets'}>
+        <Link to={'/datasets'} style={{ textDecoration: 'none' }}>
           <Sidebar.Tab
             iconName='dataset'
             tooltip='Datasets'
@@ -40,7 +39,7 @@ export function SideMenu() {
           </Sidebar.Tab>
         </Link>
         {user !== undefined && (
-          <Link to={'/profile'}>
+          <Link to={'/profile'} style={{ textDecoration: 'none' }}>
             <Sidebar.Tab
               iconName='user'
               tooltip='Profile'

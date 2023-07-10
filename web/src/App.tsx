@@ -4,7 +4,7 @@ import '@striveworks/minerva/style.css';
 import { Route, Routes } from 'react-router-dom';
 import './App.css';
 import { usingAuth } from './auth';
-import { SideMenu } from './components/SideMenu';
+import { SideMenu } from './components/shared/SideMenu';
 import { DatasetDetailsPage } from './dataset-details-page';
 import { MetricsPage } from './metrics-page';
 import { ModelDetailsPage } from './model-details-page';

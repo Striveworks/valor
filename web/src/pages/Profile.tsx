@@ -4,7 +4,7 @@ import { useState } from 'react';
 import CopyToClipboard from 'react-copy-to-clipboard';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
-import { LogoutButton } from '../components/LogoutButton';
+import { LogoutButton } from '../components/shared/LogoutButton';
 
 export function Profile() {
   const { user } = useAuth0();
