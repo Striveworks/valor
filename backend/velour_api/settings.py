@@ -1,4 +1,5 @@
-from pydantic import BaseSettings
+from pydantic import ConfigDict
+from pydantic_settings import BaseSettings
 
 
 class LogConfig(BaseSettings):
@@ -13,23 +14,23 @@ class LogConfig(BaseSettings):
     LOG_LEVEL: str = "DEBUG"
 
     # Logging config
-    version = 1
-    disable_existing_loggers = False
-    formatters = {
+    version: int = 1
+    disable_existing_loggers: bool = False
+    formatters: dict = {
         "default": {
             "()": "uvicorn.logging.DefaultFormatter",
             "fmt": LOG_FORMAT,
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     }
-    handlers = {
+    handlers: dict = {
         "default": {
             "formatter": "default",
             "class": "logging.StreamHandler",
             "stream": "ext://sys.stderr",
         },
     }
-    loggers = {
+    loggers: dict = {
         LOGGER_NAME: {
             "handlers": ["default"],
             "level": LOG_LEVEL,
@@ -39,17 +40,14 @@ class LogConfig(BaseSettings):
 
 
 class AuthConfig(BaseSettings):
-    domain: str = None
-    audience: str = None
-    algorithms: str = None
-
-    class Config:
-        env_file = ".env.auth"
-        env_prefix = "auth0_"
+    domain: str | None = None
+    audience: str | None = None
+    algorithms: str | None = None
+    model_config = ConfigDict(env_file=".env.auth", env_prefix="auth0_")
 
     @property
     def no_auth(self) -> bool:
-        return all([not v for v in self.dict().values()])
+        return all([not v for v in self.model_dump().values()])
 
     @property
     def jwks_url(self) -> str:
