@@ -5,7 +5,15 @@ from ._create import (
     create_predictions,
 )
 from ._delete import delete_dataset, delete_model
-from ._read import get_dataset, get_datasets, get_labels, get_model, get_models
+from ._read import (
+    get_dataset,
+    get_datasets,
+    get_labels,
+    get_model, 
+    get_models,
+    get_groundtruth,
+    get_prediction,
+)
 
 # from ._update import add_groundtruth, add_prediction
 
@@ -21,4 +29,6 @@ __all__ = [
     "get_labels",
     "delete_dataset",
     "delete_model",
+    "get_groundtruth",
+    "get_prediction",
 ]

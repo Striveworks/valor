@@ -132,7 +132,7 @@ def get_dataset_labels(
 
 
 @app.get(
-    "/datasets/{dataset_name}/images",
+    "/datasets/{dataset_name}/{images}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
@@ -151,16 +151,16 @@ def get_dataset_images(
 
 
 @app.get(
-    "/datasets/{dataset_name}/images/{image_uid}/annotations",
+    "/datasets/{dataset_name}/datum/{uid}/groundtruth",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
-def get_image_detections(
-    dataset_name: str, image_uid: str, db: Session = Depends(get_db)
-) -> schemas.GroundTruth:
+def get_groundtruth(
+    dataset_name: str, uid: str, db: Session = Depends(get_db)
+) -> schemas.GroundTruth | None:
     try:
-        return crud.get_groundtruth_detections_in_image(
-            db, uid=image_uid, dataset_name=dataset_name
+        return crud.get_groundtruth(
+            db, dataset_name=dataset_name, datum_uid=uid, 
         )
     except (
         exceptions.ImageDoesNotExistError,

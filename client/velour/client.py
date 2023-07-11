@@ -253,12 +253,12 @@ class Dataset:
         )
     
     def get_groundtruth(
-        self, image_uid: str
+        self, uid: str
     ) -> schemas.GroundTruth:
         resp = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/images/{image_uid}/groundtruth"
+            f"datasets/{self.name}/datum/{uid}/groundtruth"
         ).json()
-        return [schemas.GroundTruth(**gt) for gt in resp]
+        return schemas.GroundTruth(**resp)
 
     def get_labels(self) -> List[schemas.LabelDistribution]:
         labels = self.client._requests_get_rel_host(
@@ -402,7 +402,6 @@ class Model:
         self.info.metadata.append(metadatum)
         self.__metadata__[metadatum.name] = metadatum
 
-
     def add_prediction(self, prediction: schemas.Prediction):
         assert isinstance(prediction, schemas.Prediction)
         prediction.model_name = self.info.name
@@ -410,6 +409,14 @@ class Model:
             f"prediction",
             json=asdict(prediction),
         )
+
+    def get_prediction(
+        self, uid: str
+    ) -> schemas.Prediction:
+        resp = self.client._requests_get_rel_host(
+            f"models/{self.name}/datum/{uid}/prediction"
+        ).json()
+        return schemas.Prediction(**resp)
 
 
     def finalize_inferences(self, dataset: "Dataset") -> None:

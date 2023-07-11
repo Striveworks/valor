@@ -3,18 +3,24 @@ from sqlalchemy.orm import Session
 from velour_api import schemas
 from velour_api.backend import models
 
+def get_prediction(
+    db: Session,
+    model_name: str,
+    datum_uid: str
+) -> schemas.Prediction:
+    return None
 
-def request_dataset(
+def get_model(
     db: Session,
     name: str,
-) -> schemas.Dataset:
-
-    dataset = db.query(models.Dataset).where(models.Dataset.name == name).one_or_none()
-    if not dataset:
+) -> schemas.Model:
+    
+    model = db.query(models.Model).where(models.Model.name == name).one_or_none()
+    if not model:
         return None
 
     metadata = []
-    for row in db.query(models.MetaDatum).where(models.MetaDatum.dataset_id == dataset.id).all():
+    for row in db.query(models.MetaDatum).where(models.MetaDatum.model_id == model.id).all():
         if row.string_value:
             metadata.append(
                 schemas.MetaDatum(
@@ -49,13 +55,13 @@ def request_dataset(
                     )
                 )
 
-    return schemas.Dataset(id=dataset.id, name=dataset.name, metadata=metadata)
+    return schemas.Model(id=model.id, name=model.name, metadata=metadata)
 
 
-def request_datasets(
+def get_models(
     db: Session,
-) -> list[schemas.Dataset]:
+) -> list[schemas.Model]:
     return [
-        request_dataset(db, name)
-        for name in db.query(models.Dataset.name).all()
+        get_model(db, name)
+        for name in db.query(models.Model.name).all()
     ]

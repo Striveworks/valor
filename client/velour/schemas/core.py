@@ -156,13 +156,13 @@ class PredictedAnnotation:
 
 @dataclass
 class GroundTruth:
-    dataset_name: str
+    dataset_name: str = field(init=False, default="")
     datum: Datum
     annotations: list[GroundTruthAnnotation] = field(default_factory=list)
 
 
 @dataclass
 class Prediction:
-    model_name: str
+    model_name: str = field(init=False, default="")
     datum: Datum
     annotations: list[PredictedAnnotation] = field(default_factory=list)
