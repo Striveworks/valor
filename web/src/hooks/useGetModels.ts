@@ -4,9 +4,9 @@ import { BASE_URL } from '../common/api';
 import { Model } from '../types/Models';
 
 export function useGetModels() {
-  return useQuery({
+  return useQuery<Model[], Error>({
     queryKey: ['models'],
-    queryFn: async (): Promise<Model[]> => {
+    queryFn: async () => {
       const response = await axios.get(`${BASE_URL}/models`);
       return response.data;
     }

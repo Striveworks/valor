@@ -4,16 +4,17 @@ import { Loading } from '../components/shared/Loading';
 import { SummaryBar } from '../components/shared/SummaryBar';
 import { useGetModels } from '../hooks/useGetModels';
 import { Stat } from '../types/TableList';
+import { DisplayError } from './DisplayError';
 
 export function Models() {
-  const { isLoading, isError, data } = useGetModels();
+  const { isLoading, isError, data, error } = useGetModels();
 
   if (isLoading) {
     return <Loading />;
   }
 
   if (isError) {
-    return <>An error has occured</>;
+    return <DisplayError error={error} />;
   }
 
   const stats: Stat[] = [{ name: data.length, icon: 'collection' }];
@@ -30,19 +31,23 @@ export function Models() {
             <div>Description</div>
             <div>Type</div>
           </TableList.Row>
-          {data.map((model) => {
-            return (
-              <TableList.Row key={model.name}>
-                <div>
-                  <Link to={model.href} style={{ color: '#FFF' }}>
-                    {model.name}
-                  </Link>
-                </div>
-                <div>{model.description}</div>
-                <div>{model.type}</div>
-              </TableList.Row>
-            );
-          })}
+          {data.length ? (
+            data.map((model) => {
+              return (
+                <TableList.Row key={model.name}>
+                  <div>
+                    <Link to={model.href} style={{ color: '#FFF' }}>
+                      {model.name}
+                    </Link>
+                  </div>
+                  <div>{model.description}</div>
+                  <div>{model.type}</div>
+                </TableList.Row>
+              );
+            })
+          ) : (
+            <TableList.Row>No Items Found</TableList.Row>
+          )}
         </TableList>
       </Page.Content>
     </Page.Main>

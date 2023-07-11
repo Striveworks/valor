@@ -4,9 +4,9 @@ import { BASE_URL } from '../common/api';
 import { Dataset } from '../types/Datasets';
 
 export function useGetDatasets() {
-  return useQuery({
+  return useQuery<Dataset[], Error>({
     queryKey: ['datasets'],
-    queryFn: async (): Promise<Dataset[]> => {
+    queryFn: async () => {
       const response = await axios.get(`${BASE_URL}/datasets`);
       return response.data;
     }
