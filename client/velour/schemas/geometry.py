@@ -94,18 +94,26 @@ class MultiPolygon:
 @dataclass
 class Raster:
     mask: str
+    height: int | float
+    width: int | float
     
-    def encode(self, mask: np.ndarray) -> str:
-        if self.mask.dtype != bool:
+    @classmethod
+    def from_numpy(cls, mask: np.ndarray):
+        assert len(mask.shape) == 2
+        if mask.dtype != bool:
             raise ValueError(
-                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {self.mask.dtype}"
+                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {mask.dtype}"
             )
         f = io.BytesIO()
-        PIL.Image.fromarray(self.mask).save(f, format="PNG")
+        PIL.Image.fromarray(mask).save(f, format="PNG")
         f.seek(0)
         mask_bytes = f.read()
         f.close()
-        return b64encode(mask_bytes).decode()
+        return cls(
+            mask=b64encode(mask_bytes).decode(),
+            height=mask.shape[0],
+            width=mask.shape[1],
+        )
 
     def decode(self) -> np.ndarray:
         mask_bytes = b64decode(self.mask)
