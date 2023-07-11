@@ -202,7 +202,7 @@ def _add_datums_to_dataset(
             model_class=models.Datum,
             mapping={
                 "dataset_id": dset_id,
-                **datum.dict(exclude={"metadata"}),
+                **datum.model_dump(exclude={"metadata"}),
             },
         )
         for datum in datums
@@ -545,7 +545,7 @@ def create_dataset(db: Session, dataset: schemas.Dataset):
         if the dataset name already exists
     """
     try:
-        db.add(models.Dataset(**dataset.dict()))
+        db.add(models.Dataset(**dataset.model_dump()))
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -562,7 +562,7 @@ def create_model(db: Session, model: schemas.Model):
         if the model uid already exists
     """
     try:
-        db.add(models.Model(**model.dict()))
+        db.add(models.Model(**model.model_dump()))
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -851,7 +851,6 @@ def validate_create_ap_metrics(
 def validate_create_clf_metrics(
     db: Session, request_info: schemas.ClfMetricsRequest
 ) -> tuple[list[str], list[str]]:
-
     gts_statement = _classifications_in_dataset_statement(
         request_info.settings.dataset_name
     )
@@ -878,7 +877,6 @@ def create_ap_metrics(
     db: Session,
     request_info: schemas.APRequest,
 ) -> int:
-
     dataset_id = get_dataset(db, request_info.settings.dataset_name).id
     model_id = get_model(db, request_info.settings.model_name).id
     min_area = request_info.settings.min_area

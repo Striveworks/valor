@@ -1,12 +1,18 @@
 import io
 import json
 from base64 import b64decode
-from typing import Dict, List, Optional
+from typing import Dict, List
 from uuid import uuid4
 
 import numpy as np
 import PIL.Image
-from pydantic import BaseModel, Extra, Field, root_validator, validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from velour_api.enums import DatumTypes, JobStatus, TableStatus, Task
 
@@ -28,23 +34,25 @@ def _validate_href(v: str | None):
 class Dataset(BaseModel):
     name: str
     from_video: bool = False
-    href: str = None
-    description: str = None
+    href: str | None = None
+    description: str | None = None
     type: DatumTypes
     finalized: bool = False
 
-    @validator("href")
+    @field_validator("href")
+    @classmethod
     def validate_href(cls, v):
         return _validate_href(v)
 
 
 class Model(BaseModel):
     name: str
-    href: str = None
-    description: str = None
+    href: str | None = None
+    description: str | None = None
     type: DatumTypes
 
-    @validator("href")
+    @field_validator("href")
+    @classmethod
     def validate_href(cls, v):
         return _validate_href(v)
 
@@ -53,7 +61,8 @@ class DatumMetadatum(BaseModel):
     name: str
     value: float | str | dict
 
-    @validator("value")
+    @field_validator("value")
+    @classmethod
     def check_json(cls, v):
         # TODO: add more validation that the dict is valid geoJSON?
         if isinstance(v, dict):
@@ -67,9 +76,9 @@ class Datum(BaseModel):
 
 
 class Image(Datum):
-    height: int = None
-    width: int = None
-    frame: Optional[int] = None
+    height: int | None = None
+    width: int | None = None
+    frame: int | None = None
 
 
 class Label(BaseModel):
@@ -112,14 +121,15 @@ class DetectionBase(BaseModel):
     bbox: tuple[float, float, float, float] = None
     image: Image
 
-    @root_validator(skip_on_failure=True)
-    def boundary_or_bbox(cls, values):
-        if (values["boundary"] is None) == (values["bbox"] is None):
+    @model_validator(mode="after")
+    def boundary_or_bbox(cls, data):
+        if (data.boundary is None) == (data.bbox is None):
             raise ValueError("Must have exactly one of boundary or bbox")
 
-        return values
+        return data
 
-    @validator("boundary")
+    @field_validator("boundary")
+    @classmethod
     def enough_pts(cls, v):
         if v is not None:
             return validate_single_polygon(v)
@@ -143,6 +153,10 @@ class PredictedDetectionsCreate(BaseModel):
     dataset_name: str
     detections: list[PredictedDetection]
 
+    # this prevents a warning since we're using a field that starts with `"model_"`, which
+    # is a pydantic protected namespace
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class GroundTruthDetectionsCreate(BaseModel):
     dataset_name: str
@@ -158,7 +172,8 @@ class PredictedClassification(BaseModel):
     datum: Datum
     scored_labels: list[ScoredLabel]
 
-    @validator("scored_labels")
+    @field_validator("scored_labels")
+    @classmethod
     def check_sum_to_one(cls, v: list[ScoredLabel]):
         label_keys_to_sum = {}
         for scored_label in v:
@@ -186,12 +201,17 @@ class PredictedClassificationsCreate(BaseModel):
     dataset_name: str
     classifications: list[PredictedClassification]
 
+    # this prevents a warning since we're using a field that starts with `"model_"`, which
+    # is a pydantic protected namespace
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class PolygonWithHole(BaseModel):
     polygon: list[tuple[float, float]]
-    hole: list[tuple[float, float]] = None
+    hole: list[tuple[float, float]] | None = None
 
-    @validator("polygon")
+    @field_validator("polygon")
+    @classmethod
     def enough_pts_outer(cls, v):
         return validate_single_polygon(v)
 
@@ -203,32 +223,30 @@ def _mask_bytes_to_pil(mask_bytes: bytes) -> PIL.Image.Image:
 
 class GroundTruthSegmentation(BaseModel):
     # multipolygon or base64 mask
-    shape: str | list[PolygonWithHole] = Field(allow_mutation=False)
+    shape: str | list[PolygonWithHole] = Field(frozen=True)
     image: Image
     labels: list[Label]
     is_instance: bool
+    model_config = ConfigDict(extra="allow", validate_assignment=True)
 
-    class Config:
-        extra = Extra.allow
-        validate_assignment = True
-
-    @validator("shape")
+    @field_validator("shape")
+    @classmethod
     def non_empty(cls, v):
         if len(v) == 0:
             raise ValueError("shape must have at least one element.")
         return v
 
-    @root_validator
-    def correct_mask_shape(cls, values):
-        if isinstance(values["shape"], list):
-            return values
-        mask_size = _mask_bytes_to_pil(b64decode(values["shape"])).size
-        image_size = (values["image"].width, values["image"].height)
+    @model_validator(mode="after")
+    def correct_mask_shape(cls, data):
+        if isinstance(data.shape, list):
+            return data
+        mask_size = _mask_bytes_to_pil(b64decode(data.shape)).size
+        image_size = (data.image.width, data.image.height)
         if mask_size != image_size:
             raise ValueError(
                 f"Expected mask and image to have the same size, but got size {mask_size} for the mask and {image_size} for image."
             )
-        return values
+        return data
 
     @property
     def is_poly(self) -> bool:
@@ -251,14 +269,11 @@ class GroundTruthSegmentation(BaseModel):
 
 
 class PredictedSegmentation(BaseModel):
-    base64_mask: str = Field(allow_mutation=False)
+    base64_mask: str = Field(frozen=True)
     image: Image
     scored_labels: list[ScoredLabel]
     is_instance: bool
-
-    class Config:
-        extra = Extra.allow
-        validate_assignment = True
+    model_config = ConfigDict(extra="allow", validate_assignment=True)
 
     @property
     def mask_bytes(self) -> bytes:
@@ -266,7 +281,8 @@ class PredictedSegmentation(BaseModel):
             self._mask_bytes = b64decode(self.base64_mask)
         return self._mask_bytes
 
-    @validator("base64_mask")
+    @field_validator("base64_mask")
+    @classmethod
     def check_png_and_mode(cls, v):
         """Check that the bytes are for a png file and is binary"""
         f = io.BytesIO(b64decode(v))
@@ -293,9 +309,13 @@ class PredictedSegmentationsCreate(BaseModel):
     dataset_name: str
     segmentations: list[PredictedSegmentation]
 
+    # this prevents a warning since we're using a field that starts with `"model_"`, which
+    # is a pydantic protected namespace
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class User(BaseModel):
-    email: str = None
+    email: str | None = None
 
 
 class EvaluationSettings(BaseModel):
@@ -306,13 +326,17 @@ class EvaluationSettings(BaseModel):
 
     model_name: str
     dataset_name: str
-    model_pred_task_type: Task = None
-    dataset_gt_task_type: Task = None
-    min_area: float = None
-    max_area: float = None
-    group_by: str = None
-    label_key: str = None
+    model_pred_task_type: Task | None = None
+    dataset_gt_task_type: Task | None = None
+    min_area: float | None = None
+    max_area: float | None = None
+    group_by: str | None = None
+    label_key: str | None = None
     id: int = None
+
+    # this prevents a warning since we're using a field that starts with `"model_"`, which
+    # is a pydantic protected namespace
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class APRequest(BaseModel):
@@ -323,14 +347,14 @@ class APRequest(BaseModel):
     iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
     ious_to_keep: set[float] = {0.5, 0.75}
 
-    @root_validator
-    def check_ious(cls, values):
-        for iou in values["ious_to_keep"]:
-            if iou not in values["iou_thresholds"]:
+    @model_validator(mode="after")
+    def check_ious(cls, data):
+        for iou in data.ious_to_keep:
+            if iou not in data.iou_thresholds:
                 raise ValueError(
                     "`ious_to_keep` must be contained in `iou_thresholds`"
                 )
-        return values
+        return data
 
 
 class CreateAPMetricsResponse(BaseModel):
@@ -348,9 +372,7 @@ class CreateClfMetricsResponse(BaseModel):
 class Job(BaseModel):
     uid: str = Field(default_factory=lambda: str(uuid4()))
     status: JobStatus = JobStatus.PENDING
-
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
 
 class DatasetStatus(BaseModel):
@@ -409,10 +431,10 @@ class Metric(BaseModel):
     """This is used for responses from the API"""
 
     type: str
-    parameters: dict | None
-    value: float | dict | None
-    label: Label = None
-    group: DatumMetadatum = None
+    parameters: dict | None = None
+    value: float | dict | None = None
+    label: Label | None = None
+    group: DatumMetadatum | None = None
 
 
 class APMetric(BaseModel):
@@ -475,19 +497,19 @@ class ConfusionMatrixEntry(BaseModel):
     prediction: str
     groundtruth: str
     count: int
-
-    class Config:
-        allow_mutation = False
+    # TODO[pydantic]: The following keys were removed: `allow_mutation`.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-config for more information.
+    model_config = ConfigDict(frozen=True)
 
 
 class _BaseConfusionMatrix(BaseModel):
     label_key: str
     entries: list[ConfusionMatrixEntry]
-    group: DatumMetadatum = None
-    group_id: int = None
+    group: DatumMetadatum | None = None
+    group_id: int | None = None
 
 
-class ConfusionMatrix(_BaseConfusionMatrix, extra=Extra.allow):
+class ConfusionMatrix(_BaseConfusionMatrix, extra="allow"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         label_values = set(
@@ -512,7 +534,7 @@ class ConfusionMatrix(_BaseConfusionMatrix, extra=Extra.allow):
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
             "label_key": self.label_key,
-            "value": [entry.dict() for entry in self.entries],
+            "value": [entry.model_dump() for entry in self.entries],
             "evaluation_settings_id": evaluation_settings_id,
         }
 
@@ -528,8 +550,8 @@ class ConfusionMatrixResponse(_BaseConfusionMatrix):
 class AccuracyMetric(BaseModel):
     label_key: str
     value: float
-    group: DatumMetadatum = None
-    group_id: int = None
+    group: DatumMetadatum | None = None
+    group_id: int | None = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
@@ -543,11 +565,12 @@ class AccuracyMetric(BaseModel):
 
 class _PrecisionRecallF1Base(BaseModel):
     label: Label
-    value: float | None
-    group: DatumMetadatum = None
-    group_id: int = None
+    value: float | None = None
+    group: DatumMetadatum | None = None
+    group_id: int | None = None
 
-    @validator("value")
+    @field_validator("value")
+    @classmethod
     def replace_nan_with_neg_1(cls, v):
         if np.isnan(v):
             return -1
@@ -578,8 +601,8 @@ class F1Metric(_PrecisionRecallF1Base):
 class ROCAUCMetric(BaseModel):
     label_key: str
     value: float
-    group: DatumMetadatum = None
-    group_id: int = None
+    group: DatumMetadatum | None = None
+    group_id: int | None = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {

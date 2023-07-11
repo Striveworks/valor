@@ -128,7 +128,6 @@ def test_compute_ap_metrics(
     groundtruths: list[list[LabeledGroundTruthDetection]],
     predictions: list[list[LabeledPredictedDetection]],
 ):
-
     model_name = "test model"
     dataset_name = "test dataset"
 
@@ -147,7 +146,7 @@ def test_compute_ap_metrics(
         ious_to_keep=[0.5, 0.75],
     )
 
-    metrics = [m.dict() for m in metrics]
+    metrics = [m.model_dump() for m in metrics]
 
     for m in metrics:
         round_dict_(m, 3)
