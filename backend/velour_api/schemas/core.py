@@ -68,7 +68,6 @@ class GroundTruthAnnotation(BaseModel):
 
 
 class PredictedAnnotation(BaseModel):
-    model_id: Model
     scored_labels: list[ScoredLabel]
     annotation: Annotation
 
@@ -91,10 +90,26 @@ class PredictedAnnotation(BaseModel):
 
 
 class GroundTruth(BaseModel):
+    dataset_name: str
     datum: Datum
     annotations: list[GroundTruthAnnotation]
 
+    @validator("dataset_name")
+    def check_name_valid(cls, v):
+        v = format_name(v)
+        if len(v) == 0:
+            raise ValueError
+        return v
+
 
 class Prediction(BaseModel):
+    model_name: str
     datum: Datum
     annotations: list[PredictedAnnotation]
+
+    @validator("model_name")
+    def check_name_valid(cls, v):
+        v = format_name(v)
+        if len(v) == 0:
+            raise ValueError
+        return v

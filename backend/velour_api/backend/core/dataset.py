@@ -1,5 +1,6 @@
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.orm import Session
+from sqlalchemy import and_
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
@@ -50,23 +51,23 @@ def create_datum(
     return row
 
 
-def create_groundtruths(
+def create_groundtruth(
     db: Session,
-    groundtruths: schemas.GroundTruth,
+    groundtruth: schemas.GroundTruth,
     dataset: models.Dataset,
 ):
-    datum = create_datum(db, datum=groundtruths.datum, dataset=dataset)
+    datum = create_datum(db, datum=groundtruth.datum, dataset=dataset)
     
     rows = []
-    for annotation in groundtruths.annotations:
-        arow = create_annotation(db, annotation.annotation)
+    for gt in groundtruth.annotations:
+        annotation = create_annotation(db, gt.annotation)
         rows += [
             models.GroundTruth(
                 datum=datum,
-                annotation=arow,
+                annotation=annotation,
                 label=label,
             )
-            for label in create_labels(db, annotation.labels)
+            for label in create_labels(db, gt.labels)
         ]
     try:
         db.add_all(rows)

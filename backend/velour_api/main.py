@@ -39,22 +39,22 @@ def get_db():
 
 @app.post("/groundtruth", dependencies=[Depends(token_auth_scheme)])
 def create_groundtruths(
-    data: dict, 
+    gt: schemas.GroundTruth, 
     db: Session = Depends(get_db)
 ):
     try:
-        crud.create_groundtruths(db=db, data=data)
+        crud.create_groundtruths(db=db, groundtruth=gt)
     except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.post("/prediction", dependencies=[Depends(token_auth_scheme)])
 def create_predictions(
-    data: list[schemas.Prediction],
+    pd: schemas.Prediction,
     db: Session = Depends(get_db),
-) -> list[int]:
+):
     try:
-        return crud.create_predicted_detections(db=db, data=data)
+        crud.create_predictions(db=db, prediction=pd)
     except (
         exceptions.ModelDoesNotExistError,
         exceptions.ImageDoesNotExistError,
@@ -202,10 +202,7 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
 @app.get("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
 def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     try:
-        model = crud.get_model(db=db, model_name=model_name)
-        return schemas.Model(
-            **{k: getattr(model, k) for k in schemas.Model.__fields__}
-        )
+        return crud.get_model(db=db, name=model_name)
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

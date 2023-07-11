@@ -10,31 +10,36 @@ from velour_api.backend.core.label import create_label
 from velour_api.backend.core.metadata import create_metadata 
 
 
-def create_predictions(
+def get_model(
     db: Session,
-    annotated_datums: list[schemas.Prediction],
+    name: str,
+) -> models.Model:
+    return (
+        db.query(models.Model)
+        .where(models.Model.name == name)
+        .one_or_none()
+    )
+
+
+def create_prediction(
+    db: Session,
+    prediction: schemas.Prediction,
     model: models.Model,
 ):
     rows = []
-    for annotated_datum in annotated_datums:
-        datum = get_datum(db, annotated_datum.datum)
-        for pd in annotated_datum.pds:
-            geometry = (
-                create_geometric_annotation(db, pd.geometry)
-                if pd.geometry
-                else None
+    datum = get_datum(db, prediction.datum)
+    for pd in prediction.annotations:
+        annotation = create_annotation(db, pd.annotation)
+        rows += [
+            models.Prediction(
+                score=scored_label.score,
+                datum=datum,
+                model=model,
+                annotation=annotation,
+                label=create_label(db, scored_label.label),
             )
-            rows += [
-                models.GroundTruth(
-                    datum_id=datum.id,
-                    model_id=model.id,
-                    task_type=pd.task_type,
-                    geometry=geometry.id,
-                    label=create_label(db, scored_label.label).id,
-                    score=scored_label.score,
-                )
-                for scored_label in pd.scored_labels
-            ]
+            for scored_label in pd.scored_labels
+        ]
     try:
         db.add_all(rows)
         db.commit()

@@ -32,24 +32,19 @@ def create_model(db: Session, model: schemas.Model):
 @state.create
 def create_groundtruths(
     db: Session,
-    data: dict,
+    groundtruth: schemas.GroundTruth,
 ):
-    # unpack
-    name = data["name"],
-    groundtruths = schemas.GroundTruth(**data["data"])
-
     # 
-    dataset = io.request_dataset(db, name)
-    core.create_groundtruths(
-        db, dataset=dataset, groundtruths=groundtruths
+    dataset = core.get_dataset(db, groundtruth.dataset_name)
+    core.create_groundtruth(
+        db, dataset=dataset, groundtruth=groundtruth
     )
 
 
 @state.create
 def create_predictions(
     db: Session,
-    name: str,
-    predictions: list[schemas.Prediction],
+    prediction: schemas.Prediction,
 ):
-    model = io.request_model(db, name)
-    core.create_predictions(db, annotated_datums=predictions, model=model)
+    model = core.get_model(db, prediction.model_name)
+    core.create_prediction(db, prediction=prediction, model=model)

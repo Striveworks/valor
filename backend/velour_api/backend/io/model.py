@@ -7,7 +7,7 @@ def request_model(
     db: Session,
     name: str,
 ) -> schemas.Model:
-
+    
     model = db.query(models.Model).where(models.Model.name == name).one_or_none()
     if not model:
         return None

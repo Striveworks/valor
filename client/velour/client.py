@@ -246,12 +246,10 @@ class Dataset:
         groundtruth: schemas.GroundTruth,
     ):
         assert isinstance(groundtruth, schemas.GroundTruth)
+        groundtruth.dataset_name = self.info.name
         return self.client._requests_post_rel_host(
             f"groundtruth",
-            json={
-                "name": self.info.name,
-                "data": asdict(groundtruth),
-            }
+            json=asdict(groundtruth),
         )
     
     def get_groundtruth(
@@ -317,51 +315,102 @@ class Model:
     def __init__(
         self,
         client: Client,
+        info: schemas.Model,
+    ):
+        self.client = client
+        self.info = info
+        self._metadata = {
+            metadatum.name : metadatum.value
+            for metadatum in info.metadata
+        }
+
+    @property
+    def id(self):
+        return self.info.id
+    
+    @property
+    def name(self):
+        return self.info.name
+    
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        return self._metadata
+
+    @classmethod
+    def create(
+        cls,
+        client: Client, 
         name: str,
         href: Optional[str] = None,
         description: Optional[str] = None,
     ):
-        self.client = client
-        self.id = None
-        self.name = name
-        self.metadata = []
-
+        # Create the dataset on server side first to get ID info
+        md = schemas.Model(
+            name=name,
+            metadata=[],
+        )
         if href:
-            self.metadata.append(
+            md.metadata.append(
                 schemas.Metadatum(
                     name="href",
                     value=href,
                 )
             )
         if description:
-            self.metadata.append(
+            md.metadata.append(
                 schemas.Metadatum(
                     name="description",
                     value=description,
                 )
             )
-
-        resp = self.client._requests_post_rel_host(
-            "datasets",
-            json=asdict(
-                schemas.Dataset(
-                    name = self.name,
-                    metadata=self.metadata,
-                )
-            )
+        resp = client._requests_post_rel_host(
+            "models",
+            json=asdict(md)
         )
-        # @TODO: Handle this response 
+        # @TODO: Handle this response
+
+        # Retrive newly created dataset with its ID 
+        return cls.get(client, name)
 
     @classmethod
     def get(cls, client: Client, name: str):
         resp = client._requests_get_rel_host(f"models/{name}").json()
-        md = cls(
-            client=client,
+        metadata = [
+            schemas.Metadatum(
+                name=metadatum["name"],
+                value=metadatum["value"],
+            )
+            for metadatum in resp["metadata"]
+        ]
+        info = schemas.Model(
             name=resp["name"],
+            id=resp["id"],
+            metadata=metadata,
         )
-        md.id = resp["id"]
-        md.metadata = resp["metadata"]
-        return md
+        return cls(
+            client=client,
+            info=info,
+        )
+    
+    @staticmethod
+    def prune(client: Client, name: str):
+        job_id = client._requests_delete_rel_host(f"models/{name}").json()
+        return Job(client=client, job_id=job_id)
+   
+    def add_metadatum(self, metadatum: schemas.Metadatum):
+        # @TODO: Add endpoint to allow adding custom metadatums
+        self.info.metadata.append(metadatum)
+        self.__metadata__[metadatum.name] = metadatum
+
+
+    def add_prediction(self, prediction: schemas.Prediction):
+        assert isinstance(prediction, schemas.Prediction)
+        prediction.model_name = self.info.name
+        return self.client._requests_post_rel_host(
+            f"prediction",
+            json=asdict(prediction),
+        )
+
 
     def finalize_inferences(self, dataset: "Dataset") -> None:
         return self.client._requests_put_rel_host(

@@ -184,10 +184,10 @@ class Model(Base):
     __tablename__ = "model"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(unique=True)
+    name: Mapped[str] = mapped_column(index=True, unique=True)
 
     # relationships
-    predictions: Mapped[list[Prediction]] = relationship(cascade="all, delete")
+    predictions: Mapped[list["Prediction"]] = relationship(cascade="all, delete")
     metadatums: Mapped[list["MetaDatum"]] = relationship(back_populates="model", cascade="all, delete")
     evaluation_settings = relationship(
         "EvaluationSettings", cascade="all, delete"
@@ -202,7 +202,7 @@ class Dataset(Base):
 
     # relationships
     datums: Mapped[list[Datum]] = relationship(cascade="all, delete")
-    metadatums: Mapped[list[MetaDatum]] = relationship(cascade="all, delete")
+    metadatums: Mapped[list[MetaDatum]] = relationship(back_populates="dataset", cascade="all, delete")
     evaluation_settings = relationship(
         "EvaluationSettings", cascade="all, delete", back_populates="dataset"
     )

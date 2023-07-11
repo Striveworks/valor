@@ -1,8 +1,8 @@
 from .core import (
     create_dataset,
-    create_groundtruths,
+    create_groundtruth,
     create_model,
-    create_predictions,
+    create_prediction,
     delete_dataset,
     delete_model,
 )
@@ -16,8 +16,8 @@ from .io import (
 __all__ = [
     "create_dataset",
     "create_model",
-    "create_groundtruths",
-    "create_predictions",
+    "create_groundtruth",
+    "create_prediction",
     "request_datasets",
     "request_dataset",
     "request_models",
