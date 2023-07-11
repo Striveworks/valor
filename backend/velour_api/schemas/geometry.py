@@ -130,7 +130,7 @@ class BasicPolygon(BaseModel):
 
 class Polygon(BaseModel):
     boundary: BasicPolygon
-    holes: list[BasicPolygon] = Field(default_factory=list)
+    holes: list[BasicPolygon] | None = Field(default=None)
 
     def __str__(self):
         polys = [str(self.boundary)]
@@ -176,18 +176,8 @@ class Box(BaseModel):
 
 
 class BoundingBox(BaseModel):
-    shape: Box | Polygon
-
-    @validator("shape")
-    def enough_pts(cls, v):
-        print(v)
-        if v is not None:
-            if isinstance(v, Polygon):
-                if len(set(v)) != 4:
-                    raise ValueError("Box polygon must have 4 unique points.")
-            if not isinstance(v, Box | Polygon):
-                raise ValueError
-        return v
+    polygon: Polygon | None = Field(default=None)
+    box: Box | None = Field(default=None)
 
     @property
     def is_rectangular(self):
@@ -261,7 +251,7 @@ class BoundingBox(BaseModel):
 class Raster(BaseModel):
     mask: str = Field(allow_mutation=False)
     height: int | float
-    widht: int | float
+    width: int | float
 
     class Config:
         extra = Extra.allow
@@ -300,7 +290,7 @@ class Raster(BaseModel):
     @property
     def mask_bytes(self) -> bytes:
         if not hasattr(self, "_mask_bytes"):
-            self._mask_bytes = b64decode(self.base64_mask)
+            self._mask_bytes = b64decode(self.mask)
         return self._mask_bytes
 
     @property
@@ -308,31 +298,3 @@ class Raster(BaseModel):
         with io.BytesIO(self.mask_bytes) as f:
             return PIL.Image.open(f)
 
-data = {
-    "shape": {
-        "boundary": {
-            "points": [
-                {
-                    "x": 1,
-                    "y": 1
-                },
-                {
-                    "x": 1,
-                    "y": 0
-                },
-                {
-                    "x": 0,
-                    "y": 0
-                },
-                {
-                    "x": 0,
-                    "y": 1
-                }
-            ]
-        },
-        "holes": []
-    }
-}
-
-p = BoundingBox(**data)
-print(p)
