@@ -3,15 +3,15 @@ import { ChariotLayoutTemplate } from '@striveworks/minerva';
 import '@striveworks/minerva/style.css';
 import { Route, Routes } from 'react-router-dom';
 import './App.css';
-import { usingAuth } from './auth';
+import { usingAuth } from './Auth';
 import { SideMenu } from './components/shared/SideMenu';
 import { DatasetDetailsPage } from './dataset-details-page';
 import { MetricsPage } from './metrics-page';
-import { ModelDetailsPage } from './model-details-page';
-import { Datasets } from './pages/Datasets';
+import { Datasets } from './pages/Datasets/Datasets';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
-import { Models } from './pages/Models';
+import { ModelDetails } from './pages/Models/ModelDetails';
+import { Models } from './pages/Models/Models';
 import { Profile } from './pages/Profile';
 
 function App() {
@@ -22,14 +22,18 @@ function App() {
       <ChariotLayoutTemplate sidebar={<SideMenu />}>
         <Routes>
           <Route path='/' element={<Home />} />
-          <Route path='/models' element={<Models />} />
-          <Route path='/models/:name' element={<ModelDetailsPage />} />
-          <Route path='/datasets' element={<Datasets />} />
-          <Route path='/datasets/:name' element={<DatasetDetailsPage />} />
-          <Route
-            path='/models/:name/evaluation-settings/:evalSettingsId'
-            element={<MetricsPage />}
-          />
+          <Route path='/models'>
+            <Route index element={<Models />} />
+            <Route path=':modelName' element={<ModelDetails />} />
+            <Route
+              path=':name/evaluation-settings/:evalSettingsId'
+              element={<MetricsPage />}
+            />
+          </Route>
+          <Route path='/datasets'>
+            <Route index element={<Datasets />} />
+            <Route path=':name' element={<DatasetDetailsPage />} />
+          </Route>
           <Route path='/profile' element={<Profile />} />
         </Routes>
       </ChariotLayoutTemplate>

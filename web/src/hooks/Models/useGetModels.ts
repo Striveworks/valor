@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
-import { BASE_URL } from '../common/api';
-import { Model } from '../types/Models';
+import { BASE_URL } from '../../common/api';
+import { Model } from '../../types/Models';
 
 export function useGetModels() {
   return useQuery<Model[], Error>({

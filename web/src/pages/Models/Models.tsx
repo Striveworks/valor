@@ -1,19 +1,20 @@
 import { Page, TableList, Typography } from '@striveworks/minerva';
 import { Link } from 'react-router-dom';
-import { Loading } from '../components/shared/Loading';
-import { SummaryBar } from '../components/shared/SummaryBar';
-import { useGetDatasets } from '../hooks/useGetDatasets';
-import { Stat } from '../types/TableList';
+import { Loading } from '../../components/shared/Loading';
+import { SummaryBar } from '../../components/shared/SummaryBar';
+import { useGetModels } from '../../hooks/Models/useGetModels';
+import { Stat } from '../../types/TableList';
+import { DisplayError } from '../DisplayError';
 
-export function Datasets() {
-  const { isLoading, isError, data } = useGetDatasets();
+export function Models() {
+  const { isLoading, isError, data, error } = useGetModels();
 
   if (isLoading) {
     return <Loading />;
   }
 
   if (isError) {
-    return <>An error has occurered</>;
+    return <DisplayError error={error} />;
   }
 
   const stats: Stat[] = [{ name: data.length, icon: 'collection' }];
@@ -21,7 +22,7 @@ export function Datasets() {
   return (
     <Page.Main>
       <Page.Header>
-        <Typography.PageTitle>Datasets</Typography.PageTitle>
+        <Typography.PageTitle>Models</Typography.PageTitle>
       </Page.Header>
       <Page.Content>
         <TableList summaryBar={<SummaryBar stats={stats} />}>
@@ -29,20 +30,18 @@ export function Datasets() {
             <div>Name</div>
             <div>Description</div>
             <div>Type</div>
-            <div>Finalized</div>
           </TableList.Row>
           {data.length ? (
-            data.map((dataset) => {
+            data.map((model) => {
               return (
-                <TableList.Row key={dataset.name}>
+                <TableList.Row key={model.name}>
                   <div>
-                    <Link to={`models/${dataset.href}`} style={{ color: '#FFF' }}>
-                      {dataset.name}
+                    <Link to={`${model.name}`} style={{ color: '#FFF' }}>
+                      {model.name}
                     </Link>
                   </div>
-                  <div>{dataset.description}</div>
-                  <div>{dataset.type}</div>
-                  <div>{dataset.finalized ? 'True' : 'False'}</div>
+                  <div>{model.description}</div>
+                  <div>{model.type}</div>
                 </TableList.Row>
               );
             })

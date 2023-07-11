@@ -4,7 +4,7 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { usingAuth } from './auth';
+import { usingAuth } from './Auth';
 import { EntityDetailsComponent } from './components/entity-details-component';
 import { Wrapper } from './components/wrapper';
 import { EvaluationSetting } from './types';

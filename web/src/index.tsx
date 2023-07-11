@@ -3,7 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-import { Auth0ProviderWithNavigate, usingAuth } from './auth';
+import { Auth0ProviderWithNavigate, usingAuth } from './Auth';
 import './index.css';
 
 const queryClient = new QueryClient();
