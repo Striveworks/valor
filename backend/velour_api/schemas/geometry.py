@@ -1,6 +1,8 @@
 import io
 import re
 import math
+import json
+from enum import Enum
 from base64 import b64decode
 from uuid import uuid4
 
@@ -143,40 +145,6 @@ class Polygon(BaseModel):
     @property
     def wkt(self) -> str:
         return f"POLYGON {str(self)}"
-    
-    @classmethod 
-    def from_wkt(cls, wkt: str | None):
-        if not wkt:
-            return None
-        
-        if re.search('^POLYGON', wkt):
-            polygons = []
-            poly_text = re.findall('\(\((.*)\)\)', wkt)[0].split('),(')
-            for poly in poly_text:
-                points = []
-                for numerics in poly.strip().split(','):
-                    coords = numerics.strip().split(' ')
-                    points.append(
-                        Point(
-                            x=float(coords[0]), 
-                            y=float(coords[1]), 
-                        )
-                    )
-                polygons.append(BasicPolygon(points=points))
-            
-            if len(polygons) == 1:
-                return cls(
-                    boundary=polygons[0],
-                    holes=None,
-                )
-            elif polygons:
-                return cls(
-                    boundary=polygons[0],
-                    holes=polygons[1:],
-                )
-        raise ValueError
-
-                    
 
 
 class MultiPolygon(BaseModel):
@@ -363,4 +331,65 @@ class Raster(BaseModel):
     def pil_mask(self) -> PIL.Image:
         with io.BytesIO(self.mask_bytes) as f:
             return PIL.Image.open(f)
+    
+
+class GeoType(str, Enum):
+    POLYGON = "Polygon",
+    MULTIPOLYGON = "MultiPolygon",
+
+
+class GeoJSON():
+
+    def __init__(self, geojson: str):
+        data = json.loads(geojson)
+        assert "type" in data
+        assert "coordinates" in data
+        self.data = data
+
+    def polygon(self) -> Polygon | None:
+        if self.data["type"] != GeoType.POLYGON:
+            return None
+        polygons = [
+            BasicPolygon(
+                points=[
+                    Point(x=coord[0], y=coord[1])
+                    for coord in poly
+                ]
+            )
+            for poly in self.data["coordinates"]
+        ]
+        assert len(polygons) > 0
+        return Polygon(
+            boundary=polygons[0],
+            holes=polygons[1:] if len(polygons) > 1 else None,
+        )
+        
+    def multipolygon(self) -> MultiPolygon | None:
+        if self.data["type"] != GeoType.MULTIPOLYGON:
+            return None
+        
+        multipolygons = []
+        for subpolygon in self.data["coordinates"]:
+            polygons = [
+                BasicPolygon(
+                    points=[
+                        Point(x=coord[0], y=coord[1])
+                        for coord in poly
+                    ]
+                )
+                for poly in subpolygon
+            ]
+            multipolygons.append(
+                Polygon(
+                    boundary=polygons[0],
+                    holes=polygons[1:] if len(polygons) > 1 else None,
+                )
+            )
+        assert len(multipolygons) > 0
+        return MultiPolygon(
+            polygons=multipolygons
+        )
+
+
+
 

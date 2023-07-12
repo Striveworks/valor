@@ -9,25 +9,6 @@ from velour_api import exceptions, schemas
 from velour_api.backend import models
 
 
-def create_image_metadatum(
-    db: Session,
-    image: schemas.ImageMetadata,
-) -> models.ImageMetadata:
-    row = models.ImageMetadata(
-        height=image.height,
-        width=image.width,
-        frame=image.frame,
-    )
-    try:
-        db.add(row)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise RuntimeError
-        # This should never be called as duplicates are allowed
-    return row
-
-
 def create_metadatum(
     db: Session,
     metadatum: schemas.MetaDatum,
@@ -50,7 +31,6 @@ def create_metadatum(
         "string_value": None,
         "numeric_value": None,
         "geo": None,
-        "image": None,
     }
 
     # Check value type
@@ -62,8 +42,6 @@ def create_metadatum(
         mapping["geo"] = ST_GeomFromGeoJSON(
             json.dumps(metadatum.value.geography)
         )
-    elif isinstance(metadatum.value, schemas.ImageMetadata):
-        mapping["image"] = create_image_metadatum(metadatum.value).id
     else:
         raise ValueError(
             f"Got unexpected value of type '{type(metadatum.value)}' for metadatum"

@@ -22,11 +22,14 @@ def get_dataset(
 
 def get_datum(
     db: Session,
-    datum: schemas.Datum,
+    datum: models.Datum = None,
+    datum_uid: str = None, 
 ) -> models.Datum:
+    if datum:
+        datum_uid = datum.uid
     return (
         db.query(models.Datum)
-        .where(models.Datum.uid == datum.uid)
+        .where(models.Datum.uid == datum_uid)
         .one_or_none()
     )
 

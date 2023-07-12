@@ -11,8 +11,15 @@ from .core import (
     Prediction,
     ScoredLabel,
 )
-from .geometry import Box, BoundingBox, MultiPolygon, Polygon, Raster
-from .metadata import GeographicFeature, ImageMetadata, MetaDatum
+from .geometry import (
+    Box, 
+    BoundingBox, 
+    MultiPolygon, 
+    Polygon, 
+    Raster,
+    GeoJSON,
+)
+from .metadata import GeographicFeature, MetaDatum
 from .info import (
     LabelDistribution,
     ScoredLabelDistribution,
@@ -59,7 +66,6 @@ __all__ = [
     "GeographicFeature",
     "EvaluationSettings",
     "Metric",
-    "ImageMetadata",
     "AccuracyMetric",
     "ConfusionMatrix",
     "F1Metric",
@@ -72,4 +78,5 @@ __all__ = [
     "ClfMetricsRequest",
     "CreateClfMetricsResponse",
     "Job",
+    "GeoJSON",
 ]

@@ -1,31 +1,79 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import and_
 
 from velour_api import schemas
 from velour_api.backend import models, core
 
-def get_metadatum(db: Session, metadatum: models.MetaDatum):
+def get_metadatum(
+    db: Session, 
+    metadatum: models.MetaDatum = None,
+    dataset: models.Dataset = None,
+    model: models.Model = None,
+    datum: models.Datum = None,
+    annotation: models.Datum = None,
+    name: str = None,
+) -> schemas.MetaDatum | None:
+    
+    if not metadatum and name is not None:
+        if dataset:
+            metadatum = (
+                db.query(models.MetaDatum)
+                .where(
+                    and_(
+                        models.MetaDatum.dataset_id == dataset.id,
+                        models.MetaDatum.name == name,
+                    )   
+                )
+                .one_or_none()
+            )
+        elif model:
+            metadatum = (
+                db.query(models.MetaDatum)
+                .where(
+                    and_(
+                        models.MetaDatum.model_id == model.id,
+                        models.MetaDatum.name == name,
+                    )   
+                )
+                .one_or_none()
+            )
+        elif datum:
+            metadatum = (
+                db.query(models.MetaDatum)
+                .where(
+                    and_(
+                        models.MetaDatum.datum_id == datum.id,
+                        models.MetaDatum.name == name,
+                    )   
+                )
+                .one_or_none()
+            )
+        elif annotation:
+            metadatum = (
+                db.query(models.MetaDatum)
+                .where(
+                    and_(
+                        models.MetaDatum.annotation_id == annotation.id,
+                        models.MetaDatum.name == name,
+                    )   
+                )
+                .one_or_none()
+            )
+        
+    if metadatum is None:
+        return None
 
-    if metadatum.string_value:
+    # Parsing
+    if metadatum.string_value is not None:
         value = metadatum.string_value
-    elif metadatum.numeric_value:
+    elif metadatum.numeric_value is not None:
         value = metadatum.numeric_value
-    elif metadatum.geo:
+    elif metadatum.geo is not None:
         # @TODO
         raise NotImplemented
         # value = metadatum.geo
-    elif metadatum.image:
-        image_metadata = (
-            db.query(models.ImageMetadata)
-            .where(models.ImageMetadata.id == metadatum.image_id)
-            .one_or_none()
-        )
-        value = schemas.ImageMetadata(
-            height=image_metadata.height,
-            width=image_metadata.width,
-            frame=image_metadata.frame,
-        )
     else:
-        raise ValueError
+        return None
 
     return schemas.MetaDatum(
         name=metadatum.name,

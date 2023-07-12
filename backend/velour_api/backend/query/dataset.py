@@ -3,7 +3,10 @@ from sqlalchemy import and_
 
 from velour_api import schemas
 from velour_api.backend import models, core
+
 from velour_api.backend.query.metadata import get_metadata
+from velour_api.backend.query.annotation import get_annotation
+from velour_api.backend.query.label import get_labels
 
 
 def get_groundtruth(
@@ -11,24 +14,15 @@ def get_groundtruth(
     dataset_name: str,
     datum_uid: str,
 ) -> schemas.GroundTruth:
-    
-    print(dataset_name, datum_uid)
 
     # Get dataset
     dataset = core.get_dataset(db, dataset_name)
     
     # Get datum
-    datum = core.get_datum(db, datum_uid)
+    datum = core.get_datum(db, datum_uid=datum_uid)
 
     # Check
     assert datum.dataset_id == dataset.id
-
-    # Get groundtruths
-    groundtruths = (
-        db.query(models.GroundTruth)
-        .where(models.GroundTruth.datum_id == datum.id)
-        .all()
-    )
 
     # Get annotations with metadata
     annotation_ids = (
@@ -50,16 +44,12 @@ def get_groundtruth(
             metadata=get_metadata(db, datum=datum),
         ),
         annotations=[
-            schemas.Annotation(
-                task_type=annotation.task_type,
-                metadata=get_metadata(db, annotation=annotation),
-                bounding_box=schemas.BoundingBox.from_wkt(annotation.box),
-                polygon=schemas.Polygon.from_wkt(annotation.polygon),
-                multipolygon=schemas.MultiPolygon.from_wkt(annotation.multipolygon),
-                raster=schemas.Raster.from_gdal(annotation.raster),
+            schemas.GroundTruthAnnotation(
+                labels=get_labels(db, annotation=annotation),
+                annotation=get_annotation(db, datum=datum, annotation=annotation),
             )
             for annotation in annotations
-        ]
+        ],
     )
 
 

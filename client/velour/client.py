@@ -297,18 +297,18 @@ class Dataset:
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
         del self
     
-    def get_images(self) -> List[schemas.ImageMetadata]:
-        """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
-        images = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/images"
-        ).json()
+    # def get_images(self) -> List[schemas.ImageMetadata]:
+    #     """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
+    #     images = self.client._requests_get_rel_host(
+    #         f"datasets/{self.name}/images"
+    #     ).json()
 
-        return [
-            schemas.ImageMetadata(
-                uid=image["uid"], height=image["height"], width=image["width"]
-            )
-            for image in images
-        ]
+    #     return [
+    #         schemas.ImageMetadata(
+    #             uid=image["uid"], height=image["height"], width=image["width"]
+    #         )
+    #         for image in images
+    #     ]
     
 
 class Model:

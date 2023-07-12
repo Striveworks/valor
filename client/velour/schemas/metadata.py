@@ -16,17 +16,9 @@ class GeographicFeature:
                 raise ValueError(
                     f"if a dict, `region` must be valid GeoJSON but got {self.region}"
                 )
-            
-
-@dataclass
-class ImageMetadata:
-    uid: str
-    height: int
-    width: int
-    frame: int = None
 
 
 @dataclass
 class Metadatum:
     name: str
-    value: Union[int, float, str, ImageMetadata, GeographicFeature]
+    value: Union[int, float, str, GeographicFeature]

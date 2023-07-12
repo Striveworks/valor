@@ -150,32 +150,16 @@ class MetaDatum(Base):
     string_value: Mapped[str] = mapped_column(nullable=True)
     numeric_value: Mapped[float] = mapped_column(nullable=True)
     geo = mapped_column(Geography(), nullable=True)
-    image_id: Mapped[int] = mapped_column(
-        ForeignKey("metadatum_image.id"), nullable=True
-    )
 
     # relationships
     dataset: Mapped["Dataset"] = relationship(back_populates="metadatums", cascade="all, delete")
     model: Mapped["Model"] = relationship(back_populates="metadatums", cascade="all, delete")
     datum: Mapped["Datum"] = relationship(back_populates="metadatums", cascade="all, delete")
     annotation: Mapped["Annotation"] = relationship(back_populates="metadatums", cascade="all, delete")
-    image: Mapped["ImageMetadata"] = relationship(cascade="all, delete")
 
     __table_args__ = (
         CheckConstraint("num_nonnulls(string_value, numeric_value, geo) = 1"),
     )
-
-
-class ImageMetadata(Base):
-    __tablename__ = "metadatum_image"
-
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    height: Mapped[int] = mapped_column(nullable=True)
-    width: Mapped[int] = mapped_column(nullable=True)
-    frame: Mapped[int] = mapped_column(nullable=True)
-
-    # relationships
-    metadatum: Mapped["MetaDatum"] = relationship(back_populates="image", cascade="all, delete")
 
 
 class Model(Base):

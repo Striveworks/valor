@@ -14,7 +14,7 @@ from .core import (
     ScoredLabelDistribution,
 )
 from .geometry import Point, Box, BasicPolygon, BoundingBox, MultiPolygon, Polygon, Raster
-from .metadata import GeographicFeature, ImageMetadata, Metadatum
+from .metadata import GeographicFeature, Metadatum
 
 __all__ = [
     "Box",
@@ -36,7 +36,6 @@ __all__ = [
     "MultiPolygon",
     "Raster",
     "Metadatum",
-    "ImageMetadata",
     "GeographicFeature",
     "LabelDistribution",
     "ScoredLabelDistribution",

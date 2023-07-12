@@ -1,5 +1,4 @@
 import json
-
 from pydantic import BaseModel, validator
 
 
@@ -16,15 +15,9 @@ class GeographicFeature(BaseModel):
         return v
 
 
-class ImageMetadata(BaseModel):
-    height: int
-    width: int
-    frame: int
-
-
 class MetaDatum(BaseModel):
     name: str
-    value: int | float | str | GeographicFeature | ImageMetadata
+    value: int | float | str | GeographicFeature
 
     @validator("name")
     def check_name(cls, v):
