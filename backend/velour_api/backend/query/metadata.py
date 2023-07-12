@@ -41,6 +41,7 @@ def get_metadata(
     annotation: models.Annotation = None,
 ) -> list[schemas.MetaDatum]:
     
+    # @TODO: Make sure that only one is defined?
 
     if dataset:
         metadata = (

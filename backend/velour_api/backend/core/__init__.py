@@ -2,6 +2,7 @@ from .dataset import (
     create_dataset, 
     create_groundtruth,
     get_dataset,
+    get_datum,
     delete_dataset,
 )
 from .model import (
@@ -15,6 +16,7 @@ __all__ = [
     "create_dataset",
     "create_groundtruth",
     "get_dataset",
+    "get_datum",
     "delete_dataset",
     "create_model",
     "create_prediction",

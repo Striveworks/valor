@@ -1,4 +1,5 @@
 import io
+import re
 import math
 from base64 import b64decode
 from uuid import uuid4
@@ -142,6 +143,40 @@ class Polygon(BaseModel):
     @property
     def wkt(self) -> str:
         return f"POLYGON {str(self)}"
+    
+    @classmethod 
+    def from_wkt(cls, wkt: str | None):
+        if not wkt:
+            return None
+        
+        if re.search('^POLYGON', wkt):
+            polygons = []
+            poly_text = re.findall('\(\((.*)\)\)', wkt)[0].split('),(')
+            for poly in poly_text:
+                points = []
+                for numerics in poly.strip().split(','):
+                    coords = numerics.strip().split(' ')
+                    points.append(
+                        Point(
+                            x=float(coords[0]), 
+                            y=float(coords[1]), 
+                        )
+                    )
+                polygons.append(BasicPolygon(points=points))
+            
+            if len(polygons) == 1:
+                return cls(
+                    boundary=polygons[0],
+                    holes=None,
+                )
+            elif polygons:
+                return cls(
+                    boundary=polygons[0],
+                    holes=polygons[1:],
+                )
+        raise ValueError
+
+                    
 
 
 class MultiPolygon(BaseModel):
@@ -150,6 +185,37 @@ class MultiPolygon(BaseModel):
     @property
     def wkt(self) -> str:
         return f"MULTIPOLYGON ({', '.join(self.polygons)})"
+    
+    @classmethod 
+    def from_wkt(cls, wkt: str | None):
+        if not wkt:
+            return None
+        if re.search('^MULTIPOLYGON', wkt):
+            polygons = []
+            poly_text = re.findall('\(\((.*)\)\)', wkt)[0].split('),(')
+            for poly in poly_text:
+                points = []
+                for numerics in poly.strip().split(','):
+                    coords = numerics.strip().split(' ')
+                    points.append(
+                        Point(
+                            x=float(coords[0]), 
+                            y=float(coords[1]), 
+                        )
+                    )
+                polygons.append(BasicPolygon(points=points))
+            
+            if len(polygons) == 1:
+                return cls(
+                    boundary=polygons[0],
+                    holes=None,
+                )
+            elif polygons:
+                return cls(
+                    boundary=polygons[0],
+                    holes=polygons[1:],
+                )
+        raise ValueError
 
 
 class Box(BaseModel):

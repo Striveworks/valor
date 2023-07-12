@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from velour_api import schemas
-from velour_api.backend import models
+from velour_api.backend import models, core
+from velour_api.backend.query.metadata import get_metadata
 
 
 def get_groundtruth(
@@ -12,58 +13,33 @@ def get_groundtruth(
 ) -> schemas.GroundTruth:
     
     print(dataset_name, datum_uid)
+
+    # Get dataset
+    dataset = core.get_dataset(db, dataset_name)
     
-    # Get datum with metadata
-    datum = (
-        db.query(models.Datum)
-        .join(models.MetaDatum, models.Datum.id == models.MetaDatum.datum_id)
-        .join(models.Dataset, models.Datum.dataset_id == models.Dataset.id)
-        .where(
-            and_(
-                models.Datum.uid == datum_uid,
-                models.Dataset.name == dataset_name,
-            )
-        )
-        .one_or_none()
+    # Get datum
+    datum = core.get_datum(db, datum_uid)
+
+    # Check
+    assert datum.dataset_id == dataset.id
+
+    # Get groundtruths
+    groundtruths = (
+        db.query(models.GroundTruth)
+        .where(models.GroundTruth.datum_id == datum.id)
+        .all()
     )
 
     # Get annotations with metadata
     annotation_ids = (
         db.query(models.GroundTruth.annotation_id)
-        .join(models.Datum, models.Datum.id == models.GroundTruth.datum_id)
-        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
-        .where(
-            and_(
-                models.Datum.uid == datum_uid,
-                models.Dataset.name == dataset_name,
-            )
-        )
+        .where(models.GroundTruth.datum_id == datum.id)
         .distinct()
         .subquery()
     )
     annotations = (
         db.query(models.Annotation)
-        .join(models.MetaDatum, models.MetaDatum.annotation_id == models.Annotation.id)
         .where(models.Annotation.id.in_(annotation_ids))
-        .all()
-    )
-
-    # Get groundtruths
-    groundtruths = (
-        db.query(
-            models.GroundTruth.id, 
-            models.GroundTruth.datum_id,
-            models.GroundTruth.annotation_id,
-            models.GroundTruth.label_id,
-        )
-        .join(models.Datum, models.Datum.id == models.GroundTruth.datum_id)
-        .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
-        .where(
-            and_(
-                models.Datum.uid == datum_uid,
-                models.Dataset.name == dataset_name,
-            )
-        )
         .all()
     )
 
@@ -71,10 +47,19 @@ def get_groundtruth(
         dataset_name=dataset_name,
         datum=schemas.Datum(
             uid=datum_uid,
-            metadata=[
-                get
-            ]
-        )
+            metadata=get_metadata(db, datum=datum),
+        ),
+        annotations=[
+            schemas.Annotation(
+                task_type=annotation.task_type,
+                metadata=get_metadata(db, annotation=annotation),
+                bounding_box=schemas.BoundingBox.from_wkt(annotation.box),
+                polygon=schemas.Polygon.from_wkt(annotation.polygon),
+                multipolygon=schemas.MultiPolygon.from_wkt(annotation.multipolygon),
+                raster=schemas.Raster.from_gdal(annotation.raster),
+            )
+            for annotation in annotations
+        ]
     )
 
 

@@ -8,6 +8,9 @@ from .model import (
     get_model,
     get_prediction,
 )
+from .metadata import (
+    get_metadata,
+)
 
 __all__ = [
     "get_datasets",
@@ -16,4 +19,5 @@ __all__ = [
     "get_models",
     "get_model",
     "get_prediction",
+    "get_metadata",
 ]
