@@ -11,8 +11,8 @@ import PIL.Image
 
 @dataclass
 class Point:
-    x: int | float
-    y: int | float
+    x: float
+    y: float
 
     def resize(
         self, og_img_h: int, og_img_w: int, new_img_h: int, new_img_w: int
@@ -78,12 +78,24 @@ class Polygon:
 
 @dataclass
 class BoundingBox:
-    polygon: Polygon = None
-    box: Box = None
+    polygon: BasicPolygon
 
     def __post_init__(self):
-        if self.polygon == self.box:
+        if len(self.polygon.points) != 4:
             raise ValueError
+        
+    @classmethod
+    def from_extrema(cls, xmin: float, xmax: float, ymin: float, ymax: float):
+        return cls(
+            polygon=BasicPolygon(
+                points=[
+                    Point(x=xmin, y=ymin),
+                    Point(x=xmax, y=ymax),
+                    Point(x=xmin, y=ymax),
+                    Point(x=xmax, y=ymin),
+                ]
+            )
+        )
 
 
 @dataclass

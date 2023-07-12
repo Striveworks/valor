@@ -21,4 +21,4 @@ class GeographicFeature:
 @dataclass
 class Metadatum:
     name: str
-    value: Union[int, float, str, GeographicFeature]
+    value: Union[float, str, GeographicFeature]
