@@ -46,8 +46,8 @@ def get_model(db: Session, name: str) -> schemas.Model:
 
 
 @state.read
-def get_prediction(db: Session, dataset_name: str, datum_uid: str) -> schemas.GroundTruth:
-    return query.get_groundtruth(db, dataset_name, datum_uid)
+def get_prediction(db: Session, model_name: str, datum_uid: str) -> schemas.Prediction:
+    return query.get_prediction(db, model_name, datum_uid)
 
 
 @state.read

@@ -21,7 +21,7 @@ def get_groundtruth(
     # Get datum
     datum = core.get_datum(db, datum_uid=datum_uid)
 
-    # Check
+    # Sanity check
     assert datum.dataset_id == dataset.id
 
     # Get annotations with metadata

@@ -1,10 +1,10 @@
 import io
 import json
 from abc import ABC
+from base64 import b64decode, b64encode
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple, Union
 
-from base64 import b64decode, b64encode
 import numpy as np
 import PIL.Image
 
@@ -68,7 +68,7 @@ class BasicPolygon:
                 Point(box.max.x, box.min.y),
             ]
         )
-    
+
 
 @dataclass
 class Polygon:
@@ -83,7 +83,7 @@ class BoundingBox:
     def __post_init__(self):
         if len(self.polygon.points) != 4:
             raise ValueError
-        
+
     @classmethod
     def from_extrema(cls, xmin: float, xmax: float, ymin: float, ymax: float):
         return cls(
@@ -108,7 +108,7 @@ class Raster:
     mask: str
     height: int | float
     width: int | float
-    
+
     @classmethod
     def from_numpy(cls, mask: np.ndarray):
         assert len(mask.shape) == 2

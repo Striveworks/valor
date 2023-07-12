@@ -1,14 +1,53 @@
 from sqlalchemy.orm import Session
 
 from velour_api import schemas
-from velour_api.backend import models
+from velour_api.backend import models, core
+
+from velour_api.backend.query.metadata import get_metadata
+from velour_api.backend.query.annotation import get_annotation
+from velour_api.backend.query.label import get_scored_labels
+
 
 def get_prediction(
     db: Session,
     model_name: str,
-    datum_uid: str
+    datum_uid: str,
 ) -> schemas.Prediction:
-    return None
+
+    # Get model
+    dataset = core.get_model(db, model_name)
+    
+    # Get datum
+    datum = core.get_datum(db, datum_uid=datum_uid)
+
+    # Get annotations with metadata
+    annotation_ids = (
+        db.query(models.Prediction.annotation_id)
+        .where(models.Prediction.datum_id == datum.id)
+        .distinct()
+        .subquery()
+    )
+    annotations = (
+        db.query(models.Annotation)
+        .where(models.Annotation.id.in_(annotation_ids))
+        .all()
+    )
+
+    return schemas.Prediction(
+        model_name=model_name,
+        datum=schemas.Datum(
+            uid=datum_uid,
+            metadata=get_metadata(db, datum=datum),
+        ),
+        annotations=[
+            schemas.PredictedAnnotation(
+                annotation=get_annotation(db, datum=datum, annotation=annotation),
+                scored_labels=get_scored_labels(db, annotation=annotation),
+            )
+            for annotation in annotations
+        ],
+    )
+
 
 def get_model(
     db: Session,

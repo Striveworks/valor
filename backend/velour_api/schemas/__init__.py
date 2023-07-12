@@ -12,7 +12,6 @@ from .core import (
     ScoredLabel,
 )
 from .geometry import (
-    Box, 
     BoundingBox, 
     MultiPolygon, 
     Polygon, 
@@ -44,7 +43,6 @@ from .jobs import (
 )
 
 __all__ = [
-    "Box",
     "GroundTruthAnnotation",
     "PredictedAnnotation",
     "Annotation",

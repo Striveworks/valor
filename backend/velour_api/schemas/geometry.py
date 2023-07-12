@@ -11,8 +11,8 @@ from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 
 class Point(BaseModel):
-    x: float | int
-    y: float | int
+    x: float
+    y: float
 
     @validator("x")
     def has_x(cls, v):
@@ -103,6 +103,9 @@ class BasicPolygon(BaseModel):
     @validator("points")
     def check_points(cls, v):
         if v is not None:
+            # Remove duplicate of start point
+            if v[0] == v[-1]:
+                v = v[:-1]
             if len(set(v)) < 3:
                 raise ValueError(
                     "Polygon must be composed of at least three unique points."
@@ -186,54 +189,26 @@ class MultiPolygon(BaseModel):
         raise ValueError
 
 
-class Box(BaseModel):
-    min: Point
-    max: Point
-
-    @root_validator(skip_on_failure=True)
-    def extrema_check(cls, values):
-        if values["max"].x <= values["min"].x:
-            raise ValueError("Invalid extrema (x-axis).")
-        elif values["max"].y <= values["min"].y:
-            raise ValueError("Invalid extrema (y-axis).")
-        return values
-
-    @property
-    def wkt(self) -> str:
-        pts = [
-            Point(x=self.min.x, y=self.min.y),
-            Point(x=self.max.x, y=self.min.y),
-            Point(x=self.max.x, y=self.max.y),
-            Point(x=self.min.x, y=self.max.y),
-        ]
-        return BasicPolygon(points=pts).wkt
-
-
 class BoundingBox(BaseModel):
-    polygon: Polygon | None = Field(default=None)
-    box: Box | None = Field(default=None)
+    polygon: BasicPolygon
 
     @property
     def is_rectangular(self):
         if hasattr(self, "_is_rectangular"):
             return self._is_rectangular
-
-        if self.box is not None:
-            self._is_rectangular = True
-            return self._is_rectangular
-
+        
         segments = [
             LineSegment(
-                points=(self.polygon.boundary.points[0], self.polygon.boundary.points[1])
+                points=(self.polygon.points[0], self.polygon.points[1])
             ),
             LineSegment(
-                points=(self.polygon.boundary.points[1], self.polygon.boundary.points[2])
+                points=(self.polygon.points[1], self.polygon.points[2])
             ),
             LineSegment(
-                points=(self.polygon.boundary.points[2], self.polygon.boundary.points[3])
+                points=(self.polygon.points[2], self.polygon.points[3])
             ),
             LineSegment(
-                points=(self.polygon.boundary.points[3], self.polygon.boundary.points[0])
+                points=(self.polygon.points[3], self.polygon.points[0])
             ),
         ]
 
@@ -274,12 +249,7 @@ class BoundingBox(BaseModel):
 
     @property
     def wkt(self) -> str:
-        if self.polygon is not None:
-            return self.polygon.wkt
-        elif self.box is not None:
-            return self.box.wkt
-        else:
-            raise RuntimeError
+        return self.polygon.wkt
 
 
 class Raster(BaseModel):

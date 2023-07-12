@@ -32,7 +32,7 @@ def _raster_to_png_b64(
 
     assert raster.mode == "L"
 
-    ret = Image.new(size=(width, height), mode=raster.mode)
+    ret = Image.new(size=(int(width), int(height)), mode=raster.mode)
 
     ret.paste(raster, box=enveloping_box)
 
@@ -61,7 +61,7 @@ def get_annotation(
     if annotation.box is not None:
         geojson = db.scalar(ST_AsGeoJSON(annotation.box))
         bbox = schemas.BoundingBox(
-            polygon=schemas.GeoJSON(geojson=geojson).polygon(),
+            polygon=schemas.GeoJSON(geojson=geojson).polygon().boundary,
             box=None,
         )
 

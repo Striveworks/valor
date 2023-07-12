@@ -213,6 +213,25 @@ def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
 
 
 @app.get(
+    "/models/{model_name}/datum/{uid}/prediction",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_prediction(
+    model_name: str, uid: str, db: Session = Depends(get_db)
+) -> schemas.Prediction | None:
+    try:
+        return crud.get_prediction(
+            db, model_name=model_name, datum_uid=uid, 
+        )
+    except (
+        exceptions.ImageDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
     "/models/{model_name}/labels",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],

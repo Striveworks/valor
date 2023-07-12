@@ -12,7 +12,7 @@ from .model import (
     get_prediction,
 )
 from .metadata import get_metadata
-from .label import get_labels
+from .label import get_labels, get_scored_labels
 
 __all__ = [
     "get_annotation",
@@ -24,4 +24,5 @@ __all__ = [
     "get_prediction",
     "get_metadata",
     "get_labels",
+    "get_scored_labels",
 ]

@@ -17,7 +17,7 @@ class GeographicFeature(BaseModel):
 
 class MetaDatum(BaseModel):
     name: str
-    value: int | float | str | GeographicFeature
+    value: float | str | GeographicFeature
 
     @validator("name")
     def check_name(cls, v):

@@ -31,3 +31,27 @@ def get_labels(
             )
             for label in labels
         ]
+    
+
+def get_scored_labels(
+    db: Session,
+    annotation: models.Annotation,
+):
+    scored_labels = (
+        db.query(models.Prediction.score, models.Label.key, models.Label.value)
+        .select_from(models.Prediction)
+        .join(models.Label, models.Label.id == models.Prediction.label_id)
+        .where(models.Prediction.annotation_id == annotation.id)
+        .all()
+    )
+    
+    return [
+        schemas.ScoredLabel(
+            label=schemas.Label(
+                key=label[1],
+                value=label[2],
+            ),
+            score=label[0],
+        )
+        for label in scored_labels
+    ]
