@@ -34,11 +34,7 @@ def create_groundtruths(
     db: Session,
     groundtruth: schemas.GroundTruth,
 ):
-    # 
-    dataset = core.get_dataset(db, groundtruth.dataset_name)
-    core.create_groundtruth(
-        db, dataset=dataset, groundtruth=groundtruth
-    )
+    core.create_groundtruth(db, groundtruth=groundtruth)
 
 
 @state.create
@@ -46,5 +42,4 @@ def create_predictions(
     db: Session,
     prediction: schemas.Prediction,
 ):
-    model = core.get_model(db, prediction.model_name)
-    core.create_prediction(db, prediction=prediction, model=model)
+    core.create_prediction(db, prediction=prediction)

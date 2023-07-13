@@ -7,14 +7,17 @@ from velour_api.backend import models
 from velour_api.backend.core.metadata import create_metadata
 
 
-def wkt_multipolygon_to_raster(data: schemas.MultiPolygon):
+# @TODO: Might introduce multipolygon type to annotations, convert to raster at evaluation time.
+def _wkt_multipolygon_to_raster(data: schemas.MultiPolygon):
     return select(
         text(f"ST_AsRaster(ST_GeomFromText('{data.wkt}'), {1.0}, {1.0})")
     )
 
 
 def create_annotation(
-    db: Session, annotation: schemas.Annotation, commit: bool = True
+    db: Session,
+    annotation: schemas.Annotation, 
+    commit: bool = True
 ) -> models.Annotation:
 
     box = None
@@ -26,7 +29,7 @@ def create_annotation(
     elif isinstance(annotation.polygon, schemas.Polygon):
         polygon = annotation.polygon.wkt
     elif isinstance(annotation.multipolygon, schemas.MultiPolygon):
-        raster = wkt_multipolygon_to_raster(annotation.multipolygon.wkt)
+        raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt)
     elif isinstance(annotation.raster, schemas.Raster):
         raster = annotation.raster.mask_bytes
     # @TODO: Add more annotation types

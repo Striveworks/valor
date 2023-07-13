@@ -151,16 +151,16 @@ def get_dataset_images(
 
 
 @app.get(
-    "/datasets/{dataset_name}/datum/{uid}/groundtruth",
+    "/datum/{uid}/groundtruth",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
 def get_groundtruth(
-    dataset_name: str, uid: str, db: Session = Depends(get_db)
+    uid: str, db: Session = Depends(get_db)
 ) -> schemas.GroundTruth | None:
     try:
         return crud.get_groundtruth(
-            db, dataset_name=dataset_name, datum_uid=uid, 
+            db, datum_uid=uid, 
         )
     except (
         exceptions.ImageDoesNotExistError,
@@ -209,20 +209,23 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 
 @app.delete("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
 def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
-    return crud.delete_model(db, model_name)
+    try:
+        return crud.delete_model(db, model_name)
+    except exceptions.ModelDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
-    "/models/{model_name}/datum/{uid}/prediction",
+    "/datum/{uid}/prediction",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
 def get_prediction(
-    model_name: str, uid: str, db: Session = Depends(get_db)
+    uid: str, db: Session = Depends(get_db)
 ) -> schemas.Prediction | None:
     try:
         return crud.get_prediction(
-            db, model_name=model_name, datum_uid=uid, 
+            db, datum_uid=uid, 
         )
     except (
         exceptions.ImageDoesNotExistError,

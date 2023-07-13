@@ -22,22 +22,20 @@ def get_dataset(
 
 def get_datum(
     db: Session,
-    datum: models.Datum = None,
-    datum_uid: str = None, 
+    uid: str,
 ) -> models.Datum:
-    if datum:
-        datum_uid = datum.uid
     return (
         db.query(models.Datum)
-        .where(models.Datum.uid == datum_uid)
+        .where(models.Datum.uid == uid)
         .one_or_none()
     )
 
 
-def create_datum(
+# @FIXME: Mixed type input is non-ideal
+def _create_datum(
     db: Session,
-    datum: schemas.Datum,
     dataset: models.Dataset,
+    datum: schemas.Datum,
 ) -> models.Datum:
     
     # Create datum
@@ -57,9 +55,9 @@ def create_datum(
 def create_groundtruth(
     db: Session,
     groundtruth: schemas.GroundTruth,
-    dataset: models.Dataset,
 ):
-    datum = create_datum(db, datum=groundtruth.datum, dataset=dataset)
+    dataset = get_dataset(db, name=groundtruth.dataset_name)
+    datum = _create_datum(db, dataset=dataset, datum=groundtruth.datum)
     
     rows = []
     for gt in groundtruth.annotations:

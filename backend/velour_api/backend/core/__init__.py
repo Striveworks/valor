@@ -22,4 +22,5 @@ __all__ = [
     "create_prediction",
     "get_model",
     "delete_model",
+    "get_metadata",
 ]

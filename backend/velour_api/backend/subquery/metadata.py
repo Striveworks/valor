@@ -60,6 +60,7 @@ def get_metadatum(
                 .one_or_none()
             )
         
+    # Sanity check
     if metadatum is None:
         return None
 
@@ -69,9 +70,8 @@ def get_metadatum(
     elif metadatum.numeric_value is not None:
         value = metadatum.numeric_value
     elif metadatum.geo is not None:
-        # @TODO
+        # @TODO: Add geographic type
         raise NotImplemented
-        # value = metadatum.geo
     else:
         return None
 
@@ -123,4 +123,3 @@ def get_metadata(
         get_metadatum(db, metadatum)
         for metadatum in metadata
     ]
-

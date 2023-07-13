@@ -1,6 +1,3 @@
-from .annotation import (
-    get_annotation,
-)
 from .dataset import (
     get_datasets,
     get_dataset,
@@ -11,8 +8,11 @@ from .model import (
     get_model,
     get_prediction,
 )
-from .metadata import get_metadata
-from .label import get_labels, get_scored_labels
+from .label import (
+    get_labels,
+    get_label_distribution,
+    get_scored_label_distribution,
+)
 
 __all__ = [
     "get_annotation",
@@ -24,5 +24,6 @@ __all__ = [
     "get_prediction",
     "get_metadata",
     "get_labels",
-    "get_scored_labels",
+    "get_label_distribution",
+    "get_scored_label_distribution",
 ]

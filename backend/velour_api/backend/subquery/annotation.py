@@ -10,9 +10,9 @@ from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
 
 from velour_api import schemas
 from velour_api.backend import models
-from velour_api.backend.query.metadata import get_metadata, get_metadatum
+from velour_api.backend.subquery.metadata import get_metadata, get_metadatum
 
-
+# @TODO: Clean up??
 def _get_bounding_box_of_raster(
     db: Session, raster: RasterElement
 ) -> tuple[int, int, int, int]:
@@ -24,6 +24,7 @@ def _get_bounding_box_of_raster(
     return min(xs), min(ys), max(xs), max(ys)
 
 
+# @TODO: Clean up??
 def _raster_to_png_b64(
     db: Session, raster: RasterElement, height: float, width: float
 ) -> str:
@@ -51,16 +52,22 @@ def get_annotation(
     db: Session,
     datum: models.Datum,
     annotation: models.Annotation,
-):
-    bbox = None
-    polygon = None
-    multipolygon = None
-    raster = None
+) -> schemas.Annotation:
+    
+    # Initialize
+    retval = schemas.Annotation(
+        task_type=annotation.task_type,
+        metadata=get_metadata(db, annotation=annotation),
+        bounding_box=None,
+        polygon=None,
+        multipolygon=None,
+        raster=None,
+    )
 
     # Bounding Box
     if annotation.box is not None:
         geojson = db.scalar(ST_AsGeoJSON(annotation.box))
-        bbox = schemas.BoundingBox(
+        retval.bounding_box = schemas.BoundingBox(
             polygon=schemas.GeoJSON(geojson=geojson).polygon().boundary,
             box=None,
         )
@@ -68,23 +75,16 @@ def get_annotation(
     # Polygon
     if annotation.polygon is not None:
         geojson = db.scalar(ST_AsGeoJSON(annotation.polygon)) if annotation.polygon is not None else None
-        polygon = schemas.GeoJSON(geojson=geojson).polygon()
+        retval.polygon = schemas.GeoJSON(geojson=geojson).polygon()
 
     # Raster
     if annotation.raster is not None:
         height = get_metadatum(db, datum=datum, name="height").value
         width = get_metadatum(db, datum=datum, name="width").value
-        raster = schemas.Raster(
+        retval.raster = schemas.Raster(
             mask=_raster_to_png_b64(db, raster=annotation.raster, height=height, width=width),
             height=height,
             width=width,
         )
 
-    return schemas.Annotation(
-        task_type=annotation.task_type,
-        metadata=get_metadata(db, annotation=annotation),
-        bounding_box=bbox,
-        polygon=polygon,
-        multipolygon=multipolygon,
-        raster=raster,
-    )
+    return retval

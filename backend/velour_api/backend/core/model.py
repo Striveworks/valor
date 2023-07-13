@@ -24,10 +24,11 @@ def get_model(
 def create_prediction(
     db: Session,
     prediction: schemas.Prediction,
-    model: models.Model,
 ):
+    model = get_model(db, name=prediction.model_name)
+    datum = get_datum(db, prediction.datum.uid)
+    
     rows = []
-    datum = get_datum(db, prediction.datum)
     for pd in prediction.annotations:
         annotation = create_annotation(db, pd.annotation)
         rows += [

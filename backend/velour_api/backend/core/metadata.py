@@ -1,7 +1,7 @@
 import json
 
 from geoalchemy2.functions import ST_GeomFromGeoJSON
-from sqlalchemy import insert, select, text
+from sqlalchemy import insert, select, text, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -36,7 +36,7 @@ def create_metadatum(
     # Check value type
     if isinstance(metadatum.value, str):
         mapping["string_value"] = metadatum.value
-    elif isinstance(metadatum.value, float | int):
+    elif isinstance(metadatum.value, float):
         mapping["numeric_value"] = metadatum.value
     elif isinstance(metadatum.value, schemas.GeographicFeature):
         mapping["geo"] = ST_GeomFromGeoJSON(
@@ -87,8 +87,3 @@ def create_metadata(
         db.rollback()
         raise exceptions.MetaDatumAlreadyExistsError
     return rows
-
-
-def query_by_metadata(metadata: list[schemas.MetaDatum]):
-    """Returns a subquery of ground truth / predictions that meet the criteria."""
-    pass
