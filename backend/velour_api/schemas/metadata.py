@@ -15,6 +15,7 @@ class GeographicFeature(BaseModel):
         return v
 
 
+# @TODO: GeographicFeat == GEoJSON
 class MetaDatum(BaseModel):
     name: str
     value: float | str | GeographicFeature

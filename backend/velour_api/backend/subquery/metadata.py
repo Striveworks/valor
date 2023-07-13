@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from velour_api import schemas
-from velour_api.backend import models, core
+from velour_api.backend import models
 
 def get_metadatum(
     db: Session, 

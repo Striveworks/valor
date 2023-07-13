@@ -256,7 +256,7 @@ class Dataset:
         self, uid: str
     ) -> schemas.GroundTruth:
         resp = self.client._requests_get_rel_host(
-            f"datum/{uid}/groundtruth"
+            f"datasets/{self.info.name}/datum/{uid}/groundtruth"
         ).json()
         return schemas.GroundTruth(**resp)
 
@@ -414,7 +414,7 @@ class Model:
         self, uid: str
     ) -> schemas.Prediction:
         resp = self.client._requests_get_rel_host(
-            f"datum/{uid}/prediction"
+            f"models/{self.info.name}/datum/{uid}/prediction"
         ).json()
         return schemas.Prediction(**resp)
 

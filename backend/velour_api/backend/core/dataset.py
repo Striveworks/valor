@@ -110,8 +110,10 @@ def delete_dataset(
     db: Session,
     name: str,
 ):
-    try:
-        ds = db.query(models.Dataset).where(models.Dataset.name == name).one_or_none()
+    ds = db.query(models.Dataset).where(models.Dataset.name == name).one_or_none()
+    if not ds:
+        raise exceptions.DatasetDoesNotExistError(name)
+    try:        
         db.delete(ds)
         db.commit()
     except IntegrityError:

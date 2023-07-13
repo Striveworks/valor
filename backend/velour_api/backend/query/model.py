@@ -2,11 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from velour_api import schemas
-from velour_api.backend import models, core
-
-from velour_api.backend.subquery.metadata import get_metadata
-from velour_api.backend.subquery.annotation import get_annotation
-from velour_api.backend.subquery.label import get_scored_labels
+from velour_api.backend import models, core, subquery
 
 
 def get_model(
@@ -101,12 +97,12 @@ def get_prediction(
         model_name=model.name,
         datum=schemas.Datum(
             uid=datum.uid,
-            metadata=get_metadata(db, datum=datum),
+            metadata=subquery.get_metadata(db, datum=datum),
         ),
         annotations=[
             schemas.PredictedAnnotation(
-                annotation=get_annotation(db, datum=datum, annotation=annotation),
-                scored_labels=get_scored_labels(db, annotation=annotation),
+                annotation=subquery.get_annotation(db, datum=datum, annotation=annotation),
+                scored_labels=subquery.get_scored_labels(db, annotation=annotation),
             )
             for annotation in annotations
         ],

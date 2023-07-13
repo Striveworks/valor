@@ -151,16 +151,16 @@ def get_dataset_images(
 
 
 @app.get(
-    "/datum/{uid}/groundtruth",
+    "/datasets/{dataset_name}/datum/{uid}/groundtruth",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
 def get_groundtruth(
-    uid: str, db: Session = Depends(get_db)
+    dataset_name: str, uid: str, db: Session = Depends(get_db)
 ) -> schemas.GroundTruth | None:
     try:
         return crud.get_groundtruth(
-            db, datum_uid=uid, 
+            db, dataset_name=dataset_name, datum_uid=uid, 
         )
     except (
         exceptions.ImageDoesNotExistError,
@@ -216,16 +216,16 @@ def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
 
 
 @app.get(
-    "/datum/{uid}/prediction",
+    "/models/{model_name}/datum/{uid}/prediction",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
 def get_prediction(
-    uid: str, db: Session = Depends(get_db)
+    model_name: str, uid: str, db: Session = Depends(get_db)
 ) -> schemas.Prediction | None:
     try:
         return crud.get_prediction(
-            db, datum_uid=uid, 
+            db, model_name=model_name, datum_uid=uid, 
         )
     except (
         exceptions.ImageDoesNotExistError,

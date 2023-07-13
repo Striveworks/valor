@@ -80,8 +80,11 @@ def delete_model(
     db: Session,
     name: str,
 ):
-    try:
-        db.delete(models.Model).where(models.Model.name == name)
+    md = db.query(models.Model).where(models.Model.name == name).one_or_none()
+    if not md:
+        raise exceptions.ModelDoesNotExistError(name)
+    try:        
+        db.delete(md)
         db.commit()
     except IntegrityError:
         db.rollback()

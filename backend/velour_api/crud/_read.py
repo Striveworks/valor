@@ -5,9 +5,19 @@ from velour_api.backend import core, state, query
 
 
 @state.read
-def get_labels(db: Session):
+def get_labels(
+    db: Session, 
+    key: str = None,
+    dataset_name: str = None,
+    model_name: str = None,    
+):
     """Retrieves all existing labels."""
-    pass
+    return query.get_labels(
+        db,
+        key=key,
+        dataset_name=dataset_name,
+        model_name=model_name,
+    )
 
 
 # Datasets
@@ -23,8 +33,8 @@ def get_dataset(db: Session, name: str) -> schemas.Dataset:
 
 
 @state.read
-def get_groundtruth(db: Session, datum_uid: str) -> schemas.GroundTruth:
-    return query.get_groundtruth(db, datum_uid=datum_uid)
+def get_groundtruth(db: Session, dataset_name: str, datum_uid: str) -> schemas.GroundTruth:
+    return query.get_groundtruth(db, dataset_name=dataset_name, datum_uid=datum_uid)
 
 
 @state.read

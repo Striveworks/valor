@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from velour_api import schemas
-from velour_api.backend import models, core
+from velour_api.backend import models
 
 
 def get_labels(
@@ -39,18 +39,37 @@ def get_labels(
             # @TODO
             raise NotImplementedError
         elif annotation:
-            # @TODO
-            raise NotImplementedError
+            gt_search = (
+                db.query(models.GroundTruth.label_id)
+                .where(models.GroundTruth.annotation_id == annotation.id)
+                .distinct()
+            )
+            pd_search = (
+                db.query(models.Prediction.label_id)
+                .where(models.Prediction.annotation_id == annotation.id)
+                .distinct()
+            )
+            label_ids = (
+                gt_search.union(pd_search)
+                .distinct()
+                .subquery()
+            )
 
         labels = (
             db.query(models.Label)
             .where(models.Label.id.in_(label_ids))
-            .subquery()
+            .all()
         )
     else:
         labels = db.query(models.Label).subquery()
 
-    return labels
+    return [
+        schemas.Label(
+            key=label.key,
+            value=label.value,
+        )
+        for label in labels
+    ]
 
 
 def get_scored_labels(
