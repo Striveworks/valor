@@ -1,34 +1,34 @@
-from sqlalchemy.orm import Session
 from sqlalchemy import and_
+from sqlalchemy.orm import Session
 
 from velour_api import schemas
-from velour_api.backend import models, core, subquery
+from velour_api.backend import core, models, subquery
 
 
 def get_model(
     db: Session,
     name: str,
 ) -> schemas.Model:
-    
-    model = db.query(models.Model).where(models.Model.name == name).one_or_none()
+
+    model = (
+        db.query(models.Model).where(models.Model.name == name).one_or_none()
+    )
     if not model:
         return None
 
     metadata = []
-    for row in db.query(models.MetaDatum).where(models.MetaDatum.model_id == model.id).all():
+    for row in (
+        db.query(models.MetaDatum)
+        .where(models.MetaDatum.model_id == model.id)
+        .all()
+    ):
         if row.string_value:
             metadata.append(
-                schemas.MetaDatum(
-                    name=row.name,
-                    value=row.string_value
-                )
+                schemas.MetaDatum(name=row.name, value=row.string_value)
             )
         elif row.numeric_value:
             metadata.append(
-                schemas.MetaDatum(
-                    name=row.name,
-                    value=row.numeric_value
-                )
+                schemas.MetaDatum(name=row.name, value=row.numeric_value)
             )
         elif row.geo:
             metadata.append(
@@ -38,7 +38,11 @@ def get_model(
                 )
             )
         elif row.image_id:
-            if image_metadatum := db.query(models.ImageMetadata).where(models.ImageMetadata.id == row.image_id).one_or_none():
+            if (
+                image_metadatum := db.query(models.ImageMetadata)
+                .where(models.ImageMetadata.id == row.image_id)
+                .one_or_none()
+            ):
                 metadata.append(
                     schemas.MetaDatum(
                         name=row.name,
@@ -56,10 +60,7 @@ def get_model(
 def get_models(
     db: Session,
 ) -> list[schemas.Model]:
-    return [
-        get_model(db, name)
-        for name in db.query(models.Model.name).all()
-    ]
+    return [get_model(db, name) for name in db.query(models.Model.name).all()]
 
 
 def get_prediction(
@@ -67,29 +68,20 @@ def get_prediction(
     model_name: str,
     datum_uid: str,
 ) -> schemas.Prediction:
-    
+
     # Retrieve sql models
     model = core.get_model(db, model_name)
     datum = core.get_datum(db, datum_uid)
 
-    assert model
-    assert datum
-
     # Get annotations with metadata
-    annotation_ids = (
-        db.query(models.Prediction.annotation_id)
-        .where(
-            and_(
-                models.Prediction.datum_id == datum.id,
-                models.Prediction.model_id == model.id,
-            )
-        )
-        .distinct()
-        .subquery()
-    )
     annotations = (
         db.query(models.Annotation)
-        .where(models.Annotation.id.in_(annotation_ids))
+        .where(
+            and_(
+                models.Annotation.model_id == model.id,
+                models.Annotation.datum_id == datum.id,
+            )
+        )
         .all()
     )
 
@@ -101,8 +93,12 @@ def get_prediction(
         ),
         annotations=[
             schemas.PredictedAnnotation(
-                annotation=subquery.get_annotation(db, datum=datum, annotation=annotation),
-                scored_labels=subquery.get_scored_labels(db, annotation=annotation),
+                annotation=subquery.get_annotation(
+                    db, datum=datum, annotation=annotation
+                ),
+                scored_labels=subquery.get_scored_labels(
+                    db, annotation=annotation
+                ),
             )
             for annotation in annotations
         ],
@@ -114,7 +110,6 @@ def get_predictions(
     model_name: str,
 ) -> list[schemas.GroundTruth]:
 
-    dataset = core.get_model(db, model_name)
     datums = (
         db.query(models.Datum.uid)
         .join(models.Prediction, models.Prediction.datum_id == models.Datum.id)
@@ -125,6 +120,5 @@ def get_predictions(
     )
 
     return [
-        get_prediction(db, model_name, datum_uid[0])
-        for datum_uid in datums
+        get_prediction(db, model_name, datum_uid[0]) for datum_uid in datums
     ]

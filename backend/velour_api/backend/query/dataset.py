@@ -1,33 +1,36 @@
-from sqlalchemy.orm import Session
 from sqlalchemy import and_
+from sqlalchemy.orm import Session
 
 from velour_api import schemas
-from velour_api.backend import models, core, subquery
+from velour_api.backend import core, models, subquery
+
 
 def get_dataset(
     db: Session,
     name: str,
 ) -> schemas.Dataset:
 
-    dataset = db.query(models.Dataset).where(models.Dataset.name == name).one_or_none()
+    dataset = (
+        db.query(models.Dataset)
+        .where(models.Dataset.name == name)
+        .one_or_none()
+    )
     if not dataset:
         return None
 
     metadata = []
-    for row in db.query(models.MetaDatum).where(models.MetaDatum.dataset_id == dataset.id).all():
+    for row in (
+        db.query(models.MetaDatum)
+        .where(models.MetaDatum.dataset_id == dataset.id)
+        .all()
+    ):
         if row.string_value:
             metadata.append(
-                schemas.MetaDatum(
-                    name=row.name,
-                    value=row.string_value
-                )
+                schemas.MetaDatum(name=row.name, value=row.string_value)
             )
         elif row.numeric_value:
             metadata.append(
-                schemas.MetaDatum(
-                    name=row.name,
-                    value=row.numeric_value
-                )
+                schemas.MetaDatum(name=row.name, value=row.numeric_value)
             )
         elif row.geo:
             metadata.append(
@@ -37,7 +40,11 @@ def get_dataset(
                 )
             )
         elif row.image_id:
-            if image_metadatum := db.query(models.ImageMetadata).where(models.ImageMetadata.id == row.image_id).one_or_none():
+            if (
+                image_metadatum := db.query(models.ImageMetadata)
+                .where(models.ImageMetadata.id == row.image_id)
+                .one_or_none()
+            ):
                 metadata.append(
                     schemas.MetaDatum(
                         name=row.name,
@@ -56,8 +63,7 @@ def get_datasets(
     db: Session,
 ) -> list[schemas.Dataset]:
     return [
-        get_dataset(db, name)
-        for name in db.query(models.Dataset.name).all()
+        get_dataset(db, name) for name in db.query(models.Dataset.name).all()
     ]
 
 
@@ -66,27 +72,28 @@ def get_groundtruth(
     dataset_name: str,
     datum_uid: str,
 ) -> schemas.GroundTruth:
-    
+
     # Get dataset
     dataset = core.get_dataset(db, name=dataset_name)
-    
+
     # Get datum
     datum = core.get_datum(db, uid=datum_uid)
 
     # Validity check
     if dataset.id != datum.dataset_id:
-        raise ValueError(f"Datum '{datum_uid}' does not belong to dataset '{dataset_name}'.")
+        raise ValueError(
+            f"Datum '{datum_uid}' does not belong to dataset '{dataset_name}'."
+        )
 
     # Get annotations with metadata
-    annotation_ids = (
-        db.query(models.GroundTruth.annotation_id)
-        .where(models.GroundTruth.datum_id == datum.id)
-        .distinct()
-        .subquery()
-    )
     annotations = (
         db.query(models.Annotation)
-        .where(models.Annotation.id.in_(annotation_ids))
+        .where(
+            and_(
+                models.Annotation.datum_id == datum.id,
+                models.Annotation.model_id.is_(None),
+            )
+        )
         .all()
     )
 
@@ -99,7 +106,9 @@ def get_groundtruth(
         annotations=[
             schemas.GroundTruthAnnotation(
                 labels=subquery.get_labels(db, annotation=annotation),
-                annotation=subquery.get_annotation(db, datum=datum, annotation=annotation),
+                annotation=subquery.get_annotation(
+                    db, datum=datum, annotation=annotation
+                ),
             )
             for annotation in annotations
         ],
@@ -121,8 +130,4 @@ def get_groundtruths(
     else:
         datums = db.query(models.Datum.all())
 
-    return [
-        get_groundtruth(db, datum.uid)
-        for datum in datums
-    ]
-    
+    return [get_groundtruth(db, datum.uid) for datum in datums]

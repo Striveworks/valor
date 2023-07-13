@@ -1,4 +1,3 @@
-from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -19,40 +18,6 @@ def get_model(
     )
 
 
-def create_prediction(
-    db: Session,
-    prediction: schemas.Prediction,
-):
-    model = get_model(db, name=prediction.model_name)
-    datum = get_datum(db, prediction.datum.uid)
-
-    rows = []
-    for pd in prediction.annotations:
-        annotation = _create_annotation(
-            db,
-            annotation=pd.annotation,
-            datum=datum,
-            model=model,
-        )
-        rows += [
-            models.Prediction(
-                score=scored_label.score,
-                datum=datum,
-                model=model,
-                annotation=annotation,
-                label=create_label(db, scored_label.label),
-            )
-            for scored_label in pd.scored_labels
-        ]
-    try:
-        db.add_all(rows)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise exceptions.PredictionAlreadyExistsError
-    return rows
-
-
 def create_model(
     db: Session,
     model: schemas.Model,
@@ -63,7 +28,7 @@ def create_model(
         .where(models.Model.name == model.name)
         .one_or_none()
     ):
-        raise exceptions.DatasetAlreadyExistsError(model.name)
+        raise exceptions.ModelAlreadyExistsError(model.name)
 
     # Create model
     row = models.Model(name=model.name)
@@ -92,3 +57,35 @@ def delete_model(
     except IntegrityError:
         db.rollback()
         raise RuntimeError
+
+
+def create_prediction(
+    db: Session,
+    prediction: schemas.Prediction,
+):
+    model = get_model(db, name=prediction.model_name)
+    datum = get_datum(db, prediction.datum.uid)
+
+    rows = []
+    for pd in prediction.annotations:
+        annotation = _create_annotation(
+            db,
+            annotation=pd.annotation,
+            datum=datum,
+            model=model,
+        )
+        rows += [
+            models.Prediction(
+                annotation=annotation,
+                label=create_label(db, scored_label.label),
+                score=scored_label.score,
+            )
+            for scored_label in pd.scored_labels
+        ]
+    try:
+        db.add_all(rows)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.PredictionAlreadyExistsError
+    return rows

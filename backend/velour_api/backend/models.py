@@ -1,5 +1,3 @@
-from typing import Optional
-
 from geoalchemy2 import Geography, Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
 from sqlalchemy import CheckConstraint, Enum, ForeignKey, UniqueConstraint
@@ -8,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from velour_api.backend.database import Base
-from velour_api.enums import DatumTypes, TaskType
+from velour_api.enums import TaskType
 
 
 class Label(Base):
@@ -58,7 +56,7 @@ class GroundTruth(Base):
     annotation: Mapped["Annotation"] = relationship(
         back_populates="groundtruths"
     )
-    label: Mapped["Label"] = relationship(cascade="all, delete")
+    label: Mapped["Label"] = relationship(back_populates="groundtruths")
 
 
 class Prediction(Base):
@@ -77,7 +75,7 @@ class Prediction(Base):
     annotation: Mapped["Annotation"] = relationship(
         back_populates="predictions"
     )
-    label: Mapped["Label"] = relationship(cascade="all, delete")
+    label: Mapped["Label"] = relationship(back_populates="predictions")
 
 
 class MetaDatum(Base):
@@ -126,9 +124,11 @@ class Annotation(Base):
         ForeignKey("datum.id"), nullable=False
     )
     model_id: Mapped[int] = mapped_column(
-        ForeignKey("model.id"), nullable=False
+        ForeignKey("model.id"), nullable=True
     )
-    task_type: Mapped[str] = mapped_column(nullable=True)
+    task_type: Mapped[str] = mapped_column(nullable=False)
+
+    # Annotation
     box = mapped_column(Geometry("POLYGON"), nullable=True)
     polygon = mapped_column(Geometry("POLYGON"), nullable=True)
     multipolygon = mapped_column(Geometry("MULTIPOLYGON"), nullable=True)
@@ -143,9 +143,7 @@ class Annotation(Base):
     predictions: Mapped[list["Prediction"]] = relationship(
         cascade="all, delete-orphan"
     )
-    metadatums: Mapped[list["MetaDatum"]] = relationship(
-        cascade="all, delete-orphan"
-    )
+    metadatums: Mapped[list["MetaDatum"]] = relationship(cascade="all, delete")
 
 
 class Datum(Base):
@@ -163,9 +161,7 @@ class Datum(Base):
     annotations: Mapped[list[Annotation]] = relationship(
         cascade="all, delete-orphan"
     )
-    metadatums: Mapped[list["MetaDatum"]] = relationship(
-        cascade="all, delete-orphan"
-    )
+    metadatums: Mapped[list["MetaDatum"]] = relationship(cascade="all, delete")
 
     __table_args__ = (UniqueConstraint("dataset_id", "uid"),)
 
@@ -182,9 +178,7 @@ class Model(Base):
     annotations: Mapped[list[Annotation]] = relationship(
         cascade="all, delete-orphan"
     )
-    metadatums: Mapped[list["MetaDatum"]] = relationship(
-        cascade="all, delete-orphan"
-    )
+    metadatums: Mapped[list["MetaDatum"]] = relationship(cascade="all, delete")
     evaluation_settings = relationship(
         "EvaluationSettings", cascade="all, delete"
     )
@@ -198,9 +192,7 @@ class Dataset(Base):
 
     # relationships
     datums: Mapped[list[Datum]] = relationship(cascade="all, delete")
-    metadatums: Mapped[list[MetaDatum]] = relationship(
-        cascade="all, delete-orphan"
-    )
+    metadatums: Mapped[list[MetaDatum]] = relationship(cascade="all, delete")
     evaluation_settings = relationship(
         "EvaluationSettings", cascade="all, delete", back_populates="dataset"
     )

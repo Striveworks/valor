@@ -1,5 +1,4 @@
-from sqlalchemy import and_
-from sqlalchemy.exc import IntegrityError, InvalidRequestError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
@@ -66,7 +65,6 @@ def create_groundtruth(
         )
         rows += [
             models.GroundTruth(
-                datum=datum,
                 annotation=annotation,
                 label=label,
             )

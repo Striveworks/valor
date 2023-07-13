@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from velour_api import schemas
@@ -12,56 +13,72 @@ def get_labels(
     datum: models.Datum = None,
     annotation: models.Annotation = None,
 ) -> list[schemas.Label]:
-    
+
+    # Filter by object
+    if dataset:
+        label_ids = (
+            select(models.GroundTruth.label_id)
+            .join(
+                models.Annotation,
+                models.Annotation.id == models.GroundTruth.annotation_id,
+            )
+            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+            .where(models.Datum.dataset_id == dataset.id)
+        )
+    elif model:
+        label_ids = (
+            select(models.Prediction.label_id)
+            .join(
+                models.Annotation,
+                models.Annotation.id == models.Prediction.annotation_id,
+            )
+            .where(models.Annotation.model_id == model.id)
+        )
+    elif datum:
+        gt_search = (
+            select(models.GroundTruth.label_id)
+            .join(
+                models.Annotation,
+                models.Annotation.id == models.GroundTruth.annotation_id,
+            )
+            .where(models.Annotation.datum_id == datum.id)
+        )
+        pd_search = (
+            select(models.Prediction.label_id)
+            .join(
+                models.Annotation,
+                models.Annotation.id == models.Prediction.annotation_id,
+            )
+            .where(models.Annotation.datum_id == datum.id)
+        )
+        label_ids = gt_search.union(pd_search)
+    elif annotation:
+        gt_search = select(models.GroundTruth.label_id).where(
+            models.GroundTruth.annotation_id == annotation.id
+        )
+        pd_search = select(models.Prediction.label_id).where(
+            models.Prediction.annotation_id == annotation.id
+        )
+        label_ids = gt_search.union(pd_search)
+    else:
+        label_ids = select(models.Label.id)
+
+    # Filter by label key
     if key:
         labels = (
             db.query(models.Label)
             .where(models.Label.key == key)
-            .subquery()
-        )
-    elif dataset or model or datum or annotation:
-        if dataset:
-            label_ids = (
-                db.query(models.GroundTruth.label_id)
-                .join(models.Datum, models.Datum.id == models.GroundTruth.datum_id)
-                .where(models.Datum.dataset_id == dataset.id)
-                .distinct()
-                .subquery()
-            )
-        elif model:
-            label_ids = (
-                db.query(models.Prediction.label_id)
-                .where(models.Prediction.model_id == model.id)
-                .distinct()
-                .subquery()
-            )
-        elif datum:
-            # @TODO
-            raise NotImplementedError
-        elif annotation:
-            gt_search = (
-                db.query(models.GroundTruth.label_id)
-                .where(models.GroundTruth.annotation_id == annotation.id)
-                .distinct()
-            )
-            pd_search = (
-                db.query(models.Prediction.label_id)
-                .where(models.Prediction.annotation_id == annotation.id)
-                .distinct()
-            )
-            label_ids = (
-                gt_search.union(pd_search)
-                .distinct()
-                .subquery()
-            )
-
-        labels = (
-            db.query(models.Label)
-            .where(models.Label.id.in_(label_ids))
+            .filter(models.Label.id.in_(label_ids))
+            .distinct()
             .all()
         )
     else:
-        labels = db.query(models.Label).subquery()
+        labels = (
+            db.query(models.Label)
+            .filter(models.Label.id.in_(label_ids))
+            .distinct()
+            .all()
+        )
 
     return [
         schemas.Label(
@@ -83,7 +100,7 @@ def get_scored_labels(
         .where(models.Prediction.annotation_id == annotation.id)
         .all()
     )
-    
+
     return [
         schemas.ScoredLabel(
             label=schemas.Label(
