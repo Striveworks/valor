@@ -1,10 +1,10 @@
+from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.annotation import create_annotation
+from velour_api.backend.core.annotation import _create_annotation
 from velour_api.backend.core.label import create_labels
 from velour_api.backend.core.metadata import create_metadata
 
@@ -24,23 +24,21 @@ def get_datum(
     db: Session,
     uid: str,
 ) -> models.Datum:
-    return (
-        db.query(models.Datum)
-        .where(models.Datum.uid == uid)
-        .one_or_none()
-    )
+    return db.query(models.Datum).where(models.Datum.uid == uid).one_or_none()
 
 
-# @FIXME: Mixed type input is non-ideal
 def _create_datum(
     db: Session,
     dataset: models.Dataset,
     datum: schemas.Datum,
 ) -> models.Datum:
-    
+
     # Create datum
     try:
-        row = models.Datum(uid=datum.uid, dataset_id=dataset.id)
+        row = models.Datum(
+            uid=datum.uid,
+            dataset_id=dataset.id,
+        )
         db.add(row)
         db.commit()
     except IntegrityError:
@@ -58,10 +56,14 @@ def create_groundtruth(
 ):
     dataset = get_dataset(db, name=groundtruth.dataset_name)
     datum = _create_datum(db, dataset=dataset, datum=groundtruth.datum)
-    
+
     rows = []
     for gt in groundtruth.annotations:
-        annotation = create_annotation(db, gt.annotation)
+        annotation = _create_annotation(
+            db,
+            gt.annotation,
+            datum=datum,
+        )
         rows += [
             models.GroundTruth(
                 datum=datum,
@@ -110,10 +112,14 @@ def delete_dataset(
     db: Session,
     name: str,
 ):
-    ds = db.query(models.Dataset).where(models.Dataset.name == name).one_or_none()
+    ds = (
+        db.query(models.Dataset)
+        .where(models.Dataset.name == name)
+        .one_or_none()
+    )
     if not ds:
         raise exceptions.DatasetDoesNotExistError(name)
-    try:        
+    try:
         db.delete(ds)
         db.commit()
     except IntegrityError:

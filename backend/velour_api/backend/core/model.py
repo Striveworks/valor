@@ -4,10 +4,10 @@ from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
+from velour_api.backend.core.annotation import _create_annotation
 from velour_api.backend.core.dataset import get_datum
-from velour_api.backend.core.annotation import create_annotation
 from velour_api.backend.core.label import create_label
-from velour_api.backend.core.metadata import create_metadata 
+from velour_api.backend.core.metadata import create_metadata
 
 
 def get_model(
@@ -15,9 +15,7 @@ def get_model(
     name: str,
 ) -> models.Model:
     return (
-        db.query(models.Model)
-        .where(models.Model.name == name)
-        .one_or_none()
+        db.query(models.Model).where(models.Model.name == name).one_or_none()
     )
 
 
@@ -27,10 +25,15 @@ def create_prediction(
 ):
     model = get_model(db, name=prediction.model_name)
     datum = get_datum(db, prediction.datum.uid)
-    
+
     rows = []
     for pd in prediction.annotations:
-        annotation = create_annotation(db, pd.annotation)
+        annotation = _create_annotation(
+            db,
+            annotation=pd.annotation,
+            datum=datum,
+            model=model,
+        )
         rows += [
             models.Prediction(
                 score=scored_label.score,
@@ -83,7 +86,7 @@ def delete_model(
     md = db.query(models.Model).where(models.Model.name == name).one_or_none()
     if not md:
         raise exceptions.ModelDoesNotExistError(name)
-    try:        
+    try:
         db.delete(md)
         db.commit()
     except IntegrityError:
