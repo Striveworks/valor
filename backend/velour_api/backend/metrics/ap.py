@@ -99,7 +99,8 @@ def function_find_ranked_pairs():
     """SQL create function to find ranked ground truth/prediction pairs."""
 
     return """
-    CREATE OR REPLACE FUNCTION find_ranked_pairs() RETURNS TABLE (label_id int, gt_id int, pd_id int, score float, iou float) AS
+    CREATE OR REPLACE FUNCTION find_ranked_pairs()
+    RETURNS TABLE (label_id int, gt_id int, pd_id int, score float, iou float) AS
     $BODY$
         DECLARE
             row record;

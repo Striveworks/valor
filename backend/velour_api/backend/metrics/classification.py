@@ -4,7 +4,7 @@ from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
 
 from velour_api import crud, enums, schemas
-from velour_api.backend import models
+from velour_api.backend import core, models
 
 
 def binary_roc_auc(
@@ -12,7 +12,7 @@ def binary_roc_auc(
     dataset_name: str,
     model_name: str,
     label: schemas.Label,
-    metadatum_id: int = None,
+    metadatum: schemas.MetaDatum = None,
 ) -> float:
     """Computes the binary ROC AUC score of a dataset and label
 
@@ -33,36 +33,77 @@ def binary_roc_auc(
     float
         the binary ROC AUC score
     """
+
+    # Retrieve sql objects
+    dataset = core.get_dataset(db, dataset_name)
+    model = core.get_model(db, model_name)
+
     # query to get the datum_ids and label values of groundtruths that have the given label key
     gts_query = (
         select(
-            models.GroundTruthClassification.datum_id.label("datum_id"),
+            models.Annotation.datum_id.label("datum_id"),
             models.Label.value.label("label_value"),
         )
-        .join(models.Datum)
-        .join(models.Dataset, models.Dataset.name == dataset_name)
+        .select_from(models.Annotation)
+        .join(models.Datum, models.Datum.dataset_id == dataset.id)
         .join(
-            models.Label,
+            models.GroundTruth,
+            models.GroundTruth.annotation_id == models.Annotation.id,
+        )
+        .join(models.Label, models.Label.id == models.GroundTruth.label_id)
+        .where(
             and_(
+                models.Annotation.task_type == "classification",
+                models.Annotation.model_id.is_(None),
                 models.Label.key == label.key,
-                models.GroundTruthClassification.label_id == models.Label.id,
             ),
         )
     )
-
-    if metadatum_id is not None:
-        gts_query = (
-            gts_query.join(models.DatumMetadatumLink)
-            .join(models.Metadatum)
-            .where(
-                and_(
-                    models.Metadatum.id == metadatum_id,
-                    models.Datum.id == models.DatumMetadatumLink.datum_id,
-                )
+    if metadatum:
+        gts_query = gts_query.join(
+            models.MetaDatum, models.MetaDatum.datum_id == "datum_id"
+        ).where(
+            and_(
+                models.MetaDatum.name == metadatum.name,
+                models.MetaDatum.value == metadatum.value,
             )
         )
-
     gts_query = gts_query.subquery()
+
+    # get the prediction scores for the given label (key and value)
+    preds_query = (
+        select(
+            models.Annotation.datum_id.label("datum_id"),
+            models.Prediction.score.label("score"),
+            models.Label.value.label("label_value"),
+        )
+        .select_from(models.Annotation)
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(models.Model, models.Model.name == model_name)
+        .join(
+            models.Prediction,
+            models.Prediction.annotation_id == models.Annotation.id,
+        )
+        .join(models.Label, models.Label.id == models.Prediction.label_id)
+        .where(
+            and_(
+                models.Datum.dataset_id == dataset.id,
+                models.Annotation.model_id == model.id,
+                models.Label.key == label.key,
+                models.Label.value == label.value,
+            ),
+        )
+    )
+    if metadatum:
+        preds_query = preds_query.join(
+            models.Metadatum, models.MetaDatum.datum_id == "datum_id"
+        ).where(
+            and_(
+                models.Metadatum.name == metadatum.name,
+                models.Metadatum.value == metadatum.value,
+            )
+        )
+    preds_query = preds_query.subquery()
 
     # number of groundtruth labels that match the given label value
     n_pos = db.scalar(
@@ -75,40 +116,6 @@ def binary_roc_auc(
 
     if n - n_pos == 0:
         return 1.0
-
-    # get the prediction scores for the given label (key and value)
-    preds_query = (
-        select(
-            models.PredictedClassification.datum_id.label("datum_id"),
-            models.PredictedClassification.score.label("score"),
-            models.Label.value.label("label_value"),
-        )
-        .join(models.Datum)
-        .join(models.Dataset, models.Dataset.name == dataset_name)
-        .join(models.Model, models.Model.name == model_name)
-        .join(
-            models.Label,
-            and_(
-                models.Label.key == label.key,
-                models.Label.value == label.value,
-                models.PredictedClassification.label_id == models.Label.id,
-            ),
-        )
-    )
-
-    if metadatum_id is not None:
-        preds_query = (
-            preds_query.join(models.DatumMetadatumLink)
-            .join(models.Metadatum)
-            .where(
-                and_(
-                    models.Metadatum.id == metadatum_id,
-                    models.Datum.id == models.DatumMetadatumLink.datum_id,
-                )
-            )
-        )
-
-    preds_query = preds_query.subquery()
 
     # true positive rates
     tprs = (
