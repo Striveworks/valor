@@ -1,68 +1,65 @@
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
 
 from velour_api import schemas
-from velour_api.backend import models
+from velour_api.backend import core, models
+
 
 def get_metadatum(
-    db: Session, 
+    db: Session,
     metadatum: models.MetaDatum = None,
     dataset: models.Dataset = None,
     model: models.Model = None,
     datum: models.Datum = None,
-    annotation: models.Datum = None,
+    annotation: models.Annotation = None,
     name: str = None,
 ) -> schemas.MetaDatum | None:
-    
-    if not metadatum and name is not None:
-        if dataset:
+
+    if not metadatum:
+        if dataset and name:
             metadatum = (
                 db.query(models.MetaDatum)
                 .where(
                     and_(
                         models.MetaDatum.dataset_id == dataset.id,
                         models.MetaDatum.name == name,
-                    )   
+                    )
                 )
                 .one_or_none()
             )
-        elif model:
+        elif model and name:
             metadatum = (
                 db.query(models.MetaDatum)
                 .where(
                     and_(
                         models.MetaDatum.model_id == model.id,
                         models.MetaDatum.name == name,
-                    )   
+                    )
                 )
                 .one_or_none()
             )
-        elif datum:
+        elif datum and name:
             metadatum = (
                 db.query(models.MetaDatum)
                 .where(
                     and_(
                         models.MetaDatum.datum_id == datum.id,
                         models.MetaDatum.name == name,
-                    )   
+                    )
                 )
                 .one_or_none()
             )
-        elif annotation:
+        elif annotation and name:
             metadatum = (
                 db.query(models.MetaDatum)
                 .where(
                     and_(
                         models.MetaDatum.annotation_id == annotation.id,
                         models.MetaDatum.name == name,
-                    )   
+                    )
                 )
                 .one_or_none()
             )
-        
-    # Sanity check
-    if metadatum is None:
-        return None
 
     # Parsing
     if metadatum.string_value is not None:
@@ -87,39 +84,18 @@ def get_metadata(
     model: models.Model = None,
     datum: models.Datum = None,
     annotation: models.Annotation = None,
+    name: str = None,
+    value_type: type = None,
 ) -> list[schemas.MetaDatum]:
-    
-    # @TODO: Make sure that only one is defined?
 
-    if dataset:
-        metadata = (
-            db.query(models.MetaDatum)
-            .where(models.MetaDatum.dataset_id == dataset.id)
-            .all()
-        )
-    elif model:
-        metadata = (
-            db.query(models.MetaDatum)
-            .where(models.MetaDatum.model_id == model.id)
-            .all()
-        )
-    elif datum:
-        metadata = (
-            db.query(models.MetaDatum)
-            .where(models.MetaDatum.datum_id == datum.id)
-            .all()
-        )
-    elif annotation:
-        metadata = (
-            db.query(models.MetaDatum)
-            .where(models.MetaDatum.annotation_id == annotation.id)
-            .all()
-        )
-    else:
-        raise RuntimeError
+    metadata = core.get_metadata(
+        db,
+        dataset=dataset,
+        model=model,
+        datum=datum,
+        annotation=annotation,
+        name=name,
+        value_type=value_type,
+    )
 
-
-    return [
-        get_metadatum(db, metadatum)
-        for metadatum in metadata
-    ]
+    return [get_metadatum(db, metadatum=metadatum) for metadatum in metadata]

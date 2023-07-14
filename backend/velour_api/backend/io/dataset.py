@@ -1,8 +1,34 @@
-from sqlalchemy import and_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import schemas
-from velour_api.backend import core, models, subquery
+from velour_api import exceptions, schemas
+from velour_api.backend import core, models
+
+
+def create_dataset(
+    db: Session,
+    dataset: schemas.Dataset,
+):
+    # Check if dataset already exists.
+    if (
+        db.query(models.Dataset)
+        .where(models.Dataset.name == dataset.name)
+        .one_or_none()
+    ):
+        raise exceptions.DatasetAlreadyExistsError(dataset.name)
+
+    # Create dataset
+    try:
+        row = models.Dataset(name=dataset.name)
+        db.add(row)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.DatasetAlreadyExistsError(dataset.name)
+
+    # Create metadata
+    core.create_metadata(db, dataset.metadata, dataset=row)
+    return row
 
 
 def get_dataset(
@@ -67,67 +93,20 @@ def get_datasets(
     ]
 
 
-def get_groundtruth(
+def delete_dataset(
     db: Session,
-    dataset_name: str,
-    datum_uid: str,
-) -> schemas.GroundTruth:
-
-    # Get dataset
-    dataset = core.get_dataset(db, name=dataset_name)
-
-    # Get datum
-    datum = core.get_datum(db, uid=datum_uid)
-
-    # Validity check
-    if dataset.id != datum.dataset_id:
-        raise ValueError(
-            f"Datum '{datum_uid}' does not belong to dataset '{dataset_name}'."
-        )
-
-    # Get annotations with metadata
-    annotations = (
-        db.query(models.Annotation)
-        .where(
-            and_(
-                models.Annotation.datum_id == datum.id,
-                models.Annotation.model_id.is_(None),
-            )
-        )
-        .all()
+    name: str,
+):
+    ds = (
+        db.query(models.Dataset)
+        .where(models.Dataset.name == name)
+        .one_or_none()
     )
-
-    return schemas.GroundTruth(
-        dataset_name=dataset.name,
-        datum=schemas.Datum(
-            uid=datum.uid,
-            metadata=subquery.get_metadata(db, datum=datum),
-        ),
-        annotations=[
-            schemas.GroundTruthAnnotation(
-                labels=subquery.get_labels(db, annotation=annotation),
-                annotation=subquery.get_annotation(
-                    db, datum=datum, annotation=annotation
-                ),
-            )
-            for annotation in annotations
-        ],
-    )
-
-
-def get_groundtruths(
-    db: Session,
-    dataset_name: str = None,
-) -> list[schemas.GroundTruth]:
-
-    if dataset_name:
-        dataset = core.get_dataset(db, dataset_name)
-        datums = (
-            db.query(models.Datum)
-            .where(models.Datum.dataset_id == dataset.id)
-            .all()
-        )
-    else:
-        datums = db.query(models.Datum.all())
-
-    return [get_groundtruth(db, datum.uid) for datum in datums]
+    if not ds:
+        raise exceptions.DatasetDoesNotExistError(name)
+    try:
+        db.delete(ds)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise RuntimeError

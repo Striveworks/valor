@@ -1,9 +1,7 @@
 import re
-from typing import Optional
 
 from pydantic import BaseModel, validator
 
-from velour_api.enums import AnnotationType, DatumTypes, TaskType
 from velour_api.schemas.geometry import (
     BoundingBox,
     MultiPolygon,

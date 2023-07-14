@@ -1,26 +1,21 @@
-from .dataset import (
-    create_dataset, 
-    create_groundtruth,
-    get_dataset,
-    get_datum,
-    delete_dataset,
-)
-from .model import (
-    create_model,
-    create_prediction, 
-    get_model,
-    delete_model
-)
+from .annotation import create_annotation, create_annotations
+from .dataset import create_datum, get_dataset, get_datum
+from .label import create_label, create_labels, get_label, get_labels
+from .metadata import create_metadata, create_metadatum, get_metadata
+from .model import get_model
 
 __all__ = [
-    "create_dataset",
-    "create_groundtruth",
+    "create_annotation",
+    "create_annotations",
+    "create_datum",
     "get_dataset",
     "get_datum",
-    "delete_dataset",
-    "create_model",
-    "create_prediction",
     "get_model",
-    "delete_model",
+    "create_metadata",
+    "create_metadatum",
     "get_metadata",
+    "create_label",
+    "create_labels",
+    "get_label",
+    "get_labels",
 ]

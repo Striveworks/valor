@@ -146,7 +146,6 @@ class _BaseConfusionMatrix(BaseModel):
     label_key: str
     entries: list[ConfusionMatrixEntry]
     group: MetaDatum = None
-    group_id: int = None
 
 
 class ConfusionMatrix(_BaseConfusionMatrix, extra=Extra.allow):

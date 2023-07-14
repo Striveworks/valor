@@ -4,7 +4,7 @@ from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
 
 from velour_api import crud, enums, schemas
-from velour_api.backend import core, models
+from velour_api.backend import core, models, query
 
 
 def binary_roc_auc(
@@ -191,16 +191,7 @@ def roc_auc(
         ROC AUC
     """
 
-    labels = [
-        label
-        for label in crud.get_labels_from_dataset(
-            db,
-            dataset_name,
-            metadatum_id,
-            of_type=[enums.AnnotationType.CLASSIFICATION],
-        )
-        if label.key == label_key
-    ]
+    labels = query.get_labels(db, key=label_key, dataset_name=dataset_name)
     if len(labels) == 0:
         raise RuntimeError(
             f"The label key '{label_key}' is not a classification label in the dataset {dataset_name}."
@@ -351,25 +342,22 @@ def compute_clf_metrics(
         | schemas.F1Metric
     ],
 ]:
-    gt_labels = crud.get_labels_from_dataset(
+    labels = query.get_labels(
         db,
-        dataset_name,
-        metadatum_id=None,
-        of_type=[enums.AnnotationType.CLASSIFICATION],
-    )
-    pred_labels = crud.get_labels_from_model(
-        db,
+        dataset_name=dataset_name,
         model_name=model_name,
-        metadatum_id=None,
-        of_type=[enums.AnnotationType.CLASSIFICATION],
+        task_type=[enums.TaskType.CLASSIFICATION],
     )
-    labels = gt_labels + pred_labels
     unique_label_keys = set([label.key for label in labels])
 
-    if group_by is not None:
-        metadata_ids = crud.get_string_metadata_ids(
-            db, dataset_name, metadata_name=group_by
-        )
+    dataset = core.get_dataset(db, dataset_name)
+    if group_by:
+        metadata_ids = [
+            metadatum.id
+            for metadatum in core.get_metadata(
+                db, dataset=dataset, name=group_by
+            )
+        ]
 
     confusion_matrices, metrics = [], []
 
@@ -403,7 +391,7 @@ def confusion_matrix_at_label_key(
     dataset_name: str,
     model_name: str,
     label_key: str,
-    metadatum_id: int = None,
+    metadatum: schemas.MetaDatum = None,
 ) -> schemas.ConfusionMatrix | None:
     """Computes the confusion matrix at a label_key.
 
@@ -425,77 +413,80 @@ def confusion_matrix_at_label_key(
         that have both a groundtruth and prediction with label key `label_key`. Otherwise
         returns the confusion matrix
     """
+
+    dataset = core.get_dataset(db, dataset_name)
+    model = core.get_model(db, model_name)
+
     # this query get's the max score for each Datum for the given label key
     q1 = (
         select(
-            func.max(PredictedClassification.score).label("max_score"),
-            PredictedClassification.datum_id,
+            func.max(models.Prediction.score).label("max_score"),
+            models.Datum.id.label("datum_id"),
         )
-        .join(models.Label)
-        .join(models.Datum)
-        .join(models.Dataset)
-        .join(models.Model)
-    )
-    if metadatum_id is None:
-        q1 = q1.where(
+        .select_from(models.Annotation)
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(
+            models.Prediction,
+            models.Prediction.annotation_id == models.Annotation.id,
+        )
+        .join(models.Label, models.Label.id == models.Prediction.label_id)
+        .where(
             and_(
+                models.Annotation.model_id == model.id,
+                models.Datum.dataset_id == dataset.id,
                 models.Label.key == label_key,
-                models.Dataset.name == dataset_name,
-                models.Model.id == PredictedClassification.model_id,
-                models.Model.name == model_name,
             )
         )
-    else:
-        q1 = (
-            q1.join(models.DatumMetadatumLink)
-            .join(models.Metadatum)
-            .where(
-                and_(
-                    models.Label.key == label_key,
-                    models.Dataset.name == dataset_name,
-                    models.Model.id == PredictedClassification.model_id,
-                    models.Model.name == model_name,
-                    models.Metadatum.id == metadatum_id,
-                    models.Datum.id == models.DatumMetadatumLink.datum_id,
-                )
-            )
+    )
+    if metadatum:
+        string_value = (
+            metadatum.value if isinstance(metadatum.value, str) else None
         )
-
-    q1 = q1.group_by(PredictedClassification.datum_id)
+        numeric_value = (
+            metadatum.value if isinstance(metadatum.value, float) else None
+        )
+        q1 = q1.join(
+            models.Metadatum, models.MetaDatum.datum_id == models.Datum.id
+        ).where(
+            models.MetaDatum.name == metadatum.name,
+            models.MetaDatum.string_value == string_value,
+            models.MetaDatum.numeric_value == numeric_value,
+        )
+    q1 = q1.group_by(models.Datum.id)
     subquery = q1.alias()
 
     # used for the edge case where the max confidence appears twice
     # the result of this query is all of the hard predictions
     q2 = (
-        select(func.min(models.PredictedClassification.id).label("min_id"))
+        select(func.min(models.Prediction.id).label("min_id"))
         .join(models.Label)
         .join(
             subquery,
             and_(
-                PredictedClassification.score == subquery.c.max_score,
-                PredictedClassification.datum_id == subquery.c.datum_id,
+                models.Prediction.score == subquery.c.max_score,
+                models.Datum.id == subquery.c.datum_id,
             ),
         )
-        .group_by(models.PredictedClassification.datum_id)
+        .group_by(models.Datum.id)
     )
     min_id_query = q2.alias()
 
     q3 = (
         select(
             models.Label.value.label("pred_label_value"),
-            models.PredictedClassification.datum_id.label("datum_id"),
+            models.Datum.id.label("datum_id"),
         )
-        .join(models.PredictedClassification)
+        .join(models.Prediction)
         .join(
             subquery,
             and_(
-                PredictedClassification.score == subquery.c.max_score,
-                PredictedClassification.datum_id == subquery.c.datum_id,
+                models.Prediction.score == subquery.c.max_score,
+                models.Datum.id == subquery.c.datum_id,
             ),
         )
         .join(
             min_id_query,
-            PredictedClassification.id == min_id_query.c.min_id,
+            models.Prediction.id == min_id_query.c.min_id,
         )
     )
     hard_preds_query = q3.alias()
@@ -505,14 +496,17 @@ def confusion_matrix_at_label_key(
     total_query = (
         select(b, func.count())
         .join(
-            models.GroundTruthClassification,
-            models.GroundTruthClassification.datum_id
-            == hard_preds_query.c.datum_id,
+            models.Annotation,
+            models.Annotation.datum_id == hard_preds_query.c.datum_id,
+        )
+        .join(
+            models.GroundTruth,
+            models.GroundTruth.annotation_id == models.Annotation.id,
         )
         .join(
             models.Label,
             and_(
-                models.Label.id == models.GroundTruthClassification.label_id,
+                models.Label.id == models.GroundTruth.label_id,
                 models.Label.key == label_key,
             ),
         )
@@ -534,7 +528,7 @@ def confusion_matrix_at_label_key(
             )
             for r in res
         ],
-        group_id=metadatum_id,
+        group=metadatum,
     )
 
 

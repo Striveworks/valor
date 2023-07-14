@@ -1,11 +1,6 @@
 from enum import Enum
 
 
-# class DataType(Enum):
-#     IMAGE = ("image",)
-#     TABULAR = "tabular"
-
-
 class DataType(Enum):
     IMAGE = "Image"
     TABULAR = "Tabular"

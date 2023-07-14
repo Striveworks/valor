@@ -1,34 +1,59 @@
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
-from velour_api import schemas
-from velour_api.backend import core, subquery
+from velour_api import enums, schemas
+from velour_api.backend import core, models
 
 
 def get_labels(
     db: Session,
     key: str = None,
-    dataset_name: str = None,
-    model_name: str = None,
+    task_type: list[enums.TaskType] = [],
+    dataset: models.Dataset = None,
+    model: models.Model = None,
+    datum: models.Datum = None,
+    annotation: models.Annotation = None,
 ) -> list[schemas.Label]:
+    """Returns a list of labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
 
-    dataset = core.get_dataset(db, dataset_name) if dataset_name else None
-    model = core.get_model(db, model_name) if model_name else None
-
-    return subquery.get_labels(
+    labels = core.get_labels(
         db,
         key=key,
+        task_type=task_type,
         dataset=dataset,
         model=model,
+        datum=datum,
+        annotation=annotation,
     )
 
+    return [
+        schemas.Label(
+            key=label.key,
+            value=label.value,
+        )
+        for label in labels
+    ]
 
-def get_label_distribution(
+
+def get_scored_labels(
     db: Session,
-) -> list[schemas.LabelDistribution]:
-    return []
+    annotation: models.Annotation,
+) -> list[schemas.ScoredLabel]:
+    scored_labels = (
+        db.query(models.Prediction.score, models.Label.key, models.Label.value)
+        .select_from(models.Prediction)
+        .join(models.Label, models.Label.id == models.Prediction.label_id)
+        .where(models.Prediction.annotation_id == annotation.id)
+        .all()
+    )
 
-
-def get_scored_label_distribution(
-    db: Session,
-) -> list[schemas.ScoredLabelDistribution]:
-    return []
+    return [
+        schemas.ScoredLabel(
+            label=schemas.Label(
+                key=label[1],
+                value=label[2],
+            ),
+            score=label[0],
+        )
+        for label in scored_labels
+    ]

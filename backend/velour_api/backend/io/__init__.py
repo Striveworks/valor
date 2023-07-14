@@ -1,23 +1,13 @@
-from .io import (
-    create_dataset,
-    create_groundtruth,
-    create_model,
-    create_prediction,
-    delete_dataset,
-    delete_model,
-    get_dataset,
-    get_datasets,
-    get_groundtruth,
-    get_groundtruths,
+from .dataset import create_dataset, delete_dataset, get_dataset, get_datasets
+from .groundtruth import create_groundtruth, get_groundtruth, get_groundtruths
+from .label import (
     get_label_distribution,
     get_labels,
-    get_metadata,
-    get_model,
-    get_models,
-    get_prediction,
-    get_predictions,
     get_scored_label_distribution,
 )
+from .metadata import get_metadata
+from .model import create_model, delete_model, get_model, get_models
+from .prediction import create_prediction, get_prediction, get_predictions
 
 __all__ = [
     "create_dataset",

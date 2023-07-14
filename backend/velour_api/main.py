@@ -1,9 +1,16 @@
 import os
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+    status,
+)
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -29,6 +36,7 @@ logger.info(
     f"API started {'WITHOUT' if auth_settings.no_auth else 'WITH'} authentication"
 )
 
+
 def get_db():
     db = database.make_session()
     try:
@@ -39,8 +47,7 @@ def get_db():
 
 @app.post("/groundtruth", dependencies=[Depends(token_auth_scheme)])
 def create_groundtruths(
-    gt: schemas.GroundTruth, 
-    db: Session = Depends(get_db)
+    gt: schemas.GroundTruth, db: Session = Depends(get_db)
 ):
     try:
         crud.create_groundtruths(db=db, groundtruth=gt)
@@ -72,9 +79,7 @@ def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
 @app.post(
     "/datasets", status_code=201, dependencies=[Depends(token_auth_scheme)]
 )
-def create_dataset(
-    dataset: schemas.Dataset, db: Session = Depends(get_db)
-):
+def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     try:
         crud.create_dataset(db=db, dataset=dataset)
     except exceptions.DatasetAlreadyExistsError as e:
@@ -160,7 +165,9 @@ def get_groundtruth(
 ) -> schemas.GroundTruth | None:
     try:
         return crud.get_groundtruth(
-            db, dataset_name=dataset_name, datum_uid=uid, 
+            db,
+            dataset_name=dataset_name,
+            datum_uid=uid,
         )
     except (
         exceptions.ImageDoesNotExistError,
@@ -225,7 +232,9 @@ def get_prediction(
 ) -> schemas.Prediction | None:
     try:
         return crud.get_prediction(
-            db, model_name=model_name, datum_uid=uid, 
+            db,
+            model_name=model_name,
+            datum_uid=uid,
         )
     except (
         exceptions.ImageDoesNotExistError,
@@ -353,15 +362,13 @@ def create_clf_metrics(
             ignored_pred_keys,
         ) = crud.validate_create_clf_metrics(db, request_info=data)
 
-        job, wrapped_fn = jobs.wrap_metric_computation(crud.create_clf_metrics)
+        crud.create_clf_metrics()
 
         cm_resp = schemas.CreateClfMetricsResponse(
             missing_pred_keys=missing_pred_keys,
             ignored_pred_keys=ignored_pred_keys,
-            job_id=job.uid,
+            job_id=0,
         )
-
-        background_tasks.add_task(wrapped_fn, db=db, request_info=data)
 
         return cm_resp
     except ValueError as e:

@@ -1,45 +1,34 @@
 from .auth import User
 from .core import (
-    GroundTruthAnnotation,
-    PredictedAnnotation,
     Annotation,
     Dataset,
     Datum,
     GroundTruth,
+    GroundTruthAnnotation,
     Label,
     Model,
+    PredictedAnnotation,
     Prediction,
     ScoredLabel,
 )
-from .geometry import (
-    BoundingBox, 
-    MultiPolygon, 
-    Polygon, 
-    Raster,
-    GeoJSON,
-)
-from .metadata import GeographicFeature, MetaDatum
-from .info import (
-    LabelDistribution,
-    ScoredLabelDistribution,
-)
+from .geometry import BoundingBox, GeoJSON, MultiPolygon, Polygon, Raster
+from .info import LabelDistribution, ScoredLabelDistribution
+from .jobs import Job
+from .metadata import MetaDatum
 from .metrics import (
-    EvaluationSettings,
     AccuracyMetric,
+    APRequest,
+    ClfMetricsRequest,
     ConfusionMatrix,
+    ConfusionMatrixResponse,
+    CreateAPMetricsResponse,
+    CreateClfMetricsResponse,
+    EvaluationSettings,
     F1Metric,
+    Metric,
     PrecisionMetric,
     RecallMetric,
     ROCAUCMetric,
-    Metric,
-    ConfusionMatrixResponse,
-    APRequest,
-    CreateAPMetricsResponse,
-    ClfMetricsRequest,
-    CreateClfMetricsResponse,
-)
-from .jobs import (
-    Job,
 )
 
 __all__ = [
@@ -61,7 +50,6 @@ __all__ = [
     "Polygon",
     "Raster",
     "MetaDatum",
-    "GeographicFeature",
     "EvaluationSettings",
     "Metric",
     "AccuracyMetric",

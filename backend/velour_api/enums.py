@@ -1,29 +1,28 @@
 from enum import Enum
 
 
-class TaskType(Enum):
-    BBOX_OBJECT_DETECTION = "Bounding Box Object Detection"
-    POLY_OBJECT_DETECTION = "Polygon Object Detection"
-    INSTANCE_SEGMENTATION = "Instance Segmentation"
-    CLASSIFICATION = "Classification"
-    SEMANTIC_SEGMENTATION = "Semantic Segmentation"
-
-
-class JobStatus(Enum):
-    PENDING = "Pending"
-    PROCESSING = "Processing"
-    FAILED = "Failed"
-    DONE = "Done"
-
-
-class DatumTypes(Enum):
-    IMAGE = "Image"
-    TABULAR = "Tabular"
+class DataType(Enum):
+    IMAGE = "image"
+    TABULAR = "tabular"
 
 
 class AnnotationType(Enum):
-    CLASSIFICATION = "classification"
-    BBOX = "bbox"
+    NONE = "none"
+    BOX = "box"
     POLYGON = "polygon"
+    MULTIPOLYGON = "multipolygon"
     RASTER = "raster"
-    UNDEFINED = "undefined"
+
+
+class TaskType(str, Enum):
+    CLASSIFICATION = "classification"
+    DETECTION = "detection"
+    INSTANCE_SEGMENTATION = "instance_segmentation"
+    SEMANTIC_SEGMENTATION = "semantic_segmentation"
+
+
+class JobStatus(Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    FAILED = "failed"
+    DONE = "done"

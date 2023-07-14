@@ -14,7 +14,7 @@ def _wkt_multipolygon_to_raster(data: schemas.MultiPolygon):
     )
 
 
-def _create_annotation(
+def create_annotation(
     db: Session,
     annotation: schemas.Annotation,
     datum: models.Datum,
@@ -56,14 +56,14 @@ def _create_annotation(
     return row
 
 
-def _create_annotations(
+def create_annotations(
     db: Session,
     annotations: list[schemas.Annotation],
     datum: models.Datum,
     model: models.Model = None,
 ) -> list[models.Annotation]:
     rows = [
-        _create_annotation(
+        create_annotation(
             db,
             annotation=annotation,
             datum=datum,

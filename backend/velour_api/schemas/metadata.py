@@ -1,24 +1,11 @@
-import json
 from pydantic import BaseModel, validator
 
-
-class GeographicFeature(BaseModel):
-    geography: dict
-
-    @validator("geography")
-    def check_value(cls, v):
-        if not isinstance(v, dict):
-            raise ValueError
-        else:
-            # TODO: add more validation that the dict is valid geoJSON?
-            json.dumps(v)
-        return v
+from velour_api.schemas.geometry import GeoJSON
 
 
-# @TODO: GeographicFeat == GEoJSON
 class MetaDatum(BaseModel):
     name: str
-    value: float | str | GeographicFeature
+    value: float | str | GeoJSON
 
     @validator("name")
     def check_name(cls, v):
@@ -26,3 +13,14 @@ class MetaDatum(BaseModel):
             raise ValueError
         return v
 
+    @property
+    def string_value(self) -> str | None:
+        if isinstance(self.value, str):
+            return self.value
+        return None
+
+    @property
+    def numeric_value(self) -> float | None:
+        if isinstance(self.value, float):
+            return self.value
+        return None
