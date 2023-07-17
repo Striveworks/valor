@@ -12,15 +12,20 @@ class MetaDatum(BaseModel):
         if not isinstance(v, str):
             raise ValueError
         return v
-
+    
     @property
     def string_value(self) -> str | None:
         if isinstance(self.value, str):
             return self.value
         return None
-
+    
     @property
     def numeric_value(self) -> float | None:
         if isinstance(self.value, float):
             return self.value
         return None
+    
+    # @property
+    # def geo(self) -> 
+
+

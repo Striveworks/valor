@@ -17,9 +17,11 @@ class GeographicFeature:
                     f"if a dict, `region` must be valid GeoJSON but got {self.region}"
                 )
 
+
 def _validate_href(v: str):
     if not (v.startswith("http://") or v.startswith("https://")):
         raise ValueError("`href` must start with http:// or https://")
+
 
 @dataclass
 class Metadatum:

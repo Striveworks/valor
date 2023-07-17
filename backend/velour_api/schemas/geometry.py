@@ -314,15 +314,15 @@ class GeoJSON(BaseModel):
                 for subpolygon in values["coordinates"]:
                     for coord in subpolygon:
                         assert len(coord) == 2
-                        assert isinstance(coord[0], float)
-                        assert isinstance(coord[1], float)
+                        assert isinstance(coord[0], float | int)
+                        assert isinstance(coord[1], float | int)
             elif values["geometry_type"] == "MultiPolygon":
                 for polygon in values["coordinates"]:
                     for subpolygon in polygon:
                         for coord in polygon:
                             assert len(coord) == 2
-                            assert isinstance(coord[0], float)
-                            assert isinstance(coord[1], float)
+                            assert isinstance(coord[0], float | int)
+                            assert isinstance(coord[1], float | int)
         except:
             raise ValueError
         return values
@@ -332,7 +332,7 @@ class GeoJSON(BaseModel):
         data = json.loads(geojson)
         assert "type" in data
         assert "coordinates" in data
-        cls(geometry_type=data["type"], coordinates=data["coordinates"])
+        return cls(geometry_type=data["type"], coordinates=data["coordinates"])
 
     def polygon(self) -> Polygon | None:
         if self.geometry_type != "Polygon":
