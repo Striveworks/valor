@@ -320,22 +320,17 @@ def create_ap_metrics(
     db: Session = Depends(get_db),
 ) -> schemas.CreateAPMetricsResponse:
     try:
-        (
-            missing_pred_labels,
-            ignored_pred_labels,
-        ) = crud.validate_create_ap_metrics(db, request_info=data)
+        # (
+        #     missing_pred_labels,
+        #     ignored_pred_labels,
+        # ) = crud.validate_create_ap_metrics(db, request_info=data)
 
-        job, wrapped_fn = jobs.wrap_metric_computation(crud.create_ap_metrics)
+        crud.create_ap_metrics(db, data)
+
         cm_resp = schemas.CreateAPMetricsResponse(
-            missing_pred_labels=missing_pred_labels,
-            ignored_pred_labels=ignored_pred_labels,
-            job_id=job.uid,
-        )
-
-        background_tasks.add_task(
-            wrapped_fn,
-            db=db,
-            request_info=data,
+            missing_pred_labels=[],#missing_pred_labels,
+            ignored_pred_labels=[],#ignored_pred_labels,
+            job_id=0,
         )
 
         return cm_resp
@@ -357,16 +352,16 @@ def create_clf_metrics(
     db: Session = Depends(get_db),
 ) -> schemas.CreateClfMetricsResponse:
     try:
-        (
-            missing_pred_keys,
-            ignored_pred_keys,
-        ) = crud.validate_create_clf_metrics(db, request_info=data)
+        # (
+        #     missing_pred_keys,
+        #     ignored_pred_keys,
+        # ) = crud.validate_create_clf_metrics(db, request_info=data)
 
-        crud.create_clf_metrics()
+        crud.create_clf_metrics(db, data)
 
         cm_resp = schemas.CreateClfMetricsResponse(
-            missing_pred_keys=missing_pred_keys,
-            ignored_pred_keys=ignored_pred_keys,
+            missing_pred_keys=[],#missing_pred_keys,
+            ignored_pred_keys=[],#ignored_pred_keys,
             job_id=0,
         )
 

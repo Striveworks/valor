@@ -5,6 +5,22 @@ from velour_api import enums, schemas
 from velour_api.backend import core, models
 
 
+def get_label(
+    db: Session,
+    label: schemas.Label
+) -> models.Label | None:
+    return (
+        db.query(models.Label)
+        .where(
+            and_(
+                models.Label.key == label.key,
+                models.Label.value == label.value,
+            )
+        )
+        .one_or_none()
+    )
+
+
 def get_labels(
     db: Session,
     key: str = None,

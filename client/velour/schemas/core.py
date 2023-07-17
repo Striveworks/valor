@@ -6,12 +6,7 @@ from typing import List, Optional, Tuple, Union
 import numpy as np
 
 from velour import enums
-from velour.schemas.geometry import (
-    BoundingBox,
-    MultiPolygon,
-    Polygon,
-    Raster,
-)
+from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import Metadatum
 
 
@@ -20,7 +15,7 @@ class Dataset:
     name: str
     id: int = None
     metadata: List[Metadatum] = field(default_factory=list)
-    
+
 
 @dataclass
 class Model:
@@ -48,7 +43,7 @@ class Datum:
 class Annotation:
     task_type: enums.TaskType
     metadata: List[Metadatum] = field(default_factory=list)
-    
+
     # geometric types
     bounding_box: BoundingBox = None
     polygon: Polygon = None
@@ -103,7 +98,7 @@ class ScoredLabel:
 
     def __hash__(self) -> int:
         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
-    
+
 
 @dataclass
 class LabelDistribution:

@@ -38,7 +38,7 @@ def join_labels(
 def join_tables(
     gt_subquery: str,
     pd_subquery: str,
-    datatype: AnnotationType = AnnotationType.BBOX,
+    datatype: AnnotationType = AnnotationType.BOX,
 ):
     """SQL query to join labeled table data."""
 
@@ -61,10 +61,10 @@ def join_tables(
     """
 
 
-def compute_iou(subquery: str, datatype: AnnotationType = AnnotationType.BBOX):
+def compute_iou(subquery: str, datatype: AnnotationType = AnnotationType.BOX):
     """SQL query to generate iou table from a joint table."""
 
-    if datatype == AnnotationType.BBOX or datatype == AnnotationType.BOUNDARY:
+    if datatype == AnnotationType.BOX or datatype == AnnotationType.POLYGON:
         return f"""
         SELECT
         datum_id,

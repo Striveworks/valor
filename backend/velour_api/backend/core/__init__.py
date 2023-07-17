@@ -3,6 +3,7 @@ from .dataset import create_datum, get_dataset, get_datum
 from .label import create_label, create_labels, get_label, get_labels
 from .metadata import create_metadata, create_metadatum, get_metadata
 from .model import get_model
+from .geometry import convert_geometry
 
 __all__ = [
     "create_annotation",
@@ -18,4 +19,5 @@ __all__ = [
     "create_labels",
     "get_label",
     "get_labels",
+    "convert_geometry", 
 ]

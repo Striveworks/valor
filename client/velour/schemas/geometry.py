@@ -90,9 +90,9 @@ class BoundingBox:
             polygon=BasicPolygon(
                 points=[
                     Point(x=xmin, y=ymin),
+                    Point(x=xmax, y=ymin),
                     Point(x=xmax, y=ymax),
                     Point(x=xmin, y=ymax),
-                    Point(x=xmax, y=ymin),
                 ]
             )
         )

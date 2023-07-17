@@ -17,6 +17,10 @@ from .jobs import Job
 from .metadata import MetaDatum
 from .metrics import (
     AccuracyMetric,
+    APMetric,
+    APMetricAveragedOverIOUs,
+    mAPMetric,
+    mAPMetricAveragedOverIOUs,
     APRequest,
     ClfMetricsRequest,
     ConfusionMatrix,
@@ -29,6 +33,7 @@ from .metrics import (
     PrecisionMetric,
     RecallMetric,
     ROCAUCMetric,
+    ConfusionMatrixEntry,
 )
 
 __all__ = [
@@ -59,10 +64,15 @@ __all__ = [
     "RecallMetric",
     "ROCAUCMetric",
     "ConfusionMatrixResponse",
+    "APMetric",
     "APRequest",
     "CreateAPMetricsResponse",
+    "APMetricAveragedOverIOUs",
     "ClfMetricsRequest",
     "CreateClfMetricsResponse",
     "Job",
     "GeoJSON",
+    "mAPMetric",
+    "mAPMetricAveragedOverIOUs",
+    "ConfusionMatrixEntry",
 ]

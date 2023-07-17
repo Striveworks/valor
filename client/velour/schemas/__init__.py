@@ -2,18 +2,26 @@ from .core import (
     Annotation,
     Dataset,
     Datum,
-    Model,
-    Info,
     GroundTruth,
     GroundTruthAnnotation,
-    PredictedAnnotation,
+    Info,
     Label,
+    LabelDistribution,
+    Model,
+    PredictedAnnotation,
     Prediction,
     ScoredLabel,
-    LabelDistribution,
     ScoredLabelDistribution,
 )
-from .geometry import Point, Box, BasicPolygon, BoundingBox, MultiPolygon, Polygon, Raster
+from .geometry import (
+    BasicPolygon,
+    BoundingBox,
+    Box,
+    MultiPolygon,
+    Point,
+    Polygon,
+    Raster,
+)
 from .metadata import GeographicFeature, Metadatum
 
 __all__ = [

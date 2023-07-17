@@ -30,7 +30,6 @@ from ._read import (
 # @MARK: SQL to SQL Conversion
 
 
-
 def convert_raster_to_polygons(
     tablename: str,
     dataset_id: int = None,
@@ -97,7 +96,7 @@ def convert_raster_to_bbox(
     subquery = f"""
     SELECT subquery.id AS id, is_instance, bbox, datum_id
     FROM(
-        
+
     )
     AS subquery
     CROSS JOIN {tablename}

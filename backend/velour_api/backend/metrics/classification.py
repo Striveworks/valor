@@ -168,7 +168,7 @@ def roc_auc(
     dataset_name: str,
     model_name: str,
     label_key: str,
-    metadatum_id: int = None,
+    metadatum: schemas.MetaDatum = None,
 ) -> float:
     """Computes the area under the ROC curve. Note that for the multi-class setting
     this does one-vs-rest AUC for each class and then averages those scores. This should give
@@ -191,7 +191,10 @@ def roc_auc(
         ROC AUC
     """
 
-    labels = query.get_labels(db, key=label_key, dataset_name=dataset_name)
+    dataset = core.get_dataset(db, dataset_name)
+    model = core.get_model(db, model_name)
+
+    labels = query.get_labels(db, key=label_key, dataset=dataset)
     if len(labels) == 0:
         raise RuntimeError(
             f"The label key '{label_key}' is not a classification label in the dataset {dataset_name}."
@@ -201,7 +204,7 @@ def roc_auc(
     label_count = 0
     for label in labels:
         bin_roc = binary_roc_auc(
-            db, dataset_name, model_name, label, metadatum_id
+            db, dataset_name, model_name, label, metadatum
         )
 
         if bin_roc is not None:
@@ -217,7 +220,7 @@ def get_confusion_matrix_and_metrics_at_label_key(
     model_name: str,
     label_key: str,
     labels: list[models.Label],
-    metadatum_id: int = None,
+    metadatum: schemas.MetaDatum = None,
 ) -> (
     tuple[
         schemas.ConfusionMatrix,
@@ -267,7 +270,7 @@ def get_confusion_matrix_and_metrics_at_label_key(
         dataset_name=dataset_name,
         model_name=model_name,
         label_key=label_key,
-        metadatum_id=metadatum_id,
+        metadatum=metadatum,
     )
 
     if confusion_matrix is None:
@@ -278,7 +281,7 @@ def get_confusion_matrix_and_metrics_at_label_key(
         schemas.AccuracyMetric(
             label_key=label_key,
             value=accuracy_from_cm(confusion_matrix),
-            group_id=confusion_matrix.group_id,
+            group=confusion_matrix.group,
         ),
         schemas.ROCAUCMetric(
             label_key=label_key,
@@ -287,9 +290,9 @@ def get_confusion_matrix_and_metrics_at_label_key(
                 dataset_name,
                 model_name,
                 label_key,
-                metadatum_id=metadatum_id,
+                metadatum=metadatum,
             ),
-            group_id=confusion_matrix.group_id,
+            group=confusion_matrix.group,
         ),
     ]
 
@@ -308,21 +311,21 @@ def get_confusion_matrix_and_metrics_at_label_key(
             schemas.PrecisionMetric(
                 label=pydantic_label,
                 value=precision,
-                group_id=confusion_matrix.group_id,
+                group=confusion_matrix.group,
             )
         )
         metrics.append(
             schemas.RecallMetric(
                 label=pydantic_label,
                 value=recall,
-                group_id=confusion_matrix.group_id,
+                group=confusion_matrix.group,
             )
         )
         metrics.append(
             schemas.F1Metric(
                 label=pydantic_label,
                 value=f1,
-                group_id=confusion_matrix.group_id,
+                group=confusion_matrix.group,
             )
         )
 
@@ -342,15 +345,16 @@ def compute_clf_metrics(
         | schemas.F1Metric
     ],
 ]:
+    dataset = core.get_dataset(db, dataset_name)
+    model = core.get_model(db, model_name)
     labels = query.get_labels(
         db,
-        dataset_name=dataset_name,
-        model_name=model_name,
+        dataset=dataset,
+        model=model,
         task_type=[enums.TaskType.CLASSIFICATION],
     )
     unique_label_keys = set([label.key for label in labels])
 
-    dataset = core.get_dataset(db, dataset_name)
     if group_by:
         metadata_ids = [
             metadatum.id
@@ -446,7 +450,7 @@ def confusion_matrix_at_label_key(
             metadatum.value if isinstance(metadatum.value, float) else None
         )
         q1 = q1.join(
-            models.Metadatum, models.MetaDatum.datum_id == models.Datum.id
+            models.MetaDatum, models.MetaDatum.datum_id == models.Datum.id
         ).where(
             models.MetaDatum.name == metadatum.name,
             models.MetaDatum.string_value == string_value,
@@ -460,6 +464,8 @@ def confusion_matrix_at_label_key(
     q2 = (
         select(func.min(models.Prediction.id).label("min_id"))
         .join(models.Label)
+        .join(models.Annotation, models.Annotation.id == models.Prediction.annotation_id)
+        .join(models.Datum, models.Annotation.datum_id == models.Datum.id)
         .join(
             subquery,
             and_(
@@ -477,6 +483,8 @@ def confusion_matrix_at_label_key(
             models.Datum.id.label("datum_id"),
         )
         .join(models.Prediction)
+        .join(models.Annotation, models.Annotation.id == models.Prediction.annotation_id)
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .join(
             subquery,
             and_(
@@ -550,8 +558,8 @@ def precision_and_recall_f1_from_confusion_matrix(
     n_preds = cm_matrix[:, class_index].sum()
     n_gts = cm_matrix[class_index, :].sum()
 
-    prec = true_positives / n_preds
-    recall = true_positives / n_gts
+    prec = true_positives / n_preds if n_preds else 0
+    recall = true_positives / n_gts if n_gts else 0
 
     f1_denom = prec + recall
     if f1_denom == 0:

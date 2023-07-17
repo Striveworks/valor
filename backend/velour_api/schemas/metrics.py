@@ -190,7 +190,6 @@ class AccuracyMetric(BaseModel):
     label_key: str
     value: float
     group: MetaDatum = None
-    group_id: int = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
@@ -198,7 +197,7 @@ class AccuracyMetric(BaseModel):
             "type": "Accuracy",
             "evaluation_settings_id": evaluation_settings_id,
             "parameters": {"label_key": self.label_key},
-            "group_id": self.group_id,
+            "group": self.group,
         }
 
 
@@ -206,7 +205,6 @@ class _PrecisionRecallF1Base(BaseModel):
     label: Label
     value: float | None
     group: MetaDatum = None
-    group_id: int = None
 
     @validator("value")
     def replace_nan_with_neg_1(cls, v):
@@ -220,7 +218,7 @@ class _PrecisionRecallF1Base(BaseModel):
             "label_id": label_id,
             "type": self.__type__,
             "evaluation_settings_id": evaluation_settings_id,
-            "group_id": self.group_id,
+            "group": self.group,
         }
 
 
@@ -240,7 +238,6 @@ class ROCAUCMetric(BaseModel):
     label_key: str
     value: float
     group: MetaDatum = None
-    group_id: int = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
@@ -248,5 +245,5 @@ class ROCAUCMetric(BaseModel):
             "type": "ROCAUC",
             "parameters": {"label_key": self.label_key},
             "evaluation_settings_id": evaluation_settings_id,
-            "group_id": self.group_id,
+            "group": self.group,
         }

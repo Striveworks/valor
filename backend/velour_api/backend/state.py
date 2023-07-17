@@ -29,4 +29,5 @@ def delete(fn: callable) -> callable:
 def background(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
         return fn(*args, **kwargs)
+
     return wrapper

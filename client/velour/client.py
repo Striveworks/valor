@@ -1,15 +1,14 @@
 import json
 import math
 import os
-
 from dataclasses import asdict
-from typing import Dict, List, Optional, Union, Any
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
 from tqdm.auto import tqdm
 
-from velour import schemas, enums
+from velour import enums, schemas
 from velour.metrics import Task
 
 
@@ -159,18 +158,17 @@ class Dataset:
         self.client = client
         self.info = info
         self._metadata = {
-            metadatum.name : metadatum.value
-            for metadatum in info.metadata
+            metadatum.name: metadatum.value for metadatum in info.metadata
         }
 
     @property
     def id(self):
         return self.info.id
-    
+
     @property
     def name(self):
         return self.info.name
-    
+
     @property
     def metadata(self) -> Dict[str, Any]:
         return self._metadata
@@ -178,7 +176,7 @@ class Dataset:
     @classmethod
     def create(
         cls,
-        client: Client, 
+        client: Client,
         name: str,
         href: Optional[str] = None,
         description: Optional[str] = None,
@@ -202,13 +200,10 @@ class Dataset:
                     value=description,
                 )
             )
-        resp = client._requests_post_rel_host(
-            "datasets",
-            json=asdict(ds)
-        )
+        resp = client._requests_post_rel_host("datasets", json=asdict(ds))
         # @TODO: Handle this response
 
-        # Retrive newly created dataset with its ID 
+        # Retrive newly created dataset with its ID
         return cls.get(client, name)
 
     @classmethod
@@ -230,12 +225,12 @@ class Dataset:
             client=client,
             info=info,
         )
-    
+
     @staticmethod
     def prune(client: Client, name: str):
         job_id = client._requests_delete_rel_host(f"datasets/{name}").json()
         return Job(client=client, job_id=job_id)
-   
+
     def add_metadatum(self, metadatum: schemas.Metadatum):
         # @TODO: Add endpoint to allow adding custom metadatums
         self.info.metadata.append(metadatum)
@@ -251,10 +246,8 @@ class Dataset:
             f"groundtruth",
             json=asdict(groundtruth),
         )
-    
-    def get_groundtruth(
-        self, uid: str
-    ) -> schemas.GroundTruth:
+
+    def get_groundtruth(self, uid: str) -> schemas.GroundTruth:
         resp = self.client._requests_get_rel_host(
             f"datasets/{self.info.name}/datum/{uid}/groundtruth"
         ).json()
@@ -267,13 +260,11 @@ class Dataset:
 
         return [
             schemas.LabelDistribution(
-                key=label["key"],
-                value=label["value"],
-                count=label["count"]
+                key=label["key"], value=label["value"], count=label["count"]
             )
             for label in labels
         ]
-    
+
     def get_info(self) -> schemas.Info:
         resp = self.client._requests_get_rel_host(
             f"datasets/{self.name}/info"
@@ -296,7 +287,7 @@ class Dataset:
     def delete(self):
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
         del self
-    
+
     # def get_images(self) -> List[schemas.ImageMetadata]:
     #     """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
     #     images = self.client._requests_get_rel_host(
@@ -309,7 +300,7 @@ class Dataset:
     #         )
     #         for image in images
     #     ]
-    
+
 
 class Model:
     def __init__(
@@ -320,18 +311,17 @@ class Model:
         self.client = client
         self.info = info
         self._metadata = {
-            metadatum.name : metadatum.value
-            for metadatum in info.metadata
+            metadatum.name: metadatum.value for metadatum in info.metadata
         }
 
     @property
     def id(self):
         return self.info.id
-    
+
     @property
     def name(self):
         return self.info.name
-    
+
     @property
     def metadata(self) -> Dict[str, Any]:
         return self._metadata
@@ -339,7 +329,7 @@ class Model:
     @classmethod
     def create(
         cls,
-        client: Client, 
+        client: Client,
         name: str,
         href: Optional[str] = None,
         description: Optional[str] = None,
@@ -363,13 +353,10 @@ class Model:
                     value=description,
                 )
             )
-        resp = client._requests_post_rel_host(
-            "models",
-            json=asdict(md)
-        )
+        resp = client._requests_post_rel_host("models", json=asdict(md))
         # @TODO: Handle this response
 
-        # Retrive newly created dataset with its ID 
+        # Retrive newly created dataset with its ID
         return cls.get(client, name)
 
     @classmethod
@@ -391,12 +378,12 @@ class Model:
             client=client,
             info=info,
         )
-    
+
     @staticmethod
     def prune(client: Client, name: str):
         job_id = client._requests_delete_rel_host(f"models/{name}").json()
         return Job(client=client, job_id=job_id)
-   
+
     def add_metadatum(self, metadatum: schemas.Metadatum):
         # @TODO: Add endpoint to allow adding custom metadatums
         self.info.metadata.append(metadatum)
@@ -410,20 +397,17 @@ class Model:
             json=asdict(prediction),
         )
 
-    def get_prediction(
-        self, uid: str
-    ) -> schemas.Prediction:
+    def get_prediction(self, uid: str) -> schemas.Prediction:
         resp = self.client._requests_get_rel_host(
             f"models/{self.info.name}/datum/{uid}/prediction"
         ).json()
         return schemas.Prediction(**resp)
 
-
     def finalize_inferences(self, dataset: "Dataset") -> None:
         return self.client._requests_put_rel_host(
             f"models/{self.name}/inferences/{dataset.name}/finalize"
         ).json()
-    
+
     def delete(self):
         self.client._requests_delete_rel_host(f"models/{self.name}")
 
@@ -553,7 +537,8 @@ class Model:
         ).json()
 
         return [
-            schemas.Label(key=label["key"], value=label["value"]) for label in labels
+            schemas.Label(key=label["key"], value=label["value"])
+            for label in labels
         ]
 
     def get_label_distribution(self) -> Dict[schemas.Label, int]:
@@ -562,7 +547,9 @@ class Model:
         ).json()
 
         return {
-            schemas.Label(key=label["label"]["key"], value=label["label"]["value"]): {
+            schemas.Label(
+                key=label["label"]["key"], value=label["label"]["value"]
+            ): {
                 "count": label["count"],
                 "scores": label["scores"],
             }
@@ -582,17 +569,6 @@ class Model:
             number_of_segmentations=resp["number_of_segmentation_rasters"],
             associated=resp["associated"],
         )
-
-
-class ImageModel(Model):
-    def add_predictions(
-        self,
-        dataset: "Dataset",
-        predictions: list,
-        chunk_size: int = 1000,
-        show_progress_bar: bool = True,
-    ):
-        return []
 
     def evaluate_ap(
         self,
