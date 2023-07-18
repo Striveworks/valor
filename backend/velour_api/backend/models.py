@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from velour_api.backend.database import Base
-from velour_api.enums import TaskType
+from velour_api.enums import TaskType, AnnotationType
 
 
 class Label(Base):
@@ -204,8 +204,9 @@ class EvaluationSettings(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
-    model_pred_task_type: Mapped[str] = mapped_column(Enum(TaskType))
-    dataset_gt_task_type: Mapped[str] = mapped_column(Enum(TaskType))
+    task_type: Mapped[str] = mapped_column(Enum(TaskType))
+    pd_type: Mapped[str] = mapped_column(Enum(AnnotationType))
+    gt_type: Mapped[str] = mapped_column(Enum(AnnotationType))
     min_area: Mapped[float] = mapped_column(nullable=True)
     max_area: Mapped[float] = mapped_column(nullable=True)
     group_by: Mapped[str] = mapped_column(nullable=True)
@@ -213,7 +214,7 @@ class EvaluationSettings(Base):
 
     # relationships
     dataset = relationship(Dataset, viewonly=True)
-    # model = relationship(Model, back_populates="evaluation_settings")
+    model = relationship(Model, back_populates="evaluation_settings")
     metrics: Mapped[list["Metric"]] = relationship(
         "Metric", cascade="all, delete"
     )

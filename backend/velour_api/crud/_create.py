@@ -97,7 +97,7 @@ def _create_metric_mappings(
 def create_clf_metrics(
     db: Session,
     request_info: schemas.ClfMetricsRequest,
-):
+) -> int:
     confusion_matrices, metrics = backend_metrics.compute_clf_metrics(
         db=db,
         dataset_name=request_info.settings.dataset_name,
@@ -111,8 +111,9 @@ def create_clf_metrics(
     mapping={
         "dataset_id": dataset.id,
         "model_id": model.id,
-        "model_pred_task_type": enums.TaskType.CLASSIFICATION,
-        "dataset_gt_task_type": enums.TaskType.CLASSIFICATION,
+        "task_type": enums.TaskType.CLASSIFICATION,
+        "pd_type": enums.AnnotationType.NONE,
+        "gt_type": enums.AnnotationType.NONE,
         "group_by": request_info.settings.group_by,
     }
     es = models.EvaluationSettings(**mapping)
@@ -149,23 +150,27 @@ def create_clf_metrics(
         except:
             db.rollback()
             raise RuntimeError
+    
+    # @TODO Return job id
+    return -1
         
 
+# @TODO: Make this return a job id
 @state.create
 def create_ap_metrics(
     db: Session,
     request_info: schemas.APRequest,
 ) -> int:
 
+    # @TODO: This is hacky, fix schemas.APRequest
     dataset_name = request_info.settings.dataset_name
     model_name = request_info.settings.model_name
+    gt_type = enums.AnnotationType.BOX #request_info.settings.pd_type
+    pd_type = enums.AnnotationType.BOX #request_info.settings.gt_type
+    target_type = enums.AnnotationType.BOX #request_info.settings.target_type
+    label_key = request_info.settings.label_key
     min_area = request_info.settings.min_area
     max_area = request_info.settings.max_area
-    gt_type = request_info.settings.dataset_gt_task_type
-    pd_type = request_info.settings.model_pred_task_type
-    label_key = request_info.settings.label_key
-
-    print(gt_type, pd_type, label_key)
 
     metrics = backend_metrics.compute_ap_metrics(
         db=db,
@@ -174,26 +179,33 @@ def create_ap_metrics(
         iou_thresholds=request_info.iou_thresholds,
         ious_to_keep=request_info.ious_to_keep,
         label_key=label_key,
-        target_type=enums.AnnotationType.BOX,
-        dataset_type=enums.AnnotationType.BOX,
-        model_type=enums.AnnotationType.BOX,
+        target_type=target_type,
+        gt_type=gt_type,
+        pd_type=pd_type,
         min_area=min_area,
         max_area=max_area,
     )
 
-    mp = _get_or_create_row(
-        db,
-        models.EvaluationSettings,
-        mapping={
-            "dataset_id": dataset_id,
-            "model_id": model_id,
-            "model_pred_task_type": pd_type,
-            "dataset_gt_task_type": gt_type,
-            "label_key": label_key,
-            "min_area": request_info.settings.min_area,
-            "max_area": request_info.settings.max_area,
-        },
-    )
+    dataset = core.get_dataset(db, dataset_name)
+    model = core.get_model(db, model_name)
+
+    mapping={
+        "dataset_id": dataset.id,
+        "model_id": model.id,
+        "task_type": enums.TaskType.DETECTION,
+        "pd_type": pd_type,
+        "gt_type": gt_type,
+        "label_key": label_key,
+        "min_area": request_info.settings.min_area,
+        "max_area": request_info.settings.max_area,
+    }
+    mp = models.EvaluationSettings(**mapping)
+    try:
+        db.add(mp)
+        db.commit()
+    except:
+        db.rollback()
+        raise RuntimeError
 
     metric_mappings = _create_metric_mappings(
         db=db, metrics=metrics, evaluation_settings_id=mp.id
@@ -203,9 +215,15 @@ def create_ap_metrics(
         # ignore value since the other columns are unique identifiers
         # and have empircally noticed value can slightly change due to floating
         # point errors
-        _get_or_create_row(
-            db, models.Metric, mapping, columns_to_ignore=["value"]
-        )
-    db.commit()
-
-    return mp.id
+        
+        mapping["value"] = None
+        row = models.Metric(**mapping)
+        try:
+            db.add(row)
+            db.commit()
+        except:
+            db.rollback()
+            raise RuntimeError
+    
+    # @TODO Return job id
+    return -1

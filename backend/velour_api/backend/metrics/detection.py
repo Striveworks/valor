@@ -61,8 +61,12 @@ def _ap(
                     cnt_fp += 1
                 cnt_fn = number_of_ground_truths[label_id] - cnt_tp
 
-                precisions.append(cnt_tp / (cnt_tp + cnt_fp))
-                recalls.append(cnt_tp / (cnt_tp + cnt_fn))
+                precisions.append(
+                    cnt_tp / (cnt_tp + cnt_fp) if (cnt_tp + cnt_fp) else 0
+                )
+                recalls.append(
+                    cnt_tp / (cnt_tp + cnt_fn) if (cnt_tp + cnt_fn) else 0
+                )
 
             ap_metrics.append(
                 schemas.APMetric(
@@ -110,8 +114,8 @@ def compute_ap_metrics(
     iou_thresholds: list[float],
     ious_to_keep: list[float],
     target_type: enums.AnnotationType,
-    dataset_type: enums.AnnotationType,
-    model_type: enums.AnnotationType,
+    gt_type: enums.AnnotationType,
+    pd_type: enums.AnnotationType,
     min_area: Optional[float] = None,
     max_area: Optional[float] = None,
 ) -> list[
@@ -131,8 +135,8 @@ def compute_ap_metrics(
         db,
         dataset=dataset,
         model=model,
-        dataset_source_type=dataset_type,
-        model_source_type=model_type,
+        dataset_source_type=gt_type,
+        model_source_type=pd_type,
         evaluation_target_type=target_type,
     )
 
@@ -236,103 +240,119 @@ def compute_ap_metrics(
             .subquery()
         )
 
-  
-
-    # Compute IOU
+    # IOU Computation Block
     if target_type == AnnotationType.RASTER:
-        pass
+        gintersection = gfunc.ST_Count(gfunc.ST_Intersection(joint.c.gt_geom, joint.c.pd_geom))
+        gunion_gt = gfunc.ST_Count(joint.c.gt_geom)
+        gunion_pd = gfunc.ST_Count(joint.c.pd_geom)
+        gunion = gunion_gt + gunion_pd - gintersection
+        iou_computation = gfunc.ST_Area(gintersection) / gfunc.ST_Area(gunion)
     else:
-        ious = (
-            select(
-                joint.c.datum_id.label("datum_id"),
-                joint.c.gt_id.label("gt_id"),
-                joint.c.pd_id.label("pd_id"),
-                joint.c.gt_label_id.label("gt_label_id"),
-                joint.c.pd_label_id.label("pd_label_id"),
-                joint.c.score.label("score"),
-                func.coalesce(
-                    gfunc.ST_Area(
-                    gfunc.ST_Intersection(joint.c.gt_geom, joint.c.pd_geom)
-                ) / gfunc.ST_Area(
-                    gfunc.ST_Union(joint.c.gt_geom, joint.c.pd_geom)
-                ), 0)
-            )
-            .select_from(joint)
+        gintersection = gfunc.ST_Intersection(joint.c.gt_geom, joint.c.pd_geom)
+        gunion = gfunc.ST_Union(joint.c.gt_geom, joint.c.pd_geom)
+        iou_computation = gfunc.ST_Area(gintersection) / gfunc.ST_Area(gunion)
+
+    # Compute IOUs
+    ious = (
+        select(
+            joint.c.datum_id.label("datum_id"),
+            joint.c.gt_id.label("gt_id"),
+            joint.c.pd_id.label("pd_id"),
+            joint.c.gt_label_id.label("gt_label_id"),
+            joint.c.pd_label_id.label("pd_label_id"),
+            joint.c.score.label("score"),
+            func.coalesce(iou_computation, 0).label("iou"),
         )
+        .select_from(joint)
+        .where(
+            and_(
+                joint.c.gt_id.isnot(None),
+                joint.c.pd_id.isnot(None),
+            )
+        )
+        .subquery()
+    )
 
+    # Order by score, iou
+    ordered_ious = (
+        db.query(ious)
+        .order_by(-ious.c.score, -ious.c.iou)
+        .all()
+    )
 
-    print(ious)
-    return []
+    # Filter out repeated id's
+    gt_set = set()
+    pd_set = set()
+    ranking = {}
 
+    for row in ordered_ious:
+        # datum_id = row[0]
+        gt_id = row[1]
+        pd_id = row[2]
+        gt_label_id = row[3]
+        # pd_label_id = row[4]
+        score = row[5]
+        iou = row[6]
 
-    # # Compute IOU's
-    # ious = compute_iou(joint_table, annotation_types[common_task])
+        # Check if gt or pd already found
+        if gt_id not in gt_set and pd_id not in pd_set:
+            gt_set.add(gt_id)
+            pd_set.add(pd_id)
 
-    # # Load IOU's into a temporary table
-    # ious_table = f"create table iou as ({ious})"
-    # try:
-    #     db.execute(text("drop table iou"))
-    # except ProgrammingError:
-    #     db.rollback()
-    # db.execute(text(ious_table))
+            if gt_label_id not in ranking:
+                ranking[gt_label_id] = []
 
-    # # Create 'find_ranked_pairs' function
-    # db.execute(text(function_find_ranked_pairs()))
+            ranking[gt_label_id].append(
+                RankedPair(
+                    gt_id=gt_id, 
+                    pd_id=pd_id, 
+                    score=score, 
+                    iou=iou,
+                )
+            )
 
-    # # Get a list of all ground truth labels
-    # labels = {
-    #     row[0]: schemas.Label(key=row[1], value=row[2])
-    #     for row in db.execute(
-    #         text(get_labels(dataset_id, task_types[gt_type]))
-    #     ).fetchall()
-    # }
+    # Get groundtruth labels
+    labels = {
+        label.id : schemas.Label(key=label.key, value=label.value)
+        for label in core.get_labels(db, key=label_key, task_types=[gt_type], dataset=dataset)
+    }
 
-    # # Get the number of ground truths per label id
-    # number_of_ground_truths = {
-    #     row[0]: row[1]
-    #     for row in db.execute(text(get_number_of_ground_truths()))
-    # }
+    # Get the number of ground truths per label id
+    number_of_ground_truths = {
+        id: db.scalar(
+            select(func.count(models.GroundTruth.id))
+            .where(models.GroundTruth.id == id)
+        )
+        for id in labels
+    }
 
-    # # Load ranked_pairs
-    # pairs = {}
-    # for row in db.execute(text(get_sorted_ranked_pairs())).fetchall():
-    #     label_id = row[0]
-    #     if label_id not in pairs:
-    #         pairs[label_id] = []
-    #     pairs[label_id].append(
-    #         RankedPair(gt_id=row[1], pd_id=row[2], score=row[3], iou=row[4])
-    #     )
+    # Compute AP
+    ap_metrics = _ap(
+        sorted_ranked_pairs=ranking,
+        number_of_ground_truths=number_of_ground_truths,
+        labels=labels,
+        iou_thresholds=iou_thresholds,
+    )
 
-    # # Clear the session
-    # db.execute(text("DROP TABLE iou"))
+    # now extend to the averaged AP metrics and mAP metric
+    map_metrics = compute_map_metrics_from_aps(ap_metrics)
+    ap_metrics_ave_over_ious = compute_ap_metrics_ave_over_ious_from_aps(
+        ap_metrics
+    )
+    map_metrics_ave_over_ious = compute_map_metrics_from_aps(
+        ap_metrics_ave_over_ious
+    )
 
-    # # Compute AP
-    # ap_metrics = _ap(
-    #     sorted_ranked_pairs=pairs,
-    #     number_of_ground_truths=number_of_ground_truths,
-    #     labels=labels,
-    #     iou_thresholds=iou_thresholds,
-    # )
+    # filter out only specified ious
+    ap_metrics = [m for m in ap_metrics if m.iou in ious_to_keep]
+    map_metrics = [m for m in map_metrics if m.iou in ious_to_keep]
 
-    # # now extend to the averaged AP metrics and mAP metric
-    # map_metrics = compute_map_metrics_from_aps(ap_metrics)
-    # ap_metrics_ave_over_ious = compute_ap_metrics_ave_over_ious_from_aps(
-    #     ap_metrics
-    # )
-    # map_metrics_ave_over_ious = compute_map_metrics_from_aps(
-    #     ap_metrics_ave_over_ious
-    # )
-
-    # # filter out only specified ious
-    # ap_metrics = [m for m in ap_metrics if m.iou in ious_to_keep]
-    # map_metrics = [m for m in map_metrics if m.iou in ious_to_keep]
-
-    # return (
-    #     ap_metrics
-    #     + map_metrics
-    #     + ap_metrics_ave_over_ious
-    #     + map_metrics_ave_over_ious
-    # )
+    return (
+        ap_metrics
+        + map_metrics
+        + ap_metrics_ave_over_ious
+        + map_metrics_ave_over_ious
+    )
 
 
 def compute_ap_metrics_ave_over_ious_from_aps(

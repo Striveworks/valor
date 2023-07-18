@@ -320,20 +320,18 @@ def create_ap_metrics(
     db: Session = Depends(get_db),
 ) -> schemas.CreateAPMetricsResponse:
     try:
-        # (
-        #     missing_pred_labels,
-        #     ignored_pred_labels,
-        # ) = crud.validate_create_ap_metrics(db, request_info=data)
-
-        crud.create_ap_metrics(db, data)
-
-        cm_resp = schemas.CreateAPMetricsResponse(
-            missing_pred_labels=[],#missing_pred_labels,
-            ignored_pred_labels=[],#ignored_pred_labels,
-            job_id=0,
+        # @TODO: Make this actually a job
+        job_id = crud.create_ap_metrics(db, data)
+        disjoint_labels = crud.get_disjoint_labels(
+            db,
+            dataset_name=data.settings.dataset_name,
+            model_name=data.settings.model_name,
         )
-
-        return cm_resp
+        return schemas.CreateAPMetricsResponse(
+            missing_pred_labels=disjoint_labels["dataset"],
+            ignored_pred_labels=disjoint_labels["model"],
+            job_id=job_id,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except (
@@ -352,20 +350,18 @@ def create_clf_metrics(
     db: Session = Depends(get_db),
 ) -> schemas.CreateClfMetricsResponse:
     try:
-        # (
-        #     missing_pred_keys,
-        #     ignored_pred_keys,
-        # ) = crud.validate_create_clf_metrics(db, request_info=data)
-
-        crud.create_clf_metrics(db, data)
-
-        cm_resp = schemas.CreateClfMetricsResponse(
-            missing_pred_keys=[],#missing_pred_keys,
-            ignored_pred_keys=[],#ignored_pred_keys,
-            job_id=0,
+        # @TODO: Make this actually a job
+        job_id = crud.create_clf_metrics(db, data)
+        disjoint_keys = crud.get_disjoint_keys(
+            db,
+            dataset_name=data.settings.dataset_name,
+            model_name=data.settings.model_name,
         )
-
-        return cm_resp
+        return schemas.CreateClfMetricsResponse(
+            missing_pred_keys=disjoint_keys["dataset"],
+            ignored_pred_keys=disjoint_keys["model"],
+            job_id=job_id,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except (

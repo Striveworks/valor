@@ -19,6 +19,46 @@ def get_labels(
         model_name=model_name,
     )
 
+@state.read
+def get_disjoint_labels(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+) -> dict[str, list[schemas.Label]]:
+    """Returns a dictionary containing disjoint sets of labels. Keys are (dataset, model) and contain sets of labels disjoint from the other."""
+
+    return backend.get_disjoint_labels(
+        db, 
+        dataset_name=dataset_name, 
+        model_name=model_name,
+    )
+
+@state.read
+def get_disjoint_keys(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+) -> dict[str, list[str]]:
+    """Returns a dictionary containing disjoint sets of label keys. Keys are (dataset, model) and contain sets of keys disjoint from the other."""
+    
+    disjoint_labels = backend.get_disjoint_labels(
+        db, 
+        dataset_name=dataset_name, 
+        model_name=model_name,
+    )
+
+    disjoint_keys = {}
+    disjoint_keys["dataset"] = list(set(
+        label.key
+        for label in disjoint_labels["dataset"]
+    ))
+    disjoint_keys["model"] = list(set(
+        label.key
+        for label in disjoint_labels["model"]
+    ))
+    return disjoint_keys
+
+
 
 # Datasets
 
@@ -76,3 +116,35 @@ def get_model_labels(
     db: Session, name: str
 ) -> list[schemas.ScoredLabelDistribution]:
     pass
+
+
+""" Evaluation """
+
+def get_metrics_from_evaluation_settings_id(
+    db: Session, evaluation_settings_id: int
+) -> list[schemas.Metric]:
+    return backend.get_metrics_from_evaluation_settings_id(db, evaluation_settings_id)
+
+
+def get_confusion_matrices_from_evaluation_settings_id(
+    db: Session, evaluation_settings_id: int
+) -> list[schemas.ConfusionMatrix]:
+    return backend.get_confusion_matrices_from_evaluation_settings_id(db, evaluation_settings_id)
+
+
+def get_evaluation_settings_from_id(
+    db: Session, evaluation_settings_id: int
+) -> schemas.EvaluationSettings:
+    return backend.get_evaluation_settings_from_id(db, evaluation_settings_id)
+
+
+def get_model_metrics(
+    db: Session, model_name: str, evaluation_settings_id: int
+) -> list[schemas.Metric]:
+    return backend.get_model_metrics(db, model_name, evaluation_settings_id)
+
+
+def get_model_evaluation_settings(
+    db: Session, model_name: str
+) -> list[schemas.EvaluationSettings]:
+    return backend.get_model_evaluation_settings(db, model_name)

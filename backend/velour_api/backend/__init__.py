@@ -10,6 +10,7 @@ from .io import (
     get_groundtruth,
     get_groundtruths,
     get_label_distribution,
+    get_disjoint_labels,
     get_labels,
     get_metadata,
     get_model,
@@ -17,6 +18,11 @@ from .io import (
     get_prediction,
     get_predictions,
     get_scored_label_distribution,
+    get_metrics_from_evaluation_settings_id,
+    get_confusion_matrices_from_evaluation_settings_id,
+    get_evaluation_settings_from_id,
+    get_model_metrics,
+    get_model_evaluation_settings,
 )
 
 __all__ = [
@@ -37,5 +43,11 @@ __all__ = [
     "get_labels",
     "get_label_distribution",
     "get_scored_label_distribution",
+    "get_disjoint_labels",
     "get_metadata",
+    "get_metrics_from_evaluation_settings_id",
+    "get_confusion_matrices_from_evaluation_settings_id",
+    "get_evaluation_settings_from_id",
+    "get_model_metrics",
+    "get_model_evaluation_settings",
 ]

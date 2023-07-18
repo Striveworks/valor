@@ -351,7 +351,7 @@ def compute_clf_metrics(
         db,
         dataset=dataset,
         model=model,
-        task_type=[enums.TaskType.CLASSIFICATION],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
     unique_label_keys = set([label.key for label in labels])
 

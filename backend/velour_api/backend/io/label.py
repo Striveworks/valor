@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_, select
 
 from velour_api import enums, schemas
-from velour_api.backend import core, query
+from velour_api.backend import models, core, query
 
 
 def get_labels(
@@ -42,3 +43,25 @@ def get_scored_label_distribution(
     db: Session,
 ) -> list[schemas.ScoredLabelDistribution]:
     return []
+
+
+def get_disjoint_labels(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+) -> dict[str, list[schemas.Label]]:
+    """Returns tuple(gt_labels, pd_labels)"""
+
+    dataset = core.get_dataset(db, dataset_name)
+    model = core.get_model(db, model_name)
+
+    ds_labels = set(query.get_labels(db, dataset=dataset))
+    md_labels = set(query.get_labels(db, dataset=dataset, model=model))
+
+    ds_unique = list(ds_labels - md_labels)
+    md_unique = list(md_labels - ds_labels)
+
+    return {
+        "dataset": ds_unique,
+        "model": md_unique,
+    }

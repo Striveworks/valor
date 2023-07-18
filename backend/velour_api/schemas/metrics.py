@@ -3,7 +3,7 @@ from uuid import uuid4
 import numpy as np
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
-from velour_api.enums import JobStatus, TaskType
+from velour_api.enums import JobStatus, TaskType, AnnotationType
 from velour_api.schemas.label import Label
 from velour_api.schemas.metadata import MetaDatum
 
@@ -16,8 +16,9 @@ class EvaluationSettings(BaseModel):
 
     model_name: str
     dataset_name: str
-    model_pred_task_type: TaskType = None
-    dataset_gt_task_type: TaskType = None
+    task_type: TaskType = None
+    pd_type: AnnotationType = None
+    gt_type: AnnotationType = None
     min_area: float = None
     max_area: float = None
     group_by: str = None

@@ -60,6 +60,8 @@ def get_metadatum(
                 )
                 .one_or_none()
             )
+        else:
+            return None
 
     # Parsing
     if metadatum.string_value is not None:

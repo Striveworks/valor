@@ -13,7 +13,7 @@ class DataType(Enum):
         raise ValueError(f"the value {value} is not in enum {cls.__name__}.")
 
 
-class AnnotationType(Enum):
+class AnnotationType(str, Enum):
     NONE = "none"
     BOX = "box"
     POLYGON = "polygon"

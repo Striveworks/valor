@@ -9,7 +9,7 @@ import requests
 from tqdm.auto import tqdm
 
 from velour import enums, schemas
-from velour.metrics import Task
+from velour.enums import TaskType, AnnotationType
 
 
 class ClientException(Exception):
@@ -442,6 +442,49 @@ class Model:
         ).json()
 
         return EvalJob(client=self.client, **resp)
+    
+    def evaluate_ap(
+        self,
+        dataset: "Dataset",
+        task_type: TaskType = None,
+        pd_type: AnnotationType = None,
+        gt_type: AnnotationType = None,
+        iou_thresholds: List[float] = None,
+        ious_to_keep: List[float] = None,
+        min_area: float = None,
+        max_area: float = None,
+        label_key: Optional[str] = None,
+    ) -> "EvalJob":
+        payload = {
+            "settings": {
+                "model_name": self.name,
+                "dataset_name": dataset.name,
+                "task_type": task_type,
+                "pd_type": pd_type,
+                "gt_type": gt_type,
+                "min_area": min_area,
+                "max_area": max_area,
+                "label_key": label_key,
+            }
+        }
+
+        if iou_thresholds is not None:
+            payload["iou_thresholds"] = iou_thresholds
+        if ious_to_keep is not None:
+            payload["ious_to_keep"] = ious_to_keep
+
+        resp = self.client._requests_post_rel_host(
+            "ap-metrics", json=payload
+        ).json()
+
+        # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
+        # list of label dicts. convert label dicts to Label objects
+
+        for k in ["missing_pred_labels", "ignored_pred_labels"]:
+            resp[k] = [schemas.Label(**la) for la in resp[k]]
+
+        return EvalJob(client=self.client, **resp)
+
 
     def get_evaluation_settings(self) -> List[dict]:
         # TODO: should probably have a dataclass for the output
@@ -570,44 +613,4 @@ class Model:
             associated=resp["associated"],
         )
 
-    def evaluate_ap(
-        self,
-        dataset: "Dataset",
-        model_pred_task_type: Task = None,
-        dataset_gt_task_type: Task = None,
-        iou_thresholds: List[float] = None,
-        ious_to_keep: List[float] = None,
-        min_area: float = None,
-        max_area: float = None,
-        label_key: Optional[str] = None,
-    ) -> "EvalJob":
-        payload = {
-            "settings": {
-                "model_name": self.name,
-                "dataset_name": dataset.name,
-                "model_pred_task_type": model_pred_task_type.value
-                if model_pred_task_type is not None
-                else None,
-                "dataset_gt_task_type": dataset_gt_task_type.value
-                if dataset_gt_task_type is not None
-                else None,
-                "min_area": min_area,
-                "max_area": max_area,
-                "label_key": label_key,
-            }
-        }
-
-        if iou_thresholds is not None:
-            payload["iou_thresholds"] = iou_thresholds
-        if ious_to_keep is not None:
-            payload["ious_to_keep"] = ious_to_keep
-
-        resp = self.client._requests_post_rel_host(
-            "ap-metrics", json=payload
-        ).json()
-        # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
-        # list of label dicts. convert label dicts to Label objects
-        for k in ["missing_pred_labels", "ignored_pred_labels"]:
-            resp[k] = [schemas.Label(**la) for la in resp[k]]
-
-        return EvalJob(client=self.client, **resp)
+    

@@ -14,6 +14,16 @@ class Point:
     x: float
     y: float
 
+    def __post_init__(self):
+        try:
+            assert isinstance(self.x, float)
+            assert isinstance(self.y, float)
+        except AssertionError:
+            raise ValueError("Point coordinates should be `float` type.")
+        
+    def __hash__(self):
+        return hash(f"{self.x},{self.y}")
+
     def resize(
         self, og_img_h: int, og_img_w: int, new_img_h: int, new_img_w: int
     ) -> "Point":
@@ -38,6 +48,19 @@ class BasicPolygon:
     """Class for representing a bounding region."""
 
     points: List[Point] = field(default_factory=list)
+
+    def __post_init__(self):
+        if not isinstance(self.points, list):
+            raise ValueError("Member `points` is not a list.")
+        
+        try:
+            for point in self.points:
+                assert isinstance(point, Point)
+        except AssertionError:
+            raise ValueError("Element in points is not a `Point`.")
+        
+        if len(set(self.points)) < 3:
+            raise ValueError("BasicPolygon needs at least 3 unique points to be valid.")
 
     def xy_list(self):
         return [(pt.x, pt.y) for pt in self.points]
@@ -73,7 +96,15 @@ class BasicPolygon:
 @dataclass
 class Polygon:
     boundary: BasicPolygon
-    holes: list[BasicPolygon] = None
+    holes: list[BasicPolygon] = field(default=[], default_factory=list)
+
+    def __post_init__(self):
+        assert isinstance(self.boundary, BasicPolygon)
+        assert isinstance(self.holes, list)
+        if self.holes:
+            for hole in self.holes:
+                assert isinstance(hole, BasicPolygon)
+
 
 
 @dataclass
@@ -81,8 +112,9 @@ class BoundingBox:
     polygon: BasicPolygon
 
     def __post_init__(self):
+        assert isinstance(self.polygon, BasicPolygon)
         if len(self.polygon.points) != 4:
-            raise ValueError
+            raise ValueError("Bounding box should be made of a 4-point polygon.")
 
     @classmethod
     def from_extrema(cls, xmin: float, xmax: float, ymin: float, ymax: float):
@@ -102,12 +134,22 @@ class BoundingBox:
 class MultiPolygon:
     polygons: list[Polygon]
 
+    def __post_init__(self):
+        assert isinstance(self.polygons, list)
+        for polygon in self.polygons:
+            assert isinstance(polygon, Polygon)
+
 
 @dataclass
 class Raster:
     mask: str
-    height: int | float
-    width: int | float
+    height: int
+    width: int
+
+    def __post_init__(self):
+        assert isinstance(self.mask, str)
+        assert isinstance(self.height, int)
+        assert isinstance(self.width, int)
 
     @classmethod
     def from_numpy(cls, mask: np.ndarray):

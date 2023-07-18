@@ -14,7 +14,14 @@ from velour.schemas.metadata import Metadatum
 class Dataset:
     name: str
     id: int = None
-    metadata: List[Metadatum] = field(default_factory=list)
+    metadata: List[Metadatum] = field(default=[], default_factory=list)
+
+    def __post_init__(self):
+        assert isinstance(self.name, str)
+        assert isinstance(self.id, int | None)
+        assert isinstance(self.metadata, list)
+        for metadatum in self.metadata:
+            assert isinstance(metadatum, Metadatum)
 
 
 @dataclass
@@ -23,20 +30,31 @@ class Model:
     id: int = None
     metadata: List[Metadatum] = field(default_factory=list)
 
+    def __post_init__(self):
+        assert isinstance(self.name, str)
+        assert isinstance(self.id, int | None)
+        assert isinstance(self.metadata, list)
+        for metadatum in self.metadata:
+            assert isinstance(metadatum, Metadatum)
+
 
 @dataclass
 class Info:
-    href: str = None
-    description: str = None
     type: enums.DataType = None
-    annotation_types: list[enums.AnnotationType] = field(default_factory=list)
-    associated_datasets: list[str] = field(default_factory=list)
+    annotation_types: list[enums.AnnotationType] = field(default=[], default_factory=list)
+    associated_datasets: list[str] = field(default=[], default_factory=list)
 
 
 @dataclass
 class Datum:
     uid: str
-    metadata: List[Metadatum] = field(default_factory=list)
+    metadata: List[Metadatum] = field(default=[], default_factory=list)
+
+    def __post_init__(self):
+        assert isinstance(self.uid, str)
+        assert isinstance(self.metadata, list)
+        for metadatum in self.metadata:
+            assert isinstance(metadatum, Metadatum)
 
 
 @dataclass
@@ -51,14 +69,20 @@ class Annotation:
     raster: Raster = None
 
     def __post_init__(self):
-        if self.bounding_box:
-            assert isinstance(self.bounding_box, BoundingBox)
-        if self.polygon:
-            assert isinstance(self.polygon, Polygon)
-        if self.multipolygon:
-            assert isinstance(self.multipolygon, MultiPolygon)
-        if self.raster:
-            assert isinstance(self.raster, Raster)
+        if not isinstance(self.task_type, enums.TaskType):
+            raise ValueError("Value for task_type is not o ftpye 'enums.TaskType'")
+
+        try:
+            if self.bounding_box:
+                assert isinstance(self.bounding_box, BoundingBox)            
+            if self.polygon:
+                assert isinstance(self.polygon, Polygon)
+            if self.multipolygon:
+                assert isinstance(self.multipolygon, MultiPolygon)
+            if self.raster:
+                assert isinstance(self.raster, Raster)
+        except AssertionError:
+            raise ValueError("Value does not match member type.")
 
 
 @dataclass

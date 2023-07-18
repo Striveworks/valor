@@ -23,19 +23,21 @@ def get_label(
 
 def get_labels(
     db: Session,
-    key: str = None,
-    task_type: list[enums.TaskType] = [],
+    key: str = None,    
+    annotation_types: list[enums.AnnotationType] = [],
+    task_types: list[enums.TaskType] = [],
     dataset: models.Dataset = None,
     model: models.Model = None,
     datum: models.Datum = None,
     annotation: models.Annotation = None,
 ) -> list[schemas.Label]:
-    """Returns a list of labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
+    """Returns a list of unique labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
 
     labels = core.get_labels(
         db,
         key=key,
-        task_type=task_type,
+        annotation_types=annotation_types,
+        task_types=task_types,
         dataset=dataset,
         model=model,
         datum=datum,

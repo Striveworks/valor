@@ -22,7 +22,7 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .metadata import GeographicFeature, Metadatum
+from .metadata import GeoJSON, Metadatum
 
 __all__ = [
     "Box",
@@ -44,7 +44,7 @@ __all__ = [
     "MultiPolygon",
     "Raster",
     "Metadatum",
-    "GeographicFeature",
+    "GeoJSON",
     "LabelDistribution",
     "ScoredLabelDistribution",
 ]

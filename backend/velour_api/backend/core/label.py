@@ -53,18 +53,19 @@ def get_label(
 def get_labels(
     db: Session,
     key: str = None,
-    task_type: list[enums.TaskType] = [],
+    annotation_types: list[enums.AnnotationType] = [],
+    task_types: list[enums.TaskType] = [],
     dataset: models.Dataset = None,
     model: models.Model = None,
     datum: models.Datum = None,
     annotation: models.Annotation = None,
 ) -> list[models.Label]:
-    """Returns a list of labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
+    """Returns a list of labels from a intersection of relationships (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
 
     # Get annotation ids
     annotation_ids = select(models.Annotation.id)
 
-    # Build relationship(s)
+    # Filter by source(s)
     relationships = []
     if annotation:
         relationships.append(models.Annotation.id == annotation.id)
@@ -74,31 +75,48 @@ def get_labels(
         relationships.append(models.Annotation.model_id == model.id)
     if dataset:
         relationships.append(models.Datum.dataset_id == dataset.id)
+        if not model:
+            relationships.append(models.Annotation.model_id.is_(None))
         annotation_ids.join(
             models.Datum, models.Datum.id == models.Annotation.datum_id
         )
-
-    # Add relationship(s)
     if relationships:
-        annotation_ids.where(or_(*relationships))
+        annotation_ids = annotation_ids.where(and_(*relationships))
 
-    # Filter by task type intersection
-    if task_type:
-        annotation_ids.where(models.Annotation.task_type.in_(task_type))
+    # Filter by annotation type
+    relationships = []
+    if annotation_types:
+        if enums.AnnotationType.BOX in annotation_types:
+            relationships.append(models.Annotation.box.isnot(None))
+        if enums.AnnotationType.POLYGON in annotation_types:
+            relationships.append(models.Annotation.polygon.isnot(None))
+        if enums.AnnotationType.MULTIPOLYGON in annotation_types:
+            relationships.append(models.Annotation.multipolygon.isnot(None))
+        if enums.AnnotationType.RASTER in annotation_types:
+            relationships.append(models.Annotation.raster.isnot(None))
+        if relationships:
+            annotation_ids = annotation_ids.where(and_(*relationships))
+
+    # Filter by task type
+    if task_types:
+        task_types = [
+            (models.Annotation.task_type == task_type.value)
+            for task_type in task_types
+        ]
+        annotation_ids = annotation_ids.where(or_(*annotation_types))
 
     # Get label ids
     label_ids = (
         select(models.Label.id)
+        .select_from(models.Annotation)
+        .join(models.GroundTruth, models.GroundTruth.annotation_id == models.Annotation.id, full=True)
+        .join(models.Prediction, models.Prediction.annotation_id == models.Annotation.id, full=True)
         .join(
-            models.GroundTruth, models.GroundTruth.label_id == models.Label.id
-        )
-        .join(models.Prediction, models.Prediction.label_id == models.Label.id)
-        .join(
-            models.Annotation,
+            models.Label,
             or_(
-                models.Annotation.id == models.GroundTruth.annotation_id,
-                models.Annotation.id == models.Prediction.annotation_id,
-            ),
+                models.Label.id == models.GroundTruth.label_id,
+                models.Label.id == models.Prediction.label_id,
+            )
         )
         .where(models.Annotation.id.in_(annotation_ids))
     )
