@@ -1,5 +1,6 @@
 from .core import (
     Annotation,
+    AnnotationDistribution,
     Dataset,
     Datum,
     GroundTruth,
@@ -37,6 +38,7 @@ __all__ = [
     "Label",
     "ScoredLabel",
     "Annotation",
+    "AnnotationDistribution",
     "GroundTruth",
     "Prediction",
     "BoundingBox",

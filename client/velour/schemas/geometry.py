@@ -15,11 +15,12 @@ class Point:
     y: float
 
     def __post_init__(self):
-        try:
-            assert isinstance(self.x, float)
-            assert isinstance(self.y, float)
-        except AssertionError:
-            raise ValueError("Point coordinates should be `float` type.")
+        if not isinstance(self.x, float | int):
+            raise TypeError("Point coordinates should be `float` type.")
+        if not isinstance(self.y, float | int):
+            raise TypeError("Point coordinates should be `float` type.")
+        self.x = float(self.x)
+        self.y = float(self.y)
         
     def __hash__(self):
         return hash(f"{self.x},{self.y}")
@@ -51,19 +52,15 @@ class BasicPolygon:
 
     def __post_init__(self):
         if not isinstance(self.points, list):
-            raise ValueError("Member `points` is not a list.")
-        
-        try:
-            for point in self.points:
-                assert isinstance(point, Point)
-        except AssertionError:
-            raise ValueError("Element in points is not a `Point`.")
-        
+            raise TypeError("Member `points` is not a list.")
+        for point in self.points:
+            if not isinstance(point, Point):
+                raise TypeError("Element in points is not a `Point`.")
         if len(set(self.points)) < 3:
             raise ValueError("BasicPolygon needs at least 3 unique points to be valid.")
 
-    def xy_list(self):
-        return [(pt.x, pt.y) for pt in self.points]
+    def xy_list(self) -> list[Point]:
+        return [pt for pt in self.points]
 
     @property
     def xmin(self):
@@ -96,15 +93,16 @@ class BasicPolygon:
 @dataclass
 class Polygon:
     boundary: BasicPolygon
-    holes: list[BasicPolygon] = field(default=[], default_factory=list)
+    holes: list[BasicPolygon] = field(default_factory=list)
 
     def __post_init__(self):
-        assert isinstance(self.boundary, BasicPolygon)
-        assert isinstance(self.holes, list)
-        if self.holes:
-            for hole in self.holes:
-                assert isinstance(hole, BasicPolygon)
-
+        if not isinstance(self.boundary, BasicPolygon):
+            raise TypeError("boundary should be of type `velour.schemas.BasicPolygon`")
+        if not isinstance(self.holes, list):
+            raise TypeError("holes should be a list of `velour.schemas.BasicPolygon`")
+        for hole in self.holes:
+            if not isinstance(hole, BasicPolygon):
+                raise TypeError("holes list should contain elements of type `velour.schemas.BasicPolygon`")
 
 
 @dataclass
@@ -112,7 +110,8 @@ class BoundingBox:
     polygon: BasicPolygon
 
     def __post_init__(self):
-        assert isinstance(self.polygon, BasicPolygon)
+        if not isinstance(self.polygon, BasicPolygon):
+            raise TypeError("polygon should be of type `velour.schemas.BasicPolygon`")
         if len(self.polygon.points) != 4:
             raise ValueError("Bounding box should be made of a 4-point polygon.")
 
@@ -135,25 +134,33 @@ class MultiPolygon:
     polygons: list[Polygon]
 
     def __post_init__(self):
-        assert isinstance(self.polygons, list)
+        if not isinstance(self.polygons, list):
+            raise TypeError("polygons should be list of `velour.schemas.Polyon`")
         for polygon in self.polygons:
-            assert isinstance(polygon, Polygon)
+            if not isinstance(polygon, Polygon):
+                raise TypeError("polygons list should contain elements of type `velour.schemas.Polygon`")
 
 
 @dataclass
 class Raster:
     mask: str
-    height: int
-    width: int
+    shape: tuple[int,int]
 
     def __post_init__(self):
-        assert isinstance(self.mask, str)
-        assert isinstance(self.height, int)
-        assert isinstance(self.width, int)
+        if not isinstance(self.mask, str):
+            raise TypeError("mask should be of type `str`")
+        if not isinstance(self.shape, tuple):
+            raise TypeError("shape should be of type tuple")
+        if len(self.shape) != 2:
+            raise ValueError("raster currently only supports 2d arrays")
+        for dim in self.shape:
+            if not isinstance(dim, int):
+                raise TypeError("dimesions in shape should be of type `int`")
 
     @classmethod
     def from_numpy(cls, mask: np.ndarray):
-        assert len(mask.shape) == 2
+        if len(mask.shape) != 2:
+            raise ValueError("raster currently only supports 2d arrays")
         if mask.dtype != bool:
             raise ValueError(
                 f"Expecting a binary mask (i.e. of dtype bool) but got dtype {mask.dtype}"
@@ -165,8 +172,7 @@ class Raster:
         f.close()
         return cls(
             mask=b64encode(mask_bytes).decode(),
-            height=mask.shape[0],
-            width=mask.shape[1],
+            shape=mask.shape,
         )
 
     def decode(self) -> np.ndarray:
