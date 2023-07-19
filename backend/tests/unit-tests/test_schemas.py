@@ -52,10 +52,10 @@ def rotated_box_points() -> list[schemas.geometry.Point]:
 def skewed_box_points() -> list[schemas.geometry.Point]:
     """Skewed box_points."""
     return [
-        schemas.geometry.Point(x=-5, y=-5),
-        schemas.geometry.Point(x=5, y=-5),
+        schemas.geometry.Point(x=0, y=0),
+        schemas.geometry.Point(x=10, y=0),
+        schemas.geometry.Point(x=15, y=10),
         schemas.geometry.Point(x=5, y=10),
-        schemas.geometry.Point(x=-5, y=10),
     ]
 
 
@@ -91,6 +91,17 @@ def bbox(component_polygon_box) -> schemas.BoundingBox:
 def polygon(component_polygon_box) -> schemas.Polygon:
     return schemas.Polygon(boundary=component_polygon_box)
 
+
+def _create_b64_mask(mode: str, ext: str, size=(20, 20)) -> str:
+    with TemporaryDirectory() as tempdir:
+        img = PIL.Image.new(mode=mode, size=size)
+        img_path = os.path.join(tempdir, f"img.{ext}")
+        img.save(img_path)
+
+        with open(img_path, "rb") as f:
+            img_bytes = f.read()
+
+        return b64encode(img_bytes).decode()
 
 @pytest.fixture
 def raster() -> schemas.Raster:
@@ -679,7 +690,9 @@ def test_geometry_line_segment(box_points):
         )
     )
 
-    # test property `points`
+    """test property `points`"""
+
+    # type checking
     with pytest.raises(ValidationError):
         schemas.geometry.LineSegment(points="points")
     with pytest.raises(ValidationError):
@@ -691,15 +704,18 @@ def test_geometry_line_segment(box_points):
     with pytest.raises(ValidationError):
         schemas.geometry.LineSegment(points=(1,2))
 
-    # test member fn `delta_xy`
+    """test member fn `delta_xy`"""
+
     assert l1.delta_xy() == box_points[0] - box_points[1]
 
-    # test member fn `parallel`
+    """test member fn `parallel`"""
+
     assert not l1.parallel(l2)
     assert l1.parallel(l3)
     assert l3.parallel(l1)
 
-    # test member fn `perpendicular`
+    """test member fn `perpendicular`"""
+
     assert l2.perpendicular(l3)
     assert l3.perpendicular(l2)
     assert not l1.perpendicular(l3)
@@ -711,7 +727,9 @@ def test_geometry_component_polygon_box(box_points):
         points=box_points,
     )
 
-    # test property `points`
+    """test property `points`"""
+
+    # type checking
     with pytest.raises(ValidationError):
         schemas.geometry.BasicPolygon(points=box_points[0])
     with pytest.raises(ValidationError):
@@ -728,17 +746,17 @@ def test_geometry_component_polygon_box(box_points):
             (1,3),
         ])
 
-    # test member fn `segments`
+    """test member fn `segments`"""
     plist = box_points + [box_points[0]]
     assert poly.segments == [
         schemas.geometry.LineSegment(points=(plist[i], plist[i+1]))
         for i in range(len(plist)-1)
     ]
 
-    # test member fn `__str__`
+    """test member fn `__str__`"""
     assert str(poly) == "((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0))"
 
-    # test member fn `wkt`
+    """test member fn `wkt`"""
     assert poly.wkt() == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
 
 
@@ -764,7 +782,9 @@ def test_geometry_polygon(
         holes=[component_polygon_box, component_polygon_rotated_box],
     )
 
-    # test property `boundary`
+    """test property `boundary`"""
+
+    # type checking
     with pytest.raises(ValidationError):
         schemas.Polygon(
             boundary="component_polygon_skewed_box",
@@ -774,7 +794,9 @@ def test_geometry_polygon(
             boundary=[component_polygon_box],
         )
 
-    # test property holes
+    """test property holes"""
+
+    # type checking
     with pytest.raises(ValidationError):
         schemas.Polygon(
             boundary=component_polygon_box,
@@ -788,11 +810,11 @@ def test_geometry_polygon(
 
     # test member fn `__str__`
     assert str(p1) == "(((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0)))"
-    assert str(p2) == "(((-5.0,-5.0),(5.0,-5.0),(5.0,10.0),(-5.0,10.0),(-5.0,-5.0)),((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0)))"
+    assert str(p2) == "(((0.0,0.0),(10.0,0.0),(15.0,10.0),(5.0,10.0),(0.0,0.0)),((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0)))"
     
     # test member fn `wkt`
     assert p1.wkt() == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
-    assert p2.wkt() == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 10.0, -5.0 10.0, -5.0 -5.0), (-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
+    assert p2.wkt() == "POLYGON ((0.0 0.0, 10.0 0.0, 15.0 10.0, 5.0 10.0, 0.0 0.0), (-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
 
 
 def test_geometry_multipolygon(
@@ -807,7 +829,9 @@ def test_geometry_multipolygon(
     mp1 = schemas.MultiPolygon(polygons=[p1])
     mp2 = schemas.MultiPolygon(polygons=[p1, p2])
 
-    # test property `polygons`
+    """test property `polygons`"""
+
+    # type checking
     with pytest.raises(ValidationError):
         schemas.MultiPolygon(polygons=component_polygon_box)
     with pytest.raises(ValidationError):
@@ -819,7 +843,7 @@ def test_geometry_multipolygon(
 
     # test member fn `wkt`
     assert mp1.wkt() == "MULTIPOLYGON (((0.0 7.0710678118654755, 7.0710678118654755 0.0, 0.0 -7.0710678118654755, -7.0710678118654755 0.0, 0.0 7.0710678118654755)))"
-    assert mp2.wkt() == "MULTIPOLYGON (((0.0 7.0710678118654755, 7.0710678118654755 0.0, 0.0 -7.0710678118654755, -7.0710678118654755 0.0, 0.0 7.0710678118654755)), ((-5.0 -5.0, 5.0 -5.0, 5.0 10.0, -5.0 10.0, -5.0 -5.0), (-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0)))"
+    assert mp2.wkt() == "MULTIPOLYGON (((0.0 7.0710678118654755, 7.0710678118654755 0.0, 0.0 -7.0710678118654755, -7.0710678118654755 0.0, 0.0 7.0710678118654755)), ((0.0 0.0, 10.0 0.0, 15.0 10.0, 5.0 10.0, 0.0 0.0), (-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0)))"
 
 
 def test_geometry_bounding_box(
@@ -829,11 +853,8 @@ def test_geometry_bounding_box(
 ):
     # valid
     bbox1 = schemas.BoundingBox(
-        polygon=component_polygon_box
+        polygon=component_polygon_box,
     )
-    print()
-    print(component_polygon_box)
-    print(bbox1)
     bbox2 = schemas.BoundingBox(
         polygon=component_polygon_rotated_box
     )
@@ -841,13 +862,17 @@ def test_geometry_bounding_box(
         polygon=component_polygon_skewed_box
     )
 
-    # test property `polygon`
+    """test property `polygon`"""
+
+    # type checking
     with pytest.raises(ValidationError):
         schemas.BoundingBox(polygon=1234)
     with pytest.raises(ValidationError):
         schemas.BoundingBox(polygon=component_polygon_box.points[0])
     with pytest.raises(ValidationError):
         schemas.BoundingBox(polygon=[component_polygon_box])
+
+    # check for 4 unique points
     with pytest.raises(ValidationError):
         box_plus_one = schemas.geometry.BasicPolygon(
             points=component_polygon_box.points + [schemas.geometry.Point(x=15,y=15)]
@@ -871,111 +896,70 @@ def test_geometry_bounding_box(
     assert bbox3.is_skewed()
 
     # test member fn `wkt`
-    assert bbox1.wkt() == ""
-    assert bbox2.wkt() == ""
-    assert bbox3.wkt() == ""
+    assert bbox1.wkt() == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
+    assert bbox2.wkt() == "POLYGON ((0.0 7.0710678118654755, 7.0710678118654755 0.0, 0.0 -7.0710678118654755, -7.0710678118654755 0.0, 0.0 7.0710678118654755))"
+    assert bbox3.wkt() == "POLYGON ((0.0 0.0, 10.0 0.0, 15.0 10.0, 5.0 10.0, 0.0 0.0))"
 
 
+def test_geometry_raster(raster):
+    # valid
+    shape = (20,20)
+    mask = _create_b64_mask(mode="1", ext="PNG", size=shape)
+    assert schemas.Raster(
+        mask=mask,
+        shape=(20,20)
+    )
 
+    """ test property `mask` """
 
-# def _create_b64_mask(mode: str, ext: str, size=(20, 20)) -> str:
-#     with TemporaryDirectory() as tempdir:
-#         img = PIL.Image.new(mode=mode, size=size)
-#         img_path = os.path.join(tempdir, f"img.{ext}")
-#         img.save(img_path)
+    # not any string can be passed
+    with pytest.raises(PIL.UnidentifiedImageError):
+        schemas.Raster(mask="text", shape=shape)
+    
+    # only supports binary images
+    with pytest.raises(ValueError) as exc_info:
+        base64_mask = _create_b64_mask(mode="RGB", ext="png", size=shape)
+        schemas.Raster(
+            mask=base64_mask,
+            shape=shape,
+        )
+    assert "Expected image mode to be binary but got mode" in str(exc_info)
 
-#         with open(img_path, "rb") as f:
-#             img_bytes = f.read()
+    # Check we get an error if the format is not PNG
+    with pytest.raises(ValueError) as exc_info:
+        base64_mask = _create_b64_mask(mode="1", ext="jpg", size=shape)
+        schemas.Raster(
+            mask=base64_mask,
+            shape=shape,
+        )
+    assert "Expected image format PNG but got" in str(exc_info)
 
-#         return b64encode(img_bytes).decode()
+    """ test property `shape` """
 
+    # type error
+    with pytest.raises(ValidationError):
+        mask = _create_b64_mask(mode="1", ext="PNG", size=shape)
+        schemas.Raster(
+            mask=mask,
+            shape="shape",
+        )
 
-# def test_ground_truth_detection_validation_pos(img: Image):
-#     boundary = [[1, 1], [2, 2], [0, 4]]
-#     det = GroundTruthDetection(
-#         boundary=boundary,
-#         labels=[Label(key="class", value="a")],
-#         image=img,
-#     )
-#     assert det.boundary == [tuple(pt) for pt in boundary]
+    # type error
+    with pytest.raises(ValidationError):
+        mask = _create_b64_mask(mode="1", ext="PNG", size=shape)
+        schemas.Raster(
+            mask=mask,
+            shape=(20,20,20),
+        )
 
-#     det = GroundTruthDetection(
-#         bbox=(1, 2, 3, 4),
-#         labels=[Label(key="class", value="a")],
-#         image=img,
-#     )
-
-
-# def test_ground_truth_detection_validation_neg(img: Image):
-#     boundary = [(1, 1), (2, 2)]
-
-#     with pytest.raises(ValueError) as exc_info:
-#         GroundTruthDetection(
-#             boundary=boundary,
-#             labels=[Label(key="class", value="a")],
-#             image=img,
-#         )
-#     assert "must be composed of at least three points" in str(exc_info)
-
-#     with pytest.raises(ValueError) as exc_info:
-#         GroundTruthDetection(
-#             boundary=boundary + [(3, 4)],
-#             bbox=(1, 2, 3, 4),
-#             labels=[Label(key="class", value="a")],
-#             image=img,
-#         )
-#     assert "Must have exactly one of boundary or bbox" in str(exc_info)
-
-
-# def test_ground_truth_segmentation_validation(img: Image):
-#     mask = _create_b64_mask(mode="1", ext="PNG")
-#     with pytest.raises(ValidationError) as exc_info:
-#         GroundTruthSegmentation(
-#             shape=mask, image=img, labels=[], is_instance=True
-#         )
-#     assert "Expected mask and image to have the same size" in str(exc_info)
-
-#     mask = _create_b64_mask(mode="1", ext="PNG", size=(img.width, img.height))
-#     assert GroundTruthSegmentation(
-#         shape=mask, image=img, labels=[], is_instance=True
-#     )
-
-
-# def test_predicted_segmentation_validation_pos(img: Image):
-#     base64_mask = _create_b64_mask(mode="1", ext="png")
-
-#     pred_seg = PredictedSegmentation(
-#         base64_mask=base64_mask, image=img, scored_labels=[], is_instance=True
-#     )
-#     assert pred_seg.base64_mask == base64_mask
-
-
-# def test_predicted_segmentation_validation_mode_neg(img: Image):
-#     """Check we get an error if the mode is not binary"""
-#     base64_mask = _create_b64_mask(mode="RGB", ext="png")
-
-#     with pytest.raises(ValueError) as exc_info:
-#         PredictedSegmentation(
-#             base64_mask=base64_mask,
-#             image=img,
-#             scored_labels=[],
-#             is_instance=False,
-#         )
-#     assert "Expected image mode to be binary but got mode" in str(exc_info)
-
-
-# def test_predicted_segmentation_validation_format_neg(img: Image):
-#     """Check we get an error if the format is not PNG"""
-#     base64_mask = _create_b64_mask(mode="1", ext="jpg")
-
-#     with pytest.raises(ValueError) as exc_info:
-#         PredictedSegmentation(
-#             base64_mask=base64_mask,
-#             image=img,
-#             scored_labels=[],
-#             is_instance=True,
-#         )
-#     assert "Expected image format PNG but got" in str(exc_info)
+    # size mismatch
+    with pytest.raises(ValidationError) as e:
+        mask = _create_b64_mask(mode="1", ext="PNG", size=shape)
+        schemas.Raster(
+            mask=mask,
+            shape=(21,21),
+        )
+    assert "Expected mask and image to have the same size" in str(e)
 
 
 # def test_dataset_validation():

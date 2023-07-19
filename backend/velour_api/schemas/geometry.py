@@ -85,31 +85,31 @@ class LineSegment(BaseModel):
         if not isinstance(other, LineSegment):
             raise TypeError
         
-        def _slope(d):
-            if d.x < 0 and d.y >= 0:
-                d.x = math.fabs(d.x)
-            elif d.y < 0 and d.x >= 0:
-                d.y = math.fabs(d.y)
-            return d
-        
-        d1 = _slope(self.delta_xy())
-        d2 = _slope(other.delta_xy())
-        return d1 == d2
+        d1 = self.delta_xy()
+        d2 = other.delta_xy()
+
+        slope1 = d1.y / d1.x if d1.x else math.inf
+        slope2 = d2.y / d2.x if d2.x else math.inf
+        return math.isclose(slope1, slope2)
 
     def perpendicular(self, other) -> bool:
         if not isinstance(other, LineSegment):
             raise TypeError
-        
-        def _slope(d):
-            if d.x < 0 and d.y >= 0:
-                d.x = math.fabs(d.x)
-            elif d.y < 0 and d.x >= 0:
-                d.y = math.fabs(d.y)
-            return d
+    
+        d1 = self.delta_xy()
+        d2 = other.delta_xy()
 
-        d1 = _slope(self.delta_xy())
-        d2 = _slope(-other.delta_xy())
-        return d1 == Point(x=d2.y, y=d2.x)
+        slope1 = d1.y / d1.x if d1.x else math.inf
+        slope2 = d2.y / d2.x if d2.x else math.inf
+
+        if slope1 == 0 and math.fabs(slope2) == math.inf:
+            return True
+        elif math.fabs(slope1) == math.inf and slope2 == 0:
+            return True
+        elif slope2 == 0:
+            return False
+        else:
+            return math.isclose(slope1, -1.0 / slope2)
 
 
 class BasicPolygon(BaseModel):
@@ -234,9 +234,9 @@ class BoundingBox(BaseModel):
     def valid_polygon(cls, v):
         if len(set(v.points)) != 4:
             raise ValueError("bounding box polygon requires exactly 4 unique points.")
+        return v
             
     def is_rectangular(self):
-        print(self.polygon)
 
         # retrieve segments
         segments = self.polygon.segments
