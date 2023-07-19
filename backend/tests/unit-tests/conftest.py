@@ -4,8 +4,24 @@ from velour_api import schemas
 
 
 @pytest.fixture
-def img() -> schemas.Image:
-    return schemas.Image(uid="", height=1098, width=4591)
+def img() -> schemas.Datum:
+    return schemas.Datum(
+        uid="",
+        metadata=[
+            schemas.MetaDatum(
+                name="type",
+                value="image",
+            ),
+            schemas.MetaDatum(
+                name="height",
+                value=1098,
+            ),
+            schemas.MetaDatum(
+                name="width",
+                value=4591,
+            ),
+        ],
+    )
 
 
 @pytest.fixture

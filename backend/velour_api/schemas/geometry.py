@@ -16,13 +16,13 @@ class Point(BaseModel):
 
     @validator("x")
     def has_x(cls, v):
-        if not isinstance(v, int | float):
+        if not isinstance(v, float):
             raise ValueError
         return v
 
     @validator("y")
     def has_y(cls, v):
-        if not isinstance(v, int | float):
+        if not isinstance(v, float):
             raise ValueError
         return v
 
@@ -43,8 +43,7 @@ class Point(BaseModel):
         return not (self == other)
 
     def __neg__(self):
-        self.x = -self.x
-        self.y = -self.y
+        return Point(x=-self.x, y=-self.y)
 
     def __add__(self, other):
         if not isinstance(other, Point):
@@ -63,12 +62,12 @@ class Point(BaseModel):
     def __iadd__(self, other):
         if not isinstance(other, Point):
             raise TypeError
-        self = self + other
+        return self + other
 
     def __isub__(self, other):
         if not isinstance(other, Point):
             raise TypeError
-        self = self - other
+        return self - other
 
     def dot(self, other):
         if not isinstance(other, Point):
@@ -79,21 +78,37 @@ class Point(BaseModel):
 class LineSegment(BaseModel):
     points: tuple[Point, Point]
 
-    def delta_xy(self):
+    def delta_xy(self) -> Point:
         return self.points[0] - self.points[1]
 
-    def parallel(self, other):
+    def parallel(self, other) -> bool:
         if not isinstance(other, LineSegment):
             raise TypeError
-        d1 = self.delta_xy()
-        d2 = self.delta_xy()
+        
+        def _slope(d):
+            if d.x < 0 and d.y >= 0:
+                d.x = math.fabs(d.x)
+            elif d.y < 0 and d.x >= 0:
+                d.y = math.fabs(d.y)
+            return d
+        
+        d1 = _slope(self.delta_xy())
+        d2 = _slope(other.delta_xy())
         return d1 == d2
 
-    def perpendicular(self, other):
+    def perpendicular(self, other) -> bool:
         if not isinstance(other, LineSegment):
             raise TypeError
-        d1 = self.delta_xy()
-        d2 = -self.delta_xy()
+        
+        def _slope(d):
+            if d.x < 0 and d.y >= 0:
+                d.x = math.fabs(d.x)
+            elif d.y < 0 and d.x >= 0:
+                d.y = math.fabs(d.y)
+            return d
+
+        d1 = _slope(self.delta_xy())
+        d2 = _slope(-other.delta_xy())
         return d1 == Point(x=d2.y, y=d2.x)
 
 
@@ -103,35 +118,48 @@ class BasicPolygon(BaseModel):
     @validator("points")
     def check_points(cls, v):
         if v is not None:
-            # Remove duplicate of start point
-            if v[0] == v[-1]:
-                v = v[:-1]
             if len(set(v)) < 3:
                 raise ValueError(
                     "Polygon must be composed of at least three unique points."
                 )
+            # Remove duplicate of start point
+            if v[0] == v[-1]:
+                v = v[:-1]
             # @TODO (maybe) implement self-intersection check?
         return v
 
     @property
-    def segments(self):
-        plist = self.points + self.points[0]
-        return [(plist[i], plist[i + 1]) for i in range(len(self.points))]
+    def segments(self) -> list[LineSegment]:
+        plist = self.points + [self.points[0]]
+        return [
+            LineSegment(points=(plist[i], plist[i + 1])) 
+            for i in range(len(plist)-1)
+        ]
 
     def __str__(self):
         # in PostGIS polygon has to begin and end at the same point
         pts = self.points
         if pts[0] != pts[-1]:
             pts = pts + [pts[0]]
-        return (
-            "("
-            + ", ".join([" ".join([str(pt.x), str(pt.y)]) for pt in pts])
-            + ")"
-        )
+        points_string = [
+            f"({','.join([str(pt.x), str(pt.y)])})"
+            for pt in pts
+        ]
+        return f"({','.join(points_string)})"
 
-    @property
-    def wkt(self) -> str:
-        return f"POLYGON ({str(self)})"
+    def wkt(self, partial: bool = False) -> str:
+        # in PostGIS polygon has to begin and end at the same point
+        pts = self.points
+        if pts[0] != pts[-1]:
+            pts = pts + [pts[0]]
+        points_string = [
+            ' '.join([str(pt.x), str(pt.y)])
+            for pt in pts
+        ]
+        wkt_format = f"({', '.join(points_string)})"
+        if partial:
+            return wkt_format
+        return f"POLYGON ({wkt_format})"
 
 
 class Polygon(BaseModel):
@@ -143,119 +171,110 @@ class Polygon(BaseModel):
         if self.holes:
             for hole in self.holes:
                 polys.append(str(hole))
-        return f"({', '.join(polys)})"
+        return f"({','.join(polys)})"
 
-    @property
-    def wkt(self) -> str:
-        return f"POLYGON {str(self)}"
+    def wkt(self, partial: bool = False) -> str:
+        polys = [self.boundary.wkt(partial=True)]
+        if self.holes:
+            for hole in self.holes:
+                polys.append(hole.wkt(partial=True))
+        wkt_format = f"({', '.join(polys)})"
+        if partial:
+            return wkt_format
+        return f"POLYGON {wkt_format}"
 
 
 class MultiPolygon(BaseModel):
     polygons: list[Polygon]
 
-    @property
     def wkt(self) -> str:
-        return f"MULTIPOLYGON ({', '.join(self.polygons)})"
+        plist = [
+            polygon.wkt(partial=True)
+            for polygon in self.polygons
+        ]
+        return f"MULTIPOLYGON ({', '.join(plist)})"
 
-    @classmethod
-    def from_wkt(cls, wkt: str | None):
-        if not wkt:
-            return None
-        if re.search("^MULTIPOLYGON", wkt):
-            polygons = []
-            poly_text = re.findall("\(\((.*)\)\)", wkt)[0].split("),(")
-            for poly in poly_text:
-                points = []
-                for numerics in poly.strip().split(","):
-                    coords = numerics.strip().split(" ")
-                    points.append(
-                        Point(
-                            x=float(coords[0]),
-                            y=float(coords[1]),
-                        )
-                    )
-                polygons.append(BasicPolygon(points=points))
+    # @TODO: Unsure if keeping this
+    # @classmethod
+    # def from_wkt(cls, wkt: str | None):
+    #     if not wkt:
+    #         return None
+    #     if re.search("^MULTIPOLYGON", wkt):
+    #         polygons = []
+    #         poly_text = re.findall("\(\((.*)\)\)", wkt)[0].split("),(")
+    #         for poly in poly_text:
+    #             points = []
+    #             for numerics in poly.strip().split(","):
+    #                 coords = numerics.strip().split(" ")
+    #                 points.append(
+    #                     Point(
+    #                         x=float(coords[0]),
+    #                         y=float(coords[1]),
+    #                     )
+    #                 )
+    #             polygons.append(BasicPolygon(points=points))
 
-            if len(polygons) == 1:
-                return cls(
-                    boundary=polygons[0],
-                    holes=None,
-                )
-            elif polygons:
-                return cls(
-                    boundary=polygons[0],
-                    holes=polygons[1:],
-                )
-        raise ValueError
+    #         if len(polygons) == 1:
+    #             return cls(
+    #                 boundary=polygons[0],
+    #                 holes=None,
+    #             )
+    #         elif polygons:
+    #             return cls(
+    #                 boundary=polygons[0],
+    #                 holes=polygons[1:],
+    #             )
+    #     raise ValueError
 
 
 class BoundingBox(BaseModel):
     polygon: BasicPolygon
 
-    @property
+    @validator("polygon")
+    def valid_polygon(cls, v):
+        if len(set(v.points)) != 4:
+            raise ValueError("bounding box polygon requires exactly 4 unique points.")
+            
     def is_rectangular(self):
-        if hasattr(self, "_is_rectangular"):
-            return self._is_rectangular
+        print(self.polygon)
 
-        segments = [
-            LineSegment(
-                points=(self.polygon.points[0], self.polygon.points[1])
-            ),
-            LineSegment(
-                points=(self.polygon.points[1], self.polygon.points[2])
-            ),
-            LineSegment(
-                points=(self.polygon.points[2], self.polygon.points[3])
-            ),
-            LineSegment(
-                points=(self.polygon.points[3], self.polygon.points[0])
-            ),
-        ]
+        # retrieve segments
+        segments = self.polygon.segments
 
         # check if segments are parallel
         if not (
             segments[0].parallel(segments[2])
             and segments[1].parallel(segments[3])
         ):
-            self._is_rectangular = False
-            return self._is_rectangular
+            return False
 
         # check if segments are perpendicular
         for i in range(3):
             if not segments[i].perpendicular(segments[i + 1]):
-                self._is_rectangular = False
-                return self._is_rectangular
+                return False
 
-        self._is_rectangular = True
-        return self._is_rectangular
+        return True
 
-    @property
     def is_rotated(self):
-        if hasattr(self, "_is_rotated"):
-            return self._is_rotated
-
-        if not self.is_rectangular:
-            self._is_rotated = False
-            return self._is_rotated
+        # check if rectangular
+        if not self.is_rectangular():
+            return False
 
         # check if rotation exists by seeing if corners do not share values.
         x = set([p.x for p in self.polygon.points])
         y = set([p.y for p in self.polygon.points])
         return (len(x) != 2) and (len(y) != 2)
 
-    @property
     def is_skewed(self):
-        return not (self.is_rotated or self.is_rectangular)
+        return not (self.is_rotated() or self.is_rectangular())
 
-    @property
     def wkt(self) -> str:
-        return self.polygon.wkt
+        return self.polygon.wkt()
 
 
 class Raster(BaseModel):
     mask: str = Field(allow_mutation=False)
-    height: int | float
-    width: int | float
+    shape: tuple[float, float]
 
     class Config:
         extra = Extra.allow
@@ -268,7 +287,7 @@ class Raster(BaseModel):
                 return PIL.Image.open(f)
 
         mask_size = _mask_bytes_to_pil(b64decode(values["mask"])).size
-        image_size = (values["width"], values["height"])
+        image_size = values["shape"]
         if mask_size != image_size:
             raise ValueError(
                 f"Expected mask and image to have the same size, but got size {mask_size} for the mask and {image_size} for image."

@@ -2,6 +2,7 @@ import re
 
 from pydantic import BaseModel, validator
 
+from velour_api import enums
 from velour_api.schemas.geometry import (
     BoundingBox,
     MultiPolygon,
@@ -12,35 +13,43 @@ from velour_api.schemas.label import Label, ScoredLabel
 from velour_api.schemas.metadata import MetaDatum
 
 
-def format_name(name: str):
+def _format_name(name: str):
     allowed_special = ["-", "_"]
     pattern = re.compile(f"[^a-zA-Z0-9{''.join(allowed_special)}]")
     return re.sub(pattern, "", name)
 
 
+def _format_uid(uid: str):
+    allowed_special = ["-", "_", "/", "."]
+    pattern = re.compile(f"[^a-zA-Z0-9{''.join(allowed_special)}]")
+    return re.sub(pattern, "", uid)
+
+
 class Dataset(BaseModel):
     id: int = None
     name: str
-    metadata: list[MetaDatum]
-
+    metadata: list[MetaDatum] = []
+    
     @validator("name")
-    def check_name_valid(cls, v):
-        v = format_name(v)
-        if len(v) == 0:
-            raise ValueError
+    def check_name_valid(cls, v):  
+        if v != _format_name(v):
+            raise ValueError("name includes illegal characters.")
+        if not v:
+            raise ValueError("invalid string")
         return v
-
+    
 
 class Model(BaseModel):
     id: int = None
     name: str
-    metadata: list[MetaDatum]
+    metadata: list[MetaDatum] = []
 
     @validator("name")
     def check_name_valid(cls, v):
-        v = format_name(v)
-        if len(v) == 0:
-            raise ValueError
+        if v != _format_name(v):
+            raise ValueError("name includes illegal characters.")
+        if not v:
+            raise ValueError("invalid string")
         return v
 
 
@@ -48,12 +57,20 @@ class Datum(BaseModel):
     uid: str
     metadata: list[MetaDatum] = []
 
+    @validator("uid")
+    def format_uid(cls, v):
+        if v != _format_uid(v):
+            raise ValueError("uid includes illegal characters.")
+        if not v:
+            raise ValueError("invalid string")
+        return v
+
 
 class Annotation(BaseModel):
-    task_type: str
+    task_type: enums.TaskType
     metadata: list[MetaDatum] = None
 
-    # Geometric types``
+    # Geometric types
     bounding_box: BoundingBox = None
     polygon: Polygon = None
     multipolygon: MultiPolygon = None
@@ -63,6 +80,11 @@ class Annotation(BaseModel):
 class GroundTruthAnnotation(BaseModel):
     labels: list[Label]
     annotation: Annotation
+
+    @validator("labels")
+    def check_labels(cls, v):
+        if not v:
+            raise ValueError
 
 
 class PredictedAnnotation(BaseModel):
@@ -94,10 +116,16 @@ class GroundTruth(BaseModel):
 
     @validator("dataset_name")
     def check_name_valid(cls, v):
-        v = format_name(v)
-        if len(v) == 0:
-            raise ValueError
+        if v != _format_name(v):
+            raise ValueError("name includes illegal characters.")
+        if not v:
+            raise ValueError("invalid string")
         return v
+    
+    @validator("annotations")
+    def check_annotations(cls, v):
+        if not v:
+            raise ValueError("annotations is empty")
 
 
 class Prediction(BaseModel):
@@ -107,7 +135,13 @@ class Prediction(BaseModel):
 
     @validator("model_name")
     def check_name_valid(cls, v):
-        v = format_name(v)
-        if len(v) == 0:
-            raise ValueError
+        if v != _format_name(v):
+            raise ValueError("name includes illegal characters.")
+        if not v:
+            raise ValueError("invalid string")
         return v
+    
+    @validator("annotations")
+    def check_annotations(cls, v):
+        if not v:
+            raise ValueError("annotations is empty")

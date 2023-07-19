@@ -51,13 +51,45 @@ def mask_bytes3():
 
 
 @pytest.fixture
-def img1() -> schemas.Image:
-    return schemas.Image(uid="uid1", height=1000, width=2000)
+def img1() -> schemas.Datum:
+    return schemas.Datum(
+        uid="uid1",
+        metadata=[
+            schemas.MetaDatum(
+                name="type",
+                value="image",
+            ),
+            schemas.MetaDatum(
+                name="height",
+                value=1000,
+            ),
+            schemas.MetaDatum(
+                name="width",
+                value=2000,
+            ),
+        ],
+    )
 
 
 @pytest.fixture
-def img2() -> schemas.Image:
-    return schemas.Image(uid="uid2", height=1600, width=1200)
+def img2() -> schemas.Datum:
+    return schemas.Datum(
+        uid="uid2",
+        metadata=[
+            schemas.MetaDatum(
+                name="type",
+                value="image",
+            ),
+            schemas.MetaDatum(
+                name="height",
+                value=1600,
+            ),
+            schemas.MetaDatum(
+                name="width",
+                value=1200,
+            ),
+        ],
+    )
 
 
 @pytest.fixture
