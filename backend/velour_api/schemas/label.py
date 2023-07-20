@@ -7,7 +7,11 @@ class Label(BaseModel):
 
     @classmethod
     def from_key_value_tuple(cls, kv_tuple: tuple[str, str]):
-        return cls(key=kv_tuple[0], value=kv_tuple[1])
+        if not isinstance(kv_tuple, tuple):
+            raise ValueError("Should be tuple of 2 elements.")
+        if not len(kv_tuple) == 2:
+            raise ValueError("Should be tuple of 2 elements.")
+        return cls(key=str(kv_tuple[0]), value=str(kv_tuple[1]))
 
     def __eq__(self, other):
         if hasattr(other, "key") and hasattr(other, "value"):

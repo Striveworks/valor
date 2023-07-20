@@ -1,6 +1,6 @@
 from pydantic import BaseModel, validator
 
-from velour_api.schemas.geometry import GeoJSON
+from velour_api.schemas.geojson import GeoJSON
 
 
 class MetaDatum(BaseModel):

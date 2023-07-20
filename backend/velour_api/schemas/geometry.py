@@ -280,7 +280,7 @@ class Raster(BaseModel):
         extra = Extra.allow
         validate_assignment = True
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def correct_mask_shape(cls, values):
         def _mask_bytes_to_pil(mask_bytes):
             with io.BytesIO(mask_bytes) as f:
@@ -309,7 +309,7 @@ class Raster(BaseModel):
                 f"Expected image mode to be binary but got mode {img.mode}."
             )
         return v
-
+    
     @property
     def mask_bytes(self) -> bytes:
         if not hasattr(self, "_mask_bytes"):
@@ -320,71 +320,3 @@ class Raster(BaseModel):
     def pil_mask(self) -> PIL.Image:
         with io.BytesIO(self.mask_bytes) as f:
             return PIL.Image.open(f)
-
-
-class GeoJSON(BaseModel):
-    geometry_type: str
-    coordinates: list
-
-    @root_validator
-    def validate_coordinates(cls, values):
-        try:
-            if values["geometry_type"] == "Polygon":
-                for subpolygon in values["coordinates"]:
-                    for coord in subpolygon:
-                        assert len(coord) == 2
-                        assert isinstance(coord[0], float | int)
-                        assert isinstance(coord[1], float | int)
-            elif values["geometry_type"] == "MultiPolygon":
-                for polygon in values["coordinates"]:
-                    for subpolygon in polygon:
-                        for coord in polygon:
-                            assert len(coord) == 2
-                            assert isinstance(coord[0], float | int)
-                            assert isinstance(coord[1], float | int)
-        except:
-            raise ValueError
-        return values
-
-    @classmethod
-    def from_json(cls, geojson: str):
-        data = json.loads(geojson)
-        assert "type" in data
-        assert "coordinates" in data
-        return cls(geometry_type=data["type"], coordinates=data["coordinates"])
-
-    def polygon(self) -> Polygon | None:
-        if self.geometry_type != "Polygon":
-            return None
-        polygons = [
-            BasicPolygon(
-                points=[Point(x=coord[0], y=coord[1]) for coord in poly]
-            )
-            for poly in self.coordinates
-        ]
-        assert len(polygons) > 0
-        return Polygon(
-            boundary=polygons[0],
-            holes=polygons[1:] if len(polygons) > 1 else None,
-        )
-
-    def multipolygon(self) -> MultiPolygon | None:
-        if self.geometry_type != "MultiPolygon":
-            return None
-
-        multipolygons = []
-        for subpolygon in self.coordinates:
-            polygons = [
-                BasicPolygon(
-                    points=[Point(x=coord[0], y=coord[1]) for coord in poly]
-                )
-                for poly in subpolygon
-            ]
-            multipolygons.append(
-                Polygon(
-                    boundary=polygons[0],
-                    holes=polygons[1:] if len(polygons) > 1 else None,
-                )
-            )
-        assert len(multipolygons) > 0
-        return MultiPolygon(polygons=multipolygons)

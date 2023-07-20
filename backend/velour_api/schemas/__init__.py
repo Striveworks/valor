@@ -11,7 +11,8 @@ from .core import (
     Prediction,
     ScoredLabel,
 )
-from .geometry import BoundingBox, GeoJSON, MultiPolygon, Polygon, Raster
+from .geometry import BoundingBox, MultiPolygon, Polygon, Raster
+from .geojson import GeoJSON
 from .info import LabelDistribution, ScoredLabelDistribution
 from .jobs import Job
 from .metadata import MetaDatum
