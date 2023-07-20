@@ -16,8 +16,9 @@ from PIL import Image, ImageDraw
 from sqlalchemy import func, insert, select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, enums, exceptions, models, ops, schemas
+from velour_api import crud, enums, exceptions, schemas
 from velour_api.crud import _create, _read, _update, _delete
+from velour_api.backend import models
 
 dset_name = "test dataset"
 model_name = "test model"

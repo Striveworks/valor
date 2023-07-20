@@ -7,10 +7,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from velour_api import database, jobs
 from velour_api.enums import JobStatus
 from velour_api.exceptions import JobDoesNotExistError
 from velour_api.schemas import Job
+from velour_api.backend import database, jobs
 
 
 @pytest.fixture

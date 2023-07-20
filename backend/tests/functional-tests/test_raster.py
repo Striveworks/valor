@@ -6,7 +6,8 @@ from PIL import Image
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
-from velour_api import models, ops, schemas
+from velour_api import schemas
+from velour_api.backend import models
 from velour_api.crud._create import (
     _boundary_points_to_str,
     _select_statement_from_poly,

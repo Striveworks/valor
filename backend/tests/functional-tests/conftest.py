@@ -6,8 +6,9 @@ from PIL import Image
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
-from velour_api import crud, models, schemas, enums
-from velour_api.database import Base, create_db, make_session
+from velour_api import crud, schemas, enums
+from velour_api.backend import models
+from velour_api.backend.database import Base, create_db, make_session
 
 # get all velour table names
 classes = [
@@ -131,7 +132,7 @@ def images() -> list[schemas.Datum]:
 @pytest.fixture
 def groundtruths(
     db: Session, images: list[schemas.Image]
-) -> list[list[models.LabeledGroundTruthDetection]]:
+) -> list[list[models.GroundTruth]]:
     """Creates a dataset called "test dataset" with some groundtruth
     detections. These detections are taken from a torchmetrics unit test (see test_metrics.py)
     """
@@ -233,8 +234,8 @@ def groundtruths(
 # predictions to use for testing AP
 @pytest.fixture
 def predictions(
-    db: Session, images: list[schemas.Image]
-) -> list[list[models.LabeledPredictedDetection]]:
+    db: Session, images: list[schemas.Datum]
+) -> list[list[models.Prediction]]:
     """Creates a model called "test model" with some predicted
     detections on the dataset "test dataset". These predictions are taken
     from a torchmetrics unit test (see test_metrics.py)
@@ -302,34 +303,43 @@ def predictions(
     ]
 
     db_preds_per_img = [
-        [
-            schemas.PredictedDetection(
-                bbox=box,
-                scored_labels=[
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="class", value=class_label),
-                        score=score,
+        schemas.Prediction(
+            model_name=model_name,
+            datum=image,
+            annotations=[
+                schemas.PredictedAnnotation(
+                    scored_labels=[
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="class", value=class_label),
+                            score=score,
+                        )
+                    ],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.DETECTION,
+                        bounding_box=schemas.BoundingBox.from_extrema(
+                            xmin=box[0],
+                            ymin=box[1],
+                            xmax=box[2],
+                            ymax=box[3],
+                        )
                     )
-                ],
-                image=image,
-            )
-            for box, class_label, score in zip(
-                preds["boxes"], preds["labels"], preds["scores"]
-            )
-        ]
+                )
+                for box, class_label, score in zip(
+                    preds["boxes"], preds["labels"], preds["scores"]
+                )
+            ]
+        )
         for preds, image in zip(preds_per_img, images)
     ]
 
     created_ids = [
-        crud.create_predicted_detections(
+        crud.create_predictions(
             db,
-            schemas.PredictedDetectionsCreate(
-                model_name=model_name, dataset_name=dset_name, detections=preds
-            ),
+            prediction=pd,
         )
-        for preds in db_preds_per_img
+        for pd in db_preds_per_img
     ]
     return [
-        [db.get(models.LabeledPredictedDetection, det_id) for det_id in ids]
+        [db.get(models.Prediction, det_id) for det_id in ids]
         for ids in created_ids
     ]

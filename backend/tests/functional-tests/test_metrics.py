@@ -2,17 +2,19 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, models, schemas
-from velour_api.metrics import compute_ap_metrics
-from velour_api.metrics.classification import (
+from velour_api import crud, schemas, enums
+from velour_api.backend.metrics import compute_ap_metrics
+from velour_api.backend.metrics.classification import (
     accuracy_from_cm,
     confusion_matrix_at_label_key,
     roc_auc,
 )
-from velour_api.models import (
-    LabeledGroundTruthDetection,
-    LabeledPredictedDetection,
+from velour_api.backend.models import (
+    GroundTruth,
+    Prediction,
+    MetaDatum,
 )
+
 
 dataset_name = "test dataset"
 model_name = "test model"
@@ -23,11 +25,11 @@ def classification_test_data(db: Session):
     crud.create_dataset(
         db,
         schemas.DatasetCreate(
-            name=dataset_name, type=schemas.DatumTypes.IMAGE
+            name=dataset_name, type=enums.DataType.IMAGE
         ),
     )
     crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+        db, schemas.Model(name=model_name, type=enums.DataType.IMAGE)
     )
 
     animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
@@ -123,8 +125,8 @@ def round_dict_(d: dict, prec: int) -> None:
 
 def test_compute_ap_metrics(
     db: Session,
-    groundtruths: list[list[LabeledGroundTruthDetection]],
-    predictions: list[list[LabeledPredictedDetection]],
+    groundtruths: list[list[GroundTruth]],
+    predictions: list[list[Prediction]],
 ):
 
     model_name = "test model"
@@ -278,7 +280,7 @@ def test_confusion_matrix_at_label_key(db: Session, classification_test_data):
 def _get_md1_val0_id(db):
     # helper function to get metadata id for "md1", "md1-val0"
     mds = db.scalars(
-        select(models.Metadatum).where(models.Metadatum.name == "md1")
+        select(MetaDatum).where(MetaDatum.name == "md1")
     ).all()
     md0 = mds[0]
     assert md0.string_value == "md1-val0"
