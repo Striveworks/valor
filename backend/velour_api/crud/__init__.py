@@ -10,6 +10,8 @@ from ._delete import delete_dataset, delete_model
 from ._read import (
     get_dataset,
     get_datasets,
+    get_datums,
+    get_datum,
     get_groundtruth,
     get_labels,
     get_disjoint_labels,
@@ -23,8 +25,10 @@ from ._read import (
     get_model_metrics,
     get_model_evaluation_settings,
 )
+from ._update import (
+    finalize_dataset,
+)
 
-# from ._update import add_groundtruth, add_prediction
 
 __all__ = [
     "create_dataset",
@@ -33,6 +37,8 @@ __all__ = [
     "create_predictions",
     "get_datasets",
     "get_dataset",
+    "get_datums",
+    "get_datum",
     "get_models",
     "get_model",
     "get_labels",
@@ -49,4 +55,5 @@ __all__ = [
     "get_evaluation_settings_from_id",
     "get_model_metrics",
     "get_model_evaluation_settings",
+    "finalize_dataset",
 ]

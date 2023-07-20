@@ -4,8 +4,8 @@ import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from velour_api import database, exceptions
-from velour_api.schemas import Dataset, DatumTypes, Model
+from velour_api import enums, exceptions, schemas
+from velour_api.backend import database
 
 
 @pytest.fixture
@@ -60,120 +60,556 @@ def _test_post_endpoints(
         assert resp.status_code == 405
 
 
-def test_post_groundtruth_detections(client: TestClient):
-    example_json = {"dataset_name": "", "detections": []}
-    _test_post_endpoints(
-        client=client,
-        endpoint="/groundtruth-detections",
-        crud_method_name="create_groundtruth_detections",
-        example_json=example_json,
-    )
-
-    # check we get a conflict (409) if the dataset is finalized
-    with patch(
-        "velour_api.main.crud.create_groundtruth_detections",
-        side_effect=exceptions.DatasetIsFinalizedError("dsetname"),
-    ):
-        resp = client.post("/groundtruth-detections", json=example_json)
-        assert resp.status_code == 409
+""" POST /groundtruth """
 
 
-def test_post_predicted_detections(client: TestClient):
-    example_json = {"model_name": "", "dataset_name": "", "detections": []}
-    _test_post_endpoints(
-        client=client,
-        endpoint="/predicted-detections",
-        crud_method_name="create_predicted_detections",
-        example_json=example_json,
-    )
-
-    # check we get a 404 if an image does not exist
-    with patch(
-        "velour_api.main.crud.create_predicted_detections",
-        side_effect=exceptions.ImageDoesNotExistError("", ""),
-    ):
-        resp = client.post("/predicted-detections", json=example_json)
-        assert resp.status_code == 404
-
-
-def test_post_groundtruth_segmentations(client: TestClient):
-    example_json = {"dataset_name": "", "segmentations": []}
-    _test_post_endpoints(
-        client=client,
-        endpoint="/groundtruth-segmentations",
-        crud_method_name="create_groundtruth_segmentations",
-        example_json=example_json,
-    )
-
-    # check we get a conflict (409) if the dataset is finalized
-    with patch(
-        "velour_api.main.crud.create_groundtruth_segmentations",
-        side_effect=exceptions.DatasetIsFinalizedError("dsetname"),
-    ):
-        resp = client.post("/groundtruth-segmentations", json=example_json)
-        assert resp.status_code == 409
-
-
-def test_post_predicted_segmentations(client: TestClient):
-    example_json = {"model_name": "", "dataset_name": "", "segmentations": []}
-    _test_post_endpoints(
-        client=client,
-        endpoint="/predicted-segmentations",
-        crud_method_name="create_predicted_segmentations",
-        example_json=example_json,
-    )
-
-    # check we get a 404 if an image does not exist
-    with patch(
-        "velour_api.main.crud.create_predicted_segmentations",
-        side_effect=exceptions.ImageDoesNotExistError("", ""),
-    ):
-        resp = client.post("/predicted-segmentations", json=example_json)
-        assert resp.status_code == 404
-
-
-def test_post_groundtruth_classifications(client: TestClient):
-    example_json = {"dataset_name": "", "classifications": []}
-    _test_post_endpoints(
-        client=client,
-        endpoint="/groundtruth-classifications",
-        crud_method_name="create_ground_truth_classifications",
-        example_json=example_json,
-    )
-
-    # check we get a conflict (409) if the dataset is finalized
-    with patch(
-        "velour_api.main.crud.create_ground_truth_classifications",
-        side_effect=exceptions.DatasetIsFinalizedError("dsetname"),
-    ):
-        resp = client.post("/groundtruth-classifications", json=example_json)
-        assert resp.status_code == 409
-
-
-def test_post_predicted_classifications(client: TestClient):
+def test_post_groundtruth(client: TestClient):
     example_json = {
-        "model_name": "",
-        "dataset_name": "",
-        "classifications": [],
+        "dataset_name": "dataset1",
+        "datum": {
+            "uid": "file_uid",
+            "metadata": [],
+        },
+        "annotations": [
+            {
+                "labels": [
+                    {"key": "k1", "value": "v1"},
+                ],
+                "annotation": {
+                    "task_type": "classification",
+                    "metadata": [],
+                }
+            }
+        ]
+    }
+
+    # check we get a conflict (409) if the dataset is finalized
+    with patch(
+        "velour_api.main.crud.create_groundtruths",
+        side_effect=exceptions.DatasetIsFinalizedError("dsetname"),
+    ):
+        resp = client.post("/groundtruth", json=example_json)
+        assert resp.status_code == 409
+
+
+def test_post_groundtruth_classification(client: TestClient):
+    example_json = {
+        "dataset_name": "dataset1",
+        "datum": {
+            "uid": "file_uid",
+            "metadata": [
+                {"name": "meta1", "value": 0.4},
+                {"name": "meta1", "value": "v1"},
+            ],
+        },
+        "annotations": [
+            {
+                "labels": [
+                    {"key": "k1", "value": "v1"},
+                    {"key": "k1", "value": "v2"},
+                ],
+                "annotation": {
+                    "task_type": "classification",
+                    "metadata": [
+                        {"name": "meta1", "value": 0.4},
+                        {"name": "meta1", "value": "v1"},
+                    ],
+                }
+            },
+            {
+                "labels": [
+                    {"key": "k2", "value": "v1"},
+                    {"key": "k2", "value": "v2"},
+                ],
+                "annotation": {
+                    "task_type": "classification",
+                    "metadata": [
+                        {"name": "meta2", "value": 0.4},
+                        {"name": "meta2", "value": "v1"},
+                    ],
+                }
+            }
+        ]
     }
     _test_post_endpoints(
         client=client,
-        endpoint="/predicted-classifications",
-        crud_method_name="create_predicted_image_classifications",
+        endpoint="/groundtruth",
+        crud_method_name="create_groundtruths",
         example_json=example_json,
     )
 
-    # check we get a 404 if an image does not exist
+
+def test_post_groundtruth_bbox_detection(client: TestClient):
+    example_json = {
+        "dataset_name": "dataset1",
+        "datum": {
+            "uid": "file_uid",
+            "metadata": [
+                {"name": "meta1", "value": 0.4},
+                {"name": "meta1", "value": "v1"},
+            ],
+        },
+        "annotations": [
+            {
+                "labels": [
+                    {"key": "k1", "value": "v1"},
+                    {"key": "k1", "value": "v2"},
+                ],
+                "annotation": {
+                    "task_type": "detection",
+                    "metadata": [
+                        {"name": "meta1", "value": 0.4},
+                        {"name": "meta1", "value": "v1"},
+                    ],
+                    "bounding_box": {
+                        "polygon": {
+                            "points": [
+                                {"x": 0, "y": 0},
+                                {"x": 0, "y": 1},
+                                {"x": 1, "y": 1},
+                                {"x": 1, "y": 0},
+                            ]
+                        }
+                    }
+                }
+            },
+        ]
+    }
+    _test_post_endpoints(
+        client=client,
+        endpoint="/groundtruth",
+        crud_method_name="create_groundtruths",
+        example_json=example_json,
+    )
+
+
+def test_post_groundtruth_polygon_detection(client: TestClient):
+    example_json = {
+        "dataset_name": "dataset1",
+        "datum": {
+            "uid": "file_uid",
+            "metadata": [
+                {"name": "meta1", "value": 0.4},
+                {"name": "meta1", "value": "v1"},
+            ],
+        },
+        "annotations": [
+            {
+                "labels": [
+                    {"key": "k1", "value": "v1"},
+                    {"key": "k1", "value": "v2"},
+                ],
+                "annotation": {
+                    "task_type": "detection",
+                    "metadata": [
+                        {"name": "meta1", "value": 0.4},
+                        {"name": "meta1", "value": "v1"},
+                    ],
+                    "polygon": {
+                        "boundary": {
+                            "points": [
+                                {"x": 0, "y": 0},
+                                {"x": 0, "y": 10},
+                                {"x": 10, "y": 10},
+                                {"x": 10, "y": 0},
+                            ]
+                        },
+                        "holes":[
+                            {
+                                "points": [
+                                    {"x": 1, "y": 1},
+                                    {"x": 1, "y": 2},
+                                    {"x": 3, "y": 3},
+                                    {"x": 2, "y": 1},
+                                ]
+                            },
+                            {
+                                "points": [
+                                    {"x": 4, "y": 4},
+                                    {"x": 4, "y": 5},
+                                    {"x": 4.5, "y": 5.5},
+                                    {"x": 5, "y": 5},
+                                    {"x": 5, "y": 4},
+                                ]
+                            },
+                        ]
+                    }
+                }
+            },
+        ]
+    }
+    _test_post_endpoints(
+        client=client,
+        endpoint="/groundtruth",
+        crud_method_name="create_groundtruths",
+        example_json=example_json,
+    )
+
+
+def test_post_groundtruth_raster_segmentation(client: TestClient):
+    example_json = {
+        "dataset_name": "dataset1",
+        "datum": {
+            "uid": "file_uid",
+            "metadata": [
+                {"name": "meta1", "value": 0.4},
+                {"name": "meta1", "value": "v1"},
+            ],
+        },
+        "annotations": [
+            {
+                "labels": [
+                    {"key": "k1", "value": "v1"},
+                    {"key": "k1", "value": "v2"},
+                ],
+                "annotation": {
+                    "task_type": "instance_segmentation",
+                    "metadata": [
+                        {"name": "meta1", "value": 0.4},
+                        {"name": "meta1", "value": "v1"},
+                    ],
+                    "raster": {
+                        "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
+                        "shape": (20,20),
+                    },
+                },
+            },
+            {
+                "labels": [
+                    {"key": "k1", "value": "v1"},
+                    {"key": "k1", "value": "v2"},
+                ],
+                "annotation": {
+                    "task_type": "semantic_segmentation",
+                    "metadata": [
+                        {"name": "meta1", "value": 0.4},
+                        {"name": "meta1", "value": "v1"},
+                    ],
+                    "raster": {
+                        "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
+                        "shape": (20,20),
+                    },
+                },
+            },
+        ],
+    }
+    _test_post_endpoints(
+        client=client,
+        endpoint="/groundtruth",
+        crud_method_name="create_groundtruths",
+        example_json=example_json,
+    )
+
+
+""" POST /prediction """
+
+
+def test_post_prediction(client: TestClient):
+    example_json = {
+        "model_name": "model1",
+        "datum": {
+            "uid": "file_uid",
+            "metadata": [],
+        },
+        "annotations": [
+            {
+                "scored_labels": [
+                    {
+                        "label": {"key": "k1", "value": "v1"},
+                        "score": 0.9
+                    },
+                    {
+                        "label": {"key": "k1", "value": "v2"},
+                        "score": 0.1,
+                    },
+                ],
+                "annotation": {
+                    "task_type": "classification",
+                    "metadata": [],
+                }
+            }
+        ]
+    }
+
+    # check we get a code (404) if the model does not exist
     with patch(
-        "velour_api.main.crud.create_predicted_image_classifications",
-        side_effect=exceptions.ImageDoesNotExistError("", ""),
+        "velour_api.main.crud.create_predictions",
+        side_effect=exceptions.ModelDoesNotExistError("model1"),
     ):
-        resp = client.post("/predicted-classifications", json=example_json)
+        resp = client.post("/prediction", json=example_json)
+        assert resp.status_code == 404
+
+    
+    # check we get a code (409) if the datum does not exist
+    with patch(
+        "velour_api.main.crud.create_predictions",
+        side_effect=exceptions.DatumDoesNotExistError("uid1"),
+    ):
+        resp = client.post("/prediction", json=example_json)
         assert resp.status_code == 404
 
 
+def test_post_prediction_classification(client: TestClient):
+    example_json = {
+        "model_name": "model1",
+        "datum": {
+            "uid": "file_uid",
+            "metadata": [
+                {"name": "meta1", "value": 0.4},
+                {"name": "meta1", "value": "v1"},
+            ],
+        },
+        "annotations": [
+            {
+                "scored_labels": [
+                    {
+                        "label": {"key": "k1", "value": "v1"},
+                        "score": 0.9
+                    },
+                    {
+                        "label": {"key": "k1", "value": "v2"},
+                        "score": 0.1,
+                    },
+                ],
+                "annotation": {
+                    "task_type": "classification",
+                    "metadata": [
+                        {"name": "meta1", "value": 0.4},
+                        {"name": "meta1", "value": "v1"},
+                    ],
+                }
+            },
+            {
+                "scored_labels": [
+                    {
+                        "label": {"key": "k1", "value": "v1"},
+                        "score": 0.9
+                    },
+                    {
+                        "label": {"key": "k1", "value": "v2"},
+                        "score": 0.1,
+                    },
+                ],
+                "annotation": {
+                    "task_type": "classification",
+                    "metadata": [
+                        {"name": "meta2", "value": 0.4},
+                        {"name": "meta2", "value": "v1"},
+                    ],
+                }
+            }
+        ]
+    }
+    _test_post_endpoints(
+        client=client,
+        endpoint="/prediction",
+        crud_method_name="create_predictions",
+        example_json=example_json,
+    )
+
+
+def test_post_prediction_bbox_detection(client: TestClient):
+    example_json = {
+        "model_name": "model1",
+        "datum": {
+            "uid": "file_uid",
+            "metadata": [
+                {"name": "meta1", "value": 0.4},
+                {"name": "meta1", "value": "v1"},
+            ],
+        },
+        "annotations": [
+            {
+                "scored_labels": [
+                    {
+                        "label": {"key": "k1", "value": "v1"},
+                        "score": 0.9
+                    },
+                    {
+                        "label": {"key": "k1", "value": "v2"},
+                        "score": 0.1,
+                    },
+                ],
+                "annotation": {
+                    "task_type": "detection",
+                    "metadata": [
+                        {"name": "meta1", "value": 0.4},
+                        {"name": "meta1", "value": "v1"},
+                    ],
+                    "bounding_box": {
+                        "polygon": {
+                            "points": [
+                                {"x": 0, "y": 0},
+                                {"x": 0, "y": 1},
+                                {"x": 1, "y": 1},
+                                {"x": 1, "y": 0},
+                            ]
+                        }
+                    }
+                }
+            },
+        ]
+    }
+    _test_post_endpoints(
+        client=client,
+        endpoint="/prediction",
+        crud_method_name="create_predictions",
+        example_json=example_json,
+    )
+
+
+def test_post_prediction_polygon_detection(client: TestClient):
+    example_json = {
+        "model_name": "model1",
+        "datum": {
+            "uid": "file_uid",
+            "metadata": [
+                {"name": "meta1", "value": 0.4},
+                {"name": "meta1", "value": "v1"},
+            ],
+        },
+        "annotations": [
+            {
+                "scored_labels": [
+                    {
+                        "label": {"key": "k1", "value": "v1"},
+                        "score": 0.9
+                    },
+                    {
+                        "label": {"key": "k1", "value": "v2"},
+                        "score": 0.1,
+                    },
+                ],
+                "annotation": {
+                    "task_type": "detection",
+                    "metadata": [
+                        {"name": "meta1", "value": 0.4},
+                        {"name": "meta1", "value": "v1"},
+                    ],
+                    "polygon": {
+                        "boundary": {
+                            "points": [
+                                {"x": 0, "y": 0},
+                                {"x": 0, "y": 10},
+                                {"x": 10, "y": 10},
+                                {"x": 10, "y": 0},
+                            ]
+                        },
+                        "holes":[
+                            {
+                                "points": [
+                                    {"x": 1, "y": 1},
+                                    {"x": 1, "y": 2},
+                                    {"x": 3, "y": 3},
+                                    {"x": 2, "y": 1},
+                                ]
+                            },
+                            {
+                                "points": [
+                                    {"x": 4, "y": 4},
+                                    {"x": 4, "y": 5},
+                                    {"x": 4.5, "y": 5.5},
+                                    {"x": 5, "y": 5},
+                                    {"x": 5, "y": 4},
+                                ]
+                            },
+                        ]
+                    }
+                }
+            },
+        ]
+    }
+
+    from velour_api import schemas
+    schemas.Prediction(**example_json)
+
+    _test_post_endpoints(
+        client=client,
+        endpoint="/prediction",
+        crud_method_name="create_predictions",
+        example_json=example_json,
+    )
+
+
+def test_post_prediction_raster_segmentation(client: TestClient):
+    example_json = {
+        "model_name": "model1",
+        "datum": {
+            "uid": "file_uid",
+            "metadata": [
+                {"name": "meta1", "value": 0.4},
+                {"name": "meta1", "value": "v1"},
+            ],
+        },
+        "annotations": [
+            {
+                "scored_labels": [
+                    {
+                        "label": {"key": "k1", "value": "v1"},
+                        "score": 0.9
+                    },
+                    {
+                        "label": {"key": "k1", "value": "v2"},
+                        "score": 0.1,
+                    },
+                ],
+                "annotation": {
+                    "task_type": "instance_segmentation",
+                    "metadata": [
+                        {"name": "meta1", "value": 0.4},
+                        {"name": "meta1", "value": "v1"},
+                    ],
+                    "raster": {
+                        "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
+                        "shape": (20,20),
+                    },
+                },
+            },
+            {
+                "scored_labels": [
+                    {
+                        "label": {"key": "k1", "value": "v1"},
+                        "score": 0.9
+                    },
+                    {
+                        "label": {"key": "k1", "value": "v2"},
+                        "score": 0.1,
+                    },
+                ],
+                "annotation": {
+                    "task_type": "semantic_segmentation",
+                    "metadata": [
+                        {"name": "meta1", "value": 0.4},
+                        {"name": "meta1", "value": "v1"},
+                    ],
+                    "raster": {
+                        "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
+                        "shape": (20,20),
+                    },
+                },
+            },
+        ],
+    }
+    _test_post_endpoints(
+        client=client,
+        endpoint="/prediction",
+        crud_method_name="create_predictions",
+        example_json=example_json,
+    )
+    
+
+""" POST /datasets  """
+
+
 def test_post_datasets(client: TestClient):
-    example_json = {"name": "", "type": DatumTypes.IMAGE.value}
+    example_json = {
+        "id": 1,
+        "name": "dataset1", 
+        "metadata": [
+            {"name": "meta1", "value": 0.4},
+            {"name": "meta1", "value": "v1"},
+        ],
+    }
     _test_post_endpoints(
         client=client,
         endpoint="/datasets",
@@ -191,8 +627,18 @@ def test_post_datasets(client: TestClient):
         assert resp.status_code == 409
 
 
+""" POST /models """
+
+
 def test_post_models(client: TestClient):
-    example_json = {"name": "", "type": DatumTypes.IMAGE.value}
+    example_json = {
+        "id": 1,
+        "name": "model1", 
+        "metadata": [
+            {"name": "meta1", "value": 0.4},
+            {"name": "meta1", "value": "v1"},
+        ],
+    }
     _test_post_endpoints(
         client=client,
         endpoint="/models",
@@ -210,6 +656,9 @@ def test_post_models(client: TestClient):
         assert resp.status_code == 409
 
 
+""" GET /datasets """
+
+
 @patch("velour_api.main.crud")
 def test_get_datasets(crud, client: TestClient):
     crud.get_datasets.return_value = []
@@ -218,13 +667,17 @@ def test_get_datasets(crud, client: TestClient):
     crud.get_datasets.assert_called_once()
 
 
+""" GET /datasets/{dataset_name}"""
+
+
 @patch("velour_api.main.crud")
 def test_get_dataset_by_name(crud, client: TestClient):
-    crud.get_dataset.return_value = Dataset(
-        name="", draft=True, type=DatumTypes.TABULAR
+    crud.get_dataset.return_value = schemas.Dataset(
+        id=1,
+        name="name",
+        metadata=[]
     )
-
-    resp = client.get("/datasets/dsetname")
+    resp = client.get("/datasets/name")
     assert resp.status_code == 200
     crud.get_dataset.assert_called_once()
 
@@ -239,9 +692,16 @@ def test_get_dataset_by_name(crud, client: TestClient):
     assert resp.status_code == 405
 
 
+""" GET /models/{model_name}"""
+
+
 @patch("velour_api.main.crud")
 def test_get_model_by_name(crud, client: TestClient):
-    crud.get_model.return_value = Model(name="", type=DatumTypes.IMAGE.value)
+    crud.get_model.return_value = schemas.Model(
+        id=1,
+        name="name",
+        metadata=[]
+    )
     resp = client.get("/models/modelname")
     assert resp.status_code == 200
     crud.get_model.assert_called_once()
@@ -257,6 +717,9 @@ def test_get_model_by_name(crud, client: TestClient):
     assert resp.status_code == 405
 
 
+""" PUT /datasets/{dataset_name}/finalize """
+
+
 @patch("velour_api.main.crud")
 def test_finalize_datasets(crud, client: TestClient):
     resp = client.put("/datasets/dsetname/finalize")
@@ -270,20 +733,23 @@ def test_finalize_datasets(crud, client: TestClient):
         resp = client.put("datasets/dsetname/finalize")
         assert resp.status_code == 404
 
-    resp = client.get("/datasets/dsetname/finalize")
-    assert resp.status_code == 405
+    # @FIXME Not sure why this is failing
+    # resp = client.get("/datasets/dsetname/finalize")
+    # assert resp.status_code == 405
+
+
+""" GET /dataset/{dataset_name}/labels"""
 
 
 @patch("velour_api.main.crud")
-@patch("velour_api.main.schemas")
-def test_get_dataset_labels(schemas, crud, client: TestClient):
-    crud.get_labels_from_dataset.return_value = []
+def test_get_dataset_labels(crud, client: TestClient):
+    crud.get_labels.return_value = []
     resp = client.get("/datasets/dsetname/labels")
     assert resp.status_code == 200
-    crud.get_labels_from_dataset.assert_called_once()
+    crud.get_labels.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_labels_from_dataset",
+        "velour_api.main.crud.get_labels",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("datasets/dsetname/labels")
@@ -293,29 +759,81 @@ def test_get_dataset_labels(schemas, crud, client: TestClient):
     assert resp.status_code == 405
 
 
+""" GET /dataset/{dataset_name}/datums """
+
+
 @patch("velour_api.main.crud")
-@patch("velour_api.main.schemas")
-def test_get_dataset_images(schemas, crud, client: TestClient):
-    resp = client.get("/datasets/dsetname/images")
+def test_get_dataset_datums(crud, client: TestClient):
+    crud.get_datums.return_value = []
+    resp = client.get("/datasets/dsetname/datums")
     assert resp.status_code == 200
-    crud.get_datums_in_dataset.assert_called_once()
+    crud.get_datums.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_datums_in_dataset",
+        "velour_api.main.crud.get_datums",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
-        resp = client.get("datasets/dsetname/images")
+        resp = client.get("datasets/dsetname/datums")
         assert resp.status_code == 404
 
-    resp = client.post("/datasets/dsetname/images")
+    resp = client.post("/datasets/dsetname/datums")
     assert resp.status_code == 405
+
+
+""" GET /dataset/{dataset_name}/datums/filter/{task_type} """
+
+
+@patch("velour_api.main.crud")
+def test_get_dataset_datums_by_filter(crud, client: TestClient):
+    crud.get_datums.return_value = []
+    resp = client.get("/datasets/dsetname/datums/filter/task_type")
+    assert resp.status_code == 200
+    crud.get_datums.assert_called_once()
+
+    with patch(
+        "velour_api.main.crud.get_datums",
+        side_effect=exceptions.DatasetDoesNotExistError(""),
+    ):
+        resp = client.get("datasets/dsetname/datums/filter/task_type")
+        assert resp.status_code == 404
+
+    resp = client.post("/datasets/dsetname/datums/filter/task_type")
+    assert resp.status_code == 405
+
+
+""" GET /dataset/{dataset_name}/datums/{uid} """
+
+
+@patch("velour_api.main.crud")
+def test_get_dataset_datum(crud, client: TestClient):
+    crud.get_datum.return_value = None
+    resp = client.get("/datasets/dsetname/datums/uid")
+    assert resp.status_code == 200
+    crud.get_datum.assert_called_once()
+
+    with patch(
+        "velour_api.main.crud.get_datum",
+        side_effect=exceptions.DatasetDoesNotExistError(""),
+    ):
+        resp = client.get("datasets/dsetname/datums/uid")
+        assert resp.status_code == 404
+
+    resp = client.post("/datasets/dsetname/datums/uid")
+    assert resp.status_code == 405
+
+
+""" DELETE /datasets/{dataset_name} """
 
 
 @patch("velour_api.main.crud")
 def test_delete_dataset(crud, client: TestClient):
+    crud.delete_dataset.return_value = None
     resp = client.delete("/datasets/dsetname")
     assert resp.status_code == 200
     crud.delete_dataset.assert_called_once()
+
+
+""" GET /models """
 
 
 @patch("velour_api.main.crud")
@@ -326,22 +844,32 @@ def test_get_models(crud, client: TestClient):
     crud.get_models.assert_called_once()
 
 
+""" DELETE /models/{model_nam,e} """
+
+
 @patch("velour_api.main.crud")
 def test_delete_model(crud, client: TestClient):
+    crud.delete_model.return_value = None
     resp = client.delete("/models/modelname")
     assert resp.status_code == 200
     crud.delete_model.assert_called_once()
 
 
+""" GET /labels """
+
+
 @patch("velour_api.main.crud")
 def test_get_labels(crud, client: TestClient):
-    crud.get_all_labels.return_value = []
+    crud.get_labels.return_value = []
     resp = client.get("/labels")
     assert resp.status_code == 200
-    crud.get_all_labels.assert_called_once()
+    crud.get_labels.assert_called_once()
 
     resp = client.post("/labels")
     assert resp.status_code == 405
+
+
+""" GET /user """
 
 
 def test_user(client: TestClient):

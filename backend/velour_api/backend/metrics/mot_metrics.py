@@ -24,44 +24,43 @@ MOT_METRICS_NAMES = [
 ]
 
 
-class BoundingBox:
-    def __init__(self, ymin: float, xmin: float, ymax: float, xmax: float):
-        self.ymin = ymin
-        self.xmin = xmin
-        self.ymax = ymax
-        self.xmax = xmax
+# class BoundingBox:
+#     def __init__(self, ymin: float, xmin: float, ymax: float, xmax: float):
+#         self.ymin = ymin
+#         self.xmin = xmin
+#         self.ymax = ymax
+#         self.xmax = xmax
 
-    @property
-    def left(self):
-        return self.xmin
+#     @property
+#     def left(self):
+#         return self.xmin
 
-    @property
-    def top(self):
-        return self.ymin
+#     @property
+#     def top(self):
+#         return self.ymin
 
-    @property
-    def width(self):
-        return self.xmax - self.xmin
+#     @property
+#     def width(self):
+#         return self.xmax - self.xmin
 
-    @property
-    def height(self):
-        return self.ymax - self.ymin
+#     @property
+#     def height(self):
+#         return self.ymax - self.ymin
 
-    @classmethod
-    def from_polygon(self, polygon: list[tuple[float, float]]):
-        """Convert from polygon to BoundingBox"""
-        polygon = schemas.validate_single_polygon(polygon)
-        xmin = np.infty
-        ymin = np.infty
-        xmax = -np.infty
-        ymax = -np.infty
-        for coord in polygon:
-            xmin = min(xmin, coord[0])
-            ymin = min(ymin, coord[1])
-            xmax = max(xmax, coord[0])
-            ymax = max(ymax, coord[1])
+#     @classmethod
+#     def from_polygon(self, polygon: schemas.Polygon):
+#         """Convert from polygon to BoundingBox"""
+#         xmin = np.infty
+#         ymin = np.infty
+#         xmax = -np.infty
+#         ymax = -np.infty
+#         for coord in polygon:
+#             xmin = min(xmin, coord[0])
+#             ymin = min(ymin, coord[1])
+#             xmax = max(xmax, coord[0])
+#             ymax = max(ymax, coord[1])
 
-        return BoundingBox(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax)
+#         return BoundingBox(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax)
 
 
 class MOTDetection:
@@ -73,7 +72,7 @@ class MOTDetection:
         self,
         frame_number: int = None,
         object_id: str = None,
-        bbox: BoundingBox = None,
+        bbox: schemas.BoundingBox = None,
         confidence: float = None,
     ):
         self.frame_number = frame_number
@@ -102,28 +101,30 @@ class MOTDetection:
 
 
 def ground_truth_det_to_mot(
-    gt: schemas.GroundTruthDetection, obj_id_to_int: dict
+    datum: schemas.Datum,
+    gt: schemas.GroundTruthAnnotation, 
+    obj_id_to_int: dict,
 ) -> list[float]:
     """Helper to convert a ground truth detection into MOT format"""
 
     for label in gt.labels:
         if label.key == OBJECT_ID_LABEL_KEY:
             break
-    bbox = BoundingBox.from_polygon(gt.boundary)
+    bbox = gt.annotation.bounding_box
     mot_det = MOTDetection(
-        frame_number=gt.image.frame,
+        frame_number=schemas.Image.from_datum(datum).frame,
         object_id=obj_id_to_int[
             label.value
         ],  # Label's value is used as object id
         bbox=bbox,
         confidence=1,
     )
-
     return np.array(mot_det.to_list())
 
 
 def pred_det_to_mot(
-    pred: schemas.PredictedDetection,
+    datum: schemas.Datum,
+    pred: schemas.PredictedAnnotation,
     obj_id_to_int: dict,
     object_id_label_key: str = OBJECT_ID_LABEL_KEY,
 ) -> list[float]:
@@ -133,22 +134,21 @@ def pred_det_to_mot(
         if scored_label.label.key == object_id_label_key:
             break
 
-    bbox = BoundingBox.from_polygon(pred.boundary)
+    bbox = pred.annotation.bounding_box
     mot_det = MOTDetection(
-        frame_number=pred.image.frame,
+        frame_number=schemas.Image.from_datum(datum).frame,
         object_id=obj_id_to_int[
             scored_label.label.value
         ],  # Label's value is used as object id
         bbox=bbox,
         confidence=scored_label.score,
     )
-
     return np.array(mot_det.to_list())
 
 
 def compute_mot_metrics(
-    predictions: list[schemas.PredictedDetection],
-    groundtruths: list[schemas.GroundTruthDetection],
+    predictions: list[schemas.Prediction],
+    groundtruths: list[schemas.GroundTruth],
 ):
     """Compute the MOT metrics given predictions and ground truths.
     See https://arxiv.org/abs/1603.00831 for details on MOT.
@@ -156,23 +156,33 @@ def compute_mot_metrics(
 
     # Build obj_id_to_int map
     obj_ids = set()
-    for pred in predictions:
-        for scored_label in pred.scored_labels:
-            if scored_label.label.key == OBJECT_ID_LABEL_KEY:
-                obj_ids.add(scored_label.label.value)
-    for gt in groundtruths:
-        for label in gt.labels:
-            if label.key == OBJECT_ID_LABEL_KEY:
-                obj_ids.add(label.value)
+    for annotated_datum in groundtruths:
+        for gt in annotated_datum.annotations:
+            for label in gt.labels:
+                if label.key == OBJECT_ID_LABEL_KEY:
+                    obj_ids.add(label.value)
+    for annotated_datum in predictions:
+        for pd in annotated_datum.annotations:
+            for scored_label in pd.scored_labels:
+                if scored_label.label.key == OBJECT_ID_LABEL_KEY:
+                    obj_ids.add(scored_label.label.value)
     obj_id_to_int = {_id: i for i, _id in enumerate(obj_ids)}
 
-    # Conver to MOT format
-    predicted_total = np.array(
-        [pred_det_to_mot(pred, obj_id_to_int) for pred in predictions]
-    )
-    groundtruths_total = np.array(
-        [ground_truth_det_to_mot(gt, obj_id_to_int) for gt in groundtruths]
-    )
+    # Convert to MOT format
+    gt_mots = []
+    for annotated_datum in groundtruths:
+        gt_mots.extend([
+            ground_truth_det_to_mot(annotated_datum.datum, gt, obj_id_to_int) 
+            for gt in annotated_datum.annotations
+        ])
+    groundtruths_total = np.array(gt_mots)
+    pd_mots = []
+    for annotated_datum in predictions:
+        pd_mots.extend([
+            pred_det_to_mot(annotated_datum.datum, pred, obj_id_to_int)
+            for pred in annotated_datum.annotations
+        ])
+    predicted_total = np.array(pd_mots)
 
     acc = mm.MOTAccumulator(auto_id=True)
 

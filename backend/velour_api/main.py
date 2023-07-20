@@ -64,7 +64,7 @@ def create_predictions(
         crud.create_predictions(db=db, prediction=pd)
     except (
         exceptions.ModelDoesNotExistError,
-        exceptions.ImageDoesNotExistError,
+        exceptions.DatumDoesNotExistError,
     ) as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -117,7 +117,7 @@ def get_dataset_labels(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.LabelDistribution]:
     try:
-        return crud.get_dataset_labels(db, dataset_name)
+        return crud.get_labels(db, dataset_name=dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -137,26 +137,63 @@ def get_dataset_labels(
 
 
 @app.get(
-    "/datasets/{dataset_name}/{images}",
+    "/datasets/{dataset_name}/datums",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
-def get_dataset_images(
+def get_dataset_datums(
     dataset_name: str, db: Session = Depends(get_db)
-) -> list[schemas.MetaDatum]:
+) -> list[schemas.Datum]:
     try:
-        return [
-            schemas.Image(
-                uid=image.uid, height=image.height, width=image.width
-            )
-            for image in crud.get_datums_in_dataset(db, dataset_name)
-        ]
+        return crud.get_datums(
+            db, 
+            dataset_name,
+        )
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    
+
+@app.get(
+    "/datasets/{dataset_name}/datums/filter/{data_type}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_dataset_datums(
+    dataset_name: str, data_type: str, db: Session = Depends(get_db)
+) -> list[schemas.Datum]:
+    try:
+        return crud.get_datums(
+            db, 
+            dataset_name, 
+            filter=data_type
+        )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
-    "/datasets/{dataset_name}/datum/{uid}/groundtruth",
+    "/datasets/{dataset_name}/datums/{uid}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def get_groundtruth(
+    dataset_name: str, uid: str, db: Session = Depends(get_db)
+) -> schemas.Datum | None:
+    try:
+        return crud.get_datum(
+            db,
+            dataset_name=dataset_name,
+            uid=uid,
+        )
+    except (
+        exceptions.DatumDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/datasets/{dataset_name}/datums/{uid}/groundtruth",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
@@ -170,7 +207,7 @@ def get_groundtruth(
             datum_uid=uid,
         )
     except (
-        exceptions.ImageDoesNotExistError,
+        exceptions.DatumDoesNotExistError,
         exceptions.DatasetDoesNotExistError,
     ) as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -183,7 +220,7 @@ def delete_dataset(
     dataset_name: str,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-) -> str:
+) -> str | None:
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
         return crud.delete_dataset(db, dataset_name)
@@ -215,7 +252,7 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 
 
 @app.delete("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
-def delete_model(model_name: str, db: Session = Depends(get_db)) -> None:
+def delete_model(model_name: str, db: Session = Depends(get_db)) -> str | None:
     try:
         return crud.delete_model(db, model_name)
     except exceptions.ModelDoesNotExistError as e:
@@ -372,8 +409,10 @@ def create_clf_metrics(
 
 
 @app.get("/labels", status_code=200, dependencies=[Depends(token_auth_scheme)])
-def get_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
-    return crud.get_all_labels(db)
+def get_labels(
+    db: Session = Depends(get_db)
+) -> list[schemas.Label]:
+    return crud.get_labels(db)
 
 
 @app.get("/user")

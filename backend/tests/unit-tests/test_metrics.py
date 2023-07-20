@@ -1,9 +1,9 @@
 from velour_api import schemas
-from velour_api.metrics.classification import (
+from velour_api.backend.metrics.classification import (
     accuracy_from_cm,
     precision_and_recall_f1_from_confusion_matrix,
 )
-from velour_api.metrics.detection import RankedPair, _ap
+from velour_api.backend.metrics.detection import RankedPair, _ap
 
 
 def truncate_float(x: float) -> str:

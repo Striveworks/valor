@@ -1,7 +1,10 @@
 from sqlalchemy.orm import Session
 
-from velour_api import backend, schemas
+from velour_api import backend, schemas, enums
 from velour_api.backend import state
+
+
+""" Labels """
 
 
 @state.read
@@ -59,8 +62,30 @@ def get_disjoint_keys(
     return disjoint_keys
 
 
+""" Datum """
 
-# Datasets
+
+# @TODO
+@state.read
+def get_datum(
+    db: Session,
+    dataset_name: str,
+    uid: str,
+) -> schemas.Datum | None:
+    # Check that uid is associated with dataset
+    return None
+
+# @TODO
+@state.read
+def get_datums(
+    db: Session,
+    dataset_name: str,
+    filter: enums.DataType,
+) -> list[schemas.Datum]:
+    return []
+
+
+""" Datasets """
 
 
 @state.read
@@ -89,7 +114,7 @@ def get_dataset_labels(
     pass
 
 
-# Models
+""" Models """
 
 
 @state.read

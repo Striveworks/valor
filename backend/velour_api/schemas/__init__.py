@@ -1,5 +1,6 @@
 from .auth import User
 from .core import (
+    MetaDatum,
     Annotation,
     Dataset,
     Datum,
@@ -15,7 +16,7 @@ from .geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from .geojson import GeoJSON
 from .info import LabelDistribution, ScoredLabelDistribution
 from .jobs import Job
-from .metadata import MetaDatum
+from .metadata import Image
 from .metrics import (
     AccuracyMetric,
     APMetric,
@@ -38,6 +39,7 @@ from .metrics import (
 )
 
 __all__ = [
+    "Image",
     "GroundTruthAnnotation",
     "PredictedAnnotation",
     "Annotation",

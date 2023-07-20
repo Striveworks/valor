@@ -1,29 +1,32 @@
 from pydantic import BaseModel, validator
 
-from velour_api.schemas.geojson import GeoJSON
+from velour_api import enums
+from velour_api.schemas.core import MetaDatum, Datum
 
 
-class MetaDatum(BaseModel):
-    name: str
-    value: float | str | GeoJSON
+class Image(BaseModel):
+    uid: str
+    height: int
+    width: int
+    frame: float
 
-    @validator("name")
-    def check_name(cls, v):
-        if not isinstance(v, str):
-            raise ValueError
-        return v
-
-    @property
-    def string_value(self) -> str | None:
-        if isinstance(self.value, str):
-            return self.value
-        return None
-
-    @property
-    def numeric_value(self) -> float | None:
-        if isinstance(self.value, float):
-            return self.value
-        return None
-
-    # @property
-    # def geo(self) ->
+    @classmethod
+    def from_datum(cls, datum: Datum):
+        if not isinstance(datum, Datum):
+            raise TypeError("Expecting `velour.schemas.Datum`")
+        metadata = {metadatum.name: metadatum.value for metadatum in datum.metadata}
+        try:
+            assert "type" in metadata
+            assert "height" in metadata
+            assert "width" in metadata
+            assert "frame" in metadata
+            assert metadata["type"] == enums.DataType.IMAGE
+        except:
+            raise ValueError("Datum does not contain all the information that makes it an image.")
+        
+        return cls(
+            uid=datum.uid,
+            height=metadata["height"],
+            width=metadata["width"],
+            frame=metadata["frame"],
+        )

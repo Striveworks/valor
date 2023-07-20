@@ -1,5 +1,5 @@
-from velour_api import schemas
-from velour_api.mot_metrics import (
+from velour_api import schemas, enums
+from velour_api.backend.metrics.mot_metrics import (
     MOT_METRICS_NAMES,
     OBJECT_ID_LABEL_KEY,
     compute_mot_metrics,
@@ -12,8 +12,14 @@ def generate_mot_data(num_frames: int):
     Three objects in each frame, moving in different directions at constant speed.
     """
 
-    create_img = lambda frame: schemas.Image(  # noqa: E731
-        uid="", height=500, width=500, frame=frame
+    create_img = lambda frame: schemas.Datum(  # noqa: E731
+        uid="test",
+        metadata=[
+            schemas.MetaDatum(name="type", value="image"),
+            schemas.MetaDatum(name="height", value=500),
+            schemas.MetaDatum(name="width", value=500),
+            schemas.MetaDatum(name="frame", value=frame),
+        ]
     )
     create_label = lambda obj_id: schemas.Label(  # noqa: E731
         key=OBJECT_ID_LABEL_KEY, value=obj_id
@@ -25,12 +31,17 @@ def generate_mot_data(num_frames: int):
         )
     )
 
-    square = lambda x, y: [  # noqa: E731
-        (x, y),
-        (x + 10, y),
-        (x, y + 10),
-        (x + 10, y + 10),
-    ]
+    # noqa: E731
+    square = lambda x, y: schemas.BoundingBox(
+        polygon=schemas.geometry.BasicPolygon(
+            points=[
+                schemas.geometry.Point(x=x,     y=y),
+                schemas.geometry.Point(x=x+10,  y=y),
+                schemas.geometry.Point(x=x,     y=y+10),
+                schemas.geometry.Point(x=x+10,  y=y+10),
+            ]
+        )
+    )
     # Square Boundary moving diagonally
     create_boundary_1 = lambda frame: square(  # noqa: E731
         5 * frame, 5 * frame
@@ -49,36 +60,77 @@ def generate_mot_data(num_frames: int):
 
         image = create_img(frame)
 
-        scored_labels1 = [create_scored_label("object 1", 0.99)]
-        scored_labels2 = [create_scored_label("object 2", 0.99)]
-        scored_labels3 = [create_scored_label("object 3", 0.99)]
+        scored_labels1 = [
+            create_scored_label("object 1", 1.0), 
+        ]
+        scored_labels2 = [
+            create_scored_label("object 2", 1.0), 
+        ]
+        scored_labels3 = [
+            create_scored_label("object 3", 1.0), 
+        ]
 
         labels1 = [create_label("object 1")]
         labels2 = [create_label("object 2")]
         labels3 = [create_label("object 3")]
 
-        pred1 = schemas.PredictedDetection(
-            boundary=boundary1, image=image, scored_labels=scored_labels1
+        gts = schemas.GroundTruth(
+            dataset_name="test",
+            datum=image,
+            annotations=[
+                schemas.GroundTruthAnnotation(
+                    labels=labels1,
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.DETECTION,
+                        bounding_box=boundary1,
+                    )
+                ),
+                schemas.GroundTruthAnnotation(
+                    labels=labels2,
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.DETECTION,
+                        bounding_box=boundary2,
+                    )
+                ),
+                schemas.GroundTruthAnnotation(
+                    labels=labels3,
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.DETECTION,
+                        bounding_box=boundary3,
+                    )
+                ),
+            ]
         )
-        pred2 = schemas.PredictedDetection(
-            boundary=boundary2, image=image, scored_labels=scored_labels2
-        )
-        pred3 = schemas.PredictedDetection(
-            boundary=boundary3, image=image, scored_labels=scored_labels3
-        )
+        groundtruths.append(gts)
 
-        gt1 = schemas.GroundTruthDetection(
-            boundary=boundary1, image=image, labels=labels1
+        pds = schemas.Prediction(
+            model_name="test",
+            datum=image,
+            annotations=[
+                schemas.PredictedAnnotation(
+                    scored_labels=scored_labels1,
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.DETECTION,
+                        bounding_box=boundary1,
+                    )
+                ),
+                schemas.PredictedAnnotation(
+                    scored_labels=scored_labels2,
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.DETECTION,
+                        bounding_box=boundary2,
+                    )
+                ),
+                schemas.PredictedAnnotation(
+                    scored_labels=scored_labels3,
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.DETECTION,
+                        bounding_box=boundary3,
+                    )
+                ),
+            ]
         )
-        gt2 = schemas.GroundTruthDetection(
-            boundary=boundary2, image=image, labels=labels2
-        )
-        gt3 = schemas.GroundTruthDetection(
-            boundary=boundary3, image=image, labels=labels3
-        )
-
-        predictions += [pred1, pred2, pred3]
-        groundtruths += [gt1, gt2, gt3]
+        predictions.append(pds)
 
     return predictions, groundtruths
 

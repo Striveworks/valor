@@ -5,5 +5,6 @@ from velour_api.backend import state
 
 
 @state.update
-def update_something():
+def finalize_dataset(db: Session, dataset_name: str):
     pass
+

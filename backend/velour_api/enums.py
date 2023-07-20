@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class DataType(Enum):
+class DataType(str, Enum):
     IMAGE = "image"
     TABULAR = "tabular"
 

@@ -10,7 +10,7 @@ from velour_api.schemas.geometry import (
     Raster,
 )
 from velour_api.schemas.label import Label, ScoredLabel
-from velour_api.schemas.metadata import MetaDatum
+from velour_api.schemas.geojson import GeoJSON
 
 
 def _format_name(name: str):
@@ -23,6 +23,32 @@ def _format_uid(uid: str):
     allowed_special = ["-", "_", "/", "."]
     pattern = re.compile(f"[^a-zA-Z0-9{''.join(allowed_special)}]")
     return re.sub(pattern, "", uid)
+
+
+class MetaDatum(BaseModel):
+    name: str
+    value: float | str | GeoJSON
+
+    @validator("name")
+    def check_name(cls, v):
+        if not isinstance(v, str):
+            raise ValueError
+        return v
+
+    @property
+    def string_value(self) -> str | None:
+        if isinstance(self.value, str):
+            return self.value
+        return None
+
+    @property
+    def numeric_value(self) -> float | None:
+        if isinstance(self.value, float):
+            return self.value
+        return None
+
+    # @property
+    # def geo(self) ->
 
 
 class Dataset(BaseModel):
@@ -85,6 +111,7 @@ class GroundTruthAnnotation(BaseModel):
     def check_labels(cls, v):
         if not v:
             raise ValueError
+        return v
 
 
 class PredictedAnnotation(BaseModel):
@@ -126,7 +153,7 @@ class GroundTruth(BaseModel):
     def check_annotations(cls, v):
         if not v:
             raise ValueError("annotations is empty")
-
+        return v
 
 class Prediction(BaseModel):
     model_name: str
@@ -145,3 +172,4 @@ class Prediction(BaseModel):
     def check_annotations(cls, v):
         if not v:
             raise ValueError("annotations is empty")
+        return v

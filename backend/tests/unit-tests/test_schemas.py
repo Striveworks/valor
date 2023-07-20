@@ -190,6 +190,51 @@ def test_core__format_uid():
     assert _format_uid("uid!@#$%^&*()'_1") == "uid_1"
 
 
+def test_metadata_Metadatum():
+    # valid
+    schemas.MetaDatum(
+        name="name",
+        value="value"
+    )
+    schemas.MetaDatum(
+        name="name",
+        value=123,
+    )
+    schemas.MetaDatum(
+        name="name",
+        value=123.0,
+    )
+    # @TODO: After implement geojson
+    # schemas.MetaDatum(
+    #     name="name",
+    #     value=schemas.GeoJSON(),
+    # )
+
+    # test property `name`
+    with pytest.raises(ValidationError):
+        schemas.MetaDatum(
+            name=("name",),
+            value=123,
+        )
+
+    # test property `value`
+    with pytest.raises(ValidationError):
+        schemas.MetaDatum(
+            name="name",
+            value=[1,2,3],
+        )
+    with pytest.raises(ValidationError):
+        schemas.MetaDatum(
+            name="name",
+            value=(1,2,3),
+        )
+    with pytest.raises(ValidationError):
+        schemas.MetaDatum(
+            name="name",
+            value=schemas.geometry.Point(x=1,y=1),
+        )
+
+
 def test_core_Dataset(metadata):
     # valid
     schemas.Dataset(
@@ -398,7 +443,7 @@ def test_core_Annotation(metadata, bbox, polygon, raster):
 
 def test_core_GroundtruthAnnotation(labels):
     # valid
-    schemas.GroundTruthAnnotation(
+    gt = schemas.GroundTruthAnnotation(
         labels=labels,
         annotation=schemas.Annotation(
             task_type=enums.TaskType.CLASSIFICATION,
@@ -427,6 +472,7 @@ def test_core_GroundtruthAnnotation(labels):
                 task_type=enums.TaskType.CLASSIFICATION,
             )
         )   
+    assert gt.labels == labels
 
     # test property `annotation`
     with pytest.raises(ValidationError):
@@ -434,11 +480,14 @@ def test_core_GroundtruthAnnotation(labels):
             labels=labels,
             annotation="classification"
         )
-
+    assert gt.annotation == schemas.Annotation(
+        task_type=enums.TaskType.CLASSIFICATION,
+    )
     
+
 def test_core_PredictedAnnotation(scored_labels):
     # valid
-    schemas.PredictedAnnotation(
+    pd = schemas.PredictedAnnotation(
         scored_labels=scored_labels,
         annotation=schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION),
     )
@@ -456,6 +505,7 @@ def test_core_PredictedAnnotation(scored_labels):
             annotation=schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION),
         )
     assert "prediction scores must sum to 1" in str(e.value.errors()[0]["msg"])
+    assert pd.scored_labels == scored_labels
 
     # test property `annotation`
     with pytest.raises(ValidationError):
@@ -463,17 +513,19 @@ def test_core_PredictedAnnotation(scored_labels):
             scored_labels=scored_labels,
             annotation="annotation"
         )
+    assert pd.annotation == schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION)
 
 
 def test_core_Groundtruth(metadata, groundtruth_annotations):
     # valid
-    schemas.GroundTruth(
+    gt = schemas.GroundTruth(
         dataset_name="name1",
         datum=schemas.Datum(uid="uid"),
         annotations=groundtruth_annotations,
     )
 
     # test property `dataset_name`
+    assert gt.dataset_name == "name1"
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
             dataset_name=("name",),
@@ -488,6 +540,7 @@ def test_core_Groundtruth(metadata, groundtruth_annotations):
         )
 
     # test property `datum`
+    assert gt.datum == schemas.Datum(uid="uid")
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
             dataset_name="name",
@@ -496,6 +549,7 @@ def test_core_Groundtruth(metadata, groundtruth_annotations):
         )
 
     # test property `annotations`
+    assert gt.annotations == groundtruth_annotations
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
             dataset_name="name",
@@ -518,13 +572,14 @@ def test_core_Groundtruth(metadata, groundtruth_annotations):
 
 def test_core_Prediction(metadata, predicted_annotations):
     # valid
-    schemas.Prediction(
+    md = schemas.Prediction(
         model_name="name1",
         datum=schemas.Datum(uid="uid"),
         annotations=predicted_annotations,
     )
 
     # test property `model_name`
+    assert md.model_name == "name1"
     with pytest.raises(ValidationError):
         schemas.Prediction(
             model_name=("name",),
@@ -539,6 +594,7 @@ def test_core_Prediction(metadata, predicted_annotations):
         )
 
     # test property `datum`
+    assert md.datum == schemas.Datum(uid="uid")
     with pytest.raises(ValidationError):
         schemas.Prediction(
             model_name="name",
@@ -547,6 +603,7 @@ def test_core_Prediction(metadata, predicted_annotations):
         )
 
     # test property `annotations`
+    assert md.annotations == predicted_annotations
     with pytest.raises(ValidationError):
         schemas.Prediction(
             model_name="name",
@@ -570,49 +627,9 @@ def test_core_Prediction(metadata, predicted_annotations):
 """ velour_api.schemas.metadata """
 
 
-def test_metadata_Metadatum():
-    # valid
-    schemas.MetaDatum(
-        name="name",
-        value="value"
-    )
-    schemas.MetaDatum(
-        name="name",
-        value=123,
-    )
-    schemas.MetaDatum(
-        name="name",
-        value=123.0,
-    )
-    # @TODO: After implement geojson
-    # schemas.MetaDatum(
-    #     name="name",
-    #     value=schemas.GeoJSON(),
-    # )
-
-    # test property `name`
-    with pytest.raises(ValidationError):
-        schemas.MetaDatum(
-            name=("name",),
-            value=123,
-        )
-
-    # test property `value`
-    with pytest.raises(ValidationError):
-        schemas.MetaDatum(
-            name="name",
-            value=[1,2,3],
-        )
-    with pytest.raises(ValidationError):
-        schemas.MetaDatum(
-            name="name",
-            value=(1,2,3),
-        )
-    with pytest.raises(ValidationError):
-        schemas.MetaDatum(
-            name="name",
-            value=schemas.geometry.Point(x=1,y=1),
-        )
+# @TODO
+def test_metadata_Image():
+    pass
 
 
 """ velour_api.schemas.geometry """
@@ -714,7 +731,8 @@ def test_geometry_LineSegment(box_points):
     assert l3.perpendicular(l2)
     assert not l1.perpendicular(l3)
 
-    
+
+# @TODO
 def test_geometry_BasicPolygon(box_points):
     # valid
     poly = schemas.geometry.BasicPolygon(
@@ -737,6 +755,18 @@ def test_geometry_BasicPolygon(box_points):
             box_points[1],
             (1,3),
         ])
+
+    # test member fn `left` @TODO
+    
+    # test member fn `right` @TODO
+    
+    # test member fn `top` @TODO
+    
+    # test member fn `bottom` @TODO
+    
+    # test member fn `width` @TODO
+    
+    # test member fn `height` @TODO
 
     # test member fn `segments`
     plist = box_points + [box_points[0]]
@@ -832,6 +862,7 @@ def test_geometry_MultiPolygon(
     assert mp2.wkt() == "MULTIPOLYGON (((0.0 7.0710678118654755, 7.0710678118654755 0.0, 0.0 -7.0710678118654755, -7.0710678118654755 0.0, 0.0 7.0710678118654755)), ((0.0 0.0, 10.0 0.0, 15.0 10.0, 5.0 10.0, 0.0 0.0), (-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0)))"
 
 
+# @TODO
 def test_geometry_BoundingBox(
     component_polygon_box,
     component_polygon_rotated_box,
@@ -860,6 +891,18 @@ def test_geometry_BoundingBox(
             points=component_polygon_box.points + [schemas.geometry.Point(x=15,y=15)]
         )
         schemas.BoundingBox(polygon=box_plus_one)   # check for 4 unique points
+
+    # test member fn `left` @TODO
+    
+    # test member fn `right` @TODO
+
+    # test member fn `top` @TODO
+    
+    # test member fn `bottom` @TODO
+
+    # test member fn `width` @TODO
+
+    # test member fn `height` @TODO
 
     # test member fn `is_rectangular`
     assert bbox1.is_rectangular()

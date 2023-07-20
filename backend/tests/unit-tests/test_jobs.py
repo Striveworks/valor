@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from velour_api import jobs
+from velour_api.backend import jobs
 
 
 @pytest.fixture(autouse=True)

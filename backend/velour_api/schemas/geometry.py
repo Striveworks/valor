@@ -129,6 +129,30 @@ class BasicPolygon(BaseModel):
         return v
 
     @property
+    def left(self):
+        return min(self.points, key=lambda point: point.x).x
+    
+    @property
+    def right(self):
+        return max(self.points, key=lambda point: point.x).x
+
+    @property
+    def top(self):
+        return max(self.points, key=lambda point: point.y).y
+    
+    @property
+    def bottom(self):
+        return min(self.points, key=lambda point: point.y).y
+
+    @property
+    def width(self):
+        return self.right - self.left
+
+    @property
+    def height(self):
+        return self.top - self.bottom
+
+    @property
     def segments(self) -> list[LineSegment]:
         plist = self.points + [self.points[0]]
         return [
@@ -235,6 +259,43 @@ class BoundingBox(BaseModel):
         if len(set(v.points)) != 4:
             raise ValueError("bounding box polygon requires exactly 4 unique points.")
         return v
+    
+    @classmethod
+    def from_extrema(cls, ymin: float, xmin: float, ymax: float, xmax: float):
+        cls(
+            polygon=BasicPolygon(
+                points=[
+                    Point(x=xmin, y=ymin),
+                    Point(x=xmax, y=ymin),
+                    Point(x=xmax, y=ymax),
+                    Point(x=xmin, y=ymax),
+                ]
+            )
+        )
+    
+    @property
+    def left(self):
+        return self.polygon.left
+    
+    @property
+    def right(self):
+        return self.polygon.right
+
+    @property
+    def top(self):
+        return self.polygon.top
+    
+    @property
+    def bottom(self):
+        return self.polygon.bottom
+
+    @property
+    def width(self):
+        return self.polygon.width
+
+    @property
+    def height(self):
+        return self.polygon.height
             
     def is_rectangular(self):
 
@@ -267,6 +328,7 @@ class BoundingBox(BaseModel):
 
     def is_skewed(self):
         return not (self.is_rotated() or self.is_rectangular())
+        
 
     def wkt(self) -> str:
         return self.polygon.wkt()
