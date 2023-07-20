@@ -6,7 +6,7 @@ from PIL import Image
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
-from velour_api import crud, models, schemas
+from velour_api import crud, models, schemas, enums
 from velour_api.database import Base, create_db, make_session
 
 # get all velour table names
@@ -37,59 +37,40 @@ def random_mask_bytes(size: tuple[int, int]) -> bytes:
 
 @pytest.fixture
 def mask_bytes1():
-    return random_mask_bytes(size=(32, 64))
+    size=(32, 64)
+    return (random_mask_bytes(size=size), size)
 
 
 @pytest.fixture
 def mask_bytes2():
-    return random_mask_bytes(size=(16, 12))
+    size=(16, 12)
+    return (random_mask_bytes(size=size), size)
 
 
 @pytest.fixture
 def mask_bytes3():
-    return random_mask_bytes(size=(20, 27))
+    size=(20, 27)
+    return (random_mask_bytes(size=size), size)
 
 
 @pytest.fixture
 def img1() -> schemas.Datum:
-    return schemas.Datum(
+    return schemas.Image(
         uid="uid1",
-        metadata=[
-            schemas.MetaDatum(
-                name="type",
-                value="image",
-            ),
-            schemas.MetaDatum(
-                name="height",
-                value=1000,
-            ),
-            schemas.MetaDatum(
-                name="width",
-                value=2000,
-            ),
-        ],
-    )
+        height=1000,
+        width=2000,
+        frame=0,
+    ).to_datum()
 
 
 @pytest.fixture
 def img2() -> schemas.Datum:
-    return schemas.Datum(
+    return schemas.Image(
         uid="uid2",
-        metadata=[
-            schemas.MetaDatum(
-                name="type",
-                value="image",
-            ),
-            schemas.MetaDatum(
-                name="height",
-                value=1600,
-            ),
-            schemas.MetaDatum(
-                name="width",
-                value=1200,
-            ),
-        ],
-    )
+        height=1600,
+        width=1200,
+        frame=0,
+    ).to_datum()
 
 
 @pytest.fixture
@@ -117,27 +98,32 @@ def dset(db: Session) -> models.Dataset:
     dset = models.Dataset(name="dset")
     db.add(dset)
     db.commit()
-
     return dset
 
 
+# @pytest.fixture
+# def img(db: Session, dset: models.Dataset) -> models.Datum:
+#     img = models.Datum(uid="uid", dataset_id=dset.id, height=1000, width=2000)
+#     db.add(img)
+#     db.commit()
+
+#     return img
+
+
+# def bounding_box(xmin, ymin, xmax, ymax) -> list[tuple[int, int]]:
+#     return [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin)]
+
+
 @pytest.fixture
-def img(db: Session, dset: models.Dataset) -> models.Datum:
-    img = models.Datum(uid="uid", dataset_id=dset.id, height=1000, width=2000)
-    db.add(img)
-    db.commit()
-
-    return img
-
-
-def bounding_box(xmin, ymin, xmax, ymax) -> list[tuple[int, int]]:
-    return [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin)]
-
-
-@pytest.fixture
-def images() -> list[schemas.Image]:
+def images() -> list[schemas.Datum]:
     return [
-        schemas.Image(uid=f"{i}", height=1000, width=2000) for i in range(4)
+        schemas.Image(
+            uid=f"{i}", 
+            height=1000, 
+            width=2000,
+            frame=0,
+        ).to_datum()
+        for i in range(4)
     ]
 
 
@@ -152,10 +138,14 @@ def groundtruths(
     dataset_name = "test dataset"
     crud.create_dataset(
         db,
-        dataset=schemas.DatasetCreate(
-            name=dataset_name, type=schemas.DatumTypes.IMAGE
+        dataset=schemas.Dataset(
+            name=dataset_name, 
+            metadata=[
+                schemas.MetaDatum(name="type", value=enums.DataType.IMAGE.value),
+            ]
         ),
     )
+
     gts_per_img = [
         {"boxes": [[214.1500, 41.2900, 562.4100, 285.0700]], "labels": ["4"]},
         {
@@ -205,28 +195,37 @@ def groundtruths(
         },
     ]
     db_gts_per_img = [
-        [
-            schemas.GroundTruthDetection(
-                bbox=box,
-                labels=[schemas.Label(key="class", value=class_label)],
-                image=image,
-            )
-            for box, class_label in zip(gts["boxes"], gts["labels"])
-        ]
+        schemas.GroundTruth(
+            dataset_name=dataset_name,
+            datum=image,
+            annotations=[
+                schemas.GroundTruthAnnotation(
+                    labels=[schemas.Label(key="class", value=class_label)],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.DETECTION,
+                        bounding_box=schemas.BoundingBox.from_extrema(
+                            xmin=box[0],
+                            ymin=box[1],
+                            xmax=box[2],
+                            ymax=box[3],
+                        )
+                    )
+                )
+                for box, class_label in zip(gts["boxes"], gts["labels"])
+            ]
+        )
         for gts, image in zip(gts_per_img, images)
     ]
 
     created_ids = [
-        crud.create_groundtruth_detections(
+        crud.create_groundtruths(
             db,
-            schemas.GroundTruthDetectionsCreate(
-                dataset_name=dataset_name, detections=gts
-            ),
+            groundtruth=gt,
         )
-        for gts in db_gts_per_img
+        for gt in db_gts_per_img
     ]
     return [
-        [db.get(models.LabeledGroundTruthDetection, det_id) for det_id in ids]
+        [db.get(models.GroundTruth, det_id) for det_id in ids]
         for ids in created_ids
     ]
 

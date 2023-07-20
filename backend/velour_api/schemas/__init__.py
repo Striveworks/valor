@@ -12,7 +12,14 @@ from .core import (
     Prediction,
     ScoredLabel,
 )
-from .geometry import BoundingBox, MultiPolygon, Polygon, Raster
+from .geometry import (
+    Point, 
+    BasicPolygon,
+    BoundingBox,
+    MultiPolygon,
+    Polygon,
+    Raster
+)
 from .geojson import GeoJSON
 from .info import LabelDistribution, ScoredLabelDistribution
 from .jobs import Job
@@ -53,6 +60,8 @@ __all__ = [
     "Prediction",
     "Label",
     "ScoredLabel",
+    "Point", 
+    "BasicPolygon",
     "BoundingBox",
     "MultiPolygon",
     "Polygon",

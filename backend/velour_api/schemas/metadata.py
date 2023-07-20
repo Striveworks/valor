@@ -30,3 +30,14 @@ class Image(BaseModel):
             width=metadata["width"],
             frame=metadata["frame"],
         )
+    
+    def to_datum(self) -> Datum:
+        return Datum(
+            uid=self.uid,
+            metadata=[
+                MetaDatum(name="type", value="image"),
+                MetaDatum(name="height", value=self.height),
+                MetaDatum(name="width", value=self.width),
+                MetaDatum(name="frame", value=self.frame),
+            ]
+        )

@@ -17,26 +17,7 @@ from sqlalchemy import func, insert, select
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, exceptions, models, ops, schemas
-from velour_api.crud._create import (
-    _instance_segmentations_in_dataset_statement,
-    _model_instance_segmentation_preds_statement,
-    _model_object_detection_preds_statement,
-    _object_detections_in_dataset_statement,
-    _validate_and_update_evaluation_settings_task_type_for_detection,
-)
-from velour_api.crud._read import (
-    _filter_instance_segmentations_by_area,
-    _filter_object_detections_by_area,
-    _get_associated_datasets,
-    _get_associated_models,
-    _raster_to_png_b64,
-    get_dataset_info,
-    get_label_distribution_from_dataset,
-    get_label_distribution_from_model,
-    get_labels_from_dataset,
-    get_labels_from_model,
-    get_model_info,
-)
+from velour_api.crud import _create, _read, _update, _delete
 
 dset_name = "test dataset"
 model_name = "test model"
@@ -64,69 +45,115 @@ def np_to_bytes(arr: np.ndarray) -> bytes:
 
 def check_db_empty(db: Session):
     for model_cls in [
-        models.Datum,
-        models.GroundTruthDetection,
-        models.LabeledGroundTruthDetection,
-        models.PredictedDetection,
         models.Label,
+        models.GroundTruth,
+        models.Prediction,
+        models.MetaDatum,
+        models.Annotation,
+        models.Datum,
+        models.Model,
         models.Dataset,
-        models.GroundTruthClassification,
-        models.PredictedClassification,
-        models.LabeledGroundTruthSegmentation,
-        models.LabeledPredictedDetection,
-        models.PredictedSegmentation,
-        models.LabeledPredictedSegmentation,
+        models.EvaluationSettings,
+        models.Metric,
+        models.ConfusionMatrix,
     ]:
         assert db.scalar(select(func.count(model_cls.id))) == 0
 
 
 @pytest.fixture
-def poly_without_hole() -> schemas.PolygonWithHole:
+def poly_without_hole() -> schemas.Polygon:
     # should have area 45.5
-    return schemas.PolygonWithHole(
-        polygon=[(14, 10), (19, 7), (21, 2), (12, 2)]
+    return schemas.Polygon(
+        boundary=schemas.BasicPolygon(
+            points=[
+                schemas.Point(x=14, y=10),
+                schemas.Point(x=19, y=7),
+                schemas.Point(x=21, y=2),
+                schemas.Point(x=12, y=2),
+            ]
+        )
     )
 
 
 @pytest.fixture
-def poly_with_hole() -> schemas.PolygonWithHole:
+def poly_with_hole() -> schemas.Polygon:
     # should have area 100 - 8 = 92
-    return schemas.PolygonWithHole(
-        polygon=[(0, 10), (10, 10), (10, 0), (0, 0)],
-        hole=[(2, 4), (2, 8), (6, 4)],
+    return schemas.Polygon(
+        boundary=schemas.BasicPolygon(
+            points=[
+                schemas.Point(0, 10),
+                schemas.Point(10, 10),
+                schemas.Point(10, 0),
+                schemas.Point(0, 0),
+            ]
+        ),
+        holes=[
+            schemas.BasicPolygon(
+                points=[
+                    schemas.Point(2, 4),
+                    schemas.Point(2, 8),
+                    schemas.Point(6, 4),
+                ]
+            ),
+        ]
     )
 
 
 @pytest.fixture
-def gt_dets_create(img1: schemas.Image) -> schemas.GroundTruthDetectionsCreate:
-    return schemas.GroundTruthDetectionsCreate(
+def gt_dets_create(img1: schemas.Datum) -> schemas.GroundTruth:
+    return schemas.GroundTruth(
         dataset_name=dset_name,
-        detections=[
-            schemas.GroundTruthDetection(
-                boundary=[(10, 20), (10, 30), (20, 30), (20, 20), (10, 20)],
+        datum=img1,
+        annotations=[
+            schemas.GroundTruthAnnotation(
                 labels=[
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
                 ],
-                image=img1,
+                annotation=schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    metadata=[],
+                    bounding_box=schemas.BoundingBox(
+                        polygon=schemas.BasicPolygon(
+                            points=[
+                                schemas.Point(10, 20),
+                                schemas.Point(10, 30),
+                                schemas.Point(20, 30),
+                                schemas.Point(20, 20), # removed repeated first point
+                            ]
+                        )
+                    )
+                ),
+                boundary=[],
             ),
-            schemas.GroundTruthDetection(
-                boundary=[(10, 20), (10, 30), (20, 30), (20, 20), (10, 20)],
+            schemas.GroundTruthAnnotation(
                 labels=[schemas.Label(key="k2", value="v2")],
-                image=img1,
-            ),
-        ],
+                annotation=schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    metadata=[],
+                    bounding_box=schemas.BoundingBox(
+                        polygon=schemas.BasicPolygon(
+                            points=[
+                                schemas.Point(10, 20),
+                                schemas.Point(10, 30),
+                                schemas.Point(20, 30),
+                                schemas.Point(20, 20), # removed repeated first point
+                            ]
+                        )
+                    )
+                )
+            )
+        ]
     )
 
 
 @pytest.fixture
-def pred_dets_create(img1: schemas.Image) -> schemas.PredictedDetectionsCreate:
-    return schemas.PredictedDetectionsCreate(
+def pred_dets_create(img1: schemas.Datum) -> schemas.Prediction:
+    return schemas.Prediction(
         model_name=model_name,
-        dataset_name=dset_name,
+        datum=img1,
         detections=[
-            schemas.PredictedDetection(
-                boundary=[(107, 207), (107, 307), (207, 307), (207, 207)],
+            schemas.PredictedAnnotation(
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k1", value="v1"), score=0.6
@@ -135,16 +162,39 @@ def pred_dets_create(img1: schemas.Image) -> schemas.PredictedDetectionsCreate:
                         label=schemas.Label(key="k2", value="v2"), score=0.2
                     ),
                 ],
-                image=img1,
+                annotation=schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    bounding_box=schemas.BoundingBox(
+                        polygon=schemas.BasicPolygon(
+                            points=[
+                                schemas.Point(107, 207),
+                                schemas.Point(107, 307),
+                                schemas.Point(207, 307),
+                                schemas.Point(207, 207)
+                            ]
+                        )
+                    )
+                )
             ),
-            schemas.PredictedDetection(
-                boundary=[(107, 207), (107, 307), (207, 307), (207, 207)],
+            schemas.PredictedAnnotation(
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k2", value="v2"), score=0.9
                     )
                 ],
-                image=img1,
+                annotation=schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    bounding_box=schemas.BoundingBox(
+                        polygon=schemas.BasicPolygon(
+                            points=[
+                                schemas.Point(107, 207),
+                                schemas.Point(107, 307),
+                                schemas.Point(207, 307),
+                                schemas.Point(207, 207)
+                            ]
+                        )
+                    )
+                )
             ),
         ],
     )
@@ -152,38 +202,58 @@ def pred_dets_create(img1: schemas.Image) -> schemas.PredictedDetectionsCreate:
 
 @pytest.fixture
 def gt_segs_create(
-    poly_with_hole, poly_without_hole, img1, img2
-) -> schemas.GroundTruthSegmentationsCreate:
-    return schemas.GroundTruthSegmentationsCreate(
-        dataset_name=dset_name,
-        segmentations=[
-            schemas.GroundTruthSegmentation(
-                is_instance=True,
-                shape=[poly_with_hole],
-                image=img1,
-                labels=[schemas.Label(key="k1", value="v1")],
-            ),
-            schemas.GroundTruthSegmentation(
-                is_instance=False,
-                shape=[poly_without_hole],
-                image=img2,
-                labels=[schemas.Label(key="k1", value="v1")],
-            ),
-            schemas.GroundTruthSegmentation(
-                is_instance=True,
-                shape=[poly_without_hole],
-                image=img2,
-                labels=[schemas.Label(key="k3", value="v3")],
-            ),
-            schemas.GroundTruthSegmentation(
-                is_instance=True,
-                shape=[poly_with_hole, poly_without_hole],
-                image=img1,
-                labels=[schemas.Label(key="k1", value="v1")],
-            ),
-        ],
-    )
-
+    poly_with_hole, 
+    poly_without_hole, 
+    img1, 
+    img2
+) -> list[schemas.GroundTruth:]:
+    return [
+        schemas.GroundTruth(
+            dataset_name=dset_name,
+            datum=img1,
+            annotations=[
+                schemas.GroundTruthAnnotation(
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                        polygon=poly_with_hole,
+                    )
+                ),
+            ]
+        ),
+        schemas.GroundTruth(
+            dataset_name=dset_name,
+            datum=img2,
+            annotations=[
+                schemas.GroundTruthAnnotation(
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                        polygon=poly_without_hole,
+                    )
+                ),
+                schemas.GroundTruthAnnotation(
+                    labels=[schemas.Label(key="k3", value="v3")],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                        polygon=poly_without_hole,
+                    )
+                ),
+                schemas.GroundTruthAnnotation(
+                    labels=[schemas.Label(key="k1", value="v1")],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                        multipolygon=schemas.MultiPolygon(
+                            polygons=[
+                                poly_with_hole, 
+                                poly_without_hole
+                            ],
+                        )
+                    )
+                ),
+            ],
+        )
+    ]
 
 @pytest.fixture
 def pred_segs_create(
@@ -191,53 +261,65 @@ def pred_segs_create(
     mask_bytes2: bytes,
     mask_bytes3: bytes,
     img1: schemas.Image,
-) -> schemas.PredictedSegmentationsCreate:
+) -> schemas.Prediction:
     b64_mask1 = b64encode(mask_bytes1).decode()
     b64_mask2 = b64encode(mask_bytes2).decode()
     b64_mask3 = b64encode(mask_bytes3).decode()
-    return schemas.PredictedSegmentationsCreate(
+    return schemas.Prediction(
         model_name=model_name,
-        dataset_name=dset_name,
-        segmentations=[
-            schemas.PredictedSegmentation(
-                base64_mask=b64_mask1,
-                is_instance=True,
-                image=img1,
+        datum=img1,
+        annotations=[
+            schemas.PredictedAnnotation(
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k1", value="v1"), score=0.43
                     )
                 ],
+                annotation=schemas.Annotation(
+                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    raster=schemas.Raster(
+                        mask=b64_mask1,                        
+                    )
+                )
             ),
-            schemas.PredictedSegmentation(
-                base64_mask=b64_mask2,
-                is_instance=False,
-                image=img1,
+            schemas.PredictedAnnotation(
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k2", value="v2"), score=0.97
                     )
                 ],
+                annotation=schemas.Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    raster=schemas.Raster(
+                        mask=b64_mask2,
+                    )
+                )
             ),
-            schemas.PredictedSegmentation(
-                base64_mask=b64_mask2,
-                is_instance=True,
-                image=img1,
+            schemas.PredictedAnnotation(
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k2", value="v2"), score=0.74
                     )
                 ],
+                annotation=schemas.Annotation(
+                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    raster=schemas.Raster(
+                        mask=b64_mask2,                        
+                    )
+                )
             ),
-            schemas.PredictedSegmentation(
-                base64_mask=b64_mask3,
-                is_instance=True,
-                image=img1,
+            schemas.PredictedAnnotation(
                 scored_labels=[
                     schemas.ScoredLabel(
                         label=schemas.Label(key="k2", value="v2"), score=0.14
                     )
                 ],
+                annotation=schemas.Annotation(
+                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    raster=schemas.Raster(
+                        mask=b64_mask3,
+                    )
+                )
             ),
         ],
     )
