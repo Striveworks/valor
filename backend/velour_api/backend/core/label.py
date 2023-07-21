@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend import models
+from velour_api.backend import models, ops
 
 
 def create_label(
@@ -52,52 +52,19 @@ def get_label(
 
 def get_labels(
     db: Session,
-    filter_by:
+    qf: ops.QueryFilter,
 ) -> list[models.Label]:
     """Returns a list of labels from a intersection of relationships (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
 
     # Get annotation ids
     annotation_ids = select(models.Annotation.id)
 
-    # Filter by source(s)
-    relationships = []
-    if annotation:
-        relationships.append(models.Annotation.id == annotation.id)
-    if datum:
-        relationships.append(models.Annotation.datum_id == datum.id)
-    if model:
-        relationships.append(models.Annotation.model_id == model.id)
-    if dataset:
-        relationships.append(models.Datum.dataset_id == dataset.id)
-        if not model:
-            relationships.append(models.Annotation.model_id.is_(None))
-        annotation_ids.join(
-            models.Datum, models.Datum.id == models.Annotation.datum_id
+    # Filter
+    annotation_ids.where(
+        and_(
+            *qf.filters
         )
-    if relationships:
-        annotation_ids = annotation_ids.where(and_(*relationships))
-
-    # Filter by annotation type
-    relationships = []
-    if annotation_types:
-        if enums.AnnotationType.BOX in annotation_types:
-            relationships.append(models.Annotation.box.isnot(None))
-        if enums.AnnotationType.POLYGON in annotation_types:
-            relationships.append(models.Annotation.polygon.isnot(None))
-        if enums.AnnotationType.MULTIPOLYGON in annotation_types:
-            relationships.append(models.Annotation.multipolygon.isnot(None))
-        if enums.AnnotationType.RASTER in annotation_types:
-            relationships.append(models.Annotation.raster.isnot(None))
-        if relationships:
-            annotation_ids = annotation_ids.where(and_(*relationships))
-
-    # Filter by task type
-    if task_types:
-        task_types = [
-            (models.Annotation.task_type == task_type.value)
-            for task_type in task_types
-        ]
-        annotation_ids = annotation_ids.where(or_(*annotation_types))
+    )
 
     # Get label ids
     label_ids = (
