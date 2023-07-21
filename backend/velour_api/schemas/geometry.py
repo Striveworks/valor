@@ -261,8 +261,8 @@ class BoundingBox(BaseModel):
         return v
     
     @classmethod
-    def from_extrema(cls, ymin: float, xmin: float, ymax: float, xmax: float):
-        cls(
+    def from_extrema(cls, xmin: float, ymin: float, xmax: float, ymax: float):
+        return cls(
             polygon=BasicPolygon(
                 points=[
                     Point(x=xmin, y=ymin),
@@ -336,7 +336,8 @@ class BoundingBox(BaseModel):
 
 class Raster(BaseModel):
     mask: str = Field(allow_mutation=False)
-    shape: tuple[float, float]
+    height: float
+    width: float
 
     class Config:
         extra = Extra.allow
@@ -349,7 +350,7 @@ class Raster(BaseModel):
                 return PIL.Image.open(f)
 
         mask_size = _mask_bytes_to_pil(b64decode(values["mask"])).size
-        image_size = values["shape"]
+        image_size = (values["width"], values["height"])
         if mask_size != image_size:
             raise ValueError(
                 f"Expected mask and image to have the same size, but got size {mask_size} for the mask and {image_size} for image."

@@ -50,7 +50,7 @@ def create_groundtruths(
     gt: schemas.GroundTruth, db: Session = Depends(get_db)
 ):
     try:
-        crud.create_groundtruths(db=db, groundtruth=gt)
+        crud.create_groundtruth(db=db, groundtruth=gt)
     except exceptions.DatasetIsFinalizedError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -61,7 +61,7 @@ def create_predictions(
     db: Session = Depends(get_db),
 ):
     try:
-        crud.create_predictions(db=db, prediction=pd)
+        crud.create_prediction(db=db, prediction=pd)
     except (
         exceptions.ModelDoesNotExistError,
         exceptions.DatumDoesNotExistError,
@@ -103,7 +103,7 @@ def get_dataset(
 )
 def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     try:
-        crud.finalize_dataset(db, dataset_name)
+        crud.finalize(db, dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -507,8 +507,8 @@ def finalize_inferences(
     model_name: str, dataset_name: str, db: Session = Depends(get_db)
 ):
     try:
-        crud.finalize_inferences(
-            db, model_name=model_name, dataset_name=dataset_name
+        crud.finalize(
+            db, dataset_name=dataset_name, model_name=model_name
         )
     except (
         exceptions.DatasetDoesNotExistError,

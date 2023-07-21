@@ -10,18 +10,26 @@ from velour_api.backend import state
 @state.read
 def get_labels(
     db: Session,
-    key: str = None,
     dataset_name: str = None,
     model_name: str = None,
+    filter_by_key: list[str] = [],
+    filter_by_task_type: list[enums.TaskType] = [],
+    filter_by_annotation_type: list[enums.AnnotationType] = [],
+    filter_by_metadata: list[schemas.MetaDatum] = [],
 ):
     """Retrieves all existing labels."""
     return backend.get_labels(
         db,
-        key=key,
         dataset_name=dataset_name,
         model_name=model_name,
+        filter_by_key=filter_by_key,
+        filter_by_task_type=filter_by_task_type,
+        filter_by_annotation_type=filter_by_annotation_type,
+        filter_by_metadata=filter_by_metadata,
     )
 
+
+# @NOTE: Maybe return tuple (dataset, model) instead?
 @state.read
 def get_disjoint_labels(
     db: Session,
@@ -90,7 +98,7 @@ def get_datums(
 
 @state.read
 def get_datasets(db: Session) -> list[schemas.Dataset]:
-    return backend.get_datasets()
+    return backend.get_datasets(db)
 
 
 @state.read
@@ -100,10 +108,18 @@ def get_dataset(db: Session, name: str) -> schemas.Dataset:
 
 @state.read
 def get_groundtruth(
-    db: Session, dataset_name: str, datum_uid: str
+    db: Session, 
+    dataset_name: str, 
+    datum_uid: str,
+    filter_by_task_type: list[enums.TaskType] = [],
+    filter_by_metadata: list[schemas.MetaDatum] = [],
 ) -> schemas.GroundTruth:
     return backend.get_groundtruth(
-        db, dataset_name=dataset_name, datum_uid=datum_uid
+        db, 
+        dataset_name=dataset_name, 
+        datum_uid=datum_uid,
+        filter_by_task_type=filter_by_task_type,
+        filter_by_metadata=filter_by_metadata,
     )
 
 

@@ -101,3 +101,17 @@ def get_metadata(
     )
 
     return [get_metadatum(db, metadatum=metadatum) for metadatum in metadata]
+
+
+# @TODO
+def compare_metadata(
+    metadatum: schemas.MetaDatum
+) -> list:
+    comparison = [models.MetaDatum.name == metadatum.name]
+    if isinstance(metadatum.value, str):
+        comparison.append(models.MetaDatum.value == metadatum.value)
+    if isinstance(metadatum.value, float):
+        comparison.append(models.MetaDatum.value == metadatum.value)
+    if isinstance(metadatum.value, schemas.GeoJSON):
+        raise NotImplementedError("Havent implemented GeoJSON support.")
+    return comparison

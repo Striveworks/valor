@@ -11,7 +11,12 @@ def create_prediction(
     prediction: schemas.Prediction,
 ):
     model = core.get_model(db, name=prediction.model_name)
+    if not model:
+        raise exceptions.ModelDoesNotExistError(prediction.model_name)
+
     datum = core.get_datum(db, prediction.datum.uid)
+    if not datum:
+        raise exceptions.DatumDoesNotExistError(prediction.datum.uid)
 
     rows = []
     for pd in prediction.annotations:

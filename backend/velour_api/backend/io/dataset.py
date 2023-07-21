@@ -1,5 +1,6 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from velour_api import exceptions, schemas
 from velour_api.backend import core, models
@@ -89,7 +90,8 @@ def get_datasets(
     db: Session,
 ) -> list[schemas.Dataset]:
     return [
-        get_dataset(db, name) for name in db.query(models.Dataset.name).all()
+        get_dataset(db, name) 
+        for name in db.scalars(select(models.Dataset.name))
     ]
 
 

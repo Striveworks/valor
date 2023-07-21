@@ -7,10 +7,12 @@ from velour_api.backend import models, core, query
 
 def get_labels(
     db: Session,
-    key: str = None,
     dataset_name: str = None,
     model_name: str = None,
-    task_type: list[enums.TaskType] = [],
+    filter_by_key: list[str] = [],
+    filter_by_task_type: list[enums.TaskType] = [],
+    filter_by_annotation_type: list[enums.AnnotationType] = [],
+    filter_by_metadata: list[schemas.MetaDatum] = [],
 ) -> list[schemas.Label]:
 
     dataset = core.get_dataset(db, dataset_name) if dataset_name else None
@@ -18,10 +20,12 @@ def get_labels(
 
     labels = query.get_labels(
         db,
-        key=key,
         dataset=dataset,
         model=model,
-        task_type=task_type,
+        filter_by_key=filter_by_key,
+        filter_by_task_type=filter_by_task_type,
+        filter_by_annotation_type=filter_by_annotation_type,
+        filter_by_metadata=filter_by_metadata,
     )
 
     return [

@@ -92,7 +92,7 @@ def get_annotation(
             mask=_raster_to_png_b64(
                 db, raster=annotation.raster, height=height, width=width
             ),
-            height=height,
+            height=height, 
             width=width,
         )
 

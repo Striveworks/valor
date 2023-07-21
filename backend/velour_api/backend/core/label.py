@@ -52,13 +52,7 @@ def get_label(
 
 def get_labels(
     db: Session,
-    key: str = None,
-    annotation_types: list[enums.AnnotationType] = [],
-    task_types: list[enums.TaskType] = [],
-    dataset: models.Dataset = None,
-    model: models.Model = None,
-    datum: models.Datum = None,
-    annotation: models.Annotation = None,
+    filter_by:
 ) -> list[models.Label]:
     """Returns a list of labels from a intersection of relationships (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
 

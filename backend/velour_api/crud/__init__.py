@@ -1,8 +1,8 @@
 from ._create import (
     create_dataset,
-    create_groundtruths,
+    create_groundtruth,
     create_model,
-    create_predictions,
+    create_prediction,
     create_clf_metrics,
     create_ap_metrics,
 )
@@ -26,15 +26,15 @@ from ._read import (
     get_model_evaluation_settings,
 )
 from ._update import (
-    finalize_dataset,
+    finalize,
 )
 
 
 __all__ = [
     "create_dataset",
     "create_model",
-    "create_groundtruths",
-    "create_predictions",
+    "create_groundtruth",
+    "create_prediction",
     "get_datasets",
     "get_dataset",
     "get_datums",
@@ -55,5 +55,5 @@ __all__ = [
     "get_evaluation_settings_from_id",
     "get_model_metrics",
     "get_model_evaluation_settings",
-    "finalize_dataset",
+    "finalize",
 ]

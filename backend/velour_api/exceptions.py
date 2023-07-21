@@ -20,10 +20,10 @@ class DatasetIsFinalizedError(Exception):
         )
 
 
-class DatasetIsDraftError(Exception):
+class DatasetIsNotFinalizedError(Exception):
     def __init__(self, name: str):
         return super().__init__(
-            f"Cannot evaluate against dataset '{name}' since it is still a draft."
+            f"Cannot evaluate against dataset '{name}' since it has not been finalized."
         )
 
 

@@ -31,7 +31,7 @@ def create_model(db: Session, model: schemas.Model):
 
 
 @state.create
-def create_groundtruths(
+def create_groundtruth(
     db: Session,
     groundtruth: schemas.GroundTruth,
 ):
@@ -39,7 +39,7 @@ def create_groundtruths(
 
 
 @state.create
-def create_predictions(
+def create_prediction(
     db: Session,
     prediction: schemas.Prediction,
 ):

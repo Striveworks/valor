@@ -892,6 +892,15 @@ def test_geometry_BoundingBox(
         )
         schemas.BoundingBox(polygon=box_plus_one)   # check for 4 unique points
 
+
+    # test classmethod `from_extrema`
+    assert schemas.BoundingBox.from_extrema(
+        xmin=component_polygon_box.left,
+        ymin=component_polygon_box.bottom,
+        xmax=component_polygon_box.right,
+        ymax=component_polygon_box.top,
+    ).polygon == component_polygon_box
+
     # test member fn `left` @TODO
     
     # test member fn `right` @TODO

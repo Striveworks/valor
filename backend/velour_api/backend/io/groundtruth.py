@@ -1,8 +1,8 @@
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import exceptions, schemas
+from velour_api import exceptions, schemas, enums
 from velour_api.backend import core, models, query
 
 
@@ -11,6 +11,9 @@ def create_groundtruth(
     groundtruth: schemas.GroundTruth,
 ):
     dataset = core.get_dataset(db, name=groundtruth.dataset_name)
+    if not dataset:
+        raise exceptions.DatasetDoesNotExistError(groundtruth.dataset_name)
+
     datum = core.create_datum(db, dataset=dataset, datum=groundtruth.datum)
 
     rows = []
@@ -41,6 +44,8 @@ def get_groundtruth(
     db: Session,
     dataset_name: str,
     datum_uid: str,
+    filter_by_task_type: list[enums.TaskType] = [],
+    filter_by_metadata: list[schemas.MetaDatum] = [],
 ) -> schemas.GroundTruth:
 
     # Get dataset
@@ -64,8 +69,34 @@ def get_groundtruth(
                 models.Annotation.model_id.is_(None),
             )
         )
-        .all()
     )
+
+    # Filter by task type
+    if filter_by_task_type:
+        task_filters = [
+            models.Annotation.task_type == task_type.value
+            for task_type in filter_by_task_type
+        ]   
+        annotations = annotations.where(
+            or_(
+                *task_filters,
+            )
+        )
+
+    # Filter by metadata
+    if filter_by_metadata:
+        metadata_filters = [
+            query.compare_metadata(metadatum)
+            for metadatum in filter_by_metadata
+        ]
+        annotations = annotations.where(
+            and_(
+                models.MetaDatum.annotation_id == models.Annotation.id,
+                or_(
+                    *metadata_filters
+                ),
+            )
+        )
 
     return schemas.GroundTruth(
         dataset_name=dataset.name,
@@ -80,7 +111,7 @@ def get_groundtruth(
                     db, datum=datum, annotation=annotation
                 ),
             )
-            for annotation in annotations
+            for annotation in annotations.all()
         ],
     )
 

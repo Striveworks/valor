@@ -23,7 +23,7 @@ np.random.seed(29)
 
 
 def drop_all(db):
-    db.execute(text(f"DROP TABLE {', '.join(tablenames)};"))
+    db.execute(text(f"DROP TABLE {', '.join(tablenames)} CASCADE;"))
     db.commit()
 
 

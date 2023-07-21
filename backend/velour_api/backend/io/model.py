@@ -1,5 +1,6 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from velour_api import exceptions, schemas
 from velour_api.backend import core, models
@@ -86,7 +87,10 @@ def get_model(
 def get_models(
     db: Session,
 ) -> list[schemas.Model]:
-    return [get_model(db, name) for name in db.query(models.Model.name).all()]
+    return [
+        get_model(db, name) 
+        for name in db.scalars(select(models.Model.name))
+    ]
 
 
 def delete_model(

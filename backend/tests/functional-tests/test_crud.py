@@ -20,8 +20,8 @@ from velour_api import crud, enums, exceptions, schemas
 from velour_api.crud import _create, _read, _update, _delete
 from velour_api.backend import models
 
-dset_name = "test dataset"
-model_name = "test model"
+dset_name = "test_dataset"
+model_name = "test_model"
 
 
 def pil_to_bytes(img: Image.Image) -> bytes:
@@ -101,112 +101,115 @@ def poly_with_hole() -> schemas.Polygon:
 
 
 @pytest.fixture
-def gt_dets_create(img1: schemas.Datum) -> schemas.GroundTruth:
-    return schemas.GroundTruth(
-        dataset_name=dset_name,
-        datum=img1,
-        annotations=[
-            schemas.GroundTruthAnnotation(
-                labels=[
-                    schemas.Label(key="k1", value="v1"),
-                    schemas.Label(key="k2", value="v2"),
-                ],
-                annotation=schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
-                    metadata=[],
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(10, 20),
-                                schemas.Point(10, 30),
-                                schemas.Point(20, 30),
-                                schemas.Point(20, 20), # removed repeated first point
-                            ]
+def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
+    return [
+        schemas.GroundTruth(
+            dataset_name=dset_name,
+            datum=img1,
+            annotations=[
+                schemas.GroundTruthAnnotation(
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k2", value="v2"),
+                    ],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.DETECTION,
+                        metadata=[],
+                        bounding_box=schemas.BoundingBox(
+                            polygon=schemas.BasicPolygon(
+                                points=[
+                                    schemas.Point(10, 20),
+                                    schemas.Point(10, 30),
+                                    schemas.Point(20, 30),
+                                    schemas.Point(20, 20), # removed repeated first point
+                                ]
+                            )
+                        )
+                    ),
+                    boundary=[],
+                ),
+                schemas.GroundTruthAnnotation(
+                    labels=[schemas.Label(key="k2", value="v2")],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.DETECTION,
+                        metadata=[],
+                        bounding_box=schemas.BoundingBox(
+                            polygon=schemas.BasicPolygon(
+                                points=[
+                                    schemas.Point(10, 20),
+                                    schemas.Point(10, 30),
+                                    schemas.Point(20, 30),
+                                    schemas.Point(20, 20), # removed repeated first point
+                                ]
+                            )
+                        )
+                    )
+                )
+            ]
+        )
+    ]
+
+
+@pytest.fixture
+def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
+    return [
+        schemas.Prediction(
+            model_name=model_name,
+            datum=img1,
+            detections=[
+                schemas.PredictedAnnotation(
+                    scored_labels=[
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k1", value="v1"), score=0.6
+                        ),
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k2", value="v2"), score=0.2
+                        ),
+                    ],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.DETECTION,
+                        bounding_box=schemas.BoundingBox(
+                            polygon=schemas.BasicPolygon(
+                                points=[
+                                    schemas.Point(107, 207),
+                                    schemas.Point(107, 307),
+                                    schemas.Point(207, 307),
+                                    schemas.Point(207, 207)
+                                ]
+                            )
                         )
                     )
                 ),
-                boundary=[],
-            ),
-            schemas.GroundTruthAnnotation(
-                labels=[schemas.Label(key="k2", value="v2")],
-                annotation=schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
-                    metadata=[],
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(10, 20),
-                                schemas.Point(10, 30),
-                                schemas.Point(20, 30),
-                                schemas.Point(20, 20), # removed repeated first point
-                            ]
+                schemas.PredictedAnnotation(
+                    scored_labels=[
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k2", value="v2"), score=0.9
+                        )
+                    ],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.DETECTION,
+                        bounding_box=schemas.BoundingBox(
+                            polygon=schemas.BasicPolygon(
+                                points=[
+                                    schemas.Point(107, 207),
+                                    schemas.Point(107, 307),
+                                    schemas.Point(207, 307),
+                                    schemas.Point(207, 207)
+                                ]
+                            )
                         )
                     )
-                )
-            )
-        ]
-    )
-
-
-@pytest.fixture
-def pred_dets_create(img1: schemas.Datum) -> schemas.Prediction:
-    return schemas.Prediction(
-        model_name=model_name,
-        datum=img1,
-        detections=[
-            schemas.PredictedAnnotation(
-                scored_labels=[
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k1", value="v1"), score=0.6
-                    ),
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k2", value="v2"), score=0.2
-                    ),
-                ],
-                annotation=schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(107, 207),
-                                schemas.Point(107, 307),
-                                schemas.Point(207, 307),
-                                schemas.Point(207, 207)
-                            ]
-                        )
-                    )
-                )
-            ),
-            schemas.PredictedAnnotation(
-                scored_labels=[
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k2", value="v2"), score=0.9
-                    )
-                ],
-                annotation=schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(107, 207),
-                                schemas.Point(107, 307),
-                                schemas.Point(207, 307),
-                                schemas.Point(207, 207)
-                            ]
-                        )
-                    )
-                )
-            ),
-        ],
-    )
-
+                ),
+            ],
+        )
+    ]
 
 @pytest.fixture
 def gt_segs_create(
-    poly_with_hole, 
-    poly_without_hole, 
-    img1, 
-    img2
+    poly_with_hole: schemas.BasicPolygon, 
+    poly_without_hole: schemas.BasicPolygon, 
+    img1: schemas.Datum, 
+    img2: schemas.Datum,
 ) -> list[schemas.GroundTruth:]:
     return [
         schemas.GroundTruth(
@@ -258,134 +261,172 @@ def gt_segs_create(
 
 @pytest.fixture
 def pred_segs_create(
-    mask_bytes1: bytes,
-    mask_bytes2: bytes,
-    mask_bytes3: bytes,
-    img1: schemas.Image,
-) -> schemas.Prediction:
+    mask_bytes1: tuple[bytes, tuple[float,float]],
+    mask_bytes2: tuple[bytes, tuple[float,float]],
+    mask_bytes3: tuple[bytes, tuple[float,float]],
+    img1: schemas.Datum,
+) -> list[schemas.Prediction]:
+    
+    mask_bytes1, shape1 = mask_bytes1
+    mask_bytes2, shape2 = mask_bytes2
+    mask_bytes3, shape3 = mask_bytes3
+
     b64_mask1 = b64encode(mask_bytes1).decode()
     b64_mask2 = b64encode(mask_bytes2).decode()
     b64_mask3 = b64encode(mask_bytes3).decode()
-    return schemas.Prediction(
-        model_name=model_name,
-        datum=img1,
-        annotations=[
-            schemas.PredictedAnnotation(
-                scored_labels=[
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k1", value="v1"), score=0.43
+    return [
+        schemas.Prediction(
+            model_name=model_name,
+            datum=img1,
+            annotations=[
+                schemas.PredictedAnnotation(
+                    scored_labels=[
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k1", value="v1"), score=0.43
+                        )
+                    ],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                        raster=schemas.Raster(
+                            mask=b64_mask1,
+                            shape=shape1,                       
+                        )
                     )
-                ],
-                annotation=schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-                    raster=schemas.Raster(
-                        mask=b64_mask1,                        
+                ),
+                schemas.PredictedAnnotation(
+                    scored_labels=[
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k2", value="v2"), score=0.97
+                        )
+                    ],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                        raster=schemas.Raster(
+                            mask=b64_mask2,
+                            shape=shape2,
+                        )
                     )
-                )
-            ),
-            schemas.PredictedAnnotation(
-                scored_labels=[
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k2", value="v2"), score=0.97
+                ),
+                schemas.PredictedAnnotation(
+                    scored_labels=[
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k2", value="v2"), score=0.74
+                        )
+                    ],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                        raster=schemas.Raster(
+                            mask=b64_mask2,
+                            shape=shape3,                       
+                        )
                     )
-                ],
-                annotation=schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    raster=schemas.Raster(
-                        mask=b64_mask2,
+                ),
+                schemas.PredictedAnnotation(
+                    scored_labels=[
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k2", value="v2"), score=0.14
+                        )
+                    ],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                        raster=schemas.Raster(
+                            mask=b64_mask3,
+                            shape=shape3,
+                        )
                     )
-                )
-            ),
-            schemas.PredictedAnnotation(
-                scored_labels=[
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k2", value="v2"), score=0.74
-                    )
-                ],
-                annotation=schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-                    raster=schemas.Raster(
-                        mask=b64_mask2,                        
-                    )
-                )
-            ),
-            schemas.PredictedAnnotation(
-                scored_labels=[
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k2", value="v2"), score=0.14
-                    )
-                ],
-                annotation=schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-                    raster=schemas.Raster(
-                        mask=b64_mask3,
-                    )
-                )
-            ),
-        ],
-    )
+                ),
+            ],
+        )
+    ]
 
 
 @pytest.fixture
 def gt_clfs_create(
-    img1: schemas.Image, img2: schemas.Image
-) -> schemas.GroundTruthClassificationsCreate:
-    return schemas.GroundTruthClassificationsCreate(
-        dataset_name=dset_name,
-        classifications=[
-            schemas.GroundTruthClassification(
-                datum=img1,
-                labels=[
-                    schemas.Label(key="k1", value="v1"),
-                    schemas.Label(key="k2", value="v2"),
-                ],
-            ),
-            schemas.GroundTruthClassification(
-                datum=img2,
-                labels=[schemas.Label(key="k2", value="v3")],
-            ),
-        ],
-    )
+    img1: schemas.Datum,
+    img2: schemas.Datum,
+) -> list[schemas.GroundTruth]:
+    return [
+        schemas.GroundTruth(
+            dataset_name=dset_name,
+            datum=img1,
+            annotations=[
+                schemas.GroundTruthAnnotation(
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k2", value="v2"),
+                    ],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION
+                    )
+                ),
+            ]
+        ),
+        schemas.GroundTruth(
+            dataset_name=dset_name,
+            datum=img2,
+            annotations=[
+                schemas.GroundTruthAnnotation(
+                    labels=[schemas.Label(key="k2", value="v3")],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION
+                    )
+                ),
+            ]
+        ),
+    ]
 
 
 @pytest.fixture
 def pred_clfs_create(
-    img1: schemas.Image, img2: schemas.Image
-) -> schemas.PredictedClassificationsCreate:
-    return schemas.PredictedClassificationsCreate(
-        model_name=model_name,
-        dataset_name=dset_name,
-        classifications=[
-            schemas.PredictedClassification(
-                datum=img1,
-                scored_labels=[
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k1", value="v1"), score=0.2
-                    ),
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k1", value="v2"), score=0.8
-                    ),
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k4", value="v4"), score=1.0
-                    ),
-                ],
-            ),
-            schemas.PredictedClassification(
-                datum=img2,
-                scored_labels=[
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k2", value="v2"), score=1.0
-                    ),
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k3", value="v3"), score=0.87
-                    ),
-                    schemas.ScoredLabel(
-                        label=schemas.Label(key="k3", value="v0"), score=0.13
-                    ),
-                ],
-            ),
-        ],
-    )
+    img1: schemas.Datum, 
+    img2: schemas.Datum
+) -> list[schemas.Prediction]:
+    return [
+        schemas.Prediction(
+            model_name=model_name,
+            datum=img1,
+            annotations=[
+                schemas.PredictedAnnotation(
+                    scored_labels=[
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k1", value="v1"), score=0.2
+                        ),
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k1", value="v2"), score=0.8
+                        ),
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k4", value="v4"), score=1.0
+                        ),
+                    ],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION
+                    )
+                ),
+            ]
+        ),
+        schemas.Prediction(
+            model_name=model_name,
+            datum=img2,
+            annotations=[
+                schemas.PredictedAnnotation(
+                    scored_labels=[
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k2", value="v2"), score=1.0
+                        ),
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k3", value="v3"), score=0.87
+                        ),
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k3", value="v0"), score=0.13
+                        ),
+                    ],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.CLASSIFICATION
+                    )
+                ),
+            ],
+        )
+    ]
 
 
 @pytest.fixture
@@ -401,8 +442,8 @@ def model_names():
 @pytest.fixture
 def dataset_model_associations_create(
     db: Session,
-    gt_dets_create: schemas.GroundTruthDetectionsCreate,
-    pred_dets_create: schemas.PredictedDetectionsCreate,
+    gt_dets_create: list[schemas.GroundTruth],
+    pred_dets_create: list[schemas.Prediction],
     dataset_names: list[str],
     model_names: list[str],
 ):
@@ -413,49 +454,56 @@ def dataset_model_associations_create(
     for name in datasets:
         crud.create_dataset(
             db,
-            schemas.DatasetCreate(
-                name=name,
-                type=enums.DatumTypes.IMAGE,
-            ),
+            schemas.Dataset(name=name),
         )
-        gts = gt_dets_create
-        gts.dataset_name = name
-        crud.create_groundtruth_detections(db, gt_dets_create)
-        crud.finalize_dataset(db, name)
+        for gt in gt_dets_create:
+            gt.dataset_name = name
+            crud.create_groundtruth(db, gt)
+        crud.finalize(db, name)
 
-    # Link model 1 to dataset 1 and 2
+    # Create model1
     crud.create_model(
-        db, model=schemas.Model(name=models[0], type=enums.DatumTypes.IMAGE)
-    )
-    crud.create_model(
-        db, model=schemas.Model(name=models[1], type=enums.DatumTypes.IMAGE)
+        db, model=schemas.Model(name=models[0])
     )
 
     # Link model1 to dataset1
-    pds = pred_dets_create
-    pds.dataset_name = datasets[0]
-    pds.model_name = models[0]
-    crud.create_predicted_detections(db, pds)
-    crud.finalize_inferences(
-        db, model_name=models[0], dataset_name=datasets[0]
+    for pd in pred_dets_create:
+        # pd.dataset_name = datasets[0]
+        pd.model_name = models[0]
+        crud.create_prediction(db, pd)
+    # Finalize model1 over dataset1
+    crud.finalize(
+        db, 
+        dataset_name=datasets[0],
+        model_name=models[0], 
     )
 
     # Link model1 to dataset2
-    pds = pred_dets_create
-    pds.dataset_name = datasets[1]
-    pds.model_name = models[0]
-    crud.create_predicted_detections(db, pds)
-    crud.finalize_inferences(
-        db, model_name=models[0], dataset_name=datasets[1]
+    for pd in pred_dets_create:
+        # pds.dataset_name = datasets[1]
+        pd.model_name = models[0]
+        crud.create_prediction(db, pd)
+    # Finalize model1 over dataset2
+    crud.finalize(
+        db, 
+        dataset_name=datasets[1],
+        model_name=models[0], 
+    )
+
+    # Create model 2
+    crud.create_model(
+        db, model=schemas.Model(name=models[1])
     )
 
     # Link model2 to dataset2
-    pds = pred_dets_create
-    pds.dataset_name = datasets[1]
-    pds.model_name = models[1]
-    crud.create_predicted_detections(db, pds)
-    crud.finalize_inferences(
-        db, model_name=models[1], dataset_name=datasets[1]
+    for pd in pred_dets_create:
+        # pd.dataset_name = datasets[1]
+        pd.model_name = models[1]
+        crud.create_prediction(db, pd)
+    crud.finalize(
+        db, 
+        dataset_name=datasets[1],
+        model_name=models[1], 
     )
 
     yield
@@ -467,10 +515,15 @@ def dataset_model_associations_create(
     crud.delete_dataset(db, datasets[1])
 
 
+""" CREATE """
+
+
 def test_create_and_get_datasets(db: Session):
+
+    # Create dataset
     crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+        db, 
+        schemas.Dataset(name=dset_name)
     )
 
     all_datasets = db.scalars(select(models.Dataset)).all()
@@ -480,27 +533,21 @@ def test_create_and_get_datasets(db: Session):
     with pytest.raises(exceptions.DatasetAlreadyExistsError) as exc_info:
         crud.create_dataset(
             db,
-            schemas.DatasetCreate(
-                name=dset_name, type=schemas.DatumTypes.IMAGE
-            ),
+            schemas.Dataset(name=dset_name),
         )
     assert "already exists" in str(exc_info)
 
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(
-            name="other dataset", type=schemas.DatumTypes.IMAGE
-        ),
+        schemas.Dataset(name="other_dataset"),
     )
     datasets = crud.get_datasets(db)
     assert len(datasets) == 2
-    assert set([d.name for d in datasets]) == {dset_name, "other dataset"}
+    assert set([d.name for d in datasets]) == {dset_name, "other_dataset"}
 
 
 def test_create_and_get_models(db: Session):
-    crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
-    )
+    crud.create_model(db, schemas.Model(name=model_name))
 
     all_models = db.scalars(select(models.Model)).all()
     assert len(all_models) == 1
@@ -508,428 +555,448 @@ def test_create_and_get_models(db: Session):
 
     with pytest.raises(exceptions.ModelAlreadyExistsError) as exc_info:
         crud.create_model(
-            db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+            db, schemas.Model(name=model_name)
         )
     assert "already exists" in str(exc_info)
 
     crud.create_model(
-        db, schemas.Model(name="other model", type=schemas.DatumTypes.IMAGE)
+        db, schemas.Model(name="other_model")
     )
     db_models = crud.get_models(db)
     assert len(db_models) == 2
-    assert set([m.name for m in db_models]) == {model_name, "other model"}
+    assert set([m.name for m in db_models]) == {model_name, "other_model"}
 
 
-def test_get_dataset(db: Session):
-    with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
-        crud.get_dataset(db, dset_name)
-    assert "does not exist" in str(exc_info)
-
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    dset = crud.get_dataset(db, dset_name)
-    assert dset.name == dset_name
-
-
-def test_get_model(db: Session):
-    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        crud.get_model(db, model_name)
-    assert "does not exist" in str(exc_info)
-
-    crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
-    )
-    model = crud.get_model(db, model_name)
-    assert model.name == model_name
-
-
-def test_create_ground_truth_detections_and_delete_dataset(
-    db: Session, gt_dets_create: schemas.GroundTruthDetectionsCreate
+def test_create_detection_ground_truth_and_delete_dataset(
+    db: Session, 
+    gt_dets_create: list[schemas.GroundTruth],
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
 
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
+    crud.create_dataset(db, schemas.Dataset(name=dset_name))
 
-    crud.create_groundtruth_detections(db, data=gt_dets_create)
 
-    assert crud.number_of_rows(db, models.GroundTruthDetection) == 2
-    assert crud.number_of_rows(db, models.Datum) == 1
-    assert crud.number_of_rows(db, models.LabeledGroundTruthDetection) == 3
-    assert crud.number_of_rows(db, models.Label) == 2
+    for gt in gt_dets_create:
+        crud.create_groundtruth(db, gt)
+
+    assert db.scalar(func.count(models.Annotation.id)) == 2
+    assert db.scalar(func.count(models.Datum.id)) == 2
+    assert db.scalar(func.count(models.GroundTruth.id)) == 2
+    assert db.scalar(func.count(models.Label.id)) == 2
+
+    # @TODO delete after pass
+    # assert db.scalar(func.count(models.GroundTruthDetection.id)) == 2
+    # assert db.scalar(func.count(models.Datum.id)) == 1
+    # assert db.scalar(func.count(models.LabeledGroundTruthDetection.id)) == 3
+    # assert db.scalar(func.count(models.Label.id)) == 2
 
     # verify we get the same dets back
-    dets = crud.get_groundtruth_detections_in_image(
-        db, uid=gt_dets_create.detections[0].image.uid, dataset_name=dset_name
-    )
-    assert dets == gt_dets_create.detections
+    for gt in gt_dets_create:
+        assert gt == crud.get_groundtruth(db, gt.dataset_name, gt.datum.uid)
 
     # delete dataset and check the cascade worked
-    crud.delete_dataset(db, dataset_name=dset_name)
+    crud.delete_dataset(db, dset_name)
     for model_cls in [
         models.Dataset,
         models.Datum,
-        models.GroundTruthDetection,
-        models.LabeledGroundTruthDetection,
+        models.GroundTruth,
+        models.Annotation,
     ]:
-        assert crud.number_of_rows(db, model_cls) == 0
+        assert db.scalar(func.count(model_cls.id)) == 0
 
     # make sure labels are still there`
-    assert crud.number_of_rows(db, models.Label) == 2
+    assert db.scalar(func.count(models.Label.id)) == 2
 
 
-def test_create_predicted_detections_and_delete_model(
+def test_create_detection_prediction_and_delete_model(
     db: Session,
-    pred_dets_create: schemas.PredictedDetectionsCreate,
-    gt_dets_create: schemas.GroundTruthDetectionsCreate,
+    pred_dets_create: list[schemas.Prediction],
+    gt_dets_create: list[schemas.GroundTruth],
 ):
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        crud.create_predicted_detections(db, pred_dets_create)
+        for pd in pred_dets_create:
+            crud.create_prediction(db, pd)
     assert "does not exist" in str(exc_info)
 
-    crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
-    )
+    # create model
+    crud.create_model(db, schemas.Model(name=model_name))
 
-    # check this gives an error since the images haven't been added yet
+    # check this gives an error since the datums haven't been added yet
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
-        crud.create_predicted_detections(db, pred_dets_create)
+        for pd in pred_dets_create:
+            pd.model_name=model_name
+            crud.create_prediction(db, pd)
     assert "Image with uid" in str(exc_info)
 
     # create dataset, add images, and add predictions
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_groundtruth_detections(db, gt_dets_create)
-    crud.create_predicted_detections(db, pred_dets_create)
+    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+    crud.create_groundtruth(db, gt_dets_create)
+    crud.create_prediction(db, pred_dets_create)
 
     # check db has the added predictions
-    assert crud.number_of_rows(db, models.PredictedDetection) == 2
-    assert crud.number_of_rows(db, models.LabeledPredictedDetection) == 3
+    assert db.scalar(func.count(models.Annotation.id)) == 2
+    assert db.scalar(func.count(models.Prediction.id)) == 3
 
     # delete model and check all detections from it are gone
     crud.delete_model(db, model_name)
-    assert crud.number_of_rows(db, models.Model) == 0
-    assert crud.number_of_rows(db, models.PredictedDetection) == 0
-    assert crud.number_of_rows(db, models.LabeledPredictedDetection) == 0
+    assert db.scalar(func.count(models.Model.id)) == 0
+    assert db.scalar(func.count(models.Annotation.id)) == 0
+    assert db.scalar(func.count(models.Prediction.id)) == 0
 
 
-def test_create_detections_as_bbox_or_poly(db: Session, img1: schemas.Image):
+def test_create_detections_as_bbox_or_poly(db: Session, img1: schemas.Datum):
     xmin, ymin, xmax, ymax = 50, 70, 120, 300
-    det1 = schemas.GroundTruthDetection(
-        boundary=[(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin)],
-        image=img1,
+    
+    det1 = schemas.GroundTruthAnnotation(
         labels=[schemas.Label(key="k", value="v")],
-    )
-    det2 = schemas.GroundTruthDetection(
-        bbox=(xmin, ymin, xmax, ymax),
-        image=img1,
-        labels=[schemas.Label(key="k", value="v")],
+        annotation=schemas.Annotation(
+            task_type=enums.TaskType.DETECTION,
+            polygon=schemas.Polygon(
+                boundary=schemas.BasicPolygon(
+                    points=[
+                        schemas.Point(x=xmin, y=ymin),
+                        schemas.Point(x=xmax, y=ymin),
+                        schemas.Point(x=xmax, y=ymax),
+                        schemas.Point(x=xmin, y=ymax),
+                    ]
+                )
+            )
+        )
     )
 
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
+    det2 = schemas.GroundTruthAnnotation(
+        labels=[schemas.Label(key="k", value="v")],
+        annotation=schemas.Annotation(
+            task_type=enums.TaskType.DETECTION,
+            bounding_box=schemas.BoundingBox.from_extrema(
+                xmin=xmin,
+                ymin=ymin,
+                xmax=xmax,
+                ymax=ymax,
+            )
+        )
     )
-    crud.create_groundtruth_detections(
+
+    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+    crud.create_groundtruth(
         db,
-        data=schemas.GroundTruthDetectionsCreate(
-            dataset_name=dset_name, detections=[det1, det2]
+        schemas.GroundTruth(
+            dataset_name=dset_name, 
+            datum=img1,
+            annotations=[det1, det2],
         ),
     )
 
-    dets = db.scalars(select(models.LabeledGroundTruthDetection)).all()
+    dets = db.scalars(select(models.GroundTruth)).all()
     assert len(dets) == 2
-    assert set([det.detection.is_bbox for det in dets]) == {True, False}
+    assert set([det.annotation.box is not None for det in dets]) == {True, False}
 
     # check we get the same polygon
-    assert db.scalar(ST_AsText(dets[0].detection.boundary)) == db.scalar(
-        ST_AsText(dets[1].detection.boundary)
+    assert db.scalar(ST_AsText(dets[0].annotation.polygon)) == db.scalar(
+        ST_AsText(dets[1].annotation.box)
     )
 
 
-def test_create_ground_truth_classifications_and_delete_dataset(
-    db: Session, gt_clfs_create: schemas.GroundTruthClassificationsCreate
+def test_create_classification_groundtruth_and_delete_dataset(
+    db: Session, gt_clfs_create: list[schemas.GroundTruth]
 ):
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_ground_truth_classifications(db, gt_clfs_create)
+    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+
+    for gt in gt_clfs_create:
+        gt.dataset_name=dset_name
+        crud.create_groundtruth(db, gt)
 
     # should have three GroundTruthClassification rows since one image has two
     # labels and the other has one
-    assert crud.number_of_rows(db, models.GroundTruthClassification) == 3
-    assert crud.number_of_rows(db, models.Datum) == 2
-    assert crud.number_of_rows(db, models.Label) == 3
+    assert db.scalar(func.count(models.GroundTruth.id)) == 3
+    assert db.scalar(func.count(models.Datum.id)) == 2
+    assert db.scalar(func.count(models.Label.id)) == 3
 
     # delete dataset and check the cascade worked
-    crud.delete_dataset(db, dataset_name=dset_name)
+    crud.delete_dataset(db, dset_name)
     for model_cls in [
         models.Dataset,
         models.Datum,
-        models.GroundTruthClassification,
+        models.GroundTruth,
     ]:
-        assert crud.number_of_rows(db, model_cls) == 0
+        assert db.scalar(func.count(model_cls.id)) == 0
 
     # make sure labels are still there`
-    assert crud.number_of_rows(db, models.Label) == 3
+    assert db.scalar(func.count(models.Label.id)) == 3
 
 
 def test_create_predicted_classifications_and_delete_model(
     db: Session,
-    pred_clfs_create: schemas.PredictedClassification,
-    gt_clfs_create: schemas.GroundTruthClassificationsCreate,
+    pred_clfs_create: list[schemas.Prediction],
+    gt_clfs_create: list[schemas.GroundTruth],
 ):
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        crud.create_predicted_image_classifications(db, pred_clfs_create)
+        crud.create_prediction(db, pred_clfs_create[0])
     assert "does not exist" in str(exc_info)
 
-    crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
-    )
+    crud.create_model(db, schemas.Model(name=model_name))
 
     # check this gives an error since the images haven't been added yet
-    with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
-        crud.create_predicted_image_classifications(db, pred_clfs_create)
-    assert "Image with uid" in str(exc_info)
+    with pytest.raises(exceptions.DatumDoesNotExistError) as exc_info:
+        crud.create_prediction(db, pred_clfs_create[0])
+    assert "Datum with uid" in str(exc_info)
 
     # create dataset, add images, and add predictions
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_ground_truth_classifications(db, gt_clfs_create)
-    crud.create_predicted_image_classifications(db, pred_clfs_create)
+    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+
+    for gt in gt_clfs_create:
+        gt.dataset_name=dset_name
+        crud.create_groundtruth(db, gt)
+
+    for pd in pred_clfs_create:
+        pd.model_name=model_name
+        crud.create_prediction(db, pd)
 
     # check db has the added predictions
-    assert crud.number_of_rows(db, models.PredictedClassification) == 6
+    assert db.scalar(func.count(models.Prediction.id)) == 6
 
     # delete model and check all detections from it are gone
     crud.delete_model(db, model_name)
-    assert crud.number_of_rows(db, models.Model) == 0
-    assert crud.number_of_rows(db, models.PredictedDetection) == 0
-    assert crud.number_of_rows(db, models.LabeledPredictedDetection) == 0
+    assert db.scalar(func.count(models.Model.id)) == 0
+    assert db.scalar(func.count(models.Annotation.id)) == 2
+    assert db.scalar(func.count(models.Prediction.id)) == 0
+
+    # delete dataset and check
+    crud.delete_dataset(db, dset_name)
+    assert db.scalar(func.count(models.Model.id)) == 0
+    assert db.scalar(func.count(models.Annotation.id)) == 0
+    assert db.scalar(func.count(models.GroundTruth.id)) == 0
 
 
-def test_create_ground_truth_segmentations_and_delete_dataset(
-    db: Session, gt_segs_create: schemas.GroundTruthSegmentationsCreate
+
+def test_create_groundtruth_segmentations_and_delete_dataset(
+    db: Session, gt_segs_create: list[schemas.GroundTruth]
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
 
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
+    crud.create_dataset(db, schemas.Dataset(name=dset_name))
 
-    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
 
-    assert crud.number_of_rows(db, models.GroundTruthSegmentation) == 4
-    assert crud.number_of_rows(db, models.Datum) == 2
-    assert crud.number_of_rows(db, models.LabeledGroundTruthSegmentation) == 4
-    assert crud.number_of_rows(db, models.Label) == 2
+    for gt in gt_segs_create:
+        gt.dataset_name=dset_name
+        crud.create_groundtruth(db, data=gt)
+
+    assert db.scalar(func.count(models.Annotation.id)) == 4
+    assert db.scalar(func.count(models.Datum.id)) == 2
+    assert db.scalar(func.count(models.GroundTruth.id)) == 4
+    assert db.scalar(func.count(models.Label.id)) == 2
 
     # delete dataset and check the cascade worked
     crud.delete_dataset(db, dataset_name=dset_name)
     for model_cls in [
         models.Dataset,
         models.Datum,
-        models.GroundTruthSegmentation,
-        models.LabeledGroundTruthSegmentation,
+        models.Annotation,
+        models.GroundTruth,
     ]:
-        assert crud.number_of_rows(db, model_cls) == 0
+        assert db.scalar(func.count(model_cls.id)) == 0
 
     # make sure labels are still there`
-    assert crud.number_of_rows(db, models.Label) == 2
+    assert db.scalar(func.count(models.Label.id)) == 2
 
 
 def test_create_predicted_segmentations_check_area_and_delete_model(
     db: Session,
-    pred_segs_create: schemas.PredictedSegmentationsCreate,
-    gt_segs_create: schemas.GroundTruthSegmentationsCreate,
+    pred_segs_create: list[schemas.Prediction],
+    gt_segs_create: list[schemas.GroundTruth],
 ):
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        crud.create_predicted_segmentations(db, pred_segs_create)
+        for pd in pred_segs_create:
+            crud.create_prediction(db, pd)
     assert "does not exist" in str(exc_info)
 
-    crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
-    )
+    crud.create_model(db, schemas.Model(name=model_name))
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.ImageDoesNotExistError) as exc_info:
-        crud.create_predicted_segmentations(db, pred_segs_create)
+        for pd in pred_segs_create:
+            pd.model_name=model_name
+            crud.create_prediction(db, pd)
     assert "Image with uid" in str(exc_info)
 
     # create dataset, add images, and add predictions
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_groundtruth_segmentations(db, gt_segs_create)
-    crud.create_predicted_segmentations(db, pred_segs_create)
+    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+    for gt in gt_segs_create:
+        gt.dataset_name=dset_name
+        crud.create_groundtruth(db, gt)\
+        
+    for pd in pred_segs_create:
+        pd.model_name=model_name
+        crud.create_prediction(db, pd)
 
     # check db has the added predictions
-    assert crud.number_of_rows(db, models.PredictedSegmentation) == 4
-    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 4
+    assert db.scalar(func.count(models.Annotation.id)) == 4
+    assert db.scalar(func.count(models.Prediction.id)) == 4
 
     # grab the first one and check that the area of the raster
     # matches the area of the image
-    img = crud.get_image(db, "uid1", dset_name)
-    seg = img.predicted_segmentations[0]
+    img = crud.get_groundtruth(db, datum_uid="uid1", dataset_name=dset_name)
+    seg = img.annotations[0].annotation.raster
     mask = bytes_to_pil(
-        b64decode(pred_segs_create.segmentations[0].base64_mask)
+        b64decode(pred_segs_create[0].annotations[0].annotation.raster)
     )
-    assert ops._raster_area(db, seg.shape) == np.array(mask).sum()
+    assert db.scalar(ST_Count(seg)) == np.array(mask).sum()
 
     # delete model and check all detections from it are gone
     crud.delete_model(db, model_name)
-    assert crud.number_of_rows(db, models.Model) == 0
-    assert crud.number_of_rows(db, models.PredictedSegmentation) == 0
-    assert crud.number_of_rows(db, models.LabeledPredictedSegmentation) == 0
+    assert db.scalar(func.count(models.Model.id)) == 0
+    assert db.scalar(func.count(models.Annotation.id)) == 0
+    assert db.scalar(func.count(models.Prediction.id)) == 0
 
 
 def test_segmentation_area_no_hole(
     db: Session,
-    poly_without_hole: schemas.PolygonWithHole,
-    img1: schemas.Image,
+    poly_without_hole: schemas.Polygon,
+    img1: schemas.Datum,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
 
-    crud.create_dataset(
+    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+    crud.create_groundtruth(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_groundtruth_segmentations(
-        db,
-        data=schemas.GroundTruthSegmentationsCreate(
+        schemas.GroundTruth(
             dataset_name=dset_name,
-            segmentations=[
-                schemas.GroundTruthSegmentation(
-                    is_instance=True,
-                    shape=[poly_without_hole],
-                    image=img1,
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
                     labels=[schemas.Label(key="k1", value="v1")],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                        multipolygon=schemas.MultiPolygon(
+                            polygons=[poly_without_hole]
+                        )                        
+                    ),
                 )
             ],
         ),
     )
 
-    segmentation = db.scalar(select(models.GroundTruthSegmentation))
+    segmentation = db.scalar(select(models.Annotation))
 
-    assert ops._raster_area(db, segmentation.shape) == math.ceil(
+    assert db.scalar(ST_Count(segmentation.raster)) == math.ceil(
         45.5
     )  # area of mask will be an int
 
 
 def test_segmentation_area_with_hole(
-    db: Session, poly_with_hole: schemas.PolygonWithHole, img1: schemas.Image
+    db: Session, poly_with_hole: schemas.Polygon, img1: schemas.Datum
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
 
-    crud.create_dataset(
+    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+    crud.create_groundtruth(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_groundtruth_segmentations(
-        db,
-        data=schemas.GroundTruthSegmentationsCreate(
+        schemas.GroundTruth(
             dataset_name=dset_name,
-            segmentations=[
-                schemas.GroundTruthSegmentation(
-                    is_instance=False,
-                    shape=[poly_with_hole],
-                    image=img1,
+            datum=img1,
+            annotations=[
+                schemas.GroundTruthAnnotation(
                     labels=[schemas.Label(key="k1", value="v1")],
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                        multipolygon=schemas.MultiPolygon(
+                            polygons=[poly_with_hole],
+                        )
+                    )
                 )
             ],
         ),
     )
 
-    segmentation = db.scalar(select(models.GroundTruthSegmentation))
+    segmentation = db.scalar(select(models.Annotation))
 
     # give tolerance of 2 pixels because of poly -> mask conversion
-    assert (ops._raster_area(db, segmentation.shape) - 92) <= 2
+    assert (db.scalar(ST_Count(segmentation.raster)) - 92) <= 2
 
 
 def test_segmentation_area_multi_polygon(
     db: Session,
-    poly_with_hole: schemas.PolygonWithHole,
-    poly_without_hole: schemas.PolygonWithHole,
-    img1: schemas.Image,
+    poly_with_hole: schemas.Polygon,
+    poly_without_hole: schemas.Polygon,
+    img1: schemas.Datum,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
 
-    crud.create_dataset(
+    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+    crud.create_groundtruth(
         db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_groundtruth_segmentations(
-        db,
-        data=schemas.GroundTruthSegmentationsCreate(
+        schemas.GroundTruth(
             dataset_name=dset_name,
-            segmentations=[
-                schemas.GroundTruthSegmentation(
-                    is_instance=True,
-                    shape=[poly_with_hole, poly_without_hole],
-                    image=img1,
-                    labels=[schemas.Label(key="k1", value="v1")],
+            datum=img1,
+            annotations=[
+                schemas.GroundTruthAnnotation(
+                    labels=[schemas.Label(key="k1", value="v1")],                    
+                    annotation=schemas.Annotation(
+                        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                        multipolygon=schemas.MultiPolygon(
+                            polygons=[poly_with_hole, poly_without_hole],
+                        )
+                    )
                 )
             ],
         ),
     )
 
-    segmentation = db.scalar(select(models.GroundTruthSegmentation))
+    segmentation = db.scalar(select(models.Annotation))
 
     # the two shapes don't intersect so area should be sum of the areas
     # give tolerance of 2 pixels because of poly -> mask conversion
     assert (
-        abs(ops._raster_area(db, segmentation.shape) - (math.ceil(45.5) + 92))
+        abs(db.scalar(ST_Count(segmentation.raster)) - (math.ceil(45.5) + 92))
         <= 2
     )
 
 
-def test__select_statement_from_poly(
-    db: Session, poly_with_hole: schemas.PolygonWithHole, img: models.Datum
-):
-    gt_seg = db.scalar(
-        insert(models.GroundTruthSegmentation)
-        .values(
-            [
-                {
-                    "shape": crud._create._select_statement_from_poly(
-                        [poly_with_hole]
-                    ),
-                    "datum_id": img.id,
-                    "is_instance": True,
-                }
-            ]
-        )
-        .returning(models.GroundTruthSegmentation)
-    )
-    db.add(gt_seg)
-    db.commit()
+# @NOTE This should be handle by `velour.schemas.Raster`
+# def test__select_statement_from_poly(
+#     db: Session, poly_with_hole: schemas.Polygon, img: models.Datum
+# ):
+#     gt_seg = db.scalar(
+#         insert(models.Annotation)
+#         .values(
+#             [
+#                 {
+#                     "raster": crud._create._select_statement_from_poly(
+#                         [poly_with_hole]
+#                     ),
+#                     "datum_id": img.id,
+#                     "is_instance": True,
+#                 }
+#             ]
+#         )
+#         .returning(models.Annotation)
+#     )
+#     db.add(gt_seg)
+#     db.commit()
 
-    wkt = db.scalar(ST_AsText(ST_Polygon(gt_seg.shape)))
+#     wkt = db.scalar(ST_AsText(ST_Polygon(gt_seg.shape)))
 
-    # note the hole, which is a triangle, is jagged due to aliasing
-    assert (
-        wkt
-        == "MULTIPOLYGON(((0 0,0 10,10 10,10 0,0 0),(2 4,2 8,3 8,3 7,4 7,4 6,5 6,5 5,6 5,6 4,2 4)))"
-    )
+#     # note the hole, which is a triangle, is jagged due to aliasing
+#     assert (
+#         wkt
+#         == "MULTIPOLYGON(((0 0,0 10,10 10,10 0,0 0),(2 4,2 8,3 8,3 7,4 7,4 6,5 6,5 5,6 5,6 4,2 4)))"
+#     )
 
 
 def test_gt_seg_as_mask_or_polys(db: Session):
@@ -940,38 +1007,58 @@ def test_gt_seg_as_mask_or_polys(db: Session):
     mask[ymin:ymax, xmin:xmax] = True
     mask_b64 = b64encode(np_to_bytes(mask)).decode()
 
-    img = schemas.Image(uid="uid", height=h, width=w)
+    img = schemas.Image(
+        uid="uid", 
+        height=h, 
+        width=w,
+        frame=0,
+    ).to_datum()
 
-    poly = [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin)]
-
-    gt1 = schemas.GroundTruthSegmentation(
-        is_instance=False,
-        shape=mask_b64,
-        image=img,
-        labels=[schemas.Label(key="k1", value="v1")],
+    poly = schemas.BasicPolygon(
+        points=[
+            schemas.Point(x=xmin, y=ymin), 
+            schemas.Point(x=xmin, y=ymax), 
+            schemas.Point(x=xmax, y=ymax), 
+            schemas.Point(x=xmax, y=ymin),
+        ]
     )
-    gt2 = schemas.GroundTruthSegmentation(
-        is_instance=True,
-        shape=[schemas.PolygonWithHole(polygon=poly)],
-        image=img,
+
+    gt1 = schemas.GroundTruthAnnotation(
         labels=[schemas.Label(key="k1", value="v1")],
+        annotation=schemas.Annotation(
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+            raster=schemas.Raster(
+                mask=mask_b64,
+                height=h,
+                width=w,
+            )
+        )
+    )
+    gt2 = schemas.GroundTruthAnnotation(
+        labels=[schemas.Label(key="k1", value="v1")],
+        annotation=schemas.Annotation(
+            task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+            multipolygon=schemas.MultiPolygon(
+                polygons=[
+                    schemas.Polygon(boundary=poly)
+                ]
+            )
+        )
+    )
+    gt = schemas.GroundTruth(
+        dataset_name=dset_name, 
+        datum=img,
+        annotations=[gt1, gt2],
     )
 
     check_db_empty(db=db)
 
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_groundtruth_segmentations(
-        db,
-        data=schemas.GroundTruthSegmentationsCreate(
-            dataset_name=dset_name, segmentations=[gt1, gt2]
-        ),
-    )
+    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+    crud.create_groundtruth(db, gt)
 
     shapes = db.scalars(
-        select(ST_AsText(ST_Polygon(models.GroundTruthSegmentation.shape)))
+        select(ST_AsText(ST_Polygon(models.Annotation.raster)))
     ).all()
 
     assert len(shapes) == 2
@@ -979,71 +1066,73 @@ def test_gt_seg_as_mask_or_polys(db: Session):
     assert shapes[0] == shapes[1]
 
     # verify we get the same segmentations back
-    segs = crud.get_groundtruth_segmentations_in_image(
-        db, uid=img.uid, dataset_name=dset_name, are_instance=True
+    segs = crud.get_groundtruth(
+        db, 
+        datum_uid=img.uid, 
+        dataset_name=dset_name,
+        filter_by_task_type=[enums.TaskType.INSTANCE_SEGMENTATION],
     )
-    assert len(segs) == 1  # should just be one instance segmentation
-    decoded_mask = bytes_to_pil(b64decode(segs[0].shape))
+    assert len(segs.annotations) == 1  # should just be one instance segmentation
+    decoded_mask = bytes_to_pil(b64decode(segs.annotations[0].annotation.raster.mask))
     decoded_mask_arr = np.array(decoded_mask)
 
     np.testing.assert_equal(decoded_mask_arr, mask)
-    assert segs[0].image == gt1.image
-    assert segs[0].labels == gt1.labels
+    assert segs.datum == gt.datum
+    assert segs.annotations[0].labels == gt.annotations[0].labels
 
+# @NOTE: This funcionality now belongs to the backend
+# @TODO: This is replaced by `crud.get_disjoint_labels`
+# def test_get_filtered_preds_statement_and_missing_labels(
+#     db: Session,
+#     gt_segs_create: list[schemas.GroundTruth],
+#     pred_segs_create: list[schemas.Prediction],
+# ):
+#     crud.create_dataset(db, schemas.Dataset(name=dset_name))
 
-def test_get_filtered_preds_statement_and_missing_labels(
-    db: Session,
-    gt_segs_create: schemas.GroundTruthDetectionsCreate,
-    pred_segs_create: schemas.PredictedSegmentationsCreate,
-):
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
-    )
+#     crud.create_model(db, schemas.Model(name=model_name))
 
-    # add three total ground truth segmentations, two of which are instance segmentations with
-    # the same label.
-    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
-    # add three total predicted segmentations, two of which are instance segmentations
-    crud.create_predicted_segmentations(db, pred_segs_create)
+#     # add three total ground truth segmentations, two of which are instance segmentations with
+#     # the same label.
+#     for gt in gt_segs_create:
+#         crud.create_groundtruth(db, data=gt)
+#     # add three total predicted segmentations, two of which are instance segmentations
+#     for pd in pred_segs_create:
+#         crud.create_prediction(db, pd)
 
-    gts_statement = crud._create._instance_segmentations_in_dataset_statement(
-        dset_name
-    )
-    preds_statement = crud._read._model_instance_segmentation_preds_statement(
-        model_name=model_name, dataset_name=dset_name
-    )
+#     gts_statement = crud._create._instance_segmentations_in_dataset_statement(
+#         dset_name
+#     )
+#     preds_statement = crud._read._model_instance_segmentation_preds_statement(
+#         model_name=model_name, dataset_name=dset_name
+#     )
 
-    gts = db.scalars(gts_statement).all()
-    preds = db.scalars(preds_statement).all()
+#     gts = db.scalars(gts_statement).all()
+#     preds = db.scalars(preds_statement).all()
 
-    assert len(gts) == 3
-    assert len(preds) == 3
+#     assert len(gts) == 3
+#     assert len(preds) == 3
 
-    labels = crud._create._labels_in_query(db, gts_statement)
-    assert len(labels) == 2
+#     labels = crud._create._labels_in_query(db, gts_statement)
+#     assert len(labels) == 2
 
-    # check get everything if the requested labels argument is empty
-    (
-        new_preds_statement,
-        missing_pred_labels,
-        ignored_pred_labels,
-    ) = crud.get_filtered_preds_statement_and_missing_labels(
-        db=db, gts_statement=gts_statement, preds_statement=preds_statement
-    )
+#     # check get everything if the requested labels argument is empty
+#     (
+#         new_preds_statement,
+#         missing_pred_labels,
+#         ignored_pred_labels,
+#     ) = crud.get_filtered_preds_statement_and_missing_labels(
+#         db=db, gts_statement=gts_statement, preds_statement=preds_statement
+#     )
 
-    gts = db.scalars(gts_statement).all()
-    preds = db.scalars(new_preds_statement).all()
+#     gts = db.scalars(gts_statement).all()
+#     preds = db.scalars(new_preds_statement).all()
 
-    assert len(gts) == 3
-    # should not get the pred with label "k2", "v2" since its not
-    # present in the groundtruths
-    assert len(preds) == 1
-    assert missing_pred_labels == [schemas.Label(key="k3", value="v3")]
-    assert ignored_pred_labels == [schemas.Label(key="k2", value="v2")]
+#     assert len(gts) == 3
+#     # should not get the pred with label "k2", "v2" since its not
+#     # present in the groundtruths
+#     assert len(preds) == 1
+#     assert missing_pred_labels == [schemas.Label(key="k3", value="v3")]
+#     assert ignored_pred_labels == [schemas.Label(key="k2", value="v2")]
 
 
 def test_create_ap_metrics(db: Session, groundtruths, predictions):
@@ -1059,18 +1148,22 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
                 dataset_name="test dataset",
                 min_area=min_area,
                 max_area=max_area,
-                dataset_gt_task_type=schemas.Task.BBOX_OBJECT_DETECTION,
-                model_pred_task_type=schemas.Task.BBOX_OBJECT_DETECTION,
+                task_type=enums.TaskType.DETECTION,
+                gt_type=enums.AnnotationType.BOX,
+                pd_type=enums.AnnotationType.BOX,
                 label_key=label_key,
             ),
             iou_thresholds=[0.2, 0.6],
             ious_to_keep=[0.2],
         )
 
-        (
-            missing_pred_labels,
-            ignored_pred_labels,
-        ) = crud.validate_create_ap_metrics(db, request_info)
+        disjoint_labels = crud.get_disjoint_labels(
+            db, 
+            dataset_name=request_info.settings.dataset_name,
+            model_name=request_info.settings.model_name,
+        )
+        missing_pred_labels = disjoint_labels["dataset"]
+        ignored_pred_labels = disjoint_labels["models"]
 
         return (
             crud.create_ap_metrics(
@@ -1082,11 +1175,11 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         )
 
     # check we get an error since the dataset is still a draft
-    with pytest.raises(exceptions.DatasetIsDraftError):
+    with pytest.raises(exceptions.DatasetIsNotFinalizedError):
         method_to_test(label_key="class")
 
     # finalize dataset
-    crud.finalize_dataset(db, "test dataset")
+    crud.finalize(db, dataset_name="test dataset")
 
     # now if we try again we should get an error that inferences aren't finalized
     with pytest.raises(exceptions.InferencesAreNotFinalizedError):
@@ -1096,7 +1189,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     assert len(crud.get_model_evaluation_settings(db, model_name)) == 0
 
     # finalize inferences and try again
-    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
+    crud.finalize(db, model_name=model_name, dataset_name=dset_name)
 
     (
         evaluation_settings_id,
@@ -1193,16 +1286,18 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     assert model_evals[0] == schemas.EvaluationSettings(
         model_name=model_name,
         dataset_name=dset_name,
-        model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
-        dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+        task_type=enums.TaskType.DETECTION,
+        gt_type=enums.AnnotationType.BOX,
+        pd_type=enums.AnnotationType.BOX,
         label_key="class",
         id=1,
     )
     assert model_evals[1] == schemas.EvaluationSettings(
         model_name=model_name,
         dataset_name=dset_name,
-        model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
-        dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+        task_type=enums.TaskType.DETECTION,
+        gt_type=enums.AnnotationType.BOX,
+        pd_type=enums.AnnotationType.BOX,
         label_key="class",
         min_area=min_area,
         max_area=max_area,
@@ -1210,32 +1305,41 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     )
 
 
-def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
+def test_create_clf_metrics(
+    db: Session, 
+    gt_clfs_create: list[schemas.GroundTruth], 
+    pred_clfs_create: list[schemas.Prediction],
+):
     crud.create_dataset(
         db,
-        dataset=schemas.DatasetCreate(
-            name=dset_name, type=schemas.DatumTypes.IMAGE
-        ),
+        dataset=schemas.Dataset(name=dset_name),
     )
-    crud.create_ground_truth_classifications(db, gt_clfs_create)
-    crud.finalize_dataset(db, dset_name)
+    for gt in gt_clfs_create:
+        gt.dataset_name = dset_name
+        crud.create_groundtruth(db, gt)
+    crud.finalize(db, dset_name)
 
-    crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
-    )
-    crud.create_predicted_image_classifications(db, pred_clfs_create)
-    crud.finalize_inferences(db, model_name, dset_name)
+    crud.create_model(db, schemas.Model(name=model_name))
+    for pd in pred_clfs_create:
+        pd.model_name = model_name
+        crud.create_prediction(db, pd)
+    crud.finalize(db, model_name, dset_name)
 
     request_info = schemas.ClfMetricsRequest(
         settings=schemas.EvaluationSettings(
-            model_name=model_name, dataset_name=dset_name
+            model_name=model_name, 
+            dataset_name=dset_name
         )
     )
 
-    (
-        missing_pred_keys,
-        ignored_pred_keys,
-    ) = crud.validate_create_clf_metrics(db, request_info=request_info)
+    disjoint_labels = crud.get_disjoint_labels(
+        db, 
+        dataset_name=request_info.settings.dataset_name,
+        model_name=request_info.settings.model_name,
+    )
+    missing_pred_keys = disjoint_labels["dataset"]
+    ignored_pred_keys = disjoint_labels["model"]
+
     assert missing_pred_keys == []
     assert set(ignored_pred_keys) == {"k3", "k4"}
 
@@ -1332,913 +1436,990 @@ def test_create_clf_metrics(db: Session, gt_clfs_create, pred_clfs_create):
     assert len(confusion_matrices) == 2
 
 
-def test__raster_to_png_b64(db: Session):
-    # create a mask consisting of an ellipse with a whole in it
-    w, h = 50, 100
-    img = Image.new("1", size=(w, h))
-    draw = ImageDraw.Draw(img)
-    draw.ellipse((15, 40, 30, 70), fill=True)
-    draw.ellipse((20, 50, 25, 60), fill=False)
-
-    f = io.BytesIO()
-    img.save(f, format="PNG")
-    f.seek(0)
-    b64_mask = b64encode(f.read()).decode()
-
-    image = schemas.Image(uid="uid", height=h, width=w)
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_groundtruth_segmentations(
-        db,
-        data=schemas.GroundTruthSegmentationsCreate(
-            dataset_name=dset_name,
-            segmentations=[
-                schemas.GroundTruthSegmentation(
-                    shape=b64_mask,
-                    image=image,
-                    labels=[schemas.Label(key="k", value="v")],
-                    is_instance=True,
-                )
-            ],
-        ),
-    )
-
-    seg = db.scalar(select(models.GroundTruthSegmentation))
-
-    assert b64_mask == _raster_to_png_b64(db, seg.shape, image)
-
-
-def test__instance_segmentations_in_dataset_statement(
-    db: Session, gt_segs_create: schemas.GroundTruthSegmentationsCreate
-):
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
-
-    areas = db.scalars(
-        select(ST_Count(models.GroundTruthSegmentation.shape)).where(
-            models.GroundTruthSegmentation.is_instance
-        )
-    ).all()
-
-    assert sorted(areas) == [46, 90, 136]
-
-    # sanity check no min_area and max_area arguments
-    stmt = _instance_segmentations_in_dataset_statement(dataset_name=dset_name)
-    assert len(db.scalars(stmt).all()) == 3
-
-    # check min_area arg
-    stmt = _instance_segmentations_in_dataset_statement(
-        dataset_name=dset_name, min_area=45
-    )
-    assert len(db.scalars(stmt).all()) == 3
-    stmt = _instance_segmentations_in_dataset_statement(
-        dataset_name=dset_name, min_area=137
-    )
-    assert len(db.scalars(stmt).all()) == 0
-
-    # check max_area argument
-    stmt = _instance_segmentations_in_dataset_statement(
-        dataset_name=dset_name, max_area=45
-    )
-    assert len(db.scalars(stmt).all()) == 0
-
-    stmt = _instance_segmentations_in_dataset_statement(
-        dataset_name=dset_name, max_area=136
-    )
-    assert len(db.scalars(stmt).all()) == 3
-
-    # check specifying both min size and max size
-    stmt = _instance_segmentations_in_dataset_statement(
-        dataset_name=dset_name, min_area=45, max_area=136
-    )
-    assert len(db.scalars(stmt).all()) == 3
-    stmt = _instance_segmentations_in_dataset_statement(
-        dataset_name=dset_name, min_area=50, max_area=100
-    )
-    assert len(db.scalars(stmt).all()) == 1
-
-
-def test___model_instance_segmentation_preds_statement(
-    db: Session,
-    gt_segs_create: schemas.GroundTruthSegmentationsCreate,
-    pred_segs_create: schemas.PredictedSegmentationsCreate,
-):
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
-    )
-    crud.create_groundtruth_segmentations(db, data=gt_segs_create)
-    crud.create_predicted_segmentations(db, pred_segs_create)
-
-    areas = db.scalars(
-        select(ST_Count(models.PredictedSegmentation.shape)).where(
-            models.PredictedSegmentation.is_instance
-        )
-    ).all()
-
-    assert sorted(areas) == [95, 279, 1077]
-
-    # sanity check no min_area and max_area arguments
-    stmt = _model_instance_segmentation_preds_statement(
-        dataset_name=dset_name, model_name=model_name
-    )
-    assert len(db.scalars(stmt).all()) == 3
-
-    # check min_area arg
-    stmt = _model_instance_segmentation_preds_statement(
-        dataset_name=dset_name, model_name=model_name, min_area=94
-    )
-    assert len(db.scalars(stmt).all()) == 3
-    stmt = _model_instance_segmentation_preds_statement(
-        dataset_name=dset_name, model_name=model_name, min_area=1078
-    )
-    assert len(db.scalars(stmt).all()) == 0
-
-    # check max_area argument
-    stmt = _model_instance_segmentation_preds_statement(
-        dataset_name=dset_name, model_name=model_name, max_area=94
-    )
-    assert len(db.scalars(stmt).all()) == 0
-
-    stmt = _model_instance_segmentation_preds_statement(
-        dataset_name=dset_name, model_name=model_name, max_area=1078
-    )
-    assert len(db.scalars(stmt).all()) == 3
-
-    # check specifying both min size and max size
-    stmt = _model_instance_segmentation_preds_statement(
-        dataset_name=dset_name,
-        model_name=model_name,
-        min_area=94,
-        max_area=1078,
-    )
-    assert len(db.scalars(stmt).all()) == 3
-    stmt = _model_instance_segmentation_preds_statement(
-        dataset_name=dset_name,
-        model_name=model_name,
-        min_area=200,
-        max_area=300,
-    )
-    assert len(db.scalars(stmt).all()) == 1
-
-
-def test___object_detections_in_dataset_statement(db: Session, groundtruths):
-    # the groundtruths argument is not used but that fixture creates groundtruth
-    # detections in the database
-
-    areas = db.scalars(ST_Area(models.GroundTruthDetection.boundary)).all()
-
-    # these are just to establish what the bounds on the areas of
-    # the groundtruth detections are
-    assert len(areas) == 20
-    assert min(areas) > 94
-    assert max(areas) < 326771
-    assert len([a for a in areas if a > 500 and a < 1200]) == 9
-
-    # sanity check no min_area and max_area arguments
-    stmt = _object_detections_in_dataset_statement(
-        dataset_name=dset_name, task=enums.Task.BBOX_OBJECT_DETECTION
-    )
-    assert len(db.scalars(stmt).all()) == 20
-
-    # check min_area arg
-    stmt = _object_detections_in_dataset_statement(
-        dataset_name=dset_name,
-        min_area=93,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert len(db.scalars(stmt).all()) == 20
-    stmt = _object_detections_in_dataset_statement(
-        dataset_name=dset_name,
-        min_area=326771,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert len(db.scalars(stmt).all()) == 0
-
-    # check max_area argument
-    stmt = _object_detections_in_dataset_statement(
-        dataset_name=dset_name,
-        max_area=93,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert len(db.scalars(stmt).all()) == 0
-
-    stmt = _object_detections_in_dataset_statement(
-        dataset_name=dset_name,
-        max_area=326771,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert len(db.scalars(stmt).all()) == 20
-
-    # check specifying both min size and max size
-    stmt = _object_detections_in_dataset_statement(
-        dataset_name=dset_name,
-        min_area=94,
-        max_area=326771,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert len(db.scalars(stmt).all()) == 20
-    stmt = _object_detections_in_dataset_statement(
-        dataset_name=dset_name,
-        min_area=500,
-        max_area=1200,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert len(db.scalars(stmt).all()) == 9
-
-
-def test__model_object_detection_preds_statement(
-    db: Session, groundtruths, predictions
-):
-    # the groundtruths and predictions arguments are not used but the fixtures create predicted
-    # detections in the database
-
-    areas = db.scalars(ST_Area(models.PredictedDetection.boundary)).all()
-
-    # these are just to establish what the bounds on the areas of
-    # the groundtruth detections are
-    assert len(areas) == 19
-    assert min(areas) > 94
-    assert max(areas) < 307274
-    assert len([a for a in areas if a > 500 and a < 1200]) == 9
-
-    # sanity check no min_area and max_area arguments
-    stmt = _model_object_detection_preds_statement(
-        dataset_name=dset_name,
-        model_name=model_name,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert len(db.scalars(stmt).all()) == 19
-
-    # check min_area arg
-    stmt = _model_object_detection_preds_statement(
-        dataset_name=dset_name,
-        model_name=model_name,
-        min_area=93,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert len(db.scalars(stmt).all()) == 19
-    stmt = _model_object_detection_preds_statement(
-        dataset_name=dset_name,
-        model_name=model_name,
-        min_area=326771,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert len(db.scalars(stmt).all()) == 0
-
-    # check max_area argument
-    stmt = _model_object_detection_preds_statement(
-        dataset_name=dset_name,
-        model_name=model_name,
-        max_area=93,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert len(db.scalars(stmt).all()) == 0
-
-    stmt = _model_object_detection_preds_statement(
-        dataset_name=dset_name,
-        model_name=model_name,
-        max_area=326771,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert len(db.scalars(stmt).all()) == 19
-
-    # check specifying both min size and max size
-    stmt = _model_object_detection_preds_statement(
-        dataset_name=dset_name,
-        model_name=model_name,
-        min_area=94,
-        max_area=326771,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert len(db.scalars(stmt).all()) == 19
-    stmt = _model_object_detection_preds_statement(
-        dataset_name=dset_name,
-        model_name=model_name,
-        min_area=500,
-        max_area=1200,
-        task=enums.Task.BBOX_OBJECT_DETECTION,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert len(db.scalars(stmt).all()) == 9
-
-
-def test__filter_instance_segmentations_by_area(db: Session):
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    # triangle of area 150
-    poly1 = schemas.PolygonWithHole(polygon=[(10, 20), (10, 40), (25, 20)])
-    # rectangle of area 1050
-    poly2 = schemas.PolygonWithHole(
-        polygon=[(0, 5), (0, 40), (30, 40), (30, 5)]
-    )
-
-    img = schemas.Image(uid="", height=1000, width=2000)
-
-    crud.create_groundtruth_segmentations(
-        db,
-        data=schemas.GroundTruthSegmentationsCreate(
-            dataset_name=dset_name,
-            segmentations=[
-                schemas.GroundTruthSegmentation(
-                    shape=[poly1],
-                    image=img,
-                    labels=[schemas.Label(key="k", value="v")],
-                    is_instance=True,
-                ),
-                schemas.GroundTruthSegmentation(
-                    shape=[poly2],
-                    image=img,
-                    labels=[schemas.Label(key="k", value="v")],
-                    is_instance=True,
-                ),
-            ],
-        ),
-    )
-
-    areas = db.scalars(ST_Count(models.GroundTruthSegmentation.shape)).all()
-    assert sorted(areas) == [150, 1050]
-
-    base_stmt = "SELECT id FROM ground_truth_segmentation WHERE ground_truth_segmentation.is_instance"
-
-    # check filtering when use area determined by instance segmentation task
-    stmt = _filter_instance_segmentations_by_area(
-        stmt=base_stmt,
-        seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
-        min_area=100,
-        max_area=2000,
-    )
-    assert len(db.scalars(stmt).all()) == 2
-
-    stmt = _filter_instance_segmentations_by_area(
-        base_stmt,
-        seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
-        min_area=100,
-        max_area=200,
-    )
-    assert len(db.scalars(stmt).all()) == 1
-
-    stmt = _filter_instance_segmentations_by_area(
-        base_stmt,
-        seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
-        min_area=151,
-        max_area=2000,
-    )
-    assert len(db.scalars(stmt).all()) == 1
-
-    # now when we use bounding box detection task, the triangle becomes its circumscribing
-    # rectangle (with area ~300) so we should get both segmentations
-    stmt = _filter_instance_segmentations_by_area(
-        base_stmt,
-        seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-        min_area=280,
-        max_area=2000,
-    )
-    assert len(db.scalars(stmt).all()) == 2
-
-    stmt = _filter_instance_segmentations_by_area(
-        base_stmt,
-        seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-        min_area=301,
-        max_area=2000,
-    )
-    assert len(db.scalars(stmt).all()) == 1
-
-    # if we use polygon detection then the areas shouldn't change much (the area
-    # of the triangle actually becomes 163-- not sure if this is aliasing or what)
-    stmt = _filter_instance_segmentations_by_area(
-        base_stmt,
-        seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
-        min_area=149,
-        max_area=2000,
-    )
-    assert len(db.scalars(stmt).all()) == 2
-
-    stmt = _filter_instance_segmentations_by_area(
-        base_stmt,
-        seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
-        min_area=164,
-        max_area=2000,
-    )
-
-    assert len(db.scalars(stmt).all()) == 1
-
-
-def test__filter_object_detections_by_area(db: Session):
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    # triangle of area 150
-    boundary1 = [(10, 20), (10, 40), (25, 20)]
-    # rectangle of area 1050
-    boundary2 = [(0, 5), (0, 40), (30, 40), (30, 5)]
-
-    img = schemas.Image(uid="", height=1000, width=2000)
-
-    crud.create_groundtruth_detections(
-        db,
-        data=schemas.GroundTruthDetectionsCreate(
-            dataset_name=dset_name,
-            detections=[
-                schemas.GroundTruthDetection(
-                    boundary=boundary1,
-                    image=img,
-                    labels=[schemas.Label(key="k", value="v")],
-                ),
-                schemas.GroundTruthDetection(
-                    boundary=boundary2,
-                    image=img,
-                    labels=[schemas.Label(key="k", value="v")],
-                ),
-            ],
-        ),
-    )
-
-    areas = db.scalars(ST_Area(models.GroundTruthDetection.boundary)).all()
-    assert sorted(areas) == [150, 1050]
-
-    # make base statement. need WHERE here because of what `_filter_instance_segmentations_by_area` expects
-    base_stmt = "SELECT id FROM ground_truth_detection WHERE ground_truth_detection.id > 0"
-
-    # check filtering when use area determined by polygon detection task
-    stmt = _filter_object_detections_by_area(
-        base_stmt,
-        det_table=models.GroundTruthDetection,
-        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
-        min_area=100,
-        max_area=2000,
-    )
-    assert len(db.scalars(stmt).all()) == 2
-
-    stmt = _filter_object_detections_by_area(
-        base_stmt,
-        det_table=models.GroundTruthDetection,
-        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
-        min_area=100,
-        max_area=200,
-    )
-    assert len(db.scalars(stmt).all()) == 1
-
-    stmt = _filter_object_detections_by_area(
-        base_stmt,
-        det_table=models.GroundTruthDetection,
-        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
-        min_area=151,
-        max_area=2000,
-    )
-    assert len(db.scalars(stmt).all()) == 1
-
-    # now when we use bounding box detection task, the triangle becomes its circumscribing
-    # rectangle (with area 300) so we should get both segmentations
-    stmt = _filter_object_detections_by_area(
-        base_stmt,
-        det_table=models.GroundTruthDetection,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-        min_area=299,
-        max_area=2000,
-    )
-    assert len(db.scalars(stmt).all()) == 2
-
-    stmt = _filter_object_detections_by_area(
-        base_stmt,
-        det_table=models.GroundTruthDetection,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-        min_area=301,
-        max_area=2000,
-    )
-    assert len(db.scalars(stmt).all()) == 1
-
-    # check error if use the wrong task type
-    with pytest.raises(ValueError) as exc_info:
-        _filter_object_detections_by_area(
-            base_stmt,
-            det_table=models.GroundTruthDetection,
-            task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
-            min_area=301,
-            max_area=2000,
-        )
-    assert "Expected task_for_area_computation to be" in str(exc_info)
-
-
-def test__filter_instance_segmentations_by_area_using_mask(db: Session):
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    # approximate triangle of area 150
-    mask = np.zeros((1000, 2000), dtype=bool)
-    for i in range(10):
-        for j in range(30):
-            if i + j < 20:
-                mask[i, j] = True
-    assert mask.sum() == 155
-    mask_bytes = pil_to_bytes(Image.fromarray(mask))
-    b64_mask = b64encode(mask_bytes).decode()
-
-    # rectangle of area 1050
-    boundary = [(0, 5), (0, 40), (30, 40), (30, 5)]
-
-    img = schemas.Image(uid="", height=1000, width=2000)
-
-    crud.create_groundtruth_segmentations(
-        db,
-        data=schemas.GroundTruthSegmentationsCreate(
-            dataset_name=dset_name,
-            segmentations=[
-                schemas.GroundTruthSegmentation(
-                    shape=b64_mask,
-                    image=img,
-                    labels=[schemas.Label(key="k", value="v")],
-                    is_instance=True,
-                ),
-                schemas.GroundTruthSegmentation(
-                    shape=[schemas.PolygonWithHole(polygon=boundary)],
-                    image=img,
-                    labels=[schemas.Label(key="k", value="v")],
-                    is_instance=True,
-                ),
-            ],
-        ),
-    )
-
-    areas = db.scalars(ST_Count(models.GroundTruthSegmentation.shape)).all()
-    assert sorted(areas) == [155, 1050]
-
-    base_stmt = "SELECT id FROM ground_truth_segmentation WHERE ground_truth_segmentation.is_instance"
-
-    # check filtering when use area determined by polygon detection task
-    stmt = _filter_instance_segmentations_by_area(
-        base_stmt,
-        seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
-        min_area=100,
-        max_area=2000,
-    )
-    assert len(db.scalars(stmt).all()) == 2
-
-    stmt = _filter_instance_segmentations_by_area(
-        base_stmt,
-        seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
-        min_area=100,
-        max_area=200,
-    )
-    assert len(db.scalars(stmt).all()) == 1
-
-    stmt = _filter_instance_segmentations_by_area(
-        base_stmt,
-        seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
-        min_area=170,  # this won't pass at 156 due to aliasing
-        max_area=2000,
-    )
-    assert len(db.scalars(stmt).all()) == 1
-
-    # now when we use bounding box detection task, the triangle becomes its circumscribing
-    # rectangle (with area 200) so we should get both segmentations
-    stmt = _filter_instance_segmentations_by_area(
-        base_stmt,
-        seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-        min_area=160,
-        max_area=2000,
-    )
-
-    assert len(db.scalars(stmt).all()) == 2
-
-    stmt = _filter_instance_segmentations_by_area(
-        base_stmt,
-        seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-        min_area=300,
-        max_area=2000,
-    )
-    assert len(db.scalars(stmt).all()) == 1
-
-    stmt = _filter_instance_segmentations_by_area(
-        base_stmt,
-        seg_table=models.GroundTruthSegmentation,
-        task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
-        min_area=3000,
-        max_area=10000,
-    )
-    assert len(db.scalars(stmt).all()) == 0
-
-
-def test__validate_and_update_evaluation_settings_task_type_for_detection_no_groundtruth(
-    db: Session,
-):
-    """Test runtime error when there's no groundtruth data"""
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
-    )
-    crud.finalize_dataset(db, dset_name)
-    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
-
-    evaluation_settings = schemas.EvaluationSettings(
-        model_name=model_name, dataset_name=dset_name
-    )
-
-    with pytest.raises(RuntimeError) as exc_info:
-        _validate_and_update_evaluation_settings_task_type_for_detection(
-            db, evaluation_settings
-        )
-    assert "The dataset does not have any annotations to support" in str(
-        exc_info
-    )
-
-
-def test__validate_and_update_evaluation_settings_task_type_for_detection_no_predictions(
-    db: Session, gt_dets_create
-):
-    """Test runtime error when there's no prediction data"""
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
-    )
-
-    crud.create_groundtruth_detections(db, gt_dets_create)
-
-    crud.finalize_dataset(db, dset_name)
-    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
-
-    evaluation_settings = schemas.EvaluationSettings(
-        model_name=model_name, dataset_name=dset_name
-    )
-
-    with pytest.raises(RuntimeError) as exc_info:
-        _validate_and_update_evaluation_settings_task_type_for_detection(
-            db, evaluation_settings
-        )
-    assert "The model does not have any inferences to support" in str(exc_info)
-
-
-def test__validate_and_update_evaluation_settings_task_type_for_detection_multiple_groundtruth_types(
-    db: Session, gt_dets_create, gt_segs_create
-):
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
-    )
-
-    crud.create_groundtruth_detections(db, gt_dets_create)
-    crud.create_groundtruth_segmentations(db, gt_segs_create)
-
-    crud.finalize_dataset(db, dset_name)
-    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
-
-    evaluation_settings = schemas.EvaluationSettings(
-        model_name=model_name, dataset_name=dset_name
-    )
-
-    with pytest.raises(RuntimeError) as exc_info:
-        _validate_and_update_evaluation_settings_task_type_for_detection(
-            db, evaluation_settings
-        )
-    assert "The dataset has the following tasks compatible" in str(exc_info)
-
-    # now specify task types for dataset and check we get an error since model
-    # has no inferences
-    evaluation_settings = schemas.EvaluationSettings(
-        model_name=model_name,
-        dataset_name=dset_name,
-        dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    with pytest.raises(RuntimeError) as exc_info:
-        _validate_and_update_evaluation_settings_task_type_for_detection(
-            db, evaluation_settings
-        )
-    assert "The model does not have any inferences to support" in str(exc_info)
-
-
-def test__validate_and_update_evaluation_settings_task_type_for_detection_multiple_prediction_types(
-    db: Session, gt_dets_create, pred_dets_create, pred_segs_create
-):
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
-    )
-
-    crud.create_groundtruth_detections(db, gt_dets_create)
-    crud.create_predicted_detections(db, pred_dets_create)
-    crud.create_predicted_segmentations(db, pred_segs_create)
-
-    crud.finalize_dataset(db, dset_name)
-    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
-
-    evaluation_settings = schemas.EvaluationSettings(
-        model_name=model_name, dataset_name=dset_name
-    )
-
-    with pytest.raises(RuntimeError) as exc_info:
-        _validate_and_update_evaluation_settings_task_type_for_detection(
-            db, evaluation_settings
-        )
-    assert "The model has the following tasks compatible" in str(exc_info)
-
-    # now specify task type for model and check there's no error and that
-    # the dataset task type was made explicit
-    evaluation_settings = schemas.EvaluationSettings(
-        model_name=model_name,
-        dataset_name=dset_name,
-        model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
-    )
-    assert evaluation_settings.dataset_gt_task_type is None
-    _validate_and_update_evaluation_settings_task_type_for_detection(
-        db, evaluation_settings
-    )
-    assert (
-        evaluation_settings.dataset_gt_task_type
-        == enums.Task.POLY_OBJECT_DETECTION
-    )
-
-
-def test_create_datums_with_metadata(db: Session):
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.TABULAR),
-    )
-
-    datums = [
-        schemas.Datum(
-            uid="uid1",
-            metadata=[
-                schemas.DatumMetadatum(name="name1", value=0.7),
-                schemas.DatumMetadatum(name="name2", value="a string"),
-            ],
-        ),
-        schemas.Datum(
-            uid="uid2",
-            metadata=[
-                schemas.DatumMetadatum(name="name2", value="a string"),
-                schemas.DatumMetadatum(
-                    name="name3",
-                    value={
-                        "type": "Point",
-                        "coordinates": [-48.23456, 20.12345],
-                    },
-                ),
-            ],
-        ),
-    ]
-    crud._create._add_datums_to_dataset(db, dset_name, datums)
-
-    # check there should only be three unique metadatums since two are the same
-    assert len(db.scalars(select(models.Metadatum)).all()) == 3
-
-    db_datums = crud.get_datums_in_dataset(db, dset_name)
-
-    assert len(db_datums) == 2
-
-    md1 = db_datums[0].datum_metadatum_links[0].metadatum
-    assert md1.name == "name1"
-    assert md1.numeric_value == 0.7
-    assert md1.string_value is None
-    assert md1.geo is None
-
-    md2 = db_datums[1].datum_metadatum_links[0].metadatum
-    assert md2.name == "name2"
-    assert md2.numeric_value is None
-    assert md2.string_value == "a string"
-    assert md2.geo is None
-
-    md3 = db_datums[1].datum_metadatum_links[1].metadatum
-    assert md3.name == "name3"
-    assert md3.numeric_value is None
-    assert md3.string_value is None
-    assert json.loads(db.scalar(ST_AsGeoJSON(md3.geo))) == {
-        "type": "Point",
-        "coordinates": [-48.23456, 20.12345],
-    }
-
-
-def test__get_associated_models(
-    db: Session,
-    dataset_names: list[str],
-    model_names: list[str],
-    dataset_model_associations_create,
-):
-    # Get associated models for each dataset
-    assert _get_associated_models(db, dataset_names[0]) == [model_names[0]]
-    assert _get_associated_models(db, dataset_names[1]) == [
-        model_names[0],
-        model_names[1],
-    ]
-    assert _get_associated_models(db, "doesnt exist") == []
-
-
-def test__get_associated_datasets(
-    db: Session,
-    dataset_names: list[str],
-    model_names: list[str],
-    dataset_model_associations_create,
-):
-    # Get associated datasets for each model
-    assert _get_associated_datasets(db, model_names[0]) == [
-        dataset_names[0],
-        dataset_names[1],
-    ]
-    assert _get_associated_datasets(db, model_names[1]) == [dataset_names[1]]
-    assert _get_associated_datasets(db, "doesnt exist") == []
-
-
-def test_get_dataset_info(
-    db: Session,
-    dataset_names: list[str],
-    model_names: list[str],
-    dataset_model_associations_create,
-):
-    ds_meta1 = get_dataset_info(db, dataset_names[0])
-    assert ds_meta1.annotation_type == ["DETECTION"]
-    assert ds_meta1.number_of_classifications == 0
-    assert ds_meta1.number_of_bounding_boxes == 0
-    assert ds_meta1.number_of_bounding_polygons == 2
-    assert ds_meta1.number_of_segmentation_rasters == 0
-    assert ds_meta1.associated == [model_names[0]]
-
-    ds_meta2 = get_dataset_info(db, dataset_names[1])
-    assert ds_meta2.annotation_type == ["DETECTION"]
-    assert ds_meta2.number_of_classifications == 0
-    assert ds_meta2.number_of_bounding_boxes == 0
-    assert ds_meta2.number_of_bounding_polygons == 2
-    assert ds_meta2.number_of_segmentation_rasters == 0
-    assert ds_meta2.associated == [model_names[0], model_names[1]]
-
-
-def test_get_model_info(
-    db: Session,
-    dataset_names: list[str],
-    model_names: list[str],
-    dataset_model_associations_create,
-):
-    md_meta1 = get_model_info(db, model_names[0])
-    assert md_meta1.annotation_type == ["DETECTION"]
-    assert md_meta1.number_of_classifications == 0
-    assert md_meta1.number_of_bounding_boxes == 0
-    assert md_meta1.number_of_bounding_polygons == 4
-    assert md_meta1.number_of_segmentation_rasters == 0
-    assert md_meta1.associated == [dataset_names[0], dataset_names[1]]
-
-    md_meta2 = get_model_info(db, model_names[1])
-    assert md_meta2.annotation_type == ["DETECTION"]
-    assert md_meta2.number_of_classifications == 0
-    assert md_meta2.number_of_bounding_boxes == 0
-    assert md_meta2.number_of_bounding_polygons == 2
-    assert md_meta2.number_of_segmentation_rasters == 0
-    assert md_meta2.associated == [dataset_names[1]]
-
+# @NOTE: This should now be handled by `velour_api.schemas.Raster`
+# def test__raster_to_png_b64(db: Session):
+#     # create a mask consisting of an ellipse with a whole in it
+#     w, h = 50, 100
+#     img = Image.new("1", size=(w, h))
+#     draw = ImageDraw.Draw(img)
+#     draw.ellipse((15, 40, 30, 70), fill=True)
+#     draw.ellipse((20, 50, 25, 60), fill=False)
+
+#     f = io.BytesIO()
+#     img.save(f, format="PNG")
+#     f.seek(0)
+#     b64_mask = b64encode(f.read()).decode()
+
+#     image = schemas.Datum(uid="uid", height=h, width=w)
+#     crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+#     crud.create_groundtruth(
+#         db,
+#         data=list[schemas.GroundTruth](
+#             dataset_name=dset_name,
+#             segmentations=[
+#                 schemas.Annotation(
+#                     shape=b64_mask,
+#                     image=image,
+#                     labels=[schemas.Label(key="k", value="v")],
+#                     is_instance=True,
+#                 )
+#             ],
+#         ),
+#     )
+
+#     seg = db.scalar(select(models.Annotation))
+
+#     assert b64_mask == _raster_to_png_b64(db, seg.shape, image)
+
+
+# @NOTE: This is now handled by `velour_api.backend.metrics.detections`
+# def test__instance_segmentations_in_dataset_statement(
+#     db: Session, gt_segs_create: list[schemas.GroundTruth]
+# ):
+#     crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+#     for gt in gt_segs_create:
+#         crud.create_groundtruth(db, data=gt)
+
+#     areas = db.scalars(
+#         select(ST_Count(models.Annotation.shape)).where(
+#             models.Annotation.is_instance
+#         )
+#     ).all()
+
+#     assert sorted(areas) == [46, 90, 136]
+
+#     # sanity check no min_area and max_area arguments
+#     stmt = _instance_segmentations_in_dataset_statement(dataset_name=dset_name)
+#     assert len(db.scalars(stmt).all()) == 3
+
+#     # check min_area arg
+#     stmt = _instance_segmentations_in_dataset_statement(
+#         dataset_name=dset_name, min_area=45
+#     )
+#     assert len(db.scalars(stmt).all()) == 3
+#     stmt = _instance_segmentations_in_dataset_statement(
+#         dataset_name=dset_name, min_area=137
+#     )
+#     assert len(db.scalars(stmt).all()) == 0
+
+#     # check max_area argument
+#     stmt = _instance_segmentations_in_dataset_statement(
+#         dataset_name=dset_name, max_area=45
+#     )
+#     assert len(db.scalars(stmt).all()) == 0
+
+#     stmt = _instance_segmentations_in_dataset_statement(
+#         dataset_name=dset_name, max_area=136
+#     )
+#     assert len(db.scalars(stmt).all()) == 3
+
+#     # check specifying both min size and max size
+#     stmt = _instance_segmentations_in_dataset_statement(
+#         dataset_name=dset_name, min_area=45, max_area=136
+#     )
+#     assert len(db.scalars(stmt).all()) == 3
+#     stmt = _instance_segmentations_in_dataset_statement(
+#         dataset_name=dset_name, min_area=50, max_area=100
+#     )
+#     assert len(db.scalars(stmt).all()) == 1
+
+
+# @NOTE: Moved to `velour_api.backend.metrics.detections`
+# def test___model_instance_segmentation_preds_statement(
+#     db: Session,
+#     gt_segs_create: list[schemas.GroundTruth],
+#     pred_segs_create: list[schemas.Prediction],
+# ):
+#     crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+#     crud.create_model(db, schemas.Model(name=model_name))
+#     for gt in gt_segs_create:
+#         crud.create_groundtruth(db, data=gt)
+#     for pd in pred_segs_create:
+#         crud.create_prediction(db, pd)
+
+#     areas = db.scalars(
+#         select(ST_Count(models.Annotation.shape)).where(
+#             models.Annotation.is_instance
+#         )
+#     ).all()
+
+#     assert sorted(areas) == [95, 279, 1077]
+
+#     # sanity check no min_area and max_area arguments
+#     stmt = _model_instance_segmentation_preds_statement(
+#         dataset_name=dset_name, model_name=model_name
+#     )
+#     assert len(db.scalars(stmt).all()) == 3
+
+#     # check min_area arg
+#     stmt = _model_instance_segmentation_preds_statement(
+#         dataset_name=dset_name, model_name=model_name, min_area=94
+#     )
+#     assert len(db.scalars(stmt).all()) == 3
+#     stmt = _model_instance_segmentation_preds_statement(
+#         dataset_name=dset_name, model_name=model_name, min_area=1078
+#     )
+#     assert len(db.scalars(stmt).all()) == 0
+
+#     # check max_area argument
+#     stmt = _model_instance_segmentation_preds_statement(
+#         dataset_name=dset_name, model_name=model_name, max_area=94
+#     )
+#     assert len(db.scalars(stmt).all()) == 0
+
+#     stmt = _model_instance_segmentation_preds_statement(
+#         dataset_name=dset_name, model_name=model_name, max_area=1078
+#     )
+#     assert len(db.scalars(stmt).all()) == 3
+
+#     # check specifying both min size and max size
+#     stmt = _model_instance_segmentation_preds_statement(
+#         dataset_name=dset_name,
+#         model_name=model_name,
+#         min_area=94,
+#         max_area=1078,
+#     )
+#     assert len(db.scalars(stmt).all()) == 3
+#     stmt = _model_instance_segmentation_preds_statement(
+#         dataset_name=dset_name,
+#         model_name=model_name,
+#         min_area=200,
+#         max_area=300,
+#     )
+#     assert len(db.scalars(stmt).all()) == 1
+
+
+# @NOTE: Moved to `velour_api.backend.metrics.detections`
+# def test___object_detections_in_dataset_statement(db: Session, groundtruths):
+#     # the groundtruths argument is not used but that fixture creates groundtruth
+#     # detections in the database
+
+#     areas = db.scalars(ST_Area(models.GroundTruthDetection.boundary)).all()
+
+#     # these are just to establish what the bounds on the areas of
+#     # the groundtruth detections are
+#     assert len(areas) == 20
+#     assert min(areas) > 94
+#     assert max(areas) < 326771
+#     assert len([a for a in areas if a > 500 and a < 1200]) == 9
+
+#     # sanity check no min_area and max_area arguments
+#     stmt = _object_detections_in_dataset_statement(
+#         dataset_name=dset_name, task=enums.Task.BBOX_OBJECT_DETECTION
+#     )
+#     assert len(db.scalars(stmt).all()) == 20
+
+#     # check min_area arg
+#     stmt = _object_detections_in_dataset_statement(
+#         dataset_name=dset_name,
+#         min_area=93,
+#         task=enums.Task.BBOX_OBJECT_DETECTION,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert len(db.scalars(stmt).all()) == 20
+#     stmt = _object_detections_in_dataset_statement(
+#         dataset_name=dset_name,
+#         min_area=326771,
+#         task=enums.Task.BBOX_OBJECT_DETECTION,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert len(db.scalars(stmt).all()) == 0
+
+#     # check max_area argument
+#     stmt = _object_detections_in_dataset_statement(
+#         dataset_name=dset_name,
+#         max_area=93,
+#         task=enums.Task.BBOX_OBJECT_DETECTION,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert len(db.scalars(stmt).all()) == 0
+
+#     stmt = _object_detections_in_dataset_statement(
+#         dataset_name=dset_name,
+#         max_area=326771,
+#         task=enums.Task.BBOX_OBJECT_DETECTION,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert len(db.scalars(stmt).all()) == 20
+
+#     # check specifying both min size and max size
+#     stmt = _object_detections_in_dataset_statement(
+#         dataset_name=dset_name,
+#         min_area=94,
+#         max_area=326771,
+#         task=enums.Task.BBOX_OBJECT_DETECTION,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert len(db.scalars(stmt).all()) == 20
+#     stmt = _object_detections_in_dataset_statement(
+#         dataset_name=dset_name,
+#         min_area=500,
+#         max_area=1200,
+#         task=enums.Task.BBOX_OBJECT_DETECTION,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert len(db.scalars(stmt).all()) == 9
+
+
+# @NOTE: Moved to `velour_api.backend.metrics.detections`
+# def test__model_object_detection_preds_statement(
+#     db: Session, groundtruths, predictions
+# ):
+#     # the groundtruths and predictions arguments are not used but the fixtures create predicted
+#     # detections in the database
+
+#     areas = db.scalars(ST_Area(models.Annotation.boundary)).all()
+
+#     # these are just to establish what the bounds on the areas of
+#     # the groundtruth detections are
+#     assert len(areas) == 19
+#     assert min(areas) > 94
+#     assert max(areas) < 307274
+#     assert len([a for a in areas if a > 500 and a < 1200]) == 9
+
+#     # sanity check no min_area and max_area arguments
+#     stmt = _model_object_detection_preds_statement(
+#         dataset_name=dset_name,
+#         model_name=model_name,
+#         task=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert len(db.scalars(stmt).all()) == 19
+
+#     # check min_area arg
+#     stmt = _model_object_detection_preds_statement(
+#         dataset_name=dset_name,
+#         model_name=model_name,
+#         min_area=93,
+#         task=enums.Task.BBOX_OBJECT_DETECTION,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert len(db.scalars(stmt).all()) == 19
+#     stmt = _model_object_detection_preds_statement(
+#         dataset_name=dset_name,
+#         model_name=model_name,
+#         min_area=326771,
+#         task=enums.Task.BBOX_OBJECT_DETECTION,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert len(db.scalars(stmt).all()) == 0
+
+#     # check max_area argument
+#     stmt = _model_object_detection_preds_statement(
+#         dataset_name=dset_name,
+#         model_name=model_name,
+#         max_area=93,
+#         task=enums.Task.BBOX_OBJECT_DETECTION,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert len(db.scalars(stmt).all()) == 0
+
+#     stmt = _model_object_detection_preds_statement(
+#         dataset_name=dset_name,
+#         model_name=model_name,
+#         max_area=326771,
+#         task=enums.Task.BBOX_OBJECT_DETECTION,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert len(db.scalars(stmt).all()) == 19
+
+#     # check specifying both min size and max size
+#     stmt = _model_object_detection_preds_statement(
+#         dataset_name=dset_name,
+#         model_name=model_name,
+#         min_area=94,
+#         max_area=326771,
+#         task=enums.Task.BBOX_OBJECT_DETECTION,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert len(db.scalars(stmt).all()) == 19
+#     stmt = _model_object_detection_preds_statement(
+#         dataset_name=dset_name,
+#         model_name=model_name,
+#         min_area=500,
+#         max_area=1200,
+#         task=enums.Task.BBOX_OBJECT_DETECTION,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert len(db.scalars(stmt).all()) == 9
+
+
+# @NOTE: Moved to `velour_api.backend.metrics.detections`
+# def test__filter_instance_segmentations_by_area(db: Session):
+#     crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+#     # triangle of area 150
+#     poly1 = schemas.Polygon(polygon=[(10, 20), (10, 40), (25, 20)])
+#     # rectangle of area 1050
+#     poly2 = schemas.Polygon(
+#         polygon=[(0, 5), (0, 40), (30, 40), (30, 5)]
+#     )
+
+#     img = schemas.Datum(uid="", height=1000, width=2000)
+
+#     crud.create_groundtruth(
+#         db,
+#         data=list[schemas.GroundTruth](
+#             dataset_name=dset_name,
+#             segmentations=[
+#                 schemas.Annotation(
+#                     shape=[poly1],
+#                     image=img,
+#                     labels=[schemas.Label(key="k", value="v")],
+#                     is_instance=True,
+#                 ),
+#                 schemas.Annotation(
+#                     shape=[poly2],
+#                     image=img,
+#                     labels=[schemas.Label(key="k", value="v")],
+#                     is_instance=True,
+#                 ),
+#             ],
+#         ),
+#     )
+
+#     areas = db.scalars(ST_Count(models.Annotation.shape)).all()
+#     assert sorted(areas) == [150, 1050]
+
+#     base_stmt = "SELECT id FROM ground_truth_segmentation WHERE ground_truth_segmentation.is_instance"
+
+#     # check filtering when use area determined by instance segmentation task
+#     stmt = _filter_instance_segmentations_by_area(
+#         stmt=base_stmt,
+#         seg_table=models.Annotation,
+#         task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
+#         min_area=100,
+#         max_area=2000,
+#     )
+#     assert len(db.scalars(stmt).all()) == 2
+
+#     stmt = _filter_instance_segmentations_by_area(
+#         base_stmt,
+#         seg_table=models.Annotation,
+#         task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
+#         min_area=100,
+#         max_area=200,
+#     )
+#     assert len(db.scalars(stmt).all()) == 1
+
+#     stmt = _filter_instance_segmentations_by_area(
+#         base_stmt,
+#         seg_table=models.Annotation,
+#         task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
+#         min_area=151,
+#         max_area=2000,
+#     )
+#     assert len(db.scalars(stmt).all()) == 1
+
+#     # now when we use bounding box detection task, the triangle becomes its circumscribing
+#     # rectangle (with area ~300) so we should get both segmentations
+#     stmt = _filter_instance_segmentations_by_area(
+#         base_stmt,
+#         seg_table=models.Annotation,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#         min_area=280,
+#         max_area=2000,
+#     )
+#     assert len(db.scalars(stmt).all()) == 2
+
+#     stmt = _filter_instance_segmentations_by_area(
+#         base_stmt,
+#         seg_table=models.Annotation,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#         min_area=301,
+#         max_area=2000,
+#     )
+#     assert len(db.scalars(stmt).all()) == 1
+
+#     # if we use polygon detection then the areas shouldn't change much (the area
+#     # of the triangle actually becomes 163-- not sure if this is aliasing or what)
+#     stmt = _filter_instance_segmentations_by_area(
+#         base_stmt,
+#         seg_table=models.Annotation,
+#         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+#         min_area=149,
+#         max_area=2000,
+#     )
+#     assert len(db.scalars(stmt).all()) == 2
+
+#     stmt = _filter_instance_segmentations_by_area(
+#         base_stmt,
+#         seg_table=models.Annotation,
+#         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+#         min_area=164,
+#         max_area=2000,
+#     )
+
+#     assert len(db.scalars(stmt).all()) == 1
+
+
+# @NOTE: Moved to `velour_api.backend.metrics.detections`
+# def test__filter_object_detections_by_area(db: Session):
+#     crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+#     # triangle of area 150
+#     boundary1 = [(10, 20), (10, 40), (25, 20)]
+#     # rectangle of area 1050
+#     boundary2 = [(0, 5), (0, 40), (30, 40), (30, 5)]
+
+#     img = schemas.Datum(uid="", height=1000, width=2000)
+
+#     crud.create_groundtruth(
+#         db,
+#         data=schemas.GroundTruth(
+#             dataset_name=dset_name,
+#             detections=[
+#                 schemas.GroundTruthDetection(
+#                     boundary=boundary1,
+#                     image=img,
+#                     labels=[schemas.Label(key="k", value="v")],
+#                 ),
+#                 schemas.GroundTruthDetection(
+#                     boundary=boundary2,
+#                     image=img,
+#                     labels=[schemas.Label(key="k", value="v")],
+#                 ),
+#             ],
+#         ),
+#     )
+
+#     areas = db.scalars(ST_Area(models.GroundTruthDetection.boundary)).all()
+#     assert sorted(areas) == [150, 1050]
+
+#     # make base statement. need WHERE here because of what `_filter_instance_segmentations_by_area` expects
+#     base_stmt = "SELECT id FROM ground_truth_detection WHERE ground_truth_detection.id > 0"
+
+#     # check filtering when use area determined by polygon detection task
+#     stmt = _filter_object_detections_by_area(
+#         base_stmt,
+#         det_table=models.GroundTruthDetection,
+#         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+#         min_area=100,
+#         max_area=2000,
+#     )
+#     assert len(db.scalars(stmt).all()) == 2
+
+#     stmt = _filter_object_detections_by_area(
+#         base_stmt,
+#         det_table=models.GroundTruthDetection,
+#         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+#         min_area=100,
+#         max_area=200,
+#     )
+#     assert len(db.scalars(stmt).all()) == 1
+
+#     stmt = _filter_object_detections_by_area(
+#         base_stmt,
+#         det_table=models.GroundTruthDetection,
+#         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+#         min_area=151,
+#         max_area=2000,
+#     )
+#     assert len(db.scalars(stmt).all()) == 1
+
+#     # now when we use bounding box detection task, the triangle becomes its circumscribing
+#     # rectangle (with area 300) so we should get both segmentations
+#     stmt = _filter_object_detections_by_area(
+#         base_stmt,
+#         det_table=models.GroundTruthDetection,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#         min_area=299,
+#         max_area=2000,
+#     )
+#     assert len(db.scalars(stmt).all()) == 2
+
+#     stmt = _filter_object_detections_by_area(
+#         base_stmt,
+#         det_table=models.GroundTruthDetection,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#         min_area=301,
+#         max_area=2000,
+#     )
+#     assert len(db.scalars(stmt).all()) == 1
+
+#     # check error if use the wrong task type
+#     with pytest.raises(ValueError) as exc_info:
+#         _filter_object_detections_by_area(
+#             base_stmt,
+#             det_table=models.GroundTruthDetection,
+#             task_for_area_computation=enums.Task.INSTANCE_SEGMENTATION,
+#             min_area=301,
+#             max_area=2000,
+#         )
+#     assert "Expected task_for_area_computation to be" in str(exc_info)
+
+
+# @NOTE: Moved to `velour_api.backend.metrics.detections`
+# def test__filter_instance_segmentations_by_area_using_mask(db: Session):
+#     crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+#     # approximate triangle of area 150
+#     mask = np.zeros((1000, 2000), dtype=bool)
+#     for i in range(10):
+#         for j in range(30):
+#             if i + j < 20:
+#                 mask[i, j] = True
+#     assert mask.sum() == 155
+#     mask_bytes = pil_to_bytes(Image.fromarray(mask))
+#     b64_mask = b64encode(mask_bytes).decode()
+
+#     # rectangle of area 1050
+#     boundary = [(0, 5), (0, 40), (30, 40), (30, 5)]
+
+#     img = schemas.Datum(uid="", height=1000, width=2000)
+
+#     crud.create_groundtruth(
+#         db,
+#         data=list[schemas.GroundTruth](
+#             dataset_name=dset_name,
+#             segmentations=[
+#                 schemas.Annotation(
+#                     shape=b64_mask,
+#                     image=img,
+#                     labels=[schemas.Label(key="k", value="v")],
+#                     is_instance=True,
+#                 ),
+#                 schemas.Annotation(
+#                     shape=[schemas.Polygon(polygon=boundary)],
+#                     image=img,
+#                     labels=[schemas.Label(key="k", value="v")],
+#                     is_instance=True,
+#                 ),
+#             ],
+#         ),
+#     )
+
+#     areas = db.scalars(ST_Count(models.Annotation.shape)).all()
+#     assert sorted(areas) == [155, 1050]
+
+#     base_stmt = "SELECT id FROM ground_truth_segmentation WHERE ground_truth_segmentation.is_instance"
+
+#     # check filtering when use area determined by polygon detection task
+#     stmt = _filter_instance_segmentations_by_area(
+#         base_stmt,
+#         seg_table=models.Annotation,
+#         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+#         min_area=100,
+#         max_area=2000,
+#     )
+#     assert len(db.scalars(stmt).all()) == 2
+
+#     stmt = _filter_instance_segmentations_by_area(
+#         base_stmt,
+#         seg_table=models.Annotation,
+#         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+#         min_area=100,
+#         max_area=200,
+#     )
+#     assert len(db.scalars(stmt).all()) == 1
+
+#     stmt = _filter_instance_segmentations_by_area(
+#         base_stmt,
+#         seg_table=models.Annotation,
+#         task_for_area_computation=enums.Task.POLY_OBJECT_DETECTION,
+#         min_area=170,  # this won't pass at 156 due to aliasing
+#         max_area=2000,
+#     )
+#     assert len(db.scalars(stmt).all()) == 1
+
+#     # now when we use bounding box detection task, the triangle becomes its circumscribing
+#     # rectangle (with area 200) so we should get both segmentations
+#     stmt = _filter_instance_segmentations_by_area(
+#         base_stmt,
+#         seg_table=models.Annotation,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#         min_area=160,
+#         max_area=2000,
+#     )
+
+#     assert len(db.scalars(stmt).all()) == 2
+
+#     stmt = _filter_instance_segmentations_by_area(
+#         base_stmt,
+#         seg_table=models.Annotation,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#         min_area=300,
+#         max_area=2000,
+#     )
+#     assert len(db.scalars(stmt).all()) == 1
+
+#     stmt = _filter_instance_segmentations_by_area(
+#         base_stmt,
+#         seg_table=models.Annotation,
+#         task_for_area_computation=enums.Task.BBOX_OBJECT_DETECTION,
+#         min_area=3000,
+#         max_area=10000,
+#     )
+#     assert len(db.scalars(stmt).all()) == 0
+
+
+# @NOTE: `velour-api.backend` - this will be replaced by stateflow
+# @TODO: Implement test for finalizing empty dataset
+# def test__validate_and_update_evaluation_settings_task_type_for_detection_no_groundtruth(
+#     db: Session,
+# ):
+#     """Test runtime error when there's no groundtruth data"""
+#     crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+#     crud.create_model(db, schemas.Model(name=model_name))
+#     crud.finalize(db, dset_name)
+#     crud.finalize(db, model_name=model_name, dataset_name=dset_name)
+
+#     evaluation_settings = schemas.EvaluationSettings(
+#         model_name=model_name, dataset_name=dset_name
+#     )
+
+#     with pytest.raises(RuntimeError) as exc_info:
+#         _validate_and_update_evaluation_settings_task_type_for_detection(
+#             db, evaluation_settings
+#         )
+#     assert "The dataset does not have any annotations to support" in str(
+#         exc_info
+#     )
+
+
+# @NOTE: `velour-api.backend` - this will be replaced by stateflow
+# @TODO: Implement test for finalizing empty model
+# def test__validate_and_update_evaluation_settings_task_type_for_detection_no_predictions(
+#     db: Session, gt_dets_create
+# ):
+#     """Test runtime error when there's no prediction data"""
+#     crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+#     crud.create_model(db, schemas.Model(name=model_name))
+
+#     crud.create_groundtruth(db, gt_dets_create)
+
+#     crud.finalize(db, dset_name)
+#     crud.finalize(db, model_name=model_name, dataset_name=dset_name)
+
+#     evaluation_settings = schemas.EvaluationSettings(
+#         model_name=model_name, dataset_name=dset_name
+#     )
+
+#     with pytest.raises(RuntimeError) as exc_info:
+#         _validate_and_update_evaluation_settings_task_type_for_detection(
+#             db, evaluation_settings
+#         )
+#     assert "The model does not have any inferences to support" in str(exc_info)
+
+
+# @NOTE: `velour-api.backend` - this will be replaced by stateflow
+# @TODO: Implement test that checks the set of valid commands over given dataset/model pairing
+# def test__validate_and_update_evaluation_settings_task_type_for_detection_multiple_groundtruth_types(
+#     db: Session, gt_dets_create, gt_segs_create
+# ):
+#     crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+#     crud.create_model(db, schemas.Model(name=model_name))
+
+#     crud.create_groundtruth(db, gt_dets_create)
+#     for gt in gt_segs_create:
+#         crud.create_groundtruth(db, gt)
+
+#     crud.finalize(db, dset_name)
+#     crud.finalize(db, model_name=model_name, dataset_name=dset_name)
+
+#     evaluation_settings = schemas.EvaluationSettings(
+#         model_name=model_name, dataset_name=dset_name
+#     )
+
+#     with pytest.raises(RuntimeError) as exc_info:
+#         _validate_and_update_evaluation_settings_task_type_for_detection(
+#             db, evaluation_settings
+#         )
+#     assert "The dataset has the following tasks compatible" in str(exc_info)
+
+#     # now specify task types for dataset and check we get an error since model
+#     # has no inferences
+#     evaluation_settings = schemas.EvaluationSettings(
+#         model_name=model_name,
+#         dataset_name=dset_name,
+#         dataset_gt_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     with pytest.raises(RuntimeError) as exc_info:
+#         _validate_and_update_evaluation_settings_task_type_for_detection(
+#             db, evaluation_settings
+#         )
+#     assert "The model does not have any inferences to support" in str(exc_info)
+
+
+# @NOTE: `velour-api.backend` - this will be replaced by stateflow
+# @TODO: Implement test that checks the set of valid commands over given dataset/model pairing
+# def test__validate_and_update_evaluation_settings_task_type_for_detection_multiple_prediction_types(
+#     db: Session, gt_dets_create, pred_dets_create, pred_segs_create
+# ):
+#     crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+#     crud.create_model(db, schemas.Model(name=model_name))
+
+#     crud.create_groundtruth(db, gt_dets_create)
+#     crud.create_prediction(db, pred_dets_create)
+#     for pd in pred_segs_create:
+#         crud.create_prediction(db, pd)
+
+#     crud.finalize(db, dset_name)
+#     crud.finalize(db, model_name=model_name, dataset_name=dset_name)
+
+#     evaluation_settings = schemas.EvaluationSettings(
+#         model_name=model_name, dataset_name=dset_name
+#     )
+
+#     with pytest.raises(RuntimeError) as exc_info:
+#         _validate_and_update_evaluation_settings_task_type_for_detection(
+#             db, evaluation_settings
+#         )
+#     assert "The model has the following tasks compatible" in str(exc_info)
+
+#     # now specify task type for model and check there's no error and that
+#     # the dataset task type was made explicit
+#     evaluation_settings = schemas.EvaluationSettings(
+#         model_name=model_name,
+#         dataset_name=dset_name,
+#         model_pred_task_type=enums.Task.BBOX_OBJECT_DETECTION,
+#     )
+#     assert evaluation_settings.dataset_gt_task_type is None
+#     _validate_and_update_evaluation_settings_task_type_for_detection(
+#         db, evaluation_settings
+#     )
+#     assert (
+#         evaluation_settings.dataset_gt_task_type
+#         == enums.Task.POLY_OBJECT_DETECTION
+#     )
+
+
+# @NOTE: `velour_api.backend.io`
+# @TODO: Implement a test that checks the existince and linking of metatata
+# def test_create_datums_with_metadata(db: Session):
+#     crud.create_dataset(
+#         db,
+#         schemas.Dataset(name=dset_name),
+#     )
+
+#     datums = [
+#         schemas.Datum(
+#             uid="uid1",
+#             metadata=[
+#                 schemas.MetaDatum(name="type", value=enums.DataType.TABULAR.value),
+#                 schemas.MetaDatum(name="name1", value=0.7),
+#                 schemas.MetaDatum(name="name2", value="a string"),
+#             ],
+#         ),
+#         schemas.Datum(
+#             uid="uid2",
+#             metadata=[
+#                 schemas.MetaDatum(name="type", value=enums.DataType.TABULAR.value),
+#                 schemas.MetaDatum(name="name2", value="a string"),
+#                 schemas.MetaDatum(
+#                     name="name3",
+#                     value={
+#                         "type": "Point",
+#                         "coordinates": [-48.23456, 20.12345],
+#                     },
+#                 ),
+#             ],
+#         ),
+#     ]
+#     crud._create._add_datums_to_dataset(db, dset_name, datums)
+
+#     # check there should only be three unique metadatums since two are the same
+#     assert len(db.scalars(select(models.Metadatum)).all()) == 3
+
+#     db_datums = crud.get_datums_in_dataset(db, dset_name)
+
+#     assert len(db_datums) == 2
+
+#     md1 = db_datums[0].datum_metadatum_links[0].metadatum
+#     assert md1.name == "name1"
+#     assert md1.numeric_value == 0.7
+#     assert md1.string_value is None
+#     assert md1.geo is None
+
+#     md2 = db_datums[1].datum_metadatum_links[0].metadatum
+#     assert md2.name == "name2"
+#     assert md2.numeric_value is None
+#     assert md2.string_value == "a string"
+#     assert md2.geo is None
+
+#     md3 = db_datums[1].datum_metadatum_links[1].metadatum
+#     assert md3.name == "name3"
+#     assert md3.numeric_value is None
+#     assert md3.string_value is None
+#     assert json.loads(db.scalar(ST_AsGeoJSON(md3.geo))) == {
+#         "type": "Point",
+#         "coordinates": [-48.23456, 20.12345],
+#     }
+
+
+""" READ """
+
+
+def test_get_dataset(db: Session):
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
+        crud.get_dataset(db, dset_name)
+    assert "does not exist" in str(exc_info)
+
+    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+    dset = crud.get_dataset(db, dset_name)
+    assert dset.name == dset_name
+
+
+def test_get_model(db: Session):
+    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
+        crud.get_model(db, model_name)
+    assert "does not exist" in str(exc_info)
+
+    crud.create_model(db, schemas.Model(name=model_name))
+    model = crud.get_model(db, model_name)
+    assert model.name == model_name
+
+
+# @NOTE: Sub-functionality of `crud.get_info` 
+# @TODO: Implement `crud.get_info`
+# def test_get_dataset_info(
+#     db: Session,
+#     dataset_names: list[str],
+#     model_names: list[str],
+#     dataset_model_associations_create,
+# ):
+#     ds_meta1 = get_dataset_info(db, dataset_names[0])
+#     assert ds_meta1.annotation_type == ["DETECTION"]
+#     assert ds_meta1.number_of_classifications == 0
+#     assert ds_meta1.number_of_bounding_boxes == 0
+#     assert ds_meta1.number_of_bounding_polygons == 2
+#     assert ds_meta1.number_of_segmentation_rasters == 0
+#     assert ds_meta1.associated == [model_names[0]]
+
+#     ds_meta2 = get_dataset_info(db, dataset_names[1])
+#     assert ds_meta2.annotation_type == ["DETECTION"]
+#     assert ds_meta2.number_of_classifications == 0
+#     assert ds_meta2.number_of_bounding_boxes == 0
+#     assert ds_meta2.number_of_bounding_polygons == 2
+#     assert ds_meta2.number_of_segmentation_rasters == 0
+#     assert ds_meta2.associated == [model_names[0], model_names[1]]
+
+# @NOTE: Sub-functionality of `crud.get_info` 
+# @TODO: Implement `crud.get_info`
+# def test_get_model_info(
+#     db: Session,
+#     dataset_names: list[str],
+#     model_names: list[str],
+#     dataset_model_associations_create,
+# ):
+#     md_meta1 = get_model_info(db, model_names[0])
+#     assert md_meta1.annotation_type == ["DETECTION"]
+#     assert md_meta1.number_of_classifications == 0
+#     assert md_meta1.number_of_bounding_boxes == 0
+#     assert md_meta1.number_of_bounding_polygons == 4
+#     assert md_meta1.number_of_segmentation_rasters == 0
+#     assert md_meta1.associated == [dataset_names[0], dataset_names[1]]
+
+#     md_meta2 = get_model_info(db, model_names[1])
+#     assert md_meta2.annotation_type == ["DETECTION"]
+#     assert md_meta2.number_of_classifications == 0
+#     assert md_meta2.number_of_bounding_boxes == 0
+#     assert md_meta2.number_of_bounding_polygons == 2
+#     assert md_meta2.number_of_segmentation_rasters == 0
+#     assert md_meta2.associated == [dataset_names[1]]
+
+
+# @NOTE: Sub-functionality of `crud.get_info` 
+# @TODO: Implement `crud.get_info`
+# def test__get_associated_models(
+#     db: Session,
+#     dataset_names: list[str],
+#     model_names: list[str],
+#     dataset_model_associations_create,
+# ):
+#     # Get associated models for each dataset
+#     assert _get_associated_models(db, dataset_names[0]) == [model_names[0]]
+#     assert _get_associated_models(db, dataset_names[1]) == [
+#         model_names[0],
+#         model_names[1],
+#     ]
+#     assert _get_associated_models(db, "doesnt exist") == []
+
+# @NOTE: Sub-functionality of `crud.get_info` 
+# @TODO: Implement `crud.get_info`
+# def test__get_associated_datasets(
+#     db: Session,
+#     dataset_names: list[str],
+#     model_names: list[str],
+#     dataset_model_associations_create,
+# ):
+#     # Get associated datasets for each model
+#     assert _get_associated_datasets(db, model_names[0]) == [
+#         dataset_names[0],
+#         dataset_names[1],
+#     ]
+#     assert _get_associated_datasets(db, model_names[1]) == [dataset_names[1]]
+#     assert _get_associated_datasets(db, "doesnt exist") == []
+
+# @NOTE: Sub-functionality of `crud.get_info` 
+# @TODO: Implement `crud.get_info`
+# def test_get_label_distribution_from_dataset(
+#     db: Session,
+#     dataset_names: list[str],
+#     dataset_model_associations_create,
+# ):
+#     ds1 = get_label_distribution_from_dataset(db, dataset_names[0])
+#     assert len(ds1) == 2
+#     assert ds1[0] == schemas.LabelDistribution(
+#         label=schemas.Label(key="k1", value="v1"), count=1
+#     )
+#     assert ds1[1] == schemas.LabelDistribution(
+#         label=schemas.Label(key="k2", value="v2"), count=2
+#     )
+
+#     ds2 = get_label_distribution_from_dataset(db, dataset_names[1])
+#     assert len(ds2) == 2
+#     assert ds1[0] == schemas.LabelDistribution(
+#         label=schemas.Label(key="k1", value="v1"), count=1
+#     )
+#     assert ds1[1] == schemas.LabelDistribution(
+#         label=schemas.Label(key="k2", value="v2"), count=2
+#     )
+
+# @NOTE: Sub-functionality of `crud.get_info` 
+# @TODO: Implement `crud.get_info`
+# def test_get_label_distribution_from_model(
+#     db: Session,
+#     model_names: list[str],
+#     dataset_model_associations_create,
+# ):
+
+#     md1 = get_label_distribution_from_model(db, model_names[0])
+#     assert len(md1) == 2
+#     assert md1[0] == schemas.ScoredLabelDistribution(
+#         label=schemas.Label(key="k1", value="v1"), scores=[0.6, 0.6], count=2
+#     )
+#     assert md1[1] == schemas.ScoredLabelDistribution(
+#         label=schemas.Label(key="k2", value="v2"),
+#         scores=[0.2, 0.9, 0.2, 0.9],
+#         count=4,
+#     )
+
+#     md2 = get_label_distribution_from_model(db, model_names[1])
+#     assert len(md2) == 2
+#     assert md2[0] == schemas.ScoredLabelDistribution(
+#         label=schemas.Label(key="k1", value="v1"), scores=[0.6], count=1
+#     )
+#     assert md2[1] == schemas.ScoredLabelDistribution(
+#         label=schemas.Label(key="k2", value="v2"), scores=[0.2, 0.9], count=2
+#     )
 
 def test_get_all_labels(
-    db: Session, gt_dets_create: schemas.GroundTruthDetectionsCreate
+    db: Session, gt_dets_create: schemas.GroundTruth
 ):
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_groundtruth_detections(db, data=gt_dets_create)
-    labels = crud.get_all_labels(db)
+    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+
+    for gt in gt_dets_create:
+        crud.create_groundtruth(db, data=gt)
+
+    labels = crud.get_labels(db)
 
     assert len(labels) == 2
     assert set([(label.key, label.value) for label in labels]) == set(
@@ -2253,19 +2434,19 @@ def test_get_labels_from_dataset(
 ):
 
     # Test get all from dataset 1
-    ds1 = get_labels_from_dataset(db, dataset_name=dataset_names[0])
+    ds1 = crud.get_labels(db, dataset_name=dataset_names[0])
     assert len(ds1) == 2
     assert schemas.Label(key="k1", value="v1") in ds1
     assert schemas.Label(key="k2", value="v2") in ds1
 
     # Test get all from dataset 2
-    ds2 = get_labels_from_dataset(db, dataset_name=dataset_names[1])
+    ds2 = crud.get_labels(db, dataset_name=dataset_names[1])
     assert len(ds2) == 2
     assert schemas.Label(key="k1", value="v1") in ds2
     assert schemas.Label(key="k2", value="v2") in ds2
 
     # Test get all but polygon labels from dataset 1
-    ds1 = get_labels_from_dataset(
+    ds1 = crud.get_labels(
         db,
         dataset_name=dataset_names[0],
         of_type=[
@@ -2277,7 +2458,7 @@ def test_get_labels_from_dataset(
     assert ds1 == []
 
     # Test get only polygon labels from dataset 1
-    ds1 = get_labels_from_dataset(
+    ds1 = crud.get_labels(
         db,
         dataset_name=dataset_names[0],
         of_type=[enums.AnnotationType.POLYGON],
@@ -2293,19 +2474,19 @@ def test_get_labels_from_model(
     dataset_model_associations_create,
 ):
     # Test get all labels from model 1
-    md1 = get_labels_from_model(db, model_name=model_names[0])
+    md1 = crud.get_labels(db, model_name=model_names[0])
     assert len(md1) == 2
     assert schemas.Label(key="k1", value="v1") in md1
     assert schemas.Label(key="k2", value="v2") in md1
 
     # Test get all labels from model 2
-    md2 = get_labels_from_model(db, model_name=model_names[1])
+    md2 = crud.get_labels(db, model_name=model_names[1])
     assert len(md2) == 2
     assert schemas.Label(key="k1", value="v1") in md2
     assert schemas.Label(key="k2", value="v2") in md2
 
     # Test get all but polygon labels from model 1
-    md1 = get_labels_from_model(
+    md1 = crud.get_labels(
         db,
         model_name=model_names[0],
         metadatum_id=None,
@@ -2318,7 +2499,7 @@ def test_get_labels_from_model(
     assert md1 == []
 
     # Test get only polygon labels from model 1
-    md1 = get_labels_from_model(
+    md1 = crud.get_labels(
         db,
         model_name=model_names[0],
         metadatum_id=None,
@@ -2337,7 +2518,7 @@ def test_get_joint_labels(
 ):
     # Test get joint labels from dataset 1 and model 1
     assert set(
-        crud.get_joint_labels(
+        crud.get_labels(
             db=db,
             dataset_name=dataset_names[0],
             model_name=model_names[0],
@@ -2352,7 +2533,7 @@ def test_get_joint_labels(
     # Test get joint labels from dataset 1 and model 1 where labels are not for polygons
     assert (
         set(
-            crud.get_joint_labels(
+            crud.get_labels(
                 db=db,
                 dataset_name=dataset_names[0],
                 model_name=model_names[0],
@@ -2368,7 +2549,7 @@ def test_get_joint_labels(
 
     # Test get joint labels from dataset 1 and model 1 where labels are only for polygons
     assert set(
-        crud.get_joint_labels(
+        crud.get_labels(
             db=db,
             dataset_name=dataset_names[0],
             model_name=model_names[0],
@@ -2382,104 +2563,62 @@ def test_get_joint_labels(
     )
 
 
-def test_get_label_distribution_from_dataset(
-    db: Session,
-    dataset_names: list[str],
-    dataset_model_associations_create,
-):
-    ds1 = get_label_distribution_from_dataset(db, dataset_names[0])
-    assert len(ds1) == 2
-    assert ds1[0] == schemas.LabelDistribution(
-        label=schemas.Label(key="k1", value="v1"), count=1
-    )
-    assert ds1[1] == schemas.LabelDistribution(
-        label=schemas.Label(key="k2", value="v2"), count=2
-    )
+# @NOTE: `velour_api.backend.io`
+# @TODO: Need to implement metadata querys
+# def test_get_string_metadata_ids(db: Session):
+#     crud.create_dataset(
+#         db,
+#         schemas.Dataset(name=dset_name),
+#     )
 
-    ds2 = get_label_distribution_from_dataset(db, dataset_names[1])
-    assert len(ds2) == 2
-    assert ds1[0] == schemas.LabelDistribution(
-        label=schemas.Label(key="k1", value="v1"), count=1
-    )
-    assert ds1[1] == schemas.LabelDistribution(
-        label=schemas.Label(key="k2", value="v2"), count=2
-    )
+#     datums = [
+#         schemas.Datum(
+#             uid="uid1",
+#             metadata=[
+#                 schemas.MetaDatum(name="type", value=enums.DataType.TABULAR.value),
+#                 schemas.MetaDatum(name="md1", value=0.7)
+#             ],
+#         ),
+#         schemas.Datum(
+#             uid="uid2",
+#             metadata=[
+#                 schemas.MetaDatum(name="type", value=enums.DataType.TABULAR.value),
+#                 schemas.MetaDatum(name="md1", value="md1-val1"),
+#                 schemas.MetaDatum(name="md2", value="md2-val1"),
+#             ],
+#         ),
+#         schemas.Datum(
+#             uid="uid3",
+#             metadata=[
+#                 schemas.MetaDatum(name="type", value=enums.DataType.TABULAR.value),
+#                 schemas.MetaDatum(name="md1", value="md1-val1"),
+#             ],
+#         ),
+#         schemas.Datum(
+#             uid="uid4",
+#             metadata=[
+#                 schemas.MetaDatum(name="type", value=enums.DataType.TABULAR.value),
+#                 schemas.MetaDatum(name="md1", value="md1-val2"),
+#             ],
+#         ),
+#     ]
 
+#     crud._create._add_datums_to_dataset(db, dset_name, datums)
 
-def test_get_label_distribution_from_model(
-    db: Session,
-    model_names: list[str],
-    dataset_model_associations_create,
-):
+#     string_ids = crud.get_string_metadata_ids(
+#         db, dset_name, metadata_name="md1"
+#     )
 
-    md1 = get_label_distribution_from_model(db, model_names[0])
-    assert len(md1) == 2
-    assert md1[0] == schemas.ScoredLabelDistribution(
-        label=schemas.Label(key="k1", value="v1"), scores=[0.6, 0.6], count=2
-    )
-    assert md1[1] == schemas.ScoredLabelDistribution(
-        label=schemas.Label(key="k2", value="v2"),
-        scores=[0.2, 0.9, 0.2, 0.9],
-        count=4,
-    )
+#     assert len(string_ids) == 2
+#     # assert set([s[1] for s in string_vals_and_ids]) == {"md1-val1", "md1-val2"}
 
-    md2 = get_label_distribution_from_model(db, model_names[1])
-    assert len(md2) == 2
-    assert md2[0] == schemas.ScoredLabelDistribution(
-        label=schemas.Label(key="k1", value="v1"), scores=[0.6], count=1
-    )
-    assert md2[1] == schemas.ScoredLabelDistribution(
-        label=schemas.Label(key="k2", value="v2"), scores=[0.2, 0.9], count=2
-    )
+#     string_ids = crud.get_string_metadata_ids(
+#         db, dset_name, metadata_name="md2"
+#     )
+#     assert len(string_ids) == 1
+#     # assert [s[1] for s in string_vals_and_ids] == ["md2-val1"]
 
-
-def test_get_string_metadata_ids(db: Session):
-    crud.create_dataset(
-        db,
-        schemas.DatasetCreate(name=dset_name, type=schemas.DatumTypes.TABULAR),
-    )
-
-    datums = [
-        schemas.Datum(
-            uid="uid1",
-            metadata=[schemas.DatumMetadatum(name="md1", value=0.7)],
-        ),
-        schemas.Datum(
-            uid="uid2",
-            metadata=[
-                schemas.DatumMetadatum(name="md1", value="md1-val1"),
-                schemas.DatumMetadatum(name="md2", value="md2-val1"),
-            ],
-        ),
-        schemas.Datum(
-            uid="uid3",
-            metadata=[
-                schemas.DatumMetadatum(name="md1", value="md1-val1"),
-            ],
-        ),
-        schemas.Datum(
-            uid="uid4",
-            metadata=[
-                schemas.DatumMetadatum(name="md1", value="md1-val2"),
-            ],
-        ),
-    ]
-    crud._create._add_datums_to_dataset(db, dset_name, datums)
-
-    string_ids = crud.get_string_metadata_ids(
-        db, dset_name, metadata_name="md1"
-    )
-
-    assert len(string_ids) == 2
-    # assert set([s[1] for s in string_vals_and_ids]) == {"md1-val1", "md1-val2"}
-
-    string_ids = crud.get_string_metadata_ids(
-        db, dset_name, metadata_name="md2"
-    )
-    assert len(string_ids) == 1
-    # assert [s[1] for s in string_vals_and_ids] == ["md2-val1"]
-
-    string_ids = crud.get_string_metadata_ids(
-        db, dset_name, metadata_name="md3"
-    )
-    assert string_ids == []
+#     string_ids = crud.get_string_metadata_ids(
+#         db, dset_name, metadata_name="md3"
+#     )
+#     assert string_ids == []

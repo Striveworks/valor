@@ -8,7 +8,7 @@ class Image(BaseModel):
     uid: str
     height: int
     width: int
-    frame: float
+    frame: int
 
     @classmethod
     def from_datum(cls, datum: Datum):
