@@ -1,9 +1,9 @@
-# from sqlalchemy.orm import Session
-# from sqlalchemy import and_, or_
-# from sqlalchemy.sql.elements import BinaryExpression
+from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_, select
+from sqlalchemy.sql.elements import BinaryExpression
 
-# from velour_api import schemas, enums
-# from velour_api.backend import models
+from velour_api import schemas, enums
+from velour_api.backend import models
 
 
 model_graph = {
@@ -17,72 +17,112 @@ model_graph = {
     "metadatum": {"dataset", "model", "datum", "annotation"},
 }
 
-# model_mapping = {
-#     "dataset": models.Dataset,
-#     "model": models.Model,
-#     "datum": models.Datum,
-#     "annotation": models.Annotation,
-#     "groundtruth": models.GroundTruth,
-#     "prediction": models.Prediction,
-#     "label": models.Label,
-#     "metadatum": models.MetaDatum,
-# }
 
-# model_relationships = {
-#     "dataset": {
-#         "datum": models.Dataset.id == models.Datum.dataset_id,
-#         "metadatum": models.Dataset.id == models.MetaDatum.dataset_id,
-#     },
-#     "model": {
-#         "annotation": models.Model.id == models.Annotation.model_id,
-#         "metadatum": models.Model.id == models.MetaDatum.model_id,
-#     },
-#     "datum": {
-#         "annotation": models.Datum.id == models.Annotation.datum_id,
-#         "dataset": models.Datum.dataset_id == models.Dataset.id,
-#         "metadatum": models.Datum.id == models.MetaDatum.datum_id,
-#     },
-#     "annotation": {
-#         "datum": models.Annotation.datum_id == models.Datum.id,
-#         "model": models.Annotation.model_id == models.Model.id,
-#         "prediction": models.Annotation.id == models.Prediction.annotation_id,
-#         "groundtruth": models.Annotation.id == models.GroundTruth.annotation_id,
-#         "metadatum": models.Annotation.id == models.MetaDatum.annotation_id,
-#     },
-#     "groundtruth": {
-#         "annotation": models.GroundTruth.annotation_id == models.Annotation.id,
-#         "label": models.GroundTruth.label_id == models.Label.id,
-#     },
-#     "prediction": {
-#         "annotation": models.Prediction.annotation_id == models.Annotation.id,
-#         "label": models.Prediction.label_id == models.Label.id,
-#     },
-#     "metadatum": {
-#         "dataset": models.MetaDatum.dataset_id == models.Dataset.id,
-#         "model": models.MetaDatum.model_id == models.Model.id,
-#         "datum": models.MetaDatum.datum_id == models.Datum.id,
-#         "annotation": models.MetaDatum.annotation_id == models.Annotation.id,
-#     }
-# }
+model_mapping = {
+    "dataset": models.Dataset,
+    "model": models.Model,
+    "datum": models.Datum,
+    "annotation": models.Annotation,
+    "groundtruth": models.GroundTruth,
+    "prediction": models.Prediction,
+    "label": models.Label,
+    "metadatum": models.MetaDatum,
+}
 
 
-def graph_search(
+model_relationships = {
+    "dataset": {
+        "datum": models.Dataset.id == models.Datum.dataset_id,
+        "metadatum": models.Dataset.id == models.MetaDatum.dataset_id,
+    },
+    "model": {
+        "annotation": models.Model.id == models.Annotation.model_id,
+        "metadatum": models.Model.id == models.MetaDatum.model_id,
+    },
+    "datum": {
+        "annotation": models.Datum.id == models.Annotation.datum_id,
+        "dataset": models.Datum.dataset_id == models.Dataset.id,
+        "metadatum": models.Datum.id == models.MetaDatum.datum_id,
+    },
+    "annotation": {
+        "datum": models.Annotation.datum_id == models.Datum.id,
+        "model": models.Annotation.model_id == models.Model.id,
+        "prediction": models.Annotation.id == models.Prediction.annotation_id,
+        "groundtruth": models.Annotation.id == models.GroundTruth.annotation_id,
+        "metadatum": models.Annotation.id == models.MetaDatum.annotation_id,
+    },
+    "groundtruth": {
+        "annotation": models.GroundTruth.annotation_id == models.Annotation.id,
+        "label": models.GroundTruth.label_id == models.Label.id,
+    },
+    "prediction": {
+        "annotation": models.Prediction.annotation_id == models.Annotation.id,
+        "label": models.Prediction.label_id == models.Label.id,
+    },
+    "metadatum": {
+        "dataset": models.MetaDatum.dataset_id == models.Dataset.id,
+        "model": models.MetaDatum.model_id == models.Model.id,
+        "datum": models.MetaDatum.datum_id == models.Datum.id,
+        "annotation": models.MetaDatum.annotation_id == models.Annotation.id,
+    }
+}
+
+
+class Join:
+    def __init__(self, lhs, rhs):
+        self.lhs = lhs
+        self.rhs = set([rhs])
+
+    def or_(self, lhs: str, rhs: str):
+        if self.lhs != lhs:
+            raise ValueError
+        if isinstance(rhs, str):
+            self.rhs.add(rhs)
+        else:
+            self.rhs.update(rhs)
+
+    def __str__(self):
+        if len(self.rhs) == 1:
+            return f"JOIN {self.lhs} ON {self.lhs} == {list(self.rhs)[0]}"
+        ret = f"JOIN {self.lhs} ON \nOR(\n"
+        for e in self.rhs:
+            ret += f"  {self.lhs} == {e}"
+            ret += "\n"
+        ret += ")"
+        return ret
+    
+    def relation(self) -> tuple:
+        if len(self.rhs) == 1:
+            pass
+        else:
+            return (
+                model_mapping[self.lhs],
+                or_(
+                    [
+                        model_relationships[self.lhs][rhs]
+                        for rhs in self.rhs
+                    ]
+                )
+            )
+
+
+def _graph_generator(
     source: str,
     target: str,
-    blacklist: set = set(),
+    prune: set = set(),
 ):
     if source == target:
         return target
 
-    remaining_options = model_graph[source] - blacklist
-    blacklist.update(remaining_options, source)
-    if target in blacklist:
-        blacklist.remove(target)
+    remaining_options = model_graph[source] - prune
+    prune.update(remaining_options, source)
+    if target in prune:
+        prune.remove(target)
 
     path = {}
     for option in list(remaining_options):
-        if retval := graph_search(
-            source=option, target=target, blacklist=blacklist.copy()
+        if retval := _graph_generator(
+            source=option, target=target, prune=prune.copy()
         ):
             path[option] = retval
 
@@ -91,74 +131,23 @@ def graph_search(
     return None
 
 
-def create_graph(source, target):
-    blacklist = set()
-
-    # Block metatypes if they are not referenced
-    if "metadatum" not in [source, target]:
-        blacklist.add("metadatum")
-    if "label" not in [source, target]:
-        blacklist.add("label")
-
-    # Adjust graph if model is source/target
-    if "model" in [source, target]:
-        blacklist.add("groundtruth")
-
-    # Check input validity
-    if source in blacklist or target in blacklist:
-        return None
-
-    # Metadatum edge cases
-    if source == "metadatum":
-        if target in ["dataset", "model", "datum", "annotation"]:
-            return {target: target}
-        return {
-            "dataset": graph_search("dataset", target, blacklist=blacklist),
-            "model": graph_search("model", target, blacklist=blacklist),
-            "datum": graph_search("datum", target, blacklist=blacklist),
-            "annotation": graph_search(
-                "annotation", target, blacklist=blacklist
-            ),
-        }
-    elif target == "metadatum":
-        if source in ["dataset", "model", "datum", "annotation"]:
-            return {target: target}
-
-    return graph_search(source, target, blacklist=blacklist)
-
-
-class Join:
-    def __init__(self, table, expression):
-        self.table = table
-        self.expressions = [expression]
-
-    def or_(self, expression):
-        if expression not in self.expressions:
-            self.expressions.append(expression)
-
-    def __str__(self):
-        if len(self.expressions) == 1:
-            return f"JOIN {self.table} ON {self.expressions[0]}"
-        ret = f"JOIN {self.table} ON \nOR(\n"
-        for e in self.expressions:
-            ret += e
-            ret += "\n"
-        ret += ")"
-        return ret
-
-
-def create_join_structure(
-    graph: dict, source: str, target: str, output={}, key_order=[]
+def _graph_interpreter(
+    graph: dict, 
+    source: str, 
+    target: str, 
+    output={}, 
+    key_order=[]
 ) -> list[Join]:
+    """ Recursive function """
     for key in graph:
-        key_order.append(key)
+        key_order.insert(0, key)
         if key in output:
-            output[key].or_(f"{key} == {source}")
+            output[key].or_(lhs=key, rhs=source)
         else:
-            output[key] = Join(table=key, expression=f"{key} == {source}")
+            output[key] = Join(lhs=key, rhs=source)
     for key in graph:
         if key != target:
-            output, key_order = create_join_structure(
+            output, key_order = _graph_interpreter(
                 graph[key],
                 source=key,
                 target=target,
@@ -168,187 +157,390 @@ def create_join_structure(
     return (output, key_order)
 
 
-target = "label"
-source = "datum"
-graph = create_graph(source=source, target=target)
-(output, key_order) = create_join_structure(
-    graph, source=source, target=target
+def _generate_joins(source, target):
+
+        # Check for direct connection
+        if target in model_graph[source]:
+            graph = {target: target}
+        else:   
+            # Set of id's to prune
+            prune = set()
+
+            # Block metatypes if they are not referenced
+            if "metadatum" not in [source, target]:
+                prune.add("metadatum")
+            if "label" not in [source, target]:
+                prune.add("label")
+
+            # Prune graph if model is source/target
+            if "model" in [source, target]:
+                prune.add("groundtruth")
+
+            # Check input validity
+            if source in prune or target in prune:
+                return None
+
+            graph = _graph_generator(source, target, prune=prune)
+
+        # Generate object relationships
+        return _graph_interpreter(
+            graph, source=source, target=target
+        )
+
+
+def generate_query(source: str, targets: list[str]):
+        graphs = [
+            _generate_joins(source=source, target=target)
+            for target in targets
+        ]
+
+        if not graphs:
+            return None
+
+        # Merge graphs
+        master_graph = {}
+        master_key_order = []
+        existing_keys = set()
+        for graph, key_order in graphs:
+            for key in graph:
+                if key not in master_graph:
+                    master_graph[key] = graph[key]
+                else:
+                    master_graph[key].or_(graph[key].lhs, graph[key].rhs)
+                
+                if key not in existing_keys:
+                    master_key_order.append(key)
+                    existing_keys.add(key)
+
+        # Validate order-of-operations
+        retlist = []
+        for key in master_key_order:
+            retlist.append(master_graph[key])
+
+        return (retlist)
+    
+
+class BackendQuery:
+
+    def __init__(self, source: str):
+        self._filters = []
+        self.source = source
+        self.targets = set()
+
+    @classmethod
+    def model(cls):
+        return cls("model")
+    
+    @classmethod
+    def dataset(cls):
+        return cls("dataset")
+    
+    @classmethod
+    def datum(cls):
+        return cls("datum")
+    
+    @classmethod
+    def annotation(cls):
+        return cls("annotation")
+    
+    @classmethod
+    def groundtruth(cls):
+        return cls("groundtruth")
+    
+    @classmethod
+    def prediction(cls):
+        return cls("prediction")
+    
+    @classmethod
+    def label(cls):
+        return cls("label")
+    
+    @classmethod
+    def metadatum(cls):
+        return cls("metadatum")
+
+    @property
+    def filters(self) -> list[BinaryExpression]:
+        return self._filters
+    
+    def __str__(self):
+
+        # no joins
+        if not self.targets:
+            return f"SELECT FROM {self.source}"
+
+        # sanity check
+        if self.source in self.targets:
+            self.targets.remove(self.source)
+
+        qstruct = generate_query(source=self.source, targets=self.targets)
+
+        ret = f"SELECT FROM {self.source}\n"
+        for join in qstruct:
+            ret += f"{str(join)}\n"
+        ret += "WHERE\n"
+        for filt in self._filters:
+            ret += f"  {filt},\n"
+        return ret 
+
+    def select(self, db: Session):
+
+        # No joins
+        if not self.targets:
+            return select(model_mapping[self.source])
+        
+        # sanity check
+        if self.source in self.targets:
+            self.targets.remove(self.source)
+
+        qstruct = generate_query(self.source, self.targets)
+
+        query = select(model_mapping[self.source])
+        for join in qstruct:
+            m, r = join.relation
+            query = query.join(m, r)
+        query.where(
+            [
+                filt
+                for filt in self._filters
+            ]
+        )
+        return query
+    
+    def all(self, db: Session):
+        """ Returns sqlalchemy table rows """
+        
+        # No joins
+        if not self.targets:
+            return db.query(model_mapping[self.source])
+        
+        # sanity check
+        if self.source in self.targets:
+            self.targets.remove(self.source)
+
+        qstruct = generate_query(self.source, self.targets)
+
+        src = model_mapping[self.source]
+
+        q_ids = select(src.id)
+        for join in qstruct:
+            m, r = join.relation
+            q_ids = q_ids.join(m, r)
+        q_ids.where(
+            [
+                filt
+                for filt in self._filters
+            ]
+        ).subquery()
+
+        return (
+            db.query(model_mapping[self.source])
+            .where(src.id.in_(q_ids))
+            .all()
+        )
+
+
+    """ dataset filter """
+
+    def filter_by_dataset(self, dataset: schemas.Dataset | models.Dataset):
+        if isinstance(dataset, models.Dataset):
+            self.targets.add("dataset") # @NOTE this could be datum.dataset_id as well?
+            self._filters.append(models.Dataset.id == dataset.id)
+            return self
+        elif isinstance(dataset, schemas.Dataset):
+            self.targets.add("dataset")
+            self._filters.append(models.Dataset.name == dataset.name)
+            return self
+        else:
+            raise ValueError
+    
+    def filter_by_dataset_name(self, name):
+        self.targets.add("dataset")
+        self._filters.append(models.Dataset.name == name)
+        return self
+
+    """ model filter """
+
+    def filter_by_dataset(self, model: schemas.Model | models.Model):
+        if isinstance(model, models.Model):
+            self.targets.add("model") # @NOTE this could be annotation.model_id as well?
+            self._filters.append(models.Model.id == model.id)
+            return self
+        elif isinstance(model, schemas.Dataset):
+            self.targets.add("model")
+            self._filters.append(models.Model.name == model.name)
+            return self
+        else:
+            raise ValueError
+    
+    def filter_by_model_name(self, name):
+        self.targets.add("model")
+        self._filters.append(models.Model.name == name)
+        return self
+
+    """ datum filter """
+
+    def filter_by_datum(self, datum: schemas.Datum | models.Datum):
+        if isinstance(datum, models.Datum):
+            self.targets.add("datum") # @NOTE this could be annotation.datum_id as well?
+            self._filters.append(models.Datum.id == datum.id)
+            return self
+        elif isinstance(datum, schemas.Dataset):
+            self.targets.add("datum")
+            self._filters.append(models.Datum.uid == datum.uid)
+            return self
+        else:
+            raise ValueError
+    
+    def filter_by_datum_uid(self, uid):
+        self.targets.add("datum")
+        self._filters.append(models.Datum.uid == uid)
+        return self
+
+    """ filter by label """
+
+    def filter_by_label(
+        self,
+        label: schemas.Label | models.Label,
+    ):
+        self.targets.add("label")
+        self._filters.append(
+            and_(
+                models.Label.key == label.key,
+                models.Label.value == label.value,
+            )
+        )
+        return self
+
+    def filter_by_label_key(
+        self,
+        label_key: str,
+    ):
+        self.targets.add("label")
+        self._filters.append(models.Label.key == label_key)
+        return self
+
+    def filter_by_labels(self, labels: list[schemas.Label]):
+        self.targets.add("label")
+        self._filters.extend(
+            [
+                and_(
+                    models.Label.key == label.key,
+                    models.Label.value == label.value,
+                )
+                for label in labels
+                if isinstance(label, schemas.Label)
+            ]
+        )
+        return self
+    
+    """ filter by metadata """
+
+    def filter_by_metadatum(self, metadatum: schemas.MetaDatum | models.MetaDatum):
+
+        # Compare name
+        comparison = [models.MetaDatum.name == metadatum.name]
+
+        if isinstance(metadatum, models.MetaDatum):
+            comparison.append(models.MetaDatum.string_value == metadatum.string_value)
+            comparison.append(models.MetaDatum.numeric_value == metadatum.numeric_value)
+            comparison.append(models.MetaDatum.geo == metadatum.geo)
+        elif isinstance(metadatum, schemas.MetaDatum):
+            # Compare value
+            if isinstance(metadatum.value, str):
+                comparison.append(models.MetaDatum.string_value == metadatum.value)
+            if isinstance(metadatum.value, float):
+                comparison.append(models.MetaDatum.numeric_value == metadatum.value)
+            if isinstance(metadatum.value, schemas.GeoJSON):
+                raise NotImplementedError("Havent implemented GeoJSON support.")
+        else:
+            raise ValueError
+
+        # Cache filter
+        self.targets.add("metadatum")
+        self._filters.append(and_(*comparison))
+        return self
+
+    def filter_by_metadata(self, metadata: list[schemas.MetaDatum | models.MetaDatum]):
+        for metadatum in metadata:
+            self.filter_by_metadatum(metadatum)
+        return self
+    
+    def filter_by_metadatum_name(self, name: str):
+        self.targets.add("metadatum")
+        self._filters.append(models.MetaDatum.name == name)
+        return self
+
+    """ filter by annotation """
+
+    def filter_by_task_type(self, task_type: enums.TaskType):
+        self.targets.add("annotation")
+        self._filters.extend(
+            [
+                models.Annotation.task_type == task_type.value
+            ]
+        )
+        return self
+
+    def filter_by_annotation_types(self, annotation_types: list[enums.AnnotationType]):
+        self.targets.add("annotation")
+        if enums.AnnotationType.NONE in annotation_types:
+            self._filters.extend(
+                [
+                    models.Annotation.box.is_(None),
+                    models.Annotation.polygon.is_(None),
+                    models.Annotation.multipolygon.is_(None),
+                    models.Annotation.raster.is_(None),
+                ]
+            )
+        else:
+            if enums.AnnotationType.BOX in annotation_types:
+                self._filters.append(models.Annotation.box.isnot(None))
+            if enums.AnnotationType.POLYGON in annotation_types:
+                self._filters.append(models.Annotation.polygon.isnot(None))
+            if enums.AnnotationType.MULTIPOLYGON in annotation_types:
+                self._filters.append(models.Annotation.multipolygon.isnot(None))
+            if enums.AnnotationType.RASTER in annotation_types:
+                self._filters.append(models.Annotation.raster.isnot(None))
+        return self
+
+
+db = None
+
+query = (
+    BackendQuery.datum()
+    .filter_by_dataset_name("dataset1")
+    .filter_by_model_name("model1")
+    .filter_by_datum_uid("uid1")
+    .filter_by_label(schemas.Label(key="k1", value="v1"))
+    .filter_by_labels(
+        [
+            schemas.Label(key="k2", value="v2"),
+            schemas.Label(key="k2", value="v3"),
+            schemas.Label(key="k2", value="v4"),
+        ]
+    )
+    .filter_by_label_key("k4")
+    .filter_by_metadata(
+        [
+            schemas.MetaDatum(name="n1", value=0.5),
+            schemas.MetaDatum(name="n2", value=0.1),
+        ]
+    )
+    .filter_by_metadatum(schemas.MetaDatum(name="n3", value="v1"))
+    .filter_by_metadatum_name("n4")
+    .filter_by_task_type(enums.TaskType.CLASSIFICATION)
+    # .query(db)
 )
 
 
-print(f"select from {source}")
-for j in output:
-    print(output[j])
-
-# class QueryFilter:
-
-#     def __init__(self, target):
-#         self._target = target
-#         self._filters = []
-#         self._relationships = {
-#             "dataset": {"datum", "metadatum"},
-#             "model": {"prediction", "metadatum"},
-#             "datum": {"dataset", }
-#         }
+print(str(query))
 
 
-#     @property
-#     def filters(self) -> list[BinaryExpression]:
-#         return self._filters
+# target = "metadatum"
+# source = "annotation"
+# output, keyorder = _generate_joins(source=source, target=target)
 
-#     def filter_by_label(
-#         label: schemas.Label | models.Label,
-#     ):
-#         if
-#         return and_(
-#             models.Label.key == label.key,
-#             models.Label.value == label.value,
-#         )
-
-#     def filter_by_label_key(
-#         label_key: str,
-#     ):
-#         return models.Label.key == label_key
-
-#     def filter_by_metadatum(
-#         metadatum: schemas.MetaDatum | models.MetaDatum
-#     ):
-#         if isinstance(schemas.MetaDatum):
-#             pass
-#         elif isinstance(models.MetaDatum):
-#             pass
-
-#     def filter(self, expressions: BinaryExpression):
-#         if not isinstance(expressions, list) and isinstance(expressions, BinaryExpression):
-#             self._filters.append(expressions)
-#         else:
-#             self._filters.extend(
-#                 [
-#                     expression
-#                     for expression in expressions
-#                     if isinstance(expression, BinaryExpression)
-#                 ]
-#             )
-#         return self
-
-#     """ `str` identifiers """
-
-#     def filter_by_str(self, target_property, strings: str | list[str]):
-#         if isinstance(strings, str):
-#             self._filters.append(target_property == strings)
-#         self._filters.extend(
-#             [
-#                 target_property == string
-#                 for string in strings
-#                 if isinstance(string, str)
-#             ]
-#         )
-#         return self
-
-#     """ `velour_api.backend.models` identifiers """
-
-#     def _filter_by_id(self, target: Base, source: Base):
-#         if type(target) is type(source):
-#             self._filter(target.id == source.id)
-#         elif isinstance(source, models.Dataset):
-#             self._filters.append(target.dataset_id == source.id)
-#         elif isinstance(source, models.Model):
-#             self._filters.append(target.model_id == source.id)
-#         elif isinstance(source, models.Datum):
-#             self._filters.append(target.datum_id == source.id)
-#         elif isinstance(source, models.Annotation):
-#             self._filters.append(target.annotation_id == source.id)
-#         elif isinstance(source, models.Label):
-#             self._filters.append(target.label_id == source.id)
-#         else:
-#             raise NotImplementedError
-
-#     def filter_by_id(
-#         self,
-#         target: Base,
-#         sources: Base | list[Base],
-#     ):
-#         if not isinstance(sources, list) and issubclass(sources, Base):
-#             self._filter_by_id(target, sources)
-#         else:
-#             self._filters.extend(
-#                 [
-#                     self._filter_by_id(target, source)
-#                     for source in sources
-#                     if not issubclass(source, Base)
-#                 ]
-#             )
-#         return self
-
-#     """ `velour_api.schemas` identifiers """
-
-#     def filter_by_labels(self, labels: list[schemas.Label]):
-#         self._filters.extend(
-#             [
-#                 and_(
-#                     models.Label.key == label.key,
-#                     models.Label.value == label.value,
-#                 )
-#                 for label in labels
-#                 if isinstance(label, schemas.Label)
-#             ]
-#         )
-#         return self
-
-#     def _filter_by_metadatum(self, metadatum: schemas.MetaDatum):
-
-#         # Compare name
-#         comparison = [models.MetaDatum.name == metadatum.name]
-
-#         # Compare value
-#         if isinstance(metadatum.value, str):
-#             comparison.append(models.MetaDatum.value == metadatum.value)
-#         if isinstance(metadatum.value, float):
-#             comparison.append(models.MetaDatum.value == metadatum.value)
-#         if isinstance(metadatum.value, schemas.GeoJSON):
-#             raise NotImplementedError("Havent implemented GeoJSON support.")
-
-#         return comparison
-
-#     def filter_by_metadata(self, metadata: list[schemas.MetaDatum]):
-#         self._filters.extend(
-#             [
-#                 self._filter_by_metadatum(metadatum)
-#                 for metadatum in metadata
-#                 if isinstance(metadatum, schemas.MetaDatum)
-#             ]
-#         )
-#         return self
-
-#     """ `velour_api.enums` identifiers """
-
-#     def filter_by_task_type(self, task_type: enums.TaskType):
-#         self._filters.extend(
-#             [
-#                 models.Annotation.task_type == task_type.value
-#                 for task_type in task_types
-#                 if isinstance(task_type, enums.TaskType)
-#             ]
-#         )
-#         return self
-
-#     def filter_by_annotation_types(self, annotation_types: list[enums.AnnotationType]):
-#         if enums.AnnotationType.NONE in annotation_types:
-#             self._filters.extend(
-#                 [
-#                     models.Annotation.box.is_(None),
-#                     models.Annotation.polygon.is_(None),
-#                     models.Annotation.multipolygon.is_(None),
-#                     models.Annotation.raster.is_(None),
-#                 ]
-#             )
-#         else:
-#             if enums.AnnotationType.BOX in annotation_types:
-#                 self._filters.append(models.Annotation.box.isnot(None))
-#             if enums.AnnotationType.POLYGON in annotation_types:
-#                 self._filters.append(models.Annotation.polygon.isnot(None))
-#             if enums.AnnotationType.MULTIPOLYGON in annotation_types:
-#                 self._filters.append(models.Annotation.multipolygon.isnot(None))
-#             if enums.AnnotationType.RASTER in annotation_types:
-#                 self._filters.append(models.Annotation.raster.isnot(None))
-#         return self
+# print(f"select from {source}")
+# for item in output:
+#     print(item)

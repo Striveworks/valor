@@ -2,7 +2,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend import core, models, ops, query
+from velour_api.backend import core, models, query
 
 
 def get_labels(
@@ -21,26 +21,11 @@ def get_labels(
     model = core.get_model(db, model_name) if model_name else None
     datum = core.get_datum(db, uid=datum_uid) if datum_uid else None
 
-    qf = ops.QueryFilter()
-    qf.filter_by_id(
-        dataset,
-        model,
-        datum,
-    )
-    qf.filter_by_str(models.Label.key, keys)
-    qf.filter_by_task_types(task_types)
-    qf.filter_by_annotation_types()
-
     labels = core.get_labels(
         db,
         dataset=dataset,
         model=model,
         datum=datum,
-        annotation=annotation,
-        filter_by_key=filter_by_key,
-        filter_by_task_type=filter_by_task_type,
-        filter_by_annotation_type=filter_by_annotation_type,
-        filter_by_metadata=filter_by_metadata,
     )
 
     return [

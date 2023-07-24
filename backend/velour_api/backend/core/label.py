@@ -52,7 +52,7 @@ def get_label(
 
 def get_labels(
     db: Session,
-    qf: ops.QueryFilter,
+    key: str,
 ) -> list[models.Label]:
     """Returns a list of labels from a intersection of relationships (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
 
@@ -60,11 +60,11 @@ def get_labels(
     annotation_ids = select(models.Annotation.id)
 
     # Filter
-    annotation_ids.where(
-        and_(
-            *qf.filters
-        )
-    )
+    # annotation_ids.where(
+    #     and_(
+    #         *qf.filters
+    #     )
+    # )
 
     # Get label ids
     label_ids = (

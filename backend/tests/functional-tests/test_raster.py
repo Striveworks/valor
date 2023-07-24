@@ -8,10 +8,6 @@ from sqlalchemy.orm import Session
 
 from velour_api import schemas
 from velour_api.backend import models
-from velour_api.crud._create import (
-    _boundary_points_to_str,
-    _select_statement_from_poly,
-)
 
 
 def bytes_to_pil(b: bytes) -> Image.Image:
@@ -46,7 +42,7 @@ def mask_bytes_poly_intersection():
     mask_bytes = pil_to_bytes(Image.fromarray(mask))
 
     poly_y_min, poly_y_max, poly_x_min, poly_x_max = 60, 90, 10, 25
-    poly = schemas.PolygonWithHole(
+    poly = schemas.Polygon(
         polygon=[
             (poly_x_min, poly_y_min),
             (poly_x_max, poly_y_min),
@@ -70,8 +66,8 @@ def mask_bytes_poly_intersection():
 
 def _pred_seg_from_bytes(
     db: Session, mask_bytes: bytes, model: models.Model, img: models.Datum
-) -> models.PredictedSegmentation:
-    pred_seg = models.PredictedSegmentation(
+) -> models.Annotation:
+    pred_seg = models.Annotation(
         shape=mask_bytes, datum_id=img.id, model_id=model.id, is_instance=True
     )
     db.add(pred_seg)
@@ -80,17 +76,17 @@ def _pred_seg_from_bytes(
 
 
 def _gt_seg_from_polys(
-    db: Session, polys: list[schemas.PolygonWithHole], img: models.Datum
-) -> models.GroundTruthSegmentation:
+    db: Session, polys: list[schemas.Polygon], img: models.Datum
+) -> models.Annotation:
     mapping = {
         "shape": _select_statement_from_poly(polys),
         "datum_id": img.id,
         "is_instance": False,
     }
     gt_seg = db.scalar(
-        insert(models.GroundTruthSegmentation)
+        insert(models.Annotation)
         .values([mapping])
-        .returning(models.GroundTruthSegmentation)
+        .returning(models.Annotation)
     )
 
     db.commit()
@@ -118,7 +114,7 @@ def test_intersection_area_of_segs(
     mask_bytes = pil_to_bytes(Image.fromarray(mask))
 
     poly_y_min, poly_y_max, poly_x_min, poly_x_max = 60, 90, 10, 25
-    poly = schemas.PolygonWithHole(
+    poly = schemas.Polygon(
         polygon=[
             (poly_x_min, poly_y_min),
             (poly_x_max, poly_y_min),
@@ -170,9 +166,9 @@ def test_intersection_pred_seg_multi_poly_gt_seg(
         (hole_x_max, hole_y_max),
         (hole_x_min, hole_y_max),
     ]
-    poly1 = schemas.PolygonWithHole(polygon=polygon, hole=hole)
+    poly1 = schemas.Polygon(polygon=polygon, hole=hole)
     # triangle contained in the mask
-    poly2 = schemas.PolygonWithHole(
+    poly2 = schemas.Polygon(
         polygon=[(200, 210), (200, 250), (265, 210)]
     )
 
@@ -200,7 +196,7 @@ def test_iou_and_intersection_area_of_two_segs(
     db: Session,
     model: models.Model,
     img: models.Datum,
-    mask_bytes_poly_intersection: tuple[bytes, schemas.PolygonWithHole, float],
+    mask_bytes_poly_intersection: tuple[bytes, schemas.Polygon, float],
 ):
     (
         mask_bytes,
@@ -229,7 +225,7 @@ def test_iou_det_and_seg(
     db: Session,
     model: models.Model,
     img: models.Datum,
-    mask_bytes_poly_intersection: tuple[bytes, schemas.PolygonWithHole, float],
+    mask_bytes_poly_intersection: tuple[bytes, schemas.Polygon, float],
 ):
     (
         mask_bytes,

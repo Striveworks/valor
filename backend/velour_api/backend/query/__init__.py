@@ -4,7 +4,6 @@ from .label import (
     get_disjoint_labels,
     get_label_distribution,
     get_labels,
-    get_scored_label_distribution,
 )
 from .metadata import get_metadata
 from .metrics import (

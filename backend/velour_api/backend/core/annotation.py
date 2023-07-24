@@ -12,10 +12,10 @@ from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.query.metadata import (
+from velour_api.backend.core.metadata import (
     create_metadata,
     get_metadata,
-    get_metadatum,
+    get_metadatum_schema,
 )
 
 
@@ -128,7 +128,7 @@ def _raster_to_png_b64(
     return b64encode(mask_bytes).decode()
 
 
-def convert_annotation(
+def get_annotation(
     db: Session,
     datum: models.Datum,
     annotation: models.Annotation,
@@ -165,8 +165,8 @@ def convert_annotation(
 
     # Raster
     if annotation.raster is not None:
-        height = get_metadatum(db, datum=datum, name="height").value
-        width = get_metadatum(db, datum=datum, name="width").value
+        height = get_metadatum_schema(db, datum=datum, name="height").value
+        width = get_metadatum_schema(db, datum=datum, name="width").value
         retval.raster = schemas.Raster(
             mask=_raster_to_png_b64(
                 db, raster=annotation.raster, height=height, width=width

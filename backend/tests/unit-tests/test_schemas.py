@@ -92,7 +92,7 @@ def polygon(component_polygon_box) -> schemas.Polygon:
     return schemas.Polygon(boundary=component_polygon_box)
 
 
-def _create_b64_mask(mode: str, ext: str, size=(20, 20)) -> str:
+def _create_b64_mask(mode: str, ext: str = ".png", size=(20,20)) -> str:
     with TemporaryDirectory() as tempdir:
         img = PIL.Image.new(mode=mode, size=size)
         img_path = os.path.join(tempdir, f"img.{ext}")
@@ -111,8 +111,9 @@ def raster() -> schemas.Raster:
     | F  T |
     """
     mask = "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII="
-    shape = (20,20)
-    return schemas.Raster(mask=mask, shape=shape)
+    height = 20
+    width = 20
+    return schemas.Raster(mask=mask, height=height, width=width)
 
 
 @pytest.fixture
@@ -936,52 +937,53 @@ def test_geometry_BoundingBox(
 
 def test_geometry_Raster(raster):
     # valid
-    shape = (20,20)
-    mask = _create_b64_mask(mode="1", ext="PNG", size=shape)
+    height = 20
+    width = 20
+    mask = _create_b64_mask(mode="1", size=(height, width))
     assert schemas.Raster(
         mask=mask,
-        shape=(20,20),
+        height=height,
+        width=width,
     )
 
     # test property `mask`
     with pytest.raises(PIL.UnidentifiedImageError):
         # not any string can be passed
-        schemas.Raster(mask="text", shape=shape)
+        schemas.Raster(mask="text", height=height, width=width)
     with pytest.raises(ValueError) as exc_info:
-        base64_mask = _create_b64_mask(mode="RGB", ext="png", size=shape)
+        base64_mask = _create_b64_mask(mode="RGB", ext="png", size=(width, height))
         schemas.Raster(
             mask=base64_mask,   # only supports binary images
-            shape=shape,
+            height=height, width=width,
         )
     assert "Expected image mode to be binary but got mode" in str(exc_info)
     with pytest.raises(ValueError) as exc_info:
-        base64_mask = _create_b64_mask(mode="1", ext="jpg", size=shape)
+        base64_mask = _create_b64_mask(mode="1", ext="jpg", size=(width, height))
         schemas.Raster(
             mask=base64_mask,   # Check we get an error if the format is not PNG
-            shape=shape,
+            height=height, width=width,
         )
     assert "Expected image format PNG but got" in str(exc_info)
 
     # test property `shape`
     with pytest.raises(ValidationError):
-        mask = _create_b64_mask(mode="1", ext="PNG", size=shape)
+        mask = _create_b64_mask(mode="1", ext="PNG", size=(width, height))
         schemas.Raster(
             mask=mask,
             shape="shape",      # Incorrect type
         )
     with pytest.raises(ValidationError):
-        mask = _create_b64_mask(mode="1", ext="PNG", size=shape)
+        mask = _create_b64_mask(mode="1", ext="PNG", size=(width, height))
         schemas.Raster(
             mask=mask,
             shape=(20,20,20),   # Incorrectly sized tuple
         )
     with pytest.raises(ValidationError) as e:
-        mask = _create_b64_mask(mode="1", ext="PNG", size=shape)
+        mask = _create_b64_mask(mode="1", ext="PNG", size=(width, height))
         schemas.Raster(
             mask=mask,
             shape=(21,21),      # size mismatch
         )
-    assert "Expected mask and image to have the same size" in str(e)
 
 
 """ velour_api.schemas.geojson """

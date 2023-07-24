@@ -22,10 +22,11 @@ from .query import (
     get_models,
     get_prediction,
     get_predictions,
-    get_scored_label_distribution,
 )
+from .ops import BackendQuery
 
 __all__ = [
+    "BackendQuery",
     "create_dataset",
     "get_dataset",
     "get_datasets",
@@ -42,7 +43,6 @@ __all__ = [
     "get_predictions",
     "get_labels",
     "get_label_distribution",
-    "get_scored_label_distribution",
     "get_disjoint_labels",
     "get_metadata",
     "get_metrics_from_evaluation_settings_id",

@@ -85,7 +85,7 @@ def test_post_groundtruth(client: TestClient):
 
     # check we get a conflict (409) if the dataset is finalized
     with patch(
-        "velour_api.main.crud.create_groundtruths",
+        "velour_api.main.crud.create_groundtruth",
         side_effect=exceptions.DatasetIsFinalizedError("dsetname"),
     ):
         resp = client.post("/groundtruth", json=example_json)
@@ -134,7 +134,7 @@ def test_post_groundtruth_classification(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruth",
-        crud_method_name="create_groundtruths",
+        crud_method_name="create_groundtruth",
         example_json=example_json,
     )
 
@@ -178,7 +178,7 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruth",
-        crud_method_name="create_groundtruths",
+        crud_method_name="create_groundtruth",
         example_json=example_json,
     )
 
@@ -241,7 +241,7 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruth",
-        crud_method_name="create_groundtruths",
+        crud_method_name="create_groundtruth",
         example_json=example_json,
     )
 
@@ -270,7 +270,8 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                     ],
                     "raster": {
                         "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
-                        "shape": (20,20),
+                        "height": 20,
+                        "width": 20,
                     },
                 },
             },
@@ -287,7 +288,8 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                     ],
                     "raster": {
                         "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
-                        "shape": (20,20),
+                        "height": 20,
+                        "width": 20,
                     },
                 },
             },
@@ -296,7 +298,7 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/groundtruth",
-        crud_method_name="create_groundtruths",
+        crud_method_name="create_groundtruth",
         example_json=example_json,
     )
 
@@ -333,7 +335,7 @@ def test_post_prediction(client: TestClient):
 
     # check we get a code (404) if the model does not exist
     with patch(
-        "velour_api.main.crud.create_predictions",
+        "velour_api.main.crud.create_prediction",
         side_effect=exceptions.ModelDoesNotExistError("model1"),
     ):
         resp = client.post("/prediction", json=example_json)
@@ -342,7 +344,7 @@ def test_post_prediction(client: TestClient):
     
     # check we get a code (409) if the datum does not exist
     with patch(
-        "velour_api.main.crud.create_predictions",
+        "velour_api.main.crud.create_prediction",
         side_effect=exceptions.DatumDoesNotExistError("uid1"),
     ):
         resp = client.post("/prediction", json=example_json)
@@ -403,7 +405,7 @@ def test_post_prediction_classification(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/prediction",
-        crud_method_name="create_predictions",
+        crud_method_name="create_prediction",
         example_json=example_json,
     )
 
@@ -453,7 +455,7 @@ def test_post_prediction_bbox_detection(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/prediction",
-        crud_method_name="create_predictions",
+        crud_method_name="create_prediction",
         example_json=example_json,
     )
 
@@ -526,7 +528,7 @@ def test_post_prediction_polygon_detection(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/prediction",
-        crud_method_name="create_predictions",
+        crud_method_name="create_prediction",
         example_json=example_json,
     )
 
@@ -561,7 +563,8 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                     ],
                     "raster": {
                         "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
-                        "shape": (20,20),
+                        "height": 20,
+                        "width": 20,
                     },
                 },
             },
@@ -584,7 +587,8 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                     ],
                     "raster": {
                         "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
-                        "shape": (20,20),
+                        "height": 20,
+                        "width": 20,
                     },
                 },
             },
@@ -593,7 +597,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
     _test_post_endpoints(
         client=client,
         endpoint="/prediction",
-        crud_method_name="create_predictions",
+        crud_method_name="create_prediction",
         example_json=example_json,
     )
     
@@ -724,10 +728,10 @@ def test_get_model_by_name(crud, client: TestClient):
 def test_finalize_datasets(crud, client: TestClient):
     resp = client.put("/datasets/dsetname/finalize")
     assert resp.status_code == 200
-    crud.finalize_dataset.assert_called_once()
+    crud.finalize.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.finalize_dataset",
+        "velour_api.main.crud.finalize",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.put("datasets/dsetname/finalize")

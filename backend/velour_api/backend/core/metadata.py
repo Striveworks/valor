@@ -89,6 +89,28 @@ def create_metadata(
     return rows
 
 
+def get_metadatum_schema(
+    db: Session,
+    metadatum: models.MetaDatum = None,
+) -> schemas.MetaDatum | None:
+
+    # Parsing
+    if metadatum.string_value is not None:
+        value = metadatum.string_value
+    elif metadatum.numeric_value is not None:
+        value = metadatum.numeric_value
+    elif metadatum.geo is not None:
+        # @TODO: Add geographic type
+        raise NotImplemented
+    else:
+        return None
+
+    return schemas.MetaDatum(
+        name=metadatum.name,
+        value=value,
+    )
+
+
 def get_metadata(
     db: Session,
     dataset: models.Dataset = None,
