@@ -2,7 +2,7 @@ from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import exceptions, schemas, enums
+from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models, query
 
 
@@ -61,13 +61,10 @@ def get_groundtruth(
         )
 
     # Get annotations with metadata
-    annotations = (
-        db.query(models.Annotation)
-        .where(
-            and_(
-                models.Annotation.datum_id == datum.id,
-                models.Annotation.model_id.is_(None),
-            )
+    annotations = db.query(models.Annotation).where(
+        and_(
+            models.Annotation.datum_id == datum.id,
+            models.Annotation.model_id.is_(None),
         )
     )
 
@@ -76,7 +73,7 @@ def get_groundtruth(
         task_filters = [
             models.Annotation.task_type == task_type.value
             for task_type in filter_by_task_type
-        ]   
+        ]
         annotations = annotations.where(
             or_(
                 *task_filters,
@@ -92,9 +89,7 @@ def get_groundtruth(
         annotations = annotations.where(
             and_(
                 models.MetaDatum.annotation_id == models.Annotation.id,
-                or_(
-                    *metadata_filters
-                ),
+                or_(*metadata_filters),
             )
         )
 

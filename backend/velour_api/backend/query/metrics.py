@@ -1,11 +1,16 @@
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
-from sqlalchemy import select, and_
 
 from velour_api import schemas
-from velour_api.backend import models, query, core
+from velour_api.backend import core, models, query
+
 
 def _db_metric_to_pydantic_metric(db, metric: models.Metric) -> schemas.Metric:
-    label=schemas.Label(key=metric.label.key, value=metric.label.value) if metric.label else None
+    label = (
+        schemas.Label(key=metric.label.key, value=metric.label.value)
+        if metric.label
+        else None
+    )
     return schemas.Metric(
         type=metric.type,
         parameters=metric.parameters,
@@ -29,6 +34,7 @@ def _db_evaluation_settings_to_pydantic_evaluation_settings(
         label_key=evaluation_settings.label_key,
         id=evaluation_settings.id,
     )
+
 
 def get_metrics_from_evaluation_settings(
     db: Session,

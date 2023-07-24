@@ -47,11 +47,11 @@ def get_metadata(
             dataset,
             model,
             datum,
-        ]
+        ],
     )
     qf.filter(models.MetaDatum.name == name)
 
     return [
-        _get_metadatum(db, metadatum=metadatum) 
+        _get_metadatum(db, metadatum=metadatum)
         for metadatum in core.get_metadata(db, qf)
     ]

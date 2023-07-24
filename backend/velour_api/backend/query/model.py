@@ -1,54 +1,52 @@
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from sqlalchemy import select
 
 from velour_api import exceptions, schemas
 from velour_api.backend import core, models
 
 
-def create_dataset(
+def create_model(
     db: Session,
-    dataset: schemas.Dataset,
+    model: schemas.Model,
 ):
     # Check if dataset already exists.
     if (
-        db.query(models.Dataset)
-        .where(models.Dataset.name == dataset.name)
+        db.query(models.Model)
+        .where(models.Model.name == model.name)
         .one_or_none()
     ):
-        raise exceptions.DatasetAlreadyExistsError(dataset.name)
+        raise exceptions.ModelAlreadyExistsError(model.name)
 
-    # Create dataset
+    # Create model
+    row = models.Model(name=model.name)
     try:
-        row = models.Dataset(name=dataset.name)
         db.add(row)
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise exceptions.DatasetAlreadyExistsError(dataset.name)
+        raise exceptions.ModelAlreadyExistsError(model.name)
 
     # Create metadata
-    core.create_metadata(db, dataset.metadata, dataset=row)
+    core.create_metadata(db, model.metadata, model=row)
     return row
 
 
-def get_dataset(
+def get_model(
     db: Session,
     name: str,
-) -> schemas.Dataset:
+) -> schemas.Model:
 
-    dataset = (
-        db.query(models.Dataset)
-        .where(models.Dataset.name == name)
-        .one_or_none()
+    model = (
+        db.query(models.Model).where(models.Model.name == name).one_or_none()
     )
-    if not dataset:
+    if not model:
         return None
 
     metadata = []
     for row in (
         db.query(models.MetaDatum)
-        .where(models.MetaDatum.dataset_id == dataset.id)
+        .where(models.MetaDatum.model_id == model.id)
         .all()
     ):
         if row.string_value:
@@ -83,31 +81,26 @@ def get_dataset(
                     )
                 )
 
-    return schemas.Dataset(id=dataset.id, name=dataset.name, metadata=metadata)
+    return schemas.Model(id=model.id, name=model.name, metadata=metadata)
 
 
-def get_datasets(
+def get_models(
     db: Session,
-) -> list[schemas.Dataset]:
+) -> list[schemas.Model]:
     return [
-        get_dataset(db, name) 
-        for name in db.scalars(select(models.Dataset.name))
+        get_model(db, name) for name in db.scalars(select(models.Model.name))
     ]
 
 
-def delete_dataset(
+def delete_model(
     db: Session,
     name: str,
 ):
-    ds = (
-        db.query(models.Dataset)
-        .where(models.Dataset.name == name)
-        .one_or_none()
-    )
-    if not ds:
-        raise exceptions.DatasetDoesNotExistError(name)
+    md = db.query(models.Model).where(models.Model.name == name).one_or_none()
+    if not md:
+        raise exceptions.ModelDoesNotExistError(name)
     try:
-        db.delete(ds)
+        db.delete(md)
         db.commit()
     except IntegrityError:
         db.rollback()
