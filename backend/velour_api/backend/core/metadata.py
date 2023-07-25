@@ -90,8 +90,7 @@ def create_metadata(
 
 
 def get_metadatum_schema(
-    db: Session,
-    metadatum: models.MetaDatum = None,
+    metadatum: models.MetaDatum,
 ) -> schemas.MetaDatum | None:
 
     # Parsing
@@ -117,9 +116,7 @@ def get_metadata(
     model: models.Model = None,
     datum: models.Datum = None,
     annotation: models.Annotation = None,
-    name: str = None,
-    value_type: type = None,
-) -> list[models.MetaDatum]:
+) -> list[schemas.MetaDatum]:
     """Returns list of metadatums from a union of sources (dataset, model, datum, annotation) filtered by (name, value_type)."""
 
     metadata = select(models.MetaDatum)
@@ -141,19 +138,7 @@ def get_metadata(
     elif relationships:
         metadata = metadata.where(or_(*relationships))
 
-    # Filter by name
-    if name:
-        metadata.where(models.MetaDatum.name == name)
-
-    # Filter by value type
-    if value_type:
-        if value_type == str:
-            metadata.where(models.MetaDatum.string_value.isnot(None))
-        elif value_type == float:
-            metadata.where(models.MetaDatum.numeric_value.isnot(None))
-        else:
-            raise NotImplementedError(
-                f"Type {str(value_type)} is not currently supported as a metadatum value type."
-            )
-
-    return db.query(metadata.subquery()).all()
+    return [
+        get_metadatum_schema(metadatum)
+        for metadatum in db.query(metadata.subquery()).all()
+    ]

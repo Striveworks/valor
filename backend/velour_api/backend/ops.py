@@ -81,7 +81,7 @@ model_relationships = {
 
 
 class Join:
-    def __init__(self, lhs, rhs):
+    def __init__(self, lhs: str, rhs: str):
         self.lhs = lhs
         self.rhs = set([rhs])
 
@@ -104,17 +104,21 @@ class Join:
         return ret
     
     def relation(self) -> tuple:
-        if len(self.rhs) == 1:
-            pass
+        # generate binary expressions
+        expressions = [
+            model_relationships[self.lhs][rhs]
+            for rhs in self.rhs
+        ]
+        
+        if len(expressions) == 1:
+            return (
+                model_mapping[self.lhs],
+                expressions[0],
+            )
         else:
             return (
                 model_mapping[self.lhs],
-                or_(
-                    [
-                        model_relationships[self.lhs][rhs]
-                        for rhs in self.rhs
-                    ]
-                )
+                or_(*expressions),
             )
 
 
@@ -143,91 +147,113 @@ def _graph_generator(
     return None
 
 
-def _graph_interpreter(
-    graph: dict, 
+def _flatten_graph(
+    graph: dict,
     source: str, 
     target: str, 
-    output={}, 
-    key_order=[]
+    join_list: dict = {}
 ) -> list[Join]:
     """ Recursive function """
+
+    # update from current layer
     for key in graph:
-        key_order.insert(0, key)
-        if key in output:
-            output[key].or_(lhs=key, rhs=source)
+        if key in join_list:
+            join_list[key].or_(lhs=key, rhs=source)
         else:
-            output[key] = Join(lhs=key, rhs=source)
+            join_list[key] = Join(lhs=key, rhs=source)
+
+    # recurse to next layer
     for key in graph:
-        if key != target:
-            output, key_order = _graph_interpreter(
-                graph[key],
+        if key not in target:
+            join_list = _flatten_graph(
+                graph=graph[key], 
                 source=key,
-                target=target,
-                output=output,
-                key_order=key_order,
+                target=target, 
+                join_list=join_list,
             )
-    return (output, key_order)
+            
+    return join_list
 
 
-def _generate_joins(source, target):
+def _generate_joins(source, targets):
+        # Set of id's to prune
+        prune = set()
 
-        # Check for direct connection
-        if target in model_graph[source]:
-            graph = {target: target}
-        else:   
-            # Set of id's to prune
-            prune = set()
+        # Prune if not referenced
+        if "metadatum" not in [source, *targets]:
+            prune.add("metadatum")
 
-            # Block metatypes if they are not referenced
-            if "metadatum" not in [source, target]:
-                prune.add("metadatum")
-            if "label" not in [source, target]:
-                prune.add("label")
+        # Prune if not referenced
+        if "label" not in [source, *targets]:
+            prune.add("label")
 
-            # Prune graph if model is source/target
-            if "model" in [source, target]:
-                prune.add("groundtruth")
+        # Prune if model is source/target
+        if "model" in [source, *targets]:
+            prune.add("groundtruth")
 
-            # Check input validity
-            if source in prune or target in prune:
-                return None
+        # validate source
+        if source in prune:
+            return None
+        
+        # validate targets
+        targets = list(set(targets) - prune)
 
-            graph = _graph_generator(source, target, prune=prune)
+        # generate graphs
+        graphs_with_target = [
+            (
+                _graph_generator(source, target, prune=prune.copy()), 
+                target
+            )
+            if target not in model_graph[source] # check for direct connection
+            else (
+                {target: target}, 
+                target
+            )
+            for target in targets
+        ]        
 
         # Generate object relationships
-        return _graph_interpreter(
-            graph, source=source, target=target
-        )
+        return [
+            _flatten_graph(
+                graph=graph, 
+                source=source,
+                target=target,
+            )
+            for graph, target in graphs_with_target
+            if graph is not None
+        ]
+        
 
 
 def generate_query(source: str, targets: list[str]):
-        graphs = [
-            _generate_joins(source=source, target=target)
-            for target in targets
-        ]
 
+        # Generate graphs
+        graphs = _generate_joins(source=source, targets=targets)
+
+        # edge case
         if not graphs:
             return None
 
         # Merge graphs
         master_graph = {}
-        master_key_order = []
         existing_keys = set()
-        for graph, key_order in graphs:
+        for graph in graphs:
             for key in graph:
+                existing_keys.add(key)
                 if key not in master_graph:
                     master_graph[key] = graph[key]
                 else:
                     master_graph[key].or_(graph[key].lhs, graph[key].rhs)
-                
-                if key not in existing_keys:
-                    master_key_order.append(key)
-                    existing_keys.add(key)
 
         # Validate order-of-operations
         retlist = []
-        for key in master_key_order:
-            retlist.append(master_graph[key])
+        sources = set([source])
+        while len(existing_keys) > 0:
+            for key in existing_keys:
+                if master_graph[key].rhs.issubset(sources):
+                    retlist.append(master_graph[key])        
+                    sources.add(key)
+            existing_keys = existing_keys - sources
 
         return (retlist)
     
@@ -315,11 +341,11 @@ class BackendQuery:
 
         # join intermediate tables
         for join in qstruct:
-            m, r = join.relation
+            m, r = join.relation()
             q_ids = q_ids.join(m, r)
 
         # add filter conditions
-        q_ids.where(
+        q_ids = q_ids.where(
             and_(*self._filters)
         )
         
@@ -347,13 +373,23 @@ class BackendQuery:
 
         # generate filter expressions
         self.filter_by_dataset_names(req.filter_by_dataset_names)
-        self.filter_by_model_names(req.filter_by_model_names)
         self.filter_by_datum_uids(req.filter_by_datum_uids)
         self.filter_by_task_types(req.filter_by_task_types)
         self.filter_by_annotation_types(req.filter_by_annotation_types)
         self.filter_by_label_keys(req.filter_by_label_keys)
         self.filter_by_labels(req.filter_by_labels)
         self.filter_by_metadata(req.filter_by_metadata)
+
+        # special case: determine focus on dataset or dataset-model pairing
+        if req.filter_by_model_names is None:
+            self.targets.add("annotation")
+            self._filters.append(models.Annotation.model_id.is_(None))
+        # elif req.filter_by_model_names == []:
+        #     self.targets.add("annotation")
+        #     self._filters.append(models.Annotation.model_id.isnot(None))
+        else:
+            self.filter_by_model_names(req.filter_by_model_names)
+
 
         return self
 
@@ -663,10 +699,10 @@ class BackendQuery:
 # print(str(query))
 
 
-# target = "metadatum"
-# source = "annotation"
-# output, keyorder = _generate_joins(source=source, target=target)
+# targets = ["annotation", "model"]
+# source = "label"
 
-# print(f"select from {source}")
-# for item in output:
-#     print(item)
+# output = generate_query(source, targets)
+# print(f"SELECT FROM {source}")
+# for o in output:
+#     print(o)

@@ -96,6 +96,16 @@ class GeoJSON(BaseModel):
             return cls(geometry=GeoJSONMultiPolygon(**data))
         else:
             raise ValueError("Unsupported json.")
+        
+    def shape(self):
+        if isinstance(self.geometry, GeoJSONPoint):
+            return self.geometry.point()
+        elif isinstance(self.geometry, GeoJSONPolygon):
+            return self.geometry.polygon()
+        elif isinstance(self.geometry, GeoJSONMultiPolygon):
+            return self.geometry.multipolygon()
+        else:
+            raise ValueError
 
     
 

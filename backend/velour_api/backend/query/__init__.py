@@ -1,6 +1,7 @@
 from .dataset import create_dataset, delete_dataset, get_dataset, get_datasets
 from .groundtruth import create_groundtruth, get_groundtruth, get_groundtruths
 from .label import (
+    get_joint_labels,
     get_disjoint_labels,
     get_label_distribution,
     get_labels,
@@ -34,6 +35,7 @@ __all__ = [
     "get_labels",
     "get_label_distribution",
     "get_scored_label_distribution",
+    "get_joint_labels",
     "get_disjoint_labels",
     "get_metadata",
     "get_metrics_from_evaluation_settings_id",

@@ -10,7 +10,7 @@ from velour_api.backend import state
 @state.read
 def get_labels(
     db: Session,
-    request: schemas.Filter,
+    request: schemas.Filter = None,
 ) -> list[schemas.Label]:
     """Retrieves all existing labels that meet the filter request."""
     return backend.get_labels(db, request)
@@ -22,9 +22,23 @@ def get_label_distribution(
     request: schemas.Filter,
 ) -> list[schemas.LabelDistribution]:
     return []
-    
 
-# @NOTE: Maybe return tuple (dataset, model) instead?
+
+@state.read
+def get_joint_labels(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+) -> dict[str, list[schemas.Label]]:
+    """Returns a dictionary containing disjoint sets of labels. Keys are (dataset, model) and contain sets of labels disjoint from the other."""
+
+    return backend.get_joint_labels(
+        db, 
+        dataset_name=dataset_name, 
+        model_name=model_name,
+    )
+
+
 @state.read
 def get_disjoint_labels(
     db: Session,
@@ -83,7 +97,7 @@ def get_datum(
 @state.read
 def get_datums(
     db: Session,
-    request: schemas.Filter,
+    request: schemas.Filter = None,
 ) -> list[schemas.Datum]:
     return backend.get_datums(db, request)
 
@@ -99,7 +113,7 @@ def get_dataset(db: Session, name: str) -> schemas.Dataset:
 @state.read
 def get_datasets(
     db: Session,
-    request: schemas.Filter,
+    request: schemas.Filter = None,
 ) -> list[schemas.Dataset]:
     return backend.get_datasets(db)
 
@@ -109,15 +123,11 @@ def get_groundtruth(
     db: Session, 
     dataset_name: str, 
     datum_uid: str,
-    filter_by_task_type: list[enums.TaskType] = [],
-    filter_by_metadata: list[schemas.MetaDatum] = [],
 ) -> schemas.GroundTruth:
     return backend.get_groundtruth(
         db, 
         dataset_name=dataset_name, 
         datum_uid=datum_uid,
-        filter_by_task_type=filter_by_task_type,
-        filter_by_metadata=filter_by_metadata,
     )
 
 
@@ -138,7 +148,10 @@ def get_model(db: Session, name: str) -> schemas.Model:
 
 
 @state.read
-def get_models(db: Session) -> list[schemas.Model]:
+def get_models(
+    db: Session,
+    request: schemas.Filter = None,
+) -> list[schemas.Model]:
     return backend.get_models(db)
 
 
@@ -155,7 +168,7 @@ def get_prediction(
 @state.read
 def get_predictions(
     db: Session,
-    request: schemas.Filter,
+    request: schemas.Filter = None,
 ) -> list[schemas.Prediction]:
     return []
 

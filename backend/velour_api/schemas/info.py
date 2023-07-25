@@ -21,7 +21,7 @@ class AnnotationDistribution(BaseModel):
 
 class Filter(BaseModel):
     filter_by_dataset_names: list[str] = []
-    filter_by_model_names: list[str] = []
+    filter_by_model_names: list[str] | None = []
     filter_by_datum_uids: list[str] = []
     filter_by_task_types: list[TaskType] = []
     filter_by_annotation_types: list[AnnotationType] = []

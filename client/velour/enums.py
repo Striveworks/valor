@@ -26,3 +26,14 @@ class TaskType(str, Enum):
     DETECTION = "detection"
     INSTANCE_SEGMENTATION = "instance_segmentation"
     SEMANTIC_SEGMENTATION = "semantic_segmentation"
+
+
+class Table(Enum, str):
+    DATASET = "dataset"
+    MODEL = "model"
+    DATUM = "datum"
+    ANNOTATION = "annotation"
+    GROUND_TRUTH = "groundtruth"
+    PREDICTION = "prediction"
+    LABEL = "label"
+    METADATA = "metadatum"

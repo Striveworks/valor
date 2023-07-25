@@ -16,19 +16,13 @@ def get_metadata(
     model = core.get_model(db, model_name) if model_name else None
     datum = core.get_datum(db, datum_uid) if datum_uid else None
 
-    # create query filter
-    qf = ops.QueryFilter()
-    qf.filter_by_id(
-        target=models.MetaDatum,
-        sources=[
-            dataset,
-            model,
-            datum,
-        ],
-    )
-    qf.filter(models.MetaDatum.name == name)
-
     return [
         core.get_metadatum_schema(db, metadatum=metadatum)
-        for metadatum in core.get_metadata(db, qf)
+        for metadatum in core.get_metadata(
+            db,
+            dataset=dataset,
+            model=model,
+            datum=datum,
+            name=name,
+        )
     ]

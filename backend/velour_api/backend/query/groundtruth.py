@@ -42,53 +42,25 @@ def create_groundtruth(
 
 def get_groundtruth(
     db: Session,
-    groundtruth: models.GroundTruth,
-) -> schemas.GroundTruth:
+    dataset_name: str,
+    datum_uid: str,
+):
+    dataset = core.get_dataset(db, dataset_name)
+    datum = core.get_datum(db, datum_uid)
 
-    # Get annotation
-    annotation = (
-        db.query(models.Annotation)
-        .where(models.Annotation.id == groundtruth.annotation_id)
-        .one_or_none()
-    )
-
-    # Get datum
-    datum = (
-        db.query(models.Datum)
-        .where(models.Datum.id == annotation.datum_id)
-        .one_or_none()
-    )
-
-    # Get dataset
-    dataset = (
-        db.query(models.Dataset)
-        .where(models.Dataset.id == datum.dataset_id)
-        .one_or_none()
-    )
-
-    # Get annotations with metadata
-    annotations = db.query(models.Annotation).where(
-        and_(
-            models.Annotation.datum_id == datum.id,
-            models.Annotation.model_id.is_(None),
-        )
-    )
+    # validation
+    try:
+        assert datum.dataset_id == dataset.id
+    except AssertionError:
+        raise ValueError(f"Datum `{datum_uid}` exists for different dataset.")
 
     return schemas.GroundTruth(
-        dataset_name=dataset.name,
+        dataset_name=dataset_name,
         datum=schemas.Datum(
             uid=datum.uid,
             metadata=core.get_metadata(db, datum=datum),
         ),
-        annotations=[
-            schemas.GroundTruthAnnotation(
-                labels=core.get_labels(db, annotation=annotation),
-                annotation=core.get_annotation(
-                    db, datum=datum, annotation=annotation
-                ),
-            )
-            for annotation in annotations.all()
-        ],
+        annotations=core.get_groundtruth_annotations(db, datum)
     )
 
 
@@ -97,10 +69,10 @@ def get_groundtruths(
     request: schemas.Filter,
 ) -> list[schemas.GroundTruth]:
     
-    gts = (
-        ops.BackendQuery.groundtruth()
+    datums = (
+        ops.BackendQuery.datum()
         .filter(request)
         .all(db)
     )
 
-    return [get_groundtruth(db, gt) for gt in gts]
+    return [core.get_groundtruth(db, datum) for datum in datums]

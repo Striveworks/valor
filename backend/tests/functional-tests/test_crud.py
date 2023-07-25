@@ -449,7 +449,7 @@ def model_names():
 
 
 @pytest.fixture
-def dataset_model_associations_create(
+def dataset_model_create(
     db: Session,
     gt_dets_create: list[schemas.GroundTruth],
     pred_dets_create: list[schemas.Prediction],
@@ -457,71 +457,38 @@ def dataset_model_associations_create(
     model_names: list[str],
 ):
 
-    datasets = dataset_names
-    models = model_names
-
-    for name in datasets:
-        crud.create_dataset(
-            db,
-            schemas.Dataset(name=name),
-        )
-        for gt in gt_dets_create:
-            gt.dataset_name = name
-            crud.create_groundtruth(db, gt)
-        crud.finalize(db, name)
+    crud.create_dataset(
+        db,
+        schemas.Dataset(name=dataset_names[0]),
+    )
+    for gt in gt_dets_create:
+        gt.dataset_name = dataset_names[0]
+        crud.create_groundtruth(db, gt)
+    crud.finalize(db, dataset_names[0])
 
     # Create model1
     crud.create_model(
-        db, model=schemas.Model(name=models[0])
+        db, model=schemas.Model(name=model_names[0])
     )
 
     # Link model1 to dataset1
     for pd in pred_dets_create:
         # pd.dataset_name = datasets[0]
-        pd.model_name = models[0]
+        pd.model_name = model_names[0]
         crud.create_prediction(db, pd)
+
     # Finalize model1 over dataset1
     crud.finalize(
         db, 
-        dataset_name=datasets[0],
-        model_name=models[0], 
-    )
-
-    # Link model1 to dataset2
-    for pd in pred_dets_create:
-        # pds.dataset_name = datasets[1]
-        pd.model_name = models[0]
-        crud.create_prediction(db, pd)
-    # Finalize model1 over dataset2
-    crud.finalize(
-        db, 
-        dataset_name=datasets[1],
-        model_name=models[0], 
-    )
-
-    # Create model 2
-    crud.create_model(
-        db, model=schemas.Model(name=models[1])
-    )
-
-    # Link model2 to dataset2
-    for pd in pred_dets_create:
-        # pd.dataset_name = datasets[1]
-        pd.model_name = models[1]
-        crud.create_prediction(db, pd)
-    crud.finalize(
-        db, 
-        dataset_name=datasets[1],
-        model_name=models[1], 
+        dataset_name=dataset_names[0],
+        model_name=model_names[0], 
     )
 
     yield
 
     # clean up
-    crud.delete_model(db, models[0])
-    crud.delete_model(db, models[1])
-    crud.delete_dataset(db, datasets[0])
-    crud.delete_dataset(db, datasets[1])
+    crud.delete_model(db, model_names[0])
+    crud.delete_dataset(db, dataset_names[0])
 
 
 """ CREATE """
@@ -590,19 +557,13 @@ def test_create_detection_ground_truth_and_delete_dataset(
         crud.create_groundtruth(db, gt)
 
     assert db.scalar(func.count(models.Annotation.id)) == 2
-    assert db.scalar(func.count(models.Datum.id)) == 2
-    assert db.scalar(func.count(models.GroundTruth.id)) == 2
+    assert db.scalar(func.count(models.Datum.id)) == 1
+    assert db.scalar(func.count(models.GroundTruth.id)) == 3
     assert db.scalar(func.count(models.Label.id)) == 2
-
-    # @TODO delete after pass
-    # assert db.scalar(func.count(models.GroundTruthDetection.id)) == 2
-    # assert db.scalar(func.count(models.Datum.id)) == 1
-    # assert db.scalar(func.count(models.LabeledGroundTruthDetection.id)) == 3
-    # assert db.scalar(func.count(models.Label.id)) == 2
 
     # verify we get the same dets back
     for gt in gt_dets_create:
-        assert gt == crud.get_groundtruth(db, gt.dataset_name, gt.datum.uid)
+        assert gt == crud.get_groundtruth(db, dataset_name=gt.dataset_name, datum_uid=gt.datum.uid)
 
     # delete dataset and check the cascade worked
     crud.delete_dataset(db, dset_name)
@@ -2292,7 +2253,7 @@ def test_get_model(db: Session):
 #     db: Session,
 #     dataset_names: list[str],
 #     model_names: list[str],
-#     dataset_model_associations_create,
+#     dataset_model_create,
 # ):
 #     ds_meta1 = get_dataset_info(db, dataset_names[0])
 #     assert ds_meta1.annotation_type == ["DETECTION"]
@@ -2316,7 +2277,7 @@ def test_get_model(db: Session):
 #     db: Session,
 #     dataset_names: list[str],
 #     model_names: list[str],
-#     dataset_model_associations_create,
+#     dataset_model_create,
 # ):
 #     md_meta1 = get_model_info(db, model_names[0])
 #     assert md_meta1.annotation_type == ["DETECTION"]
@@ -2341,7 +2302,7 @@ def test_get_model(db: Session):
 #     db: Session,
 #     dataset_names: list[str],
 #     model_names: list[str],
-#     dataset_model_associations_create,
+#     dataset_model_create,
 # ):
 #     # Get associated models for each dataset
 #     assert _get_associated_models(db, dataset_names[0]) == [model_names[0]]
@@ -2357,7 +2318,7 @@ def test_get_model(db: Session):
 #     db: Session,
 #     dataset_names: list[str],
 #     model_names: list[str],
-#     dataset_model_associations_create,
+#     dataset_model_create,
 # ):
 #     # Get associated datasets for each model
 #     assert _get_associated_datasets(db, model_names[0]) == [
@@ -2372,7 +2333,7 @@ def test_get_model(db: Session):
 # def test_get_label_distribution_from_dataset(
 #     db: Session,
 #     dataset_names: list[str],
-#     dataset_model_associations_create,
+#     dataset_model_create,
 # ):
 #     ds1 = get_label_distribution_from_dataset(db, dataset_names[0])
 #     assert len(ds1) == 2
@@ -2397,7 +2358,7 @@ def test_get_model(db: Session):
 # def test_get_label_distribution_from_model(
 #     db: Session,
 #     model_names: list[str],
-#     dataset_model_associations_create,
+#     dataset_model_create,
 # ):
 
 #     md1 = get_label_distribution_from_model(db, model_names[0])
@@ -2439,50 +2400,71 @@ def test_get_all_labels(
 def test_get_labels_from_dataset(
     db: Session,
     dataset_names: list[str],
-    dataset_model_associations_create,
+    dataset_model_create,
 ):
-
     # Test get all from dataset 1
     ds1 = crud.get_labels(
         db, 
         schemas.Filter(
-            filter_by_dataset_names=[dataset_names[0]]
+            filter_by_dataset_names=[dataset_names[0]],
+            filter_by_model_names=None,
         )
     )
     assert len(ds1) == 2
     assert schemas.Label(key="k1", value="v1") in ds1
     assert schemas.Label(key="k2", value="v2") in ds1
 
-    # Test get all from dataset 2
-    ds2 = crud.get_labels(
-        db, 
-        schemas.Filter(
-            filter_by_dataset_names=[dataset_names[1]]
-        )
-    )
-    assert len(ds2) == 2
-    assert schemas.Label(key="k1", value="v1") in ds2
-    assert schemas.Label(key="k2", value="v2") in ds2
-
-    # Test get all but polygon labels from dataset 1
+    # NEGTAIVE - Test filter by task type 
     ds1 = crud.get_labels(
         db, 
         schemas.Filter(
             filter_by_dataset_names=[dataset_names[0]],
-            filter_by_task_types=[enums.AnnotationType.CLASSIFICATION],
-            filter_by_annotation_types=[
-                enums.AnnotationType.BOX,
-                enums.AnnotationType.RASTER,
-            ]
+            filter_by_model_names=None,
+            filter_by_task_types=[
+                enums.TaskType.CLASSIFICATION,
+                enums.TaskType.INSTANCE_SEGMENTATION,
+                enums.TaskType.SEMANTIC_SEGMENTATION,
+            ],
         )
     )
     assert ds1 == []
 
-    # Test get only polygon labels from dataset 1
+    # POSITIVE - Test filter by task type 
+    ds1 = crud.get_labels(
+        db, 
+        schemas.Filter(
+            filter_by_dataset_names=[dataset_names[0]],
+            filter_by_model_names=None,
+            filter_by_task_types=[enums.TaskType.DETECTION],
+        )
+    )
+    assert len(ds1) == 2
+    assert schemas.Label(key="k1", value="v1") in ds1
+    assert schemas.Label(key="k2", value="v2") in ds1
+
+    # NEGATIVE - Test filter by annotation type
     ds1 = crud.get_labels(
         db,
-        dataset_name=dataset_names[0],
-        of_type=[enums.AnnotationType.POLYGON],
+        schemas.Filter(
+            filter_by_dataset_names=[dataset_names[0]],
+            filter_by_model_names=None,
+            filter_by_annotation_types=[
+                enums.AnnotationType.POLYGON,
+                enums.AnnotationType.MULTIPOLYGON,
+                enums.AnnotationType.RASTER,
+            ],
+        ),
+    )
+    assert ds1 == []
+
+    # POSITIVE - Test filter by annotation type
+    ds1 = crud.get_labels(
+        db,
+        schemas.Filter(
+            filter_by_dataset_names=[dataset_names[0]],
+            filter_by_model_names=None,
+            filter_by_annotation_types=[enums.AnnotationType.BOX],
+        ),
     )
     assert len(ds1) == 2
     assert schemas.Label(key="k1", value="v1") in ds1
@@ -2492,42 +2474,43 @@ def test_get_labels_from_dataset(
 def test_get_labels_from_model(
     db: Session,
     model_names: list[str],
-    dataset_model_associations_create,
+    dataset_model_create,
 ):
     # Test get all labels from model 1
-    md1 = crud.get_labels(db, model_name=model_names[0])
-    assert len(md1) == 2
+    md1 = crud.get_labels(
+        db, 
+        schemas.Filter(
+            filter_by_model_names=[model_names[0]],
+        )
+    )
+    assert len(md1) == 4
     assert schemas.Label(key="k1", value="v1") in md1
+    assert schemas.Label(key="k1", value="v2") in md1
+    assert schemas.Label(key="k2", value="v1") in md1
     assert schemas.Label(key="k2", value="v2") in md1
-
-    # Test get all labels from model 2
-    md2 = crud.get_labels(db, model_name=model_names[1])
-    assert len(md2) == 2
-    assert schemas.Label(key="k1", value="v1") in md2
-    assert schemas.Label(key="k2", value="v2") in md2
 
     # Test get all but polygon labels from model 1
     md1 = crud.get_labels(
         db,
-        model_name=model_names[0],
-        metadatum_id=None,
-        of_type=[
-            enums.AnnotationType.CLASSIFICATION,
-            enums.AnnotationType.BBOX,
-            enums.AnnotationType.RASTER,
-        ],
+        schemas.Filter(
+            filter_by_model_names=[model_names[0]],
+            filter_by_task_types=[enums.TaskType.CLASSIFICATION]
+        )
     )
     assert md1 == []
 
     # Test get only polygon labels from model 1
     md1 = crud.get_labels(
         db,
-        model_name=model_names[0],
-        metadatum_id=None,
-        of_type=[enums.AnnotationType.POLYGON],
+        schemas.Filter(
+            filter_by_model_names=[model_names[0]],
+            filter_by_annotation_types=[enums.AnnotationType.BOX]
+        )
     )
-    assert len(md1) == 2
+    assert len(md1) == 4
     assert schemas.Label(key="k1", value="v1") in md1
+    assert schemas.Label(key="k1", value="v2") in md1
+    assert schemas.Label(key="k2", value="v1") in md1
     assert schemas.Label(key="k2", value="v2") in md1
 
 
@@ -2535,12 +2518,12 @@ def test_get_joint_labels(
     db: Session,
     dataset_names: list[str],
     model_names: list[str],
-    dataset_model_associations_create,
+    dataset_model_create,
 ):
     # Test get joint labels from dataset 1 and model 1
     assert set(
-        crud.get_labels(
-            db=db,
+        crud.get_joint_labels(
+            db,
             dataset_name=dataset_names[0],
             model_name=model_names[0],
         )
@@ -2550,39 +2533,6 @@ def test_get_joint_labels(
             schemas.Label(key="k2", value="v2"),
         ]
     )
-
-    # Test get joint labels from dataset 1 and model 1 where labels are not for polygons
-    assert (
-        set(
-            crud.get_labels(
-                db=db,
-                dataset_name=dataset_names[0],
-                model_name=model_names[0],
-                of_type=[
-                    enums.AnnotationType.CLASSIFICATION,
-                    enums.AnnotationType.BBOX,
-                    enums.AnnotationType.RASTER,
-                ],
-            )
-        )
-        == set()
-    )
-
-    # Test get joint labels from dataset 1 and model 1 where labels are only for polygons
-    assert set(
-        crud.get_labels(
-            db=db,
-            dataset_name=dataset_names[0],
-            model_name=model_names[0],
-            of_type=[enums.AnnotationType.POLYGON],
-        )
-    ) == set(
-        [
-            schemas.Label(key="k1", value="v1"),
-            schemas.Label(key="k2", value="v2"),
-        ]
-    )
-
 
 # @NOTE: `velour_api.backend.io`
 # @TODO: Need to implement metadata querys
