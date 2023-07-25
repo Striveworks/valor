@@ -10,17 +10,19 @@ from velour_api.backend import state
 @state.read
 def get_labels(
     db: Session,
-    dataset_name: str = None,
-    model_name: str = None,
-    key: list[str] = [],
-    task_type: list[enums.TaskType] = [],
-    annotation_type: list[enums.AnnotationType] = [],
-    metadata: list[schemas.MetaDatum] = [],
+    request: schemas.Filter,
 ) -> list[schemas.Label]:
-    """Retrieves all existing labels."""
+    """Retrieves all existing labels that meet the filter request."""
+    return backend.get_labels(db, request)
+
+
+@state.read
+def get_label_distribution(
+    db: Session, 
+    request: schemas.Filter,
+) -> list[schemas.LabelDistribution]:
     return []
     
-
 
 # @NOTE: Maybe return tuple (dataset, model) instead?
 @state.read
@@ -36,6 +38,7 @@ def get_disjoint_labels(
         dataset_name=dataset_name, 
         model_name=model_name,
     )
+
 
 @state.read
 def get_disjoint_keys(
@@ -80,23 +83,25 @@ def get_datum(
 @state.read
 def get_datums(
     db: Session,
-    dataset_name: str,
-    filter: enums.DataType,
+    request: schemas.Filter,
 ) -> list[schemas.Datum]:
-    return []
+    return backend.get_datums(db, request)
 
 
 """ Datasets """
 
 
 @state.read
-def get_datasets(db: Session) -> list[schemas.Dataset]:
-    return backend.get_datasets(db)
+def get_dataset(db: Session, name: str) -> schemas.Dataset:
+    return backend.get_dataset(db, name)
 
 
 @state.read
-def get_dataset(db: Session, name: str) -> schemas.Dataset:
-    return backend.get_dataset(db, name)
+def get_datasets(
+    db: Session,
+    request: schemas.Filter,
+) -> list[schemas.Dataset]:
+    return backend.get_datasets(db)
 
 
 @state.read
@@ -117,23 +122,24 @@ def get_groundtruth(
 
 
 @state.read
-def get_dataset_labels(
-    db: Session, name: str
-) -> list[schemas.LabelDistribution]:
-    pass
+def get_groundtruths(
+    db: Session,
+    request: schemas.Filter,
+) -> list[schemas.GroundTruth]:
+    return backend.get_groundtruths(db, request)
 
 
 """ Models """
 
 
 @state.read
-def get_models(db: Session) -> list[schemas.Model]:
-    return backend.get_models(db)
+def get_model(db: Session, name: str) -> schemas.Model:
+    return backend.get_model(db, name)
 
 
 @state.read
-def get_model(db: Session, name: str) -> schemas.Model:
-    return backend.get_model(db, name)
+def get_models(db: Session) -> list[schemas.Model]:
+    return backend.get_models(db)
 
 
 @state.read
@@ -145,11 +151,13 @@ def get_prediction(
     )
 
 
+# @TODO
 @state.read
-def get_model_labels(
-    db: Session, name: str
-) -> list[schemas.ScoredLabelDistribution]:
-    pass
+def get_predictions(
+    db: Session,
+    request: schemas.Filter,
+) -> list[schemas.Prediction]:
+    return []
 
 
 """ Evaluation """

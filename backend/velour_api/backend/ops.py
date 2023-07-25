@@ -30,6 +30,18 @@ model_mapping = {
 }
 
 
+schemas_mapping = {
+    "dataset": schemas.Dataset,
+    "model": schemas.Model,
+    "datum": schemas.Datum,
+    "annotation": schemas.Annotation,
+    "groundtruth": schemas.GroundTruth,
+    "prediction": schemas.Prediction,
+    "label": schemas.Label,
+    "metadatum": schemas.MetaDatum,
+}
+
+
 model_relationships = {
     "dataset": {
         "datum": models.Dataset.id == models.Datum.dataset_id,
@@ -265,8 +277,8 @@ class BackendQuery:
     
     def __str__(self):
 
-        # no joins
-        if not self.targets:
+        # Get all rows of source table
+        if len(self.targets) == 0:
             return f"SELECT FROM {self.source}"
 
         # sanity check
@@ -283,258 +295,372 @@ class BackendQuery:
             ret += f"  {filt},\n"
         return ret 
 
-    def select(self, db: Session):
-
-        # No joins
-        if not self.targets:
-            return select(model_mapping[self.source])
+    def ids(self, db: Session):
+        """ Returns list of rows from source that meet filter criteria. """
         
         # sanity check
         if self.source in self.targets:
             self.targets.remove(self.source)
+        
+        # Get all rows of source table
+        if len(self.targets) == 0:
+            return select(model_mapping[self.source].id)
 
+        # serialize request from graph
         qstruct = generate_query(self.source, self.targets)
 
-        query = select(model_mapping[self.source])
-        for join in qstruct:
-            m, r = join.relation
-            query = query.join(m, r)
-        query.where(
-            [
-                filt
-                for filt in self._filters
-            ]
-        )
-        return query
-    
-    def all(self, db: Session):
-        """ Returns sqlalchemy table rows """
-        
-        # No joins
-        if not self.targets:
-            return db.query(model_mapping[self.source])
-        
-        # sanity check
-        if self.source in self.targets:
-            self.targets.remove(self.source)
-
-        qstruct = generate_query(self.source, self.targets)
-
+        # select source
         src = model_mapping[self.source]
-
         q_ids = select(src.id)
+
+        # join intermediate tables
         for join in qstruct:
             m, r = join.relation
             q_ids = q_ids.join(m, r)
-        q_ids.where(
-            [
-                filt
-                for filt in self._filters
-            ]
-        ).subquery()
 
+        # add filter conditions
+        q_ids.where(
+            and_(*self._filters)
+        )
+        
+        # return select statement of valid row ids
+        return q_ids
+    
+    def all(self, db: Session):
+        """ Returns sqlalchemy table rows """
+
+        # get source object 
+        src = model_mapping[self.source]
+
+        # get valid row ids
+        q_ids = self.ids(db)
+
+        # return rows from source table
         return (
             db.query(model_mapping[self.source])
             .where(src.id.in_(q_ids))
             .all()
         )
 
+    def filter(self, req: schemas.Filter):
+        """ Parses `schemas.Filter` and operates all filters. """
+
+        # generate filter expressions
+        self.filter_by_dataset_names(req.filter_by_dataset_names)
+        self.filter_by_model_names(req.filter_by_model_names)
+        self.filter_by_datum_uids(req.filter_by_datum_uids)
+        self.filter_by_task_types(req.filter_by_task_types)
+        self.filter_by_annotation_types(req.filter_by_annotation_types)
+        self.filter_by_label_keys(req.filter_by_label_keys)
+        self.filter_by_labels(req.filter_by_labels)
+        self.filter_by_metadata(req.filter_by_metadata)
+
+        return self
 
     """ dataset filter """
 
-    def filter_by_dataset(self, dataset: schemas.Dataset | models.Dataset):
-        if isinstance(dataset, models.Dataset):
-            self.targets.add("dataset") # @NOTE this could be datum.dataset_id as well?
-            self._filters.append(models.Dataset.id == dataset.id)
-            return self
-        elif isinstance(dataset, schemas.Dataset):
+    def filter_by_datasets(self, datasets: list[schemas.Dataset | models.Dataset]):
+        # generate binary expressions
+        expressions = [
+            models.Dataset.name == dataset.name
+            for dataset in datasets
+            if isinstance(dataset, schemas.Dataset | models.Dataset)
+        ]
+
+        # generate filter
+        if len(expressions) == 1:
             self.targets.add("dataset")
-            self._filters.append(models.Dataset.name == dataset.name)
-            return self
-        else:
-            raise ValueError
+            self._filters.extend(expressions)
+        elif len(expressions) > 1:
+            self.targets.add("dataset")
+            self._filters.append(or_(*expressions))
+
+        return self
     
-    def filter_by_dataset_name(self, name):
-        self.targets.add("dataset")
-        self._filters.append(models.Dataset.name == name)
+    def filter_by_dataset_names(self, names: list[str]):
+        # generate binary expressions
+        expressions = [
+            models.Dataset.name == name
+            for name in names
+            if isinstance(name, str)
+        ]
+
+        # generate filter
+        if len(expressions) == 1:
+            self.targets.add("dataset")
+            self._filters.extend(expressions)
+        elif len(expressions) > 1:
+            self.targets.add("dataset")
+            self._filters.append(or_(*expressions))
+
         return self
 
     """ model filter """
 
-    def filter_by_dataset(self, model: schemas.Model | models.Model):
-        if isinstance(model, models.Model):
-            self.targets.add("model") # @NOTE this could be annotation.model_id as well?
-            self._filters.append(models.Model.id == model.id)
-            return self
-        elif isinstance(model, schemas.Dataset):
+    def filter_by_models(self, models_: list[schemas.Model | models.Model]):
+        # generate binary expressions
+        expressions = [
+            models.Model.name == model.name
+            for model in models_
+            if isinstance(model, schemas.Model | models.Model)
+        ]
+
+        # generate filter
+        if len(expressions) == 1:
             self.targets.add("model")
-            self._filters.append(models.Model.name == model.name)
-            return self
-        else:
-            raise ValueError
+            self._filters.extend(expressions)
+        elif len(expressions) > 1:
+            self.targets.add("model")
+            self._filters.append(or_(*expressions))
+
+        return self
     
-    def filter_by_model_name(self, name):
-        self.targets.add("model")
-        self._filters.append(models.Model.name == name)
+    def filter_by_model_names(self, names: list[str]):
+        # generate binary expressions
+        expressions = [
+            models.Model.name == name
+            for name in names
+            if isinstance(name, str)
+        ]
+
+        # generate filter
+        if len(expressions) == 1:
+            self.targets.add("model")
+            self._filters.extend(expressions)
+        elif len(expressions) > 1:
+            self.targets.add("model")
+            self._filters.append(or_(*expressions))
+
         return self
 
     """ datum filter """
 
-    def filter_by_datum(self, datum: schemas.Datum | models.Datum):
-        if isinstance(datum, models.Datum):
-            self.targets.add("datum") # @NOTE this could be annotation.datum_id as well?
-            self._filters.append(models.Datum.id == datum.id)
-            return self
-        elif isinstance(datum, schemas.Dataset):
+    def filter_by_datums(self, datums: list[schemas.Datum | models.Datum]):
+        # generate binary expressions
+        expressions = [
+            models.Datum.uid == datum.uid
+            for datum in datums
+            if isinstance(datum, schemas.Datum | models.Datum)
+        ]
+
+        # generate filter
+        if len(expressions) == 1:
             self.targets.add("datum")
-            self._filters.append(models.Datum.uid == datum.uid)
-            return self
-        else:
-            raise ValueError
+            self._filters.extend(expressions)
+        elif len(expressions) > 1:
+            self.targets.add("datum")
+            self._filters.append(or_(*expressions))
+
+        return self
     
-    def filter_by_datum_uid(self, uid):
-        self.targets.add("datum")
-        self._filters.append(models.Datum.uid == uid)
+    def filter_by_datum_uids(self, uids: list[str]):
+        # generate binary expressions
+        expressions = [
+            models.Datum.uid == uid
+            for uid in uids
+            if isinstance(uid, str)
+        ]
+
+        # generate filter
+        if len(expressions) == 1:
+            self.targets.add("datum")
+            self._filters.extend(expressions)
+        elif len(expressions) > 1:
+            self.targets.add("datum")
+            self._filters.append(or_(*expressions))
+
         return self
 
     """ filter by label """
 
-    def filter_by_label(
-        self,
-        label: schemas.Label | models.Label,
-    ):
-        self.targets.add("label")
-        self._filters.append(
+    def filter_by_labels(self, labels: list[schemas.Label | models.Label]):
+        # generate binary expressions
+        expressions = [
             and_(
                 models.Label.key == label.key,
                 models.Label.value == label.value,
             )
-        )
+            for label in labels
+            if isinstance(label, schemas.Label | models.Label)
+        ]
+
+        # generate filter
+        if len(expressions) == 1:
+            self.targets.add("label")
+            self._filters.extend(expressions)
+        elif len(expressions) > 1:
+            self.targets.add("label")
+            self._filters.append(or_(*expressions))
+
         return self
 
-    def filter_by_label_key(
+    def filter_by_label_keys(
         self,
-        label_key: str,
+        label_keys: list[str],
     ):
-        self.targets.add("label")
-        self._filters.append(models.Label.key == label_key)
-        return self
+        # generate binary expressions
+        expressions = [
+            models.Label.key == label_key
+            for label_key in label_keys
+            if isinstance(label_key, str)
+        ]
 
-    def filter_by_labels(self, labels: list[schemas.Label]):
-        self.targets.add("label")
-        self._filters.extend(
-            [
-                and_(
-                    models.Label.key == label.key,
-                    models.Label.value == label.value,
-                )
-                for label in labels
-                if isinstance(label, schemas.Label)
-            ]
-        )
+        # generate filter
+        if len(expressions) == 1:
+            self.targets.add("label")
+            self._filters.extend(expressions)
+        elif len(expressions) > 1:
+            self.targets.add("label")
+            self._filters.append(or_(*expressions))
+
         return self
     
     """ filter by metadata """
 
-    def filter_by_metadatum(self, metadatum: schemas.MetaDatum | models.MetaDatum):
+    def _create_metadatum_expression(self, metadatum: schemas.MetaDatum | models.MetaDatum):
 
         # Compare name
-        comparison = [models.MetaDatum.name == metadatum.name]
+        expression = [models.MetaDatum.name == metadatum.name]
 
+        # sqlalchemy handler
         if isinstance(metadatum, models.MetaDatum):
-            comparison.append(models.MetaDatum.string_value == metadatum.string_value)
-            comparison.append(models.MetaDatum.numeric_value == metadatum.numeric_value)
-            comparison.append(models.MetaDatum.geo == metadatum.geo)
+            expression.append(models.MetaDatum.string_value == metadatum.string_value)
+            expression.append(models.MetaDatum.numeric_value == metadatum.numeric_value)
+            expression.append(models.MetaDatum.geo == metadatum.geo)
+
+        # schema handler
         elif isinstance(metadatum, schemas.MetaDatum):
             # Compare value
             if isinstance(metadatum.value, str):
-                comparison.append(models.MetaDatum.string_value == metadatum.value)
+                expression.append(models.MetaDatum.string_value == metadatum.value)
             if isinstance(metadatum.value, float):
-                comparison.append(models.MetaDatum.numeric_value == metadatum.value)
+                expression.append(models.MetaDatum.numeric_value == metadatum.value)
             if isinstance(metadatum.value, schemas.GeoJSON):
                 raise NotImplementedError("Havent implemented GeoJSON support.")
+        
+        # unknown type
         else:
-            raise ValueError
+            return None
 
-        # Cache filter
-        self.targets.add("metadatum")
-        self._filters.append(and_(*comparison))
-        return self
+        return or_(*expression)
 
     def filter_by_metadata(self, metadata: list[schemas.MetaDatum | models.MetaDatum]):
-        for metadatum in metadata:
-            self.filter_by_metadatum(metadatum)
+        # generate binary expressions
+        expressions = [
+            self._create_metadatum_expression(metadatum)
+            for metadatum in metadata
+            if metadatum is not None
+        ]
+
+        # generate filter
+        if len(expressions) == 1:
+            self.targets.add("metadatum")
+            self._filters.extend(expressions)
+        elif len(expressions) > 1:
+            self.targets.add("metadatum")
+            self._filters.append(or_(*expressions))
+
         return self
     
-    def filter_by_metadatum_name(self, name: str):
-        self.targets.add("metadatum")
-        self._filters.append(models.MetaDatum.name == name)
+    def filter_by_metadatum_names(self, names: list[str]):
+        # generate binary expressions
+        expressions = [
+            models.MetaDatum.name == name
+            for name in names
+            if isinstance(name, str)
+        ]
+
+        # generate filter
+        if len(expressions) == 1:
+            self.targets.add("metadatum")
+            self._filters.extend(expressions)
+        elif len(expressions) > 1:
+            self.targets.add("metadatum")
+            self._filters.append(or_(*expressions))
+
         return self
 
     """ filter by annotation """
 
-    def filter_by_task_type(self, task_type: enums.TaskType):
-        self.targets.add("annotation")
-        self._filters.extend(
-            [
-                models.Annotation.task_type == task_type.value
-            ]
-        )
+    def filter_by_task_types(self, task_types: list[enums.TaskType]):
+        # generate binary expressions
+        expressions = [
+            models.Annotation.task_type == task_type.value
+            for task_type in task_types
+            if isinstance(task_type, enums.TaskType)
+        ]
+
+        # generate filter
+        if len(expressions) == 1:
+            self.targets.add("annotation")
+            self._filters.extend(expressions)
+        elif len(expressions) > 1:
+            self.targets.add("annotation")
+            self._filters.append(or_(*expressions))
+
         return self
 
     def filter_by_annotation_types(self, annotation_types: list[enums.AnnotationType]):
-        self.targets.add("annotation")
         if enums.AnnotationType.NONE in annotation_types:
-            self._filters.extend(
-                [
+            self.targets.add("annotation")
+            self._filters.append(
+                and_(
                     models.Annotation.box.is_(None),
                     models.Annotation.polygon.is_(None),
                     models.Annotation.multipolygon.is_(None),
                     models.Annotation.raster.is_(None),
-                ]
+                )
             )
         else:
+            # collect binary expressions
+            expressions = []
             if enums.AnnotationType.BOX in annotation_types:
-                self._filters.append(models.Annotation.box.isnot(None))
+                expressions.append(models.Annotation.box.isnot(None))
             if enums.AnnotationType.POLYGON in annotation_types:
-                self._filters.append(models.Annotation.polygon.isnot(None))
+                expressions.append(models.Annotation.polygon.isnot(None))
             if enums.AnnotationType.MULTIPOLYGON in annotation_types:
-                self._filters.append(models.Annotation.multipolygon.isnot(None))
+                expressions.append(models.Annotation.multipolygon.isnot(None))
             if enums.AnnotationType.RASTER in annotation_types:
-                self._filters.append(models.Annotation.raster.isnot(None))
+                expressions.append(models.Annotation.raster.isnot(None))
+            
+            # generate joint filter
+            if len(expressions) == 1:
+                self.targets.add("annotation")
+                self._filters.extend(expressions)
+            elif len(expressions) > 1:
+                self.targets.add("annotation")
+                self._filters.append(or_(*expressions))
+            
         return self
 
 
-db = None
-
-query = (
-    BackendQuery.datum()
-    .filter_by_dataset_name("dataset1")
-    .filter_by_model_name("model1")
-    .filter_by_datum_uid("uid1")
-    .filter_by_label(schemas.Label(key="k1", value="v1"))
-    .filter_by_labels(
-        [
-            schemas.Label(key="k2", value="v2"),
-            schemas.Label(key="k2", value="v3"),
-            schemas.Label(key="k2", value="v4"),
-        ]
-    )
-    .filter_by_label_key("k4")
-    .filter_by_metadata(
-        [
-            schemas.MetaDatum(name="n1", value=0.5),
-            schemas.MetaDatum(name="n2", value=0.1),
-        ]
-    )
-    .filter_by_metadatum(schemas.MetaDatum(name="n3", value="v1"))
-    .filter_by_metadatum_name("n4")
-    .filter_by_task_type(enums.TaskType.CLASSIFICATION)
-    # .query(db)
-)
-
-
-print(str(query))
+# db = None
+# query = (
+#     BackendQuery.datum()
+#     .filter_by_dataset_name("dataset1")
+#     .filter_by_model_name("model1")
+#     .filter_by_datum_uid("uid1")
+#     .filter_by_label(schemas.Label(key="k1", value="v1"))
+#     .filter_by_labels(
+#         [
+#             schemas.Label(key="k2", value="v2"),
+#             schemas.Label(key="k2", value="v3"),
+#             schemas.Label(key="k2", value="v4"),
+#         ]
+#     )
+#     .filter_by_label_key("k4")
+#     .filter_by_metadata(
+#         [
+#             schemas.MetaDatum(name="n1", value=0.5),
+#             schemas.MetaDatum(name="n2", value=0.1),
+#         ]
+#     )
+#     .filter_by_metadatum(schemas.MetaDatum(name="n3", value="v1"))
+#     .filter_by_metadatum_name("n4")
+#     .filter_by_task_type(enums.TaskType.CLASSIFICATION)
+#     .query(db)
+# )
+# print(str(query))
 
 
 # target = "metadatum"

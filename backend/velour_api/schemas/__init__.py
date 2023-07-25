@@ -21,7 +21,7 @@ from .geometry import (
     Raster
 )
 from .geojson import GeoJSON
-from .info import LabelDistribution, ScoredLabelDistribution
+from .info import LabelDistribution, ScoredLabelDistribution, Filter
 from .jobs import Job
 from .metadata import Image
 from .metrics import (
@@ -46,6 +46,7 @@ from .metrics import (
 )
 
 __all__ = [
+    "Filter",
     "Image",
     "GroundTruthAnnotation",
     "PredictedAnnotation",

@@ -408,11 +408,11 @@ def create_clf_metrics(
         raise HTTPException(status_code=405, detail=str(e))
 
 
-@app.get("/labels", status_code=200, dependencies=[Depends(token_auth_scheme)])
+@app.post("/labels", status_code=200, dependencies=[Depends(token_auth_scheme)])
 def get_labels(
-    db: Session = Depends(get_db)
+    request: schemas.Filter, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
-    return crud.get_labels(db)
+    return crud.get_labels(db, request)
 
 
 @app.get("/user")

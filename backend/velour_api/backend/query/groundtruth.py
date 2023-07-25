@@ -1,9 +1,9 @@
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
-from velour_api.backend import core, models, query
+from velour_api.backend import core, models, ops
 
 
 def create_groundtruth(
@@ -42,23 +42,29 @@ def create_groundtruth(
 
 def get_groundtruth(
     db: Session,
-    dataset_name: str,
-    datum_uid: str,
-    filter_by_task_type: list[enums.TaskType] = [],
-    filter_by_metadata: list[schemas.MetaDatum] = [],
+    groundtruth: models.GroundTruth,
 ) -> schemas.GroundTruth:
 
-    # Get dataset
-    dataset = core.get_dataset(db, name=dataset_name)
+    # Get annotation
+    annotation = (
+        db.query(models.Annotation)
+        .where(models.Annotation.id == groundtruth.annotation_id)
+        .one_or_none()
+    )
 
     # Get datum
-    datum = core.get_datum(db, uid=datum_uid)
+    datum = (
+        db.query(models.Datum)
+        .where(models.Datum.id == annotation.datum_id)
+        .one_or_none()
+    )
 
-    # Validity check
-    if dataset.id != datum.dataset_id:
-        raise ValueError(
-            f"Datum '{datum_uid}' does not belong to dataset '{dataset_name}'."
-        )
+    # Get dataset
+    dataset = (
+        db.query(models.Dataset)
+        .where(models.Dataset.id == datum.dataset_id)
+        .one_or_none()
+    )
 
     # Get annotations with metadata
     annotations = db.query(models.Annotation).where(
@@ -68,41 +74,16 @@ def get_groundtruth(
         )
     )
 
-    # Filter by task type
-    if filter_by_task_type:
-        task_filters = [
-            models.Annotation.task_type == task_type.value
-            for task_type in filter_by_task_type
-        ]
-        annotations = annotations.where(
-            or_(
-                *task_filters,
-            )
-        )
-
-    # Filter by metadata
-    if filter_by_metadata:
-        metadata_filters = [
-            query.compare_metadata(metadatum)
-            for metadatum in filter_by_metadata
-        ]
-        annotations = annotations.where(
-            and_(
-                models.MetaDatum.annotation_id == models.Annotation.id,
-                or_(*metadata_filters),
-            )
-        )
-
     return schemas.GroundTruth(
         dataset_name=dataset.name,
         datum=schemas.Datum(
             uid=datum.uid,
-            metadata=query.get_metadata(db, datum=datum),
+            metadata=core.get_metadata(db, datum=datum),
         ),
         annotations=[
             schemas.GroundTruthAnnotation(
-                labels=query.get_labels(db, annotation=annotation),
-                annotation=query.get_annotation(
+                labels=core.get_labels(db, annotation=annotation),
+                annotation=core.get_annotation(
                     db, datum=datum, annotation=annotation
                 ),
             )
@@ -113,17 +94,13 @@ def get_groundtruth(
 
 def get_groundtruths(
     db: Session,
-    dataset_name: str = None,
+    request: schemas.Filter,
 ) -> list[schemas.GroundTruth]:
+    
+    gts = (
+        ops.BackendQuery.groundtruth()
+        .filter(request)
+        .all(db)
+    )
 
-    if dataset_name:
-        dataset = core.get_dataset(db, dataset_name)
-        datums = (
-            db.query(models.Datum)
-            .where(models.Datum.dataset_id == dataset.id)
-            .all()
-        )
-    else:
-        datums = db.query(models.Datum.all())
-
-    return [get_groundtruth(db, datum.uid) for datum in datums]
+    return [get_groundtruth(db, gt) for gt in gts]

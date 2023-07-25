@@ -2,30 +2,19 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend import core, models, query
+from velour_api.backend import core, models, query, ops
 
 
 def get_labels(
     db: Session,
-    dataset_name: str = None,
-    model_name: str = None,
-    datum_uid: str = None,
-    keys: list[str] = [],
-    task_types: list[enums.TaskType] = [],
-    filter_by_annotation_type: list[enums.AnnotationType] = [],
-    filter_by_metadata: list[schemas.MetaDatum] = [],
+    request_info: schemas.Filter,
 ) -> list[schemas.Label]:
     """Returns a list of unique labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
 
-    dataset = core.get_dataset(db, dataset_name) if dataset_name else None
-    model = core.get_model(db, model_name) if model_name else None
-    datum = core.get_datum(db, uid=datum_uid) if datum_uid else None
-
-    labels = core.get_labels(
-        db,
-        dataset=dataset,
-        model=model,
-        datum=datum,
+    labels = (
+       ops.BackendQuery.label()
+       .filter(request_info)
+       .all(db)
     )
 
     return [
@@ -37,43 +26,27 @@ def get_labels(
     ]
 
 
-def get_scored_labels(
-    db: Session,
-    annotation: models.Annotation,
-) -> list[schemas.ScoredLabel]:
-    scored_labels = (
-        db.query(models.Prediction.score, models.Label.key, models.Label.value)
-        .select_from(models.Prediction)
-        .join(models.Label, models.Label.id == models.Prediction.label_id)
-        .where(models.Prediction.annotation_id == annotation.id)
-        .all()
-    )
-
-    return [
-        schemas.ScoredLabel(
-            label=schemas.Label(
-                key=label[1],
-                value=label[2],
-            ),
-            score=label[0],
-        )
-        for label in scored_labels
-    ]
-
-
 def get_disjoint_labels(
     db: Session,
     dataset_name: str,
     model_name: str,
 ) -> dict[str, list[schemas.Label]]:
-    """Returns tuple(gt_labels, pd_labels)"""
+    """Returns dictionary with keys (model, dataset) which contain lists of Labels. """
 
-    dataset = core.get_dataset(db, dataset_name)
-    model = core.get_model(db, model_name)
+    # create filters
+    ds_filter = schemas.Filter(
+        filter_by_dataset_names=[dataset_name]
+    )
+    md_filter = schemas.Filter(
+        filter_by_model_names=[model_name],
+        filter_by_dataset_names=[dataset_name],
+    )
 
-    ds_labels = set(query.get_labels(db, dataset=dataset))
-    md_labels = set(query.get_labels(db, dataset=dataset, model=model))
+    # get label sets
+    ds_labels = set(get_labels(db, ds_filter))
+    md_labels = set(get_labels(db, md_filter))
 
+    # set operation to get disjoint sets wrt the lhs operand
     ds_unique = list(ds_labels - md_labels)
     md_unique = list(md_labels - ds_labels)
 

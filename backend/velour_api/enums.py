@@ -60,3 +60,14 @@ class JobStatus(Enum):
     PROCESSING = "processing"
     FAILED = "failed"
     DONE = "done"
+
+
+class Table(str, Enum):
+    DATASET = "dataset"
+    MODEL = "model"
+    DATUM = "datum"
+    ANNOTATION = "annotation"
+    GROUND_TRUTH = "groundtruth"
+    PREDICTION = "prediction"
+    LABEL = "label"
+    METADATA = "metadatum"

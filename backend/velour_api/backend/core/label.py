@@ -50,53 +50,26 @@ def get_label(
     )
 
 
-def get_labels(
+def get_scored_labels(
     db: Session,
-    key: str,
-) -> list[models.Label]:
-    """Returns a list of labels from a intersection of relationships (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
+    annotation: models.Annotation,
+) -> list[schemas.ScoredLabel]:
 
-    # Get annotation ids
-    annotation_ids = select(models.Annotation.id)
-
-    # Filter
-    # annotation_ids.where(
-    #     and_(
-    #         *qf.filters
-    #     )
-    # )
-
-    # Get label ids
-    label_ids = (
-        select(models.Label.id)
-        .select_from(models.Annotation)
-        .join(models.GroundTruth, models.GroundTruth.annotation_id == models.Annotation.id, full=True)
-        .join(models.Prediction, models.Prediction.annotation_id == models.Annotation.id, full=True)
-        .join(
-            models.Label,
-            or_(
-                models.Label.id == models.GroundTruth.label_id,
-                models.Label.id == models.Prediction.label_id,
-            )
-        )
-        .where(models.Annotation.id.in_(annotation_ids))
+    scored_labels = (
+        db.query(models.Prediction.score, models.Label.key, models.Label.value)
+        .select_from(models.Prediction)
+        .join(models.Label, models.Label.id == models.Prediction.label_id)
+        .where(models.Prediction.annotation_id == annotation.id)
+        .all()
     )
 
-    # Filter by label key
-    if key:
-        labels = (
-            db.query(models.Label)
-            .where(models.Label.key == key)
-            .filter(models.Label.id.in_(label_ids))
-            .distinct()
-            .all()
+    return [
+        schemas.ScoredLabel(
+            label=schemas.Label(
+                key=label[1],
+                value=label[2],
+            ),
+            score=label[0],
         )
-    else:
-        labels = (
-            db.query(models.Label)
-            .filter(models.Label.id.in_(label_ids))
-            .distinct()
-            .all()
-        )
-
-    return labels
+        for label in scored_labels
+    ]

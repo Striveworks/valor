@@ -82,18 +82,18 @@ def poly_with_hole() -> schemas.Polygon:
     return schemas.Polygon(
         boundary=schemas.BasicPolygon(
             points=[
-                schemas.Point(0, 10),
-                schemas.Point(10, 10),
-                schemas.Point(10, 0),
-                schemas.Point(0, 0),
+                schemas.Point(x=0,  y=10),
+                schemas.Point(x=10, y=10),
+                schemas.Point(x=10, y=0),
+                schemas.Point(x=0,  y=0),
             ]
         ),
         holes=[
             schemas.BasicPolygon(
                 points=[
-                    schemas.Point(2, 4),
-                    schemas.Point(2, 8),
-                    schemas.Point(6, 4),
+                    schemas.Point(x=2, y=4),
+                    schemas.Point(x=2, y=8),
+                    schemas.Point(x=6, y=4),
                 ]
             ),
         ]
@@ -118,10 +118,10 @@ def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
                         bounding_box=schemas.BoundingBox(
                             polygon=schemas.BasicPolygon(
                                 points=[
-                                    schemas.Point(10, 20),
-                                    schemas.Point(10, 30),
-                                    schemas.Point(20, 30),
-                                    schemas.Point(20, 20), # removed repeated first point
+                                    schemas.Point(x=10, y=20),
+                                    schemas.Point(x=10, y=30),
+                                    schemas.Point(x=20, y=30),
+                                    schemas.Point(x=20, y=20), # removed repeated first point
                                 ]
                             )
                         )
@@ -136,10 +136,10 @@ def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
                         bounding_box=schemas.BoundingBox(
                             polygon=schemas.BasicPolygon(
                                 points=[
-                                    schemas.Point(10, 20),
-                                    schemas.Point(10, 30),
-                                    schemas.Point(20, 30),
-                                    schemas.Point(20, 20), # removed repeated first point
+                                    schemas.Point(x=10, y=20),
+                                    schemas.Point(x=10, y=30),
+                                    schemas.Point(x=20, y=30),
+                                    schemas.Point(x=20, y=20), # removed repeated first point
                                 ]
                             )
                         )
@@ -156,11 +156,17 @@ def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
         schemas.Prediction(
             model_name=model_name,
             datum=img1,
-            detections=[
+            annotations=[
                 schemas.PredictedAnnotation(
                     scored_labels=[
                         schemas.ScoredLabel(
                             label=schemas.Label(key="k1", value="v1"), score=0.6
+                        ),
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k1", value="v2"), score=0.4
+                        ),
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k2", value="v1"), score=0.8
                         ),
                         schemas.ScoredLabel(
                             label=schemas.Label(key="k2", value="v2"), score=0.2
@@ -171,10 +177,10 @@ def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
                         bounding_box=schemas.BoundingBox(
                             polygon=schemas.BasicPolygon(
                                 points=[
-                                    schemas.Point(107, 207),
-                                    schemas.Point(107, 307),
-                                    schemas.Point(207, 307),
-                                    schemas.Point(207, 207)
+                                    schemas.Point(x=107, y=207),
+                                    schemas.Point(x=107, y=307),
+                                    schemas.Point(x=207, y=307),
+                                    schemas.Point(x=207, y=207)
                                 ]
                             )
                         )
@@ -183,18 +189,21 @@ def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
                 schemas.PredictedAnnotation(
                     scored_labels=[
                         schemas.ScoredLabel(
+                            label=schemas.Label(key="k2", value="v1"), score=0.1
+                        ),
+                        schemas.ScoredLabel(
                             label=schemas.Label(key="k2", value="v2"), score=0.9
-                        )
+                        ),
                     ],
                     annotation=schemas.Annotation(
                         task_type=enums.TaskType.DETECTION,
                         bounding_box=schemas.BoundingBox(
                             polygon=schemas.BasicPolygon(
                                 points=[
-                                    schemas.Point(107, 207),
-                                    schemas.Point(107, 307),
-                                    schemas.Point(207, 307),
-                                    schemas.Point(207, 207)
+                                    schemas.Point(x=107, y=207),
+                                    schemas.Point(x=107, y=307),
+                                    schemas.Point(x=207, y=307),
+                                    schemas.Point(x=207, y=207)
                                 ]
                             )
                         )
@@ -2417,9 +2426,9 @@ def test_get_all_labels(
     crud.create_dataset(db, schemas.Dataset(name=dset_name))
 
     for gt in gt_dets_create:
-        crud.create_groundtruth(db, data=gt)
+        crud.create_groundtruth(db, gt)
 
-    labels = crud.get_labels(db)
+    labels = crud.get_labels(db, request=schemas.Filter())
 
     assert len(labels) == 2
     assert set([(label.key, label.value) for label in labels]) == set(
@@ -2434,26 +2443,38 @@ def test_get_labels_from_dataset(
 ):
 
     # Test get all from dataset 1
-    ds1 = crud.get_labels(db, dataset_name=dataset_names[0])
+    ds1 = crud.get_labels(
+        db, 
+        schemas.Filter(
+            filter_by_dataset_names=[dataset_names[0]]
+        )
+    )
     assert len(ds1) == 2
     assert schemas.Label(key="k1", value="v1") in ds1
     assert schemas.Label(key="k2", value="v2") in ds1
 
     # Test get all from dataset 2
-    ds2 = crud.get_labels(db, dataset_name=dataset_names[1])
+    ds2 = crud.get_labels(
+        db, 
+        schemas.Filter(
+            filter_by_dataset_names=[dataset_names[1]]
+        )
+    )
     assert len(ds2) == 2
     assert schemas.Label(key="k1", value="v1") in ds2
     assert schemas.Label(key="k2", value="v2") in ds2
 
     # Test get all but polygon labels from dataset 1
     ds1 = crud.get_labels(
-        db,
-        dataset_name=dataset_names[0],
-        of_type=[
-            enums.AnnotationType.CLASSIFICATION,
-            enums.AnnotationType.BBOX,
-            enums.AnnotationType.RASTER,
-        ],
+        db, 
+        schemas.Filter(
+            filter_by_dataset_names=[dataset_names[0]],
+            filter_by_task_types=[enums.AnnotationType.CLASSIFICATION],
+            filter_by_annotation_types=[
+                enums.AnnotationType.BOX,
+                enums.AnnotationType.RASTER,
+            ]
+        )
     )
     assert ds1 == []
 
