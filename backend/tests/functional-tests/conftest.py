@@ -133,10 +133,10 @@ def images() -> list[schemas.Datum]:
 def groundtruths(
     db: Session, images: list[schemas.Image]
 ) -> list[list[models.GroundTruth]]:
-    """Creates a dataset called "test dataset" with some groundtruth
+    """Creates a dataset called "test_dataset" with some groundtruth
     detections. These detections are taken from a torchmetrics unit test (see test_metrics.py)
     """
-    dataset_name = "test dataset"
+    dataset_name = "test_dataset"
     crud.create_dataset(
         db,
         dataset=schemas.Dataset(
@@ -218,17 +218,13 @@ def groundtruths(
         for gts, image in zip(gts_per_img, images)
     ]
 
-    created_ids = [
-        crud.create_groundtruths(
+    for gt in db_gts_per_img:
+        crud.create_groundtruth(
             db,
             groundtruth=gt,
         )
-        for gt in db_gts_per_img
-    ]
-    return [
-        [db.get(models.GroundTruth, det_id) for det_id in ids]
-        for ids in created_ids
-    ]
+
+    return db.query(models.GroundTruth).all()
 
 
 # predictions to use for testing AP
@@ -236,14 +232,19 @@ def groundtruths(
 def predictions(
     db: Session, images: list[schemas.Datum]
 ) -> list[list[models.Prediction]]:
-    """Creates a model called "test model" with some predicted
-    detections on the dataset "test dataset". These predictions are taken
+    """Creates a model called "test_model" with some predicted
+    detections on the dataset "test_dataset". These predictions are taken
     from a torchmetrics unit test (see test_metrics.py)
     """
-    model_name = "test model"
-    dset_name = "test dataset"
+    model_name = "test_model"
+    dset_name = "test_dataset"
     crud.create_model(
-        db, schemas.Model(name=model_name, type=schemas.DatumTypes.IMAGE)
+        db, schemas.Model(
+            name=model_name,
+            metadata=[
+                schemas.MetaDatum(name="type", value=enums.DataType.IMAGE.value),
+            ],
+        )
     )
 
     # predictions for four images taken from
@@ -332,14 +333,11 @@ def predictions(
         for preds, image in zip(preds_per_img, images)
     ]
 
-    created_ids = [
-        crud.create_predictions(
+    for pd in db_preds_per_img:
+        crud.create_prediction(
             db,
             prediction=pd,
         )
-        for pd in db_preds_per_img
-    ]
-    return [
-        [db.get(models.Prediction, det_id) for det_id in ids]
-        for ids in created_ids
-    ]
+
+    return db.query(models.Prediction).all()
+    

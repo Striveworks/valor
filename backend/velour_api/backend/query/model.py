@@ -41,7 +41,7 @@ def get_model(
         db.query(models.Model).where(models.Model.name == name).one_or_none()
     )
     if not model:
-        return None
+        raise exceptions.ModelDoesNotExistError(name)
 
     metadata = []
     for row in (

@@ -25,3 +25,11 @@ class Label(BaseModel):
 class ScoredLabel(BaseModel):
     label: Label
     score: float
+
+    def __eq__(self, other):
+        if hasattr(other, "key") and hasattr(other, "value") and hasattr(other, "score"):
+            return self.key == other.key and self.value == other.value and self.score == other.score
+        return False
+
+    def __hash__(self) -> int:
+        return hash(f"key:{self.label.key},value:{self.label.value},score:{self.score}")

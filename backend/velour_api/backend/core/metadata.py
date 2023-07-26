@@ -92,6 +92,9 @@ def create_metadata(
 def get_metadatum_schema(
     metadatum: models.MetaDatum,
 ) -> schemas.MetaDatum | None:
+    
+    if metadatum is None:
+        return None
 
     # Parsing
     if metadatum.string_value is not None:
@@ -116,6 +119,7 @@ def get_metadata(
     model: models.Model = None,
     datum: models.Datum = None,
     annotation: models.Annotation = None,
+    name: str = None
 ) -> list[schemas.MetaDatum]:
     """Returns list of metadatums from a union of sources (dataset, model, datum, annotation) filtered by (name, value_type)."""
 
@@ -131,6 +135,8 @@ def get_metadata(
         relationships.append(models.MetaDatum.datum_id == datum.id)
     if annotation:
         relationships.append(models.MetaDatum.annotation_id == annotation.id)
+    if name:
+        relationships.append(models.MetaDatum.name == name)
 
     # Add union of relationships
     if len(relationships) == 1:

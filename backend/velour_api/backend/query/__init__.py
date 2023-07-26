@@ -2,7 +2,9 @@ from .dataset import create_dataset, delete_dataset, get_dataset, get_datasets
 from .groundtruth import create_groundtruth, get_groundtruth, get_groundtruths
 from .label import (
     get_joint_labels,
+    get_joint_keys,
     get_disjoint_labels,
+    get_disjoint_keys,
     get_label_distribution,
     get_labels,
 )
@@ -37,6 +39,8 @@ __all__ = [
     "get_scored_label_distribution",
     "get_joint_labels",
     "get_disjoint_labels",
+    "get_joint_keys",
+    "get_disjoint_keys",
     "get_metadata",
     "get_metrics_from_evaluation_settings_id",
     "get_confusion_matrices_from_evaluation_settings_id",

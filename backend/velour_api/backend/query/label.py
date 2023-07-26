@@ -26,26 +26,102 @@ def get_labels(
     ]
 
 
+def _get_dataset_labels(db: Session, dataset_name: str) -> set[schemas.Label]:
+    return {
+        schemas.Label(key=label[0], value=label[1])
+        for label in (
+            db.query(models.Label.key, models.Label.value)
+            .join(models.GroundTruth, models.GroundTruth.label_id == models.Label.id)
+            .join(models.Annotation, models.Annotation.id == models.GroundTruth.annotation_id)
+            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+            .join(models.Dataset, models.Dataset.id == models.Dataset.id)
+            .where(
+                and_(
+                    models.Dataset.name == dataset_name,
+                    models.Annotation.model_id.is_(None),
+                )
+            )
+            .all()
+        )
+    }
+
+
+def _get_model_labels(db: Session, dataset_name: str, model_name: str) -> set[schemas.Label]:
+    return {
+        schemas.Label(key=label[0], value=label[1])
+        for label in (
+            db.query(models.Label.key, models.Label.value)
+            .join(models.Prediction, models.Prediction.label_id == models.Label.id)
+            .join(models.Annotation, models.Annotation.id == models.Prediction.annotation_id)
+            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+            .join(models.Dataset, models.Dataset.id == models.Dataset.id)
+            .join(models.Model, models.Model.id == models.Annotation.model_id)
+            .where(
+                and_(
+                    models.Dataset.name == dataset_name,
+                    models.Model.name == model_name,
+                )
+            )
+            .all()
+        )
+    }
+
+
+def _get_dataset_label_keys(db: Session, dataset_name: str) -> set[str]:
+    return {
+        label[0]
+        for label in (
+            db.query(models.Label.key)
+            .join(models.GroundTruth, models.GroundTruth.label_id == models.Label.id)
+            .join(models.Annotation, models.Annotation.id == models.GroundTruth.annotation_id)
+            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+            .join(models.Dataset, models.Dataset.id == models.Dataset.id)
+            .where(
+                and_(
+                    models.Dataset.name == dataset_name,
+                    models.Annotation.model_id.is_(None),
+                )
+            )
+            .all()
+        )
+    }
+
+
+def _get_model_label_keys(db: Session, dataset_name: str, model_name: str) -> set[str]:
+    return {
+        label[0]
+        for label in (
+            db.query(models.Label.key)
+            .join(models.Prediction, models.Prediction.label_id == models.Label.id)
+            .join(models.Annotation, models.Annotation.id == models.Prediction.annotation_id)
+            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+            .join(models.Dataset, models.Dataset.id == models.Dataset.id)
+            .join(models.Model, models.Model.id == models.Annotation.model_id)
+            .where(
+                and_(
+                    models.Dataset.name == dataset_name,
+                    models.Model.name == model_name,
+                )
+            )
+            .all()
+        )
+    }
+    
+
 def get_joint_labels(
     db: Session,
     dataset_name: str,
     model_name: str,
 ) -> list[schemas.Label]:
-    
-    # create filters
-    dsf = schemas.Filter(filter_by_dataset_names=[dataset_name])
-    mdf = schemas.Filter(
-        filter_by_dataset_names=[dataset_name],
-        filter_by_model_names=[model_name],
-    )
+    return list(_get_dataset_labels(db, dataset_name).intersection(_get_model_labels(db, dataset_name, model_name)))
 
-    # get label sets
-    ds = set(get_labels(db, dsf))
-    md = set(get_labels(db, mdf))
 
-    # return intersection of label sets
-    return list(ds.intersection(md))
-
+def get_joint_keys(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+) -> list[schemas.Label]:
+    return list(_get_dataset_label_keys(db, dataset_name).intersection(_get_model_label_keys(db, dataset_name, model_name)))
 
 def get_disjoint_labels(
     db: Session,
@@ -54,18 +130,27 @@ def get_disjoint_labels(
 ) -> dict[str, list[schemas.Label]]:
     """Returns tuple with elements (dataset, model) which contain lists of Labels. """
 
-    # create filters
-    ds_filter = schemas.Filter(
-        filter_by_dataset_names=[dataset_name]
-    )
-    md_filter = schemas.Filter(
-        filter_by_model_names=[model_name],
-        filter_by_dataset_names=[dataset_name],
-    )
+    # get labels
+    ds_labels = _get_dataset_labels(db, dataset_name)
+    md_labels = _get_model_labels(db, dataset_name, model_name)
+    
+    # set operation to get disjoint sets wrt the lhs operand
+    ds_unique = list(ds_labels - md_labels)
+    md_unique = list(md_labels - ds_labels)
 
-    # get label sets
-    ds_labels = set(get_labels(db, ds_filter))
-    md_labels = set(get_labels(db, md_filter))
+    # returns tuple of label lists 
+    return (ds_unique, md_unique)
+
+
+def get_disjoint_keys(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+) -> dict[str, list[schemas.Label]]:
+    """Returns tuple with elements (dataset, model) which contain lists of Labels. """
+
+    ds_labels = _get_dataset_label_keys(db, dataset_name)
+    md_labels = _get_model_label_keys(db, dataset_name, model_name)
 
     # set operation to get disjoint sets wrt the lhs operand
     ds_unique = list(ds_labels - md_labels)

@@ -75,4 +75,4 @@ def get_groundtruths(
         .all(db)
     )
 
-    return [core.get_groundtruth(db, datum) for datum in datums]
+    return [core.get_groundtruth_annotations(db, datum) for datum in datums]

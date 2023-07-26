@@ -40,11 +40,18 @@ def create_annotation(
         box = annotation.bounding_box.wkt()
     elif isinstance(annotation.polygon, schemas.Polygon):
         polygon = annotation.polygon.wkt()
-        print(polygon)
     elif isinstance(annotation.multipolygon, schemas.MultiPolygon):
         raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
     elif isinstance(annotation.raster, schemas.Raster):
         raster = annotation.raster.mask_bytes
+        if annotation.metadata is None:
+            annotation.metadata = []
+        annotation.metadata.extend(
+            [
+                schemas.MetaDatum(name="height", value=annotation.raster.height),
+                schemas.MetaDatum(name="width", value=annotation.raster.width),
+            ]
+        )
     # @TODO: Add more annotation types
 
     mapping = {
@@ -56,7 +63,6 @@ def create_annotation(
         "raster": raster,
     }
     row = models.Annotation(**mapping)
-    create_metadata(db, annotation.metadata, annotation=row)
     if commit:
         try:
             db.add(row)
@@ -64,6 +70,8 @@ def create_annotation(
         except IntegrityError:
             db.rollback()
             raise exceptions.AnnotationAlreadyExistsError
+        
+    create_metadata(db, annotation.metadata, annotation=row)
     return row
 
 
@@ -165,8 +173,8 @@ def get_annotation(
 
     # Raster
     if annotation.raster is not None:
-        height = get_metadatum_schema(db, datum=datum, name="height").value
-        width = get_metadatum_schema(db, datum=datum, name="width").value
+        height = get_metadata(db, annotation=annotation, name="height")[0].value
+        width = get_metadata(db, annotation=annotation, name="width")[0].value
         retval.raster = schemas.Raster(
             mask=_raster_to_png_b64(
                 db, raster=annotation.raster, height=height, width=width

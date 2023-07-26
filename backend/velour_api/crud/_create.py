@@ -1,5 +1,6 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy import and_
 
 from velour_api import backend, exceptions, schemas, enums
 from velour_api.backend import state
@@ -70,7 +71,7 @@ def _create_metric_mappings(
         ]
     )
     label_map = {
-        (label[0], label[1]): query.get_label(db, label=schemas.Label(key=label[0], value=label[1])).id
+        (label[0], label[1]): core.get_label(db, label=schemas.Label(key=label[0], value=label[1])).id
         for label in labels
     }
 
@@ -98,6 +99,26 @@ def create_clf_metrics(
     db: Session,
     request_info: schemas.ClfMetricsRequest,
 ) -> int:
+    
+    
+    dataset = core.get_dataset(db, request_info.settings.dataset_name)
+    model = core.get_model(db, request_info.settings.model_name)
+
+    # check if already exists
+    es = (
+        db.query(models.EvaluationSettings.id)
+        .where(
+            and_(
+                models.EvaluationSettings.model_id == model.id,
+                models.EvaluationSettings.dataset_id == dataset.id,
+            )
+        )
+        .one_or_none()
+    )
+    if es is not None:
+        return es
+
+
     confusion_matrices, metrics = backend_metrics.compute_clf_metrics(
         db=db,
         dataset_name=request_info.settings.dataset_name,
@@ -105,8 +126,6 @@ def create_clf_metrics(
         group_by=request_info.settings.group_by,
     )
 
-    dataset = core.get_dataset(db, request_info.settings.dataset_name)
-    model = core.get_model(db, request_info.settings.model_name)
 
     mapping={
         "dataset_id": dataset.id,
@@ -152,7 +171,7 @@ def create_clf_metrics(
             raise RuntimeError
     
     # @TODO Return job id
-    return -1
+    return es.id
         
 
 # @TODO: Make this return a job id

@@ -81,24 +81,24 @@ model_relationships = {
 
 
 class Join:
-    def __init__(self, lhs: str, rhs: str):
-        self.lhs = lhs
-        self.rhs = set([rhs])
+    def __init__(self, root: str, link: str):
+        self.root = root
+        self.links = set([link])
 
-    def or_(self, lhs: str, rhs: str):
-        if self.lhs != lhs:
+    def or_(self, root: str, link: str):        
+        if self.root != root:
             raise ValueError
-        if isinstance(rhs, str):
-            self.rhs.add(rhs)
+        if isinstance(link, str):
+            self.links.add(link)
         else:
-            self.rhs.update(rhs)
+            self.links.update(link)
 
     def __str__(self):
-        if len(self.rhs) == 1:
-            return f"JOIN {self.lhs} ON {self.lhs} == {list(self.rhs)[0]}"
-        ret = f"JOIN {self.lhs} ON \nOR(\n"
-        for e in self.rhs:
-            ret += f"  {self.lhs} == {e}"
+        if len(self.links) == 1:
+            return f"JOIN {self.root} ON {self.root} == {list(self.links)[0]}"
+        ret = f"JOIN {self.root} ON \nOR(\n"
+        for e in self.links:
+            ret += f"  {self.root} == {e}"
             ret += "\n"
         ret += ")"
         return ret
@@ -106,18 +106,18 @@ class Join:
     def relation(self) -> tuple:
         # generate binary expressions
         expressions = [
-            model_relationships[self.lhs][rhs]
-            for rhs in self.rhs
+            model_relationships[self.root][link]
+            for link in self.links
         ]
         
         if len(expressions) == 1:
             return (
-                model_mapping[self.lhs],
+                model_mapping[self.root],
                 expressions[0],
             )
         else:
             return (
-                model_mapping[self.lhs],
+                model_mapping[self.root],
                 or_(*expressions),
             )
 
@@ -127,18 +127,21 @@ def _graph_generator(
     target: str,
     prune: set = set(),
 ):
+    if source in prune or target in prune:
+        return None
+
     if source == target:
         return target
 
     remaining_options = model_graph[source] - prune
-    prune.update(remaining_options, source)
+    prune.add(source)
     if target in prune:
         prune.remove(target)
 
     path = {}
     for option in list(remaining_options):
         if retval := _graph_generator(
-            source=option, target=target, prune=prune.copy()
+            source=option, target=target, prune=prune
         ):
             path[option] = retval
 
@@ -151,16 +154,16 @@ def _flatten_graph(
     graph: dict,
     source: str, 
     target: str, 
-    join_list: dict = {}
+    join_list: dict,
 ) -> list[Join]:
     """ Recursive function """
 
     # update from current layer
     for key in graph:
         if key in join_list:
-            join_list[key].or_(lhs=key, rhs=source)
+            join_list[key].or_(root=key, link=source)
         else:
-            join_list[key] = Join(lhs=key, rhs=source)
+            join_list[key] = Join(root=key, link=source)
 
     # recurse to next layer
     for key in graph:
@@ -171,33 +174,11 @@ def _flatten_graph(
                 target=target, 
                 join_list=join_list,
             )
-            
+
     return join_list
 
 
-def _generate_joins(source, targets):
-        # Set of id's to prune
-        prune = set()
-
-        # Prune if not referenced
-        if "metadatum" not in [source, *targets]:
-            prune.add("metadatum")
-
-        # Prune if not referenced
-        if "label" not in [source, *targets]:
-            prune.add("label")
-
-        # Prune if model is source/target
-        if "model" in [source, *targets]:
-            prune.add("groundtruth")
-
-        # validate source
-        if source in prune:
-            return None
-        
-        # validate targets
-        targets = list(set(targets) - prune)
-
+def _generate_joins(source, targets, prune):
         # generate graphs
         graphs_with_target = [
             (
@@ -210,7 +191,7 @@ def _generate_joins(source, targets):
                 target
             )
             for target in targets
-        ]        
+        ]
 
         # Generate object relationships
         return [
@@ -218,22 +199,22 @@ def _generate_joins(source, targets):
                 graph=graph, 
                 source=source,
                 target=target,
+                join_list=dict(),
             )
             for graph, target in graphs_with_target
             if graph is not None
         ]
         
 
-
-def generate_query(source: str, targets: list[str]):
+def generate_query(source: str, targets: list[str], prune: set[str]):
 
         # Generate graphs
-        graphs = _generate_joins(source=source, targets=targets)
+        graphs = _generate_joins(source=source, targets=targets, prune=prune)
 
         # edge case
         if not graphs:
             return None
-
+        
         # Merge graphs
         master_graph = {}
         existing_keys = set()
@@ -243,17 +224,18 @@ def generate_query(source: str, targets: list[str]):
                 if key not in master_graph:
                     master_graph[key] = graph[key]
                 else:
-                    master_graph[key].or_(graph[key].lhs, graph[key].rhs)
+                    master_graph[key].or_(graph[key].root, graph[key].links)
 
         # Validate order-of-operations
         retlist = []
         sources = set([source])
         while len(existing_keys) > 0:
             for key in existing_keys:
-                if master_graph[key].rhs.issubset(sources):
+                if master_graph[key].links.issubset(sources):
                     retlist.append(master_graph[key])        
                     sources.add(key)
             existing_keys = existing_keys - sources
+
 
         return (retlist)
     
@@ -264,6 +246,7 @@ class BackendQuery:
         self._filters = []
         self.source = source
         self.targets = set()
+        self.avoid = set()
 
     @classmethod
     def model(cls):
@@ -301,6 +284,31 @@ class BackendQuery:
     def filters(self) -> list[BinaryExpression]:
         return self._filters
     
+    def prune(self) -> set[str]:
+        # Set of id's to prune
+        prune = self.avoid.copy()
+
+        # Prune if not referenced
+        if "metadatum" not in [self.source, *self.targets]:
+            prune.add("metadatum")
+
+        # Prune if not referenced
+        if "label" not in [self.source, *self.targets]:
+            prune.add("label")
+
+        # Prune if model is source/target
+        if "model" in [self.source, *self.targets]:
+            prune.add("groundtruth")
+
+        # validate source
+        if self.source in prune:
+            return None
+        
+        # validate targets
+        self.targets = list(set(self.targets) - prune)
+
+        return prune
+
     def __str__(self):
 
         # Get all rows of source table
@@ -311,7 +319,7 @@ class BackendQuery:
         if self.source in self.targets:
             self.targets.remove(self.source)
 
-        qstruct = generate_query(source=self.source, targets=self.targets)
+        qstruct = generate_query(source=self.source, targets=self.targets, prune=self.prune())
 
         ret = f"SELECT FROM {self.source}\n"
         for join in qstruct:
@@ -333,7 +341,7 @@ class BackendQuery:
             return select(model_mapping[self.source].id)
 
         # serialize request from graph
-        qstruct = generate_query(self.source, self.targets)
+        qstruct = generate_query(source=self.source, targets=self.targets, prune=self.prune())
 
         # select source
         src = model_mapping[self.source]
@@ -380,18 +388,19 @@ class BackendQuery:
         self.filter_by_labels(req.filter_by_labels)
         self.filter_by_metadata(req.filter_by_metadata)
 
-        # special case: determine focus on dataset or dataset-model pairing
         if req.filter_by_model_names is None:
-            self.targets.add("annotation")
-            self._filters.append(models.Annotation.model_id.is_(None))
-        # elif req.filter_by_model_names == []:
-        #     self.targets.add("annotation")
-        #     self._filters.append(models.Annotation.model_id.isnot(None))
+            self.model_is_none()
         else:
+            self.model_is_not_none()
             self.filter_by_model_names(req.filter_by_model_names)
 
-
         return self
+
+    def model_is_none(self):
+        self.avoid.add("prediction")
+
+    def model_is_not_none(self):
+        self.avoid.add("groundtruth")
 
     """ dataset filter """
 

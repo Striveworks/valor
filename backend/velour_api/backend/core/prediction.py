@@ -8,21 +8,27 @@ from velour_api.backend.core.label import get_labels
 from velour_api.backend.core.annotation import get_annotation
 from velour_api.backend.core.metadata import get_metadata
 
-def get_groundtruth_annotations(
+def get_prediction_annotations(
     db: Session,
     datum: models.Datum,
-) -> list[schemas.GroundTruthAnnotation]:
+) -> list[schemas.PredictedAnnotation]:
 
     return [
-        schemas.GroundTruthAnnotation(
-            labels=list(
+        schemas.PredictedAnnotation(
+            scored_labels=list(
                 {
-                    schemas.Label(key=label.key, value=label.value)
-                    for label in (
-                        db.query(models.Label.key, models.Label.value)
+                    schemas.ScoredLabel(
+                        label=schemas.Label(
+                            key=scored_label[1], 
+                            value=scored_label[2],
+                        ),
+                        score=scored_label[0],
+                    )
+                    for scored_label in (
+                        db.query(models.Prediction.score, models.Label.key, models.Label.value)
                         .select_from(models.Label)
-                        .join(models.GroundTruth, models.GroundTruth.label_id == models.Label.id)
-                        .join(models.Annotation, models.Annotation.id == models.GroundTruth.annotation_id)
+                        .join(models.Prediction, models.Prediction.label_id == models.Label.id)
+                        .join(models.Annotation, models.Annotation.id == models.Prediction.annotation_id)
                         .where(models.Annotation.id == annotation.id)
                         .all()
                     )
@@ -39,7 +45,7 @@ def get_groundtruth_annotations(
             .where(
                 and_(
                     models.Annotation.datum_id == datum.id),
-                    models.Annotation.model_id.is_(None),
+                    models.Annotation.model_id.isnot(None),
                 )
             .all()
         )

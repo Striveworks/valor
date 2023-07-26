@@ -5,6 +5,7 @@ from .metadata import create_metadata, create_metadatum, get_metadata, get_metad
 from .model import get_model
 from .geometry import convert_geometry
 from .groundtruth import get_groundtruth_annotations
+from .prediction import get_prediction_annotations
 
 __all__ = [
     "create_annotation",
@@ -24,5 +25,6 @@ __all__ = [
     "get_labels",
     "get_scored_labels",
     "convert_geometry", 
-    "get_groundtruth_annotations"
+    "get_groundtruth_annotations",
+    "get_prediction_annotations",
 ]

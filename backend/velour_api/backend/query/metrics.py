@@ -16,7 +16,7 @@ def _db_metric_to_pydantic_metric(db, metric: models.Metric) -> schemas.Metric:
         parameters=metric.parameters,
         value=metric.value,
         label=label,
-        group=query.get_metadatum(db, metric.group),
+        group=core.get_metadatum_schema(metric.group),
     )
 
 

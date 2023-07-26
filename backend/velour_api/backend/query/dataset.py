@@ -43,7 +43,7 @@ def get_dataset(
         .one_or_none()
     )
     if not dataset:
-        return None
+        raise exceptions.DatasetDoesNotExistError(name)
 
     metadata = []
     for row in (

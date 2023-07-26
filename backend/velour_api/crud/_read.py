@@ -44,7 +44,7 @@ def get_disjoint_labels(
     db: Session,
     dataset_name: str,
     model_name: str,
-) -> dict[str, list[schemas.Label]]:
+) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """Returns a dictionary containing disjoint sets of labels. Keys are (dataset, model) and contain sets of labels disjoint from the other."""
 
     return backend.get_disjoint_labels(
@@ -59,25 +59,14 @@ def get_disjoint_keys(
     db: Session,
     dataset_name: str,
     model_name: str,
-) -> dict[str, list[str]]:
+) -> tuple[list[str], list[str]]:
     """Returns a dictionary containing disjoint sets of label keys. Keys are (dataset, model) and contain sets of keys disjoint from the other."""
     
-    disjoint_labels = backend.get_disjoint_labels(
-        db, 
-        dataset_name=dataset_name, 
+    return backend.get_disjoint_keys(
+        db,
+        dataset_name=dataset_name,
         model_name=model_name,
     )
-
-    disjoint_keys = {}
-    disjoint_keys["dataset"] = list(set(
-        label.key
-        for label in disjoint_labels["dataset"]
-    ))
-    disjoint_keys["model"] = list(set(
-        label.key
-        for label in disjoint_labels["model"]
-    ))
-    return disjoint_keys
 
 
 """ Datum """

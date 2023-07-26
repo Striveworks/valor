@@ -1,7 +1,7 @@
 import numpy as np
 from sqlalchemy import Float, Integer
 from sqlalchemy.orm import Bundle, Session
-from sqlalchemy.sql import and_, func, select
+from sqlalchemy.sql import and_, or_, func, select
 
 from velour_api import crud, enums, schemas
 from velour_api.backend import core, models, query
@@ -191,10 +191,24 @@ def roc_auc(
         ROC AUC
     """
 
-    dataset = core.get_dataset(db, dataset_name)
-    model = core.get_model(db, model_name)
-
-    labels = query.get_labels(db, key=label_key, dataset=dataset)
+    labels = {
+        schemas.Label(key=label[0], value=label[1])
+        for label in (
+            db.query(models.Label.key, models.Label.value)
+            .join(models.GroundTruth, models.GroundTruth.label_id == models.Label.id)
+            .join(models.Annotation, models.Annotation.id == models.GroundTruth.annotation_id)
+            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+            .join(models.Dataset, models.Dataset.id == models.Dataset.id)
+            .where(
+                and_(
+                    models.Dataset.name == dataset_name,
+                    models.Annotation.model_id.is_(None),
+                    models.Label.key == label_key,
+                )
+            )
+            .all()
+        )
+    }
     if len(labels) == 0:
         raise RuntimeError(
             f"The label key '{label_key}' is not a classification label in the dataset {dataset_name}."
@@ -346,13 +360,49 @@ def compute_clf_metrics(
     ],
 ]:
     dataset = core.get_dataset(db, dataset_name)
-    model = core.get_model(db, model_name)
-    labels = query.get_labels(
-        db,
-        dataset=dataset,
-        model=model,
-        task_types=[enums.TaskType.CLASSIFICATION],
-    )
+    # model = core.get_model(db, model_name)
+
+    ds_labels = {
+        schemas.Label(key=label[0], value=label[1])
+        for label in (
+            db.query(models.Label.key, models.Label.value)
+            .select_from(models.Label)
+            .join(models.GroundTruth, models.GroundTruth.label_id == models.Label.id)
+            .join(models.Annotation, models.Annotation.id == models.GroundTruth.annotation_id)
+            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+            .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+            .where(
+                and_(
+                    models.Dataset.name == dataset_name,
+                    models.Annotation.task_type == "classification",
+                    models.Annotation.model_id.is_(None),
+                )
+            )
+            .all()
+        )
+    }
+    md_labels = {
+        schemas.Label(key=label[0], value=label[1])
+        for label in (
+            db.query(models.Label.key, models.Label.value)
+            .select_from(models.Label)
+            .join(models.Prediction, models.Prediction.label_id == models.Label.id, full=True)
+            .join(models.Annotation, models.Annotation.id == models.Prediction.annotation_id)
+            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+            .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
+            .join(models.Model, models.Model.id == models.Annotation.model_id, full=True)
+            .where(
+                and_(
+                    models.Dataset.name == dataset_name,
+                    models.Annotation.task_type == "classification",
+                    models.Annotation.model_id.isnot(None),
+                    models.Model.name == model_name,
+                )
+            )
+            .all()
+        )
+    }
+    labels = list(ds_labels.union(md_labels))
     unique_label_keys = set([label.key for label in labels])
 
     if group_by:
