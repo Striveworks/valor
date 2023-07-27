@@ -25,6 +25,7 @@ from .query import (
     get_models,
     get_prediction,
     get_predictions,
+    get_datums,
 )
 from .ops import BackendQuery
 
@@ -56,4 +57,5 @@ __all__ = [
     "get_evaluation_settings_from_id",
     "get_model_metrics",
     "get_model_evaluation_settings",
+    "get_datums",
 ]

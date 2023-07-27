@@ -11,6 +11,16 @@ def create_datum(
     datum: schemas.Datum,
     dataset: models.Dataset,
 ) -> models.Datum:
+    
+    row = (
+        db.query(models.Datum)
+        .where(models.Datum.uid == datum.uid)
+        .one_or_none()
+    )
+    if row:
+        # datum already exists
+        return row
+    
 
     # Create datum
     try:

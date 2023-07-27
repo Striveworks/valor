@@ -38,6 +38,13 @@ class Box:
     max: Point
 
     def __post_init__(self):
+        # unpack
+        if isinstance(self.min, dict):
+            self.min = Point(**self.min)
+        if isinstance(self.max, dict):
+            self.max = Point(**self.max)
+
+        # validate
         if self.min.x > self.max.x:
             raise ValueError("Cannot have xmin > xmax")
         if self.min.y > self.max.y:
@@ -51,10 +58,13 @@ class BasicPolygon:
     points: List[Point] = field(default_factory=list)
 
     def __post_init__(self):
+        # unpack & validate
         if not isinstance(self.points, list):
             raise TypeError("Member `points` is not a list.")
-        for point in self.points:
-            if not isinstance(point, Point):
+        for i in range(len(self.points)):
+            if isinstance(self.points[i], dict):
+                self.points[i] = Point(**self.points[i])
+            if not isinstance(self.points[i], Point):
                 raise TypeError("Element in points is not a `Point`.")
         if len(set(self.points)) < 3:
             raise ValueError("BasicPolygon needs at least 3 unique points to be valid.")
@@ -96,12 +106,17 @@ class Polygon:
     holes: list[BasicPolygon] = field(default_factory=list)
 
     def __post_init__(self):
+        # unpack & validate
+        if isinstance(self.boundary, dict):
+            self.boundary = BasicPolygon(**self.boundary)
         if not isinstance(self.boundary, BasicPolygon):
             raise TypeError("boundary should be of type `velour.schemas.BasicPolygon`")
         if not isinstance(self.holes, list):
             raise TypeError("holes should be a list of `velour.schemas.BasicPolygon`")
-        for hole in self.holes:
-            if not isinstance(hole, BasicPolygon):
+        for i in range(len(self.holes)):
+            if isinstance(self.holes[i], dict):
+                self.holes[i] = BasicPolygon(**self.holes[i])
+            if not isinstance(self.holes[i], BasicPolygon):
                 raise TypeError("holes list should contain elements of type `velour.schemas.BasicPolygon`")
 
 
@@ -110,6 +125,8 @@ class BoundingBox:
     polygon: BasicPolygon
 
     def __post_init__(self):
+        if isinstance(self.polygon, dict):
+            self.polygon = BasicPolygon(**self.polygon)
         if not isinstance(self.polygon, BasicPolygon):
             raise TypeError("polygon should be of type `velour.schemas.BasicPolygon`")
         if len(self.polygon.points) != 4:
@@ -134,10 +151,13 @@ class MultiPolygon:
     polygons: list[Polygon]
 
     def __post_init__(self):
+        # unpack & validate
         if not isinstance(self.polygons, list):
             raise TypeError("polygons should be list of `velour.schemas.Polyon`")
-        for polygon in self.polygons:
-            if not isinstance(polygon, Polygon):
+        for i in range(len(self.polygons)):
+            if isinstance(self.polygons[i], dict):
+                self.polygons[i] = Polygon(**self.polygons[i])
+            if not isinstance(self.polygons[i], Polygon):
                 raise TypeError("polygons list should contain elements of type `velour.schemas.Polygon`")
 
 

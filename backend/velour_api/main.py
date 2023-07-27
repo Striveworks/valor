@@ -115,9 +115,9 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
 )
 def get_dataset_labels(
     dataset_name: str, db: Session = Depends(get_db)
-) -> list[schemas.LabelDistribution]:
+) -> list[schemas.Label]:
     try:
-        return crud.get_labels(db, dataset_name=dataset_name)
+        return crud.get_labels(db, schemas.Filter(filter_by_dataset_names=[dataset_name]))
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -193,7 +193,7 @@ def get_groundtruth(
 
 
 @app.get(
-    "/datasets/{dataset_name}/datums/{uid}/groundtruth",
+    "/datasets/{dataset_name}/data/{uid}/groundtruth",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )

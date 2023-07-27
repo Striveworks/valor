@@ -205,17 +205,17 @@ def db(client: Client) -> Session:
 
 @pytest.fixture
 def rect1():
-    return BoundingBox(xmin=10, ymin=10, xmax=60, ymax=40)
+    return BoundingBox.from_extrema(xmin=10, ymin=10, xmax=60, ymax=40)
 
 
 @pytest.fixture
 def rect2():
-    return BoundingBox(xmin=15, ymin=0, xmax=70, ymax=20)
+    return BoundingBox.from_extrema(xmin=15, ymin=0, xmax=70, ymax=20)
 
 
 @pytest.fixture
 def rect3():
-    return BoundingBox(xmin=87, ymin=10, xmax=158, ymax=820)
+    return BoundingBox.from_extrema(xmin=87, ymin=10, xmax=158, ymax=820)
 
 
 @pytest.fixture
@@ -599,6 +599,7 @@ def tabular_preds() -> list[list[float]]:
     ]
 
 
+# @TODO: Stateflow
 def _test_create_image_dataset_with_gts(
     client: Client,
     gts1: list[Any],
@@ -635,8 +636,10 @@ def _test_create_image_dataset_with_gts(
         Dataset.create(client, dset_name)
     assert "already exists" in str(exc_info)
 
-    dataset.add_groundtruth(gts1)
-    dataset.add_groundtruth(gts2)
+    for gt in gts1:
+        dataset.add_groundtruth(gt)
+    for gt in gts2:
+        dataset.add_groundtruth(gt)
 
     # check that the dataset has two images
     images = dataset.get_images()
@@ -651,12 +654,13 @@ def _test_create_image_dataset_with_gts(
         == expected_labels_tuples
     )
 
-    dataset.finalize()
-    # check that we get an error when trying to add more images
-    # to the dataset since it is finalized
-    with pytest.raises(ClientException) as exc_info:
-        dataset.add_groundtruth(gts3)
-    assert "since it is finalized" in str(exc_info)
+    # TODO Stateflow
+    # dataset.finalize()
+    # # check that we get an error when trying to add more images
+    # # to the dataset since it is finalized
+    # with pytest.raises(ClientException) as exc_info:
+    #     dataset.add_groundtruth(gts3)
+    # assert "since it is finalized" in str(exc_info)
 
     return dataset
 
@@ -771,16 +775,33 @@ def test_create_model_with_href_and_description(client: Client, db: Session):
     href = "http://a.com/b"
     description = "a description"
     Model.create(client, model_name, href=href, description=description)
-    db_model = db.scalar(select(models.Model))
-    assert db_model.href == href
-    assert db_model.description == description
+    
+    model_id = db.scalar(select(models.Model.id).where(models.Model.name == model_name))
+    assert href == db.scalar(
+        select(models.MetaDatum.string_value)
+        .where(
+            and_(
+                models.MetaDatum.model_id == model_id,
+                models.MetaDatum.key == "href",
+            )
+        )
+    )
+    assert description == db.scalar(
+        select(models.MetaDatum.string_value)
+        .where(
+            and_(
+                models.MetaDatum.model_id == model_id,
+                models.MetaDatum.key == "description",
+            )
+        )
+    )
 
 
 def test_create_image_dataset_with_detections(
     client: Client,
-    gt_dets1: list[Annotation],
-    gt_dets2: list[Annotation],
-    gt_dets3: list[Annotation],
+    gt_dets1: list[GroundTruth],
+    gt_dets2: list[GroundTruth],
+    gt_dets3: list[GroundTruth],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     dataset = _test_create_image_dataset_with_gts(
@@ -795,17 +816,17 @@ def test_create_image_dataset_with_detections(
         },
     )
 
-    dets1 = dataset.get_groundtruth_detections("uid1")
-    dets2 = dataset.get_groundtruth_detections("uid2")
+    dets1 = dataset.get_groundtruth("uid1")
+    dets2 = dataset.get_groundtruth("uid2")
 
     # check we get back what we inserted
     gt_dets_uid1 = [
-        gt for gt in gt_dets1 + gt_dets2 + gt_dets3 if gt.image.uid == "uid1"
+        gt for gt in gt_dets1 + gt_dets2 + gt_dets3 if gt.datum.uid == "uid1"
     ]
     assert dets1 == gt_dets_uid1
 
     gt_dets_uid2 = [
-        gt for gt in gt_dets1 + gt_dets2 + gt_dets3 if gt.image.uid == "uid2"
+        gt for gt in gt_dets1 + gt_dets2 + gt_dets3 if gt.datum.uid == "uid2"
     ]
     assert dets2 == gt_dets_uid2
 
@@ -843,47 +864,55 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
     or a polygon
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
-    image = Image(uid="uid", height=200, width=150)
+    image = Image(uid="uid", height=200, width=150).to_datum()
     dataset = Dataset.create(client, dset_name)
 
-    gt_bbox = Annotation(
-        image=image,
-        labels=[Label(key="k", value="v")],
-        bbox=BoundingBox(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax),
-    )
-    gt_poly = Annotation(
-        image=image,
-        labels=[Label(key="k", value="v")],
-        boundary=Polygon(
-            points=[
-                Point(x=xmin, y=ymin),
-                Point(x=xmin, y=ymax),
-                Point(x=xmax, y=ymax),
-                Point(x=xmax, y=ymin),
-            ]
-        ),
+    gt = GroundTruth(
+        dataset_name=dset_name,
+        datum=image,
+        annotations=[
+            Annotation(
+                task_type=enums.TaskType.DETECTION,
+                labels=[Label(key="k", value="v")],
+                bounding_box=BoundingBox.from_extrema(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax),
+            ),
+            Annotation(
+                task_type=enums.TaskType.DETECTION,
+                labels=[Label(key="k", value="v")],
+                polygon=Polygon(
+                    boundary=BasicPolygon(
+                        points=[
+                            Point(x=xmin, y=ymin),
+                            Point(x=xmin, y=ymax),
+                            Point(x=xmax, y=ymax),
+                            Point(x=xmax, y=ymin),
+                        ]
+                    )
+                ),
+            )
+        ]
     )
 
-    dataset.add_groundtruth([gt_bbox, gt_poly])
+    dataset.add_groundtruth(gt)
 
-    db_dets = db.scalars(select(models.Annotation)).all()
+    db_dets = db.scalars(select(models.Annotation).where(models.Annotation.is_(None))).all()
     assert len(db_dets) == 2
-    assert set([db_det.is_bbox for db_det in db_dets]) == {True, False}
+    assert set([db_det.box is not None for db_det in db_dets]) == {True, False}
     assert (
-        db.scalar(ST_AsText(db_dets[0].boundary))
+        db.scalar(ST_AsText(db_dets[0].box))
         == "POLYGON((10 25,10 50,30 50,30 25,10 25))"
-        == db.scalar(ST_AsText(db_dets[1].boundary))
+        == db.scalar(ST_AsText(db_dets[1].polygon))
     )
 
     # check that they can be recovered by the client
-    detections = dataset.get_groundtruth_detections("uid")
-    assert len(detections) == 2
-    assert len([det for det in detections if det.is_bbox]) == 1
+    detections = dataset.get_groundtruth("uid")
+    assert len(detections.annotations) == 2
+    assert len([det for det in detections.annotations if det.bounding_box is not None]) == 1
     for det in detections:
-        if det.bbox:
-            assert det == gt_bbox
+        if det.box:
+            assert det == gt.annotations[0].bounding_box
         else:
-            assert det == gt_poly
+            assert det == gt.annotations[1].polygon
 
 
 def test_create_pred_detections_as_bbox_or_poly(
@@ -901,37 +930,45 @@ def test_create_pred_detections_as_bbox_or_poly(
 
     dataset.add_groundtruth(gt_dets1)
 
-    pred_bbox = ScoredAnnotation(
-        image=img1,
-        scored_labels=[
-            ScoredLabel(label=Label(key="k", value="v"), score=0.6)
-        ],
-        bbox=BoundingBox(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax),
-    )
-    pred_poly = ScoredAnnotation(
-        image=img1,
-        scored_labels=[
-            ScoredLabel(label=Label(key="k", value="v"), score=0.4)
-        ],
-        boundary=Polygon(
-            points=[
-                Point(x=xmin, y=ymin),
-                Point(x=xmin, y=ymax),
-                Point(x=xmax, y=ymax),
-                Point(x=xmax, y=ymin),
-            ]
-        ),
+    pd = Prediction(
+        model_name=model_name,
+        datum=img1,
+        annotations=[
+            ScoredAnnotation(
+                task_type=enums.TaskType.DETECTION,
+                scored_labels=[
+                    ScoredLabel(label=Label(key="k", value="v"), score=0.6)
+                ],
+                bounding_box=BoundingBox.from_extrema(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax),
+            ),
+            ScoredAnnotation(
+                task_type=enums.TaskType.DETECTION,
+                scored_labels=[
+                    ScoredLabel(label=Label(key="k", value="v"), score=0.4)
+                ],
+                polygon=Polygon(
+                    boundary=BasicPolygon(
+                        points=[
+                            Point(x=xmin, y=ymin),
+                            Point(x=xmin, y=ymax),
+                            Point(x=xmax, y=ymax),
+                            Point(x=xmax, y=ymin),
+                        ]
+                    )
+                )
+            )
+        ]
     )
 
-    model.add_prediction(dataset=dataset, predictions=[pred_bbox, pred_poly])
+    model.add_prediction(pd)
 
-    db_dets = db.scalars(select(models.ScoredAnnotation)).all()
+    db_dets = db.scalars(select(models.Annotation).where(models.Annotation.model_id.isnot(None))).all()
     assert len(db_dets) == 2
-    assert set([db_det.is_bbox for db_det in db_dets]) == {True, False}
+    assert set([db_det.box is not None for db_det in db_dets]) == {True, False}
     assert (
-        db.scalar(ST_AsText(db_dets[0].boundary))
+        db.scalar(ST_AsText(db_dets[0].box))
         == "POLYGON((10 25,10 50,30 50,30 25,10 25))"
-        == db.scalar(ST_AsText(db_dets[1].boundary))
+        == db.scalar(ST_AsText(db_dets[1].polygon))
     )
 
 

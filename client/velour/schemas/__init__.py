@@ -9,6 +9,7 @@ from .core import (
     Model,
     Prediction,
     ScoredLabel,
+    Metadatum,
 )
 from .geometry import (
     BasicPolygon,
@@ -19,7 +20,7 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .metadata import Metadatum, GeoJSON
+from .metadata import GeoJSON
 from .info import (
     AnnotationDistribution,
     LabelDistribution,

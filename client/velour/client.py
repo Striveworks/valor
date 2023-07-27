@@ -240,7 +240,11 @@ class Dataset:
         self,
         groundtruth: schemas.GroundTruth,
     ):
-        assert isinstance(groundtruth, schemas.GroundTruth)
+        try:
+            assert isinstance(groundtruth, schemas.GroundTruth)
+        except:
+            raise TypeError(f"Invalid type `{type(groundtruth)}`")
+
         groundtruth.dataset_name = self.info.name
         return self.client._requests_post_rel_host(
             f"groundtruth",
@@ -249,7 +253,7 @@ class Dataset:
 
     def get_groundtruth(self, uid: str) -> schemas.GroundTruth:
         resp = self.client._requests_get_rel_host(
-            f"datasets/{self.info.name}/datum/{uid}/groundtruth"
+            f"datasets/{self.info.name}/data/{uid}/groundtruth"
         ).json()
         return schemas.GroundTruth(**resp)
 
@@ -259,8 +263,8 @@ class Dataset:
         ).json()
 
         return [
-            schemas.LabelDistribution(
-                key=label["key"], value=label["value"], count=label["count"]
+            schemas.Label(
+                key=label["key"], value=label["value"]
             )
             for label in labels
         ]
