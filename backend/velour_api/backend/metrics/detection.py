@@ -35,6 +35,7 @@ class RankedPair:
 
 
 def _ap(
+        db,
     sorted_ranked_pairs: Dict[int, List[RankedPair]],
     number_of_ground_truths: int,
     labels: Dict[int, schemas.Label],
@@ -312,15 +313,6 @@ def compute_ap_metrics(
                 )
             )
 
-    label_id = (
-        db.scalar(
-            select(models.Label.id)
-            .where(models.Label.value == "49")
-        )
-    )
-    for pair in ranking[label_id]:
-        print(pair)
-
     # Get groundtruth labels
     relation = []
     if gt_type == enums.AnnotationType.BOX:
@@ -349,20 +341,17 @@ def compute_ap_metrics(
         )
     }
 
-    for label in labels:
-        print(labels[label])
-
     # Get the number of ground truths per label id
     number_of_ground_truths = {
         id: db.scalar(
             select(func.count(models.GroundTruth.id))
-            .where(models.GroundTruth.id == id)
+            .where(models.GroundTruth.label_id == id)
         )
         for id in labels
     }
 
     # Compute AP
-    ap_metrics = _ap(
+    ap_metrics = _ap(db,
         sorted_ranked_pairs=ranking,
         number_of_ground_truths=number_of_ground_truths,
         labels=labels,

@@ -223,7 +223,6 @@ def test_compute_ap_metrics(
 
     # check that metrics and labels are equivalent
     for m in metrics:
-        print(m)
         assert m in expected
 
     for m in expected:
