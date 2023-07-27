@@ -1,4 +1,10 @@
-from .dataset import create_dataset, delete_dataset, get_dataset, get_datasets
+from .dataset import (
+    create_dataset,
+    delete_dataset,
+    get_dataset,
+    get_datasets,
+    get_datums,
+)
 from .groundtruth import create_groundtruth, get_groundtruth, get_groundtruths
 from .label import (
     get_joint_labels,
@@ -23,6 +29,7 @@ __all__ = [
     "create_dataset",
     "get_dataset",
     "get_datasets",
+    "get_datums",
     "delete_dataset",
     "create_model",
     "get_model",

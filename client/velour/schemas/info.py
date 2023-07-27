@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from velour.schemas.core import Label
+from velour import enums
 
 @dataclass
 class LabelDistribution:

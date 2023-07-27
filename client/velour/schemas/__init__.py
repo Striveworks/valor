@@ -19,12 +19,13 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .metadata import GeoJSON, Metadatum
+from .metadata import Metadatum, GeoJSON
 from .info import (
     AnnotationDistribution,
     LabelDistribution,
     ScoredLabelDistribution,
 )
+from .datatype import Image
 
 __all__ = [
     "Box",
@@ -34,6 +35,7 @@ __all__ = [
     "Model",
     "Datum",
     "Info",
+    "Image",
     "Label",
     "ScoredLabel",
     "Annotation",

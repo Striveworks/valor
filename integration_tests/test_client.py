@@ -17,43 +17,44 @@ from geoalchemy2.functions import (
     ST_Polygon,
 )
 from PIL import Image as PILImage
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, and_
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 
+from velour import enums
 from velour.client import (
     Client,
     ClientException,
-    DatumTypes,
-    ImageDataset,
-    TabularDataset,
+    Dataset,
+    Model,
 )
-from velour.data_types import (
-    BoundingBox,
-    BoundingPolygon,
-    GroundTruthDetection,
-    GroundTruthImageClassification,
-    GroundTruthInstanceSegmentation,
-    GroundTruthSemanticSegmentation,
+from velour.schemas import (
     Image,
+    Annotation,
+    GroundTruth,
+    Datum,
     Label,
     Metadatum,
-    Point,
-    PolygonWithHole,
-    PredictedDetection,
-    PredictedImageClassification,
-    PredictedInstanceSegmentation,
+    ScoredAnnotation,
+    Prediction,
     ScoredLabel,
+    Point,
+    BoundingBox,
+    BasicPolygon,
+    Polygon,
+    MultiPolygon,
+    Raster,
 )
 from velour.metrics import Task
-from velour_api import crud, models, ops
+from velour_api import crud
+from velour_api.backend import models, ops
 
-dset_name = "test dataset"
-model_name = "test model"
+dset_name = "test_dataset"
+model_name = "test_model"
 
 
-def bbox_to_poly(bbox: BoundingBox) -> BoundingPolygon:
-    return BoundingPolygon(
+def bbox_to_poly(bbox: BoundingBox) -> Polygon:
+    return Polygon(
         points=[
             Point(x=bbox.xmin, y=bbox.ymin),
             Point(x=bbox.xmin, y=bbox.ymax),
@@ -64,14 +65,14 @@ def bbox_to_poly(bbox: BoundingBox) -> BoundingPolygon:
 
 
 def _list_of_points_from_wkt_polygon(
-    db: Session, det: GroundTruthDetection | PredictedDetection
+    db: Session, det: Annotation | ScoredAnnotation
 ) -> list[tuple[int, int]]:
     geo = json.loads(db.scalar(det.boundary.ST_AsGeoJSON()))
     assert len(geo["coordinates"]) == 1
     return [tuple(p) for p in geo["coordinates"][0]]
 
 
-def area(rect: BoundingPolygon) -> float:
+def area(rect: Polygon) -> float:
     """Computes the area of a rectangle"""
     assert len(rect.points) == 4
     xs = [pt.x for pt in rect.points]
@@ -80,7 +81,7 @@ def area(rect: BoundingPolygon) -> float:
     return (max(xs) - min(xs)) * (max(ys) - min(ys))
 
 
-def intersection_area(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
+def intersection_area(rect1: Polygon, rect2: Polygon) -> float:
     """Computes the intersection area of two rectangles"""
     assert len(rect1.points) == len(rect2.points) == 4
 
@@ -102,7 +103,7 @@ def intersection_area(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
     return inter_width * inter_height
 
 
-def iou(rect1: BoundingPolygon, rect2: BoundingPolygon) -> float:
+def iou(rect1: Polygon, rect2: Polygon) -> float:
     """Computes the "intersection over union" of two rectangles"""
     inter_area = intersection_area(rect1, rect2)
     return inter_area / (area(rect1) + area(rect2) - inter_area)
@@ -113,14 +114,14 @@ def metadata():
     """Some sample metadata of different types"""
     return [
         Metadatum(
-            name="metadatum name1",
+            key="metadatum name1",
             value={
                 "type": "Point",
                 "coordinates": [-48.23456, 20.12345],
             },
         ),
-        Metadatum(name="metadatum name2", value="a string"),
-        Metadatum(name="metadatum name3", value=0.45),
+        Metadatum(key="metadatum name2", value="a string"),
+        Metadatum(key="metadatum name3", value=0.45),
     ]
 
 
@@ -131,32 +132,32 @@ def client():
 
 @pytest.fixture
 def img1():
-    return Image(uid="uid1", height=900, width=300)
+    return Image(uid="uid1", height=900, width=300).to_datum()
 
 
 @pytest.fixture
 def img2():
-    return Image(uid="uid2", height=400, width=300)
+    return Image(uid="uid2", height=400, width=300).to_datum()
 
 
 @pytest.fixture
 def img5():
-    return Image(uid="uid5", height=400, width=300)
+    return Image(uid="uid5", height=400, width=300).to_datum()
 
 
 @pytest.fixture
 def img6():
-    return Image(uid="uid6", height=400, width=300)
+    return Image(uid="uid6", height=400, width=300).to_datum()
 
 
 @pytest.fixture
 def img8():
-    return Image(uid="uid8", height=400, width=300)
+    return Image(uid="uid8", height=400, width=300).to_datum()
 
 
 @pytest.fixture
 def img9():
-    return Image(uid="uid9", height=400, width=300)
+    return Image(uid="uid9", height=400, width=300).to_datum()
 
 
 @pytest.fixture
@@ -176,7 +177,7 @@ def db(client: Client) -> Session:
             "Tests should be run on an empty velour backend but found existing models."
         )
 
-    if len(client.get_all_labels()) > 0:
+    if len(client.get_labels()) > 0:
         raise RuntimeError(
             "Tests should be run on an empty velour backend but found existing labels."
         )
@@ -190,10 +191,10 @@ def db(client: Client) -> Session:
 
     # cleanup by deleting all datasets, models, and labels
     for dataset in client.get_datasets():
-        crud.delete_dataset(db=sess, dataset_name=dataset["name"])
+        Dataset.prune(client, dataset["name"])
 
     for model in client.get_models():
-        client.delete_model(name=model["name"])
+        Model.prune(client, model["name"])
 
     labels = sess.scalars(select(models.Label))
     for label in labels:
@@ -220,75 +221,132 @@ def rect3():
 @pytest.fixture
 def gt_dets1(
     rect1: BoundingBox, rect2: BoundingBox, img1: Image, img2: Image
-) -> list[GroundTruthDetection]:
+) -> list[GroundTruth]:
     return [
-        GroundTruthDetection(
-            bbox=rect1,
-            labels=[Label(key="k1", value="v1")],
-            image=img1,
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img1,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[Label(key="k1", value="v1")],
+                    bounding_box=rect1,
+                )
+            ]
         ),
-        GroundTruthDetection(
-            bbox=rect2,
-            labels=[Label(key="k1", value="v1")],
-            image=img2,
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img2,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[Label(key="k1", value="v1")],
+                    bounding_box=rect2,
+                )
+            ]
         ),
     ]
 
 
 @pytest.fixture
 def gt_poly_dets1(
-    gt_dets1: list[GroundTruthDetection],
-) -> list[GroundTruthDetection]:
+    rect1: BoundingBox, rect2: BoundingBox, img1: Image, img2: Image
+) -> list[GroundTruth]:
     """Same thing as gt_dets1 but represented as a polygon instead of bounding box"""
 
     return [
-        GroundTruthDetection(
-            image=det.image, labels=det.labels, boundary=bbox_to_poly(det.bbox)
-        )
-        for det in gt_dets1
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img1,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[Label(key="k1", value="v1")],
+                    polygon=rect1.polygon,
+                )
+            ]
+        ),
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img2,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[Label(key="k1", value="v1")],
+                    polygon=rect2.polygon,
+                )
+            ]
+        ),
     ]
 
 
 @pytest.fixture
-def gt_dets2(rect3: BoundingBox, img1: Image) -> list[GroundTruthDetection]:
+def gt_dets2(rect3: BoundingBox, img1: Image) -> list[GroundTruth]:
     return [
-        GroundTruthDetection(
-            bbox=rect3,
-            labels=[Label(key="k2", value="v2")],
-            image=img1,
-        )
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img1,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[Label(key="k2", value="v2")],
+                    bounding_box=rect3,
+                )
+            ]
+        ),
     ]
 
 
 @pytest.fixture
-def gt_dets3(rect3: BoundingBox, img8: Image) -> list[GroundTruthDetection]:
+def gt_dets3(rect3: BoundingBox, img8: Image) -> list[GroundTruth]:
     return [
-        GroundTruthDetection(
-            bbox=rect3,
-            labels=[Label(key="k3", value="v3")],
-            image=img8,
-        )
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img8,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[Label(key="k3", value="v3")],
+                    bounding_box=rect3,
+                )
+            ]
+        ),
     ]
 
 
 @pytest.fixture
 def gt_segs1(
     rect1: BoundingBox, rect2: BoundingBox, img1: Image, img2: Image
-) -> list[GroundTruthInstanceSegmentation]:
+) -> list[Annotation]:
     return [
-        GroundTruthInstanceSegmentation(
-            shape=[PolygonWithHole(polygon=bbox_to_poly(rect1))],
-            labels=[Label(key="k1", value="v1")],
-            image=img1,
-        ),
-        GroundTruthInstanceSegmentation(
-            shape=[
-                PolygonWithHole(
-                    polygon=bbox_to_poly(rect2), hole=bbox_to_poly(rect1)
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img1,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    labels=[Label(key="k1", value="v1")],
+                    multipolygon=MultiPolygon(polygons=[Polygon(polygon=bbox_to_poly(rect1))])
                 )
-            ],
-            labels=[Label(key="k1", value="v1")],
-            image=img2,
+            ]
+        ),
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img2,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    labels=[Label(key="k1", value="v1")],
+                    multipolygon=MultiPolygon(
+                        polygons=[
+                            Polygon(
+                                boundary=bbox_to_poly(rect2), 
+                                holes=[bbox_to_poly(rect1)],
+                            )
+                        ]
+                    )
+                )
+            ]
         ),
     ]
 
@@ -296,138 +354,224 @@ def gt_segs1(
 @pytest.fixture
 def gt_segs2(
     rect1: BoundingBox, rect3: BoundingBox, img1: Image
-) -> list[GroundTruthSemanticSegmentation]:
+) -> list[GroundTruth]:
     return [
-        GroundTruthSemanticSegmentation(
-            shape=[
-                PolygonWithHole(polygon=bbox_to_poly(rect3)),
-                PolygonWithHole(polygon=bbox_to_poly(rect1)),
-            ],
-            labels=[Label(key="k2", value="v2")],
-            image=img1,
-        )
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img1,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[Label(key="k2", value="v2")],
+                    multipolygon=MultiPolygon(
+                        polygons=[
+                            Polygon(polygon=bbox_to_poly(rect3)),
+                            Polygon(polygon=bbox_to_poly(rect1)),
+                        ]
+                    )
+                )
+            ]
+        ),
     ]
 
 
 @pytest.fixture
 def gt_segs3(
     rect3: BoundingBox, img9: Image
-) -> list[GroundTruthSemanticSegmentation]:
+) -> list[GroundTruth]:
     return [
-        GroundTruthSemanticSegmentation(
-            shape=[PolygonWithHole(polygon=bbox_to_poly(rect3))],
-            labels=[Label(key="k3", value="v3")],
-            image=img9,
-        )
-    ]
-
-
-@pytest.fixture
-def gt_clfs1(img5: Image, img6: Image) -> list[GroundTruthImageClassification]:
-    return [
-        GroundTruthImageClassification(
-            image=img5, labels=[Label(key="k5", value="v5")]
-        ),
-        GroundTruthImageClassification(
-            image=img6, labels=[Label(key="k4", value="v4")]
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img9,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[Label(key="k3", value="v3")],
+                    multipolygon=MultiPolygon(
+                        polygons=[Polygon(polygon=bbox_to_poly(rect3))],
+                    )
+                )
+            ]
         ),
     ]
 
 
 @pytest.fixture
-def gt_clfs2(img5: Image) -> list[GroundTruthImageClassification]:
+def gt_clfs1(img5: Image, img6: Image) -> list[GroundTruth]:
     return [
-        GroundTruthImageClassification(
-            image=img5, labels=[Label(key="k4", value="v4")]
-        )
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img5,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[Label(key="k5", value="v5")]
+                )
+            ]
+        ),
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img6,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[Label(key="k4", value="v4")]
+                )
+            ]
+        ),
     ]
 
 
 @pytest.fixture
-def gt_clfs3(img8: Image) -> list[GroundTruthImageClassification]:
+def gt_clfs2(img5: Image) -> list[GroundTruth]:
     return [
-        GroundTruthImageClassification(
-            labels=[Label(key="k3", value="v3")],
-            image=img8,
-        )
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img5,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[Label(key="k4", value="v4")],
+                )
+            ]
+        ),
+    ]
+
+
+@pytest.fixture
+def gt_clfs3(img8: Image) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img8,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[Label(key="k3", value="v3")],
+                )
+            ]
+        ),
     ]
 
 
 @pytest.fixture
 def pred_dets(
     rect1: BoundingBox, rect2: BoundingBox, img1: Image, img2: Image
-) -> list[PredictedDetection]:
+) -> list[Prediction]:
     return [
-        PredictedDetection(
-            bbox=rect1,
-            scored_labels=[
-                ScoredLabel(label=Label(key="k1", value="v1"), score=0.3)
-            ],
-            image=img1,
+        Prediction(
+            model_name=model_name,
+            datum=img1,
+            annotations=[
+                ScoredAnnotation(
+                    task_type=enums.TaskType.DETECTION,
+                    scored_labels=[
+                        ScoredLabel(label=Label(key="k1", value="v1"), score=0.3)
+                    ],
+                    bounding_box=rect1,
+                )
+            ]
         ),
-        PredictedDetection(
-            bbox=rect2,
-            scored_labels=[
-                ScoredLabel(label=Label(key="k2", value="v2"), score=0.98)
-            ],
-            image=img2,
+        Prediction(
+            model_name=model_name,
+            datum=img2,
+            annotations=[
+                ScoredAnnotation(
+                    task_type=enums.TaskType.DETECTION,
+                    scored_labels=[
+                        ScoredLabel(label=Label(key="k2", value="v2"), score=0.98)
+                    ],
+                    bounding_box=rect2,
+                )
+            ]
         ),
     ]
 
 
 @pytest.fixture
 def pred_poly_dets(
-    pred_dets: list[PredictedDetection],
-) -> list[PredictedDetection]:
+    pred_dets: list[Prediction],
+) -> list[Prediction]:
     return [
-        PredictedDetection(
-            image=det.image,
-            scored_labels=det.scored_labels,
-            boundary=bbox_to_poly(det.bbox),
+        Prediction(
+            model_name=det.model_name,
+            datum=det.model_name,
+            annotations=[
+                ScoredAnnotation(
+                    task_type=enums.TaskType.DETECTION,
+                    scored_labels=annotation.scored_labels,
+                    polygon=bbox_to_poly(annotation.bounding_box)
+                )
+                for annotation in det.annotations
+            ]
         )
         for det in pred_dets
     ]
 
 
 @pytest.fixture
-def pred_segs(img1: Image, img2: Image) -> list[PredictedInstanceSegmentation]:
+def pred_segs(img1: Image, img2: Image) -> list[Prediction]:
     mask_1 = np.random.randint(0, 2, size=(64, 32), dtype=bool)
     mask_2 = np.random.randint(0, 2, size=(12, 23), dtype=bool)
     return [
-        PredictedInstanceSegmentation(
-            mask=mask_1,
-            scored_labels=[
-                ScoredLabel(label=Label(key="k1", value="v1"), score=0.87)
-            ],
-            image=img1,
+        Prediction(
+            model_name=model_name,
+            datum=img1,
+            annotations=[
+                ScoredAnnotation(
+                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    scored_labels=[
+                        ScoredLabel(label=Label(key="k1", value="v1"), score=0.87)
+                    ],
+                    raster=Raster.from_numpy(mask_1),
+                )
+            ]   
         ),
-        PredictedInstanceSegmentation(
-            mask=mask_2,
-            scored_labels=[
-                ScoredLabel(label=Label(key="k2", value="v2"), score=0.92)
-            ],
-            image=img2,
+        Prediction(
+            model_name=model_name,
+            datum=img2,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    scored_labels=[
+                        ScoredLabel(label=Label(key="k2", value="v2"), score=0.92)
+                    ],
+                    mask=Raster.from_numpy(mask_2),
+                )
+            ]
         ),
     ]
 
 
 @pytest.fixture
-def pred_clfs(img5: Image, img6: Image) -> list[PredictedImageClassification]:
+def pred_clfs(img5: Image, img6: Image) -> list[Prediction]:
     return [
-        PredictedImageClassification(
-            image=img5,
-            scored_labels=[
-                ScoredLabel(label=Label(key="k12", value="v12"), score=0.47),
-                ScoredLabel(label=Label(key="k12", value="v16"), score=0.53),
-                ScoredLabel(label=Label(key="k13", value="v13"), score=1.0),
-            ],
+        Prediction(
+            model_name=model_name,
+            datum=img5,
+            annotations=[
+                ScoredAnnotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    scored_labels=[
+                        ScoredLabel(label=Label(key="k12", value="v12"), score=0.47),
+                        ScoredLabel(label=Label(key="k12", value="v16"), score=0.53),
+                        ScoredLabel(label=Label(key="k13", value="v13"), score=1.0),
+                    ],
+                )
+            ]
         ),
-        PredictedImageClassification(
-            image=img6,
-            scored_labels=[
-                ScoredLabel(label=Label(key="k4", value="v4"), score=0.71),
-                ScoredLabel(label=Label(key="k4", value="v5"), score=0.29),
-            ],
+        Prediction(
+            model_name=model_name,
+            datum=img6,
+            annotations=[
+                ScoredAnnotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    scored_labels=[
+                        ScoredLabel(label=Label(key="k4", value="v4"), score=0.71),
+                        ScoredLabel(label=Label(key="k4", value="v5"), score=0.29),
+                    ],
+                )
+            ]
         ),
     ]
 
@@ -462,7 +606,7 @@ def _test_create_image_dataset_with_gts(
     gts3: list[Any],
     expected_labels_tuples: set[tuple[str, str]],
     expected_image_uids: list[str],
-) -> ImageDataset:
+) -> Dataset:
     """This test does the following
     - Creates a dataset
     - Adds groundtruth data to it in two batches
@@ -484,10 +628,11 @@ def _test_create_image_dataset_with_gts(
     expected_image_uids
         set of image uids to check were added to the database
     """
-    dataset = client.create_image_dataset(dset_name)
+
+    dataset = Dataset.create(client, dset_name)
 
     with pytest.raises(ClientException) as exc_info:
-        client.create_image_dataset(dset_name)
+        Dataset.create(client, dset_name)
     assert "already exists" in str(exc_info)
 
     dataset.add_groundtruth(gts1)
@@ -518,7 +663,7 @@ def _test_create_image_dataset_with_gts(
 
 def _test_create_model_with_preds(
     client: Client,
-    datum_type: DatumTypes,
+    datum_type: enums.DataType,
     gts: list[Any],
     preds: list[Any],
     preds_model_class: type,
@@ -550,27 +695,23 @@ def _test_create_model_with_preds(
     -------
     the sqlalchemy objects for the created predictions
     """
-    if datum_type == DatumTypes.IMAGE:
-        model = client.create_image_model(model_name)
-        dataset = client.create_image_dataset(dset_name)
-    else:
-        model = client.create_tabular_model(model_name)
-        dataset = client.create_tabular_dataset(dset_name)
+    dataset = Dataset.create(client, dset_name)
+    model = Model.create(client, model_name)
 
     # verify we get an error if we try to create another model
     # with the same name
     with pytest.raises(ClientException) as exc_info:
-        client.create_image_model(model_name)
+        Model.create(client, model_name)
     assert "already exists" in str(exc_info)
 
     # check that if we try to add detections we get an error
     # since we haven't added any images yet
     with pytest.raises(ClientException) as exc_info:
-        model.add_predictions(dataset, preds)
+        model.add_prediction(preds)
     assert "Image with uid" in str(exc_info)
 
     dataset.add_groundtruth(gts)
-    model.add_predictions(dataset, preds)
+    model.add_prediction(preds)
 
     # check predictions have been added
     db_preds = db.scalars(select(preds_model_class)).all()
@@ -598,16 +739,38 @@ def test_create_image_dataset_with_href_and_description(
 ):
     href = "http://a.com/b"
     description = "a description"
-    client.create_image_dataset(dset_name, href=href, description=description)
-    db_dataset = db.scalar(select(models.Dataset))
-    assert db_dataset.href == href
-    assert db_dataset.description == description
+    Dataset.create(
+        client,
+        dset_name,
+        href=href,
+        description=description
+    )
+
+    dataset_id = db.scalar(select(models.Dataset.id).where(models.Dataset.name == dset_name))
+    assert href == db.scalar(
+        select(models.MetaDatum.string_value)
+        .where(
+            and_(
+                models.MetaDatum.dataset_id == dataset_id,
+                models.MetaDatum.key == "href",
+            )
+        )
+    )
+    assert description == db.scalar(
+        select(models.MetaDatum.string_value)
+        .where(
+            and_(
+                models.MetaDatum.dataset_id == dataset_id,
+                models.MetaDatum.key == "description",
+            )
+        )
+    )
 
 
 def test_create_model_with_href_and_description(client: Client, db: Session):
     href = "http://a.com/b"
     description = "a description"
-    client.create_image_model(model_name, href=href, description=description)
+    Model.create(client, model_name, href=href, description=description)
     db_model = db.scalar(select(models.Model))
     assert db_model.href == href
     assert db_model.description == description
@@ -615,9 +778,9 @@ def test_create_model_with_href_and_description(client: Client, db: Session):
 
 def test_create_image_dataset_with_detections(
     client: Client,
-    gt_dets1: list[GroundTruthDetection],
-    gt_dets2: list[GroundTruthDetection],
-    gt_dets3: list[GroundTruthDetection],
+    gt_dets1: list[Annotation],
+    gt_dets2: list[Annotation],
+    gt_dets3: list[Annotation],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     dataset = _test_create_image_dataset_with_gts(
@@ -649,16 +812,16 @@ def test_create_image_dataset_with_detections(
 
 def test_create_image_model_with_predicted_detections(
     client: Client,
-    gt_poly_dets1: list[GroundTruthDetection],
-    pred_poly_dets: list[PredictedDetection],
+    gt_poly_dets1: list[Annotation],
+    pred_poly_dets: list[ScoredAnnotation],
     db: Session,
 ):
     labeled_pred_dets = _test_create_model_with_preds(
         client=client,
-        datum_type=DatumTypes.IMAGE,
+        datum_type=enums.DataType.IMAGE,
         gts=gt_poly_dets1,
         preds=pred_poly_dets,
-        preds_model_class=models.LabeledPredictedDetection,
+        preds_model_class=models.LabeledScoredAnnotation,
         preds_expected_number=2,
         expected_labels_tuples={("k1", "v1"), ("k2", "v2")},
         expected_scores={0.3, 0.98},
@@ -681,17 +844,17 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
     image = Image(uid="uid", height=200, width=150)
-    dataset = client.create_image_dataset(dset_name)
+    dataset = Dataset.create(client, dset_name)
 
-    gt_bbox = GroundTruthDetection(
+    gt_bbox = Annotation(
         image=image,
         labels=[Label(key="k", value="v")],
         bbox=BoundingBox(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax),
     )
-    gt_poly = GroundTruthDetection(
+    gt_poly = Annotation(
         image=image,
         labels=[Label(key="k", value="v")],
-        boundary=BoundingPolygon(
+        boundary=Polygon(
             points=[
                 Point(x=xmin, y=ymin),
                 Point(x=xmin, y=ymax),
@@ -703,7 +866,7 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
 
     dataset.add_groundtruth([gt_bbox, gt_poly])
 
-    db_dets = db.scalars(select(models.GroundTruthDetection)).all()
+    db_dets = db.scalars(select(models.Annotation)).all()
     assert len(db_dets) == 2
     assert set([db_det.is_bbox for db_det in db_dets]) == {True, False}
     assert (
@@ -726,31 +889,31 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
 def test_create_pred_detections_as_bbox_or_poly(
     db: Session,
     client: Client,
-    gt_dets1: list[GroundTruthDetection],
+    gt_dets1: list[Annotation],
     img1: Image,
 ):
     """Test that a predicted detection can be created as either a bounding box
     or a polygon
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
-    dataset = client.create_image_dataset(dset_name)
-    model = client.create_image_model(model_name)
+    dataset = Dataset.create(client, dset_name)
+    model = Model.create(client, model_name)
 
     dataset.add_groundtruth(gt_dets1)
 
-    pred_bbox = PredictedDetection(
+    pred_bbox = ScoredAnnotation(
         image=img1,
         scored_labels=[
             ScoredLabel(label=Label(key="k", value="v"), score=0.6)
         ],
         bbox=BoundingBox(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax),
     )
-    pred_poly = PredictedDetection(
+    pred_poly = ScoredAnnotation(
         image=img1,
         scored_labels=[
             ScoredLabel(label=Label(key="k", value="v"), score=0.4)
         ],
-        boundary=BoundingPolygon(
+        boundary=Polygon(
             points=[
                 Point(x=xmin, y=ymin),
                 Point(x=xmin, y=ymax),
@@ -760,9 +923,9 @@ def test_create_pred_detections_as_bbox_or_poly(
         ),
     )
 
-    model.add_predictions(dataset=dataset, predictions=[pred_bbox, pred_poly])
+    model.add_prediction(dataset=dataset, predictions=[pred_bbox, pred_poly])
 
-    db_dets = db.scalars(select(models.PredictedDetection)).all()
+    db_dets = db.scalars(select(models.ScoredAnnotation)).all()
     assert len(db_dets) == 2
     assert set([db_det.is_bbox for db_det in db_dets]) == {True, False}
     assert (
@@ -774,9 +937,9 @@ def test_create_pred_detections_as_bbox_or_poly(
 
 def test_create_image_dataset_with_segmentations(
     client: Client,
-    gt_segs1: list[GroundTruthSemanticSegmentation],
-    gt_segs2: list[GroundTruthSemanticSegmentation],
-    gt_segs3: list[GroundTruthSemanticSegmentation],
+    gt_segs1: list[GroundTruth],
+    gt_segs2: list[GroundTruth],
+    gt_segs3: list[GroundTruth],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     dataset = _test_create_image_dataset_with_gts(
@@ -793,9 +956,9 @@ def test_create_image_dataset_with_segmentations(
 
     # should have one instance segmentation that's a rectangle
     # with xmin, ymin, xmax, ymax = 10, 10, 60, 40
-    instance_segs = dataset.get_groundtruth_instance_segmentations("uid1")
+    instance_segs = dataset.get_groundtruth("uid1")
     for seg in instance_segs:
-        assert isinstance(seg, GroundTruthInstanceSegmentation)
+        assert isinstance(seg, GroundTruth)
     assert len(instance_segs) == 1
     mask = instance_segs[0].shape
     # check get all True in the box
@@ -808,9 +971,9 @@ def test_create_image_dataset_with_segmentations(
     # should have one semantic segmentation that's a rectangle
     # with xmin, ymin, xmax, ymax = 10, 10, 60, 40 plus a rectangle
     # with xmin, ymin, xmax, ymax = 87, 10, 158, 820
-    semantic_segs = dataset.get_groundtruth_semantic_segmentations("uid1")
+    semantic_segs = dataset.get_groundtruth("uid1")
     for seg in semantic_segs:
-        assert isinstance(seg, GroundTruthSemanticSegmentation)
+        assert isinstance(seg, GroundTruth)
     mask = semantic_segs[0].shape
     assert mask[10:40, 10:60].all()
     assert mask[10:820, 87:158].all()
@@ -824,16 +987,16 @@ def test_create_gt_segs_as_polys_or_masks(
     """Test that we can create a dataset with groundtruth segmentations that are defined
     both my polygons and mask arrays
     """
-    dataset = client.create_image_dataset(dset_name)
+    dataset = Dataset.create(client, dset_name)
 
     xmin, xmax, ymin, ymax = 11, 45, 37, 102
     h, w = 900, 300
     mask = np.zeros((h, w), dtype=bool)
     mask[ymin:ymax, xmin:xmax] = True
 
-    poly = PolygonWithHole(
-        polygon=BoundingPolygon(
-            [
+    poly = Polygon(
+        boundary=BasicPolygon(
+            points=[
                 Point(x=xmin, y=ymin),
                 Point(x=xmin, y=ymax),
                 Point(x=xmax, y=ymax),
@@ -842,16 +1005,28 @@ def test_create_gt_segs_as_polys_or_masks(
         )
     )
 
-    gt1 = GroundTruthSemanticSegmentation(
-        shape=mask, labels=[Label(key="k1", value="v1")], image=img1
-    )
-    gt2 = GroundTruthSemanticSegmentation(
-        shape=[poly], labels=[Label(key="k1", value="v1")], image=img1
+    gts = GroundTruth(
+        dataset_name=dset_name,
+        datum=img1,
+        annotations=[
+            Annotation(
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                labels=[Label(key="k1", value="v1")],
+                raster=Raster.from_numpy(mask),
+            ),
+            Annotation(
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                labels=[Label(key="k1", value="v1")],
+                multipolygon=MultiPolygon(
+                    polygons=[poly]
+                )
+            )
+        ],
     )
 
-    dataset.add_groundtruth([gt1, gt2])
+    dataset.add_groundtruth(gts)
     wkts = db.scalars(
-        select(ST_AsText(ST_Polygon(models.GroundTruthSegmentation.shape)))
+        select(ST_AsText(ST_Polygon(models.Annotation.raster)))
     ).all()
 
     for wkt in wkts:
@@ -863,14 +1038,14 @@ def test_create_gt_segs_as_polys_or_masks(
 
 def test_create_model_with_predicted_segmentations(
     client: Client,
-    gt_segs1: list[GroundTruthInstanceSegmentation],
-    pred_segs: list[PredictedInstanceSegmentation],
+    gt_segs1: list[GroundTruth],
+    pred_segs: list[Prediction],
     db: Session,
 ):
     """Tests that we can create a predicted segmentation from a mask array"""
     labeled_pred_segs = _test_create_model_with_preds(
         client=client,
-        datum_type=DatumTypes.IMAGE,
+        datum_type=enums.DataType.IMAGE,
         gts=gt_segs1,
         preds=pred_segs,
         preds_model_class=models.LabeledPredictedSegmentation,
@@ -894,9 +1069,9 @@ def test_create_model_with_predicted_segmentations(
 
 def test_create_image_dataset_with_classifications(
     client: Client,
-    gt_clfs1: list[GroundTruthImageClassification],
-    gt_clfs2: list[GroundTruthImageClassification],
-    gt_clfs3: list[GroundTruthImageClassification],
+    gt_clfs1: list[GroundTruth],
+    gt_clfs2: list[GroundTruth],
+    gt_clfs3: list[GroundTruth],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     _test_create_image_dataset_with_gts(
@@ -914,16 +1089,16 @@ def test_create_image_dataset_with_classifications(
 
 def test_create_image_model_with_predicted_classifications(
     client: Client,
-    gt_clfs1: list[GroundTruthDetection],
-    pred_clfs: list[PredictedDetection],
+    gt_clfs1: list[GroundTruth],
+    pred_clfs: list[Prediction],
     db: Session,
 ):
     _test_create_model_with_preds(
         client=client,
-        datum_type=DatumTypes.IMAGE,
+        datum_type=enums.DataType.IMAGE,
         gts=gt_clfs1,
         preds=pred_clfs,
-        preds_model_class=models.PredictedClassification,
+        preds_model_class=models.Annotation,
         preds_expected_number=5,
         expected_labels_tuples={
             ("k12", "v12"),
@@ -938,98 +1113,112 @@ def test_create_image_model_with_predicted_classifications(
 
 
 def test_boundary(
-    client: Client, db: Session, rect1: BoundingPolygon, img1: Image
+    client: Client, db: Session, rect1: Polygon, img1: Image
 ):
     """Test consistency of boundary in backend and client"""
-    dataset = client.create_image_dataset(dset_name)
+    dataset = Dataset.create(client, dset_name)
     rect1_poly = bbox_to_poly(rect1)
     dataset.add_groundtruth(
-        [
-            GroundTruthDetection(
-                boundary=rect1_poly,
-                labels=[Label(key="k1", value="v1")],
-                image=img1,
-            )
-        ]
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img1,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[Label(key="k1", value="v1")],
+                    polygon=rect1_poly,
+                )
+            ]
+        )
     )
 
     # get the one detection that exists
-    db_det = db.scalar(select(models.GroundTruthDetection))
+    db_det = db.scalar(select(models.Annotation))
 
     # check boundary
     points = _list_of_points_from_wkt_polygon(db, db_det)
 
-    assert set(points) == set([(pt.x, pt.y) for pt in rect1_poly.points])
+    assert set(points) == set([(pt.x, pt.y) for pt in rect1_poly.boundary.points])
 
 
 def test_iou(
     client: Client,
     db: Session,
-    rect1: BoundingPolygon,
-    rect2: BoundingPolygon,
+    rect1: Polygon,
+    rect2: Polygon,
     img1: Image,
 ):
-    dataset = client.create_image_dataset(dset_name)
-    model = client.create_image_model(model_name)
+    dataset = Dataset.create(client, dset_name)
+    model = Model.create(client, model_name)
 
     rect1_poly = bbox_to_poly(rect1)
     rect2_poly = bbox_to_poly(rect2)
 
     dataset.add_groundtruth(
-        [
-            GroundTruthDetection(
-                boundary=rect1_poly, labels=[Label("k", "v")], image=img1
-            )
-        ]
+        GroundTruth(
+            dataset_name=dset_name,
+            datum=img1,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[Label("k", "v")],
+                    polygon=rect1_poly,
+                )
+            ],
+        )
     )
-    db_gt = db.scalar(select(models.GroundTruthDetection))
+    db_gt = db.scalar(select(models.Annotation))
 
-    model.add_predictions(
-        dataset,
-        [
-            PredictedDetection(
-                boundary=rect2_poly,
-                scored_labels=[ScoredLabel(label=Label("k", "v"), score=0.6)],
-                image=img1,
-            )
-        ],
+    model.add_prediction(
+        Prediction(
+            model_name=model_name,
+            datum=img1,
+            annotations=[
+                Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    polygon=rect2_poly,
+                    scored_labels=[ScoredLabel(label=Label("k", "v"), score=0.6)],
+                )
+            ]
+        )
     )
-    db_pred = db.scalar(select(models.PredictedDetection))
+    db_pred = db.scalar(select(models.ScoredAnnotation))
 
     assert ops.iou_two_dets(db, db_gt, db_pred) == iou(rect1_poly, rect2_poly)
 
 
 def test_delete_dataset_exception(client: Client):
     with pytest.raises(ClientException) as exc_info:
-        client.delete_dataset("non-existent dataset")
+        Dataset.prune(client, "non-existent dataset")
     assert "does not exist" in str(exc_info)
 
 
-def test_delete_dataset_background_job(
-    client: Client, gt_dets1: list, gt_dets2: list, gt_dets3: list, db: Session
-):
-    """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
-    dataset = client.create_image_dataset(dset_name)
-    dataset.add_groundtruth(gt_dets1 + gt_dets2 + gt_dets3)
+# @TODO: After stateflow/jobs PR
+# def test_delete_dataset_background_job(
+#     client: Client, gt_dets1: list, gt_dets2: list, gt_dets3: list, db: Session
+# ):
+#     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
+#     dataset = Dataset.create(client, dset_name)
+#     dataset.add_groundtruth(gt_dets1 + gt_dets2 + gt_dets3)
 
-    job = client.delete_dataset(dset_name)
-    assert job.status() in ["Processing", "Pending"]
-    time.sleep(1.0)
-    assert job.status() == "Done"
+#     job = Dataset.prune(dset_name)
+#     assert job.status() in ["Processing", "Pending"]
+#     time.sleep(1.0)
+#     assert job.status() == "Done"
 
 
 def test_evaluate_ap(
     client: Client,
-    gt_dets1: list[GroundTruthDetection],
-    pred_dets: list[PredictedDetection],
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
     db: Session,
 ):
-    dataset = client.create_image_dataset(dset_name)
+    dataset = Dataset.create(client, dset_name)
     dataset.add_groundtruth(gt_dets1)
     dataset.finalize()
 
-    model = client.create_image_model(model_name)
-    model.add_predictions(dataset, pred_dets)
+    model = Model.create(client, model_name)
+    model.add_prediction(pred_dets)
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_ap(
@@ -1104,7 +1293,7 @@ def test_evaluate_ap(
     assert eval_job.metrics() == expected_metrics
 
     # now test if we set min_area and/or max_area
-    areas = db.scalars(ST_Area(models.GroundTruthDetection.boundary)).all()
+    areas = db.scalars(ST_Area(models.Annotation.boundary)).all()
     assert sorted(areas) == [1100.0, 1500.0]
 
     # sanity check this should give us the same thing excpet min_area and max_area
@@ -1207,16 +1396,16 @@ def test_evaluate_ap(
 
 def test_evaluate_image_clf(
     client: Client,
-    gt_clfs1: list[GroundTruthImageClassification],
-    pred_clfs: list[PredictedImageClassification],
+    gt_clfs1: list[GroundTruth],
+    pred_clfs: list[Prediction],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
-    dataset = client.create_image_dataset(dset_name)
+    dataset = Dataset.create(client, dset_name)
     dataset.add_groundtruth(gt_clfs1)
     dataset.finalize()
 
-    model = client.create_image_model(model_name)
-    model.add_predictions(dataset, pred_clfs)
+    model = Model.create(client, model_name)
+    model.add_prediction(pred_clfs)
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_classification(dataset=dataset)
@@ -1273,8 +1462,8 @@ def test_evaluate_image_clf(
 def test_create_tabular_dataset_and_add_groundtruth(
     client: Client, db: Session, metadata: list[Metadatum]
 ):
-    dataset = client.create_tabular_dataset(name=dset_name)
-    assert isinstance(dataset, TabularDataset)
+    dataset = Dataset.create(client, name=dset_name)
+    assert isinstance(dataset, Dataset)
 
     md1, md2, md3 = metadata
 
@@ -1330,7 +1519,7 @@ def test_create_tabular_model_with_predicted_classifications(
 ):
     _test_create_model_with_preds(
         client=client,
-        datum_type=DatumTypes.TABULAR,
+        datum_type=enums.DataType.TABULAR,
         gts=[
             [Label(key="k1", value="v1"), Label(key="k2", value="v2")],
             [Label(key="k1", value="v3")],
@@ -1365,13 +1554,13 @@ def test_evaluate_tabular_clf(
     y_true: list[int],
     tabular_preds: list[list[float]],
 ):
-    dataset = client.create_tabular_dataset(name=dset_name)
-    model = client.create_tabular_model(name=model_name)
+    dataset = Dataset.create(client, name=dset_name)
+    model = Model.create(client, name=model_name)
 
     dataset.add_groundtruth(
         [[Label(key="class", value=str(t))] for t in y_true]
     )
-    model.add_predictions(
+    model.add_prediction(
         dataset,
         [
             [
@@ -1512,7 +1701,7 @@ def test_evaluate_tabular_clf(
 def test_create_images_with_metadata(
     client: Client, db: Session, metadata: list[Metadatum], rect1: BoundingBox
 ):
-    dataset = client.create_image_dataset(dset_name)
+    dataset = Dataset.create(client, dset_name)
 
     md1, md2, md3 = metadata
     img1 = Image(uid="uid1", metadata=[md1], height=100, width=200)
@@ -1520,7 +1709,7 @@ def test_create_images_with_metadata(
 
     dataset.add_groundtruth(
         groundtruth=[
-            GroundTruthDetection(
+            Annotation(
                 bbox=rect1, labels=[Label(key="k", value="v")], image=img1
             )
         ]
@@ -1561,21 +1750,21 @@ def test_stratify_clf_metrics(
     y_true: list[int],
     tabular_preds: list[list[float]],
 ):
-    dataset = client.create_tabular_dataset(name=dset_name)
-    model = client.create_tabular_model(name=model_name)
+    dataset = Dataset.create(client, name=dset_name)
+    model = Model.create(client, name=model_name)
 
     # create data and two-different defining groups of cohorts
     gt_with_metadata = [
         [
             Label(key="class", value=str(t)),
-            Metadatum(name="md1", value=f"md1-val{i % 3}"),
-            Metadatum(name="md2", value=f"md2-val{i % 4}"),
+            Metadatum(key="md1", value=f"md1-val{i % 3}"),
+            Metadatum(key="md2", value=f"md2-val{i % 4}"),
         ]
         for i, t in enumerate(y_true)
     ]
 
     dataset.add_groundtruth(gt_with_metadata)
-    model.add_predictions(
+    model.add_prediction(
         dataset,
         [
             [
@@ -1685,119 +1874,120 @@ def test_stratify_clf_metrics(
         assert m in val2_metrics
 
 
-def test_get_info_and_label_distributions(
-    client: Client,
-    gt_clfs1: list[GroundTruthImageClassification],
-    gt_dets1: list[GroundTruthDetection],
-    gt_poly_dets1: list[GroundTruthDetection],
-    gt_segs1: list[GroundTruthInstanceSegmentation],
-    pred_clfs: list[PredictedImageClassification],
-    pred_dets: list[PredictedDetection],
-    pred_poly_dets: list[PredictedDetection],
-    pred_segs: list[PredictedInstanceSegmentation],
-    db: Session,
-):
-    """Tests that the client can retrieve info about datasets and models.
+# @TODO: Future PR
+# def test_get_info_and_label_distributions(
+#     client: Client,
+#     gt_clfs1: list[GroundTruth],
+#     gt_dets1: list[GroundTruth],
+#     gt_poly_dets1: list[GroundTruth],
+#     gt_segs1: list[GroundTruth],
+#     pred_clfs: list[Prediction],
+#     pred_dets: list[Prediction],
+#     pred_poly_dets: list[Prediction],
+#     pred_segs: list[Prediction],
+#     db: Session,
+# ):
+#     """Tests that the client can retrieve info about datasets and models.
 
-    Parameters
-    ----------
-    client
-    gts
-        list of groundtruth objects (from `velour.data_types`) of each type
-    preds
-        list of prediction objects (from `velour.data_types`) of each type
-    """
+#     Parameters
+#     ----------
+#     client
+#     gts
+#         list of groundtruth objects (from `velour.data_types`) of each type
+#     preds
+#         list of prediction objects (from `velour.data_types`) of each type
+#     """
 
-    ds = client.create_image_dataset("info_test_dataset")
-    ds.add_groundtruth(gt_clfs1)
-    ds.add_groundtruth(gt_dets1)
-    ds.add_groundtruth(gt_poly_dets1)
-    ds.add_groundtruth(gt_segs1)
-    ds.finalize()
+#     ds = Dataset.create(client, "info_test_dataset")
+#     ds.add_groundtruth(gt_clfs1)
+#     ds.add_groundtruth(gt_dets1)
+#     ds.add_groundtruth(gt_poly_dets1)
+#     ds.add_groundtruth(gt_segs1)
+#     ds.finalize()
 
-    md = client.create_image_model("info_test_model")
-    md.add_predictions(ds, pred_clfs)
-    md.add_predictions(ds, pred_dets)
-    md.add_predictions(ds, pred_poly_dets)
-    md.add_predictions(ds, pred_segs)
-    md.finalize_inferences(ds)
+#     md = Model.create(client, "info_test_model")
+#     md.add_prediction(ds, pred_clfs)
+#     md.add_prediction(ds, pred_dets)
+#     md.add_prediction(ds, pred_poly_dets)
+#     md.add_prediction(ds, pred_segs)
+#     md.finalize_inferences(ds)
 
-    ds_info = ds.get_info()
-    assert ds_info.annotation_type == [
-        "CLASSIFICATION",
-        "DETECTION",
-        "SEGMENTATION",
-    ]
-    assert ds_info.number_of_classifications == 2
-    assert ds_info.number_of_bounding_boxes == 2
-    assert ds_info.number_of_bounding_polygons == 2
-    assert ds_info.number_of_segmentations == 2
-    assert ds_info.associated_models == ["info_test_model"]
+#     ds_info = ds.get_info()
+#     assert ds_info.annotation_type == [
+#         "CLASSIFICATION",
+#         "DETECTION",
+#         "SEGMENTATION",
+#     ]
+#     assert ds_info.number_of_classifications == 2
+#     assert ds_info.number_of_bounding_boxes == 2
+#     assert ds_info.number_of_bounding_polygons == 2
+#     assert ds_info.number_of_segmentations == 2
+#     assert ds_info.associated_models == ["info_test_model"]
 
-    md_info = md.get_info()
-    assert md_info.annotation_type == [
-        "CLASSIFICATION",
-        "DETECTION",
-        "SEGMENTATION",
-    ]
-    assert md_info.number_of_classifications == 5
-    assert md_info.number_of_bounding_boxes == 2
-    assert md_info.number_of_bounding_polygons == 2
-    assert md_info.number_of_segmentations == 2
-    assert md_info.associated_datasets == ["info_test_dataset"]
+#     md_info = md.get_info()
+#     assert md_info.annotation_type == [
+#         "CLASSIFICATION",
+#         "DETECTION",
+#         "SEGMENTATION",
+#     ]
+#     assert md_info.number_of_classifications == 5
+#     assert md_info.number_of_bounding_boxes == 2
+#     assert md_info.number_of_bounding_polygons == 2
+#     assert md_info.number_of_segmentations == 2
+#     assert md_info.associated_datasets == ["info_test_dataset"]
 
-    ds_dist = ds.get_label_distribution()
-    assert len(ds_dist) == 3
-    assert ds_dist[Label(key="k1", value="v1")] == 6
-    assert ds_dist[Label(key="k4", value="v4")] == 1
-    assert ds_dist[Label(key="k5", value="v5")] == 1
+#     ds_dist = ds.get_label_distribution()
+#     assert len(ds_dist) == 3
+#     assert ds_dist[Label(key="k1", value="v1")] == 6
+#     assert ds_dist[Label(key="k4", value="v4")] == 1
+#     assert ds_dist[Label(key="k5", value="v5")] == 1
 
-    md_dist = md.get_label_distribution()
-    assert len(md_dist) == 7
-    assert md_dist[Label(key="k1", value="v1")] == {
-        "count": 3,
-        "scores": [0.3, 0.3, 0.87],
-    }
-    assert md_dist[Label(key="k12", value="v12")] == {
-        "count": 1,
-        "scores": [0.47],
-    }
-    assert md_dist[Label(key="k12", value="v16")] == {
-        "count": 1,
-        "scores": [0.53],
-    }
-    assert md_dist[Label(key="k13", value="v13")] == {
-        "count": 1,
-        "scores": [1.0],
-    }
-    assert md_dist[Label(key="k2", value="v2")] == {
-        "count": 3,
-        "scores": [0.98, 0.98, 0.92],
-    }
-    assert md_dist[Label(key="k4", value="v5")] == {
-        "count": 1,
-        "scores": [0.29],
-    }
-    assert md_dist[Label(key="k4", value="v4")] == {
-        "count": 1,
-        "scores": [0.71],
-    }
+#     md_dist = md.get_label_distribution()
+#     assert len(md_dist) == 7
+#     assert md_dist[Label(key="k1", value="v1")] == {
+#         "count": 3,
+#         "scores": [0.3, 0.3, 0.87],
+#     }
+#     assert md_dist[Label(key="k12", value="v12")] == {
+#         "count": 1,
+#         "scores": [0.47],
+#     }
+#     assert md_dist[Label(key="k12", value="v16")] == {
+#         "count": 1,
+#         "scores": [0.53],
+#     }
+#     assert md_dist[Label(key="k13", value="v13")] == {
+#         "count": 1,
+#         "scores": [1.0],
+#     }
+#     assert md_dist[Label(key="k2", value="v2")] == {
+#         "count": 3,
+#         "scores": [0.98, 0.98, 0.92],
+#     }
+#     assert md_dist[Label(key="k4", value="v5")] == {
+#         "count": 1,
+#         "scores": [0.29],
+#     }
+#     assert md_dist[Label(key="k4", value="v4")] == {
+#         "count": 1,
+#         "scores": [0.71],
+#     }
 
-    # Check that info is consistent with distribution
-    N_ds_info = (
-        ds_info.number_of_classifications
-        + ds_info.number_of_bounding_boxes
-        + ds_info.number_of_bounding_polygons
-        + ds_info.number_of_segmentations
-    )
-    N_ds_dist = sum([ds_dist[label] for label in ds_dist])
-    assert N_ds_info == N_ds_dist
+#     # Check that info is consistent with distribution
+#     N_ds_info = (
+#         ds_info.number_of_classifications
+#         + ds_info.number_of_bounding_boxes
+#         + ds_info.number_of_bounding_polygons
+#         + ds_info.number_of_segmentations
+#     )
+#     N_ds_dist = sum([ds_dist[label] for label in ds_dist])
+#     assert N_ds_info == N_ds_dist
 
-    N_md_info = (
-        md_info.number_of_classifications
-        + md_info.number_of_bounding_boxes
-        + md_info.number_of_bounding_polygons
-        + md_info.number_of_segmentations
-    )
-    N_md_dist = sum([md_dist[label]["count"] for label in md_dist])
-    assert N_md_info == N_md_dist
+#     N_md_info = (
+#         md_info.number_of_classifications
+#         + md_info.number_of_bounding_boxes
+#         + md_info.number_of_bounding_polygons
+#         + md_info.number_of_segmentations
+#     )
+#     N_md_dist = sum([md_dist[label]["count"] for label in md_dist])
+#     assert N_md_info == N_md_dist

@@ -3,6 +3,7 @@ from typing import Optional
 
 from velour import schemas
 
+
 @dataclass
 class Image:
     uid: str
@@ -46,3 +47,17 @@ class Image:
                 schemas.Metadatum(key="frame", value=self.frame),
             ]
         )
+    
+    @staticmethod
+    def valid(datum: schemas.Datum) -> bool:
+        metadata = {
+            metadatum.key: metadatum.value
+            for metadatum in datum.metadata
+        }
+        if "height" not in metadata:
+            return False
+        if "width" not in metadata:
+            return False
+        if "frame" not in metadata:
+            return False
+        return True

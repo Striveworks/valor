@@ -137,7 +137,7 @@ def get_dataset_labels(
 
 
 @app.get(
-    "/datasets/{dataset_name}/datums",
+    "/datasets/{dataset_name}/data",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
@@ -154,7 +154,7 @@ def get_dataset_datums(
     
 
 @app.get(
-    "/datasets/{dataset_name}/datums/filter/{data_type}",
+    "/datasets/{dataset_name}/data/filter/{data_type}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
@@ -172,7 +172,7 @@ def get_dataset_datums(
 
 
 @app.get(
-    "/datasets/{dataset_name}/datums/{uid}",
+    "/datasets/{dataset_name}/data/{uid}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )

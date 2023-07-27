@@ -28,7 +28,7 @@ class TaskType(str, Enum):
     SEMANTIC_SEGMENTATION = "semantic_segmentation"
 
 
-class Table(Enum, str):
+class Table(str, Enum):
     DATASET = "dataset"
     MODEL = "model"
     DATUM = "datum"

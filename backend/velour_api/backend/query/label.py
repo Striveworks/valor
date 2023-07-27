@@ -11,11 +11,13 @@ def get_labels(
 ) -> list[schemas.Label]:
     """Returns a list of unique labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
 
-    labels = (
-       ops.BackendQuery.label()
-       .filter(request_info)
-       .all(db)
-    )
+    # labels = (
+    #    ops.BackendQuery.label()
+    #    .filter(request_info)
+    #    .all(db)
+    # )
+
+    labels = db.query(models.Label).all()
 
     return [
         schemas.Label(

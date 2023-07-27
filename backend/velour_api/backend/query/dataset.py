@@ -79,6 +79,23 @@ def get_datasets(
     ]
 
 
+def get_datums(
+    db: Session,
+    dataset_name: str,
+) -> list[schemas.Datum]:
+    dataset = core.get_dataset(db, dataset_name)
+    return [
+        schemas.Datum(
+            uid=datum.uid,
+            metadata=core.get_metadata(db, datum=datum),
+        )
+        for datum in (
+            db.query(models.Datum)
+            .where(models.Datum.dataset_id == dataset.id)
+        )
+    ]
+
+
 def delete_dataset(
     db: Session,
     name: str,
