@@ -6,13 +6,13 @@ from sqlalchemy.sql import and_, or_, func, select
 from velour_api import crud, enums, schemas
 from velour_api.backend import core, models, query
 
-
+# @TODO: Implement metadata filtering using `ops.BackendQuerys`
 def binary_roc_auc(
     db: Session,
     dataset_name: str,
     model_name: str,
     label: schemas.Label,
-    metadatum: schemas.MetaDatum = None,
+    metadatum: schemas.MetaDatum 
 ) -> float:
     """Computes the binary ROC AUC score of a dataset and label
 
@@ -59,15 +59,16 @@ def binary_roc_auc(
             ),
         )
     )
-    if metadatum:
-        gts_query = gts_query.join(
-            models.MetaDatum, models.MetaDatum.datum_id == "datum_id"
-        ).where(
-            and_(
-                models.MetaDatum.name == metadatum.name,
-                models.MetaDatum.value == metadatum.value,
-            )
-        )
+    # @TODO:
+    # if metadatum:
+    #     gts_query = gts_query.join(
+    #         models.MetaDatum, models.MetaDatum.datum_id == "datum_id"
+    #     ).where(
+    #         and_(
+    #             models.MetaDatum.key == metadatum.key,
+    #             models.MetaDatum.value == metadatum.value,
+    #         )
+    #     )
     gts_query = gts_query.subquery()
 
     # get the prediction scores for the given label (key and value)
@@ -163,12 +164,13 @@ def binary_roc_auc(
     return ret
 
 
+# @TODO: Implement metadata filtering by using `ops.BackendQuery`
 def roc_auc(
     db: Session,
     dataset_name: str,
     model_name: str,
     label_key: str,
-    metadatum: schemas.MetaDatum = None,
+    metadatum: list[schemas.MetaDatum] = None,
 ) -> float:
     """Computes the area under the ROC curve. Note that for the multi-class setting
     this does one-vs-rest AUC for each class and then averages those scores. This should give
@@ -182,8 +184,8 @@ def roc_auc(
         name of the dataset to
     label_key
         the label key to use
-    metadatum_id
-        if not None, then filter out to just the datums that have this as a metadatum
+    metadata
+        if not None, then filter out to just the datums that have this as a metadata
 
     Returns
     -------
