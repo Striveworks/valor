@@ -102,7 +102,7 @@ class MOTDetection:
 
 def ground_truth_det_to_mot(
     datum: schemas.Datum,
-    gt: schemas.GroundTruthAnnotation, 
+    gt: schemas.Annotation, 
     obj_id_to_int: dict,
 ) -> list[float]:
     """Helper to convert a ground truth detection into MOT format"""
@@ -110,7 +110,7 @@ def ground_truth_det_to_mot(
     for label in gt.labels:
         if label.key == OBJECT_ID_LABEL_KEY:
             break
-    bbox = gt.annotation.bounding_box
+    bbox = gt.bounding_box
     mot_det = MOTDetection(
         frame_number=schemas.Image.from_datum(datum).frame,
         object_id=obj_id_to_int[
@@ -124,7 +124,7 @@ def ground_truth_det_to_mot(
 
 def pred_det_to_mot(
     datum: schemas.Datum,
-    pred: schemas.PredictedAnnotation,
+    pred: schemas.ScoredAnnotation,
     obj_id_to_int: dict,
     object_id_label_key: str = OBJECT_ID_LABEL_KEY,
 ) -> list[float]:
@@ -134,7 +134,7 @@ def pred_det_to_mot(
         if scored_label.label.key == object_id_label_key:
             break
 
-    bbox = pred.annotation.bounding_box
+    bbox = pred.bounding_box
     mot_det = MOTDetection(
         frame_number=schemas.Image.from_datum(datum).frame,
         object_id=obj_id_to_int[

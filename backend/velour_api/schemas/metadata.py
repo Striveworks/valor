@@ -8,13 +8,13 @@ class Image(BaseModel):
     uid: str
     height: int
     width: int
-    frame: int
+    frame: int = None
 
     @classmethod
     def from_datum(cls, datum: Datum):
         if not isinstance(datum, Datum):
             raise TypeError("Expecting `velour.schemas.Datum`")
-        metadata = {metadatum.name: metadatum.value for metadatum in datum.metadata}
+        metadata = {metadatum.key: metadatum.value for metadatum in datum.metadata}
         try:
             assert "type" in metadata
             assert "height" in metadata
@@ -35,9 +35,9 @@ class Image(BaseModel):
         return Datum(
             uid=self.uid,
             metadata=[
-                MetaDatum(name="type", value="image"),
-                MetaDatum(name="height", value=self.height),
-                MetaDatum(name="width", value=self.width),
-                MetaDatum(name="frame", value=self.frame),
+                MetaDatum(key="type", value="image"),
+                MetaDatum(key="height", value=self.height),
+                MetaDatum(key="width", value=self.width),
+                MetaDatum(key="frame", value=self.frame),
             ]
         )

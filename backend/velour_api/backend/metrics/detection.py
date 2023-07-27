@@ -166,6 +166,7 @@ def compute_ap_metrics(
                 models.Annotation.model_id.is_(None),
             )
         )
+        .subquery()
     )
 
     # Join pd, datum, annotation, label
@@ -311,11 +312,45 @@ def compute_ap_metrics(
                 )
             )
 
+    label_id = (
+        db.scalar(
+            select(models.Label.id)
+            .where(models.Label.value == "49")
+        )
+    )
+    for pair in ranking[label_id]:
+        print(pair)
+
     # Get groundtruth labels
+    relation = []
+    if gt_type == enums.AnnotationType.BOX:
+        relation = [models.Annotation.box.isnot(None)]
+    elif gt_type == enums.AnnotationType.POLYGON:
+        relation = [models.Annotation.polygon.isnot(None)]
+    elif gt_type == enums.AnnotationType.MULTIPOLYGON:
+        relation = [models.Annotation.multipolygon.isnot(None)]
+    elif gt_type == enums.AnnotationType.RASTER:
+        relation = [models.Annotation.raster.isnot(None)]
+
     labels = {
-        label.id : schemas.Label(key=label.key, value=label.value)
-        for label in core.get_labels(db, key=label_key, task_types=[gt_type], dataset=dataset)
+        label[0] : schemas.Label(key=label[1], value=label[2])
+        for label in (
+            db.query(models.Label.id, models.Label.key, models.Label.value)
+            .join(models.GroundTruth, models.GroundTruth.label_id == models.Label.id)
+            .join(models.Annotation, models.Annotation.id == models.GroundTruth.annotation_id)
+            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+            .where(
+                and_(
+                    models.Datum.dataset_id == dataset.id,
+                    models.Label.key == label_key,
+                    *relation,
+                )
+            )
+        )
     }
+
+    for label in labels:
+        print(labels[label])
 
     # Get the number of ground truths per label id
     number_of_ground_truths = {

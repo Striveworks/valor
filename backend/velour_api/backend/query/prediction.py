@@ -19,10 +19,10 @@ def create_prediction(
         raise exceptions.DatumDoesNotExistError(prediction.datum.uid)
 
     rows = []
-    for pd in prediction.annotations:
+    for predicted_annotation in prediction.annotations:
         annotation = core.create_annotation(
             db,
-            annotation=pd.annotation,
+            annotation=predicted_annotation,
             datum=datum,
             model=model,
         )
@@ -32,7 +32,7 @@ def create_prediction(
                 label=core.create_label(db, scored_label.label),
                 score=scored_label.score,
             )
-            for scored_label in pd.scored_labels
+            for scored_label in predicted_annotation.scored_labels
         ]
     try:
         db.add_all(rows)
@@ -50,6 +50,7 @@ def get_prediction(
 ) -> schemas.Prediction:
     
     datum = core.get_datum(db, datum_uid)
+    model = core.get_model(db, model_name)
 
     return schemas.Prediction(
         model_name=model_name,
@@ -57,7 +58,7 @@ def get_prediction(
             uid=datum.uid,
             metadata=core.get_metadata(db, datum=datum),
         ),
-        annotations=core.get_prediction_annotations(db, datum)
+        annotations=core.get_scored_annotations(db, model=model, datum=datum)
     )
 
 
@@ -72,4 +73,4 @@ def get_predictions(
         .all(db)
     )
 
-    return [core.get_prediction_annotations(db, datum) for datum in datums]
+    return [core.get_scored_annotations(db, datum) for datum in datums]

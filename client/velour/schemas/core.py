@@ -58,41 +58,6 @@ class Datum:
 
 
 @dataclass
-class Annotation:
-    task_type: enums.TaskType
-    metadata: List[Metadatum] = field(default_factory=list)
-
-    # geometric types
-    bounding_box: BoundingBox = None
-    polygon: Polygon = None
-    multipolygon: MultiPolygon = None
-    raster: Raster = None
-
-    def __post_init__(self):
-        if not isinstance(self.task_type, enums.TaskType):
-            raise TypeError("Value for task_type is not of type `enums.TaskType`")
-
-        try:
-            if self.bounding_box:
-                assert isinstance(self.bounding_box, BoundingBox)            
-            if self.polygon:
-                assert isinstance(self.polygon, Polygon)
-            if self.multipolygon:
-                assert isinstance(self.multipolygon, MultiPolygon)
-            if self.raster:
-                assert isinstance(self.raster, Raster)
-        except AssertionError:
-            raise TypeError("Value does not match intended type.")
-        
-        try:
-            assert isinstance(self.metadata, list)
-            for metadatum in self.metadata:
-                assert isinstance(metadatum, Metadatum)
-        except AssertionError:
-            raise TypeError("Metadata contains incorrect type.")
-
-
-@dataclass
 class Label:
     key: str
     value: str
@@ -149,86 +114,126 @@ class ScoredLabel:
 
 
 @dataclass
-class LabelDistribution:
-    label: Label
-    count: int
-
-
-@dataclass
-class ScoredLabelDistribution:
-    label: Label
-    count: int
-    scores: list[float] = field(default_factory=list)
-
-
-@dataclass
-class AnnotationDistribution:
-    annotation_type: enums.AnnotationType
-    count: int
-
-
-@dataclass
-class GroundTruthAnnotation:
-    annotation: Annotation
+class Annotation:
+    task_type: enums.TaskType
     labels: List[Label] = field(default_factory=list)
+    metadata: List[Metadatum] = field(default_factory=list)
+
+    # geometric types
+    bounding_box: BoundingBox = None
+    polygon: Polygon = None
+    multipolygon: MultiPolygon = None
+    raster: Raster = None
 
     def __post_init__(self):
-        if not isinstance(self.annotation, Annotation):
-            raise TypeError("annotation should be type `velour.schemas.Annotation`")
+        if not isinstance(self.task_type, enums.TaskType):
+            raise TypeError("Value for task_type is not of type `enums.TaskType`")
         if not isinstance(self.labels, list):
             raise TypeError("labels should be a list of `velour.schemas.Label`.")
         for label in self.labels:
             if not isinstance(label, Label):
                 raise TypeError("labels list should contain only `velour.schemas.Label`.")
 
+        try:
+            if self.bounding_box:
+                assert isinstance(self.bounding_box, BoundingBox)            
+            if self.polygon:
+                assert isinstance(self.polygon, Polygon)
+            if self.multipolygon:
+                assert isinstance(self.multipolygon, MultiPolygon)
+            if self.raster:
+                assert isinstance(self.raster, Raster)
+        except AssertionError:
+            raise TypeError("Value does not match intended type.")
+        
+        try:
+            assert isinstance(self.metadata, list)
+            for metadatum in self.metadata:
+                assert isinstance(metadatum, Metadatum)
+        except AssertionError:
+            raise TypeError("Metadata contains incorrect type.")
+
+
 
 @dataclass
-class PredictedAnnotation:
-    annotation: Annotation
+class ScoredAnnotation:
+    task_type: enums.TaskType
     scored_labels: List[ScoredLabel] = field(default_factory=list)
+    metadata: List[Metadatum] = field(default_factory=list)
+
+    # geometric types
+    bounding_box: BoundingBox = None
+    polygon: Polygon = None
+    multipolygon: MultiPolygon = None
+    raster: Raster = None
 
     def __post_init__(self):
-        if not isinstance(self.annotation, Annotation):
-            raise TypeError("annotation should be type `velour.schemas.Annotation`.")
+        # validate task_type
+        if not isinstance(self.task_type, enums.TaskType):
+            raise TypeError("Value for task_type is not of type `enums.TaskType`")
+        
+        # validate scored_labels
         if not isinstance(self.scored_labels, list):
             raise TypeError("scored_labels should be a list of `velour.schemas.ScoredLabel`.")
         for label in self.scored_labels:
             if not isinstance(label, ScoredLabel):
                 raise TypeError("scored_labels list should contain only `velour.schemas.ScoredLabel`.")
 
+        # validate annotation data
+        try:
+            if self.bounding_box:
+                assert isinstance(self.bounding_box, BoundingBox)            
+            if self.polygon:
+                assert isinstance(self.polygon, Polygon)
+            if self.multipolygon:
+                assert isinstance(self.multipolygon, MultiPolygon)
+            if self.raster:
+                assert isinstance(self.raster, Raster)
+        except AssertionError:
+            raise TypeError("Value does not match intended type.")
+        
+        # validate metadata
+        try:
+            assert isinstance(self.metadata, list)
+            for metadatum in self.metadata:
+                assert isinstance(metadatum, Metadatum)
+        except AssertionError:
+            raise TypeError("Metadata contains incorrect type.")
+
 
         # check that for each label key all the predictions sum to ~1
         # the backend should also do this validation but its good to do
         # it here on creation, before sending to backend
-        label_keys_to_sum = {}
-        for scored_label in self.scored_labels:
-            label_key = scored_label.label.key
-            if label_key not in label_keys_to_sum:
-                label_keys_to_sum[label_key] = 0.0
-            label_keys_to_sum[label_key] += scored_label.score
+        if self.task_type == enums.TaskType.CLASSIFICATION:
+            label_keys_to_sum = {}
+            for scored_label in self.scored_labels:
+                label_key = scored_label.label.key
+                if label_key not in label_keys_to_sum:
+                    label_keys_to_sum[label_key] = 0.0
+                label_keys_to_sum[label_key] += scored_label.score
 
-        for k, total_score in label_keys_to_sum.items():
-            if abs(total_score - 1) > 1e-5:
-                raise ValueError(
-                    "For each label key, prediction scores must sum to 1, but"
-                    f" for label key {k} got scores summing to {total_score}."
-                )
+            for k, total_score in label_keys_to_sum.items():
+                if abs(total_score - 1) > 1e-5:
+                    raise ValueError(
+                        "For each label key, prediction scores must sum to 1, but"
+                        f" for label key {k} got scores summing to {total_score}."
+                    )
 
 
 @dataclass
 class GroundTruth:
     datum: Datum
-    annotations: list[GroundTruthAnnotation] = field(default_factory=list)
+    annotations: list[Annotation] = field(default_factory=list)
     dataset_name: str = field(default="")
 
     def __post_init__(self):
         if not isinstance(self.datum, Datum):
             raise TypeError("datum should be type `velour.schemas.Datum`.")
         if not isinstance(self.annotations, list):
-            raise TypeError("annotations should be a list of `velour.schemas.GroundTruthAnnotation`.")
+            raise TypeError("annotations should be a list of `velour.schemas.Annotation`.")
         for annotation in self.annotations:
-            if not isinstance(annotation, GroundTruthAnnotation):
-                raise TypeError("annotations list should contain only `velour.schemas.GroundTruthAnnotation`.")
+            if not isinstance(annotation, Annotation):
+                raise TypeError("annotations list should contain only `velour.schemas.Annotation`.")
         if not isinstance(self.dataset_name, str):
             raise TypeError("dataset_name should be type `str`.")
 
@@ -236,16 +241,16 @@ class GroundTruth:
 @dataclass
 class Prediction:
     datum: Datum
-    annotations: list[PredictedAnnotation] = field(default_factory=list)
+    annotations: list[ScoredAnnotation] = field(default_factory=list)
     model_name: str = field(default="")
 
     def __post_init__(self):
         if not isinstance(self.datum, Datum):
             raise TypeError("datum should be type `velour.schemas.Datum`.")
         if not isinstance(self.annotations, list):
-            raise TypeError("annotations should be a list of `velour.schemas.PredictedAnnotation`.")
+            raise TypeError("annotations should be a list of `velour.schemas.ScoredAnnotation`.")
         for annotation in self.annotations:
-            if not isinstance(annotation, PredictedAnnotation):
-                raise TypeError("annotations list should contain only `velour.schemas.PredictedAnnotation`.")
+            if not isinstance(annotation, ScoredAnnotation):
+                raise TypeError("annotations list should contain only `velour.schemas.ScoredAnnotation`.")
         if not isinstance(self.model_name, str):
             raise TypeError("model_name should be type `str`.")

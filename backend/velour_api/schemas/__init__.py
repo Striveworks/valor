@@ -5,10 +5,10 @@ from .core import (
     Dataset,
     Datum,
     GroundTruth,
-    GroundTruthAnnotation,
+    Annotation,
     Label,
     Model,
-    PredictedAnnotation,
+    ScoredAnnotation,
     Prediction,
     ScoredLabel,
 )
@@ -48,9 +48,8 @@ from .metrics import (
 __all__ = [
     "Filter",
     "Image",
-    "GroundTruthAnnotation",
-    "PredictedAnnotation",
     "Annotation",
+    "ScoredAnnotation",
     "Dataset",
     "Datum",
     "AnnotatedDatum",

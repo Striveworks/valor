@@ -15,10 +15,10 @@ def generate_mot_data(num_frames: int):
     create_img = lambda frame: schemas.Datum(  # noqa: E731
         uid="test",
         metadata=[
-            schemas.MetaDatum(name="type", value="image"),
-            schemas.MetaDatum(name="height", value=500),
-            schemas.MetaDatum(name="width", value=500),
-            schemas.MetaDatum(name="frame", value=frame),
+            schemas.MetaDatum(key="type", value="image"),
+            schemas.MetaDatum(key="height", value=500),
+            schemas.MetaDatum(key="width", value=500),
+            schemas.MetaDatum(key="frame", value=frame),
         ]
     )
     create_label = lambda obj_id: schemas.Label(  # noqa: E731
@@ -78,26 +78,20 @@ def generate_mot_data(num_frames: int):
             dataset_name="test",
             datum=image,
             annotations=[
-                schemas.GroundTruthAnnotation(
+                schemas.Annotation(
                     labels=labels1,
-                    annotation=schemas.Annotation(
-                        task_type=enums.TaskType.DETECTION,
-                        bounding_box=boundary1,
-                    )
+                    task_type=enums.TaskType.DETECTION,
+                    bounding_box=boundary1,
                 ),
-                schemas.GroundTruthAnnotation(
+                schemas.Annotation(
                     labels=labels2,
-                    annotation=schemas.Annotation(
-                        task_type=enums.TaskType.DETECTION,
-                        bounding_box=boundary2,
-                    )
+                    task_type=enums.TaskType.DETECTION,
+                    bounding_box=boundary2,
                 ),
-                schemas.GroundTruthAnnotation(
+                schemas.Annotation(
                     labels=labels3,
-                    annotation=schemas.Annotation(
-                        task_type=enums.TaskType.DETECTION,
-                        bounding_box=boundary3,
-                    )
+                    task_type=enums.TaskType.DETECTION,
+                    bounding_box=boundary3,
                 ),
             ]
         )
@@ -107,26 +101,20 @@ def generate_mot_data(num_frames: int):
             model_name="test",
             datum=image,
             annotations=[
-                schemas.PredictedAnnotation(
+                schemas.ScoredAnnotation(
                     scored_labels=scored_labels1,
-                    annotation=schemas.Annotation(
-                        task_type=enums.TaskType.DETECTION,
-                        bounding_box=boundary1,
-                    )
+                    task_type=enums.TaskType.DETECTION,
+                    bounding_box=boundary1,
                 ),
-                schemas.PredictedAnnotation(
+                schemas.ScoredAnnotation(
                     scored_labels=scored_labels2,
-                    annotation=schemas.Annotation(
-                        task_type=enums.TaskType.DETECTION,
-                        bounding_box=boundary2,
-                    )
+                    task_type=enums.TaskType.DETECTION,
+                    bounding_box=boundary2,
                 ),
-                schemas.PredictedAnnotation(
+                schemas.ScoredAnnotation(
                     scored_labels=scored_labels3,
-                    annotation=schemas.Annotation(
-                        task_type=enums.TaskType.DETECTION,
-                        bounding_box=boundary3,
-                    )
+                    task_type=enums.TaskType.DETECTION,
+                    bounding_box=boundary3,
                 ),
             ]
         )

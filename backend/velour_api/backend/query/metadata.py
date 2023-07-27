@@ -9,7 +9,7 @@ def get_metadata(
     dataset_name: str = None,
     model_name: str = None,
     datum_uid: str = None,
-    name: str = None,
+    key: str = None,
 ) -> list[schemas.MetaDatum]:
 
     dataset = core.get_model(db, dataset_name) if dataset_name else None
@@ -23,6 +23,6 @@ def get_metadata(
             dataset=dataset,
             model=model,
             datum=datum,
-            name=name,
+            key=key,
         )
     ]

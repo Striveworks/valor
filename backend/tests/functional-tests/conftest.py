@@ -142,7 +142,7 @@ def groundtruths(
         dataset=schemas.Dataset(
             name=dataset_name, 
             metadata=[
-                schemas.MetaDatum(name="type", value=enums.DataType.IMAGE.value),
+                schemas.MetaDatum(key="type", value=enums.DataType.IMAGE.value),
             ]
         ),
     )
@@ -200,16 +200,14 @@ def groundtruths(
             dataset_name=dataset_name,
             datum=image,
             annotations=[
-                schemas.GroundTruthAnnotation(
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
                     labels=[schemas.Label(key="class", value=class_label)],
-                    annotation=schemas.Annotation(
-                        task_type=enums.TaskType.DETECTION,
-                        bounding_box=schemas.BoundingBox.from_extrema(
-                            xmin=box[0],
-                            ymin=box[1],
-                            xmax=box[2],
-                            ymax=box[3],
-                        )
+                    bounding_box=schemas.BoundingBox.from_extrema(
+                        xmin=box[0],
+                        ymin=box[1],
+                        xmax=box[2],
+                        ymax=box[3],
                     )
                 )
                 for box, class_label in zip(gts["boxes"], gts["labels"])
@@ -242,7 +240,7 @@ def predictions(
         db, schemas.Model(
             name=model_name,
             metadata=[
-                schemas.MetaDatum(name="type", value=enums.DataType.IMAGE.value),
+                schemas.MetaDatum(key="type", value=enums.DataType.IMAGE.value),
             ],
         )
     )
@@ -308,21 +306,19 @@ def predictions(
             model_name=model_name,
             datum=image,
             annotations=[
-                schemas.PredictedAnnotation(
+                schemas.ScoredAnnotation(
+                    task_type=enums.TaskType.DETECTION,
                     scored_labels=[
                         schemas.ScoredLabel(
                             label=schemas.Label(key="class", value=class_label),
                             score=score,
                         )
                     ],
-                    annotation=schemas.Annotation(
-                        task_type=enums.TaskType.DETECTION,
-                        bounding_box=schemas.BoundingBox.from_extrema(
-                            xmin=box[0],
-                            ymin=box[1],
-                            xmax=box[2],
-                            ymax=box[3],
-                        )
+                    bounding_box=schemas.BoundingBox.from_extrema(
+                        xmin=box[0],
+                        ymin=box[1],
+                        xmax=box[2],
+                        ymax=box[3],
                     )
                 )
                 for box, class_label, score in zip(

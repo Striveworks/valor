@@ -53,35 +53,19 @@ def get_dataset(
     ):
         if row.string_value:
             metadata.append(
-                schemas.MetaDatum(name=row.name, value=row.string_value)
+                schemas.MetaDatum(key=row.key, value=row.string_value)
             )
         elif row.numeric_value:
             metadata.append(
-                schemas.MetaDatum(name=row.name, value=row.numeric_value)
+                schemas.MetaDatum(key=row.key, value=row.numeric_value)
             )
         elif row.geo:
             metadata.append(
                 schemas.MetaDatum(
-                    name=row.name,
+                    key=row.key,
                     value=row.geo,
                 )
             )
-        elif row.image_id:
-            if (
-                image_metadatum := db.query(models.ImageMetadata)
-                .where(models.ImageMetadata.id == row.image_id)
-                .one_or_none()
-            ):
-                metadata.append(
-                    schemas.MetaDatum(
-                        name=row.name,
-                        value=schemas.ImageMetadata(
-                            height=image_metadatum.height,
-                            width=image_metadatum.width,
-                            frame=image_metadatum.frame,
-                        ),
-                    )
-                )
 
     return schemas.Dataset(id=dataset.id, name=dataset.name, metadata=metadata)
 

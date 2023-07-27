@@ -33,15 +33,25 @@ def get_datum(
     db: Session,
     uid: str,
 ) -> models.Datum:
-    return db.query(models.Datum).where(models.Datum.uid == uid).one_or_none()
+    datum = (
+        db.query(models.Datum)
+        .where(models.Datum.uid == uid)
+        .one_or_none()
+    )
+    if datum is None:
+        raise exceptions.DatumDoesNotExistError(uid)
+    return datum
 
 
 def get_dataset(
     db: Session,
     name: str,
 ) -> models.Dataset:
-    return (
+    dataset = (
         db.query(models.Dataset)
         .where(models.Dataset.name == name)
         .one_or_none()
     )
+    if dataset is None:
+        raise exceptions.DatasetDoesNotExistError(name)
+    return dataset

@@ -17,10 +17,10 @@ def create_groundtruth(
     datum = core.create_datum(db, dataset=dataset, datum=groundtruth.datum)
 
     rows = []
-    for gt in groundtruth.annotations:
+    for groundtruth_annotation in groundtruth.annotations:
         annotation = core.create_annotation(
             db,
-            gt.annotation,
+            annotation=groundtruth_annotation,
             datum=datum,
         )
         rows += [
@@ -28,7 +28,7 @@ def create_groundtruth(
                 annotation=annotation,
                 label=label,
             )
-            for label in core.create_labels(db, gt.labels)
+            for label in core.create_labels(db, groundtruth_annotation.labels)
         ]
     try:
         db.add_all(rows)
@@ -60,7 +60,7 @@ def get_groundtruth(
             uid=datum.uid,
             metadata=core.get_metadata(db, datum=datum),
         ),
-        annotations=core.get_groundtruth_annotations(db, datum)
+        annotations=core.get_annotations(db, datum)
     )
 
 
@@ -75,4 +75,4 @@ def get_groundtruths(
         .all(db)
     )
 
-    return [core.get_groundtruth_annotations(db, datum) for datum in datums]
+    return [core.get_annotations(db, datum) for datum in datums]

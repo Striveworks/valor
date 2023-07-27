@@ -100,10 +100,10 @@ def create_clf_metrics(
     request_info: schemas.ClfMetricsRequest,
 ) -> int:
     
-    
     dataset = core.get_dataset(db, request_info.settings.dataset_name)
     model = core.get_model(db, request_info.settings.model_name)
 
+    # @TODO: Add grouping filter
     # check if already exists
     es = (
         db.query(models.EvaluationSettings.id)
@@ -116,7 +116,7 @@ def create_clf_metrics(
         .one_or_none()
     )
     if es is not None:
-        return es
+        return es.id
 
 
     confusion_matrices, metrics = backend_metrics.compute_clf_metrics(
@@ -182,6 +182,7 @@ def create_ap_metrics(
 ) -> int:
 
     # @TODO: This is hacky, fix schemas.APRequest
+    # START HACKY
     dataset_name = request_info.settings.dataset_name
     model_name = request_info.settings.model_name
     gt_type = enums.AnnotationType.BOX #request_info.settings.pd_type
@@ -190,6 +191,29 @@ def create_ap_metrics(
     label_key = request_info.settings.label_key
     min_area = request_info.settings.min_area
     max_area = request_info.settings.max_area
+    # END HACKY
+
+    dataset = core.get_dataset(db, request_info.settings.dataset_name)
+    model = core.get_model(db, request_info.settings.model_name)
+
+    # @TODO: Add grouping filter
+    # check if already exists
+    es = (
+        db.query(models.EvaluationSettings.id)
+        .where(
+            and_(
+                models.EvaluationSettings.model_id == model.id,
+                models.EvaluationSettings.dataset_id == dataset.id,
+                models.EvaluationSettings.min_area == min_area,
+                models.EvaluationSettings.max_area == max_area,
+                models.EvaluationSettings.group_by.is_(None),
+                models.EvaluationSettings.label_key == label_key,
+            )
+        )
+        .one_or_none()
+    )
+    if es is not None:
+        return es.id
 
     metrics = backend_metrics.compute_ap_metrics(
         db=db,
@@ -218,16 +242,16 @@ def create_ap_metrics(
         "min_area": request_info.settings.min_area,
         "max_area": request_info.settings.max_area,
     }
-    mp = models.EvaluationSettings(**mapping)
+    es = models.EvaluationSettings(**mapping)
     try:
-        db.add(mp)
+        db.add(es)
         db.commit()
     except:
         db.rollback()
         raise RuntimeError
 
     metric_mappings = _create_metric_mappings(
-        db=db, metrics=metrics, evaluation_settings_id=mp.id
+        db=db, metrics=metrics, evaluation_settings_id=es.id
     )
 
     for mapping in metric_mappings:
@@ -244,5 +268,5 @@ def create_ap_metrics(
             db.rollback()
             raise RuntimeError
     
-    # @TODO Return job id
-    return -1
+    # @TODO Return evaluation settings id
+    return es.id

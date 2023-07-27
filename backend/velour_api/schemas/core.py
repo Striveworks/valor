@@ -1,6 +1,6 @@
 import re
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, root_validator
 
 from velour_api import enums
 from velour_api.schemas.geometry import (
@@ -26,11 +26,11 @@ def _format_uid(uid: str):
 
 
 class MetaDatum(BaseModel):
-    name: str
+    key: str
     value: float | str | GeoJSON
 
-    @validator("name")
-    def check_name(cls, v):
+    @validator("key")
+    def check_key(cls, v):
         if not isinstance(v, str):
             raise ValueError
         return v
@@ -94,6 +94,7 @@ class Datum(BaseModel):
 
 class Annotation(BaseModel):
     task_type: enums.TaskType
+    labels: list[Label]
     metadata: list[MetaDatum] = None
 
     # Geometric types
@@ -102,11 +103,6 @@ class Annotation(BaseModel):
     multipolygon: MultiPolygon = None
     raster: Raster = None
 
-
-class GroundTruthAnnotation(BaseModel):
-    labels: list[Label]
-    annotation: Annotation
-
     @validator("labels")
     def check_labels(cls, v):
         if not v:
@@ -114,32 +110,40 @@ class GroundTruthAnnotation(BaseModel):
         return v
 
 
-class PredictedAnnotation(BaseModel):
+class ScoredAnnotation(BaseModel):
+    task_type: enums.TaskType
     scored_labels: list[ScoredLabel]
-    annotation: Annotation
+    metadata: list[MetaDatum] = None
 
-    @validator("scored_labels")
-    def check_sum_to_one(cls, v: list[ScoredLabel]):
-        label_keys_to_sum = {}
-        for scored_label in v:
-            label_key = scored_label.label.key
-            if label_key not in label_keys_to_sum:
-                label_keys_to_sum[label_key] = 0.0
-            label_keys_to_sum[label_key] += scored_label.score
+    # Geometric types
+    bounding_box: BoundingBox = None
+    polygon: Polygon = None
+    multipolygon: MultiPolygon = None
+    raster: Raster = None
 
-        for k, total_score in label_keys_to_sum.items():
-            if abs(total_score - 1) > 1e-5:
-                raise ValueError(
-                    "For each label key, prediction scores must sum to 1, but"
-                    f" for label key {k} got scores summing to {total_score}."
-                )
-        return v
+    @root_validator(skip_on_failure=True)
+    def check_sum_to_one_if_classification(cls, values):
+        if values["task_type"] == enums.TaskType.CLASSIFICATION:    
+            label_keys_to_sum = {}
+            for scored_label in values["scored_labels"]:
+                label_key = scored_label.label.key
+                if label_key not in label_keys_to_sum:
+                    label_keys_to_sum[label_key] = 0.0
+                label_keys_to_sum[label_key] += scored_label.score
+
+            for k, total_score in label_keys_to_sum.items():
+                if abs(total_score - 1) > 1e-5:
+                    raise ValueError(
+                        "For each label key, prediction scores must sum to 1, but"
+                        f" for label key {k} got scores summing to {total_score}."
+                    )
+        return values
 
 
 class GroundTruth(BaseModel):
     dataset_name: str
     datum: Datum
-    annotations: list[GroundTruthAnnotation]
+    annotations: list[Annotation]
 
     @validator("dataset_name")
     def check_name_valid(cls, v):
@@ -158,7 +162,7 @@ class GroundTruth(BaseModel):
 class Prediction(BaseModel):
     model_name: str
     datum: Datum
-    annotations: list[PredictedAnnotation]
+    annotations: list[ScoredAnnotation]
 
     @validator("model_name")
     def check_name_valid(cls, v):

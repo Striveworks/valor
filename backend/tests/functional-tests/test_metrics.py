@@ -16,16 +16,19 @@ from velour_api.backend.models import (
 )
 
 
-dataset_name = "test dataset"
-model_name = "test model"
+dataset_name = "test_dataset"
+model_name = "test_model"
 
 
 @pytest.fixture
 def classification_test_data(db: Session):
     crud.create_dataset(
         db,
-        schemas.DatasetCreate(
-            name=dataset_name, type=enums.DataType.IMAGE
+        schemas.Dataset(
+            name=dataset_name,
+            metadata=[
+                schemas.MetaDatum(key="type", value=enums.DataType.IMAGE.value)
+            ],
         ),
     )
     crud.create_model(
@@ -53,63 +56,66 @@ def classification_test_data(db: Session):
     ]
 
     imgs = [
-        schemas.Image(
+        schemas.Datum(
             uid=f"uid{i}",
-            height=128,
-            width=256,
             metadata=[
-                schemas.DatumMetadatum(
-                    name="md1", value=f"md1-val{int(i == 4)}"
+                schemas.MetaDatum(key="height", value=128),
+                schemas.MetaDatum(key="width", value=256),
+                schemas.MetaDatum(
+                    key="md1", value=f"md1-val{int(i == 4)}"
                 ),
-                schemas.DatumMetadatum(name="md2", value=f"md1-val{i % 3}"),
-            ],
+                schemas.MetaDatum(key="md2", value=f"md1-val{i % 3}"),
+            ]
         )
         for i in range(6)
     ]
 
     gts = [
-        schemas.GroundTruthClassification(
+        schemas.GroundTruth(
+            dataset_name=dataset_name,
             datum=imgs[i],
-            labels=[
-                schemas.Label(key="animal", value=animal_gts[i]),
-                schemas.Label(key="color", value=color_gts[i]),
-            ],
-        )
-        for i in range(6)
-    ]
-    preds = [
-        schemas.PredictedClassification(
-            datum=imgs[i],
-            scored_labels=[
-                schemas.ScoredLabel(
-                    label=schemas.Label(key="animal", value=value), score=score
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[
+                        schemas.Label(key="animal", value=animal_gts[i]),
+                        schemas.Label(key="color", value=color_gts[i]),
+                    ],
                 )
-                for value, score in animal_preds[i].items()
             ]
-            + [
-                schemas.ScoredLabel(
-                    label=schemas.Label(key="color", value=value), score=score
-                )
-                for value, score in color_preds[i].items()
-            ],
         )
         for i in range(6)
     ]
 
-    crud.create_ground_truth_classifications(
-        db,
-        data=schemas.GroundTruthClassificationsCreate(
-            dataset_name=dataset_name, classifications=gts
-        ),
-    )
-    crud.create_predicted_image_classifications(
-        db,
-        data=schemas.PredictedClassificationsCreate(
+    preds = [
+        schemas.Prediction(
             model_name=model_name,
-            dataset_name=dataset_name,
-            classifications=preds,
-        ),
-    )
+            datum=imgs[i],
+            annotations=[        
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    scored_labels=[
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="animal", value=value), score=score
+                        )
+                        for value, score in animal_preds[i].items()
+                    ]
+                    + [
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="color", value=value), score=score
+                        )
+                        for value, score in color_preds[i].items()
+                    ],
+                )
+            ]
+        )
+        for i in range(6)
+    ]
+
+    for gt in gts:
+        crud.create_groundtruth(db, gt)
+    for pd in preds:
+        crud.create_prediction(db, pd)
 
 
 def round_dict_(d: dict, prec: int) -> None:
@@ -129,19 +135,17 @@ def test_compute_ap_metrics(
     predictions: list[list[Prediction]],
 ):
 
-    model_name = "test model"
-    dataset_name = "test dataset"
-
-    dataset_id = crud.get_dataset(db, dataset_name).id
-    model_id = crud.get_model(db, model_name).id
+    model_name = "test_model"
+    dataset_name = "test_dataset"
 
     iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
     metrics = compute_ap_metrics(
         db=db,
-        dataset_id=dataset_id,
-        model_id=model_id,
-        gt_type=schemas.Task.BBOX_OBJECT_DETECTION,
-        pd_type=schemas.Task.BBOX_OBJECT_DETECTION,
+        dataset_name=dataset_name,
+        model_name=model_name,
+        target_type=enums.AnnotationType.BOX,
+        gt_type=enums.AnnotationType.BOX,
+        pd_type=enums.AnnotationType.BOX,
         label_key="class",
         iou_thresholds=iou_thresholds,
         ious_to_keep=[0.5, 0.75],
@@ -219,6 +223,7 @@ def test_compute_ap_metrics(
 
     # check that metrics and labels are equivalent
     for m in metrics:
+        print(m)
         assert m in expected
 
     for m in expected:

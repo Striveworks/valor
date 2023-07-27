@@ -1,18 +1,14 @@
 from .core import (
     Annotation,
-    AnnotationDistribution,
+    ScoredAnnotation,
     Dataset,
     Datum,
     GroundTruth,
-    GroundTruthAnnotation,
     Info,
     Label,
-    LabelDistribution,
     Model,
-    PredictedAnnotation,
     Prediction,
     ScoredLabel,
-    ScoredLabelDistribution,
 )
 from .geometry import (
     BasicPolygon,
@@ -24,13 +20,16 @@ from .geometry import (
     Raster,
 )
 from .metadata import GeoJSON, Metadatum
+from .info import (
+    AnnotationDistribution,
+    LabelDistribution,
+    ScoredLabelDistribution,
+)
 
 __all__ = [
     "Box",
     "BasicPolygon",
     "Point",
-    "GroundTruthAnnotation",
-    "PredictedAnnotation",
     "Dataset",
     "Model",
     "Datum",
@@ -38,6 +37,7 @@ __all__ = [
     "Label",
     "ScoredLabel",
     "Annotation",
+    "ScoredAnnotation",
     "AnnotationDistribution",
     "GroundTruth",
     "Prediction",

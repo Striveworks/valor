@@ -82,7 +82,7 @@ class MetaDatum(Base):
     __tablename__ = "metadatum"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    name: Mapped[str] = mapped_column(nullable=False)
+    key: Mapped[str] = mapped_column(nullable=False)
 
     # targets
     dataset_id: Mapped[int] = mapped_column(

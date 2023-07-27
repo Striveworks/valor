@@ -108,7 +108,7 @@ def get_model_metrics(
         )
     )
 
-    return get_metrics_from_evaluation_settings(evaluation_settings)
+    return get_metrics_from_evaluation_settings(db, evaluation_settings)
 
 
 def get_model_evaluation_settings(

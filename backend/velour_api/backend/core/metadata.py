@@ -23,7 +23,7 @@ def create_metadatum(
         raise ValueError("Need some target to attach metadatum to.")
 
     mapping = {
-        "name": metadatum.name,
+        "key": metadatum.key,
         "dataset": dataset if dataset else None,
         "model": model if model else None,
         "datum": datum if datum else None,
@@ -108,7 +108,7 @@ def get_metadatum_schema(
         return None
 
     return schemas.MetaDatum(
-        name=metadatum.name,
+        key=metadatum.key,
         value=value,
     )
 
@@ -119,9 +119,9 @@ def get_metadata(
     model: models.Model = None,
     datum: models.Datum = None,
     annotation: models.Annotation = None,
-    name: str = None
+    key: str = None
 ) -> list[schemas.MetaDatum]:
-    """Returns list of metadatums from a union of sources (dataset, model, datum, annotation) filtered by (name, value_type)."""
+    """Returns list of metadatums from a union of sources (dataset, model, datum, annotation) filtered by (key, value_type)."""
 
     metadata = select(models.MetaDatum)
 
@@ -135,8 +135,8 @@ def get_metadata(
         relationships.append(models.MetaDatum.datum_id == datum.id)
     if annotation:
         relationships.append(models.MetaDatum.annotation_id == annotation.id)
-    if name:
-        relationships.append(models.MetaDatum.name == name)
+    if key:
+        relationships.append(models.MetaDatum.key == key)
 
     # Add union of relationships
     if len(relationships) == 1:
