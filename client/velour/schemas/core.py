@@ -28,10 +28,12 @@ class MetaDatum:
         if not isinstance(self.key, str):
             raise TypeError("Name parameter should always be of type string.")
         if not isinstance(self.value, float | str | GeoJSON):
-            raise NotImplementedError(f"Value {self.value} has unsupported type {type(self.value)}")
+            raise NotImplementedError(
+                f"Value {self.value} has unsupported type {type(self.value)}"
+            )
         if self.key == "href":
             _validate_href(self.value)
-        
+
 
 @dataclass
 class Dataset:
@@ -143,7 +145,7 @@ class ScoredLabel:
         if hasattr(other, "label") and hasattr(other, "score"):
             return self.score == other.score and self.label == other.label
         return False
-    
+
     def __neq__(self, other):
         if hasattr(other, "label") and hasattr(other, "score"):
             return not self == other
@@ -173,20 +175,24 @@ class Annotation:
         # labels
         try:
             if not isinstance(self.labels, list):
-                raise TypeError("labels should be a list of `velour.schemas.Label`.")
+                raise TypeError(
+                    "labels should be a list of `velour.schemas.Label`."
+                )
             for i in range(len(self.labels)):
                 if isinstance(self.labels[i], dict):
                     self.labels[i] = Label(**self.labels[i])
                 assert isinstance(self.labels[i], Label)
         except AssertionError:
-            raise TypeError("elements of labels should be of type `velour.schemas.Label`")
+            raise TypeError(
+                "elements of labels should be of type `velour.schemas.Label`"
+            )
 
         # annotation data
         try:
             if self.bounding_box:
                 if isinstance(self.bounding_box, dict):
                     self.bounding_box = BoundingBox(**self.bounding_box)
-                assert isinstance(self.bounding_box, BoundingBox)            
+                assert isinstance(self.bounding_box, BoundingBox)
             if self.polygon:
                 if isinstance(self.polygon, dict):
                     self.polygon = Polygon(**self.polygon)
@@ -200,8 +206,8 @@ class Annotation:
                     self.raster = Raster(**self.raster)
                 assert isinstance(self.raster, Raster)
         except AssertionError:
-            raise TypeError("Value does not match intended type.")
-        
+            raise TypeError("Annotation value does not match intended type.")
+
         # metadata
         try:
             assert isinstance(self.metadata, list)
@@ -211,7 +217,7 @@ class Annotation:
                 assert isinstance(self.metadata[i], MetaDatum)
         except AssertionError:
             raise TypeError("Metadata contains incorrect type.")
-        
+
 
 @dataclass
 class ScoredAnnotation:
@@ -233,20 +239,26 @@ class ScoredAnnotation:
         # scored_labels
         try:
             if not isinstance(self.scored_labels, list):
-                raise TypeError("scored_labels should be a list of `velour.schemas.ScoredLabel`.")
+                raise TypeError(
+                    "scored_labels should be a list of `velour.schemas.ScoredLabel`."
+                )
             for i in range(len(self.scored_labels)):
                 if isinstance(self.scored_labels[i], dict):
-                    self.scored_labels[i] = ScoredLabel(**self.scored_labels[i])
+                    self.scored_labels[i] = ScoredLabel(
+                        **self.scored_labels[i]
+                    )
                 assert isinstance(self.scored_labels[i], ScoredLabel)
         except AssertionError:
-            raise TypeError("elements of scored_labels should be of type `velour.schemas.ScoredLabel`")
+            raise TypeError(
+                "elements of scored_labels should be of type `velour.schemas.ScoredLabel`"
+            )
 
         # annotation data
         try:
             if self.bounding_box:
                 if isinstance(self.bounding_box, dict):
                     self.bounding_box = BoundingBox(**self.bounding_box)
-                assert isinstance(self.bounding_box, BoundingBox)            
+                assert isinstance(self.bounding_box, BoundingBox)
             if self.polygon:
                 if isinstance(self.polygon, dict):
                     self.polygon = Polygon(**self.polygon)
@@ -261,7 +273,7 @@ class ScoredAnnotation:
                 assert isinstance(self.raster, Raster)
         except AssertionError:
             raise TypeError("Value does not match intended type.")
-        
+
         # metadata
         try:
             assert isinstance(self.metadata, list)
@@ -301,16 +313,20 @@ class GroundTruth:
         if isinstance(self.datum, dict):
             self.datum = Datum(**self.datum)
         if not isinstance(self.annotations, list):
-            raise TypeError("annotations should be a list of `velour.schemas.Annotation`.")
+            raise TypeError(
+                "annotations should be a list of `velour.schemas.Annotation`."
+            )
         for i in range(len(self.annotations)):
             if isinstance(self.annotations[i], dict):
-                self.annotations[i] = Annotation(**self.annotations[i])     
+                self.annotations[i] = Annotation(**self.annotations[i])
 
         if not isinstance(self.datum, Datum):
             raise TypeError("datum should be type `velour.schemas.Datum`.")
         for annotation in self.annotations:
             if not isinstance(annotation, Annotation):
-                raise TypeError("annotations list should contain only `velour.schemas.Annotation`.")
+                raise TypeError(
+                    "annotations list should contain only `velour.schemas.Annotation`."
+                )
         if not isinstance(self.dataset_name, str):
             raise TypeError("dataset_name should be type `str`.")
 
@@ -325,15 +341,19 @@ class Prediction:
         if isinstance(self.datum, dict):
             self.datum = Datum(**self.datum)
         if not isinstance(self.annotations, list):
-            raise TypeError("annotations should be a list of `velour.schemas.ScoredAnnotation`.")
+            raise TypeError(
+                "annotations should be a list of `velour.schemas.ScoredAnnotation`."
+            )
         for i in range(len(self.annotations)):
             if isinstance(self.annotations[i], dict):
-                self.annotations[i] = Annotation(**self.annotations[i])        
+                self.annotations[i] = ScoredAnnotation(**self.annotations[i])
 
         if not isinstance(self.datum, Datum):
             raise TypeError("datum should be type `velour.schemas.Datum`.")
         for annotation in self.annotations:
             if not isinstance(annotation, ScoredAnnotation):
-                raise TypeError("annotations list should contain only `velour.schemas.ScoredAnnotation`.")
+                raise TypeError(
+                    "annotations list should contain only `velour.schemas.ScoredAnnotation`."
+                )
         if not isinstance(self.model_name, str):
             raise TypeError("model_name should be type `str`.")

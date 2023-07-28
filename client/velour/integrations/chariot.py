@@ -8,24 +8,23 @@ from typing import Dict, List, Union
 import requests
 from tqdm import tqdm
 
-from velour.client import (
-    Client,
-    ImageDataset,
-    ImageModel,
-    TabularDataset,
-    TabularModel,
-)
-from velour.data_types import (
+from velour import enums
+from velour.client import Client, Dataset, Model
+from velour.schemas import (
+    Annotation,
+    BasicPolygon,
     BoundingBox,
-    BoundingPolygon,
-    GroundTruthDetection,
-    GroundTruthImageClassification,
-    GroundTruthSemanticSegmentation,
+    Datum,
+    GroundTruth,
     Image,
     Label,
+    MetaDatum,
+    MultiPolygon,
     Point,
-    PolygonWithHole,
-    PredictedDetection,
+    Polygon,
+    Prediction,
+    Raster,
+    ScoredAnnotation,
     ScoredLabel,
 )
 
@@ -99,117 +98,106 @@ def _retrieve_chariot_annotations(manifest_url: str):
 
 def _parse_image_classification_groundtruths(
     datum: dict,
-) -> GroundTruthImageClassification:
+    label_key: str = "class",
+) -> GroundTruth:
     """Parses Chariot image classification annotation."""
 
     # Strip UID from URL path
     uid = Path(datum["path"]).stem
 
-    gt_dets = []
-    for annotation in datum["annotations"]:
-        gt_dets.append(
-            GroundTruthImageClassification(
-                image=Image(
-                    uid=uid,
-                    height=-1,
-                    width=-1,
-                ),
-                labels=[
-                    Label(key="class_label", value=annotation["class_label"])
-                ],
+    image = Image(
+        uid=uid,
+        height=-1,
+        width=-1,
+    ).to_datum()
+
+    gts = []
+    GroundTruth(
+        datum=image,
+        annotations=[
+            Annotation(
+                task_type=enums.TaskType.CLASSIFICATION,
+                labels=[Label(key=label_key, value=annotation["class_label"])],
             )
-        )
-    return gt_dets
+            for annotation in datum["annotations"]
+        ],
+    )
 
 
 def _parse_image_segmentation_groundtruths(
-    datum: dict,
-) -> GroundTruthSemanticSegmentation:
+    datum: dict, label_key: str = "class"
+) -> GroundTruth:
     """Parses Chariot image segmentation annotation."""
 
     # Strip UID from URL path
     uid = Path(datum["path"]).stem
 
-    annotated_regions = {}
-    for annotation in datum["annotations"]:
-        annotation_label = annotation["class_label"]
+    image = Image(
+        uid=uid,
+        height=-1,
+        width=-1,
+    ).to_datum()
 
-        hole = None
-
-        # Create BoundingPolygon
-        points = [
-            Point(x=point["x"], y=point["y"])
-            for point in annotation["contours"][0]
-        ]
-        polygon = BoundingPolygon(points)
-
-        # Create BoundingPolygon if hole exists
-        hole = None
-        if len(annotation["contours"]) > 1:
-            points = [
-                Point(x=point["x"], y=point["y"])
-                for point in annotation["contours"][1]
-            ]
-            hole = BoundingPolygon(points)
-
-        # Populate PolygonWithHole
-        region = PolygonWithHole(polygon=polygon, hole=hole)
-
-        # Add annotated region to list
-        if region is not None:
-            if annotation_label not in annotated_regions:
-                annotated_regions[annotation_label] = []
-            annotated_regions[annotation_label].append(region)
-
-    # Create a list of GroundTruths
-    gt_dets = []
-    for label in annotated_regions.keys():
-        gt_dets.append(
-            GroundTruthSemanticSegmentation(
-                shape=annotated_regions[label],
-                labels=[Label(key="class_label", value=label)],
-                image=Image(
-                    uid=uid,
-                    height=-1,
-                    width=-1,
+    return GroundTruth(
+        datum=image,
+        annotations=[
+            Annotation(
+                task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                labels=[Label(key=label_key, value=annotation["class_label"])],
+                polygon=Polygon(
+                    boundary=BasicPolygon(
+                        points=[
+                            Point(x=point["x"], y=point["y"])
+                            for point in annotation["contours"][0]
+                        ]
+                    ),
+                    holes=[
+                        Point(x=point["x"], y=point["y"])
+                        for point in annotation["contours"][1]
+                    ]
+                    if len(annotation["contours"]) > 1
+                    else None,
                 ),
             )
-        )
-    return gt_dets
+            for annotation in datum["annotations"]
+        ],
+    )
 
 
 def _parse_object_detection_groundtruths(
     datum: dict,
-) -> GroundTruthDetection:
+    label_key: str = "Class",
+) -> GroundTruth:
     """Parses Chariot object detection annotation."""
 
     # Strip UID from URL path
     uid = Path(datum["path"]).stem
 
-    gt_dets = []
-    for annotation in datum["annotations"]:
-        gt_dets.append(
-            GroundTruthDetection(
-                bbox=BoundingBox(
+    image = Image(
+        uid=uid,
+        height=-1,
+        width=-1,
+    ).to_datum()
+
+    return GroundTruth(
+        datum=image,
+        annotations=[
+            Annotation(
+                task_type=enums.TaskType.DETECTION,
+                labels=[Label(key=label_key, value=annotation["class_label"])],
+                bounding_box=BoundingBox.from_extrema(
                     xmin=annotation["bbox"]["xmin"],
                     ymin=annotation["bbox"]["ymin"],
                     xmax=annotation["bbox"]["xmax"],
                     ymax=annotation["bbox"]["ymax"],
                 ),
-                labels=[
-                    Label(key="class_label", value=annotation["class_label"])
-                ],
-                image=Image(
-                    uid=uid,
-                    height=-1,
-                    width=-1,
-                ),
             )
-        )
-    return gt_dets
+            for annotation in datum["annotations"]
+        ],
+    )
 
 
-def _parse_chariot_annotations(
+def _parse_chariot_groundtruths(
     chariot_manifest, chariot_task_type, use_training_manifest: bool = True
 ) -> list:
     """Get chariot dataset annotations.
@@ -287,9 +275,8 @@ def create_dataset_from_chariot(
     dataset_version_id: str = None,
     name: str = None,
     use_training_manifest: bool = True,
-    chunk_size: int = 1000,
     show_progress_bar: bool = True,
-) -> Union[ImageDataset, TabularDataset]:
+) -> Dataset:
     """Converts chariot dataset to a velour dataset.
 
     Parameters
@@ -350,28 +337,27 @@ def create_dataset_from_chariot(
     # Retrieve the manifest
     chariot_annotations = _retrieve_chariot_annotations(manifest_url)
 
-    # Get GroundTruth Annotations
-    groundtruth_annotations = _parse_chariot_annotations(
+    # Check if name has been overwritten
+    if name is None:
+        name = dataset.name
+
+    # Get GroundTruths
+    groundtruths = _parse_chariot_groundtruths(
         chariot_annotations,
         dsv.supported_task_types,
         use_training_manifest,
     )
 
-    # Check if name has been overwritten
-    if name is None:
-        name = dataset.name
-
     # Construct url
     href = _construct_url(project_id=dsv.project_id, dataset_id=dsv.dataset_id)
 
     # Create velour dataset
-    velour_dataset = client.create_image_dataset(name=name, href=href)
+    velour_dataset = Dataset.create(client, name=name, href=href)
 
     # Upload velour dataset
-    velour_dataset.add_groundtruth(
-        groundtruth_annotations,
-        chunk_size=chunk_size,
-    )
+    for gt in groundtruths:
+        gt.dataset_name = (name,)
+        velour_dataset.add_groundtruth(gt)
 
     # Finalize and return
     velour_dataset.finalize()
@@ -408,40 +394,48 @@ def parse_chariot_object_detections(
 
     assert len(detections) == len(images), "length mismatch"
 
-    velour_detections = []
+    velour_predictions = []
     for detection, image in zip(detections, images):
+
+        # validate
         expected_keys = {
             "num_detections",
             "detection_classes",
             "detection_boxes",
             "detection_scores",
         }
-
         if set(detection.keys()) != expected_keys:
             raise ValueError(
                 f"Expected `dets` to have keys {expected_keys} but got {detection.keys()}"
             )
 
-        velour_detections += [
-            PredictedDetection(
-                bbox=BoundingBox(
-                    ymin=box[0], xmin=box[1], ymax=box[2], xmax=box[3]
-                ),
-                scored_labels=[
-                    ScoredLabel(
-                        label=Label(key=label_key, value=label), score=score
+        # create prediction
+        velour_predictions.append(
+            Prediction(
+                datum=image.to_datum(),
+                annotations=[
+                    ScoredAnnotation(
+                        task_type=enums.TaskType.DETECTION,
+                        scored_labels=[
+                            ScoredLabel(
+                                label=Label(key=label_key, value=label),
+                                score=score,
+                            )
+                        ],
+                        bounding_box=BoundingBox.from_extrema(
+                            ymin=box[0], xmin=box[1], ymax=box[2], xmax=box[3]
+                        ),
+                    )
+                    for box, score, label in zip(
+                        detection["detection_boxes"],
+                        detection["detection_scores"],
+                        detection["detection_classes"],
                     )
                 ],
-                image=image,
             )
-            for box, score, label in zip(
-                detection["detection_boxes"],
-                detection["detection_scores"],
-                detection["detection_classes"],
-            )
-        ]
+        )
 
-    return velour_detections
+    return velour_predictions
 
 
 def create_model_from_chariot(
@@ -449,7 +443,7 @@ def create_model_from_chariot(
     model: ChariotModel,
     name: str = None,
     description: str = None,
-) -> Union[ImageModel, TabularModel]:
+) -> Model:
     """Converts chariot model to a velour model.
 
     Parameters
@@ -501,15 +495,11 @@ def create_model_from_chariot(
 
     href = _construct_url(project_id=model.project_id, model_id=model.id)
 
-    if model.task in cv_tasks:
-        return client.create_image_model(name, href, description)
-    elif model.task in tabular_tasks:
-        return client.create_tabular_model(name, href, description)
-    elif model.task in nlp_tasks:
+    # if model.task in cv_tasks:
+    # elif model.task in tabular_tasks:
+    if model.task in nlp_tasks:
         raise NotImplementedError(
             f"NLP tasks are currently not supported. '{model.task}'"
         )
-    else:
-        raise NotImplementedError(
-            f"Task type {model.task} is currently not supported."
-        )
+
+    return Model.create(client, name, href, description)

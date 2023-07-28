@@ -118,11 +118,11 @@ def get_dataset_labels(
 ) -> list[schemas.Label]:
     try:
         return crud.get_labels(
-            db, 
+            db,
             schemas.Filter(
                 dataset_names=[dataset_name],
                 allow_predictions=False,
-            )
+            ),
         )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -152,12 +152,12 @@ def get_dataset_datums(
 ) -> list[schemas.Datum]:
     try:
         return crud.get_datums(
-            db, 
+            db,
             dataset_name,
         )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    
+
 
 @app.get(
     "/datasets/{dataset_name}/data/filter/{data_type}",
@@ -168,11 +168,7 @@ def get_dataset_datums(
     dataset_name: str, data_type: str, db: Session = Depends(get_db)
 ) -> list[schemas.Datum]:
     try:
-        return crud.get_datums(
-            db, 
-            dataset_name, 
-            filter=data_type
-        )
+        return crud.get_datums(db, dataset_name, filter=data_type)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -296,11 +292,11 @@ def get_model_labels(
 ) -> list[schemas.Label]:
     try:
         return crud.get_labels(
-            db, 
+            db,
             schemas.Filter(
                 model_name=[model_name],
                 allow_groundtruths=False,
-            )
+            ),
         )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -384,7 +380,7 @@ def create_ap_metrics(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except (
-        exceptions.DatasetIsDraftError,
+        exceptions.DatasetIsNotFinalizedError,
         exceptions.InferencesAreNotFinalizedError,
     ) as e:
         raise HTTPException(status_code=405, detail=str(e))
@@ -401,29 +397,27 @@ def create_clf_metrics(
     try:
         # @TODO: Make this actually a job
         job_id = crud.create_clf_metrics(db, data)
-        disjoint_keys = crud.get_disjoint_keys(
+        missing_pred_keys, ignored_pred_keys = crud.get_disjoint_keys(
             db,
             dataset_name=data.settings.dataset_name,
             model_name=data.settings.model_name,
         )
         return schemas.CreateClfMetricsResponse(
-            missing_pred_keys=disjoint_keys["dataset"],
-            ignored_pred_keys=disjoint_keys["model"],
+            missing_pred_keys=missing_pred_keys,
+            ignored_pred_keys=ignored_pred_keys,
             job_id=job_id,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except (
-        exceptions.DatasetIsDraftError,
+        exceptions.DatasetIsNotFinalizedError,
         exceptions.InferencesAreNotFinalizedError,
     ) as e:
         raise HTTPException(status_code=405, detail=str(e))
 
 
 @app.get("/labels", status_code=200, dependencies=[Depends(token_auth_scheme)])
-def get_labels(
-    db: Session = Depends(get_db)
-) -> list[schemas.Label]:
+def get_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
     return crud.get_labels(db)
 
 
@@ -519,9 +513,7 @@ def finalize_inferences(
     model_name: str, dataset_name: str, db: Session = Depends(get_db)
 ):
     try:
-        crud.finalize(
-            db, dataset_name=dataset_name, model_name=model_name
-        )
+        crud.finalize(db, dataset_name=dataset_name, model_name=model_name)
     except (
         exceptions.DatasetDoesNotExistError,
         exceptions.ModelDoesNotExistError,
