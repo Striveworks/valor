@@ -188,14 +188,14 @@ class Dataset:
         )
         if href:
             ds.metadata.append(
-                schemas.Metadatum(
+                schemas.MetaDatum(
                     key="href",
                     value=href,
                 )
             )
         if description:
             ds.metadata.append(
-                schemas.Metadatum(
+                schemas.MetaDatum(
                     key="description",
                     value=description,
                 )
@@ -210,7 +210,7 @@ class Dataset:
     def get(cls, client: Client, name: str):
         resp = client._requests_get_rel_host(f"datasets/{name}").json()
         metadata = [
-            schemas.Metadatum(
+            schemas.MetaDatum(
                 key=metadatum["key"],
                 value=metadatum["value"],
             )
@@ -231,7 +231,7 @@ class Dataset:
         job_id = client._requests_delete_rel_host(f"datasets/{name}").json()
         return Job(client=client, job_id=job_id)
 
-    def add_metadatum(self, metadatum: schemas.Metadatum):
+    def add_metadatum(self, metadatum: schemas.MetaDatum):
         # @TODO: Add endpoint to allow adding custom metadatums
         self.info.metadata.append(metadatum)
         self.__metadata__[metadatum.key] = metadatum
@@ -269,6 +269,28 @@ class Dataset:
             for label in labels
         ]
 
+    def get_datums(self) -> List[schemas.Datum]:
+        """ Returns a list of datums. """
+        datums = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/data"
+        ).json()
+
+        return [
+            schemas.Datum(**datum)
+            for datum in datums
+        ]
+
+    def get_images(self) -> List[schemas.Image]:
+        """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
+        
+        datums = self.get_datums()
+
+        return [
+            schemas.Image.from_datum(datum)
+            for datum in self.get_datums()
+            if schemas.Image.valid(datum)
+        ]
+
     def get_info(self) -> schemas.Info:
         resp = self.client._requests_get_rel_host(
             f"datasets/{self.name}/info"
@@ -291,29 +313,6 @@ class Dataset:
     def delete(self):
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
         del self
-
-
-    def get_datums(self) -> List[schemas.Datum]:
-        """ Returns a list of datums. """
-        datums = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/data"
-        ).json()
-
-        return [
-            schemas.Datum(**datum)
-            for datum in datums
-        ]
-
-    def get_images(self) -> List[schemas.Image]:
-        """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
-        
-        datums = self.get_datums()
-
-        return [
-            schemas.Image.from_datum(datum)
-            for datum in self.get_datums()
-            if schemas.Image.valid(datum)
-        ]
 
 
 class Model:
@@ -355,14 +354,14 @@ class Model:
         )
         if href:
             md.metadata.append(
-                schemas.Metadatum(
+                schemas.MetaDatum(
                     key="href",
                     value=href,
                 )
             )
         if description:
             md.metadata.append(
-                schemas.Metadatum(
+                schemas.MetaDatum(
                     key="description",
                     value=description,
                 )
@@ -377,7 +376,7 @@ class Model:
     def get(cls, client: Client, name: str):
         resp = client._requests_get_rel_host(f"models/{name}").json()
         metadata = [
-            schemas.Metadatum(
+            schemas.MetaDatum(
                 key=metadatum["key"],
                 value=metadatum["value"],
             )
@@ -398,13 +397,16 @@ class Model:
         job_id = client._requests_delete_rel_host(f"models/{name}").json()
         return Job(client=client, job_id=job_id)
 
-    def add_metadatum(self, metadatum: schemas.Metadatum):
+    def add_metadatum(self, metadatum: schemas.MetaDatum):
         # @TODO: Add endpoint to allow adding custom metadatums
         self.info.metadata.append(metadatum)
         self.__metadata__[metadatum.key] = metadatum
 
     def add_prediction(self, prediction: schemas.Prediction):
-        assert isinstance(prediction, schemas.Prediction)
+        try:
+            assert isinstance(prediction, schemas.Prediction)
+        except AssertionError:
+            raise TypeError(f"Expected `velour.schemas.Prediction`, got `{type(prediction)}`")
         prediction.model_name = self.info.name
         return self.client._requests_post_rel_host(
             f"prediction",

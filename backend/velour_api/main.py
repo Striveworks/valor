@@ -117,7 +117,13 @@ def get_dataset_labels(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
     try:
-        return crud.get_labels(db, schemas.Filter(filter_by_dataset_names=[dataset_name]))
+        return crud.get_labels(
+            db, 
+            schemas.Filter(
+                dataset_names=[dataset_name],
+                allow_predictions=False,
+            )
+        )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -274,7 +280,7 @@ def get_prediction(
             datum_uid=uid,
         )
     except (
-        exceptions.ImageDoesNotExistError,
+        exceptions.DatumDoesNotExistError,
         exceptions.DatasetDoesNotExistError,
     ) as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -287,9 +293,15 @@ def get_prediction(
 )
 def get_model_labels(
     model_name: str, db: Session = Depends(get_db)
-) -> list[schemas.ScoredLabelDistribution]:
+) -> list[schemas.Label]:
     try:
-        return crud.get_labels_from_model(db, model_name)
+        return crud.get_labels(
+            db, 
+            schemas.Filter(
+                model_name=[model_name],
+                allow_groundtruths=False,
+            )
+        )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -359,14 +371,14 @@ def create_ap_metrics(
     try:
         # @TODO: Make this actually a job
         job_id = crud.create_ap_metrics(db, data)
-        disjoint_labels = crud.get_disjoint_labels(
+        missing_pred_labels, ignored_pred_labels = crud.get_disjoint_labels(
             db,
             dataset_name=data.settings.dataset_name,
             model_name=data.settings.model_name,
         )
         return schemas.CreateAPMetricsResponse(
-            missing_pred_labels=disjoint_labels["dataset"],
-            ignored_pred_labels=disjoint_labels["model"],
+            missing_pred_labels=missing_pred_labels,
+            ignored_pred_labels=ignored_pred_labels,
             job_id=job_id,
         )
     except ValueError as e:

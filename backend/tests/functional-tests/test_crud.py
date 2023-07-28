@@ -1444,8 +1444,8 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_labels(
         db, 
         schemas.Filter(
-            filter_by_dataset_names=[dataset_names[0]],
-            filter_by_model_names=None,
+            dataset_names=[dataset_names[0]],
+            allow_predictions=False,
         )
     )
     assert len(ds1) == 2
@@ -1456,9 +1456,9 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_labels(
         db, 
         schemas.Filter(
-            filter_by_dataset_names=[dataset_names[0]],
-            filter_by_model_names=None,
-            filter_by_task_types=[
+            dataset_names=[dataset_names[0]],
+            allow_predictions=False,
+            task_types=[
                 enums.TaskType.CLASSIFICATION,
                 enums.TaskType.INSTANCE_SEGMENTATION,
                 enums.TaskType.SEMANTIC_SEGMENTATION,
@@ -1471,9 +1471,9 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_labels(
         db, 
         schemas.Filter(
-            filter_by_dataset_names=[dataset_names[0]],
-            filter_by_model_names=None,
-            filter_by_task_types=[enums.TaskType.DETECTION],
+            dataset_names=[dataset_names[0]],
+            allow_predictions=False,
+            task_types=[enums.TaskType.DETECTION],
         )
     )
     assert len(ds1) == 2
@@ -1484,9 +1484,9 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_labels(
         db,
         schemas.Filter(
-            filter_by_dataset_names=[dataset_names[0]],
-            filter_by_model_names=None,
-            filter_by_annotation_types=[
+            dataset_names=[dataset_names[0]],
+            allow_predictions=False,
+            annotation_types=[
                 enums.AnnotationType.POLYGON,
                 enums.AnnotationType.MULTIPOLYGON,
                 enums.AnnotationType.RASTER,
@@ -1499,9 +1499,9 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_labels(
         db,
         schemas.Filter(
-            filter_by_dataset_names=[dataset_names[0]],
-            filter_by_model_names=None,
-            filter_by_annotation_types=[enums.AnnotationType.BOX],
+            dataset_names=[dataset_names[0]],
+            allow_predictions=False,
+            annotation_types=[enums.AnnotationType.BOX],
         ),
     )
     assert len(ds1) == 2
@@ -1519,7 +1519,8 @@ def test_get_labels_from_model(
     md1 = crud.get_labels(
         db, 
         schemas.Filter(
-            filter_by_model_names=[model_names[0]],
+            model_names=[model_names[0]],
+            allow_groundtruths=False,
         )
     )
     assert len(md1) == 4
@@ -1532,8 +1533,9 @@ def test_get_labels_from_model(
     md1 = crud.get_labels(
         db,
         schemas.Filter(
-            filter_by_model_names=[model_names[0]],
-            filter_by_task_types=[enums.TaskType.CLASSIFICATION]
+            model_names=[model_names[0]],
+            task_types=[enums.TaskType.CLASSIFICATION],
+            allow_groundtruths=False,
         )
     )
     assert md1 == []
@@ -1542,8 +1544,9 @@ def test_get_labels_from_model(
     md1 = crud.get_labels(
         db,
         schemas.Filter(
-            filter_by_model_names=[model_names[0]],
-            filter_by_annotation_types=[enums.AnnotationType.BOX]
+            model_names=[model_names[0]],
+            annotation_types=[enums.AnnotationType.BOX],
+            allow_groundtruths=False,
         )
     )
     assert len(md1) == 4

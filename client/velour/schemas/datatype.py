@@ -10,6 +10,7 @@ class Image:
     height: int
     width: int
     frame: int = field(default=0)
+    metadata: list[schemas.MetaDatum] = field(default_factory=list)
 
     def __post_init__(self):
         if not isinstance(self.uid, str):
@@ -40,25 +41,33 @@ class Image:
     def from_datum(cls, datum: schemas.Datum):
         if not cls.valid(datum):
             raise TypeError("Datum does not conform to image type.")
-
+        
         metadata = {
             metadatum.key: metadatum.value
             for metadatum in datum.metadata
         }
+        height=int(metadata["height"])
+        width=int(metadata["width"])
+        frame=int(metadata["frame"])
+        del metadata["height"]
+        del metadata["width"]
+        del metadata["frame"]
         return cls(
             uid=datum.uid,
-            height=int(metadata["height"]),
-            width=int(metadata["width"]),
-            frame=int(metadata["frame"]),
+            height=height,
+            width=width,
+            frame=frame,
+            metadata=metadata,
         )
         
     def to_datum(self) -> schemas.Datum:
         return schemas.Datum(
             uid=self.uid,
             metadata=[
-                schemas.Metadatum(key="height", value=self.height),
-                schemas.Metadatum(key="width", value=self.width),
-                schemas.Metadatum(key="frame", value=self.frame),
+                schemas.MetaDatum(key="height", value=self.height),
+                schemas.MetaDatum(key="width", value=self.width),
+                schemas.MetaDatum(key="frame", value=self.frame),
+                *self.metadata,
             ],
         )
     

@@ -6,7 +6,9 @@ from typing import List, Optional, Tuple, Union
 @dataclass
 class GeoJSON:
     type: str
-    coordinates: list = field(default_factory=list)
+    coordinates: dict
 
+    def validate(self):
+        pass
 
 

@@ -20,11 +20,18 @@ class AnnotationDistribution(BaseModel):
     count: int
 
 class Filter(BaseModel):
-    filter_by_dataset_names: list[str] = []
-    filter_by_model_names: list[str] | None = []
-    filter_by_datum_uids: list[str] = []
-    filter_by_task_types: list[TaskType] = []
-    filter_by_annotation_types: list[AnnotationType] = []
-    filter_by_labels: list[schemas.Label] = []
-    filter_by_label_keys: list[str] = []
-    filter_by_metadata: list[schemas.MetaDatum] = []
+    dataset_names: list[str] = []
+    model_names: list[str] = []
+    datum_uids: list[str] = []
+    task_types: list[TaskType] = []
+    annotation_types: list[AnnotationType] = []
+    labels: list[schemas.Label] = []
+    label_keys: list[str] = []
+    metadata: list[schemas.MetaDatum] = []
+
+    allow_dataset_metadata: bool = True
+    allow_model_metadata: bool = True
+    allow_datum_metadata: bool = True
+    allow_annotation_metadata: bool = True 
+    allow_predictions: bool = True
+    allow_groundtruths: bool = True

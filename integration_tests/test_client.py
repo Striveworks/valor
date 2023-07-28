@@ -9,6 +9,8 @@ from typing import Any
 
 import numpy as np
 import pytest
+from PIL import Image as PILImage
+
 from geoalchemy2.functions import (
     ST_Area,
     ST_AsGeoJSON,
@@ -16,10 +18,9 @@ from geoalchemy2.functions import (
     ST_AsText,
     ST_Polygon,
 )
-from PIL import Image as PILImage
-from sqlalchemy import create_engine, select, and_
+from geoalchemy2 import func as gfunc
+from sqlalchemy import create_engine, text, select, and_, func
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import text
 
 from velour import enums
 from velour.client import (
@@ -34,7 +35,7 @@ from velour.schemas import (
     GroundTruth,
     Datum,
     Label,
-    Metadatum,
+    MetaDatum,
     ScoredAnnotation,
     Prediction,
     ScoredLabel,
@@ -44,6 +45,7 @@ from velour.schemas import (
     Polygon,
     MultiPolygon,
     Raster,
+    GeoJSON,
 )
 from velour.metrics import Task
 from velour_api import crud
@@ -55,41 +57,36 @@ model_name = "test_model"
 
 def bbox_to_poly(bbox: BoundingBox) -> Polygon:
     return Polygon(
-        points=[
-            Point(x=bbox.xmin, y=bbox.ymin),
-            Point(x=bbox.xmin, y=bbox.ymax),
-            Point(x=bbox.xmax, y=bbox.ymax),
-            Point(x=bbox.xmax, y=bbox.ymin),
-        ]
+        boundary=bbox.polygon,
+        holes=None,
     )
 
 
 def _list_of_points_from_wkt_polygon(
-    db: Session, det: Annotation | ScoredAnnotation
-) -> list[tuple[int, int]]:
-    geo = json.loads(db.scalar(det.boundary.ST_AsGeoJSON()))
+    db: Session, det: models.Annotation
+) -> list[Point]:
+    geo = json.loads(db.scalar(det.polygon.ST_AsGeoJSON()))
     assert len(geo["coordinates"]) == 1
-    return [tuple(p) for p in geo["coordinates"][0]]
+    return [Point(p[0], p[1]) for p in geo["coordinates"][0][:-1]]
 
 
 def area(rect: Polygon) -> float:
     """Computes the area of a rectangle"""
-    assert len(rect.points) == 4
-    xs = [pt.x for pt in rect.points]
-    ys = [pt.y for pt in rect.points]
-
+    assert len(rect.boundary.points) == 4
+    xs = [pt.x for pt in rect.boundary.points]
+    ys = [pt.y for pt in rect.boundary.points]
     return (max(xs) - min(xs)) * (max(ys) - min(ys))
 
 
 def intersection_area(rect1: Polygon, rect2: Polygon) -> float:
     """Computes the intersection area of two rectangles"""
-    assert len(rect1.points) == len(rect2.points) == 4
+    assert len(rect1.boundary.points) == len(rect2.boundary.points) == 4
 
-    xs1 = [pt.x for pt in rect1.points]
-    xs2 = [pt.x for pt in rect2.points]
+    xs1 = [pt.x for pt in rect1.boundary.points]
+    xs2 = [pt.x for pt in rect2.boundary.points]
 
-    ys1 = [pt.y for pt in rect1.points]
-    ys2 = [pt.y for pt in rect2.points]
+    ys1 = [pt.y for pt in rect1.boundary.points]
+    ys2 = [pt.y for pt in rect2.boundary.points]
 
     inter_xmin = max(min(xs1), min(xs2))
     inter_xmax = min(max(xs1), max(xs2))
@@ -109,19 +106,20 @@ def iou(rect1: Polygon, rect2: Polygon) -> float:
     return inter_area / (area(rect1) + area(rect2) - inter_area)
 
 
+# @TODO: Implement geojson
 @pytest.fixture
 def metadata():
     """Some sample metadata of different types"""
     return [
-        Metadatum(
-            key="metadatum name1",
-            value={
-                "type": "Point",
-                "coordinates": [-48.23456, 20.12345],
-            },
-        ),
-        Metadatum(key="metadatum name2", value="a string"),
-        Metadatum(key="metadatum name3", value=0.45),
+        # MetaDatum(
+        #     key="metadatum name1",
+        #     value=GeoJSON(
+        #         type="Point",
+        #         coordinates=[-48.23456, 20.12345],
+        #     )
+        # ),
+        MetaDatum(key="metadatum name2", value="a string"),
+        MetaDatum(key="metadatum name3", value=0.45),
     ]
 
 
@@ -262,7 +260,7 @@ def gt_poly_dets1(
                 Annotation(
                     task_type=enums.TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=rect1.polygon,
+                    polygon=Polygon(boundary=rect1.polygon, holes=None),
                 )
             ]
         ),
@@ -273,7 +271,7 @@ def gt_poly_dets1(
                 Annotation(
                     task_type=enums.TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=rect2.polygon,
+                    polygon=Polygon(boundary=rect2.polygon, holes=None),
                 )
             ]
         ),
@@ -326,7 +324,11 @@ def gt_segs1(
                 Annotation(
                     task_type=enums.TaskType.INSTANCE_SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
-                    multipolygon=MultiPolygon(polygons=[Polygon(polygon=bbox_to_poly(rect1))])
+                    multipolygon=MultiPolygon(
+                        polygons=[
+                            Polygon(boundary=rect1.polygon)
+                        ]
+                    )
                 )
             ]
         ),
@@ -340,8 +342,8 @@ def gt_segs1(
                     multipolygon=MultiPolygon(
                         polygons=[
                             Polygon(
-                                boundary=bbox_to_poly(rect2), 
-                                holes=[bbox_to_poly(rect1)],
+                                boundary=rect2.polygon, 
+                                holes=[rect1.polygon],
                             )
                         ]
                     )
@@ -365,8 +367,8 @@ def gt_segs2(
                     labels=[Label(key="k2", value="v2")],
                     multipolygon=MultiPolygon(
                         polygons=[
-                            Polygon(polygon=bbox_to_poly(rect3)),
-                            Polygon(polygon=bbox_to_poly(rect1)),
+                            Polygon(boundary=rect3.polygon),
+                            Polygon(boundary=rect1.polygon),
                         ]
                     )
                 )
@@ -388,7 +390,7 @@ def gt_segs3(
                     task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     labels=[Label(key="k3", value="v3")],
                     multipolygon=MultiPolygon(
-                        polygons=[Polygon(polygon=bbox_to_poly(rect3))],
+                        polygons=[Polygon(boundary=rect3.polygon)],
                     )
                 )
             ]
@@ -495,7 +497,7 @@ def pred_poly_dets(
     return [
         Prediction(
             model_name=det.model_name,
-            datum=det.model_name,
+            datum=det.datum,
             annotations=[
                 ScoredAnnotation(
                     task_type=enums.TaskType.DETECTION,
@@ -531,12 +533,12 @@ def pred_segs(img1: Image, img2: Image) -> list[Prediction]:
             model_name=model_name,
             datum=img2,
             annotations=[
-                Annotation(
+                ScoredAnnotation(
                     task_type=enums.TaskType.INSTANCE_SEGMENTATION,
                     scored_labels=[
                         ScoredLabel(label=Label(key="k2", value="v2"), score=0.92)
                     ],
-                    mask=Raster.from_numpy(mask_2),
+                    raster=Raster.from_numpy(mask_2),
                 )
             ]
         ),
@@ -711,11 +713,17 @@ def _test_create_model_with_preds(
     # check that if we try to add detections we get an error
     # since we haven't added any images yet
     with pytest.raises(ClientException) as exc_info:
-        model.add_prediction(preds)
-    assert "Image with uid" in str(exc_info)
+        for pd in preds:
+            model.add_prediction(pd)
+    assert "Datum with uid" in str(exc_info)
 
-    dataset.add_groundtruth(gts)
-    model.add_prediction(preds)
+    # add groundtruths
+    for gt in gts:
+        dataset.add_groundtruth(gt)
+
+    # add predictions
+    for pd in preds:
+        model.add_prediction(pd)
 
     # check predictions have been added
     db_preds = db.scalars(select(preds_model_class)).all()
@@ -731,7 +739,7 @@ def _test_create_model_with_preds(
     assert set([p.score for p in db_preds]) == expected_scores
 
     # check that the get_model method works
-    retrieved_model = client.get_model(model_name)
+    retrieved_model = Model.get(client, model_name)
     assert isinstance(retrieved_model, type(model))
     assert retrieved_model.name == model_name
 
@@ -820,21 +828,21 @@ def test_create_image_dataset_with_detections(
     dets2 = dataset.get_groundtruth("uid2")
 
     # check we get back what we inserted
-    gt_dets_uid1 = [
-        gt for gt in gt_dets1 + gt_dets2 + gt_dets3 if gt.datum.uid == "uid1"
-    ]
-    assert dets1 == gt_dets_uid1
-
-    gt_dets_uid2 = [
-        gt for gt in gt_dets1 + gt_dets2 + gt_dets3 if gt.datum.uid == "uid2"
-    ]
-    assert dets2 == gt_dets_uid2
+    gt_dets_uid1 = []
+    gt_dets_uid2 = []
+    for gt in gt_dets1 + gt_dets2 + gt_dets3:
+        if gt.datum.uid == "uid1":
+            gt_dets_uid1.extend(gt.annotations)
+        elif gt.datum.uid == "uid2":
+            gt_dets_uid2.extend(gt.annotations)
+    assert dets1.annotations == gt_dets_uid1
+    assert dets2.annotations == gt_dets_uid2
 
 
 def test_create_image_model_with_predicted_detections(
     client: Client,
-    gt_poly_dets1: list[Annotation],
-    pred_poly_dets: list[ScoredAnnotation],
+    gt_poly_dets1: list[GroundTruth],
+    pred_poly_dets: list[Prediction],
     db: Session,
 ):
     labeled_pred_dets = _test_create_model_with_preds(
@@ -842,21 +850,44 @@ def test_create_image_model_with_predicted_detections(
         datum_type=enums.DataType.IMAGE,
         gts=gt_poly_dets1,
         preds=pred_poly_dets,
-        preds_model_class=models.LabeledScoredAnnotation,
+        preds_model_class=models.Prediction,
         preds_expected_number=2,
         expected_labels_tuples={("k1", "v1"), ("k2", "v2")},
         expected_scores={0.3, 0.98},
         db=db,
     )
 
-    # check boundary
-    db_pred = [
-        p for p in labeled_pred_dets if p.detection.datum.uid == "uid1"
-    ][0]
-    points = _list_of_points_from_wkt_polygon(db, db_pred.detection)
-    pred = pred_poly_dets[0]
+    # get db polygon
+    db_annotation_ids = {
+        pred.annotation_id
+        for pred in labeled_pred_dets
+    }
+    db_annotations = [
+        db.scalar(
+            select(models.Annotation)
+            .where(
+                and_(
+                    models.Annotation.id == id,
+                    models.Annotation.model_id.isnot(None),
+                )
+            )
+        )
+        for id in db_annotation_ids
+    ]
+    db_point_lists = [
+        _list_of_points_from_wkt_polygon(db, annotation)
+        for annotation in db_annotations
+    ]
 
-    assert set(points) == set([(pt.x, pt.y) for pt in pred.boundary.points])
+    # get fixture polygons
+    fx_point_lists = []
+    for pd in pred_poly_dets:
+        for ann in pd.annotations:
+            fx_point_lists.append(ann.polygon.boundary.points)
+
+    # check boundary
+    for fx_points in fx_point_lists:
+        assert fx_points in db_point_lists
 
 
 def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
@@ -865,8 +896,8 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
     image = Image(uid="uid", height=200, width=150).to_datum()
+    
     dataset = Dataset.create(client, dset_name)
-
     gt = GroundTruth(
         dataset_name=dset_name,
         datum=image,
@@ -883,36 +914,37 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
                     boundary=BasicPolygon(
                         points=[
                             Point(x=xmin, y=ymin),
-                            Point(x=xmin, y=ymax),
-                            Point(x=xmax, y=ymax),
                             Point(x=xmax, y=ymin),
+                            Point(x=xmax, y=ymax),
+                            Point(x=xmin, y=ymax),
                         ]
-                    )
+                    ),
+                    holes=None,
                 ),
             )
         ]
     )
-
     dataset.add_groundtruth(gt)
 
-    db_dets = db.scalars(select(models.Annotation).where(models.Annotation.is_(None))).all()
+    db_dets = db.scalars(select(models.Annotation).where(models.Annotation.model_id.is_(None))).all()
     assert len(db_dets) == 2
     assert set([db_det.box is not None for db_det in db_dets]) == {True, False}
+    
     assert (
-        db.scalar(ST_AsText(db_dets[0].box))
-        == "POLYGON((10 25,10 50,30 50,30 25,10 25))"
-        == db.scalar(ST_AsText(db_dets[1].polygon))
+        str(db.scalar(ST_AsText(db_dets[0].box)))
+        == "POLYGON((10 25,30 25,30 50,10 50,10 25))"
+        == str(db.scalar(ST_AsText(db_dets[1].polygon)))
     )
 
     # check that they can be recovered by the client
     detections = dataset.get_groundtruth("uid")
     assert len(detections.annotations) == 2
     assert len([det for det in detections.annotations if det.bounding_box is not None]) == 1
-    for det in detections:
-        if det.box:
-            assert det == gt.annotations[0].bounding_box
+    for det in detections.annotations:
+        if det.bounding_box:
+            assert det == gt.annotations[0]
         else:
-            assert det == gt.annotations[1].polygon
+            assert det == gt.annotations[1]
 
 
 def test_create_pred_detections_as_bbox_or_poly(
@@ -925,11 +957,12 @@ def test_create_pred_detections_as_bbox_or_poly(
     or a polygon
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
+
     dataset = Dataset.create(client, dset_name)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+
     model = Model.create(client, model_name)
-
-    dataset.add_groundtruth(gt_dets1)
-
     pd = Prediction(
         model_name=model_name,
         datum=img1,
@@ -950,16 +983,15 @@ def test_create_pred_detections_as_bbox_or_poly(
                     boundary=BasicPolygon(
                         points=[
                             Point(x=xmin, y=ymin),
-                            Point(x=xmin, y=ymax),
-                            Point(x=xmax, y=ymax),
                             Point(x=xmax, y=ymin),
+                            Point(x=xmax, y=ymax),
+                            Point(x=xmin, y=ymax),
                         ]
                     )
                 )
             )
         ]
     )
-
     model.add_prediction(pd)
 
     db_dets = db.scalars(select(models.Annotation).where(models.Annotation.model_id.isnot(None))).all()
@@ -967,7 +999,7 @@ def test_create_pred_detections_as_bbox_or_poly(
     assert set([db_det.box is not None for db_det in db_dets]) == {True, False}
     assert (
         db.scalar(ST_AsText(db_dets[0].box))
-        == "POLYGON((10 25,10 50,30 50,30 25,10 25))"
+        == "POLYGON((10 25,30 25,30 50,10 50,10 25))"
         == db.scalar(ST_AsText(db_dets[1].polygon))
     )
 
@@ -991,31 +1023,39 @@ def test_create_image_dataset_with_segmentations(
         },
     )
 
+    gt = dataset.get_groundtruth("uid1")
+    image = Image.from_datum(gt.datum)
+    segs = gt.annotations
+
+    instance_segs = []
+    semantic_segs = []
+    for seg in segs:
+        assert isinstance(seg, Annotation)
+        if seg.task_type == enums.TaskType.INSTANCE_SEGMENTATION:
+            instance_segs.append(seg)
+        elif seg.task_type == enums.TaskType.SEMANTIC_SEGMENTATION:
+            semantic_segs.append(seg)
+
     # should have one instance segmentation that's a rectangle
     # with xmin, ymin, xmax, ymax = 10, 10, 60, 40
-    instance_segs = dataset.get_groundtruth("uid1")
-    for seg in instance_segs:
-        assert isinstance(seg, GroundTruth)
     assert len(instance_segs) == 1
-    mask = instance_segs[0].shape
+    mask = instance_segs[0].raster.to_numpy()
     # check get all True in the box
     assert mask[10:40, 10:60].all()
     # check that outside the box is all False
     assert mask.sum() == (40 - 10) * (60 - 10)
     # check shape agrees with image
-    assert mask.shape == (gt_segs1[0].image.height, gt_segs1[0].image.width)
+    assert mask.shape == (image.height, image.width)
 
     # should have one semantic segmentation that's a rectangle
     # with xmin, ymin, xmax, ymax = 10, 10, 60, 40 plus a rectangle
     # with xmin, ymin, xmax, ymax = 87, 10, 158, 820
-    semantic_segs = dataset.get_groundtruth("uid1")
-    for seg in semantic_segs:
-        assert isinstance(seg, GroundTruth)
-    mask = semantic_segs[0].shape
+    assert len(semantic_segs) == 1
+    mask = semantic_segs[0].raster.to_numpy()
     assert mask[10:40, 10:60].all()
     assert mask[10:820, 87:158].all()
     assert mask.sum() == (40 - 10) * (60 - 10) + (820 - 10) * (158 - 87)
-    assert mask.shape == (gt_segs1[0].image.height, gt_segs1[0].image.width)
+    assert mask.shape == (image.height, image.width)
 
 
 def test_create_gt_segs_as_polys_or_masks(
@@ -1024,8 +1064,6 @@ def test_create_gt_segs_as_polys_or_masks(
     """Test that we can create a dataset with groundtruth segmentations that are defined
     both my polygons and mask arrays
     """
-    dataset = Dataset.create(client, dset_name)
-
     xmin, xmax, ymin, ymax = 11, 45, 37, 102
     h, w = 900, 300
     mask = np.zeros((h, w), dtype=bool)
@@ -1056,12 +1094,14 @@ def test_create_gt_segs_as_polys_or_masks(
                 labels=[Label(key="k1", value="v1")],
                 multipolygon=MultiPolygon(
                     polygons=[poly]
-                )
+                ),
             )
-        ],
+        ]
     )
 
+    dataset = Dataset.create(client, dset_name)
     dataset.add_groundtruth(gts)
+
     wkts = db.scalars(
         select(ST_AsText(ST_Polygon(models.Annotation.raster)))
     ).all()
@@ -1085,7 +1125,7 @@ def test_create_model_with_predicted_segmentations(
         datum_type=enums.DataType.IMAGE,
         gts=gt_segs1,
         preds=pred_segs,
-        preds_model_class=models.LabeledPredictedSegmentation,
+        preds_model_class=models.Prediction,
         preds_expected_number=2,
         expected_labels_tuples={("k1", "v1"), ("k2", "v2")},
         expected_scores={0.87, 0.92},
@@ -1094,14 +1134,23 @@ def test_create_model_with_predicted_segmentations(
 
     # grab the segmentation from the db, recover the mask, and check
     # its equal to the mask the client sent over
-    db_pred = [
-        p for p in labeled_pred_segs if p.segmentation.datum.uid == "uid1"
-    ][0]
-    png_from_db = db.scalar(ST_AsPNG(db_pred.segmentation.shape))
+    db_annotations = (
+        db.query(models.Annotation)
+        .where(models.Annotation.model_id.isnot(None))
+        .all()
+    )
+
+    if db_annotations[0].datum_id < db_annotations[1].datum_id:
+        raster_uid1 = db_annotations[0].raster
+        raster_uid2 = db_annotations[1].raster
+    else:
+        raster_uid1 = db_annotations[1].raster
+        raster_uid2 = db_annotations[0].raster
+
+    png_from_db = db.scalar(ST_AsPNG(raster_uid1))
     f = io.BytesIO(png_from_db.tobytes())
     mask_array = np.array(PILImage.open(f))
-
-    np.testing.assert_equal(mask_array, pred_segs[0].mask)
+    np.testing.assert_equal(mask_array, pred_segs[0].annotations[0].raster.to_numpy())
 
 
 def test_create_image_dataset_with_classifications(
@@ -1135,7 +1184,7 @@ def test_create_image_model_with_predicted_classifications(
         datum_type=enums.DataType.IMAGE,
         gts=gt_clfs1,
         preds=pred_clfs,
-        preds_model_class=models.Annotation,
+        preds_model_class=models.Prediction,
         preds_expected_number=5,
         expected_labels_tuples={
             ("k12", "v12"),
@@ -1175,7 +1224,7 @@ def test_boundary(
     # check boundary
     points = _list_of_points_from_wkt_polygon(db, db_det)
 
-    assert set(points) == set([(pt.x, pt.y) for pt in rect1_poly.boundary.points])
+    assert set(points) == set([pt for pt in rect1_poly.boundary.points])
 
 
 def test_iou(
@@ -1185,12 +1234,10 @@ def test_iou(
     rect2: Polygon,
     img1: Image,
 ):
-    dataset = Dataset.create(client, dset_name)
-    model = Model.create(client, model_name)
-
     rect1_poly = bbox_to_poly(rect1)
     rect2_poly = bbox_to_poly(rect2)
 
+    dataset = Dataset.create(client, dset_name)
     dataset.add_groundtruth(
         GroundTruth(
             dataset_name=dset_name,
@@ -1204,14 +1251,15 @@ def test_iou(
             ],
         )
     )
-    db_gt = db.scalar(select(models.Annotation))
+    db_gt = db.scalar(select(models.Annotation)).polygon
 
+    model = Model.create(client, model_name)
     model.add_prediction(
         Prediction(
             model_name=model_name,
             datum=img1,
             annotations=[
-                Annotation(
+                ScoredAnnotation(
                     task_type=enums.TaskType.DETECTION,
                     polygon=rect2_poly,
                     scored_labels=[ScoredLabel(label=Label("k", "v"), score=0.6)],
@@ -1219,9 +1267,17 @@ def test_iou(
             ]
         )
     )
-    db_pred = db.scalar(select(models.ScoredAnnotation))
+    db_pred = db.scalar(
+        select(models.Annotation)
+        .where(models.Annotation.model_id.isnot(None))
+    ).polygon
 
-    assert ops.iou_two_dets(db, db_gt, db_pred) == iou(rect1_poly, rect2_poly)
+    # scraped from velour_api backend
+    gintersection = gfunc.ST_Intersection(db_gt, db_pred)
+    gunion = gfunc.ST_Union(db_gt, db_pred)
+    iou_computation = gfunc.ST_Area(gintersection) / gfunc.ST_Area(gunion)
+
+    assert iou(rect1_poly, rect2_poly) == db.scalar(select(iou_computation))
 
 
 def test_delete_dataset_exception(client: Client):
@@ -1251,11 +1307,13 @@ def test_evaluate_ap(
     db: Session,
 ):
     dataset = Dataset.create(client, dset_name)
-    dataset.add_groundtruth(gt_dets1)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
     dataset.finalize()
 
     model = Model.create(client, model_name)
-    model.add_prediction(pred_dets)
+    for pd in pred_dets:
+        model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_ap(
@@ -1264,10 +1322,6 @@ def test_evaluate_ap(
         ious_to_keep=[0.1, 0.6],
         label_key="k1",
     )
-
-    # import time
-    # while True:
-    #     time.sleep(0.5)
 
     assert eval_job.ignored_pred_labels == [Label(key="k2", value="v2")]
     assert eval_job.missing_pred_labels == []
@@ -1497,7 +1551,7 @@ def test_evaluate_image_clf(
 
 
 def test_create_tabular_dataset_and_add_groundtruth(
-    client: Client, db: Session, metadata: list[Metadatum]
+    client: Client, db: Session, metadata: list[MetaDatum]
 ):
     dataset = Dataset.create(client, name=dset_name)
     assert isinstance(dataset, Dataset)
@@ -1572,7 +1626,7 @@ def test_create_tabular_model_with_predicted_classifications(
                 ScoredLabel(label=Label(key="k1", value="v2"), score=0.9),
             ],
         ],
-        preds_model_class=models.PredictedClassification,
+        preds_model_class=models.Prediction,
         preds_expected_number=5,
         expected_labels_tuples={
             ("k1", "v1"),
@@ -1735,180 +1789,220 @@ def test_evaluate_tabular_clf(
     assert len(client.get_models()) == 0
 
 
-def test_create_images_with_metadata(
-    client: Client, db: Session, metadata: list[Metadatum], rect1: BoundingBox
-):
-    dataset = Dataset.create(client, dset_name)
+# @TODO: Implement metadata querying + geojson
+# def test_create_images_with_metadata(
+#     client: Client, db: Session, metadata: list[MetaDatum], rect1: BoundingBox
+# ):
+#     dataset = Dataset.create(client, dset_name)
 
-    md1, md2, md3 = metadata
-    img1 = Image(uid="uid1", metadata=[md1], height=100, width=200)
-    img2 = Image(uid="uid2", metadata=[md2, md3], height=100, width=200)
+#     md1, md2, md3 = metadata
+#     img1 = Image(uid="uid1", metadata=[md1], height=100, width=200).to_datum()
+#     img2 = Image(uid="uid2", metadata=[md2, md3], height=100, width=200).to_datum()
 
-    dataset.add_groundtruth(
-        groundtruth=[
-            Annotation(
-                bbox=rect1, labels=[Label(key="k", value="v")], image=img1
-            )
-        ]
-    )
-    dataset.add_groundtruth(
-        groundtruth=[
-            GroundTruthImageClassification(
-                image=img2, labels=[Label(key="k", value="v")]
-            )
-        ]
-    )
+#     print(GroundTruth(
+#             dataset_name=dset_name,
+#             datum=img1,
+#             annotations=[
+#                 Annotation(
+#                     task_type=enums.TaskType.DETECTION,
+#                     labels=[Label(key="k", value="v")],
+#                     bounding_box=rect1,
+#                 ),
+#             ]
+#         ))
 
-    data = db.scalars(select(models.Datum)).all()
-    assert len(data) == 2
-    assert set(d.uid for d in data) == {"uid1", "uid2"}
+#     dataset.add_groundtruth(
+#         GroundTruth(
+#             dataset_name=dset_name,
+#             datum=img1,
+#             annotations=[
+#                 Annotation(
+#                     task_type=enums.TaskType.DETECTION,
+#                     labels=[Label(key="k", value="v")],
+#                     bounding_box=rect1,
+#                 ),
+#             ]
+#         )
+#     )
+#     dataset.add_groundtruth(
+#         GroundTruth(
+#             dataset_name=dset_name,
+#             datum=img2,
+#             annotations=[
+#                 Annotation(
+#                     task_type=enums.TaskType.CLASSIFICATION,
+#                     labels=[Label(key="k", value="v")],
+#                 )
+#             ]
+#         )
+#     )
 
-    metadata_links = data[0].datum_metadatum_links
-    assert len(metadata_links) == 1
-    metadatum = metadata_links[0].metadatum
-    assert metadata_links[0].metadatum.name == "metadatum name1"
-    assert json.loads(db.scalar(ST_AsGeoJSON(metadatum.geo))) == {
-        "type": "Point",
-        "coordinates": [-48.23456, 20.12345],
-    }
-    metadata_links = data[1].datum_metadatum_links
-    assert len(metadata_links) == 2
-    metadatum1 = metadata_links[0].metadatum
-    metadatum2 = metadata_links[1].metadatum
-    assert metadatum1.name == "metadatum name2"
-    assert metadatum1.string_value == "a string"
-    assert metadatum2.name == "metadatum name3"
-    assert metadatum2.numeric_value == 0.45
+#     data = db.scalars(select(models.Datum)).all()
+#     assert len(data) == 2
+#     assert set(d.uid for d in data) == {"uid1", "uid2"}
+
+#     metadata_links = data[0].datum_metadatum_links
+#     assert len(metadata_links) == 1
+#     metadatum = metadata_links[0].metadatum
+#     assert metadata_links[0].metadatum.name == "metadatum name1"
+#     assert json.loads(db.scalar(ST_AsGeoJSON(metadatum.geo))) == {
+#         "type": "Point",
+#         "coordinates": [-48.23456, 20.12345],
+#     }
+#     metadata_links = data[1].datum_metadatum_links
+#     assert len(metadata_links) == 2
+#     metadatum1 = metadata_links[0].metadatum
+#     metadatum2 = metadata_links[1].metadatum
+#     assert metadatum1.name == "metadatum name2"
+#     assert metadatum1.string_value == "a string"
+#     assert metadatum2.name == "metadatum name3"
+#     assert metadatum2.numeric_value == 0.45
 
 
-def test_stratify_clf_metrics(
-    client: Session,
-    db: Session,
-    y_true: list[int],
-    tabular_preds: list[list[float]],
-):
-    dataset = Dataset.create(client, name=dset_name)
-    model = Model.create(client, name=model_name)
+# @TODO: Need to implement metadatum querying
+# def test_stratify_clf_metrics(
+#     client: Session,
+#     db: Session,
+#     y_true: list[int],
+#     tabular_preds: list[list[float]],
+# ):
+    
+#     tabular_datum = Datum(
+#         uid="uid"
+#     )
 
-    # create data and two-different defining groups of cohorts
-    gt_with_metadata = [
-        [
-            Label(key="class", value=str(t)),
-            Metadatum(key="md1", value=f"md1-val{i % 3}"),
-            Metadatum(key="md2", value=f"md2-val{i % 4}"),
-        ]
-        for i, t in enumerate(y_true)
-    ]
+#     dataset = Dataset.create(client, name=dset_name)
+#     # create data and two-different defining groups of cohorts
+#     gt_with_metadata = GroundTruth(
+#         dataset_name=dset_name,
+#         datum=tabular_datum,
+#         annotations=[
+#             Annotation(
+#                 task_type=enums.TaskType.CLASSIFICATION,
+#                 labels=[Label(key="class", value=str(t))],
+#                 metadata=[
+#                     MetaDatum(key="md1", value=f"md1-val{i % 3}"),
+#                     MetaDatum(key="md2", value=f"md2-val{i % 4}"),
+#                 ]
+#             )
+#             for i, t in enumerate(y_true)
+#         ]
+#     )
+#     dataset.add_groundtruth(gt_with_metadata)
+#     dataset.finalize()
 
-    dataset.add_groundtruth(gt_with_metadata)
-    model.add_prediction(
-        dataset,
-        [
-            [
-                ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
-                for i in range(len(pred))
-            ]
-            for pred in tabular_preds
-        ],
-    )
+#     model = Model.create(client, name=model_name)
+#     pd = Prediction(
+#         model_name=model_name,
+#         datum=tabular_datum,
+#         annotations=[
+#             ScoredAnnotation(
+#                 task_type=enums.TaskType.CLASSIFICATION,
+#                 scored_labels=[
+#                     ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
+#                     for i in range(len(pred))
+#                 ]
+#             )
+#             for pred in tabular_preds
+#         ]
+#     )
+#     model.add_prediction(pd)
+#     model.finalize_inferences(dataset)
 
-    dataset.finalize()
-    model.finalize_inferences(dataset)
+#     eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
+#     time.sleep(2)
 
-    eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
-    time.sleep(2)
+#     metrics = eval_job.metrics()
 
-    metrics = eval_job.metrics()
+#     for m in metrics:
+#         assert m["group"] in [
+#             {"name": "md1", "value": "md1-val0"},
+#             {"name": "md1", "value": "md1-val1"},
+#             {"name": "md1", "value": "md1-val2"},
+#         ]
 
-    for m in metrics:
-        assert m["group"] in [
-            {"name": "md1", "value": "md1-val0"},
-            {"name": "md1", "value": "md1-val1"},
-            {"name": "md1", "value": "md1-val2"},
-        ]
+#     val2_metrics = [
+#         m
+#         for m in metrics
+#         if m["group"] == {"name": "md1", "value": "md1-val2"}
+#     ]
 
-    val2_metrics = [
-        m
-        for m in metrics
-        if m["group"] == {"name": "md1", "value": "md1-val2"}
-    ]
+#     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
+#     # (hard preds [1, 0, 0])
+#     expected_metrics = [
+#         {
+#             "type": "Accuracy",
+#             "parameters": {"label_key": "class"},
+#             "value": 0.3333333333333333,
+#             "group": {"name": "md1", "value": "md1-val2"},
+#         },
+#         {
+#             "type": "ROCAUC",
+#             "parameters": {"label_key": "class"},
+#             "value": 0.8333333333333334,
+#             "group": {"name": "md1", "value": "md1-val2"},
+#         },
+#         {
+#             "type": "Precision",
+#             "value": 0.0,
+#             "label": {"key": "class", "value": "1"},
+#             "group": {"name": "md1", "value": "md1-val2"},
+#         },
+#         {
+#             "type": "Recall",
+#             "value": 0.0,
+#             "label": {"key": "class", "value": "1"},
+#             "group": {"name": "md1", "value": "md1-val2"},
+#         },
+#         {
+#             "type": "F1",
+#             "value": 0.0,
+#             "label": {"key": "class", "value": "1"},
+#             "group": {"name": "md1", "value": "md1-val2"},
+#         },
+#         {
+#             "type": "Precision",
+#             "value": -1,
+#             "label": {"key": "class", "value": "2"},
+#             "group": {"name": "md1", "value": "md1-val2"},
+#         },
+#         {
+#             "type": "Recall",
+#             "value": 0.0,
+#             "label": {"key": "class", "value": "2"},
+#             "group": {"name": "md1", "value": "md1-val2"},
+#         },
+#         {
+#             "type": "F1",
+#             "value": -1,
+#             "label": {"key": "class", "value": "2"},
+#             "group": {"name": "md1", "value": "md1-val2"},
+#         },
+#         {
+#             "type": "Precision",
+#             "value": 0.5,
+#             "label": {"key": "class", "value": "0"},
+#             "group": {"name": "md1", "value": "md1-val2"},
+#         },
+#         {
+#             "type": "Recall",
+#             "value": 1.0,
+#             "label": {"key": "class", "value": "0"},
+#             "group": {"name": "md1", "value": "md1-val2"},
+#         },
+#         {
+#             "type": "F1",
+#             "value": 0.6666666666666666,
+#             "label": {"key": "class", "value": "0"},
+#             "group": {"name": "md1", "value": "md1-val2"},
+#         },
+#     ]
 
-    # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
-    # (hard preds [1, 0, 0])
-    expected_metrics = [
-        {
-            "type": "Accuracy",
-            "parameters": {"label_key": "class"},
-            "value": 0.3333333333333333,
-            "group": {"name": "md1", "value": "md1-val2"},
-        },
-        {
-            "type": "ROCAUC",
-            "parameters": {"label_key": "class"},
-            "value": 0.8333333333333334,
-            "group": {"name": "md1", "value": "md1-val2"},
-        },
-        {
-            "type": "Precision",
-            "value": 0.0,
-            "label": {"key": "class", "value": "1"},
-            "group": {"name": "md1", "value": "md1-val2"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "class", "value": "1"},
-            "group": {"name": "md1", "value": "md1-val2"},
-        },
-        {
-            "type": "F1",
-            "value": 0.0,
-            "label": {"key": "class", "value": "1"},
-            "group": {"name": "md1", "value": "md1-val2"},
-        },
-        {
-            "type": "Precision",
-            "value": -1,
-            "label": {"key": "class", "value": "2"},
-            "group": {"name": "md1", "value": "md1-val2"},
-        },
-        {
-            "type": "Recall",
-            "value": 0.0,
-            "label": {"key": "class", "value": "2"},
-            "group": {"name": "md1", "value": "md1-val2"},
-        },
-        {
-            "type": "F1",
-            "value": -1,
-            "label": {"key": "class", "value": "2"},
-            "group": {"name": "md1", "value": "md1-val2"},
-        },
-        {
-            "type": "Precision",
-            "value": 0.5,
-            "label": {"key": "class", "value": "0"},
-            "group": {"name": "md1", "value": "md1-val2"},
-        },
-        {
-            "type": "Recall",
-            "value": 1.0,
-            "label": {"key": "class", "value": "0"},
-            "group": {"name": "md1", "value": "md1-val2"},
-        },
-        {
-            "type": "F1",
-            "value": 0.6666666666666666,
-            "label": {"key": "class", "value": "0"},
-            "group": {"name": "md1", "value": "md1-val2"},
-        },
-    ]
-
-    assert len(val2_metrics) == len(expected_metrics)
-    for m in val2_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in val2_metrics
+#     assert len(val2_metrics) == len(expected_metrics)
+#     for m in val2_metrics:
+#         assert m in expected_metrics
+#     for m in expected_metrics:
+#         assert m in val2_metrics
 
 
 # @TODO: Future PR

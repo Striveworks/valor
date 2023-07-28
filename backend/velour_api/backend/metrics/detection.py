@@ -35,7 +35,6 @@ class RankedPair:
 
 
 def _ap(
-        db,
     sorted_ranked_pairs: Dict[int, List[RankedPair]],
     number_of_ground_truths: int,
     labels: Dict[int, schemas.Label],
@@ -351,7 +350,7 @@ def compute_ap_metrics(
     }
 
     # Compute AP
-    ap_metrics = _ap(db,
+    ap_metrics = _ap(
         sorted_ranked_pairs=ranking,
         number_of_ground_truths=number_of_ground_truths,
         labels=labels,

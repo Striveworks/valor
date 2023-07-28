@@ -246,7 +246,7 @@ class BackendQuery:
         self._filters = []
         self.source = source
         self.targets = set()
-        self.avoid = set()
+        self.constraints = set()
 
     @classmethod
     def model(cls):
@@ -286,7 +286,7 @@ class BackendQuery:
     
     def prune(self) -> set[str]:
         # Set of id's to prune
-        prune = self.avoid.copy()
+        prune = self.constraints.copy()
 
         # Prune if not referenced
         if "metadatum" not in [self.source, *self.targets]:
@@ -380,27 +380,34 @@ class BackendQuery:
         """ Parses `schemas.Filter` and operates all filters. """
 
         # generate filter expressions
-        self.filter_by_dataset_names(req.filter_by_dataset_names)
-        self.filter_by_datum_uids(req.filter_by_datum_uids)
-        self.filter_by_task_types(req.filter_by_task_types)
-        self.filter_by_annotation_types(req.filter_by_annotation_types)
-        self.filter_by_label_keys(req.filter_by_label_keys)
-        self.filter_by_labels(req.filter_by_labels)
-        self.filter_by_metadata(req.filter_by_metadata)
+        self.filter_by_dataset_names(req.dataset_names)
+        self.filter_by_model_names(req.model_names)
+        self.filter_by_datum_uids(req.datum_uids)
+        self.filter_by_task_types(req.task_types)
+        self.filter_by_annotation_types(req.annotation_types)
+        self.filter_by_label_keys(req.label_keys)
+        self.filter_by_labels(req.labels)
+        self.filter_by_metadata(req.metadata)
 
-        if req.filter_by_model_names is None:
-            self.model_is_none()
-        else:
-            self.model_is_not_none()
-            self.filter_by_model_names(req.filter_by_model_names)
+        # limit metadata connections
+        if not req.allow_dataset_metadata:
+            pass
+        if not req.allow_model_metadata:
+            pass
+        if not req.allow_datum_metadata:
+            pass
+        if not req.allow_annotation_metadata:
+            pass
+
+        # constrain over groundtruths or predictions
+        if not req.allow_groundtruths and req.allow_predictions:
+            self.constraints.add("groundtruth")
+        elif req.allow_groundtruths and not req.allow_predictions:
+            self.constraints.add("prediction")
+        elif not req.allow_groundtruths and not req.allow_predictions:
+            raise ValueError("Either groundtruths or predictions need to be allowed.")
 
         return self
-
-    def model_is_none(self):
-        self.avoid.add("prediction")
-
-    def model_is_not_none(self):
-        self.avoid.add("groundtruth")
 
     """ dataset filter """
 

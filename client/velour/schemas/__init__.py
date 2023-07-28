@@ -9,7 +9,7 @@ from .core import (
     Model,
     Prediction,
     ScoredLabel,
-    Metadatum,
+    MetaDatum,
 )
 from .geometry import (
     BasicPolygon,
@@ -48,7 +48,7 @@ __all__ = [
     "Polygon",
     "MultiPolygon",
     "Raster",
-    "Metadatum",
+    "MetaDatum",
     "GeoJSON",
     "LabelDistribution",
     "ScoredLabelDistribution",

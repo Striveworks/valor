@@ -111,13 +111,14 @@ class Polygon:
             self.boundary = BasicPolygon(**self.boundary)
         if not isinstance(self.boundary, BasicPolygon):
             raise TypeError("boundary should be of type `velour.schemas.BasicPolygon`")
-        if not isinstance(self.holes, list):
-            raise TypeError("holes should be a list of `velour.schemas.BasicPolygon`")
-        for i in range(len(self.holes)):
-            if isinstance(self.holes[i], dict):
-                self.holes[i] = BasicPolygon(**self.holes[i])
-            if not isinstance(self.holes[i], BasicPolygon):
-                raise TypeError("holes list should contain elements of type `velour.schemas.BasicPolygon`")
+        if self.holes:
+            if not isinstance(self.holes, list):
+                raise TypeError(f"holes should be a list of `velour.schemas.BasicPolygon`. Got `{type(self.holes)}`.")
+            for i in range(len(self.holes)):
+                if isinstance(self.holes[i], dict):
+                    self.holes[i] = BasicPolygon(**self.holes[i])
+                if not isinstance(self.holes[i], BasicPolygon):
+                    raise TypeError("holes list should contain elements of type `velour.schemas.BasicPolygon`")
 
 
 @dataclass
@@ -144,6 +145,22 @@ class BoundingBox:
                 ]
             )
         )
+    
+    @property
+    def xmin(self):
+        return self.polygon.xmin
+    
+    @property
+    def xmax(self):
+        return self.polygon.xmax
+    
+    @property
+    def ymin(self):
+        return self.polygon.ymin
+    
+    @property
+    def ymax(self):
+        return self.polygon.ymax
 
 
 @dataclass
@@ -164,18 +181,19 @@ class MultiPolygon:
 @dataclass
 class Raster:
     mask: str
-    shape: tuple[int,int]
+    height: int
+    width: int
 
     def __post_init__(self):
         if not isinstance(self.mask, str):
             raise TypeError("mask should be of type `str`")
-        if not isinstance(self.shape, tuple):
-            raise TypeError("shape should be of type tuple")
-        if len(self.shape) != 2:
-            raise ValueError("raster currently only supports 2d arrays")
-        for dim in self.shape:
-            if not isinstance(dim, int):
-                raise TypeError("dimesions in shape should be of type `int`")
+        if not isinstance(self.height, int | float):
+            raise TypeError("height should be of type int")
+        if not isinstance(self.width, int | float):
+            raise TypeError("width should be of type int")
+        
+        self.height = int(self.height)
+        self.width = int(self.width)
 
     @classmethod
     def from_numpy(cls, mask: np.ndarray):
@@ -192,10 +210,11 @@ class Raster:
         f.close()
         return cls(
             mask=b64encode(mask_bytes).decode(),
-            shape=mask.shape,
+            height=mask.shape[0],
+            width=mask.shape[1],
         )
 
-    def decode(self) -> np.ndarray:
+    def to_numpy(self) -> np.ndarray:
         mask_bytes = b64decode(self.mask)
         with io.BytesIO(mask_bytes) as f:
             img = PIL.Image.open(f)

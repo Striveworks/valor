@@ -2,8 +2,8 @@ from enum import Enum
 
 
 class DataType(Enum):
-    IMAGE = "Image"
-    TABULAR = "Tabular"
+    IMAGE = "image"
+    TABULAR = "tabular"
 
     @classmethod
     def invert(cls, value: str):
