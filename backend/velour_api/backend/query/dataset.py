@@ -3,7 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
-from velour_api.backend import core, models
+from velour_api.backend import core, models, ops
 
 
 def create_dataset(
@@ -81,18 +81,22 @@ def get_datasets(
 
 def get_datums(
     db: Session,
-    dataset_name: str,
+    request: schemas.Filter | None = None,
 ) -> list[schemas.Datum]:
-    dataset = core.get_dataset(db, dataset_name)
+
+    if not request:
+        datums = db.query(models.Datum).all()
+    else:
+        datums = ops.BackendQuery.datum().filter(request).all(db)
+
+    print(ops.BackendQuery.datum().filter(request))
+
     return [
         schemas.Datum(
             uid=datum.uid,
             metadata=core.get_metadata(db, datum=datum),
         )
-        for datum in (
-            db.query(models.Datum)
-            .where(models.Datum.dataset_id == dataset.id)
-        )
+        for datum in datums
     ]
 
 

@@ -153,7 +153,10 @@ def get_dataset_datums(
     try:
         return crud.get_datums(
             db,
-            dataset_name,
+            schemas.Filter(
+                dataset_names=[dataset_name],
+                allow_predictions=False,
+            ),
         )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))

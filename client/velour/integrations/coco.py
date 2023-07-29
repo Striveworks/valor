@@ -112,13 +112,15 @@ def upload_coco_panoptic(
                     labels=[
                         Label(
                             key=k,
-                            value=category_id_to_category[
-                                segment["category_id"]
-                            ][k],
+                            value=str(
+                                category_id_to_category[
+                                    segment["category_id"]
+                                ][k]
+                            ),
                         )
                         for k in ["supercategory", "name"]
                     ]
-                    + [Label(key="iscrowd", value=segment["iscrowd"])],
+                    + [Label(key="iscrowd", value=str(segment["iscrowd"]))],
                     raster=Raster.from_numpy(mask_ids == segment["id"]),
                 )
                 for segment in ann_dict["segments_info"]

@@ -2,13 +2,18 @@ import heapq
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from sqlalchemy import text, select, and_, or_, func
+from geoalchemy2 import func as gfunc
+from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
-from geoalchemy2 import func as gfunc
 
-from velour_api import schemas, enums
-from velour_api.backend import models, core, query
+from velour_api import enums, schemas
+from velour_api.backend import core, models, query
+from velour_api.backend.core.geometry import (
+    convert_polygon_to_box,
+    convert_raster_to_box,
+    convert_raster_to_polygon,
+)
 from velour_api.backend.metrics.ap import (
     compute_iou,
     function_find_ranked_pairs,
@@ -17,11 +22,6 @@ from velour_api.backend.metrics.ap import (
     get_sorted_ranked_pairs,
     join_labels,
     join_tables,
-)
-from velour_api.backend.core.geometry import (
-    convert_polygon_to_box,
-    convert_raster_to_box,
-    convert_raster_to_polygon,
 )
 from velour_api.enums import AnnotationType
 
@@ -129,7 +129,7 @@ def compute_ap_metrics(
     # Retrieve sql models
     dataset = core.get_dataset(db, dataset_name)
     model = core.get_model(db, model_name)
-    
+
     # Convert geometries to target type (if required)
     core.convert_geometry(
         db,
@@ -157,7 +157,10 @@ def compute_ap_metrics(
             models.Label.id.label("label_id"),
         )
         .select_from(models.GroundTruth)
-        .join(models.Annotation, models.Annotation.id == models.GroundTruth.annotation_id)
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.GroundTruth.annotation_id,
+        )
         .join(models.Label, models.Label.id == models.GroundTruth.label_id)
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .where(
@@ -179,7 +182,10 @@ def compute_ap_metrics(
             models.Prediction.score.label("score"),
         )
         .select_from(models.Prediction)
-        .join(models.Annotation, models.Annotation.id == models.Prediction.annotation_id)
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.Prediction.annotation_id,
+        )
         .join(models.Label, models.Label.id == models.Prediction.label_id)
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .where(
@@ -205,11 +211,11 @@ def compute_ap_metrics(
         )
         .select_from(gt)
         .join(
-            pd, 
+            pd,
             and_(
                 pd.c.datum_id == gt.c.datum_id,
                 pd.c.label_id == gt.c.label_id,
-            ), 
+            ),
             full=True,
         )
         .subquery()
@@ -230,7 +236,7 @@ def compute_ap_metrics(
             )
             .select_from(joint)
             .join(
-                models.Label, 
+                models.Label,
                 or_(
                     models.Label.id == joint.c.gt_label_id,
                     models.Label.id == joint.c.pd_label_id,
@@ -243,7 +249,9 @@ def compute_ap_metrics(
 
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
-        gintersection = gfunc.ST_Count(gfunc.ST_Intersection(joint.c.gt_geom, joint.c.pd_geom))
+        gintersection = gfunc.ST_Count(
+            gfunc.ST_Intersection(joint.c.gt_geom, joint.c.pd_geom)
+        )
         gunion_gt = gfunc.ST_Count(joint.c.gt_geom)
         gunion_pd = gfunc.ST_Count(joint.c.pd_geom)
         gunion = gunion_gt + gunion_pd - gintersection
@@ -275,11 +283,7 @@ def compute_ap_metrics(
     )
 
     # Order by score, iou
-    ordered_ious = (
-        db.query(ious)
-        .order_by(-ious.c.score, -ious.c.iou)
-        .all()
-    )
+    ordered_ious = db.query(ious).order_by(-ious.c.score, -ious.c.iou).all()
 
     # Filter out repeated id's
     gt_set = set()
@@ -305,9 +309,9 @@ def compute_ap_metrics(
 
             ranking[gt_label_id].append(
                 RankedPair(
-                    gt_id=gt_id, 
-                    pd_id=pd_id, 
-                    score=score, 
+                    gt_id=gt_id,
+                    pd_id=pd_id,
+                    score=score,
                     iou=iou,
                 )
             )
@@ -324,11 +328,17 @@ def compute_ap_metrics(
         relation = [models.Annotation.raster.isnot(None)]
 
     labels = {
-        label[0] : schemas.Label(key=label[1], value=label[2])
+        label[0]: schemas.Label(key=label[1], value=label[2])
         for label in (
             db.query(models.Label.id, models.Label.key, models.Label.value)
-            .join(models.GroundTruth, models.GroundTruth.label_id == models.Label.id)
-            .join(models.Annotation, models.Annotation.id == models.GroundTruth.annotation_id)
+            .join(
+                models.GroundTruth,
+                models.GroundTruth.label_id == models.Label.id,
+            )
+            .join(
+                models.Annotation,
+                models.Annotation.id == models.GroundTruth.annotation_id,
+            )
             .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
             .where(
                 and_(
@@ -337,14 +347,23 @@ def compute_ap_metrics(
                     *relation,
                 )
             )
+            .all()
         )
     }
+
+    print(relation)
+    print(labels)
+    print(number_of_ground_truths)
+
+    if not labels:
+        return []
 
     # Get the number of ground truths per label id
     number_of_ground_truths = {
         id: db.scalar(
-            select(func.count(models.GroundTruth.id))
-            .where(models.GroundTruth.label_id == id)
+            select(func.count(models.GroundTruth.id)).where(
+                models.GroundTruth.label_id == id
+            )
         )
         for id in labels
     }
