@@ -8,13 +8,15 @@ from velour_api.backend.metrics.mot_metrics import (
 
 # noqa: E731
 def square(x: int, y: int) -> schemas.BasicPolygon:
-    return schemas.geometry.BasicPolygon(
-        points=[
-            schemas.geometry.Point(x=x, y=y),
-            schemas.geometry.Point(x=x + 10, y=y),
-            schemas.geometry.Point(x=x, y=y + 10),
-            schemas.geometry.Point(x=x + 10, y=y + 10),
-        ]
+    return schemas.BoundingBox(
+        polygon=schemas.geometry.BasicPolygon(
+            points=[
+                schemas.geometry.Point(x=x, y=y),
+                schemas.geometry.Point(x=x + 10, y=y),
+                schemas.geometry.Point(x=x, y=y + 10),
+                schemas.geometry.Point(x=x + 10, y=y + 10),
+            ]
+        )
     )
 
 

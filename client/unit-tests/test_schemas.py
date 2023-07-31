@@ -109,13 +109,13 @@ def test_geometry_box():
     # test `__post_init__`
     with pytest.raises(ValueError) as e:
         schemas.Box(min=p2, max=p1)
-    assert "xmin > xmax" in e
+    assert "xmin > xmax" in str(e)
     with pytest.raises(ValueError) as e:
         schemas.Box(min=p1, max=p4)
-    assert "xmin > xmax" in e
+    assert "xmin > xmax" in str(e)
     with pytest.raises(ValueError) as e:
         schemas.Box(min=p1, max=p3)
-    assert "ymin > ymax" in e
+    assert "ymin > ymax" in str(e)
 
 
 def test_geometry_basicpolygon():

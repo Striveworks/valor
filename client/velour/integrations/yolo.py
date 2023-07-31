@@ -31,7 +31,7 @@ def parse_yolo_image_classification(
         uid=image_uid,
         height=image_height,
         width=image_width,
-    )
+    ).to_datum()
 
     # Create scored label list
     scored_labels = [

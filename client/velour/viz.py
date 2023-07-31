@@ -40,10 +40,10 @@ def _polygons_to_binary_mask(
     mask = Image.new("1", (img_w, img_h), (False,))
     draw = ImageDraw.Draw(mask)
     for poly in polys:
-        draw.polygon(poly.boundary.xy_list(), fill=(True,))
+        draw.polygon(poly.boundary.tuple_list(), fill=(True,))
         if poly.holes is not None:
             for hole in poly.holes:
-                draw.polygon(hole.xy_list(), fill=(False,))
+                draw.polygon(hole.tuple_list(), fill=(False,))
 
     return np.array(mask)
 
@@ -51,7 +51,7 @@ def _polygons_to_binary_mask(
 def combined_segmentation_mask(
     annotated_datums: List[Union[schemas.GroundTruth, schemas.Prediction]],
     label_key: str,
-    task_type: enums.TaskType,
+    task_type: enums.TaskType | None = None,
 ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
     """Creates a combined segmentation mask from a list of segmentations
 
@@ -96,7 +96,8 @@ def combined_segmentation_mask(
             "Expected all segmentation to belong to the same image"
         )
 
-    if task_type not in [
+    # Validate task type
+    if task_type is not None and task_type not in [
         enums.TaskType.INSTANCE_SEGMENTATION,
         enums.TaskType.SEMANTIC_SEGMENTATION,
     ]:
@@ -104,11 +105,20 @@ def combined_segmentation_mask(
             "Expected either Instance or Semantic segmentation task_type."
         )
 
+    # Create valid task type list
+    if task_type is None:
+        task_types = [
+            enums.TaskType.INSTANCE_SEGMENTATION,
+            enums.TaskType.SEMANTIC_SEGMENTATION,
+        ]
+    else:
+        task_types = [task_type]
+
     # unpack raster annotations
     annotations: list[Union[schemas.Annotation, schemas.ScoredAnnotation]] = []
     for annotated_datum in annotated_datums:
         for annotation in annotated_datum.annotations:
-            if annotation.task_type == task_type:
+            if annotation.task_type in task_types:
                 annotations.append(annotation)
 
     label_values = []
@@ -135,14 +145,11 @@ def combined_segmentation_mask(
 
     combined_mask = np.zeros((img_h, img_w, 3), dtype=np.uint8)
     for annotation, color in zip(annotations, seg_colors):
-        if annotation.task_type != task_type:
-            continue
-
         if annotation.raster is not None:
             mask = annotation.raster.to_numpy()
         elif annotation.multipolygon is not None:
             mask = _polygons_to_binary_mask(
-                annotation.multipolygon,
+                annotation.multipolygon.polygons,
                 img_w=img_w,
                 img_h=img_h,
             )

@@ -72,6 +72,9 @@ class BasicPolygon:
     def xy_list(self) -> list[Point]:
         return [pt for pt in self.points]
 
+    def tuple_list(self) -> list[float, float]:
+        return [(pt.x, pt.y) for pt in self.points]
+
     @property
     def xmin(self):
         return min(p.x for p in self.points)

@@ -147,8 +147,12 @@ def _parse_image_segmentation_groundtruths(
                         ]
                     ),
                     holes=[
-                        Point(x=point["x"], y=point["y"])
-                        for point in annotation["contours"][1]
+                        BasicPolygon(
+                            points=[
+                                Point(x=point["x"], y=point["y"])
+                                for point in annotation["contours"][1]
+                            ],
+                        )
                     ]
                     if len(annotation["contours"]) > 1
                     else None,
@@ -161,7 +165,7 @@ def _parse_image_segmentation_groundtruths(
 
 def _parse_object_detection_groundtruths(
     datum: dict,
-    label_key: str = "Class",
+    label_key: str = "class",
 ) -> GroundTruth:
     """Parses Chariot object detection annotation."""
 
@@ -216,25 +220,22 @@ def _parse_chariot_groundtruths(
     # Image Classification
     if chariot_task_type.image_classification:
         groundtruth_annotations = [
-            gt
+            _parse_image_classification_groundtruths(datum)
             for datum in chariot_manifest
-            for gt in _parse_image_classification_groundtruths(datum)
         ]
 
     # Image Segmentation
     elif chariot_task_type.image_segmentation:
         groundtruth_annotations = [
-            gt
+            _parse_image_segmentation_groundtruths(datum)
             for datum in chariot_manifest
-            for gt in _parse_image_segmentation_groundtruths(datum)
         ]
 
     # Object Detection
     elif chariot_task_type.object_detection:
         groundtruth_annotations = [
-            gt
+            _parse_object_detection_groundtruths(datum)
             for datum in chariot_manifest
-            for gt in _parse_object_detection_groundtruths(datum)
         ]
 
     # Text Sentiment
