@@ -7,10 +7,10 @@ from .dataset import (
 )
 from .groundtruth import create_groundtruth, get_groundtruth, get_groundtruths
 from .label import (
-    get_joint_labels,
-    get_joint_keys,
-    get_disjoint_labels,
     get_disjoint_keys,
+    get_disjoint_labels,
+    get_joint_keys,
+    get_joint_labels,
     get_label_distribution,
     get_labels,
 )

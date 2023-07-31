@@ -1,10 +1,9 @@
-from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, select
+from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import BinaryExpression
 
-from velour_api import schemas, enums
+from velour_api import enums, schemas
 from velour_api.backend import models
-
 
 model_graph = {
     "dataset": {"datum", "metadatum"},
@@ -60,7 +59,8 @@ model_relationships = {
         "datum": models.Annotation.datum_id == models.Datum.id,
         "model": models.Annotation.model_id == models.Model.id,
         "prediction": models.Annotation.id == models.Prediction.annotation_id,
-        "groundtruth": models.Annotation.id == models.GroundTruth.annotation_id,
+        "groundtruth": models.Annotation.id
+        == models.GroundTruth.annotation_id,
         "metadatum": models.Annotation.id == models.MetaDatum.annotation_id,
     },
     "groundtruth": {
@@ -76,7 +76,7 @@ model_relationships = {
         "model": models.MetaDatum.model_id == models.Model.id,
         "datum": models.MetaDatum.datum_id == models.Datum.id,
         "annotation": models.MetaDatum.annotation_id == models.Annotation.id,
-    }
+    },
 }
 
 
@@ -85,7 +85,7 @@ class Join:
         self.root = root
         self.links = set([link])
 
-    def or_(self, root: str, link: str):        
+    def or_(self, root: str, link: str):
         if self.root != root:
             raise ValueError
         if isinstance(link, str):
@@ -102,14 +102,13 @@ class Join:
             ret += "\n"
         ret += ")"
         return ret
-    
+
     def relation(self) -> tuple:
         # generate binary expressions
         expressions = [
-            model_relationships[self.root][link]
-            for link in self.links
+            model_relationships[self.root][link] for link in self.links
         ]
-        
+
         if len(expressions) == 1:
             return (
                 model_mapping[self.root],
@@ -152,11 +151,11 @@ def _graph_generator(
 
 def _flatten_graph(
     graph: dict,
-    source: str, 
-    target: str, 
+    source: str,
+    target: str,
     join_list: dict,
 ) -> list[Join]:
-    """ Recursive function """
+    """Recursive function"""
 
     # update from current layer
     for key in graph:
@@ -169,9 +168,9 @@ def _flatten_graph(
     for key in graph:
         if key not in target:
             join_list = _flatten_graph(
-                graph=graph[key], 
+                graph=graph[key],
                 source=key,
-                target=target, 
+                target=target,
                 join_list=join_list,
             )
 
@@ -179,69 +178,61 @@ def _flatten_graph(
 
 
 def _generate_joins(source, targets, prune):
-        # generate graphs
-        graphs_with_target = [
-            (
-                _graph_generator(source, target, prune=prune.copy()), 
-                target
-            )
-            if target not in model_graph[source] # check for direct connection
-            else (
-                {target: target}, 
-                target
-            )
-            for target in targets
-        ]
+    # generate graphs
+    graphs_with_target = [
+        (_graph_generator(source, target, prune=prune.copy()), target)
+        if target not in model_graph[source]  # check for direct connection
+        else ({target: target}, target)
+        for target in targets
+    ]
 
-        # Generate object relationships
-        return [
-            _flatten_graph(
-                graph=graph, 
-                source=source,
-                target=target,
-                join_list=dict(),
-            )
-            for graph, target in graphs_with_target
-            if graph is not None
-        ]
-        
+    # Generate object relationships
+    return [
+        _flatten_graph(
+            graph=graph,
+            source=source,
+            target=target,
+            join_list=dict(),
+        )
+        for graph, target in graphs_with_target
+        if graph is not None
+    ]
+
 
 def generate_query(source: str, targets: list[str], prune: set[str]):
 
-        # Generate graphs
-        graphs = _generate_joins(source=source, targets=targets, prune=prune)
+    # Generate graphs
+    graphs = _generate_joins(source=source, targets=targets, prune=prune)
 
-        # edge case
-        if not graphs:
-            return None
-        
-        # Merge graphs
-        master_graph = {}
-        existing_keys = set()
-        for graph in graphs:
-            for key in graph:
-                existing_keys.add(key)
-                if key not in master_graph:
-                    master_graph[key] = graph[key]
-                else:
-                    master_graph[key].or_(graph[key].root, graph[key].links)
+    # edge case
+    if not graphs:
+        return None
 
-        # Validate order-of-operations
-        retlist = []
-        sources = set([source])
-        while len(existing_keys) > 0:
-            for key in existing_keys:
-                if master_graph[key].links.issubset(sources):
-                    retlist.append(master_graph[key])        
-                    sources.add(key)
-            existing_keys = existing_keys - sources
+    # Merge graphs
+    master_graph = {}
+    existing_keys = set()
+    for graph in graphs:
+        for key in graph:
+            existing_keys.add(key)
+            if key not in master_graph:
+                master_graph[key] = graph[key]
+            else:
+                master_graph[key].or_(graph[key].root, graph[key].links)
 
+    # Validate order-of-operations
+    retlist = []
+    sources = set([source])
+    while len(existing_keys) > 0:
+        for key in existing_keys:
+            if master_graph[key].links.issubset(sources):
+                retlist.append(master_graph[key])
+                sources.add(key)
+        existing_keys = existing_keys - sources
 
-        return (retlist)
-    
+    return retlist
+
 
 class BackendQuery:
-
     def __init__(self, source: str):
         self._filters = []
         self.source = source
@@ -251,31 +242,31 @@ class BackendQuery:
     @classmethod
     def model(cls):
         return cls("model")
-    
+
     @classmethod
     def dataset(cls):
         return cls("dataset")
-    
+
     @classmethod
     def datum(cls):
         return cls("datum")
-    
+
     @classmethod
     def annotation(cls):
         return cls("annotation")
-    
+
     @classmethod
     def groundtruth(cls):
         return cls("groundtruth")
-    
+
     @classmethod
     def prediction(cls):
         return cls("prediction")
-    
+
     @classmethod
     def label(cls):
         return cls("label")
-    
+
     @classmethod
     def metadatum(cls):
         return cls("metadatum")
@@ -283,7 +274,7 @@ class BackendQuery:
     @property
     def filters(self) -> list[BinaryExpression]:
         return self._filters
-    
+
     def prune(self) -> set[str]:
         # Set of id's to prune
         prune = self.constraints.copy()
@@ -303,7 +294,7 @@ class BackendQuery:
         # validate source
         if self.source in prune:
             return None
-        
+
         # validate targets
         self.targets = list(set(self.targets) - prune)
 
@@ -319,7 +310,9 @@ class BackendQuery:
         if self.source in self.targets:
             self.targets.remove(self.source)
 
-        qstruct = generate_query(source=self.source, targets=self.targets, prune=self.prune())
+        qstruct = generate_query(
+            source=self.source, targets=self.targets, prune=self.prune()
+        )
 
         ret = f"SELECT FROM {self.source}\n"
         for join in qstruct:
@@ -327,21 +320,23 @@ class BackendQuery:
         ret += "WHERE\n"
         for filt in self._filters:
             ret += f"  {filt},\n"
-        return ret 
+        return ret
 
     def ids(self, db: Session):
-        """ Returns list of rows from source that meet filter criteria. """
-        
+        """Returns list of rows from source that meet filter criteria."""
+
         # sanity check
         if self.source in self.targets:
             self.targets.remove(self.source)
-        
+
         # Get all rows of source table
         if len(self.targets) == 0:
             return select(model_mapping[self.source].id)
 
         # serialize request from graph
-        qstruct = generate_query(source=self.source, targets=self.targets, prune=self.prune())
+        qstruct = generate_query(
+            source=self.source, targets=self.targets, prune=self.prune()
+        )
 
         # select source
         src = model_mapping[self.source]
@@ -353,17 +348,15 @@ class BackendQuery:
             q_ids = q_ids.join(m, r)
 
         # add filter conditions
-        q_ids = q_ids.where(
-            and_(*self._filters)
-        )
-        
+        q_ids = q_ids.where(and_(*self._filters))
+
         # return select statement of valid row ids
         return q_ids
-    
-    def all(self, db: Session):
-        """ Returns sqlalchemy table rows """
 
-        # get source object 
+    def all(self, db: Session):
+        """Returns sqlalchemy table rows"""
+
+        # get source object
         src = model_mapping[self.source]
 
         # get valid row ids
@@ -371,13 +364,11 @@ class BackendQuery:
 
         # return rows from source table
         return (
-            db.query(model_mapping[self.source])
-            .where(src.id.in_(q_ids))
-            .all()
+            db.query(model_mapping[self.source]).where(src.id.in_(q_ids)).all()
         )
 
     def filter(self, req: schemas.Filter):
-        """ Parses `schemas.Filter` and operates all filters. """
+        """Parses `schemas.Filter` and operates all filters."""
 
         # generate filter expressions
         self.filter_by_dataset_names(req.dataset_names)
@@ -405,13 +396,17 @@ class BackendQuery:
         elif req.allow_groundtruths and not req.allow_predictions:
             self.constraints.add("prediction")
         elif not req.allow_groundtruths and not req.allow_predictions:
-            raise ValueError("Either groundtruths or predictions need to be allowed.")
+            raise ValueError(
+                "Either groundtruths or predictions need to be allowed."
+            )
 
         return self
 
     """ dataset filter """
 
-    def filter_by_datasets(self, datasets: list[schemas.Dataset | models.Dataset]):
+    def filter_by_datasets(
+        self, datasets: list[schemas.Dataset | models.Dataset]
+    ):
         # generate binary expressions
         expressions = [
             models.Dataset.name == dataset.name
@@ -428,7 +423,7 @@ class BackendQuery:
             self._filters.append(or_(*expressions))
 
         return self
-    
+
     def filter_by_dataset_names(self, names: list[str]):
         # generate binary expressions
         expressions = [
@@ -466,7 +461,7 @@ class BackendQuery:
             self._filters.append(or_(*expressions))
 
         return self
-    
+
     def filter_by_model_names(self, names: list[str]):
         # generate binary expressions
         expressions = [
@@ -504,13 +499,11 @@ class BackendQuery:
             self._filters.append(or_(*expressions))
 
         return self
-    
+
     def filter_by_datum_uids(self, uids: list[str]):
         # generate binary expressions
         expressions = [
-            models.Datum.uid == uid
-            for uid in uids
-            if isinstance(uid, str)
+            models.Datum.uid == uid for uid in uids if isinstance(uid, str)
         ]
 
         # generate filter
@@ -566,37 +559,51 @@ class BackendQuery:
             self._filters.append(or_(*expressions))
 
         return self
-    
+
     """ filter by metadata """
 
-    def _create_metadatum_expression(self, metadatum: schemas.MetaDatum | models.MetaDatum):
+    def _create_metadatum_expression(
+        self, metadatum: schemas.MetaDatum | models.MetaDatum
+    ):
 
         # Compare name
         expression = [models.MetaDatum.name == metadatum.name]
 
         # sqlalchemy handler
         if isinstance(metadatum, models.MetaDatum):
-            expression.append(models.MetaDatum.string_value == metadatum.string_value)
-            expression.append(models.MetaDatum.numeric_value == metadatum.numeric_value)
+            expression.append(
+                models.MetaDatum.string_value == metadatum.string_value
+            )
+            expression.append(
+                models.MetaDatum.numeric_value == metadatum.numeric_value
+            )
             expression.append(models.MetaDatum.geo == metadatum.geo)
 
         # schema handler
         elif isinstance(metadatum, schemas.MetaDatum):
             # Compare value
             if isinstance(metadatum.value, str):
-                expression.append(models.MetaDatum.string_value == metadatum.value)
+                expression.append(
+                    models.MetaDatum.string_value == metadatum.value
+                )
             if isinstance(metadatum.value, float):
-                expression.append(models.MetaDatum.numeric_value == metadatum.value)
+                expression.append(
+                    models.MetaDatum.numeric_value == metadatum.value
+                )
             if isinstance(metadatum.value, schemas.GeoJSON):
-                raise NotImplementedError("Havent implemented GeoJSON support.")
-        
+                raise NotImplementedError(
+                    "Havent implemented GeoJSON support."
+                )
+
         # unknown type
         else:
             return None
 
         return or_(*expression)
 
-    def filter_by_metadata(self, metadata: list[schemas.MetaDatum | models.MetaDatum]):
+    def filter_by_metadata(
+        self, metadata: list[schemas.MetaDatum | models.MetaDatum]
+    ):
         # generate binary expressions
         expressions = [
             self._create_metadatum_expression(metadatum)
@@ -613,7 +620,7 @@ class BackendQuery:
             self._filters.append(or_(*expressions))
 
         return self
-    
+
     def filter_by_metadatum_names(self, names: list[str]):
         # generate binary expressions
         expressions = [
@@ -652,7 +659,9 @@ class BackendQuery:
 
         return self
 
-    def filter_by_annotation_types(self, annotation_types: list[enums.AnnotationType]):
+    def filter_by_annotation_types(
+        self, annotation_types: list[enums.AnnotationType]
+    ):
         if enums.AnnotationType.NONE in annotation_types:
             self.targets.add("annotation")
             self._filters.append(
@@ -674,7 +683,7 @@ class BackendQuery:
                 expressions.append(models.Annotation.multipolygon.isnot(None))
             if enums.AnnotationType.RASTER in annotation_types:
                 expressions.append(models.Annotation.raster.isnot(None))
-            
+
             # generate joint filter
             if len(expressions) == 1:
                 self.targets.add("annotation")
@@ -682,7 +691,7 @@ class BackendQuery:
             elif len(expressions) > 1:
                 self.targets.add("annotation")
                 self._filters.append(or_(*expressions))
-            
+
         return self
 
 

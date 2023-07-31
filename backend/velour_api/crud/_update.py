@@ -1,7 +1,7 @@
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api.backend import state
+
 
 # @TODO
 @state.update

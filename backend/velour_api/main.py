@@ -1,16 +1,16 @@
 import os
 
-from fastapi import (
+from fastapi import (  # Request,; status,
     BackgroundTasks,
     Depends,
     FastAPI,
     HTTPException,
-    Request,
-    status,
 )
-from fastapi.exceptions import RequestValidationError
+
+# from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+
+# from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -167,7 +167,7 @@ def get_dataset_datums(
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
-def get_dataset_datums(
+def get_filtered_dataset_datums(
     dataset_name: str, data_type: str, db: Session = Depends(get_db)
 ) -> list[schemas.Datum]:
     try:
@@ -181,7 +181,7 @@ def get_dataset_datums(
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
 )
-def get_groundtruth(
+def get_datum(
     dataset_name: str, uid: str, db: Session = Depends(get_db)
 ) -> schemas.Datum | None:
     try:

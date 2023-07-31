@@ -102,7 +102,7 @@ class MOTDetection:
 
 def ground_truth_det_to_mot(
     datum: schemas.Datum,
-    gt: schemas.Annotation, 
+    gt: schemas.Annotation,
     obj_id_to_int: dict,
 ) -> list[float]:
     """Helper to convert a ground truth detection into MOT format"""
@@ -171,17 +171,23 @@ def compute_mot_metrics(
     # Convert to MOT format
     gt_mots = []
     for annotated_datum in groundtruths:
-        gt_mots.extend([
-            ground_truth_det_to_mot(annotated_datum.datum, gt, obj_id_to_int) 
-            for gt in annotated_datum.annotations
-        ])
+        gt_mots.extend(
+            [
+                ground_truth_det_to_mot(
+                    annotated_datum.datum, gt, obj_id_to_int
+                )
+                for gt in annotated_datum.annotations
+            ]
+        )
     groundtruths_total = np.array(gt_mots)
     pd_mots = []
     for annotated_datum in predictions:
-        pd_mots.extend([
-            pred_det_to_mot(annotated_datum.datum, pred, obj_id_to_int)
-            for pred in annotated_datum.annotations
-        ])
+        pd_mots.extend(
+            [
+                pred_det_to_mot(annotated_datum.datum, pred, obj_id_to_int)
+                for pred in annotated_datum.annotations
+            ]
+        )
     predicted_total = np.array(pd_mots)
 
     acc = mm.MOTAccumulator(auto_id=True)

@@ -1,5 +1,6 @@
 from velour.client import Model
 
+
 def test__group_evaluation_settings():
     eval_settings = [
         {

@@ -1,9 +1,21 @@
-from velour_api import schemas, enums
+from velour_api import enums, schemas
 from velour_api.backend.metrics.mot_metrics import (
     MOT_METRICS_NAMES,
     OBJECT_ID_LABEL_KEY,
     compute_mot_metrics,
 )
+
+
+# noqa: E731
+def square(x: int, y: int) -> schemas.BasicPolygon:
+    return schemas.geometry.BasicPolygon(
+        points=[
+            schemas.geometry.Point(x=x, y=y),
+            schemas.geometry.Point(x=x + 10, y=y),
+            schemas.geometry.Point(x=x, y=y + 10),
+            schemas.geometry.Point(x=x + 10, y=y + 10),
+        ]
+    )
 
 
 def generate_mot_data(num_frames: int):
@@ -19,7 +31,7 @@ def generate_mot_data(num_frames: int):
             schemas.MetaDatum(key="height", value=500),
             schemas.MetaDatum(key="width", value=500),
             schemas.MetaDatum(key="frame", value=frame),
-        ]
+        ],
     )
     create_label = lambda obj_id: schemas.Label(  # noqa: E731
         key=OBJECT_ID_LABEL_KEY, value=obj_id
@@ -31,17 +43,6 @@ def generate_mot_data(num_frames: int):
         )
     )
 
-    # noqa: E731
-    square = lambda x, y: schemas.BoundingBox(
-        polygon=schemas.geometry.BasicPolygon(
-            points=[
-                schemas.geometry.Point(x=x,     y=y),
-                schemas.geometry.Point(x=x+10,  y=y),
-                schemas.geometry.Point(x=x,     y=y+10),
-                schemas.geometry.Point(x=x+10,  y=y+10),
-            ]
-        )
-    )
     # Square Boundary moving diagonally
     create_boundary_1 = lambda frame: square(  # noqa: E731
         5 * frame, 5 * frame
@@ -61,13 +62,13 @@ def generate_mot_data(num_frames: int):
         image = create_img(frame)
 
         scored_labels1 = [
-            create_scored_label("object 1", 1.0), 
+            create_scored_label("object 1", 1.0),
         ]
         scored_labels2 = [
-            create_scored_label("object 2", 1.0), 
+            create_scored_label("object 2", 1.0),
         ]
         scored_labels3 = [
-            create_scored_label("object 3", 1.0), 
+            create_scored_label("object 3", 1.0),
         ]
 
         labels1 = [create_label("object 1")]
@@ -93,7 +94,7 @@ def generate_mot_data(num_frames: int):
                     task_type=enums.TaskType.DETECTION,
                     bounding_box=boundary3,
                 ),
-            ]
+            ],
         )
         groundtruths.append(gts)
 
@@ -116,7 +117,7 @@ def generate_mot_data(num_frames: int):
                     task_type=enums.TaskType.DETECTION,
                     bounding_box=boundary3,
                 ),
-            ]
+            ],
         )
         predictions.append(pds)
 

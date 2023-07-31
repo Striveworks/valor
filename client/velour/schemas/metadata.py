@@ -1,6 +1,4 @@
-import json
-from dataclasses import asdict, dataclass, field
-from typing import List, Optional, Tuple, Union
+from dataclasses import dataclass
 
 
 @dataclass
@@ -10,5 +8,3 @@ class GeoJSON:
 
     def validate(self):
         pass
-
-

@@ -1,8 +1,7 @@
 from sqlalchemy.orm import Session
 
-from velour_api import backend, schemas, enums
+from velour_api import backend, schemas
 from velour_api.backend import state
-
 
 """ Labels """
 
@@ -18,7 +17,7 @@ def get_labels(
 
 @state.read
 def get_label_distribution(
-    db: Session, 
+    db: Session,
     request: schemas.Filter,
 ) -> list[schemas.LabelDistribution]:
     return []
@@ -33,8 +32,8 @@ def get_joint_labels(
     """Returns a dictionary containing disjoint sets of labels. Keys are (dataset, model) and contain sets of labels disjoint from the other."""
 
     return backend.get_joint_labels(
-        db, 
-        dataset_name=dataset_name, 
+        db,
+        dataset_name=dataset_name,
         model_name=model_name,
     )
 
@@ -48,8 +47,8 @@ def get_disjoint_labels(
     """Returns a dictionary containing disjoint sets of labels. Keys are (dataset, model) and contain sets of labels disjoint from the other."""
 
     return backend.get_disjoint_labels(
-        db, 
-        dataset_name=dataset_name, 
+        db,
+        dataset_name=dataset_name,
         model_name=model_name,
     )
 
@@ -61,7 +60,7 @@ def get_disjoint_keys(
     model_name: str,
 ) -> tuple[list[str], list[str]]:
     """Returns a dictionary containing disjoint sets of label keys. Keys are (dataset, model) and contain sets of keys disjoint from the other."""
-    
+
     return backend.get_disjoint_keys(
         db,
         dataset_name=dataset_name,
@@ -81,6 +80,7 @@ def get_datum(
 ) -> schemas.Datum | None:
     # Check that uid is associated with dataset
     return None
+
 
 # @TODO
 @state.read
@@ -109,13 +109,13 @@ def get_datasets(
 
 @state.read
 def get_groundtruth(
-    db: Session, 
-    dataset_name: str, 
+    db: Session,
+    dataset_name: str,
     datum_uid: str,
 ) -> schemas.GroundTruth:
     return backend.get_groundtruth(
-        db, 
-        dataset_name=dataset_name, 
+        db,
+        dataset_name=dataset_name,
         datum_uid=datum_uid,
     )
 
@@ -164,16 +164,21 @@ def get_predictions(
 
 """ Evaluation """
 
+
 def get_metrics_from_evaluation_settings_id(
     db: Session, evaluation_settings_id: int
 ) -> list[schemas.Metric]:
-    return backend.get_metrics_from_evaluation_settings_id(db, evaluation_settings_id)
+    return backend.get_metrics_from_evaluation_settings_id(
+        db, evaluation_settings_id
+    )
 
 
 def get_confusion_matrices_from_evaluation_settings_id(
     db: Session, evaluation_settings_id: int
 ) -> list[schemas.ConfusionMatrix]:
-    return backend.get_confusion_matrices_from_evaluation_settings_id(db, evaluation_settings_id)
+    return backend.get_confusion_matrices_from_evaluation_settings_id(
+        db, evaluation_settings_id
+    )
 
 
 def get_evaluation_settings_from_id(

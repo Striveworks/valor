@@ -1,11 +1,12 @@
 import json
-from pydantic import BaseModel, validator, root_validator
+
+from pydantic import BaseModel, validator
 
 from velour_api.schemas.geometry import (
-    Point, 
     BasicPolygon,
-    Polygon, 
     MultiPolygon,
+    Point,
+    Polygon,
 )
 
 
@@ -17,7 +18,7 @@ class GeoJSONPoint(BaseModel):
     def check_type(cls, v):
         if v != "Point":
             raise ValueError("Incorrect geometry type.")
-        
+
     def point(self) -> Point:
         return Point(
             x=self.coordinates[0],
@@ -33,7 +34,7 @@ class GeoJSONPolygon(BaseModel):
     def check_type(cls, v):
         if v != "Polygon":
             raise ValueError("Incorrect geometry type.")
-        
+
     def polygon(self) -> Polygon:
         polygons = [
             BasicPolygon(
@@ -57,7 +58,7 @@ class GeoJSONMultiPolygon(BaseModel):
     def check_type(cls, v):
         if v != "MultiPolygon":
             raise ValueError("Incorrect geometry type.")
-        
+
     def multipolygon(self) -> MultiPolygon:
         multipolygons = []
         for subpolygon in self.coordinates:
@@ -76,7 +77,7 @@ class GeoJSONMultiPolygon(BaseModel):
         if not multipolygons:
             raise ValueError("Incorrect geometry type.")
         return MultiPolygon(polygons=multipolygons)
-    
+
 
 # GeoJSON Standard
 class GeoJSON(BaseModel):
@@ -96,7 +97,7 @@ class GeoJSON(BaseModel):
             return cls(geometry=GeoJSONMultiPolygon(**data))
         else:
             raise ValueError("Unsupported json.")
-        
+
     def shape(self):
         if isinstance(self.geometry, GeoJSONPoint):
             return self.geometry.point()
@@ -106,7 +107,3 @@ class GeoJSON(BaseModel):
             return self.geometry.multipolygon()
         else:
             raise ValueError
-
-    
-
-    

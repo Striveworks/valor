@@ -1,8 +1,9 @@
 import re
 
-from pydantic import BaseModel, validator, root_validator
+from pydantic import BaseModel, root_validator, validator
 
 from velour_api import enums
+from velour_api.schemas.geojson import GeoJSON
 from velour_api.schemas.geometry import (
     BoundingBox,
     MultiPolygon,
@@ -10,7 +11,6 @@ from velour_api.schemas.geometry import (
     Raster,
 )
 from velour_api.schemas.label import Label, ScoredLabel
-from velour_api.schemas.geojson import GeoJSON
 
 
 def _format_name(name: str):
@@ -55,15 +55,15 @@ class Dataset(BaseModel):
     id: int = None
     name: str
     metadata: list[MetaDatum] = []
-    
+
     @validator("name")
-    def check_name_valid(cls, v):  
+    def check_name_valid(cls, v):
         if v != _format_name(v):
             raise ValueError("name includes illegal characters.")
         if not v:
             raise ValueError("invalid string")
         return v
-    
+
 
 class Model(BaseModel):
     id: int = None
@@ -123,7 +123,7 @@ class ScoredAnnotation(BaseModel):
 
     @root_validator(skip_on_failure=True)
     def check_sum_to_one_if_classification(cls, values):
-        if values["task_type"] == enums.TaskType.CLASSIFICATION:    
+        if values["task_type"] == enums.TaskType.CLASSIFICATION:
             label_keys_to_sum = {}
             for scored_label in values["scored_labels"]:
                 label_key = scored_label.label.key
@@ -152,12 +152,13 @@ class GroundTruth(BaseModel):
         if not v:
             raise ValueError("invalid string")
         return v
-    
+
     @validator("annotations")
     def check_annotations(cls, v):
         if not v:
             raise ValueError("annotations is empty")
         return v
+
 
 class Prediction(BaseModel):
     model_name: str
@@ -171,7 +172,7 @@ class Prediction(BaseModel):
         if not v:
             raise ValueError("invalid string")
         return v
-    
+
     @validator("annotations")
     def check_annotations(cls, v):
         if not v:

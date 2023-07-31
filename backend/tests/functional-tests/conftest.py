@@ -6,7 +6,7 @@ from PIL import Image
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
-from velour_api import crud, schemas, enums
+from velour_api import crud, enums, schemas
 from velour_api.backend import models
 from velour_api.backend.database import Base, create_db, make_session
 
@@ -38,19 +38,19 @@ def random_mask_bytes(size: tuple[int, int]) -> bytes:
 
 @pytest.fixture
 def mask_bytes1():
-    size=(32, 64)
+    size = (32, 64)
     return (random_mask_bytes(size=size), size)
 
 
 @pytest.fixture
 def mask_bytes2():
-    size=(16, 12)
+    size = (16, 12)
     return (random_mask_bytes(size=size), size)
 
 
 @pytest.fixture
 def mask_bytes3():
-    size=(20, 27)
+    size = (20, 27)
     return (random_mask_bytes(size=size), size)
 
 
@@ -119,8 +119,8 @@ def dset(db: Session) -> models.Dataset:
 def images() -> list[schemas.Datum]:
     return [
         schemas.Image(
-            uid=f"{i}", 
-            height=1000, 
+            uid=f"{i}",
+            height=1000,
             width=2000,
             frame=0,
         ).to_datum()
@@ -140,10 +140,12 @@ def groundtruths(
     crud.create_dataset(
         db,
         dataset=schemas.Dataset(
-            name=dataset_name, 
+            name=dataset_name,
             metadata=[
-                schemas.MetaDatum(key="type", value=enums.DataType.IMAGE.value),
-            ]
+                schemas.MetaDatum(
+                    key="type", value=enums.DataType.IMAGE.value
+                ),
+            ],
         ),
     )
 
@@ -208,10 +210,10 @@ def groundtruths(
                         ymin=box[1],
                         xmax=box[2],
                         ymax=box[3],
-                    )
+                    ),
                 )
                 for box, class_label in zip(gts["boxes"], gts["labels"])
-            ]
+            ],
         )
         for gts, image in zip(gts_per_img, images)
     ]
@@ -235,14 +237,16 @@ def predictions(
     from a torchmetrics unit test (see test_metrics.py)
     """
     model_name = "test_model"
-    dset_name = "test_dataset"
     crud.create_model(
-        db, schemas.Model(
+        db,
+        schemas.Model(
             name=model_name,
             metadata=[
-                schemas.MetaDatum(key="type", value=enums.DataType.IMAGE.value),
+                schemas.MetaDatum(
+                    key="type", value=enums.DataType.IMAGE.value
+                ),
             ],
-        )
+        ),
     )
 
     # predictions for four images taken from
@@ -310,7 +314,9 @@ def predictions(
                     task_type=enums.TaskType.DETECTION,
                     scored_labels=[
                         schemas.ScoredLabel(
-                            label=schemas.Label(key="class", value=class_label),
+                            label=schemas.Label(
+                                key="class", value=class_label
+                            ),
                             score=score,
                         )
                     ],
@@ -319,12 +325,12 @@ def predictions(
                         ymin=box[1],
                         xmax=box[2],
                         ymax=box[3],
-                    )
+                    ),
                 )
                 for box, class_label, score in zip(
                     preds["boxes"], preds["labels"], preds["scores"]
                 )
-            ]
+            ],
         )
         for preds, image in zip(preds_per_img, images)
     ]
@@ -336,4 +342,3 @@ def predictions(
         )
 
     return db.query(models.Prediction).all()
-    

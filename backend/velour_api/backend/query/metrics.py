@@ -2,7 +2,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from velour_api import schemas
-from velour_api.backend import core, models, query
+from velour_api.backend import core, models
 
 
 def _db_metric_to_pydantic_metric(db, metric: models.Metric) -> schemas.Metric:

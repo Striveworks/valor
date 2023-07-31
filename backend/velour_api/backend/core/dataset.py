@@ -11,7 +11,7 @@ def create_datum(
     datum: schemas.Datum,
     dataset: models.Dataset,
 ) -> models.Datum:
-    
+
     row = (
         db.query(models.Datum)
         .where(models.Datum.uid == datum.uid)
@@ -20,7 +20,6 @@ def create_datum(
     if row:
         # datum already exists
         return row
-    
 
     # Create datum
     try:
@@ -43,11 +42,7 @@ def get_datum(
     db: Session,
     uid: str,
 ) -> models.Datum:
-    datum = (
-        db.query(models.Datum)
-        .where(models.Datum.uid == uid)
-        .one_or_none()
-    )
+    datum = db.query(models.Datum).where(models.Datum.uid == uid).one_or_none()
     if datum is None:
         raise exceptions.DatumDoesNotExistError(uid)
     return datum

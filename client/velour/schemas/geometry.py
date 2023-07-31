@@ -1,9 +1,7 @@
 import io
-import json
-from abc import ABC
 from base64 import b64decode, b64encode
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Union
+from typing import List
 
 import numpy as np
 import PIL.Image
@@ -21,7 +19,7 @@ class Point:
             raise TypeError("Point coordinates should be `float` type.")
         self.x = float(self.x)
         self.y = float(self.y)
-        
+
     def __hash__(self):
         return hash(f"{self.x},{self.y}")
 
@@ -67,7 +65,9 @@ class BasicPolygon:
             if not isinstance(self.points[i], Point):
                 raise TypeError("Element in points is not a `Point`.")
         if len(set(self.points)) < 3:
-            raise ValueError("BasicPolygon needs at least 3 unique points to be valid.")
+            raise ValueError(
+                "BasicPolygon needs at least 3 unique points to be valid."
+            )
 
     def xy_list(self) -> list[Point]:
         return [pt for pt in self.points]
@@ -110,15 +110,21 @@ class Polygon:
         if isinstance(self.boundary, dict):
             self.boundary = BasicPolygon(**self.boundary)
         if not isinstance(self.boundary, BasicPolygon):
-            raise TypeError("boundary should be of type `velour.schemas.BasicPolygon`")
+            raise TypeError(
+                "boundary should be of type `velour.schemas.BasicPolygon`"
+            )
         if self.holes:
             if not isinstance(self.holes, list):
-                raise TypeError(f"holes should be a list of `velour.schemas.BasicPolygon`. Got `{type(self.holes)}`.")
+                raise TypeError(
+                    f"holes should be a list of `velour.schemas.BasicPolygon`. Got `{type(self.holes)}`."
+                )
             for i in range(len(self.holes)):
                 if isinstance(self.holes[i], dict):
                     self.holes[i] = BasicPolygon(**self.holes[i])
                 if not isinstance(self.holes[i], BasicPolygon):
-                    raise TypeError("holes list should contain elements of type `velour.schemas.BasicPolygon`")
+                    raise TypeError(
+                        "holes list should contain elements of type `velour.schemas.BasicPolygon`"
+                    )
 
 
 @dataclass
@@ -129,9 +135,13 @@ class BoundingBox:
         if isinstance(self.polygon, dict):
             self.polygon = BasicPolygon(**self.polygon)
         if not isinstance(self.polygon, BasicPolygon):
-            raise TypeError("polygon should be of type `velour.schemas.BasicPolygon`")
+            raise TypeError(
+                "polygon should be of type `velour.schemas.BasicPolygon`"
+            )
         if len(self.polygon.points) != 4:
-            raise ValueError("Bounding box should be made of a 4-point polygon.")
+            raise ValueError(
+                "Bounding box should be made of a 4-point polygon."
+            )
 
     @classmethod
     def from_extrema(cls, xmin: float, xmax: float, ymin: float, ymax: float):
@@ -145,19 +155,19 @@ class BoundingBox:
                 ]
             )
         )
-    
+
     @property
     def xmin(self):
         return self.polygon.xmin
-    
+
     @property
     def xmax(self):
         return self.polygon.xmax
-    
+
     @property
     def ymin(self):
         return self.polygon.ymin
-    
+
     @property
     def ymax(self):
         return self.polygon.ymax
@@ -170,12 +180,16 @@ class MultiPolygon:
     def __post_init__(self):
         # unpack & validate
         if not isinstance(self.polygons, list):
-            raise TypeError("polygons should be list of `velour.schemas.Polyon`")
+            raise TypeError(
+                "polygons should be list of `velour.schemas.Polyon`"
+            )
         for i in range(len(self.polygons)):
             if isinstance(self.polygons[i], dict):
                 self.polygons[i] = Polygon(**self.polygons[i])
             if not isinstance(self.polygons[i], Polygon):
-                raise TypeError("polygons list should contain elements of type `velour.schemas.Polygon`")
+                raise TypeError(
+                    "polygons list should contain elements of type `velour.schemas.Polygon`"
+                )
 
 
 @dataclass
@@ -191,7 +205,7 @@ class Raster:
             raise TypeError("height should be of type int")
         if not isinstance(self.width, int | float):
             raise TypeError("width should be of type int")
-        
+
         self.height = int(self.height)
         self.width = int(self.width)
 

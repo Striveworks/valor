@@ -1,8 +1,7 @@
-from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import enums, exceptions, schemas
+from velour_api import exceptions, schemas
 from velour_api.backend import core, models, ops
 
 
@@ -60,7 +59,7 @@ def get_groundtruth(
             uid=datum.uid,
             metadata=core.get_metadata(db, datum=datum),
         ),
-        annotations=core.get_annotations(db, datum)
+        annotations=core.get_annotations(db, datum),
     )
 
 
@@ -68,11 +67,7 @@ def get_groundtruths(
     db: Session,
     request: schemas.Filter,
 ) -> list[schemas.GroundTruth]:
-    
-    datums = (
-        ops.BackendQuery.datum()
-        .filter(request)
-        .all(db)
-    )
+
+    datums = ops.BackendQuery.datum().filter(request).all(db)
 
     return [core.get_annotations(db, datum) for datum in datums]

@@ -8,16 +8,7 @@ from tqdm.auto import tqdm
 
 from velour import enums
 from velour.client import Dataset
-from velour.schemas import (
-    Annotation,
-    BasicPolygon,
-    GroundTruth,
-    Image,
-    Label,
-    MultiPolygon,
-    Polygon,
-    Raster,
-)
+from velour.schemas import Annotation, GroundTruth, Image, Label, Raster
 
 
 def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:

@@ -1,20 +1,19 @@
-from dataclasses import asdict
 import numpy as np
-
 import pytest
 
-from velour import schemas, enums
+from velour import enums, schemas
 from velour.schemas.core import _validate_href
 
 
 @pytest.fixture
 def box_points() -> list[schemas.Point]:
     return [
-        schemas.Point(x=0,y=0),
-        schemas.Point(x=10,y=0),
-        schemas.Point(x=10,y=10),
-        schemas.Point(x=0,y=10),
+        schemas.Point(x=0, y=0),
+        schemas.Point(x=10, y=0),
+        schemas.Point(x=10, y=10),
+        schemas.Point(x=0, y=10),
     ]
+
 
 @pytest.fixture
 def basic_polygon(box_points) -> schemas.BasicPolygon:
@@ -25,9 +24,11 @@ def basic_polygon(box_points) -> schemas.BasicPolygon:
 def bbox() -> schemas.BoundingBox:
     return schemas.BoundingBox.from_extrema(xmin=0, xmax=10, ymin=0, ymax=10)
 
+
 @pytest.fixture
 def polygon(basic_polygon) -> schemas.Polygon:
     return schemas.Polygon(boundary=basic_polygon)
+
 
 @pytest.fixture
 def raster_raw_mask() -> np.ndarray:
@@ -36,11 +37,11 @@ def raster_raw_mask() -> np.ndarray:
     | T  F |
     | F  T |
     """
-    ones = np.ones((10,10))
-    zeros = np.zeros((10,10))
-    top = np.concatenate((ones,zeros), axis=1)
+    ones = np.ones((10, 10))
+    zeros = np.zeros((10, 10))
+    top = np.concatenate((ones, zeros), axis=1)
     bottom = np.concatenate((zeros, ones), axis=1)
-    return (np.concatenate((top,bottom), axis=0) == 1)
+    return np.concatenate((top, bottom), axis=0) == 1
 
 
 @pytest.fixture
@@ -58,6 +59,7 @@ def metadatum() -> schemas.MetaDatum:
 
 """ velour.schemas.metadata """
 
+
 def test_metadata_geojson():
     # @TODO: Implement GeoJSON
     schemas.GeoJSON(type="this shouldnt work", coordinates=[])
@@ -68,10 +70,10 @@ def test_metadata_geojson():
 
 def test_geometry_point():
     # valid
-    p1 = schemas.Point(x=1,y=1)
+    p1 = schemas.Point(x=1, y=1)
     p2 = schemas.Point(x=1.0, y=1.0)
     p3 = schemas.Point(x=1.0, y=0.99)
-    
+
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
         schemas.Point(x="1", y=1)
@@ -107,13 +109,13 @@ def test_geometry_box():
     # test `__post_init__`
     with pytest.raises(ValueError) as e:
         schemas.Box(min=p2, max=p1)
-    assert "xmin > xmax"
+    assert "xmin > xmax" in e
     with pytest.raises(ValueError) as e:
         schemas.Box(min=p1, max=p4)
-    assert "xmin > xmax"
+    assert "xmin > xmax" in e
     with pytest.raises(ValueError) as e:
         schemas.Box(min=p1, max=p3)
-    assert "ymin > ymax"
+    assert "ymin > ymax" in e
 
 
 def test_geometry_basicpolygon():
@@ -122,22 +124,22 @@ def test_geometry_basicpolygon():
     p3 = schemas.Point(x=10, y=5)
     p4 = schemas.Point(x=0, y=5)
 
-    schemas.BasicPolygon(points=[p1,p2,p4])
+    schemas.BasicPolygon(points=[p1, p2, p4])
 
     # Test __post_init__
     with pytest.raises(TypeError) as e:
         schemas.BasicPolygon(points=p1)
     assert "is not a list" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.BasicPolygon(points=[p1,p2,4])
+        schemas.BasicPolygon(points=[p1, p2, 4])
     assert "is not a `Point`"
     with pytest.raises(ValueError) as e:
-        schemas.BasicPolygon(points=[p1,p2])
+        schemas.BasicPolygon(points=[p1, p2])
     assert "needs at least 3 unique points" in str(e)
 
-    # Test member fn `xy_list` 
-    poly = schemas.BasicPolygon(points=[p1,p2,p3])
-    assert poly.xy_list() == [p1,p2,p3]
+    # Test member fn `xy_list`
+    poly = schemas.BasicPolygon(points=[p1, p2, p3])
+    assert poly.xy_list() == [p1, p2, p3]
 
     # Test properties
     assert poly.xmin == 0
@@ -145,7 +147,7 @@ def test_geometry_basicpolygon():
     assert poly.ymin == 0
     assert poly.ymax == 5
 
-    # Test classmethod `from_box` 
+    # Test classmethod `from_box`
     cmin = schemas.Point(x=-1, y=-2)
     cmax = schemas.Point(x=10, y=11)
     poly = schemas.BasicPolygon.from_box(
@@ -166,7 +168,7 @@ def test_geometry_polygon():
     p1 = schemas.Point(x=0, y=0)
     p2 = schemas.Point(x=5, y=0)
     p3 = schemas.Point(x=0, y=5)
-    poly = schemas.BasicPolygon(points=[p1,p2,p3])
+    poly = schemas.BasicPolygon(points=[p1, p2, p3])
 
     # valid
     schemas.Polygon(boundary=poly)
@@ -181,7 +183,10 @@ def test_geometry_polygon():
     assert "holes should be a list of `velour.schemas.BasicPolygon`" in str(e)
     with pytest.raises(TypeError) as e:
         schemas.Polygon(boundary=poly, holes=[123])
-    assert "should contain elements of type `velour.schemas.BasicPolygon`" in str(e)
+    assert (
+        "should contain elements of type `velour.schemas.BasicPolygon`"
+        in str(e)
+    )
 
 
 def test_geometry_boundingbox():
@@ -189,7 +194,7 @@ def test_geometry_boundingbox():
     p2 = schemas.Point(x=5, y=0)
     p3 = schemas.Point(x=5, y=5)
     p4 = schemas.Point(x=0, y=5)
-    poly = schemas.BasicPolygon(points=[p1,p2,p3,p4])
+    poly = schemas.BasicPolygon(points=[p1, p2, p3, p4])
 
     # test __post_init__
     schemas.BoundingBox(polygon=poly)
@@ -197,7 +202,7 @@ def test_geometry_boundingbox():
         schemas.BoundingBox(polygon=p1)
     assert "should be of type `velour.schemas.BasicPolygon`" in str(e)
     with pytest.raises(ValueError) as e:
-        schemas.BoundingBox(polygon=schemas.BasicPolygon(points=[p1,p2,p3]))
+        schemas.BoundingBox(polygon=schemas.BasicPolygon(points=[p1, p2, p3]))
     assert "should be made of a 4-point polygon" in str(e)
 
     # test classmethod `from_extrema`
@@ -215,9 +220,9 @@ def test_geometry_multipolygon():
     p2 = schemas.Point(x=5, y=0)
     p3 = schemas.Point(x=5, y=5)
     p4 = schemas.Point(x=0, y=5)
-    component_poly = schemas.BasicPolygon(points=[p1,p2,p3,p4])
+    component_poly = schemas.BasicPolygon(points=[p1, p2, p3, p4])
     poly = schemas.Polygon(boundary=component_poly)
-    
+
     # valid
     schemas.MultiPolygon(polygons=[poly])
 
@@ -227,11 +232,14 @@ def test_geometry_multipolygon():
     assert "polygons should be list of `velour.schemas.Polyon`" in str(e)
     with pytest.raises(TypeError) as e:
         schemas.MultiPolygon(polygons=[component_poly])
-    assert "polygons list should contain elements of type `velour.schemas.Polygon`" in str(e)
+    assert (
+        "polygons list should contain elements of type `velour.schemas.Polygon`"
+        in str(e)
+    )
 
 
 def test_geometry_raster(raster_raw_mask):
-    mask1 = (np.ones((10,10)) == 1)
+    mask1 = np.ones((10, 10)) == 1
 
     # valid
     schemas.Raster(mask="test", height=0, width=0)
@@ -244,12 +252,12 @@ def test_geometry_raster(raster_raw_mask):
     with pytest.raises(TypeError) as e:
         schemas.Raster(mask="123", height=12)
     with pytest.raises(TypeError) as e:
-        schemas.Raster(mask="123", height=(1,2,3), width=12)
+        schemas.Raster(mask="123", height=(1, 2, 3), width=12)
     with pytest.raises(TypeError) as e:
         schemas.Raster(mask="123", height=12.4, width="test")
 
     # test classmethod `from_numpy`
-    mask2 = (np.ones((10,10,10)) == 1)
+    mask2 = np.ones((10, 10, 10)) == 1
     mask3 = np.ones((10, 10))
     with pytest.raises(ValueError) as e:
         schemas.Raster.from_numpy(mask2)
@@ -260,13 +268,17 @@ def test_geometry_raster(raster_raw_mask):
 
     # test member fn `to_numpy`
     r = schemas.Raster.from_numpy(raster_raw_mask)
-    assert r.mask == "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII="
+    assert (
+        r.mask
+        == "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII="
+    )
     assert r.height == 20
     assert r.width == 20
     assert (r.to_numpy() == raster_raw_mask).all()
 
 
 """ velour.schemas.core """
+
 
 def test_core__validate_href():
     _validate_href("http://test")
@@ -285,7 +297,9 @@ def test_core_metadatum():
     schemas.MetaDatum(key="test", value=1)
     schemas.MetaDatum(key="test", value=1.0)
     # @TODO: Fix when geojson is implemented
-    schemas.MetaDatum(key="test", value=schemas.GeoJSON(type="test", coordinates=[]))
+    schemas.MetaDatum(
+        key="test", value=schemas.GeoJSON(type="test", coordinates=[])
+    )
 
     with pytest.raises(TypeError) as e:
         schemas.MetaDatum(key=123, value=123)
@@ -293,12 +307,12 @@ def test_core_metadatum():
 
     # Test supported value types
     with pytest.raises(NotImplementedError):
-        schemas.MetaDatum(key="test", value=(1,2))
+        schemas.MetaDatum(key="test", value=(1, 2))
     assert "has unsupported type <class 'tuple'>"
     with pytest.raises(NotImplementedError):
-        schemas.MetaDatum(key="test", value=[1,2])
+        schemas.MetaDatum(key="test", value=[1, 2])
     assert "has unsupported type <class 'list'>"
-    
+
     # Test special type with name=href
     schemas.MetaDatum(key="href", value="http://test")
     schemas.MetaDatum(key="href", value="https://test")
@@ -315,7 +329,7 @@ def test_core_metadatum():
 
 
 def test_core_dataset():
-    # valid 
+    # valid
     schemas.Dataset(
         name="test",
         metadata=[schemas.MetaDatum(key="test", value=123)],
@@ -346,7 +360,7 @@ def test_core_dataset():
 
 
 def test_core_model():
-    # valid 
+    # valid
     schemas.Model(
         name="test",
         metadata=[schemas.MetaDatum(key="test", value=123)],
@@ -375,17 +389,17 @@ def test_core_model():
     with pytest.raises(AssertionError):
         schemas.Model(name="123", metadata=[1])
 
-    
+
 def test_core_info():
     # @TODO: Not fully implemented
-    info = schemas.Info()
+    schemas.Info()
 
 
 def test_core_datum():
     schemas.Datum(uid="123")
     schemas.Datum(uid="123", metadata=[])
     schemas.Datum(uid="123", metadata=[schemas.MetaDatum(key="name", value=1)])
-    
+
     # test `__post_init__`
     with pytest.raises(AssertionError):
         schemas.Datum(uid=123)
@@ -394,49 +408,63 @@ def test_core_datum():
     with pytest.raises(AssertionError):
         schemas.Datum(uid="123", metadata=[1])
 
-    
+
 def test_core_annotation(bbox, polygon, raster, metadatum):
     # valid
     schemas.Annotation(task_type=enums.TaskType.DETECTION, bounding_box=bbox)
     schemas.Annotation(task_type=enums.TaskType.DETECTION, polygon=polygon)
-    schemas.Annotation(task_type=enums.TaskType.INSTANCE_SEGMENTATION, raster=raster)
-    schemas.Annotation(task_type=enums.TaskType.SEMANTIC_SEGMENTATION, raster=raster)
     schemas.Annotation(
-        task_type=enums.TaskType.DETECTION, 
+        task_type=enums.TaskType.INSTANCE_SEGMENTATION, raster=raster
+    )
+    schemas.Annotation(
+        task_type=enums.TaskType.SEMANTIC_SEGMENTATION, raster=raster
+    )
+    schemas.Annotation(
+        task_type=enums.TaskType.DETECTION,
         bounding_box=bbox,
         polygon=polygon,
         raster=raster,
     )
     schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION)
     schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION, metadata=[])
-    schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION, metadata=[metadatum])
+    schemas.Annotation(
+        task_type=enums.TaskType.CLASSIFICATION, metadata=[metadatum]
+    )
 
     # test `__post_init__`
     with pytest.raises(ValueError) as e:
         schemas.Annotation(task_type="something")
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Annotation(task_type=enums.TaskType.DETECTION, bounding_box=polygon)
+        schemas.Annotation(
+            task_type=enums.TaskType.DETECTION, bounding_box=polygon
+        )
     assert "does not match" in str(e)
     with pytest.raises(TypeError) as e:
         schemas.Annotation(task_type=enums.TaskType.DETECTION, polygon=bbox)
     assert "does not match" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Annotation(task_type=enums.TaskType.DETECTION, multipolygon=bbox)
+        schemas.Annotation(
+            task_type=enums.TaskType.DETECTION, multipolygon=bbox
+        )
     assert "does not match" in str(e)
     with pytest.raises(TypeError) as e:
         schemas.Annotation(task_type=enums.TaskType.DETECTION, raster=bbox)
     assert "does not match" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION, metadata=metadatum)
+        schemas.Annotation(
+            task_type=enums.TaskType.CLASSIFICATION, metadata=metadatum
+        )
     assert "incorrect type" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION, metadata=[123])
+        schemas.Annotation(
+            task_type=enums.TaskType.CLASSIFICATION, metadata=[123]
+        )
     assert "incorrect type" in str(e)
 
 
 def test_core_label():
-    # valid 
+    # valid
     l1 = schemas.Label(key="test", value="value")
 
     # test `__post_init__`
@@ -448,7 +476,7 @@ def test_core_label():
     assert "value is not a `str`" in str(e)
 
     # test member fn `tuple`
-    assert l1.tuple() == ("test","value")
+    assert l1.tuple() == ("test", "value")
 
     # test member fn `__eq__`
     l2 = schemas.Label(key="test", value="value")
@@ -510,23 +538,19 @@ def test_core_scored_label():
 def test_core_label_distribution():
     l1 = schemas.Label(key="test", value="value")
 
-    # valid 
+    # valid
     schemas.LabelDistribution(label=l1, count=10)
 
 
 def test_core_scored_label_distribiution():
     l1 = schemas.Label(key="test", value="value")
 
-    # valid 
-    schemas.ScoredLabelDistribution(
-        label=l1,
-        count=2,
-        scores=[0.1,0.5]
-    )
+    # valid
+    schemas.ScoredLabelDistribution(label=l1, count=2, scores=[0.1, 0.5])
 
 
 def test_core_annotation_distribution():
-    #valid
+    # valid
     schemas.AnnotationDistribution(
         annotation_type=enums.AnnotationType.BOX,
         count=10,
@@ -539,9 +563,9 @@ def test_core_groundtruth_annotation():
     l3 = schemas.Label(key="other", value="value")
 
     # valid
-    gt = schemas.Annotation(        
+    schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
-        labels=[l1,l2,l3],
+        labels=[l1, l2, l3],
     )
 
     # test `__post_init__`
@@ -552,8 +576,12 @@ def test_core_groundtruth_annotation():
         schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=l1)
     assert "labels should be a list of `velour.schemas.Label`" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=[l1, l2, "label"])
-    assert "elements of labels should be of type `velour.schemas.Label`" in str(e)
+        schemas.Annotation(
+            task_type=enums.TaskType.CLASSIFICATION, labels=[l1, l2, "label"]
+        )
+    assert (
+        "elements of labels should be of type `velour.schemas.Label`" in str(e)
+    )
 
 
 def test_core_prediction_annotation():
@@ -565,50 +593,59 @@ def test_core_prediction_annotation():
     s3 = schemas.ScoredLabel(label=l3, score=1.0)
 
     # valid
-    pd = schemas.ScoredAnnotation(
+    schemas.ScoredAnnotation(
         task_type=enums.TaskType.CLASSIFICATION,
-        scored_labels=[s1,s2,s3],
+        scored_labels=[s1, s2, s3],
     )
 
     # test `__post_init__`
     with pytest.raises(ValueError) as e:
-        schemas.ScoredAnnotation(task_type="something", scored_labels=[s1,s2,s3])
+        schemas.ScoredAnnotation(
+            task_type="something", scored_labels=[s1, s2, s3]
+        )
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.ScoredAnnotation(task_type=enums.TaskType.CLASSIFICATION, scored_labels=s1)
-    assert "scored_labels should be a list of `velour.schemas.ScoredLabel`" in str(e)
+        schemas.ScoredAnnotation(
+            task_type=enums.TaskType.CLASSIFICATION, scored_labels=s1
+        )
+    assert (
+        "scored_labels should be a list of `velour.schemas.ScoredLabel`"
+        in str(e)
+    )
     with pytest.raises(TypeError) as e:
-        schemas.ScoredAnnotation(task_type=enums.TaskType.CLASSIFICATION, scored_labels=[s1, s2, "label"])
-    assert "elements of scored_labels should be of type `velour.schemas.ScoredLabel`" in str(e)
+        schemas.ScoredAnnotation(
+            task_type=enums.TaskType.CLASSIFICATION,
+            scored_labels=[s1, s2, "label"],
+        )
+    assert (
+        "elements of scored_labels should be of type `velour.schemas.ScoredLabel`"
+        in str(e)
+    )
     with pytest.raises(ValueError) as e:
-        schemas.ScoredAnnotation(task_type=enums.TaskType.CLASSIFICATION, scored_labels=[s1, s3])
+        schemas.ScoredAnnotation(
+            task_type=enums.TaskType.CLASSIFICATION, scored_labels=[s1, s3]
+        )
     assert "for label key test got scores summing to 0.5" in str(e)
 
 
 def test_core_groundtruth():
-    l = schemas.Label(key="test", value="value")
-    d = schemas.Datum(uid="somefile")
+    label = schemas.Label(key="test", value="value")
+    datum = schemas.Datum(uid="somefile")
     gts = [
         schemas.Annotation(
-            task_type=enums.TaskType.CLASSIFICATION,
-            labels=[l]
+            task_type=enums.TaskType.CLASSIFICATION, labels=[label]
         ),
         schemas.Annotation(
-            task_type=enums.TaskType.CLASSIFICATION,
-            labels=[l]
-        )
+            task_type=enums.TaskType.CLASSIFICATION, labels=[label]
+        ),
     ]
 
     # valid
     schemas.GroundTruth(
-        datum=d,
+        datum=datum,
         annotations=gts,
     )
-    schemas.GroundTruth(
-        datum=d,
-        annotations=gts,
-        dataset_name="test"
-    )
+    schemas.GroundTruth(datum=datum, annotations=gts, dataset_name="test")
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
@@ -619,19 +656,25 @@ def test_core_groundtruth():
     assert "datum should be type `velour.schemas.Datum`." in str(e)
     with pytest.raises(TypeError) as e:
         schemas.GroundTruth(
-            datum=d,
+            datum=datum,
             annotations=gts[0],
         )
-    assert "annotations should be a list of `velour.schemas.Annotation`." in str(e)
+    assert (
+        "annotations should be a list of `velour.schemas.Annotation`."
+        in str(e)
+    )
     with pytest.raises(TypeError) as e:
         schemas.GroundTruth(
-            datum=d,
+            datum=datum,
             annotations=[gts[0], gts[1], "annotation"],
         )
-    assert "annotations list should contain only `velour.schemas.Annotation`." in str(e)
+    assert (
+        "annotations list should contain only `velour.schemas.Annotation`."
+        in str(e)
+    )
     with pytest.raises(TypeError) as e:
         schemas.GroundTruth(
-            datum=d,
+            datum=datum,
             annotations=gts,
             dataset_name=1234,
         )
@@ -639,30 +682,26 @@ def test_core_groundtruth():
 
 
 def test_core_prediction():
-    l = schemas.Label(key="test", value="value")
-    sl = schemas.ScoredLabel(label=l, score=1.0)
-    d = schemas.Datum(uid="somefile")
+    label = schemas.Label(key="test", value="value")
+    scored_label = schemas.ScoredLabel(label=label, score=1.0)
+    datum = schemas.Datum(uid="somefile")
     pds = [
         schemas.ScoredAnnotation(
             task_type=enums.TaskType.CLASSIFICATION,
-            scored_labels=[sl]
+            scored_labels=[scored_label],
         ),
         schemas.ScoredAnnotation(
             task_type=enums.TaskType.CLASSIFICATION,
-            scored_labels=[sl]
-        )
+            scored_labels=[scored_label],
+        ),
     ]
 
     # valid
     schemas.Prediction(
-        datum=d,
+        datum=datum,
         annotations=pds,
     )
-    schemas.Prediction(
-        datum=d,
-        annotations=pds,
-        model_name="test"
-    )
+    schemas.Prediction(datum=datum, annotations=pds, model_name="test")
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
@@ -673,19 +712,25 @@ def test_core_prediction():
     assert "datum should be type `velour.schemas.Datum`." in str(e)
     with pytest.raises(TypeError) as e:
         schemas.Prediction(
-            datum=d,
+            datum=datum,
             annotations=pds[0],
         )
-    assert "annotations should be a list of `velour.schemas.ScoredAnnotation`." in str(e)
+    assert (
+        "annotations should be a list of `velour.schemas.ScoredAnnotation`."
+        in str(e)
+    )
     with pytest.raises(TypeError) as e:
         schemas.Prediction(
-            datum=d,
+            datum=datum,
             annotations=[pds[0], pds[1], "annotation"],
         )
-    assert "annotations list should contain only `velour.schemas.ScoredAnnotation`." in str(e)
+    assert (
+        "annotations list should contain only `velour.schemas.ScoredAnnotation`."
+        in str(e)
+    )
     with pytest.raises(TypeError) as e:
         schemas.Prediction(
-            datum=d,
+            datum=datum,
             annotations=pds,
             model_name=1234,
         )

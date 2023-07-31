@@ -9,9 +9,7 @@ def get_model(
     name: str,
 ) -> models.Model:
     model = (
-        db.query(models.Model)
-        .where(models.Model.name == name)
-        .one_or_none()
+        db.query(models.Model).where(models.Model.name == name).one_or_none()
     )
     if model is None:
         raise exceptions.ModelDoesNotExistError(name)

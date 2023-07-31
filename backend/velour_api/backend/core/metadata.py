@@ -92,7 +92,7 @@ def create_metadata(
 def get_metadatum_schema(
     metadatum: models.MetaDatum,
 ) -> schemas.MetaDatum | None:
-    
+
     if metadatum is None:
         return None
 
@@ -103,7 +103,7 @@ def get_metadatum_schema(
         value = metadatum.numeric_value
     elif metadatum.geo is not None:
         # @TODO: Add geographic type
-        raise NotImplemented
+        raise NotImplementedError
     else:
         return None
 
@@ -119,7 +119,7 @@ def get_metadata(
     model: models.Model = None,
     datum: models.Datum = None,
     annotation: models.Annotation = None,
-    key: str = None
+    key: str = None,
 ) -> list[schemas.MetaDatum]:
     """Returns list of metadatums from a union of sources (dataset, model, datum, annotation) filtered by (key, value_type)."""
 

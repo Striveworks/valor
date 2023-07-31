@@ -34,15 +34,15 @@ class AnnotationType(Enum):
     def __gt__(self, other):
         assert isinstance(other, type(self))
         return self.numeric > other.numeric
-    
+
     def __lt__(self, other):
         assert isinstance(other, type(self))
         return self.numeric < other.numeric
-    
+
     def __ge__(self, other):
         assert isinstance(other, type(self))
         return self.numeric >= other.numeric
-    
+
     def __le__(self, other):
         assert isinstance(other, type(self))
         return self.numeric <= other.numeric

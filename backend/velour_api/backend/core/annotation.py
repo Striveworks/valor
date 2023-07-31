@@ -1,22 +1,17 @@
 import io
 import json
 from base64 import b64encode
-from typing import List, Optional
 
 from geoalchemy2 import RasterElement
 from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
 from PIL import Image
-from sqlalchemy import select, text, and_
+from sqlalchemy import and_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.metadata import (
-    create_metadata,
-    get_metadata,
-    get_metadatum_schema,
-)
+from velour_api.backend.core.metadata import create_metadata, get_metadata
 
 
 # @TODO: Might introduce multipolygon type to annotations, convert to raster at evaluation time.
@@ -47,7 +42,9 @@ def create_annotation(
             annotation.metadata = []
         annotation.metadata.extend(
             [
-                schemas.MetaDatum(key="height", value=annotation.raster.height),
+                schemas.MetaDatum(
+                    key="height", value=annotation.raster.height
+                ),
                 schemas.MetaDatum(key="width", value=annotation.raster.width),
             ]
         )
@@ -69,7 +66,7 @@ def create_annotation(
     except IntegrityError:
         db.rollback()
         raise exceptions.AnnotationAlreadyExistsError
-        
+
     create_metadata(db, annotation.metadata, annotation=row)
     return row
 
@@ -80,7 +77,7 @@ def create_annotations(
     datum: models.Datum,
     model: models.Model = None,
 ) -> list[models.Annotation]:
-    rows = [
+    return [
         create_annotation(
             db,
             annotation=annotation,
@@ -131,13 +128,16 @@ def get_annotation(
     db: Session,
     annotation: models.Annotation,
 ) -> schemas.Annotation:
-    
+
     # Retrieve all labels associated with annotation
     labels = [
         schemas.Label(key=label[0], value=label[1])
         for label in (
             db.query(models.Label.key, models.Label.value)
-            .join(models.GroundTruth, models.GroundTruth.label_id == models.Label.id)
+            .join(
+                models.GroundTruth,
+                models.GroundTruth.label_id == models.Label.id,
+            )
             .where(models.GroundTruth.annotation_id == annotation.id)
             .all()
         )
@@ -212,13 +212,21 @@ def get_scored_annotation(
     db: Session,
     annotation: models.Annotation,
 ) -> schemas.ScoredAnnotation:
-    
+
     # Retrieve all labels associated with annotation
     scored_labels = [
-        schemas.ScoredLabel(label=schemas.Label(key=scored_label[0], value=scored_label[1]), score=scored_label[2])
+        schemas.ScoredLabel(
+            label=schemas.Label(key=scored_label[0], value=scored_label[1]),
+            score=scored_label[2],
+        )
         for scored_label in (
-            db.query(models.Label.key, models.Label.value, models.Prediction.score)
-            .join(models.Prediction, models.Prediction.label_id == models.Label.id)
+            db.query(
+                models.Label.key, models.Label.value, models.Prediction.score
+            )
+            .join(
+                models.Prediction,
+                models.Prediction.label_id == models.Label.id,
+            )
             .where(models.Prediction.annotation_id == annotation.id)
             .all()
         )

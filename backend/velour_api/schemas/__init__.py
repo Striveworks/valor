@@ -1,38 +1,36 @@
 from .auth import User
 from .core import (
-    MetaDatum,
     Annotation,
     Dataset,
     Datum,
     GroundTruth,
-    Annotation,
     Label,
+    MetaDatum,
     Model,
-    ScoredAnnotation,
     Prediction,
+    ScoredAnnotation,
     ScoredLabel,
 )
+from .geojson import GeoJSON
 from .geometry import (
-    Point, 
     BasicPolygon,
     BoundingBox,
     MultiPolygon,
+    Point,
     Polygon,
-    Raster
+    Raster,
 )
-from .geojson import GeoJSON
-from .info import LabelDistribution, ScoredLabelDistribution, Filter
+from .info import Filter, LabelDistribution, ScoredLabelDistribution
 from .jobs import Job
 from .metadata import Image
 from .metrics import (
     AccuracyMetric,
     APMetric,
     APMetricAveragedOverIOUs,
-    mAPMetric,
-    mAPMetricAveragedOverIOUs,
     APRequest,
     ClfMetricsRequest,
     ConfusionMatrix,
+    ConfusionMatrixEntry,
     ConfusionMatrixResponse,
     CreateAPMetricsResponse,
     CreateClfMetricsResponse,
@@ -42,10 +40,12 @@ from .metrics import (
     PrecisionMetric,
     RecallMetric,
     ROCAUCMetric,
-    ConfusionMatrixEntry,
+    mAPMetric,
+    mAPMetricAveragedOverIOUs,
 )
 
 __all__ = [
+    "User",
     "Filter",
     "Image",
     "Annotation",
@@ -60,7 +60,7 @@ __all__ = [
     "Prediction",
     "Label",
     "ScoredLabel",
-    "Point", 
+    "Point",
     "BasicPolygon",
     "BoundingBox",
     "MultiPolygon",

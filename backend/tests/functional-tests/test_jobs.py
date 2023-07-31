@@ -2,15 +2,16 @@
 at localhost:6379 or with the following enviornment variables set:
 REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_USERNAME, REDIS_DB
 """
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock  # , patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from velour_api.enums import JobStatus
-from velour_api.exceptions import JobDoesNotExistError
-from velour_api.schemas import Job
 from velour_api.backend import database, jobs
+
+# from velour_api.enums import JobStatus
+# from velour_api.exceptions import JobDoesNotExistError
+# from velour_api.schemas import Job
 
 
 @pytest.fixture

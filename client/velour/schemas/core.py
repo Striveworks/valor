@@ -1,9 +1,5 @@
-import json
-from abc import ABC
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Union
-
-import numpy as np
+from typing import List, Tuple, Union
 
 from velour import enums
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster

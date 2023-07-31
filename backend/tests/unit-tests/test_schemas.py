@@ -1,14 +1,13 @@
-import os
 import math
+import os
 from base64 import b64encode
 from tempfile import TemporaryDirectory
 
-import numpy as np
 import PIL.Image
 import pytest
 from pydantic import ValidationError
 
-from velour_api import schemas, enums
+from velour_api import enums, schemas
 from velour_api.schemas.core import _format_name, _format_uid
 
 
@@ -64,21 +63,25 @@ def component_polygon_box(box_points) -> schemas.geometry.BasicPolygon:
     return schemas.geometry.BasicPolygon(
         points=box_points,
     )
-    
+
 
 @pytest.fixture
-def component_polygon_rotated_box(rotated_box_points) -> schemas.geometry.BasicPolygon:
+def component_polygon_rotated_box(
+    rotated_box_points,
+) -> schemas.geometry.BasicPolygon:
     return schemas.geometry.BasicPolygon(
         points=rotated_box_points,
     )
 
 
 @pytest.fixture
-def component_polygon_skewed_box(skewed_box_points) -> schemas.geometry.BasicPolygon:
+def component_polygon_skewed_box(
+    skewed_box_points,
+) -> schemas.geometry.BasicPolygon:
     return schemas.geometry.BasicPolygon(
         points=skewed_box_points,
     )
-    
+
 
 @pytest.fixture
 def bbox(component_polygon_box) -> schemas.BoundingBox:
@@ -92,7 +95,7 @@ def polygon(component_polygon_box) -> schemas.Polygon:
     return schemas.Polygon(boundary=component_polygon_box)
 
 
-def _create_b64_mask(mode: str, ext: str = ".png", size=(20,20)) -> str:
+def _create_b64_mask(mode: str, ext: str = ".png", size=(20, 20)) -> str:
     with TemporaryDirectory() as tempdir:
         img = PIL.Image.new(mode=mode, size=size)
         img_path = os.path.join(tempdir, f"img.{ext}")
@@ -102,6 +105,7 @@ def _create_b64_mask(mode: str, ext: str = ".png", size=(20,20)) -> str:
             img_bytes = f.read()
 
         return b64encode(img_bytes).decode()
+
 
 @pytest.fixture
 def raster() -> schemas.Raster:
@@ -140,12 +144,10 @@ def scored_labels(labels) -> list[schemas.ScoredLabel]:
 def groundtruth_annotations(labels) -> list[schemas.Annotation]:
     return [
         schemas.Annotation(
-            labels=[labels[0]],
-            task_type=enums.TaskType.CLASSIFICATION
+            labels=[labels[0]], task_type=enums.TaskType.CLASSIFICATION
         ),
         schemas.Annotation(
-            labels=[labels[2]],
-            task_type=enums.TaskType.CLASSIFICATION
+            labels=[labels[2]], task_type=enums.TaskType.CLASSIFICATION
         ),
         schemas.Annotation(
             labels=[labels[3]],
@@ -193,10 +195,7 @@ def test_core__format_uid():
 
 def test_metadata_Metadatum():
     # valid
-    schemas.MetaDatum(
-        key="name",
-        value="value"
-    )
+    schemas.MetaDatum(key="name", value="value")
     schemas.MetaDatum(
         key="name",
         value=123,
@@ -222,25 +221,23 @@ def test_metadata_Metadatum():
     with pytest.raises(ValidationError):
         schemas.MetaDatum(
             key="name",
-            value=[1,2,3],
+            value=[1, 2, 3],
         )
     with pytest.raises(ValidationError):
         schemas.MetaDatum(
             key="name",
-            value=(1,2,3),
+            value=(1, 2, 3),
         )
     with pytest.raises(ValidationError):
         schemas.MetaDatum(
             key="name",
-            value=schemas.geometry.Point(x=1,y=1),
+            value=schemas.geometry.Point(x=1, y=1),
         )
 
 
 def test_core_Dataset(metadata):
     # valid
-    schemas.Dataset(
-        name="dataset1"
-    )
+    schemas.Dataset(name="dataset1")
     schemas.Dataset(
         name="dataset1",
         metadata=[],
@@ -261,9 +258,7 @@ def test_core_Dataset(metadata):
             name=(12,),
         )
     with pytest.raises(ValidationError):
-        schemas.Dataset(
-            name="dataset@"
-        )
+        schemas.Dataset(name="dataset@")
 
     # test property `metadata`
     with pytest.raises(ValidationError):
@@ -288,9 +283,7 @@ def test_core_Dataset(metadata):
 
 def test_core_Model(metadata):
     # valid
-    schemas.Model(
-        name="model1"
-    )
+    schemas.Model(name="model1")
     schemas.Model(
         name="model1",
         metadata=[],
@@ -311,9 +304,7 @@ def test_core_Model(metadata):
             name=(12,),
         )
     with pytest.raises(ValidationError):
-        schemas.Dataset(
-            name="model@"
-        )
+        schemas.Dataset(name="model@")
 
     # test property `metadata`
     with pytest.raises(ValidationError):
@@ -347,13 +338,9 @@ def test_core_Datum(metadata):
 
     # test property `uid`
     with pytest.raises(ValidationError):
-        schemas.Datum(
-            uid=("uid",)
-        )
+        schemas.Datum(uid=("uid",))
     with pytest.raises(ValidationError):
-        schemas.Datum(
-            uid="uid@"
-        )
+        schemas.Datum(uid="uid@")
 
     # test property `metadata`
     with pytest.raises(ValidationError):
@@ -369,7 +356,7 @@ def test_core_Datum(metadata):
 
 
 def test_core_Annotation(metadata, bbox, polygon, raster, labels):
-    # valid 
+    # valid
     gt = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=labels,
@@ -425,14 +412,14 @@ def test_core_Annotation(metadata, bbox, polygon, raster, labels):
         schemas.Annotation(
             labels=[labels[0], 123],
             task_type=enums.TaskType.CLASSIFICATION,
-        )   
+        )
     with pytest.raises(ValidationError):
         schemas.Annotation(
             labels=[],
             task_type=enums.TaskType.CLASSIFICATION,
-        )   
+        )
     assert gt.labels == labels
-    
+
     # test property `metadata`
     with pytest.raises(ValidationError):
         schemas.Annotation(
@@ -447,7 +434,7 @@ def test_core_Annotation(metadata, bbox, polygon, raster, labels):
             metadata=[metadata[0], "123"],
         )
 
-    # test geometric properties 
+    # test geometric properties
     with pytest.raises(ValidationError):
         schemas.Annotation(
             task_type=enums.TaskType.DETECTION,
@@ -466,17 +453,17 @@ def test_core_Annotation(metadata, bbox, polygon, raster, labels):
             labels=labels,
             multipolygon=bbox,
         )
-    with pytest.raises(ValidationError) as e:
+    with pytest.raises(ValidationError):
         schemas.Annotation(
             task_type=enums.TaskType.DETECTION,
             labels=labels,
             raster=bbox,
         )
-    
+
 
 def test_core_ScoredAnnotation(metadata, bbox, polygon, raster, scored_labels):
 
-    # valid 
+    # valid
     pd = schemas.ScoredAnnotation(
         task_type=enums.TaskType.CLASSIFICATION,
         scored_labels=scored_labels,
@@ -541,7 +528,7 @@ def test_core_ScoredAnnotation(metadata, bbox, polygon, raster, scored_labels):
         task_type=enums.TaskType.DETECTION,
     )
     assert set(pd.scored_labels) == set(scored_labels)
-    
+
     # test property `metadata`
     with pytest.raises(ValidationError):
         schemas.ScoredAnnotation(
@@ -556,7 +543,7 @@ def test_core_ScoredAnnotation(metadata, bbox, polygon, raster, scored_labels):
             metadata=[metadata[0], "123"],
         )
 
-    # test geometric properties 
+    # test geometric properties
     with pytest.raises(ValidationError):
         schemas.ScoredAnnotation(
             task_type=enums.TaskType.DETECTION,
@@ -710,9 +697,9 @@ def test_geometry_Point():
 
     # test properties
     with pytest.raises(ValidationError):
-        schemas.geometry.Point(x="test",y=0)
+        schemas.geometry.Point(x="test", y=0)
     with pytest.raises(ValidationError):
-        schemas.geometry.Point(x=0,y="test")
+        schemas.geometry.Point(x=0, y="test")
 
     # test member fn `__str__`
     assert str(p1) == "(3.14, -3.14)"
@@ -742,7 +729,7 @@ def test_geometry_Point():
     p4 = p3
     p4 += p1
     assert p4 == schemas.geometry.Point(x=0, y=0)
-    
+
     # test member fn `__isub__`
     p4 = p3
     p4 -= p3
@@ -753,7 +740,7 @@ def test_geometry_Point():
 
 
 def test_geometry_LineSegment(box_points):
-    # valid 
+    # valid
     l1 = schemas.geometry.LineSegment(
         points=(
             box_points[0],
@@ -781,9 +768,11 @@ def test_geometry_LineSegment(box_points):
     with pytest.raises(ValidationError):
         schemas.geometry.LineSegment(points=(box_points[0],))
     with pytest.raises(ValidationError):
-        schemas.geometry.LineSegment(points=(box_points[0],box_points[1], box_points[2]))
+        schemas.geometry.LineSegment(
+            points=(box_points[0], box_points[1], box_points[2])
+        )
     with pytest.raises(ValidationError):
-        schemas.geometry.LineSegment(points=(1,2))
+        schemas.geometry.LineSegment(points=(1, 2))
 
     # test member fn `delta_xy`
     assert l1.delta_xy() == box_points[0] - box_points[1]
@@ -812,46 +801,56 @@ def test_geometry_BasicPolygon(box_points):
     with pytest.raises(ValidationError):
         schemas.geometry.BasicPolygon(points=[])
     with pytest.raises(ValidationError):
-        schemas.geometry.BasicPolygon(points=[
-            box_points[0],
-            box_points[1],
-        ])
+        schemas.geometry.BasicPolygon(
+            points=[
+                box_points[0],
+                box_points[1],
+            ]
+        )
     with pytest.raises(ValidationError):
-        schemas.geometry.BasicPolygon(points=[
-            box_points[0],
-            box_points[1],
-            (1,3),
-        ])
+        schemas.geometry.BasicPolygon(
+            points=[
+                box_points[0],
+                box_points[1],
+                (1, 3),
+            ]
+        )
 
     # test member fn `left` @TODO
-    
+
     # test member fn `right` @TODO
-    
+
     # test member fn `top` @TODO
-    
+
     # test member fn `bottom` @TODO
-    
+
     # test member fn `width` @TODO
-    
+
     # test member fn `height` @TODO
 
     # test member fn `segments`
     plist = box_points + [box_points[0]]
     assert poly.segments == [
-        schemas.geometry.LineSegment(points=(plist[i], plist[i+1]))
-        for i in range(len(plist)-1)
+        schemas.geometry.LineSegment(points=(plist[i], plist[i + 1]))
+        for i in range(len(plist) - 1)
     ]
 
     # test member fn `__str__`
-    assert str(poly) == "((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0))"
+    assert (
+        str(poly)
+        == "((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0))"
+    )
 
     # test member fn `wkt`
-    assert poly.wkt() == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
+    assert (
+        poly.wkt()
+        == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
+    )
 
 
 def test_geometry_Polygon(
     component_polygon_box,
-    component_polygon_rotated_box, 
+    component_polygon_rotated_box,
     component_polygon_skewed_box,
 ):
     # valid
@@ -872,7 +871,7 @@ def test_geometry_Polygon(
     )
 
     # test property `boundary`
-    with pytest.raises(ValidationError):            # type checking
+    with pytest.raises(ValidationError):  # type checking
         schemas.Polygon(
             boundary="component_polygon_skewed_box",
         )
@@ -882,7 +881,7 @@ def test_geometry_Polygon(
         )
 
     # test property `holes`
-    with pytest.raises(ValidationError):            # type checking
+    with pytest.raises(ValidationError):  # type checking
         schemas.Polygon(
             boundary=component_polygon_box,
             holes=component_polygon_skewed_box,
@@ -894,28 +893,42 @@ def test_geometry_Polygon(
         )
 
     # test member fn `__str__`
-    assert str(p1) == "(((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0)))"
-    assert str(p2) == "(((0.0,0.0),(10.0,0.0),(15.0,10.0),(5.0,10.0),(0.0,0.0)),((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0)))"
-    
+    assert (
+        str(p1)
+        == "(((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0)))"
+    )
+    assert (
+        str(p2)
+        == "(((0.0,0.0),(10.0,0.0),(15.0,10.0),(5.0,10.0),(0.0,0.0)),((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0)))"
+    )
+
     # test member fn `wkt`
-    assert p1.wkt() == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
-    assert p2.wkt() == "POLYGON ((0.0 0.0, 10.0 0.0, 15.0 10.0, 5.0 10.0, 0.0 0.0), (-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
+    assert (
+        p1.wkt()
+        == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
+    )
+    assert (
+        p2.wkt()
+        == "POLYGON ((0.0 0.0, 10.0 0.0, 15.0 10.0, 5.0 10.0, 0.0 0.0), (-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
+    )
 
 
 def test_geometry_MultiPolygon(
     component_polygon_box,
-    component_polygon_rotated_box, 
-    component_polygon_skewed_box
+    component_polygon_rotated_box,
+    component_polygon_skewed_box,
 ):
     p1 = schemas.Polygon(boundary=component_polygon_rotated_box)
-    p2 = schemas.Polygon(boundary=component_polygon_skewed_box, holes=[component_polygon_box])
+    p2 = schemas.Polygon(
+        boundary=component_polygon_skewed_box, holes=[component_polygon_box]
+    )
 
     # valid
     mp1 = schemas.MultiPolygon(polygons=[p1])
     mp2 = schemas.MultiPolygon(polygons=[p1, p2])
 
     # test property `polygons`
-    with pytest.raises(ValidationError):            # type checking
+    with pytest.raises(ValidationError):  # type checking
         schemas.MultiPolygon(polygons=component_polygon_box)
     with pytest.raises(ValidationError):
         schemas.MultiPolygon(polygons=p1)
@@ -925,8 +938,14 @@ def test_geometry_MultiPolygon(
         schemas.MultiPolygon(polygons=[p1, component_polygon_box])
 
     # test member fn `wkt`
-    assert mp1.wkt() == "MULTIPOLYGON (((0.0 7.0710678118654755, 7.0710678118654755 0.0, 0.0 -7.0710678118654755, -7.0710678118654755 0.0, 0.0 7.0710678118654755)))"
-    assert mp2.wkt() == "MULTIPOLYGON (((0.0 7.0710678118654755, 7.0710678118654755 0.0, 0.0 -7.0710678118654755, -7.0710678118654755 0.0, 0.0 7.0710678118654755)), ((0.0 0.0, 10.0 0.0, 15.0 10.0, 5.0 10.0, 0.0 0.0), (-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0)))"
+    assert (
+        mp1.wkt()
+        == "MULTIPOLYGON (((0.0 7.0710678118654755, 7.0710678118654755 0.0, 0.0 -7.0710678118654755, -7.0710678118654755 0.0, 0.0 7.0710678118654755)))"
+    )
+    assert (
+        mp2.wkt()
+        == "MULTIPOLYGON (((0.0 7.0710678118654755, 7.0710678118654755 0.0, 0.0 -7.0710678118654755, -7.0710678118654755 0.0, 0.0 7.0710678118654755)), ((0.0 0.0, 10.0 0.0, 15.0 10.0, 5.0 10.0, 0.0 0.0), (-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0)))"
+    )
 
 
 # @TODO
@@ -939,15 +958,11 @@ def test_geometry_BoundingBox(
     bbox1 = schemas.BoundingBox(
         polygon=component_polygon_box,
     )
-    bbox2 = schemas.BoundingBox(
-        polygon=component_polygon_rotated_box
-    )
-    bbox3 = schemas.BoundingBox(
-        polygon=component_polygon_skewed_box
-    )
+    bbox2 = schemas.BoundingBox(polygon=component_polygon_rotated_box)
+    bbox3 = schemas.BoundingBox(polygon=component_polygon_skewed_box)
 
     # test property `polygon`
-    with pytest.raises(ValidationError):            # type checking
+    with pytest.raises(ValidationError):  # type checking
         schemas.BoundingBox(polygon=1234)
     with pytest.raises(ValidationError):
         schemas.BoundingBox(polygon=component_polygon_box.points[0])
@@ -955,25 +970,28 @@ def test_geometry_BoundingBox(
         schemas.BoundingBox(polygon=[component_polygon_box])
     with pytest.raises(ValidationError):
         box_plus_one = schemas.geometry.BasicPolygon(
-            points=component_polygon_box.points + [schemas.geometry.Point(x=15,y=15)]
+            points=component_polygon_box.points
+            + [schemas.geometry.Point(x=15, y=15)]
         )
-        schemas.BoundingBox(polygon=box_plus_one)   # check for 4 unique points
-
+        schemas.BoundingBox(polygon=box_plus_one)  # check for 4 unique points
 
     # test classmethod `from_extrema`
-    assert schemas.BoundingBox.from_extrema(
-        xmin=component_polygon_box.left,
-        ymin=component_polygon_box.bottom,
-        xmax=component_polygon_box.right,
-        ymax=component_polygon_box.top,
-    ).polygon == component_polygon_box
+    assert (
+        schemas.BoundingBox.from_extrema(
+            xmin=component_polygon_box.left,
+            ymin=component_polygon_box.bottom,
+            xmax=component_polygon_box.right,
+            ymax=component_polygon_box.top,
+        ).polygon
+        == component_polygon_box
+    )
 
     # test member fn `left` @TODO
-    
+
     # test member fn `right` @TODO
 
     # test member fn `top` @TODO
-    
+
     # test member fn `bottom` @TODO
 
     # test member fn `width` @TODO
@@ -996,9 +1014,18 @@ def test_geometry_BoundingBox(
     assert bbox3.is_skewed()
 
     # test member fn `wkt`
-    assert bbox1.wkt() == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
-    assert bbox2.wkt() == "POLYGON ((0.0 7.0710678118654755, 7.0710678118654755 0.0, 0.0 -7.0710678118654755, -7.0710678118654755 0.0, 0.0 7.0710678118654755))"
-    assert bbox3.wkt() == "POLYGON ((0.0 0.0, 10.0 0.0, 15.0 10.0, 5.0 10.0, 0.0 0.0))"
+    assert (
+        bbox1.wkt()
+        == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
+    )
+    assert (
+        bbox2.wkt()
+        == "POLYGON ((0.0 7.0710678118654755, 7.0710678118654755 0.0, 0.0 -7.0710678118654755, -7.0710678118654755 0.0, 0.0 7.0710678118654755))"
+    )
+    assert (
+        bbox3.wkt()
+        == "POLYGON ((0.0 0.0, 10.0 0.0, 15.0 10.0, 5.0 10.0, 0.0 0.0))"
+    )
 
 
 def test_geometry_Raster(raster):
@@ -1017,17 +1044,23 @@ def test_geometry_Raster(raster):
         # not any string can be passed
         schemas.Raster(mask="text", height=height, width=width)
     with pytest.raises(ValueError) as exc_info:
-        base64_mask = _create_b64_mask(mode="RGB", ext="png", size=(width, height))
+        base64_mask = _create_b64_mask(
+            mode="RGB", ext="png", size=(width, height)
+        )
         schemas.Raster(
-            mask=base64_mask,   # only supports binary images
-            height=height, width=width,
+            mask=base64_mask,  # only supports binary images
+            height=height,
+            width=width,
         )
     assert "Expected image mode to be binary but got mode" in str(exc_info)
     with pytest.raises(ValueError) as exc_info:
-        base64_mask = _create_b64_mask(mode="1", ext="jpg", size=(width, height))
+        base64_mask = _create_b64_mask(
+            mode="1", ext="jpg", size=(width, height)
+        )
         schemas.Raster(
-            mask=base64_mask,   # Check we get an error if the format is not PNG
-            height=height, width=width,
+            mask=base64_mask,  # Check we get an error if the format is not PNG
+            height=height,
+            width=width,
         )
     assert "Expected image format PNG but got" in str(exc_info)
 
@@ -1036,19 +1069,19 @@ def test_geometry_Raster(raster):
         mask = _create_b64_mask(mode="1", ext="PNG", size=(width, height))
         schemas.Raster(
             mask=mask,
-            shape="shape",      # Incorrect type
+            shape="shape",  # Incorrect type
         )
     with pytest.raises(ValidationError):
         mask = _create_b64_mask(mode="1", ext="PNG", size=(width, height))
         schemas.Raster(
             mask=mask,
-            shape=(20,20,20),   # Incorrectly sized tuple
+            shape=(20, 20, 20),  # Incorrectly sized tuple
         )
-    with pytest.raises(ValidationError) as e:
+    with pytest.raises(ValidationError):
         mask = _create_b64_mask(mode="1", ext="PNG", size=(width, height))
         schemas.Raster(
             mask=mask,
-            shape=(21,21),      # size mismatch
+            shape=(21, 21),  # size mismatch
         )
 
 
@@ -1131,21 +1164,21 @@ def test_label_Label():
 
 
 def test_label_ScoredLabel():
-    l = schemas.Label(key="k1", value="v1")
+    label = schemas.Label(key="k1", value="v1")
 
     # valid
-    schemas.ScoredLabel(label=l, score=0.5)
-    
+    schemas.ScoredLabel(label=label, score=0.5)
+
     # test property `label`
     with pytest.raises(ValidationError):
         schemas.ScoredLabel(label="label", score=0.5)
 
     # test property `score`
     with pytest.raises(ValidationError):
-        schemas.ScoredLabel(label=l, score="score")
+        schemas.ScoredLabel(label=label, score="score")
 
-    
-""" velour_api.schemas.auth """ 
+
+""" velour_api.schemas.auth """
 
 
 # @TODO
@@ -1161,81 +1194,101 @@ def test_auth_User():
 def test_metrics_EvaluationSettings():
     pass
 
+
 # @TODO
 def test_metrics_APRequest():
     pass
+
 
 # @TODO
 def test_metrics_CreateAPMetricsResponse():
     pass
 
+
 # @TODO
 def test_metrics_CreateClfMetricsResponse():
     pass
+
 
 # @TODO
 def test_metrics_Job():
     pass
 
+
 # @TODO
 def test_metrics_ClfMetricsRequest():
     pass
+
 
 # @TODO
 def test_metrics_Metric():
     pass
 
+
 # @TODO
 def test_metrics_APMetric():
     pass
+
 
 # @TODO
 def test_metrics_APMetricAveragedOverIOUs():
     pass
 
+
 # @TODO
 def test_metrics_mAPMetric():
     pass
+
 
 # @TODO
 def test_metrics_mAPMetricAveragedOverIOUs():
     pass
 
+
 # @TODO
 def test_metrics_ConfusionMatrixEntry():
     pass
+
 
 # @TODO
 def test_metrics__BaseConfusionMatrix():
     pass
 
+
 # @TODO
 def test_metrics_ConfusionMatrix():
     pass
+
 
 # @TODO
 def test_metrics_ConfusionMatrixResponse():
     pass
 
+
 # @TODO
 def test_metrics_AccuracyMetric():
     pass
+
 
 # @TODO
 def test_metrics__PrecisionRecallF1Base():
     pass
 
+
 # @TODO
 def test_metrics_PrecisionMetric():
     pass
+
 
 # @TODO
 def test_metrics_RecallMetric():
     pass
 
+
 # @TODO
 def test_metrics_F1Metric():
     pass
+
 
 # @TODO
 def test_metrics_ROCAUCMetric():

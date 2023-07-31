@@ -3,7 +3,6 @@ import io
 import numpy as np
 import pytest
 from PIL import Image
-from sqlalchemy import insert
 from sqlalchemy.orm import Session
 
 from velour_api import schemas

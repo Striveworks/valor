@@ -9,8 +9,7 @@ from typing import Any
 
 import numpy as np
 import pytest
-from PIL import Image as PILImage
-
+from geoalchemy2 import func as gfunc
 from geoalchemy2.functions import (
     ST_Area,
     ST_AsGeoJSON,
@@ -18,38 +17,30 @@ from geoalchemy2.functions import (
     ST_AsText,
     ST_Polygon,
 )
-from geoalchemy2 import func as gfunc
-from sqlalchemy import create_engine, text, select, and_, func
+from PIL import Image as PILImage
+from sqlalchemy import and_, create_engine, select, text
 from sqlalchemy.orm import Session
 
 from velour import enums
-from velour.client import (
-    Client,
-    ClientException,
-    Dataset,
-    Model,
-)
+from velour.client import Client, ClientException, Dataset, Model
+from velour.metrics import Task
 from velour.schemas import (
-    Image,
     Annotation,
+    BasicPolygon,
+    BoundingBox,
     GroundTruth,
-    Datum,
+    Image,
     Label,
     MetaDatum,
-    ScoredAnnotation,
-    Prediction,
-    ScoredLabel,
-    Point,
-    BoundingBox,
-    BasicPolygon,
-    Polygon,
     MultiPolygon,
+    Point,
+    Polygon,
+    Prediction,
     Raster,
-    GeoJSON,
+    ScoredAnnotation,
+    ScoredLabel,
 )
-from velour.metrics import Task
-from velour_api import crud
-from velour_api.backend import models, ops
+from velour_api.backend import models
 
 dset_name = "test_dataset"
 model_name = "test_model"
@@ -230,7 +221,7 @@ def gt_dets1(
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=rect1,
                 )
-            ]
+            ],
         ),
         GroundTruth(
             dataset_name=dset_name,
@@ -241,7 +232,7 @@ def gt_dets1(
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=rect2,
                 )
-            ]
+            ],
         ),
     ]
 
@@ -262,7 +253,7 @@ def gt_poly_dets1(
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon(boundary=rect1.polygon, holes=None),
                 )
-            ]
+            ],
         ),
         GroundTruth(
             dataset_name=dset_name,
@@ -273,7 +264,7 @@ def gt_poly_dets1(
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon(boundary=rect2.polygon, holes=None),
                 )
-            ]
+            ],
         ),
     ]
 
@@ -290,7 +281,7 @@ def gt_dets2(rect3: BoundingBox, img1: Image) -> list[GroundTruth]:
                     labels=[Label(key="k2", value="v2")],
                     bounding_box=rect3,
                 )
-            ]
+            ],
         ),
     ]
 
@@ -307,7 +298,7 @@ def gt_dets3(rect3: BoundingBox, img8: Image) -> list[GroundTruth]:
                     labels=[Label(key="k3", value="v3")],
                     bounding_box=rect3,
                 )
-            ]
+            ],
         ),
     ]
 
@@ -325,12 +316,10 @@ def gt_segs1(
                     task_type=enums.TaskType.INSTANCE_SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
                     multipolygon=MultiPolygon(
-                        polygons=[
-                            Polygon(boundary=rect1.polygon)
-                        ]
-                    )
+                        polygons=[Polygon(boundary=rect1.polygon)]
+                    ),
                 )
-            ]
+            ],
         ),
         GroundTruth(
             dataset_name=dset_name,
@@ -342,13 +331,13 @@ def gt_segs1(
                     multipolygon=MultiPolygon(
                         polygons=[
                             Polygon(
-                                boundary=rect2.polygon, 
+                                boundary=rect2.polygon,
                                 holes=[rect1.polygon],
                             )
                         ]
-                    )
+                    ),
                 )
-            ]
+            ],
         ),
     ]
 
@@ -370,17 +359,15 @@ def gt_segs2(
                             Polygon(boundary=rect3.polygon),
                             Polygon(boundary=rect1.polygon),
                         ]
-                    )
+                    ),
                 )
-            ]
+            ],
         ),
     ]
 
 
 @pytest.fixture
-def gt_segs3(
-    rect3: BoundingBox, img9: Image
-) -> list[GroundTruth]:
+def gt_segs3(rect3: BoundingBox, img9: Image) -> list[GroundTruth]:
     return [
         GroundTruth(
             dataset_name=dset_name,
@@ -391,9 +378,9 @@ def gt_segs3(
                     labels=[Label(key="k3", value="v3")],
                     multipolygon=MultiPolygon(
                         polygons=[Polygon(boundary=rect3.polygon)],
-                    )
+                    ),
                 )
-            ]
+            ],
         ),
     ]
 
@@ -407,9 +394,9 @@ def gt_clfs1(img5: Image, img6: Image) -> list[GroundTruth]:
             annotations=[
                 Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[Label(key="k5", value="v5")]
+                    labels=[Label(key="k5", value="v5")],
                 )
-            ]
+            ],
         ),
         GroundTruth(
             dataset_name=dset_name,
@@ -417,9 +404,9 @@ def gt_clfs1(img5: Image, img6: Image) -> list[GroundTruth]:
             annotations=[
                 Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[Label(key="k4", value="v4")]
+                    labels=[Label(key="k4", value="v4")],
                 )
-            ]
+            ],
         ),
     ]
 
@@ -435,7 +422,7 @@ def gt_clfs2(img5: Image) -> list[GroundTruth]:
                     task_type=enums.TaskType.CLASSIFICATION,
                     labels=[Label(key="k4", value="v4")],
                 )
-            ]
+            ],
         ),
     ]
 
@@ -451,7 +438,7 @@ def gt_clfs3(img8: Image) -> list[GroundTruth]:
                     task_type=enums.TaskType.CLASSIFICATION,
                     labels=[Label(key="k3", value="v3")],
                 )
-            ]
+            ],
         ),
     ]
 
@@ -468,11 +455,13 @@ def pred_dets(
                 ScoredAnnotation(
                     task_type=enums.TaskType.DETECTION,
                     scored_labels=[
-                        ScoredLabel(label=Label(key="k1", value="v1"), score=0.3)
+                        ScoredLabel(
+                            label=Label(key="k1", value="v1"), score=0.3
+                        )
                     ],
                     bounding_box=rect1,
                 )
-            ]
+            ],
         ),
         Prediction(
             model_name=model_name,
@@ -481,11 +470,13 @@ def pred_dets(
                 ScoredAnnotation(
                     task_type=enums.TaskType.DETECTION,
                     scored_labels=[
-                        ScoredLabel(label=Label(key="k2", value="v2"), score=0.98)
+                        ScoredLabel(
+                            label=Label(key="k2", value="v2"), score=0.98
+                        )
                     ],
                     bounding_box=rect2,
                 )
-            ]
+            ],
         ),
     ]
 
@@ -502,10 +493,10 @@ def pred_poly_dets(
                 ScoredAnnotation(
                     task_type=enums.TaskType.DETECTION,
                     scored_labels=annotation.scored_labels,
-                    polygon=bbox_to_poly(annotation.bounding_box)
+                    polygon=bbox_to_poly(annotation.bounding_box),
                 )
                 for annotation in det.annotations
-            ]
+            ],
         )
         for det in pred_dets
     ]
@@ -523,11 +514,13 @@ def pred_segs(img1: Image, img2: Image) -> list[Prediction]:
                 ScoredAnnotation(
                     task_type=enums.TaskType.INSTANCE_SEGMENTATION,
                     scored_labels=[
-                        ScoredLabel(label=Label(key="k1", value="v1"), score=0.87)
+                        ScoredLabel(
+                            label=Label(key="k1", value="v1"), score=0.87
+                        )
                     ],
                     raster=Raster.from_numpy(mask_1),
                 )
-            ]   
+            ],
         ),
         Prediction(
             model_name=model_name,
@@ -536,11 +529,13 @@ def pred_segs(img1: Image, img2: Image) -> list[Prediction]:
                 ScoredAnnotation(
                     task_type=enums.TaskType.INSTANCE_SEGMENTATION,
                     scored_labels=[
-                        ScoredLabel(label=Label(key="k2", value="v2"), score=0.92)
+                        ScoredLabel(
+                            label=Label(key="k2", value="v2"), score=0.92
+                        )
                     ],
                     raster=Raster.from_numpy(mask_2),
                 )
-            ]
+            ],
         ),
     ]
 
@@ -555,12 +550,18 @@ def pred_clfs(img5: Image, img6: Image) -> list[Prediction]:
                 ScoredAnnotation(
                     task_type=enums.TaskType.CLASSIFICATION,
                     scored_labels=[
-                        ScoredLabel(label=Label(key="k12", value="v12"), score=0.47),
-                        ScoredLabel(label=Label(key="k12", value="v16"), score=0.53),
-                        ScoredLabel(label=Label(key="k13", value="v13"), score=1.0),
+                        ScoredLabel(
+                            label=Label(key="k12", value="v12"), score=0.47
+                        ),
+                        ScoredLabel(
+                            label=Label(key="k12", value="v16"), score=0.53
+                        ),
+                        ScoredLabel(
+                            label=Label(key="k13", value="v13"), score=1.0
+                        ),
                     ],
                 )
-            ]
+            ],
         ),
         Prediction(
             model_name=model_name,
@@ -569,11 +570,15 @@ def pred_clfs(img5: Image, img6: Image) -> list[Prediction]:
                 ScoredAnnotation(
                     task_type=enums.TaskType.CLASSIFICATION,
                     scored_labels=[
-                        ScoredLabel(label=Label(key="k4", value="v4"), score=0.71),
-                        ScoredLabel(label=Label(key="k4", value="v5"), score=0.29),
+                        ScoredLabel(
+                            label=Label(key="k4", value="v4"), score=0.71
+                        ),
+                        ScoredLabel(
+                            label=Label(key="k4", value="v5"), score=0.29
+                        ),
                     ],
                 )
-            ]
+            ],
         ),
     ]
 
@@ -751,17 +756,13 @@ def test_create_image_dataset_with_href_and_description(
 ):
     href = "http://a.com/b"
     description = "a description"
-    Dataset.create(
-        client,
-        dset_name,
-        href=href,
-        description=description
-    )
+    Dataset.create(client, dset_name, href=href, description=description)
 
-    dataset_id = db.scalar(select(models.Dataset.id).where(models.Dataset.name == dset_name))
+    dataset_id = db.scalar(
+        select(models.Dataset.id).where(models.Dataset.name == dset_name)
+    )
     assert href == db.scalar(
-        select(models.MetaDatum.string_value)
-        .where(
+        select(models.MetaDatum.string_value).where(
             and_(
                 models.MetaDatum.dataset_id == dataset_id,
                 models.MetaDatum.key == "href",
@@ -769,8 +770,7 @@ def test_create_image_dataset_with_href_and_description(
         )
     )
     assert description == db.scalar(
-        select(models.MetaDatum.string_value)
-        .where(
+        select(models.MetaDatum.string_value).where(
             and_(
                 models.MetaDatum.dataset_id == dataset_id,
                 models.MetaDatum.key == "description",
@@ -783,11 +783,12 @@ def test_create_model_with_href_and_description(client: Client, db: Session):
     href = "http://a.com/b"
     description = "a description"
     Model.create(client, model_name, href=href, description=description)
-    
-    model_id = db.scalar(select(models.Model.id).where(models.Model.name == model_name))
+
+    model_id = db.scalar(
+        select(models.Model.id).where(models.Model.name == model_name)
+    )
     assert href == db.scalar(
-        select(models.MetaDatum.string_value)
-        .where(
+        select(models.MetaDatum.string_value).where(
             and_(
                 models.MetaDatum.model_id == model_id,
                 models.MetaDatum.key == "href",
@@ -795,8 +796,7 @@ def test_create_model_with_href_and_description(client: Client, db: Session):
         )
     )
     assert description == db.scalar(
-        select(models.MetaDatum.string_value)
-        .where(
+        select(models.MetaDatum.string_value).where(
             and_(
                 models.MetaDatum.model_id == model_id,
                 models.MetaDatum.key == "description",
@@ -858,14 +858,10 @@ def test_create_image_model_with_predicted_detections(
     )
 
     # get db polygon
-    db_annotation_ids = {
-        pred.annotation_id
-        for pred in labeled_pred_dets
-    }
+    db_annotation_ids = {pred.annotation_id for pred in labeled_pred_dets}
     db_annotations = [
         db.scalar(
-            select(models.Annotation)
-            .where(
+            select(models.Annotation).where(
                 and_(
                     models.Annotation.id == id,
                     models.Annotation.model_id.isnot(None),
@@ -896,7 +892,7 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
     image = Image(uid="uid", height=200, width=150).to_datum()
-    
+
     dataset = Dataset.create(client, dset_name)
     gt = GroundTruth(
         dataset_name=dset_name,
@@ -905,7 +901,9 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
             Annotation(
                 task_type=enums.TaskType.DETECTION,
                 labels=[Label(key="k", value="v")],
-                bounding_box=BoundingBox.from_extrema(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax),
+                bounding_box=BoundingBox.from_extrema(
+                    xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
+                ),
             ),
             Annotation(
                 task_type=enums.TaskType.DETECTION,
@@ -921,15 +919,17 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
                     ),
                     holes=None,
                 ),
-            )
-        ]
+            ),
+        ],
     )
     dataset.add_groundtruth(gt)
 
-    db_dets = db.scalars(select(models.Annotation).where(models.Annotation.model_id.is_(None))).all()
+    db_dets = db.scalars(
+        select(models.Annotation).where(models.Annotation.model_id.is_(None))
+    ).all()
     assert len(db_dets) == 2
     assert set([db_det.box is not None for db_det in db_dets]) == {True, False}
-    
+
     assert (
         str(db.scalar(ST_AsText(db_dets[0].box)))
         == "POLYGON((10 25,30 25,30 50,10 50,10 25))"
@@ -939,7 +939,16 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
     # check that they can be recovered by the client
     detections = dataset.get_groundtruth("uid")
     assert len(detections.annotations) == 2
-    assert len([det for det in detections.annotations if det.bounding_box is not None]) == 1
+    assert (
+        len(
+            [
+                det
+                for det in detections.annotations
+                if det.bounding_box is not None
+            ]
+        )
+        == 1
+    )
     for det in detections.annotations:
         if det.bounding_box:
             assert det == gt.annotations[0]
@@ -972,7 +981,9 @@ def test_create_pred_detections_as_bbox_or_poly(
                 scored_labels=[
                     ScoredLabel(label=Label(key="k", value="v"), score=0.6)
                 ],
-                bounding_box=BoundingBox.from_extrema(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax),
+                bounding_box=BoundingBox.from_extrema(
+                    xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
+                ),
             ),
             ScoredAnnotation(
                 task_type=enums.TaskType.DETECTION,
@@ -988,13 +999,15 @@ def test_create_pred_detections_as_bbox_or_poly(
                             Point(x=xmin, y=ymax),
                         ]
                     )
-                )
-            )
-        ]
+                ),
+            ),
+        ],
     )
     model.add_prediction(pd)
 
-    db_dets = db.scalars(select(models.Annotation).where(models.Annotation.model_id.isnot(None))).all()
+    db_dets = db.scalars(
+        select(models.Annotation).where(models.Annotation.model_id.isnot(None))
+    ).all()
     assert len(db_dets) == 2
     assert set([db_det.box is not None for db_det in db_dets]) == {True, False}
     assert (
@@ -1092,11 +1105,9 @@ def test_create_gt_segs_as_polys_or_masks(
             Annotation(
                 task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                 labels=[Label(key="k1", value="v1")],
-                multipolygon=MultiPolygon(
-                    polygons=[poly]
-                ),
-            )
-        ]
+                multipolygon=MultiPolygon(polygons=[poly]),
+            ),
+        ],
     )
 
     dataset = Dataset.create(client, dset_name)
@@ -1120,7 +1131,7 @@ def test_create_model_with_predicted_segmentations(
     db: Session,
 ):
     """Tests that we can create a predicted segmentation from a mask array"""
-    labeled_pred_segs = _test_create_model_with_preds(
+    _test_create_model_with_preds(
         client=client,
         datum_type=enums.DataType.IMAGE,
         gts=gt_segs1,
@@ -1147,10 +1158,21 @@ def test_create_model_with_predicted_segmentations(
         raster_uid1 = db_annotations[1].raster
         raster_uid2 = db_annotations[0].raster
 
+    # test raster 1
     png_from_db = db.scalar(ST_AsPNG(raster_uid1))
     f = io.BytesIO(png_from_db.tobytes())
     mask_array = np.array(PILImage.open(f))
-    np.testing.assert_equal(mask_array, pred_segs[0].annotations[0].raster.to_numpy())
+    np.testing.assert_equal(
+        mask_array, pred_segs[0].annotations[0].raster.to_numpy()
+    )
+
+    # test raster 2
+    png_from_db = db.scalar(ST_AsPNG(raster_uid2))
+    f = io.BytesIO(png_from_db.tobytes())
+    mask_array = np.array(PILImage.open(f))
+    np.testing.assert_equal(
+        mask_array, pred_segs[1].annotations[1].raster.to_numpy()
+    )
 
 
 def test_create_image_dataset_with_classifications(
@@ -1198,9 +1220,7 @@ def test_create_image_model_with_predicted_classifications(
     )
 
 
-def test_boundary(
-    client: Client, db: Session, rect1: Polygon, img1: Image
-):
+def test_boundary(client: Client, db: Session, rect1: Polygon, img1: Image):
     """Test consistency of boundary in backend and client"""
     dataset = Dataset.create(client, dset_name)
     rect1_poly = bbox_to_poly(rect1)
@@ -1214,7 +1234,7 @@ def test_boundary(
                     labels=[Label(key="k1", value="v1")],
                     polygon=rect1_poly,
                 )
-            ]
+            ],
         )
     )
 
@@ -1262,14 +1282,15 @@ def test_iou(
                 ScoredAnnotation(
                     task_type=enums.TaskType.DETECTION,
                     polygon=rect2_poly,
-                    scored_labels=[ScoredLabel(label=Label("k", "v"), score=0.6)],
+                    scored_labels=[
+                        ScoredLabel(label=Label("k", "v"), score=0.6)
+                    ],
                 )
-            ]
+            ],
         )
     )
     db_pred = db.scalar(
-        select(models.Annotation)
-        .where(models.Annotation.model_id.isnot(None))
+        select(models.Annotation).where(models.Annotation.model_id.isnot(None))
     ).polygon
 
     # scraped from velour_api backend
@@ -1866,7 +1887,7 @@ def test_evaluate_tabular_clf(
 #     y_true: list[int],
 #     tabular_preds: list[list[float]],
 # ):
-    
+
 #     tabular_datum = Datum(
 #         uid="uid"
 #     )

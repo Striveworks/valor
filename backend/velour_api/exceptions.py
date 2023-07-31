@@ -34,9 +34,7 @@ class ModelDoesNotExistError(Exception):
 
 class DatumDoesNotExistError(Exception):
     def __init__(self, uid: str):
-        return super().__init__(
-            f"Datum with uid '{uid}' does not exist."
-        )
+        return super().__init__(f"Datum with uid '{uid}' does not exist.")
 
 
 class JobDoesNotExistError(Exception):

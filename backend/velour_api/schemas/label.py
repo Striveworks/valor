@@ -1,5 +1,7 @@
-from pydantic import BaseModel
 import math
+
+from pydantic import BaseModel
+
 
 class Label(BaseModel):
     key: str
@@ -27,9 +29,13 @@ class ScoredLabel(BaseModel):
     score: float
 
     def __eq__(self, other):
-        if hasattr(other, "label") and hasattr(other, "score"):            
-            return self.label == other.label and math.isclose(self.score, other.score)
+        if hasattr(other, "label") and hasattr(other, "score"):
+            return self.label == other.label and math.isclose(
+                self.score, other.score
+            )
         return False
 
     def __hash__(self) -> int:
-        return hash(f"key:{self.label.key},value:{self.label.value},score:{self.score}")
+        return hash(
+            f"key:{self.label.key},value:{self.label.value},score:{self.score}"
+        )

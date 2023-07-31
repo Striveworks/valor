@@ -4,7 +4,7 @@ import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from velour_api import enums, exceptions, schemas
+from velour_api import exceptions, schemas
 from velour_api.backend import database
 
 
@@ -78,7 +78,7 @@ def test_post_groundtruth(client: TestClient):
                 "task_type": "classification",
                 "metadata": [],
             }
-        ]
+        ],
     }
 
     # check we get a conflict (409) if the dataset is finalized
@@ -122,8 +122,8 @@ def test_post_groundtruth_classification(client: TestClient):
                     {"key": "meta2", "value": 0.4},
                     {"key": "meta2", "value": "v1"},
                 ],
-            }
-        ]
+            },
+        ],
     }
 
     _test_post_endpoints(
@@ -146,10 +146,10 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
         },
         "annotations": [
             {
-            "labels": [
-                {"key": "k1", "value": "v1"},
-                {"key": "k1", "value": "v2"},
-            ],
+                "labels": [
+                    {"key": "k1", "value": "v1"},
+                    {"key": "k1", "value": "v2"},
+                ],
                 "task_type": "detection",
                 "metadata": [
                     {"key": "meta1", "value": 0.4},
@@ -164,9 +164,9 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
                             {"x": 1, "y": 0},
                         ]
                     }
-                }
+                },
             },
-        ]
+        ],
     }
     _test_post_endpoints(
         client=client,
@@ -206,7 +206,7 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
                             {"x": 10, "y": 0},
                         ]
                     },
-                    "holes":[
+                    "holes": [
                         {
                             "points": [
                                 {"x": 1, "y": 1},
@@ -224,10 +224,10 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
                                 {"x": 5, "y": 4},
                             ]
                         },
-                    ]
-                }
+                    ],
+                },
             },
-        ]
+        ],
     }
     _test_post_endpoints(
         client=client,
@@ -303,10 +303,7 @@ def test_post_prediction(client: TestClient):
         "annotations": [
             {
                 "scored_labels": [
-                    {
-                        "label": {"key": "k1", "value": "v1"},
-                        "score": 0.9
-                    },
+                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
                     {
                         "label": {"key": "k1", "value": "v2"},
                         "score": 0.1,
@@ -315,7 +312,7 @@ def test_post_prediction(client: TestClient):
                 "task_type": "classification",
                 "metadata": [],
             }
-        ]
+        ],
     }
 
     # check we get a code (404) if the model does not exist
@@ -326,7 +323,6 @@ def test_post_prediction(client: TestClient):
         resp = client.post("/prediction", json=example_json)
         assert resp.status_code == 404
 
-    
     # check we get a code (409) if the datum does not exist
     with patch(
         "velour_api.main.crud.create_prediction",
@@ -349,10 +345,7 @@ def test_post_prediction_classification(client: TestClient):
         "annotations": [
             {
                 "scored_labels": [
-                    {
-                        "label": {"key": "k1", "value": "v1"},
-                        "score": 0.9
-                    },
+                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
                     {
                         "label": {"key": "k1", "value": "v2"},
                         "score": 0.1,
@@ -366,10 +359,7 @@ def test_post_prediction_classification(client: TestClient):
             },
             {
                 "scored_labels": [
-                    {
-                        "label": {"key": "k1", "value": "v1"},
-                        "score": 0.9
-                    },
+                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
                     {
                         "label": {"key": "k1", "value": "v2"},
                         "score": 0.1,
@@ -380,8 +370,8 @@ def test_post_prediction_classification(client: TestClient):
                     {"key": "meta2", "value": 0.4},
                     {"key": "meta2", "value": "v1"},
                 ],
-            }
-        ]
+            },
+        ],
     }
     _test_post_endpoints(
         client=client,
@@ -404,10 +394,7 @@ def test_post_prediction_bbox_detection(client: TestClient):
         "annotations": [
             {
                 "scored_labels": [
-                    {
-                        "label": {"key": "k1", "value": "v1"},
-                        "score": 0.9
-                    },
+                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
                     {
                         "label": {"key": "k1", "value": "v2"},
                         "score": 0.1,
@@ -427,9 +414,9 @@ def test_post_prediction_bbox_detection(client: TestClient):
                             {"x": 1, "y": 0},
                         ]
                     }
-                }
+                },
             },
-        ]
+        ],
     }
     _test_post_endpoints(
         client=client,
@@ -452,10 +439,7 @@ def test_post_prediction_polygon_detection(client: TestClient):
         "annotations": [
             {
                 "scored_labels": [
-                    {
-                        "label": {"key": "k1", "value": "v1"},
-                        "score": 0.9
-                    },
+                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
                     {
                         "label": {"key": "k1", "value": "v2"},
                         "score": 0.1,
@@ -475,7 +459,7 @@ def test_post_prediction_polygon_detection(client: TestClient):
                             {"x": 10, "y": 0},
                         ]
                     },
-                    "holes":[
+                    "holes": [
                         {
                             "points": [
                                 {"x": 1, "y": 1},
@@ -493,13 +477,14 @@ def test_post_prediction_polygon_detection(client: TestClient):
                                 {"x": 5, "y": 4},
                             ]
                         },
-                    ]
-                }
+                    ],
+                },
             },
-        ]
+        ],
     }
 
     from velour_api import schemas
+
     schemas.Prediction(**example_json)
 
     _test_post_endpoints(
@@ -523,10 +508,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
         "annotations": [
             {
                 "scored_labels": [
-                    {
-                        "label": {"key": "k1", "value": "v1"},
-                        "score": 0.9
-                    },
+                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
                     {
                         "label": {"key": "k1", "value": "v2"},
                         "score": 0.1,
@@ -545,10 +527,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
             },
             {
                 "scored_labels": [
-                    {
-                        "label": {"key": "k1", "value": "v1"},
-                        "score": 0.9
-                    },
+                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
                     {
                         "label": {"key": "k1", "value": "v2"},
                         "score": 0.1,
@@ -573,7 +552,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
         crud_method_name="create_prediction",
         example_json=example_json,
     )
-    
+
 
 """ POST /datasets  """
 
@@ -581,7 +560,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
 def test_post_datasets(client: TestClient):
     example_json = {
         "id": 1,
-        "name": "dataset1", 
+        "name": "dataset1",
         "metadata": [
             {"key": "meta1", "value": 0.4},
             {"key": "meta1", "value": "v1"},
@@ -610,7 +589,7 @@ def test_post_datasets(client: TestClient):
 def test_post_models(client: TestClient):
     example_json = {
         "id": 1,
-        "name": "model1", 
+        "name": "model1",
         "metadata": [
             {"key": "meta1", "value": 0.4},
             {"key": "meta1", "value": "v1"},
@@ -650,9 +629,7 @@ def test_get_datasets(crud, client: TestClient):
 @patch("velour_api.main.crud")
 def test_get_dataset_by_name(crud, client: TestClient):
     crud.get_dataset.return_value = schemas.Dataset(
-        id=1,
-        name="name",
-        metadata=[]
+        id=1, name="name", metadata=[]
     )
     resp = client.get("/datasets/name")
     assert resp.status_code == 200
@@ -674,11 +651,7 @@ def test_get_dataset_by_name(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_model_by_name(crud, client: TestClient):
-    crud.get_model.return_value = schemas.Model(
-        id=1,
-        name="name",
-        metadata=[]
-    )
+    crud.get_model.return_value = schemas.Model(id=1, name="name", metadata=[])
     resp = client.get("/models/modelname")
     assert resp.status_code == 200
     crud.get_model.assert_called_once()

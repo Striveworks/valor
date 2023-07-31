@@ -2,19 +2,14 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, schemas, enums
+from velour_api import crud, enums, schemas
 from velour_api.backend.metrics import compute_ap_metrics
 from velour_api.backend.metrics.classification import (
     accuracy_from_cm,
     confusion_matrix_at_label_key,
     roc_auc,
 )
-from velour_api.backend.models import (
-    GroundTruth,
-    Prediction,
-    MetaDatum,
-)
-
+from velour_api.backend.models import GroundTruth, MetaDatum, Prediction
 
 dataset_name = "test_dataset"
 model_name = "test_model"
@@ -61,11 +56,9 @@ def classification_test_data(db: Session):
             metadata=[
                 schemas.MetaDatum(key="height", value=128),
                 schemas.MetaDatum(key="width", value=256),
-                schemas.MetaDatum(
-                    key="md1", value=f"md1-val{int(i == 4)}"
-                ),
+                schemas.MetaDatum(key="md1", value=f"md1-val{int(i == 4)}"),
                 schemas.MetaDatum(key="md2", value=f"md1-val{i % 3}"),
-            ]
+            ],
         )
         for i in range(6)
     ]
@@ -82,7 +75,7 @@ def classification_test_data(db: Session):
                         schemas.Label(key="color", value=color_gts[i]),
                     ],
                 )
-            ]
+            ],
         )
         for i in range(6)
     ]
@@ -91,23 +84,25 @@ def classification_test_data(db: Session):
         schemas.Prediction(
             model_name=model_name,
             datum=imgs[i],
-            annotations=[        
+            annotations=[
                 schemas.ScoredAnnotation(
                     task_type=enums.TaskType.CLASSIFICATION,
                     scored_labels=[
                         schemas.ScoredLabel(
-                            label=schemas.Label(key="animal", value=value), score=score
+                            label=schemas.Label(key="animal", value=value),
+                            score=score,
                         )
                         for value, score in animal_preds[i].items()
                     ]
                     + [
                         schemas.ScoredLabel(
-                            label=schemas.Label(key="color", value=value), score=score
+                            label=schemas.Label(key="color", value=value),
+                            score=score,
                         )
                         for value, score in color_preds[i].items()
                     ],
                 )
-            ]
+            ],
         )
         for i in range(6)
     ]
@@ -283,9 +278,7 @@ def test_confusion_matrix_at_label_key(db: Session, classification_test_data):
 
 def _get_md1_val0_id(db):
     # helper function to get metadata id for "md1", "md1-val0"
-    mds = db.scalars(
-        select(MetaDatum).where(MetaDatum.key == "md1")
-    ).all()
+    mds = db.scalars(select(MetaDatum).where(MetaDatum.key == "md1")).all()
     md0 = mds[0]
     assert md0.string_value == "md1-val0"
 

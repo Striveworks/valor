@@ -1,4 +1,3 @@
-from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -48,7 +47,7 @@ def get_prediction(
     model_name: str,
     datum_uid: str,
 ) -> schemas.Prediction:
-    
+
     datum = core.get_datum(db, datum_uid)
     model = core.get_model(db, model_name)
 
@@ -58,7 +57,7 @@ def get_prediction(
             uid=datum.uid,
             metadata=core.get_metadata(db, datum=datum),
         ),
-        annotations=core.get_scored_annotations(db, model=model, datum=datum)
+        annotations=core.get_scored_annotations(db, model=model, datum=datum),
     )
 
 
@@ -66,11 +65,7 @@ def get_predictions(
     db: Session,
     request: schemas.Filter,
 ) -> list[schemas.Prediction]:
-    
-    datums = (
-        ops.BackendQuery.datum()
-        .filter(request)
-        .all(db)
-    )
+
+    datums = ops.BackendQuery.datum().filter(request).all(db)
 
     return [core.get_scored_annotations(db, datum) for datum in datums]

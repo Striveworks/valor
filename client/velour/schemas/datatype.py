@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 from velour import schemas
 
@@ -22,12 +21,11 @@ class Image:
         if self.frame:
             if not isinstance(self.frame, int):
                 raise TypeError("Image frame must be a int or None.")
-            
+
     @staticmethod
     def valid(datum: schemas.Datum) -> bool:
         metadata = {
-            metadatum.key: metadatum.value
-            for metadatum in datum.metadata
+            metadatum.key: metadatum.value for metadatum in datum.metadata
         }
         if "height" not in metadata:
             return False
@@ -36,19 +34,18 @@ class Image:
         if "frame" not in metadata:
             return False
         return True
-            
+
     @classmethod
     def from_datum(cls, datum: schemas.Datum):
         if not cls.valid(datum):
             raise TypeError("Datum does not conform to image type.")
-        
+
         metadata = {
-            metadatum.key: metadatum.value
-            for metadatum in datum.metadata
+            metadatum.key: metadatum.value for metadatum in datum.metadata
         }
-        height=int(metadata["height"])
-        width=int(metadata["width"])
-        frame=int(metadata["frame"])
+        height = int(metadata["height"])
+        width = int(metadata["width"])
+        frame = int(metadata["frame"])
         del metadata["height"]
         del metadata["width"]
         del metadata["frame"]
@@ -59,7 +56,7 @@ class Image:
             frame=frame,
             metadata=metadata,
         )
-        
+
     def to_datum(self) -> schemas.Datum:
         return schemas.Datum(
             uid=self.uid,
@@ -70,5 +67,3 @@ class Image:
                 *self.metadata,
             ],
         )
-    
-    

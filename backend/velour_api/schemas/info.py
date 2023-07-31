@@ -1,7 +1,7 @@
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 
 from velour_api import schemas
-from velour_api.enums import Table, AnnotationType, TaskType
+from velour_api.enums import AnnotationType, TaskType
 
 
 class LabelDistribution(BaseModel):
@@ -19,6 +19,7 @@ class AnnotationDistribution(BaseModel):
     annotation_type: AnnotationType
     count: int
 
+
 class Filter(BaseModel):
     dataset_names: list[str] = []
     model_names: list[str] = []
@@ -32,6 +33,6 @@ class Filter(BaseModel):
     allow_dataset_metadata: bool = True
     allow_model_metadata: bool = True
     allow_datum_metadata: bool = True
-    allow_annotation_metadata: bool = True 
+    allow_annotation_metadata: bool = True
     allow_predictions: bool = True
     allow_groundtruths: bool = True

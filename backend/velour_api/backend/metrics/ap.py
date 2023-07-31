@@ -1,5 +1,3 @@
-from typing import Optional
-
 from velour_api.enums import AnnotationType
 
 
@@ -122,7 +120,7 @@ def function_find_ranked_pairs():
                 WHERE iou.gt_id IS NOT NULL AND iou.pd_id IS NOT NULL AND iou.iou > 0
                 ORDER BY -iou.score, -iou.iou
             )
-            
+
             LOOP
                 INSERT INTO pairs (label_id, gtid, pdid, score, iou)
                 VALUES (row.label_id, row.gt_id, row.pd_id, row.score, row.iou)

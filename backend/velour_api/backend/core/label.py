@@ -1,9 +1,9 @@
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import enums, schemas
-from velour_api.backend import models, ops
+from velour_api import schemas
+from velour_api.backend import models
 
 
 def create_label(
@@ -57,21 +57,27 @@ def get_labels(
     labels = (
         db.query(models.Label.key, models.Label.value)
         .select_from(models.Annotation)
-        .join(models.Prediction, models.Prediction.annotation_id == annotation.id, full=True)
-        .join(models.GroundTruth, models.GroundTruth.annotation_id == annotation.id, full=True)
-        .join(models.Label, 
+        .join(
+            models.Prediction,
+            models.Prediction.annotation_id == annotation.id,
+            full=True,
+        )
+        .join(
+            models.GroundTruth,
+            models.GroundTruth.annotation_id == annotation.id,
+            full=True,
+        )
+        .join(
+            models.Label,
             or_(
                 models.GroundTruth.label_id == models.Label.id,
                 models.Prediction.label_id == models.Label.id,
-            )
+            ),
         )
         .all()
     )
 
-    return [
-        schemas.Label(key=label[0], value=label[1])
-        for label in labels
-    ]
+    return [schemas.Label(key=label[0], value=label[1]) for label in labels]
 
 
 def get_scored_labels(

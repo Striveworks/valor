@@ -1,16 +1,17 @@
 from .core import (
     Annotation,
-    ScoredAnnotation,
     Dataset,
     Datum,
     GroundTruth,
     Info,
     Label,
+    MetaDatum,
     Model,
     Prediction,
+    ScoredAnnotation,
     ScoredLabel,
-    MetaDatum,
 )
+from .datatype import Image
 from .geometry import (
     BasicPolygon,
     BoundingBox,
@@ -20,13 +21,12 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .metadata import GeoJSON
 from .info import (
     AnnotationDistribution,
     LabelDistribution,
     ScoredLabelDistribution,
 )
-from .datatype import Image
+from .metadata import GeoJSON
 
 __all__ = [
     "Box",

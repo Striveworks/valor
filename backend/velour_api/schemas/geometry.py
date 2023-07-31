@@ -1,10 +1,6 @@
 import io
-import json
 import math
-import re
 from base64 import b64decode
-from enum import Enum
-from uuid import uuid4
 
 import PIL.Image
 from pydantic import BaseModel, Extra, Field, root_validator, validator
@@ -84,7 +80,7 @@ class LineSegment(BaseModel):
     def parallel(self, other) -> bool:
         if not isinstance(other, LineSegment):
             raise TypeError
-        
+
         d1 = self.delta_xy()
         d2 = other.delta_xy()
 
@@ -95,7 +91,7 @@ class LineSegment(BaseModel):
     def perpendicular(self, other) -> bool:
         if not isinstance(other, LineSegment):
             raise TypeError
-    
+
         d1 = self.delta_xy()
         d2 = other.delta_xy()
 
@@ -131,7 +127,7 @@ class BasicPolygon(BaseModel):
     @property
     def left(self):
         return min(self.points, key=lambda point: point.x).x
-    
+
     @property
     def right(self):
         return max(self.points, key=lambda point: point.x).x
@@ -139,7 +135,7 @@ class BasicPolygon(BaseModel):
     @property
     def top(self):
         return max(self.points, key=lambda point: point.y).y
-    
+
     @property
     def bottom(self):
         return min(self.points, key=lambda point: point.y).y
@@ -156,8 +152,8 @@ class BasicPolygon(BaseModel):
     def segments(self) -> list[LineSegment]:
         plist = self.points + [self.points[0]]
         return [
-            LineSegment(points=(plist[i], plist[i + 1])) 
-            for i in range(len(plist)-1)
+            LineSegment(points=(plist[i], plist[i + 1]))
+            for i in range(len(plist) - 1)
         ]
 
     def __str__(self):
@@ -165,10 +161,7 @@ class BasicPolygon(BaseModel):
         pts = self.points
         if pts[0] != pts[-1]:
             pts = pts + [pts[0]]
-        points_string = [
-            f"({','.join([str(pt.x), str(pt.y)])})"
-            for pt in pts
-        ]
+        points_string = [f"({','.join([str(pt.x), str(pt.y)])})" for pt in pts]
         return f"({','.join(points_string)})"
 
     def wkt(self, partial: bool = False) -> str:
@@ -176,10 +169,7 @@ class BasicPolygon(BaseModel):
         pts = self.points
         if pts[0] != pts[-1]:
             pts = pts + [pts[0]]
-        points_string = [
-            ' '.join([str(pt.x), str(pt.y)])
-            for pt in pts
-        ]
+        points_string = [" ".join([str(pt.x), str(pt.y)]) for pt in pts]
         wkt_format = f"({', '.join(points_string)})"
         if partial:
             return wkt_format
@@ -212,10 +202,7 @@ class MultiPolygon(BaseModel):
     polygons: list[Polygon]
 
     def wkt(self) -> str:
-        plist = [
-            polygon.wkt(partial=True)
-            for polygon in self.polygons
-        ]
+        plist = [polygon.wkt(partial=True) for polygon in self.polygons]
         return f"MULTIPOLYGON ({', '.join(plist)})"
 
     # @TODO: Unsure if keeping this
@@ -257,9 +244,11 @@ class BoundingBox(BaseModel):
     @validator("polygon")
     def valid_polygon(cls, v):
         if len(set(v.points)) != 4:
-            raise ValueError("bounding box polygon requires exactly 4 unique points.")
+            raise ValueError(
+                "bounding box polygon requires exactly 4 unique points."
+            )
         return v
-    
+
     @classmethod
     def from_extrema(cls, xmin: float, ymin: float, xmax: float, ymax: float):
         return cls(
@@ -272,11 +261,11 @@ class BoundingBox(BaseModel):
                 ]
             )
         )
-    
+
     @property
     def left(self):
         return self.polygon.left
-    
+
     @property
     def right(self):
         return self.polygon.right
@@ -284,7 +273,7 @@ class BoundingBox(BaseModel):
     @property
     def top(self):
         return self.polygon.top
-    
+
     @property
     def bottom(self):
         return self.polygon.bottom
@@ -296,7 +285,7 @@ class BoundingBox(BaseModel):
     @property
     def height(self):
         return self.polygon.height
-            
+
     def is_rectangular(self):
 
         # retrieve segments
@@ -328,7 +317,6 @@ class BoundingBox(BaseModel):
 
     def is_skewed(self):
         return not (self.is_rotated() or self.is_rectangular())
-        
 
     def wkt(self) -> str:
         return self.polygon.wkt()
@@ -372,7 +360,7 @@ class Raster(BaseModel):
                 f"Expected image mode to be binary but got mode {img.mode}."
             )
         return v
-    
+
     @property
     def mask_bytes(self) -> bytes:
         if not hasattr(self, "_mask_bytes"):

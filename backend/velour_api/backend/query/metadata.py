@@ -1,8 +1,8 @@
-from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from velour_api import schemas
-from velour_api.backend import core, models, ops
+from velour_api.backend import core
+
 
 def get_metadata(
     db: Session,

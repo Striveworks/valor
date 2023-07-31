@@ -1,35 +1,32 @@
 from ._create import (
+    create_ap_metrics,
+    create_clf_metrics,
     create_dataset,
     create_groundtruth,
     create_model,
     create_prediction,
-    create_clf_metrics,
-    create_ap_metrics,
 )
 from ._delete import delete_dataset, delete_model
 from ._read import (
+    get_confusion_matrices_from_evaluation_settings_id,
     get_dataset,
     get_datasets,
-    get_datums,
     get_datum,
-    get_groundtruth,
-    get_labels,
-    get_joint_labels,
-    get_disjoint_labels,
+    get_datums,
     get_disjoint_keys,
+    get_disjoint_labels,
+    get_evaluation_settings_from_id,
+    get_groundtruth,
+    get_joint_labels,
+    get_labels,
+    get_metrics_from_evaluation_settings_id,
     get_model,
+    get_model_evaluation_settings,
+    get_model_metrics,
     get_models,
     get_prediction,
-    get_metrics_from_evaluation_settings_id,
-    get_confusion_matrices_from_evaluation_settings_id,
-    get_evaluation_settings_from_id,
-    get_model_metrics,
-    get_model_evaluation_settings,
 )
-from ._update import (
-    finalize,
-)
-
+from ._update import finalize
 
 __all__ = [
     "create_dataset",
