@@ -1,4 +1,7 @@
-from .classification import compute_clf_metrics
-from .detection import compute_ap_metrics
+from .classification import create_clf_metrics
+from .detection import create_ap_metrics
 
-__all__ = ["compute_ap_metrics", "compute_clf_metrics"]
+__all__ = [
+    "create_clf_metrics",
+    "create_ap_metrics",
+]

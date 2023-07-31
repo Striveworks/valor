@@ -1,3 +1,5 @@
+from .metrics import create_ap_metrics, create_clf_metrics
+from .ops import BackendQuery
 from .query import (
     create_dataset,
     create_groundtruth,
@@ -8,13 +10,14 @@ from .query import (
     get_confusion_matrices_from_evaluation_settings_id,
     get_dataset,
     get_datasets,
-    get_joint_labels,
-    get_disjoint_labels,
-    get_joint_keys,
+    get_datums,
     get_disjoint_keys,
+    get_disjoint_labels,
     get_evaluation_settings_from_id,
     get_groundtruth,
     get_groundtruths,
+    get_joint_keys,
+    get_joint_labels,
     get_label_distribution,
     get_labels,
     get_metadata,
@@ -25,9 +28,7 @@ from .query import (
     get_models,
     get_prediction,
     get_predictions,
-    get_datums,
 )
-from .ops import BackendQuery
 
 __all__ = [
     "BackendQuery",
@@ -58,4 +59,6 @@ __all__ = [
     "get_model_metrics",
     "get_model_evaluation_settings",
     "get_datums",
+    "create_ap_metrics",
+    "create_clf_metrics",
 ]

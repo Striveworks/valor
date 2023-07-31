@@ -1,10 +1,15 @@
 import numpy as np
 from sqlalchemy import Float, Integer
 from sqlalchemy.orm import Bundle, Session
-from sqlalchemy.sql import and_, or_, func, select
+from sqlalchemy.sql import and_, func, select
 
-from velour_api import crud, enums, schemas
-from velour_api.backend import core, models, query
+from velour_api import enums, schemas
+from velour_api.backend import core, models
+from velour_api.backend.metrics.core import (
+    create_metric_mappings,
+    get_or_create_row,
+)
+
 
 # @TODO: Implement metadata filtering using `ops.BackendQuerys`
 def binary_roc_auc(
@@ -12,7 +17,7 @@ def binary_roc_auc(
     dataset_name: str,
     model_name: str,
     label: schemas.Label,
-    metadatum: schemas.MetaDatum 
+    metadatum: schemas.MetaDatum,
 ) -> float:
     """Computes the binary ROC AUC score of a dataset and label
 
@@ -197,8 +202,14 @@ def roc_auc(
         schemas.Label(key=label[0], value=label[1])
         for label in (
             db.query(models.Label.key, models.Label.value)
-            .join(models.GroundTruth, models.GroundTruth.label_id == models.Label.id)
-            .join(models.Annotation, models.Annotation.id == models.GroundTruth.annotation_id)
+            .join(
+                models.GroundTruth,
+                models.GroundTruth.label_id == models.Label.id,
+            )
+            .join(
+                models.Annotation,
+                models.Annotation.id == models.GroundTruth.annotation_id,
+            )
             .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
             .join(models.Dataset, models.Dataset.id == models.Dataset.id)
             .where(
@@ -369,8 +380,14 @@ def compute_clf_metrics(
         for label in (
             db.query(models.Label.key, models.Label.value)
             .select_from(models.Label)
-            .join(models.GroundTruth, models.GroundTruth.label_id == models.Label.id)
-            .join(models.Annotation, models.Annotation.id == models.GroundTruth.annotation_id)
+            .join(
+                models.GroundTruth,
+                models.GroundTruth.label_id == models.Label.id,
+            )
+            .join(
+                models.Annotation,
+                models.Annotation.id == models.GroundTruth.annotation_id,
+            )
             .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
             .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
             .where(
@@ -388,11 +405,22 @@ def compute_clf_metrics(
         for label in (
             db.query(models.Label.key, models.Label.value)
             .select_from(models.Label)
-            .join(models.Prediction, models.Prediction.label_id == models.Label.id, full=True)
-            .join(models.Annotation, models.Annotation.id == models.Prediction.annotation_id)
+            .join(
+                models.Prediction,
+                models.Prediction.label_id == models.Label.id,
+                full=True,
+            )
+            .join(
+                models.Annotation,
+                models.Annotation.id == models.Prediction.annotation_id,
+            )
             .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
             .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
-            .join(models.Model, models.Model.id == models.Annotation.model_id, full=True)
+            .join(
+                models.Model,
+                models.Model.id == models.Annotation.model_id,
+                full=True,
+            )
             .where(
                 and_(
                     models.Dataset.name == dataset_name,
@@ -516,7 +544,10 @@ def confusion_matrix_at_label_key(
     q2 = (
         select(func.min(models.Prediction.id).label("min_id"))
         .join(models.Label)
-        .join(models.Annotation, models.Annotation.id == models.Prediction.annotation_id)
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.Prediction.annotation_id,
+        )
         .join(models.Datum, models.Annotation.datum_id == models.Datum.id)
         .join(
             subquery,
@@ -535,7 +566,10 @@ def confusion_matrix_at_label_key(
             models.Datum.id.label("datum_id"),
         )
         .join(models.Prediction)
-        .join(models.Annotation, models.Annotation.id == models.Prediction.annotation_id)
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.Prediction.annotation_id,
+        )
         .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .join(
             subquery,
@@ -619,3 +653,60 @@ def precision_and_recall_f1_from_confusion_matrix(
     else:
         f1 = 2 * prec * recall / f1_denom
     return prec, recall, f1
+
+
+def create_clf_metrics(
+    db: Session,
+    request_info: schemas.ClfMetricsRequest,
+) -> int:
+
+    dataset = core.get_dataset(db, request_info.settings.dataset_name)
+    model = core.get_model(db, request_info.settings.model_name)
+
+    confusion_matrices, metrics = compute_clf_metrics(
+        db=db,
+        dataset_name=request_info.settings.dataset_name,
+        model_name=request_info.settings.model_name,
+        group_by=request_info.settings.group_by,
+    )
+
+    es = get_or_create_row(
+        db,
+        models.EvaluationSettings,
+        mapping={
+            "dataset_id": dataset.id,
+            "model_id": model.id,
+            "task_type": enums.TaskType.CLASSIFICATION,
+            "pd_type": enums.AnnotationType.NONE,
+            "gt_type": enums.AnnotationType.NONE,
+            "group_by": request_info.settings.group_by,
+        },
+    )
+
+    confusion_matrices_mappings = create_metric_mappings(
+        db=db, metrics=confusion_matrices, evaluation_settings_id=es.id
+    )
+
+    for mapping in confusion_matrices_mappings:
+        get_or_create_row(
+            db,
+            models.ConfusionMatrix,
+            mapping,
+        )
+
+    metric_mappings = create_metric_mappings(
+        db=db, metrics=metrics, evaluation_settings_id=es.id
+    )
+
+    for mapping in metric_mappings:
+        # ignore value since the other columns are unique identifiers
+        # and have empirically noticed value can slightly change due to floating
+        # point errors
+        get_or_create_row(
+            db,
+            models.Metric,
+            mapping,
+            columns_to_ignore=["value"],
+        )
+
+    return es.id
