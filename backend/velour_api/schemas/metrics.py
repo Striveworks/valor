@@ -3,9 +3,22 @@ from uuid import uuid4
 import numpy as np
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
-from velour_api.enums import JobStatus, TaskType, AnnotationType
+from velour_api.enums import AnnotationType, JobStatus, TaskType
 from velour_api.schemas.label import Label
 from velour_api.schemas.metadata import MetaDatum
+
+
+# @TODO: Implement later for metrics + metadata overhaul
+class MetricFilter(BaseModel):
+    datum_uids: list[str] = []
+    task_types: list[TaskType] = []
+    annotation_types: list[AnnotationType] = []
+    labels: list[Label] = []
+    label_keys: list[str] = []
+    metadata: list[MetaDatum] = []
+    min_area: float | None = None
+    max_area: float | None = None
+    allow_conversion: bool = True
 
 
 class EvaluationSettings(BaseModel):
@@ -16,9 +29,9 @@ class EvaluationSettings(BaseModel):
 
     model_name: str
     dataset_name: str
+    gt_type: AnnotationType
+    pd_type: AnnotationType
     task_type: TaskType = None
-    pd_type: AnnotationType = None
-    gt_type: AnnotationType = None
     min_area: float = None
     max_area: float = None
     group_by: str = None

@@ -1,6 +1,6 @@
 import heapq
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from geoalchemy2 import func as gfunc
 from sqlalchemy import and_, func, or_, select
@@ -105,8 +105,8 @@ def compute_ap_metrics(
     target_type: enums.AnnotationType,
     gt_type: enums.AnnotationType,
     pd_type: enums.AnnotationType,
-    min_area: Optional[float] = None,
-    max_area: Optional[float] = None,
+    min_area: float | None = None,
+    max_area: float | None = None,
 ) -> list[
     schemas.APMetric
     | schemas.APMetricAveragedOverIOUs
@@ -137,6 +137,27 @@ def compute_ap_metrics(
         AnnotationType.RASTER: models.Annotation.raster,
     }
 
+    # Filter by area
+    area_filters = []
+    if target_type == AnnotationType.RASTER:
+        if min_area:
+            area_filters.append(
+                gfunc.ST_Count(geometry[target_type]) >= min_area
+            )
+        if max_area:
+            area_filters.append(
+                gfunc.ST_Count(geometry[target_type]) <= max_area
+            )
+    else:
+        if min_area:
+            area_filters.append(
+                gfunc.ST_Area(geometry[target_type]) >= min_area
+            )
+        if max_area:
+            area_filters.append(
+                gfunc.ST_Area(geometry[target_type]) <= max_area
+            )
+
     # Join gt, datum, annotation, label
     gt = (
         select(
@@ -156,6 +177,7 @@ def compute_ap_metrics(
             and_(
                 models.Datum.dataset_id == dataset.id,
                 models.Annotation.model_id.is_(None),
+                *area_filters,
             )
         )
         .subquery()
@@ -181,6 +203,7 @@ def compute_ap_metrics(
             and_(
                 models.Datum.dataset_id == dataset.id,
                 models.Annotation.model_id == model.id,
+                *area_filters,
             )
         )
         .subquery()
@@ -305,22 +328,33 @@ def compute_ap_metrics(
                 )
             )
 
-    # Create label query relationship conditions
-    relations = []
-
     # Filter by geometric type
+    geometric_filters = []
     if gt_type == enums.AnnotationType.BOX:
-        relations = [models.Annotation.box.isnot(None)]
+        geometric_filters = [models.Annotation.box.isnot(None)]
     elif gt_type == enums.AnnotationType.POLYGON:
-        relations = [models.Annotation.polygon.isnot(None)]
+        geometric_filters = [models.Annotation.polygon.isnot(None)]
     elif gt_type == enums.AnnotationType.MULTIPOLYGON:
-        relations = [models.Annotation.multipolygon.isnot(None)]
+        geometric_filters = [models.Annotation.multipolygon.isnot(None)]
     elif gt_type == enums.AnnotationType.RASTER:
-        relations = [models.Annotation.raster.isnot(None)]
+        geometric_filters = [models.Annotation.raster.isnot(None)]
+    elif gt_type == enums.AnnotationType.NONE:
+        geometric_filters = [
+            models.Annotation.box.is_(None),
+            models.Annotation.polygon.is_(None),
+            models.Annotation.multipolygon.is_(None),
+            models.Annotation.raster.is_(None),
+        ]
+    else:
+        raise RuntimeError("Unknown Type")
 
     # Filter by label key
+    label_key_filter = []
     if label_key:
-        relations.append(models.Label.key == label_key)
+        label_key_filter.append(models.Label.key == label_key)
+
+    # Merge filters
+    filters = geometric_filters + label_key_filter
 
     # Get groundtruth labels
     labels = {
@@ -339,7 +373,7 @@ def compute_ap_metrics(
             .where(
                 and_(
                     models.Datum.dataset_id == dataset.id,
-                    *relations,
+                    *filters,
                 )
             )
             .all()
@@ -473,13 +507,14 @@ def create_ap_metrics(
     # START HACKY
     dataset_name = request_info.settings.dataset_name
     model_name = request_info.settings.model_name
-    gt_type = enums.AnnotationType.BOX  # request_info.settings.pd_type
-    pd_type = enums.AnnotationType.BOX  # request_info.settings.gt_type
-    target_type = enums.AnnotationType.BOX  # request_info.settings.target_type
+    gt_type = request_info.settings.gt_type
+    pd_type = request_info.settings.pd_type
     label_key = request_info.settings.label_key
     min_area = request_info.settings.min_area
     max_area = request_info.settings.max_area
     # END HACKY
+
+    target_type = gt_type if gt_type < pd_type else pd_type
 
     dataset = core.get_dataset(db, request_info.settings.dataset_name)
     model = core.get_model(db, request_info.settings.model_name)

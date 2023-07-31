@@ -1,16 +1,12 @@
-from typing import Union
-
 import numpy
 import PIL
 from PIL.Image import Resampling
 
 from velour import enums
 from velour.schemas import (
-    BasicPolygon,
     BoundingBox,
     Image,
     Label,
-    Polygon,
     Prediction,
     Raster,
     ScoredAnnotation,
@@ -130,7 +126,9 @@ def parse_yolo_image_segmentation(
     )
 
 
-def parse_yolo_object_detection(result, uid: str, label_key: str = "class"):
+def parse_yolo_object_detection(
+    result, uid: str, label_key: str = "class"
+) -> Prediction:
     """Parses Ultralytic's result for an object detection task."""
 
     # Extract data
@@ -146,7 +144,7 @@ def parse_yolo_object_detection(result, uid: str, label_key: str = "class"):
         uid=image_uid,
         height=image_height,
         width=image_width,
-    )
+    ).to_datum()
 
     # Create scored label list
     scored_labels = [

@@ -14,16 +14,12 @@ from velour.schemas import (
     Annotation,
     BasicPolygon,
     BoundingBox,
-    Datum,
     GroundTruth,
     Image,
     Label,
-    MetaDatum,
-    MultiPolygon,
     Point,
     Polygon,
     Prediction,
-    Raster,
     ScoredAnnotation,
     ScoredLabel,
 )
@@ -111,8 +107,7 @@ def _parse_image_classification_groundtruths(
         width=-1,
     ).to_datum()
 
-    gts = []
-    GroundTruth(
+    return GroundTruth(
         datum=image,
         annotations=[
             Annotation(
@@ -384,7 +379,7 @@ def parse_chariot_object_detections(
     detections: Union[Dict, List[Dict]],
     images: Union[Image, List[Image]],
     label_key: str = "class",
-):
+) -> list[Prediction]:
 
     if not isinstance(detections, list):
         detections = [detections]
@@ -419,7 +414,7 @@ def parse_chariot_object_detections(
                         scored_labels=[
                             ScoredLabel(
                                 label=Label(key=label_key, value=label),
-                                score=score,
+                                score=float(score),
                             )
                         ],
                         bounding_box=BoundingBox.from_extrema(
@@ -495,8 +490,10 @@ def create_model_from_chariot(
 
     href = _construct_url(project_id=model.project_id, model_id=model.id)
 
-    # if model.task in cv_tasks:
-    # elif model.task in tabular_tasks:
+    if model.task in cv_tasks:
+        pass
+    elif model.task in tabular_tasks:
+        pass
     if model.task in nlp_tasks:
         raise NotImplementedError(
             f"NLP tasks are currently not supported. '{model.task}'"

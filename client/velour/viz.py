@@ -4,14 +4,7 @@ from typing import Dict, List, Tuple, Union
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from velour.data_types import (
-    BoundingPolygon,
-    GroundTruthDetection,
-    PolygonWithHole,
-    PredictedDetection,
-    _GroundTruthSegmentation,
-    _PredictedSegmentation,
-)
+from velour import enums, schemas
 
 # https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
 COLOR_MAP = [
@@ -39,7 +32,7 @@ COLOR_MAP = [
 
 
 def _polygons_to_binary_mask(
-    polys: List[PolygonWithHole], img_w, img_h
+    polys: List[schemas.Polygon], img_w, img_h
 ) -> np.ndarray:
     """note there's some aliasing/areas differences between this
     and e.g. postgis, so this method should only be used for visualization
@@ -47,20 +40,22 @@ def _polygons_to_binary_mask(
     mask = Image.new("1", (img_w, img_h), (False,))
     draw = ImageDraw.Draw(mask)
     for poly in polys:
-        draw.polygon(poly.polygon.xy_list(), fill=(True,))
-        if poly.hole is not None:
-            draw.polygon(poly.hole.xy_list(), fill=(False,))
+        draw.polygon(poly.boundary.xy_list(), fill=(True,))
+        if poly.holes is not None:
+            for hole in poly.holes:
+                draw.polygon(hole.xy_list(), fill=(False,))
 
     return np.array(mask)
 
 
 def combined_segmentation_mask(
-    segs: List[Union[_GroundTruthSegmentation, _PredictedSegmentation]],
+    annotated_datums: List[Union[schemas.GroundTruth, schemas.Prediction]],
     label_key: str,
+    task_type: enums.TaskType,
 ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
     """Creates a combined segmentation mask from a list of segmentations
 
-    segs
+    annotated_datums
         list of segmentations. these all must have the same `image` attribute. this
         must be non-empty
     label_key
@@ -83,25 +78,50 @@ def combined_segmentation_mask(
         if segs is empty
     """
 
-    if len(set([seg.image.uid for seg in segs])) > 1:
+    if len(annotated_datums) == 0:
+        raise ValueError("`segs` cannot be empty.")
+
+    if (
+        len(
+            set(
+                [
+                    annotated_datum.datum.uid
+                    for annotated_datum in annotated_datums
+                ]
+            )
+        )
+        > 1
+    ):
         raise RuntimeError(
             "Expected all segmentation to belong to the same image"
         )
 
-    if len(segs) == 0:
-        raise ValueError("`segs` cannot be empty.")
+    if task_type not in [
+        enums.TaskType.INSTANCE_SEGMENTATION,
+        enums.TaskType.SEMANTIC_SEGMENTATION,
+    ]:
+        raise RuntimeError(
+            "Expected either Instance or Semantic segmentation task_type."
+        )
+
+    # unpack raster annotations
+    annotations: list[Union[schemas.Annotation, schemas.ScoredAnnotation]] = []
+    for annotated_datum in annotated_datums:
+        for annotation in annotated_datum.annotations:
+            if annotation.task_type == task_type:
+                annotations.append(annotation)
 
     label_values = []
-    for seg in segs:
+    for annotation in annotations:
         found_label = False
-        for label in seg.labels:
+        for label in annotation.labels:
             if label.key == label_key:
                 found_label = True
                 label_values.append(label.value)
         if not found_label:
             raise RuntimeError(
                 "Found a segmentation that doesn't have a label with key 'label_key'."
-                f" Available label keys are: {[label.key for label in seg.labels]}"
+                f" Available label keys are: {[label.key for label in annotation.labels]}"
             )
 
     unique_label_values = list(set(label_values))
@@ -110,16 +130,24 @@ def combined_segmentation_mask(
     }
     seg_colors = [label_value_to_color[v] for v in label_values]
 
-    img_w, img_h = segs[0].image.width, segs[0].image.height
+    image = schemas.Image.from_datum(annotated_datums[0].datum)
+    img_w, img_h = image.width, image.height
 
     combined_mask = np.zeros((img_h, img_w, 3), dtype=np.uint8)
-    for seg, color in zip(segs, seg_colors):
-        if isinstance(seg.shape, np.ndarray):
-            mask = seg.shape
-        else:
+    for annotation, color in zip(annotations, seg_colors):
+        if annotation.task_type != task_type:
+            continue
+
+        if annotation.raster is not None:
+            mask = annotation.raster.to_numpy()
+        elif annotation.multipolygon is not None:
             mask = _polygons_to_binary_mask(
-                seg.shape, img_w=seg.image.width, img_h=seg.image.height
+                annotation.multipolygon,
+                img_w=img_w,
+                img_h=img_h,
             )
+        else:
+            continue
 
         combined_mask[np.where(mask)] = color
 
@@ -132,35 +160,49 @@ def combined_segmentation_mask(
 
 
 def draw_detections_on_image(
-    detections: List[Union[GroundTruthDetection, PredictedDetection]],
+    detections: List[Union[schemas.GroundTruth, schemas.Prediction]],
     img: Image.Image,
 ) -> Image.Image:
     """Draws detections (bounding boxes and labels) on an image"""
-    for i, detection in enumerate(detections):
-        img = _draw_detection_on_image(detection, img, inplace=i != 0)
+
+    annotations = []
+    for datum in detections:
+        annotations.extend(datum.annotations)
+
+    for i, detection in enumerate(annotations):
+        if detection.task_type in [enums.TaskType.DETECTION]:
+            img = _draw_detection_on_image(detection, img, inplace=i != 0)
     return img
 
 
 def _draw_detection_on_image(
-    detection: Union[GroundTruthDetection, PredictedDetection],
+    detection: Union[schemas.Annotation, schemas.ScoredAnnotation],
     img: Image.Image,
     inplace: bool,
 ) -> Image.Image:
     text = ", ".join(
         [f"{label.key}:{label.value}" for label in detection.labels]
     )
-    img = _draw_bounding_polygon_on_image(
-        detection.boundary,
-        img,
-        inplace=inplace,
-        text=text,
-    )
+    if detection.polygon is not None:
+        img = _draw_bounding_polygon_on_image(
+            detection.polygon.boundary,
+            img,
+            inplace=inplace,
+            text=text,
+        )
+    elif detection.bounding_box is not None:
+        img = _draw_bounding_polygon_on_image(
+            detection.bounding_box.polygon,
+            img,
+            inplace=inplace,
+            text=text,
+        )
 
     return img
 
 
 def _draw_bounding_polygon_on_image(
-    polygon: BoundingPolygon,
+    polygon: schemas.BasicPolygon,
     img: Image.Image,
     color: Tuple[int, int, int] = (255, 0, 0),
     inplace: bool = False,
@@ -189,7 +231,7 @@ def _draw_bounding_polygon_on_image(
 def _write_text(
     font_size: int,
     text: str,
-    boundary: BoundingPolygon,
+    boundary: schemas.BasicPolygon,
     draw: ImageDraw.Draw,
     color: str,
 ):

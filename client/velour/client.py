@@ -1,15 +1,13 @@
 import json
-import math
 import os
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
-from tqdm.auto import tqdm
 
-from velour import enums, schemas
-from velour.enums import TaskType, AnnotationType
+from velour import schemas
+from velour.enums import AnnotationType, TaskType
 
 
 class ClientException(Exception):
@@ -201,7 +199,10 @@ class Dataset:
                 )
             )
         resp = client._requests_post_rel_host("datasets", json=asdict(ds))
+
         # @TODO: Handle this response
+        if resp:
+            pass
 
         # Retrive newly created dataset with its ID
         return cls.get(client, name)
@@ -242,12 +243,12 @@ class Dataset:
     ):
         try:
             assert isinstance(groundtruth, schemas.GroundTruth)
-        except:
+        except AssertionError:
             raise TypeError(f"Invalid type `{type(groundtruth)}`")
 
         groundtruth.dataset_name = self.info.name
         return self.client._requests_post_rel_host(
-            f"groundtruth",
+            "groundtruth",
             json=asdict(groundtruth),
         )
 
@@ -263,28 +264,20 @@ class Dataset:
         ).json()
 
         return [
-            schemas.Label(
-                key=label["key"], value=label["value"]
-            )
+            schemas.Label(key=label["key"], value=label["value"])
             for label in labels
         ]
 
     def get_datums(self) -> List[schemas.Datum]:
-        """ Returns a list of datums. """
+        """Returns a list of datums."""
         datums = self.client._requests_get_rel_host(
             f"datasets/{self.name}/data"
         ).json()
 
-        return [
-            schemas.Datum(**datum)
-            for datum in datums
-        ]
+        return [schemas.Datum(**datum) for datum in datums]
 
     def get_images(self) -> List[schemas.Image]:
         """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
-        
-        datums = self.get_datums()
-
         return [
             schemas.Image.from_datum(datum)
             for datum in self.get_datums()
@@ -367,7 +360,10 @@ class Model:
                 )
             )
         resp = client._requests_post_rel_host("models", json=asdict(md))
+
         # @TODO: Handle this response
+        if resp:
+            pass
 
         # Retrive newly created dataset with its ID
         return cls.get(client, name)
@@ -406,10 +402,12 @@ class Model:
         try:
             assert isinstance(prediction, schemas.Prediction)
         except AssertionError:
-            raise TypeError(f"Expected `velour.schemas.Prediction`, got `{type(prediction)}`")
+            raise TypeError(
+                f"Expected `velour.schemas.Prediction`, got `{type(prediction)}`"
+            )
         prediction.model_name = self.info.name
         return self.client._requests_post_rel_host(
-            f"prediction",
+            "prediction",
             json=asdict(prediction),
         )
 
@@ -458,7 +456,7 @@ class Model:
         ).json()
 
         return EvalJob(client=self.client, **resp)
-    
+
     def evaluate_ap(
         self,
         dataset: "Dataset",
@@ -476,8 +474,8 @@ class Model:
                 "model_name": self.name,
                 "dataset_name": dataset.name,
                 "task_type": task_type,
-                "pd_type": pd_type,
                 "gt_type": gt_type,
+                "pd_type": pd_type,
                 "min_area": min_area,
                 "max_area": max_area,
                 "label_key": label_key,
@@ -500,7 +498,6 @@ class Model:
             resp[k] = [schemas.Label(**la) for la in resp[k]]
 
         return EvalJob(client=self.client, **resp)
-
 
     def get_evaluation_settings(self) -> List[dict]:
         # TODO: should probably have a dataclass for the output
@@ -628,5 +625,3 @@ class Model:
             number_of_segmentations=resp["number_of_segmentation_rasters"],
             associated=resp["associated"],
         )
-
-    
