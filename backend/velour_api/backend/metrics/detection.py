@@ -3,26 +3,11 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from geoalchemy2 import func as gfunc
-from sqlalchemy import and_, func, or_, select, text
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend import core, models, query
-from velour_api.backend.core.geometry import (
-    convert_polygon_to_box,
-    convert_raster_to_box,
-    convert_raster_to_polygon,
-)
-from velour_api.backend.metrics.ap import (
-    compute_iou,
-    function_find_ranked_pairs,
-    get_labels,
-    get_number_of_ground_truths,
-    get_sorted_ranked_pairs,
-    join_labels,
-    join_tables,
-)
+from velour_api.backend import core, models
 from velour_api.enums import AnnotationType
 
 
@@ -316,17 +301,24 @@ def compute_ap_metrics(
                 )
             )
 
-    # Get groundtruth labels
-    relation = []
-    if gt_type == enums.AnnotationType.BOX:
-        relation = [models.Annotation.box.isnot(None)]
-    elif gt_type == enums.AnnotationType.POLYGON:
-        relation = [models.Annotation.polygon.isnot(None)]
-    elif gt_type == enums.AnnotationType.MULTIPOLYGON:
-        relation = [models.Annotation.multipolygon.isnot(None)]
-    elif gt_type == enums.AnnotationType.RASTER:
-        relation = [models.Annotation.raster.isnot(None)]
+    # Create label query relationship conditions
+    relations = []
 
+    # Filter by geometric type
+    if gt_type == enums.AnnotationType.BOX:
+        relations = [models.Annotation.box.isnot(None)]
+    elif gt_type == enums.AnnotationType.POLYGON:
+        relations = [models.Annotation.polygon.isnot(None)]
+    elif gt_type == enums.AnnotationType.MULTIPOLYGON:
+        relations = [models.Annotation.multipolygon.isnot(None)]
+    elif gt_type == enums.AnnotationType.RASTER:
+        relations = [models.Annotation.raster.isnot(None)]
+
+    # Filter by label key
+    if label_key:
+        relations.append(models.Label.key == label_key)
+
+    # Get groundtruth labels
     labels = {
         label[0]: schemas.Label(key=label[1], value=label[2])
         for label in (
@@ -343,20 +335,12 @@ def compute_ap_metrics(
             .where(
                 and_(
                     models.Datum.dataset_id == dataset.id,
-                    models.Label.key == label_key,
-                    *relation,
+                    *relations,
                 )
             )
             .all()
         )
     }
-
-    print(relation)
-    print(labels)
-    print(number_of_ground_truths)
-
-    if not labels:
-        return []
 
     # Get the number of ground truths per label id
     number_of_ground_truths = {
