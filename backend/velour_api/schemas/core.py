@@ -1,6 +1,6 @@
 import re
 
-from pydantic import BaseModel, root_validator, validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from velour_api import enums
 from velour_api.schemas.geojson import GeoJSON
@@ -29,7 +29,8 @@ class MetaDatum(BaseModel):
     key: str
     value: float | str | GeoJSON
 
-    @validator("key")
+    @field_validator("key")
+    @classmethod
     def check_key(cls, v):
         if not isinstance(v, str):
             raise ValueError
@@ -56,7 +57,8 @@ class Dataset(BaseModel):
     name: str
     metadata: list[MetaDatum] = []
 
-    @validator("name")
+    @field_validator("name")
+    @classmethod
     def check_name_valid(cls, v):
         if v != _format_name(v):
             raise ValueError("name includes illegal characters.")
@@ -70,7 +72,8 @@ class Model(BaseModel):
     name: str
     metadata: list[MetaDatum] = []
 
-    @validator("name")
+    @field_validator("name")
+    @classmethod
     def check_name_valid(cls, v):
         if v != _format_name(v):
             raise ValueError("name includes illegal characters.")
@@ -83,7 +86,8 @@ class Datum(BaseModel):
     uid: str
     metadata: list[MetaDatum] = []
 
-    @validator("uid")
+    @field_validator("uid")
+    @classmethod
     def format_uid(cls, v):
         if v != _format_uid(v):
             raise ValueError("uid includes illegal characters.")
@@ -103,7 +107,8 @@ class Annotation(BaseModel):
     multipolygon: MultiPolygon = None
     raster: Raster = None
 
-    @validator("labels")
+    @field_validator("labels")
+    @classmethod
     def check_labels(cls, v):
         if not v:
             raise ValueError
@@ -121,7 +126,8 @@ class ScoredAnnotation(BaseModel):
     multipolygon: MultiPolygon = None
     raster: Raster = None
 
-    @root_validator(skip_on_failure=True)
+    @model_validator(skip_on_failure=True)
+    @classmethod
     def check_sum_to_one_if_classification(cls, values):
         if values["task_type"] == enums.TaskType.CLASSIFICATION:
             label_keys_to_sum = {}
@@ -145,7 +151,8 @@ class GroundTruth(BaseModel):
     datum: Datum
     annotations: list[Annotation]
 
-    @validator("dataset_name")
+    @field_validator("dataset_name")
+    @classmethod
     def check_name_valid(cls, v):
         if v != _format_name(v):
             raise ValueError("name includes illegal characters.")
@@ -153,7 +160,8 @@ class GroundTruth(BaseModel):
             raise ValueError("invalid string")
         return v
 
-    @validator("annotations")
+    @field_validator("annotations")
+    @classmethod
     def check_annotations(cls, v):
         if not v:
             raise ValueError("annotations is empty")
@@ -165,7 +173,8 @@ class Prediction(BaseModel):
     datum: Datum
     annotations: list[ScoredAnnotation]
 
-    @validator("model_name")
+    @field_validator("model_name")
+    @classmethod
     def check_name_valid(cls, v):
         if v != _format_name(v):
             raise ValueError("name includes illegal characters.")
@@ -173,7 +182,8 @@ class Prediction(BaseModel):
             raise ValueError("invalid string")
         return v
 
-    @validator("annotations")
+    @field_validator("annotations")
+    @classmethod
     def check_annotations(cls, v):
         if not v:
             raise ValueError("annotations is empty")

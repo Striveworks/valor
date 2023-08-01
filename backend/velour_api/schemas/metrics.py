@@ -1,7 +1,14 @@
 from uuid import uuid4
 
 import numpy as np
-from pydantic import BaseModel, Extra, Field, root_validator, validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Extra,
+    Field,
+    field_validator,
+    root_validator,
+)
 
 from velour_api.enums import AnnotationType, JobStatus, TaskType
 from velour_api.schemas.label import Label
@@ -72,9 +79,7 @@ class CreateClfMetricsResponse(BaseModel):
 class Job(BaseModel):
     uid: str = Field(default_factory=lambda: str(uuid4()))
     status: JobStatus = JobStatus.PENDING
-
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
 
 class ClfMetricsRequest(BaseModel):
@@ -85,8 +90,8 @@ class Metric(BaseModel):
     """This is used for responses from the API"""
 
     type: str
-    parameters: dict | None
-    value: float | dict | None
+    parameters: dict | None = None
+    value: float | dict | None = None
     label: Label = None
     group: MetaDatum = None
 
@@ -151,9 +156,9 @@ class ConfusionMatrixEntry(BaseModel):
     prediction: str
     groundtruth: str
     count: int
-
-    class Config:
-        allow_mutation = False
+    # TODO[pydantic]: The following keys were removed: `allow_mutation`.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-config for more information.
+    model_config = ConfigDict(allow_mutation=False)
 
 
 class _BaseConfusionMatrix(BaseModel):
@@ -217,10 +222,11 @@ class AccuracyMetric(BaseModel):
 
 class _PrecisionRecallF1Base(BaseModel):
     label: Label
-    value: float | None
+    value: float | None = None
     group: MetaDatum = None
 
-    @validator("value")
+    @field_validator("value")
+    @classmethod
     def replace_nan_with_neg_1(cls, v):
         if np.isnan(v):
             return -1

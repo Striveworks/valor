@@ -1,6 +1,6 @@
 import json
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 from velour_api.schemas.geometry import (
     BasicPolygon,
@@ -14,7 +14,8 @@ class GeoJSONPoint(BaseModel):
     type: str
     coordinates: list[float, float]
 
-    @validator("type")
+    @field_validator("type")
+    @classmethod
     def check_type(cls, v):
         if v != "Point":
             raise ValueError("Incorrect geometry type.")
@@ -30,7 +31,8 @@ class GeoJSONPolygon(BaseModel):
     type: str
     coordinates: list[list[list[float, float]]]
 
-    @validator("type")
+    @field_validator("type")
+    @classmethod
     def check_type(cls, v):
         if v != "Polygon":
             raise ValueError("Incorrect geometry type.")
@@ -54,7 +56,8 @@ class GeoJSONMultiPolygon(BaseModel):
     type: str
     coordinates: list[list[list[list[float, float]]]]
 
-    @validator("type")
+    @field_validator("type")
+    @classmethod
     def check_type(cls, v):
         if v != "MultiPolygon":
             raise ValueError("Incorrect geometry type.")

@@ -3,20 +3,28 @@ import math
 from base64 import b64decode
 
 import PIL.Image
-from pydantic import BaseModel, Extra, Field, root_validator, validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 
 class Point(BaseModel):
     x: float
     y: float
 
-    @validator("x")
+    @field_validator("x")
+    @classmethod
     def has_x(cls, v):
         if not isinstance(v, float):
             raise ValueError
         return v
 
-    @validator("y")
+    @field_validator("y")
+    @classmethod
     def has_y(cls, v):
         if not isinstance(v, float):
             raise ValueError
@@ -111,7 +119,8 @@ class LineSegment(BaseModel):
 class BasicPolygon(BaseModel):
     points: list[Point]
 
-    @validator("points")
+    @field_validator("points")
+    @classmethod
     def check_points(cls, v):
         if v is not None:
             if len(set(v)) < 3:
@@ -241,7 +250,8 @@ class MultiPolygon(BaseModel):
 class BoundingBox(BaseModel):
     polygon: BasicPolygon
 
-    @validator("polygon")
+    @field_validator("polygon")
+    @classmethod
     def valid_polygon(cls, v):
         if len(set(v.points)) != 4:
             raise ValueError(
@@ -323,15 +333,13 @@ class BoundingBox(BaseModel):
 
 
 class Raster(BaseModel):
-    mask: str = Field(allow_mutation=False)
+    mask: str = Field(frozen=True)
     height: float
     width: float
+    model_config = ConfigDict(extra="allow", validate_assignment=True)
 
-    class Config:
-        extra = Extra.allow
-        validate_assignment = True
-
-    @root_validator(skip_on_failure=True)
+    @model_validator(skip_on_failure=True)
+    @classmethod
     def correct_mask_shape(cls, values):
         def _mask_bytes_to_pil(mask_bytes):
             with io.BytesIO(mask_bytes) as f:
@@ -345,7 +353,8 @@ class Raster(BaseModel):
             )
         return values
 
-    @validator("mask")
+    @field_validator("mask")
+    @classmethod
     def check_png_and_mode(cls, v):
         """Check that the bytes are for a png file and is binary"""
         f = io.BytesIO(b64decode(v))
