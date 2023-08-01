@@ -33,6 +33,7 @@ from velour.schemas import (
     ScoredAnnotation,
     ScoredLabel,
 )
+from velour_api import crud
 from velour_api.backend import models
 
 dset_name = "test_dataset"
@@ -179,11 +180,18 @@ def db(client: Client) -> Session:
     for model in client.get_models():
         Model.prune(client, model["name"])
 
+    for dataset in client.get_datasets():
+        crud.delete_dataset(db=sess, dataset_name=dataset["name"])
+
     labels = sess.scalars(select(models.Label))
     for label in labels:
         sess.delete(label)
 
     sess.commit()
+
+    # clean redis
+    # jobs.connect_to_redis()
+    # jobs.r.flushdb()
 
 
 @pytest.fixture
@@ -1819,8 +1827,8 @@ def test_evaluate_tabular_clf(
 
     # model.finalize_inferences(dataset)
 
+    # evaluate
     eval_job = model.evaluate_classification(dataset=dataset)
-
     assert eval_job.ignored_pred_keys == []
     assert eval_job.missing_pred_keys == []
 

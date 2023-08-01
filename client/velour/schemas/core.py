@@ -303,7 +303,7 @@ class ScoredAnnotation:
 class GroundTruth:
     datum: Datum
     annotations: list[Annotation] = field(default_factory=list)
-    dataset_name: str = field(default="")
+    dataset: str = field(default="")
 
     def __post_init__(self):
         if isinstance(self.datum, dict):
@@ -323,15 +323,15 @@ class GroundTruth:
                 raise TypeError(
                     "annotations list should contain only `velour.schemas.Annotation`."
                 )
-        if not isinstance(self.dataset_name, str):
-            raise TypeError("dataset_name should be type `str`.")
+        if not isinstance(self.dataset, str):
+            raise TypeError("dataset should be type `str`.")
 
 
 @dataclass
 class Prediction:
     datum: Datum
     annotations: list[ScoredAnnotation] = field(default_factory=list)
-    model_name: str = field(default="")
+    model: str = field(default="")
 
     def __post_init__(self):
         if isinstance(self.datum, dict):
@@ -351,5 +351,5 @@ class Prediction:
                 raise TypeError(
                     "annotations list should contain only `velour.schemas.ScoredAnnotation`."
                 )
-        if not isinstance(self.model_name, str):
-            raise TypeError("model_name should be type `str`.")
+        if not isinstance(self.model, str):
+            raise TypeError("model should be type `str`.")

@@ -74,7 +74,7 @@ def get_all_jobs() -> list[Job]:
 @needs_redis
 def add_job(job: Job) -> None:
     """Adds job to redis"""
-    r.set(job.uid, job.json(exclude={"uid"}))
+    r.set(job.uid, job.model_dump_json(exclude={"uid"}))
 
 
 def wrap_method_for_job(
@@ -125,3 +125,17 @@ def wrap_metric_computation(fn: callable) -> tuple[Job, callable]:
     return wrap_method_for_job(
         fn=fn, job_attribute_name_for_output="evaluation_settings_id"
     )
+
+
+@needs_redis
+def get_status() -> JobStatus:
+    json_str = r.get("stateflow")
+    if json_str is None:
+        return JobStatus(datasets={})
+    info = json.loads(json_str)
+    return JobStatus(**info)
+
+
+@needs_redis
+def set_status(status: JobStatus):
+    r.set("stateflow", status.model_dump_json())

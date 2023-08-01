@@ -198,19 +198,10 @@ class MultiPolygon:
 @dataclass
 class Raster:
     mask: str
-    height: int
-    width: int
 
     def __post_init__(self):
         if not isinstance(self.mask, str):
             raise TypeError("mask should be of type `str`")
-        if not isinstance(self.height, int | float):
-            raise TypeError("height should be of type int")
-        if not isinstance(self.width, int | float):
-            raise TypeError("width should be of type int")
-
-        self.height = int(self.height)
-        self.width = int(self.width)
 
     @classmethod
     def from_numpy(cls, mask: np.ndarray):
@@ -227,8 +218,6 @@ class Raster:
         f.close()
         return cls(
             mask=b64encode(mask_bytes).decode(),
-            height=mask.shape[0],
-            width=mask.shape[1],
         )
 
     def to_numpy(self) -> np.ndarray:

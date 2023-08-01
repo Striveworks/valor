@@ -115,7 +115,7 @@ class Job:
     def __init__(
         self,
         client: Client,
-        job_id: str,
+        job_id: int,
         **kwargs,
     ):
         self._id = job_id
@@ -246,7 +246,7 @@ class Dataset:
         except AssertionError:
             raise TypeError(f"Invalid type `{type(groundtruth)}`")
 
-        groundtruth.dataset_name = self.info.name
+        groundtruth.dataset = self.info.name
         return self.client._requests_post_rel_host(
             "groundtruth",
             json=asdict(groundtruth),
@@ -405,7 +405,7 @@ class Model:
             raise TypeError(
                 f"Expected `velour.schemas.Prediction`, got `{type(prediction)}`"
             )
-        prediction.model_name = self.info.name
+        prediction.model = self.info.name
         return self.client._requests_post_rel_host(
             "prediction",
             json=asdict(prediction),
@@ -419,14 +419,16 @@ class Model:
 
     def finalize_inferences(self, dataset: "Dataset") -> None:
         return self.client._requests_put_rel_host(
-            f"models/{self.name}/inferences/{dataset.name}/finalize"
+            f"datasets/{dataset.name}/finalize/{self.name}"
         ).json()
 
     def delete(self):
         self.client._requests_delete_rel_host(f"models/{self.name}")
 
     def evaluate_classification(
-        self, dataset: "Dataset", group_by: str = None
+        self,
+        dataset: "Dataset",
+        group_by: schemas.MetaDatum = schemas.MetaDatum(key="k", value="v"),
     ) -> "EvalJob":
         """Start a classification evaluation job
 
@@ -445,8 +447,9 @@ class Model:
         """
         payload = {
             "settings": {
-                "model_name": self.name,
-                "dataset_name": dataset.name,
+                "model": self.name,
+                "dataset": dataset.name,
+                "group": asdict(group_by),
             }
         }
 
@@ -470,8 +473,8 @@ class Model:
     ) -> "EvalJob":
         payload = {
             "settings": {
-                "model_name": self.name,
-                "dataset_name": dataset.name,
+                "model": self.name,
+                "dataset": dataset.name,
                 "task_type": task_type,
                 "gt_type": gt_type,
                 "pd_type": pd_type,
@@ -515,13 +518,13 @@ class Model:
             es_without_id_dset_model = {
                 k: v
                 for k, v in es.items()
-                if k not in ["id", "dataset_name", "model_name"]
+                if k not in ["id", "dataset", "model"]
             }
             found = False
             for grp in ret:
                 if es_without_id_dset_model == grp["settings"]:
                     grp["ids"].append(es["id"])
-                    grp["datasets"].append(es["dataset_name"])
+                    grp["datasets"].append(es["dataset"])
                     found = True
                     break
 
@@ -530,7 +533,7 @@ class Model:
                     {
                         "ids": [es["id"]],
                         "settings": es_without_id_dset_model,
-                        "datasets": [es["dataset_name"]],
+                        "datasets": [es["dataset"]],
                     }
                 )
 

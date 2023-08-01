@@ -9,9 +9,9 @@ def create_groundtruth(
     db: Session,
     groundtruth: schemas.GroundTruth,
 ):
-    dataset = core.get_dataset(db, name=groundtruth.dataset_name)
+    dataset = core.get_dataset(db, name=groundtruth.dataset)
     if not dataset:
-        raise exceptions.DatasetDoesNotExistError(groundtruth.dataset_name)
+        raise exceptions.DatasetDoesNotExistError(groundtruth.dataset)
 
     datum = core.create_datum(db, dataset=dataset, datum=groundtruth.datum)
 
@@ -54,7 +54,7 @@ def get_groundtruth(
         raise ValueError(f"Datum `{datum_uid}` exists for different dataset.")
 
     return schemas.GroundTruth(
-        dataset_name=dataset_name,
+        dataset=dataset_name,
         datum=schemas.Datum(
             uid=datum.uid,
             metadata=core.get_metadata(db, datum=datum),

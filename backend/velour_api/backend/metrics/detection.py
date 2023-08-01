@@ -505,8 +505,8 @@ def create_ap_metrics(
 
     # @TODO: This is hacky, fix schemas.APRequest
     # START HACKY
-    dataset_name = request_info.settings.dataset_name
-    model_name = request_info.settings.model_name
+    dataset_name = request_info.settings.dataset
+    model_name = request_info.settings.model
     gt_type = request_info.settings.gt_type
     pd_type = request_info.settings.pd_type
     label_key = request_info.settings.label_key
@@ -516,8 +516,8 @@ def create_ap_metrics(
 
     target_type = gt_type if gt_type < pd_type else pd_type
 
-    dataset = core.get_dataset(db, request_info.settings.dataset_name)
-    model = core.get_model(db, request_info.settings.model_name)
+    dataset = core.get_dataset(db, request_info.settings.dataset)
+    model = core.get_model(db, request_info.settings.model)
 
     # @TODO: Add grouping filter
     # check if already exists

@@ -1,6 +1,9 @@
+import io
 import re
+from base64 import b64decode
 
-from pydantic import BaseModel, field_validator, model_validator
+import PIL.Image
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from velour_api import enums
 from velour_api.schemas.geojson import GeoJSON
@@ -53,7 +56,7 @@ class MetaDatum(BaseModel):
 
 
 class Dataset(BaseModel):
-    id: int = None
+    id: int | None = None
     name: str
     metadata: list[MetaDatum] = []
 
@@ -68,7 +71,7 @@ class Dataset(BaseModel):
 
 
 class Model(BaseModel):
-    id: int = None
+    id: int | None = None
     name: str
     metadata: list[MetaDatum] = []
 
@@ -99,13 +102,15 @@ class Datum(BaseModel):
 class Annotation(BaseModel):
     task_type: enums.TaskType
     labels: list[Label]
-    metadata: list[MetaDatum] = None
+    metadata: list[MetaDatum] | None = None
 
     # Geometric types
-    bounding_box: BoundingBox = None
-    polygon: Polygon = None
-    multipolygon: MultiPolygon = None
-    raster: Raster = None
+    bounding_box: BoundingBox | None = None
+    polygon: Polygon | None = None
+    multipolygon: MultiPolygon | None = None
+    raster: Raster | None = None
+
+    model_config = ConfigDict(use_enum_values=True)
 
     @field_validator("labels")
     @classmethod
@@ -118,20 +123,22 @@ class Annotation(BaseModel):
 class ScoredAnnotation(BaseModel):
     task_type: enums.TaskType
     scored_labels: list[ScoredLabel]
-    metadata: list[MetaDatum] = None
+    metadata: list[MetaDatum] | None = None
 
     # Geometric types
-    bounding_box: BoundingBox = None
-    polygon: Polygon = None
-    multipolygon: MultiPolygon = None
-    raster: Raster = None
+    bounding_box: BoundingBox | None = None
+    polygon: Polygon | None = None
+    multipolygon: MultiPolygon | None = None
+    raster: Raster | None = None
 
-    @model_validator(skip_on_failure=True)
+    model_config = ConfigDict(use_enum_values=True)
+
+    @model_validator(mode="after")
     @classmethod
     def check_sum_to_one_if_classification(cls, values):
-        if values["task_type"] == enums.TaskType.CLASSIFICATION:
+        if values.task_type == enums.TaskType.CLASSIFICATION:
             label_keys_to_sum = {}
-            for scored_label in values["scored_labels"]:
+            for scored_label in values.scored_labels:
                 label_key = scored_label.label.key
                 if label_key not in label_keys_to_sum:
                     label_keys_to_sum[label_key] = 0.0
@@ -147,11 +154,11 @@ class ScoredAnnotation(BaseModel):
 
 
 class GroundTruth(BaseModel):
-    dataset_name: str
+    dataset: str
     datum: Datum
     annotations: list[Annotation]
 
-    @field_validator("dataset_name")
+    @field_validator("dataset")
     @classmethod
     def check_name_valid(cls, v):
         if v != _format_name(v):
@@ -166,14 +173,47 @@ class GroundTruth(BaseModel):
         if not v:
             raise ValueError("annotations is empty")
         return v
+
+    @model_validator(mode="after")
+    @classmethod
+    def validate_annotations(cls, values):
+        def _mask_bytes_to_pil(mask_bytes):
+            with io.BytesIO(mask_bytes) as f:
+                return PIL.Image.open(f)
+
+        for annotation in values.annotations:
+            if annotation.raster is not None:
+                # unpack datum metadata
+                metadata = {
+                    metadatum.key: metadatum.value
+                    for metadatum in filter(
+                        lambda x: x.key in ["height", "width"],
+                        values.datum.metadata,
+                    )
+                }
+                if "height" not in metadata or "width" not in metadata:
+                    raise RuntimeError(
+                        "Attempted raster validation but image dimensions are missing."
+                    )
+
+                # validate raster wrt datum metadata
+                mask_size = _mask_bytes_to_pil(
+                    b64decode(annotation.raster.mask)
+                ).size
+                image_size = (metadata["width"], metadata["height"])
+                if mask_size != image_size:
+                    raise ValueError(
+                        f"Expected raster and image to have the same size, but got size {mask_size} for the mask and {image_size} for image."
+                    )
+        return values
 
 
 class Prediction(BaseModel):
-    model_name: str
+    model: str
     datum: Datum
     annotations: list[ScoredAnnotation]
 
-    @field_validator("model_name")
+    @field_validator("model")
     @classmethod
     def check_name_valid(cls, v):
         if v != _format_name(v):
@@ -188,3 +228,36 @@ class Prediction(BaseModel):
         if not v:
             raise ValueError("annotations is empty")
         return v
+
+    @model_validator(mode="after")
+    @classmethod
+    def validate_annotations(cls, values):
+        def _mask_bytes_to_pil(mask_bytes):
+            with io.BytesIO(mask_bytes) as f:
+                return PIL.Image.open(f)
+
+        for annotation in values.annotations:
+            if annotation.raster is not None:
+                # unpack datum metadata
+                metadata = {
+                    metadatum.key: metadatum.value
+                    for metadatum in filter(
+                        lambda x: x.key in ["height", "width"],
+                        values.datum.metadata,
+                    )
+                }
+                if "height" not in metadata or "width" not in metadata:
+                    raise RuntimeError(
+                        "Attempted raster validation but image dimensions are missing."
+                    )
+
+                # validate raster wrt datum metadata
+                mask_size = _mask_bytes_to_pil(
+                    b64decode(annotation.raster.mask)
+                ).size
+                image_size = (metadata["width"], metadata["height"])
+                if mask_size != image_size:
+                    raise ValueError(
+                        f"Expected raster and image to have the same size, but got size {mask_size} for the mask and {image_size} for image."
+                    )
+        return values

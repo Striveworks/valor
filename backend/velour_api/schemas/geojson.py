@@ -12,13 +12,19 @@ from velour_api.schemas.geometry import (
 
 class GeoJSONPoint(BaseModel):
     type: str
-    coordinates: list[float, float]
+    coordinates: list[float]
 
     @field_validator("type")
     @classmethod
     def check_type(cls, v):
         if v != "Point":
             raise ValueError("Incorrect geometry type.")
+
+    @field_validator("coordinates")
+    @classmethod
+    def check_coordinates(cls, v):
+        if len(v) != 2:
+            raise ValueError("Incorrect number of points.")
 
     def point(self) -> Point:
         return Point(
@@ -29,7 +35,7 @@ class GeoJSONPoint(BaseModel):
 
 class GeoJSONPolygon(BaseModel):
     type: str
-    coordinates: list[list[list[float, float]]]
+    coordinates: list[list[list[float]]]
 
     @field_validator("type")
     @classmethod
@@ -54,7 +60,7 @@ class GeoJSONPolygon(BaseModel):
 
 class GeoJSONMultiPolygon(BaseModel):
     type: str
-    coordinates: list[list[list[list[float, float]]]]
+    coordinates: list[list[list[list[float]]]]
 
     @field_validator("type")
     @classmethod

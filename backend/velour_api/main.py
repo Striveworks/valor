@@ -82,7 +82,7 @@ def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
 def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     try:
         crud.create_dataset(db=db, dataset=dataset)
-    except exceptions.DatasetAlreadyExistsError as e:
+    except (exceptions.DatasetAlreadyExistsError,) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -105,6 +105,27 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     try:
         crud.finalize(db, dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.put(
+    "/datasets/{dataset_name}/finalize/{model_name}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+)
+def finalize_inferences(
+    dataset_name: str, model_name: str, db: Session = Depends(get_db)
+):
+    try:
+        crud.finalize(
+            db=db,
+            model_name=model_name,
+            dataset_name=dataset_name,
+        )
+    except (
+        exceptions.DatasetDoesNotExistError,
+        exceptions.ModelDoesNotExistError,
+    ) as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -244,7 +265,7 @@ def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
 def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     try:
         crud.create_model(db=db, model=model)
-    except exceptions.ModelAlreadyExistsError as e:
+    except (exceptions.ModelAlreadyExistsError,) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -372,8 +393,8 @@ def create_ap_metrics(
         job_id = crud.create_ap_metrics(db, data)
         missing_pred_labels, ignored_pred_labels = crud.get_disjoint_labels(
             db,
-            dataset_name=data.settings.dataset_name,
-            model_name=data.settings.model_name,
+            dataset_name=data.settings.dataset,
+            model_name=data.settings.model,
         )
         return schemas.CreateAPMetricsResponse(
             missing_pred_labels=missing_pred_labels,
@@ -402,8 +423,8 @@ def create_clf_metrics(
         job_id = crud.create_clf_metrics(db, data)
         missing_pred_keys, ignored_pred_keys = crud.get_disjoint_keys(
             db,
-            dataset_name=data.settings.dataset_name,
-            model_name=data.settings.model_name,
+            dataset_name=data.settings.dataset,
+            model_name=data.settings.model,
         )
         return schemas.CreateClfMetricsResponse(
             missing_pred_keys=missing_pred_keys,
@@ -458,7 +479,14 @@ def get_job_metrics(
         return crud.get_metrics_from_evaluation_settings_id(
             db, job.evaluation_settings_id
         )
-    except exceptions.JobDoesNotExistError as e:
+    except (
+        exceptions.JobDoesNotExistError,
+        AttributeError,
+    ) as e:
+        if "'NoneType' object has no attribute 'metrics'" in str(e):
+            raise HTTPException(
+                status_code=404, detail="Evaluation ID does not exist."
+            )
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -504,21 +532,4 @@ def get_job_settings(
             db, job.evaluation_settings_id
         )
     except exceptions.JobDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.put(
-    "/models/{model_name}/inferences/{dataset_name}/finalize",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-)
-def finalize_inferences(
-    model_name: str, dataset_name: str, db: Session = Depends(get_db)
-):
-    try:
-        crud.finalize(db, dataset_name=dataset_name, model_name=model_name)
-    except (
-        exceptions.DatasetDoesNotExistError,
-        exceptions.ModelDoesNotExistError,
-    ) as e:
         raise HTTPException(status_code=404, detail=str(e))

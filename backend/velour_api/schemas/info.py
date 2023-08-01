@@ -21,8 +21,8 @@ class AnnotationDistribution(BaseModel):
 
 
 class Filter(BaseModel):
-    dataset_names: list[str] = []
-    model_names: list[str] = []
+    datasets: list[str] = []
+    models: list[str] = []
     datum_uids: list[str] = []
     task_types: list[TaskType] = []
     annotation_types: list[AnnotationType] = []

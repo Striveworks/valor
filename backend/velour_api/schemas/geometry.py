@@ -3,13 +3,7 @@ import math
 from base64 import b64decode
 
 import PIL.Image
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel, Field, field_validator
 
 
 class Point(BaseModel):
@@ -334,24 +328,7 @@ class BoundingBox(BaseModel):
 
 class Raster(BaseModel):
     mask: str = Field(frozen=True)
-    height: float
-    width: float
-    model_config = ConfigDict(extra="allow", validate_assignment=True)
-
-    @model_validator(skip_on_failure=True)
-    @classmethod
-    def correct_mask_shape(cls, values):
-        def _mask_bytes_to_pil(mask_bytes):
-            with io.BytesIO(mask_bytes) as f:
-                return PIL.Image.open(f)
-
-        mask_size = _mask_bytes_to_pil(b64decode(values["mask"])).size
-        image_size = (values["width"], values["height"])
-        if mask_size != image_size:
-            raise ValueError(
-                f"Expected mask and image to have the same size, but got size {mask_size} for the mask and {image_size} for image."
-            )
-        return values
+    # model_config = ConfigDict(extra="allow", validate_assignment=True)
 
     @field_validator("mask")
     @classmethod

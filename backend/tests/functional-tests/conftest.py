@@ -23,6 +23,12 @@ np.random.seed(29)
 
 
 def drop_all(db):
+
+    # clear redis
+    # jobs.connect_to_redis()
+    # jobs.r.flushdb()
+
+    # clear postgres
     db.execute(text(f"DROP TABLE {', '.join(tablenames)} CASCADE;"))
     db.commit()
 
@@ -223,6 +229,7 @@ def groundtruths(
             db,
             groundtruth=gt,
         )
+    crud.finalize(db, dataset_name=dataset_name)
 
     return db.query(models.GroundTruth).all()
 
@@ -237,6 +244,7 @@ def predictions(
     from a torchmetrics unit test (see test_metrics.py)
     """
     model_name = "test_model"
+    dataset_name = "test_dataset"
     crud.create_model(
         db,
         schemas.Model(
@@ -340,5 +348,6 @@ def predictions(
             db,
             prediction=pd,
         )
+    crud.finalize(db, dataset_name=dataset_name, model_name=model_name)
 
     return db.query(models.Prediction).all()

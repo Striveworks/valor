@@ -480,7 +480,7 @@ def dataset_model_create(
         model_name=model_names[0],
     )
 
-    yield
+    # yield
 
     # clean up
     crud.delete_model(db, model_names[0])
@@ -513,6 +513,10 @@ def test_create_and_get_datasets(db: Session):
     datasets = crud.get_datasets(db)
     assert len(datasets) == 2
     assert set([d.name for d in datasets]) == {dset_name, "other_dataset"}
+
+    # clean up
+    crud.delete_dataset(db, dset_name)
+    crud.delete_dataset(db, "other dataset")
 
 
 def test_create_and_get_models(db: Session):
@@ -712,10 +716,25 @@ def test_create_predicted_classifications_and_delete_model(
 
     crud.create_model(db, schemas.Model(name=model_name))
 
+    # create dataset without images or predictions
+    crud.create_dataset(
+        db,
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
+    )
+
+    # finalize early
+    crud.finalize_dataset(db, dset_name)
+
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.DatumDoesNotExistError) as exc_info:
         crud.create_prediction(db, pred_clfs_create[0])
     assert "Datum with uid" in str(exc_info)
+
+    # finalize
+    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
+
+    # reset dataset
+    crud.delete_dataset(db, dset_name)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(db, schemas.Dataset(name=dset_name))
@@ -833,6 +852,47 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     assert db.scalar(func.count(models.Model.id)) == 0
     assert db.scalar(func.count(models.Annotation.id)) == 4
     assert db.scalar(func.count(models.Prediction.id)) == 0
+
+
+def test_get_labels(
+    db: Session, gt_dets_create: schemas.GroundTruthDetectionsCreate
+):
+    crud.create_dataset(
+        db,
+        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
+    )
+    crud.create_groundtruth_detections(db, data=gt_dets_create)
+    labels = crud.get_labels_from_dataset(
+        db,
+        dset_name,
+        of_type=[enums.AnnotationType.BBOX, enums.AnnotationType.POLYGON],
+    )
+
+    assert len(labels) == 2
+    assert set([(label.key, label.value) for label in labels]) == set(
+        [("k1", "v1"), ("k2", "v2")]
+    )
+
+    assert (
+        crud.get_labels_from_dataset(
+            db, dset_name, of_type=[enums.AnnotationType.CLASSIFICATION]
+        )
+        == []
+    )
+    assert (
+        crud.get_labels_from_dataset(
+            db,
+            "not a dataset",
+            of_type=[enums.AnnotationType.BBOX, enums.AnnotationType.POLYGON],
+        )
+        == []
+    )
+    assert (
+        crud.get_labels_from_dataset(
+            db, dset_name, of_type=[enums.AnnotationType.RASTER]
+        )
+        == []
+    )
 
 
 def test_segmentation_area_no_hole(

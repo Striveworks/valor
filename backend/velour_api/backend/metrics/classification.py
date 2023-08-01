@@ -660,13 +660,13 @@ def create_clf_metrics(
     request_info: schemas.ClfMetricsRequest,
 ) -> int:
 
-    dataset = core.get_dataset(db, request_info.settings.dataset_name)
-    model = core.get_model(db, request_info.settings.model_name)
+    dataset = core.get_dataset(db, request_info.settings.dataset)
+    model = core.get_model(db, request_info.settings.model)
 
     confusion_matrices, metrics = compute_clf_metrics(
         db=db,
-        dataset_name=request_info.settings.dataset_name,
-        model_name=request_info.settings.model_name,
+        dataset_name=request_info.settings.dataset,
+        model_name=request_info.settings.model,
         group_by=request_info.settings.group_by,
     )
 

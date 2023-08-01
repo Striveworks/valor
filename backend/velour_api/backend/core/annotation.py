@@ -38,16 +38,6 @@ def create_annotation(
         raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
     elif isinstance(annotation.raster, schemas.Raster):
         raster = annotation.raster.mask_bytes
-        if annotation.metadata is None:
-            annotation.metadata = []
-        annotation.metadata.extend(
-            [
-                schemas.MetaDatum(
-                    key="height", value=annotation.raster.height
-                ),
-                schemas.MetaDatum(key="width", value=annotation.raster.width),
-            ]
-        )
     # @TODO: Add more annotation types
 
     mapping = {

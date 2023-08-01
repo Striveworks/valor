@@ -24,8 +24,8 @@ def _db_evaluation_settings_to_pydantic_evaluation_settings(
     evaluation_settings: models.EvaluationSettings,
 ) -> schemas.EvaluationSettings:
     return schemas.EvaluationSettings(
-        model_name=evaluation_settings.model.name,
-        dataset_name=evaluation_settings.dataset.name,
+        model=evaluation_settings.model.name,
+        dataset=evaluation_settings.dataset.name,
         task_type=evaluation_settings.task_type,
         pd_type=evaluation_settings.pd_type,
         gt_type=evaluation_settings.gt_type,

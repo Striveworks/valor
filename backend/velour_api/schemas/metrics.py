@@ -7,7 +7,7 @@ from pydantic import (
     Extra,
     Field,
     field_validator,
-    root_validator,
+    model_validator,
 )
 
 from velour_api.enums import AnnotationType, JobStatus, TaskType
@@ -34,16 +34,16 @@ class EvaluationSettings(BaseModel):
     size constraints, coincidence/intersection constraints, etc.
     """
 
-    model_name: str
-    dataset_name: str
-    gt_type: AnnotationType = None
-    pd_type: AnnotationType = None
-    task_type: TaskType = None
-    min_area: float = None
-    max_area: float = None
-    group_by: str = None
-    label_key: str = None
-    id: int = None
+    model: str
+    dataset: str
+    gt_type: AnnotationType | None = None
+    pd_type: AnnotationType | None = None
+    task_type: TaskType | None = None
+    min_area: float | None = None
+    max_area: float | None = None
+    group_by: str | None = None
+    label_key: str | None = None
+    id: int | None = None
 
 
 class APRequest(BaseModel):
@@ -54,10 +54,11 @@ class APRequest(BaseModel):
     iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
     ious_to_keep: set[float] = {0.5, 0.75}
 
-    @root_validator
+    @model_validator(mode="after")
+    @classmethod
     def check_ious(cls, values):
-        for iou in values["ious_to_keep"]:
-            if iou not in values["iou_thresholds"]:
+        for iou in values.ious_to_keep:
+            if iou not in values.iou_thresholds:
                 raise ValueError(
                     "`ious_to_keep` must be contained in `iou_thresholds`"
                 )
@@ -67,13 +68,13 @@ class APRequest(BaseModel):
 class CreateAPMetricsResponse(BaseModel):
     missing_pred_labels: list[Label]
     ignored_pred_labels: list[Label]
-    job_id: str
+    job_id: int
 
 
 class CreateClfMetricsResponse(BaseModel):
     missing_pred_keys: list[str]
     ignored_pred_keys: list[str]
-    job_id: str
+    job_id: int
 
 
 class Job(BaseModel):
@@ -92,8 +93,8 @@ class Metric(BaseModel):
     type: str
     parameters: dict | None = None
     value: float | dict | None = None
-    label: Label = None
-    group: MetaDatum = None
+    label: Label | None = None
+    group: MetaDatum | None = None
 
 
 class APMetric(BaseModel):
@@ -158,13 +159,13 @@ class ConfusionMatrixEntry(BaseModel):
     count: int
     # TODO[pydantic]: The following keys were removed: `allow_mutation`.
     # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-config for more information.
-    model_config = ConfigDict(allow_mutation=False)
+    model_config = ConfigDict(frozen=True)
 
 
 class _BaseConfusionMatrix(BaseModel):
     label_key: str
     entries: list[ConfusionMatrixEntry]
-    group: MetaDatum = None
+    group: MetaDatum | None = None
 
 
 class ConfusionMatrix(_BaseConfusionMatrix, extra=Extra.allow):
@@ -208,7 +209,7 @@ class ConfusionMatrixResponse(_BaseConfusionMatrix):
 class AccuracyMetric(BaseModel):
     label_key: str
     value: float
-    group: MetaDatum = None
+    group: MetaDatum | None = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
@@ -223,7 +224,7 @@ class AccuracyMetric(BaseModel):
 class _PrecisionRecallF1Base(BaseModel):
     label: Label
     value: float | None = None
-    group: MetaDatum = None
+    group: MetaDatum | None = None
 
     @field_validator("value")
     @classmethod
@@ -257,7 +258,7 @@ class F1Metric(_PrecisionRecallF1Base):
 class ROCAUCMetric(BaseModel):
     label_key: str
     value: float
-    group: MetaDatum = None
+    group: MetaDatum | None = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {

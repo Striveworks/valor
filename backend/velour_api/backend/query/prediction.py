@@ -9,9 +9,9 @@ def create_prediction(
     db: Session,
     prediction: schemas.Prediction,
 ):
-    model = core.get_model(db, name=prediction.model_name)
+    model = core.get_model(db, name=prediction.model)
     if not model:
-        raise exceptions.ModelDoesNotExistError(prediction.model_name)
+        raise exceptions.ModelDoesNotExistError(prediction.model)
 
     datum = core.get_datum(db, prediction.datum.uid)
     if not datum:
@@ -52,7 +52,7 @@ def get_prediction(
     model = core.get_model(db, model_name)
 
     return schemas.Prediction(
-        model_name=model_name,
+        model=model_name,
         datum=schemas.Datum(
             uid=datum.uid,
             metadata=core.get_metadata(db, datum=datum),
