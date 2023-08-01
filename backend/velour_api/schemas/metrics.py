@@ -29,8 +29,8 @@ class EvaluationSettings(BaseModel):
 
     model_name: str
     dataset_name: str
-    gt_type: AnnotationType
-    pd_type: AnnotationType
+    gt_type: AnnotationType = None
+    pd_type: AnnotationType = None
     task_type: TaskType = None
     min_area: float = None
     max_area: float = None
