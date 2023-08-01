@@ -242,19 +242,13 @@ def test_geometry_raster(raster_raw_mask):
     mask1 = np.ones((10, 10)) == 1
 
     # valid
-    schemas.Raster(mask="test", height=0, width=0)
+    schemas.Raster(mask="test")
     schemas.Raster.from_numpy(mask=mask1)
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
-        schemas.Raster(mask=123, height=10, width=10)
+        schemas.Raster(mask=123)
     assert "mask should be of type `str`" in str(e)
-    with pytest.raises(TypeError) as e:
-        schemas.Raster(mask="123", height=12)
-    with pytest.raises(TypeError) as e:
-        schemas.Raster(mask="123", height=(1, 2, 3), width=12)
-    with pytest.raises(TypeError) as e:
-        schemas.Raster(mask="123", height=12.4, width="test")
 
     # test classmethod `from_numpy`
     mask2 = np.ones((10, 10, 10)) == 1
@@ -272,8 +266,6 @@ def test_geometry_raster(raster_raw_mask):
         r.mask
         == "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII="
     )
-    assert r.height == 20
-    assert r.width == 20
     assert (r.to_numpy() == raster_raw_mask).all()
 
 
@@ -645,7 +637,7 @@ def test_core_groundtruth():
         datum=datum,
         annotations=gts,
     )
-    schemas.GroundTruth(datum=datum, annotations=gts, dataset_name="test")
+    schemas.GroundTruth(datum=datum, annotations=gts, dataset="test")
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
@@ -676,9 +668,9 @@ def test_core_groundtruth():
         schemas.GroundTruth(
             datum=datum,
             annotations=gts,
-            dataset_name=1234,
+            dataset=1234,
         )
-    assert "dataset_name should be type `str`." in str(e)
+    assert "dataset should be type `str`." in str(e)
 
 
 def test_core_prediction():
@@ -701,7 +693,7 @@ def test_core_prediction():
         datum=datum,
         annotations=pds,
     )
-    schemas.Prediction(datum=datum, annotations=pds, model_name="test")
+    schemas.Prediction(datum=datum, annotations=pds, model="test")
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
@@ -732,6 +724,6 @@ def test_core_prediction():
         schemas.Prediction(
             datum=datum,
             annotations=pds,
-            model_name=1234,
+            model=1234,
         )
-    assert "model_name should be type `str`." in str(e)
+    assert "model should be type `str`." in str(e)

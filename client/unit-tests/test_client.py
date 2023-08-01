@@ -4,22 +4,22 @@ from velour.client import Model
 def test__group_evaluation_settings():
     eval_settings = [
         {
-            "model_name": "model",
-            "dataset_name": "dset1",
+            "model": "model",
+            "dataset": "dset1",
             "model_pred_task_type": "Classification",
             "dataset_gt_task_type": "Classification",
             "id": 1,
         },
         {
-            "model_name": "model",
-            "dataset_name": "dset3",
+            "model": "model",
+            "dataset": "dset3",
             "model_pred_task_type": "Classification",
             "dataset_gt_task_type": "Other Task",
             "id": 2,
         },
         {
-            "model_name": "model",
-            "dataset_name": "dset2",
+            "model": "model",
+            "dataset": "dset2",
             "model_pred_task_type": "Classification",
             "dataset_gt_task_type": "Classification",
             "id": 3,

@@ -27,8 +27,6 @@ class Image:
             return False
         if "width" not in metadata:
             return False
-        if "frame" not in metadata:
-            return False
         return True
 
     @classmethod

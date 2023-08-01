@@ -218,7 +218,6 @@ def test_parse_yolo_image_classification(image, names):
     assert image_datum.uid == image["uid"]
     assert image_datum.height == image["height"]
     assert image_datum.width == image["width"]
-    assert image_datum.frame == 0
 
     assert len(prediction.annotations) == 1
     annotation = prediction.annotations[0]
@@ -259,7 +258,6 @@ def test_parse_yolo_image_segmentation(
     assert image_datum.uid == image["uid"]
     assert image_datum.height == image["height"]
     assert image_datum.width == image["width"]
-    assert image_datum.frame == 0
 
     assert isinstance(prediction, Prediction)
     assert len(prediction.annotations) == bboxes.shape[0]
@@ -290,7 +288,6 @@ def test_parse_yolo_object_detection(image, bboxes, names):
     assert image_datum.uid == image["uid"]
     assert image_datum.height == image["height"]
     assert image_datum.width == image["width"]
-    assert image_datum.frame == 0
 
     assert isinstance(prediction, Prediction)
     assert len(prediction.annotations) == bboxes.shape[0]

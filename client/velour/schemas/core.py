@@ -306,8 +306,13 @@ class GroundTruth:
     dataset: str = field(default="")
 
     def __post_init__(self):
+        # validate datum
         if isinstance(self.datum, dict):
             self.datum = Datum(**self.datum)
+        if not isinstance(self.datum, Datum):
+            raise TypeError("datum should be type `velour.schemas.Datum`.")
+
+        # validate annotations
         if not isinstance(self.annotations, list):
             raise TypeError(
                 "annotations should be a list of `velour.schemas.Annotation`."
@@ -315,14 +320,12 @@ class GroundTruth:
         for i in range(len(self.annotations)):
             if isinstance(self.annotations[i], dict):
                 self.annotations[i] = Annotation(**self.annotations[i])
-
-        if not isinstance(self.datum, Datum):
-            raise TypeError("datum should be type `velour.schemas.Datum`.")
-        for annotation in self.annotations:
-            if not isinstance(annotation, Annotation):
+            if not isinstance(self.annotations[i], Annotation):
                 raise TypeError(
                     "annotations list should contain only `velour.schemas.Annotation`."
                 )
+
+        # validate dataset
         if not isinstance(self.dataset, str):
             raise TypeError("dataset should be type `str`.")
 
