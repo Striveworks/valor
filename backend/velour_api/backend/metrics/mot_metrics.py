@@ -112,7 +112,7 @@ def ground_truth_det_to_mot(
             break
     bbox = gt.bounding_box
     mot_det = MOTDetection(
-        frame_number=schemas.Image.from_datum(datum).frame,
+        frame_number=schemas.VideoFrame.from_datum(datum).frame,
         object_id=obj_id_to_int[
             label.value
         ],  # Label's value is used as object id
@@ -136,7 +136,7 @@ def pred_det_to_mot(
 
     bbox = pred.bounding_box
     mot_det = MOTDetection(
-        frame_number=schemas.Image.from_datum(datum).frame,
+        frame_number=schemas.VideoFrame.from_datum(datum).frame,
         object_id=obj_id_to_int[
             scored_label.label.value
         ],  # Label's value is used as object id

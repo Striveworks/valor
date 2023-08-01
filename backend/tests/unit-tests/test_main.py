@@ -65,7 +65,7 @@ def _test_post_endpoints(
 
 def test_post_groundtruth(client: TestClient):
     example_json = {
-        "dataset_name": "dataset1",
+        "dataset": "dataset1",
         "datum": {
             "uid": "file_uid",
             "metadata": [],
@@ -92,7 +92,7 @@ def test_post_groundtruth(client: TestClient):
 
 def test_post_groundtruth_classification(client: TestClient):
     example_json = {
-        "dataset_name": "dataset1",
+        "dataset": "dataset1",
         "datum": {
             "uid": "file_uid",
             "metadata": [
@@ -136,7 +136,7 @@ def test_post_groundtruth_classification(client: TestClient):
 
 def test_post_groundtruth_bbox_detection(client: TestClient):
     example_json = {
-        "dataset_name": "dataset1",
+        "dataset": "dataset1",
         "datum": {
             "uid": "file_uid",
             "metadata": [
@@ -178,7 +178,7 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
 
 def test_post_groundtruth_polygon_detection(client: TestClient):
     example_json = {
-        "dataset_name": "dataset1",
+        "dataset": "dataset1",
         "datum": {
             "uid": "file_uid",
             "metadata": [
@@ -239,12 +239,12 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
 
 def test_post_groundtruth_raster_segmentation(client: TestClient):
     example_json = {
-        "dataset_name": "dataset1",
+        "dataset": "dataset1",
         "datum": {
             "uid": "file_uid",
             "metadata": [
-                {"key": "meta1", "value": 0.4},
-                {"key": "meta1", "value": "v1"},
+                {"key": "height", "value": 20},
+                {"key": "width", "value": 20},
             ],
         },
         "annotations": [
@@ -260,8 +260,6 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                 ],
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
-                    "height": 20,
-                    "width": 20,
                 },
             },
             {
@@ -276,8 +274,6 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                 ],
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
-                    "height": 20,
-                    "width": 20,
                 },
             },
         ],
@@ -295,7 +291,7 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
 
 def test_post_prediction(client: TestClient):
     example_json = {
-        "model_name": "model1",
+        "model": "model1",
         "datum": {
             "uid": "file_uid",
             "metadata": [],
@@ -334,7 +330,7 @@ def test_post_prediction(client: TestClient):
 
 def test_post_prediction_classification(client: TestClient):
     example_json = {
-        "model_name": "model1",
+        "model": "model1",
         "datum": {
             "uid": "file_uid",
             "metadata": [
@@ -383,7 +379,7 @@ def test_post_prediction_classification(client: TestClient):
 
 def test_post_prediction_bbox_detection(client: TestClient):
     example_json = {
-        "model_name": "model1",
+        "model": "model1",
         "datum": {
             "uid": "file_uid",
             "metadata": [
@@ -428,7 +424,7 @@ def test_post_prediction_bbox_detection(client: TestClient):
 
 def test_post_prediction_polygon_detection(client: TestClient):
     example_json = {
-        "model_name": "model1",
+        "model": "model1",
         "datum": {
             "uid": "file_uid",
             "metadata": [
@@ -497,12 +493,12 @@ def test_post_prediction_polygon_detection(client: TestClient):
 
 def test_post_prediction_raster_segmentation(client: TestClient):
     example_json = {
-        "model_name": "model1",
+        "model": "model1",
         "datum": {
             "uid": "file_uid",
             "metadata": [
-                {"key": "meta1", "value": 0.4},
-                {"key": "meta1", "value": "v1"},
+                {"key": "height", "value": 20},
+                {"key": "width", "value": 20},
             ],
         },
         "annotations": [
@@ -521,8 +517,6 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                 ],
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
-                    "height": 20,
-                    "width": 20,
                 },
             },
             {
@@ -540,8 +534,6 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                 ],
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
-                    "height": 20,
-                    "width": 20,
                 },
             },
         ],

@@ -78,7 +78,7 @@ def generate_mot_data(num_frames: int):
         labels3 = [create_label("object 3")]
 
         gts = schemas.GroundTruth(
-            dataset_name="test",
+            dataset="test",
             datum=image,
             annotations=[
                 schemas.Annotation(
@@ -101,7 +101,7 @@ def generate_mot_data(num_frames: int):
         groundtruths.append(gts)
 
         pds = schemas.Prediction(
-            model_name="test",
+            model="test",
             datum=image,
             annotations=[
                 schemas.ScoredAnnotation(

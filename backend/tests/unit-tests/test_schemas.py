@@ -332,15 +332,14 @@ def test_core_Datum(metadata):
     schemas.Datum(
         uid="123",
     )
-    schemas.Datum(
-        uid=123,
-    )
 
     # test property `uid`
     with pytest.raises(ValidationError):
         schemas.Datum(uid=("uid",))
     with pytest.raises(ValidationError):
         schemas.Datum(uid="uid@")
+    with pytest.raises(ValidationError):
+        schemas.Datum(uid=123)
 
     # test property `metadata`
     with pytest.raises(ValidationError):
@@ -515,7 +514,9 @@ def test_core_ScoredAnnotation(metadata, bbox, polygon, raster, scored_labels):
             scored_labels=scored_labels[0],
             task_type=enums.TaskType.CLASSIFICATION,
         )
-    assert "value is not a valid list" in str(e.value.errors()[0]["msg"])
+    assert "should be a valid dictionary or instance of ScoredLabel" in str(
+        e.value.errors()[0]["msg"]
+    )
     with pytest.raises(ValidationError) as e:
         schemas.ScoredAnnotation(
             scored_labels=scored_labels[1:],
@@ -573,22 +574,22 @@ def test_core_ScoredAnnotation(metadata, bbox, polygon, raster, scored_labels):
 def test_core_Groundtruth(metadata, groundtruth_annotations):
     # valid
     gt = schemas.GroundTruth(
-        dataset_name="name1",
+        dataset="name1",
         datum=schemas.Datum(uid="uid"),
         annotations=groundtruth_annotations,
     )
 
-    # test property `dataset_name`
-    assert gt.dataset_name == "name1"
+    # test property `dataset`
+    assert gt.dataset == "name1"
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
-            dataset_name=("name",),
+            dataset=("name",),
             datum=schemas.Datum(uid="uid"),
             annotations=groundtruth_annotations,
         )
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
-            dataset_name="name@#$#@",
+            dataset="name@#$#@",
             datum=schemas.Datum(uid="uid"),
             annotations=groundtruth_annotations,
         )
@@ -597,7 +598,7 @@ def test_core_Groundtruth(metadata, groundtruth_annotations):
     assert gt.datum == schemas.Datum(uid="uid")
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
-            dataset_name="name",
+            dataset="name",
             datum="datum_uid",
             annotations=groundtruth_annotations,
         )
@@ -606,19 +607,19 @@ def test_core_Groundtruth(metadata, groundtruth_annotations):
     assert gt.annotations == groundtruth_annotations
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
-            dataset_name="name",
+            dataset="name",
             datum=schemas.Datum(uid="uid"),
             annotations="annotation",
         )
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
-            dataset_name="name",
+            dataset="name",
             datum=schemas.Datum(uid="uid"),
             annotations=[],
         )
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
-            dataset_name="name",
+            dataset="name",
             datum=schemas.Datum(uid="uid"),
             annotations=[groundtruth_annotations[0], 1234],
         )
@@ -627,22 +628,22 @@ def test_core_Groundtruth(metadata, groundtruth_annotations):
 def test_core_Prediction(metadata, predicted_annotations):
     # valid
     md = schemas.Prediction(
-        model_name="name1",
+        model="name1",
         datum=schemas.Datum(uid="uid"),
         annotations=predicted_annotations,
     )
 
-    # test property `model_name`
-    assert md.model_name == "name1"
+    # test property `model`
+    assert md.model == "name1"
     with pytest.raises(ValidationError):
         schemas.Prediction(
-            model_name=("name",),
+            model=("name",),
             datum=schemas.Datum(uid="uid"),
             annotations=predicted_annotations,
         )
     with pytest.raises(ValidationError):
         schemas.Prediction(
-            model_name="name@#$#@",
+            model="name@#$#@",
             datum=schemas.Datum(uid="uid"),
             annotations=predicted_annotations,
         )
@@ -651,7 +652,7 @@ def test_core_Prediction(metadata, predicted_annotations):
     assert md.datum == schemas.Datum(uid="uid")
     with pytest.raises(ValidationError):
         schemas.Prediction(
-            model_name="name",
+            model="name",
             datum="datum_uid",
             annotations=predicted_annotations,
         )
@@ -660,19 +661,19 @@ def test_core_Prediction(metadata, predicted_annotations):
     assert md.annotations == predicted_annotations
     with pytest.raises(ValidationError):
         schemas.Prediction(
-            model_name="name",
+            model="name",
             datum=schemas.Datum(uid="uid"),
             annotations="annotation",
         )
     with pytest.raises(ValidationError):
         schemas.Prediction(
-            model_name="name",
+            model="name",
             datum=schemas.Datum(uid="uid"),
             annotations=[],
         )
     with pytest.raises(ValidationError):
         schemas.Prediction(
-            model_name="name",
+            model="name",
             datum=schemas.Datum(uid="uid"),
             annotations=[predicted_annotations[0], 1234],
         )
@@ -1035,22 +1036,18 @@ def test_geometry_Raster(raster):
     mask = _create_b64_mask(mode="1", size=(height, width))
     assert schemas.Raster(
         mask=mask,
-        height=height,
-        width=width,
     )
 
     # test property `mask`
     with pytest.raises(PIL.UnidentifiedImageError):
         # not any string can be passed
-        schemas.Raster(mask="text", height=height, width=width)
+        schemas.Raster(mask="text")
     with pytest.raises(ValueError) as exc_info:
         base64_mask = _create_b64_mask(
             mode="RGB", ext="png", size=(width, height)
         )
         schemas.Raster(
             mask=base64_mask,  # only supports binary images
-            height=height,
-            width=width,
         )
     assert "Expected image mode to be binary but got mode" in str(exc_info)
     with pytest.raises(ValueError) as exc_info:
@@ -1059,30 +1056,8 @@ def test_geometry_Raster(raster):
         )
         schemas.Raster(
             mask=base64_mask,  # Check we get an error if the format is not PNG
-            height=height,
-            width=width,
         )
     assert "Expected image format PNG but got" in str(exc_info)
-
-    # test property `shape`
-    with pytest.raises(ValidationError):
-        mask = _create_b64_mask(mode="1", ext="PNG", size=(width, height))
-        schemas.Raster(
-            mask=mask,
-            shape="shape",  # Incorrect type
-        )
-    with pytest.raises(ValidationError):
-        mask = _create_b64_mask(mode="1", ext="PNG", size=(width, height))
-        schemas.Raster(
-            mask=mask,
-            shape=(20, 20, 20),  # Incorrectly sized tuple
-        )
-    with pytest.raises(ValidationError):
-        mask = _create_b64_mask(mode="1", ext="PNG", size=(width, height))
-        schemas.Raster(
-            mask=mask,
-            shape=(21, 21),  # size mismatch
-        )
 
 
 """ velour_api.schemas.geojson """

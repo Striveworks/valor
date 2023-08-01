@@ -22,7 +22,7 @@ from .geometry import (
 )
 from .info import Filter, LabelDistribution, ScoredLabelDistribution
 from .jobs import Job
-from .metadata import Image
+from .metadata import Image, VideoFrame
 from .metrics import (
     AccuracyMetric,
     APMetric,
@@ -48,6 +48,7 @@ __all__ = [
     "User",
     "Filter",
     "Image",
+    "VideoFrame",
     "Annotation",
     "ScoredAnnotation",
     "Dataset",
