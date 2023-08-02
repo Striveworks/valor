@@ -1,3 +1,5 @@
+from typing import Union
+
 import numpy
 import PIL
 from PIL.Image import Resampling
@@ -74,7 +76,7 @@ def parse_yolo_image_segmentation(
     uid: str,
     label_key: str = "class",
     resample: Resampling = Resampling.BILINEAR,
-) -> Prediction | None:
+) -> Union[Prediction, None]:
     """Parses Ultralytic's result for an image segmentation task."""
 
     if result.masks.data is None:
