@@ -21,7 +21,7 @@ from .geometry import (
     Raster,
 )
 from .info import Filter, LabelDistribution, ScoredLabelDistribution
-from .jobs import Job
+from .jobs import BackendStatus, EvaluationStatus
 from .metadata import Image, VideoFrame
 from .metrics import (
     AccuracyMetric,
@@ -88,4 +88,6 @@ __all__ = [
     "mAPMetric",
     "mAPMetricAveragedOverIOUs",
     "ConfusionMatrixEntry",
+    "BackendStatus",
+    "EvaluationStatus",
 ]

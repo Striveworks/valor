@@ -62,6 +62,25 @@ class JobStatus(Enum):
     DONE = "done"
 
 
+class Stateflow(str, Enum):
+    CREATE = "create"
+    READY = "ready"
+    EVALUATE = "evaluate"
+    DELETE = "delete"
+
+    def next(self):
+        if self == self.CREATE:
+            return [self.CREATE, self.READY, self.DELETE]
+        elif self == self.READY:
+            return [self.READY, self.EVALUATE, self.DELETE]
+        elif self == self.EVALUATE:
+            return [self.EVALUATE, self.READY]
+        elif self == self.DELETE:
+            return [self.DELETE]
+        else:
+            raise NotImplementedError
+
+
 class Table(str, Enum):
     DATASET = "dataset"
     MODEL = "model"

@@ -4,10 +4,8 @@ from time import perf_counter
 
 import redis
 
-from velour_api import logger
-from velour_api.enums import JobStatus
-from velour_api.exceptions import JobDoesNotExistError
-from velour_api.schemas import Job
+from velour_api import enums, exceptions, logger
+from velour_api.schemas import BackendStatus, EvaluationStatus
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
@@ -58,84 +56,229 @@ def needs_redis(fn):
 
 
 @needs_redis
-def get_job(uid: str) -> Job:
-    json_str = r.get(uid)
+def get_backend_status() -> BackendStatus:
+    json_str = r.get("backend_status")
     if json_str is None:
-        raise JobDoesNotExistError(uid)
-    job_info = json.loads(json_str)
-    return Job(uid=uid, **job_info)
+        return BackendStatus()
+    info = json.loads(json_str)
+    return BackendStatus(**info)
 
 
 @needs_redis
-def get_all_jobs() -> list[Job]:
-    return [get_job(uid) for uid in r.keys()]
+def set_backend_status(status: BackendStatus):
+    r.set("backend_stateflow", status.model_dump_json())
 
 
 @needs_redis
-def add_job(job: Job) -> None:
-    """Adds job to redis"""
-    r.set(job.uid, job.model_dump_json(exclude={"uid"}))
+def get_evaluation_status() -> EvaluationStatus:
+    json_str = r.get("evaluation_status")
+    if json_str is None:
+        return EvaluationStatus()
+    info = json.loads(json_str)
+    return EvaluationStatus(**info)
 
 
-def wrap_method_for_job(
-    fn: callable, job_attribute_name_for_output: str | None = None
-) -> tuple[Job, callable]:
-    """This wraps a method to create and update
-    a job stored in redis with its state and output
+@needs_redis
+def set_evaluation_status(status: EvaluationStatus):
+    r.set("backend_stateflow", status.model_dump_json())
+
+
+def get_names(*args, **kwargs) -> tuple[str, str | None]:
+
+    # unpack dataset_name
+    if "dataset_name" in kwargs:
+        dataset_name = kwargs["dataset_name"]
+    elif len(args) > 0:
+        dataset_name = args[0]
+    else:
+        raise ValueError("dataset_name not provided")
+
+    # unpack model_name
+    if "model_name" in kwargs:
+        model_name = kwargs["model_name"]
+    elif len(args) > 1:
+        model_name = args[1]
+    else:
+        model_name = None
+
+    return (dataset_name, model_name)
+
+
+def update_backend_status(
+    state: enums.Stateflow,
+    dataset_name: str,
+    model_name: str | None = None,
+) -> BackendStatus:
+
+    # get status
+    status = get_backend_status()
+
+    # update status
+    if state == enums.Stateflow.CREATE:
+        if model_name is not None:
+            status.add_model(dataset_name=dataset_name, model_name=model_name)
+        else:
+            status.add_dataset(dataset_name=dataset_name)
+    else:
+        if model_name is not None:
+            status.update_model(
+                dataset_name=dataset_name, model_name=model_name, status=state
+            )
+        else:
+            status.update_dataset(dataset_name=dataset_name, status=state)
+
+    return status
+
+
+def create(fn: callable) -> callable:
+    def wrapper(*args, **kwargs):
+
+        # unpack arguments
+        dataset_name, model_name = get_names(*args, **kwargs)
+
+        # get status
+        status = update_backend_status(
+            state=enums.Stateflow.CREATE,
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
+
+        # execute wrapped method
+        return fn(*args, **kwargs)
+
+        # update backend status
+        set_backend_status(status)
+
+    return wrapper
+
+
+def read(fn: callable) -> callable:
+    def wrapper(*args, **kwargs):
+
+        # unpack arguments
+        dataset_name, model_name = get_names(*args, **kwargs)
+
+        # validate status for read
+        status = get_backend_status()
+        if not status.readable(
+            dataset_name=dataset_name, model_name=model_name
+        ):
+            raise exceptions.StateflowError(
+                "unable to read as a delete operation is in progress"
+            )
+
+        # execute wrapped method
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+def finalize(fn: callable) -> callable:
+    def wrapper(*args, **kwargs):
+
+        # unpack arguments
+        dataset_name, model_name = get_names(*args, **kwargs)
+
+        # get/update state
+        status = update_backend_status(
+            state=enums.Stateflow.READY,
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
+
+        # execute wrapped method
+        ret = fn(*args, **kwargs)
+
+        # update backend status
+        set_backend_status(status)
+
+        return ret
+
+    return wrapper
+
+
+def evaluate(fn: callable) -> callable:
+    def wrapper(*args, **kwargs):
+
+        # unpack arguments
+        dataset_name, model_name = get_names(*args, **kwargs)
+
+        # get status
+        status = update_backend_status(
+            state=enums.Stateflow.EVALUATE,
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
+
+        # execute wrapped method
+        ret = fn(*args, **kwargs)
+
+        # update backend status
+        set_backend_status(status)
+
+        return ret
+
+    return wrapper
+
+
+def delete(fn: callable) -> callable:
+    def wrapper(*args, **kwargs):
+
+        # unpack arguments
+        dataset_name, model_name = get_names(*args, **kwargs)
+
+        # get status
+        status = update_backend_status(
+            state=enums.Stateflow.DELETE,
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
+
+        # execute wrapped method
+        ret = fn(*args, **kwargs)
+
+        # clear status
+        if model_name is not None:
+            status.remove_model(
+                dataset_name=dataset_name, model_name=model_name
+            )
+        else:
+            status.remove_dataset(dataset_name=dataset_name)
+
+        # update backend status
+        set_backend_status(status)
+
+        return ret
+
+    return wrapper
+
+
+def debug(fn: callable) -> callable:
+    """This wraps a method with a debug timer
 
     Parameters
     ----------
     fn
-        the method that computes and stores metrics. This should return an
-        id for a MetricParams row in the db
+        any method
 
     Returns
     -------
-    Job, callable
+    callable
     """
-    job = Job()
-    add_job(job)
 
     def wrapped_method(*args, **kwargs):
         try:
-            job.status = JobStatus.PROCESSING
-            add_job(job)
-            logger.debug(f"starting method {fn} for job {job.uid}")
+            logger.debug(f"starting method {fn}")
             start = perf_counter()
-            fn_output = fn(*args, **kwargs)
+
+            ret = fn(*args, **kwargs)
+
             logger.debug(
-                f"method for job {job.uid} finished in {perf_counter() - start} seconds"
+                f"method finished in {perf_counter() - start} seconds"
             )
-            job.status = JobStatus.DONE
-            if job_attribute_name_for_output is not None:
-                setattr(job, job_attribute_name_for_output, fn_output)
-            add_job(job)
         except Exception as e:
-            job.status = JobStatus.FAILED
-            add_job(job)
             raise e
 
-    return job, wrapped_method
+        return ret
 
-
-def wrap_metric_computation(fn: callable) -> tuple[Job, callable]:
-    """Used for wrapping a metric computation. This will set the resulting
-    evaluation_settings_id as an attribute on the job
-    """
-    return wrap_method_for_job(
-        fn=fn, job_attribute_name_for_output="evaluation_settings_id"
-    )
-
-
-@needs_redis
-def get_status() -> JobStatus:
-    json_str = r.get("stateflow")
-    if json_str is None:
-        return JobStatus(datasets={})
-    info = json.loads(json_str)
-    return JobStatus(**info)
-
-
-@needs_redis
-def set_status(status: JobStatus):
-    r.set("stateflow", status.model_dump_json())
+    return wrapped_method

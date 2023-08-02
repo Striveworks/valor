@@ -68,3 +68,8 @@ class AnnotationAlreadyExistsError(Exception):
 
 class MetaDatumAlreadyExistsError(Exception):
     pass
+
+
+class StateflowError(Exception):
+    def __init__(self, msg: str):
+        return super().__init__(msg)

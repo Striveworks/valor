@@ -521,22 +521,22 @@ def create_ap_metrics(
 
     # @TODO: Add grouping filter
     # check if already exists
-    es = (
-        db.query(models.EvaluationSettings.id)
-        .where(
-            and_(
-                models.EvaluationSettings.model_id == model.id,
-                models.EvaluationSettings.dataset_id == dataset.id,
-                models.EvaluationSettings.min_area == min_area,
-                models.EvaluationSettings.max_area == max_area,
-                models.EvaluationSettings.group_by.is_(None),
-                models.EvaluationSettings.label_key == label_key,
-            )
-        )
-        .one_or_none()
-    )
-    if es is not None:
-        return es.id
+    # es = (
+    #     db.query(models.EvaluationSettings.id)
+    #     .where(
+    #         and_(
+    #             models.EvaluationSettings.model_id == model.id,
+    #             models.EvaluationSettings.dataset_id == dataset.id,
+    #             models.EvaluationSettings.min_area == min_area,
+    #             models.EvaluationSettings.max_area == max_area,
+    #             models.EvaluationSettings.group_by.is_(None),
+    #             models.EvaluationSettings.label_key == label_key,
+    #         )
+    #     )
+    #     .one_or_none()
+    # )
+    # if es is not None:
+    #     return es.id
 
     metrics = compute_ap_metrics(
         db=db,
