@@ -51,7 +51,7 @@ def _polygons_to_binary_mask(
 def combined_segmentation_mask(
     annotated_datums: List[Union[schemas.GroundTruth, schemas.Prediction]],
     label_key: str,
-    task_type: enums.TaskType | None = None,
+    task_type: Union[enums.TaskType, None] = None,
 ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
     """Creates a combined segmentation mask from a list of segmentations
 
@@ -115,7 +115,7 @@ def combined_segmentation_mask(
         task_types = [task_type]
 
     # unpack raster annotations
-    annotations: list[Union[schemas.Annotation, schemas.ScoredAnnotation]] = []
+    annotations: List[Union[schemas.Annotation, schemas.ScoredAnnotation]] = []
     for annotated_datum in annotated_datums:
         for annotation in annotated_datum.annotations:
             if annotation.task_type in task_types:

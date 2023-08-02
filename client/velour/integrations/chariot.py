@@ -380,7 +380,7 @@ def parse_chariot_object_detections(
     detections: Union[Dict, List[Dict]],
     images: Union[Image, List[Image]],
     label_key: str = "class",
-) -> list[Prediction]:
+) -> List[Prediction]:
 
     if not isinstance(detections, list):
         detections = [detections]
