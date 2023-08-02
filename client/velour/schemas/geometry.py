@@ -69,10 +69,12 @@ class BasicPolygon:
                 "BasicPolygon needs at least 3 unique points to be valid."
             )
 
-    def xy_list(self) -> list[Point]:
+    def xy_list(self):
+        """Returns list of `Point` objects."""
         return [pt for pt in self.points]
 
-    def tuple_list(self) -> list[float, float]:
+    def tuple_list(self):
+        """Returns list of points as tuples (x,y)."""
         return [(pt.x, pt.y) for pt in self.points]
 
     @property
