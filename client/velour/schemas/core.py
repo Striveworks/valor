@@ -43,7 +43,7 @@ class Dataset:
 
     def __post_init__(self):
         assert isinstance(self.name, str)
-        assert isinstance(self.id, Union[int, None])
+        assert isinstance(self.id, int) or self.id is None
         assert isinstance(self.metadata, list)
         for i in range(len(self.metadata)):
             if isinstance(self.metadata[i], dict):
@@ -61,7 +61,7 @@ class Model:
 
     def __post_init__(self):
         assert isinstance(self.name, str)
-        assert isinstance(self.id, Union[int, None])
+        assert isinstance(self.id, int) or self.id is None
         assert isinstance(self.metadata, list)
         for i in range(len(self.metadata)):
             if isinstance(self.metadata[i], dict):
@@ -130,7 +130,9 @@ class ScoredLabel:
         # validate
         if not isinstance(self.label, Label):
             raise TypeError("label should be of type `velour.schemas.Label`.")
-        if not isinstance(self.score, Union[float, int]):
+        if isinstance(self.score, int):
+            self.score = float(self.score)
+        if not isinstance(self.score, float):
             raise TypeError("score should be of type `float`")
 
     @property
