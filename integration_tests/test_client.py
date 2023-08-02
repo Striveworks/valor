@@ -8,8 +8,14 @@ from typing import Any
 
 import numpy as np
 import pytest
-from geoalchemy2 import func as gfunc
-from geoalchemy2.functions import ST_AsPNG, ST_AsText, ST_Polygon
+from geoalchemy2.functions import (
+    ST_Area,
+    ST_AsPNG,
+    ST_AsText,
+    ST_Intersection,
+    ST_Polygon,
+    ST_Union,
+)
 from PIL import Image as PILImage
 from sqlalchemy import and_, create_engine, select, text
 from sqlalchemy.orm import Session
@@ -1302,9 +1308,9 @@ def test_iou(
     ).polygon
 
     # scraped from velour_api backend
-    gintersection = gfunc.ST_Intersection(db_gt, db_pred)
-    gunion = gfunc.ST_Union(db_gt, db_pred)
-    iou_computation = gfunc.ST_Area(gintersection) / gfunc.ST_Area(gunion)
+    gintersection = ST_Intersection(db_gt, db_pred)
+    gunion = ST_Union(db_gt, db_pred)
+    iou_computation = ST_Area(gintersection) / ST_Area(gunion)
 
     assert iou(rect1_poly, rect2_poly) == db.scalar(select(iou_computation))
 
