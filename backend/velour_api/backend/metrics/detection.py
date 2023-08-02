@@ -2,7 +2,7 @@ import heapq
 from dataclasses import dataclass
 from typing import Dict, List
 
-from geoalchemy2 import func as gfunc
+from geoalchemy2 import functions as gfunc
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
