@@ -43,41 +43,31 @@ def random_mask_bytes(size: tuple[int, int]) -> bytes:
 
 
 @pytest.fixture
-def mask_bytes1():
-    size = (32, 64)
-    return (random_mask_bytes(size=size), size)
-
-
-@pytest.fixture
-def mask_bytes2():
-    size = (16, 12)
-    return (random_mask_bytes(size=size), size)
-
-
-@pytest.fixture
-def mask_bytes3():
-    size = (20, 27)
-    return (random_mask_bytes(size=size), size)
-
-
-@pytest.fixture
-def img1() -> schemas.Datum:
+def img1() -> schemas.Image:
     return schemas.Image(
         uid="uid1",
-        height=1000,
-        width=2000,
-        frame=0,
-    ).to_datum()
+        height=10,
+        width=20,
+    )
 
 
 @pytest.fixture
-def img2() -> schemas.Datum:
+def img2() -> schemas.Image:
     return schemas.Image(
         uid="uid2",
-        height=1600,
-        width=1200,
-        frame=0,
-    ).to_datum()
+        height=16,
+        width=12,
+    )
+
+
+@pytest.fixture
+def mask_bytes1(img1):
+    return random_mask_bytes(size=(img1.height, img1.width))
+
+
+@pytest.fixture
+def mask_bytes2(img2):
+    return random_mask_bytes(size=(img2.height, img2.width))
 
 
 @pytest.fixture
@@ -205,7 +195,7 @@ def groundtruths(
     ]
     db_gts_per_img = [
         schemas.GroundTruth(
-            dataset_name=dataset_name,
+            dataset=dataset_name,
             datum=image,
             annotations=[
                 schemas.Annotation(
@@ -315,7 +305,7 @@ def predictions(
 
     db_preds_per_img = [
         schemas.Prediction(
-            model_name=model_name,
+            model=model_name,
             datum=image,
             annotations=[
                 schemas.ScoredAnnotation(

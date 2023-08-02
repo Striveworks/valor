@@ -4,7 +4,6 @@ import numpy as np
 from pydantic import (
     BaseModel,
     ConfigDict,
-    Extra,
     Field,
     field_validator,
     model_validator,
@@ -168,7 +167,9 @@ class _BaseConfusionMatrix(BaseModel):
     group: MetaDatum | None = None
 
 
-class ConfusionMatrix(_BaseConfusionMatrix, extra=Extra.allow):
+class ConfusionMatrix(_BaseConfusionMatrix):
+    model_config = ConfigDict(extra="allow")
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         label_values = set(
@@ -193,7 +194,7 @@ class ConfusionMatrix(_BaseConfusionMatrix, extra=Extra.allow):
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
             "label_key": self.label_key,
-            "value": [entry.dict() for entry in self.entries],
+            "value": [entry.model_dump() for entry in self.entries],
             "evaluation_settings_id": evaluation_settings_id,
         }
 

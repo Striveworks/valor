@@ -96,8 +96,8 @@ def poly_with_hole() -> schemas.Polygon:
 def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
-            dataset_name=dset_name,
-            datum=img1,
+            dataset=dset_name,
+            datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -146,8 +146,8 @@ def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
 def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
-            model_name=model_name,
-            datum=img1,
+            model=model_name,
+            datum=img1.to_datum(),
             annotations=[
                 schemas.ScoredAnnotation(
                     task_type=enums.TaskType.DETECTION,
@@ -212,13 +212,13 @@ def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
 def gt_segs_create(
     poly_with_hole: schemas.BasicPolygon,
     poly_without_hole: schemas.BasicPolygon,
-    img1: schemas.Datum,
-    img2: schemas.Datum,
+    img1: schemas.Image,
+    img2: schemas.Image,
 ) -> list[schemas.GroundTruth :]:
     return [
         schemas.GroundTruth(
-            dataset_name=dset_name,
-            datum=img1,
+            dataset=dset_name,
+            datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.INSTANCE_SEGMENTATION,
@@ -228,8 +228,8 @@ def gt_segs_create(
             ],
         ),
         schemas.GroundTruth(
-            dataset_name=dset_name,
-            datum=img2,
+            dataset=dset_name,
+            datum=img2.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
@@ -255,23 +255,17 @@ def gt_segs_create(
 
 @pytest.fixture
 def pred_segs_create(
-    mask_bytes1: tuple[bytes, tuple[float, float]],
-    mask_bytes2: tuple[bytes, tuple[float, float]],
-    mask_bytes3: tuple[bytes, tuple[float, float]],
-    img1: schemas.Datum,
+    mask_bytes1: bytes,
+    mask_bytes2: bytes,
+    img1: schemas.Image,
 ) -> list[schemas.Prediction]:
 
-    mask_bytes1, shape1 = mask_bytes1
-    mask_bytes2, shape2 = mask_bytes2
-    mask_bytes3, shape3 = mask_bytes3
-
     b64_mask1 = b64encode(mask_bytes1).decode()
-    b64_mask2 = b64encode(mask_bytes2).decode()
-    b64_mask3 = b64encode(mask_bytes3).decode()
+
     return [
         schemas.Prediction(
-            model_name=model_name,
-            datum=img1,
+            model=model_name,
+            datum=img1.to_datum(),
             annotations=[
                 schemas.ScoredAnnotation(
                     task_type=enums.TaskType.INSTANCE_SEGMENTATION,
@@ -287,8 +281,6 @@ def pred_segs_create(
                     ],
                     raster=schemas.Raster(
                         mask=b64_mask1,
-                        height=shape1[0],
-                        width=shape1[1],
                     ),
                 ),
                 schemas.ScoredAnnotation(
@@ -304,9 +296,7 @@ def pred_segs_create(
                         ),
                     ],
                     raster=schemas.Raster(
-                        mask=b64_mask2,
-                        height=shape2[0],
-                        width=shape2[1],
+                        mask=b64_mask1,
                     ),
                 ),
                 schemas.ScoredAnnotation(
@@ -322,9 +312,7 @@ def pred_segs_create(
                         ),
                     ],
                     raster=schemas.Raster(
-                        mask=b64_mask2,
-                        height=shape2[0],
-                        width=shape2[1],
+                        mask=b64_mask1,
                     ),
                 ),
                 schemas.ScoredAnnotation(
@@ -340,9 +328,7 @@ def pred_segs_create(
                         ),
                     ],
                     raster=schemas.Raster(
-                        mask=b64_mask3,
-                        height=shape3[0],
-                        width=shape3[1],
+                        mask=b64_mask1,
                     ),
                 ),
             ],
@@ -352,13 +338,13 @@ def pred_segs_create(
 
 @pytest.fixture
 def gt_clfs_create(
-    img1: schemas.Datum,
-    img2: schemas.Datum,
+    img1: schemas.Image,
+    img2: schemas.Image,
 ) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
-            dataset_name=dset_name,
-            datum=img1,
+            dataset=dset_name,
+            datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -370,8 +356,8 @@ def gt_clfs_create(
             ],
         ),
         schemas.GroundTruth(
-            dataset_name=dset_name,
-            datum=img2,
+            dataset=dset_name,
+            datum=img2.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -384,12 +370,12 @@ def gt_clfs_create(
 
 @pytest.fixture
 def pred_clfs_create(
-    img1: schemas.Datum, img2: schemas.Datum
+    img1: schemas.Image, img2: schemas.Image
 ) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
-            model_name=model_name,
-            datum=img1,
+            model=model_name,
+            datum=img1.to_datum(),
             annotations=[
                 schemas.ScoredAnnotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -411,8 +397,8 @@ def pred_clfs_create(
             ],
         ),
         schemas.Prediction(
-            model_name=model_name,
-            datum=img2,
+            model=model_name,
+            datum=img2.to_datum(),
             annotations=[
                 schemas.ScoredAnnotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -460,7 +446,7 @@ def dataset_model_create(
         schemas.Dataset(name=dataset_names[0]),
     )
     for gt in gt_dets_create:
-        gt.dataset_name = dataset_names[0]
+        gt.dataset = dataset_names[0]
         crud.create_groundtruth(db, gt)
     crud.finalize(db, dataset_names[0])
 
@@ -469,8 +455,8 @@ def dataset_model_create(
 
     # Link model1 to dataset1
     for pd in pred_dets_create:
-        # pd.dataset_name = datasets[0]
-        pd.model_name = model_names[0]
+        # pd.dataset = dataset_names[0]
+        pd.model = model_names[0]
         crud.create_prediction(db, pd)
 
     # Finalize model1 over dataset1
@@ -480,7 +466,7 @@ def dataset_model_create(
         model_name=model_names[0],
     )
 
-    # yield
+    yield
 
     # clean up
     crud.delete_model(db, model_names[0])
@@ -513,10 +499,6 @@ def test_create_and_get_datasets(db: Session):
     datasets = crud.get_datasets(db)
     assert len(datasets) == 2
     assert set([d.name for d in datasets]) == {dset_name, "other_dataset"}
-
-    # clean up
-    crud.delete_dataset(db, dset_name)
-    crud.delete_dataset(db, "other dataset")
 
 
 def test_create_and_get_models(db: Session):
@@ -556,9 +538,9 @@ def test_create_detection_ground_truth_and_delete_dataset(
     # verify we get the same dets back
     for gt in gt_dets_create:
         new_gt = crud.get_groundtruth(
-            db, dataset_name=gt.dataset_name, datum_uid=gt.datum.uid
+            db, dataset_name=gt.dataset, datum_uid=gt.datum.uid
         )
-        assert gt.dataset_name == new_gt.dataset_name
+        assert gt.dataset == new_gt.dataset
         assert gt.datum == new_gt.datum
         for gta, new_gta in zip(gt.annotations, new_gt.annotations):
             assert set(gta.labels) == set(new_gta.labels)
@@ -595,7 +577,7 @@ def test_create_detection_prediction_and_delete_model(
     # check this gives an error since the datums haven't been added yet
     with pytest.raises(exceptions.DatumDoesNotExistError) as exc_info:
         for pd in pred_dets_create:
-            pd.model_name = model_name
+            pd.model = model_name
             crud.create_prediction(db, pd)
     assert "Datum with uid" in str(exc_info)
 
@@ -657,8 +639,8 @@ def test_create_detections_as_bbox_or_poly(db: Session, img1: schemas.Datum):
     crud.create_groundtruth(
         db,
         schemas.GroundTruth(
-            dataset_name=dset_name,
-            datum=img1,
+            dataset=dset_name,
+            datum=img1.to_datum(),
             annotations=[det1, det2],
         ),
     )
@@ -682,7 +664,7 @@ def test_create_classification_groundtruth_and_delete_dataset(
     crud.create_dataset(db, schemas.Dataset(name=dset_name))
 
     for gt in gt_clfs_create:
-        gt.dataset_name = dset_name
+        gt.dataset = dset_name
         crud.create_groundtruth(db, gt)
 
     # should have three GroundTruthClassification rows since one image has two
@@ -716,35 +698,20 @@ def test_create_predicted_classifications_and_delete_model(
 
     crud.create_model(db, schemas.Model(name=model_name))
 
-    # create dataset without images or predictions
-    crud.create_dataset(
-        db,
-        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-
-    # finalize early
-    crud.finalize_dataset(db, dset_name)
-
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.DatumDoesNotExistError) as exc_info:
         crud.create_prediction(db, pred_clfs_create[0])
     assert "Datum with uid" in str(exc_info)
 
-    # finalize
-    crud.finalize_inferences(db, model_name=model_name, dataset_name=dset_name)
-
-    # reset dataset
-    crud.delete_dataset(db, dset_name)
-
     # create dataset, add images, and add predictions
     crud.create_dataset(db, schemas.Dataset(name=dset_name))
 
     for gt in gt_clfs_create:
-        gt.dataset_name = dset_name
+        gt.dataset = dset_name
         crud.create_groundtruth(db, gt)
 
     for pd in pred_clfs_create:
-        pd.model_name = model_name
+        pd.model = model_name
         crud.create_prediction(db, pd)
 
     # check db has the added predictions
@@ -772,7 +739,7 @@ def test_create_groundtruth_segmentations_and_delete_dataset(
     crud.create_dataset(db, schemas.Dataset(name=dset_name))
 
     for gt in gt_segs_create:
-        gt.dataset_name = dset_name
+        gt.dataset = dset_name
         crud.create_groundtruth(db, gt)
 
     assert db.scalar(func.count(models.Annotation.id)) == 4
@@ -810,7 +777,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.DatumDoesNotExistError) as exc_info:
         for pd in pred_segs_create:
-            pd.model_name = model_name
+            pd.model = model_name
             crud.create_prediction(db, pd)
     assert "Datum with uid" in str(exc_info)
 
@@ -818,11 +785,11 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     crud.create_dataset(db, schemas.Dataset(name=dset_name))
 
     for gt in gt_segs_create:
-        gt.dataset_name = dset_name
+        gt.dataset = dset_name
         crud.create_groundtruth(db, gt)
 
     for pd in pred_segs_create:
-        pd.model_name = model_name
+        pd.model = model_name
         crud.create_prediction(db, pd)
 
     # check db has the added predictions
@@ -854,51 +821,10 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     assert db.scalar(func.count(models.Prediction.id)) == 0
 
 
-def test_get_labels(
-    db: Session, gt_dets_create: schemas.GroundTruthDetectionsCreate
-):
-    crud.create_dataset(
-        db,
-        schemas.Dataset(name=dset_name, type=schemas.DatumTypes.IMAGE),
-    )
-    crud.create_groundtruth_detections(db, data=gt_dets_create)
-    labels = crud.get_labels_from_dataset(
-        db,
-        dset_name,
-        of_type=[enums.AnnotationType.BBOX, enums.AnnotationType.POLYGON],
-    )
-
-    assert len(labels) == 2
-    assert set([(label.key, label.value) for label in labels]) == set(
-        [("k1", "v1"), ("k2", "v2")]
-    )
-
-    assert (
-        crud.get_labels_from_dataset(
-            db, dset_name, of_type=[enums.AnnotationType.CLASSIFICATION]
-        )
-        == []
-    )
-    assert (
-        crud.get_labels_from_dataset(
-            db,
-            "not a dataset",
-            of_type=[enums.AnnotationType.BBOX, enums.AnnotationType.POLYGON],
-        )
-        == []
-    )
-    assert (
-        crud.get_labels_from_dataset(
-            db, dset_name, of_type=[enums.AnnotationType.RASTER]
-        )
-        == []
-    )
-
-
 def test_segmentation_area_no_hole(
     db: Session,
     poly_without_hole: schemas.Polygon,
-    img1: schemas.Datum,
+    img1: schemas.Image,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -908,8 +834,8 @@ def test_segmentation_area_no_hole(
     crud.create_groundtruth(
         db,
         schemas.GroundTruth(
-            dataset_name=dset_name,
-            datum=img1,
+            dataset=dset_name,
+            datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.INSTANCE_SEGMENTATION,
@@ -938,8 +864,8 @@ def test_segmentation_area_with_hole(
     crud.create_groundtruth(
         db,
         schemas.GroundTruth(
-            dataset_name=dset_name,
-            datum=img1,
+            dataset=dset_name,
+            datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
@@ -962,7 +888,7 @@ def test_segmentation_area_multi_polygon(
     db: Session,
     poly_with_hole: schemas.Polygon,
     poly_without_hole: schemas.Polygon,
-    img1: schemas.Datum,
+    img1: schemas.Image,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -972,8 +898,8 @@ def test_segmentation_area_multi_polygon(
     crud.create_groundtruth(
         db,
         schemas.GroundTruth(
-            dataset_name=dset_name,
-            datum=img1,
+            dataset=dset_name,
+            datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.INSTANCE_SEGMENTATION,
@@ -1043,7 +969,7 @@ def test_gt_seg_as_mask_or_polys(db: Session):
         ),
     )
     gt = schemas.GroundTruth(
-        dataset_name=dset_name,
+        dataset=dset_name,
         datum=img,
         annotations=[gt1, gt2],
     )
@@ -1093,8 +1019,8 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     ):
         request_info = schemas.APRequest(
             settings=schemas.EvaluationSettings(
-                model_name="test_model",
-                dataset_name="test_dataset",
+                model="test_model",
+                dataset="test_dataset",
                 min_area=min_area,
                 max_area=max_area,
                 task_type=enums.TaskType.DETECTION,
@@ -1108,8 +1034,8 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
 
         missing_pred_labels, ignored_pred_labels = crud.get_disjoint_labels(
             db,
-            dataset_name=request_info.settings.dataset_name,
-            model_name=request_info.settings.model_name,
+            dataset_name=request_info.settings.dataset,
+            model_name=request_info.settings.model,
         )
 
         return (
@@ -1127,17 +1053,17 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     #     method_to_test(label_key="class")
 
     # # finalize dataset
-    # crud.finalize(db, dataset_name="test_dataset")
+    # crud.finalize(db, dataset="test_dataset")
 
     # # now if we try again we should get an error that inferences aren't finalized
     # with pytest.raises(exceptions.InferencesAreNotFinalizedError):
     #     method_to_test(label_key="class")
 
     # # verify we have no evaluations yet
-    # assert len(crud.get_model_evaluation_settings(db, model_name)) == 0
+    # assert len(crud.get_model_evaluation_settings(db, model)) == 0
 
     # # finalize inferences and try again
-    # crud.finalize(db, model_name=model_name, dataset_name=dset_name)
+    # crud.finalize(db, model=model, dataset=dset_name)
 
     (
         evaluation_settings_id,
@@ -1232,8 +1158,8 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     model_evals = crud.get_model_evaluation_settings(db, model_name)
     assert len(model_evals) == 2
     assert model_evals[0] == schemas.EvaluationSettings(
-        model_name=model_name,
-        dataset_name=dset_name,
+        model=model_name,
+        dataset=dset_name,
         task_type=enums.TaskType.DETECTION,
         gt_type=enums.AnnotationType.BOX,
         pd_type=enums.AnnotationType.BOX,
@@ -1241,8 +1167,8 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         id=1,
     )
     assert model_evals[1] == schemas.EvaluationSettings(
-        model_name=model_name,
-        dataset_name=dset_name,
+        model=model_name,
+        dataset=dset_name,
         task_type=enums.TaskType.DETECTION,
         gt_type=enums.AnnotationType.BOX,
         pd_type=enums.AnnotationType.BOX,
@@ -1263,26 +1189,26 @@ def test_create_clf_metrics(
         dataset=schemas.Dataset(name=dset_name),
     )
     for gt in gt_clfs_create:
-        gt.dataset_name = dset_name
+        gt.dataset = dset_name
         crud.create_groundtruth(db, gt)
     crud.finalize(db, dset_name)
 
     crud.create_model(db, schemas.Model(name=model_name))
     for pd in pred_clfs_create:
-        pd.model_name = model_name
+        pd.model = model_name
         crud.create_prediction(db, pd)
     crud.finalize(db, model_name, dset_name)
 
     request_info = schemas.ClfMetricsRequest(
         settings=schemas.EvaluationSettings(
-            model_name=model_name, dataset_name=dset_name
+            model=model_name, dataset=dset_name
         )
     )
 
     missing_pred_keys, ignored_pred_keys = crud.get_disjoint_keys(
         db,
-        dataset_name=request_info.settings.dataset_name,
-        model_name=request_info.settings.model_name,
+        dataset_name=request_info.settings.dataset,
+        model_name=request_info.settings.model,
     )
 
     assert missing_pred_keys == []
@@ -1505,7 +1431,7 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_labels(
         db,
         schemas.Filter(
-            dataset_names=[dataset_names[0]],
+            datasets=[dataset_names[0]],
             allow_predictions=False,
         ),
     )
@@ -1517,7 +1443,7 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_labels(
         db,
         schemas.Filter(
-            dataset_names=[dataset_names[0]],
+            datasets=[dataset_names[0]],
             allow_predictions=False,
             task_types=[
                 enums.TaskType.CLASSIFICATION,
@@ -1532,7 +1458,7 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_labels(
         db,
         schemas.Filter(
-            dataset_names=[dataset_names[0]],
+            datasets=[dataset_names[0]],
             allow_predictions=False,
             task_types=[enums.TaskType.DETECTION],
         ),
@@ -1545,7 +1471,7 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_labels(
         db,
         schemas.Filter(
-            dataset_names=[dataset_names[0]],
+            datasets=[dataset_names[0]],
             allow_predictions=False,
             annotation_types=[
                 enums.AnnotationType.POLYGON,
@@ -1560,7 +1486,7 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_labels(
         db,
         schemas.Filter(
-            dataset_names=[dataset_names[0]],
+            datasets=[dataset_names[0]],
             allow_predictions=False,
             annotation_types=[enums.AnnotationType.BOX],
         ),
@@ -1580,7 +1506,7 @@ def test_get_labels_from_model(
     md1 = crud.get_labels(
         db,
         schemas.Filter(
-            model_names=[model_names[0]],
+            models=[model_names[0]],
             allow_groundtruths=False,
         ),
     )
@@ -1594,7 +1520,7 @@ def test_get_labels_from_model(
     md1 = crud.get_labels(
         db,
         schemas.Filter(
-            model_names=[model_names[0]],
+            models=[model_names[0]],
             task_types=[enums.TaskType.CLASSIFICATION],
             allow_groundtruths=False,
         ),
@@ -1605,7 +1531,7 @@ def test_get_labels_from_model(
     md1 = crud.get_labels(
         db,
         schemas.Filter(
-            model_names=[model_names[0]],
+            models=[model_names[0]],
             annotation_types=[enums.AnnotationType.BOX],
             allow_groundtruths=False,
         ),

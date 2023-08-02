@@ -371,8 +371,8 @@ class BackendQuery:
         """Parses `schemas.Filter` and operates all filters."""
 
         # generate filter expressions
-        self.filter_by_dataset_names(req.dataset_names)
-        self.filter_by_model_names(req.model_names)
+        self.filter_by_dataset_names(req.datasets)
+        self.filter_by_model_names(req.models)
         self.filter_by_datum_uids(req.datum_uids)
         self.filter_by_task_types(req.task_types)
         self.filter_by_annotation_types(req.annotation_types)

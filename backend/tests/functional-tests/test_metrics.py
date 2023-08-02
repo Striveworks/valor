@@ -3,12 +3,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
-from velour_api.backend.metrics import compute_ap_metrics
 from velour_api.backend.metrics.classification import (
     accuracy_from_cm,
     confusion_matrix_at_label_key,
     roc_auc,
 )
+from velour_api.backend.metrics.detection import compute_ap_metrics
 from velour_api.backend.models import GroundTruth, MetaDatum, Prediction
 
 dataset_name = "test_dataset"
@@ -65,7 +65,7 @@ def classification_test_data(db: Session):
 
     gts = [
         schemas.GroundTruth(
-            dataset_name=dataset_name,
+            dataset=dataset_name,
             datum=imgs[i],
             annotations=[
                 schemas.Annotation(
@@ -82,7 +82,7 @@ def classification_test_data(db: Session):
 
     preds = [
         schemas.Prediction(
-            model_name=model_name,
+            model=model_name,
             datum=imgs[i],
             annotations=[
                 schemas.ScoredAnnotation(
@@ -293,8 +293,8 @@ def _get_md1_val0_id(db):
 
 #     cm = confusion_matrix_at_label_key(
 #         db,
-#         dataset_name=dataset_name,
-#         model_name=model_name,
+#         dataset=dataset_name,
+#         model=model_name,
 #         label_key="animal",
 #         metadatum_id=metadatum_id,
 #     )
