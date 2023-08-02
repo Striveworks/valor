@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 import pytest
 
@@ -6,7 +8,7 @@ from velour.schemas.core import _validate_href
 
 
 @pytest.fixture
-def box_points() -> list[schemas.Point]:
+def box_points() -> List[schemas.Point]:
     return [
         schemas.Point(x=0, y=0),
         schemas.Point(x=10, y=0),

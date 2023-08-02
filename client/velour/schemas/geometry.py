@@ -1,7 +1,7 @@
 import io
 from base64 import b64decode, b64encode
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Union
 
 import numpy as np
 import PIL.Image
@@ -13,9 +13,9 @@ class Point:
     y: float
 
     def __post_init__(self):
-        if not isinstance(self.x, float | int):
+        if not isinstance(self.x, Union[float, int]):
             raise TypeError("Point coordinates should be `float` type.")
-        if not isinstance(self.y, float | int):
+        if not isinstance(self.y, Union[float, int]):
             raise TypeError("Point coordinates should be `float` type.")
         self.x = float(self.x)
         self.y = float(self.y)

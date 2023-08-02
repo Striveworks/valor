@@ -23,7 +23,7 @@ class MetaDatum:
             self.value = float(self.value)
         if not isinstance(self.key, str):
             raise TypeError("Name parameter should always be of type string.")
-        if not isinstance(self.value, float | str | GeoJSON):
+        if not isinstance(self.value, Union[float, str, GeoJSON]):
             raise NotImplementedError(
                 f"Value {self.value} has unsupported type {type(self.value)}"
             )
@@ -39,7 +39,7 @@ class Dataset:
 
     def __post_init__(self):
         assert isinstance(self.name, str)
-        assert isinstance(self.id, int | None)
+        assert isinstance(self.id, Union[int, None])
         assert isinstance(self.metadata, list)
         for i in range(len(self.metadata)):
             if isinstance(self.metadata[i], dict):
@@ -57,7 +57,7 @@ class Model:
 
     def __post_init__(self):
         assert isinstance(self.name, str)
-        assert isinstance(self.id, int | None)
+        assert isinstance(self.id, Union[int, None])
         assert isinstance(self.metadata, list)
         for i in range(len(self.metadata)):
             if isinstance(self.metadata[i], dict):
@@ -126,7 +126,7 @@ class ScoredLabel:
         # validate
         if not isinstance(self.label, Label):
             raise TypeError("label should be of type `velour.schemas.Label`.")
-        if not isinstance(self.score, float | int):
+        if not isinstance(self.score, Union[float, int]):
             raise TypeError("score should be of type `float`")
 
     @property
