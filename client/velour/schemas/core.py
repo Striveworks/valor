@@ -70,8 +70,8 @@ class Model:
 @dataclass
 class Info:
     type: enums.DataType = None
-    annotation_types: list[enums.AnnotationType] = field(default_factory=list)
-    associated_datasets: list[str] = field(default_factory=list)
+    annotation_types: List[enums.AnnotationType] = field(default_factory=list)
+    associated_datasets: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -302,7 +302,7 @@ class ScoredAnnotation:
 @dataclass
 class GroundTruth:
     datum: Datum
-    annotations: list[Annotation] = field(default_factory=list)
+    annotations: List[Annotation] = field(default_factory=list)
     dataset: str = field(default="")
 
     def __post_init__(self):
@@ -333,7 +333,7 @@ class GroundTruth:
 @dataclass
 class Prediction:
     datum: Datum
-    annotations: list[ScoredAnnotation] = field(default_factory=list)
+    annotations: List[ScoredAnnotation] = field(default_factory=list)
     model: str = field(default="")
 
     def __post_init__(self):
