@@ -180,7 +180,7 @@ class BoundingBox:
 
 @dataclass
 class MultiPolygon:
-    polygons = field(default_factory=list)
+    polygons: list[Polygon] = field(default_factory=list)
 
     def __post_init__(self):
         # unpack & validate
