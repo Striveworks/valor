@@ -23,7 +23,11 @@ class MetaDatum:
             self.value = float(self.value)
         if not isinstance(self.key, str):
             raise TypeError("Name parameter should always be of type string.")
-        if not isinstance(self.value, Union[float, str, GeoJSON]):
+        if (
+            not isinstance(self.value, float)
+            and not isinstance(self.value, str)
+            and not isinstance(self.value, GeoJSON)
+        ):
             raise NotImplementedError(
                 f"Value {self.value} has unsupported type {type(self.value)}"
             )
