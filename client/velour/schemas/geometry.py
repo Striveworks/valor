@@ -108,7 +108,7 @@ class BasicPolygon:
 @dataclass
 class Polygon:
     boundary: BasicPolygon
-    holes = field(default_factory=list)
+    holes: List[BasicPolygon] = field(default_factory=list)
 
     def __post_init__(self):
         # unpack & validate
