@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import List
 
 from velour import schemas
 
@@ -8,7 +9,7 @@ class Image:
     uid: str
     height: int
     width: int
-    metadata: list[schemas.MetaDatum] = field(default_factory=list)
+    metadata: List[schemas.MetaDatum] = field(default_factory=list)
 
     def __post_init__(self):
         if not isinstance(self.uid, str):
