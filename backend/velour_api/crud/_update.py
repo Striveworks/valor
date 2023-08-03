@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
 
-from velour_api.backend import state
+from velour_api.backend import jobs
 
 
 # @TODO
-@state.update
+@jobs.update
 def finalize(db: Session, dataset_name: str, model_name: str = None):
     if model_name:
         # finalize inferences

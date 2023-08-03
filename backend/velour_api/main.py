@@ -389,18 +389,16 @@ def create_ap_metrics(
     db: Session = Depends(get_db),
 ) -> schemas.CreateAPMetricsResponse:
     try:
-        # @TODO: Make this actually a job
-        job_id = crud.create_ap_metrics(db, data)
-        missing_pred_labels, ignored_pred_labels = crud.get_disjoint_labels(
-            db,
-            dataset_name=data.settings.dataset,
-            model_name=data.settings.model,
+        # create evaluation
+        resp = crud.create_ap_evaluation(db, data)
+        # add metric computation to background tasks
+        background_tasks.add_task(
+            crud.create_ap_metrics,
+            db=db,
+            request_info=data,
+            evaluation_settings_id=resp.evaluation_settings_id,
         )
-        return schemas.CreateAPMetricsResponse(
-            missing_pred_labels=missing_pred_labels,
-            ignored_pred_labels=ignored_pred_labels,
-            job_id=job_id,
-        )
+        return resp
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except (
@@ -419,18 +417,16 @@ def create_clf_metrics(
     db: Session = Depends(get_db),
 ) -> schemas.CreateClfMetricsResponse:
     try:
-        # @TODO: Make this actually a job
-        job_id = crud.create_clf_metrics(db, data)
-        missing_pred_keys, ignored_pred_keys = crud.get_disjoint_keys(
-            db,
-            dataset_name=data.settings.dataset,
-            model_name=data.settings.model,
+        # create evaluation
+        resp = crud.create_clf_evaluation(db, data)
+        # add metric computation to background tasks
+        background_tasks.add_task(
+            crud.create_clf_metrics,
+            db=db,
+            request_info=data,
+            evaluation_settings_id=resp.evaluation_settings_id,
         )
-        return schemas.CreateClfMetricsResponse(
-            missing_pred_keys=missing_pred_keys,
-            ignored_pred_keys=ignored_pred_keys,
-            job_id=job_id,
-        )
+        return resp
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except (

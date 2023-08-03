@@ -1,4 +1,9 @@
-from .metrics import create_ap_metrics, create_clf_metrics
+from .metrics import (
+    create_ap_evaluation,
+    create_ap_metrics,
+    create_clf_evaluation,
+    create_clf_metrics,
+)
 from .ops import BackendQuery
 from .query import (
     create_dataset,
@@ -61,4 +66,6 @@ __all__ = [
     "get_datums",
     "create_ap_metrics",
     "create_clf_metrics",
+    "create_ap_evaluation",
+    "create_clf_evaluation",
 ]

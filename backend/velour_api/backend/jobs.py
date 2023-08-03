@@ -5,7 +5,7 @@ from time import perf_counter
 import redis
 
 from velour_api import enums, exceptions, logger
-from velour_api.schemas import BackendStatus, EvaluationStatus
+from velour_api.schemas import BackendStatus, EvaluationJobs
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
@@ -56,7 +56,32 @@ def needs_redis(fn):
 
 
 @needs_redis
-def get_backend_status() -> BackendStatus:
+def get_evaluation_status(id: int) -> enums.JobStatus:
+    json_str = r.get("evaluation_jobs")
+    if json_str is None:
+        raise RuntimeError("no evaluation jobs exists")
+    info = json.loads(json_str)
+    jobs = EvaluationJobs(**info)
+
+    if id not in jobs.evaluations:
+        raise exceptions.EvaluationJobDoesNotExistError(id)
+    return jobs.evaluations[id]
+
+
+@needs_redis
+def set_evaluation_status(id: int, status: enums.JobStatus):
+    json_str = r.get("evaluation_jobs")
+    if json_str is None:
+        jobs = EvaluationJobs(evaluations=dict())
+    else:
+        info = json.loads(json_str)
+        jobs = EvaluationJobs(**info)
+    jobs.evaluations[id] = status
+    r.set("evaluation_jobs", jobs.model_dump_json())
+
+
+@needs_redis
+def _get_backend_status() -> BackendStatus:
     json_str = r.get("backend_status")
     if json_str is None:
         return BackendStatus()
@@ -65,30 +90,18 @@ def get_backend_status() -> BackendStatus:
 
 
 @needs_redis
-def set_backend_status(status: BackendStatus):
+def _set_backend_status(status: BackendStatus):
     r.set("backend_stateflow", status.model_dump_json())
 
 
-@needs_redis
-def get_evaluation_status() -> EvaluationStatus:
-    json_str = r.get("evaluation_status")
-    if json_str is None:
-        return EvaluationStatus()
-    info = json.loads(json_str)
-    return EvaluationStatus(**info)
-
-
-@needs_redis
-def set_evaluation_status(status: EvaluationStatus):
-    r.set("backend_stateflow", status.model_dump_json())
-
-
-def get_names(*args, **kwargs) -> tuple[str, str | None]:
+def _get_names(*args, **kwargs) -> tuple[str, str | None]:
 
     # unpack dataset_name
     if "dataset_name" in kwargs:
         dataset_name = kwargs["dataset_name"]
     elif len(args) > 0:
+        if not isinstance(args[0], str):
+            raise ValueError("dataset_name must be of type `str`")
         dataset_name = args[0]
     else:
         raise ValueError("dataset_name not provided")
@@ -97,6 +110,8 @@ def get_names(*args, **kwargs) -> tuple[str, str | None]:
     if "model_name" in kwargs:
         model_name = kwargs["model_name"]
     elif len(args) > 1:
+        if not isinstance(args[1], str):
+            raise ValueError("model_name must be of type `str`")
         model_name = args[1]
     else:
         model_name = None
@@ -104,50 +119,55 @@ def get_names(*args, **kwargs) -> tuple[str, str | None]:
     return (dataset_name, model_name)
 
 
-def update_backend_status(
+def _validate_backend_status(
     state: enums.Stateflow,
     dataset_name: str,
     model_name: str | None = None,
 ) -> BackendStatus:
 
-    # get status
-    status = get_backend_status()
+    # get current status
+    current_status = _get_backend_status()
 
     # update status
-    if state == enums.Stateflow.CREATE:
+    if current_status == enums.Stateflow.CREATE:
         if model_name is not None:
-            status.add_model(dataset_name=dataset_name, model_name=model_name)
+            current_status.add_model(
+                dataset_name=dataset_name, model_name=model_name
+            )
         else:
-            status.add_dataset(dataset_name=dataset_name)
+            current_status.add_dataset(dataset_name=dataset_name)
     else:
         if model_name is not None:
-            status.update_model(
+            current_status.update_model(
                 dataset_name=dataset_name, model_name=model_name, status=state
             )
         else:
-            status.update_dataset(dataset_name=dataset_name, status=state)
+            current_status.update_dataset(
+                dataset_name=dataset_name, status=state
+            )
 
-    return status
+    return current_status
 
 
 def create(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
         # unpack arguments
-        dataset_name, model_name = get_names(*args, **kwargs)
+        dataset_name, model_name = _get_names(*args, **kwargs)
 
-        # get status
-        status = update_backend_status(
-            state=enums.Stateflow.CREATE,
-            dataset_name=dataset_name,
-            model_name=model_name,
+        # validate and update status
+        _set_backend_status(
+            _validate_backend_status(
+                state=enums.Stateflow.CREATE,
+                dataset_name=dataset_name,
+                model_name=model_name,
+            )
         )
 
         # execute wrapped method
-        return fn(*args, **kwargs)
+        result = fn(*args, **kwargs)
 
-        # update backend status
-        set_backend_status(status)
+        return result
 
     return wrapper
 
@@ -156,10 +176,10 @@ def read(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
         # unpack arguments
-        dataset_name, model_name = get_names(*args, **kwargs)
+        dataset_name, model_name = _get_names(*args, **kwargs)
 
         # validate status for read
-        status = get_backend_status()
+        status = _get_backend_status()
         if not status.readable(
             dataset_name=dataset_name, model_name=model_name
         ):
@@ -177,58 +197,70 @@ def finalize(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
         # unpack arguments
-        dataset_name, model_name = get_names(*args, **kwargs)
+        dataset_name, model_name = _get_names(*args, **kwargs)
 
-        # get/update state
-        status = update_backend_status(
-            state=enums.Stateflow.READY,
-            dataset_name=dataset_name,
-            model_name=model_name,
+        # validate and update status
+        _set_backend_status(
+            _validate_backend_status(
+                state=enums.Stateflow.READY,
+                dataset_name=dataset_name,
+                model_name=model_name,
+            )
         )
 
         # execute wrapped method
-        ret = fn(*args, **kwargs)
+        result = fn(*args, **kwargs)
 
-        # update backend status
-        set_backend_status(status)
-
-        return ret
+        return result
 
     return wrapper
 
 
-def evaluate(fn: callable) -> callable:
-    def wrapper(*args, **kwargs):
+def evalutate(persist: bool = False) -> callable:
+    """ """
 
-        # unpack arguments
-        dataset_name, model_name = get_names(*args, **kwargs)
+    def decorator(fn: callable):
+        def wrapper(*args, **kwargs):
+            # unpack arguments
+            dataset_name, model_name = _get_names(*args, **kwargs)
 
-        # get status
-        status = update_backend_status(
-            state=enums.Stateflow.EVALUATE,
-            dataset_name=dataset_name,
-            model_name=model_name,
-        )
+            # validate status
+            _set_backend_status(
+                _validate_backend_status(
+                    state=enums.Stateflow.EVALUATE,
+                    dataset_name=dataset_name,
+                    model_name=model_name,
+                )
+            )
 
-        # execute wrapped method
-        ret = fn(*args, **kwargs)
+            # execute wrapped method
+            result = fn(*args, **kwargs)
 
-        # update backend status
-        set_backend_status(status)
+            # conditional: persist the state after method is executed
+            if not persist:
+                _set_backend_status(
+                    _validate_backend_status(
+                        state=enums.Stateflow.READY,
+                        dataset_name=dataset_name,
+                        model_name=model_name,
+                    )
+                )
 
-        return ret
+            return result
 
-    return wrapper
+        return wrapper
+
+    return decorator
 
 
 def delete(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
         # unpack arguments
-        dataset_name, model_name = get_names(*args, **kwargs)
+        dataset_name, model_name = _get_names(*args, **kwargs)
 
         # get status
-        status = update_backend_status(
+        status = _validate_backend_status(
             state=enums.Stateflow.DELETE,
             dataset_name=dataset_name,
             model_name=model_name,
@@ -246,7 +278,7 @@ def delete(fn: callable) -> callable:
             status.remove_dataset(dataset_name=dataset_name)
 
         # update backend status
-        set_backend_status(status)
+        _set_backend_status(status)
 
         return ret
 

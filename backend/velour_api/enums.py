@@ -61,6 +61,18 @@ class JobStatus(Enum):
     FAILED = "failed"
     DONE = "done"
 
+    def next(self):
+        if self == self.PENDING:
+            return [self.PROCESSING]
+        elif self == self.PROCESSING:
+            return [self.DONE, self.FAILED]
+        elif self == self.FAILED:
+            return [self.PENDING]
+        elif self == self.DONE:
+            return []
+        else:
+            raise ValueError
+
 
 class Stateflow(str, Enum):
     CREATE = "create"
@@ -78,7 +90,7 @@ class Stateflow(str, Enum):
         elif self == self.DELETE:
             return [self.DELETE]
         else:
-            raise NotImplementedError
+            raise ValueError
 
 
 class Table(str, Enum):

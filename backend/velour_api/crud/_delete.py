@@ -1,11 +1,11 @@
 from sqlalchemy.orm import Session
 
 from velour_api import backend
-from velour_api.backend import state
+from velour_api.backend import jobs
 
 
-@state.background
-@state.delete
+@jobs.background
+@jobs.delete
 def delete_dataset(db: Session, name: str):
     # job, wrapped_fn = jobs.wrap_method_for_job(crud.delete_dataset)
     # background_tasks.add_task(wrapped_fn, db=db, dataset_name=dataset_name)
@@ -15,14 +15,14 @@ def delete_dataset(db: Session, name: str):
     return None  # this return is from the background decorator
 
 
-@state.delete
+@jobs.delete
 def delete_model(db: Session, name: str):
     backend.delete_model(db, name)
 
     return None  # this return is from the background decorator
 
 
-@state.delete
+@jobs.delete
 def prune_labels():
     """@TODO (maybe) Prunes orphans."""
     pass

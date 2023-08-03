@@ -655,20 +655,18 @@ def precision_and_recall_f1_from_confusion_matrix(
     return prec, recall, f1
 
 
-def create_clf_metrics(
+def create_clf_evaluation(
     db: Session,
     request_info: schemas.ClfMetricsRequest,
 ) -> int:
+    """This will always run in foreground.
+
+    Returns
+        Evaluations settings id.
+    """
 
     dataset = core.get_dataset(db, request_info.settings.dataset)
     model = core.get_model(db, request_info.settings.model)
-
-    confusion_matrices, metrics = compute_clf_metrics(
-        db=db,
-        dataset_name=request_info.settings.dataset,
-        model_name=request_info.settings.model,
-        group_by=request_info.settings.group_by,
-    )
 
     es = get_or_create_row(
         db,
@@ -683,8 +681,29 @@ def create_clf_metrics(
         },
     )
 
+    return es.id
+
+
+def create_clf_metrics(
+    db: Session,
+    request_info: schemas.ClfMetricsRequest,
+    evaluation_settings_id: int,
+):
+    """
+    Intended to run as background
+    """
+
+    confusion_matrices, metrics = compute_clf_metrics(
+        db=db,
+        dataset_name=request_info.settings.dataset,
+        model_name=request_info.settings.model,
+        group_by=request_info.settings.group_by,
+    )
+
     confusion_matrices_mappings = create_metric_mappings(
-        db=db, metrics=confusion_matrices, evaluation_settings_id=es.id
+        db=db,
+        metrics=confusion_matrices,
+        evaluation_settings_id=evaluation_settings_id,
     )
 
     for mapping in confusion_matrices_mappings:
@@ -695,7 +714,7 @@ def create_clf_metrics(
         )
 
     metric_mappings = create_metric_mappings(
-        db=db, metrics=metrics, evaluation_settings_id=es.id
+        db=db, metrics=metrics, evaluation_settings_id=evaluation_settings_id
     )
 
     for mapping in metric_mappings:
@@ -709,4 +728,4 @@ def create_clf_metrics(
             columns_to_ignore=["value"],
         )
 
-    return es.id
+    return evaluation_settings_id

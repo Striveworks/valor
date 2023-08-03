@@ -1,5 +1,7 @@
 from ._create import (
+    create_ap_evaluation,
     create_ap_metrics,
+    create_clf_evaluation,
     create_clf_metrics,
     create_dataset,
     create_groundtruth,
@@ -47,6 +49,8 @@ __all__ = [
     "delete_model",
     "get_groundtruth",
     "get_prediction",
+    "create_ap_evaluation",
+    "create_clf_evaluation",
     "create_clf_metrics",
     "create_ap_metrics",
     "get_metrics_from_evaluation_settings_id",

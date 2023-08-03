@@ -37,11 +37,6 @@ class DatumDoesNotExistError(Exception):
         return super().__init__(f"Datum with uid '{uid}' does not exist.")
 
 
-class JobDoesNotExistError(Exception):
-    def __init__(self, uid: str):
-        return super().__init__(f"Job with uid '{uid} does not exist")
-
-
 class InferencesAreNotFinalizedError(Exception):
     def __init__(self, dataset_name: str, model_name: str):
         return super().__init__(
@@ -73,3 +68,13 @@ class MetaDatumAlreadyExistsError(Exception):
 class StateflowError(Exception):
     def __init__(self, msg: str):
         return super().__init__(msg)
+
+
+class EvaluationJobStateError(Exception):
+    def __init__(self, id: int):
+        return super().__init__(f"state error with evaluation job id: {id}")
+
+
+class EvaluationJobDoesNotExistError(Exception):
+    def __init__(self, id: str):
+        return super().__init__(f"Evaluation job with id '{id} does not exist")

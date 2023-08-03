@@ -497,11 +497,44 @@ def compute_map_metrics_from_aps(
     return map_metrics
 
 
-def create_ap_metrics(
+def create_ap_evaluation(
     db: Session,
     request_info: schemas.APRequest,
 ) -> int:
-    """Returns evaluation setting id."""
+    """This will always run in foreground.
+
+    Returns
+        Evaluations settings id.
+    """
+    dataset = core.get_dataset(db, request_info.settings.dataset)
+    model = core.get_model(db, request_info.settings.model)
+
+    es = get_or_create_row(
+        db,
+        models.EvaluationSettings,
+        mapping={
+            "dataset_id": dataset.id,
+            "model_id": model.id,
+            "task_type": enums.TaskType.DETECTION,
+            "pd_type": request_info.settings.pd_type,
+            "gt_type": request_info.settings.gt_type,
+            "label_key": request_info.settings.label_key,
+            "min_area": request_info.settings.min_area,
+            "max_area": request_info.settings.max_area,
+        },
+    )
+
+    return es.id
+
+
+def create_ap_metrics(
+    db: Session,
+    request_info: schemas.APRequest,
+    evaluation_setting_id: int,
+):
+    """
+    Intended to run as background
+    """
 
     # @TODO: This is hacky, fix schemas.APRequest
     # START HACKY
@@ -515,28 +548,6 @@ def create_ap_metrics(
     # END HACKY
 
     target_type = gt_type if gt_type < pd_type else pd_type
-
-    dataset = core.get_dataset(db, request_info.settings.dataset)
-    model = core.get_model(db, request_info.settings.model)
-
-    # @TODO: Add grouping filter
-    # check if already exists
-    # es = (
-    #     db.query(models.EvaluationSettings.id)
-    #     .where(
-    #         and_(
-    #             models.EvaluationSettings.model_id == model.id,
-    #             models.EvaluationSettings.dataset_id == dataset.id,
-    #             models.EvaluationSettings.min_area == min_area,
-    #             models.EvaluationSettings.max_area == max_area,
-    #             models.EvaluationSettings.group_by.is_(None),
-    #             models.EvaluationSettings.label_key == label_key,
-    #         )
-    #     )
-    #     .one_or_none()
-    # )
-    # if es is not None:
-    #     return es.id
 
     metrics = compute_ap_metrics(
         db=db,
@@ -552,26 +563,8 @@ def create_ap_metrics(
         max_area=max_area,
     )
 
-    dataset = core.get_dataset(db, dataset_name)
-    model = core.get_model(db, model_name)
-
-    es = get_or_create_row(
-        db,
-        models.EvaluationSettings,
-        mapping={
-            "dataset_id": dataset.id,
-            "model_id": model.id,
-            "task_type": enums.TaskType.DETECTION,
-            "pd_type": pd_type,
-            "gt_type": gt_type,
-            "label_key": label_key,
-            "min_area": request_info.settings.min_area,
-            "max_area": request_info.settings.max_area,
-        },
-    )
-
     metric_mappings = create_metric_mappings(
-        db=db, metrics=metrics, evaluation_settings_id=es.id
+        db=db, metrics=metrics, evaluation_settings_id=evaluation_setting_id
     )
 
     for mapping in metric_mappings:
@@ -583,5 +576,3 @@ def create_ap_metrics(
             db, models.Metric, mapping, columns_to_ignore=["value"]
         )
     db.commit()
-
-    return es.id

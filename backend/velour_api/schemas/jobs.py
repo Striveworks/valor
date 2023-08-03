@@ -3,8 +3,26 @@ from pydantic import BaseModel
 from velour_api import enums, exceptions
 
 
-class EvaluationStatus(BaseModel):
-    evaluation_settings_id: dict[int, enums.JobStatus]
+class EvaluationJobs(BaseModel):
+    evaluations: dict[int, enums.JobStatus]
+
+    def set_job(self, id: int, state: enums.JobStatus):
+
+        # create new evaluation job
+        if id not in self.evaluations:
+            if state != enums.JobStatus.PENDING:
+                raise exceptions.EvaluationJobStateError(id)
+            self.evaluations[id] = state
+
+        # get current state
+        current = self.evaluations[id]
+
+        # state flow
+        if state not in current.next():
+            raise exceptions.EvaluationJobStateError(id)
+
+        # update job status
+        self.evaluations[id] = state
 
 
 class BackendState(BaseModel):

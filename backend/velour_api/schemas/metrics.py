@@ -67,13 +67,13 @@ class APRequest(BaseModel):
 class CreateAPMetricsResponse(BaseModel):
     missing_pred_labels: list[Label]
     ignored_pred_labels: list[Label]
-    job_id: int
+    evaluation_setting_id: int
 
 
 class CreateClfMetricsResponse(BaseModel):
     missing_pred_keys: list[str]
     ignored_pred_keys: list[str]
-    job_id: int
+    evaluation_setting_id: int
 
 
 class Job(BaseModel):
