@@ -3,8 +3,10 @@ import os
 from time import perf_counter
 
 import redis
+from sqlalchemy.orm import Session
 
-from velour_api import enums, exceptions, logger
+from velour_api import enums, exceptions, logger, schemas
+from velour_api.backend import query
 from velour_api.schemas import BackendStatus, EvaluationJobs
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
@@ -96,25 +98,47 @@ def _set_backend_status(status: BackendStatus):
 
 def _parse_args(*args, **kwargs) -> tuple[str, str | None]:
 
+    # extract db session
+    if "db" in kwargs:
+        db = kwargs["db"]
+    elif len(args) > 0:
+        db = args[0]
+    else:
+        raise RuntimeError
+    assert isinstance(db, Session)
+
+    dataset_name = None
+    model_name = None
+
     # unpack dataset_name
     if "dataset_name" in kwargs:
         dataset_name = kwargs["dataset_name"]
-    elif len(args) > 0:
-        if not isinstance(args[0], str):
+    elif len(args) > 1:
+        if isinstance(args[1], str):
+            dataset_name = args[1]
+        elif isinstance(args[1], schemas.Dataset):
+            dataset_name = args[1].name
+        elif isinstance(args[1], schemas.GroundTruth):
+            dataset_name = args[1].dataset
+        elif isinstance(args[1], schemas.Model):
+            pass
+        elif isinstance(args[1], schemas.Prediction):
+            dataset_name = query.get_dataset_name_from_datum_uid(
+                args[1].datum.uid
+            )
+            model_name = args[1].model
+        else:
             raise ValueError("dataset_name must be of type `str`")
-        dataset_name = args[0]
     else:
         raise ValueError("dataset_name not provided")
 
     # unpack model_name
     if "model_name" in kwargs:
         model_name = kwargs["model_name"]
-    elif len(args) > 1:
-        if not isinstance(args[1], str):
+    elif len(args) > 2:
+        if not isinstance(args[2], str):
             raise ValueError("model_name must be of type `str`")
-        model_name = args[1]
-    else:
-        model_name = None
+        model_name = args[2]
 
     return (dataset_name, model_name)
 
@@ -257,7 +281,7 @@ def delete(fn: callable) -> callable:
         )
 
         # execute wrapped method
-        ret = fn(*args, **kwargs)
+        result = fn(*args, **kwargs)
 
         # clear status
         if model_name is not None:
@@ -270,7 +294,7 @@ def delete(fn: callable) -> callable:
         # update backend status
         _set_backend_status(status)
 
-        return ret
+        return result
 
     return wrapper
 
@@ -293,7 +317,7 @@ def debug(fn: callable) -> callable:
             logger.debug(f"starting method {fn}")
             start = perf_counter()
 
-            ret = fn(*args, **kwargs)
+            result = fn(*args, **kwargs)
 
             logger.debug(
                 f"method finished in {perf_counter() - start} seconds"
@@ -301,6 +325,6 @@ def debug(fn: callable) -> callable:
         except Exception as e:
             raise e
 
-        return ret
+        return result
 
     return wrapped_method

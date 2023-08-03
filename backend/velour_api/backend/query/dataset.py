@@ -70,6 +70,18 @@ def get_dataset(
     return schemas.Dataset(id=dataset.id, name=dataset.name, metadata=metadata)
 
 
+def get_dataset_name_from_datum_uid(
+    db: Session,
+    uid: str,
+) -> str | None:
+    """Returns dataset name"""
+    return db.scalar(
+        select(models.Dataset.name)
+        .join(models.Datum, models.Datum.dataset_id == models.Dataset.id)
+        .where(models.Datum.uid == uid)
+    )
+
+
 def get_datasets(
     db: Session,
 ) -> list[schemas.Dataset]:
