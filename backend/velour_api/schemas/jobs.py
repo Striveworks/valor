@@ -50,9 +50,16 @@ class BackendState(BaseModel):
     def update_model(self, model_name: str, status: enums.Stateflow):
         if model_name not in self.models:
             raise exceptions.ModelDoesNotExistError(model_name)
+
+        if self.status not in [
+            enums.Stateflow.READY,
+            enums.Stateflow.EVALUATE,
+        ]:
+            raise exceptions.StateflowError(f"dataset has state {self.status}")
+
         if status not in self.models[model_name].next():
             raise exceptions.StateflowError(
-                f"model attempted transition from {self.models[model_name].status} to {status}"
+                f"model attempted transition from {self.models[model_name]} to {status}"
             )
 
         # conditional cases wrt status
@@ -128,23 +135,20 @@ class BackendStatus(BaseModel):
 
     """ Dataset manipulation """
 
-    def add_dataset(self, dataset_name: str):
-        if dataset_name in self.datasets:
-            if self.datasets[dataset_name].status != enums.Stateflow.CREATE:
-                raise exceptions.DatasetAlreadyExistsError(dataset_name)
-            else:
-                # do nothing
-                return
-        if self.datasets is None:
-            self.datasets = {}
-        self.datasets[dataset_name] = BackendState()
-
     def update_dataset(self, dataset_name: str, status: enums.Stateflow):
+        if self.datasets is None:
+            self.datasets = dict()
+
         if dataset_name not in self.datasets:
-            raise exceptions.DatasetDoesNotExistError(dataset_name)
+            if status == enums.Stateflow.CREATE:
+                self.datasets[dataset_name] = BackendState()
+            else:
+                raise exceptions.DatasetDoesNotExistError(dataset_name)
+        else:
+            self.datasets[dataset_name].update(status)
 
     def remove_dataset(self, dataset_name: str):
-        if dataset_name not in self.datasets:
+        if self.datasets is None or dataset_name not in self.datasets:
             raise exceptions.DatasetDoesNotExistError(dataset_name)
         # check dataset state
         if self.datasets[dataset_name].status != enums.Stateflow.DELETE:
@@ -165,19 +169,24 @@ class BackendStatus(BaseModel):
 
     """ Model manipulation """
 
-    def add_model(self, model_name: str, dataset_name: str):
-        if dataset_name not in self.datasets:
-            raise exceptions.DatasetDoesNotExistError(dataset_name)
-        self.datasets[dataset_name].add_model(model_name)
-
     def update_model(
         self, model_name: str, dataset_name: str, status: enums.Stateflow
     ):
-        if dataset_name not in self.datasets:
+        if self.datasets is None or dataset_name not in self.datasets:
             raise exceptions.DatasetDoesNotExistError(dataset_name)
-        self.datasets[dataset_name].update_model(model_name, status)
+
+        if self.datasets[dataset_name].models is None:
+            self.datasets[dataset_name].models = dict()
+
+        if model_name not in self.datasets[dataset_name].models:
+            if status == enums.Stateflow.CREATE:
+                self.datasets[dataset_name].add_model(model_name)
+            else:
+                raise exceptions.ModelDoesNotExistError(model_name)
+        else:
+            self.datasets[dataset_name].update_model(model_name, status)
 
     def remove_model(self, model_name: str, dataset_name: str):
-        if dataset_name not in self.datasets:
+        if self.datasets is None or dataset_name not in self.datasets:
             raise exceptions.DatasetDoesNotExistError(dataset_name)
         self.datasets[dataset_name].remove_model(model_name)

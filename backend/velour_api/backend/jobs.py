@@ -58,7 +58,7 @@ def needs_redis(fn):
 @needs_redis
 def get_evaluation_status(id: int) -> enums.JobStatus:
     json_str = r.get("evaluation_jobs")
-    if json_str is None:
+    if not isinstance(json_str, str):
         raise RuntimeError("no evaluation jobs exists")
     info = json.loads(json_str)
     jobs = EvaluationJobs(**info)
@@ -71,7 +71,7 @@ def get_evaluation_status(id: int) -> enums.JobStatus:
 @needs_redis
 def set_evaluation_status(id: int, status: enums.JobStatus):
     json_str = r.get("evaluation_jobs")
-    if json_str is None:
+    if not isinstance(json_str, str):
         jobs = EvaluationJobs(evaluations=dict())
     else:
         info = json.loads(json_str)
@@ -83,7 +83,7 @@ def set_evaluation_status(id: int, status: enums.JobStatus):
 @needs_redis
 def _get_backend_status() -> BackendStatus:
     json_str = r.get("backend_status")
-    if json_str is None:
+    if not isinstance(json_str, str):
         return BackendStatus()
     info = json.loads(json_str)
     return BackendStatus(**info)
@@ -94,7 +94,7 @@ def _set_backend_status(status: BackendStatus):
     r.set("backend_stateflow", status.model_dump_json())
 
 
-def _get_names(*args, **kwargs) -> tuple[str, str | None]:
+def _parse_args(*args, **kwargs) -> tuple[str, str | None]:
 
     # unpack dataset_name
     if "dataset_name" in kwargs:
@@ -129,22 +129,12 @@ def _validate_backend_status(
     current_status = _get_backend_status()
 
     # update status
-    if current_status == enums.Stateflow.CREATE:
-        if model_name is not None:
-            current_status.add_model(
-                dataset_name=dataset_name, model_name=model_name
-            )
-        else:
-            current_status.add_dataset(dataset_name=dataset_name)
+    if model_name is not None:
+        current_status.update_model(
+            dataset_name=dataset_name, model_name=model_name, status=state
+        )
     else:
-        if model_name is not None:
-            current_status.update_model(
-                dataset_name=dataset_name, model_name=model_name, status=state
-            )
-        else:
-            current_status.update_dataset(
-                dataset_name=dataset_name, status=state
-            )
+        current_status.update_dataset(dataset_name=dataset_name, status=state)
 
     return current_status
 
@@ -153,7 +143,7 @@ def create(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
         # unpack arguments
-        dataset_name, model_name = _get_names(*args, **kwargs)
+        dataset_name, model_name = _parse_args(*args, **kwargs)
 
         # validate and update status
         _set_backend_status(
@@ -176,7 +166,7 @@ def read(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
         # unpack arguments
-        dataset_name, model_name = _get_names(*args, **kwargs)
+        dataset_name, model_name = _parse_args(*args, **kwargs)
 
         # validate status for read
         status = _get_backend_status()
@@ -197,7 +187,7 @@ def finalize(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
         # unpack arguments
-        dataset_name, model_name = _get_names(*args, **kwargs)
+        dataset_name, model_name = _parse_args(*args, **kwargs)
 
         # validate and update status
         _set_backend_status(
@@ -216,13 +206,13 @@ def finalize(fn: callable) -> callable:
     return wrapper
 
 
-def evalutate(persist: bool = False) -> callable:
+def evaluate(persist: bool = False) -> callable:
     """ """
 
     def decorator(fn: callable):
         def wrapper(*args, **kwargs):
             # unpack arguments
-            dataset_name, model_name = _get_names(*args, **kwargs)
+            dataset_name, model_name = _parse_args(*args, **kwargs)
 
             # validate status
             _set_backend_status(
@@ -257,7 +247,7 @@ def delete(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
         # unpack arguments
-        dataset_name, model_name = _get_names(*args, **kwargs)
+        dataset_name, model_name = _parse_args(*args, **kwargs)
 
         # get status
         status = _validate_backend_status(

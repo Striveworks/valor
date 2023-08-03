@@ -4,7 +4,6 @@ from velour_api import backend
 from velour_api.backend import jobs
 
 
-@jobs.background
 @jobs.delete
 def delete_dataset(db: Session, name: str):
     # job, wrapped_fn = jobs.wrap_method_for_job(crud.delete_dataset)
