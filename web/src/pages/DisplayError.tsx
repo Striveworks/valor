@@ -6,7 +6,14 @@ export function DisplayError({ error }: { error: Error }) {
       <Page.Header>
         <Typography.PageTitle>Error</Typography.PageTitle>
       </Page.Header>
-      <Page.Content>
+      <Page.Content
+        xcss={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}
+      >
         <Typography.SectionTitle>
           Sorry, an unexpected error has occured.
         </Typography.SectionTitle>

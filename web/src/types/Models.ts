@@ -20,8 +20,8 @@ export type ModelMetric = {
   dataset_name: string;
   model_pred_task_type: Task;
   dataset_gt_task_type: Task;
-  min_area: number;
-  max_area: number;
+  min_area?: number;
+  max_area?: number;
   group_by: string;
   label_key: string;
   id: number;

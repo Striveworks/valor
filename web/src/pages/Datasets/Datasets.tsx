@@ -1,19 +1,20 @@
-import { Page, TableList, Typography } from '@striveworks/minerva';
-import { Link } from 'react-router-dom';
+import { Box, Page, TableList, Tag, Tooltip, Typography } from '@striveworks/minerva';
 import { Loading } from '../../components/shared/Loading';
 import { SummaryBar } from '../../components/shared/SummaryBar';
 import { useGetDatasets } from '../../hooks/Datasets/useGetDatasets';
+import { Datum } from '../../types/Datum';
 import { Stat } from '../../types/TableList';
+import { DisplayError } from '../DisplayError';
 
 export function Datasets() {
-  const { isLoading, isError, data } = useGetDatasets();
+  const { isLoading, isError, data, error } = useGetDatasets();
 
   if (isLoading) {
     return <Loading />;
   }
 
   if (isError) {
-    return <>An error has occurered</>;
+    return <DisplayError error={error} />;
   }
 
   const stats: Stat[] = [{ name: data.length, icon: 'collection' }];
@@ -25,24 +26,29 @@ export function Datasets() {
       </Page.Header>
       <Page.Content>
         <TableList summaryBar={<SummaryBar stats={stats} />}>
-          <TableList.Row>
-            <div>Name</div>
-            <div>Description</div>
-            <div>Type</div>
-            <div>Finalized</div>
-          </TableList.Row>
           {data.length ? (
             data.map((dataset) => {
               return (
                 <TableList.Row key={dataset.name}>
-                  <div>
-                    <Link to={`models/${dataset.href}`} style={{ color: '#FFF' }}>
-                      {dataset.name}
-                    </Link>
-                  </div>
-                  <div>{dataset.description}</div>
-                  <div>{dataset.type}</div>
-                  <div>{dataset.finalized ? 'True' : 'False'}</div>
+                  <Box>{dataset.name}</Box>
+                  <Box>
+                    <Tooltip placement='top' title='Data Type'>
+                      <Tag
+                        iconName={dataset.type === Datum.TABULAR ? 'table' : 'image'}
+                        kind='meta'
+                      >
+                        {dataset.type}
+                      </Tag>
+                    </Tooltip>
+                  </Box>
+                  <Box>
+                    <Tooltip placement='top' title='Finalized'>
+                      <Tag iconName={dataset.finalized ? 'check' : 'close'} kind='meta'>
+                        {dataset.finalized ? 'True' : 'False'}
+                      </Tag>
+                    </Tooltip>
+                  </Box>
+                  <Box>{dataset.description}</Box>
                 </TableList.Row>
               );
             })

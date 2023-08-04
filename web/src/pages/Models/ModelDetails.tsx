@@ -1,10 +1,17 @@
-import { Page, TableList, Typography } from '@striveworks/minerva';
+import {
+  Box,
+  Page,
+  ResourceTitle,
+  TableList,
+  Tag,
+  Tooltip,
+  Typography
+} from '@striveworks/minerva';
 import { useParams } from 'react-router';
 import { Link } from 'react-router-dom';
 import { Loading } from '../../components/shared/Loading';
-import { SummaryBar } from '../../components/shared/SummaryBar';
 import { useGetModelDetails } from '../../hooks/Models/useGetModelDetails';
-import { Stat } from '../../types/TableList';
+import { Task } from '../../types/Models';
 import { DisplayError } from '../DisplayError';
 
 type ModelDetailsParams = {
@@ -23,7 +30,6 @@ export function ModelDetails() {
     return <DisplayError error={error} />;
   }
 
-  const stats: Stat[] = [{}];
   return (
     <Page.Main>
       <Page.Header>
@@ -31,27 +37,47 @@ export function ModelDetails() {
       </Page.Header>
       <Page.Content>
         <Typography.SectionTitle>Evaluation</Typography.SectionTitle>
-        <TableList summaryBar={<SummaryBar stats={stats} />}>
-          <TableList.Row>
-            <div>Dataset</div>
-            <div>Model Prediction Type</div>
-            <div>Dataset Annotation Type</div>
-            <div>Min. Area Of Objects</div>
-            <div>Max Area Of Objects</div>
-          </TableList.Row>
+        <TableList>
           {data.length ? (
             data.map((metric) => {
               return (
                 <TableList.Row key={metric.id}>
-                  <div>
-                    <Link to={`${metric.id}`} style={{ color: '#FFF' }}>
-                      {metric.dataset_name}
-                    </Link>
-                  </div>
-                  <div>{metric.model_pred_task_type}</div>
-                  <div>{metric.dataset_gt_task_type}</div>
-                  <div>{metric.min_area}</div>
-                  <div>{metric.max_area}</div>
+                  <Box>
+                    <ResourceTitle>
+                      <Link to={`${metric.id}`} style={{ color: '#FFF' }}>
+                        {metric.dataset_name}
+                      </Link>
+                    </ResourceTitle>
+                  </Box>
+                  <Box gap={8}>
+                    <Tooltip placement='top' title='Model Prediction Task Type'>
+                      <Tag iconName='model' kind='meta'>
+                        {metric.model_pred_task_type}
+                      </Tag>
+                    </Tooltip>
+                    <Tooltip placement='top' title='Dataset Prediction Task Type'>
+                      <Tag iconName='dataset' kind='meta'>
+                        {metric.dataset_gt_task_type}
+                      </Tag>
+                    </Tooltip>
+                    {/*   For these typesBBOX_OBJECT_DETECTION = 'Bounding Box Object Detection',
+  POLY_OBJECT_DETECTION = 'Polygon Object Detection',
+  INSTANCE_SEGMENTATION = 'Instance Segmentation', */}
+                    {metric.model_pred_task_type === Task.BBOX_OBJECT_DETECTION && (
+                      <>
+                        <Tooltip placement='top' title='Minimum Area of Objects'>
+                          <Tag iconName='chevronDown' kind='meta'>
+                            {metric?.min_area}
+                          </Tag>
+                        </Tooltip>
+                        <Tooltip placement='top' title='Maximum Area of Objects'>
+                          <Tag iconName='chevronUp' kind='meta'>
+                            {metric?.max_area}
+                          </Tag>
+                        </Tooltip>
+                      </>
+                    )}
+                  </Box>
                 </TableList.Row>
               );
             })
