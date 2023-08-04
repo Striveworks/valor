@@ -5,8 +5,8 @@ from time import perf_counter
 import redis
 from sqlalchemy.orm import Session
 
-from velour_api import enums, exceptions, logger, schemas
-from velour_api.backend import query
+from velour_api import exceptions, logger, schemas
+from velour_api.enums import JobStatus, Stateflow
 from velour_api.schemas import BackendStatus, EvaluationJobs
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
@@ -58,7 +58,7 @@ def needs_redis(fn):
 
 
 @needs_redis
-def get_evaluation_status(id: int) -> enums.JobStatus:
+def get_evaluation_status(id: int) -> JobStatus:
     json_str = r.get("evaluation_jobs")
     if not isinstance(json_str, str):
         raise RuntimeError("no evaluation jobs exists")
@@ -71,7 +71,7 @@ def get_evaluation_status(id: int) -> enums.JobStatus:
 
 
 @needs_redis
-def set_evaluation_status(id: int, status: enums.JobStatus):
+def set_evaluation_status(id: int, status: JobStatus):
     json_str = r.get("evaluation_jobs")
     if not isinstance(json_str, str):
         jobs = EvaluationJobs(evaluations=dict())
@@ -96,54 +96,8 @@ def _set_backend_status(status: BackendStatus):
     r.set("backend_stateflow", status.model_dump_json())
 
 
-def _parse_args(*args, **kwargs) -> tuple[str, str | None]:
-    # extract db session
-    if "db" in kwargs:
-        db = kwargs["db"]
-    elif len(args) > 0:
-        db = args[0]
-    else:
-        raise RuntimeError
-    assert isinstance(db, Session)
-
-    dataset_name = None
-    model_name = None
-
-    # unpack dataset_name
-    if "dataset_name" in kwargs:
-        dataset_name = kwargs["dataset_name"]
-    elif len(args) > 1:
-        if isinstance(args[1], str):
-            dataset_name = args[1]
-        elif isinstance(args[1], schemas.Dataset):
-            dataset_name = args[1].name
-        elif isinstance(args[1], schemas.GroundTruth):
-            dataset_name = args[1].dataset
-        elif isinstance(args[1], schemas.Model):
-            pass
-        elif isinstance(args[1], schemas.Prediction):
-            dataset_name = query.get_dataset_name_from_datum_uid(
-                args[1].datum.uid
-            )
-            model_name = args[1].model
-        else:
-            raise ValueError("dataset_name must be of type `str`")
-    else:
-        raise ValueError("dataset_name not provided")
-
-    # unpack model_name
-    if "model_name" in kwargs:
-        model_name = kwargs["model_name"]
-    elif len(args) > 2:
-        if not isinstance(args[2], str):
-            raise ValueError("model_name must be of type `str`")
-        model_name = args[2]
-
-    return (dataset_name, model_name)
-
-
-def _validate_backend_status(
-    state: enums.Stateflow,
+def _update_backend_status(
+    state: Stateflow,
     dataset_name: str,
     model_name: str | None = None,
 ) -> BackendStatus:
@@ -159,48 +113,77 @@ def _validate_backend_status(
     else:
         current_status.update_dataset(dataset_name=dataset_name, status=state)
 
-    return current_status
+    _set_backend_status(current_status)
+
+
+def set_dataset_status(dataset_name: str, status: Stateflow):
+    _update_backend_status(
+        state=status,
+        dataset_name=dataset_name,
+    )
+
+
+def set_inference_status(
+    dataset_name: str, model_name: str, status: Stateflow
+):
+    _update_backend_status(
+        state=status,
+        dataset_name=dataset_name,
+        model_name=model_name,
+    )
 
 
 def create(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
-        # unpack arguments
-        dataset_name, model_name = _parse_args(*args, **kwargs)
+        if len(args) + len(kwargs) != 2:
+            raise RuntimeError
 
-        # validate and update status
-        _set_backend_status(
-            _validate_backend_status(
-                state=enums.Stateflow.CREATE,
-                dataset_name=dataset_name,
-                model_name=model_name,
-            )
+        db = None
+        if len(args) > 0:
+            db = args[0]
+        elif "db" in kwargs:
+            db = kwargs["db"]
+        if not isinstance(db, Session):
+            raise RuntimeError
+
+        dataset_name = None
+        model_name = None
+        if len(args) > 1:
+            if isinstance(args[1], schemas.Dataset):
+                dataset_name = args[1].name
+                model_name = None
+            elif isinstance(args[1], schemas.Model):
+                dataset_name = None
+                model_name = args[1].name
+            elif isinstance(args[1], schemas.GroundTruth):
+                dataset_name = args[1].datum.dataset
+                model_name = None
+            elif isinstance(args[1], schemas.Prediction):
+                dataset_name = args[1].datum.dataset
+                model_name = args[1].model
+        elif "dataset" in kwargs:
+            if isinstance(kwargs["dataset"], schemas.Dataset):
+                dataset_name = kwargs["dataset"].name
+                model_name = None
+        elif "model" in kwargs:
+            if isinstance(kwargs["model"], schemas.Model):
+                dataset_name = None
+                model_name = kwargs["model"].name
+        elif "groundtruth" in kwargs:
+            if isinstance(kwargs["groundtruth"], schemas.GroundTruth):
+                dataset_name = kwargs["groundtruth"].datum.dataset
+                model_name = None
+        elif "prediction" in kwargs:
+            if isinstance(kwargs["prediction"], schemas.Prediction):
+                dataset_name = kwargs["prediction"].datum.dataset
+                model_name = kwargs["prediction"].model
+        else:
+            raise RuntimeError
+
+        _update_backend_status(
+            Stateflow.CREATE, dataset_name=dataset_name, model_name=model_name
         )
-
-        # execute wrapped method
-        result = fn(*args, **kwargs)
-
-        return result
-
-    return wrapper
-
-
-def read(fn: callable) -> callable:
-    def wrapper(*args, **kwargs):
-
-        # unpack arguments
-        dataset_name, model_name = _parse_args(*args, **kwargs)
-
-        # validate status for read
-        status = _get_backend_status()
-        if not status.readable(
-            dataset_name=dataset_name, model_name=model_name
-        ):
-            raise exceptions.StateflowError(
-                "unable to read as a delete operation is in progress"
-            )
-
-        # execute wrapped method
         return fn(*args, **kwargs)
 
     return wrapper
@@ -209,124 +192,133 @@ def read(fn: callable) -> callable:
 def finalize(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
-        # unpack arguments
-        dataset_name, model_name = _parse_args(*args, **kwargs)
+        if len(args) + len(kwargs) != 3:
+            raise RuntimeError
 
-        # validate and update status
-        _set_backend_status(
-            _validate_backend_status(
-                state=enums.Stateflow.READY,
-                dataset_name=dataset_name,
-                model_name=model_name,
-            )
+        db = None
+        if len(args) > 0:
+            db = args[0]
+        elif "db" in kwargs:
+            db = kwargs["db"]
+        if not isinstance(db, Session):
+            raise RuntimeError
+
+        dataset_name = None
+        if len(args) > 1:
+            dataset_name = args[1]
+        elif "dataset_name" in kwargs:
+            dataset_name = kwargs["dataset_name"]
+
+        model_name = None
+        if len(args) > 2:
+            model_name = args[2]
+        elif "model_name" in kwargs:
+            model_name = kwargs["model_name"]
+
+        _update_backend_status(
+            state=Stateflow.READY,
+            dataset_name=dataset_name,
+            model_name=model_name,
         )
+        return fn(*args, **kwargs)
 
-        # execute wrapped method
+    return wrapper
+
+
+def evaluate(fn: callable) -> callable:
+    def wrapper(*args, **kwargs):
+
+        if len(args) + len(kwargs) != 2:
+            raise RuntimeError
+
+        db = None
+        if len(args) > 0:
+            db = args[0]
+        elif "db" in kwargs:
+            db = kwargs["db"]
+        if not isinstance(db, Session):
+            raise RuntimeError
+
+        dataset_name = None
+        model_name = None
+        if len(args) > 1:
+            if isinstance(args[1], schemas.ClfMetricsRequest):
+                dataset_name = args[1].settings.dataset
+                model_name = args[1].settings.model
+            elif isinstance(args[1], schemas.APRequest):
+                dataset_name = args[1].settings.dataset
+                model_name = args[1].settings.model
+        elif "request_info" in kwargs:
+            if isinstance(kwargs["request_info"], schemas.ClfMetricsRequest):
+                dataset_name = kwargs["request_info"].settings.dataset
+                model_name = kwargs["request_info"].settings.model
+            elif isinstance(kwargs["request_info"], schemas.APRequest):
+                dataset_name = kwargs["request_info"].settings.dataset
+                model_name = kwargs["request_info"].settings.model
+
+        _update_backend_status(
+            Stateflow.EVALUATE,
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+def computation(fn: callable) -> callable:
+    def wrapper(*args, **kwargs):
+
+        if len(args) + len(kwargs) != 3:
+            raise RuntimeError
+
+        db = None
+        if len(args) > 0:
+            db = args[0]
+        elif "db" in kwargs:
+            db = kwargs["db"]
+        if not isinstance(db, Session):
+            raise RuntimeError
+
+        dataset_name = None
+        model_name = None
+        if len(args) > 1:
+            if isinstance(args[1], schemas.ClfMetricsRequest):
+                dataset_name = args[1].settings.dataset
+                model_name = args[1].settings.model
+            elif isinstance(args[1], schemas.APRequest):
+                dataset_name = args[1].settings.dataset
+                model_name = args[1].settings.model
+        elif "request_info" in kwargs:
+            if isinstance(kwargs["request_info"], schemas.ClfMetricsRequest):
+                dataset_name = kwargs["request_info"].settings.dataset
+                model_name = kwargs["request_info"].settings.model
+            elif isinstance(kwargs["request_info"], schemas.APRequest):
+                dataset_name = kwargs["request_info"].settings.dataset
+                model_name = kwargs["request_info"].settings.model
+
+        _update_backend_status(
+            Stateflow.EVALUATE,
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
         result = fn(*args, **kwargs)
+        _update_backend_status(
+            Stateflow.READY, dataset_name=dataset_name, model_name=model_name
+        )
 
         return result
 
     return wrapper
 
 
-def evaluate(persist: bool = False) -> callable:
-    """ """
+def delete(fn: callable) -> callable:
+    def wrapper(*args, **kwargs):
 
-    def decorator(fn: callable):
-        def wrapper(*args, **kwargs):
-            # unpack arguments
-            dataset_name, model_name = _parse_args(*args, **kwargs)
+        if len(args) + len(kwargs) != 3:
+            raise RuntimeError
 
-            # validate status
-            _set_backend_status(
-                _validate_backend_status(
-                    state=enums.Stateflow.EVALUATE,
-                    dataset_name=dataset_name,
-                    model_name=model_name,
-                )
-            )
+        kwargs["_pre_"] = Stateflow.DELETE
+        return fn(*args, **kwargs)
 
-            # execute wrapped method
-            result = fn(*args, **kwargs)
-
-            # conditional: persist the state after method is executed
-            if not persist:
-                _set_backend_status(
-                    _validate_backend_status(
-                        state=enums.Stateflow.READY,
-                        dataset_name=dataset_name,
-                        model_name=model_name,
-                    )
-                )
-
-            return result
-
-        return wrapper
-
-    return decorator
-
-
-def delete():
-    def decorator(fn: callable) -> callable:
-        def wrapper(*args, **kwargs):
-
-            # unpack arguments
-            dataset_name, model_name = _parse_args(*args, **kwargs)
-
-            # get status
-            status = _validate_backend_status(
-                state=enums.Stateflow.DELETE,
-                dataset_name=dataset_name,
-                model_name=model_name,
-            )
-
-            # execute wrapped method
-            result = fn(*args, **kwargs)
-
-            # clear status
-            if model_name is not None:
-                status.remove_model(
-                    dataset_name=dataset_name, model_name=model_name
-                )
-            else:
-                status.remove_dataset(dataset_name=dataset_name)
-
-            # update backend status
-            _set_backend_status(status)
-
-            return result
-
-        return wrapper
-
-    return decorator
-
-
-def debug(fn: callable) -> callable:
-    """This wraps a method with a debug timer
-
-    Parameters
-    ----------
-    fn
-        any method
-
-    Returns
-    -------
-    callable
-    """
-
-    def wrapped_method(*args, **kwargs):
-        try:
-            logger.debug(f"starting method {fn}")
-            start = perf_counter()
-
-            result = fn(*args, **kwargs)
-
-            logger.debug(
-                f"method finished in {perf_counter() - start} seconds"
-            )
-        except Exception as e:
-            raise e
-
-        return result
-
-    return wrapped_method
+    return wrapper

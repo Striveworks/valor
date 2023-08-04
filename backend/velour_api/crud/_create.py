@@ -45,7 +45,7 @@ def create_prediction(
     backend.create_prediction(db, prediction=prediction)
 
 
-@jobs.evaluate(persist=True)
+@jobs.evaluate
 def create_clf_evaluation(
     db: Session,
     request_info: schemas.ClfMetricsRequest,
@@ -70,7 +70,7 @@ def create_clf_evaluation(
     )
 
 
-@jobs.evaluate()
+@jobs.computation
 def create_clf_metrics(
     db: Session,
     request_info: schemas.ClfMetricsRequest,
@@ -84,7 +84,7 @@ def create_clf_metrics(
     )
 
 
-@jobs.evaluate(persist=True)
+@jobs.evaluate
 def create_ap_evaluation(
     db: Session,
     request_info: schemas.APRequest,
@@ -109,7 +109,7 @@ def create_ap_evaluation(
     )
 
 
-@jobs.evaluate()
+@jobs.computation
 def create_ap_metrics(
     db: Session,
     request_info: schemas.APRequest,
