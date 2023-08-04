@@ -87,6 +87,7 @@ class Model(BaseModel):
 
 class Datum(BaseModel):
     uid: str
+    dataset: str
     metadata: list[MetaDatum] = []
 
     @field_validator("uid")
@@ -94,6 +95,15 @@ class Datum(BaseModel):
     def format_uid(cls, v):
         if v != _format_uid(v):
             raise ValueError("uid includes illegal characters.")
+        if not v:
+            raise ValueError("invalid string")
+        return v
+
+    @field_validator("dataset")
+    @classmethod
+    def check_name_valid(cls, v):
+        if v != _format_name(v):
+            raise ValueError("name includes illegal characters.")
         if not v:
             raise ValueError("invalid string")
         return v
@@ -154,18 +164,8 @@ class ScoredAnnotation(BaseModel):
 
 
 class GroundTruth(BaseModel):
-    dataset: str
     datum: Datum
     annotations: list[Annotation]
-
-    @field_validator("dataset")
-    @classmethod
-    def check_name_valid(cls, v):
-        if v != _format_name(v):
-            raise ValueError("name includes illegal characters.")
-        if not v:
-            raise ValueError("invalid string")
-        return v
 
     @field_validator("annotations")
     @classmethod

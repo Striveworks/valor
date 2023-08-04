@@ -1,40 +1,35 @@
 class DatasetAlreadyExistsError(Exception):
     def __init__(self, name: str):
-        return super().__init__(f"Dataset with name '{name}' already exists.")
+        return super().__init__(f"Dataset with name `{name}` already exists.")
 
 
 class ModelAlreadyExistsError(Exception):
     def __init__(self, name: str):
-        return super().__init__(f"Model with name '{name}' already exists.")
+        return super().__init__(f"Model with name `{name}` already exists.")
 
 
 class DatasetDoesNotExistError(Exception):
     def __init__(self, name: str):
-        return super().__init__(f"Dataset with name '{name}' does not exist.")
+        return super().__init__(f"Dataset with name `{name}` does not exist.")
 
 
 class DatasetIsFinalizedError(Exception):
     def __init__(self, name: str):
         return super().__init__(
-            f"Cannot add images or annotations to dataset '{name}' since it is finalized."
+            f"Cannot add images or annotations to dataset `{name}` since it is finalized."
         )
 
 
 class DatasetIsNotFinalizedError(Exception):
     def __init__(self, name: str):
         return super().__init__(
-            f"Cannot evaluate against dataset '{name}' since it has not been finalized."
+            f"Cannot evaluate against dataset `{name}` since it has not been finalized."
         )
 
 
 class ModelDoesNotExistError(Exception):
     def __init__(self, name: str):
-        return super().__init__(f"Model with name '{name}' does not exist.")
-
-
-class DatumDoesNotExistError(Exception):
-    def __init__(self, uid: str):
-        return super().__init__(f"Datum with uid '{uid}' does not exist.")
+        return super().__init__(f"Model with name `{name}` does not exist.")
 
 
 class InferencesAreNotFinalizedError(Exception):
@@ -44,9 +39,21 @@ class InferencesAreNotFinalizedError(Exception):
         )
 
 
+class DatumDoesNotExistError(Exception):
+    def __init__(self, uid: str):
+        return super().__init__(f"Datum with uid `{uid}` does not exist.")
+
+
 class DatumAlreadyExistsError(Exception):
     def __init__(self, uid: str):
-        return super().__init__(f"Datum with uid: '{uid}' already exists.")
+        return super().__init__(f"Datum with uid: `{uid}` already exists.")
+
+
+class DatumDoesNotBelongToDatasetError(Exception):
+    def __init__(self, dataset_name: str, datum_uid: str):
+        return super().__init__(
+            f"Datum with uid: `{datum_uid}` does not belong to dataset `{dataset_name}`."
+        )
 
 
 class GroundTruthAlreadyExistsError(Exception):
@@ -77,4 +84,4 @@ class EvaluationJobStateError(Exception):
 
 class EvaluationJobDoesNotExistError(Exception):
     def __init__(self, id: str):
-        return super().__init__(f"Evaluation job with id '{id} does not exist")
+        return super().__init__(f"Evaluation job with id `{id} does not exist")

@@ -9,11 +9,8 @@ def create_groundtruth(
     db: Session,
     groundtruth: schemas.GroundTruth,
 ):
-    dataset = core.get_dataset(db, name=groundtruth.dataset)
-    if not dataset:
-        raise exceptions.DatasetDoesNotExistError(groundtruth.dataset)
-
-    datum = core.create_datum(db, dataset=dataset, datum=groundtruth.datum)
+    # create datum
+    datum = core.create_datum(db, groundtruth.datum)
 
     rows = []
     for groundtruth_annotation in groundtruth.annotations:
@@ -44,19 +41,22 @@ def get_groundtruth(
     dataset_name: str,
     datum_uid: str,
 ):
+    # get dataset
     dataset = core.get_dataset(db, dataset_name)
+
+    # get datum
     datum = core.get_datum(db, datum_uid)
 
-    # validation
-    try:
-        assert datum.dataset_id == dataset.id
-    except AssertionError:
-        raise ValueError(f"Datum `{datum_uid}` exists for different dataset.")
+    # validate
+    if dataset.id != datum.dataset_id:
+        raise exceptions.DatumDoesNotBelongToDatasetError(
+            dataset_name, datum_uid
+        )
 
     return schemas.GroundTruth(
-        dataset=dataset_name,
         datum=schemas.Datum(
             uid=datum.uid,
+            dataset=dataset_name,
             metadata=core.get_metadata(db, datum=datum),
         ),
         annotations=core.get_annotations(db, datum),

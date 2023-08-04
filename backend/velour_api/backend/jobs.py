@@ -97,7 +97,6 @@ def _set_backend_status(status: BackendStatus):
 
 
 def _parse_args(*args, **kwargs) -> tuple[str, str | None]:
-
     # extract db session
     if "db" in kwargs:
         db = kwargs["db"]
@@ -267,36 +266,39 @@ def evaluate(persist: bool = False) -> callable:
     return decorator
 
 
-def delete(fn: callable) -> callable:
-    def wrapper(*args, **kwargs):
+def delete():
+    def decorator(fn: callable) -> callable:
+        def wrapper(*args, **kwargs):
 
-        # unpack arguments
-        dataset_name, model_name = _parse_args(*args, **kwargs)
+            # unpack arguments
+            dataset_name, model_name = _parse_args(*args, **kwargs)
 
-        # get status
-        status = _validate_backend_status(
-            state=enums.Stateflow.DELETE,
-            dataset_name=dataset_name,
-            model_name=model_name,
-        )
-
-        # execute wrapped method
-        result = fn(*args, **kwargs)
-
-        # clear status
-        if model_name is not None:
-            status.remove_model(
-                dataset_name=dataset_name, model_name=model_name
+            # get status
+            status = _validate_backend_status(
+                state=enums.Stateflow.DELETE,
+                dataset_name=dataset_name,
+                model_name=model_name,
             )
-        else:
-            status.remove_dataset(dataset_name=dataset_name)
 
-        # update backend status
-        _set_backend_status(status)
+            # execute wrapped method
+            result = fn(*args, **kwargs)
 
-        return result
+            # clear status
+            if model_name is not None:
+                status.remove_model(
+                    dataset_name=dataset_name, model_name=model_name
+                )
+            else:
+                status.remove_dataset(dataset_name=dataset_name)
 
-    return wrapper
+            # update backend status
+            _set_backend_status(status)
+
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 def debug(fn: callable) -> callable:

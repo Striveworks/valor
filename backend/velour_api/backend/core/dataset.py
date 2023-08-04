@@ -6,38 +6,6 @@ from velour_api.backend import models
 from velour_api.backend.core.metadata import create_metadata
 
 
-def create_datum(
-    db: Session,
-    datum: schemas.Datum,
-    dataset: models.Dataset,
-) -> models.Datum:
-
-    row = (
-        db.query(models.Datum)
-        .where(models.Datum.uid == datum.uid)
-        .one_or_none()
-    )
-    if row:
-        # datum already exists
-        return row
-
-    # Create datum
-    try:
-        row = models.Datum(
-            uid=datum.uid,
-            dataset_id=dataset.id,
-        )
-        db.add(row)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise exceptions.DatumAlreadyExistsError(datum.uid)
-
-    # Create metadata
-    create_metadata(db, datum.metadata, datum=row)
-    return row
-
-
 def get_datum(
     db: Session,
     uid: str,
@@ -60,3 +28,38 @@ def get_dataset(
     if dataset is None:
         raise exceptions.DatasetDoesNotExistError(name)
     return dataset
+
+
+def create_datum(
+    db: Session,
+    datum: schemas.Datum,
+) -> models.Datum:
+
+    # check if datum already exists
+    row = (
+        db.query(models.Datum)
+        .where(models.Datum.uid == datum.uid)
+        .one_or_none()
+    )
+    if row is not None:
+        return row
+
+    # get dataset
+    dataset = get_dataset(db, datum.dataset)
+
+    # create datum
+    try:
+        row = models.Datum(
+            uid=datum.uid,
+            dataset_id=dataset.id,
+        )
+        db.add(row)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.DatumAlreadyExistsError(datum.uid)
+
+    # create metadata
+    create_metadata(db, datum.metadata, datum=row)
+
+    return row

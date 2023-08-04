@@ -1,6 +1,8 @@
 from pydantic import BaseModel
 
 from velour_api import enums, exceptions
+from velour_api.enums import Stateflow
+from velour_api.exceptions import StateflowError
 
 
 class EvaluationJobs(BaseModel):
@@ -25,168 +27,102 @@ class EvaluationJobs(BaseModel):
         self.evaluations[id] = state
 
 
-class BackendState(BaseModel):
-    status: enums.Stateflow = enums.Stateflow.CREATE
-    models: dict[str, enums.Stateflow] | None = None
+class ModelStatus(BaseModel):
+    status: Stateflow = Stateflow.NONE
 
-    def add_model(self, model_name: str):
-        if self.status not in [
-            enums.Stateflow.READY,
-            enums.Stateflow.EVALUATE,
-        ]:
-            raise exceptions.StateflowError(
-                f"Dataset cannot accept new model in its current state: {self.status}"
+    def set_status(self, status: Stateflow):
+        if status not in self.status.next():
+            raise StateflowError(
+                f"invalid transititon from {self.status} to {status}"
             )
-        if model_name in self.models:
-            if self.models[model_name] != enums.Stateflow.CREATE:
-                raise exceptions.ModelAlreadyExistsError(model_name)
-            else:
-                # do nothing
-                return
+        self.status = status
+
+
+class DatasetStatus(BaseModel):
+    status: Stateflow = Stateflow.NONE
+    models: dict[str, ModelStatus] | None = None
+
+    @property
+    def evaluating(self) -> bool:
+        if self.models is not None:
+            for model in self.models:
+                if self.models[model] == Stateflow.EVALUATE:
+                    return True
+        return False
+
+    def set_model_status(self, name: str, status: Stateflow):
+        if self.status not in [Stateflow.READY, Stateflow.EVALUATE]:
+            raise StateflowError(
+                f"no model ops allowed on dataset with state `{self.status}`"
+            )
+
+        # init models dictionary
         if self.models is None:
             self.models = {}
-        self.models[model_name] = enums.Stateflow.CREATE
 
-    def update_model(self, model_name: str, status: enums.Stateflow):
-        if model_name not in self.models:
-            raise exceptions.ModelDoesNotExistError(model_name)
+        # init model
+        if name not in self.models:
+            self.models[name] = ModelStatus()
 
-        if self.status not in [
-            enums.Stateflow.READY,
-            enums.Stateflow.EVALUATE,
-        ]:
-            raise exceptions.StateflowError(f"dataset has state {self.status}")
+        # set model status
+        self.models[name].set_status(status)
 
-        if status not in self.models[model_name].next():
-            raise exceptions.StateflowError(
-                f"model attempted transition from {self.models[model_name]} to {status}"
+        # update dataset status
+        self.status = (
+            Stateflow.EVALUATE if self.evaluating else Stateflow.READY
+        )
+
+    def set_status(self, status: Stateflow):
+        if self.evaluating and status != Stateflow.EVALUATE:
+            raise Stateflow(
+                f"cannot transition to {status} as a evaluation is currently running."
             )
-
-        # conditional cases wrt status
-        if status == enums.Stateflow.CREATE:
-            pass
-        elif status == enums.Stateflow.EVALUATE:
-            self.update(status)  # dataset should switch to evaluate as well
-        elif status == enums.Stateflow.READY:
-            pass
-        elif status == enums.Stateflow.DELETE:
-            pass
-        else:
-            raise exceptions.StateflowError("Unknown state.")
-
-        # update model
-        self.models[model_name] = status
-
-    def remove_model(self, model_name: str):
-        if model_name not in self.models:
-            raise exceptions.ModelDoesNotExistError(model_name)
-        if self.models[model_name] != enums.Stateflow.DELETE:
-            raise exceptions.StateflowError(
-                f"cannot delete {model_name} as it is currently in state {self.models[model_name]}"
+        elif status not in self.status.next():
+            raise StateflowError(
+                f"invalid transititon from {self.status} to {status}"
             )
-        del self.models[model_name]
-
-    def update(self, status: enums.Stateflow) -> str | None:
-        if status not in self.status.next():
-            raise exceptions.StateflowError(
-                f"dataset attempted transition from {self.status} to {status}"
-            )
-
-        # conditional cases wrt status
-        if status == enums.Stateflow.CREATE:
-            self.models = None
-        elif status == enums.Stateflow.READY:
-            pass
-        elif status == enums.Stateflow.EVALUATE:
-            pass
-        elif status == enums.Stateflow.DELETE:
-            for key in self.models:
-                self.models[key].status = enums.Stateflow.DELETE
-        else:
-            raise exceptions.StateflowError("Unknown state.")
-
-        # update dataset
         self.status = status
 
 
 class BackendStatus(BaseModel):
-    datasets: dict[str, BackendState] | None = None
+    datasets: dict[str, DatasetStatus] | None = None
 
-    """ General """
-
-    def readable(
-        self, dataset_name: str, model_name: str | None = None
-    ) -> bool:
-        if dataset_name not in self.datasets:
-            raise exceptions.DatasetDoesNotExistError(dataset_name)
-
-        if self.datasets[dataset_name].status == enums.Stateflow.DELETE:
-            return False
-
-        if model_name:
-            if model_name not in self.datasets[dataset_name]:
-                raise exceptions.ModelDoesNotExistError(model_name)
-            return (
-                self.datasets[dataset_name].models[model_name]
-                != enums.Stateflow.DELETE
-            )
-        else:
-            return True
-
-    """ Dataset manipulation """
-
-    def update_dataset(self, dataset_name: str, status: enums.Stateflow):
+    def set_dataset_status(self, dataset_name: str, status: Stateflow):
+        # init datasets dictionary
         if self.datasets is None:
-            self.datasets = dict()
+            self.datasets = {}
 
-        if dataset_name not in self.datasets:
-            if status == enums.Stateflow.CREATE:
-                self.datasets[dataset_name] = BackendState()
-            else:
-                raise exceptions.DatasetDoesNotExistError(dataset_name)
-        else:
-            self.datasets[dataset_name].update(status)
+        # set status
+        self.datasets[dataset_name].set_status(status)
 
-    def remove_dataset(self, dataset_name: str):
-        if self.datasets is None or dataset_name not in self.datasets:
-            raise exceptions.DatasetDoesNotExistError(dataset_name)
-        # check dataset state
-        if self.datasets[dataset_name].status != enums.Stateflow.DELETE:
-            raise exceptions.StateflowError(
-                f"cannot delete dataset {dataset_name} as it has state {self.datasets[dataset_name].status}"
-            )
-        # check model states
-        for model_name in self.datasets[dataset_name].models:
-            if (
-                self.datasets[dataset_name].models[model_name]
-                != enums.Stateflow.DELETE
-            ):
-                raise exceptions.StateflowError(
-                    f"cannot delete dataset {dataset_name} as model {model_name} has state {self.datasets[dataset_name].models[model_name]}"
-                )
-        # remove dataset
-        del self.datasets[dataset_name]
-
-    """ Model manipulation """
-
-    def update_model(
-        self, model_name: str, dataset_name: str, status: enums.Stateflow
+    def set_model_status(
+        self, dataset_name: str, model_name: str, status: Stateflow
     ):
+        # check if dataset exists
         if self.datasets is None or dataset_name not in self.datasets:
             raise exceptions.DatasetDoesNotExistError(dataset_name)
 
-        if self.datasets[dataset_name].models is None:
-            self.datasets[dataset_name].models = dict()
+        # set model status
+        self.datasets[dataset_name].set_model_status(model_name, status)
 
-        if model_name not in self.datasets[dataset_name].models:
-            if status == enums.Stateflow.CREATE:
-                self.datasets[dataset_name].add_model(model_name)
-            else:
-                raise exceptions.ModelDoesNotExistError(model_name)
-        else:
-            self.datasets[dataset_name].update_model(model_name, status)
-
-    def remove_model(self, model_name: str, dataset_name: str):
-        if self.datasets is None or dataset_name not in self.datasets:
+    def get_dataset_status(self, dataset_name: str):
+        if self.datasets is None:
+            raise RuntimeError("datasets object is uninitialized")
+        elif dataset_name not in self.datasets:
             raise exceptions.DatasetDoesNotExistError(dataset_name)
-        self.datasets[dataset_name].remove_model(model_name)
+
+        return self.datasets[dataset_name].status
+
+    def get_model_status(
+        self, dataset_name: str, model_name: str
+    ) -> Stateflow:
+        if self.datasets is None:
+            raise exceptions.DatasetDoesNotExistError(dataset_name)
+        elif dataset_name not in self.datasets:
+            raise exceptions.DatasetDoesNotExistError(dataset_name)
+        elif self.datasets[dataset_name].models is None:
+            raise exceptions.ModelDoesNotExistError(model_name)
+        elif model_name not in self.datasets[dataset_name]:
+            raise exceptions.ModelDoesNotExistError(model_name)
+
+        return self.datasets[dataset_name].models[model_name].status

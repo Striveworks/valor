@@ -75,13 +75,16 @@ class JobStatus(Enum):
 
 
 class Stateflow(str, Enum):
+    NONE = "none"
     CREATE = "create"
     READY = "ready"
     EVALUATE = "evaluate"
     DELETE = "delete"
 
     def next(self):
-        if self == self.CREATE:
+        if self == self.NONE:
+            return [self.CREATE]
+        elif self == self.CREATE:
             return [self.CREATE, self.READY, self.DELETE]
         elif self == self.READY:
             return [self.READY, self.EVALUATE, self.DELETE]
