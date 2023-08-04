@@ -9,7 +9,7 @@ from velour_api.exceptions import (
     ModelDoesNotExistError,
     StateflowError,
 )
-from velour_api.schemas.jobs import BackendState, BackendStatus
+from velour_api.schemas.jobs import BackendStatus, DatasetStatus, ModelStatus
 
 
 @pytest.fixture(autouse=True)
@@ -73,35 +73,7 @@ def test__set_backend_status():
     assert jobs.redis.Redis.call_count == 1
 
 
-def test__parse_args():
-
-    dataset_name = "ds1"
-    model_name = "md1"
-
-    assert (dataset_name, model_name) == jobs._parse_args(
-        dataset_name, model_name
-    )
-    assert (dataset_name, None) == jobs._parse_args(dataset_name)
-    assert (dataset_name, None) == jobs._parse_args(dataset_name=dataset_name)
-    assert (dataset_name, model_name) == jobs._parse_args(
-        dataset_name=dataset_name, model_name=model_name
-    )
-    assert (dataset_name, model_name) == jobs._parse_args(
-        dataset_name, model_name=model_name
-    )
-
-    with pytest.raises(ValueError) as e:
-        jobs._parse_args()
-    assert "dataset_name not provided" in str(e)
-    with pytest.raises(ValueError) as e:
-        jobs._parse_args(123)
-    assert "must be of type `str`" in str(e)
-    with pytest.raises(ValueError) as e:
-        jobs._parse_args("123", 123)
-    assert "must be of type `str`" in str(e)
-
-
-def test__validate_backend_status():
+def test__update_backend_status():
 
     jobs._get_backend_status = MagicMock()
 
@@ -114,11 +86,11 @@ def test__validate_backend_status():
         if md_state is None:
             models = {}
         else:
-            models = {"md": md_state}
+            models = {"md": ModelStatus(status=md_state)}
 
         return BackendStatus(
             datasets={
-                "ds": BackendState(
+                "ds": DatasetStatus(
                     status=ds_state,
                     models=models,
                 )
@@ -138,10 +110,10 @@ def test__validate_backend_status():
         )
         if ds_next is not None:
             with pytest.raises(error):
-                jobs._validate_backend_status(ds_next, dataset_name="ds")
+                jobs._update_backend_status(ds_next, dataset_name="ds")
         else:
             with pytest.raises(error):
-                jobs._validate_backend_status(
+                jobs._update_backend_status(
                     md_next, dataset_name="ds", model_name="md"
                 )
 
@@ -155,15 +127,15 @@ def test__validate_backend_status():
             ds_state=ds_state,
             md_state=md_state,
         )
-        if ds_next is not None:
-            assert jobs._validate_backend_status(ds_next, dataset_name="ds")
+        if ds_next != Stateflow.NONE:
+            jobs._update_backend_status(ds_next, dataset_name="ds")
         else:
-            assert jobs._validate_backend_status(
+            jobs._update_backend_status(
                 md_next, dataset_name="ds", model_name="md"
             )
 
     # dataset - positive cases
-    _test_permutation_pos(None, Stateflow.CREATE)
+    _test_permutation_pos(Stateflow.NONE, Stateflow.CREATE)
     _test_permutation_pos(Stateflow.CREATE, Stateflow.CREATE)
     _test_permutation_pos(Stateflow.CREATE, Stateflow.READY)
     _test_permutation_pos(Stateflow.CREATE, Stateflow.DELETE)
@@ -175,15 +147,9 @@ def test__validate_backend_status():
     _test_permutation_pos(Stateflow.DELETE, Stateflow.DELETE)
 
     # dataset - negative cases
-    _test_permutation_neg(
-        None, Stateflow.READY, error=DatasetDoesNotExistError
-    )
-    _test_permutation_neg(
-        None, Stateflow.EVALUATE, error=DatasetDoesNotExistError
-    )
-    _test_permutation_neg(
-        None, Stateflow.DELETE, error=DatasetDoesNotExistError
-    )
+    _test_permutation_neg(Stateflow.NONE, Stateflow.READY)
+    _test_permutation_neg(Stateflow.NONE, Stateflow.EVALUATE)
+    _test_permutation_neg(Stateflow.NONE, Stateflow.DELETE)
     _test_permutation_neg(Stateflow.CREATE, Stateflow.EVALUATE)
     _test_permutation_neg(Stateflow.READY, Stateflow.CREATE)
     _test_permutation_neg(Stateflow.EVALUATE, Stateflow.CREATE)
@@ -194,58 +160,100 @@ def test__validate_backend_status():
 
     # model - positive cases
     for state in [Stateflow.READY, Stateflow.EVALUATE]:
-        _test_permutation_pos(state, None, None, Stateflow.CREATE)
-        _test_permutation_pos(state, None, Stateflow.CREATE, Stateflow.CREATE)
-        _test_permutation_pos(state, None, Stateflow.CREATE, Stateflow.READY)
-        _test_permutation_pos(state, None, Stateflow.CREATE, Stateflow.DELETE)
-        _test_permutation_pos(state, None, Stateflow.READY, Stateflow.READY)
-        _test_permutation_pos(state, None, Stateflow.READY, Stateflow.EVALUATE)
-        _test_permutation_pos(state, None, Stateflow.READY, Stateflow.DELETE)
-        _test_permutation_pos(state, None, Stateflow.EVALUATE, Stateflow.READY)
         _test_permutation_pos(
-            state, None, Stateflow.EVALUATE, Stateflow.EVALUATE
+            state, Stateflow.NONE, Stateflow.NONE, Stateflow.CREATE
         )
-        _test_permutation_pos(state, None, Stateflow.DELETE, Stateflow.DELETE)
+        _test_permutation_pos(
+            state, Stateflow.NONE, Stateflow.CREATE, Stateflow.CREATE
+        )
+        _test_permutation_pos(
+            state, Stateflow.NONE, Stateflow.CREATE, Stateflow.READY
+        )
+        _test_permutation_pos(
+            state, Stateflow.NONE, Stateflow.CREATE, Stateflow.DELETE
+        )
+        _test_permutation_pos(
+            state, Stateflow.NONE, Stateflow.READY, Stateflow.READY
+        )
+        _test_permutation_pos(
+            state, Stateflow.NONE, Stateflow.READY, Stateflow.EVALUATE
+        )
+        _test_permutation_pos(
+            state, Stateflow.NONE, Stateflow.READY, Stateflow.DELETE
+        )
+        _test_permutation_pos(
+            state, Stateflow.NONE, Stateflow.EVALUATE, Stateflow.READY
+        )
+        _test_permutation_pos(
+            state, Stateflow.NONE, Stateflow.EVALUATE, Stateflow.EVALUATE
+        )
+        _test_permutation_pos(
+            state, Stateflow.NONE, Stateflow.DELETE, Stateflow.DELETE
+        )
 
     # model - negative cases
     for state in [Stateflow.READY, Stateflow.EVALUATE]:
         _test_permutation_neg(
-            state, None, None, Stateflow.READY, error=ModelDoesNotExistError
+            state, Stateflow.NONE, Stateflow.NONE, Stateflow.READY
         )
         _test_permutation_neg(
-            state, None, None, Stateflow.EVALUATE, error=ModelDoesNotExistError
+            state, Stateflow.NONE, Stateflow.NONE, Stateflow.EVALUATE
         )
         _test_permutation_neg(
-            state, None, None, Stateflow.DELETE, error=ModelDoesNotExistError
+            state, Stateflow.NONE, Stateflow.NONE, Stateflow.DELETE
         )
         _test_permutation_neg(
-            state, None, Stateflow.CREATE, Stateflow.EVALUATE
-        )
-        _test_permutation_neg(state, None, Stateflow.READY, Stateflow.CREATE)
-        _test_permutation_neg(
-            state, None, Stateflow.EVALUATE, Stateflow.CREATE
+            state, Stateflow.NONE, Stateflow.CREATE, Stateflow.EVALUATE
         )
         _test_permutation_neg(
-            state, None, Stateflow.EVALUATE, Stateflow.DELETE
+            state, Stateflow.NONE, Stateflow.READY, Stateflow.CREATE
         )
-        _test_permutation_neg(state, None, Stateflow.DELETE, Stateflow.CREATE)
-        _test_permutation_neg(state, None, Stateflow.DELETE, Stateflow.READY)
         _test_permutation_neg(
-            state, None, Stateflow.DELETE, Stateflow.EVALUATE
+            state, Stateflow.NONE, Stateflow.EVALUATE, Stateflow.CREATE
+        )
+        _test_permutation_neg(
+            state, Stateflow.NONE, Stateflow.EVALUATE, Stateflow.DELETE
+        )
+        _test_permutation_neg(
+            state, Stateflow.NONE, Stateflow.DELETE, Stateflow.CREATE
+        )
+        _test_permutation_neg(
+            state, Stateflow.NONE, Stateflow.DELETE, Stateflow.READY
+        )
+        _test_permutation_neg(
+            state, Stateflow.NONE, Stateflow.DELETE, Stateflow.EVALUATE
         )
     for state in [Stateflow.CREATE, Stateflow.DELETE]:
-        _test_permutation_neg(state, None, None, Stateflow.CREATE)
-        _test_permutation_neg(state, None, Stateflow.CREATE, Stateflow.CREATE)
-        _test_permutation_neg(state, None, Stateflow.CREATE, Stateflow.READY)
-        _test_permutation_neg(state, None, Stateflow.CREATE, Stateflow.DELETE)
-        _test_permutation_neg(state, None, Stateflow.READY, Stateflow.READY)
-        _test_permutation_neg(state, None, Stateflow.READY, Stateflow.EVALUATE)
-        _test_permutation_neg(state, None, Stateflow.READY, Stateflow.DELETE)
-        _test_permutation_neg(state, None, Stateflow.EVALUATE, Stateflow.READY)
         _test_permutation_neg(
-            state, None, Stateflow.EVALUATE, Stateflow.EVALUATE
+            state, Stateflow.NONE, Stateflow.NONE, Stateflow.CREATE
         )
-        _test_permutation_neg(state, None, Stateflow.DELETE, Stateflow.DELETE)
+        _test_permutation_neg(
+            state, Stateflow.NONE, Stateflow.CREATE, Stateflow.CREATE
+        )
+        _test_permutation_neg(
+            state, Stateflow.NONE, Stateflow.CREATE, Stateflow.READY
+        )
+        _test_permutation_neg(
+            state, Stateflow.NONE, Stateflow.CREATE, Stateflow.DELETE
+        )
+        _test_permutation_neg(
+            state, Stateflow.NONE, Stateflow.READY, Stateflow.READY
+        )
+        _test_permutation_neg(
+            state, Stateflow.NONE, Stateflow.READY, Stateflow.EVALUATE
+        )
+        _test_permutation_neg(
+            state, Stateflow.NONE, Stateflow.READY, Stateflow.DELETE
+        )
+        _test_permutation_neg(
+            state, Stateflow.NONE, Stateflow.EVALUATE, Stateflow.READY
+        )
+        _test_permutation_neg(
+            state, Stateflow.NONE, Stateflow.EVALUATE, Stateflow.EVALUATE
+        )
+        _test_permutation_neg(
+            state, Stateflow.NONE, Stateflow.DELETE, Stateflow.DELETE
+        )
 
     # model & dataset - postive cases
     _test_permutation_pos(Stateflow.READY, Stateflow.DELETE, Stateflow.CREATE)

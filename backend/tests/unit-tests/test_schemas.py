@@ -331,25 +331,37 @@ def test_core_Datum(metadata):
     # valid
     schemas.Datum(
         uid="123",
+        dataset="name",
     )
 
     # test property `uid`
     with pytest.raises(ValidationError):
-        schemas.Datum(uid=("uid",))
+        schemas.Datum(
+            uid=("uid",),
+            dataset="name",
+        )
     with pytest.raises(ValidationError):
-        schemas.Datum(uid="uid@")
+        schemas.Datum(
+            uid="uid@",
+            dataset="name",
+        )
     with pytest.raises(ValidationError):
-        schemas.Datum(uid=123)
+        schemas.Datum(
+            uid=123,
+            dataset="name",
+        )
 
     # test property `metadata`
     with pytest.raises(ValidationError):
         schemas.Datum(
             uid="123",
+            dataset="name",
             metadata=metadata[0],
         )
     with pytest.raises(ValidationError):
         schemas.Datum(
             uid="123",
+            dataset="name",
             metadata=[metadata[0], "123"],
         )
 
@@ -574,32 +586,23 @@ def test_core_ScoredAnnotation(metadata, bbox, polygon, raster, scored_labels):
 def test_core_Groundtruth(metadata, groundtruth_annotations):
     # valid
     gt = schemas.GroundTruth(
-        dataset="name1",
-        datum=schemas.Datum(uid="uid"),
+        datum=schemas.Datum(
+            uid="uid",
+            dataset="name",
+        ),
         annotations=groundtruth_annotations,
     )
 
-    # test property `dataset`
-    assert gt.dataset == "name1"
-    with pytest.raises(ValidationError):
-        schemas.GroundTruth(
-            dataset=("name",),
-            datum=schemas.Datum(uid="uid"),
-            annotations=groundtruth_annotations,
-        )
-    with pytest.raises(ValidationError):
-        schemas.GroundTruth(
-            dataset="name@#$#@",
-            datum=schemas.Datum(uid="uid"),
-            annotations=groundtruth_annotations,
-        )
-
     # test property `datum`
-    assert gt.datum == schemas.Datum(uid="uid")
+    assert gt.datum == schemas.Datum(
+        uid="uid",
+        dataset="name",
+    )
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
-            dataset="name",
-            datum="datum_uid",
+            datum=schemas.Datum(
+                uid="uid",
+            ),
             annotations=groundtruth_annotations,
         )
 
@@ -607,20 +610,26 @@ def test_core_Groundtruth(metadata, groundtruth_annotations):
     assert gt.annotations == groundtruth_annotations
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
-            dataset="name",
-            datum=schemas.Datum(uid="uid"),
+            datum=schemas.Datum(
+                uid="uid",
+                dataset="name",
+            ),
             annotations="annotation",
         )
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
-            dataset="name",
-            datum=schemas.Datum(uid="uid"),
+            datum=schemas.Datum(
+                uid="uid",
+                dataset="name",
+            ),
             annotations=[],
         )
     with pytest.raises(ValidationError):
         schemas.GroundTruth(
-            dataset="name",
-            datum=schemas.Datum(uid="uid"),
+            datum=schemas.Datum(
+                uid="uid",
+                dataset="name",
+            ),
             annotations=[groundtruth_annotations[0], 1234],
         )
 
@@ -629,7 +638,7 @@ def test_core_Prediction(metadata, predicted_annotations):
     # valid
     md = schemas.Prediction(
         model="name1",
-        datum=schemas.Datum(uid="uid"),
+        datum=schemas.Datum(uid="uid", dataset="name"),
         annotations=predicted_annotations,
     )
 
@@ -649,7 +658,10 @@ def test_core_Prediction(metadata, predicted_annotations):
         )
 
     # test property `datum`
-    assert md.datum == schemas.Datum(uid="uid")
+    assert md.datum == schemas.Datum(
+        uid="uid",
+        dataset="name",
+    )
     with pytest.raises(ValidationError):
         schemas.Prediction(
             model="name",
@@ -662,19 +674,28 @@ def test_core_Prediction(metadata, predicted_annotations):
     with pytest.raises(ValidationError):
         schemas.Prediction(
             model="name",
-            datum=schemas.Datum(uid="uid"),
+            datum=schemas.Datum(
+                uid="uid",
+                dataset="name",
+            ),
             annotations="annotation",
         )
     with pytest.raises(ValidationError):
         schemas.Prediction(
             model="name",
-            datum=schemas.Datum(uid="uid"),
+            datum=schemas.Datum(
+                uid="uid",
+                dataset="name",
+            ),
             annotations=[],
         )
     with pytest.raises(ValidationError):
         schemas.Prediction(
             model="name",
-            datum=schemas.Datum(uid="uid"),
+            datum=schemas.Datum(
+                uid="uid",
+                dataset="name",
+            ),
             annotations=[predicted_annotations[0], 1234],
         )
 

@@ -8,7 +8,7 @@ from ._create import (
     create_model,
     create_prediction,
 )
-from ._delete import delete_dataset, delete_model
+from ._delete import delete
 from ._read import (
     get_confusion_matrices_from_evaluation_settings_id,
     get_dataset,
@@ -45,8 +45,7 @@ __all__ = [
     "get_joint_labels",
     "get_disjoint_labels",
     "get_disjoint_keys",
-    "delete_dataset",
-    "delete_model",
+    "delete",
     "get_groundtruth",
     "get_prediction",
     "create_ap_evaluation",

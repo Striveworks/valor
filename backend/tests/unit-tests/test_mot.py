@@ -28,6 +28,7 @@ def generate_mot_data(num_frames: int):
 
     create_img = lambda frame: schemas.Datum(  # noqa: E731
         uid="test",
+        dataset="name",
         metadata=[
             schemas.MetaDatum(key="type", value="image"),
             schemas.MetaDatum(key="height", value=500),

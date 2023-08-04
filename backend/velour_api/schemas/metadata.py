@@ -4,9 +4,11 @@ from velour_api.schemas.core import Datum, MetaDatum
 
 
 class Image(BaseModel):
+    dataset: str
     uid: str
     height: int
     width: int
+    metadata:
 
     @classmethod
     def from_datum(cls, datum: Datum):
@@ -23,20 +25,21 @@ class Image(BaseModel):
             raise ValueError(
                 "Datum does not contain all the information that makes it an image."
             )
-
+        del metadata["height"]
+        del metadata["width"]
         return cls(
             uid=datum.uid,
+            dataset=datum.dataset,
             height=metadata["height"],
             width=metadata["width"],
+            metadata=datum.metadataa
         )
 
     def to_datum(self) -> Datum:
         return Datum(
             uid=self.uid,
-            metadata=[
-                MetaDatum(key="height", value=self.height),
-                MetaDatum(key="width", value=self.width),
-            ],
+            dataset=self.dataset,
+            metadata=self.metadata,
         )
 
 

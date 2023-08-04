@@ -107,11 +107,13 @@ def _update_backend_status(
 
     # update status
     if model_name is not None:
-        current_status.update_model(
+        current_status.set_model_status(
             dataset_name=dataset_name, model_name=model_name, status=state
         )
     else:
-        current_status.update_dataset(dataset_name=dataset_name, status=state)
+        current_status.set_dataset_status(
+            dataset_name=dataset_name, status=state
+        )
 
     _set_backend_status(current_status)
 
@@ -164,9 +166,12 @@ def create(fn: callable) -> callable:
         else:
             raise RuntimeError
 
-        _update_backend_status(
-            Stateflow.CREATE, dataset_name=dataset_name, model_name=model_name
-        )
+        if dataset_name is not None:
+            _update_backend_status(
+                Stateflow.CREATE,
+                dataset_name=dataset_name,
+                model_name=model_name,
+            )
         return fn(*args, **kwargs)
 
     return wrapper

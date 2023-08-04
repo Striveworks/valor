@@ -6,7 +6,6 @@ from velour_api.backend import jobs
 """ Labels """
 
 
-@jobs.read
 def get_labels(
     db: Session,
     request: schemas.Filter = None,
@@ -15,7 +14,6 @@ def get_labels(
     return backend.get_labels(db, request)
 
 
-@jobs.read
 def get_label_distribution(
     db: Session,
     request: schemas.Filter,
@@ -23,7 +21,6 @@ def get_label_distribution(
     return []
 
 
-@jobs.read
 def get_joint_labels(
     db: Session,
     dataset_name: str,
@@ -38,7 +35,6 @@ def get_joint_labels(
     )
 
 
-@jobs.read
 def get_disjoint_labels(
     db: Session,
     dataset_name: str,
@@ -53,7 +49,6 @@ def get_disjoint_labels(
     )
 
 
-@jobs.read
 def get_disjoint_keys(
     db: Session,
     dataset_name: str,
@@ -72,7 +67,6 @@ def get_disjoint_keys(
 
 
 # @TODO
-@jobs.read
 def get_datum(
     db: Session,
     dataset_name: str,
@@ -83,7 +77,6 @@ def get_datum(
 
 
 # @TODO
-@jobs.read
 def get_datums(
     db: Session,
     request: schemas.Filter = None,
@@ -94,12 +87,10 @@ def get_datums(
 """ Datasets """
 
 
-@jobs.read
 def get_dataset(db: Session, name: str) -> schemas.Dataset:
     return backend.get_dataset(db, name)
 
 
-@jobs.read
 def get_datasets(
     db: Session,
     request: schemas.Filter = None,
@@ -107,7 +98,6 @@ def get_datasets(
     return backend.get_datasets(db)
 
 
-@jobs.read
 def get_groundtruth(
     db: Session,
     dataset_name: str,
@@ -120,7 +110,6 @@ def get_groundtruth(
     )
 
 
-@jobs.read
 def get_groundtruths(
     db: Session,
     request: schemas.Filter,
@@ -131,12 +120,10 @@ def get_groundtruths(
 """ Models """
 
 
-@jobs.read
 def get_model(db: Session, name: str) -> schemas.Model:
     return backend.get_model(db, name)
 
 
-@jobs.read
 def get_models(
     db: Session,
     request: schemas.Filter = None,
@@ -144,7 +131,6 @@ def get_models(
     return backend.get_models(db)
 
 
-@jobs.read
 def get_prediction(
     db: Session, model_name: str, datum_uid: str
 ) -> schemas.Prediction:
@@ -154,7 +140,6 @@ def get_prediction(
 
 
 # @TODO
-@jobs.read
 def get_predictions(
     db: Session,
     request: schemas.Filter = None,

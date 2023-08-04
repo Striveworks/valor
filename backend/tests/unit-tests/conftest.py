@@ -7,6 +7,7 @@ from velour_api import schemas
 def img() -> schemas.Datum:
     return schemas.Datum(
         uid="",
+        dataset="name",
         metadata=[
             schemas.MetaDatum(
                 name="type",

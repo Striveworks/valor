@@ -65,9 +65,9 @@ def _test_post_endpoints(
 
 def test_post_groundtruth(client: TestClient):
     example_json = {
-        "dataset": "dataset1",
         "datum": {
             "uid": "file_uid",
+            "dataset": "dataset1",
             "metadata": [],
         },
         "annotations": [
@@ -92,9 +92,9 @@ def test_post_groundtruth(client: TestClient):
 
 def test_post_groundtruth_classification(client: TestClient):
     example_json = {
-        "dataset": "dataset1",
         "datum": {
             "uid": "file_uid",
+            "dataset": "dataset1",
             "metadata": [
                 {"key": "meta1", "value": 0.4},
                 {"key": "meta1", "value": "v1"},
@@ -136,9 +136,9 @@ def test_post_groundtruth_classification(client: TestClient):
 
 def test_post_groundtruth_bbox_detection(client: TestClient):
     example_json = {
-        "dataset": "dataset1",
         "datum": {
             "uid": "file_uid",
+            "dataset": "dataset1",
             "metadata": [
                 {"key": "meta1", "value": 0.4},
                 {"key": "meta1", "value": "v1"},
@@ -178,9 +178,9 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
 
 def test_post_groundtruth_polygon_detection(client: TestClient):
     example_json = {
-        "dataset": "dataset1",
         "datum": {
             "uid": "file_uid",
+            "dataset": "dataset1",
             "metadata": [
                 {"key": "meta1", "value": 0.4},
                 {"key": "meta1", "value": "v1"},
@@ -239,9 +239,9 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
 
 def test_post_groundtruth_raster_segmentation(client: TestClient):
     example_json = {
-        "dataset": "dataset1",
         "datum": {
             "uid": "file_uid",
+            "dataset": "dataset1",
             "metadata": [
                 {"key": "height", "value": 20},
                 {"key": "width", "value": 20},
@@ -294,6 +294,7 @@ def test_post_prediction(client: TestClient):
         "model": "model1",
         "datum": {
             "uid": "file_uid",
+            "dataset": "dataset1",
             "metadata": [],
         },
         "annotations": [
@@ -333,6 +334,7 @@ def test_post_prediction_classification(client: TestClient):
         "model": "model1",
         "datum": {
             "uid": "file_uid",
+            "dataset": "dataset1",
             "metadata": [
                 {"key": "meta1", "value": 0.4},
                 {"key": "meta1", "value": "v1"},
@@ -382,6 +384,7 @@ def test_post_prediction_bbox_detection(client: TestClient):
         "model": "model1",
         "datum": {
             "uid": "file_uid",
+            "dataset": "dataset1",
             "metadata": [
                 {"key": "meta1", "value": 0.4},
                 {"key": "meta1", "value": "v1"},
@@ -427,6 +430,7 @@ def test_post_prediction_polygon_detection(client: TestClient):
         "model": "model1",
         "datum": {
             "uid": "file_uid",
+            "dataset": "dataset1",
             "metadata": [
                 {"key": "meta1", "value": 0.4},
                 {"key": "meta1", "value": "v1"},
@@ -496,6 +500,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
         "model": "model1",
         "datum": {
             "uid": "file_uid",
+            "dataset": "dataset1",
             "metadata": [
                 {"key": "height", "value": 20},
                 {"key": "width", "value": 20},
@@ -769,10 +774,10 @@ def test_get_dataset_datum(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_delete_dataset(crud, client: TestClient):
-    crud.delete_dataset.return_value = None
+    crud.delete.return_value = None
     resp = client.delete("/datasets/dsetname")
     assert resp.status_code == 200
-    crud.delete_dataset.assert_called_once()
+    crud.delete.assert_called_once()
 
 
 """ GET /models """
@@ -791,10 +796,10 @@ def test_get_models(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_delete_model(crud, client: TestClient):
-    crud.delete_model.return_value = None
+    crud.delete.return_value = None
     resp = client.delete("/models/modelname")
     assert resp.status_code == 200
-    crud.delete_model.assert_called_once()
+    crud.delete.assert_called_once()
 
 
 """ GET /labels """
