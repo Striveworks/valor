@@ -116,23 +116,6 @@ def _update_backend_status(
     _set_backend_status(current_status)
 
 
-def set_dataset_status(dataset_name: str, status: Stateflow):
-    _update_backend_status(
-        state=status,
-        dataset_name=dataset_name,
-    )
-
-
-def set_inference_status(
-    dataset_name: str, model_name: str, status: Stateflow
-):
-    _update_backend_status(
-        state=status,
-        dataset_name=dataset_name,
-        model_name=model_name,
-    )
-
-
 def create(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
@@ -315,10 +298,35 @@ def computation(fn: callable) -> callable:
 def delete(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
-        if len(args) + len(kwargs) != 3:
+        if len(args) + len(kwargs) == 3:
             raise RuntimeError
 
-        kwargs["_pre_"] = Stateflow.DELETE
-        return fn(*args, **kwargs)
+        db = None
+        if len(args) > 0:
+            db = args[0]
+        elif "db" in kwargs:
+            db = kwargs["db"]
+        if not isinstance(db, Session):
+            raise RuntimeError
+
+        dataset_name = kwargs["dataset_name"]
+        model_name = kwargs["model_name"]
+
+        _update_backend_status(
+            state=Stateflow.DELETE,
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
+        result = fn(*args, **kwargs)
+
+        # remove
+        status = _get_backend_status()
+        if dataset_name is not None:
+            status.remove_dataset(dataset_name)
+        elif model_name is not None:
+            status.remove_model(model_name)
+        _set_backend_status(status)
+
+        return result
 
     return wrapper

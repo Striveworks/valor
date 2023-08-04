@@ -72,6 +72,17 @@ class DatasetStatus(BaseModel):
             Stateflow.EVALUATE if self.evaluating else Stateflow.READY
         )
 
+    def remove_model(self, name: str):
+        if self.models is None:
+            raise exceptions.ModelDoesNotExistError(name)
+        elif name not in self.models:
+            raise exceptions.ModelDoesNotExistError(name)
+        elif self.models[name].status != Stateflow.DELETE:
+            raise StateflowError(
+                f"cannot delete model `{name}` with state `{self.models[name].status}`"
+            )
+        del self.models[name]
+
     def set_status(self, status: Stateflow):
         if self.evaluating and status != Stateflow.EVALUATE:
             raise Stateflow(
@@ -126,3 +137,21 @@ class BackendStatus(BaseModel):
             raise exceptions.ModelDoesNotExistError(model_name)
 
         return self.datasets[dataset_name].models[model_name].status
+
+    def remove_model(self, dataset_name: str, model_name: str):
+        if self.datasets is None:
+            raise exceptions.DatasetDoesNotExistError(dataset_name)
+        elif dataset_name not in self.datasets:
+            raise exceptions.DatasetDoesNotExistError(dataset_name)
+        self.datasets[dataset_name].remove_model(model_name)
+
+    def remove_dataset(self, dataset_name: str):
+        if self.datasets is None:
+            raise exceptions.DatasetDoesNotExistError(dataset_name)
+        elif dataset_name not in self.datasets:
+            raise exceptions.DatasetDoesNotExistError(dataset_name)
+        elif self.datasets[dataset_name].status != Stateflow.DELETE:
+            raise StateflowError(
+                f"cannot delete dataset `{dataset_name}` with state `{self.datasets[dataset_name].status}`"
+            )
+        del self.datasets[dataset_name]

@@ -235,7 +235,7 @@ def delete_dataset(
 ) -> str | None:
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
-        return crud.delete_dataset(db, dataset_name)
+        return crud.delete(db, dataset_name=dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -266,7 +266,7 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 @app.delete("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
 def delete_model(model_name: str, db: Session = Depends(get_db)) -> str | None:
     try:
-        return crud.delete_model(db, model_name)
+        return crud.delete(db, model_name=model_name)
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
