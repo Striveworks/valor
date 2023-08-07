@@ -4,7 +4,10 @@ import pytest
 
 from velour_api.backend import jobs
 from velour_api.enums import JobStatus, Stateflow
-from velour_api.exceptions import StateflowError
+from velour_api.exceptions import (
+    EvaluationJobDoesNotExistError,
+    StateflowError,
+)
 from velour_api.schemas.jobs import BackendStatus, DatasetStatus, ModelStatus
 
 
@@ -14,31 +17,32 @@ def teardown():
     jobs.r = None
 
 
-def test_get_evaluation_status():
+def test_get_evaluation_job():
+    """Checks that multiple calls of `_get_backend_status` only
+    connects to redis once
+    """
+
+    jobs.redis.Redis = MagicMock()
+
+    assert jobs.redis.Redis.call_count == 0
+    with pytest.raises(EvaluationJobDoesNotExistError):
+        jobs.get_evaluation_job(0)
+    assert jobs.redis.Redis.call_count == 1
+    with pytest.raises(EvaluationJobDoesNotExistError):
+        jobs.get_evaluation_job(0)
+    assert jobs.redis.Redis.call_count == 1
+
+
+def test_set_evaluation_job():
     """Checks that multiple calls of `_get_backend_status` only
     connects to redis once
     """
     jobs.redis.Redis = MagicMock()
 
     assert jobs.redis.Redis.call_count == 0
-    with pytest.raises(RuntimeError):
-        jobs.get_evaluation_status(0)
+    jobs.set_evaluation_job(0, JobStatus.PENDING)
     assert jobs.redis.Redis.call_count == 1
-    with pytest.raises(RuntimeError):
-        jobs.get_evaluation_status(0)
-    assert jobs.redis.Redis.call_count == 1
-
-
-def test_set_evaluation_status():
-    """Checks that multiple calls of `_get_backend_status` only
-    connects to redis once
-    """
-    jobs.redis.Redis = MagicMock()
-
-    assert jobs.redis.Redis.call_count == 0
-    jobs.set_evaluation_status(0, JobStatus.PENDING)
-    assert jobs.redis.Redis.call_count == 1
-    jobs.set_evaluation_status(0, JobStatus.PROCESSING)
+    jobs.set_evaluation_job(1, JobStatus.PENDING)
     assert jobs.redis.Redis.call_count == 1
 
 
@@ -72,6 +76,7 @@ def test__set_backend_status():
 def test__update_backend_status():
 
     jobs._get_backend_status = MagicMock()
+    jobs._set_backend_status = MagicMock()
 
     def _generate_status(
         ds_state: Stateflow | None, md_state: Stateflow | None = None
@@ -257,6 +262,6 @@ def test__update_backend_status():
     _test_permutation_pos(Stateflow.READY, Stateflow.DELETE, Stateflow.DELETE)
 
     # model & dataset - negative cases
-    _test_permutation_pos(
+    _test_permutation_neg(
         Stateflow.READY, Stateflow.DELETE, Stateflow.EVALUATE
     )

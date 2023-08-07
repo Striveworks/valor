@@ -130,7 +130,9 @@ def pred_clfs_create(
 
 def test_evaluation_job():
     # check that job id: 0 is non-existent
-    assert jobs.get_evaluation_job(0) is None
+    with pytest.raises(exceptions.EvaluationJobDoesNotExistError) as e:
+        jobs.get_evaluation_job(0) is None
+    assert "Evaluation job with id `0 does not exist" in str(e)
 
     # test invalid transitions from `None`
     with pytest.raises(exceptions.EvaluationJobDoesNotExistError) as e:
@@ -144,7 +146,9 @@ def test_evaluation_job():
     assert "does not exist" in str(e)
 
     # check that nothing affected the state
-    assert jobs.get_evaluation_job(0) is None
+    with pytest.raises(exceptions.EvaluationJobDoesNotExistError) as e:
+        jobs.get_evaluation_job(0) is None
+    assert "Evaluation job with id `0 does not exist" in str(e)
 
     """test valid transition"""
     jobs.set_evaluation_job(0, enums.JobStatus.PENDING)
@@ -204,6 +208,11 @@ def test_evaluation_job():
 
     """test job removal"""
     jobs.remove_evaluation_job(0)
+
+    """confirm removal"""
+    with pytest.raises(exceptions.EvaluationJobDoesNotExistError) as e:
+        jobs.get_evaluation_job(0) is None
+    assert "Evaluation job with id `0 does not exist" in str(e)
 
 
 def test_stateflow_dataset(db: Session):
@@ -399,7 +408,7 @@ def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
     assert crud.get_status(dataset_name=dset_name) == enums.Stateflow.EVALUATE
 
     # attempt to delete dataset
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(exceptions.StateflowError) as e:
         crud.delete(db=db, dataset_name=dset_name)
     assert (
         "cannot transition to delete as a evaluation is currently running."
@@ -476,7 +485,7 @@ def test_stateflow_clf_evaluation(
     assert crud.get_status(dataset_name=dset_name) == enums.Stateflow.EVALUATE
 
     # attempt to delete dataset
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(exceptions.StateflowError) as e:
         crud.delete(db=db, dataset_name=dset_name)
     assert (
         "cannot transition to delete as a evaluation is currently running."
@@ -501,102 +510,3 @@ def test_stateflow_clf_evaluation(
         crud.get_status(dataset_name=dset_name, model_name=model_name)
         == enums.Stateflow.READY
     )
-
-
-# NOTE: Jobs will be added in PR 2
-
-
-# def test_add_job():
-#     job = Job()
-#     jobs.add_job(job)
-
-#     assert jobs.r.get(job.uid) is not None
-
-
-# def test_get_job():
-#     """test that we can add a job to redis and get it back and test that
-#     we get an error if a job with a given uid does not exist
-#     """
-#     job = Job()
-#     jobs.add_job(job)
-
-#     retrieved_job = jobs.get_job(job.uid)
-
-#     assert retrieved_job.dict() == job.dict()
-
-#     with pytest.raises(JobDoesNotExistError) as exc_info:
-#         jobs.get_job("asdasd")
-
-#     assert "Job with uid" in str(exc_info)
-
-
-# def test_wrap_metric_computation():
-#     """Test that job transition status works"""
-
-#     def f():
-#         assert (
-#             job.status == JobStatus.PROCESSING == jobs.get_job(job.uid).status
-#         )
-#         return 1
-
-#     job, wrapped_f = jobs.wrap_metric_computation(f)
-
-#     assert job.status == JobStatus.PENDING == jobs.get_job(job.uid).status
-#     wrapped_f()
-#     assert job.status == JobStatus.DONE == jobs.get_job(job.uid).status
-#     assert (
-#         job.evaluation_settings_id
-#         == 1
-#         == jobs.get_job(job.uid).evaluation_settings_id
-#     )
-
-#     def g():
-#         assert (
-#             job.status == JobStatus.PROCESSING == jobs.get_job(job.uid).status
-#         )
-#         raise Exception
-
-#     job, wrapped_g = jobs.wrap_metric_computation(g)
-#     assert job.status == JobStatus.PENDING == jobs.get_job(job.uid).status
-#     with pytest.raises(Exception):
-#         wrapped_g()
-#     assert job.status == JobStatus.FAILED == jobs.get_job(job.uid).status
-
-
-# @patch("velour_api.main.crud")
-# @patch("velour_api.schemas.uuid4")
-# def test_create_ap_metrics_endpoint(uuid4, crud, client: TestClient):
-#     """This tests the create AP metrics endpoint, making sure the background tasks
-#     and job status functions properly.
-#     """
-#     crud.validate_create_ap_metrics.return_value = ([], [])
-#     # prescribe the job id so the job itself knows what it is
-#     uuid4.return_value = "1"
-
-#     example_json = {
-#         "settings": {
-#             "model_name": "",
-#             "dataset_name": "",
-#             "model_pred_task_type": "Bounding Box Object Detection",
-#             "dataset_gt_task_type": "Bounding Box Object Detection",
-#             "label_key": "class",
-#         },
-#     }
-
-#     # create a patch of the create ap metrics method that checks
-#     # that the job it corresponds to is in the processing state
-#     def patch_create_ap_metrics(*args, **kwargs):
-#         assert jobs.get_job("1").status == JobStatus.PROCESSING
-#         return 2
-
-#     crud.create_ap_metrics = patch_create_ap_metrics
-
-#     resp = client.post("/ap-metrics", json=example_json)
-#     assert resp.status_code == 202
-
-#     cm_resp = resp.json()
-#     job_id = cm_resp["job_id"]
-#     assert job_id == "1"
-#     job = jobs.get_job(job_id)
-#     assert job.status == JobStatus.DONE
-#     assert job.evaluation_settings_id == 2

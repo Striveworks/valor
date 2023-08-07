@@ -95,7 +95,7 @@ class DatasetStatus(BaseModel):
 
     def set_status(self, status: Stateflow):
         if self.evaluating and status != Stateflow.EVALUATE:
-            raise Stateflow(
+            raise StateflowError(
                 f"cannot transition to {status} as a evaluation is currently running."
             )
         elif status not in self.status.next():

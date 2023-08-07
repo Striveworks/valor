@@ -58,22 +58,21 @@ def needs_redis(fn):
 
 
 @needs_redis
-def get_evaluation_job(id: int) -> JobStatus | None:
+def get_evaluation_job(id: int) -> JobStatus:
     json_str = r.get("evaluation_jobs")
-    if json_str is None:
-        return None
+    if json_str is None or not isinstance(json_str, bytes):
+        raise exceptions.EvaluationJobDoesNotExistError(id)
     info = json.loads(json_str)
     jobs = EvaluationJobs(**info)
-
     if id not in jobs.evaluations:
-        return None
+        raise exceptions.EvaluationJobDoesNotExistError(id)
     return jobs.evaluations[id]
 
 
 @needs_redis
 def set_evaluation_job(id: int, status: JobStatus):
     json_str = r.get("evaluation_jobs")
-    if json_str is None:
+    if json_str is None or not isinstance(json_str, bytes):
         evalJobs = EvaluationJobs(evaluations=dict())
     else:
         info = json.loads(json_str)
@@ -85,7 +84,7 @@ def set_evaluation_job(id: int, status: JobStatus):
 @needs_redis
 def remove_evaluation_job(id: int):
     json_str = r.get("evaluation_jobs")
-    if json_str is None:
+    if json_str is None or not isinstance(json_str, bytes):
         raise exceptions.EvaluationJobDoesNotExistError(id)
     else:
         info = json.loads(json_str)
@@ -97,7 +96,7 @@ def remove_evaluation_job(id: int):
 @needs_redis
 def _get_backend_status() -> BackendStatus:
     json_str = r.get("backend_stateflow")
-    if json_str is None:
+    if json_str is None or not isinstance(json_str, bytes):
         return BackendStatus()
     info = json.loads(json_str)
     return BackendStatus(**info)
