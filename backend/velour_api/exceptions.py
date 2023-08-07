@@ -78,8 +78,10 @@ class StateflowError(Exception):
 
 
 class EvaluationJobStateError(Exception):
-    def __init__(self, id: int):
-        return super().__init__(f"state error with evaluation job id: {id}")
+    def __init__(self, id: int, msg: str = "none"):
+        return super().__init__(
+            f"state error with evaluation job id: {id}, msg: {msg}"
+        )
 
 
 class EvaluationJobDoesNotExistError(Exception):

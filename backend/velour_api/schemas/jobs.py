@@ -9,22 +9,32 @@ class EvaluationJobs(BaseModel):
     evaluations: dict[int, enums.JobStatus]
 
     def set_job(self, id: int, state: enums.JobStatus):
-
         # create new evaluation job
         if id not in self.evaluations:
             if state != enums.JobStatus.PENDING:
-                raise exceptions.EvaluationJobStateError(id)
-            self.evaluations[id] = state
-
-        # get current state
-        current = self.evaluations[id]
-
-        # state flow
-        if state not in current.next():
-            raise exceptions.EvaluationJobStateError(id)
+                raise exceptions.EvaluationJobDoesNotExistError(id)
+        else:
+            # check current state
+            current = self.evaluations[id]
+            if state not in current.next():
+                raise exceptions.EvaluationJobStateError(
+                    id, f"{current} =/=> {state}"
+                )
 
         # update job status
         self.evaluations[id] = state
+
+    def remove_job(self, id: int):
+        if id not in self.evaluations:
+            raise exceptions.EvaluationJobDoesNotExistError(id)
+        elif self.evaluations[id] not in [
+            enums.JobStatus.DONE,
+            enums.JobStatus.FAILED,
+        ]:
+            raise exceptions.EvaluationJobStateError(
+                id, "cannot remove an actively running job."
+            )
+        del self.evaluations[id]
 
 
 class ModelStatus(BaseModel):

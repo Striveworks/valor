@@ -128,6 +128,84 @@ def pred_clfs_create(
     ]
 
 
+def test_evaluation_job():
+    # check that job id: 0 is non-existent
+    assert jobs.get_evaluation_job(0) is None
+
+    # test invalid transitions from `None`
+    with pytest.raises(exceptions.EvaluationJobDoesNotExistError) as e:
+        jobs.set_evaluation_job(0, enums.JobStatus.PROCESSING)
+    assert "does not exist" in str(e)
+    with pytest.raises(exceptions.EvaluationJobDoesNotExistError) as e:
+        jobs.set_evaluation_job(0, enums.JobStatus.DONE)
+    assert "does not exist" in str(e)
+    with pytest.raises(exceptions.EvaluationJobDoesNotExistError) as e:
+        jobs.set_evaluation_job(0, enums.JobStatus.FAILED)
+    assert "does not exist" in str(e)
+
+    # check that nothing affected the state
+    assert jobs.get_evaluation_job(0) is None
+
+    """test valid transition"""
+    jobs.set_evaluation_job(0, enums.JobStatus.PENDING)
+
+    # test invalid transitions from `PENDING`
+    with pytest.raises(exceptions.EvaluationJobStateError) as e:
+        jobs.set_evaluation_job(0, enums.JobStatus.DONE)
+    assert "JobStatus.PENDING =/=> JobStatus.DONE" in str(e)
+    with pytest.raises(exceptions.EvaluationJobStateError) as e:
+        jobs.set_evaluation_job(0, enums.JobStatus.FAILED)
+    assert "JobStatus.PENDING =/=> JobStatus.FAILED" in str(e)
+
+    # test removing PENDING job
+    with pytest.raises(exceptions.EvaluationJobStateError) as e:
+        jobs.remove_evaluation_job(0)
+    assert "cannot remove an actively running job." in str(e)
+
+    """test valid transition"""
+    jobs.set_evaluation_job(0, enums.JobStatus.PROCESSING)
+
+    # test removing PROCESSING job
+    with pytest.raises(exceptions.EvaluationJobStateError) as e:
+        jobs.remove_evaluation_job(0)
+    assert "cannot remove an actively running job." in str(e)
+
+    # test invalid transitions from `PROCESSING`
+    with pytest.raises(exceptions.EvaluationJobStateError) as e:
+        jobs.set_evaluation_job(0, enums.JobStatus.PENDING)
+    assert "JobStatus.PROCESSING =/=> JobStatus.PENDING" in str(e)
+
+    """test valid transition"""
+    jobs.set_evaluation_job(0, enums.JobStatus.FAILED)
+
+    # test invalid transitions from `DONE`
+    with pytest.raises(exceptions.EvaluationJobStateError) as e:
+        jobs.set_evaluation_job(0, enums.JobStatus.PROCESSING)
+    assert "JobStatus.FAILED =/=> JobStatus.PROCESSING" in str(e)
+    with pytest.raises(exceptions.EvaluationJobStateError) as e:
+        jobs.set_evaluation_job(0, enums.JobStatus.DONE)
+    assert "JobStatus.FAILED =/=> JobStatus.DONE" in str(e)
+
+    """test valid transition"""
+    jobs.set_evaluation_job(0, enums.JobStatus.PENDING)
+    jobs.set_evaluation_job(0, enums.JobStatus.PROCESSING)
+    jobs.set_evaluation_job(0, enums.JobStatus.DONE)
+
+    # test invalid transitions from `DONE`
+    with pytest.raises(exceptions.EvaluationJobStateError) as e:
+        jobs.set_evaluation_job(0, enums.JobStatus.PENDING)
+    assert "JobStatus.DONE =/=> JobStatus.PENDING" in str(e)
+    with pytest.raises(exceptions.EvaluationJobStateError) as e:
+        jobs.set_evaluation_job(0, enums.JobStatus.PROCESSING)
+    assert "JobStatus.DONE =/=> JobStatus.PROCESSING" in str(e)
+    with pytest.raises(exceptions.EvaluationJobStateError) as e:
+        jobs.set_evaluation_job(0, enums.JobStatus.FAILED)
+    assert "JobStatus.DONE =/=> JobStatus.FAILED" in str(e)
+
+    """test job removal"""
+    jobs.remove_evaluation_job(0)
+
+
 def test_stateflow_dataset(db: Session):
 
     # should have no record of dataset

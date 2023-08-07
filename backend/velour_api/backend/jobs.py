@@ -58,28 +58,40 @@ def needs_redis(fn):
 
 
 @needs_redis
-def get_evaluation_status(id: int) -> JobStatus:
+def get_evaluation_job(id: int) -> JobStatus | None:
     json_str = r.get("evaluation_jobs")
     if json_str is None:
-        raise RuntimeError("no evaluation jobs exists")
+        return None
     info = json.loads(json_str)
     jobs = EvaluationJobs(**info)
 
     if id not in jobs.evaluations:
-        raise exceptions.EvaluationJobDoesNotExistError(id)
+        return None
     return jobs.evaluations[id]
 
 
 @needs_redis
-def set_evaluation_status(id: int, status: JobStatus):
+def set_evaluation_job(id: int, status: JobStatus):
     json_str = r.get("evaluation_jobs")
     if json_str is None:
-        jobs = EvaluationJobs(evaluations=dict())
+        evalJobs = EvaluationJobs(evaluations=dict())
     else:
         info = json.loads(json_str)
-        jobs = EvaluationJobs(**info)
-    jobs.evaluations[id] = status
-    r.set("evaluation_jobs", jobs.model_dump_json())
+        evalJobs = EvaluationJobs(**info)
+    evalJobs.set_job(id, status)
+    r.set("evaluation_jobs", evalJobs.model_dump_json())
+
+
+@needs_redis
+def remove_evaluation_job(id: int):
+    json_str = r.get("evaluation_jobs")
+    if json_str is None:
+        raise exceptions.EvaluationJobDoesNotExistError(id)
+    else:
+        info = json.loads(json_str)
+        evalJobs = EvaluationJobs(**info)
+    evalJobs.remove_job(id)
+    r.set("evaluation_jobs", evalJobs.model_dump_json())
 
 
 @needs_redis
