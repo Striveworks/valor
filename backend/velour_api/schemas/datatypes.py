@@ -35,8 +35,8 @@ class Image(BaseModel):
         return cls(
             uid=datum.uid,
             dataset=datum.dataset,
-            height=metadata["height"],
-            width=metadata["width"],
+            height=height,
+            width=width,
             metadata=[
                 MetaDatum(key=key, value=metadata[key]) for key in metadata
             ],
