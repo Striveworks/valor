@@ -111,7 +111,9 @@ def _update_backend_status(
     state: Stateflow,
     dataset_name: str | None = None,
     model_name: str | None = None,
-) -> BackendStatus:
+):
+    if not dataset_name and not model_name:
+        return
 
     # get current status
     current_status = _get_backend_status()
@@ -129,6 +131,25 @@ def _update_backend_status(
         )
 
     _set_backend_status(current_status)
+
+
+def _protected_datasets() -> list[str]:
+    stateflow = _get_backend_status()
+    if stateflow.datasets is not None:
+        return list(stateflow.datasets.keys())
+    return []
+
+
+def _protected_models() -> list[str]:
+    stateflow = _get_backend_status()
+    if stateflow.datasets is not None:
+        return [
+            model
+            for dataset in stateflow.datasets
+            if stateflow.datasets[dataset].models is not None
+            for model in stateflow.datasets[dataset].models
+        ]
+    return []
 
 
 def create(fn: callable) -> callable:
@@ -287,6 +308,7 @@ def computation(fn: callable) -> callable:
     return wrapper
 
 
+# @TODO: Need to find better solution than just catching error when deleting model that had predictions
 def delete(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
@@ -311,22 +333,30 @@ def delete(fn: callable) -> callable:
         if "model_name" in kwargs:
             model_name = kwargs["model_name"]
 
-        # enter deletion state
-        _update_backend_status(
-            state=Stateflow.DELETE,
-            dataset_name=dataset_name,
-            model_name=model_name,
-        )
+        try:
+            # enter deletion state
+            _update_backend_status(
+                state=Stateflow.DELETE,
+                dataset_name=dataset_name,
+                model_name=model_name,
+            )
+        except exceptions.StateflowError as e:
+            if "stateflow uninitialized" not in str(e):
+                raise
 
         result = fn(*args, **kwargs)
 
-        # remove
-        status = _get_backend_status()
-        if model_name is not None:
-            status.remove_model(model_name)
-        else:
-            status.remove_dataset(dataset_name)
-        _set_backend_status(status)
+        try:
+            # remove
+            status = _get_backend_status()
+            if model_name is not None:
+                status.remove_model(model_name)
+            else:
+                status.remove_dataset(dataset_name)
+            _set_backend_status(status)
+        except exceptions.StateflowError as e:
+            if "stateflow uninitialized" not in str(e):
+                raise
 
         return result
 

@@ -87,7 +87,7 @@ def get_datasets(
 ) -> list[schemas.Dataset]:
     return [
         get_dataset(db, name)
-        for name in db.scalars(select(models.Dataset.name))
+        for name in db.scalars(select(models.Dataset.name)).all()
     ]
 
 

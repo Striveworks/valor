@@ -40,7 +40,7 @@ from velour.schemas import (
     ScoredLabel,
 )
 from velour_api import crud
-from velour_api.backend import models
+from velour_api.backend import jobs, models
 
 dset_name = "test_dataset"
 model_name = "test_model"
@@ -179,15 +179,11 @@ def db(client: Client) -> Session:
 
     yield sess
 
-    # cleanup by deleting all datasets, models, and labels
-    for dataset in client.get_datasets():
-        Dataset.prune(client, dataset["name"])
-
     for model in client.get_models():
-        Model.prune(client, model["name"])
+        crud.delete(db=sess, model_name=model["name"])
 
     for dataset in client.get_datasets():
-        crud.delete_dataset(db=sess, dataset_name=dataset["name"])
+        crud.delete(db=sess, dataset_name=dataset["name"])
 
     labels = sess.scalars(select(models.Label))
     for label in labels:
@@ -196,8 +192,8 @@ def db(client: Client) -> Session:
     sess.commit()
 
     # clean redis
-    # jobs.connect_to_redis()
-    # jobs.r.flushdb()
+    jobs.connect_to_redis()
+    jobs.r.flushdb()
 
 
 @pytest.fixture

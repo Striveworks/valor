@@ -128,7 +128,7 @@ class BackendStatus(BaseModel):
     ):
         # check if dataset exists
         if self.datasets is None:
-            raise exceptions.StateflowError("backend stateflow uninitialized")
+            raise exceptions.StateflowError("stateflow uninitialized")
 
         # set status to specific inference
         if dataset_name:

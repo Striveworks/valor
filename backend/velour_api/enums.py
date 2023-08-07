@@ -83,7 +83,7 @@ class Stateflow(str, Enum):
 
     def next(self):
         if self == self.NONE:
-            return [self.CREATE]
+            return [self.CREATE, self.DELETE]
         elif self == self.CREATE:
             return [self.CREATE, self.READY, self.DELETE]
         elif self == self.READY:
