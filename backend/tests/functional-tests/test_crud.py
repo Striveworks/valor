@@ -442,26 +442,26 @@ def dataset_model_create(
 ):
 
     crud.create_dataset(
-        db,
-        schemas.Dataset(name=dataset_names[0]),
+        db=db,
+        dataset=schemas.Dataset(name=dataset_names[0]),
     )
     for gt in gt_dets_create:
-        gt.dataset = dataset_names[0]
-        crud.create_groundtruth(db, gt)
-    crud.finalize(db, dataset_names[0])
+        gt.datum.dataset = dataset_names[0]
+        crud.create_groundtruth(db=db, groundtruth=gt)
+    crud.finalize(db=db, dataset_name=dataset_names[0])
 
     # Create model1
-    crud.create_model(db, model=schemas.Model(name=model_names[0]))
+    crud.create_model(db=db, model=schemas.Model(name=model_names[0]))
 
     # Link model1 to dataset1
     for pd in pred_dets_create:
         # pd.dataset = dataset_names[0]
         pd.model = model_names[0]
-        crud.create_prediction(db, pd)
+        crud.create_prediction(db=db, prediction=pd)
 
     # Finalize model1 over dataset1
     crud.finalize(
-        db,
+        db=db,
         dataset_name=dataset_names[0],
         model_name=model_names[0],
     )
@@ -469,8 +469,8 @@ def dataset_model_create(
     yield
 
     # clean up
-    crud.delete_model(db, model_names[0])
-    crud.delete_dataset(db, dataset_names[0])
+    crud.delete(db=db, model_name=model_names[0])
+    crud.delete(db=db, dataset_name=dataset_names[0])
 
 
 """ CREATE """
@@ -479,7 +479,7 @@ def dataset_model_create(
 def test_create_and_get_datasets(db: Session):
 
     # Create dataset
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     all_datasets = db.scalars(select(models.Dataset)).all()
     assert len(all_datasets) == 1
@@ -487,33 +487,33 @@ def test_create_and_get_datasets(db: Session):
 
     with pytest.raises(exceptions.DatasetAlreadyExistsError) as exc_info:
         crud.create_dataset(
-            db,
-            schemas.Dataset(name=dset_name),
+            db=db,
+            dataset=schemas.Dataset(name=dset_name),
         )
     assert "already exists" in str(exc_info)
 
     crud.create_dataset(
-        db,
-        schemas.Dataset(name="other_dataset"),
+        db=db,
+        dataset=schemas.Dataset(name="other_dataset"),
     )
-    datasets = crud.get_datasets(db)
+    datasets = crud.get_datasets(db=db)
     assert len(datasets) == 2
     assert set([d.name for d in datasets]) == {dset_name, "other_dataset"}
 
 
 def test_create_and_get_models(db: Session):
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(db=db, model=schemas.Model(name=model_name))
 
     all_models = db.scalars(select(models.Model)).all()
     assert len(all_models) == 1
     assert all_models[0].name == model_name
 
     with pytest.raises(exceptions.ModelAlreadyExistsError) as exc_info:
-        crud.create_model(db, schemas.Model(name=model_name))
+        crud.create_model(db=db, model=schemas.Model(name=model_name))
     assert "already exists" in str(exc_info)
 
-    crud.create_model(db, schemas.Model(name="other_model"))
-    db_models = crud.get_models(db)
+    crud.create_model(db=db, model=schemas.Model(name="other_model"))
+    db_models = crud.get_models(db=db)
     assert len(db_models) == 2
     assert set([m.name for m in db_models]) == {model_name, "other_model"}
 
@@ -525,10 +525,10 @@ def test_create_detection_ground_truth_and_delete_dataset(
     # sanity check nothing in db
     check_db_empty(db=db)
 
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     for gt in gt_dets_create:
-        crud.create_groundtruth(db, gt)
+        crud.create_groundtruth(db=db, groundtruth=gt)
 
     assert db.scalar(func.count(models.Annotation.id)) == 2
     assert db.scalar(func.count(models.Datum.id)) == 1
@@ -538,16 +538,16 @@ def test_create_detection_ground_truth_and_delete_dataset(
     # verify we get the same dets back
     for gt in gt_dets_create:
         new_gt = crud.get_groundtruth(
-            db, dataset_name=gt.dataset, datum_uid=gt.datum.uid
+            db=db, dataset_name=gt.dataset, datum_uid=gt.datum.uid
         )
-        assert gt.dataset == new_gt.dataset
+        assert gt.datum.dataset == new_gt.dataset
         assert gt.datum == new_gt.datum
         for gta, new_gta in zip(gt.annotations, new_gt.annotations):
             assert set(gta.labels) == set(new_gta.labels)
             assert gta == new_gta
 
     # delete dataset and check the cascade worked
-    crud.delete_dataset(db, dset_name)
+    crud.delete(db=db, dataset_name=dset_name)
     for model_cls in [
         models.Dataset,
         models.Datum,
@@ -568,26 +568,26 @@ def test_create_detection_prediction_and_delete_model(
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in pred_dets_create:
-            crud.create_prediction(db, pd)
+            crud.create_prediction(db=db, prediction=pd)
     assert "does not exist" in str(exc_info)
 
     # create model
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(db=db, model=schemas.Model(name=model_name))
 
     # check this gives an error since the datums haven't been added yet
     with pytest.raises(exceptions.DatumDoesNotExistError) as exc_info:
         for pd in pred_dets_create:
             pd.model = model_name
-            crud.create_prediction(db, pd)
+            crud.create_prediction(db=db, prediction=pd)
     assert "Datum with uid" in str(exc_info)
 
     # create dataset, add images, and add predictions
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     for gt in gt_dets_create:
-        crud.create_groundtruth(db, gt)
+        crud.create_groundtruth(db=db, groundtruth=gt)
     for pd in pred_dets_create:
-        crud.create_prediction(db, pd)
+        crud.create_prediction(db=db, prediction=pd)
 
     # check db has the added predictions
     assert db.scalar(func.count(models.Annotation.id)) == 4
@@ -597,7 +597,7 @@ def test_create_detection_prediction_and_delete_model(
     assert db.scalar(func.count(models.Label.id)) == 4
 
     # delete model and check all detections from it are gone
-    crud.delete_model(db, model_name)
+    crud.delete(db=db, model_name=model_name)
     assert db.scalar(func.count(models.Annotation.id)) == 2
     assert db.scalar(func.count(models.Datum.id)) == 1
     assert db.scalar(func.count(models.GroundTruth.id)) == 3
@@ -634,7 +634,7 @@ def test_create_detections_as_bbox_or_poly(db: Session, img1: schemas.Datum):
         ),
     )
 
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     crud.create_groundtruth(
         db,
@@ -661,11 +661,11 @@ def test_create_detections_as_bbox_or_poly(db: Session, img1: schemas.Datum):
 def test_create_classification_groundtruth_and_delete_dataset(
     db: Session, gt_clfs_create: list[schemas.GroundTruth]
 ):
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     for gt in gt_clfs_create:
-        gt.dataset = dset_name
-        crud.create_groundtruth(db, gt)
+        gt.datum.dataset = dset_name
+        crud.create_groundtruth(db=db, groundtruth=gt)
 
     # should have three GroundTruthClassification rows since one image has two
     # labels and the other has one
@@ -674,7 +674,7 @@ def test_create_classification_groundtruth_and_delete_dataset(
     assert db.scalar(func.count(models.Label.id)) == 3
 
     # delete dataset and check the cascade worked
-    crud.delete_dataset(db, dset_name)
+    crud.delete(db=db, dataset_name=dset_name)
     for model_cls in [
         models.Dataset,
         models.Datum,
@@ -693,38 +693,38 @@ def test_create_predicted_classifications_and_delete_model(
 ):
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        crud.create_prediction(db, pred_clfs_create[0])
+        crud.create_prediction(db=db, prediction=pred_clfs_create[0])
     assert "does not exist" in str(exc_info)
 
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(db=db, model=schemas.Model(name=model_name))
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.DatumDoesNotExistError) as exc_info:
-        crud.create_prediction(db, pred_clfs_create[0])
+        crud.create_prediction(db=db, prediction=pred_clfs_create[0])
     assert "Datum with uid" in str(exc_info)
 
     # create dataset, add images, and add predictions
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     for gt in gt_clfs_create:
-        gt.dataset = dset_name
-        crud.create_groundtruth(db, gt)
+        gt.datum.dataset = dset_name
+        crud.create_groundtruth(db=db, groundtruth=gt)
 
     for pd in pred_clfs_create:
         pd.model = model_name
-        crud.create_prediction(db, pd)
+        crud.create_prediction(db=db, prediction=pd)
 
     # check db has the added predictions
     assert db.scalar(func.count(models.Prediction.id)) == 6
 
     # delete model and check all detections from it are gone
-    crud.delete_model(db, model_name)
+    crud.delete(db=db, model_name=model_name)
     assert db.scalar(func.count(models.Model.id)) == 0
     assert db.scalar(func.count(models.Annotation.id)) == 2
     assert db.scalar(func.count(models.Prediction.id)) == 0
 
     # delete dataset and check
-    crud.delete_dataset(db, dset_name)
+    crud.delete(db=db, dataset_name=dset_name)
     assert db.scalar(func.count(models.Model.id)) == 0
     assert db.scalar(func.count(models.Annotation.id)) == 0
     assert db.scalar(func.count(models.GroundTruth.id)) == 0
@@ -736,11 +736,11 @@ def test_create_groundtruth_segmentations_and_delete_dataset(
     # sanity check nothing in db
     check_db_empty(db=db)
 
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     for gt in gt_segs_create:
-        gt.dataset = dset_name
-        crud.create_groundtruth(db, gt)
+        gt.datum.dataset = dset_name
+        crud.create_groundtruth(db=db, groundtruth=gt)
 
     assert db.scalar(func.count(models.Annotation.id)) == 4
     assert db.scalar(func.count(models.Datum.id)) == 2
@@ -748,7 +748,7 @@ def test_create_groundtruth_segmentations_and_delete_dataset(
     assert db.scalar(func.count(models.Label.id)) == 2
 
     # delete dataset and check the cascade worked
-    crud.delete_dataset(db, name=dset_name)
+    crud.delete(db=db, dataset_name=dset_name)
     for model_cls in [
         models.Dataset,
         models.Datum,
@@ -766,31 +766,51 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     pred_segs_create: list[schemas.Prediction],
     gt_segs_create: list[schemas.GroundTruth],
 ):
+    # create dataset, add images, and add predictions
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
+
+    # check this gives an error since the images haven't been added yet
+    with pytest.raises(exceptions.StateflowError) as exc_info:
+        for pd in pred_segs_create:
+            pd.model = model_name
+            crud.create_prediction(db=db, prediction=pd)
+    assert "with state `create`" in str(exc_info)
+
+    # create groundtruths
+    for gt in gt_segs_create:
+        gt.datum.dataset = dset_name
+        crud.create_groundtruth(db=db, groundtruth=gt)
+
+    # check this gives an error since the dataset has not been finalized
+    with pytest.raises(exceptions.StateflowError) as exc_info:
+        for pd in pred_segs_create:
+            crud.create_prediction(db=db, prediction=pd)
+    assert "dataset with state `create`" in str(exc_info)
+
+    # finalize dataset
+    crud.finalize(db=db, dataset_name=dset_name)
+
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in pred_segs_create:
-            crud.create_prediction(db, pd)
+            crud.create_prediction(db=db, prediction=pd)
     assert "does not exist" in str(exc_info)
 
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(db=db, model=schemas.Model(name=model_name))
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.DatumDoesNotExistError) as exc_info:
-        for pd in pred_segs_create:
-            pd.model = model_name
-            crud.create_prediction(db, pd)
-    assert "Datum with uid" in str(exc_info)
+        for i, pd in enumerate(pred_segs_create):
+            temp_pd = pd.__deepcopy__()
+            temp_pd.model = model_name
+            temp_pd.datum.uid = f"random{i}"
+            crud.create_prediction(db=db, prediction=temp_pd)
+    assert "does not exist" in str(exc_info)
 
-    # create dataset, add images, and add predictions
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
-
-    for gt in gt_segs_create:
-        gt.dataset = dset_name
-        crud.create_groundtruth(db, gt)
-
+    # create predictions
     for pd in pred_segs_create:
         pd.model = model_name
-        crud.create_prediction(db, pd)
+        crud.create_prediction(db=db, prediction=pd)
 
     # check db has the added predictions
     assert db.scalar(func.count(models.Annotation.id)) == 8
@@ -798,7 +818,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # grab the first one and check that the area of the raster
     # matches the area of the image
-    img = crud.get_prediction(db, datum_uid="uid1", model_name=model_name)
+    img = crud.get_prediction(db=db, datum_uid="uid1", model_name=model_name)
 
     raster_counts = set(
         db.scalars(
@@ -815,7 +835,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
         assert np.array(mask).sum() in raster_counts
 
     # delete model and check all detections from it are gone
-    crud.delete_model(db, model_name)
+    crud.delete(db=db, model_name=model_name)
     assert db.scalar(func.count(models.Model.id)) == 0
     assert db.scalar(func.count(models.Annotation.id)) == 4
     assert db.scalar(func.count(models.Prediction.id)) == 0
@@ -829,11 +849,11 @@ def test_segmentation_area_no_hole(
     # sanity check nothing in db
     check_db_empty(db=db)
 
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     crud.create_groundtruth(
-        db,
-        schemas.GroundTruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
             dataset=dset_name,
             datum=img1.to_datum(),
             annotations=[
@@ -859,11 +879,11 @@ def test_segmentation_area_with_hole(
     # sanity check nothing in db
     check_db_empty(db=db)
 
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     crud.create_groundtruth(
-        db,
-        schemas.GroundTruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
             dataset=dset_name,
             datum=img1.to_datum(),
             annotations=[
@@ -893,11 +913,11 @@ def test_segmentation_area_multi_polygon(
     # sanity check nothing in db
     check_db_empty(db=db)
 
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     crud.create_groundtruth(
-        db,
-        schemas.GroundTruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
             dataset=dset_name,
             datum=img1.to_datum(),
             annotations=[
@@ -935,10 +955,10 @@ def test_gt_seg_as_mask_or_polys(db: Session):
     mask_b64 = b64encode(np_to_bytes(mask)).decode()
 
     img = schemas.Image(
+        dataset=dset_name,
         uid="uid",
         height=h,
         width=w,
-        frame=0,
     ).to_datum()
 
     poly = schemas.BasicPolygon(
@@ -969,16 +989,15 @@ def test_gt_seg_as_mask_or_polys(db: Session):
         ),
     )
     gt = schemas.GroundTruth(
-        dataset=dset_name,
         datum=img,
         annotations=[gt1, gt2],
     )
 
     check_db_empty(db=db)
 
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
-    crud.create_groundtruth(db, gt)
+    crud.create_groundtruth(db=db, groundtruth=gt)
 
     shapes = db.scalars(
         select(ST_AsText(ST_Polygon(models.Annotation.raster)))
@@ -990,7 +1009,7 @@ def test_gt_seg_as_mask_or_polys(db: Session):
 
     # verify we get the same segmentations back
     segs = crud.get_groundtruth(
-        db,
+        db=db,
         dataset_name=dset_name,
         datum_uid=img.uid,
     )
@@ -1005,11 +1024,6 @@ def test_gt_seg_as_mask_or_polys(db: Session):
     assert segs.annotations[0].labels == gt.annotations[0].labels
 
 
-# @NOTE: This funcionality now belongs to the backend
-# @TODO: This is replaced by `crud.get_disjoint_labels`
-
-
-# @FIXME: prediction scores do not add to 1.0
 def test_create_ap_metrics(db: Session, groundtruths, predictions):
     # the groundtruths and predictions arguments are not used but
     # those fixtures create the necessary dataset, model, groundtruths, and predictions
@@ -1032,39 +1046,29 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
             ious_to_keep=[0.2],
         )
 
-        missing_pred_labels, ignored_pred_labels = crud.get_disjoint_labels(
-            db,
-            dataset_name=request_info.settings.dataset,
-            model_name=request_info.settings.model,
+        # create evaluation (return AP Response)
+        resp = crud.create_ap_evaluation(db=db, request_info=request_info)
+
+        # run computation (returns nothing on completion)
+        crud.compute_ap_metrics(
+            db=db,
+            request_info=request_info,
+            evaluation_settings_id=resp.evaluation_settings_id,
         )
 
         return (
-            crud.create_ap_metrics(
-                db,
-                request_info=request_info,
-            ),
-            missing_pred_labels,
-            ignored_pred_labels,
+            resp.evaluation_settings_id,
+            resp.missing_pred_labels,
+            resp.ignored_pred_labels,
         )
 
-    # @TODO: Uncomment after stateflow is implemented
-    # check we get an error since the dataset is not finalized
-    # with pytest.raises(exceptions.DatasetIsNotFinalizedError):
-    #     method_to_test(label_key="class")
+    # verify we have no evaluations yet
+    assert (
+        len(crud.get_model_evaluation_settings(db=db, model_name=model_name))
+        == 0
+    )
 
-    # # finalize dataset
-    # crud.finalize(db, dataset="test_dataset")
-
-    # # now if we try again we should get an error that inferences aren't finalized
-    # with pytest.raises(exceptions.InferencesAreNotFinalizedError):
-    #     method_to_test(label_key="class")
-
-    # # verify we have no evaluations yet
-    # assert len(crud.get_model_evaluation_settings(db, model)) == 0
-
-    # # finalize inferences and try again
-    # crud.finalize(db, model=model, dataset=dset_name)
-
+    # run evaluation
     (
         evaluation_settings_id,
         missing_pred_labels,
@@ -1072,7 +1076,10 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     ) = method_to_test(label_key="class")
 
     # check we have one evaluation
-    assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
+    assert (
+        len(crud.get_model_evaluation_settings(db=db, model_name=model_name))
+        == 1
+    )
 
     assert missing_pred_labels == []
     assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
@@ -1101,7 +1108,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
 
     # test getting metrics from evaluation settings id
     pydantic_metrics = crud.get_metrics_from_evaluation_settings_id(
-        db, evaluation_settings_id
+        db=db, evaluation_settings_id=evaluation_settings_id
     )
     for m in pydantic_metrics:
         assert isinstance(m, schemas.Metric)
@@ -1122,7 +1129,9 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
 
     # test crud.get_model_metrics
     metrics_pydantic = crud.get_model_metrics(
-        db, "test_model", evaluation_settings_id
+        db=db,
+        model_name="test_model",
+        evaluation_settings_id=evaluation_settings_id,
     )
 
     assert len(metrics_pydantic) == len(metrics)
@@ -1144,7 +1153,9 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     ) = method_to_test(label_key="class", min_area=min_area, max_area=max_area)
 
     metrics_pydantic = crud.get_model_metrics(
-        db, "test_model", evaluation_settings_id
+        db=db,
+        model_name="test_model",
+        evaluation_settings_id=evaluation_settings_id,
     )
     for m in metrics_pydantic:
         assert m.type in {
@@ -1155,7 +1166,9 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         }
 
     # check we have the right evaluations
-    model_evals = crud.get_model_evaluation_settings(db, model_name)
+    model_evals = crud.get_model_evaluation_settings(
+        db=db, model_name=model_name
+    )
     assert len(model_evals) == 2
     assert model_evals[0] == schemas.EvaluationSettings(
         model=model_name,
@@ -1185,19 +1198,19 @@ def test_create_clf_metrics(
     pred_clfs_create: list[schemas.Prediction],
 ):
     crud.create_dataset(
-        db,
+        db=db,
         dataset=schemas.Dataset(name=dset_name),
     )
     for gt in gt_clfs_create:
-        gt.dataset = dset_name
-        crud.create_groundtruth(db, gt)
-    crud.finalize(db, dset_name)
+        gt.datum.dataset = dset_name
+        crud.create_groundtruth(db=db, groundtruth=gt)
+    crud.finalize(db=db, dataset_name=dset_name)
 
-    crud.create_model(db, schemas.Model(name=model_name))
+    crud.create_model(db=db, model=schemas.Model(name=model_name))
     for pd in pred_clfs_create:
         pd.model = model_name
-        crud.create_prediction(db, pd)
-    crud.finalize(db, model_name, dset_name)
+        crud.create_prediction(db=db, prediction=pd)
+    crud.finalize(db=db, model_name=model_name, dataset_name=dset_name)
 
     request_info = schemas.ClfMetricsRequest(
         settings=schemas.EvaluationSettings(
@@ -1205,19 +1218,30 @@ def test_create_clf_metrics(
         )
     )
 
-    missing_pred_keys, ignored_pred_keys = crud.get_disjoint_keys(
-        db,
-        dataset_name=request_info.settings.dataset,
-        model_name=request_info.settings.model,
+    # create clf evaluation (returns Clf Response)
+    resp = crud.create_clf_evaluation(
+        db=db,
+        request_info=request_info,
     )
+    missing_pred_keys = resp.missing_pred_keys
+    ignored_pred_keys = resp.ignored_pred_keys
+    evaluation_settings_id = resp.evaluation_settings_id
 
     assert missing_pred_keys == []
     assert set(ignored_pred_keys) == {"k3", "k4"}
 
-    evaluation_settings_id = crud.create_clf_metrics(db, request_info)
+    # compute clf metrics
+    crud.compute_clf_metrics(
+        db=db,
+        request_info=request_info,
+        evaluation_settings_id=evaluation_settings_id,
+    )
 
     # check we have one evaluation
-    assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
+    assert (
+        len(crud.get_model_evaluation_settings(db=db, model_name=model_name))
+        == 1
+    )
 
     # get all metrics
     metrics = db.scalar(
@@ -1263,7 +1287,7 @@ def test_create_clf_metrics(
 
     # test getting metrics from evaluation settings id
     pydantic_metrics = crud.get_metrics_from_evaluation_settings_id(
-        db, evaluation_settings_id
+        db=db, evaluation_settings_id=evaluation_settings_id
     )
     for m in pydantic_metrics:
         assert isinstance(m, schemas.Metric)
@@ -1271,7 +1295,7 @@ def test_create_clf_metrics(
 
     # test getting confusion matrices from evaluation settings id
     cms = crud.get_confusion_matrices_from_evaluation_settings_id(
-        db, evaluation_settings_id
+        db=db, evaluation_settings_id=evaluation_settings_id
     )
     cms = sorted(cms, key=lambda cm: cm.label_key)
     assert len(cms) == 2
@@ -1290,8 +1314,15 @@ def test_create_clf_metrics(
 
     # run again and check we still have one evaluation and the same number of metrics
     # and confusion matrices
-    crud.create_clf_metrics(db, request_info)
-    assert len(crud.get_model_evaluation_settings(db, model_name)) == 1
+    crud.compute_clf_metrics(
+        db=db,
+        request_info=request_info,
+        evaluation_settings_id=evaluation_settings_id,
+    )
+    assert (
+        len(crud.get_model_evaluation_settings(db=db, model_name=model_name))
+        == 1
+    )
     metrics = db.scalar(
         select(models.EvaluationSettings).where(
             models.EvaluationSettings.id == evaluation_settings_id
@@ -1364,22 +1395,22 @@ def test_create_clf_metrics(
 
 def test_get_dataset(db: Session):
     with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
-        crud.get_dataset(db, dset_name)
+        crud.get_dataset(db=db, dataset_name=dset_name)
     assert "does not exist" in str(exc_info)
 
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
-    dset = crud.get_dataset(db, dset_name)
+    dset = crud.get_dataset(db=db, dataset_name=dset_name)
     assert dset.name == dset_name
 
 
 def test_get_model(db: Session):
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        crud.get_model(db, model_name)
+        crud.get_model(db=db, model_name=model_name)
     assert "does not exist" in str(exc_info)
 
-    crud.create_model(db, schemas.Model(name=model_name))
-    model = crud.get_model(db, model_name)
+    crud.create_model(db=db, model=schemas.Model(name=model_name))
+    model = crud.get_model(db=db, model_name=model_name)
     assert model.name == model_name
 
 
@@ -1409,12 +1440,12 @@ def test_get_model(db: Session):
 
 
 def test_get_all_labels(db: Session, gt_dets_create: schemas.GroundTruth):
-    crud.create_dataset(db, schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     for gt in gt_dets_create:
-        crud.create_groundtruth(db, gt)
+        crud.create_groundtruth(db=db, groundtruth=gt)
 
-    labels = crud.get_labels(db, request=schemas.Filter())
+    labels = crud.get_labels(db=db, request=schemas.Filter())
 
     assert len(labels) == 2
     assert set([(label.key, label.value) for label in labels]) == set(
@@ -1429,8 +1460,8 @@ def test_get_labels_from_dataset(
 ):
     # Test get all from dataset 1
     ds1 = crud.get_labels(
-        db,
-        schemas.Filter(
+        db=db,
+        request=schemas.Filter(
             datasets=[dataset_names[0]],
             allow_predictions=False,
         ),
@@ -1441,8 +1472,8 @@ def test_get_labels_from_dataset(
 
     # NEGTAIVE - Test filter by task type
     ds1 = crud.get_labels(
-        db,
-        schemas.Filter(
+        db=db,
+        request=schemas.Filter(
             datasets=[dataset_names[0]],
             allow_predictions=False,
             task_types=[
@@ -1456,8 +1487,8 @@ def test_get_labels_from_dataset(
 
     # POSITIVE - Test filter by task type
     ds1 = crud.get_labels(
-        db,
-        schemas.Filter(
+        db=db,
+        request=schemas.Filter(
             datasets=[dataset_names[0]],
             allow_predictions=False,
             task_types=[enums.TaskType.DETECTION],
@@ -1469,8 +1500,8 @@ def test_get_labels_from_dataset(
 
     # NEGATIVE - Test filter by annotation type
     ds1 = crud.get_labels(
-        db,
-        schemas.Filter(
+        db=db,
+        request=schemas.Filter(
             datasets=[dataset_names[0]],
             allow_predictions=False,
             annotation_types=[
@@ -1484,8 +1515,8 @@ def test_get_labels_from_dataset(
 
     # POSITIVE - Test filter by annotation type
     ds1 = crud.get_labels(
-        db,
-        schemas.Filter(
+        db=db,
+        request=schemas.Filter(
             datasets=[dataset_names[0]],
             allow_predictions=False,
             annotation_types=[enums.AnnotationType.BOX],
@@ -1504,8 +1535,8 @@ def test_get_labels_from_model(
 
     # Test get all labels from model 1
     md1 = crud.get_labels(
-        db,
-        schemas.Filter(
+        db=db,
+        request=schemas.Filter(
             models=[model_names[0]],
             allow_groundtruths=False,
         ),
@@ -1518,8 +1549,8 @@ def test_get_labels_from_model(
 
     # Test get all but polygon labels from model 1
     md1 = crud.get_labels(
-        db,
-        schemas.Filter(
+        db=db,
+        request=schemas.Filter(
             models=[model_names[0]],
             task_types=[enums.TaskType.CLASSIFICATION],
             allow_groundtruths=False,
@@ -1529,8 +1560,8 @@ def test_get_labels_from_model(
 
     # Test get only polygon labels from model 1
     md1 = crud.get_labels(
-        db,
-        schemas.Filter(
+        db=db,
+        request=schemas.Filter(
             models=[model_names[0]],
             annotation_types=[enums.AnnotationType.BOX],
             allow_groundtruths=False,
@@ -1552,7 +1583,7 @@ def test_get_joint_labels(
     # Test get joint labels from dataset 1 and model 1
     assert set(
         crud.get_joint_labels(
-            db,
+            db=db,
             dataset_name=dataset_names[0],
             model_name=model_names[0],
         )

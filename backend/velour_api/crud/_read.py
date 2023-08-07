@@ -7,6 +7,7 @@ from velour_api.backend import jobs
 
 
 def get_labels(
+    *,
     db: Session,
     request: schemas.Filter = None,
 ) -> list[schemas.Label]:
@@ -15,6 +16,7 @@ def get_labels(
 
 
 def get_label_distribution(
+    *,
     db: Session,
     request: schemas.Filter,
 ) -> list[schemas.LabelDistribution]:
@@ -22,6 +24,7 @@ def get_label_distribution(
 
 
 def get_joint_labels(
+    *,
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -36,6 +39,7 @@ def get_joint_labels(
 
 
 def get_disjoint_labels(
+    *,
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -50,6 +54,7 @@ def get_disjoint_labels(
 
 
 def get_disjoint_keys(
+    *,
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -68,6 +73,7 @@ def get_disjoint_keys(
 
 # @TODO
 def get_datum(
+    *,
     db: Session,
     dataset_name: str,
     uid: str,
@@ -78,6 +84,7 @@ def get_datum(
 
 # @TODO
 def get_datums(
+    *,
     db: Session,
     request: schemas.Filter = None,
 ) -> list[schemas.Datum]:
@@ -87,11 +94,12 @@ def get_datums(
 """ Datasets """
 
 
-def get_dataset(db: Session, name: str) -> schemas.Dataset:
-    return backend.get_dataset(db, name)
+def get_dataset(*, db: Session, dataset_name: str) -> schemas.Dataset:
+    return backend.get_dataset(db, dataset_name)
 
 
 def get_datasets(
+    *,
     db: Session,
     request: schemas.Filter = None,
 ) -> list[schemas.Dataset]:
@@ -99,6 +107,7 @@ def get_datasets(
 
 
 def get_groundtruth(
+    *,
     db: Session,
     dataset_name: str,
     datum_uid: str,
@@ -111,6 +120,7 @@ def get_groundtruth(
 
 
 def get_groundtruths(
+    *,
     db: Session,
     request: schemas.Filter,
 ) -> list[schemas.GroundTruth]:
@@ -120,11 +130,12 @@ def get_groundtruths(
 """ Models """
 
 
-def get_model(db: Session, name: str) -> schemas.Model:
-    return backend.get_model(db, name)
+def get_model(*, db: Session, model_name: str) -> schemas.Model:
+    return backend.get_model(db, model_name)
 
 
 def get_models(
+    *,
     db: Session,
     request: schemas.Filter = None,
 ) -> list[schemas.Model]:
@@ -132,7 +143,7 @@ def get_models(
 
 
 def get_prediction(
-    db: Session, model_name: str, datum_uid: str
+    *, db: Session, model_name: str, datum_uid: str
 ) -> schemas.Prediction:
     return backend.get_prediction(
         db, model_name=model_name, datum_uid=datum_uid
@@ -141,6 +152,7 @@ def get_prediction(
 
 # @TODO
 def get_predictions(
+    *,
     db: Session,
     request: schemas.Filter = None,
 ) -> list[schemas.Prediction]:
@@ -151,7 +163,7 @@ def get_predictions(
 
 
 def get_metrics_from_evaluation_settings_id(
-    db: Session, evaluation_settings_id: int
+    *, db: Session, evaluation_settings_id: int
 ) -> list[schemas.Metric]:
     return backend.get_metrics_from_evaluation_settings_id(
         db, evaluation_settings_id
@@ -159,7 +171,7 @@ def get_metrics_from_evaluation_settings_id(
 
 
 def get_confusion_matrices_from_evaluation_settings_id(
-    db: Session, evaluation_settings_id: int
+    *, db: Session, evaluation_settings_id: int
 ) -> list[schemas.ConfusionMatrix]:
     return backend.get_confusion_matrices_from_evaluation_settings_id(
         db, evaluation_settings_id
@@ -167,18 +179,18 @@ def get_confusion_matrices_from_evaluation_settings_id(
 
 
 def get_evaluation_settings_from_id(
-    db: Session, evaluation_settings_id: int
+    *, db: Session, evaluation_settings_id: int
 ) -> schemas.EvaluationSettings:
     return backend.get_evaluation_settings_from_id(db, evaluation_settings_id)
 
 
 def get_model_metrics(
-    db: Session, model_name: str, evaluation_settings_id: int
+    *, db: Session, model_name: str, evaluation_settings_id: int
 ) -> list[schemas.Metric]:
     return backend.get_model_metrics(db, model_name, evaluation_settings_id)
 
 
 def get_model_evaluation_settings(
-    db: Session, model_name: str
+    *, db: Session, model_name: str
 ) -> list[schemas.EvaluationSettings]:
     return backend.get_model_evaluation_settings(db, model_name)

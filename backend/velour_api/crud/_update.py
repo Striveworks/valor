@@ -4,11 +4,7 @@ from velour_api.backend import jobs
 
 
 # @TODO
+# @NOTE: Right now finalize only interacts with redis but not the sql backend.
 @jobs.finalize
-def finalize(db: Session, dataset_name: str, model_name: str = None):
-    if model_name:
-        # finalize inferences
-        pass
-    else:
-        # finalize dataset
-        pass
+def finalize(*, db: Session, dataset_name: str, model_name: str = None):
+    pass

@@ -60,7 +60,7 @@ def needs_redis(fn):
 @needs_redis
 def get_evaluation_status(id: int) -> JobStatus:
     json_str = r.get("evaluation_jobs")
-    if not isinstance(json_str, str):
+    if json_str is None:
         raise RuntimeError("no evaluation jobs exists")
     info = json.loads(json_str)
     jobs = EvaluationJobs(**info)
@@ -73,7 +73,7 @@ def get_evaluation_status(id: int) -> JobStatus:
 @needs_redis
 def set_evaluation_status(id: int, status: JobStatus):
     json_str = r.get("evaluation_jobs")
-    if not isinstance(json_str, str):
+    if json_str is None:
         jobs = EvaluationJobs(evaluations=dict())
     else:
         info = json.loads(json_str)
@@ -84,8 +84,8 @@ def set_evaluation_status(id: int, status: JobStatus):
 
 @needs_redis
 def _get_backend_status() -> BackendStatus:
-    json_str = r.get("backend_status")
-    if not isinstance(json_str, str):
+    json_str = r.get("backend_stateflow")
+    if json_str is None:
         return BackendStatus()
     info = json.loads(json_str)
     return BackendStatus(**info)
@@ -98,7 +98,7 @@ def _set_backend_status(status: BackendStatus):
 
 def _update_backend_status(
     state: Stateflow,
-    dataset_name: str,
+    dataset_name: str | None = None,
     model_name: str | None = None,
 ) -> BackendStatus:
 
@@ -106,11 +106,13 @@ def _update_backend_status(
     current_status = _get_backend_status()
 
     # update status
-    if model_name is not None:
+    if model_name:
         current_status.set_model_status(
-            dataset_name=dataset_name, model_name=model_name, status=state
+            status=state,
+            model_name=model_name,
+            dataset_name=dataset_name,
         )
-    else:
+    elif dataset_name:
         current_status.set_dataset_status(
             dataset_name=dataset_name, status=state
         )
@@ -121,33 +123,21 @@ def _update_backend_status(
 def create(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
-        if len(args) + len(kwargs) != 2:
+        # input args should be explicitly defined
+        if len(args) != 0 and len(kwargs) != 2:
             raise RuntimeError
 
+        # unpack db
         db = None
-        if len(args) > 0:
-            db = args[0]
-        elif "db" in kwargs:
+        if "db" in kwargs:
             db = kwargs["db"]
         if not isinstance(db, Session):
             raise RuntimeError
 
+        # unpack args
         dataset_name = None
         model_name = None
-        if len(args) > 1:
-            if isinstance(args[1], schemas.Dataset):
-                dataset_name = args[1].name
-                model_name = None
-            elif isinstance(args[1], schemas.Model):
-                dataset_name = None
-                model_name = args[1].name
-            elif isinstance(args[1], schemas.GroundTruth):
-                dataset_name = args[1].datum.dataset
-                model_name = None
-            elif isinstance(args[1], schemas.Prediction):
-                dataset_name = args[1].datum.dataset
-                model_name = args[1].model
-        elif "dataset" in kwargs:
+        if "dataset" in kwargs:
             if isinstance(kwargs["dataset"], schemas.Dataset):
                 dataset_name = kwargs["dataset"].name
                 model_name = None
@@ -180,34 +170,34 @@ def create(fn: callable) -> callable:
 def finalize(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
-        if len(args) + len(kwargs) != 3:
+        # input args should be explicitly defined
+        if len(args) != 0 and len(kwargs) != 3:
             raise RuntimeError
 
+        # unpack db
         db = None
-        if len(args) > 0:
-            db = args[0]
-        elif "db" in kwargs:
+        if "db" in kwargs:
             db = kwargs["db"]
         if not isinstance(db, Session):
             raise RuntimeError
 
+        # unpack dataset
         dataset_name = None
-        if len(args) > 1:
-            dataset_name = args[1]
-        elif "dataset_name" in kwargs:
+        if "dataset_name" in kwargs:
             dataset_name = kwargs["dataset_name"]
 
+        # unpack model
         model_name = None
-        if len(args) > 2:
-            model_name = args[2]
-        elif "model_name" in kwargs:
+        if "model_name" in kwargs:
             model_name = kwargs["model_name"]
 
+        # enter ready state
         _update_backend_status(
             state=Stateflow.READY,
             dataset_name=dataset_name,
             model_name=model_name,
         )
+
         return fn(*args, **kwargs)
 
     return wrapper
@@ -216,27 +206,21 @@ def finalize(fn: callable) -> callable:
 def evaluate(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
-        if len(args) + len(kwargs) != 2:
+        # input args should be explicitly defined
+        if len(args) != 0 and len(kwargs) != 2:
             raise RuntimeError
 
+        # unpack db
         db = None
-        if len(args) > 0:
-            db = args[0]
-        elif "db" in kwargs:
+        if "db" in kwargs:
             db = kwargs["db"]
         if not isinstance(db, Session):
             raise RuntimeError
 
+        # unpack args
         dataset_name = None
         model_name = None
-        if len(args) > 1:
-            if isinstance(args[1], schemas.ClfMetricsRequest):
-                dataset_name = args[1].settings.dataset
-                model_name = args[1].settings.model
-            elif isinstance(args[1], schemas.APRequest):
-                dataset_name = args[1].settings.dataset
-                model_name = args[1].settings.model
-        elif "request_info" in kwargs:
+        if "request_info" in kwargs:
             if isinstance(kwargs["request_info"], schemas.ClfMetricsRequest):
                 dataset_name = kwargs["request_info"].settings.dataset
                 model_name = kwargs["request_info"].settings.model
@@ -244,11 +228,13 @@ def evaluate(fn: callable) -> callable:
                 dataset_name = kwargs["request_info"].settings.dataset
                 model_name = kwargs["request_info"].settings.model
 
+        # put model / dataset in evaluation state
         _update_backend_status(
             Stateflow.EVALUATE,
             dataset_name=dataset_name,
             model_name=model_name,
         )
+
         return fn(*args, **kwargs)
 
     return wrapper
@@ -257,27 +243,21 @@ def evaluate(fn: callable) -> callable:
 def computation(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
-        if len(args) + len(kwargs) != 3:
+        # input args should be explicitly defined
+        if len(args) != 0 and len(kwargs) != 2:
             raise RuntimeError
 
+        # unpack db
         db = None
-        if len(args) > 0:
-            db = args[0]
-        elif "db" in kwargs:
+        if "db" in kwargs:
             db = kwargs["db"]
         if not isinstance(db, Session):
             raise RuntimeError
 
+        # unpack args
         dataset_name = None
         model_name = None
-        if len(args) > 1:
-            if isinstance(args[1], schemas.ClfMetricsRequest):
-                dataset_name = args[1].settings.dataset
-                model_name = args[1].settings.model
-            elif isinstance(args[1], schemas.APRequest):
-                dataset_name = args[1].settings.dataset
-                model_name = args[1].settings.model
-        elif "request_info" in kwargs:
+        if "request_info" in kwargs:
             if isinstance(kwargs["request_info"], schemas.ClfMetricsRequest):
                 dataset_name = kwargs["request_info"].settings.dataset
                 model_name = kwargs["request_info"].settings.model
@@ -285,12 +265,16 @@ def computation(fn: callable) -> callable:
                 dataset_name = kwargs["request_info"].settings.dataset
                 model_name = kwargs["request_info"].settings.model
 
+        # start eval computation
         _update_backend_status(
             Stateflow.EVALUATE,
             dataset_name=dataset_name,
             model_name=model_name,
         )
+
         result = fn(*args, **kwargs)
+
+        # end eval computation
         _update_backend_status(
             Stateflow.READY, dataset_name=dataset_name, model_name=model_name
         )
@@ -303,33 +287,42 @@ def computation(fn: callable) -> callable:
 def delete(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
-        if len(args) + len(kwargs) == 3:
+        # input args should be explicitly defined
+        if len(args) != 0 and len(kwargs) != 3:
             raise RuntimeError
 
+        # unpack db
         db = None
-        if len(args) > 0:
-            db = args[0]
-        elif "db" in kwargs:
+        if "db" in kwargs:
             db = kwargs["db"]
         if not isinstance(db, Session):
             raise RuntimeError
 
-        dataset_name = kwargs["dataset_name"]
-        model_name = kwargs["model_name"]
+        # unpack dataset
+        dataset_name = None
+        if "dataset_name" in kwargs:
+            dataset_name = kwargs["dataset_name"]
 
+        # unpack model
+        model_name = None
+        if "model_name" in kwargs:
+            model_name = kwargs["model_name"]
+
+        # enter deletion state
         _update_backend_status(
             state=Stateflow.DELETE,
             dataset_name=dataset_name,
             model_name=model_name,
         )
+
         result = fn(*args, **kwargs)
 
         # remove
         status = _get_backend_status()
-        if dataset_name is not None:
-            status.remove_dataset(dataset_name)
-        elif model_name is not None:
+        if model_name is not None:
             status.remove_model(model_name)
+        else:
+            status.remove_dataset(dataset_name)
         _set_backend_status(status)
 
         return result

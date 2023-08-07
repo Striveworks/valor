@@ -103,18 +103,33 @@ class BackendStatus(BaseModel):
         if self.datasets is None:
             self.datasets = {}
 
+        # init dataset
+        if dataset_name not in self.datasets:
+            self.datasets[dataset_name] = DatasetStatus()
+
         # set status
         self.datasets[dataset_name].set_status(status)
 
     def set_model_status(
-        self, dataset_name: str, model_name: str, status: Stateflow
+        self,
+        status: Stateflow,
+        model_name: str,
+        dataset_name: str | None = None,
     ):
         # check if dataset exists
-        if self.datasets is None or dataset_name not in self.datasets:
-            raise exceptions.DatasetDoesNotExistError(dataset_name)
+        if self.datasets is None:
+            raise exceptions.StateflowError("backend stateflow uninitialized")
 
-        # set model status
-        self.datasets[dataset_name].set_model_status(model_name, status)
+        # set status to specific inference
+        if dataset_name:
+            if dataset_name not in self.datasets:
+                raise exceptions.DatasetDoesNotExistError(dataset_name)
+            self.datasets[dataset_name].set_model_status(model_name, status)
+        # set status to all inferences related to model_name
+        else:
+            for dataset in self.datasets:
+                if self.datasets[dataset].models is not None:
+                    self.datasets[dataset].set_model_status(model_name, status)
 
     def get_dataset_status(self, dataset_name: str):
         if self.datasets is None:
@@ -138,12 +153,20 @@ class BackendStatus(BaseModel):
 
         return self.datasets[dataset_name].models[model_name].status
 
-    def remove_model(self, dataset_name: str, model_name: str):
+    def remove_model(self, model_name: str, dataset_name: str | None = None):
         if self.datasets is None:
-            raise exceptions.DatasetDoesNotExistError(dataset_name)
-        elif dataset_name not in self.datasets:
-            raise exceptions.DatasetDoesNotExistError(dataset_name)
-        self.datasets[dataset_name].remove_model(model_name)
+            raise exceptions.StateflowError("backend stateflow uninitialized")
+
+        # dataset => model
+        if dataset_name:
+            if dataset_name not in self.datasets:
+                raise exceptions.DatasetDoesNotExistError(dataset_name)
+            self.datasets[dataset_name].remove_model(model_name)
+        # all datasets => model
+        else:
+            for dataset in self.datasets:
+                if self.datasets[dataset].models is not None:
+                    self.datasets[dataset].remove_model(model_name)
 
     def remove_dataset(self, dataset_name: str):
         if self.datasets is None:

@@ -6,6 +6,7 @@ from velour_api.backend import jobs
 
 @jobs.delete
 def delete(
+    *,
     db: Session,
     dataset_name: str | None = None,
     model_name: str | None = None,

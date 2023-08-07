@@ -6,7 +6,7 @@ from velour_api.crud._read import get_disjoint_keys, get_disjoint_labels
 
 
 @jobs.create
-def create_dataset(db: Session, dataset: schemas.Dataset):
+def create_dataset(*, db: Session, dataset: schemas.Dataset):
     """Creates a dataset
 
     Raises
@@ -14,11 +14,12 @@ def create_dataset(db: Session, dataset: schemas.Dataset):
     DatasetAlreadyExistsError
         if the dataset name already exists
     """
+    jobs.create(dataset)
     backend.create_dataset(db, dataset)
 
 
 @jobs.create
-def create_model(db: Session, model: schemas.Model):
+def create_model(*, db: Session, model: schemas.Model):
     """Creates a dataset
 
     Raises
@@ -31,6 +32,7 @@ def create_model(db: Session, model: schemas.Model):
 
 @jobs.create
 def create_groundtruth(
+    *,
     db: Session,
     groundtruth: schemas.GroundTruth,
 ):
@@ -39,6 +41,7 @@ def create_groundtruth(
 
 @jobs.create
 def create_prediction(
+    *,
     db: Session,
     prediction: schemas.Prediction,
 ):
@@ -47,6 +50,7 @@ def create_prediction(
 
 @jobs.evaluate
 def create_clf_evaluation(
+    *,
     db: Session,
     request_info: schemas.ClfMetricsRequest,
 ) -> schemas.CreateClfMetricsResponse:
@@ -54,7 +58,7 @@ def create_clf_evaluation(
 
     # get disjoint label sets
     missing_pred_keys, ignored_pred_keys = get_disjoint_keys(
-        db,
+        db=db,
         dataset_name=request_info.settings.dataset,
         model_name=request_info.settings.model,
     )
@@ -66,12 +70,13 @@ def create_clf_evaluation(
     return schemas.CreateClfMetricsResponse(
         missing_pred_keys=missing_pred_keys,
         ignored_pred_keys=ignored_pred_keys,
-        job_id=evaluation_settings_id,
+        evaluation_settings_id=evaluation_settings_id,
     )
 
 
 @jobs.computation
-def create_clf_metrics(
+def compute_clf_metrics(
+    *,
     db: Session,
     request_info: schemas.ClfMetricsRequest,
     evaluation_settings_id: int,
@@ -86,6 +91,7 @@ def create_clf_metrics(
 
 @jobs.evaluate
 def create_ap_evaluation(
+    *,
     db: Session,
     request_info: schemas.APRequest,
 ) -> schemas.CreateAPMetricsResponse:
@@ -93,13 +99,13 @@ def create_ap_evaluation(
 
     # get disjoint label sets
     missing_pred_labels, ignored_pred_labels = get_disjoint_labels(
-        db,
+        db=db,
         dataset_name=request_info.settings.dataset,
         model_name=request_info.settings.model,
     )
 
     # create evaluation setting
-    evaluation_settings_id = backend.create_clf_evaluation(db, request_info)
+    evaluation_settings_id = backend.create_ap_evaluation(db, request_info)
 
     # create response
     return schemas.CreateAPMetricsResponse(
@@ -110,14 +116,15 @@ def create_ap_evaluation(
 
 
 @jobs.computation
-def create_ap_metrics(
+def compute_ap_metrics(
+    *,
     db: Session,
     request_info: schemas.APRequest,
     evaluation_settings_id: int,
 ):
     """compute metrics"""
     backend.create_ap_metrics(
-        db=Session,
+        db=db,
         request_info=request_info,
         evaluation_settings_id=evaluation_settings_id,
     )

@@ -8,7 +8,7 @@ class Image(BaseModel):
     uid: str
     height: int
     width: int
-    metadata:
+    metadata: list[MetaDatum] = []
 
     @classmethod
     def from_datum(cls, datum: Datum):
@@ -25,17 +25,26 @@ class Image(BaseModel):
             raise ValueError(
                 "Datum does not contain all the information that makes it an image."
             )
+
+        # cache and remove image metadata
+        height = metadata["height"]
+        width = metadata["width"]
         del metadata["height"]
         del metadata["width"]
+
         return cls(
             uid=datum.uid,
             dataset=datum.dataset,
             height=metadata["height"],
             width=metadata["width"],
-            metadata=datum.metadataa
+            metadata=[
+                MetaDatum(key=key, value=metadata[key]) for key in metadata
+            ],
         )
 
     def to_datum(self) -> Datum:
+        self.metadata.append(MetaDatum(key="height", value=self.height))
+        self.metadata.append(MetaDatum(key="width", value=self.width))
         return Datum(
             uid=self.uid,
             dataset=self.dataset,
@@ -52,31 +61,29 @@ class VideoFrame(BaseModel):
         if not isinstance(datum, Datum):
             raise TypeError("Expecting `velour.schemas.Datum`")
 
-        # Video frame number
+        # Extract image
+        image = Image.from_datum(datum)
+
+        # Extract Video frame number
         metadata = {
-            metadatum.key: metadatum.value for metadatum in datum.metadata
+            metadatum.key: metadatum.value for metadatum in image.metadata
         }
-        try:
-            assert "frame" in metadata
-        except AssertionError:
+        if "frame" not in metadata:
             raise ValueError(
                 "Datum does not contain all the information that makes it an image."
             )
-
-        # Image
-        image = Image.from_datum(datum)
+        frame = int(metadata["frame"])
+        del metadata["frame"]
+        image.metadata = [
+            MetaDatum(key=key, value=metadata[key]) for key in metadata
+        ]
 
         return cls(
             image=image,
-            frame=int(metadata["frame"]),
+            frame=frame,
         )
 
     def to_datum(self) -> Datum:
-        return Datum(
-            uid=self.image.uid,
-            metadata=[
-                MetaDatum(key="height", value=self.image.height),
-                MetaDatum(key="width", value=self.image.width),
-                MetaDatum(key="frame", value=self.frame),
-            ],
-        )
+        datum = self.image.to_datum()
+        datum.metadata.append(MetaDatum(key="frame", value=self.frame))
+        return datum

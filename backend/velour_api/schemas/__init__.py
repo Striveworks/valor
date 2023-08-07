@@ -11,6 +11,7 @@ from .core import (
     ScoredAnnotation,
     ScoredLabel,
 )
+from .datatypes import Image, VideoFrame
 from .geojson import GeoJSON
 from .geometry import (
     BasicPolygon,
@@ -22,7 +23,6 @@ from .geometry import (
 )
 from .info import Filter, LabelDistribution, ScoredLabelDistribution
 from .jobs import BackendStatus, EvaluationJobs
-from .metadata import Image, VideoFrame
 from .metrics import (
     AccuracyMetric,
     APMetric,

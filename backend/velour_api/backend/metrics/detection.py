@@ -530,7 +530,7 @@ def create_ap_evaluation(
 def create_ap_metrics(
     db: Session,
     request_info: schemas.APRequest,
-    evaluation_setting_id: int,
+    evaluation_settings_id: int,
 ):
     """
     Intended to run as background
@@ -564,7 +564,7 @@ def create_ap_metrics(
     )
 
     metric_mappings = create_metric_mappings(
-        db=db, metrics=metrics, evaluation_settings_id=evaluation_setting_id
+        db=db, metrics=metrics, evaluation_settings_id=evaluation_settings_id
     )
 
     for mapping in metric_mappings:

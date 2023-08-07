@@ -17,18 +17,6 @@ model_name = "test_model"
 
 @pytest.fixture
 def classification_test_data(db: Session):
-    crud.create_dataset(
-        db,
-        schemas.Dataset(
-            name=dataset_name,
-            metadata=[
-                schemas.MetaDatum(key="type", value=enums.DataType.IMAGE.value)
-            ],
-        ),
-    )
-    crud.create_model(
-        db, schemas.Model(name=model_name, type=enums.DataType.IMAGE)
-    )
 
     animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
     animal_preds = [
@@ -52,6 +40,7 @@ def classification_test_data(db: Session):
 
     imgs = [
         schemas.Datum(
+            dataset=dataset_name,
             uid=f"uid{i}",
             metadata=[
                 schemas.MetaDatum(key="height", value=128),
@@ -65,7 +54,6 @@ def classification_test_data(db: Session):
 
     gts = [
         schemas.GroundTruth(
-            dataset=dataset_name,
             datum=imgs[i],
             annotations=[
                 schemas.Annotation(
@@ -107,10 +95,24 @@ def classification_test_data(db: Session):
         for i in range(6)
     ]
 
+    crud.create_dataset(
+        db=db,
+        dataset=schemas.Dataset(
+            name=dataset_name,
+            metadata=[
+                schemas.MetaDatum(key="type", value=enums.DataType.IMAGE.value)
+            ],
+        ),
+    )
     for gt in gts:
-        crud.create_groundtruth(db, gt)
+        crud.create_groundtruth(db=db, groundtruth=gt)
+    crud.finalize(db=db, dataset_name=dataset_name)
+
+    crud.create_model(
+        db=db, model=schemas.Model(name=model_name, type=enums.DataType.IMAGE)
+    )
     for pd in preds:
-        crud.create_prediction(db, pd)
+        crud.create_prediction(db=db, prediction=pd)
 
 
 def round_dict_(d: dict, prec: int) -> None:

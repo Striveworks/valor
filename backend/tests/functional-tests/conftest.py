@@ -7,7 +7,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
-from velour_api.backend import models
+from velour_api.backend import jobs, models
 from velour_api.backend.database import Base, create_db, make_session
 
 # get all velour table names
@@ -25,8 +25,8 @@ np.random.seed(29)
 def drop_all(db):
 
     # clear redis
-    # jobs.connect_to_redis()
-    # jobs.r.flushdb()
+    jobs.connect_to_redis()
+    jobs.r.flushdb()
 
     # clear postgres
     db.execute(text(f"DROP TABLE {', '.join(tablenames)} CASCADE;"))
@@ -45,6 +45,7 @@ def random_mask_bytes(size: tuple[int, int]) -> bytes:
 @pytest.fixture
 def img1() -> schemas.Image:
     return schemas.Image(
+        dataset="test_dataset",
         uid="uid1",
         height=10,
         width=20,
@@ -54,6 +55,7 @@ def img1() -> schemas.Image:
 @pytest.fixture
 def img2() -> schemas.Image:
     return schemas.Image(
+        dataset="test_dataset",
         uid="uid2",
         height=16,
         width=12,
@@ -98,27 +100,14 @@ def dset(db: Session) -> models.Dataset:
     return dset
 
 
-# @pytest.fixture
-# def img(db: Session, dset: models.Dataset) -> models.Datum:
-#     img = models.Datum(uid="uid", dataset_id=dset.id, height=1000, width=2000)
-#     db.add(img)
-#     db.commit()
-
-#     return img
-
-
-# def bounding_box(xmin, ymin, xmax, ymax) -> list[tuple[int, int]]:
-#     return [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin)]
-
-
 @pytest.fixture
 def images() -> list[schemas.Datum]:
     return [
         schemas.Image(
+            dataset="test_dataset",
             uid=f"{i}",
             height=1000,
             width=2000,
-            frame=0,
         ).to_datum()
         for i in range(4)
     ]
@@ -134,7 +123,7 @@ def groundtruths(
     """
     dataset_name = "test_dataset"
     crud.create_dataset(
-        db,
+        db=db,
         dataset=schemas.Dataset(
             name=dataset_name,
             metadata=[
@@ -195,7 +184,6 @@ def groundtruths(
     ]
     db_gts_per_img = [
         schemas.GroundTruth(
-            dataset=dataset_name,
             datum=image,
             annotations=[
                 schemas.Annotation(
@@ -216,10 +204,10 @@ def groundtruths(
 
     for gt in db_gts_per_img:
         crud.create_groundtruth(
-            db,
+            db=db,
             groundtruth=gt,
         )
-    crud.finalize(db, dataset_name=dataset_name)
+    crud.finalize(db=db, dataset_name=dataset_name)
 
     return db.query(models.GroundTruth).all()
 
@@ -236,8 +224,8 @@ def predictions(
     model_name = "test_model"
     dataset_name = "test_dataset"
     crud.create_model(
-        db,
-        schemas.Model(
+        db=db,
+        model=schemas.Model(
             name=model_name,
             metadata=[
                 schemas.MetaDatum(
@@ -335,9 +323,9 @@ def predictions(
 
     for pd in db_preds_per_img:
         crud.create_prediction(
-            db,
+            db=db,
             prediction=pd,
         )
-    crud.finalize(db, dataset_name=dataset_name, model_name=model_name)
+    crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
     return db.query(models.Prediction).all()
