@@ -393,6 +393,7 @@ def test_core_datum():
     schemas.Datum(uid="123")
     schemas.Datum(uid="123", metadata=[])
     schemas.Datum(uid="123", metadata=[schemas.MetaDatum(key="name", value=1)])
+    schemas.Datum(uid="123", dataset="dataset")
 
     # test `__post_init__`
     with pytest.raises(AssertionError):
@@ -401,6 +402,8 @@ def test_core_datum():
         schemas.Datum(uid="123", metadata=1)
     with pytest.raises(AssertionError):
         schemas.Datum(uid="123", metadata=[1])
+    with pytest.raises(AssertionError):
+        schemas.Datum(uid="123", dataset=None)
 
 
 def test_core_annotation(bbox, polygon, raster, metadatum):
@@ -639,7 +642,6 @@ def test_core_groundtruth():
         datum=datum,
         annotations=gts,
     )
-    schemas.GroundTruth(datum=datum, annotations=gts, dataset="test")
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
@@ -666,13 +668,6 @@ def test_core_groundtruth():
         "annotations list should contain only `velour.schemas.Annotation`."
         in str(e)
     )
-    with pytest.raises(TypeError) as e:
-        schemas.GroundTruth(
-            datum=datum,
-            annotations=gts,
-            dataset=1234,
-        )
-    assert "dataset should be type `str`." in str(e)
 
 
 def test_core_prediction():

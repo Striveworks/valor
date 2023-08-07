@@ -9,9 +9,12 @@ class Image:
     uid: str
     height: int
     width: int
+    dataset: str = field(default="")
     metadata: List[schemas.MetaDatum] = field(default_factory=list)
 
     def __post_init__(self):
+        if not isinstance(self.dataset, str):
+            raise TypeError("Image dataset name must be a string.")
         if not isinstance(self.uid, str):
             raise TypeError("Image uid must be a string.")
         if not isinstance(self.height, int):
@@ -43,6 +46,7 @@ class Image:
         del metadata["height"]
         del metadata["width"]
         return cls(
+            dataset=datum.dataset,
             uid=datum.uid,
             height=height,
             width=width,
@@ -51,6 +55,7 @@ class Image:
 
     def to_datum(self) -> schemas.Datum:
         return schemas.Datum(
+            dataset=self.dataset,
             uid=self.uid,
             metadata=[
                 schemas.MetaDatum(key="height", value=self.height),
@@ -94,22 +99,34 @@ class VideoFrame:
         if not cls.valid(datum):
             raise TypeError("Datum does not conform to video frame type.")
 
-        # Extract image metadata
-        image = Image.from_datum(datum)
-
-        # Extract frame number
-        metadatum = filter(lambda x: x.key == "frame", datum.metadata)
-        if len(metadatum) != 1:
-            raise TypeError("Missing frame number in metadata.")
-        frame = int(metadatum[0])
+        # Extract metadata
+        metadata = {
+            metadatum.key: metadatum.value for metadatum in datum.metadata
+        }
+        height = int(metadata["height"])
+        width = int(metadata["width"])
+        frame = int(metadata["frame"])
+        del metadata["height"]
+        del metadata["width"]
+        del metadata["frame"]
 
         return cls(
-            image=image,
+            image=Image(
+                dataset=datum.dataset,
+                uid=datum.uid,
+                height=height,
+                width=width,
+                metadata=[
+                    schemas.MetaDatum(key=key, value=metadata[key])
+                    for key in metadata
+                ],
+            ),
             frame=frame,
         )
 
     def to_datum(self) -> schemas.Datum:
         return schemas.Datum(
+            dataset=self.image.dataset,
             uid=self.image.uid,
             metadata=[
                 schemas.MetaDatum(key="height", value=self.image.height),

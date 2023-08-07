@@ -11,7 +11,7 @@ from .core import (
     ScoredAnnotation,
     ScoredLabel,
 )
-from .datatype import Image
+from .datatypes import Image
 from .geometry import (
     BasicPolygon,
     BoundingBox,

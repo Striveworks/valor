@@ -82,8 +82,10 @@ class Info:
 class Datum:
     uid: str
     metadata: List[MetaDatum] = field(default_factory=list)
+    dataset: str = field(default="")
 
     def __post_init__(self):
+        assert isinstance(self.dataset, str)
         assert isinstance(self.uid, str)
         assert isinstance(self.metadata, list)
         for i in range(len(self.metadata)):
@@ -309,7 +311,6 @@ class ScoredAnnotation:
 class GroundTruth:
     datum: Datum
     annotations: List[Annotation] = field(default_factory=list)
-    dataset: str = field(default="")
 
     def __post_init__(self):
         # validate datum
@@ -330,10 +331,6 @@ class GroundTruth:
                 raise TypeError(
                     "annotations list should contain only `velour.schemas.Annotation`."
                 )
-
-        # validate dataset
-        if not isinstance(self.dataset, str):
-            raise TypeError("dataset should be type `str`.")
 
 
 @dataclass
