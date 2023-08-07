@@ -16,7 +16,9 @@ from velour_api.backend.core.metadata import create_metadata, get_metadata
 
 # @TODO: Might introduce multipolygon type to annotations, convert to raster at evaluation time.
 def _wkt_multipolygon_to_raster(wkt: str):
-    return select(text(f"ST_AsRaster(ST_GeomFromText('{wkt}'), {1.0}, {1.0})"))
+    return select(
+        text(f"ST_AsRaster(ST_GeomFromText('{wkt}'), {1.0}, {1.0})")
+    ).scalar_subquery()
 
 
 def create_annotation(
@@ -41,8 +43,8 @@ def create_annotation(
     # @TODO: Add more annotation types
 
     mapping = {
-        "datum": datum,
-        "model": model,
+        "datum_id": datum.id,
+        "model_id": model.id if model else None,
         "task_type": annotation.task_type,
         "box": box,
         "polygon": polygon,

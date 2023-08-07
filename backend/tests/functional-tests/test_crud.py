@@ -883,7 +883,6 @@ def test_segmentation_area_no_hole(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            dataset=dset_name,
             datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
@@ -913,7 +912,6 @@ def test_segmentation_area_with_hole(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            dataset=dset_name,
             datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
