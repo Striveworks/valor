@@ -440,7 +440,7 @@ def dataset_model_create(
     dataset_names: list[str],
     model_names: list[str],
 ):
-
+    # create dataset1
     crud.create_dataset(
         db=db,
         dataset=schemas.Dataset(name=dataset_names[0]),
@@ -455,8 +455,8 @@ def dataset_model_create(
 
     # Link model1 to dataset1
     for pd in pred_dets_create:
-        # pd.dataset = dataset_names[0]
         pd.model = model_names[0]
+        pd.datum.dataset = dataset_names[0]
         crud.create_prediction(db=db, prediction=pd)
 
     # Finalize model1 over dataset1
@@ -538,9 +538,9 @@ def test_create_detection_ground_truth_and_delete_dataset(
     # verify we get the same dets back
     for gt in gt_dets_create:
         new_gt = crud.get_groundtruth(
-            db=db, dataset_name=gt.dataset, datum_uid=gt.datum.uid
+            db=db, dataset_name=gt.datum.dataset, datum_uid=gt.datum.uid
         )
-        assert gt.datum.dataset == new_gt.dataset
+        assert gt.datum.dataset == new_gt.datum.dataset
         assert gt.datum == new_gt.datum
         for gta, new_gta in zip(gt.annotations, new_gt.annotations):
             assert set(gta.labels) == set(new_gta.labels)
@@ -566,6 +566,35 @@ def test_create_detection_prediction_and_delete_model(
     gt_dets_create: list[schemas.GroundTruth],
 ):
     # check this gives an error since the model hasn't been added yet
+    with pytest.raises(exceptions.StateflowError) as exc_info:
+        for pd in pred_dets_create:
+            crud.create_prediction(db=db, prediction=pd)
+    assert "backend stateflow uninitialized" in str(exc_info)
+
+    # check this gives an error since the model hasn't been added yet
+    with pytest.raises(exceptions.StateflowError) as exc_info:
+        for pd in pred_dets_create:
+            crud.create_prediction(db=db, prediction=pd)
+    assert "backend stateflow uninitialized" in str(exc_info)
+
+    # create dataset, add images, and add predictions
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
+
+    for gt in gt_dets_create:
+        crud.create_groundtruth(db=db, groundtruth=gt)
+
+    # check this gives an error since the model hasn't been added yet
+    with pytest.raises(exceptions.StateflowError) as exc_info:
+        for pd in pred_dets_create:
+            crud.create_prediction(db=db, prediction=pd)
+    assert "no model ops allowed on dataset with state `create`" in str(
+        exc_info
+    )
+
+    # finalize dataset
+    crud.finalize(db=db, dataset_name=dset_name)
+
+    # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in pred_dets_create:
             crud.create_prediction(db=db, prediction=pd)
@@ -573,19 +602,6 @@ def test_create_detection_prediction_and_delete_model(
 
     # create model
     crud.create_model(db=db, model=schemas.Model(name=model_name))
-
-    # check this gives an error since the datums haven't been added yet
-    with pytest.raises(exceptions.DatumDoesNotExistError) as exc_info:
-        for pd in pred_dets_create:
-            pd.model = model_name
-            crud.create_prediction(db=db, prediction=pd)
-    assert "Datum with uid" in str(exc_info)
-
-    # create dataset, add images, and add predictions
-    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
-
-    for gt in gt_dets_create:
-        crud.create_groundtruth(db=db, groundtruth=gt)
     for pd in pred_dets_create:
         crud.create_prediction(db=db, prediction=pd)
 
@@ -637,8 +653,8 @@ def test_create_detections_as_bbox_or_poly(db: Session, img1: schemas.Datum):
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     crud.create_groundtruth(
-        db,
-        schemas.GroundTruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
             dataset=dset_name,
             datum=img1.to_datum(),
             annotations=[det1, det2],
@@ -692,16 +708,14 @@ def test_create_predicted_classifications_and_delete_model(
     gt_clfs_create: list[schemas.GroundTruth],
 ):
     # check this gives an error since the model hasn't been added yet
-    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.StateflowError) as exc_info:
         crud.create_prediction(db=db, prediction=pred_clfs_create[0])
-    assert "does not exist" in str(exc_info)
-
-    crud.create_model(db=db, model=schemas.Model(name=model_name))
+    assert "backend stateflow uninitialized" in str(exc_info)
 
     # check this gives an error since the images haven't been added yet
-    with pytest.raises(exceptions.DatumDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.StateflowError) as exc_info:
         crud.create_prediction(db=db, prediction=pred_clfs_create[0])
-    assert "Datum with uid" in str(exc_info)
+    assert "backend stateflow uninitialized" in str(exc_info)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
@@ -710,6 +724,21 @@ def test_create_predicted_classifications_and_delete_model(
         gt.datum.dataset = dset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
+    # check this gives an error since the images haven't been added yet
+    with pytest.raises(exceptions.StateflowError) as exc_info:
+        crud.create_prediction(db=db, prediction=pred_clfs_create[0])
+    assert "dataset with state `create`" in str(exc_info)
+
+    # finalize dataset
+    crud.finalize(db=db, dataset_name=dset_name)
+
+    # check this gives an error since the images haven't been added yet
+    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
+        crud.create_prediction(db=db, prediction=pred_clfs_create[0])
+    assert "does not exist" in str(exc_info)
+
+    # create model
+    crud.create_model(db=db, model=schemas.Model(name=model_name))
     for pd in pred_clfs_create:
         pd.model = model_name
         crud.create_prediction(db=db, prediction=pd)
