@@ -46,7 +46,7 @@ class DatasetStatus(BaseModel):
     def evaluating(self) -> bool:
         if self.models is not None:
             for model in self.models:
-                if self.models[model] == Stateflow.EVALUATE:
+                if self.models[model].status == Stateflow.EVALUATE:
                     return True
         return False
 

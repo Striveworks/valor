@@ -27,6 +27,7 @@ from ._read import (
     get_model_metrics,
     get_models,
     get_prediction,
+    get_status,
 )
 from ._update import finalize
 
@@ -35,6 +36,7 @@ __all__ = [
     "create_model",
     "create_groundtruth",
     "create_prediction",
+    "get_status",
     "get_datasets",
     "get_dataset",
     "get_datums",

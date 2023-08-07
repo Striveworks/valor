@@ -21,8 +21,8 @@ def create_groundtruth(
         )
         rows += [
             models.GroundTruth(
-                annotation=annotation,
-                label=label,
+                annotation_id=annotation.id,
+                label_id=label.id,
             )
             for label in core.create_labels(db, groundtruth_annotation.labels)
         ]

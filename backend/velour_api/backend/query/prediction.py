@@ -41,8 +41,8 @@ def create_prediction(
         )
         rows += [
             models.Prediction(
-                annotation=annotation,
-                label=core.create_label(db, scored_label.label),
+                annotation_id=annotation.id,
+                label_id=core.create_label(db, scored_label.label).id,
                 score=scored_label.score,
             )
             for scored_label in predicted_annotation.scored_labels

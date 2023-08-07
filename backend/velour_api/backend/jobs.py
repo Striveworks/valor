@@ -137,15 +137,8 @@ def create(fn: callable) -> callable:
         # unpack args
         dataset_name = None
         model_name = None
-        if "dataset" in kwargs:
-            if isinstance(kwargs["dataset"], schemas.Dataset):
-                dataset_name = kwargs["dataset"].name
-                model_name = None
-        elif "model" in kwargs:
-            if isinstance(kwargs["model"], schemas.Model):
-                dataset_name = None
-                model_name = kwargs["model"].name
-        elif "groundtruth" in kwargs:
+
+        if "groundtruth" in kwargs:
             if isinstance(kwargs["groundtruth"], schemas.GroundTruth):
                 dataset_name = kwargs["groundtruth"].datum.dataset
                 model_name = None
@@ -153,8 +146,6 @@ def create(fn: callable) -> callable:
             if isinstance(kwargs["prediction"], schemas.Prediction):
                 dataset_name = kwargs["prediction"].datum.dataset
                 model_name = kwargs["prediction"].model
-        else:
-            raise RuntimeError
 
         if dataset_name is not None:
             _update_backend_status(
@@ -162,6 +153,7 @@ def create(fn: callable) -> callable:
                 dataset_name=dataset_name,
                 model_name=model_name,
             )
+
         return fn(*args, **kwargs)
 
     return wrapper
@@ -325,6 +317,19 @@ def delete(fn: callable) -> callable:
             status.remove_dataset(dataset_name)
         _set_backend_status(status)
 
+        return result
+
+    return wrapper
+
+
+def debug_timer(fn: callable) -> callable:
+    def wrapper(*args, **kwargs):
+        logger.debug(f"starting method {fn}")
+        start = perf_counter()
+        result = fn(*args, **kwargs)
+        logger.debug(
+            f"method {fn} finished in {perf_counter() - start} seconds"
+        )
         return result
 
     return wrapper

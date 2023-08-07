@@ -803,7 +803,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
         for pd in pred_segs_create:
             pd.model = model_name
             crud.create_prediction(db=db, prediction=pd)
-    assert "with state `create`" in str(exc_info)
+    assert "'backend stateflow uninitialized" in str(exc_info)
 
     # create groundtruths
     for gt in gt_segs_create:
@@ -1399,20 +1399,22 @@ def test_create_clf_metrics(
 # def test__filter_instance_segmentations_by_area_using_mask(db: Session):
 
 
-# @NOTE: `velour-api.backend` - this will be replaced by stateflow
-# @TODO: Implement test for finalizing empty dataset
+def test_finalize_empty_dataset(db: Session):
+    # create dataset
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
+    # finalize
+    with pytest.raises(exceptions.StateflowError) as e:
+        crud.finalize(db=db, dataset_name=dset_name)
+    assert "invalid transititon from none to ready" in str(e)
 
 
-# @NOTE: `velour-api.backend` - this will be replaced by stateflow
-# @TODO: Implement test for finalizing empty model
-
-
-# @NOTE: `velour-api.backend` - this will be replaced by stateflow
-# @TODO: Implement test that checks the set of valid commands over given dataset/model pairing
-
-
-# @NOTE: `velour-api.backend` - this will be replaced by stateflow
-# @TODO: Implement test that checks the set of valid commands over given dataset/model pairing
+def test_finalize_empty_model(db: Session, groundtruths):
+    # create model
+    crud.create_model(db=db, model=schemas.Model(name=model_name))
+    # finalize
+    with pytest.raises(exceptions.StateflowError) as e:
+        crud.finalize(db=db, dataset_name=dset_name, model_name=model_name)
+    assert "invalid transititon from none to ready" in str(e)
 
 
 # @NOTE: `velour_api.backend.io`

@@ -6,12 +6,17 @@ from unittest.mock import MagicMock  # , patch
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
+from velour_api import crud, enums, exceptions, schemas
 from velour_api.backend import database, jobs
 
 # from velour_api.enums import JobStatus
 # from velour_api.exceptions import JobDoesNotExistError
 # from velour_api.schemas import Job
+
+dset_name = "test_dataset"
+model_name = "test_model"
 
 
 @pytest.fixture
@@ -35,6 +40,389 @@ def setup_and_teardown():
         raise RuntimeError("redis database is not-empty")
     yield
     jobs.r.flushdb()
+
+
+@pytest.fixture
+def gt_clfs_create(
+    img1: schemas.Image,
+    img2: schemas.Image,
+) -> list[schemas.GroundTruth]:
+    return [
+        schemas.GroundTruth(
+            dataset=dset_name,
+            datum=img1.to_datum(),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k2", value="v2"),
+                    ],
+                ),
+            ],
+        ),
+        schemas.GroundTruth(
+            dataset=dset_name,
+            datum=img2.to_datum(),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[schemas.Label(key="k2", value="v3")],
+                ),
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def pred_clfs_create(
+    img1: schemas.Image, img2: schemas.Image
+) -> list[schemas.Prediction]:
+    return [
+        schemas.Prediction(
+            model=model_name,
+            datum=img1.to_datum(),
+            annotations=[
+                schemas.ScoredAnnotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    scored_labels=[
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k1", value="v1"),
+                            score=0.2,
+                        ),
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k1", value="v2"),
+                            score=0.8,
+                        ),
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k4", value="v4"),
+                            score=1.0,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        schemas.Prediction(
+            model=model_name,
+            datum=img2.to_datum(),
+            annotations=[
+                schemas.ScoredAnnotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    scored_labels=[
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k2", value="v2"),
+                            score=1.0,
+                        ),
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k3", value="v3"),
+                            score=0.87,
+                        ),
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k3", value="v0"),
+                            score=0.13,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ]
+
+
+def test_stateflow_dataset(db: Session):
+
+    # should have no record of dataset
+    assert crud.get_status(dataset_name=dset_name) is None
+
+    # create dataset
+    crud.create_dataset(
+        db=db,
+        dataset=schemas.Dataset(
+            name=dset_name,
+        ),
+    )
+
+    # `create_dataset` does not affect the stateflow
+    assert crud.get_status(dataset_name=dset_name) is None
+
+    # create a groundtruth
+    crud.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(
+                dataset=dset_name,
+                uid="uid1",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[schemas.Label(key="k", value="v")],
+                )
+            ],
+        ),
+    )
+
+    # `create_groundtruth` transitions dataset state into CREATE
+    assert crud.get_status(dataset_name=dset_name) == enums.Stateflow.CREATE
+
+    # finalize dataset
+    crud.finalize(db=db, dataset_name=dset_name)
+
+    # `finalize` transitions dataset state into READY
+    assert crud.get_status(dataset_name=dset_name) == enums.Stateflow.READY
+
+    # delete dataset
+    crud.delete(db=db, dataset_name=dset_name)
+
+    # after delete operation completes the record is removed
+    assert crud.get_status(dataset_name=dset_name) is None
+
+
+def test_stateflow_model(db: Session):
+
+    # create dataset
+    crud.create_dataset(
+        db=db,
+        dataset=schemas.Dataset(
+            name=dset_name,
+        ),
+    )
+    crud.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(
+                dataset=dset_name,
+                uid="uid1",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[schemas.Label(key="k", value="v")],
+                )
+            ],
+        ),
+    )
+    crud.finalize(db=db, dataset_name=dset_name)
+
+    # check that no record exists for model
+    assert (
+        crud.get_status(dataset_name=dset_name, model_name=model_name) is None
+    )
+
+    # create model
+    crud.create_model(
+        db=db,
+        model=schemas.Model(
+            name=model_name,
+        ),
+    )
+
+    # check that no record exists for model as no predictions have been added
+    assert (
+        crud.get_status(dataset_name=dset_name, model_name=model_name) is None
+    )
+
+    # create predictions
+    crud.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model=model_name,
+            datum=schemas.Datum(
+                dataset=dset_name,
+                uid="uid1",
+            ),
+            annotations=[
+                schemas.ScoredAnnotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    scored_labels=[
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k", value="v"), score=0.9
+                        ),
+                        schemas.ScoredLabel(
+                            label=schemas.Label(key="k", value="w"), score=0.1
+                        ),
+                    ],
+                )
+            ],
+        ),
+    )
+
+    # `create_prediction` transitions model state to CREATE
+    assert (
+        crud.get_status(dataset_name=dset_name, model_name=model_name)
+        == enums.Stateflow.CREATE
+    )
+
+    # check that evaluation fails before finalization
+    with pytest.raises(exceptions.StateflowError) as e:
+        crud.create_ap_evaluation(
+            db=db,
+            request_info=schemas.APRequest(
+                settings=schemas.EvaluationSettings(
+                    model=model_name,
+                    dataset=dset_name,
+                    task_type=enums.TaskType.DETECTION,
+                    gt_type=enums.AnnotationType.BOX,
+                    pd_type=enums.AnnotationType.BOX,
+                    label_key="class",
+                ),
+                iou_thresholds=[0.2, 0.6],
+                ious_to_keep=[0.2],
+            ),
+        )
+    assert "invalid transititon from create to evaluate" in str(e)
+
+    # finalize model over dataset
+    crud.finalize(db=db, dataset_name=dset_name, model_name=model_name)
+
+    # `finalize` transitions dataset state into READY
+    assert (
+        crud.get_status(dataset_name=dset_name, model_name=model_name)
+        == enums.Stateflow.READY
+    )
+
+    # delete dataset
+    crud.delete(db=db, dataset_name=dset_name, model_name=model_name)
+
+    # after delete operation completes the record is removed
+    assert (
+        crud.get_status(dataset_name=dset_name, model_name=model_name) is None
+    )
+
+
+def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
+    request_info = schemas.APRequest(
+        settings=schemas.EvaluationSettings(
+            model=model_name,
+            dataset=dset_name,
+            task_type=enums.TaskType.DETECTION,
+            gt_type=enums.AnnotationType.BOX,
+            pd_type=enums.AnnotationType.BOX,
+            label_key="class",
+        ),
+        iou_thresholds=[0.2, 0.6],
+        ious_to_keep=[0.2],
+    )
+
+    # check ready
+    assert crud.get_status(dataset_name=dset_name) == enums.Stateflow.READY
+    assert (
+        crud.get_status(dataset_name=dset_name, model_name=model_name)
+        == enums.Stateflow.READY
+    )
+
+    # create evaluation (return AP Response)
+    resp = crud.create_ap_evaluation(db=db, request_info=request_info)
+
+    # check in evalutation
+    assert (
+        crud.get_status(dataset_name=dset_name, model_name=model_name)
+        == enums.Stateflow.EVALUATE
+    )
+    assert crud.get_status(dataset_name=dset_name) == enums.Stateflow.EVALUATE
+
+    # attempt to delete dataset
+    with pytest.raises(ValueError) as e:
+        crud.delete(db=db, dataset_name=dset_name)
+    assert (
+        "cannot transition to delete as a evaluation is currently running."
+        in str(e)
+    )
+
+    # attempt to delete model
+    with pytest.raises(exceptions.StateflowError) as e:
+        crud.delete(db=db, dataset_name=dset_name, model_name=model_name)
+    assert "invalid transititon from evaluate to delete" in str(e)
+
+    # run computation (returns nothing on completion)
+    crud.compute_ap_metrics(
+        db=db,
+        request_info=request_info,
+        evaluation_settings_id=resp.evaluation_settings_id,
+    )
+
+    # check ready
+    assert crud.get_status(dataset_name=dset_name) == enums.Stateflow.READY
+    assert (
+        crud.get_status(dataset_name=dset_name, model_name=model_name)
+        == enums.Stateflow.READY
+    )
+
+
+def test_stateflow_clf_evaluation(
+    db: Session,
+    gt_clfs_create: list[schemas.GroundTruth],
+    pred_clfs_create: list[schemas.Prediction],
+):
+    # create dataset
+    crud.create_dataset(
+        db=db,
+        dataset=schemas.Dataset(name=dset_name),
+    )
+    for gt in gt_clfs_create:
+        gt.datum.dataset = dset_name
+        crud.create_groundtruth(db=db, groundtruth=gt)
+    crud.finalize(db=db, dataset_name=dset_name)
+
+    # create model
+    crud.create_model(db=db, model=schemas.Model(name=model_name))
+    for pd in pred_clfs_create:
+        pd.model = model_name
+        crud.create_prediction(db=db, prediction=pd)
+    crud.finalize(db=db, model_name=model_name, dataset_name=dset_name)
+
+    # create clf request
+    request_info = schemas.ClfMetricsRequest(
+        settings=schemas.EvaluationSettings(
+            model=model_name, dataset=dset_name
+        )
+    )
+
+    # check READY
+    assert crud.get_status(dataset_name=dset_name) == enums.Stateflow.READY
+    assert (
+        crud.get_status(dataset_name=dset_name, model_name=model_name)
+        == enums.Stateflow.READY
+    )
+
+    # create clf evaluation (returns Clf Response)
+    resp = crud.create_clf_evaluation(
+        db=db,
+        request_info=request_info,
+    )
+
+    # check EVALUATE
+    assert (
+        crud.get_status(dataset_name=dset_name, model_name=model_name)
+        == enums.Stateflow.EVALUATE
+    )
+    assert crud.get_status(dataset_name=dset_name) == enums.Stateflow.EVALUATE
+
+    # attempt to delete dataset
+    with pytest.raises(ValueError) as e:
+        crud.delete(db=db, dataset_name=dset_name)
+    assert (
+        "cannot transition to delete as a evaluation is currently running."
+        in str(e)
+    )
+
+    # attempt to delete model
+    with pytest.raises(exceptions.StateflowError) as e:
+        crud.delete(db=db, dataset_name=dset_name, model_name=model_name)
+    assert "invalid transititon from evaluate to delete" in str(e)
+
+    # compute clf metrics
+    crud.compute_clf_metrics(
+        db=db,
+        request_info=request_info,
+        evaluation_settings_id=resp.evaluation_settings_id,
+    )
+
+    # check READY
+    assert crud.get_status(dataset_name=dset_name) == enums.Stateflow.READY
+    assert (
+        crud.get_status(dataset_name=dset_name, model_name=model_name)
+        == enums.Stateflow.READY
+    )
 
 
 # NOTE: Jobs will be added in PR 2

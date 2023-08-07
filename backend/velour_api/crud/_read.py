@@ -1,7 +1,24 @@
 from sqlalchemy.orm import Session
 
-from velour_api import backend, schemas
+from velour_api import backend, enums, schemas
 from velour_api.backend import jobs
+
+
+def get_status(
+    *, dataset_name: str, model_name: str | None = None
+) -> enums.Stateflow | None:
+    status = jobs._get_backend_status()
+    if status.datasets:
+        if dataset_name in status.datasets:
+            if not model_name:
+                return status.datasets[dataset_name].status
+            if status.datasets[dataset_name].models is not None:
+                if model_name in status.datasets[dataset_name].models:
+                    return (
+                        status.datasets[dataset_name].models[model_name].status
+                    )
+    return None
+
 
 """ Labels """
 
