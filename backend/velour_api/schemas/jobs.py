@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from velour_api import enums, exceptions
 from velour_api.enums import Stateflow
@@ -37,7 +37,7 @@ class EvaluationJobs(BaseModel):
         del self.evaluations[id]
 
 
-class ModelStatus(BaseModel):
+class InferenceStatus(BaseModel):
     status: Stateflow = Stateflow.NONE
 
     def set_status(self, status: Stateflow):
@@ -50,51 +50,17 @@ class ModelStatus(BaseModel):
 
 class DatasetStatus(BaseModel):
     status: Stateflow = Stateflow.NONE
-    models: dict[str, ModelStatus] | None = None
+    models: dict[str, InferenceStatus] = Field(default_factory=dict)
 
     @property
     def evaluating(self) -> bool:
-        if self.models is not None:
-            for model in self.models:
-                if self.models[model].status == Stateflow.EVALUATE:
-                    return True
+        for model in self.models:
+            if self.models[model].set_status == Stateflow.EVALUATE:
+                return True
         return False
 
-    def set_model_status(self, name: str, status: Stateflow):
-        if self.status not in [Stateflow.READY, Stateflow.EVALUATE]:
-            raise StateflowError(
-                f"no model ops allowed on dataset with state `{self.status}`"
-            )
-
-        # init models dictionary
-        if self.models is None:
-            self.models = {}
-
-        # init model
-        if name not in self.models:
-            self.models[name] = ModelStatus()
-
-        # set model status
-        self.models[name].set_status(status)
-
-        # update dataset status
-        self.status = (
-            Stateflow.EVALUATE if self.evaluating else Stateflow.READY
-        )
-
-    def remove_model(self, name: str):
-        if self.models is None:
-            raise exceptions.ModelDoesNotExistError(name)
-        elif name not in self.models:
-            raise exceptions.ModelDoesNotExistError(name)
-        elif self.models[name].status != Stateflow.DELETE:
-            raise StateflowError(
-                f"cannot delete model `{name}` with state `{self.models[name].status}`"
-            )
-        del self.models[name]
-
     def set_status(self, status: Stateflow):
-        if self.evaluating and status != Stateflow.EVALUATE:
+        if self.evaluating and self.status != Stateflow.EVALUATE:
             raise StateflowError(
                 f"cannot transition to {status} as a evaluation is currently running."
             )
@@ -104,87 +70,81 @@ class DatasetStatus(BaseModel):
             )
         self.status = status
 
+    def set_inference_status(self, model_name: str, status: Stateflow):
+        if self.status not in [Stateflow.READY, Stateflow.EVALUATE]:
+            raise StateflowError(
+                f"no model ops allowed on dataset with state `{self.status}`"
+            )
+        if model_name not in self.models:
+            self.models[model_name] = InferenceStatus()
+        self.models[model_name].set_status(status)
+        self.set_status(
+            Stateflow.EVALUATE if self.evaluating else Stateflow.READY
+        )
+
+    def remove_inference(self, model_name: str):
+        if model_name not in self.models:
+            raise exceptions.ModelDoesNotExistError(model_name)
+        elif self.models[model_name].status != Stateflow.DELETE:
+            raise StateflowError(
+                f"cannot delete model `{model_name}` with state `{self.models[model_name].status}`"
+            )
+        del self.models[model_name]
+
 
 class BackendStatus(BaseModel):
-    datasets: dict[str, DatasetStatus] | None = None
+    datasets: dict[str, DatasetStatus] = Field(default_factory=dict)
 
-    def set_dataset_status(self, dataset_name: str, status: Stateflow):
-        # init datasets dictionary
-        if self.datasets is None:
-            self.datasets = {}
-
-        # init dataset
-        if dataset_name not in self.datasets:
-            self.datasets[dataset_name] = DatasetStatus()
-
-        # set status
-        self.datasets[dataset_name].set_status(status)
-
-    def set_model_status(
-        self,
-        status: Stateflow,
-        model_name: str,
-        dataset_name: str | None = None,
-    ):
-        # check if dataset exists
-        if self.datasets is None:
-            raise exceptions.StateflowError("stateflow uninitialized")
-
-        # set status to specific inference
-        if dataset_name:
-            if dataset_name not in self.datasets:
-                raise exceptions.DatasetDoesNotExistError(dataset_name)
-            self.datasets[dataset_name].set_model_status(model_name, status)
-        # set status to all inferences related to model_name
-        else:
-            for dataset in self.datasets:
-                if self.datasets[dataset].models is not None:
-                    self.datasets[dataset].set_model_status(model_name, status)
+    """ DATASET """
 
     def get_dataset_status(self, dataset_name: str):
-        if self.datasets is None:
-            raise RuntimeError("datasets object is uninitialized")
-        elif dataset_name not in self.datasets:
+        if dataset_name not in self.datasets:
             raise exceptions.DatasetDoesNotExistError(dataset_name)
-
         return self.datasets[dataset_name].status
 
-    def get_model_status(
-        self, dataset_name: str, model_name: str
-    ) -> Stateflow:
-        if self.datasets is None:
-            raise exceptions.DatasetDoesNotExistError(dataset_name)
-        elif dataset_name not in self.datasets:
-            raise exceptions.DatasetDoesNotExistError(dataset_name)
-        elif self.datasets[dataset_name].models is None:
-            raise exceptions.ModelDoesNotExistError(model_name)
-        elif model_name not in self.datasets[dataset_name]:
-            raise exceptions.ModelDoesNotExistError(model_name)
-
-        return self.datasets[dataset_name].models[model_name].status
-
-    def remove_model(self, model_name: str, dataset_name: str | None = None):
-        if self.datasets is None:
-            raise exceptions.StateflowError("backend stateflow uninitialized")
-
-        # dataset => model
-        if dataset_name:
-            if dataset_name not in self.datasets:
-                raise exceptions.DatasetDoesNotExistError(dataset_name)
-            self.datasets[dataset_name].remove_model(model_name)
-        # all datasets => model
-        else:
-            for dataset in self.datasets:
-                if self.datasets[dataset].models is not None:
-                    self.datasets[dataset].remove_model(model_name)
+    def set_dataset_status(self, dataset_name: str, status: Stateflow):
+        if dataset_name not in self.datasets:
+            self.datasets[dataset_name] = DatasetStatus()
+        self.datasets[dataset_name].set_status(status)
 
     def remove_dataset(self, dataset_name: str):
-        if self.datasets is None:
-            raise exceptions.DatasetDoesNotExistError(dataset_name)
-        elif dataset_name not in self.datasets:
+        if dataset_name not in self.datasets:
             raise exceptions.DatasetDoesNotExistError(dataset_name)
         elif self.datasets[dataset_name].status != Stateflow.DELETE:
             raise StateflowError(
                 f"cannot delete dataset `{dataset_name}` with state `{self.datasets[dataset_name].status}`"
             )
         del self.datasets[dataset_name]
+
+    """ INFERENCE """
+
+    def get_inference_status(
+        self, dataset_name: str, model_name: str
+    ) -> Stateflow:
+        if dataset_name not in self.datasets:
+            raise exceptions.DatasetDoesNotExistError(dataset_name)
+        elif model_name not in self.datasets[dataset_name].models:
+            raise exceptions.ModelDoesNotExistError(model_name)
+        return self.datasets[dataset_name].models[model_name].status
+
+    def set_inference_status(
+        self,
+        status: Stateflow,
+        model_name: str,
+        dataset_name: str,
+    ):
+        if dataset_name not in self.datasets:
+            raise exceptions.DatasetDoesNotExistError(dataset_name)
+        self.datasets[dataset_name].set_inference_status(model_name, status)
+
+    def remove_inference(
+        self, model_name: str, dataset_name: str | None = None
+    ):
+        if dataset_name:
+            if dataset_name not in self.datasets:
+                raise exceptions.DatasetDoesNotExistError(dataset_name)
+            self.datasets[dataset_name].remove_inference(model_name)
+
+    def remove_inferences(self, model_name: str):
+        for dataset in self.datasets:
+            self.datasets[dataset].remove_inference(model_name)

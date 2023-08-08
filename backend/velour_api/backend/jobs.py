@@ -3,7 +3,6 @@ import os
 from time import perf_counter
 
 import redis
-from sqlalchemy.orm import Session
 
 from velour_api import exceptions, logger, schemas
 from velour_api.enums import JobStatus, Stateflow
@@ -57,6 +56,9 @@ def needs_redis(fn):
     return wrapper
 
 
+""" Evaluation Job Status """
+
+
 @needs_redis
 def get_evaluation_job(id: int) -> JobStatus:
     json_str = r.get("evaluation_jobs")
@@ -93,6 +95,9 @@ def remove_evaluation_job(id: int):
     r.set("evaluation_jobs", evalJobs.model_dump_json())
 
 
+""" Backend Status """
+
+
 @needs_redis
 def _get_backend_status() -> BackendStatus:
     json_str = r.get("backend_stateflow")
@@ -108,48 +113,26 @@ def _set_backend_status(status: BackendStatus):
 
 
 def _update_backend_status(
-    state: Stateflow,
-    dataset_name: str | None = None,
+    status: Stateflow,
+    dataset_name: str,
     model_name: str | None = None,
 ):
-    if not dataset_name and not model_name:
-        return
-
     # get current status
     current_status = _get_backend_status()
 
     # update status
     if model_name:
-        current_status.set_model_status(
-            status=state,
+        current_status.set_inference_status(
+            status=status,
             model_name=model_name,
             dataset_name=dataset_name,
         )
-    elif dataset_name:
+    else:
         current_status.set_dataset_status(
-            dataset_name=dataset_name, status=state
+            dataset_name=dataset_name, status=status
         )
 
     _set_backend_status(current_status)
-
-
-def _protected_datasets() -> list[str]:
-    stateflow = _get_backend_status()
-    if stateflow.datasets is not None:
-        return list(stateflow.datasets.keys())
-    return []
-
-
-def _protected_models() -> list[str]:
-    stateflow = _get_backend_status()
-    if stateflow.datasets is not None:
-        return [
-            model
-            for dataset in stateflow.datasets
-            if stateflow.datasets[dataset].models is not None
-            for model in stateflow.datasets[dataset].models
-        ]
-    return []
 
 
 def create(fn: callable) -> callable:
@@ -157,13 +140,6 @@ def create(fn: callable) -> callable:
 
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 2:
-            raise RuntimeError
-
-        # unpack db
-        db = None
-        if "db" in kwargs:
-            db = kwargs["db"]
-        if not isinstance(db, Session):
             raise RuntimeError
 
         # unpack args
@@ -181,7 +157,7 @@ def create(fn: callable) -> callable:
 
         if dataset_name is not None:
             _update_backend_status(
-                Stateflow.CREATE,
+                status=Stateflow.CREATE,
                 dataset_name=dataset_name,
                 model_name=model_name,
             )
@@ -198,13 +174,6 @@ def finalize(fn: callable) -> callable:
         if len(args) != 0 and len(kwargs) != 3:
             raise RuntimeError
 
-        # unpack db
-        db = None
-        if "db" in kwargs:
-            db = kwargs["db"]
-        if not isinstance(db, Session):
-            raise RuntimeError
-
         # unpack dataset
         dataset_name = None
         if "dataset_name" in kwargs:
@@ -216,11 +185,12 @@ def finalize(fn: callable) -> callable:
             model_name = kwargs["model_name"]
 
         # enter ready state
-        _update_backend_status(
-            state=Stateflow.READY,
-            dataset_name=dataset_name,
-            model_name=model_name,
-        )
+        if dataset_name is not None:
+            _update_backend_status(
+                status=Stateflow.READY,
+                dataset_name=dataset_name,
+                model_name=model_name,
+            )
 
         return fn(*args, **kwargs)
 
@@ -232,13 +202,6 @@ def evaluate(fn: callable) -> callable:
 
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 2:
-            raise RuntimeError
-
-        # unpack db
-        db = None
-        if "db" in kwargs:
-            db = kwargs["db"]
-        if not isinstance(db, Session):
             raise RuntimeError
 
         # unpack args
@@ -253,11 +216,12 @@ def evaluate(fn: callable) -> callable:
                 model_name = kwargs["request_info"].settings.model
 
         # put model / dataset in evaluation state
-        _update_backend_status(
-            Stateflow.EVALUATE,
-            dataset_name=dataset_name,
-            model_name=model_name,
-        )
+        if dataset_name is not None:
+            _update_backend_status(
+                status=Stateflow.EVALUATE,
+                dataset_name=dataset_name,
+                model_name=model_name,
+            )
 
         return fn(*args, **kwargs)
 
@@ -269,13 +233,6 @@ def computation(fn: callable) -> callable:
 
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 2:
-            raise RuntimeError
-
-        # unpack db
-        db = None
-        if "db" in kwargs:
-            db = kwargs["db"]
-        if not isinstance(db, Session):
             raise RuntimeError
 
         # unpack args
@@ -290,18 +247,22 @@ def computation(fn: callable) -> callable:
                 model_name = kwargs["request_info"].settings.model
 
         # start eval computation
-        _update_backend_status(
-            Stateflow.EVALUATE,
-            dataset_name=dataset_name,
-            model_name=model_name,
-        )
+        if dataset_name is not None:
+            _update_backend_status(
+                status=Stateflow.EVALUATE,
+                dataset_name=dataset_name,
+                model_name=model_name,
+            )
 
         result = fn(*args, **kwargs)
 
         # end eval computation
-        _update_backend_status(
-            Stateflow.READY, dataset_name=dataset_name, model_name=model_name
-        )
+        if dataset_name is not None:
+            _update_backend_status(
+                status=Stateflow.READY,
+                dataset_name=dataset_name,
+                model_name=model_name,
+            )
 
         return result
 
@@ -316,13 +277,6 @@ def delete(fn: callable) -> callable:
         if len(args) != 0 and len(kwargs) != 3:
             raise RuntimeError
 
-        # unpack db
-        db = None
-        if "db" in kwargs:
-            db = kwargs["db"]
-        if not isinstance(db, Session):
-            raise RuntimeError
-
         # unpack dataset
         dataset_name = None
         if "dataset_name" in kwargs:
@@ -333,30 +287,22 @@ def delete(fn: callable) -> callable:
         if "model_name" in kwargs:
             model_name = kwargs["model_name"]
 
-        try:
-            # enter deletion state
+        if dataset_name is not None:
             _update_backend_status(
-                state=Stateflow.DELETE,
+                status=Stateflow.DELETE,
                 dataset_name=dataset_name,
                 model_name=model_name,
             )
-        except exceptions.StateflowError as e:
-            if "stateflow uninitialized" not in str(e):
-                raise
 
         result = fn(*args, **kwargs)
 
-        try:
-            # remove
+        if dataset_name is not None:
             status = _get_backend_status()
             if model_name is not None:
                 status.remove_model(model_name)
             else:
                 status.remove_dataset(dataset_name)
             _set_backend_status(status)
-        except exceptions.StateflowError as e:
-            if "stateflow uninitialized" not in str(e):
-                raise
 
         return result
 

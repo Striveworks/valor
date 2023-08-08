@@ -337,7 +337,7 @@ def get_model_evaluations(
     response_model_exclude_none=True,
 )
 def get_evaluation_settings(
-    evaluation_settings_id: str, db: Session = Depends(get_db)
+    evaluation_settings_id: int, db: Session = Depends(get_db)
 ):
     try:
         return crud.get_evaluation_settings_from_id(
@@ -352,7 +352,7 @@ def get_evaluation_settings(
     dependencies=[Depends(token_auth_scheme)],
 )
 def get_model_evaluation_metrics(
-    model_name: str, evaluation_settings_id: str, db: Session = Depends(get_db)
+    model_name: str, evaluation_settings_id: int, db: Session = Depends(get_db)
 ) -> list[schemas.Metric]:
     # TODO: verify evaluation_settings_id corresponds to given model_name
     return crud.get_metrics_from_evaluation_settings_id(
@@ -366,7 +366,7 @@ def get_model_evaluation_metrics(
     response_model_exclude_none=True,
 )
 def get_model_confusion_matrices(
-    evaluation_settings_id: str, db: Session = Depends(get_db)
+    evaluation_settings_id: int, db: Session = Depends(get_db)
 ) -> list[schemas.ConfusionMatrixResponse]:
     return crud.get_confusion_matrices_from_evaluation_settings_id(
         db=db, evaluation_settings_id=evaluation_settings_id
@@ -386,7 +386,7 @@ def create_ap_metrics(
         resp = crud.create_ap_evaluation(db=db, request_info=request_info)
         # add metric computation to background tasks
         background_tasks.add_task(
-            crud.create_ap_metrics,
+            crud.compute_ap_metrics,
             db=db,
             request_info=request_info,
             evaluation_settings_id=resp.evaluation_settings_id,
@@ -417,10 +417,10 @@ def create_clf_metrics(
         resp = crud.create_clf_evaluation(db=db, request_info=request_info)
         # add metric computation to background tasks
         background_tasks.add_task(
-            crud.create_clf_metrics,
+            crud.compute_clf_metrics,
             db=db,
             request_info=request_info,
-            evaluation_settings_id=resp.evaluation_settings_id,
+            evaluation_settings_id=resp.job_id,
         )
         # return Clf Response
         return resp
@@ -431,7 +431,7 @@ def create_clf_metrics(
         exceptions.InferencesAreNotFinalizedError,
     ) as e:
         raise HTTPException(status_code=405, detail=str(e))
-    except (exceptions.StateflowError,) as e:
+    except exceptions.StateflowError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -452,7 +452,7 @@ def user(
     "/evaluations/{evaluation_settings_id}",
     dependencies=[Depends(token_auth_scheme)],
 )
-def get_evaluation_job(evaluation_settings_id: str) -> enums.JobStatus:
+def get_evaluation_status(evaluation_settings_id: int) -> enums.JobStatus:
     try:
         return jobs.get_evaluation_job(evaluation_settings_id)
     except exceptions.EvaluationJobDoesNotExistError as e:
@@ -465,7 +465,7 @@ def get_evaluation_job(evaluation_settings_id: str) -> enums.JobStatus:
     response_model_exclude_none=True,
 )
 def get_evaluation_metrics(
-    evaluation_settings_id: str, db: Session = Depends(get_db)
+    evaluation_settings_id: int, db: Session = Depends(get_db)
 ) -> list[schemas.Metric]:
     try:
         status = jobs.get_evaluation_job(evaluation_settings_id)
@@ -494,7 +494,7 @@ def get_evaluation_metrics(
     response_model_exclude_none=True,
 )
 def get_job_confusion_matrices(
-    evaluation_settings_id: str, db: Session = Depends(get_db)
+    evaluation_settings_id: int, db: Session = Depends(get_db)
 ) -> list[schemas.ConfusionMatrixResponse]:
     try:
         status = jobs.get_evaluation_job(evaluation_settings_id)
@@ -506,7 +506,6 @@ def get_job_confusion_matrices(
         return crud.get_confusion_matrices_from_evaluation_settings_id(
             db=db, evaluation_settings_id=evaluation_settings_id
         )
-
     except exceptions.EvaluationJobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -517,7 +516,7 @@ def get_job_confusion_matrices(
     response_model_exclude_none=True,
 )
 def get_job_settings(
-    evaluation_settings_id: str, db: Session = Depends(get_db)
+    evaluation_settings_id: int, db: Session = Depends(get_db)
 ) -> schemas.EvaluationSettings:
     try:
         status = jobs.get_evaluation_job(evaluation_settings_id)

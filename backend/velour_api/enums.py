@@ -63,13 +63,13 @@ class JobStatus(Enum):
 
     def next(self):
         if self == self.PENDING:
-            return [self.PROCESSING]
+            return {self.PENDING, self.PROCESSING}
         elif self == self.PROCESSING:
-            return [self.DONE, self.FAILED]
+            return {self.PROCESSING, self.DONE, self.FAILED}
         elif self == self.FAILED:
-            return [self.PENDING]
+            return {self.FAILED, self.PENDING}
         elif self == self.DONE:
-            return []
+            return {self.DONE}
         else:
             raise ValueError
 
@@ -83,15 +83,15 @@ class Stateflow(str, Enum):
 
     def next(self):
         if self == self.NONE:
-            return [self.CREATE, self.DELETE]
+            return {self.NONE, self.CREATE, self.DELETE}
         elif self == self.CREATE:
-            return [self.CREATE, self.READY, self.DELETE]
+            return {self.CREATE, self.READY, self.DELETE}
         elif self == self.READY:
-            return [self.READY, self.EVALUATE, self.DELETE]
+            return {self.READY, self.EVALUATE, self.DELETE}
         elif self == self.EVALUATE:
-            return [self.EVALUATE, self.READY]
+            return {self.EVALUATE, self.READY}
         elif self == self.DELETE:
-            return [self.DELETE]
+            return {self.DELETE}
         else:
             raise ValueError
 

@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 import requests
 
 from velour import schemas
-from velour.enums import AnnotationType, TaskType
+from velour.enums import AnnotationType, JobStatus, TaskType
 
 
 class ClientException(Exception):
@@ -125,25 +125,27 @@ class Job:
             setattr(self, k, v)
 
     def status(self) -> str:
-        resp = self.client._requests_get_rel_host(f"jobs/{self._id}").json()
-        return resp["status"]
+        resp = self.client._requests_get_rel_host(
+            f"evaluations/{self._id}"
+        ).json()
+        return JobStatus(resp)
 
 
-class EvalJob(Job):
+class Evaluation(Job):
     def metrics(self) -> List[dict]:
         return self.client._requests_get_rel_host(
-            f"jobs/{self._id}/metrics"
+            f"evaluations/{self._id}/metrics"
         ).json()
 
     def confusion_matrices(self) -> List[dict]:
         return self.client._requests_get_rel_host(
-            f"jobs/{self._id}/confusion-matrices"
+            f"evaluations/{self._id}/confusion-matrices"
         ).json()
 
     # TODO: replace value with a dataclass?
     def settings(self) -> dict:
         return self.client._requests_get_rel_host(
-            f"jobs/{self._id}/settings"
+            f"evaluations/{self._id}/settings"
         ).json()
 
 
@@ -427,9 +429,9 @@ class Model:
 
     def evaluate_classification(
         self,
-        dataset: "Dataset",
+        dataset: Dataset,
         group_by: schemas.MetaDatum = schemas.MetaDatum(key="k", value="v"),
-    ) -> "EvalJob":
+    ) -> Evaluation:
         """Start a classification evaluation job
 
         Parameters
@@ -441,7 +443,7 @@ class Model:
 
         Returns
         -------
-        EvalJob
+        Evaluation
             a job object that can be used to track the status of the job
             and get the metrics of it upon completion
         """
@@ -457,7 +459,7 @@ class Model:
             "clf-metrics", json=payload
         ).json()
 
-        return EvalJob(client=self.client, **resp)
+        return Evaluation(client=self.client, **resp)
 
     def evaluate_ap(
         self,
@@ -470,7 +472,7 @@ class Model:
         min_area: float = None,
         max_area: float = None,
         label_key: Optional[str] = None,
-    ) -> "EvalJob":
+    ) -> Evaluation:
         payload = {
             "settings": {
                 "model": self.name,
@@ -499,7 +501,7 @@ class Model:
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
             resp[k] = [schemas.Label(**la) for la in resp[k]]
 
-        return EvalJob(client=self.client, **resp)
+        return Evaluation(client=self.client, **resp)
 
     def get_evaluation_settings(self) -> List[dict]:
         # TODO: should probably have a dataclass for the output

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from velour_api import backend, schemas
 from velour_api.backend import jobs
 from velour_api.crud._read import get_disjoint_keys, get_disjoint_labels
+from velour_api.enums import JobStatus
 
 
 @jobs.create
@@ -66,11 +67,14 @@ def create_clf_evaluation(
     # create evaluation setting
     evaluation_settings_id = backend.create_clf_evaluation(db, request_info)
 
+    # create evaluation job status
+    jobs.set_evaluation_job(evaluation_settings_id, status=JobStatus.PENDING)
+
     # create response
     return schemas.CreateClfMetricsResponse(
         missing_pred_keys=missing_pred_keys,
         ignored_pred_keys=ignored_pred_keys,
-        evaluation_settings_id=evaluation_settings_id,
+        job_id=evaluation_settings_id,
     )
 
 
@@ -82,11 +86,27 @@ def compute_clf_metrics(
     evaluation_settings_id: int,
 ):
     """compute metrics"""
-    backend.create_clf_metrics(
-        db,
-        request_info=request_info,
-        evaluation_settings_id=evaluation_settings_id,
+
+    # set job status to PROCESSING
+    jobs.set_evaluation_job(
+        evaluation_settings_id, status=JobStatus.PROCESSING
     )
+
+    # attempt computation
+    try:
+        backend.create_clf_metrics(
+            db,
+            request_info=request_info,
+            evaluation_settings_id=evaluation_settings_id,
+        )
+    except Exception as e:
+        jobs.set_evaluation_job(
+            evaluation_settings_id, status=JobStatus.FAILED
+        )
+        raise e
+
+    # set job status to DONE
+    jobs.set_evaluation_job(evaluation_settings_id, status=JobStatus.DONE)
 
 
 @jobs.evaluate
@@ -107,11 +127,14 @@ def create_ap_evaluation(
     # create evaluation setting
     evaluation_settings_id = backend.create_ap_evaluation(db, request_info)
 
+    # create evaluation job status
+    jobs.set_evaluation_job(evaluation_settings_id, status=JobStatus.PENDING)
+
     # create response
     return schemas.CreateAPMetricsResponse(
         missing_pred_labels=missing_pred_labels,
         ignored_pred_labels=ignored_pred_labels,
-        evaluation_settings_id=evaluation_settings_id,
+        job_id=evaluation_settings_id,
     )
 
 
@@ -123,8 +146,24 @@ def compute_ap_metrics(
     evaluation_settings_id: int,
 ):
     """compute metrics"""
-    backend.create_ap_metrics(
-        db=db,
-        request_info=request_info,
-        evaluation_settings_id=evaluation_settings_id,
+
+    # set job status to PROCESSING
+    jobs.set_evaluation_job(
+        evaluation_settings_id, status=JobStatus.PROCESSING
     )
+
+    # attempt computation
+    try:
+        backend.create_ap_metrics(
+            db=db,
+            request_info=request_info,
+            evaluation_settings_id=evaluation_settings_id,
+        )
+    except Exception as e:
+        jobs.set_evaluation_job(
+            evaluation_settings_id, status=JobStatus.FAILED
+        )
+        raise e
+
+    # set job status to DONE
+    jobs.set_evaluation_job(evaluation_settings_id, status=JobStatus.DONE)
