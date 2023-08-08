@@ -1098,7 +1098,6 @@ def test_create_gt_segs_as_polys_or_masks(
     )
 
     gts = GroundTruth(
-        dataset=dset_name,
         datum=img1.to_datum(),
         annotations=[
             Annotation(
@@ -1264,7 +1263,6 @@ def test_iou(
     dataset = Dataset.create(client, dset_name)
     dataset.add_groundtruth(
         GroundTruth(
-            dataset=dset_name,
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
@@ -1356,164 +1354,176 @@ def test_evaluate_ap(
     assert isinstance(eval_job._id, int)
 
     # sleep to give the backend time to compute
-    # time.sleep(1)
-    # assert eval_job.status() == "Done"
+    time.sleep(1)
+    assert eval_job.status() == JobStatus.DONE
 
-    # settings = eval_job.settings()
-    # settings.pop("id")
-    # assert settings == {
-    #     "model_name": "test model",
-    #     "dataset_name": "test dataset",
-    #     "model_pred_task_type": "Bounding Box Object Detection",
-    #     "dataset_gt_task_type": "Bounding Box Object Detection",
-    #     "label_key": "k1",
-    # }
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model": "test_model",
+        "dataset": "test_dataset",
+        "pd_type": "box",
+        "gt_type": "box",
+        "task_type": "detection",
+        "label_key": "k1",
+    }
 
-    # expected_metrics = [
-    #     {
-    #         "type": "AP",
-    #         "value": 0.504950495049505,
-    #         "label": {"key": "k1", "value": "v1"},
-    #         "parameters": {
-    #             "iou": 0.1,
-    #         },
-    #     },
-    #     {
-    #         "type": "AP",
-    #         "value": 0.504950495049505,
-    #         "label": {"key": "k1", "value": "v1"},
-    #         "parameters": {
-    #             "iou": 0.6,
-    #         },
-    #     },
-    #     {
-    #         "type": "mAP",
-    #         "parameters": {"iou": 0.1},
-    #         "value": 0.504950495049505,
-    #     },
-    #     {
-    #         "type": "mAP",
-    #         "parameters": {"iou": 0.6},
-    #         "value": 0.504950495049505,
-    #     },
-    #     {
-    #         "type": "APAveragedOverIOUs",
-    #         "parameters": {"ious": [0.1, 0.6]},
-    #         "value": 0.504950495049505,
-    #         "label": {"key": "k1", "value": "v1"},
-    #     },
-    #     {
-    #         "type": "mAPAveragedOverIOUs",
-    #         "parameters": {"ious": [0.1, 0.6]},
-    #         "value": 0.504950495049505,
-    #     },
-    # ]
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.1,
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.6,
+            },
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+        },
+    ]
 
-    # assert eval_job.metrics() == expected_metrics
+    assert eval_job.metrics() == expected_metrics
 
-    # # now test if we set min_area and/or max_area
-    # areas = db.scalars(ST_Area(models.Annotation.boundary)).all()
-    # assert sorted(areas) == [1100.0, 1500.0]
+    # now test if we set min_area and/or max_area
+    areas = db.scalars(
+        select(ST_Area(models.Annotation.box)).where(
+            models.Annotation.model_id.isnot(None)
+        )
+    ).all()
+    assert sorted(areas) == [1100.0, 1500.0]
 
-    # # sanity check this should give us the same thing excpet min_area and max_area
-    # # are not None
-    # eval_job = model.evaluate_ap(
-    #     dataset=dataset,
-    #     model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
-    #     dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
-    #     iou_thresholds=[0.1, 0.6],
-    #     ious_to_keep=[0.1, 0.6],
-    #     label_key="k1",
-    #     min_area=10,
-    #     max_area=2000,
-    # )
-    # time.sleep(1)
-    # settings = eval_job.settings()
-    # settings.pop("id")
-    # assert settings == {
-    #     "model_name": "test model",
-    #     "dataset_name": "test dataset",
-    #     "model_pred_task_type": "Bounding Box Object Detection",
-    #     "dataset_gt_task_type": "Bounding Box Object Detection",
-    #     "label_key": "k1",
-    #     "min_area": 10,
-    #     "max_area": 2000,
-    # }
-    # assert eval_job.metrics() == expected_metrics
+    # sanity check this should give us the same thing excpet min_area and max_area
+    # are not None
+    eval_job = model.evaluate_ap(
+        dataset=dataset,
+        pd_type="box",
+        gt_type="box",
+        task_type="detection",
+        iou_thresholds=[0.1, 0.6],
+        ious_to_keep=[0.1, 0.6],
+        label_key="k1",
+        min_area=10,
+        max_area=2000,
+    )
+    time.sleep(1)
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model": "test_model",
+        "dataset": "test_dataset",
+        "pd_type": "box",
+        "gt_type": "box",
+        "task_type": "detection",
+        "label_key": "k1",
+        "min_area": 10,
+        "max_area": 2000,
+    }
+    assert eval_job.metrics() == expected_metrics
 
-    # # now check we get different things by setting the thresholds accordingly
-    # eval_job = model.evaluate_ap(
-    #     dataset=dataset,
-    #     model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
-    #     dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
-    #     iou_thresholds=[0.1, 0.6],
-    #     ious_to_keep=[0.1, 0.6],
-    #     label_key="k1",
-    #     min_area=1200,
-    # )
-    # time.sleep(1)
+    # now check we get different things by setting the thresholds accordingly
+    eval_job = model.evaluate_ap(
+        dataset=dataset,
+        pd_type="box",
+        gt_type="box",
+        task_type="detection",
+        iou_thresholds=[0.1, 0.6],
+        ious_to_keep=[0.1, 0.6],
+        label_key="k1",
+        min_area=1200,
+    )
+    time.sleep(1)
 
-    # settings = eval_job.settings()
-    # settings.pop("id")
-    # assert settings == {
-    #     "model_name": "test model",
-    #     "dataset_name": "test dataset",
-    #     "model_pred_task_type": "Bounding Box Object Detection",
-    #     "dataset_gt_task_type": "Bounding Box Object Detection",
-    #     "label_key": "k1",
-    #     "min_area": 1200,
-    # }
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model": "test_model",
+        "dataset": "test_dataset",
+        "pd_type": "box",
+        "gt_type": "box",
+        "task_type": "detection",
+        "label_key": "k1",
+        "min_area": 1200,
+    }
 
-    # assert eval_job.metrics() != expected_metrics
+    assert eval_job.metrics() != expected_metrics
 
-    # eval_job = model.evaluate_ap(
-    #     dataset=dataset,
-    #     model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
-    #     dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
-    #     iou_thresholds=[0.1, 0.6],
-    #     ious_to_keep=[0.1, 0.6],
-    #     label_key="k1",
-    #     max_area=1200,
-    # )
-    # time.sleep(1)
-    # settings = eval_job.settings()
-    # settings.pop("id")
-    # assert settings == {
-    #     "model_name": "test model",
-    #     "dataset_name": "test dataset",
-    #     "model_pred_task_type": "Bounding Box Object Detection",
-    #     "dataset_gt_task_type": "Bounding Box Object Detection",
-    #     "label_key": "k1",
-    #     "max_area": 1200,
-    # }
-    # assert eval_job.metrics() != expected_metrics
+    eval_job = model.evaluate_ap(
+        dataset=dataset,
+        pd_type="box",
+        gt_type="box",
+        task_type="detection",
+        iou_thresholds=[0.1, 0.6],
+        ious_to_keep=[0.1, 0.6],
+        label_key="k1",
+        max_area=1200,
+    )
+    time.sleep(1)
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model": "test_model",
+        "dataset": "test_dataset",
+        "pd_type": "box",
+        "gt_type": "box",
+        "task_type": "detection",
+        "label_key": "k1",
+        "max_area": 1200,
+    }
+    assert eval_job.metrics() != expected_metrics
 
-    # eval_job = model.evaluate_ap(
-    #     dataset=dataset,
-    #     model_pred_task_type=Task.BBOX_OBJECT_DETECTION,
-    #     dataset_gt_task_type=Task.BBOX_OBJECT_DETECTION,
-    #     iou_thresholds=[0.1, 0.6],
-    #     ious_to_keep=[0.1, 0.6],
-    #     label_key="k1",
-    #     min_area=1200,
-    #     max_area=1800,
-    # )
-    # time.sleep(1)
-    # settings = eval_job.settings()
-    # settings.pop("id")
-    # assert settings == {
-    #     "model_name": "test model",
-    #     "dataset_name": "test dataset",
-    #     "model_pred_task_type": "Bounding Box Object Detection",
-    #     "dataset_gt_task_type": "Bounding Box Object Detection",
-    #     "label_key": "k1",
-    #     "min_area": 1200,
-    #     "max_area": 1800,
-    # }
-    # assert eval_job.metrics() != expected_metrics
+    eval_job = model.evaluate_ap(
+        dataset=dataset,
+        pd_type="box",
+        gt_type="box",
+        task_type="detection",
+        iou_thresholds=[0.1, 0.6],
+        ious_to_keep=[0.1, 0.6],
+        label_key="k1",
+        min_area=1200,
+        max_area=1800,
+    )
+    time.sleep(1)
+    settings = eval_job.settings()
+    settings.pop("id")
+    assert settings == {
+        "model": "test_model",
+        "dataset": "test_dataset",
+        "pd_type": "box",
+        "gt_type": "box",
+        "task_type": "detection",
+        "label_key": "k1",
+        "min_area": 1200,
+        "max_area": 1800,
+    }
+    assert eval_job.metrics() != expected_metrics
 
 
-# @TODO: Implement jobs & stateflow
 def test_evaluate_image_clf(
     client: Client,
     gt_clfs1: list[GroundTruth],
@@ -1536,49 +1546,49 @@ def test_evaluate_image_clf(
     assert set(eval_job.missing_pred_keys) == {"k5"}
 
     # sleep to give the backend time to compute
-    # time.sleep(1)
-    # assert eval_job.status() == "Done"
+    time.sleep(1)
+    assert eval_job.status() == JobStatus.DONE
 
-    # metrics = eval_job.metrics()
+    metrics = eval_job.metrics()
 
-    # expected_metrics = [
-    #     {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
-    #     {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
-    #     {
-    #         "type": "Precision",
-    #         "value": 1.0,
-    #         "label": {"key": "k4", "value": "v4"},
-    #     },
-    #     {
-    #         "type": "Recall",
-    #         "value": 1.0,
-    #         "label": {"key": "k4", "value": "v4"},
-    #     },
-    #     {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
-    #     {
-    #         "type": "Precision",
-    #         "value": -1.0,
-    #         "label": {"key": "k4", "value": "v5"},
-    #     },
-    #     {
-    #         "type": "Recall",
-    #         "value": -1.0,
-    #         "label": {"key": "k4", "value": "v5"},
-    #     },
-    #     {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
-    # ]
-    # for m in metrics:
-    #     assert m in expected_metrics
-    # for m in expected_metrics:
-    #     assert m in metrics
+    expected_metrics = [
+        {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {"type": "ROCAUC", "parameters": {"label_key": "k4"}, "value": 1.0},
+        {
+            "type": "Precision",
+            "value": 1.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {
+            "type": "Recall",
+            "value": 1.0,
+            "label": {"key": "k4", "value": "v4"},
+        },
+        {"type": "F1", "value": 1.0, "label": {"key": "k4", "value": "v4"}},
+        {
+            "type": "Precision",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {
+            "type": "Recall",
+            "value": -1.0,
+            "label": {"key": "k4", "value": "v5"},
+        },
+        {"type": "F1", "value": -1.0, "label": {"key": "k4", "value": "v5"}},
+    ]
+    for m in metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics
 
-    # confusion_matrices = eval_job.confusion_matrices()
-    # assert confusion_matrices == [
-    #     {
-    #         "label_key": "k4",
-    #         "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
-    #     }
-    # ]
+    confusion_matrices = eval_job.confusion_matrices()
+    assert confusion_matrices == [
+        {
+            "label_key": "k4",
+            "entries": [{"prediction": "v4", "groundtruth": "v4", "count": 1}],
+        }
+    ]
 
 
 def test_create_tabular_dataset_and_add_groundtruth(
@@ -1591,8 +1601,8 @@ def test_create_tabular_dataset_and_add_groundtruth(
 
     gts = [
         GroundTruth(
-            dataset=dset_name,
             datum=Datum(
+                dataset=dset_name,
                 uid="uid1",
                 metadata=[md1],
             ),
@@ -1607,8 +1617,8 @@ def test_create_tabular_dataset_and_add_groundtruth(
             ],
         ),
         GroundTruth(
-            dataset=dset_name,
             datum=Datum(
+                dataset=dset_name,
                 uid="uid2",
                 metadata=[md2, md3],
             ),
@@ -1653,8 +1663,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
     # check that we can add data with specified uids
     new_gts = [
         GroundTruth(
-            dataset=dset_name,
-            datum=Datum(uid="uid3"),
+            datum=Datum(dataset=dset_name, uid="uid3"),
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -1663,8 +1672,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
             ],
         ),
         GroundTruth(
-            dataset=dset_name,
-            datum=Datum(uid="uid4"),
+            datum=Datum(dataset=dset_name, uid="uid4"),
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -1692,8 +1700,7 @@ def test_create_tabular_model_with_predicted_classifications(
         datum_type=DataType.TABULAR,
         gts=[
             GroundTruth(
-                dataset=dset_name,
-                datum=Datum("uid1"),
+                datum=Datum(dataset=dset_name, uid="uid1"),
                 annotations=[
                     Annotation(
                         task_type=TaskType.CLASSIFICATION,
@@ -1705,8 +1712,10 @@ def test_create_tabular_model_with_predicted_classifications(
                 ],
             ),
             GroundTruth(
-                dataset=dset_name,
-                datum=Datum("uid2"),
+                datum=Datum(
+                    dataset=dset_name,
+                    uid="uid2",
+                ),
                 annotations=[
                     Annotation(
                         task_type=TaskType.CLASSIFICATION,
@@ -1718,7 +1727,7 @@ def test_create_tabular_model_with_predicted_classifications(
         preds=[
             Prediction(
                 model=model_name,
-                datum=Datum("uid1"),
+                datum=Datum(dataset=dset_name, uid="uid1"),
                 annotations=[
                     ScoredAnnotation(
                         task_type=TaskType.CLASSIFICATION,
@@ -1738,7 +1747,10 @@ def test_create_tabular_model_with_predicted_classifications(
             ),
             Prediction(
                 model=model_name,
-                datum=Datum("uid2"),
+                datum=Datum(
+                    dataset=dset_name,
+                    uid="uid2",
+                ),
                 annotations=[
                     ScoredAnnotation(
                         task_type=TaskType.CLASSIFICATION,
@@ -1796,7 +1808,7 @@ def test_evaluate_tabular_clf(
     model = Model.create(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
         model.evaluate_classification(dataset=dataset)
-    assert "no model ops allowed on dataset with state `create`" in str(
+    assert "no model operations allowed on dataset with state `create`" in str(
         exc_info
     )
 

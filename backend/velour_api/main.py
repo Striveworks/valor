@@ -389,7 +389,7 @@ def create_ap_metrics(
             crud.compute_ap_metrics,
             db=db,
             request_info=request_info,
-            evaluation_settings_id=resp.evaluation_settings_id,
+            evaluation_settings_id=resp.job_id,
         )
         # return AP Response
         return resp

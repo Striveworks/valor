@@ -55,12 +55,12 @@ class DatasetStatus(BaseModel):
     @property
     def evaluating(self) -> bool:
         for model in self.models:
-            if self.models[model].set_status == Stateflow.EVALUATE:
+            if self.models[model].status == Stateflow.EVALUATE:
                 return True
         return False
 
     def set_status(self, status: Stateflow):
-        if self.evaluating and self.status != Stateflow.EVALUATE:
+        if self.evaluating and status != Stateflow.EVALUATE:
             raise StateflowError(
                 f"cannot transition to {status} as a evaluation is currently running."
             )
@@ -73,7 +73,7 @@ class DatasetStatus(BaseModel):
     def set_inference_status(self, model_name: str, status: Stateflow):
         if self.status not in [Stateflow.READY, Stateflow.EVALUATE]:
             raise StateflowError(
-                f"no model ops allowed on dataset with state `{self.status}`"
+                f"no model operations allowed on dataset with state `{self.status}`"
             )
         if model_name not in self.models:
             self.models[model_name] = InferenceStatus()
