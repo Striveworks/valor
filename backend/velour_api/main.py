@@ -391,6 +391,7 @@ def create_ap_metrics(
             request_info=request_info,
             evaluation_settings_id=resp.evaluation_settings_id,
         )
+        # return AP Response
         return resp
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -399,6 +400,8 @@ def create_ap_metrics(
         exceptions.InferencesAreNotFinalizedError,
     ) as e:
         raise HTTPException(status_code=405, detail=str(e))
+    except (exceptions.StateflowError,) as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.post(
@@ -419,6 +422,7 @@ def create_clf_metrics(
             request_info=request_info,
             evaluation_settings_id=resp.evaluation_settings_id,
         )
+        # return Clf Response
         return resp
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -427,6 +431,8 @@ def create_clf_metrics(
         exceptions.InferencesAreNotFinalizedError,
     ) as e:
         raise HTTPException(status_code=405, detail=str(e))
+    except (exceptions.StateflowError,) as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.get("/labels", status_code=200, dependencies=[Depends(token_auth_scheme)])

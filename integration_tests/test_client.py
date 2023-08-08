@@ -4,6 +4,7 @@ that is no auth
 
 import io
 import json
+import time
 from typing import Any
 
 import numpy as np
@@ -1780,15 +1781,12 @@ def test_evaluate_tabular_clf(
     y_true: list[int],
     tabular_preds: list[list[float]],
 ):
-    dataset = Dataset.create(client, name=dset_name)
-    model = Model.create(client, name=model_name)
-
     assert len(y_true) == len(tabular_preds)
 
+    dataset = Dataset.create(client, name=dset_name)
     gts = [
         GroundTruth(
-            dataset=dset_name,
-            datum=Datum(uid=f"uid{i}"),
+            datum=Datum(dataset=dset_name, uid=f"uid{i}"),
             annotations=[
                 Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -1798,10 +1796,23 @@ def test_evaluate_tabular_clf(
         )
         for i, t in enumerate(y_true)
     ]
+    for gt in gts:
+        dataset.add_groundtruth(gt)
+
+    # test
+    model = Model.create(client, name=model_name)
+    with pytest.raises(ClientException) as exc_info:
+        model.evaluate_classification(dataset=dataset)
+    assert "no model ops allowed on dataset with state `create`" in str(
+        exc_info
+    )
+
+    dataset.finalize()
+
     pds = [
         Prediction(
             model=model_name,
-            datum=Datum(uid=f"uid{i}"),
+            datum=Datum(dataset=dset_name, uid=f"uid{i}"),
             annotations=[
                 ScoredAnnotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -1816,138 +1827,129 @@ def test_evaluate_tabular_clf(
         )
         for i, pred in enumerate(tabular_preds)
     ]
-
-    for gt in gts:
-        dataset.add_groundtruth(gt)
     for pd in pds:
         model.add_prediction(pd)
 
-    # @TODO: Implement stateflow
-    # with pytest.raises(ClientException) as exc_info:
-    #     model.evaluate_classification(dataset=dataset)
-    # assert "Cannot evaluate against dataset" in str(exc_info)
+    # test
+    with pytest.raises(ClientException) as exc_info:
+        model.evaluate_classification(dataset=dataset)
+    assert "invalid transititon from create to evaluate" in str(exc_info)
 
-    # dataset.finalize()
-
-    # with pytest.raises(ClientException) as exc_info:
-    #     model.evaluate_classification(dataset=dataset)
-    # assert "Inferences for model" in str(exc_info)
-
-    # model.finalize_inferences(dataset)
+    model.finalize_inferences(dataset)
 
     # evaluate
     eval_job = model.evaluate_classification(dataset=dataset)
     assert eval_job.ignored_pred_keys == []
     assert eval_job.missing_pred_keys == []
 
-    # # sleep to give the backend time to compute
-    # time.sleep(1)
-    # assert eval_job.status() == "Done"
+    # sleep to give the backend time to compute
+    time.sleep(1)
+    assert eval_job.status() == "Done"
 
-    # metrics = eval_job.metrics()
+    metrics = eval_job.metrics()
 
-    # expected_metrics = [
-    #     {
-    #         "type": "Accuracy",
-    #         "parameters": {"label_key": "class"},
-    #         "value": 0.5,
-    #     },
-    #     {
-    #         "type": "ROCAUC",
-    #         "parameters": {"label_key": "class"},
-    #         "value": 0.7685185185185185,
-    #     },
-    #     {
-    #         "type": "Precision",
-    #         "value": 0.6666666666666666,
-    #         "label": {"key": "class", "value": "1"},
-    #     },
-    #     {
-    #         "type": "Recall",
-    #         "value": 0.3333333333333333,
-    #         "label": {"key": "class", "value": "1"},
-    #     },
-    #     {
-    #         "type": "F1",
-    #         "value": 0.4444444444444444,
-    #         "label": {"key": "class", "value": "1"},
-    #     },
-    #     {
-    #         "type": "Precision",
-    #         "value": 0.0,
-    #         "label": {"key": "class", "value": "2"},
-    #     },
-    #     {
-    #         "type": "Recall",
-    #         "value": 0.0,
-    #         "label": {"key": "class", "value": "2"},
-    #     },
-    #     {"type": "F1", "value": 0.0, "label": {"key": "class", "value": "2"}},
-    #     {
-    #         "type": "Precision",
-    #         "value": 0.5,
-    #         "label": {"key": "class", "value": "0"},
-    #     },
-    #     {
-    #         "type": "Recall",
-    #         "value": 1.0,
-    #         "label": {"key": "class", "value": "0"},
-    #     },
-    #     {
-    #         "type": "F1",
-    #         "value": 0.6666666666666666,
-    #         "label": {"key": "class", "value": "0"},
-    #     },
-    # ]
-    # for m in metrics:
-    #     assert m in expected_metrics
-    # for m in expected_metrics:
-    #     assert m in metrics
+    expected_metrics = [
+        {
+            "type": "Accuracy",
+            "parameters": {"label_key": "class"},
+            "value": 0.5,
+        },
+        {
+            "type": "ROCAUC",
+            "parameters": {"label_key": "class"},
+            "value": 0.7685185185185185,
+        },
+        {
+            "type": "Precision",
+            "value": 0.6666666666666666,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.3333333333333333,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "F1",
+            "value": 0.4444444444444444,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+        },
+        {"type": "F1", "value": 0.0, "label": {"key": "class", "value": "2"}},
+        {
+            "type": "Precision",
+            "value": 0.5,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "type": "Recall",
+            "value": 1.0,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "type": "F1",
+            "value": 0.6666666666666666,
+            "label": {"key": "class", "value": "0"},
+        },
+    ]
+    for m in metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics
 
-    # confusion_matrices = eval_job.confusion_matrices()
+    confusion_matrices = eval_job.confusion_matrices()
 
-    # expected_confusion_matrices = [
-    #     {
-    #         "label_key": "class",
-    #         "entries": [
-    #             {"prediction": "0", "groundtruth": "0", "count": 3},
-    #             {"prediction": "0", "groundtruth": "1", "count": 3},
-    #             {"prediction": "1", "groundtruth": "1", "count": 2},
-    #             {"prediction": "1", "groundtruth": "2", "count": 1},
-    #             {"prediction": "2", "groundtruth": "1", "count": 1},
-    #         ],
-    #     }
-    # ]
+    expected_confusion_matrices = [
+        {
+            "label_key": "class",
+            "entries": [
+                {"prediction": "0", "groundtruth": "0", "count": 3},
+                {"prediction": "0", "groundtruth": "1", "count": 3},
+                {"prediction": "1", "groundtruth": "1", "count": 2},
+                {"prediction": "1", "groundtruth": "2", "count": 1},
+                {"prediction": "2", "groundtruth": "1", "count": 1},
+            ],
+        }
+    ]
 
-    # assert confusion_matrices == expected_confusion_matrices
+    assert confusion_matrices == expected_confusion_matrices
 
-    # eval_settings = model.get_evaluation_settings()
-    # assert len(eval_settings) == 1
-    # es_id = eval_settings[0].pop("id")
-    # assert eval_settings[0] == {
-    #     "model_name": "test model",
-    #     "dataset_name": "test dataset",
-    #     "model_pred_task_type": "Classification",
-    #     "dataset_gt_task_type": "Classification",
-    # }
+    eval_settings = model.get_evaluation_settings()
+    assert len(eval_settings) == 1
+    es_id = eval_settings[0].pop("id")
+    assert eval_settings[0] == {
+        "model_name": "test model",
+        "dataset_name": "test dataset",
+        "model_pred_task_type": "Classification",
+        "dataset_gt_task_type": "Classification",
+    }
 
-    # metrics_from_eval_settings_id = (
-    #     model.get_metrics_at_evaluation_settings_id(es_id)
-    # )
-    # assert len(metrics_from_eval_settings_id) == len(expected_metrics)
-    # for m in metrics_from_eval_settings_id:
-    #     assert m in expected_metrics
-    # for m in expected_metrics:
-    #     assert m in metrics_from_eval_settings_id
+    metrics_from_eval_settings_id = (
+        model.get_metrics_at_evaluation_settings_id(es_id)
+    )
+    assert len(metrics_from_eval_settings_id) == len(expected_metrics)
+    for m in metrics_from_eval_settings_id:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in metrics_from_eval_settings_id
 
-    # assert (
-    #     model.get_confusion_matrices_at_evaluation_settings_id(es_id)
-    #     == expected_confusion_matrices
-    # )
+    assert (
+        model.get_confusion_matrices_at_evaluation_settings_id(es_id)
+        == expected_confusion_matrices
+    )
 
-    # client.delete_model(model_name)
+    client.delete_model(model_name)
 
-    # assert len(client.get_models()) == 0
+    assert len(client.get_models()) == 0
 
 
 # @TODO: Implement metadata querying + geojson
