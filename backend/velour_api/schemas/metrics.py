@@ -10,8 +10,8 @@ from pydantic import (
 )
 
 from velour_api.enums import AnnotationType, JobStatus, TaskType
+from velour_api.schemas.core import MetaDatum
 from velour_api.schemas.label import Label
-from velour_api.schemas.metadata import MetaDatum
 
 
 # @TODO: Implement later for metrics + metadata overhaul
