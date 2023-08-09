@@ -18,7 +18,7 @@ from geoalchemy2.functions import (
     ST_Union,
 )
 from PIL import Image as PILImage
-from sqlalchemy import and_, create_engine, select, text
+from sqlalchemy import and_, create_engine, func, select, text
 from sqlalchemy.orm import Session
 
 from velour.client import Client, ClientException, Dataset, Model
@@ -98,7 +98,7 @@ def iou(rect1: Polygon, rect2: Polygon) -> float:
     return inter_area / (area(rect1) + area(rect2) - inter_area)
 
 
-# @TODO: Implement geojson
+# @TODO: Implement geospatial support
 @pytest.fixture
 def metadata():
     """Some sample metadata of different types"""
@@ -977,6 +977,7 @@ def test_create_pred_detections_as_bbox_or_poly(
     dataset = Dataset.create(client, dset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
+    dataset.finalize()
 
     model = Model.create(client, model_name)
     pd = Prediction(
@@ -1011,6 +1012,7 @@ def test_create_pred_detections_as_bbox_or_poly(
         ],
     )
     model.add_prediction(pd)
+    model.finalize_inferences(dataset)
 
     db_dets = db.scalars(
         select(models.Annotation).where(models.Annotation.model_id.isnot(None))
@@ -1275,6 +1277,7 @@ def test_iou(
             ],
         )
     )
+    dataset.finalize()
     db_gt = db.scalar(select(models.Annotation)).polygon
 
     model = Model.create(client, model_name)
@@ -1293,6 +1296,7 @@ def test_iou(
             ],
         )
     )
+    model.finalize_inferences(dataset)
     db_pred = db.scalar(
         select(models.Annotation).where(models.Annotation.model_id.isnot(None))
     ).polygon
@@ -1311,22 +1315,24 @@ def test_delete_dataset_exception(client: Client):
     assert "does not exist" in str(exc_info)
 
 
-# @TODO: After stateflow/jobs PR
-def test_delete_dataset_background_job(
-    client: Client, gt_dets1: list, gt_dets2: list, gt_dets3: list, db: Session
-):
+def test_prune_dataset(client: Client, db: Session):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
-    dataset = Dataset.create(client, dset_name)
-    for gt in gt_dets1 + gt_dets2 + gt_dets3:
-        dataset.add_groundtruth(gt)
-
-    job = Dataset.prune(client, dset_name)
-    assert job.status() in [JobStatus.PENDING, JobStatus.PROCESSING]
+    Dataset.create(client, dset_name)
+    assert db.scalar(select(func.count(models.Dataset.name))) == 1
+    Dataset.prune(client, dset_name)
     time.sleep(1.0)
-    assert job.status() == JobStatus.DONE
+    assert db.scalar(select(func.count(models.Dataset.name))) == 0
 
 
-# @TODO: Implement jobs & stateflow
+def test_prune_model(client: Client, db: Session):
+    """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
+    Model.create(client, model_name)
+    assert db.scalar(select(func.count(models.Model.name))) == 1
+    Model.prune(client, model_name)
+    time.sleep(1.0)
+    assert db.scalar(select(func.count(models.Model.name))) == 0
+
+
 def test_evaluate_ap(
     client: Client,
     gt_dets1: list[GroundTruth],
@@ -1788,7 +1794,6 @@ def test_create_tabular_model_with_predicted_classifications(
     )
 
 
-# @TODO: Need to implement jobs & stateflow
 def test_evaluate_tabular_clf(
     client: Session,
     db: Session,
@@ -1817,9 +1822,7 @@ def test_evaluate_tabular_clf(
     model = Model.create(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
         model.evaluate_classification(dataset=dataset)
-    assert "no model operations allowed on dataset with state `create`" in str(
-        exc_info
-    )
+    assert "has not been finalized" in str(exc_info)
 
     dataset.finalize()
 
@@ -1847,7 +1850,7 @@ def test_evaluate_tabular_clf(
     # test
     with pytest.raises(ClientException) as exc_info:
         model.evaluate_classification(dataset=dataset)
-    assert "invalid transititon from create to evaluate" in str(exc_info)
+    assert "has NOT been finalized" in str(exc_info)
 
     model.finalize_inferences(dataset)
 

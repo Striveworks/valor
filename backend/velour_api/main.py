@@ -438,8 +438,8 @@ def create_clf_metrics(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except (
-        exceptions.DatasetIsNotFinalizedError,
-        exceptions.InferencesAreNotFinalizedError,
+        exceptions.DatasetNotFinalizedError,
+        exceptions.ModelNotFinalizedError,
     ) as e:
         raise HTTPException(status_code=405, detail=str(e))
     except exceptions.StateflowError as e:

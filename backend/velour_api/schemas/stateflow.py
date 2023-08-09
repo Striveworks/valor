@@ -16,18 +16,22 @@ class InferenceStateflow(BaseModel):
     name: str
     status: Stateflow = Stateflow.NONE
 
-    def set_status(self, status: Stateflow):
+    def set_status(self, *, dataset_name: str, status: Stateflow):
         if status not in self.status.next():
             if (
                 self.status == Stateflow.CREATE
                 and status == Stateflow.EVALUATE
             ):
-                raise ModelNotFinalizedError(self.name)
+                raise ModelNotFinalizedError(
+                    dataset_name=dataset_name, model_name=self.name
+                )
             elif (
                 self.status not in [Stateflow.NONE, Stateflow.CREATE]
                 and status == Stateflow.CREATE
             ):
-                raise ModelFinalizedError(self.name)
+                raise ModelFinalizedError(
+                    dataset_name=dataset_name, model_name=self.name
+                )
             else:
                 raise StateflowError(
                     f"invalid transititon from {self.status} to {status}"
@@ -79,7 +83,9 @@ class DatasetStateflow(BaseModel):
                 )
         if model_name not in self.models:
             self.models[model_name] = InferenceStateflow(name=model_name)
-        self.models[model_name].set_status(status)
+        self.models[model_name].set_status(
+            dataset_name=self.name, status=status
+        )
         self.set_status(
             Stateflow.EVALUATE if self.evaluating else Stateflow.READY
         )
