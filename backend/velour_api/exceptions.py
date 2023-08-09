@@ -1,11 +1,9 @@
+""" Dataset """
+
+
 class DatasetAlreadyExistsError(Exception):
     def __init__(self, name: str):
         return super().__init__(f"Dataset with name `{name}` already exists.")
-
-
-class ModelAlreadyExistsError(Exception):
-    def __init__(self, name: str):
-        return super().__init__(f"Model with name `{name}` already exists.")
 
 
 class DatasetDoesNotExistError(Exception):
@@ -13,18 +11,26 @@ class DatasetDoesNotExistError(Exception):
         return super().__init__(f"Dataset with name `{name}` does not exist.")
 
 
-class DatasetIsFinalizedError(Exception):
+class DatasetFinalizedError(Exception):
     def __init__(self, name: str):
         return super().__init__(
-            f"Cannot add images or annotations to dataset `{name}` since it is finalized."
+            f"cannot edit dataset `{name}` since it has been finalized."
         )
 
 
-class DatasetIsNotFinalizedError(Exception):
+class DatasetNotFinalizedError(Exception):
     def __init__(self, name: str):
         return super().__init__(
-            f"Cannot evaluate against dataset `{name}` since it has not been finalized."
+            f"cannot evaluate dataset `{name}` since it has not been finalized."
         )
+
+
+""" Model """
+
+
+class ModelAlreadyExistsError(Exception):
+    def __init__(self, name: str):
+        return super().__init__(f"Model with name `{name}` already exists.")
 
 
 class ModelDoesNotExistError(Exception):
@@ -32,11 +38,21 @@ class ModelDoesNotExistError(Exception):
         return super().__init__(f"Model with name `{name}` does not exist.")
 
 
-class InferencesAreNotFinalizedError(Exception):
-    def __init__(self, dataset_name: str, model_name: str):
+class ModelFinalizedError(Exception):
+    def __init__(self, *, dataset_name: str, model_name: str):
         return super().__init__(
-            f"Inferences for model {model_name} on dataset {dataset_name} are not finalized."
+            f"cannot edit inferences for model`{model_name}` on dataset `{dataset_name}` since it has been finalized"
         )
+
+
+class ModelNotFinalizedError(Exception):
+    def __init__(self, *, dataset_name: str, model_name: str):
+        return super().__init__(
+            f"cannot evaluate inferences for model `{model_name}` on dataset `{dataset_name}` since it has NOT been finalized."
+        )
+
+
+""" Datum """
 
 
 class DatumDoesNotExistError(Exception):
@@ -56,6 +72,9 @@ class DatumDoesNotBelongToDatasetError(Exception):
         )
 
 
+""" Misc. """
+
+
 class GroundTruthAlreadyExistsError(Exception):
     pass
 
@@ -69,7 +88,11 @@ class AnnotationAlreadyExistsError(Exception):
 
 
 class MetaDatumAlreadyExistsError(Exception):
-    pass
+    def __init__(self, key: str):
+        return super().__init__(f"Metadatum with key `{key}` already exists.")
+
+
+""" Jobs & Stateflow"""
 
 
 class StateflowError(Exception):
@@ -77,11 +100,14 @@ class StateflowError(Exception):
         return super().__init__(msg)
 
 
-class EvaluationJobStateError(Exception):
+class JobDoesNotExistError(Exception):
+    def __init__(self, id: str):
+        return super().__init__(f"job with id `{id} does not exist")
+
+
+class JobStateError(Exception):
     def __init__(self, id: int, msg: str = "none"):
-        return super().__init__(
-            f"state error with evaluation job id: {id}, msg: {msg}"
-        )
+        return super().__init__(f"state error with job id: {id}, msg: {msg}")
 
 
 class EvaluationJobDoesNotExistError(Exception):

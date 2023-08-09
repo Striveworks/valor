@@ -4,10 +4,14 @@ from velour_api import backend, enums, schemas
 from velour_api.backend import jobs
 
 
-def get_status(
+def get_job_status(*, job_id: int) -> enums.JobStatus:
+    return jobs.get_status(job_id)
+
+
+def get_backend_status(
     *, dataset_name: str, model_name: str | None = None
 ) -> enums.Stateflow | None:
-    status = jobs._get_backend_status()
+    status = jobs.get_backend_state()
     if status.datasets:
         if dataset_name in status.datasets:
             if not model_name:

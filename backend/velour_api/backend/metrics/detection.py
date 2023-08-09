@@ -301,8 +301,8 @@ def compute_ap_metrics(
     gt_set = set()
     pd_set = set()
     ranking = {}
-
     for row in ordered_ious:
+
         # datum_id = row[0]
         gt_id = row[1]
         pd_id = row[2]
@@ -354,7 +354,7 @@ def compute_ap_metrics(
         label_key_filter.append(models.Label.key == label_key)
 
     # Merge filters
-    filters = geometric_filters + label_key_filter
+    filters = geometric_filters + label_key_filter + area_filters
 
     # Get groundtruth labels
     labels = {
@@ -383,8 +383,18 @@ def compute_ap_metrics(
     # Get the number of ground truths per label id
     number_of_ground_truths = {
         id: db.scalar(
-            select(func.count(models.GroundTruth.id)).where(
-                models.GroundTruth.label_id == id
+            select(func.count(models.GroundTruth.id))
+            .join(
+                models.Annotation,
+                models.Annotation.id == models.GroundTruth.annotation_id,
+            )
+            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+            .where(
+                and_(
+                    models.Datum.dataset_id == dataset.id,
+                    models.GroundTruth.label_id == id,
+                    *area_filters,
+                )
             )
         )
         for id in labels

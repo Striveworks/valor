@@ -22,7 +22,7 @@ from .geometry import (
     Raster,
 )
 from .info import Filter, LabelDistribution, ScoredLabelDistribution
-from .jobs import BackendStatus, EvaluationJobs
+from .jobs import JobStateflow
 from .metrics import (
     AccuracyMetric,
     APMetric,
@@ -43,6 +43,7 @@ from .metrics import (
     mAPMetric,
     mAPMetricAveragedOverIOUs,
 )
+from .stateflow import BackendStateflow
 
 __all__ = [
     "User",
@@ -88,6 +89,6 @@ __all__ = [
     "mAPMetric",
     "mAPMetricAveragedOverIOUs",
     "ConfusionMatrixEntry",
-    "BackendStatus",
-    "EvaluationJobs",
+    "BackendStateflow",
+    "JobStateflow",
 ]

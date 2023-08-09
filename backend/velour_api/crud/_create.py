@@ -1,12 +1,12 @@
 from sqlalchemy.orm import Session
 
 from velour_api import backend, schemas
-from velour_api.backend import jobs
+from velour_api.backend import jobs, stateflow
 from velour_api.crud._read import get_disjoint_keys, get_disjoint_labels
 from velour_api.enums import JobStatus
 
 
-@jobs.create
+@stateflow.create
 def create_dataset(*, db: Session, dataset: schemas.Dataset):
     """Creates a dataset
 
@@ -15,11 +15,10 @@ def create_dataset(*, db: Session, dataset: schemas.Dataset):
     DatasetAlreadyExistsError
         if the dataset name already exists
     """
-    jobs.create(dataset)
     backend.create_dataset(db, dataset)
 
 
-@jobs.create
+@stateflow.create
 def create_model(*, db: Session, model: schemas.Model):
     """Creates a dataset
 
@@ -31,7 +30,7 @@ def create_model(*, db: Session, model: schemas.Model):
     backend.create_model(db, model)
 
 
-@jobs.create
+@stateflow.create
 def create_groundtruth(
     *,
     db: Session,
@@ -40,7 +39,7 @@ def create_groundtruth(
     backend.create_groundtruth(db, groundtruth=groundtruth)
 
 
-@jobs.create
+@stateflow.create
 def create_prediction(
     *,
     db: Session,
@@ -49,7 +48,7 @@ def create_prediction(
     backend.create_prediction(db, prediction=prediction)
 
 
-@jobs.evaluate
+@stateflow.evaluate
 def create_clf_evaluation(
     *,
     db: Session,
@@ -68,7 +67,7 @@ def create_clf_evaluation(
     evaluation_settings_id = backend.create_clf_evaluation(db, request_info)
 
     # create evaluation job status
-    jobs.set_evaluation_job(evaluation_settings_id, status=JobStatus.PENDING)
+    jobs.set_status(evaluation_settings_id, status=JobStatus.PENDING)
 
     # create response
     return schemas.CreateClfMetricsResponse(
@@ -78,7 +77,7 @@ def create_clf_evaluation(
     )
 
 
-@jobs.computation
+@stateflow.computation
 def compute_clf_metrics(
     *,
     db: Session,
@@ -88,9 +87,7 @@ def compute_clf_metrics(
     """compute metrics"""
 
     # set job status to PROCESSING
-    jobs.set_evaluation_job(
-        evaluation_settings_id, status=JobStatus.PROCESSING
-    )
+    jobs.set_status(evaluation_settings_id, status=JobStatus.PROCESSING)
 
     # attempt computation
     try:
@@ -100,16 +97,14 @@ def compute_clf_metrics(
             evaluation_settings_id=evaluation_settings_id,
         )
     except Exception as e:
-        jobs.set_evaluation_job(
-            evaluation_settings_id, status=JobStatus.FAILED
-        )
+        jobs.set_status(evaluation_settings_id, status=JobStatus.FAILED)
         raise e
 
     # set job status to DONE
-    jobs.set_evaluation_job(evaluation_settings_id, status=JobStatus.DONE)
+    jobs.set_status(evaluation_settings_id, status=JobStatus.DONE)
 
 
-@jobs.evaluate
+@stateflow.evaluate
 def create_ap_evaluation(
     *,
     db: Session,
@@ -128,7 +123,7 @@ def create_ap_evaluation(
     evaluation_settings_id = backend.create_ap_evaluation(db, request_info)
 
     # create evaluation job status
-    jobs.set_evaluation_job(evaluation_settings_id, status=JobStatus.PENDING)
+    jobs.set_status(evaluation_settings_id, status=JobStatus.PENDING)
 
     # create response
     return schemas.CreateAPMetricsResponse(
@@ -138,7 +133,7 @@ def create_ap_evaluation(
     )
 
 
-@jobs.computation
+@stateflow.computation
 def compute_ap_metrics(
     *,
     db: Session,
@@ -148,9 +143,7 @@ def compute_ap_metrics(
     """compute metrics"""
 
     # set job status to PROCESSING
-    jobs.set_evaluation_job(
-        evaluation_settings_id, status=JobStatus.PROCESSING
-    )
+    jobs.set_status(evaluation_settings_id, status=JobStatus.PROCESSING)
 
     # attempt computation
     try:
@@ -160,10 +153,8 @@ def compute_ap_metrics(
             evaluation_settings_id=evaluation_settings_id,
         )
     except Exception as e:
-        jobs.set_evaluation_job(
-            evaluation_settings_id, status=JobStatus.FAILED
-        )
+        jobs.set_status(evaluation_settings_id, status=JobStatus.FAILED)
         raise e
 
     # set job status to DONE
-    jobs.set_evaluation_job(evaluation_settings_id, status=JobStatus.DONE)
+    jobs.set_status(evaluation_settings_id, status=JobStatus.DONE)

@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
 
 from velour_api import backend
-from velour_api.backend import jobs
+from velour_api.backend import stateflow
 
 
-@jobs.delete
+@stateflow.delete
 def delete(
     *,
     db: Session,
@@ -17,7 +17,7 @@ def delete(
         backend.delete_model(db, model_name)
 
 
-@jobs.delete
+@stateflow.delete
 def prune_labels():
     """@TODO (maybe) Prunes orphans."""
     pass

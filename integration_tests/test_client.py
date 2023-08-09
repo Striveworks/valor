@@ -326,7 +326,6 @@ def gt_segs1(
             ],
         ),
         GroundTruth(
-            dataset=dset_name,
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
@@ -719,16 +718,19 @@ def _test_create_model_with_preds(
         Model.create(client, model_name)
     assert "already exists" in str(exc_info)
 
+    # add groundtruths
+    for gt in gts:
+        dataset.add_groundtruth(gt)
+
     # check that if we try to add detections we get an error
     # since we haven't added any images yet
     with pytest.raises(ClientException) as exc_info:
         for pd in preds:
             model.add_prediction(pd)
-    assert "Datum with uid" in str(exc_info)
+    assert "not been finalized" in str(exc_info)
 
-    # add groundtruths
-    for gt in gts:
-        dataset.add_groundtruth(gt)
+    # finalize dataset
+    dataset.finalize()
 
     # add predictions
     for pd in preds:
@@ -895,11 +897,12 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
     or a polygon
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
-    image = Image(uid="uid", height=200, width=150).to_datum()
+    image = Image(
+        dataset=dset_name, uid="uid", height=200, width=150
+    ).to_datum()
 
     dataset = Dataset.create(client, dset_name)
     gt = GroundTruth(
-        dataset=dset_name,
         datum=image,
         annotations=[
             Annotation(
@@ -1229,7 +1232,6 @@ def test_boundary(client: Client, db: Session, rect1: Polygon, img1: Image):
     rect1_poly = bbox_to_poly(rect1)
     dataset.add_groundtruth(
         GroundTruth(
-            dataset=dset_name,
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
@@ -1310,17 +1312,18 @@ def test_delete_dataset_exception(client: Client):
 
 
 # @TODO: After stateflow/jobs PR
-# def test_delete_dataset_background_job(
-#     client: Client, gt_dets1: list, gt_dets2: list, gt_dets3: list, db: Session
-# ):
-#     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
-#     dataset = Dataset.create(client, dset_name)
-#     dataset.add_groundtruth(gt_dets1 + gt_dets2 + gt_dets3)
+def test_delete_dataset_background_job(
+    client: Client, gt_dets1: list, gt_dets2: list, gt_dets3: list, db: Session
+):
+    """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
+    dataset = Dataset.create(client, dset_name)
+    for gt in gt_dets1 + gt_dets2 + gt_dets3:
+        dataset.add_groundtruth(gt)
 
-#     job = Dataset.prune(dset_name)
-#     assert job.status() in ["Processing", "Pending"]
-#     time.sleep(1.0)
-#     assert job.status() == "Done"
+    job = Dataset.prune(client, dset_name)
+    assert job.status() in [JobStatus.PENDING, JobStatus.PROCESSING]
+    time.sleep(1.0)
+    assert job.status() == JobStatus.DONE
 
 
 # @TODO: Implement jobs & stateflow
@@ -1420,7 +1423,7 @@ def test_evaluate_ap(
 
     # sanity check this should give us the same thing excpet min_area and max_area
     # are not None
-    eval_job = model.evaluate_ap(
+    eval_job_bounded_area_10_2000 = model.evaluate_ap(
         dataset=dataset,
         pd_type="box",
         gt_type="box",
@@ -1432,7 +1435,7 @@ def test_evaluate_ap(
         max_area=2000,
     )
     time.sleep(1)
-    settings = eval_job.settings()
+    settings = eval_job_bounded_area_10_2000.settings()
     settings.pop("id")
     assert settings == {
         "model": "test_model",
@@ -1444,10 +1447,11 @@ def test_evaluate_ap(
         "min_area": 10,
         "max_area": 2000,
     }
-    assert eval_job.metrics() == expected_metrics
+    assert eval_job_bounded_area_10_2000.metrics() == expected_metrics
 
     # now check we get different things by setting the thresholds accordingly
-    eval_job = model.evaluate_ap(
+    # min area threshold should divide the set of annotations
+    eval_job_min_area_1200 = model.evaluate_ap(
         dataset=dataset,
         pd_type="box",
         gt_type="box",
@@ -1458,8 +1462,7 @@ def test_evaluate_ap(
         min_area=1200,
     )
     time.sleep(1)
-
-    settings = eval_job.settings()
+    settings = eval_job_min_area_1200.settings()
     settings.pop("id")
     assert settings == {
         "model": "test_model",
@@ -1470,10 +1473,10 @@ def test_evaluate_ap(
         "label_key": "k1",
         "min_area": 1200,
     }
+    assert eval_job_min_area_1200.metrics() != expected_metrics
 
-    assert eval_job.metrics() != expected_metrics
-
-    eval_job = model.evaluate_ap(
+    # check for difference with max area now dividing the set of annotations
+    eval_job_max_area_1200 = model.evaluate_ap(
         dataset=dataset,
         pd_type="box",
         gt_type="box",
@@ -1484,7 +1487,7 @@ def test_evaluate_ap(
         max_area=1200,
     )
     time.sleep(1)
-    settings = eval_job.settings()
+    settings = eval_job_max_area_1200.settings()
     settings.pop("id")
     assert settings == {
         "model": "test_model",
@@ -1495,9 +1498,11 @@ def test_evaluate_ap(
         "label_key": "k1",
         "max_area": 1200,
     }
-    assert eval_job.metrics() != expected_metrics
+    assert eval_job_max_area_1200.metrics() != expected_metrics
 
-    eval_job = model.evaluate_ap(
+    # should perform the same as the first min area evaluation
+    # except now has an upper bound
+    eval_job_bounded_area_1200_1800 = model.evaluate_ap(
         dataset=dataset,
         pd_type="box",
         gt_type="box",
@@ -1509,7 +1514,7 @@ def test_evaluate_ap(
         max_area=1800,
     )
     time.sleep(1)
-    settings = eval_job.settings()
+    settings = eval_job_bounded_area_1200_1800.settings()
     settings.pop("id")
     assert settings == {
         "model": "test_model",
@@ -1521,7 +1526,11 @@ def test_evaluate_ap(
         "min_area": 1200,
         "max_area": 1800,
     }
-    assert eval_job.metrics() != expected_metrics
+    assert eval_job_bounded_area_1200_1800.metrics() != expected_metrics
+    assert (
+        eval_job_bounded_area_1200_1800.metrics()
+        == eval_job_min_area_1200.metrics()
+    )
 
 
 def test_evaluate_image_clf(

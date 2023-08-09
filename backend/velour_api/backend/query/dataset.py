@@ -105,6 +105,11 @@ def get_datums(
 
     return [
         schemas.Datum(
+            dataset=db.scalar(
+                select(models.Dataset.name).where(
+                    models.Dataset.id == datum.dataset_id
+                )
+            ),
             uid=datum.uid,
             metadata=core.get_metadata(db, datum=datum),
         )

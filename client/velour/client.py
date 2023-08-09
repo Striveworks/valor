@@ -125,9 +125,7 @@ class Job:
             setattr(self, k, v)
 
     def status(self) -> str:
-        resp = self.client._requests_get_rel_host(
-            f"evaluations/{self._id}"
-        ).json()
+        resp = self.client._requests_get_rel_host(f"jobs/{self._id}").json()
         return JobStatus(resp)
 
 

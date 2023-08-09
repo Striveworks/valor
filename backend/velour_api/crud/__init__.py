@@ -10,6 +10,7 @@ from ._create import (
 )
 from ._delete import delete
 from ._read import (
+    get_backend_status,
     get_confusion_matrices_from_evaluation_settings_id,
     get_dataset,
     get_datasets,
@@ -19,6 +20,7 @@ from ._read import (
     get_disjoint_labels,
     get_evaluation_settings_from_id,
     get_groundtruth,
+    get_job_status,
     get_joint_labels,
     get_labels,
     get_metrics_from_evaluation_settings_id,
@@ -27,7 +29,6 @@ from ._read import (
     get_model_metrics,
     get_models,
     get_prediction,
-    get_status,
 )
 from ._update import finalize
 
@@ -36,7 +37,8 @@ __all__ = [
     "create_model",
     "create_groundtruth",
     "create_prediction",
-    "get_status",
+    "get_backend_status",
+    "get_job_status",
     "get_datasets",
     "get_dataset",
     "get_datums",

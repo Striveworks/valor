@@ -15,7 +15,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from velour_api import auth, crud, enums, exceptions, logger, schemas
-from velour_api.backend import database, jobs
+from velour_api.backend import database
 from velour_api.settings import auth_settings
 
 token_auth_scheme = auth.OptionalHTTPBearer()
@@ -51,7 +51,12 @@ def create_groundtruths(
 ):
     try:
         crud.create_groundtruth(db=db, groundtruth=gt)
-    except exceptions.DatasetIsFinalizedError as e:
+    except (
+        exceptions.DatasetDoesNotExistError,
+        exceptions.DatumDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (exceptions.DatasetFinalizedError,) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -63,10 +68,16 @@ def create_predictions(
     try:
         crud.create_prediction(db=db, prediction=pd)
     except (
+        exceptions.DatasetDoesNotExistError,
         exceptions.ModelDoesNotExistError,
         exceptions.DatumDoesNotExistError,
     ) as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except (
+        exceptions.DatasetNotFinalizedError,
+        exceptions.ModelFinalizedError,
+    ) as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.get(
@@ -449,36 +460,36 @@ def user(
 
 
 @app.get(
-    "/evaluations/{evaluation_settings_id}",
+    "/jobs/{job_id}",
     dependencies=[Depends(token_auth_scheme)],
 )
-def get_evaluation_status(evaluation_settings_id: int) -> enums.JobStatus:
+def get_job_status(job_id: int) -> enums.JobStatus:
     try:
-        return jobs.get_evaluation_job(evaluation_settings_id)
-    except exceptions.EvaluationJobDoesNotExistError as e:
+        return crud.get_job_status(job_id=job_id)
+    except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
-    "/evaluations/{evaluation_settings_id}/metrics",
+    "/evaluations/{job_id}/metrics",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
 )
 def get_evaluation_metrics(
-    evaluation_settings_id: int, db: Session = Depends(get_db)
+    job_id: int, db: Session = Depends(get_db)
 ) -> list[schemas.Metric]:
     try:
-        status = jobs.get_evaluation_job(evaluation_settings_id)
+        status = crud.get_job_status(job_id=job_id)
         if status != enums.JobStatus.DONE:
             raise HTTPException(
                 status_code=404,
-                detail=f"No metrics for job {evaluation_settings_id} since its status is {status}",
+                detail=f"No metrics for job {job_id} since its status is {status}",
             )
         return crud.get_metrics_from_evaluation_settings_id(
-            db=db, evaluation_settings_id=evaluation_settings_id
+            db=db, evaluation_settings_id=job_id
         )
     except (
-        exceptions.EvaluationJobDoesNotExistError,
+        exceptions.JobDoesNotExistError,
         AttributeError,
     ) as e:
         if "'NoneType' object has no attribute 'metrics'" in str(e):
@@ -489,44 +500,44 @@ def get_evaluation_metrics(
 
 
 @app.get(
-    "/evaluations/{evaluation_settings_id}/confusion-matrices",
+    "/evaluations/{job_id}/confusion-matrices",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
 )
 def get_job_confusion_matrices(
-    evaluation_settings_id: int, db: Session = Depends(get_db)
+    job_id: int, db: Session = Depends(get_db)
 ) -> list[schemas.ConfusionMatrixResponse]:
     try:
-        status = jobs.get_evaluation_job(evaluation_settings_id)
+        status = crud.get_job_status(job_id=job_id)
         if status != enums.JobStatus.DONE:
             raise HTTPException(
                 status_code=404,
-                detail=f"No metrics for job {evaluation_settings_id} since its status is {status}",
+                detail=f"No metrics for job {job_id} since its status is {status}",
             )
         return crud.get_confusion_matrices_from_evaluation_settings_id(
-            db=db, evaluation_settings_id=evaluation_settings_id
+            db=db, evaluation_settings_id=job_id
         )
-    except exceptions.EvaluationJobDoesNotExistError as e:
+    except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
-    "/evaluations/{evaluation_settings_id}/settings",
+    "/evaluations/{job_id}/settings",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
 )
 def get_job_settings(
-    evaluation_settings_id: int, db: Session = Depends(get_db)
+    job_id: int, db: Session = Depends(get_db)
 ) -> schemas.EvaluationSettings:
     try:
-        status = jobs.get_evaluation_job(evaluation_settings_id)
+        status = crud.get_job_status(job_id=job_id)
         if status != enums.JobStatus.DONE:
             raise HTTPException(
                 status_code=404,
-                detail=f"No settings for job {evaluation_settings_id} since its status is {status}",
+                detail=f"No settings for job {job_id} since its status is {status}",
             )
         return crud.get_evaluation_settings_from_id(
-            db=db, evaluation_settings_id=evaluation_settings_id
+            db=db, evaluation_settings_id=job_id
         )
-    except exceptions.EvaluationJobDoesNotExistError as e:
+    except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
