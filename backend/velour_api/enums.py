@@ -28,23 +28,38 @@ class AnnotationType(Enum):
         return mapping[self]
 
     def __eq__(self, other):
-        assert isinstance(other, type(self))
+        if not isinstance(other, type(self)):
+            raise TypeError(
+                "operator can only be used with other `velour_api.enums.AnnotationType` objects"
+            )
         return self.numeric == other.numeric
 
     def __gt__(self, other):
-        assert isinstance(other, type(self))
+        if not isinstance(other, type(self)):
+            raise TypeError(
+                "operator can only be used with other `velour_api.enums.AnnotationType` objects"
+            )
         return self.numeric > other.numeric
 
     def __lt__(self, other):
-        assert isinstance(other, type(self))
+        if not isinstance(other, type(self)):
+            raise TypeError(
+                "operator can only be used with other `velour_api.enums.AnnotationType` objects"
+            )
         return self.numeric < other.numeric
 
     def __ge__(self, other):
-        assert isinstance(other, type(self))
+        if not isinstance(other, type(self)):
+            raise TypeError(
+                "operator can only be used with other `velour_api.enums.AnnotationType` objects"
+            )
         return self.numeric >= other.numeric
 
     def __le__(self, other):
-        assert isinstance(other, type(self))
+        if not isinstance(other, type(self)):
+            raise TypeError(
+                "operator can only be used with other `velour_api.enums.AnnotationType` objects"
+            )
         return self.numeric <= other.numeric
 
 
