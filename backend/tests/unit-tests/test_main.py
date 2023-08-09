@@ -84,7 +84,7 @@ def test_post_groundtruth(client: TestClient):
     # check we get a conflict (409) if the dataset is finalized
     with patch(
         "velour_api.main.crud.create_groundtruth",
-        side_effect=exceptions.DatasetIsFinalizedError("dsetname"),
+        side_effect=exceptions.DatasetFinalizedError("dsetname"),
     ):
         resp = client.post("/groundtruth", json=example_json)
         assert resp.status_code == 409

@@ -5,7 +5,7 @@ from velour_api.backend.jobs import get_backend_state, set_backend_state
 from velour_api.enums import Stateflow
 
 
-def _update_backend_status(
+def _update_backend_state(
     status: Stateflow,
     dataset_name: str,
     model_name: str | None = None,
@@ -38,12 +38,14 @@ def create(fn: callable) -> callable:
         # unpack args
         dataset_name = None
         model_name = None
+        state = Stateflow.CREATE
 
         # create grouping
         if "dataset" in kwargs:
             if isinstance(kwargs["dataset"], schemas.Dataset):
                 dataset_name = kwargs["dataset"].name
                 model_name = None
+                state = Stateflow.NONE
         elif "model" in kwargs:  # @TODO: This is option does nothing currently
             if isinstance(kwargs["model"], schemas.Dataset):
                 dataset_name = None
@@ -60,8 +62,8 @@ def create(fn: callable) -> callable:
                 model_name = kwargs["prediction"].model
 
         if dataset_name is not None:
-            _update_backend_status(
-                status=Stateflow.CREATE,
+            _update_backend_state(
+                status=state,
                 dataset_name=dataset_name,
                 model_name=model_name,
             )
@@ -90,7 +92,7 @@ def finalize(fn: callable) -> callable:
 
         # enter ready state
         if dataset_name is not None:
-            _update_backend_status(
+            _update_backend_state(
                 status=Stateflow.READY,
                 dataset_name=dataset_name,
                 model_name=model_name,
@@ -121,7 +123,7 @@ def evaluate(fn: callable) -> callable:
 
         # put model / dataset in evaluation state
         if dataset_name is not None:
-            _update_backend_status(
+            _update_backend_state(
                 status=Stateflow.EVALUATE,
                 dataset_name=dataset_name,
                 model_name=model_name,
@@ -152,7 +154,7 @@ def computation(fn: callable) -> callable:
 
         # start eval computation
         if dataset_name is not None:
-            _update_backend_status(
+            _update_backend_state(
                 status=Stateflow.EVALUATE,
                 dataset_name=dataset_name,
                 model_name=model_name,
@@ -162,7 +164,7 @@ def computation(fn: callable) -> callable:
 
         # end eval computation
         if dataset_name is not None:
-            _update_backend_status(
+            _update_backend_state(
                 status=Stateflow.READY,
                 dataset_name=dataset_name,
                 model_name=model_name,
@@ -192,7 +194,7 @@ def delete(fn: callable) -> callable:
             model_name = kwargs["model_name"]
 
         if dataset_name is not None:
-            _update_backend_status(
+            _update_backend_state(
                 status=Stateflow.DELETE,
                 dataset_name=dataset_name,
                 model_name=model_name,
@@ -203,7 +205,7 @@ def delete(fn: callable) -> callable:
         if dataset_name is not None:
             status = get_backend_state()
             if model_name is not None:
-                status.remove_model(model_name)
+                status.remove_inferences(model_name)
             else:
                 status.remove_dataset(dataset_name)
             set_backend_state(status)

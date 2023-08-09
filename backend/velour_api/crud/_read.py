@@ -1,11 +1,13 @@
 from sqlalchemy.orm import Session
 
-from velour_api import backend, enums, schemas
+from velour_api import backend, enums, exceptions, schemas
 from velour_api.backend import jobs
 
 
 def get_job_status(*, job_id: int) -> enums.JobStatus:
-    return jobs.get_status(job_id)
+    if status := jobs.get_status(job_id):
+        return status
+    raise exceptions.JobDoesNotExistError(job_id)
 
 
 def get_backend_status(

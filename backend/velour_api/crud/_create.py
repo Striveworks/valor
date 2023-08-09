@@ -54,7 +54,7 @@ def create_clf_evaluation(
     db: Session,
     request_info: schemas.ClfMetricsRequest,
 ) -> schemas.CreateClfMetricsResponse:
-    """create evaluation"""
+    """create clf evaluation"""
 
     # get disjoint label sets
     missing_pred_keys, ignored_pred_keys = get_disjoint_keys(
@@ -66,8 +66,9 @@ def create_clf_evaluation(
     # create evaluation setting
     evaluation_settings_id = backend.create_clf_evaluation(db, request_info)
 
-    # create evaluation job status
-    jobs.set_status(evaluation_settings_id, status=JobStatus.PENDING)
+    # create evaluation job status if it doesn't already exist
+    if jobs.get_status(evaluation_settings_id) != JobStatus.DONE:
+        jobs.set_status(evaluation_settings_id, status=JobStatus.PENDING)
 
     # create response
     return schemas.CreateClfMetricsResponse(
@@ -84,7 +85,11 @@ def compute_clf_metrics(
     request_info: schemas.ClfMetricsRequest,
     evaluation_settings_id: int,
 ):
-    """compute metrics"""
+    """compute clf metrics"""
+
+    # check if evaluation has already been computed
+    if jobs.get_status(id=evaluation_settings_id) == JobStatus.DONE:
+        return
 
     # set job status to PROCESSING
     jobs.set_status(evaluation_settings_id, status=JobStatus.PROCESSING)
@@ -110,7 +115,7 @@ def create_ap_evaluation(
     db: Session,
     request_info: schemas.APRequest,
 ) -> schemas.CreateAPMetricsResponse:
-    """create evaluation"""
+    """create ap evaluation"""
 
     # get disjoint label sets
     missing_pred_labels, ignored_pred_labels = get_disjoint_labels(
@@ -122,8 +127,9 @@ def create_ap_evaluation(
     # create evaluation setting
     evaluation_settings_id = backend.create_ap_evaluation(db, request_info)
 
-    # create evaluation job status
-    jobs.set_status(evaluation_settings_id, status=JobStatus.PENDING)
+    # create evaluation job status if it doesn't already exist
+    if jobs.get_status(evaluation_settings_id) != JobStatus.DONE:
+        jobs.set_status(evaluation_settings_id, status=JobStatus.PENDING)
 
     # create response
     return schemas.CreateAPMetricsResponse(
@@ -140,7 +146,11 @@ def compute_ap_metrics(
     request_info: schemas.APRequest,
     evaluation_settings_id: int,
 ):
-    """compute metrics"""
+    """compute ap metrics"""
+
+    # check if evaluation has already been computed
+    if jobs.get_status(id=evaluation_settings_id) == JobStatus.DONE:
+        return
 
     # set job status to PROCESSING
     jobs.set_status(evaluation_settings_id, status=JobStatus.PROCESSING)

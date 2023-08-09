@@ -59,14 +59,14 @@ def needs_redis(fn):
 
 
 @needs_redis
-def get_status(id: int) -> JobStatus:
+def get_status(id: int) -> JobStatus | None:
     json_str = r.get("jobs")
     if json_str is None or not isinstance(json_str, bytes):
-        raise exceptions.JobDoesNotExistError(id)
+        return None
     info = json.loads(json_str)
     stateflow = JobStateflow(**info)
     if id not in stateflow.jobs:
-        raise exceptions.JobDoesNotExistError(id)
+        return None
     return stateflow.jobs[id]
 
 

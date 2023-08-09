@@ -102,14 +102,16 @@ class StateflowError(Exception):
 
 class JobDoesNotExistError(Exception):
     def __init__(self, id: str):
-        return super().__init__(f"job with id `{id} does not exist")
+        return super().__init__(f"job with id `{id}` does not exist")
 
 
 class JobStateError(Exception):
     def __init__(self, id: int, msg: str = "none"):
-        return super().__init__(f"state error with job id: {id}, msg: {msg}")
+        return super().__init__(f"state error with job id: `{id}`, msg: {msg}")
 
 
 class EvaluationJobDoesNotExistError(Exception):
     def __init__(self, id: str):
-        return super().__init__(f"Evaluation job with id `{id} does not exist")
+        return super().__init__(
+            f"Evaluation job with id `{id}` does not exist"
+        )

@@ -566,16 +566,10 @@ def test_create_detection_prediction_and_delete_model(
     gt_dets_create: list[schemas.GroundTruth],
 ):
     # check this gives an error since the model hasn't been added yet
-    with pytest.raises(exceptions.StateflowError) as exc_info:
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
         for pd in pred_dets_create:
             crud.create_prediction(db=db, prediction=pd)
-    assert "backend stateflow uninitialized" in str(exc_info)
-
-    # check this gives an error since the model hasn't been added yet
-    with pytest.raises(exceptions.StateflowError) as exc_info:
-        for pd in pred_dets_create:
-            crud.create_prediction(db=db, prediction=pd)
-    assert "backend stateflow uninitialized" in str(exc_info)
+    assert "does not exist" in str(exc_info)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
@@ -584,12 +578,10 @@ def test_create_detection_prediction_and_delete_model(
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     # check this gives an error since the model hasn't been added yet
-    with pytest.raises(exceptions.StateflowError) as exc_info:
+    with pytest.raises(exceptions.DatasetNotFinalizedError) as exc_info:
         for pd in pred_dets_create:
             crud.create_prediction(db=db, prediction=pd)
-    assert "no model ops allowed on dataset with state `create`" in str(
-        exc_info
-    )
+    assert "has not been finalized" in str(exc_info)
 
     # finalize dataset
     crud.finalize(db=db, dataset_name=dset_name)
@@ -708,14 +700,9 @@ def test_create_predicted_classifications_and_delete_model(
     gt_clfs_create: list[schemas.GroundTruth],
 ):
     # check this gives an error since the model hasn't been added yet
-    with pytest.raises(exceptions.StateflowError) as exc_info:
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
         crud.create_prediction(db=db, prediction=pred_clfs_create[0])
-    assert "backend stateflow uninitialized" in str(exc_info)
-
-    # check this gives an error since the images haven't been added yet
-    with pytest.raises(exceptions.StateflowError) as exc_info:
-        crud.create_prediction(db=db, prediction=pred_clfs_create[0])
-    assert "backend stateflow uninitialized" in str(exc_info)
+    assert "does not exist" in str(exc_info)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
@@ -725,9 +712,9 @@ def test_create_predicted_classifications_and_delete_model(
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     # check this gives an error since the images haven't been added yet
-    with pytest.raises(exceptions.StateflowError) as exc_info:
+    with pytest.raises(exceptions.DatasetNotFinalizedError) as exc_info:
         crud.create_prediction(db=db, prediction=pred_clfs_create[0])
-    assert "dataset with state `create`" in str(exc_info)
+    assert "has not been finalized" in str(exc_info)
 
     # finalize dataset
     crud.finalize(db=db, dataset_name=dset_name)
@@ -803,7 +790,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
         for pd in pred_segs_create:
             pd.model = model_name
             crud.create_prediction(db=db, prediction=pd)
-    assert "'backend stateflow uninitialized" in str(exc_info)
+    assert "inference operations are running" in str(exc_info)
 
     # create groundtruths
     for gt in gt_segs_create:
@@ -811,10 +798,10 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     # check this gives an error since the dataset has not been finalized
-    with pytest.raises(exceptions.StateflowError) as exc_info:
+    with pytest.raises(exceptions.DatasetNotFinalizedError) as exc_info:
         for pd in pred_segs_create:
             crud.create_prediction(db=db, prediction=pd)
-    assert "dataset with state `create`" in str(exc_info)
+    assert "has not been finalized" in str(exc_info)
 
     # finalize dataset
     crud.finalize(db=db, dataset_name=dset_name)
@@ -1080,11 +1067,11 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         crud.compute_ap_metrics(
             db=db,
             request_info=request_info,
-            evaluation_settings_id=resp.evaluation_settings_id,
+            evaluation_settings_id=resp.job_id,
         )
 
         return (
-            resp.evaluation_settings_id,
+            resp.job_id,
             resp.missing_pred_labels,
             resp.ignored_pred_labels,
         )
@@ -1252,7 +1239,7 @@ def test_create_clf_metrics(
     )
     missing_pred_keys = resp.missing_pred_keys
     ignored_pred_keys = resp.ignored_pred_keys
-    evaluation_settings_id = resp.evaluation_settings_id
+    evaluation_settings_id = resp.job_id
 
     assert missing_pred_keys == []
     assert set(ignored_pred_keys) == {"k3", "k4"}
@@ -1339,8 +1326,7 @@ def test_create_clf_metrics(
         )
     ]
 
-    # run again and check we still have one evaluation and the same number of metrics
-    # and confusion matrices
+    # attempting to run again should just return the existing job id
     crud.compute_clf_metrics(
         db=db,
         request_info=request_info,
@@ -1350,6 +1336,7 @@ def test_create_clf_metrics(
         len(crud.get_model_evaluation_settings(db=db, model_name=model_name))
         == 1
     )
+
     metrics = db.scalar(
         select(models.EvaluationSettings).where(
             models.EvaluationSettings.id == evaluation_settings_id

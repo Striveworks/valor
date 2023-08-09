@@ -25,10 +25,11 @@ class InferenceStateflow(BaseModel):
                 raise ModelNotFinalizedError(
                     dataset_name=dataset_name, model_name=self.name
                 )
-            elif (
-                self.status not in [Stateflow.NONE, Stateflow.CREATE]
-                and status == Stateflow.CREATE
-            ):
+            elif self.status == Stateflow.DELETE:
+                raise StateflowError(
+                    f"cannot modify inferences for model {self.name} on dataset {dataset_name} as they are being deleted"
+                )
+            elif self.status != Stateflow.NONE and status == Stateflow.CREATE:
                 raise ModelFinalizedError(
                     dataset_name=dataset_name, model_name=self.name
                 )
@@ -62,10 +63,11 @@ class DatasetStateflow(BaseModel):
                 and status == Stateflow.EVALUATE
             ):
                 raise DatasetNotFinalizedError(self.name)
-            elif (
-                self.status not in [Stateflow.NONE, Stateflow.CREATE]
-                and status == Stateflow.CREATE
-            ):
+            elif self.status == Stateflow.DELETE:
+                raise StateflowError(
+                    f"cannot modify dataset {self.name} as it is being deleted"
+                )
+            elif self.status != Stateflow.NONE and status == Stateflow.CREATE:
                 raise DatasetFinalizedError(self.name)
             else:
                 raise StateflowError(
@@ -145,13 +147,10 @@ class BackendStateflow(BaseModel):
             raise DatasetDoesNotExistError(dataset_name)
         self.datasets[dataset_name].set_inference_status(model_name, status)
 
-    def remove_inference(
-        self, model_name: str, dataset_name: str | None = None
-    ):
-        if dataset_name:
-            if dataset_name not in self.datasets:
-                raise DatasetDoesNotExistError(dataset_name)
-            self.datasets[dataset_name].remove_inference(model_name)
+    def remove_inference(self, *, dataset_name: str, model_name: str):
+        if dataset_name not in self.datasets:
+            raise DatasetDoesNotExistError(dataset_name)
+        self.datasets[dataset_name].remove_inference(model_name)
 
     def remove_inferences(self, model_name: str):
         for dataset in self.datasets:
