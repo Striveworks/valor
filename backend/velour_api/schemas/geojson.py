@@ -95,8 +95,10 @@ class GeoJSON(BaseModel):
     @classmethod
     def from_json(cls, geojson: str):
         data = json.loads(geojson)
-        assert "type" in data
-        assert "coordinates" in data
+        if "type" not in data:
+            raise ValueError("missing geojson type")
+        if "coordinates" not in data:
+            raise ValueError("missing geojson coordinates")
 
         if data["type"] == "Point":
             return cls(geometry=GeoJSONPoint(**data))

@@ -18,13 +18,10 @@ class Image(BaseModel):
         metadata = {
             metadatum.key: metadatum.value for metadatum in datum.metadata
         }
-        try:
-            assert "height" in metadata
-            assert "width" in metadata
-        except AssertionError:
-            raise ValueError(
-                "Datum does not contain all the information that makes it an image."
-            )
+        if "height" not in metadata:
+            raise ValueError("missing height")
+        elif "width" not in metadata:
+            raise ValueError("missing width")
 
         # cache and remove image metadata
         height = metadata["height"]

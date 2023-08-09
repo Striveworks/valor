@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from velour_api import schemas
 from velour_api.enums import AnnotationType, TaskType
@@ -21,14 +21,14 @@ class AnnotationDistribution(BaseModel):
 
 
 class Filter(BaseModel):
-    datasets: list[str] = []
-    models: list[str] = []
-    datum_uids: list[str] = []
-    task_types: list[TaskType] = []
-    annotation_types: list[AnnotationType] = []
-    labels: list[schemas.Label] = []
-    label_keys: list[str] = []
-    metadata: list[schemas.MetaDatum] = []
+    datasets: list[str] = Field(default_factory=list)
+    models: list[str] = Field(default_factory=list)
+    datum_uids: list[str] = Field(default_factory=list)
+    task_types: list[TaskType] = Field(default_factory=list)
+    annotation_types: list[AnnotationType] = Field(default_factory=list)
+    labels: list[schemas.Label] = Field(default_factory=list)
+    label_keys: list[str] = Field(default_factory=list)
+    metadata: list[schemas.MetaDatum] = Field(default_factory=list)
 
     allow_dataset_metadata: bool = True
     allow_model_metadata: bool = True
