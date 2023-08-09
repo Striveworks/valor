@@ -117,7 +117,7 @@ class Label:
         if not isinstance(self.key, str):
             raise TypeError("key should be of type `str`")
         if not isinstance(self.value, str):
-            raise TypeError("value should be of type `value`")
+            raise TypeError("value should be of type `str`")
 
     def tuple(self) -> Tuple[str, str]:
         return (self.key, self.value)
@@ -237,7 +237,7 @@ class Annotation:
                 self.metadata[i] = MetaDatum(**self.metadata[i])
             if not isinstance(self.metadata[i], MetaDatum):
                 raise TypeError(
-                    "elements of metadata should of type `velour.schemas.MetaDatum`"
+                    "elements of metadata should be of type `velour.schemas.MetaDatum`"
                 )
 
 
@@ -307,7 +307,7 @@ class ScoredAnnotation:
                 self.metadata[i] = MetaDatum(**self.metadata[i])
             if not isinstance(self.metadata[i], MetaDatum):
                 raise TypeError(
-                    "elements of metadata should of type `velour.schemas.MetaDatum`"
+                    "elements of metadata should be of type `velour.schemas.MetaDatum`"
                 )
 
         # check that for each label key all the predictions sum to ~1
