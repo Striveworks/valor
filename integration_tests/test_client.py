@@ -1946,10 +1946,11 @@ def test_evaluate_tabular_clf(
     for expected_matrix in expected_confusion_matrices:
         assert expected_matrix in confusion_matrices
 
-    eval_settings = model.get_evaluation_settings()
-    assert len(eval_settings) == 1
-    es_id = eval_settings[0].pop("id")
-    assert eval_settings[0] == {
+    eval_jobs = model.get_evaluations()
+    assert len(eval_jobs) == 1
+    eval_settings = eval_jobs[0].settings()
+    eval_settings.pop("id")
+    assert eval_settings == {
         "model": "test_model",
         "dataset": "test_dataset",
         "pd_type": "none",
@@ -1957,19 +1958,14 @@ def test_evaluate_tabular_clf(
         "task_type": "classification",
     }
 
-    metrics_from_eval_settings_id = (
-        model.get_metrics_at_evaluation_settings_id(es_id)
-    )
+    metrics_from_eval_settings_id = eval_jobs[0].metrics()
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
     for m in metrics_from_eval_settings_id:
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in metrics_from_eval_settings_id
 
-    assert (
-        model.get_confusion_matrices_at_evaluation_settings_id(es_id)
-        == expected_confusion_matrices
-    )
+    assert eval_jobs[0].confusion_matrices() == expected_confusion_matrices
 
     model.delete()
 

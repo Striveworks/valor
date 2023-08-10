@@ -1,31 +1,96 @@
 from time import perf_counter
 
 from velour_api import logger, schemas
-from velour_api.backend.jobs import get_backend_state, set_backend_state
-from velour_api.enums import Stateflow
+from velour_api.backend.jobs import get_stateflow, set_stateflow
+from velour_api.enums import JobStatus, State
 
 
 def _update_backend_state(
-    status: Stateflow,
-    dataset_name: str,
+    *,
+    status: State,
+    dataset_name: str | None = None,
     model_name: str | None = None,
 ):
-    # get current status
-    current_status = get_backend_state()
+    # retrieve from redis
+    stateflow = get_stateflow()
 
-    # update status
-    if model_name:
-        current_status.set_inference_status(
-            status=status,
-            model_name=model_name,
+    # update stateflow object
+    if dataset_name and model_name:
+        stateflow.set_inference_status(
             dataset_name=dataset_name,
+            model_name=model_name,
+            status=status,
+        )
+    elif dataset_name:
+        stateflow.set_dataset_status(
+            dataset_name=dataset_name,
+            status=status,
+        )
+    elif model_name:
+        stateflow.set_model_status(
+            model_name=model_name,
+            status=status,
         )
     else:
-        current_status.set_dataset_status(
-            dataset_name=dataset_name, status=status
-        )
+        # do nothing
+        return
 
-    set_backend_state(current_status)
+    # commit to redis
+    set_stateflow(stateflow)
+
+
+def _update_job_state(
+    *,
+    dataset_name: str,
+    model_name: str,
+    job_id: int,
+    status: JobStatus,
+):
+    # retrieve from redis
+    stateflow = get_stateflow()
+
+    # check if job has already completed (if it exists)
+    if (
+        stateflow.get_job_status(dataset_name, model_name, job_id)
+        == JobStatus.DONE
+    ):
+        return
+
+    # update stateflow object
+    stateflow.set_job_status(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        job_id=job_id,
+        status=status,
+    )
+
+    # commit to redis
+    set_stateflow(stateflow)
+
+
+def _remove_backend_state(
+    *,
+    dataset_name: str | None = None,
+    model_name: str | None = None,
+):
+    # retrieve from redis
+    stateflow = get_stateflow()
+
+    # update stateflow object
+    if dataset_name and model_name:
+        stateflow.remove_inference(
+            dataset_name=dataset_name, model_name=model_name
+        )
+    elif dataset_name:
+        stateflow.remove_dataset(dataset_name)
+    elif model_name:
+        stateflow.remove_model(model_name)
+    else:
+        # do nothing
+        return
+
+    # commit to redis
+    set_stateflow(stateflow)
 
 
 def create(fn: callable) -> callable:
@@ -38,19 +103,19 @@ def create(fn: callable) -> callable:
         # unpack args
         dataset_name = None
         model_name = None
-        state = Stateflow.CREATE
+        state = State.CREATE
 
         # create grouping
         if "dataset" in kwargs:
             if isinstance(kwargs["dataset"], schemas.Dataset):
                 dataset_name = kwargs["dataset"].name
                 model_name = None
-                state = Stateflow.NONE
-        elif "model" in kwargs:  # @TODO: This is option does nothing currently
+                state = State.NONE
+        elif "model" in kwargs:
             if isinstance(kwargs["model"], schemas.Dataset):
                 dataset_name = None
                 model_name = kwargs["model"].name
-
+                state = State.NONE
         # create annotations
         elif "groundtruth" in kwargs:
             if isinstance(kwargs["groundtruth"], schemas.GroundTruth):
@@ -61,13 +126,11 @@ def create(fn: callable) -> callable:
                 dataset_name = kwargs["prediction"].datum.dataset
                 model_name = kwargs["prediction"].model
 
-        if dataset_name is not None:
-            _update_backend_state(
-                status=state,
-                dataset_name=dataset_name,
-                model_name=model_name,
-            )
-
+        _update_backend_state(
+            status=state,
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
         return fn(*args, **kwargs)
 
     return wrapper
@@ -90,14 +153,11 @@ def finalize(fn: callable) -> callable:
         if "model_name" in kwargs:
             model_name = kwargs["model_name"]
 
-        # enter ready state
-        if dataset_name is not None:
-            _update_backend_state(
-                status=Stateflow.READY,
-                dataset_name=dataset_name,
-                model_name=model_name,
-            )
-
+        _update_backend_state(
+            status=State.READY,
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
         return fn(*args, **kwargs)
 
     return wrapper
@@ -121,15 +181,23 @@ def evaluate(fn: callable) -> callable:
                 dataset_name = kwargs["request_info"].settings.dataset
                 model_name = kwargs["request_info"].settings.model
 
-        # put model / dataset in evaluation state
-        if dataset_name is not None:
-            _update_backend_state(
-                status=Stateflow.EVALUATE,
+        _update_backend_state(
+            status=State.EVALUATE,
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
+
+        results = fn(*args, **kwargs)
+
+        if hasattr(results, "job_id"):
+            _update_job_state(
                 dataset_name=dataset_name,
                 model_name=model_name,
+                job_id=results.job_id,
+                status=JobStatus.PENDING,
             )
 
-        return fn(*args, **kwargs)
+        return results
 
     return wrapper
 
@@ -141,31 +209,79 @@ def computation(fn: callable) -> callable:
         if len(args) != 0 and len(kwargs) != 2:
             raise RuntimeError
 
-        # unpack args
-        dataset_name = None
-        model_name = None
+        # unpack request_info
         if "request_info" in kwargs:
-            if isinstance(kwargs["request_info"], schemas.ClfMetricsRequest):
-                dataset_name = kwargs["request_info"].settings.dataset
-                model_name = kwargs["request_info"].settings.model
-            elif isinstance(kwargs["request_info"], schemas.APRequest):
-                dataset_name = kwargs["request_info"].settings.dataset
-                model_name = kwargs["request_info"].settings.model
+            if hasattr(kwargs["request_info"], "settings"):
+                if isinstance(
+                    kwargs["request_info"].settings, schemas.EvaluationSettings
+                ):
+                    dataset_name = kwargs["request_info"].settings.dataset
+                    model_name = kwargs["request_info"].settings.model
+            else:
+                raise ValueError(
+                    "request_info object must contain an attribute named `settings` of type `schemas.EvaluationSettings`"
+                )
+        else:
+            raise ValueError(
+                "missing request_info which should be an evaluation request type (e.g. `schemas.APRequest`)"
+            )
 
-        # start eval computation
-        if dataset_name is not None:
+        # unpack job_id
+        if "job_id" in kwargs:
+            job_id = kwargs["job_id"]
+        else:
+            raise ValueError("missing job_id")
+
+        # check if job has already successfully ran
+        if (
+            get_stateflow().get_job_status(dataset_name, model_name, job_id)
+            == JobStatus.DONE
+        ):
             _update_backend_state(
-                status=Stateflow.EVALUATE,
+                status=State.READY,
                 dataset_name=dataset_name,
                 model_name=model_name,
             )
+            return
 
-        result = fn(*args, **kwargs)
+        # set up stateflow for pre-computation
+        _update_backend_state(
+            status=State.EVALUATE,
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
+        _update_job_state(
+            dataset_name=dataset_name,
+            model_name=model_name,
+            job_id=job_id,
+            status=JobStatus.PROCESSING,
+        )
 
-        # end eval computation
-        if dataset_name is not None:
+        try:
+            # compute
+            result = fn(*args, **kwargs)
+        except Exception as e:
+            # failed
+            _update_job_state(
+                dataset_name=dataset_name,
+                model_name=model_name,
+                job_id=job_id,
+                status=JobStatus.FAILED,
+            )
+            logger.debug(f"job with id `{job_id}` failed. Exception: {str(e)}")
+            raise e
+        else:
+            # success
+            _update_job_state(
+                dataset_name=dataset_name,
+                model_name=model_name,
+                job_id=job_id,
+                status=JobStatus.DONE,
+            )
+        finally:
+            # return to ready state
             _update_backend_state(
-                status=Stateflow.READY,
+                status=State.READY,
                 dataset_name=dataset_name,
                 model_name=model_name,
             )
@@ -175,7 +291,6 @@ def computation(fn: callable) -> callable:
     return wrapper
 
 
-# @TODO: Need to find better solution than just catching error when deleting model that had predictions
 def delete(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
 
@@ -193,22 +308,18 @@ def delete(fn: callable) -> callable:
         if "model_name" in kwargs:
             model_name = kwargs["model_name"]
 
-        if dataset_name is not None:
-            _update_backend_state(
-                status=Stateflow.DELETE,
-                dataset_name=dataset_name,
-                model_name=model_name,
+        _update_backend_state(
+            status=State.DELETE,
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
+
+        try:
+            result = fn(*args, **kwargs)
+        finally:
+            _remove_backend_state(
+                dataset_name=dataset_name, model_name=model_name
             )
-
-        result = fn(*args, **kwargs)
-
-        if dataset_name is not None:
-            status = get_backend_state()
-            if model_name is not None:
-                status.remove_inferences(model_name)
-            else:
-                status.remove_dataset(dataset_name)
-            set_backend_state(status)
 
         return result
 

@@ -3,9 +3,8 @@ import os
 
 import redis
 
-from velour_api import exceptions, logger
-from velour_api.enums import JobStatus
-from velour_api.schemas import BackendStateflow, JobStateflow
+from velour_api import logger
+from velour_api.schemas import Stateflow
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
@@ -55,57 +54,18 @@ def needs_redis(fn):
     return wrapper
 
 
-""" Job Status """
+""" Stateflow """
 
 
 @needs_redis
-def get_status(id: int) -> JobStatus | None:
-    json_str = r.get("jobs")
+def get_stateflow() -> Stateflow:
+    json_str = r.get("stateflow")
     if json_str is None or not isinstance(json_str, bytes):
-        return None
+        return Stateflow()
     info = json.loads(json_str)
-    stateflow = JobStateflow(**info)
-    if id not in stateflow.jobs:
-        return None
-    return stateflow.jobs[id]
+    return Stateflow(**info)
 
 
 @needs_redis
-def set_status(id: int, status: JobStatus):
-    json_str = r.get("jobs")
-    if json_str is None or not isinstance(json_str, bytes):
-        stateflow = JobStateflow(jobs=dict())
-    else:
-        info = json.loads(json_str)
-        stateflow = JobStateflow(**info)
-    stateflow.set_job(id, status)
-    r.set("jobs", stateflow.model_dump_json())
-
-
-@needs_redis
-def remove_status(id: int):
-    json_str = r.get("jobs")
-    if json_str is None or not isinstance(json_str, bytes):
-        raise exceptions.JobDoesNotExistError(id)
-    else:
-        info = json.loads(json_str)
-        stateflow = JobStateflow(**info)
-    stateflow.remove_job(id)
-    r.set("jobs", stateflow.model_dump_json())
-
-
-""" Backend Stateflow """
-
-
-@needs_redis
-def get_backend_state() -> BackendStateflow:
-    json_str = r.get("backend_stateflow")
-    if json_str is None or not isinstance(json_str, bytes):
-        return BackendStateflow()
-    info = json.loads(json_str)
-    return BackendStateflow(**info)
-
-
-@needs_redis
-def set_backend_state(status: BackendStateflow):
-    r.set("backend_stateflow", status.model_dump_json())
+def set_stateflow(stateflow: Stateflow):
+    r.set("stateflow", stateflow.model_dump_json())

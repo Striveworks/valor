@@ -1,4 +1,3 @@
-import json
 import os
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Union
@@ -111,39 +110,43 @@ class Client:
         return self._requests_get_rel_host("labels").json()
 
 
-class Job:
+class Evaluation:
     def __init__(
         self,
         client: Client,
+        dataset_name: str,
+        model_name: str,
         job_id: int,
         **kwargs,
     ):
         self._id = job_id
         self.client = client
+        self.dataset_name = dataset_name
+        self.model_name = model_name
 
         for k, v in kwargs.items():
             setattr(self, k, v)
 
     def status(self) -> str:
-        resp = self.client._requests_get_rel_host(f"jobs/{self._id}").json()
+        resp = self.client._requests_get_rel_host(
+            f"datasets/{self.dataset_name}/models/{self.model_name}/evaluations/{self._id}"
+        ).json()
         return JobStatus(resp)
 
-
-class Evaluation(Job):
     def metrics(self) -> List[dict]:
         return self.client._requests_get_rel_host(
-            f"evaluations/{self._id}/metrics"
+            f"datasets/{self.dataset_name}/models/{self.model_name}/evaluations/{self._id}/metrics"
         ).json()
 
     def confusion_matrices(self) -> List[dict]:
         return self.client._requests_get_rel_host(
-            f"evaluations/{self._id}/confusion-matrices"
+            f"datasets/{self.dataset_name}/models/{self.model_name}/evaluations/{self._id}/confusion-matrices"
         ).json()
 
     # TODO: replace value with a dataclass?
     def settings(self) -> dict:
         return self.client._requests_get_rel_host(
-            f"evaluations/{self._id}/settings"
+            f"datasets/{self.dataset_name}/models/{self.model_name}/evaluations/{self._id}/settings"
         ).json()
 
 
@@ -229,8 +232,7 @@ class Dataset:
 
     @staticmethod
     def prune(client: Client, name: str):
-        job_id = client._requests_delete_rel_host(f"datasets/{name}").json()
-        return Job(client=client, job_id=job_id)
+        client._requests_delete_rel_host(f"datasets/{name}")
 
     def add_metadatum(self, metadatum: schemas.MetaDatum):
         # @TODO: Add endpoint to allow adding custom metadatums
@@ -248,7 +250,7 @@ class Dataset:
 
         groundtruth.dataset = self.info.name
         return self.client._requests_post_rel_host(
-            "groundtruth",
+            "groundtruths",
             json=asdict(groundtruth),
         )
 
@@ -282,6 +284,21 @@ class Dataset:
             schemas.Image.from_datum(datum)
             for datum in self.get_datums()
             if schemas.Image.valid(datum)
+        ]
+
+    def get_evaluations(self) -> List[Evaluation]:
+        model_evaluations = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/evaluations"
+        ).json()
+        return [
+            Evaluation(
+                client=self.client,
+                dataset_name=self.name,
+                model_name=model_name,
+                job_id=job_id,
+            )
+            for model_name in model_evaluations
+            for job_id in model_evaluations[model_name]
         ]
 
     def get_info(self) -> schemas.Info:
@@ -390,8 +407,7 @@ class Model:
 
     @staticmethod
     def prune(client: Client, name: str):
-        job_id = client._requests_delete_rel_host(f"models/{name}").json()
-        return Job(client=client, job_id=job_id)
+        client._requests_delete_rel_host(f"models/{name}")
 
     def add_metadatum(self, metadatum: schemas.MetaDatum):
         # @TODO: Add endpoint to allow adding custom metadatums
@@ -407,7 +423,7 @@ class Model:
             )
         prediction.model = self.info.name
         return self.client._requests_post_rel_host(
-            "prediction",
+            "predictions",
             json=asdict(prediction),
         )
 
@@ -457,7 +473,12 @@ class Model:
             "clf-metrics", json=payload
         ).json()
 
-        return Evaluation(client=self.client, **resp)
+        return Evaluation(
+            client=self.client,
+            dataset_name=dataset.name,
+            model_name=self.name,
+            **resp,
+        )
 
     def evaluate_ap(
         self,
@@ -499,45 +520,27 @@ class Model:
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
             resp[k] = [schemas.Label(**la) for la in resp[k]]
 
-        return Evaluation(client=self.client, **resp)
+        return Evaluation(
+            client=self.client,
+            dataset_name=dataset.name,
+            model_name=self.name,
+            **resp,
+        )
 
-    def get_evaluation_settings(self) -> List[dict]:
-        # TODO: should probably have a dataclass for the output
-        ret = self.client._requests_get_rel_host(
-            f"models/{self.name}/evaluation-settings"
+    def get_evaluations(self) -> List[Evaluation]:
+        dataset_evaluations = self.client._requests_get_rel_host(
+            f"models/{self.name}/evaluations"
         ).json()
-
-        return [_remove_none_from_dict(es) for es in ret]
-
-    @staticmethod
-    def _group_evaluation_settings(eval_settings: List[dict]):
-        # return list of dicts with keys ids and (common) eval settings
-        ret = []
-
-        for es in eval_settings:
-            es_without_id_dset_model = {
-                k: v
-                for k, v in es.items()
-                if k not in ["id", "dataset", "model"]
-            }
-            found = False
-            for grp in ret:
-                if es_without_id_dset_model == grp["settings"]:
-                    grp["ids"].append(es["id"])
-                    grp["datasets"].append(es["dataset"])
-                    found = True
-                    break
-
-            if not found:
-                ret.append(
-                    {
-                        "ids": [es["id"]],
-                        "settings": es_without_id_dset_model,
-                        "datasets": [es["dataset"]],
-                    }
-                )
-
-        return ret
+        return [
+            Evaluation(
+                client=self.client,
+                dataset_name=dataset_name,
+                model_name=self.name,
+                job_id=job_id,
+            )
+            for dataset_name in dataset_evaluations
+            for job_id in dataset_evaluations[dataset_name]
+        ]
 
     def get_metrics_at_evaluation_settings_id(
         self, eval_settings_id: int
@@ -548,46 +551,6 @@ class Model:
                 f"models/{self.name}/evaluation-settings/{eval_settings_id}/metrics"
             ).json()
         ]
-
-    def get_confusion_matrices_at_evaluation_settings_id(
-        self, eval_settings_id: int
-    ) -> List[dict]:
-        return self.client._requests_get_rel_host(
-            f"models/{self.name}/evaluation-settings/{eval_settings_id}/confusion-matrices"
-        ).json()
-
-    def get_metric_dataframes(self):
-        try:
-            import pandas as pd
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError(
-                "Must have pandas installed to use `get_metric_dataframes`."
-            )
-        eval_setting_groups = self._group_evaluation_settings(
-            self.get_evaluation_settings()
-        )
-
-        ret = []
-        for grp in eval_setting_groups:
-            metrics = [
-                {**m, "dataset": dataset}
-                for id_, dataset in zip(grp["ids"], grp["datasets"])
-                for m in self.get_metrics_at_evaluation_settings_id(id_)
-            ]
-            df = pd.DataFrame(metrics)
-            for k in ["label", "parameters"]:
-                df[k] = df[k].fillna("n/a")
-            df["parameters"] = df["parameters"].apply(json.dumps)
-            df["label"] = df["label"].apply(
-                lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
-            )
-
-            df = df.pivot(
-                index=["type", "parameters", "label"], columns=["dataset"]
-            )
-            ret.append({"settings": grp["settings"], "df": df})
-
-        return ret
 
     def get_labels(self) -> List[schemas.Label]:
         labels = self.client._requests_get_rel_host(

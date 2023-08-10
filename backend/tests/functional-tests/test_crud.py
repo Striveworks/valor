@@ -790,7 +790,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
         for pd in pred_segs_create:
             pd.model = model_name
             crud.create_prediction(db=db, prediction=pd)
-    assert "inference operations are running" in str(exc_info)
+    assert "does not support model operations" in str(exc_info)
 
     # create groundtruths
     for gt in gt_segs_create:
@@ -1067,7 +1067,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         crud.compute_ap_metrics(
             db=db,
             request_info=request_info,
-            evaluation_settings_id=resp.job_id,
+            job_id=resp.job_id,
         )
 
         return (
@@ -1248,7 +1248,7 @@ def test_create_clf_metrics(
     crud.compute_clf_metrics(
         db=db,
         request_info=request_info,
-        evaluation_settings_id=evaluation_settings_id,
+        job_id=evaluation_settings_id,
     )
 
     # check we have one evaluation
@@ -1330,7 +1330,7 @@ def test_create_clf_metrics(
     crud.compute_clf_metrics(
         db=db,
         request_info=request_info,
-        evaluation_settings_id=evaluation_settings_id,
+        job_id=evaluation_settings_id,
     )
     assert (
         len(crud.get_model_evaluation_settings(db=db, model_name=model_name))
@@ -1397,9 +1397,9 @@ def test_finalize_empty_model(db: Session, groundtruths):
     # create model
     crud.create_model(db=db, model=schemas.Model(name=model_name))
     # finalize
-    with pytest.raises(exceptions.StateflowError) as e:
+    with pytest.raises(exceptions.ModelInferencesDoNotExist) as e:
         crud.finalize(db=db, dataset_name=dset_name, model_name=model_name)
-    assert "invalid transititon from none to ready" in str(e)
+    assert "do not exist" in str(e)
 
 
 # @NOTE: `velour_api.backend.io`

@@ -1,9 +1,8 @@
 from sqlalchemy.orm import Session
 
 from velour_api import backend, schemas
-from velour_api.backend import jobs, stateflow
+from velour_api.backend import stateflow
 from velour_api.crud._read import get_disjoint_keys, get_disjoint_labels
-from velour_api.enums import JobStatus
 
 
 @stateflow.create
@@ -64,17 +63,13 @@ def create_clf_evaluation(
     )
 
     # create evaluation setting
-    evaluation_settings_id = backend.create_clf_evaluation(db, request_info)
-
-    # create evaluation job status if it doesn't already exist
-    if jobs.get_status(evaluation_settings_id) != JobStatus.DONE:
-        jobs.set_status(evaluation_settings_id, status=JobStatus.PENDING)
+    job_id = backend.create_clf_evaluation(db, request_info)
 
     # create response
     return schemas.CreateClfMetricsResponse(
         missing_pred_keys=missing_pred_keys,
         ignored_pred_keys=ignored_pred_keys,
-        job_id=evaluation_settings_id,
+        job_id=job_id,
     )
 
 
@@ -83,30 +78,14 @@ def compute_clf_metrics(
     *,
     db: Session,
     request_info: schemas.ClfMetricsRequest,
-    evaluation_settings_id: int,
+    job_id: int,
 ):
     """compute clf metrics"""
-
-    # check if evaluation has already been computed
-    if jobs.get_status(id=evaluation_settings_id) == JobStatus.DONE:
-        return
-
-    # set job status to PROCESSING
-    jobs.set_status(evaluation_settings_id, status=JobStatus.PROCESSING)
-
-    # attempt computation
-    try:
-        backend.create_clf_metrics(
-            db,
-            request_info=request_info,
-            evaluation_settings_id=evaluation_settings_id,
-        )
-    except Exception as e:
-        jobs.set_status(evaluation_settings_id, status=JobStatus.FAILED)
-        raise e
-
-    # set job status to DONE
-    jobs.set_status(evaluation_settings_id, status=JobStatus.DONE)
+    backend.create_clf_metrics(
+        db,
+        request_info=request_info,
+        evaluation_settings_id=job_id,
+    )
 
 
 @stateflow.evaluate
@@ -125,17 +104,13 @@ def create_ap_evaluation(
     )
 
     # create evaluation setting
-    evaluation_settings_id = backend.create_ap_evaluation(db, request_info)
-
-    # create evaluation job status if it doesn't already exist
-    if jobs.get_status(evaluation_settings_id) != JobStatus.DONE:
-        jobs.set_status(evaluation_settings_id, status=JobStatus.PENDING)
+    job_id = backend.create_ap_evaluation(db, request_info)
 
     # create response
     return schemas.CreateAPMetricsResponse(
         missing_pred_labels=missing_pred_labels,
         ignored_pred_labels=ignored_pred_labels,
-        job_id=evaluation_settings_id,
+        job_id=job_id,
     )
 
 
@@ -144,27 +119,11 @@ def compute_ap_metrics(
     *,
     db: Session,
     request_info: schemas.APRequest,
-    evaluation_settings_id: int,
+    job_id: int,
 ):
     """compute ap metrics"""
-
-    # check if evaluation has already been computed
-    if jobs.get_status(id=evaluation_settings_id) == JobStatus.DONE:
-        return
-
-    # set job status to PROCESSING
-    jobs.set_status(evaluation_settings_id, status=JobStatus.PROCESSING)
-
-    # attempt computation
-    try:
-        backend.create_ap_metrics(
-            db=db,
-            request_info=request_info,
-            evaluation_settings_id=evaluation_settings_id,
-        )
-    except Exception as e:
-        jobs.set_status(evaluation_settings_id, status=JobStatus.FAILED)
-        raise e
-
-    # set job status to DONE
-    jobs.set_status(evaluation_settings_id, status=JobStatus.DONE)
+    backend.create_ap_metrics(
+        db=db,
+        request_info=request_info,
+        evaluation_settings_id=job_id,
+    )

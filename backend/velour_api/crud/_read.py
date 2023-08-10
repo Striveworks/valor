@@ -1,29 +1,39 @@
 from sqlalchemy.orm import Session
 
-from velour_api import backend, enums, exceptions, schemas
+from velour_api import backend, enums, schemas
 from velour_api.backend import jobs
 
 
-def get_job_status(*, job_id: int) -> enums.JobStatus:
-    if status := jobs.get_status(job_id):
-        return status
-    raise exceptions.JobDoesNotExistError(job_id)
+def get_evaluation_status(
+    *, dataset_name: str, model_name: str, job_id: int
+) -> enums.JobStatus:
+    return jobs.get_stateflow().get_job_status(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        job_id=job_id,
+    )
 
 
-def get_backend_status(
+def get_backend_state(
     *, dataset_name: str, model_name: str | None = None
-) -> enums.Stateflow | None:
-    status = jobs.get_backend_state()
-    if status.datasets:
-        if dataset_name in status.datasets:
-            if not model_name:
-                return status.datasets[dataset_name].status
-            if status.datasets[dataset_name].models is not None:
-                if model_name in status.datasets[dataset_name].models:
-                    return (
-                        status.datasets[dataset_name].models[model_name].status
-                    )
-    return None
+) -> enums.State:
+    stateflow = jobs.get_stateflow()
+    if dataset_name and model_name:
+        return stateflow.get_inference_status(
+            dataset_name=dataset_name,
+            model_name=model_name,
+        )
+    return stateflow.get_dataset_status(
+        dataset_name=dataset_name,
+    )
+
+
+def get_dataset_evaluations(dataset_name: str):
+    return jobs.get_stateflow().get_dataset_jobs(dataset_name)
+
+
+def get_model_evaluations(model_name: str):
+    return jobs.get_stateflow().get_model_jobs(model_name)
 
 
 """ Labels """

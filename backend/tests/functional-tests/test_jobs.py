@@ -129,90 +129,140 @@ def pred_clfs_create(
 
 
 def test_job_status():
+
+    dataset_name = "md"
+    model_name = "ds"
+    stateflow = schemas.Stateflow(
+        datasets={
+            dataset_name: schemas.stateflow.DatasetState(
+                status=enums.State.READY,
+                models={
+                    model_name: schemas.stateflow.InferenceState(
+                        status=enums.State.READY, jobs={}
+                    )
+                },
+            )
+        }
+    )
+
     # check that job id: 0 is non-existent
-    assert jobs.get_status(0) is None
+    assert stateflow.get_job_status(dataset_name, model_name, 0) is None
 
     # test invalid transitions from `None`
     with pytest.raises(exceptions.JobDoesNotExistError) as e:
-        jobs.set_status(0, enums.JobStatus.PROCESSING)
+        stateflow.set_job_status(
+            dataset_name, model_name, 0, enums.JobStatus.PROCESSING
+        )
     assert "does not exist" in str(e)
     with pytest.raises(exceptions.JobDoesNotExistError) as e:
-        jobs.set_status(0, enums.JobStatus.DONE)
+        stateflow.set_job_status(
+            dataset_name, model_name, 0, enums.JobStatus.DONE
+        )
     assert "does not exist" in str(e)
     with pytest.raises(exceptions.JobDoesNotExistError) as e:
-        jobs.set_status(0, enums.JobStatus.FAILED)
+        stateflow.set_job_status(
+            dataset_name, model_name, 0, enums.JobStatus.FAILED
+        )
     assert "does not exist" in str(e)
 
     # check that nothing affected the state
-    assert jobs.get_status(0) is None
+    assert stateflow.get_job_status(dataset_name, model_name, 0) is None
 
     """test valid transition"""
-    jobs.set_status(0, enums.JobStatus.PENDING)
+    stateflow.set_job_status(
+        dataset_name, model_name, 0, enums.JobStatus.PENDING
+    )
 
     # test invalid transitions from `PENDING`
     with pytest.raises(exceptions.JobStateError) as e:
-        jobs.set_status(0, enums.JobStatus.DONE)
-    assert "JobStatus.PENDING =/=> JobStatus.DONE" in str(e)
+        stateflow.set_job_status(
+            dataset_name, model_name, 0, enums.JobStatus.DONE
+        )
+    assert "`JobStatus.PENDING` to `JobStatus.DONE`" in str(e)
     with pytest.raises(exceptions.JobStateError) as e:
-        jobs.set_status(0, enums.JobStatus.FAILED)
-    assert "JobStatus.PENDING =/=> JobStatus.FAILED" in str(e)
+        stateflow.set_job_status(
+            dataset_name, model_name, 0, enums.JobStatus.FAILED
+        )
+    assert "`JobStatus.PENDING` to `JobStatus.FAILED`" in str(e)
 
     # test removing PENDING job
     with pytest.raises(exceptions.JobStateError) as e:
-        jobs.remove_status(0)
+        stateflow.remove_job(dataset_name, model_name, 0)
     assert "cannot remove an actively running job." in str(e)
 
     """test valid transition"""
-    jobs.set_status(0, enums.JobStatus.PROCESSING)
+    stateflow.set_job_status(
+        dataset_name, model_name, 0, enums.JobStatus.PROCESSING
+    )
 
     # test removing PROCESSING job
     with pytest.raises(exceptions.JobStateError) as e:
-        jobs.remove_status(0)
+        stateflow.remove_job(dataset_name, model_name, 0)
     assert "cannot remove an actively running job." in str(e)
 
     # test invalid transitions from `PROCESSING`
     with pytest.raises(exceptions.JobStateError) as e:
-        jobs.set_status(0, enums.JobStatus.PENDING)
-    assert "JobStatus.PROCESSING =/=> JobStatus.PENDING" in str(e)
+        stateflow.set_job_status(
+            dataset_name, model_name, 0, enums.JobStatus.PENDING
+        )
+    assert "`JobStatus.PROCESSING` to `JobStatus.PENDING`" in str(e)
 
     """test valid transition"""
-    jobs.set_status(0, enums.JobStatus.FAILED)
+    stateflow.set_job_status(
+        dataset_name, model_name, 0, enums.JobStatus.FAILED
+    )
 
     # test invalid transitions from `DONE`
     with pytest.raises(exceptions.JobStateError) as e:
-        jobs.set_status(0, enums.JobStatus.PROCESSING)
-    assert "JobStatus.FAILED =/=> JobStatus.PROCESSING" in str(e)
+        stateflow.set_job_status(
+            dataset_name, model_name, 0, enums.JobStatus.PROCESSING
+        )
+    assert "`JobStatus.FAILED` to `JobStatus.PROCESSING`" in str(e)
     with pytest.raises(exceptions.JobStateError) as e:
-        jobs.set_status(0, enums.JobStatus.DONE)
-    assert "JobStatus.FAILED =/=> JobStatus.DONE" in str(e)
+        stateflow.set_job_status(
+            dataset_name, model_name, 0, enums.JobStatus.DONE
+        )
+    assert "`JobStatus.FAILED` to `JobStatus.DONE`" in str(e)
 
     """test valid transition"""
-    jobs.set_status(0, enums.JobStatus.PENDING)
-    jobs.set_status(0, enums.JobStatus.PROCESSING)
-    jobs.set_status(0, enums.JobStatus.DONE)
+    stateflow.set_job_status(
+        dataset_name, model_name, 0, enums.JobStatus.PENDING
+    )
+    stateflow.set_job_status(
+        dataset_name, model_name, 0, enums.JobStatus.PROCESSING
+    )
+    stateflow.set_job_status(dataset_name, model_name, 0, enums.JobStatus.DONE)
 
     # test invalid transitions from `DONE`
     with pytest.raises(exceptions.JobStateError) as e:
-        jobs.set_status(0, enums.JobStatus.PENDING)
-    assert "JobStatus.DONE =/=> JobStatus.PENDING" in str(e)
+        stateflow.set_job_status(
+            dataset_name, model_name, 0, enums.JobStatus.PENDING
+        )
+    assert "`JobStatus.DONE` to `JobStatus.PENDING`" in str(e)
     with pytest.raises(exceptions.JobStateError) as e:
-        jobs.set_status(0, enums.JobStatus.PROCESSING)
-    assert "JobStatus.DONE =/=> JobStatus.PROCESSING" in str(e)
+        stateflow.set_job_status(
+            dataset_name, model_name, 0, enums.JobStatus.PROCESSING
+        )
+    assert "`JobStatus.DONE` to `JobStatus.PROCESSING`" in str(e)
     with pytest.raises(exceptions.JobStateError) as e:
-        jobs.set_status(0, enums.JobStatus.FAILED)
-    assert "JobStatus.DONE =/=> JobStatus.FAILED" in str(e)
+        stateflow.set_job_status(
+            dataset_name, model_name, 0, enums.JobStatus.FAILED
+        )
+    assert "`JobStatus.DONE` to `JobStatus.FAILED`" in str(e)
 
     """test job removal"""
-    jobs.remove_status(0)
+    stateflow.remove_job(dataset_name, model_name, 0)
 
     """confirm removal"""
-    assert jobs.get_status(0) is None
+    assert stateflow.get_job_status(dataset_name, model_name, 0) is None
 
 
 def test_stateflow_dataset(db: Session):
 
     # should have no record of dataset
-    assert crud.get_backend_status(dataset_name=dset_name) is None
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as e:
+        crud.get_backend_state(dataset_name=dset_name)
+    assert "does not exist" in str(e)
 
     # create dataset
     crud.create_dataset(
@@ -223,9 +273,7 @@ def test_stateflow_dataset(db: Session):
     )
 
     # `create_dataset` does not affect the stateflow
-    assert (
-        crud.get_backend_status(dataset_name=dset_name) == enums.Stateflow.NONE
-    )
+    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.NONE
 
     # create a groundtruth
     crud.create_groundtruth(
@@ -245,25 +293,21 @@ def test_stateflow_dataset(db: Session):
     )
 
     # `create_groundtruth` transitions dataset state into CREATE
-    assert (
-        crud.get_backend_status(dataset_name=dset_name)
-        == enums.Stateflow.CREATE
-    )
+    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.CREATE
 
     # finalize dataset
     crud.finalize(db=db, dataset_name=dset_name)
 
     # `finalize` transitions dataset state into READY
-    assert (
-        crud.get_backend_status(dataset_name=dset_name)
-        == enums.Stateflow.READY
-    )
+    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.READY
 
     # delete dataset
     crud.delete(db=db, dataset_name=dset_name)
 
     # after delete operation completes the record is removed
-    assert crud.get_backend_status(dataset_name=dset_name) is None
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as e:
+        crud.get_backend_state(dataset_name=dset_name)
+    assert "does not exist" in str(e)
 
 
 def test_stateflow_model(db: Session):
@@ -293,10 +337,9 @@ def test_stateflow_model(db: Session):
     crud.finalize(db=db, dataset_name=dset_name)
 
     # check that no record exists for model
-    assert (
-        crud.get_backend_status(dataset_name=dset_name, model_name=model_name)
-        is None
-    )
+    with pytest.raises(exceptions.ModelInferencesDoNotExist) as e:
+        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+    assert "do not exist" in str(e)
 
     # create model
     crud.create_model(
@@ -307,10 +350,9 @@ def test_stateflow_model(db: Session):
     )
 
     # check that no record exists for model as no predictions have been added
-    assert (
-        crud.get_backend_status(dataset_name=dset_name, model_name=model_name)
-        is None
-    )
+    with pytest.raises(exceptions.ModelInferencesDoNotExist) as e:
+        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+    assert "do not exist" in str(e)
 
     # create predictions
     crud.create_prediction(
@@ -339,8 +381,8 @@ def test_stateflow_model(db: Session):
 
     # `create_prediction` transitions model state to CREATE
     assert (
-        crud.get_backend_status(dataset_name=dset_name, model_name=model_name)
-        == enums.Stateflow.CREATE
+        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        == enums.State.CREATE
     )
 
     # check that evaluation fails before finalization
@@ -367,18 +409,17 @@ def test_stateflow_model(db: Session):
 
     # `finalize` transitions dataset state into READY
     assert (
-        crud.get_backend_status(dataset_name=dset_name, model_name=model_name)
-        == enums.Stateflow.READY
+        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        == enums.State.READY
     )
 
     # delete dataset
     crud.delete(db=db, dataset_name=dset_name, model_name=model_name)
 
     # after delete operation completes the record is removed
-    assert (
-        crud.get_backend_status(dataset_name=dset_name, model_name=model_name)
-        is None
-    )
+    with pytest.raises(exceptions.ModelInferencesDoNotExist) as e:
+        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+    assert "do not exist" in str(e)
 
 
 def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
@@ -396,13 +437,10 @@ def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
     )
 
     # check ready
+    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.READY
     assert (
-        crud.get_backend_status(dataset_name=dset_name)
-        == enums.Stateflow.READY
-    )
-    assert (
-        crud.get_backend_status(dataset_name=dset_name, model_name=model_name)
-        == enums.Stateflow.READY
+        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        == enums.State.READY
     )
 
     # create evaluation (return AP Response)
@@ -410,19 +448,18 @@ def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
 
     # check in evalutation
     assert (
-        crud.get_backend_status(dataset_name=dset_name, model_name=model_name)
-        == enums.Stateflow.EVALUATE
+        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        == enums.State.EVALUATE
     )
     assert (
-        crud.get_backend_status(dataset_name=dset_name)
-        == enums.Stateflow.EVALUATE
+        crud.get_backend_state(dataset_name=dset_name) == enums.State.EVALUATE
     )
 
     # attempt to delete dataset
     with pytest.raises(exceptions.StateflowError) as e:
         crud.delete(db=db, dataset_name=dset_name)
     assert (
-        "cannot transition to delete as a evaluation is currently running."
+        "cannot transition to delete as an evaluation is currently running."
         in str(e)
     )
 
@@ -435,17 +472,14 @@ def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
     crud.compute_ap_metrics(
         db=db,
         request_info=request_info,
-        evaluation_settings_id=resp.job_id,
+        job_id=resp.job_id,
     )
 
     # check ready
+    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.READY
     assert (
-        crud.get_backend_status(dataset_name=dset_name)
-        == enums.Stateflow.READY
-    )
-    assert (
-        crud.get_backend_status(dataset_name=dset_name, model_name=model_name)
-        == enums.Stateflow.READY
+        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        == enums.State.READY
     )
 
 
@@ -478,14 +512,13 @@ def test_stateflow_clf_evaluation(
         )
     )
 
-    # check READY
+    # check dataset READY
+    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.READY
+
+    # check inference pair READY
     assert (
-        crud.get_backend_status(dataset_name=dset_name)
-        == enums.Stateflow.READY
-    )
-    assert (
-        crud.get_backend_status(dataset_name=dset_name, model_name=model_name)
-        == enums.Stateflow.READY
+        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        == enums.State.READY
     )
 
     # create clf evaluation (returns Clf Response)
@@ -496,19 +529,18 @@ def test_stateflow_clf_evaluation(
 
     # check EVALUATE
     assert (
-        crud.get_backend_status(dataset_name=dset_name, model_name=model_name)
-        == enums.Stateflow.EVALUATE
+        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        == enums.State.EVALUATE
     )
     assert (
-        crud.get_backend_status(dataset_name=dset_name)
-        == enums.Stateflow.EVALUATE
+        crud.get_backend_state(dataset_name=dset_name) == enums.State.EVALUATE
     )
 
     # attempt to delete dataset
     with pytest.raises(exceptions.StateflowError) as e:
         crud.delete(db=db, dataset_name=dset_name)
     assert (
-        "cannot transition to delete as a evaluation is currently running."
+        "cannot transition to delete as an evaluation is currently running."
         in str(e)
     )
 
@@ -521,15 +553,12 @@ def test_stateflow_clf_evaluation(
     crud.compute_clf_metrics(
         db=db,
         request_info=request_info,
-        evaluation_settings_id=resp.job_id,
+        job_id=resp.job_id,
     )
 
     # check READY
+    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.READY
     assert (
-        crud.get_backend_status(dataset_name=dset_name)
-        == enums.Stateflow.READY
-    )
-    assert (
-        crud.get_backend_status(dataset_name=dset_name, model_name=model_name)
-        == enums.Stateflow.READY
+        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        == enums.State.READY
     )
