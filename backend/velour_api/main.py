@@ -67,7 +67,7 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
 
 
 @app.post(
-    "/groundtruths",
+    "/datasets/groundtruths",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datasets"],
 )
@@ -295,7 +295,7 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
 
 
 @app.post(
-    "/predictions",
+    "/models/predictions",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
 )

@@ -275,7 +275,7 @@ class Dataset:
 
         groundtruth.dataset = self.info.name
         return self.client._requests_post_rel_host(
-            "groundtruths",
+            "datasets/groundtruths",
             json=asdict(groundtruth),
         )
 
@@ -451,7 +451,7 @@ class Model:
             )
         prediction.model = self.info.name
         return self.client._requests_post_rel_host(
-            "predictions",
+            "models/predictions",
             json=asdict(prediction),
         )
 
