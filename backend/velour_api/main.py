@@ -54,7 +54,10 @@ def get_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
 
 
 @app.post(
-    "/datasets", status_code=201, dependencies=[Depends(token_auth_scheme)]
+    "/datasets",
+    status_code=201,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
 )
 def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     try:
@@ -63,7 +66,11 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@app.post("/groundtruths", dependencies=[Depends(token_auth_scheme)])
+@app.post(
+    "/groundtruths",
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
+)
 def create_groundtruths(
     gt: schemas.GroundTruth, db: Session = Depends(get_db)
 ):
@@ -79,13 +86,20 @@ def create_groundtruths(
 
 
 @app.get(
-    "/datasets", status_code=200, dependencies=[Depends(token_auth_scheme)]
+    "/datasets",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
 )
 def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
     return crud.get_datasets(db=db)
 
 
-@app.get("/datasets/{dataset_name}", dependencies=[Depends(token_auth_scheme)])
+@app.get(
+    "/datasets/{dataset_name}",
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
+)
 def get_dataset(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> schemas.Dataset:
@@ -99,6 +113,7 @@ def get_dataset(
     "/datasets/{dataset_name}/finalize",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
 )
 def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     try:
@@ -111,6 +126,7 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     "/datasets/{dataset_name}/finalize/{model_name}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
 )
 def finalize_inferences(
     dataset_name: str, model_name: str, db: Session = Depends(get_db)
@@ -132,6 +148,7 @@ def finalize_inferences(
     "/datasets/{dataset_name}/labels",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
 )
 def get_labels_from_dataset(
     dataset_name: str, db: Session = Depends(get_db)
@@ -152,6 +169,7 @@ def get_labels_from_dataset(
     "/datasets/{dataset_name}/data",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
 )
 def get_datums(
     dataset_name: str, db: Session = Depends(get_db)
@@ -173,6 +191,7 @@ def get_datums(
     "/datasets/{dataset_name}/data/filter/{data_type}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
 )
 def get_filtered_dataset_datums(
     dataset_name: str, data_type: str, db: Session = Depends(get_db)
@@ -189,6 +208,7 @@ def get_filtered_dataset_datums(
     "/datasets/{dataset_name}/data/{uid}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
 )
 def get_datum(
     dataset_name: str, uid: str, db: Session = Depends(get_db)
@@ -210,6 +230,7 @@ def get_datum(
     "/datasets/{dataset_name}/data/{uid}/groundtruth",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
 )
 def get_groundtruth(
     dataset_name: str, uid: str, db: Session = Depends(get_db)
@@ -231,6 +252,7 @@ def get_groundtruth(
     "/datasets/{dataset_name}/evaluations",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
 )
 def get_dataset_evaluations(dataset_name: str) -> dict[str, list[int]]:
     """Returns mapping of model names to list of job ids."""
@@ -238,7 +260,9 @@ def get_dataset_evaluations(dataset_name: str) -> dict[str, list[int]]:
 
 
 @app.delete(
-    "/datasets/{dataset_name}", dependencies=[Depends(token_auth_scheme)]
+    "/datasets/{dataset_name}",
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
 )
 def delete_dataset(
     dataset_name: str,
@@ -258,7 +282,10 @@ def delete_dataset(
 
 
 @app.post(
-    "/models", status_code=201, dependencies=[Depends(token_auth_scheme)]
+    "/models",
+    status_code=201,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Models"],
 )
 def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     try:
@@ -267,7 +294,11 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@app.post("/predictions", dependencies=[Depends(token_auth_scheme)])
+@app.post(
+    "/predictions",
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Models"],
+)
 def create_predictions(
     pd: schemas.Prediction,
     db: Session = Depends(get_db),
@@ -287,12 +318,21 @@ def create_predictions(
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@app.get("/models", status_code=200, dependencies=[Depends(token_auth_scheme)])
+@app.get(
+    "/models",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Models"],
+)
 def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
     return crud.get_models(db=db)
 
 
-@app.get("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
+@app.get(
+    "/models/{model_name}",
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Models"],
+)
 def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     try:
         return crud.get_model(db=db, model_name=model_name)
@@ -300,7 +340,11 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@app.delete("/models/{model_name}", dependencies=[Depends(token_auth_scheme)])
+@app.delete(
+    "/models/{model_name}",
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Models"],
+)
 def delete_model(model_name: str, db: Session = Depends(get_db)):
     try:
         crud.delete(db=db, model_name=model_name)
@@ -314,6 +358,7 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
     "/models/{model_name}/data/{uid}/prediction",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
+    tags=["Models"],
 )
 def get_prediction(
     model_name: str, uid: str, db: Session = Depends(get_db)
@@ -335,6 +380,7 @@ def get_prediction(
     "/models/{model_name}/labels",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
+    tags=["Models"],
 )
 def get_labels_from_model(
     model_name: str, db: Session = Depends(get_db)
@@ -355,6 +401,7 @@ def get_labels_from_model(
     "/models/{model_name}/evaluations",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
+    tags=["Models"],
 )
 def get_model_evaluations(model_name: str) -> dict[str, list[int]]:
     """Returns mapping of dataset names to list of job ids."""
@@ -365,7 +412,10 @@ def get_model_evaluations(model_name: str) -> dict[str, list[int]]:
 
 
 @app.post(
-    "/ap-metrics", status_code=202, dependencies=[Depends(token_auth_scheme)]
+    "/ap-metrics",
+    status_code=202,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Evaluations"],
 )
 def create_ap_metrics(
     request_info: schemas.APRequest,
@@ -396,7 +446,10 @@ def create_ap_metrics(
 
 
 @app.post(
-    "/clf-metrics", status_code=202, dependencies=[Depends(token_auth_scheme)]
+    "/clf-metrics",
+    status_code=202,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Evaluations"],
 )
 def create_clf_metrics(
     request_info: schemas.ClfMetricsRequest,
@@ -429,6 +482,7 @@ def create_clf_metrics(
 @app.get(
     "/datasets/{dataset_name}/models/{model_name}/evaluations/{job_id}",
     dependencies=[Depends(token_auth_scheme)],
+    tags=["Evaluations"],
 )
 def get_evaluation_status(
     dataset_name: str, model_name: str, job_id: int
@@ -447,6 +501,7 @@ def get_evaluation_status(
     "/datasets/{dataset_name}/models/{model_name}/evaluations/{job_id}/metrics",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
+    tags=["Evaluations"],
 )
 def get_evaluation_metrics(
     dataset_name: str,
@@ -483,6 +538,7 @@ def get_evaluation_metrics(
     "/datasets/{dataset_name}/models/{model_name}/evaluations/{job_id}/confusion-matrices",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
+    tags=["Evaluations"],
 )
 def get_evaluation_confusion_matrices(
     dataset_name: str,
@@ -512,6 +568,7 @@ def get_evaluation_confusion_matrices(
     "/datasets/{dataset_name}/models/{model_name}/evaluations/{job_id}/settings",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
+    tags=["Evaluations"],
 )
 def get_evaluation_settings(
     dataset_name: str,
@@ -540,7 +597,10 @@ def get_evaluation_settings(
 """ AUTHENTICATION """
 
 
-@app.get("/user")
+@app.get(
+    "/user",
+    tags=["Authentication"],
+)
 def user(
     token: HTTPAuthorizationCredentials | None = Depends(token_auth_scheme),
 ) -> schemas.User:

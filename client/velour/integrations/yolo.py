@@ -54,6 +54,55 @@ def parse_yolo_image_classification(
     )
 
 
+def parse_yolo_object_detection(
+    result, image: Image, label_key: str = "class"
+) -> Prediction:
+    """Parses Ultralytic's result for an object detection task."""
+
+    # Extract data
+    probabilities = [conf.item() for conf in result.boxes.conf]
+    labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
+    bboxes = [numpy.asarray(box.cpu()) for box in result.boxes.xyxy]
+
+    # validate dimensions
+    if image.height != result.orig_shape[0]:
+        raise RuntimeError
+    if image.width != result.orig_shape[1]:
+        raise RuntimeError
+
+    # Create scored label list
+    scored_labels = [
+        ScoredLabel(
+            label=Label(key=label_key, value=label),
+            score=probability,
+        )
+        for label, probability in list(zip(labels, probabilities))
+    ]
+
+    # Extract Bounding Boxes
+    bboxes = [
+        BoundingBox.from_extrema(
+            xmin=int(box[0]),
+            ymin=int(box[1]),
+            xmax=int(box[2]),
+            ymax=int(box[3]),
+        )
+        for box in bboxes
+    ]
+
+    return Prediction(
+        datum=image.to_datum(),
+        annotations=[
+            ScoredAnnotation(
+                task_type=enums.TaskType.DETECTION,
+                scored_labels=[scored_label],
+                bounding_box=bbox,
+            )
+            for bbox, scored_label in list(zip(bboxes, scored_labels))
+        ],
+    )
+
+
 def _convert_yolo_segmentation(
     raw,
     height: int,
@@ -118,55 +167,6 @@ def parse_yolo_image_segmentation(
                 raster=Raster.from_numpy(mask),
             )
             for mask, scored_label in list(zip(masks, scored_labels))
-        ],
-    )
-
-
-def parse_yolo_object_detection(
-    result, image: Image, label_key: str = "class"
-) -> Prediction:
-    """Parses Ultralytic's result for an object detection task."""
-
-    # Extract data
-    probabilities = [conf.item() for conf in result.boxes.conf]
-    labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
-    bboxes = [numpy.asarray(box.cpu()) for box in result.boxes.xyxy]
-
-    # validate dimensions
-    if image.height != result.orig_shape[0]:
-        raise RuntimeError
-    if image.width != result.orig_shape[1]:
-        raise RuntimeError
-
-    # Create scored label list
-    scored_labels = [
-        ScoredLabel(
-            label=Label(key=label_key, value=label),
-            score=probability,
-        )
-        for label, probability in list(zip(labels, probabilities))
-    ]
-
-    # Extract Bounding Boxes
-    bboxes = [
-        BoundingBox.from_extrema(
-            xmin=int(box[0]),
-            ymin=int(box[1]),
-            xmax=int(box[2]),
-            ymax=int(box[3]),
-        )
-        for box in bboxes
-    ]
-
-    return Prediction(
-        datum=image.to_datum(),
-        annotations=[
-            ScoredAnnotation(
-                task_type=enums.TaskType.DETECTION,
-                scored_labels=[scored_label],
-                bounding_box=bbox,
-            )
-            for bbox, scored_label in list(zip(bboxes, scored_labels))
         ],
     )
 

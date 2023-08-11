@@ -101,8 +101,6 @@ def get_datums(
     else:
         datums = ops.BackendQuery.datum().filter(request).all(db)
 
-    print(ops.BackendQuery.datum().filter(request))
-
     return [
         schemas.Datum(
             dataset=db.scalar(
