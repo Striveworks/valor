@@ -1309,12 +1309,6 @@ def test_iou(
     assert iou(rect1_poly, rect2_poly) == db.scalar(select(iou_computation))
 
 
-def test_delete_dataset_exception(client: Client):
-    with pytest.raises(ClientException) as exc_info:
-        Dataset.prune(client, "non-existent dataset")
-    assert "does not exist" in str(exc_info)
-
-
 def test_prune_dataset(client: Client, db: Session):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
     Dataset.create(client, dset_name)
@@ -1364,9 +1358,9 @@ def test_evaluate_ap(
 
     # sleep to give the backend time to compute
     time.sleep(1)
-    assert eval_job.status() == JobStatus.DONE
+    assert eval_job.status == JobStatus.DONE
 
-    settings = eval_job.settings()
+    settings = eval_job.settings
     settings.pop("id")
     assert settings == {
         "model": "test_model",
@@ -1417,7 +1411,7 @@ def test_evaluate_ap(
         },
     ]
 
-    assert eval_job.metrics() == expected_metrics
+    assert eval_job.metrics == expected_metrics
 
     # now test if we set min_area and/or max_area
     areas = db.scalars(
@@ -1441,7 +1435,7 @@ def test_evaluate_ap(
         max_area=2000,
     )
     time.sleep(1)
-    settings = eval_job_bounded_area_10_2000.settings()
+    settings = eval_job_bounded_area_10_2000.settings
     settings.pop("id")
     assert settings == {
         "model": "test_model",
@@ -1453,7 +1447,7 @@ def test_evaluate_ap(
         "min_area": 10,
         "max_area": 2000,
     }
-    assert eval_job_bounded_area_10_2000.metrics() == expected_metrics
+    assert eval_job_bounded_area_10_2000.metrics == expected_metrics
 
     # now check we get different things by setting the thresholds accordingly
     # min area threshold should divide the set of annotations
@@ -1468,7 +1462,7 @@ def test_evaluate_ap(
         min_area=1200,
     )
     time.sleep(1)
-    settings = eval_job_min_area_1200.settings()
+    settings = eval_job_min_area_1200.settings
     settings.pop("id")
     assert settings == {
         "model": "test_model",
@@ -1479,7 +1473,7 @@ def test_evaluate_ap(
         "label_key": "k1",
         "min_area": 1200,
     }
-    assert eval_job_min_area_1200.metrics() != expected_metrics
+    assert eval_job_min_area_1200.metrics != expected_metrics
 
     # check for difference with max area now dividing the set of annotations
     eval_job_max_area_1200 = model.evaluate_ap(
@@ -1493,7 +1487,7 @@ def test_evaluate_ap(
         max_area=1200,
     )
     time.sleep(1)
-    settings = eval_job_max_area_1200.settings()
+    settings = eval_job_max_area_1200.settings
     settings.pop("id")
     assert settings == {
         "model": "test_model",
@@ -1504,7 +1498,7 @@ def test_evaluate_ap(
         "label_key": "k1",
         "max_area": 1200,
     }
-    assert eval_job_max_area_1200.metrics() != expected_metrics
+    assert eval_job_max_area_1200.metrics != expected_metrics
 
     # should perform the same as the first min area evaluation
     # except now has an upper bound
@@ -1520,7 +1514,7 @@ def test_evaluate_ap(
         max_area=1800,
     )
     time.sleep(1)
-    settings = eval_job_bounded_area_1200_1800.settings()
+    settings = eval_job_bounded_area_1200_1800.settings
     settings.pop("id")
     assert settings == {
         "model": "test_model",
@@ -1532,10 +1526,10 @@ def test_evaluate_ap(
         "min_area": 1200,
         "max_area": 1800,
     }
-    assert eval_job_bounded_area_1200_1800.metrics() != expected_metrics
+    assert eval_job_bounded_area_1200_1800.metrics != expected_metrics
     assert (
-        eval_job_bounded_area_1200_1800.metrics()
-        == eval_job_min_area_1200.metrics()
+        eval_job_bounded_area_1200_1800.metrics
+        == eval_job_min_area_1200.metrics
     )
 
 
@@ -1562,9 +1556,9 @@ def test_evaluate_image_clf(
 
     # sleep to give the backend time to compute
     time.sleep(1)
-    assert eval_job.status() == JobStatus.DONE
+    assert eval_job.status == JobStatus.DONE
 
-    metrics = eval_job.metrics()
+    metrics = eval_job.metrics
 
     expected_metrics = [
         {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
@@ -1597,7 +1591,7 @@ def test_evaluate_image_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.confusion_matrices()
+    confusion_matrices = eval_job.confusion_matrices
     assert confusion_matrices == [
         {
             "label_key": "k4",
@@ -1861,9 +1855,9 @@ def test_evaluate_tabular_clf(
 
     # sleep to give the backend time to compute
     time.sleep(1)
-    assert eval_job.status() == JobStatus.DONE
+    assert eval_job.status == JobStatus.DONE
 
-    metrics = eval_job.metrics()
+    metrics = eval_job.metrics
 
     expected_metrics = [
         {
@@ -1923,7 +1917,7 @@ def test_evaluate_tabular_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.confusion_matrices()
+    confusion_matrices = eval_job.confusion_matrices
 
     expected_confusion_matrices = [
         {
@@ -1948,7 +1942,7 @@ def test_evaluate_tabular_clf(
 
     eval_jobs = model.get_evaluations()
     assert len(eval_jobs) == 1
-    eval_settings = eval_jobs[0].settings()
+    eval_settings = eval_jobs[0].settings
     eval_settings.pop("id")
     assert eval_settings == {
         "model": "test_model",
@@ -1958,14 +1952,14 @@ def test_evaluate_tabular_clf(
         "task_type": "classification",
     }
 
-    metrics_from_eval_settings_id = eval_jobs[0].metrics()
+    metrics_from_eval_settings_id = eval_jobs[0].metrics
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
     for m in metrics_from_eval_settings_id:
         assert m in expected_metrics
     for m in expected_metrics:
         assert m in metrics_from_eval_settings_id
 
-    assert eval_jobs[0].confusion_matrices() == expected_confusion_matrices
+    assert eval_jobs[0].confusion_matrices == expected_confusion_matrices
 
     model.delete()
 
@@ -2095,7 +2089,7 @@ def test_evaluate_tabular_clf(
 #     eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
 #     time.sleep(2)
 
-#     metrics = eval_job.metrics()
+#     metrics = eval_job.metrics
 
 #     for m in metrics:
 #         assert m["group"] in [

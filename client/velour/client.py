@@ -300,10 +300,7 @@ class Dataset:
         datums = self.client._requests_get_rel_host(
             f"datasets/{self.name}/data"
         ).json()
-        return sorted(
-            [schemas.Datum(**datum) for datum in datums],
-            key=lambda x: int(x.uid),
-        )
+        return [schemas.Datum(**datum) for datum in datums]
 
     def get_images(self) -> List[schemas.Image]:
         """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""

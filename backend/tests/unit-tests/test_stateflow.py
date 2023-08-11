@@ -8,6 +8,8 @@ from velour_api.enums import State
 from velour_api.exceptions import (
     DatasetFinalizedError,
     DatasetNotFinalizedError,
+    ModelFinalizedError,
+    ModelNotFinalizedError,
     StateflowError,
 )
 from velour_api.schemas.stateflow import (
@@ -81,7 +83,7 @@ def test__update_backend_state():
                 md_state=md_state,
             )
         )
-        if ds_next != State.NONE:
+        if ds_next is not None:
             _update_backend_state(status=ds_next, dataset_name="ds")
         else:
             _update_backend_state(
@@ -123,44 +125,125 @@ def test__update_backend_state():
 
     # model - positive cases
     for state in [State.READY, State.EVALUATE]:
-        _test_permutation_pos(state, State.NONE, State.NONE, State.CREATE)
-        _test_permutation_pos(state, State.NONE, State.CREATE, State.CREATE)
-        _test_permutation_pos(state, State.NONE, State.CREATE, State.READY)
-        _test_permutation_pos(state, State.NONE, State.CREATE, State.DELETE)
-        _test_permutation_pos(state, State.NONE, State.READY, State.READY)
-        _test_permutation_pos(state, State.NONE, State.READY, State.EVALUATE)
-        _test_permutation_pos(state, State.NONE, State.READY, State.DELETE)
-        _test_permutation_pos(state, State.NONE, State.EVALUATE, State.READY)
-        _test_permutation_pos(
-            state, State.NONE, State.EVALUATE, State.EVALUATE
-        )
-        _test_permutation_pos(state, State.NONE, State.DELETE, State.DELETE)
+        _test_permutation_pos(state, None, State.NONE, State.CREATE)
+        _test_permutation_pos(state, None, State.CREATE, State.CREATE)
+        _test_permutation_pos(state, None, State.CREATE, State.READY)
+        _test_permutation_pos(state, None, State.CREATE, State.DELETE)
+        _test_permutation_pos(state, None, State.READY, State.READY)
+        _test_permutation_pos(state, None, State.READY, State.EVALUATE)
+        _test_permutation_pos(state, None, State.READY, State.DELETE)
+        _test_permutation_pos(state, None, State.EVALUATE, State.READY)
+        _test_permutation_pos(state, None, State.EVALUATE, State.EVALUATE)
+        _test_permutation_pos(state, None, State.NONE, State.DELETE)
+        _test_permutation_pos(state, None, State.DELETE, State.DELETE)
 
     # model - negative cases
     for state in [State.READY, State.EVALUATE]:
-        _test_permutation_neg(state, State.NONE, State.NONE, State.READY)
-        _test_permutation_neg(state, State.NONE, State.NONE, State.EVALUATE)
-        _test_permutation_neg(state, State.NONE, State.NONE, State.DELETE)
-        _test_permutation_neg(state, State.NONE, State.CREATE, State.EVALUATE)
-        _test_permutation_neg(state, State.NONE, State.READY, State.CREATE)
-        _test_permutation_neg(state, State.NONE, State.EVALUATE, State.CREATE)
-        _test_permutation_neg(state, State.NONE, State.EVALUATE, State.DELETE)
-        _test_permutation_neg(state, State.NONE, State.DELETE, State.CREATE)
-        _test_permutation_neg(state, State.NONE, State.DELETE, State.READY)
-        _test_permutation_neg(state, State.NONE, State.DELETE, State.EVALUATE)
-    for state in [State.CREATE, State.DELETE]:
-        _test_permutation_neg(state, State.NONE, State.NONE, State.CREATE)
-        _test_permutation_neg(state, State.NONE, State.CREATE, State.CREATE)
-        _test_permutation_neg(state, State.NONE, State.CREATE, State.READY)
-        _test_permutation_neg(state, State.NONE, State.CREATE, State.DELETE)
-        _test_permutation_neg(state, State.NONE, State.READY, State.READY)
-        _test_permutation_neg(state, State.NONE, State.READY, State.EVALUATE)
-        _test_permutation_neg(state, State.NONE, State.READY, State.DELETE)
-        _test_permutation_neg(state, State.NONE, State.EVALUATE, State.READY)
+        _test_permutation_neg(state, None, State.NONE, State.READY)
+        _test_permutation_neg(state, None, State.NONE, State.EVALUATE)
         _test_permutation_neg(
-            state, State.NONE, State.EVALUATE, State.EVALUATE
+            state,
+            None,
+            State.CREATE,
+            State.EVALUATE,
+            error=ModelNotFinalizedError,
         )
-        _test_permutation_neg(state, State.NONE, State.DELETE, State.DELETE)
+        _test_permutation_neg(
+            state, None, State.READY, State.CREATE, error=ModelFinalizedError
+        )
+        _test_permutation_neg(
+            state,
+            None,
+            State.EVALUATE,
+            State.CREATE,
+            error=ModelFinalizedError,
+        )
+        _test_permutation_neg(state, None, State.EVALUATE, State.DELETE)
+        _test_permutation_neg(state, None, State.DELETE, State.CREATE)
+        _test_permutation_neg(state, None, State.DELETE, State.READY)
+        _test_permutation_neg(state, None, State.DELETE, State.EVALUATE)
+    for state in [State.CREATE]:
+        _test_permutation_neg(
+            state,
+            None,
+            State.NONE,
+            State.CREATE,
+            error=DatasetNotFinalizedError,
+        )
+        _test_permutation_neg(
+            state,
+            None,
+            State.CREATE,
+            State.CREATE,
+            error=DatasetNotFinalizedError,
+        )
+        _test_permutation_neg(
+            state,
+            None,
+            State.CREATE,
+            State.READY,
+            error=DatasetNotFinalizedError,
+        )
+        _test_permutation_neg(
+            state,
+            None,
+            State.CREATE,
+            State.DELETE,
+            error=DatasetNotFinalizedError,
+        )
+        _test_permutation_neg(
+            state,
+            None,
+            State.READY,
+            State.READY,
+            error=DatasetNotFinalizedError,
+        )
+        _test_permutation_neg(
+            state,
+            None,
+            State.READY,
+            State.EVALUATE,
+            error=DatasetNotFinalizedError,
+        )
+        _test_permutation_neg(
+            state,
+            None,
+            State.READY,
+            State.DELETE,
+            error=DatasetNotFinalizedError,
+        )
+        _test_permutation_neg(
+            state,
+            None,
+            State.EVALUATE,
+            State.READY,
+            error=DatasetNotFinalizedError,
+        )
+        _test_permutation_neg(
+            state,
+            None,
+            State.EVALUATE,
+            State.EVALUATE,
+            error=DatasetNotFinalizedError,
+        )
+        _test_permutation_neg(
+            state,
+            None,
+            State.DELETE,
+            State.DELETE,
+            error=DatasetNotFinalizedError,
+        )
+    for state in [State.DELETE]:
+        _test_permutation_neg(state, None, State.NONE, State.CREATE)
+        _test_permutation_neg(state, None, State.CREATE, State.CREATE)
+        _test_permutation_neg(state, None, State.CREATE, State.READY)
+        _test_permutation_neg(state, None, State.CREATE, State.DELETE)
+        _test_permutation_neg(state, None, State.READY, State.READY)
+        _test_permutation_neg(state, None, State.READY, State.EVALUATE)
+        _test_permutation_neg(state, None, State.READY, State.DELETE)
+        _test_permutation_neg(state, None, State.EVALUATE, State.READY)
+        _test_permutation_neg(state, None, State.EVALUATE, State.EVALUATE)
+        _test_permutation_neg(state, None, State.DELETE, State.DELETE)
 
     # model & dataset - postive cases
     _test_permutation_pos(State.READY, State.DELETE, State.CREATE)
