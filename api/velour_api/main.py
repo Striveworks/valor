@@ -45,9 +45,154 @@ def get_db():
         db.close()
 
 
-@app.get("/labels", status_code=200, dependencies=[Depends(token_auth_scheme)])
-def get_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
+""" GROUNDTRUTHS """
+
+
+@app.post(
+    "/groundtruths",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["GroundTruths"],
+)
+def create_groundtruths(
+    gt: schemas.GroundTruth, db: Session = Depends(get_db)
+):
+    try:
+        crud.create_groundtruth(db=db, groundtruth=gt)
+    except (
+        exceptions.DatasetDoesNotExistError,
+        exceptions.DatumDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (exceptions.DatasetFinalizedError,) as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@app.get(
+    "/groundtruths/datasets/{dataset_name}/datum/{uid}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["GroundTruths"],
+)
+def get_groundtruth(
+    dataset_name: str, uid: str, db: Session = Depends(get_db)
+) -> schemas.GroundTruth | None:
+    try:
+        return crud.get_groundtruth(
+            db=db,
+            dataset_name=dataset_name,
+            datum_uid=uid,
+        )
+    except (
+        exceptions.DatumDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+""" PREDICTIONS """
+
+
+@app.post(
+    "/predictions",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Predictions"],
+)
+def create_predictions(
+    pd: schemas.Prediction,
+    db: Session = Depends(get_db),
+):
+    try:
+        crud.create_prediction(db=db, prediction=pd)
+    except (
+        exceptions.DatasetDoesNotExistError,
+        exceptions.ModelDoesNotExistError,
+        exceptions.DatumDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (
+        exceptions.DatasetNotFinalizedError,
+        exceptions.ModelFinalizedError,
+    ) as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@app.get(
+    "/predictions/models/{model_name}/datum/{uid}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Predictions"],
+)
+def get_prediction(
+    model_name: str, uid: str, db: Session = Depends(get_db)
+) -> schemas.Prediction | None:
+    try:
+        return crud.get_prediction(
+            db=db,
+            model_name=model_name,
+            datum_uid=uid,
+        )
+    except (
+        exceptions.DatumDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+""" LABELS """
+
+
+@app.get(
+    "/labels",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Labels"],
+)
+def get_all_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
     return crud.get_labels(db=db)
+
+
+@app.get(
+    "/labels/dataset/{dataset_name}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Labels"],
+)
+def get_labels_from_dataset(
+    dataset_name: str, db: Session = Depends(get_db)
+) -> list[schemas.Label]:
+    try:
+        return crud.get_labels(
+            db=db,
+            request=schemas.Filter(
+                dataset_names=[dataset_name],
+                allow_predictions=False,
+            ),
+        )
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/labels/model/{model_name}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Labels"],
+)
+def get_labels_from_model(
+    model_name: str, db: Session = Depends(get_db)
+) -> list[schemas.Label]:
+    try:
+        return crud.get_labels(
+            db=db,
+            request=schemas.Filter(
+                model_name=[model_name],
+                allow_groundtruths=False,
+            ),
+        )
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 """ DATASET """
@@ -63,25 +208,6 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     try:
         crud.create_dataset(db=db, dataset=dataset)
     except (exceptions.DatasetAlreadyExistsError,) as e:
-        raise HTTPException(status_code=409, detail=str(e))
-
-
-@app.post(
-    "/datasets/groundtruths",
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datasets"],
-)
-def create_groundtruths(
-    gt: schemas.GroundTruth, db: Session = Depends(get_db)
-):
-    try:
-        crud.create_groundtruth(db=db, groundtruth=gt)
-    except (
-        exceptions.DatasetDoesNotExistError,
-        exceptions.DatumDoesNotExistError,
-    ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except (exceptions.DatasetFinalizedError,) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -122,143 +248,6 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@app.put(
-    "/datasets/{dataset_name}/finalize/{model_name}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datasets"],
-)
-def finalize_inferences(
-    dataset_name: str, model_name: str, db: Session = Depends(get_db)
-):
-    try:
-        crud.finalize(
-            db=db,
-            model_name=model_name,
-            dataset_name=dataset_name,
-        )
-    except (
-        exceptions.DatasetDoesNotExistError,
-        exceptions.ModelDoesNotExistError,
-    ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/datasets/{dataset_name}/labels",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datasets"],
-)
-def get_labels_from_dataset(
-    dataset_name: str, db: Session = Depends(get_db)
-) -> list[schemas.Label]:
-    try:
-        return crud.get_labels(
-            db=db,
-            request=schemas.Filter(
-                dataset_names=[dataset_name],
-                allow_predictions=False,
-            ),
-        )
-    except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/datasets/{dataset_name}/data",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datasets"],
-)
-def get_datums(
-    dataset_name: str, db: Session = Depends(get_db)
-) -> list[schemas.Datum]:
-    try:
-        return crud.get_datums(
-            db=db,
-            request=schemas.Filter(
-                dataset_names=[dataset_name],
-                allow_predictions=False,
-            ),
-        )
-    except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-# @TODO: Enforce datum typing with an enum
-@app.get(
-    "/datasets/{dataset_name}/data/filter/{data_type}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datasets"],
-)
-def get_filtered_dataset_datums(
-    dataset_name: str, data_type: str, db: Session = Depends(get_db)
-) -> list[schemas.Datum]:
-    try:
-        return crud.get_datums(
-            db=db, dataset_name=dataset_name, filter=data_type
-        )
-    except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/datasets/{dataset_name}/data/{uid}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datasets"],
-)
-def get_datum(
-    dataset_name: str, uid: str, db: Session = Depends(get_db)
-) -> schemas.Datum | None:
-    try:
-        return crud.get_datum(
-            db=db,
-            dataset_name=dataset_name,
-            uid=uid,
-        )
-    except (
-        exceptions.DatumDoesNotExistError,
-        exceptions.DatasetDoesNotExistError,
-    ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/datasets/{dataset_name}/data/{uid}/groundtruth",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datasets"],
-)
-def get_groundtruth(
-    dataset_name: str, uid: str, db: Session = Depends(get_db)
-) -> schemas.GroundTruth | None:
-    try:
-        return crud.get_groundtruth(
-            db=db,
-            dataset_name=dataset_name,
-            datum_uid=uid,
-        )
-    except (
-        exceptions.DatumDoesNotExistError,
-        exceptions.DatasetDoesNotExistError,
-    ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/datasets/{dataset_name}/evaluations",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datasets"],
-)
-def get_dataset_evaluations(dataset_name: str) -> dict[str, list[int]]:
-    """Returns mapping of model names to list of job ids."""
-    return crud.get_dataset_evaluations(dataset_name)
-
-
 @app.delete(
     "/datasets/{dataset_name}",
     dependencies=[Depends(token_auth_scheme)],
@@ -278,6 +267,70 @@ def delete_dataset(
         raise HTTPException(status_code=409, detail=str(e))
 
 
+""" DATUMS """
+
+
+@app.get(
+    "/data/dataset/{dataset_name}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Datums"],
+)
+def get_datums(
+    dataset_name: str, db: Session = Depends(get_db)
+) -> list[schemas.Datum]:
+    try:
+        return crud.get_datums(
+            db=db,
+            request=schemas.Filter(
+                dataset_names=[dataset_name],
+                allow_predictions=False,
+            ),
+        )
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+# @TODO: Enforce datum typing with an enum
+@app.get(
+    "/data/dataset/{dataset_name}/filter/{data_type}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Datums"],
+)
+def get_filtered_dataset_datums(
+    dataset_name: str, data_type: str, db: Session = Depends(get_db)
+) -> list[schemas.Datum]:
+    try:
+        return crud.get_datums(
+            db=db, dataset_name=dataset_name, filter=data_type
+        )
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/data/datasets/{dataset_name}/uid/{uid}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Datums"],
+)
+def get_datum(
+    dataset_name: str, uid: str, db: Session = Depends(get_db)
+) -> schemas.Datum | None:
+    try:
+        return crud.get_datum(
+            db=db,
+            dataset_name=dataset_name,
+            uid=uid,
+        )
+    except (
+        exceptions.DatumDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 """ MODELS """
 
 
@@ -291,30 +344,6 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     try:
         crud.create_model(db=db, model=model)
     except (exceptions.ModelAlreadyExistsError,) as e:
-        raise HTTPException(status_code=409, detail=str(e))
-
-
-@app.post(
-    "/models/predictions",
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Models"],
-)
-def create_predictions(
-    pd: schemas.Prediction,
-    db: Session = Depends(get_db),
-):
-    try:
-        crud.create_prediction(db=db, prediction=pd)
-    except (
-        exceptions.DatasetDoesNotExistError,
-        exceptions.ModelDoesNotExistError,
-        exceptions.DatumDoesNotExistError,
-    ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except (
-        exceptions.DatasetNotFinalizedError,
-        exceptions.ModelFinalizedError,
-    ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -340,6 +369,28 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
         raise HTTPException(status_code=404, detail=str(e))
 
 
+@app.put(
+    "/models/{model_name}/datasets/{dataset_name}/finalize",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Models"],
+)
+def finalize_inferences(
+    dataset_name: str, model_name: str, db: Session = Depends(get_db)
+):
+    try:
+        crud.finalize(
+            db=db,
+            model_name=model_name,
+            dataset_name=dataset_name,
+        )
+    except (
+        exceptions.DatasetDoesNotExistError,
+        exceptions.ModelDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @app.delete(
     "/models/{model_name}",
     dependencies=[Depends(token_auth_scheme)],
@@ -354,65 +405,11 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=409, detail=str(e))
 
 
-@app.get(
-    "/models/{model_name}/data/{uid}/prediction",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Models"],
-)
-def get_prediction(
-    model_name: str, uid: str, db: Session = Depends(get_db)
-) -> schemas.Prediction | None:
-    try:
-        return crud.get_prediction(
-            db=db,
-            model_name=model_name,
-            datum_uid=uid,
-        )
-    except (
-        exceptions.DatumDoesNotExistError,
-        exceptions.DatasetDoesNotExistError,
-    ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/models/{model_name}/labels",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Models"],
-)
-def get_labels_from_model(
-    model_name: str, db: Session = Depends(get_db)
-) -> list[schemas.Label]:
-    try:
-        return crud.get_labels(
-            db=db,
-            request=schemas.Filter(
-                model_name=[model_name],
-                allow_groundtruths=False,
-            ),
-        )
-    except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/models/{model_name}/evaluations",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Models"],
-)
-def get_model_evaluations(model_name: str) -> dict[str, list[int]]:
-    """Returns mapping of dataset names to list of job ids."""
-    return crud.get_model_evaluations(model_name)
-
-
 """ EVALUATION """
 
 
 @app.post(
-    "/ap-metrics",
+    "/evaluations/ap-metrics",
     status_code=202,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
@@ -446,7 +443,7 @@ def create_ap_metrics(
 
 
 @app.post(
-    "/clf-metrics",
+    "/evaluations/clf-metrics",
     status_code=202,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
@@ -480,7 +477,29 @@ def create_clf_metrics(
 
 
 @app.get(
-    "/datasets/{dataset_name}/models/{model_name}/evaluations/{job_id}",
+    "/evaluations/datasets/{dataset_name}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Evaluations"],
+)
+def get_dataset_evaluations(dataset_name: str) -> dict[str, list[int]]:
+    """Returns mapping of model names to list of job ids."""
+    return crud.get_dataset_evaluations(dataset_name)
+
+
+@app.get(
+    "/evaluations/models/{model_name}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Evaluations"],
+)
+def get_model_evaluations(model_name: str) -> dict[str, list[int]]:
+    """Returns mapping of dataset names to list of job ids."""
+    return crud.get_model_evaluations(model_name)
+
+
+@app.get(
+    "/evaluations/{job_id}/dataset/{dataset_name}/model/{model_name}",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
@@ -498,7 +517,37 @@ def get_evaluation_status(
 
 
 @app.get(
-    "/datasets/{dataset_name}/models/{model_name}/evaluations/{job_id}/metrics",
+    "/evaluations/{job_id}/dataset/{dataset_name}/model/{model_name}/settings",
+    dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
+    tags=["Evaluations"],
+)
+def get_evaluation_settings(
+    dataset_name: str,
+    model_name: str,
+    job_id: int,
+    db: Session = Depends(get_db),
+) -> schemas.EvaluationSettings:
+    try:
+        # status = crud.get_evaluation_status(
+        #     dataset_name=dataset_name,
+        #     model_name=model_name,
+        #     job_id=job_id,
+        # )
+        # if status != enums.JobStatus.DONE:
+        #     raise HTTPException(
+        #         status_code=404,
+        #         detail=f"No settings for job {job_id} since its status is {status}",
+        #     )
+        return crud.get_evaluation_settings_from_id(
+            db=db, evaluation_settings_id=job_id
+        )
+    except exceptions.JobDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/evaluations/{job_id}/dataset/{dataset_name}/model/{model_name}/metrics",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
     tags=["Evaluations"],
@@ -535,7 +584,7 @@ def get_evaluation_metrics(
 
 
 @app.get(
-    "/datasets/{dataset_name}/models/{model_name}/evaluations/{job_id}/confusion-matrices",
+    "/evaluations/{job_id}/dataset/{dataset_name}/model/{model_name}/confusion-matrices",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
     tags=["Evaluations"],
@@ -558,36 +607,6 @@ def get_evaluation_confusion_matrices(
                 detail=f"No metrics for job {job_id} since its status is {status}",
             )
         return crud.get_confusion_matrices_from_evaluation_settings_id(
-            db=db, evaluation_settings_id=job_id
-        )
-    except exceptions.JobDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/datasets/{dataset_name}/models/{model_name}/evaluations/{job_id}/settings",
-    dependencies=[Depends(token_auth_scheme)],
-    response_model_exclude_none=True,
-    tags=["Evaluations"],
-)
-def get_evaluation_settings(
-    dataset_name: str,
-    model_name: str,
-    job_id: int,
-    db: Session = Depends(get_db),
-) -> schemas.EvaluationSettings:
-    try:
-        # status = crud.get_evaluation_status(
-        #     dataset_name=dataset_name,
-        #     model_name=model_name,
-        #     job_id=job_id,
-        # )
-        # if status != enums.JobStatus.DONE:
-        #     raise HTTPException(
-        #         status_code=404,
-        #         detail=f"No settings for job {job_id} since its status is {status}",
-        #     )
-        return crud.get_evaluation_settings_from_id(
             db=db, evaluation_settings_id=job_id
         )
     except exceptions.JobDoesNotExistError as e:

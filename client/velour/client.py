@@ -2,6 +2,7 @@ import json
 import math
 import os
 import time
+import warnings
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
@@ -133,7 +134,7 @@ class Evaluation:
     @property
     def status(self) -> str:
         resp = self.client._requests_get_rel_host(
-            f"datasets/{self.dataset_name}/models/{self.model_name}/evaluations/{self._id}"
+            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}"
         ).json()
         return JobStatus(resp)
 
@@ -141,7 +142,7 @@ class Evaluation:
     @property
     def settings(self) -> dict:
         return self.client._requests_get_rel_host(
-            f"datasets/{self.dataset_name}/models/{self.model_name}/evaluations/{self._id}/settings"
+            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/settings"
         ).json()
 
     def wait_for_completion(self, *, interval=1.0, timeout=None):
@@ -159,7 +160,7 @@ class Evaluation:
         if self.status != JobStatus.DONE:
             return []
         return self.client._requests_get_rel_host(
-            f"datasets/{self.dataset_name}/models/{self.model_name}/evaluations/{self._id}/metrics"
+            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/metrics"
         ).json()
 
     @property
@@ -167,7 +168,7 @@ class Evaluation:
         if self.status != JobStatus.DONE:
             return []
         return self.client._requests_get_rel_host(
-            f"datasets/{self.dataset_name}/models/{self.model_name}/evaluations/{self._id}/confusion-matrices"
+            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/confusion-matrices"
         ).json()
 
 
@@ -273,21 +274,27 @@ class Dataset:
         except AssertionError:
             raise TypeError(f"Invalid type `{type(groundtruth)}`")
 
-        groundtruth.dataset = self.info.name
-        return self.client._requests_post_rel_host(
-            "datasets/groundtruths",
+        if len(groundtruth.annotations) == 0:
+            warnings.warn(
+                f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations. Skipping..."
+            )
+            return
+
+        groundtruth.datum.dataset = self.info.name
+        self.client._requests_post_rel_host(
+            "groundtruths",
             json=asdict(groundtruth),
         )
 
     def get_groundtruth(self, uid: str) -> schemas.GroundTruth:
         resp = self.client._requests_get_rel_host(
-            f"datasets/{self.info.name}/data/{uid}/groundtruth"
+            f"groundtruths/datasets/{self.info.name}/data/{uid}"
         ).json()
         return schemas.GroundTruth(**resp)
 
     def get_labels(self) -> List[schemas.LabelDistribution]:
         labels = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/labels"
+            f"labels/datasets/{self.name}"
         ).json()
 
         return [
@@ -298,7 +305,7 @@ class Dataset:
     def get_datums(self) -> List[schemas.Datum]:
         """Returns a list of datums."""
         datums = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/data"
+            f"data/datasets/{self.name}"
         ).json()
         return [schemas.Datum(**datum) for datum in datums]
 
@@ -312,7 +319,7 @@ class Dataset:
 
     def get_evaluations(self) -> List[Evaluation]:
         model_evaluations = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/evaluations"
+            f"evaluations/datasets/{self.name}"
         ).json()
         return [
             Evaluation(
@@ -449,21 +456,28 @@ class Model:
             raise TypeError(
                 f"Expected `velour.schemas.Prediction`, got `{type(prediction)}`"
             )
+
+        if len(prediction.annotations) == 0:
+            warnings.warn(
+                f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations. Skipping..."
+            )
+            return
+
         prediction.model = self.info.name
         return self.client._requests_post_rel_host(
-            "models/predictions",
+            "predictions",
             json=asdict(prediction),
         )
 
     def get_prediction(self, uid: str) -> schemas.Prediction:
         resp = self.client._requests_get_rel_host(
-            f"models/{self.info.name}/data/{uid}/prediction"
+            f"predictions/models/{self.info.name}/data/{uid}",
         ).json()
         return schemas.Prediction(**resp)
 
     def finalize_inferences(self, dataset: "Dataset") -> None:
         return self.client._requests_put_rel_host(
-            f"datasets/{dataset.name}/finalize/{self.name}"
+            f"models/{self.name}/datasets/{dataset.name}/finalize"
         ).json()
 
     def delete(self):
@@ -498,7 +512,7 @@ class Model:
         }
 
         resp = self.client._requests_post_rel_host(
-            "clf-metrics", json=payload
+            "evaluations/clf-metrics", json=payload
         ).json()
 
         return Evaluation(
@@ -539,7 +553,7 @@ class Model:
             payload["ious_to_keep"] = ious_to_keep
 
         resp = self.client._requests_post_rel_host(
-            "ap-metrics", json=payload
+            "evaluations/ap-metrics", json=payload
         ).json()
 
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
@@ -557,7 +571,7 @@ class Model:
 
     def get_evaluations(self) -> List[Evaluation]:
         dataset_evaluations = self.client._requests_get_rel_host(
-            f"models/{self.name}/evaluations"
+            f"evaluations/models/{self.name}"
         ).json()
         return [
             Evaluation(
@@ -600,7 +614,7 @@ class Model:
 
     def get_labels(self) -> List[schemas.Label]:
         labels = self.client._requests_get_rel_host(
-            f"models/{self.name}/labels"
+            f"labels/models/{self.name}"
         ).json()
 
         return [

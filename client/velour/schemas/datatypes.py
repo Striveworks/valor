@@ -41,15 +41,11 @@ class Image:
         metadata = {
             metadatum.key: metadatum.value for metadatum in datum.metadata
         }
-        height = int(metadata["height"])
-        width = int(metadata["width"])
-        del metadata["height"]
-        del metadata["width"]
         return cls(
             dataset=datum.dataset,
             uid=datum.uid,
-            height=height,
-            width=width,
+            height=int(metadata.pop("height")),
+            width=int(metadata.pop("width")),
             metadata=metadata,
         )
 
@@ -103,25 +99,18 @@ class VideoFrame:
         metadata = {
             metadatum.key: metadatum.value for metadatum in datum.metadata
         }
-        height = int(metadata["height"])
-        width = int(metadata["width"])
-        frame = int(metadata["frame"])
-        del metadata["height"]
-        del metadata["width"]
-        del metadata["frame"]
-
         return cls(
             image=Image(
                 dataset=datum.dataset,
                 uid=datum.uid,
-                height=height,
-                width=width,
+                height=int(metadata.pop("height")),
+                width=int(metadata.pop("width")),
                 metadata=[
                     schemas.MetaDatum(key=key, value=metadata[key])
                     for key in metadata
                 ],
             ),
-            frame=frame,
+            frame=int(metadata.pop("frame")),
         )
 
     def to_datum(self) -> schemas.Datum:

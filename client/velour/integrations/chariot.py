@@ -93,7 +93,6 @@ def _retrieve_chariot_annotations(manifest_url: str):
 
 
 def _parse_image_classification_groundtruths(
-    dataset_name: str,
     datum: dict,
     label_key: str,
 ) -> GroundTruth:
@@ -103,7 +102,6 @@ def _parse_image_classification_groundtruths(
     uid = Path(datum["path"]).stem
 
     image = Image(
-        dataset=dataset_name,
         uid=uid,
         height=-1,
         width=-1,
@@ -122,7 +120,6 @@ def _parse_image_classification_groundtruths(
 
 
 def _parse_image_segmentation_groundtruths(
-    dataset_name: str,
     datum: dict,
     label_key: str,
 ) -> GroundTruth:
@@ -132,7 +129,6 @@ def _parse_image_segmentation_groundtruths(
     uid = Path(datum["path"]).stem
 
     image = Image(
-        dataset=dataset_name,
         uid=uid,
         height=-1,
         width=-1,
@@ -169,7 +165,6 @@ def _parse_image_segmentation_groundtruths(
 
 
 def _parse_object_detection_groundtruths(
-    dataset_name: str,
     datum: dict,
     label_key: str,
 ) -> GroundTruth:
@@ -179,7 +174,6 @@ def _parse_object_detection_groundtruths(
     uid = Path(datum["path"]).stem
 
     image = Image(
-        dataset=dataset_name,
         uid=uid,
         height=-1,
         width=-1,
@@ -206,7 +200,6 @@ def _parse_object_detection_groundtruths(
 def _parse_chariot_groundtruths(
     chariot_manifest,
     chariot_task_type,
-    dataset_name: str,
     label_key: str,
     use_training_manifest: bool = True,
 ) -> list:
@@ -232,7 +225,6 @@ def _parse_chariot_groundtruths(
     if chariot_task_type.image_classification:
         groundtruth_annotations = [
             _parse_image_classification_groundtruths(
-                dataset_name=dataset_name,
                 datum=datum,
                 label_key=label_key,
             )
@@ -243,7 +235,6 @@ def _parse_chariot_groundtruths(
     elif chariot_task_type.image_segmentation:
         groundtruth_annotations = [
             _parse_image_segmentation_groundtruths(
-                dataset_name=dataset_name,
                 datum=datum,
                 label_key=label_key,
             )
@@ -254,7 +245,6 @@ def _parse_chariot_groundtruths(
     elif chariot_task_type.object_detection:
         groundtruth_annotations = [
             _parse_object_detection_groundtruths(
-                dataset_name=dataset_name,
                 datum=datum,
                 label_key=label_key,
             )
@@ -365,7 +355,6 @@ def create_dataset_from_chariot(
     groundtruths = _parse_chariot_groundtruths(
         chariot_manifest=chariot_annotations,
         chariot_task_type=dsv.supported_task_types,
-        dataset_name=name,
         label_key=label_key,
         use_training_manifest=use_training_manifest,
     )
@@ -378,7 +367,6 @@ def create_dataset_from_chariot(
 
     # Upload velour dataset
     for gt in groundtruths:
-        gt.dataset_name = (name,)
         velour_dataset.add_groundtruth(gt)
 
     # Finalize and return
