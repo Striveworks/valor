@@ -1,4 +1,7 @@
+import json
+import math
 import os
+import time
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
@@ -127,26 +130,44 @@ class Evaluation:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    @property
     def status(self) -> str:
         resp = self.client._requests_get_rel_host(
             f"datasets/{self.dataset_name}/models/{self.model_name}/evaluations/{self._id}"
         ).json()
         return JobStatus(resp)
 
+    # TODO: replace value with a dataclass?
+    @property
+    def settings(self) -> dict:
+        return self.client._requests_get_rel_host(
+            f"datasets/{self.dataset_name}/models/{self.model_name}/evaluations/{self._id}/settings"
+        ).json()
+
+    def wait_for_completion(self, *, interval=1.0, timeout=None):
+        if timeout:
+            timeout_counter = int(math.ceil(timeout / interval))
+        while self.status not in [JobStatus.DONE, JobStatus.FAILED]:
+            time.sleep(interval)
+            if timeout:
+                timeout_counter -= 1
+                if timeout_counter < 0:
+                    raise TimeoutError
+
+    @property
     def metrics(self) -> List[dict]:
+        if self.status != JobStatus.DONE:
+            return []
         return self.client._requests_get_rel_host(
             f"datasets/{self.dataset_name}/models/{self.model_name}/evaluations/{self._id}/metrics"
         ).json()
 
+    @property
     def confusion_matrices(self) -> List[dict]:
+        if self.status != JobStatus.DONE:
+            return []
         return self.client._requests_get_rel_host(
             f"datasets/{self.dataset_name}/models/{self.model_name}/evaluations/{self._id}/confusion-matrices"
-        ).json()
-
-    # TODO: replace value with a dataclass?
-    def settings(self) -> dict:
-        return self.client._requests_get_rel_host(
-            f"datasets/{self.dataset_name}/models/{self.model_name}/evaluations/{self._id}/settings"
         ).json()
 
 
@@ -232,7 +253,11 @@ class Dataset:
 
     @staticmethod
     def prune(client: Client, name: str):
-        client._requests_delete_rel_host(f"datasets/{name}")
+        try:
+            client._requests_delete_rel_host(f"datasets/{name}")
+        except ClientException as e:
+            if "does not exist" not in str(e):
+                raise e
 
     def add_metadatum(self, metadatum: schemas.MetaDatum):
         # @TODO: Add endpoint to allow adding custom metadatums
@@ -275,8 +300,10 @@ class Dataset:
         datums = self.client._requests_get_rel_host(
             f"datasets/{self.name}/data"
         ).json()
-
-        return [schemas.Datum(**datum) for datum in datums]
+        return sorted(
+            [schemas.Datum(**datum) for datum in datums],
+            key=lambda x: int(x.uid),
+        )
 
     def get_images(self) -> List[schemas.Image]:
         """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
@@ -407,7 +434,11 @@ class Model:
 
     @staticmethod
     def prune(client: Client, name: str):
-        client._requests_delete_rel_host(f"models/{name}")
+        try:
+            client._requests_delete_rel_host(f"models/{name}")
+        except ClientException as e:
+            if "does not exist" not in str(e):
+                raise e
 
     def add_metadatum(self, metadatum: schemas.MetaDatum):
         # @TODO: Add endpoint to allow adding custom metadatums
@@ -429,7 +460,7 @@ class Model:
 
     def get_prediction(self, uid: str) -> schemas.Prediction:
         resp = self.client._requests_get_rel_host(
-            f"models/{self.info.name}/datum/{uid}/prediction"
+            f"models/{self.info.name}/data/{uid}/prediction"
         ).json()
         return schemas.Prediction(**resp)
 
@@ -542,15 +573,33 @@ class Model:
             for job_id in dataset_evaluations[dataset_name]
         ]
 
-    def get_metrics_at_evaluation_settings_id(
-        self, eval_settings_id: int
-    ) -> List[dict]:
-        return [
-            _remove_none_from_dict(m)
-            for m in self.client._requests_get_rel_host(
-                f"models/{self.name}/evaluation-settings/{eval_settings_id}/metrics"
-            ).json()
-        ]
+    def get_metric_dataframes(self):
+        try:
+            import pandas as pd
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError(
+                "Must have pandas installed to use `get_metric_dataframes`."
+            )
+
+        ret = []
+        for evaluation in self.get_evaluations():
+            metrics = [
+                {**m, "dataset": evaluation.dataset_name}
+                for m in evaluation.metrics
+            ]
+            df = pd.DataFrame(metrics)
+            for k in ["label", "parameters"]:
+                df[k] = df[k].fillna("n/a")
+            df["parameters"] = df["parameters"].apply(json.dumps)
+            df["label"] = df["label"].apply(
+                lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
+            )
+            df = df.pivot(
+                index=["type", "parameters", "label"], columns=["dataset"]
+            )
+            ret.append({"settings": evaluation.settings, "df": df})
+
+        return ret
 
     def get_labels(self) -> List[schemas.Label]:
         labels = self.client._requests_get_rel_host(

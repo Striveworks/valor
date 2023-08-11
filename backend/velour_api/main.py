@@ -248,11 +248,10 @@ def delete_dataset(
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
         crud.delete(db=db, dataset_name=dataset_name)
-    except (
-        exceptions.DatasetDoesNotExistError,
-        exceptions.StateflowError,
-    ) as e:
+    except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except exceptions.StateflowError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 """ MODELS """
@@ -307,6 +306,8 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
         crud.delete(db=db, model_name=model_name)
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except exceptions.StateflowError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @app.get(
@@ -519,16 +520,16 @@ def get_evaluation_settings(
     db: Session = Depends(get_db),
 ) -> schemas.EvaluationSettings:
     try:
-        status = crud.get_evaluation_status(
-            dataset_name=dataset_name,
-            model_name=model_name,
-            job_id=job_id,
-        )
-        if status != enums.JobStatus.DONE:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No settings for job {job_id} since its status is {status}",
-            )
+        # status = crud.get_evaluation_status(
+        #     dataset_name=dataset_name,
+        #     model_name=model_name,
+        #     job_id=job_id,
+        # )
+        # if status != enums.JobStatus.DONE:
+        #     raise HTTPException(
+        #         status_code=404,
+        #         detail=f"No settings for job {job_id} since its status is {status}",
+        #     )
         return crud.get_evaluation_settings_from_id(
             db=db, evaluation_settings_id=job_id
         )

@@ -25,7 +25,7 @@ def _state_transition_error(
     model_name: str | None = None,
 ):
     # attempt to duplicate
-    if before == State.NONE and after == State.NONE:
+    if after == State.NONE:
         if not model_name:
             raise DatasetAlreadyExistsError(dataset_name)
         else:
@@ -297,7 +297,7 @@ class Stateflow(BaseModel):
                 .models[model_name]
                 .jobs
             ]
-            for model_name in self.datasets
+            for model_name in self.datasets[dataset_name].models
         }
 
     def get_model_jobs(

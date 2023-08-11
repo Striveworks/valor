@@ -82,6 +82,7 @@ def upload_coco_panoptic(
         # create datum
         image_id = ann_dict["image_id"]
         img = Image(
+            dataset=dataset.name,
             uid=str(image_id),
             height=image_id_to_height[image_id],
             width=image_id_to_width[image_id],
@@ -89,7 +90,6 @@ def upload_coco_panoptic(
 
         # create groundtruth
         return GroundTruth(
-            dataset_name=dataset.name,
             datum=img,
             annotations=[
                 Annotation(
