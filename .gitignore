@@ -4,9 +4,11 @@ build
 .tox
 .coverage*
 
+.venv
 .env.auth
 .env-*
-web/.env
+*/.env
+*/.venv
 
 .vscode
 */dist/*
@@ -17,4 +19,3 @@ site/*
 *.ipynb
 !coco-panoptic.ipynb
 !tabular.ipynb
-.venv

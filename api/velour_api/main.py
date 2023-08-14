@@ -69,7 +69,7 @@ def create_groundtruths(
 
 
 @app.get(
-    "/groundtruths/datasets/{dataset_name}/datum/{uid}",
+    "/groundtruths/dataset/{dataset_name}/datum/{uid}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["GroundTruths"],
@@ -119,7 +119,7 @@ def create_predictions(
 
 
 @app.get(
-    "/predictions/models/{model_name}/datum/{uid}",
+    "/predictions/model/{model_name}/datum/{uid}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Predictions"],
@@ -310,7 +310,7 @@ def get_filtered_dataset_datums(
 
 
 @app.get(
-    "/data/datasets/{dataset_name}/uid/{uid}",
+    "/data/dataset/{dataset_name}/uid/{uid}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datums"],

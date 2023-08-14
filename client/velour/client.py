@@ -288,13 +288,13 @@ class Dataset:
 
     def get_groundtruth(self, uid: str) -> schemas.GroundTruth:
         resp = self.client._requests_get_rel_host(
-            f"groundtruths/datasets/{self.info.name}/data/{uid}"
+            f"groundtruths/dataset/{self.info.name}/datum/{uid}"
         ).json()
         return schemas.GroundTruth(**resp)
 
     def get_labels(self) -> List[schemas.LabelDistribution]:
         labels = self.client._requests_get_rel_host(
-            f"labels/datasets/{self.name}"
+            f"labels/dataset/{self.name}"
         ).json()
 
         return [
@@ -305,7 +305,7 @@ class Dataset:
     def get_datums(self) -> List[schemas.Datum]:
         """Returns a list of datums."""
         datums = self.client._requests_get_rel_host(
-            f"data/datasets/{self.name}"
+            f"data/dataset/{self.name}"
         ).json()
         return [schemas.Datum(**datum) for datum in datums]
 
@@ -471,7 +471,7 @@ class Model:
 
     def get_prediction(self, uid: str) -> schemas.Prediction:
         resp = self.client._requests_get_rel_host(
-            f"predictions/models/{self.info.name}/data/{uid}",
+            f"predictions/model/{self.info.name}/datum/{uid}",
         ).json()
         return schemas.Prediction(**resp)
 
@@ -614,7 +614,7 @@ class Model:
 
     def get_labels(self) -> List[schemas.Label]:
         labels = self.client._requests_get_rel_host(
-            f"labels/models/{self.name}"
+            f"labels/model/{self.name}"
         ).json()
 
         return [

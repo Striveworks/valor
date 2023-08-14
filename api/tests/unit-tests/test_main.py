@@ -685,13 +685,13 @@ def test_finalize_datasets(crud, client: TestClient):
     # assert resp.status_code == 405
 
 
-""" GET /dataset/{dataset_name}/labels"""
+""" GET /labels/dataset/{dataset_name}"""
 
 
 @patch("velour_api.main.crud")
 def test_get_dataset_labels(crud, client: TestClient):
     crud.get_labels.return_value = []
-    resp = client.get("/datasets/dsetname/labels")
+    resp = client.get("/labels/dataset/dsetname")
     assert resp.status_code == 200
     crud.get_labels.assert_called_once()
 
@@ -699,20 +699,20 @@ def test_get_dataset_labels(crud, client: TestClient):
         "velour_api.main.crud.get_labels",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
-        resp = client.get("datasets/dsetname/labels")
+        resp = client.get("/labels/dataset/dsetname")
         assert resp.status_code == 404
 
-    resp = client.post("/datasets/dsetname/labels")
+    resp = client.post("/labels/dataset/dsetname")
     assert resp.status_code == 405
 
 
-""" GET /dataset/{dataset_name}/data """
+""" GET /data/dataset/{dataset_name} """
 
 
 @patch("velour_api.main.crud")
 def test_get_dataset_datums(crud, client: TestClient):
     crud.get_datums.return_value = []
-    resp = client.get("/datasets/dsetname/data")
+    resp = client.get("/data/dataset/dsetname")
     assert resp.status_code == 200
     crud.get_datums.assert_called_once()
 
@@ -720,20 +720,20 @@ def test_get_dataset_datums(crud, client: TestClient):
         "velour_api.main.crud.get_datums",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
-        resp = client.get("datasets/dsetname/data")
+        resp = client.get("/data/dataset/dsetname")
         assert resp.status_code == 404
 
-    resp = client.post("/datasets/dsetname/data")
+    resp = client.post("/data/dataset/dsetname")
     assert resp.status_code == 405
 
 
-""" GET /dataset/{dataset_name}/data/filter/{task_type} """
+""" GET /data/dataset/{dataset_name}/filter/{data_type} """
 
 
 @patch("velour_api.main.crud")
 def test_get_dataset_datums_by_filter(crud, client: TestClient):
     crud.get_datums.return_value = []
-    resp = client.get("/datasets/dsetname/data/filter/task_type")
+    resp = client.get("/data/dataset/dsetname/filter/task_type")
     assert resp.status_code == 200
     crud.get_datums.assert_called_once()
 
@@ -741,20 +741,20 @@ def test_get_dataset_datums_by_filter(crud, client: TestClient):
         "velour_api.main.crud.get_datums",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
-        resp = client.get("datasets/dsetname/data/filter/task_type")
+        resp = client.get("/data/dataset/dsetname/filter/task_type")
         assert resp.status_code == 404
 
-    resp = client.post("/datasets/dsetname/data/filter/task_type")
+    resp = client.post("/data/dataset/dsetname/filter/task_type")
     assert resp.status_code == 405
 
 
-""" GET /dataset/{dataset_name}/data/{uid} """
+""" GET /data/dataset/{dataset_name}/uid/{uid} """
 
 
 @patch("velour_api.main.crud")
 def test_get_dataset_datum(crud, client: TestClient):
     crud.get_datum.return_value = None
-    resp = client.get("/datasets/dsetname/data/uid")
+    resp = client.get("/data/dataset/dsetname/uid/uid")
     assert resp.status_code == 200
     crud.get_datum.assert_called_once()
 
@@ -762,10 +762,10 @@ def test_get_dataset_datum(crud, client: TestClient):
         "velour_api.main.crud.get_datum",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
-        resp = client.get("datasets/dsetname/data/uid")
+        resp = client.get("/data/dataset/dsetname/uid/uid")
         assert resp.status_code == 404
 
-    resp = client.post("/datasets/dsetname/data/uid")
+    resp = client.post("/data/dataset/dsetname/uid/uid")
     assert resp.status_code == 405
 
 
