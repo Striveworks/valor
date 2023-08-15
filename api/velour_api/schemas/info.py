@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from velour_api import schemas
 from velour_api.enums import AnnotationType, TaskType
@@ -36,3 +36,5 @@ class Filter(BaseModel):
     allow_annotation_metadata: bool = True
     allow_predictions: bool = True
     allow_groundtruths: bool = True
+
+    model_config = ConfigDict(extra="forbid")
