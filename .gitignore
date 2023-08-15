@@ -12,10 +12,6 @@ build
 
 .vscode
 */dist/*
-sample_notebooks/coco/*
 .DS_Store
-sample_notebooks/*.pt
 site/*
 *.ipynb
-!coco-panoptic.ipynb
-!tabular.ipynb
