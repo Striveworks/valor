@@ -166,7 +166,7 @@ def get_labels_from_dataset(
         return crud.get_labels(
             db=db,
             request=schemas.Filter(
-                dataset_names=[dataset_name],
+                datasets=[dataset_name],
                 allow_predictions=False,
             ),
         )
@@ -187,7 +187,7 @@ def get_labels_from_model(
         return crud.get_labels(
             db=db,
             request=schemas.Filter(
-                model_name=[model_name],
+                models=[model_name],
                 allow_groundtruths=False,
             ),
         )
