@@ -1,4 +1,4 @@
 services:
   web:
     volumes:
-      - ./backend/velour_api:/src/velour_api
+      - ./api/velour_api:/src/velour_api

@@ -2,14 +2,17 @@ import numpy as np
 import PIL.Image
 import pytest
 
-from velour.data_types import (
-    BoundingPolygon,
-    GroundTruthDetection,
-    GroundTruthInstanceSegmentation,
+from velour.enums import TaskType
+from velour.schemas import (
+    Annotation,
+    BasicPolygon,
+    GroundTruth,
     Image,
     Label,
+    MultiPolygon,
     Point,
-    PolygonWithHole,
+    Polygon,
+    Raster,
 )
 from velour.viz import (
     _polygons_to_binary_mask,
@@ -19,9 +22,9 @@ from velour.viz import (
 
 
 @pytest.fixture
-def bounding_poly() -> BoundingPolygon:
-    return BoundingPolygon(
-        [
+def bounding_poly() -> BasicPolygon:
+    return BasicPolygon(
+        points=[
             Point(100, 100),
             Point(200, 100),
             Point(200, 200),
@@ -31,24 +34,26 @@ def bounding_poly() -> BoundingPolygon:
 
 
 @pytest.fixture
-def poly1(bounding_poly: BoundingPolygon) -> PolygonWithHole:
-    return PolygonWithHole(
-        polygon=bounding_poly,
-        hole=BoundingPolygon(
-            [
-                Point(150, 120),
-                Point(180, 120),
-                Point(180, 140),
-                Point(150, 140),
-            ]
-        ),
+def poly1(bounding_poly: BasicPolygon) -> Polygon:
+    return Polygon(
+        boundary=bounding_poly,
+        holes=[
+            BasicPolygon(
+                points=[
+                    Point(150, 120),
+                    Point(180, 120),
+                    Point(180, 140),
+                    Point(150, 140),
+                ]
+            )
+        ],
     )
 
 
 def test__polygons_to_binary_mask(poly1):
-    poly2 = PolygonWithHole(
-        polygon=BoundingPolygon(
-            [
+    poly2 = Polygon(
+        boundary=BasicPolygon(
+            points=[
                 Point(10, 15),
                 Point(20, 15),
                 Point(20, 20),
@@ -68,43 +73,66 @@ def test__polygons_to_binary_mask(poly1):
     assert mask.sum() == area_poly1 + area_poly2
 
 
-def test_combined_segmentation_mask(poly1: PolygonWithHole):
+def test_combined_segmentation_mask(poly1: Polygon):
     with pytest.raises(ValueError) as exc_info:
-        combined_segmentation_mask([], label_key="")
+        combined_segmentation_mask(
+            [], label_key="", task_type=TaskType.INSTANCE_SEGMENTATION
+        )
     assert "cannot be empty" in str(exc_info)
 
-    image = Image("uid", 200, 200)
+    image = Image(uid="uid", height=200, width=200).to_datum()
 
-    seg1 = GroundTruthInstanceSegmentation(
-        shape=[poly1],
-        labels=[
-            Label(key="k1", value="v1"),
-            Label(key="k2", value="v2"),
-            Label(key="k3", value="v3"),
+    gt1 = GroundTruth(
+        datum=image,
+        annotations=[
+            Annotation(
+                task_type=TaskType.INSTANCE_SEGMENTATION,
+                labels=[
+                    Label(key="k1", value="v1"),
+                    Label(key="k2", value="v2"),
+                    Label(key="k3", value="v3"),
+                ],
+                multipolygon=MultiPolygon(polygons=[poly1]),
+            ),
         ],
-        image=image,
     )
-    seg2 = GroundTruthInstanceSegmentation(
-        shape=np.array([[True, False], [False, True]]),
-        labels=[Label(key="k1", value="v1"), Label(key="k2", value="v3")],
-        image=image,
+
+    gt2 = GroundTruth(
+        datum=image,
+        annotations=[
+            Annotation(
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                labels=[
+                    Label(key="k1", value="v1"),
+                    Label(key="k2", value="v3"),
+                ],
+                raster=Raster.from_numpy(
+                    np.array([[True, False], [False, True]]),
+                ),
+            )
+        ],
     )
-    segs = [seg1, seg2]
+
+    gts = [gt1, gt2]
 
     # check get an error since "k3" isn't a label key in seg2
     with pytest.raises(RuntimeError) as exc_info:
-        combined_segmentation_mask(segs, label_key="k3")
+        combined_segmentation_mask(
+            [gts[1]], label_key="k3", task_type=TaskType.SEMANTIC_SEGMENTATION
+        )
     assert "doesn't have a label" in str(exc_info)
 
     # should have one distinct (non-black) color
-    combined_mask, _ = combined_segmentation_mask(segs, label_key="k1")
+    combined_mask, _ = combined_segmentation_mask(
+        gts, label_key="k1", task_type=TaskType.INSTANCE_SEGMENTATION
+    )
     combined_mask = np.array(combined_mask)
     # check that we get two unique RGB values (black and one color for label value "v1")
     unique_rgb = np.unique(combined_mask.reshape(-1, 3), axis=0)
     assert unique_rgb.shape == (2, 3)
 
     # should have two distinct (non-black) color
-    combined_mask, _ = combined_segmentation_mask(segs, label_key="k2")
+    combined_mask, _ = combined_segmentation_mask(gts, label_key="k2")
     combined_mask = np.array(combined_mask)
     # check that we get two unique RGB values (black and one color for label value "v1")
     unique_rgb = np.unique(combined_mask.reshape(-1, 3), axis=0)
@@ -112,26 +140,34 @@ def test_combined_segmentation_mask(poly1: PolygonWithHole):
 
     with pytest.raises(RuntimeError) as exc_info:
         combined_segmentation_mask(
-            [
-                seg1,
-                GroundTruthInstanceSegmentation(
-                    shape=[],
-                    labels=[],
-                    image=Image("different uid", height=10, width=100),
-                ),
+            gts
+            + [
+                GroundTruth(
+                    datum=Image(
+                        "different uid", height=10, width=100
+                    ).to_datum(),
+                    annotations=gts[0].annotations,
+                )
             ],
             "",
         )
     assert "belong to the same image" in str(exc_info)
 
 
-def test_draw_detections_on_image(bounding_poly: BoundingPolygon):
+def test_draw_detections_on_image(bounding_poly: BasicPolygon):
     detections = [
-        GroundTruthDetection(
-            boundary=bounding_poly,
-            labels=[Label("k", "v")],
-            image=Image("", 300, 300),
-        )
+        GroundTruth(
+            datum=Image("test", 300, 300).to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label("k", "v")],
+                    polygon=Polygon(
+                        boundary=bounding_poly,
+                    ),
+                )
+            ],
+        ),
     ]
     img = PIL.Image.new("RGB", (300, 300))
 
