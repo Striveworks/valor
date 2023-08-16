@@ -4,16 +4,11 @@ from typing import Any, Dict, List, Union
 
 import numpy as np
 import PIL.Image
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
-from velour.client import ImageDataset
-from velour.data_types import (
-    GroundTruthInstanceSegmentation,
-    GroundTruthSemanticSegmentation,
-    Image,
-    Label,
-    _GroundTruthSegmentation,
-)
+from velour import enums
+from velour.client import Dataset
+from velour.schemas import Annotation, GroundTruth, Image, Label, Raster
 
 
 def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
@@ -54,7 +49,7 @@ def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
 
 
 def upload_coco_panoptic(
-    dataset: ImageDataset,
+    dataset: Dataset,
     annotations: Union[str, PosixPath, dict],
     masks_path: str,
 ) -> None:
@@ -73,9 +68,9 @@ def upload_coco_panoptic(
         image_id_to_width[image["id"]] = image["width"]
         image_id_to_coco_url[image["id"]] = image["coco_url"]
 
-    def _get_segs_for_single_image(
+    def _get_segs_groundtruth_for_single_image(
         ann_dict: dict,
-    ) -> List[_GroundTruthSegmentation]:
+    ) -> List[GroundTruth]:
         mask = np.array(
             PIL.Image.open(masks_path / ann_dict["file_name"])
         ).astype(int)
@@ -83,35 +78,45 @@ def upload_coco_panoptic(
         mask_ids = (
             mask[:, :, 0] + 256 * mask[:, :, 1] + (256**2) * mask[:, :, 2]
         )
+
+        # create datum
         image_id = ann_dict["image_id"]
         img = Image(
-            uid=image_id,
+            uid=str(image_id),
             height=image_id_to_height[image_id],
             width=image_id_to_width[image_id],
+        ).to_datum()
+
+        # create groundtruth
+        return GroundTruth(
+            datum=img,
+            annotations=[
+                Annotation(
+                    task_type=(
+                        enums.TaskType.INSTANCE_SEGMENTATION
+                        if category_id_to_category[segment["category_id"]][
+                            "isthing"
+                        ]
+                        else enums.TaskType.SEMANTIC_SEGMENTATION
+                    ),
+                    labels=[
+                        Label(
+                            key=k,
+                            value=str(
+                                category_id_to_category[
+                                    segment["category_id"]
+                                ][k]
+                            ),
+                        )
+                        for k in ["supercategory", "name"]
+                    ]
+                    + [Label(key="iscrowd", value=str(segment["iscrowd"]))],
+                    raster=Raster.from_numpy(mask_ids == segment["id"]),
+                )
+                for segment in ann_dict["segments_info"]
+            ],
         )
 
-        segs = []
-        for segment in ann_dict["segments_info"]:
-            binary_mask = mask_ids == segment["id"]
-
-            category = category_id_to_category[segment["category_id"]]
-            labels = [
-                Label(key=k, value=category[k])
-                for k in ["supercategory", "name"]
-            ] + [Label(key="iscrowd", value=segment["iscrowd"])]
-
-            if category["isthing"]:
-                seg = GroundTruthInstanceSegmentation(
-                    shape=binary_mask, image=img, labels=labels
-                )
-            else:
-                seg = GroundTruthSemanticSegmentation(
-                    shape=binary_mask, image=img, labels=labels
-                )
-            segs.append(seg)
-
-        return segs
-
     for ann in tqdm(annotations["annotations"]):
-        segs = _get_segs_for_single_image(ann)
-        dataset.add_groundtruth(segs, show_progress_bar=False)
+        gt = _get_segs_groundtruth_for_single_image(ann)
+        dataset.add_groundtruth(gt)

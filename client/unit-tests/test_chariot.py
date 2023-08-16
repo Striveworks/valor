@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from velour.data_types import BoundingBox, Image, Point
+from velour.schemas import BoundingBox, GroundTruth, Image, Point
 
 chariot_dsv = pytest.importorskip("chariot.datasets.dataset_version")
 chariot_swagger = pytest.importorskip(
@@ -40,21 +40,27 @@ def _test_img_clf_ds(velour_dataset):
 
     assert len(velour_dataset) == 2
 
-    velour_datum = velour_dataset[0]
-    assert len(velour_datum.labels) == 1
-    assert velour_datum.labels[0].tuple() == ("class_label", "dog")
-    assert velour_datum.image.uid == "img1"
-    assert velour_datum.image.height == -1
-    assert velour_datum.image.width == -1
-    assert velour_datum.image.frame is None
+    gt = velour_dataset[0]
+    assert len(gt.annotations) == 1
+    assert len(gt.annotations[0].labels) == 1
+    assert gt.annotations[0].labels[0].tuple() == ("class", "dog")
+    assert gt.datum.uid == "img1"
 
-    velour_datum = velour_dataset[1]
-    assert len(velour_datum.labels) == 1
-    assert velour_datum.labels[0].tuple() == ("class_label", "cat")
-    assert velour_datum.image.uid == "img2"
-    assert velour_datum.image.height == -1
-    assert velour_datum.image.width == -1
-    assert velour_datum.image.frame is None
+    image = Image.from_datum(gt.datum)
+    assert image.height == -1
+    assert image.width == -1
+    assert image.frame == 0
+
+    gt = velour_dataset[1]
+    assert len(gt.annotations) == 1
+    assert len(gt.annotations[0].labels) == 1
+    assert gt.annotations[0].labels[0].tuple() == ("class", "cat")
+    assert gt.datum.uid == "img2"
+
+    image = Image.from_datum(gt.datum)
+    assert image.height == -1
+    assert image.width == -1
+    assert image.frame == 0
 
 
 def _test_img_seg_ds(velour_dataset):
@@ -62,36 +68,42 @@ def _test_img_seg_ds(velour_dataset):
     assert len(velour_dataset) == 2
 
     # Item 1
-    velour_datum = velour_dataset[0]
-    assert len(velour_datum.labels) == 1
-    assert velour_datum.labels[0].tuple() == ("class_label", "dog")
-    assert velour_datum.image.uid == "img1"
-    assert velour_datum.image.height == -1
-    assert velour_datum.image.width == -1
-    assert velour_datum.image.frame is None
-    assert len(velour_datum.shape) == 1
-    assert velour_datum.shape[0].polygon.points == [
+    gt = velour_dataset[0]
+    assert len(gt.annotations) == 1
+    assert len(gt.annotations[0].labels) == 1
+    assert gt.annotations[0].labels[0].tuple() == ("class", "dog")
+
+    image = Image.from_datum(gt.datum)
+    assert image.uid == "img1"
+    assert image.height == -1
+    assert image.width == -1
+    assert image.frame == 0
+
+    assert gt.annotations[0].polygon.boundary.points == [
         Point(10.0, 15.5),
         Point(20.9, 50.2),
         Point(25.9, 28.4),
     ]
-    assert velour_datum.shape[0].hole is None
+    assert gt.annotations[0].polygon.holes is None
 
     # Item 2
-    velour_datum = velour_dataset[1]
-    assert len(velour_datum.labels) == 1
-    assert velour_datum.labels[0].tuple() == ("class_label", "car")
-    assert velour_datum.image.uid == "img4"
-    assert velour_datum.image.height == -1
-    assert velour_datum.image.width == -1
-    assert velour_datum.image.frame is None
-    assert len(velour_datum.shape) == 1
-    assert velour_datum.shape[0].polygon.points == [
+    gt = velour_dataset[1]
+    assert len(gt.annotations) == 1
+    assert len(gt.annotations[0].labels) == 1
+    assert gt.annotations[0].labels[0].tuple() == ("class", "car")
+
+    image = Image.from_datum(gt.datum)
+    assert image.uid == "img4"
+    assert image.height == -1
+    assert image.width == -1
+    assert image.frame == 0
+
+    assert gt.annotations[0].polygon.boundary.points == [
         Point(97.2, 40.2),
         Point(33.33, 44.3),
         Point(10.9, 18.7),
     ]
-    assert velour_datum.shape[0].hole.points == [
+    assert gt.annotations[0].polygon.holes[0].points == [
         Point(60.0, 15.5),
         Point(70.9, 50.2),
         Point(75.9, 28.4),
@@ -102,36 +114,48 @@ def _test_obj_det_ds(velour_dataset):
 
     assert len(velour_dataset) == 3
 
+    # Item 1
+    gt = velour_dataset[0]
+    assert len(gt.annotations) == 2
+
+    image = Image.from_datum(gt.datum)
+    assert image.uid == "img1"
+    assert image.height == -1
+    assert image.width == -1
+    assert image.frame == 0
+
     # Item 1.a
-    assert len(velour_dataset[0].labels) == 1
-    assert velour_dataset[0].labels[0].tuple() == ("class_label", "dog")
-    assert velour_dataset[0].image.uid == "img1"
-    assert velour_dataset[0].image.height == -1
-    assert velour_dataset[0].image.width == -1
-    assert velour_dataset[0].image.frame is None
-    assert velour_dataset[0].boundary is None
-    assert velour_dataset[0].bbox == BoundingBox(16, 130, 70, 150)
+    assert len(gt.annotations[0].labels) == 1
+    assert gt.annotations[0].labels[0].tuple() == ("class", "dog")
+    assert gt.annotations[0].polygon is None
+    assert gt.annotations[0].bounding_box == BoundingBox.from_extrema(
+        xmin=16, ymin=130, xmax=70, ymax=150
+    )
 
     # Item 1.b
-    assert len(velour_dataset[1].labels) == 1
-    assert velour_dataset[1].labels[0].tuple() == ("class_label", "person")
-    assert velour_dataset[1].image.uid == "img1"
-    assert velour_dataset[1].image.height == -1
-    assert velour_dataset[1].image.width == -1
-    assert velour_dataset[1].image.frame is None
-    assert velour_dataset[1].boundary is None
-    assert velour_dataset[1].bbox == BoundingBox(89, 10, 97, 110)
+    assert len(gt.annotations[1].labels) == 1
+    assert gt.annotations[1].labels[0].tuple() == ("class", "person")
+    assert gt.annotations[1].polygon is None
+    assert gt.annotations[1].bounding_box == BoundingBox.from_extrema(
+        xmin=89, ymin=10, xmax=97, ymax=110
+    )
 
     # Item 2
-    velour_datum = velour_dataset[2]
-    assert len(velour_datum.labels) == 1
-    assert velour_datum.labels[0].tuple() == ("class_label", "cat")
-    assert velour_datum.image.uid == "img2"
-    assert velour_datum.image.height == -1
-    assert velour_datum.image.width == -1
-    assert velour_datum.image.frame is None
-    assert velour_datum.boundary is None
-    assert velour_datum.bbox == BoundingBox(500, 220, 530, 260)
+    gt = velour_dataset[1]
+    assert len(gt.annotations) == 1
+    assert len(gt.annotations[0].labels) == 1
+    assert gt.annotations[0].labels[0].tuple() == ("class", "cat")
+
+    image = Image.from_datum(gt.datum)
+    assert image.uid == "img2"
+    assert image.height == -1
+    assert image.width == -1
+    assert image.frame == 0
+
+    assert gt.annotations[0].polygon is None
+    assert gt.annotations[0].bounding_box == BoundingBox.from_extrema(
+        xmin=500, ymin=220, xmax=530, ymax=260
+    )
 
 
 def test__parse_image_classification_groundtruths(img_clf_ds: str):
@@ -139,13 +163,13 @@ def test__parse_image_classification_groundtruths(img_clf_ds: str):
     item1 = chariot_integration._parse_image_classification_groundtruths(
         chariot_dataset[0]
     )
-    assert len(item1) == 1
+    assert isinstance(item1, GroundTruth)
     item2 = chariot_integration._parse_image_classification_groundtruths(
         chariot_dataset[1]
     )
-    assert len(item2) == 1
-    velour_dataset = item1 + item2
-    _test_img_clf_ds(velour_dataset=velour_dataset)
+    assert isinstance(item2, GroundTruth)
+    velour_dataset = [item1, item2]
+    _test_img_clf_ds(velour_dataset)
 
 
 def test__parse_image_segmentation_groundtruths(img_seg_ds: str):
@@ -153,12 +177,12 @@ def test__parse_image_segmentation_groundtruths(img_seg_ds: str):
     item1 = chariot_integration._parse_image_segmentation_groundtruths(
         chariot_dataset[0]
     )
-    assert len(item1) == 1
+    assert isinstance(item1, GroundTruth)
     item2 = chariot_integration._parse_image_segmentation_groundtruths(
         chariot_dataset[1]
     )
-    assert len(item2) == 1
-    velour_dataset = item1 + item2
+    assert isinstance(item2, GroundTruth)
+    velour_dataset = [item1, item2]
     _test_img_seg_ds(velour_dataset=velour_dataset)
 
 
@@ -169,21 +193,21 @@ def test__parse_object_detection_groundtruths(obj_det_ds: str):
     item1 = chariot_integration._parse_object_detection_groundtruths(
         chariot_dataset[0]
     )
-    assert len(item1) == 2
+    assert isinstance(item1, GroundTruth)
 
     # Item 2 - Single object of interest
     item2 = chariot_integration._parse_object_detection_groundtruths(
         chariot_dataset[1]
     )
-    assert len(item2) == 1
+    assert isinstance(item2, GroundTruth)
 
     # Item 3 - No object of interest
     item3 = chariot_integration._parse_object_detection_groundtruths(
         chariot_dataset[2]
     )
-    assert len(item3) == 0
+    assert isinstance(item3, GroundTruth)
 
-    velour_dataset = item1 + item2 + item3
+    velour_dataset = [item1, item2, item3]
     _test_obj_det_ds(velour_dataset=velour_dataset)
 
 
@@ -205,7 +229,7 @@ def test__parse_dataset_version_manifest(
     # Image classification
     chariot_task_type.image_classification = True
     _test_img_clf_ds(
-        chariot_integration._parse_chariot_annotations(
+        chariot_integration._parse_chariot_groundtruths(
             img_clf_ds, chariot_task_type
         )
     )
@@ -214,7 +238,7 @@ def test__parse_dataset_version_manifest(
     # Image Semantic Segmentation
     chariot_task_type.image_segmentation = True
     _test_img_seg_ds(
-        chariot_integration._parse_chariot_annotations(
+        chariot_integration._parse_chariot_groundtruths(
             img_seg_ds, chariot_task_type
         )
     )
@@ -223,7 +247,7 @@ def test__parse_dataset_version_manifest(
     # Object Detection
     chariot_task_type.object_detection = True
     _test_obj_det_ds(
-        chariot_integration._parse_chariot_annotations(
+        chariot_integration._parse_chariot_groundtruths(
             obj_det_ds, chariot_task_type
         )
     )
@@ -247,29 +271,35 @@ def test_parse_chariot_image_segmentations():
 def _test_parse_chariot_object_detections(
     chariot_detections, velour_detections
 ):
-    assert len(velour_detections) == 2
-    assert [
-        scored_label.label.key
-        for det in velour_detections
-        for scored_label in det.scored_labels
-    ] == ["class", "class"]
+    annotations = []
+    for datum in velour_detections:
+        annotations.extend([annotation for annotation in datum.annotations])
+
+    assert set(
+        [
+            scored_label.label.key
+            for det in annotations
+            for scored_label in det.scored_labels
+        ]
+    ) == {"class"}
+
     assert set(
         [
             scored_label.label.value
-            for det in velour_detections
+            for det in annotations
             for scored_label in det.scored_labels
         ]
     ) == {"person", "car"}
 
-    for i, velour_det in enumerate(velour_detections):
-        assert chariot_detections["detection_boxes"][i] == [
-            velour_det.bbox.ymin,
-            velour_det.bbox.xmin,
-            velour_det.bbox.ymax,
-            velour_det.bbox.xmax,
-        ]
-
-        assert velour_det.boundary is None
+    chariot_detection_boxes = chariot_detections["detection_boxes"]
+    for i, velour_det in enumerate(annotations):
+        assert [
+            velour_det.bounding_box.ymin,
+            velour_det.bounding_box.xmin,
+            velour_det.bounding_box.ymax,
+            velour_det.bounding_box.xmax,
+        ] in chariot_detection_boxes
+        assert velour_det.polygon is None
 
 
 def test_parse_chariot_object_detections():
@@ -334,10 +364,9 @@ def test_parse_chariot_object_detections():
     velour_detections = chariot_integration.parse_chariot_object_detections(
         [chariot_detections, chariot_detections], [image, image]
     )
-    velour_detections = [velour_detections[0:2], velour_detections[2:4]]
     for image_detections in velour_detections:
         _test_parse_chariot_object_detections(
-            chariot_detections, image_detections
+            chariot_detections, [image_detections]
         )
 
     # Test mismatch size
@@ -347,10 +376,9 @@ def test_parse_chariot_object_detections():
                 [chariot_detections, chariot_detections], [image, image]
             )
         )
-        velour_detections = [velour_detections[0:2], velour_detections[2:4]]
         for image_detections in velour_detections:
             _test_parse_chariot_object_detections(
-                chariot_detections, image_detections
+                chariot_detections, [image_detections]
             )
     except AssertionError as e:
         assert e.args[0] == "length mismatch"

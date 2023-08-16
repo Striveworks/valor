@@ -1,17 +1,13 @@
 import numpy
 import pytest
 
-from velour.data_types import (
-    PredictedDetection,
-    PredictedImageClassification,
-    PredictedInstanceSegmentation,
-)
 from velour.integrations.yolo import (
     _convert_yolo_segmentation,
     parse_yolo_image_classification,
     parse_yolo_image_segmentation,
     parse_yolo_object_detection,
 )
+from velour.schemas import Image, Prediction, ScoredAnnotation
 
 
 class BoxOnGPU(object):
@@ -212,25 +208,30 @@ def test_parse_yolo_image_classification(image, names):
         probs=probs,
     )
 
-    predictions = parse_yolo_image_classification(
-        results, image["uid"], label_key="class"
+    velour_image = Image(
+        dataset="dataset",
+        uid=image["uid"],
+        height=image["height"],
+        width=image["width"],
     )
 
-    assert len(predictions) == 1
+    prediction = parse_yolo_image_classification(
+        results, velour_image, label_key="class"
+    )
 
-    prediction = predictions[0]
+    assert isinstance(prediction, Prediction)
 
-    assert isinstance(prediction, PredictedImageClassification)
+    image_datum = Image.from_datum(prediction.datum)
+    assert image_datum.uid == image["uid"]
+    assert image_datum.height == image["height"]
+    assert image_datum.width == image["width"]
 
-    assert prediction.image.uid == image["uid"]
-    assert prediction.image.height == image["height"]
-    assert prediction.image.width == image["width"]
-    assert prediction.image.frame is None
-
-    for i in range(len(prediction.scored_labels)):
-        assert prediction.scored_labels[i].label.key == "class"
-        assert prediction.scored_labels[i].label.value == names[i]
-        assert prediction.scored_labels[i].score == probs[i]
+    assert len(prediction.annotations) == 1
+    annotation = prediction.annotations[0]
+    for i in range(len(annotation.scored_labels)):
+        assert annotation.scored_labels[i].label.key == "class"
+        assert annotation.scored_labels[i].label.value == names[i]
+        assert annotation.scored_labels[i].score == probs[i]
 
 
 def test__convert_yolo_segmentation(image, yolo_mask, velour_mask):
@@ -256,22 +257,34 @@ def test_parse_yolo_image_segmentation(
         masks=masks,
     )
 
-    predictions = parse_yolo_image_segmentation(
-        results, image["uid"], label_key="class"
+    velour_image = Image(
+        dataset="dataset",
+        uid=image["uid"],
+        height=image["height"],
+        width=image["width"],
     )
 
-    assert len(predictions) == bboxes.shape[0]
-    for i in range(len(predictions)):
-        assert isinstance(predictions[i], PredictedInstanceSegmentation)
-        assert predictions[i].image.uid == image["uid"]
-        assert predictions[i].image.height == image["height"]
-        assert predictions[i].image.width == image["width"]
-        assert predictions[i].image.frame is None
-        assert predictions[i].scored_labels[0].label.key == "class"
-        assert predictions[i].scored_labels[0].label.value == names[i]
-        assert predictions[i].scored_labels[0].score == bboxes[i][4]
-        assert predictions[i].mask.shape == velour_mask.shape
-        assert (predictions[i].mask == velour_mask).all()
+    prediction = parse_yolo_image_segmentation(
+        results, velour_image, label_key="class"
+    )
+
+    image_datum = Image.from_datum(prediction.datum)
+    assert image_datum.uid == image["uid"]
+    assert image_datum.height == image["height"]
+    assert image_datum.width == image["width"]
+
+    assert isinstance(prediction, Prediction)
+    assert len(prediction.annotations) == bboxes.shape[0]
+    for i in range(len(prediction.annotations)):
+        assert isinstance(prediction.annotations[i], ScoredAnnotation)
+        assert prediction.annotations[i].scored_labels[0].label.key == "class"
+        assert (
+            prediction.annotations[i].scored_labels[0].label.value == names[i]
+        )
+        assert prediction.annotations[i].scored_labels[0].score == bboxes[i][4]
+        assert (
+            prediction.annotations[i].raster.to_numpy() == velour_mask
+        ).all()
 
 
 def test_parse_yolo_object_detection(image, bboxes, names):
@@ -281,21 +294,32 @@ def test_parse_yolo_object_detection(image, bboxes, names):
         orig_img=img, path=image["path"], names=names, boxes=bboxes
     )
 
-    predictions = parse_yolo_object_detection(
-        results, image["uid"], label_key="class"
+    velour_image = Image(
+        dataset="dataset",
+        uid=image["uid"],
+        height=image["height"],
+        width=image["width"],
     )
 
-    assert len(predictions) == bboxes.shape[0]
-    for i in range(len(predictions)):
-        assert isinstance(predictions[i], PredictedDetection)
-        assert predictions[i].image.uid == image["uid"]
-        assert predictions[i].image.height == image["height"]
-        assert predictions[i].image.width == image["width"]
-        assert predictions[i].image.frame is None
-        assert predictions[i].scored_labels[0].label.key == "class"
-        assert predictions[i].scored_labels[0].label.value == names[i]
-        assert predictions[i].scored_labels[0].score == bboxes[i][4]
-        assert predictions[i].bbox.xmin == bboxes[i][0]
-        assert predictions[i].bbox.ymin == bboxes[i][1]
-        assert predictions[i].bbox.xmax == bboxes[i][2]
-        assert predictions[i].bbox.ymax == bboxes[i][3]
+    prediction = parse_yolo_object_detection(
+        results, velour_image, label_key="class"
+    )
+
+    image_datum = Image.from_datum(prediction.datum)
+    assert image_datum.uid == image["uid"]
+    assert image_datum.height == image["height"]
+    assert image_datum.width == image["width"]
+
+    assert isinstance(prediction, Prediction)
+    assert len(prediction.annotations) == bboxes.shape[0]
+    for i in range(len(prediction.annotations)):
+        assert isinstance(prediction.annotations[i], ScoredAnnotation)
+        assert prediction.annotations[i].scored_labels[0].label.key == "class"
+        assert (
+            prediction.annotations[i].scored_labels[0].label.value == names[i]
+        )
+        assert prediction.annotations[i].scored_labels[0].score == bboxes[i][4]
+        assert prediction.annotations[i].bounding_box.xmin == bboxes[i][0]
+        assert prediction.annotations[i].bounding_box.ymin == bboxes[i][1]
+        assert prediction.annotations[i].bounding_box.xmax == bboxes[i][2]
+        assert prediction.annotations[i].bounding_box.ymax == bboxes[i][3]
