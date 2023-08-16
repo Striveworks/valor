@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Union
 
 import numpy as np
 import PIL.Image
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from velour import enums
 from velour.client import Dataset
@@ -89,7 +89,6 @@ def upload_coco_panoptic(
 
         # create groundtruth
         return GroundTruth(
-            dataset_name=dataset.name,
             datum=img,
             annotations=[
                 Annotation(

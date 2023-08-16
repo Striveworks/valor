@@ -1,6 +1,13 @@
 from enum import Enum
 
 
+class JobStatus(Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    FAILED = "failed"
+    DONE = "done"
+
+
 class DataType(Enum):
     IMAGE = "image"
     TABULAR = "tabular"

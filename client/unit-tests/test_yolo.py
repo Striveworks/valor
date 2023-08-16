@@ -208,8 +208,15 @@ def test_parse_yolo_image_classification(image, names):
         probs=probs,
     )
 
+    velour_image = Image(
+        dataset="dataset",
+        uid=image["uid"],
+        height=image["height"],
+        width=image["width"],
+    )
+
     prediction = parse_yolo_image_classification(
-        results, image["uid"], label_key="class"
+        results, velour_image, label_key="class"
     )
 
     assert isinstance(prediction, Prediction)
@@ -250,8 +257,15 @@ def test_parse_yolo_image_segmentation(
         masks=masks,
     )
 
+    velour_image = Image(
+        dataset="dataset",
+        uid=image["uid"],
+        height=image["height"],
+        width=image["width"],
+    )
+
     prediction = parse_yolo_image_segmentation(
-        results, image["uid"], label_key="class"
+        results, velour_image, label_key="class"
     )
 
     image_datum = Image.from_datum(prediction.datum)
@@ -280,8 +294,15 @@ def test_parse_yolo_object_detection(image, bboxes, names):
         orig_img=img, path=image["path"], names=names, boxes=bboxes
     )
 
+    velour_image = Image(
+        dataset="dataset",
+        uid=image["uid"],
+        height=image["height"],
+        width=image["width"],
+    )
+
     prediction = parse_yolo_object_detection(
-        results, image["uid"], label_key="class"
+        results, velour_image, label_key="class"
     )
 
     image_datum = Image.from_datum(prediction.datum)

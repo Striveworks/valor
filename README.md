@@ -2,7 +2,7 @@
 
 ![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ekorman/501428c92df8d0de6805f40fb78b1363/raw/velour-coverage.json)
 
-This repo contains the python [client](client) and [backend](backend) packages.
+This repo contains the python [client](client) and [backend api](api) packages.
 
 Docs are [here](https://striveworks.github.io/velour/).
 
@@ -26,13 +26,13 @@ These can be run locally as follows:
 pip install .[test]
 ```
 
-2. Install the backend: from the `backend` directory run
+2. Install the backend: from the `api` directory run
 
 ```shell
 pip install .[test]
 ```
 
-3. Setup the backend test env (which requires docker compose): from the `backend` directory run
+3. Setup the backend test env (which requires docker compose): from the `api` directory run
 
 ```shell
 make test-env
@@ -46,13 +46,13 @@ pytest -v integration_tests
 
 #### Backend unit tests
 
-1. Install the backend package: from the `backend` directory run
+1. Install the backend package: from the `api` directory run
 
 ```shell
 pip install .[test]
 ```
 
-2. Run the tests: from the `backend` directory run
+2. Run the tests: from the `api` directory run
 
 ```shell
 pytest -v tests/unit-tests
@@ -62,7 +62,7 @@ pytest -v tests/unit-tests
 
 These are tests of the backend that require a running instance of PostGIS to be running. To run these
 
-1. Install the backend package: from the `backend` directory run
+1. Install the backend package: from the `api` directory run
 
 ```shell
 pip install .[test]
@@ -70,7 +70,7 @@ pip install .[test]
 
 2. Set the environment variaables `POSTGRES_HOST` and `POSTGRES_PASSWORD` to a running PostGIS instance.
 
-3. Run the functional tests: from the `backend` directory run
+3. Run the functional tests: from the `api` directory run
 
 ```shell
 pytest -v tests/functional-tests/test_client.py
@@ -82,7 +82,7 @@ The API can be run without authentication (by default) or with authentication pr
 
 ### Backend
 
-To enable authentication for the backend either set the environment variables `AUTH_DOMAIN`, `AUTH_AUDIENCE`, and `AUTH_ALGORITHMS` or put them in a file named `.env.auth` in the `backend` directory. An example of such a file is
+To enable authentication for the backend either set the environment variables `AUTH_DOMAIN`, `AUTH_AUDIENCE`, and `AUTH_ALGORITHMS` or put them in a file named `.env.auth` in the `api` directory. An example of such a file is
 
 ```
 AUTH0_DOMAIN="velour.us.auth0.com"

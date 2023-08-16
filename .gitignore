@@ -4,17 +4,15 @@ build
 .tox
 .coverage*
 
+.venv
 .env.auth
 .env-*
-web/.env
+*/.env
+*/.venv
 
 .vscode
 */dist/*
-sample_notebooks/coco/*
 .DS_Store
-sample_notebooks/*.pt
 site/*
 *.ipynb
-!coco-panoptic.ipynb
-!tabular.ipynb
-.venv
+runs

@@ -42,15 +42,19 @@ class Dataset:
     metadata: List[MetaDatum] = field(default_factory=list)
 
     def __post_init__(self):
-        assert isinstance(self.name, str)
-        assert isinstance(self.id, int) or self.id is None
-        assert isinstance(self.metadata, list)
+        if not isinstance(self.name, str):
+            raise TypeError("name should be of type `str`")
+        if not isinstance(self.id, int) and self.id is not None:
+            raise TypeError("id should be of type `int`")
+        if not isinstance(self.metadata, list):
+            raise TypeError("metadata should be of type `list`")
         for i in range(len(self.metadata)):
             if isinstance(self.metadata[i], dict):
                 self.metadata[i] = MetaDatum(**self.metadata[i])
-                assert isinstance(self.metadata[i], MetaDatum)
-            else:
-                assert isinstance(self.metadata[i], MetaDatum)
+            if not isinstance(self.metadata[i], MetaDatum):
+                raise TypeError(
+                    "elements of metadata should be of type `velour.schemas.MetaDatum`"
+                )
 
 
 @dataclass
@@ -60,15 +64,19 @@ class Model:
     metadata: List[MetaDatum] = field(default_factory=list)
 
     def __post_init__(self):
-        assert isinstance(self.name, str)
-        assert isinstance(self.id, int) or self.id is None
-        assert isinstance(self.metadata, list)
+        if not isinstance(self.name, str):
+            raise TypeError("name should be of type `str`")
+        if not isinstance(self.id, int) and self.id is not None:
+            raise TypeError("id should be of type `int`")
+        if not isinstance(self.metadata, list):
+            raise TypeError("metadata should be of type `list`")
         for i in range(len(self.metadata)):
             if isinstance(self.metadata[i], dict):
                 self.metadata[i] = MetaDatum(**self.metadata[i])
-                assert isinstance(self.metadata[i], MetaDatum)
-            else:
-                assert isinstance(self.metadata[i], MetaDatum)
+            if not isinstance(self.metadata[i], MetaDatum):
+                raise TypeError(
+                    "elements should be of type `velour.schemas.MetaDatum`"
+                )
 
 
 @dataclass
@@ -82,16 +90,22 @@ class Info:
 class Datum:
     uid: str
     metadata: List[MetaDatum] = field(default_factory=list)
+    dataset: str = field(default="")
 
     def __post_init__(self):
-        assert isinstance(self.uid, str)
-        assert isinstance(self.metadata, list)
+        if not isinstance(self.dataset, str):
+            raise TypeError("dataset should be of type `str`")
+        if not isinstance(self.uid, str):
+            raise TypeError("uid should be of type `str`")
+        if not isinstance(self.metadata, list):
+            raise TypeError("metadata should be of type `list`")
         for i in range(len(self.metadata)):
             if isinstance(self.metadata[i], dict):
                 self.metadata[i] = MetaDatum(**self.metadata[i])
-                assert isinstance(self.metadata[i], MetaDatum)
-            else:
-                assert isinstance(self.metadata[i], MetaDatum)
+            if not isinstance(self.metadata[i], MetaDatum):
+                raise TypeError(
+                    "element of metadata should be of type `velour.schemas.MetaDatum`"
+                )
 
 
 @dataclass
@@ -101,9 +115,9 @@ class Label:
 
     def __post_init__(self):
         if not isinstance(self.key, str):
-            raise TypeError("Label key is not a `str`.")
+            raise TypeError("key should be of type `str`")
         if not isinstance(self.value, str):
-            raise TypeError("Label value is not a `str`.")
+            raise TypeError("value should be of type `str`")
 
     def tuple(self) -> Tuple[str, str]:
         return (self.key, self.value)
@@ -175,50 +189,56 @@ class Annotation:
             self.task_type = enums.TaskType(self.task_type)
 
         # labels
-        try:
-            if not isinstance(self.labels, list):
+        if not isinstance(self.labels, list):
+            raise TypeError("labels should be of type `list`")
+        for i in range(len(self.labels)):
+            if isinstance(self.labels[i], dict):
+                self.labels[i] = Label(**self.labels[i])
+            if not isinstance(self.labels[i], Label):
                 raise TypeError(
-                    "labels should be a list of `velour.schemas.Label`."
+                    "elements of labels should be of type `velour.schemas.Label`"
                 )
-            for i in range(len(self.labels)):
-                if isinstance(self.labels[i], dict):
-                    self.labels[i] = Label(**self.labels[i])
-                assert isinstance(self.labels[i], Label)
-        except AssertionError:
-            raise TypeError(
-                "elements of labels should be of type `velour.schemas.Label`"
-            )
 
         # annotation data
-        try:
-            if self.bounding_box:
-                if isinstance(self.bounding_box, dict):
-                    self.bounding_box = BoundingBox(**self.bounding_box)
-                assert isinstance(self.bounding_box, BoundingBox)
-            if self.polygon:
-                if isinstance(self.polygon, dict):
-                    self.polygon = Polygon(**self.polygon)
-                assert isinstance(self.polygon, Polygon)
-            if self.multipolygon:
-                if isinstance(self.multipolygon, dict):
-                    self.multipolygon = MultiPolygon(**self.multipolygon)
-                assert isinstance(self.multipolygon, MultiPolygon)
-            if self.raster:
-                if isinstance(self.raster, dict):
-                    self.raster = Raster(**self.raster)
-                assert isinstance(self.raster, Raster)
-        except AssertionError:
-            raise TypeError("Annotation value does not match intended type.")
+        if self.bounding_box:
+            if isinstance(self.bounding_box, dict):
+                self.bounding_box = BoundingBox(**self.bounding_box)
+            if not isinstance(self.bounding_box, BoundingBox):
+                raise TypeError(
+                    "bounding_box should be of type `velour.schemas.BoundingBox` or None"
+                )
+        if self.polygon:
+            if isinstance(self.polygon, dict):
+                self.polygon = Polygon(**self.polygon)
+            if not isinstance(self.polygon, Polygon):
+                raise TypeError(
+                    "polygon should be of type `velour.schemas.Polygon` or None"
+                )
+        if self.multipolygon:
+            if isinstance(self.multipolygon, dict):
+                self.multipolygon = MultiPolygon(**self.multipolygon)
+            if not isinstance(self.multipolygon, MultiPolygon):
+                raise TypeError(
+                    "multipolygon should be of type `velour.schemas.MultiPolygon` or None"
+                )
+        if self.raster:
+            if isinstance(self.raster, dict):
+                self.raster = Raster(**self.raster)
+            if not isinstance(self.raster, Raster):
+                raise TypeError(
+                    "raster should be of type `velour.schemas.Raster` or None"
+                )
 
         # metadata
-        try:
-            assert isinstance(self.metadata, list)
-            for i in range(len(self.metadata)):
-                if isinstance(self.metadata[i], dict):
-                    self.metadata[i] = MetaDatum(**self.metadata[i])
-                assert isinstance(self.metadata[i], MetaDatum)
-        except AssertionError:
-            raise TypeError("Metadata contains incorrect type.")
+        if not isinstance(self.metadata, list):
+            raise TypeError("metadata should be of type `list`")
+        for i in range(len(self.metadata)):
+            if isinstance(self.metadata[i], dict):
+                self.metadata[i] = MetaDatum(**self.metadata[i])
+            if not isinstance(self.metadata[i], MetaDatum):
+                raise TypeError(
+                    "elements of metadata should be of type `velour.schemas.MetaDatum`"
+                )
 
 
 @dataclass
@@ -239,52 +259,56 @@ class ScoredAnnotation:
             self.task_type = enums.TaskType(self.task_type)
 
         # scored_labels
-        try:
-            if not isinstance(self.scored_labels, list):
+        if not isinstance(self.scored_labels, list):
+            raise TypeError("scored_labels should be of type `list`")
+        for i in range(len(self.scored_labels)):
+            if isinstance(self.scored_labels[i], dict):
+                self.scored_labels[i] = ScoredLabel(**self.scored_labels[i])
+            if not isinstance(self.scored_labels[i], ScoredLabel):
                 raise TypeError(
-                    "scored_labels should be a list of `velour.schemas.ScoredLabel`."
+                    "elements of scored_labels should be of type `velour.schemas.ScoredLabel`"
                 )
-            for i in range(len(self.scored_labels)):
-                if isinstance(self.scored_labels[i], dict):
-                    self.scored_labels[i] = ScoredLabel(
-                        **self.scored_labels[i]
-                    )
-                assert isinstance(self.scored_labels[i], ScoredLabel)
-        except AssertionError:
-            raise TypeError(
-                "elements of scored_labels should be of type `velour.schemas.ScoredLabel`"
-            )
 
         # annotation data
-        try:
-            if self.bounding_box:
-                if isinstance(self.bounding_box, dict):
-                    self.bounding_box = BoundingBox(**self.bounding_box)
-                assert isinstance(self.bounding_box, BoundingBox)
-            if self.polygon:
-                if isinstance(self.polygon, dict):
-                    self.polygon = Polygon(**self.polygon)
-                assert isinstance(self.polygon, Polygon)
-            if self.multipolygon:
-                if isinstance(self.multipolygon, dict):
-                    self.multipolygon = MultiPolygon(**self.multipolygon)
-                assert isinstance(self.multipolygon, MultiPolygon)
-            if self.raster:
-                if isinstance(self.raster, dict):
-                    self.raster = Raster(**self.raster)
-                assert isinstance(self.raster, Raster)
-        except AssertionError:
-            raise TypeError("Value does not match intended type.")
+        if self.bounding_box:
+            if isinstance(self.bounding_box, dict):
+                self.bounding_box = BoundingBox(**self.bounding_box)
+            if not isinstance(self.bounding_box, BoundingBox):
+                raise TypeError(
+                    "bounding_box should be of type `velour.schemas.BoundingBox` or None"
+                )
+        if self.polygon:
+            if isinstance(self.polygon, dict):
+                self.polygon = Polygon(**self.polygon)
+            if not isinstance(self.polygon, Polygon):
+                raise TypeError(
+                    "polygon should be of type `velour.schemas.Polygon` or None"
+                )
+        if self.multipolygon:
+            if isinstance(self.multipolygon, dict):
+                self.multipolygon = MultiPolygon(**self.multipolygon)
+            if not isinstance(self.multipolygon, MultiPolygon):
+                raise TypeError(
+                    "multipolygon should be of type `velour.schemas.MultiPolygon` or None"
+                )
+        if self.raster:
+            if isinstance(self.raster, dict):
+                self.raster = Raster(**self.raster)
+            if not isinstance(self.raster, Raster):
+                raise TypeError(
+                    "raster should be of type `velour.schemas.Raster` or None"
+                )
 
         # metadata
-        try:
-            assert isinstance(self.metadata, list)
-            for i in range(len(self.metadata)):
-                if isinstance(self.metadata[i], dict):
-                    self.metadata[i] = MetaDatum(**self.metadata[i])
-                assert isinstance(self.metadata[i], MetaDatum)
-        except AssertionError:
-            raise TypeError("Metadata contains incorrect type.")
+        if not isinstance(self.metadata, list):
+            raise TypeError("metadata should be of type `list`")
+        for i in range(len(self.metadata)):
+            if isinstance(self.metadata[i], dict):
+                self.metadata[i] = MetaDatum(**self.metadata[i])
+            if not isinstance(self.metadata[i], MetaDatum):
+                raise TypeError(
+                    "elements of metadata should be of type `velour.schemas.MetaDatum`"
+                )
 
         # check that for each label key all the predictions sum to ~1
         # the backend should also do this validation but its good to do
@@ -309,31 +333,24 @@ class ScoredAnnotation:
 class GroundTruth:
     datum: Datum
     annotations: List[Annotation] = field(default_factory=list)
-    dataset: str = field(default="")
 
     def __post_init__(self):
         # validate datum
         if isinstance(self.datum, dict):
             self.datum = Datum(**self.datum)
         if not isinstance(self.datum, Datum):
-            raise TypeError("datum should be type `velour.schemas.Datum`.")
+            raise TypeError("datum should be of type `velour.schemas.Datum`.")
 
         # validate annotations
         if not isinstance(self.annotations, list):
-            raise TypeError(
-                "annotations should be a list of `velour.schemas.Annotation`."
-            )
+            raise TypeError("annotations should be of type `list`")
         for i in range(len(self.annotations)):
             if isinstance(self.annotations[i], dict):
                 self.annotations[i] = Annotation(**self.annotations[i])
             if not isinstance(self.annotations[i], Annotation):
                 raise TypeError(
-                    "annotations list should contain only `velour.schemas.Annotation`."
+                    "elements of annotations should be of type `velour.schemas.Annotation`"
                 )
-
-        # validate dataset
-        if not isinstance(self.dataset, str):
-            raise TypeError("dataset should be type `str`.")
 
 
 @dataclass
@@ -343,22 +360,23 @@ class Prediction:
     model: str = field(default="")
 
     def __post_init__(self):
+        # validate datum
         if isinstance(self.datum, dict):
             self.datum = Datum(**self.datum)
+        if not isinstance(self.datum, Datum):
+            raise TypeError("datum should be of type `velour.schemas.Datum`")
+
+        # validate annotations
         if not isinstance(self.annotations, list):
-            raise TypeError(
-                "annotations should be a list of `velour.schemas.ScoredAnnotation`."
-            )
+            raise TypeError("annotations should be of type `list`")
         for i in range(len(self.annotations)):
             if isinstance(self.annotations[i], dict):
                 self.annotations[i] = ScoredAnnotation(**self.annotations[i])
-
-        if not isinstance(self.datum, Datum):
-            raise TypeError("datum should be type `velour.schemas.Datum`.")
-        for annotation in self.annotations:
-            if not isinstance(annotation, ScoredAnnotation):
+            if not isinstance(self.annotations[i], ScoredAnnotation):
                 raise TypeError(
-                    "annotations list should contain only `velour.schemas.ScoredAnnotation`."
+                    "elements of annotations should be of type `velour.schemas.ScoredAnnotation`."
                 )
+
+        # validate model
         if not isinstance(self.model, str):
-            raise TypeError("model should be type `str`.")
+            raise TypeError("model should be of type `str`")

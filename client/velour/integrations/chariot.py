@@ -94,7 +94,7 @@ def _retrieve_chariot_annotations(manifest_url: str):
 
 def _parse_image_classification_groundtruths(
     datum: dict,
-    label_key: str = "class",
+    label_key: str,
 ) -> GroundTruth:
     """Parses Chariot image classification annotation."""
 
@@ -120,7 +120,8 @@ def _parse_image_classification_groundtruths(
 
 
 def _parse_image_segmentation_groundtruths(
-    datum: dict, label_key: str = "class"
+    datum: dict,
+    label_key: str,
 ) -> GroundTruth:
     """Parses Chariot image segmentation annotation."""
 
@@ -165,7 +166,7 @@ def _parse_image_segmentation_groundtruths(
 
 def _parse_object_detection_groundtruths(
     datum: dict,
-    label_key: str = "class",
+    label_key: str,
 ) -> GroundTruth:
     """Parses Chariot object detection annotation."""
 
@@ -197,7 +198,10 @@ def _parse_object_detection_groundtruths(
 
 
 def _parse_chariot_groundtruths(
-    chariot_manifest, chariot_task_type, use_training_manifest: bool = True
+    chariot_manifest,
+    chariot_task_type,
+    label_key: str,
+    use_training_manifest: bool = True,
 ) -> list:
     """Get chariot dataset annotations.
 
@@ -220,21 +224,30 @@ def _parse_chariot_groundtruths(
     # Image Classification
     if chariot_task_type.image_classification:
         groundtruth_annotations = [
-            _parse_image_classification_groundtruths(datum)
+            _parse_image_classification_groundtruths(
+                datum=datum,
+                label_key=label_key,
+            )
             for datum in chariot_manifest
         ]
 
     # Image Segmentation
     elif chariot_task_type.image_segmentation:
         groundtruth_annotations = [
-            _parse_image_segmentation_groundtruths(datum)
+            _parse_image_segmentation_groundtruths(
+                datum=datum,
+                label_key=label_key,
+            )
             for datum in chariot_manifest
         ]
 
     # Object Detection
     elif chariot_task_type.object_detection:
         groundtruth_annotations = [
-            _parse_object_detection_groundtruths(datum)
+            _parse_object_detection_groundtruths(
+                datum=datum,
+                label_key=label_key,
+            )
             for datum in chariot_manifest
         ]
 
@@ -270,6 +283,7 @@ def create_dataset_from_chariot(
     dataset: ChariotDataset,
     dataset_version_id: str = None,
     name: str = None,
+    label_key: str = "class",
     use_training_manifest: bool = True,
     show_progress_bar: bool = True,
 ) -> Dataset:
@@ -339,9 +353,10 @@ def create_dataset_from_chariot(
 
     # Get GroundTruths
     groundtruths = _parse_chariot_groundtruths(
-        chariot_annotations,
-        dsv.supported_task_types,
-        use_training_manifest,
+        chariot_manifest=chariot_annotations,
+        chariot_task_type=dsv.supported_task_types,
+        label_key=label_key,
+        use_training_manifest=use_training_manifest,
     )
 
     # Construct url
@@ -352,7 +367,6 @@ def create_dataset_from_chariot(
 
     # Upload velour dataset
     for gt in groundtruths:
-        gt.dataset_name = (name,)
         velour_dataset.add_groundtruth(gt)
 
     # Finalize and return
@@ -362,76 +376,69 @@ def create_dataset_from_chariot(
 
 def parse_chariot_image_classifications(
     classifications: Union[Dict, List[Dict]],
-    images: Union[Image, List[Image]],
+    images: Image,
     label_key: str = "class",
-):
+) -> Prediction:
     raise NotImplementedError
 
 
 def parse_chariot_image_segmentations(
     segmentations: Union[Dict, List[Dict]],
-    images: Union[Image, List[Image]],
+    image: Image,
     label_key: str = "class",
-):
+) -> Prediction:
     raise NotImplementedError
 
 
 def parse_chariot_object_detections(
-    detections: Union[Dict, List[Dict]],
-    images: Union[Image, List[Image]],
+    detections: dict,
+    image: Image,
     label_key: str = "class",
-) -> List[Prediction]:
+) -> Prediction:
 
-    if not isinstance(detections, list):
-        detections = [detections]
+    if not isinstance(detections, dict):
+        raise RuntimeError
 
-    if not isinstance(images, list):
-        images = [images]
+    if not isinstance(image, Image):
+        raise RuntimeError
 
-    assert len(detections) == len(images), "length mismatch"
+    assert len(detections) != 1, "length mismatch"
 
-    velour_predictions = []
-    for detection, image in zip(detections, images):
-
-        # validate
-        expected_keys = {
-            "num_detections",
-            "detection_classes",
-            "detection_boxes",
-            "detection_scores",
-        }
-        if set(detection.keys()) != expected_keys:
-            raise ValueError(
-                f"Expected `dets` to have keys {expected_keys} but got {detection.keys()}"
-            )
-
-        # create prediction
-        velour_predictions.append(
-            Prediction(
-                datum=image.to_datum(),
-                annotations=[
-                    ScoredAnnotation(
-                        task_type=enums.TaskType.DETECTION,
-                        scored_labels=[
-                            ScoredLabel(
-                                label=Label(key=label_key, value=label),
-                                score=float(score),
-                            )
-                        ],
-                        bounding_box=BoundingBox.from_extrema(
-                            ymin=box[0], xmin=box[1], ymax=box[2], xmax=box[3]
-                        ),
-                    )
-                    for box, score, label in zip(
-                        detection["detection_boxes"],
-                        detection["detection_scores"],
-                        detection["detection_classes"],
-                    )
-                ],
-            )
+    # validate
+    expected_keys = {
+        "num_detections",
+        "detection_classes",
+        "detection_boxes",
+        "detection_scores",
+    }
+    if set(detections.keys()) != expected_keys:
+        raise ValueError(
+            f"Expected `dets` to have keys {expected_keys} but got {detections.keys()}"
         )
 
-    return velour_predictions
+    # create prediction
+    return Prediction(
+        datum=image.to_datum(),
+        annotations=[
+            ScoredAnnotation(
+                task_type=enums.TaskType.DETECTION,
+                scored_labels=[
+                    ScoredLabel(
+                        label=Label(key=label_key, value=label),
+                        score=float(score),
+                    )
+                ],
+                bounding_box=BoundingBox.from_extrema(
+                    ymin=box[0], xmin=box[1], ymax=box[2], xmax=box[3]
+                ),
+            )
+            for box, score, label in zip(
+                detections["detection_boxes"],
+                detections["detection_scores"],
+                detections["detection_classes"],
+            )
+        ],
+    )
 
 
 def create_model_from_chariot(

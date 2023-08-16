@@ -1,5 +1,8 @@
 import json
+import math
 import os
+import time
+import warnings
 from dataclasses import asdict
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
@@ -7,7 +10,7 @@ from urllib.parse import urljoin
 import requests
 
 from velour import schemas
-from velour.enums import AnnotationType, TaskType
+from velour.enums import AnnotationType, JobStatus, TaskType
 
 
 class ClientException(Exception):
@@ -110,40 +113,76 @@ class Client:
     def get_labels(self) -> List[schemas.Label]:
         return self._requests_get_rel_host("labels").json()
 
+    def delete_dataset(self, name: str):
+        try:
+            self._requests_delete_rel_host(f"datasets/{name}")
+        except ClientException as e:
+            if "does not exist" not in str(e):
+                raise e
 
-class Job:
+    def delete_model(self, name: str):
+        try:
+            self._requests_delete_rel_host(f"models/{name}")
+        except ClientException as e:
+            if "does not exist" not in str(e):
+                raise e
+
+
+class Evaluation:
     def __init__(
         self,
         client: Client,
+        dataset_name: str,
+        model_name: str,
         job_id: int,
         **kwargs,
     ):
         self._id = job_id
         self.client = client
+        self.dataset_name = dataset_name
+        self.model_name = model_name
 
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    @property
     def status(self) -> str:
-        resp = self.client._requests_get_rel_host(f"jobs/{self._id}").json()
-        return resp["status"]
-
-
-class EvalJob(Job):
-    def metrics(self) -> List[dict]:
-        return self.client._requests_get_rel_host(
-            f"jobs/{self._id}/metrics"
+        resp = self.client._requests_get_rel_host(
+            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}"
         ).json()
-
-    def confusion_matrices(self) -> List[dict]:
-        return self.client._requests_get_rel_host(
-            f"jobs/{self._id}/confusion-matrices"
-        ).json()
+        return JobStatus(resp)
 
     # TODO: replace value with a dataclass?
+    @property
     def settings(self) -> dict:
         return self.client._requests_get_rel_host(
-            f"jobs/{self._id}/settings"
+            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/settings"
+        ).json()
+
+    def wait_for_completion(self, *, interval=1.0, timeout=None):
+        if timeout:
+            timeout_counter = int(math.ceil(timeout / interval))
+        while self.status not in [JobStatus.DONE, JobStatus.FAILED]:
+            time.sleep(interval)
+            if timeout:
+                timeout_counter -= 1
+                if timeout_counter < 0:
+                    raise TimeoutError
+
+    @property
+    def metrics(self) -> List[dict]:
+        if self.status != JobStatus.DONE:
+            return []
+        return self.client._requests_get_rel_host(
+            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/metrics"
+        ).json()
+
+    @property
+    def confusion_matrices(self) -> List[dict]:
+        if self.status != JobStatus.DONE:
+            return []
+        return self.client._requests_get_rel_host(
+            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/confusion-matrices"
         ).json()
 
 
@@ -227,11 +266,6 @@ class Dataset:
             info=info,
         )
 
-    @staticmethod
-    def prune(client: Client, name: str):
-        job_id = client._requests_delete_rel_host(f"datasets/{name}").json()
-        return Job(client=client, job_id=job_id)
-
     def add_metadatum(self, metadatum: schemas.MetaDatum):
         # @TODO: Add endpoint to allow adding custom metadatums
         self.info.metadata.append(metadatum)
@@ -246,21 +280,27 @@ class Dataset:
         except AssertionError:
             raise TypeError(f"Invalid type `{type(groundtruth)}`")
 
-        groundtruth.dataset = self.info.name
-        return self.client._requests_post_rel_host(
-            "groundtruth",
+        if len(groundtruth.annotations) == 0:
+            warnings.warn(
+                f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations. Skipping..."
+            )
+            return
+
+        groundtruth.datum.dataset = self.info.name
+        self.client._requests_post_rel_host(
+            "groundtruths",
             json=asdict(groundtruth),
         )
 
     def get_groundtruth(self, uid: str) -> schemas.GroundTruth:
         resp = self.client._requests_get_rel_host(
-            f"datasets/{self.info.name}/data/{uid}/groundtruth"
+            f"groundtruths/dataset/{self.info.name}/datum/{uid}"
         ).json()
         return schemas.GroundTruth(**resp)
 
     def get_labels(self) -> List[schemas.LabelDistribution]:
         labels = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/labels"
+            f"labels/dataset/{self.name}"
         ).json()
 
         return [
@@ -271,9 +311,8 @@ class Dataset:
     def get_datums(self) -> List[schemas.Datum]:
         """Returns a list of datums."""
         datums = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/data"
+            f"data/dataset/{self.name}"
         ).json()
-
         return [schemas.Datum(**datum) for datum in datums]
 
     def get_images(self) -> List[schemas.Image]:
@@ -282,6 +321,21 @@ class Dataset:
             schemas.Image.from_datum(datum)
             for datum in self.get_datums()
             if schemas.Image.valid(datum)
+        ]
+
+    def get_evaluations(self) -> List[Evaluation]:
+        model_evaluations = self.client._requests_get_rel_host(
+            f"evaluations/datasets/{self.name}"
+        ).json()
+        return [
+            Evaluation(
+                client=self.client,
+                dataset_name=self.name,
+                model_name=model_name,
+                job_id=job_id,
+            )
+            for model_name in model_evaluations
+            for job_id in model_evaluations[model_name]
         ]
 
     def get_info(self) -> schemas.Info:
@@ -388,10 +442,9 @@ class Model:
             info=info,
         )
 
-    @staticmethod
-    def prune(client: Client, name: str):
-        job_id = client._requests_delete_rel_host(f"models/{name}").json()
-        return Job(client=client, job_id=job_id)
+    def delete(self):
+        self.client._requests_delete_rel_host(f"models/{self.name}").json()
+        del self
 
     def add_metadatum(self, metadatum: schemas.MetaDatum):
         # @TODO: Add endpoint to allow adding custom metadatums
@@ -405,31 +458,35 @@ class Model:
             raise TypeError(
                 f"Expected `velour.schemas.Prediction`, got `{type(prediction)}`"
             )
+
+        if len(prediction.annotations) == 0:
+            warnings.warn(
+                f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations. Skipping..."
+            )
+            return
+
         prediction.model = self.info.name
         return self.client._requests_post_rel_host(
-            "prediction",
+            "predictions",
             json=asdict(prediction),
         )
 
     def get_prediction(self, uid: str) -> schemas.Prediction:
         resp = self.client._requests_get_rel_host(
-            f"models/{self.info.name}/datum/{uid}/prediction"
+            f"predictions/model/{self.info.name}/datum/{uid}",
         ).json()
         return schemas.Prediction(**resp)
 
     def finalize_inferences(self, dataset: "Dataset") -> None:
         return self.client._requests_put_rel_host(
-            f"datasets/{dataset.name}/finalize/{self.name}"
+            f"models/{self.name}/datasets/{dataset.name}/finalize"
         ).json()
-
-    def delete(self):
-        self.client._requests_delete_rel_host(f"models/{self.name}")
 
     def evaluate_classification(
         self,
-        dataset: "Dataset",
+        dataset: Dataset,
         group_by: schemas.MetaDatum = schemas.MetaDatum(key="k", value="v"),
-    ) -> "EvalJob":
+    ) -> Evaluation:
         """Start a classification evaluation job
 
         Parameters
@@ -441,7 +498,7 @@ class Model:
 
         Returns
         -------
-        EvalJob
+        Evaluation
             a job object that can be used to track the status of the job
             and get the metrics of it upon completion
         """
@@ -454,10 +511,15 @@ class Model:
         }
 
         resp = self.client._requests_post_rel_host(
-            "clf-metrics", json=payload
+            "evaluations/clf-metrics", json=payload
         ).json()
 
-        return EvalJob(client=self.client, **resp)
+        return Evaluation(
+            client=self.client,
+            dataset_name=dataset.name,
+            model_name=self.name,
+            **resp,
+        )
 
     def evaluate_ap(
         self,
@@ -470,7 +532,7 @@ class Model:
         min_area: float = None,
         max_area: float = None,
         label_key: Optional[str] = None,
-    ) -> "EvalJob":
+    ) -> Evaluation:
         payload = {
             "settings": {
                 "model": self.name,
@@ -490,7 +552,7 @@ class Model:
             payload["ious_to_keep"] = ious_to_keep
 
         resp = self.client._requests_post_rel_host(
-            "ap-metrics", json=payload
+            "evaluations/ap-metrics", json=payload
         ).json()
 
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
@@ -499,62 +561,27 @@ class Model:
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
             resp[k] = [schemas.Label(**la) for la in resp[k]]
 
-        return EvalJob(client=self.client, **resp)
+        return Evaluation(
+            client=self.client,
+            dataset_name=dataset.name,
+            model_name=self.name,
+            **resp,
+        )
 
-    def get_evaluation_settings(self) -> List[dict]:
-        # TODO: should probably have a dataclass for the output
-        ret = self.client._requests_get_rel_host(
-            f"models/{self.name}/evaluation-settings"
+    def get_evaluations(self) -> List[Evaluation]:
+        dataset_evaluations = self.client._requests_get_rel_host(
+            f"evaluations/models/{self.name}"
         ).json()
-
-        return [_remove_none_from_dict(es) for es in ret]
-
-    @staticmethod
-    def _group_evaluation_settings(eval_settings: List[dict]):
-        # return list of dicts with keys ids and (common) eval settings
-        ret = []
-
-        for es in eval_settings:
-            es_without_id_dset_model = {
-                k: v
-                for k, v in es.items()
-                if k not in ["id", "dataset", "model"]
-            }
-            found = False
-            for grp in ret:
-                if es_without_id_dset_model == grp["settings"]:
-                    grp["ids"].append(es["id"])
-                    grp["datasets"].append(es["dataset"])
-                    found = True
-                    break
-
-            if not found:
-                ret.append(
-                    {
-                        "ids": [es["id"]],
-                        "settings": es_without_id_dset_model,
-                        "datasets": [es["dataset"]],
-                    }
-                )
-
-        return ret
-
-    def get_metrics_at_evaluation_settings_id(
-        self, eval_settings_id: int
-    ) -> List[dict]:
         return [
-            _remove_none_from_dict(m)
-            for m in self.client._requests_get_rel_host(
-                f"models/{self.name}/evaluation-settings/{eval_settings_id}/metrics"
-            ).json()
+            Evaluation(
+                client=self.client,
+                dataset_name=dataset_name,
+                model_name=self.name,
+                job_id=job_id,
+            )
+            for dataset_name in dataset_evaluations
+            for job_id in dataset_evaluations[dataset_name]
         ]
-
-    def get_confusion_matrices_at_evaluation_settings_id(
-        self, eval_settings_id: int
-    ) -> List[dict]:
-        return self.client._requests_get_rel_host(
-            f"models/{self.name}/evaluation-settings/{eval_settings_id}/confusion-matrices"
-        ).json()
 
     def get_metric_dataframes(self):
         try:
@@ -563,16 +590,12 @@ class Model:
             raise ModuleNotFoundError(
                 "Must have pandas installed to use `get_metric_dataframes`."
             )
-        eval_setting_groups = self._group_evaluation_settings(
-            self.get_evaluation_settings()
-        )
 
         ret = []
-        for grp in eval_setting_groups:
+        for evaluation in self.get_evaluations():
             metrics = [
-                {**m, "dataset": dataset}
-                for id_, dataset in zip(grp["ids"], grp["datasets"])
-                for m in self.get_metrics_at_evaluation_settings_id(id_)
+                {**m, "dataset": evaluation.dataset_name}
+                for m in evaluation.metrics
             ]
             df = pd.DataFrame(metrics)
             for k in ["label", "parameters"]:
@@ -581,17 +604,16 @@ class Model:
             df["label"] = df["label"].apply(
                 lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
             )
-
             df = df.pivot(
                 index=["type", "parameters", "label"], columns=["dataset"]
             )
-            ret.append({"settings": grp["settings"], "df": df})
+            ret.append({"settings": evaluation.settings, "df": df})
 
         return ret
 
     def get_labels(self) -> List[schemas.Label]:
         labels = self.client._requests_get_rel_host(
-            f"models/{self.name}/labels"
+            f"labels/model/{self.name}"
         ).json()
 
         return [

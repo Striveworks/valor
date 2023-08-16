@@ -17,23 +17,21 @@ from velour.schemas import (
 
 
 def parse_yolo_image_classification(
-    result, uid: str, label_key: str = "class"
+    result,
+    image: Image,
+    label_key: str = "class",
 ) -> Prediction:
     """Parses Ultralytic's result for an image classification task."""
 
     # Extract data
-    image_uid = uid
-    image_height = result.orig_shape[0]
-    image_width = result.orig_shape[1]
     probabilities = result.probs
     labels = result.names
 
-    # create datum
-    image = Image(
-        uid=image_uid,
-        height=image_height,
-        width=image_width,
-    ).to_datum()
+    # validate dimensions
+    if image.height != result.orig_shape[0]:
+        raise RuntimeError
+    if image.width != result.orig_shape[1]:
+        raise RuntimeError
 
     # Create scored label list
     scored_labels = [
@@ -46,7 +44,7 @@ def parse_yolo_image_classification(
 
     # create prediction
     return Prediction(
-        datum=image,
+        datum=image.to_datum(),
         annotations=[
             ScoredAnnotation(
                 task_type=enums.TaskType.CLASSIFICATION,
@@ -56,97 +54,21 @@ def parse_yolo_image_classification(
     )
 
 
-def _convert_yolo_segmentation(
-    raw,
-    height: int,
-    width: int,
-    resample: Resampling = Resampling.BILINEAR,
-):
-    """Resizes the raw binary mask provided by the YOLO inference to the original image size."""
-    mask = numpy.asarray(raw.cpu())
-    mask[mask == 1.0] = 255
-    img = PIL.Image.fromarray(numpy.uint8(mask))
-    img = img.resize((width, height), resample=resample)
-    mask = numpy.array(img, dtype=numpy.uint8) >= 128
-    return mask
-
-
-def parse_yolo_image_segmentation(
-    result,
-    uid: str,
-    label_key: str = "class",
-    resample: Resampling = Resampling.BILINEAR,
-) -> Union[Prediction, None]:
-    """Parses Ultralytic's result for an image segmentation task."""
-
-    if result.masks.data is None:
-        return None
-
-    # Extract data
-    image_uid = uid
-    image_height = result.orig_shape[0]
-    image_width = result.orig_shape[1]
-    probabilities = [conf.item() for conf in result.boxes.conf]
-    labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
-    masks = [mask for mask in result.masks.data]
-
-    # create datum
-    image = Image(
-        uid=image_uid,
-        height=image_height,
-        width=image_width,
-    ).to_datum()
-
-    # Create scored label list
-    scored_labels = [
-        ScoredLabel(
-            label=Label(key=label_key, value=label),
-            score=probability,
-        )
-        for label, probability in list(zip(labels, probabilities))
-    ]
-
-    # Extract masks
-    masks = [
-        _convert_yolo_segmentation(
-            raw, height=image_height, width=image_width, resample=resample
-        )
-        for raw in result.masks.data
-    ]
-
-    # create prediction
-    return Prediction(
-        datum=image,
-        annotations=[
-            ScoredAnnotation(
-                task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-                scored_labels=[scored_label],
-                raster=Raster.from_numpy(mask),
-            )
-            for mask, scored_label in list(zip(masks, scored_labels))
-        ],
-    )
-
-
 def parse_yolo_object_detection(
-    result, uid: str, label_key: str = "class"
+    result, image: Image, label_key: str = "class"
 ) -> Prediction:
     """Parses Ultralytic's result for an object detection task."""
 
     # Extract data
-    image_uid = uid
-    image_height = result.orig_shape[0]
-    image_width = result.orig_shape[1]
     probabilities = [conf.item() for conf in result.boxes.conf]
     labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
     bboxes = [numpy.asarray(box.cpu()) for box in result.boxes.xyxy]
 
-    # create datum
-    image = Image(
-        uid=image_uid,
-        height=image_height,
-        width=image_width,
-    ).to_datum()
+    # validate dimensions
+    if image.height != result.orig_shape[0]:
+        raise RuntimeError
+    if image.width != result.orig_shape[1]:
+        raise RuntimeError
 
     # Create scored label list
     scored_labels = [
@@ -169,7 +91,7 @@ def parse_yolo_object_detection(
     ]
 
     return Prediction(
-        datum=image,
+        datum=image.to_datum(),
         annotations=[
             ScoredAnnotation(
                 task_type=enums.TaskType.DETECTION,
@@ -177,6 +99,74 @@ def parse_yolo_object_detection(
                 bounding_box=bbox,
             )
             for bbox, scored_label in list(zip(bboxes, scored_labels))
+        ],
+    )
+
+
+def _convert_yolo_segmentation(
+    raw,
+    height: int,
+    width: int,
+    resample: Resampling = Resampling.BILINEAR,
+):
+    """Resizes the raw binary mask provided by the YOLO inference to the original image size."""
+    mask = numpy.asarray(raw.cpu())
+    mask[mask == 1.0] = 255
+    img = PIL.Image.fromarray(numpy.uint8(mask))
+    img = img.resize((width, height), resample=resample)
+    mask = numpy.array(img, dtype=numpy.uint8) >= 128
+    return mask
+
+
+def parse_yolo_image_segmentation(
+    result,
+    image: Image,
+    label_key: str = "class",
+    resample: Resampling = Resampling.BILINEAR,
+) -> Union[Prediction, None]:
+    """Parses Ultralytic's result for an image segmentation task."""
+
+    if result.masks.data is None:
+        return None
+
+    # Extract data
+    probabilities = [conf.item() for conf in result.boxes.conf]
+    labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
+    masks = [mask for mask in result.masks.data]
+
+    # validate dimensions
+    if image.height != result.orig_shape[0]:
+        raise RuntimeError
+    if image.width != result.orig_shape[1]:
+        raise RuntimeError
+
+    # Create scored label list
+    scored_labels = [
+        ScoredLabel(
+            label=Label(key=label_key, value=label),
+            score=probability,
+        )
+        for label, probability in list(zip(labels, probabilities))
+    ]
+
+    # Extract masks
+    masks = [
+        _convert_yolo_segmentation(
+            raw, height=image.height, width=image.width, resample=resample
+        )
+        for raw in result.masks.data
+    ]
+
+    # create prediction
+    return Prediction(
+        datum=image.to_datum(),
+        annotations=[
+            ScoredAnnotation(
+                task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                scored_labels=[scored_label],
+                raster=Raster.from_numpy(mask),
+            )
+            for mask, scored_label in list(zip(masks, scored_labels))
         ],
     )
 

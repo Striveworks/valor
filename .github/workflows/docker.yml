@@ -3,7 +3,7 @@ name: Builds and publishes a docker image for the backend service
 on:
   push:
     paths:
-      - backend/**
+      - api/**
       - .github/workflows/docker.yml
     branches: [main]
 
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./backend
+        working-directory: ./api
     env:
       IMAGE_NAME: ghcr.io/striveworks/velour/velour-service
       IMAGE_NAME_WITH_COMMIT_HASH: $IMAGE_NAME:${{ github.sha }}
