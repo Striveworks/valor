@@ -113,6 +113,20 @@ class Client:
     def get_labels(self) -> List[schemas.Label]:
         return self._requests_get_rel_host("labels").json()
 
+    def delete_dataset(self, name: str):
+        try:
+            self._requests_delete_rel_host(f"datasets/{name}")
+        except ClientException as e:
+            if "does not exist" not in str(e):
+                raise e
+
+    def delete_model(self, name: str):
+        try:
+            self._requests_delete_rel_host(f"models/{name}")
+        except ClientException as e:
+            if "does not exist" not in str(e):
+                raise e
+
 
 class Evaluation:
     def __init__(
@@ -251,14 +265,6 @@ class Dataset:
             client=client,
             info=info,
         )
-
-    @staticmethod
-    def prune(client: Client, name: str):
-        try:
-            client._requests_delete_rel_host(f"datasets/{name}")
-        except ClientException as e:
-            if "does not exist" not in str(e):
-                raise e
 
     def add_metadatum(self, metadatum: schemas.MetaDatum):
         # @TODO: Add endpoint to allow adding custom metadatums
@@ -436,13 +442,9 @@ class Model:
             info=info,
         )
 
-    @staticmethod
-    def prune(client: Client, name: str):
-        try:
-            client._requests_delete_rel_host(f"models/{name}")
-        except ClientException as e:
-            if "does not exist" not in str(e):
-                raise e
+    def delete(self):
+        self.client._requests_delete_rel_host(f"models/{self.name}").json()
+        del self
 
     def add_metadatum(self, metadatum: schemas.MetaDatum):
         # @TODO: Add endpoint to allow adding custom metadatums
@@ -479,9 +481,6 @@ class Model:
         return self.client._requests_put_rel_host(
             f"models/{self.name}/datasets/{dataset.name}/finalize"
         ).json()
-
-    def delete(self):
-        self.client._requests_delete_rel_host(f"models/{self.name}")
 
     def evaluate_classification(
         self,

@@ -1309,20 +1309,20 @@ def test_iou(
     assert iou(rect1_poly, rect2_poly) == db.scalar(select(iou_computation))
 
 
-def test_prune_dataset(client: Client, db: Session):
+def test_client_delete_dataset(client: Client, db: Session):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
     Dataset.create(client, dset_name)
     assert db.scalar(select(func.count(models.Dataset.name))) == 1
-    Dataset.prune(client, dset_name)
+    client.delete_dataset(dset_name)
     time.sleep(1.0)
     assert db.scalar(select(func.count(models.Dataset.name))) == 0
 
 
-def test_prune_model(client: Client, db: Session):
+def test_client_delete_model(client: Client, db: Session):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
     Model.create(client, model_name)
     assert db.scalar(select(func.count(models.Model.name))) == 1
-    Model.prune(client, model_name)
+    client.delete_model(model_name)
     time.sleep(1.0)
     assert db.scalar(select(func.count(models.Model.name))) == 0
 
