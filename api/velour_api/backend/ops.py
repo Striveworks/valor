@@ -275,7 +275,7 @@ class BackendQuery:
     def filters(self) -> list[BinaryExpression]:
         return self._filters
 
-    def prune(self) -> set[str]:
+    def prune_graph(self) -> set[str]:
         # Set of id's to prune
         prune = self.constraints.copy()
 
@@ -311,7 +311,7 @@ class BackendQuery:
             self.targets.remove(self.source)
 
         qstruct = generate_query(
-            source=self.source, targets=self.targets, prune=self.prune()
+            source=self.source, targets=self.targets, prune=self.prune_graph()
         )
 
         ret = f"SELECT FROM {self.source}\n"
@@ -322,7 +322,7 @@ class BackendQuery:
             ret += f"  {filt},\n"
         return ret
 
-    def ids(self, db: Session):
+    def query_ids(self, db: Session):
         """Returns list of rows from source that meet filter criteria."""
 
         # sanity check
@@ -335,7 +335,7 @@ class BackendQuery:
 
         # serialize request from graph
         qstruct = generate_query(
-            source=self.source, targets=self.targets, prune=self.prune()
+            source=self.source, targets=self.targets, prune=self.prune_graph()
         )
 
         # select source
@@ -353,7 +353,7 @@ class BackendQuery:
         # return select statement of valid row ids
         return q_ids
 
-    def all(self, db: Session):
+    def query(self, db: Session):
         """Returns sqlalchemy table rows"""
 
         # get source object
