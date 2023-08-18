@@ -10,9 +10,11 @@ build
 */.env
 */.venv
 
-.vscode
 */dist/*
-.DS_Store
 site/*
-*.ipynb
 runs
+
+.vscode
+.DS_Store
+*.ipynb
+*.tgz

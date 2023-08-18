@@ -1,0 +1,3 @@
+# values.yaml
+
+enablePersistence: true  # Set to true or false based on your requirements

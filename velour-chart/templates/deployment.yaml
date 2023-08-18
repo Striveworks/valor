@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+        # Postgres / PostGIS
+        - name: postgresdb
+          image: postgis/postgis
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: velour
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - mountPath: /var/lib/postgres/data
+              name: db-data
+        # Redis
+        - name: redis
+          image: redis
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - mountPath: /var/lib/redis/data
+              name: db-data
+        # Velour API
+        - name: api
+          image: ghcr.io/striveworks/velour/velour-service
+          env:
+            - name: POSTGRES_HOST
+              value: postgresdb
+            - name: POSTGRES_DB
+              value: velour
+            - name: POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRES_PASSWORD
+            - name: REDIS_HOST
+              value: redis
+            - name: REDIS_PORT
+              value: "6379"
+      imagePullSecrets:
+        - name: ghcr-secret
+      volumes:
+        - name: db-data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-persistent-volume-claim

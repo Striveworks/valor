@@ -1,0 +1,4 @@
+apiVersion: v2
+name: velour-chart
+description: A Helm chart for deploying Velour application
+version: 0.1.0

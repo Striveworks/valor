@@ -1,0 +1,17 @@
+{{- if .Values.enablePersistence }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-persistent-volume
+  labels:
+    type: local
+    app: {{ .Release.Name }}
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 8Gi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: "/data/db"
+{{- end }}
