@@ -38,7 +38,7 @@ class AnnotationFilter(BaseModel):
     # filter by metadata
     metadata: list[schemas.MetaDatum] = Field(default_factory=list)
 
-    # toggle 
+    # toggle
     allow_conversion: bool = False
 
     model_config = ConfigDict(extra="forbid")
@@ -53,6 +53,7 @@ class LabelFilter(BaseModel):
     include_groundtruths: bool = True
 
     model_config = ConfigDict(extra="forbid")
+
 
 class Filter(BaseModel):
 
