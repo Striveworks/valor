@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    {{- include "velour-chart.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: velour-api
+          image: ghcr.io/striveworks/velour/velour-service
+          env:
+            - name: POSTGRES_HOST
+              value: {{ .Release.Name }}-postgres
+            - name: POSTGRES_DB
+              value: velour
+            - name: POSTGRES_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRES_PASSWORD
+            - name: REDIS_HOST
+              value: {{ .Release.Name }}-redis
+            - name: REDIS_PORT
+              value: "6379"
+      imagePullSecrets:
+        - name: ghcr-secret
+      volumes:
+        - name: db-data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-persistent-volume-claim
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    {{- include "velour-chart.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  ports:
+    - port: 8000
+  selector:
+    {{- include "velour-chart.selectorLabels" . | nindent 4 }}
+
+# ---
+# apiVersion: networking.k8s.io/v1
+# kind: NetworkPolicy
+# metadata:
+#   name: velour-ingress-connection
+# spec:
+#   podSelector:
+#     matchLabels:
+#       app: {{ .Release.Name }}-api
+#   ingress:
+#   - from:
+#     - podSelector:
+#         matchLabels:
+#           app: {{ .Release.Name }}-ingress
+#     ports:
+#     - protocol: TCP
+#       port: 5432
