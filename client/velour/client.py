@@ -324,12 +324,12 @@ class Dataset:
         ).json()
         return [schemas.Datum(**datum) for datum in datums]
 
-    def get_images(self) -> List[schemas.Image]:
+    def get_images(self) -> List[schemas.ImageMetadata]:
         """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
         return [
-            schemas.Image.from_datum(datum)
+            schemas.ImageMetadata.from_datum(datum)
             for datum in self.get_datums()
-            if schemas.Image.valid(datum)
+            if schemas.ImageMetadata.valid(datum)
         ]
 
     def get_evaluations(self) -> List[Evaluation]:
@@ -425,7 +425,7 @@ class Model:
                 )
             )
         for key in kwargs:
-            ds.metadata.append(
+            md.metadata.append(
                 schemas.MetaDatum(
                     key=key,
                     value=kwargs[key],

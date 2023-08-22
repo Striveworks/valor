@@ -10,15 +10,15 @@ import requests
 from tqdm import tqdm
 
 from velour import enums
-from velour.client import Client, Dataset, Model
+from velour.client import Client, Dataset, Model, ClientException
 from velour.schemas import (
+    Datum,
     Annotation,
     BasicPolygon,
     BoundingBox,
     GroundTruth,
-    Image,
+    ImageMetadata,
     Label,
-    MetaDatum,
     Point,
     Polygon,
     Prediction,
@@ -28,30 +28,14 @@ from velour.schemas import (
 
 try:
     import chariot
-    from chariot.datasets import Dataset as ChariotDataset
+    from chariot.datasets import Dataset as ChariotDataset, get_latest_vertical_dataset_version
     from chariot.models import Model as ChariotModel
     from chariot.models import TaskType as ChariotTaskType
 except ModuleNotFoundError:
     "`chariot` package not found. if you have an account on Chariot please see https://production.chariot.striveworks.us/docs/sdk/sdk for how to install the python SDK"
 
 
-""" Dataset conversion """
-
-
-def upload_chariot_dataset(
-    client: Client,
-    dataset: chariot.datasets.Dataset,
-    dataset_version_id: str = None,
-) -> Dataset:
-    pass
-
-
-def upload_chariot_model(
-    client: Client,
-    model: chariot.models.Model,
-):
-    pass
-
+""" Dataset """
 
 def _construct_url(
     project_id: str, dataset_id: str = None, model_id: str = None
@@ -121,7 +105,7 @@ def _parse_image_classification_groundtruths(
     # Strip UID from URL path
     uid = Path(datum["path"]).stem
 
-    image = Image(
+    image = ImageMetadata(
         uid=uid,
         height=-1,
         width=-1,
@@ -148,7 +132,7 @@ def _parse_image_segmentation_groundtruths(
     # Strip UID from URL path
     uid = Path(datum["path"]).stem
 
-    image = Image(
+    image = ImageMetadata(
         uid=uid,
         height=-1,
         width=-1,
@@ -193,7 +177,7 @@ def _parse_object_detection_groundtruths(
     # Strip UID from URL path
     uid = Path(datum["path"]).stem
 
-    image = Image(
+    image = ImageMetadata(
         uid=uid,
         height=-1,
         width=-1,
@@ -241,7 +225,7 @@ def _parse_chariot_groundtruths(
     Chariot annotations in velour 'groundtruth' format.
     """
 
-    # Image Classification
+    # ImageMetadata Classification
     if chariot_task_type.image_classification:
         groundtruth_annotations = [
             _parse_image_classification_groundtruths(
@@ -251,7 +235,7 @@ def _parse_chariot_groundtruths(
             for datum in chariot_manifest
         ]
 
-    # Image Segmentation
+    # ImageMetadata Segmentation
     elif chariot_task_type.image_segmentation:
         groundtruth_annotations = [
             _parse_image_segmentation_groundtruths(
@@ -342,7 +326,7 @@ def upload_chariot_dataset(
     dsv = None
     if dataset_version_id is None:
         # Use the latest version
-        dsv = chariot.datasets.get_latest_vertical_dataset_version(
+        dsv = get_latest_vertical_dataset_version(
             project_id=dataset.project_id,
             dataset_id=dataset.id,
         )
@@ -399,32 +383,35 @@ def upload_chariot_dataset(
     return velour_dataset
 
 
-def parse_chariot_image_classifications(
-    classifications: Union[Dict, List[Dict]],
-    images: Image,
+""" Model """
+
+
+def _parse_chariot_image_classifications(
+    classification: dict,
+    image: ImageMetadata,
     label_key: str = "class",
 ) -> Prediction:
     raise NotImplementedError
 
 
-def parse_chariot_image_segmentations(
-    segmentations: Union[Dict, List[Dict]],
-    image: Image,
+def _parse_chariot_image_segmentations(
+    segmentation: dict,
+    image: ImageMetadata,
     label_key: str = "class",
 ) -> Prediction:
     raise NotImplementedError
 
 
-def parse_chariot_object_detections(
+def _parse_chariot_object_detections(
     detections: dict,
-    image: Image,
+    image: ImageMetadata,
     label_key: str = "class",
 ) -> Prediction:
 
     if not isinstance(detections, dict):
         raise RuntimeError
 
-    if not isinstance(image, Image):
+    if not isinstance(image, ImageMetadata):
         raise RuntimeError
 
     assert len(detections) != 1, "length mismatch"
@@ -466,11 +453,9 @@ def parse_chariot_object_detections(
     )
 
 
-def create_model_from_chariot(
+def create_chariot_model(
     client: Client,
     model: ChariotModel,
-    name: str = None,
-    description: str = None,
 ) -> Model:
     """Converts chariot model to a velour model.
 
@@ -515,14 +500,6 @@ def create_model_from_chariot(
         ChariotTaskType.OTHER_NATURAL_LANGUAGE,
     ]
 
-    if name is None:
-        name = f"chariot-{model.name}-v{model.version}"
-
-    if description is None:
-        description = model._meta.summary
-
-    href = _construct_url(project_id=model.project_id, model_id=model.id)
-
     if model.task in cv_tasks:
         pass
     elif model.task in tabular_tasks:
@@ -531,22 +508,28 @@ def create_model_from_chariot(
         raise NotImplementedError(
             f"NLP tasks are currently not supported. '{model.task}'"
         )
+    
+    href = _construct_url(project_id=model.project_id, model_id=model.id)
 
-    model = Model.create(
+    return Model.create(
         client,
         name=model.id,
         href=href,
-        description=description,
+        description=model._meta.summary,
+        integration="chariot",
+        title=model.name,
+        version=model.version,
+        task=str(model.task),
     )
-    model.add_metadatum(
-        MetaDatum(
-            key="project_id",
-            value=model.project_id,
-        )
-    )
-    model.add_metadatum(
-        MetaDatum(
-            key="task",
-            value=model.task,
-        )
-    )
+
+
+def get_chariot_model(client: Client, model: ChariotModel) -> Model:
+    return Model.get(client, model.id)
+
+
+def upload_chariot_inference(
+    client: Client, 
+    model: ChariotModel,
+    datum: Datum,
+    results: dict
+)

@@ -7,7 +7,7 @@ from PIL.Image import Resampling
 from velour import enums
 from velour.schemas import (
     BoundingBox,
-    Image,
+    ImageMetadata,
     Label,
     Prediction,
     Raster,
@@ -18,7 +18,7 @@ from velour.schemas import (
 
 def parse_yolo_image_classification(
     result,
-    image: Image,
+    image: ImageMetadata,
     label_key: str = "class",
 ) -> Prediction:
     """Parses Ultralytic's result for an image classification task."""
@@ -55,7 +55,7 @@ def parse_yolo_image_classification(
 
 
 def parse_yolo_object_detection(
-    result, image: Image, label_key: str = "class"
+    result, image: ImageMetadata, label_key: str = "class"
 ) -> Prediction:
     """Parses Ultralytic's result for an object detection task."""
 
@@ -120,7 +120,7 @@ def _convert_yolo_segmentation(
 
 def parse_yolo_image_segmentation(
     result,
-    image: Image,
+    image: ImageMetadata,
     label_key: str = "class",
     resample: Resampling = Resampling.BILINEAR,
 ) -> Union[Prediction, None]:

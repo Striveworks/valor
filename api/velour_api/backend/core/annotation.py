@@ -118,6 +118,7 @@ def _raster_to_png_b64(
 
 def get_annotation(
     db: Session,
+    datum: models.Datum,
     annotation: models.Annotation,
 ) -> schemas.Annotation:
 
@@ -167,8 +168,8 @@ def get_annotation(
 
     # Raster
     if annotation.raster is not None:
-        height = get_metadata(db, annotation=annotation, key="height")[0].value
-        width = get_metadata(db, annotation=annotation, key="width")[0].value
+        height = get_metadata(db, datum=datum, key="height")[0].value
+        width = get_metadata(db, datum=datum, key="width")[0].value
         retval.raster = schemas.Raster(
             mask=_raster_to_png_b64(
                 db, raster=annotation.raster, height=height, width=width
@@ -186,7 +187,7 @@ def get_annotations(
 ) -> list[schemas.Annotation]:
 
     return [
-        get_annotation(db, annotation=annotation)
+        get_annotation(db, datum=datum, annotation=annotation)
         for annotation in (
             db.query(models.Annotation)
             .where(
@@ -202,6 +203,7 @@ def get_annotations(
 
 def get_scored_annotation(
     db: Session,
+    datum: models.Datum,
     annotation: models.Annotation,
 ) -> schemas.ScoredAnnotation:
 
@@ -256,14 +258,12 @@ def get_scored_annotation(
 
     # Raster
     if annotation.raster is not None:
-        height = get_metadata(db, annotation=annotation, key="height")[0].value
-        width = get_metadata(db, annotation=annotation, key="width")[0].value
+        height = get_metadata(db, datum=datum, key="height")[0].value
+        width = get_metadata(db, datum=datum, key="width")[0].value
         retval.raster = schemas.Raster(
             mask=_raster_to_png_b64(
                 db, raster=annotation.raster, height=height, width=width
             ),
-            height=height,
-            width=width,
         )
 
     return retval
@@ -276,7 +276,7 @@ def get_scored_annotations(
 ) -> list[schemas.ScoredAnnotation]:
 
     return [
-        get_scored_annotation(db, annotation=annotation)
+        get_scored_annotation(db, datum=datum, annotation=annotation)
         for annotation in (
             db.query(models.Annotation)
             .where(

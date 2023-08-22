@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from velour import enums
 from velour.client import Dataset
-from velour.schemas import Annotation, GroundTruth, Image, Label, Raster
+from velour.schemas import Annotation, GroundTruth, ImageMetadata, Label, Raster
 
 
 def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
@@ -81,7 +81,7 @@ def upload_coco_panoptic(
 
         # create datum
         image_id = ann_dict["image_id"]
-        img = Image(
+        img = ImageMetadata(
             uid=str(image_id),
             height=image_id_to_height[image_id],
             width=image_id_to_width[image_id],
