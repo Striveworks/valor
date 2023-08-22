@@ -2,9 +2,9 @@ import gzip
 import json
 import tempfile
 import urllib
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Union
-from dataclasses import dataclass
 
 import requests
 from tqdm import tqdm
@@ -18,12 +18,12 @@ from velour.schemas import (
     GroundTruth,
     Image,
     Label,
+    MetaDatum,
     Point,
     Polygon,
     Prediction,
     ScoredAnnotation,
     ScoredLabel,
-    MetaDatum,
 )
 
 try:
@@ -38,7 +38,7 @@ except ModuleNotFoundError:
 """ Dataset conversion """
 
 
-def upload_chariot_dataset(       
+def upload_chariot_dataset(
     client: Client,
     dataset: chariot.datasets.Dataset,
     dataset_version_id: str = None,
@@ -304,7 +304,7 @@ def upload_chariot_dataset(
     dataset_version_id: str = None,
     label_key: str = "class",
     use_training_manifest: bool = False,
-    show_progress_bar: bool = False, # Need to implement
+    show_progress_bar: bool = False,  # Need to implement
 ) -> Dataset:
     """Converts chariot dataset to a velour dataset.
 
@@ -379,7 +379,7 @@ def upload_chariot_dataset(
 
     # Create velour dataset
     velour_dataset = Dataset.create(
-        client=client, 
+        client=client,
         name=dataset.id,
         href=href,
         description=dsv.summary,
