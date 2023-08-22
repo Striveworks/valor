@@ -8,11 +8,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Release.Name }}
+      app: {{ .Release.Name }}-api
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}
+        app: {{ .Release.Name }}-api
     spec:
       containers:
         - name: velour-api
@@ -49,28 +49,10 @@ kind: Service
 metadata:
   name: {{ .Release.Name }}-api
   labels:
-    {{- include "velour-chart.labels" . | nindent 4 }}
+    app: {{ .Release.Name }}-api
 spec:
-  type: NodePort
   ports:
-    - port: 8000
+    - protocol: TCP
+      port: 8000
   selector:
-    {{- include "velour-chart.selectorLabels" . | nindent 4 }}
-
-# ---
-# apiVersion: networking.k8s.io/v1
-# kind: NetworkPolicy
-# metadata:
-#   name: velour-ingress-connection
-# spec:
-#   podSelector:
-#     matchLabels:
-#       app: {{ .Release.Name }}-api
-#   ingress:
-#   - from:
-#     - podSelector:
-#         matchLabels:
-#           app: {{ .Release.Name }}-ingress
-#     ports:
-#     - protocol: TCP
-#       port: 5432
+    app: {{ .Release.Name }}-api

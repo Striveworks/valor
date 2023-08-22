@@ -215,8 +215,10 @@ class Dataset:
         cls,
         client: Client,
         name: str,
+        *,
         href: Optional[str] = None,
         description: Optional[str] = None,
+        **kwargs,
     ):
         # Create the dataset on server side first to get ID info
         ds = schemas.Dataset(
@@ -235,6 +237,13 @@ class Dataset:
                 schemas.MetaDatum(
                     key="description",
                     value=description,
+                )
+            )
+        for key in kwargs:
+            ds.metadata.append(
+                schemas.MetaDatum(
+                    key=key,
+                    value=kwargs[key],
                 )
             )
         resp = client._requests_post_rel_host("datasets", json=asdict(ds))
@@ -391,8 +400,10 @@ class Model:
         cls,
         client: Client,
         name: str,
+        *,
         href: Optional[str] = None,
         description: Optional[str] = None,
+        **kwargs,
     ):
         # Create the dataset on server side first to get ID info
         md = schemas.Model(
@@ -411,6 +422,13 @@ class Model:
                 schemas.MetaDatum(
                     key="description",
                     value=description,
+                )
+            )
+        for key in kwargs:
+            ds.metadata.append(
+                schemas.MetaDatum(
+                    key=key,
+                    value=kwargs[key],
                 )
             )
         resp = client._requests_post_rel_host("models", json=asdict(md))

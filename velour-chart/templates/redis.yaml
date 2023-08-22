@@ -8,11 +8,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Release.Name }}
+      app: {{ .Release.Name }}-redis
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}
+        app: {{ .Release.Name }}-redis
     spec:
       containers:
         - name: redis
@@ -35,12 +35,11 @@ metadata:
   labels:
     {{- include "velour-chart.labels" . | nindent 4 }}
 spec:
-  type: NodePort
   ports:
     - protocol: TCP
       port: 6379
   selector:
-    app: {{ .Release.Name }}
+    app: {{ .Release.Name }}-redis
 
 ---
 apiVersion: networking.k8s.io/v1

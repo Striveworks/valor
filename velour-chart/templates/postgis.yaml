@@ -48,7 +48,6 @@ metadata:
   labels:
     {{- include "velour-chart.labels" . | nindent 4 }}
 spec:
-  type: NodePort
   ports:
     - port: 5432
   selector:

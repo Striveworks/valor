@@ -4,6 +4,7 @@ import tempfile
 import urllib
 from pathlib import Path
 from typing import Dict, List, Union
+from dataclasses import dataclass
 
 import requests
 from tqdm import tqdm
@@ -22,6 +23,7 @@ from velour.schemas import (
     Prediction,
     ScoredAnnotation,
     ScoredLabel,
+    MetaDatum,
 )
 
 try:
@@ -31,6 +33,24 @@ try:
     from chariot.models import TaskType as ChariotTaskType
 except ModuleNotFoundError:
     "`chariot` package not found. if you have an account on Chariot please see https://production.chariot.striveworks.us/docs/sdk/sdk for how to install the python SDK"
+
+
+""" Dataset conversion """
+
+
+def upload_chariot_dataset(       
+    client: Client,
+    dataset: chariot.datasets.Dataset,
+    dataset_version_id: str = None,
+) -> Dataset:
+    pass
+
+
+def upload_chariot_model(
+    client: Client,
+    model: chariot.models.Model,
+):
+    pass
 
 
 def _construct_url(
@@ -278,14 +298,13 @@ def _parse_chariot_groundtruths(
     return groundtruth_annotations
 
 
-def create_dataset_from_chariot(
+def upload_chariot_dataset(
     client: Client,
     dataset: ChariotDataset,
     dataset_version_id: str = None,
-    name: str = None,
     label_key: str = "class",
-    use_training_manifest: bool = True,
-    show_progress_bar: bool = True,
+    use_training_manifest: bool = False,
+    show_progress_bar: bool = False, # Need to implement
 ) -> Dataset:
     """Converts chariot dataset to a velour dataset.
 
@@ -347,10 +366,6 @@ def create_dataset_from_chariot(
     # Retrieve the manifest
     chariot_annotations = _retrieve_chariot_annotations(manifest_url)
 
-    # Check if name has been overwritten
-    if name is None:
-        name = dataset.name
-
     # Get GroundTruths
     groundtruths = _parse_chariot_groundtruths(
         chariot_manifest=chariot_annotations,
@@ -363,7 +378,17 @@ def create_dataset_from_chariot(
     href = _construct_url(project_id=dsv.project_id, dataset_id=dsv.dataset_id)
 
     # Create velour dataset
-    velour_dataset = Dataset.create(client, name=name, href=href)
+    velour_dataset = Dataset.create(
+        client=client, 
+        name=dataset.id,
+        href=href,
+        description=dsv.summary,
+        integration="chariot",
+        title=dataset.name,
+        project_id=dataset.project_id,
+        dataset_version_id=dsv.id,
+        task=dsv.type,
+    )
 
     # Upload velour dataset
     for gt in groundtruths:
@@ -507,4 +532,21 @@ def create_model_from_chariot(
             f"NLP tasks are currently not supported. '{model.task}'"
         )
 
-    return Model.create(client, name, href, description)
+    model = Model.create(
+        client,
+        name=model.id,
+        href=href,
+        description=description,
+    )
+    model.add_metadatum(
+        MetaDatum(
+            key="project_id",
+            value=model.project_id,
+        )
+    )
+    model.add_metadatum(
+        MetaDatum(
+            key="task",
+            value=model.task,
+        )
+    )
