@@ -148,18 +148,6 @@ class Stateflow(BaseModel):
 
     """ DATASET """
 
-    def check_ready_for_evaluation(self, dataset_name):
-        if self.datasets[dataset_name].status not in [
-            State.READY,
-            State.EVALUATE,
-        ]:
-            if self.datasets[dataset_name].status == State.CREATE:
-                raise DatasetNotFinalizedError(dataset_name)
-            else:
-                raise StateflowError(
-                    f"dataset `{dataset_name}` does not support model operations in its current state `{self.datasets[dataset_name].status}`"
-                )
-
     def set_dataset_status(self, dataset_name: str, status: State):
         if dataset_name not in self.datasets:
             if status not in [State.NONE, State.CREATE]:
@@ -221,18 +209,34 @@ class Stateflow(BaseModel):
     ):
         if dataset_name not in self.datasets:
             raise DatasetDoesNotExistError(dataset_name)
-        self.check_ready_for_evaluation(dataset_name)
-        self.datasets[dataset_name].set_inference_status(
-            dataset_name=dataset_name,
-            model_name=model_name,
-            status=status,
-        )
-        self.set_dataset_status(
-            dataset_name=dataset_name,
-            status=State.EVALUATE
-            if self.datasets[dataset_name].evaluating
-            else State.READY,
-        )
+
+        if self.datasets[dataset_name].status == State.CREATE:
+            if status not in [State.NONE, State.CREATE, State.DELETE]:
+                raise DatasetNotFinalizedError(dataset_name)
+            self.datasets[dataset_name].set_inference_status(
+                dataset_name=dataset_name,
+                model_name=model_name,
+                status=status,
+            )
+        elif self.datasets[dataset_name].status in [
+            State.READY,
+            State.EVALUATE,
+        ]:
+            self.datasets[dataset_name].set_inference_status(
+                dataset_name=dataset_name,
+                model_name=model_name,
+                status=status,
+            )
+            self.set_dataset_status(
+                dataset_name=dataset_name,
+                status=State.EVALUATE
+                if self.datasets[dataset_name].evaluating
+                else State.READY,
+            )
+        else:
+            raise StateflowError(
+                f"dataset `{dataset_name}` does not support model operations in its current state `{self.datasets[dataset_name].status}`"
+            )
 
     def remove_inference(self, dataset_name: str, model_name: str):
         if dataset_name not in self.datasets:
