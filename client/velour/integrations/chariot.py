@@ -1,7 +1,6 @@
 import gzip
 import json
 import tempfile
-import urllib
 
 import requests
 from tqdm import tqdm
@@ -25,36 +24,15 @@ from velour.schemas import (
 
 try:
     import chariot
-    from chariot.datasets import Dataset as ChariotDataset
-    from chariot.models import Model as ChariotModel
 except ModuleNotFoundError:
     "`chariot` package not found. if you have an account on Chariot please see https://production.chariot.striveworks.us/docs/sdk/sdk for how to install the python SDK"
-
-
-def _construct_url(
-    project_id: str, dataset_id: str = None, model_id: str = None
-):
-
-    if dataset_id is not None and model_id is not None:
-        raise ValueError("Please provide EITHER model id or dataset id.")
-    elif dataset_id is not None:
-        href = f"/projects/{project_id}/datasets/{dataset_id}"
-    elif model_id is not None:
-        href = f"/projects/{project_id}/models/{model_id}"
-    else:
-        href = f"/projects/{project_id}"
-
-    return urllib.parse.urljoin(
-        chariot.config.settings.base_url,
-        href,
-    )
 
 
 class ChariotDatasetIntegration:
     def __init__(
         self,
         client: Client,
-        dataset: ChariotDataset,
+        dataset: chariot.datasets.Dataset,
         dataset_version_id: str = None,
         back_populate: bool = False,  # @TODO: Option to have velour download the images to scrape sizing
     ):
@@ -266,7 +244,7 @@ class ChariotModelIntegration:
     def __init__(
         self,
         client: Client,
-        model: ChariotModel,
+        model: chariot.models.Model,
     ):
         self.client = client
         self._model = model
