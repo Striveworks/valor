@@ -148,19 +148,6 @@ class Stateflow(BaseModel):
 
     """ DATASET """
 
-    def check_ready_for_evaluation(self, dataset_name):
-        if self.datasets[dataset_name].status not in [
-            State.READY,
-            State.EVALUATE,
-        ]:
-            if self.datasets[dataset_name].status != State.CREATE:
-                raise StateflowError(
-                    f"dataset `{dataset_name}` does not support model operations in its current state `{self.datasets[dataset_name].status}`"
-                )
-            return False
-        else:
-            return True
-
     def set_dataset_status(self, dataset_name: str, status: State):
         if dataset_name not in self.datasets:
             if status not in [State.NONE, State.CREATE]:
