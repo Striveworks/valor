@@ -136,6 +136,37 @@ def test__update_backend_state():
         _test_permutation_pos(state, None, State.EVALUATE, State.EVALUATE)
         _test_permutation_pos(state, None, State.NONE, State.DELETE)
         _test_permutation_pos(state, None, State.DELETE, State.DELETE)
+    for state in [State.CREATE]:
+        _test_permutation_pos(
+            state,
+            None,
+            State.NONE,
+            State.CREATE,
+        )
+        _test_permutation_pos(
+            state,
+            None,
+            State.CREATE,
+            State.CREATE,
+        )
+        _test_permutation_pos(
+            state,
+            None,
+            State.CREATE,
+            State.DELETE,
+        )
+        _test_permutation_pos(
+            state,
+            None,
+            State.READY,  # this initial state should never occur
+            State.DELETE,  # delete is always allowed tho
+        )
+        _test_permutation_pos(
+            state,
+            None,
+            State.DELETE,
+            State.DELETE,
+        )
 
     # model - negative cases
     for state in [State.READY, State.EVALUATE]:
@@ -166,29 +197,8 @@ def test__update_backend_state():
         _test_permutation_neg(
             state,
             None,
-            State.NONE,
-            State.CREATE,
-            error=DatasetNotFinalizedError,
-        )
-        _test_permutation_neg(
-            state,
-            None,
-            State.CREATE,
-            State.CREATE,
-            error=DatasetNotFinalizedError,
-        )
-        _test_permutation_neg(
-            state,
-            None,
             State.CREATE,
             State.READY,
-            error=DatasetNotFinalizedError,
-        )
-        _test_permutation_neg(
-            state,
-            None,
-            State.CREATE,
-            State.DELETE,
             error=DatasetNotFinalizedError,
         )
         _test_permutation_neg(
@@ -208,13 +218,6 @@ def test__update_backend_state():
         _test_permutation_neg(
             state,
             None,
-            State.READY,
-            State.DELETE,
-            error=DatasetNotFinalizedError,
-        )
-        _test_permutation_neg(
-            state,
-            None,
             State.EVALUATE,
             State.READY,
             error=DatasetNotFinalizedError,
@@ -226,13 +229,7 @@ def test__update_backend_state():
             State.EVALUATE,
             error=DatasetNotFinalizedError,
         )
-        _test_permutation_neg(
-            state,
-            None,
-            State.DELETE,
-            State.DELETE,
-            error=DatasetNotFinalizedError,
-        )
+
     for state in [State.DELETE]:
         _test_permutation_neg(state, None, State.NONE, State.CREATE)
         _test_permutation_neg(state, None, State.CREATE, State.CREATE)

@@ -722,13 +722,6 @@ def _test_create_model_with_preds(
     for gt in gts:
         dataset.add_groundtruth(gt)
 
-    # check that if we try to add detections we get an error
-    # since we haven't added any images yet
-    with pytest.raises(ClientException) as exc_info:
-        for pd in preds:
-            model.add_prediction(pd)
-    assert "not been finalized" in str(exc_info)
-
     # finalize dataset
     dataset.finalize()
 
