@@ -2,3 +2,7 @@
 
 coco
 *.pt
+*.png
+*.jpg
+
+chariot.ipynb

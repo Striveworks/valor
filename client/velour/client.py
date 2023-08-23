@@ -215,26 +215,18 @@ class Dataset:
         cls,
         client: Client,
         name: str,
-        href: Optional[str] = None,
-        description: Optional[str] = None,
+        **kwargs,
     ):
         # Create the dataset on server side first to get ID info
         ds = schemas.Dataset(
             name=name,
             metadata=[],
         )
-        if href:
+        for key in kwargs:
             ds.metadata.append(
                 schemas.MetaDatum(
-                    key="href",
-                    value=href,
-                )
-            )
-        if description:
-            ds.metadata.append(
-                schemas.MetaDatum(
-                    key="description",
-                    value=description,
+                    key=key,
+                    value=kwargs[key],
                 )
             )
         resp = client._requests_post_rel_host("datasets", json=asdict(ds))
@@ -315,12 +307,12 @@ class Dataset:
         ).json()
         return [schemas.Datum(**datum) for datum in datums]
 
-    def get_images(self) -> List[schemas.Image]:
+    def get_images(self) -> List[schemas.ImageMetadata]:
         """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
         return [
-            schemas.Image.from_datum(datum)
+            schemas.ImageMetadata.from_datum(datum)
             for datum in self.get_datums()
-            if schemas.Image.valid(datum)
+            if schemas.ImageMetadata.valid(datum)
         ]
 
     def get_evaluations(self) -> List[Evaluation]:
@@ -391,26 +383,18 @@ class Model:
         cls,
         client: Client,
         name: str,
-        href: Optional[str] = None,
-        description: Optional[str] = None,
+        **kwargs,
     ):
         # Create the dataset on server side first to get ID info
         md = schemas.Model(
             name=name,
             metadata=[],
         )
-        if href:
+        for key in kwargs:
             md.metadata.append(
                 schemas.MetaDatum(
-                    key="href",
-                    value=href,
-                )
-            )
-        if description:
-            md.metadata.append(
-                schemas.MetaDatum(
-                    key="description",
-                    value=description,
+                    key=key,
+                    value=kwargs[key],
                 )
             )
         resp = client._requests_post_rel_host("models", json=asdict(md))
