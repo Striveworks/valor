@@ -577,11 +577,11 @@ def test_create_detection_prediction_and_delete_model(
     for gt in gt_dets_create:
         crud.create_groundtruth(db=db, groundtruth=gt)
 
-    # check this gives an error since the model hasn't been added yet
-    with pytest.raises(exceptions.DatasetNotFinalizedError) as exc_info:
+    # check this gives an error since the model hasn't been created yet
+    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in pred_dets_create:
             crud.create_prediction(db=db, prediction=pd)
-    assert "has not been finalized" in str(exc_info)
+    assert "does not exist" in str(exc_info)
 
     # finalize dataset
     crud.finalize(db=db, dataset_name=dset_name)
@@ -711,10 +711,10 @@ def test_create_predicted_classifications_and_delete_model(
         gt.datum.dataset = dset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
-    # check this gives an error since the images haven't been added yet
-    with pytest.raises(exceptions.DatasetNotFinalizedError) as exc_info:
+    # check this gives an error since the model does not exist
+    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         crud.create_prediction(db=db, prediction=pred_clfs_create[0])
-    assert "has not been finalized" in str(exc_info)
+    assert "does not exist" in str(exc_info)
 
     # finalize dataset
     crud.finalize(db=db, dataset_name=dset_name)
@@ -797,11 +797,11 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
         gt.datum.dataset = dset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
-    # check this gives an error since the dataset has not been finalized
-    with pytest.raises(exceptions.DatasetNotFinalizedError) as exc_info:
+    # check this gives an error since the model has not been crated yet
+    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
         for pd in pred_segs_create:
             crud.create_prediction(db=db, prediction=pd)
-    assert "has not been finalized" in str(exc_info)
+    assert "does not exist" in str(exc_info)
 
     # finalize dataset
     crud.finalize(db=db, dataset_name=dset_name)

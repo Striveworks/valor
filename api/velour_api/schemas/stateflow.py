@@ -16,34 +16,6 @@ from velour_api.exceptions import (
     StateflowError,
 )
 
-valid_transitions = {
-    State.NONE: {State.CREATE, State.DELETE},
-    State.CREATE: {State.CREATE, State.READY, State.DELETE},
-    State.READY: {State.READY, State.EVALUATE, State.DELETE},
-    State.EVALUATE: {State.EVALUATE, State.READY},
-    State.DELETE: set(),
-}
-
-valid_model_states_given_dataset_state = {
-    State.NONE: set(),
-    State.CREATE: {State.NONE, State.CREATE, State.DELETE},
-    State.READY: {
-        State.NONE,
-        State.CREATE,
-        State.READY,
-        State.EVALUATE,
-        State.DELETE,
-    },
-    State.EVALUATE: {
-        State.NONE,
-        State.CREATE,
-        State.READY,
-        State.EVALUATE,
-        State.DELETE,
-    },
-    State.DELETE: {State.DELETE},
-}
-
 
 def _state_transition_error(
     *,
@@ -253,9 +225,7 @@ class Stateflow(BaseModel):
 
         if self.datasets[dataset_name].status == State.CREATE:
             if status not in [State.NONE, State.CREATE, State.DELETE]:
-                raise StateflowError(
-                    f"model `{model_name}` attempted to transition to state `{status}` while dataset `{dataset_name}` was in state `{self.datasets[dataset_name].status}`"
-                )
+                raise DatasetNotFinalizedError(dataset_name)
             self.datasets[dataset_name].set_inference_status(
                 dataset_name=dataset_name,
                 model_name=model_name,
