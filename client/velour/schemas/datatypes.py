@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List
 
+import PIL.Image
+
 from velour import schemas
 
 
@@ -47,6 +49,15 @@ class ImageMetadata:
             height=int(metadata.pop("height")),
             width=int(metadata.pop("width")),
             metadata=metadata,
+        )
+
+    @classmethod
+    def from_pil(cls, uid: str, image: PIL.Image.Image):
+        width, height = image.size
+        return cls(
+            uid=uid,
+            height=int(height),
+            width=int(width),
         )
 
     def to_datum(self) -> schemas.Datum:
