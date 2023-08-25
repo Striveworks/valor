@@ -7,7 +7,7 @@ from velour.schemas import (
     Annotation,
     BasicPolygon,
     GroundTruth,
-    Image,
+    ImageMetadata,
     Label,
     MultiPolygon,
     Point,
@@ -80,7 +80,7 @@ def test_combined_segmentation_mask(poly1: Polygon):
         )
     assert "cannot be empty" in str(exc_info)
 
-    image = Image(uid="uid", height=200, width=200).to_datum()
+    image = ImageMetadata(uid="uid", height=200, width=200).to_datum()
 
     gt1 = GroundTruth(
         datum=image,
@@ -143,7 +143,7 @@ def test_combined_segmentation_mask(poly1: Polygon):
             gts
             + [
                 GroundTruth(
-                    datum=Image(
+                    datum=ImageMetadata(
                         "different uid", height=10, width=100
                     ).to_datum(),
                     annotations=gts[0].annotations,
@@ -157,7 +157,7 @@ def test_combined_segmentation_mask(poly1: Polygon):
 def test_draw_detections_on_image(bounding_poly: BasicPolygon):
     detections = [
         GroundTruth(
-            datum=Image("test", 300, 300).to_datum(),
+            datum=ImageMetadata("test", 300, 300).to_datum(),
             annotations=[
                 Annotation(
                     task_type=TaskType.DETECTION,

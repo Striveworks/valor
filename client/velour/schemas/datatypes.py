@@ -1,11 +1,13 @@
 from dataclasses import dataclass, field
 from typing import List
 
+import PIL.Image
+
 from velour import schemas
 
 
 @dataclass
-class Image:
+class ImageMetadata:
     uid: str
     height: int
     width: int
@@ -14,13 +16,13 @@ class Image:
 
     def __post_init__(self):
         if not isinstance(self.dataset, str):
-            raise TypeError("Image dataset name must be a string.")
+            raise TypeError("ImageMetadata dataset name must be a string.")
         if not isinstance(self.uid, str):
-            raise TypeError("Image uid must be a string.")
+            raise TypeError("ImageMetadata uid must be a string.")
         if not isinstance(self.height, int):
-            raise TypeError("Image height must be a int.")
+            raise TypeError("ImageMetadata height must be a int.")
         if not isinstance(self.width, int):
-            raise TypeError("Image height must be a int.")
+            raise TypeError("ImageMetadata height must be a int.")
 
     @staticmethod
     def valid(datum: schemas.Datum) -> bool:
@@ -49,6 +51,15 @@ class Image:
             metadata=metadata,
         )
 
+    @classmethod
+    def from_pil(cls, uid: str, image: PIL.Image.Image):
+        width, height = image.size
+        return cls(
+            uid=uid,
+            height=int(height),
+            width=int(width),
+        )
+
     def to_datum(self) -> schemas.Datum:
         return schemas.Datum(
             dataset=self.dataset,
@@ -62,15 +73,15 @@ class Image:
 
 
 @dataclass
-class VideoFrame:
-    image: Image
+class VideoFrameMetadata:
+    image: ImageMetadata
     frame: int
 
     def __post_init__(self):
         # validate image
         if isinstance(self.image, dict):
-            self.image = Image(**self.image)
-        if not isinstance(self.image, Image):
+            self.image = ImageMetadata(**self.image)
+        if not isinstance(self.image, ImageMetadata):
             raise TypeError("Video frame must contain valid image.")
 
         # validate frame
@@ -100,7 +111,7 @@ class VideoFrame:
             metadatum.key: metadatum.value for metadatum in datum.metadata
         }
         return cls(
-            image=Image(
+            image=ImageMetadata(
                 dataset=datum.dataset,
                 uid=datum.uid,
                 height=int(metadata.pop("height")),

@@ -1,22 +1,21 @@
 import gzip
 import json
 import tempfile
-import urllib
-from pathlib import Path
-from typing import Dict, List, Union
+from typing import Tuple
 
 import requests
 from tqdm import tqdm
 
 from velour import enums
-from velour.client import Client, Dataset, Model
+from velour.client import Client, ClientException, Dataset, Model
 from velour.schemas import (
     Annotation,
     BasicPolygon,
     BoundingBox,
+    Datum,
     GroundTruth,
-    Image,
     Label,
+    MetaDatum,
     Point,
     Polygon,
     Prediction,
@@ -24,35 +23,13 @@ from velour.schemas import (
     ScoredLabel,
 )
 
-try:
-    import chariot
-    from chariot.datasets import Dataset as ChariotDataset
-    from chariot.models import Model as ChariotModel
-    from chariot.models import TaskType as ChariotTaskType
-except ModuleNotFoundError:
-    "`chariot` package not found. if you have an account on Chariot please see https://production.chariot.striveworks.us/docs/sdk/sdk for how to install the python SDK"
+""" Dataset """
 
 
-def _construct_url(
-    project_id: str, dataset_id: str = None, model_id: str = None
+def _retrieve_dataset_manifest(
+    manifest_url: str,
+    disable_progress_bar: bool = False,
 ):
-
-    if dataset_id is not None and model_id is not None:
-        raise ValueError("Please provide EITHER model id or dataset id.")
-    elif dataset_id is not None:
-        href = f"/projects/{project_id}/datasets/{dataset_id}"
-    elif model_id is not None:
-        href = f"/projects/{project_id}/models/{model_id}"
-    else:
-        href = f"/projects/{project_id}"
-
-    return urllib.parse.urljoin(
-        chariot.config.settings.base_url,
-        href,
-    )
-
-
-def _retrieve_chariot_annotations(manifest_url: str):
     """Retrieves and unpacks Chariot dataset annotations from a manifest url."""
 
     chariot_dataset = []
@@ -69,7 +46,8 @@ def _retrieve_chariot_annotations(manifest_url: str):
             total=total_size_in_bytes,
             unit="iB",
             unit_scale=True,
-            desc="Download Chariot Manifest",
+            desc="Downloading manifest",
+            disable=disable_progress_bar,
         )
 
         # Write to tempfile if status ok
@@ -92,55 +70,43 @@ def _retrieve_chariot_annotations(manifest_url: str):
     return chariot_dataset
 
 
-def _parse_image_classification_groundtruths(
-    datum: dict,
-    label_key: str,
-) -> GroundTruth:
-    """Parses Chariot image classification annotation."""
+def _parse_groundtruth(dataset_version, manifest_datum: dict):
+    def _parse_annotation(dataset_version, annotation: dict):
+        task_types = []
+        labels = []
+        if "class_label" in annotation:
+            labels += [
+                Label(key="class_label", value=annotation["class_label"])
+            ]
+        labels += [
+            Label(key=attribute, value=annotation["attributes"][attribute])
+            for attribute in annotation["attributes"]
+        ]
+        bounding_box = None
+        polygon = None
+        multipolygon = None
+        raster = None
 
-    # Strip UID from URL path
-    uid = Path(datum["path"]).stem
+        # Image Classification
+        if dataset_version.supported_task_types.image_classification:
+            task_types.append(enums.TaskType.CLASSIFICATION)
 
-    image = Image(
-        uid=uid,
-        height=-1,
-        width=-1,
-    ).to_datum()
+        # Image Object Detection
+        if dataset_version.supported_task_types.object_detection:
+            task_types.append(enums.TaskType.DETECTION)
+            if "bbox" in annotation:
+                bounding_box = BoundingBox.from_extrema(
+                    xmin=annotation["bbox"]["xmin"],
+                    ymin=annotation["bbox"]["ymin"],
+                    xmax=annotation["bbox"]["xmax"],
+                    ymax=annotation["bbox"]["ymax"],
+                )
 
-    return GroundTruth(
-        datum=image,
-        annotations=[
-            Annotation(
-                task_type=enums.TaskType.CLASSIFICATION,
-                labels=[Label(key=label_key, value=annotation["class_label"])],
-            )
-            for annotation in datum["annotations"]
-        ],
-    )
-
-
-def _parse_image_segmentation_groundtruths(
-    datum: dict,
-    label_key: str,
-) -> GroundTruth:
-    """Parses Chariot image segmentation annotation."""
-
-    # Strip UID from URL path
-    uid = Path(datum["path"]).stem
-
-    image = Image(
-        uid=uid,
-        height=-1,
-        width=-1,
-    ).to_datum()
-
-    return GroundTruth(
-        datum=image,
-        annotations=[
-            Annotation(
-                task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-                labels=[Label(key=label_key, value=annotation["class_label"])],
-                polygon=Polygon(
+        # Image Segmentation
+        if dataset_version.supported_task_types.image_segmentation:
+            task_types.append(enums.TaskType.SEMANTIC_SEGMENTATION)
+            if "contours" in annotation:
+                polygon = Polygon(
                     boundary=BasicPolygon(
                         points=[
                             Point(x=point["x"], y=point["y"])
@@ -157,268 +123,186 @@ def _parse_image_segmentation_groundtruths(
                     ]
                     if len(annotation["contours"]) > 1
                     else None,
-                ),
+                )
+
+        # Text Sentiment
+        if dataset_version.supported_task_types.text_sentiment:
+            raise NotImplementedError(
+                "Text-based datasets not currently supported."
             )
-            for annotation in datum["annotations"]
-        ],
-    )
 
+        # Text Summarization
+        if dataset_version.supported_task_types.text_summarization:
+            raise NotImplementedError(
+                "Text-based datasets not currently supported."
+            )
 
-def _parse_object_detection_groundtruths(
-    datum: dict,
-    label_key: str,
-) -> GroundTruth:
-    """Parses Chariot object detection annotation."""
+        # Text Token Classifier
+        if dataset_version.supported_task_types.text_token_classification:
+            raise NotImplementedError(
+                "Text-based datasets not currently supported."
+            )
 
-    # Strip UID from URL path
-    uid = Path(datum["path"]).stem
+        # Text Translation
+        if dataset_version.supported_task_types.text_translation:
+            raise NotImplementedError(
+                "Text-based datasets not currently supported."
+            )
 
-    image = Image(
-        uid=uid,
-        height=-1,
-        width=-1,
-    ).to_datum()
+        return Annotation(
+            task_type=task_types[-1],  # @TODO Make this better.
+            labels=labels,
+            bounding_box=bounding_box,
+            polygon=polygon,
+            multipolygon=multipolygon,
+            raster=raster,
+        )
 
     return GroundTruth(
-        datum=image,
+        datum=Datum(
+            uid=manifest_datum["datum_id"],
+            metadata=[MetaDatum(key="path", value=manifest_datum["path"])],
+        ),
         annotations=[
-            Annotation(
-                task_type=enums.TaskType.DETECTION,
-                labels=[Label(key=label_key, value=annotation["class_label"])],
-                bounding_box=BoundingBox.from_extrema(
-                    xmin=annotation["bbox"]["xmin"],
-                    ymin=annotation["bbox"]["ymin"],
-                    xmax=annotation["bbox"]["xmax"],
-                    ymax=annotation["bbox"]["ymax"],
-                ),
-            )
-            for annotation in datum["annotations"]
+            _parse_annotation(dataset_version, annotation)
+            for annotation in manifest_datum["annotations"]
         ],
     )
 
 
-def _parse_chariot_groundtruths(
-    chariot_manifest,
-    chariot_task_type,
-    label_key: str,
-    use_training_manifest: bool = True,
-) -> list:
-    """Get chariot dataset annotations.
-
-    Parameters
-    ----------
-    chariot_manifest
-        List of dictionaries containing data annotations and metadata.
-    chariot_task_type
-        Pass-through property chariot.datasets.DatasetVersion.supported_task_types
-    using_training_manifest
-        (OPTIONAL) Defaults to true, setting false will use the evaluation manifest which is a
-        super set of the training manifest. Not recommended as the evaluation manifest may
-        contain unlabeled data.
-
-    Returns
-    -------
-    Chariot annotations in velour 'groundtruth' format.
-    """
-
-    # Image Classification
-    if chariot_task_type.image_classification:
-        groundtruth_annotations = [
-            _parse_image_classification_groundtruths(
-                datum=datum,
-                label_key=label_key,
-            )
-            for datum in chariot_manifest
-        ]
-
-    # Image Segmentation
-    elif chariot_task_type.image_segmentation:
-        groundtruth_annotations = [
-            _parse_image_segmentation_groundtruths(
-                datum=datum,
-                label_key=label_key,
-            )
-            for datum in chariot_manifest
-        ]
-
-    # Object Detection
-    elif chariot_task_type.object_detection:
-        groundtruth_annotations = [
-            _parse_object_detection_groundtruths(
-                datum=datum,
-                label_key=label_key,
-            )
-            for datum in chariot_manifest
-        ]
-
-    # Text Sentiment
-    elif chariot_task_type.text_sentiment:
-        raise NotImplementedError(
-            "Text-based datasets not currently supported."
-        )
-
-    # Text Summarization
-    elif chariot_task_type.text_summarization:
-        raise NotImplementedError(
-            "Text-based datasets not currently supported."
-        )
-
-    # Text Token Classifier
-    elif chariot_task_type.text_token_classification:
-        raise NotImplementedError(
-            "Text-based datasets not currently supported."
-        )
-
-    # Text Translation
-    elif chariot_task_type.text_translation:
-        raise NotImplementedError(
-            "Text-based datasets not currently supported."
-        )
-
-    return groundtruth_annotations
-
-
-def create_dataset_from_chariot(
+def get_chariot_dataset_integration(
     client: Client,
-    dataset: ChariotDataset,
+    dataset,
     dataset_version_id: str = None,
-    name: str = None,
-    label_key: str = "class",
-    use_training_manifest: bool = True,
-    show_progress_bar: bool = True,
-) -> Dataset:
-    """Converts chariot dataset to a velour dataset.
-
-    Parameters
-    ----------
-    client
-        Velour client object
-    dataset
-        Chariot Dataset object
-    dataset_version_id
-        (OPTIONAL) Chariot Dataset version ID, defaults to latest vertical version.
-    name
-        (OPTIONAL) Defaults to the name of the chariot dataset, setting this will override the
-        name of the velour dataset.
-    using_training_manifest
-        (OPTIONAL) Defaults to true, setting false will use the evaluation manifest which is a
-        super set of the training manifest. Not recommended as the evaluation manifest may
-        contain unlabeled data.
-    chunk_size
-        (OPTIONAL) Defaults to 1000. Chunk_size is the maximum number of 'groundtruths' that are
-        uploaded in one call to the backend.
-    show_progress_bar
-        (OPTIONAL) Defaults to True. Controls whether a tqdm progress bar is displayed
-        to show upload progress.
-
-    Returns
-    -------
-    Velour image dataset
-    """
-
+    disable_progress_bar: bool = False,
+):
     if len(dataset.versions) < 1:
         raise ValueError("Chariot dataset has no existing versions.")
 
-    # Get Chariot Datset Version
-    dsv = None
+    # Get dataset version
+    dataset_version = None
     if dataset_version_id is None:
-        # Use the latest version
-        dsv = chariot.datasets.get_latest_vertical_dataset_version(
-            project_id=dataset.project_id,
-            dataset_id=dataset.id,
-        )
+        dataset_version = dataset.versions[-1]  # Use the latest version
     else:
-        for _dsv in dataset.versions:
-            if _dsv.id == dataset_version_id:
-                dsv = _dsv
+        for version in dataset.versions:
+            if version.id == dataset_version_id:
+                dataset_version = version
                 break
-        if dsv is None:
+        if dataset_version is None:
             raise ValueError(
                 f"Chariot DatasetVersion not found with id: {dataset_version_id}"
             )
 
-    # Get the manifest url
-    manifest_url = (
-        dsv.get_training_manifest_url()
-        if use_training_manifest
-        else dsv.get_evaluation_manifest_url()
+    # Check if dataset has already been created
+    try:
+        velour_dataset = Dataset.get(client, dataset_version.id)
+    except ClientException as e:
+        if "does not exist" not in str(e):
+            raise e
+
+        velour_dataset = Dataset.create(
+            client=client,
+            name=dataset_version.id,
+            integration="chariot",
+            title=dataset.name,
+            description=dataset._meta.description,
+            project_id=dataset.project_id,
+            dataset_id=dataset.id,
+        )
+
+        # Retrieve the manifest
+        manifest_url = dataset_version.get_evaluation_manifest_url()
+        manifest = _retrieve_dataset_manifest(
+            manifest_url, disable_progress_bar
+        )
+
+        # Create velour groundtruths
+        for datum in tqdm(
+            manifest,
+            desc="Uploading to Velour",
+            unit="datum",
+            disable=disable_progress_bar,
+        ):
+            gt = _parse_groundtruth(dataset_version, datum)
+            velour_dataset.add_groundtruth(gt)
+
+        # Finalize groundtruths
+        velour_dataset.finalize()
+
+    # generate parsing function
+    def velour_parser(manifest_datum):
+        return _parse_groundtruth(dataset_version, manifest_datum)
+
+    return (velour_dataset, velour_parser)
+
+
+""" Model """
+
+
+def _create_prediction_from_chariot_image_classification(
+    datum: Datum,
+    labels: dict,
+    result: list,
+    label_key: str = "class_label",
+):
+    # validate result
+    if not isinstance(result, list):
+        raise TypeError
+    if len(result) != 1:
+        raise ValueError("cannot have more than one result per datum")
+    if not isinstance(result[0], list):
+        raise TypeError
+    if len(labels) != len(result[0]):
+        raise ValueError("number of labels does not equal number of scores")
+
+    # create prediction
+    labels = {v: k for k, v in labels.items()}
+    return Prediction(
+        datum=datum,
+        annotations=[
+            ScoredAnnotation(
+                task_type=enums.TaskType.CLASSIFICATION,
+                scored_labels=[
+                    ScoredLabel(
+                        label=Label(key=label_key, value=labels[i]),
+                        score=score,
+                    )
+                    for i, score in enumerate(result[0])
+                ],
+            )
+        ],
     )
 
-    # Retrieve the manifest
-    chariot_annotations = _retrieve_chariot_annotations(manifest_url)
 
-    # Check if name has been overwritten
-    if name is None:
-        name = dataset.name
+def _create_prediction_from_chariot_image_object_detection(
+    datum: Datum,
+    result: dict,
+    label_key: str = "class_label",
+):
+    # validate result
+    if not isinstance(result, list):
+        raise TypeError
+    if len(result) != 1:
+        raise ValueError("cannot have more than one result per datum")
+    if not isinstance(result[0], dict):
+        raise TypeError
+    result = result[0]
 
-    # Get GroundTruths
-    groundtruths = _parse_chariot_groundtruths(
-        chariot_manifest=chariot_annotations,
-        chariot_task_type=dsv.supported_task_types,
-        label_key=label_key,
-        use_training_manifest=use_training_manifest,
-    )
-
-    # Construct url
-    href = _construct_url(project_id=dsv.project_id, dataset_id=dsv.dataset_id)
-
-    # Create velour dataset
-    velour_dataset = Dataset.create(client, name=name, href=href)
-
-    # Upload velour dataset
-    for gt in groundtruths:
-        velour_dataset.add_groundtruth(gt)
-
-    # Finalize and return
-    velour_dataset.finalize()
-    return velour_dataset
-
-
-def parse_chariot_image_classifications(
-    classifications: Union[Dict, List[Dict]],
-    images: Image,
-    label_key: str = "class",
-) -> Prediction:
-    raise NotImplementedError
-
-
-def parse_chariot_image_segmentations(
-    segmentations: Union[Dict, List[Dict]],
-    image: Image,
-    label_key: str = "class",
-) -> Prediction:
-    raise NotImplementedError
-
-
-def parse_chariot_object_detections(
-    detections: dict,
-    image: Image,
-    label_key: str = "class",
-) -> Prediction:
-
-    if not isinstance(detections, dict):
-        raise RuntimeError
-
-    if not isinstance(image, Image):
-        raise RuntimeError
-
-    assert len(detections) != 1, "length mismatch"
-
-    # validate
+    # validate result
     expected_keys = {
         "num_detections",
         "detection_classes",
         "detection_boxes",
         "detection_scores",
     }
-    if set(detections.keys()) != expected_keys:
+    if set(result.keys()) != expected_keys:
         raise ValueError(
-            f"Expected `dets` to have keys {expected_keys} but got {detections.keys()}"
+            f"Expected `dets` to have keys {expected_keys} but got {result.keys()}"
         )
 
     # create prediction
     return Prediction(
-        datum=image.to_datum(),
+        datum=datum,
         annotations=[
             ScoredAnnotation(
                 task_type=enums.TaskType.DETECTION,
@@ -433,78 +317,54 @@ def parse_chariot_object_detections(
                 ),
             )
             for box, score, label in zip(
-                detections["detection_boxes"],
-                detections["detection_scores"],
-                detections["detection_classes"],
+                result["detection_boxes"],
+                result["detection_scores"],
+                result["detection_classes"],
             )
         ],
     )
 
 
-def create_model_from_chariot(
-    client: Client,
-    model: ChariotModel,
-    name: str = None,
-    description: str = None,
-) -> Model:
-    """Converts chariot model to a velour model.
+def get_chariot_model_integration(
+    client: Client, model, label_key: str = "class_label"
+) -> Tuple[Model, callable]:
+    """Returns tuple of (velour.client.Model, parsing_fn(datum, result))"""
 
-    Parameters
-    ----------
-    client
-        Velour client object
-    model
-        Chariot model object
-    name
-        (OPTIONAL) Defaults to Chariot model name.
-    description
-        (OPTIONAL) Defaults to Chariot model description.
-
-    Returns
-    -------
-    Velour image model
-    """
-
-    cv_tasks = [
-        ChariotTaskType.IMAGE_AUTOENCODER,
-        ChariotTaskType.IMAGE_CLASSIFICATION,
-        ChariotTaskType.IMAGE_EMBEDDING,
-        ChariotTaskType.IMAGE_GENERATION,
-        ChariotTaskType.IMAGE_SEGMENTATION,
-        ChariotTaskType.OBJECT_DETECTION,
-        ChariotTaskType.OTHER_COMPUTER_VISION,
-    ]
-
-    tabular_tasks = [
-        ChariotTaskType.STRUCTURED_DATA_CLASSIFICATION,
-        ChariotTaskType.STRUCTURED_DATA_REGRESSION,
-        ChariotTaskType.OTHER_STRUCTURED_DATA,
-    ]
-
-    nlp_tasks = [
-        ChariotTaskType.TEXT_CLASSIFICATION,
-        ChariotTaskType.TEXT_FILL_MASK,
-        ChariotTaskType.TEXT_GENERATION,
-        ChariotTaskType.TOKEN_CLASSIFICATION,
-        ChariotTaskType.TRANSLATION,
-        ChariotTaskType.OTHER_NATURAL_LANGUAGE,
-    ]
-
-    if name is None:
-        name = f"chariot-{model.name}-v{model.version}"
-
-    if description is None:
-        description = model._meta.summary
-
-    href = _construct_url(project_id=model.project_id, model_id=model.id)
-
-    if model.task in cv_tasks:
-        pass
-    elif model.task in tabular_tasks:
-        pass
-    if model.task in nlp_tasks:
-        raise NotImplementedError(
-            f"NLP tasks are currently not supported. '{model.task}'"
+    # check if model has already been created
+    try:
+        velour_model = Model.get(client, model.id)
+    except ClientException as e:
+        if "does not exist" not in str(e):
+            raise e
+        velour_model = Model.create(
+            client=client,
+            name=model.id,
+            integration="chariot",
+            title=model.name,
+            description=model._meta.summary,
+            project_id=model.project_id,
         )
 
-    return Model.create(client, name, href, description)
+    # retrieve task-related parser
+    if model.task.value == "Image Classification":
+
+        def velour_parser(datum: Datum, result):
+            return _create_prediction_from_chariot_image_classification(
+                datum, model.class_labels, result=result, label_key=label_key
+            )
+
+    elif model.task.value == "Object Detection":
+
+        def velour_parser(datum: Datum, result):
+            return _create_prediction_from_chariot_image_object_detection(
+                datum=datum,
+                result=result,
+                label_key=label_key,
+            )
+
+    elif model.task.value == "Image Segmentation":
+        raise NotImplementedError(model.task.value)
+    else:
+        raise NotImplementedError(model.task)
+
+    return (velour_model, velour_parser)

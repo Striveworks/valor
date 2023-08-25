@@ -11,7 +11,7 @@ from .core import (
     ScoredAnnotation,
     ScoredLabel,
 )
-from .datatypes import Image
+from .datatypes import ImageMetadata, VideoFrameMetadata
 from .geometry import (
     BasicPolygon,
     BoundingBox,
@@ -36,7 +36,8 @@ __all__ = [
     "Model",
     "Datum",
     "Info",
-    "Image",
+    "ImageMetadata",
+    "VideoFrameMetadata",
     "Label",
     "ScoredLabel",
     "Annotation",
