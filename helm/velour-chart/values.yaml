@@ -39,7 +39,7 @@ redis:
 enablePersistence: true
 
 imagePullSecrets: [
-  name: ghcr_secret
+  name: velour-ghcr-secret
 ]
 nameOverride: ""
 fullnameOverride: ""

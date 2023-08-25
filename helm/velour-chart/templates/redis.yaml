@@ -27,9 +27,11 @@ spec:
           imagePullPolicy: {{ .Values.redis.pullPolicy }}
           env:
             - name: REDIS_HOST
-              value: {{ .Values.redis.service.host }}
+              value: {{ include "velour-chart.fullname" . }}-redis
             - name: REDIS_PORT
               value: "{{ .Values.redis.service.port }}"
+          ports:
+            - containerPort: {{ .Values.redis.service.port }}
           volumeMounts:
             - mountPath: /var/lib/redis/data
               name: {{ include "velour-chart.fullname" . }}-db-data
@@ -48,10 +50,8 @@ metadata:
 spec:
   type: {{ .Values.redis.service.type }}
   ports:
-    - port: {{ .Values.redis.service.port }}
-      targetPort: http
-      protocol: TCP
-      name: http
+    - protocol: TCP
+      port: {{ .Values.redis.service.port }}
   selector:
     {{- include "velour-chart.selectorLabels" . | nindent 4 }}
 {{- end }}
