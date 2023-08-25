@@ -140,7 +140,7 @@ def combined_segmentation_mask(
     }
     seg_colors = [label_value_to_color[v] for v in label_values]
 
-    image = schemas.Image.from_datum(annotated_datums[0].datum)
+    image = schemas.ImageMetadata.from_datum(annotated_datums[0].datum)
     img_w, img_h = image.width, image.height
 
     combined_mask = np.zeros((img_h, img_w, 3), dtype=np.uint8)

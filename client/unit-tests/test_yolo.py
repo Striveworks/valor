@@ -7,7 +7,7 @@ from velour.integrations.yolo import (
     parse_yolo_image_segmentation,
     parse_yolo_object_detection,
 )
-from velour.schemas import Image, Prediction, ScoredAnnotation
+from velour.schemas import ImageMetadata, Prediction, ScoredAnnotation
 
 
 class BoxOnGPU(object):
@@ -208,7 +208,7 @@ def test_parse_yolo_image_classification(image, names):
         probs=probs,
     )
 
-    velour_image = Image(
+    velour_image = ImageMetadata(
         dataset="dataset",
         uid=image["uid"],
         height=image["height"],
@@ -221,7 +221,7 @@ def test_parse_yolo_image_classification(image, names):
 
     assert isinstance(prediction, Prediction)
 
-    image_datum = Image.from_datum(prediction.datum)
+    image_datum = ImageMetadata.from_datum(prediction.datum)
     assert image_datum.uid == image["uid"]
     assert image_datum.height == image["height"]
     assert image_datum.width == image["width"]
@@ -257,7 +257,7 @@ def test_parse_yolo_image_segmentation(
         masks=masks,
     )
 
-    velour_image = Image(
+    velour_image = ImageMetadata(
         dataset="dataset",
         uid=image["uid"],
         height=image["height"],
@@ -268,7 +268,7 @@ def test_parse_yolo_image_segmentation(
         results, velour_image, label_key="class"
     )
 
-    image_datum = Image.from_datum(prediction.datum)
+    image_datum = ImageMetadata.from_datum(prediction.datum)
     assert image_datum.uid == image["uid"]
     assert image_datum.height == image["height"]
     assert image_datum.width == image["width"]
@@ -294,7 +294,7 @@ def test_parse_yolo_object_detection(image, bboxes, names):
         orig_img=img, path=image["path"], names=names, boxes=bboxes
     )
 
-    velour_image = Image(
+    velour_image = ImageMetadata(
         dataset="dataset",
         uid=image["uid"],
         height=image["height"],
@@ -305,7 +305,7 @@ def test_parse_yolo_object_detection(image, bboxes, names):
         results, velour_image, label_key="class"
     )
 
-    image_datum = Image.from_datum(prediction.datum)
+    image_datum = ImageMetadata.from_datum(prediction.datum)
     assert image_datum.uid == image["uid"]
     assert image_datum.height == image["height"]
     assert image_datum.width == image["width"]
