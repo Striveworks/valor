@@ -1,0 +1,64 @@
+# Default values for velour-chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+api:
+  repository: ghcr.io/striveworks/velour/velour-service
+  pullPolicy: IfNotPresent
+  tag: ""
+  service:
+    port: 8000
+    type: ClusterIP
+
+postgis:
+  enabled: true
+  repository: "postgis/postgis"
+  pullPolicy: IfNotPresent
+  tag: ""
+  login:
+    database: "velour"
+    user: "user"
+    password: "password"
+  service:
+    host: ""
+    port: 5432
+    type: ClusterIP
+
+redis:
+  enabled: true
+  repository: redis
+  pullPolicy: IfNotPresent
+  tag: ""
+  service:
+    host: ""
+    port: 6379
+    type: ClusterIP
+
+enablePersistence: true
+
+imagePullSecrets: [
+  name: ghcr_secret
+]
+nameOverride: ""
+fullnameOverride: ""
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80

@@ -1,0 +1,61 @@
+{{- if .Values.postgis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "velour-chart.fullname" . }}-postgis
+  labels:
+    {{- include "velour-chart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "velour-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "velour-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}-postgis
+          image: {{ .Values.postgis.repository }}:{{ .Values.postgis.tag | default "latest" }}
+          imagePullPolicy: {{ .Values.postgis.pullPolicy }}
+          env:
+            - name: POSTGRES_HOST
+              value: {{ .Values.postgis.service.host }}
+            - name: POSTGRES_DB
+              value: {{ .Values.postgis.login.database }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgis.login.user }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.postgis.login.password }}
+          volumeMounts:
+            - mountPath: /var/lib/postgis/data
+              name: {{ include "velour-chart.fullname" . }}-db-data
+      volumes:
+        - name: {{ include "velour-chart.fullname" . }}-db-data
+          persistentVolumeClaim:
+            claimName: {{ include "velour-chart.fullname" . }}-persistent-volume-claim
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "velour-chart.fullname" . }}-postgis
+  labels:
+    {{- include "velour-chart.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.postgis.service.type }}
+  ports:
+    - port: {{ .Values.postgis.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "velour-chart.selectorLabels" . | nindent 4 }}
+{{- end }}

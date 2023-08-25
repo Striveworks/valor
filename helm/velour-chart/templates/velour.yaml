@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "velour-chart.fullname" . }}-api
+  labels:
+    {{- include "velour-chart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "velour-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "velour-chart.selectorLabels" . | nindent 8 }}
+    spec:      
+      containers:
+        - name: {{ .Chart.Name }}-api
+          image: {{ .Values.api.repository }}
+          # image: {{ .Values.api.repository }}:{{ .Values.api.tag | default .Chart.AppVersion }}
+          # imagePullPolicy: {{ .Values.api.pullPolicy }}
+          env:
+            - name: POSTGRES_HOST
+              value: {{ .Values.postgis.service.host | default (printf "%s-postgis" ( include "velour-chart.fullname" . )) }}
+            - name: POSTGRES_DB
+              value: {{ .Values.postgis.login.database }}
+            - name: POSTGRES_USERNAME
+              value: {{ .Values.postgis.login.user }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.postgis.login.password }}
+            - name: REDIS_HOST
+              value: {{ .Values.redis.service.host | default ( printf "%s-redis" ( include "velour-chart.fullname" . )) }}
+            - name: REDIS_PORT
+              value: "{{ .Values.redis.service.port }}"
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+      {{- toYaml . | nindent 8 }}
+    {{- end }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "velour-chart.fullname" . }}-api
+  labels:
+    {{- include "velour-chart.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.api.service.type }}
+  ports:
+    - port: {{ .Values.api.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "velour-chart.selectorLabels" . | nindent 4 }}

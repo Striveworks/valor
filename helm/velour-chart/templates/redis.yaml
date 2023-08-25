@@ -1,0 +1,57 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "velour-chart.fullname" . }}-redis
+  labels:
+    {{- include "velour-chart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "velour-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "velour-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}-redis
+          image: {{ .Values.redis.repository }}:{{ .Values.redis.tag | default "latest" }}
+          imagePullPolicy: {{ .Values.redis.pullPolicy }}
+          env:
+            - name: REDIS_HOST
+              value: {{ .Values.redis.service.host }}
+            - name: REDIS_PORT
+              value: "{{ .Values.redis.service.port }}"
+          volumeMounts:
+            - mountPath: /var/lib/redis/data
+              name: {{ include "velour-chart.fullname" . }}-db-data
+      volumes:
+        - name: {{ include "velour-chart.fullname" . }}-db-data
+          persistentVolumeClaim:
+            claimName: {{ include "velour-chart.fullname" . }}-persistent-volume-claim
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "velour-chart.fullname" . }}-redis
+  labels:
+    {{- include "velour-chart.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.redis.service.type }}
+  ports:
+    - port: {{ .Values.redis.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "velour-chart.selectorLabels" . | nindent 4 }}
+{{- end }}
