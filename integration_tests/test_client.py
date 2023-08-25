@@ -8,6 +8,7 @@ import time
 from typing import Any
 
 import numpy as np
+import PIL.Image
 import pytest
 from geoalchemy2.functions import (
     ST_Area,
@@ -17,7 +18,6 @@ from geoalchemy2.functions import (
     ST_Polygon,
     ST_Union,
 )
-from PIL import Image as PILImage
 from sqlalchemy import and_, create_engine, func, select, text
 from sqlalchemy.orm import Session
 
@@ -29,7 +29,7 @@ from velour.schemas import (
     BoundingBox,
     Datum,
     GroundTruth,
-    Image,
+    ImageMetadata,
     Label,
     MetaDatum,
     MultiPolygon,
@@ -122,33 +122,33 @@ def client():
 
 
 @pytest.fixture
-def img1() -> Image:
-    return Image(dataset=dset_name, uid="uid1", height=900, width=300)
+def img1() -> ImageMetadata:
+    return ImageMetadata(dataset=dset_name, uid="uid1", height=900, width=300)
 
 
 @pytest.fixture
-def img2() -> Image:
-    return Image(dataset=dset_name, uid="uid2", height=40, width=30)
+def img2() -> ImageMetadata:
+    return ImageMetadata(dataset=dset_name, uid="uid2", height=40, width=30)
 
 
 @pytest.fixture
-def img5() -> Image:
-    return Image(dataset=dset_name, uid="uid5", height=40, width=30)
+def img5() -> ImageMetadata:
+    return ImageMetadata(dataset=dset_name, uid="uid5", height=40, width=30)
 
 
 @pytest.fixture
-def img6() -> Image:
-    return Image(dataset=dset_name, uid="uid6", height=40, width=30)
+def img6() -> ImageMetadata:
+    return ImageMetadata(dataset=dset_name, uid="uid6", height=40, width=30)
 
 
 @pytest.fixture
-def img8() -> Image:
-    return Image(dataset=dset_name, uid="uid8", height=40, width=30)
+def img8() -> ImageMetadata:
+    return ImageMetadata(dataset=dset_name, uid="uid8", height=40, width=30)
 
 
 @pytest.fixture
-def img9() -> Image:
-    return Image(dataset=dset_name, uid="uid9", height=40, width=30)
+def img9() -> ImageMetadata:
+    return ImageMetadata(dataset=dset_name, uid="uid9", height=40, width=30)
 
 
 @pytest.fixture
@@ -220,7 +220,10 @@ def rect3():
 
 @pytest.fixture
 def gt_dets1(
-    rect1: BoundingBox, rect2: BoundingBox, img1: Image, img2: Image
+    rect1: BoundingBox,
+    rect2: BoundingBox,
+    img1: ImageMetadata,
+    img2: ImageMetadata,
 ) -> list[GroundTruth]:
     return [
         GroundTruth(
@@ -248,7 +251,10 @@ def gt_dets1(
 
 @pytest.fixture
 def gt_poly_dets1(
-    rect1: BoundingBox, rect2: BoundingBox, img1: Image, img2: Image
+    rect1: BoundingBox,
+    rect2: BoundingBox,
+    img1: ImageMetadata,
+    img2: ImageMetadata,
 ) -> list[GroundTruth]:
     """Same thing as gt_dets1 but represented as a polygon instead of bounding box"""
 
@@ -277,7 +283,7 @@ def gt_poly_dets1(
 
 
 @pytest.fixture
-def gt_dets2(rect3: BoundingBox, img1: Image) -> list[GroundTruth]:
+def gt_dets2(rect3: BoundingBox, img1: ImageMetadata) -> list[GroundTruth]:
     return [
         GroundTruth(
             datum=img1.to_datum(),
@@ -293,7 +299,7 @@ def gt_dets2(rect3: BoundingBox, img1: Image) -> list[GroundTruth]:
 
 
 @pytest.fixture
-def gt_dets3(rect3: BoundingBox, img8: Image) -> list[GroundTruth]:
+def gt_dets3(rect3: BoundingBox, img8: ImageMetadata) -> list[GroundTruth]:
     return [
         GroundTruth(
             datum=img8.to_datum(),
@@ -310,7 +316,10 @@ def gt_dets3(rect3: BoundingBox, img8: Image) -> list[GroundTruth]:
 
 @pytest.fixture
 def gt_segs1(
-    rect1: BoundingBox, rect2: BoundingBox, img1: Image, img2: Image
+    rect1: BoundingBox,
+    rect2: BoundingBox,
+    img1: ImageMetadata,
+    img2: ImageMetadata,
 ) -> list[Annotation]:
     return [
         GroundTruth(
@@ -347,7 +356,7 @@ def gt_segs1(
 
 @pytest.fixture
 def gt_segs2(
-    rect1: BoundingBox, rect3: BoundingBox, img1: Image
+    rect1: BoundingBox, rect3: BoundingBox, img1: ImageMetadata
 ) -> list[GroundTruth]:
     return [
         GroundTruth(
@@ -369,7 +378,7 @@ def gt_segs2(
 
 
 @pytest.fixture
-def gt_segs3(rect3: BoundingBox, img9: Image) -> list[GroundTruth]:
+def gt_segs3(rect3: BoundingBox, img9: ImageMetadata) -> list[GroundTruth]:
     return [
         GroundTruth(
             datum=img9.to_datum(),
@@ -387,7 +396,7 @@ def gt_segs3(rect3: BoundingBox, img9: Image) -> list[GroundTruth]:
 
 
 @pytest.fixture
-def gt_clfs1(img5: Image, img6: Image) -> list[GroundTruth]:
+def gt_clfs1(img5: ImageMetadata, img6: ImageMetadata) -> list[GroundTruth]:
     return [
         GroundTruth(
             datum=img5.to_datum(),
@@ -411,7 +420,7 @@ def gt_clfs1(img5: Image, img6: Image) -> list[GroundTruth]:
 
 
 @pytest.fixture
-def gt_clfs2(img5: Image) -> list[GroundTruth]:
+def gt_clfs2(img5: ImageMetadata) -> list[GroundTruth]:
     return [
         GroundTruth(
             datum=img5.to_datum(),
@@ -426,7 +435,7 @@ def gt_clfs2(img5: Image) -> list[GroundTruth]:
 
 
 @pytest.fixture
-def gt_clfs3(img8: Image) -> list[GroundTruth]:
+def gt_clfs3(img8: ImageMetadata) -> list[GroundTruth]:
     return [
         GroundTruth(
             datum=img8.to_datum(),
@@ -442,7 +451,10 @@ def gt_clfs3(img8: Image) -> list[GroundTruth]:
 
 @pytest.fixture
 def pred_dets(
-    rect1: BoundingBox, rect2: BoundingBox, img1: Image, img2: Image
+    rect1: BoundingBox,
+    rect2: BoundingBox,
+    img1: ImageMetadata,
+    img2: ImageMetadata,
 ) -> list[Prediction]:
     return [
         Prediction(
@@ -500,7 +512,7 @@ def pred_poly_dets(
 
 
 @pytest.fixture
-def pred_segs(img1: Image, img2: Image) -> list[Prediction]:
+def pred_segs(img1: ImageMetadata, img2: ImageMetadata) -> list[Prediction]:
     # mask_1 = np.random.randint(0, 2, size=(64, 32), dtype=bool)
     # mask_2 = np.random.randint(0, 2, size=(12, 23), dtype=bool)
     mask_1 = np.random.randint(
@@ -544,7 +556,7 @@ def pred_segs(img1: Image, img2: Image) -> list[Prediction]:
 
 
 @pytest.fixture
-def pred_clfs(img5: Image, img6: Image) -> list[Prediction]:
+def pred_clfs(img5: ImageMetadata, img6: ImageMetadata) -> list[Prediction]:
     return [
         Prediction(
             model=model_name,
@@ -890,7 +902,7 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
     or a polygon
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
-    image = Image(
+    image = ImageMetadata(
         dataset=dset_name, uid="uid", height=200, width=150
     ).to_datum()
 
@@ -960,7 +972,7 @@ def test_create_pred_detections_as_bbox_or_poly(
     db: Session,
     client: Client,
     gt_dets1: list[Annotation],
-    img1: Image,
+    img1: ImageMetadata,
 ):
     """Test that a predicted detection can be created as either a bounding box
     or a polygon
@@ -1039,7 +1051,7 @@ def test_create_image_dataset_with_segmentations(
     )
 
     gt = dataset.get_groundtruth("uid1")
-    image = Image.from_datum(gt.datum)
+    image = ImageMetadata.from_datum(gt.datum)
     segs = gt.annotations
 
     instance_segs = []
@@ -1074,7 +1086,7 @@ def test_create_image_dataset_with_segmentations(
 
 
 def test_create_gt_segs_as_polys_or_masks(
-    client: Client, img1: Image, db: Session
+    client: Client, img1: ImageMetadata, db: Session
 ):
     """Test that we can create a dataset with groundtruth segmentations that are defined
     both my polygons and mask arrays
@@ -1162,7 +1174,7 @@ def test_create_model_with_predicted_segmentations(
     # test raster 1
     png_from_db = db.scalar(ST_AsPNG(raster_uid1))
     f = io.BytesIO(png_from_db.tobytes())
-    mask_array = np.array(PILImage.open(f))
+    mask_array = np.array(PIL.Image.open(f))
     np.testing.assert_equal(
         mask_array, pred_segs[0].annotations[0].raster.to_numpy()
     )
@@ -1170,7 +1182,7 @@ def test_create_model_with_predicted_segmentations(
     # test raster 2
     png_from_db = db.scalar(ST_AsPNG(raster_uid2))
     f = io.BytesIO(png_from_db.tobytes())
-    mask_array = np.array(PILImage.open(f))
+    mask_array = np.array(PIL.Image.open(f))
     np.testing.assert_equal(
         mask_array, pred_segs[1].annotations[0].raster.to_numpy()
     )
@@ -1221,7 +1233,9 @@ def test_create_image_model_with_predicted_classifications(
     )
 
 
-def test_boundary(client: Client, db: Session, rect1: Polygon, img1: Image):
+def test_boundary(
+    client: Client, db: Session, rect1: Polygon, img1: ImageMetadata
+):
     """Test consistency of boundary in backend and client"""
     dataset = Dataset.create(client, dset_name)
     rect1_poly = bbox_to_poly(rect1)
@@ -1252,7 +1266,7 @@ def test_iou(
     db: Session,
     rect1: Polygon,
     rect2: Polygon,
-    img1: Image,
+    img1: ImageMetadata,
 ):
     rect1_poly = bbox_to_poly(rect1)
     rect2_poly = bbox_to_poly(rect2)
@@ -1966,8 +1980,8 @@ def test_evaluate_tabular_clf(
 #     dataset = Dataset.create(client, dset_name)
 
 #     md1, md2, md3 = metadata
-#     img1 = Image(uid="uid1", metadata=[md1], height=100, width=200).to_datum()
-#     img2 = Image(uid="uid2", metadata=[md2, md3], height=100, width=200).to_datum()
+#     img1 = ImageMetadata(uid="uid1", metadata=[md1], height=100, width=200).to_datum()
+#     img2 = ImageMetadata(uid="uid2", metadata=[md2, md3], height=100, width=200).to_datum()
 
 #     print(GroundTruth(
 #             dataset=dset_name,

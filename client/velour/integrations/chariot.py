@@ -1,6 +1,7 @@
 import gzip
 import json
 import tempfile
+from typing import Tuple
 
 import requests
 from tqdm import tqdm
@@ -22,16 +23,13 @@ from velour.schemas import (
     ScoredLabel,
 )
 
-# try:
-#     import chariot
-# except ModuleNotFoundError:
-#     "`chariot` package not found. if you have an account on Chariot please see https://production.chariot.striveworks.us/docs/sdk/sdk for how to install the python SDK"
-
-
 """ Dataset """
 
 
-def _retrieve_dataset_manifest(manifest_url: str):
+def _retrieve_dataset_manifest(
+    manifest_url: str,
+    disable_progress_bar: bool = False,
+):
     """Retrieves and unpacks Chariot dataset annotations from a manifest url."""
 
     chariot_dataset = []
@@ -49,6 +47,7 @@ def _retrieve_dataset_manifest(manifest_url: str):
             unit="iB",
             unit_scale=True,
             desc="Downloading manifest",
+            disable=disable_progress_bar,
         )
 
         # Write to tempfile if status ok
@@ -71,94 +70,111 @@ def _retrieve_dataset_manifest(manifest_url: str):
     return chariot_dataset
 
 
-def _parse_annotation(dataset_version, annotation: dict):
+def _parse_groundtruth(dataset_version, manifest_datum: dict):
+    def _parse_annotation(dataset_version, annotation: dict):
+        task_types = []
+        labels = []
+        if "class_label" in annotation:
+            labels += [
+                Label(key="class_label", value=annotation["class_label"])
+            ]
+        labels += [
+            Label(key=attribute, value=annotation["attributes"][attribute])
+            for attribute in annotation["attributes"]
+        ]
+        bounding_box = None
+        polygon = None
+        multipolygon = None
+        raster = None
 
-    task_types = []
-    labels = [Label(key="class_label", value=annotation["class_label"])] + [
-        Label(key=attribute, value=annotation["attributes"][attribute])
-        for attribute in annotation["attributes"]
-    ]
-    bounding_box = None
-    polygon = None
-    multipolygon = None
-    raster = None
+        # Image Classification
+        if dataset_version.supported_task_types.image_classification:
+            task_types.append(enums.TaskType.CLASSIFICATION)
 
-    # Image Classification
-    if dataset_version.supported_task_types.image_classification:
-        task_types.append(enums.TaskType.CLASSIFICATION)
+        # Image Object Detection
+        if dataset_version.supported_task_types.object_detection:
+            task_types.append(enums.TaskType.DETECTION)
+            if "bbox" in annotation:
+                bounding_box = BoundingBox.from_extrema(
+                    xmin=annotation["bbox"]["xmin"],
+                    ymin=annotation["bbox"]["ymin"],
+                    xmax=annotation["bbox"]["xmax"],
+                    ymax=annotation["bbox"]["ymax"],
+                )
 
-    # Image Object Detection
-    if dataset_version.supported_task_types.object_detection:
-        task_types.append(enums.TaskType.DETECTION)
-        bounding_box = BoundingBox.from_extrema(
-            xmin=annotation["bbox"]["xmin"],
-            ymin=annotation["bbox"]["ymin"],
-            xmax=annotation["bbox"]["xmax"],
-            ymax=annotation["bbox"]["ymax"],
-        )
-
-    # Image Segmentation
-    if dataset_version.supported_task_types.image_segmentation:
-        task_types.append(enums.TaskType.SEMANTIC_SEGMENTATION)
-        polygon = (
-            Polygon(
-                boundary=BasicPolygon(
-                    points=[
-                        Point(x=point["x"], y=point["y"])
-                        for point in annotation["contours"][0]
-                    ]
-                ),
-                holes=[
-                    BasicPolygon(
+        # Image Segmentation
+        if dataset_version.supported_task_types.image_segmentation:
+            task_types.append(enums.TaskType.SEMANTIC_SEGMENTATION)
+            if "contours" in annotation:
+                polygon = Polygon(
+                    boundary=BasicPolygon(
                         points=[
                             Point(x=point["x"], y=point["y"])
-                            for point in annotation["contours"][1]
-                        ],
-                    )
-                ]
-                if len(annotation["contours"]) > 1
-                else None,
-            ),
+                            for point in annotation["contours"][0]
+                        ]
+                    ),
+                    holes=[
+                        BasicPolygon(
+                            points=[
+                                Point(x=point["x"], y=point["y"])
+                                for point in annotation["contours"][1]
+                            ],
+                        )
+                    ]
+                    if len(annotation["contours"]) > 1
+                    else None,
+                )
+
+        # Text Sentiment
+        if dataset_version.supported_task_types.text_sentiment:
+            raise NotImplementedError(
+                "Text-based datasets not currently supported."
+            )
+
+        # Text Summarization
+        if dataset_version.supported_task_types.text_summarization:
+            raise NotImplementedError(
+                "Text-based datasets not currently supported."
+            )
+
+        # Text Token Classifier
+        if dataset_version.supported_task_types.text_token_classification:
+            raise NotImplementedError(
+                "Text-based datasets not currently supported."
+            )
+
+        # Text Translation
+        if dataset_version.supported_task_types.text_translation:
+            raise NotImplementedError(
+                "Text-based datasets not currently supported."
+            )
+
+        return Annotation(
+            task_type=task_types[-1],  # @TODO Make this better.
+            labels=labels,
+            bounding_box=bounding_box,
+            polygon=polygon,
+            multipolygon=multipolygon,
+            raster=raster,
         )
 
-    # Text Sentiment
-    if dataset_version.supported_task_types.text_sentiment:
-        raise NotImplementedError(
-            "Text-based datasets not currently supported."
-        )
-
-    # Text Summarization
-    if dataset_version.supported_task_types.text_summarization:
-        raise NotImplementedError(
-            "Text-based datasets not currently supported."
-        )
-
-    # Text Token Classifier
-    if dataset_version.supported_task_types.text_token_classification:
-        raise NotImplementedError(
-            "Text-based datasets not currently supported."
-        )
-
-    # Text Translation
-    if dataset_version.supported_task_types.text_translation:
-        raise NotImplementedError(
-            "Text-based datasets not currently supported."
-        )
-
-    return Annotation(
-        task_type=task_types[-1],  # @TODO Make this better.
-        labels=labels,
-        bounding_box=bounding_box,
-        polygon=polygon,
-        multipolygon=multipolygon,
-        raster=raster,
+    return GroundTruth(
+        datum=Datum(
+            uid=manifest_datum["datum_id"],
+            metadata=[MetaDatum(key="path", value=manifest_datum["path"])],
+        ),
+        annotations=[
+            _parse_annotation(dataset_version, annotation)
+            for annotation in manifest_datum["annotations"]
+        ],
     )
 
 
-def create_or_get_dataset_from_chariot(
+def get_chariot_dataset_integration(
     client: Client,
     dataset,
     dataset_version_id: str = None,
+    disable_progress_bar: bool = False,
 ):
     if len(dataset.versions) < 1:
         raise ValueError("Chariot dataset has no existing versions.")
@@ -179,67 +195,48 @@ def create_or_get_dataset_from_chariot(
 
     # Check if dataset has already been created
     try:
-        return Dataset.get(client, dataset_version.id)
+        velour_dataset = Dataset.get(client, dataset_version.id)
     except ClientException as e:
         if "does not exist" not in str(e):
             raise e
 
-    # Create velour dataset
-    velour_dataset = Dataset.create(
-        client=client,
-        name=dataset_version.id,
-        integration="chariot",
-        title=dataset.name,
-        description=dataset._meta.description,
-        project_id=dataset.project_id,
-        dataset_id=dataset.id,
-    )
-
-    # Retrieve the manifest
-    manifest_url = dataset_version.get_evaluation_manifest_url()
-    manifest = _retrieve_dataset_manifest(manifest_url)
-
-    # Create velour groundtruths
-    for datum in manifest:
-        gt = GroundTruth(
-            datum=Datum(
-                uid=datum["datum_id"],
-                metadata=[MetaDatum(key="path", value=datum["path"])],
-            ),
-            annotations=[
-                _parse_annotation(dataset_version, annotation)
-                for annotation in datum["annotations"]
-            ],
+        velour_dataset = Dataset.create(
+            client=client,
+            name=dataset_version.id,
+            integration="chariot",
+            title=dataset.name,
+            description=dataset._meta.description,
+            project_id=dataset.project_id,
+            dataset_id=dataset.id,
         )
-        velour_dataset.add_groundtruth(gt)
 
-    # Finalize groundtruths
-    velour_dataset.finalize()
-    return velour_dataset
+        # Retrieve the manifest
+        manifest_url = dataset_version.get_evaluation_manifest_url()
+        manifest = _retrieve_dataset_manifest(
+            manifest_url, disable_progress_bar
+        )
+
+        # Create velour groundtruths
+        for datum in tqdm(
+            manifest,
+            desc="Uploading to Velour",
+            unit="datum",
+            disable=disable_progress_bar,
+        ):
+            gt = _parse_groundtruth(dataset_version, datum)
+            velour_dataset.add_groundtruth(gt)
+
+        # Finalize groundtruths
+        velour_dataset.finalize()
+
+    # generate parsing function
+    def velour_parser(manifest_datum):
+        return _parse_groundtruth(dataset_version, manifest_datum)
+
+    return (velour_dataset, velour_parser)
 
 
 """ Model """
-
-
-def create_or_get_model_from_chariot(
-    client: Client,
-    model,
-):
-    # Check if model has already been created
-    try:
-        return Model.get(client, model.id)
-    except ClientException as e:
-        if "does not exist" not in str(e):
-            raise e
-
-    return Model.create(
-        client=client,
-        name=model.id,
-        integration="chariot",
-        title=model.name,
-        description=model._meta.summary,
-        project_id=model.project_id,
-    )
 
 
 def _create_prediction_from_chariot_image_classification(
@@ -283,6 +280,15 @@ def _create_prediction_from_chariot_image_object_detection(
     label_key: str = "class_label",
 ):
     # validate result
+    if not isinstance(result, list):
+        raise TypeError
+    if len(result) != 1:
+        raise ValueError("cannot have more than one result per datum")
+    if not isinstance(result[0], dict):
+        raise TypeError
+    result = result[0]
+
+    # validate result
     expected_keys = {
         "num_detections",
         "detection_classes",
@@ -319,26 +325,46 @@ def _create_prediction_from_chariot_image_object_detection(
     )
 
 
-def create_prediction_from_chariot(
-    datum: Datum,
-    model,
-    result,
-    label_key: str = "class_label",
-):
+def get_chariot_model_integration(
+    client: Client, model, label_key: str = "class_label"
+) -> Tuple[Model, callable]:
+    """Returns tuple of (velour.client.Model, parsing_fn(datum, result))"""
+
+    # check if model has already been created
+    try:
+        velour_model = Model.get(client, model.id)
+    except ClientException as e:
+        if "does not exist" not in str(e):
+            raise e
+        velour_model = Model.create(
+            client=client,
+            name=model.id,
+            integration="chariot",
+            title=model.name,
+            description=model._meta.summary,
+            project_id=model.project_id,
+        )
+
+    # retrieve task-related parser
     if model.task.value == "Image Classification":
-        return _create_prediction_from_chariot_image_classification(
-            datum=datum,
-            labels=model.class_labels,
-            result=result,
-            label_key=label_key,
-        )
+
+        def velour_parser(datum: Datum, result):
+            return _create_prediction_from_chariot_image_classification(
+                datum, model.class_labels, result=result, label_key=label_key
+            )
+
     elif model.task.value == "Object Detection":
-        return _create_prediction_from_chariot_image_object_detection(
-            datum=datum,
-            result=result,
-            label_key=label_key,
-        )
+
+        def velour_parser(datum: Datum, result):
+            return _create_prediction_from_chariot_image_object_detection(
+                datum=datum,
+                result=result,
+                label_key=label_key,
+            )
+
     elif model.task.value == "Image Segmentation":
         raise NotImplementedError(model.task.value)
     else:
         raise NotImplementedError(model.task)
+
+    return (velour_model, velour_parser)
