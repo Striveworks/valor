@@ -1851,7 +1851,7 @@ def test_evaluate_tabular_clf(
     # test
     with pytest.raises(ClientException) as exc_info:
         model.evaluate_classification(dataset=dataset)
-    assert "has NOT been finalized" in str(exc_info)
+    assert "has not been finalized" in str(exc_info)
 
     model.finalize_inferences(dataset)
 

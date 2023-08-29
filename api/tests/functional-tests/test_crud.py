@@ -1388,9 +1388,9 @@ def test_finalize_empty_dataset(db: Session):
     # create dataset
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
     # finalize
-    with pytest.raises(exceptions.StateflowError) as e:
+    with pytest.raises(exceptions.DatasetIsEmptyError) as e:
         crud.finalize(db=db, dataset_name=dset_name)
-    assert "invalid transititon from none to ready" in str(e)
+    assert "contains no groundtruths" in str(e)
 
 
 def test_finalize_empty_model(db: Session, groundtruths):
