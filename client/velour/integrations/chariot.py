@@ -247,7 +247,7 @@ def get_chariot_dataset_integration(
 """ Model """
 
 
-def _parse_chariot_predict_proba_image_classification(
+def _parse_chariot_predict_image_classification(
     datum: Datum,
     labels: dict,
     result: list,
@@ -256,14 +256,46 @@ def _parse_chariot_predict_proba_image_classification(
     # validate result
     if not isinstance(result, list):
         raise TypeError(
-            "image classification epected format List[List[float]]"
+            "image classification expected format List[List[float]]"
         )
     if len(result) != 1:
         raise ValueError("cannot have more than one result per datum")
-    if not isinstance(result[0], list):
+    if not isinstance(result[0], str):
         raise TypeError(
-            "image classification epected format List[List[float]]"
+            "image classification expected format List[List[float]]"
         )
+
+    # create prediction
+    return Prediction(
+        datum=datum,
+        annotations=[
+            ScoredAnnotation(
+                task_type=enums.TaskType.CLASSIFICATION,
+                scored_labels=[
+                    ScoredLabel(
+                        label=Label(key=label_key, value=label),
+                        score=1.0 if label == result[0] else 0.0,
+                    )
+                    for label in labels
+                ],
+            )
+        ],
+    )
+
+
+def _parse_chariot_predict_proba_image_classification(
+    datum: Datum,
+    labels: dict,
+    result: list,
+    label_key: str = "class_label",
+):
+    # validate result
+    if not isinstance(result, list):
+        raise TypeError("image classification expected format List[str]")
+    if len(result) != 1:
+        raise ValueError("cannot have more than one result per datum")
+    if not isinstance(result[0], list):
+        raise TypeError("image classification expected format List[str]")
     if len(labels) != len(result[0]):
         raise ValueError("number of labels does not equal number of scores")
 
@@ -286,57 +318,18 @@ def _parse_chariot_predict_proba_image_classification(
     )
 
 
-def _parse_chariot_predict_image_classification(
-    datum: Datum,
-    labels: dict,
-    result: list,
-    label_key: str = "class_label",
-):
-    # validate result
-    if not isinstance(result, list):
-        raise TypeError(
-            "image classification epected format List[List[float]]"
-        )
-    if len(result) != 1:
-        raise ValueError("cannot have more than one result per datum")
-    if not isinstance(result[0], list):
-        raise TypeError(
-            "image classification epected format List[List[float]]"
-        )
-    if len(labels) != len(result[0]):
-        raise ValueError("number of labels does not equal number of scores")
-
-    # create prediction
-    labels = {v: k for k, v in labels.items()}
-    return Prediction(
-        datum=datum,
-        annotations=[
-            ScoredAnnotation(
-                task_type=enums.TaskType.CLASSIFICATION,
-                scored_labels=[
-                    ScoredLabel(
-                        label=Label(key=label_key, value=label),
-                        score=1.0 if label == result[0] else 0.0,
-                    )
-                    for label in labels
-                ],
-            )
-        ],
-    )
-
-
-def _parse_chariot_image_object_detection_with_action_detect(
+def _parse_chariot_detect_image_object_detection(
     datum: Datum,
     result: dict,
     label_key: str = "class_label",
 ):
     # validate result
     if not isinstance(result, list):
-        raise TypeError("image object detection epected format List[Dict[]]")
+        raise TypeError("image object detection expected format List[Dict[]]")
     if len(result) != 1:
         raise ValueError("cannot have more than one result per datum")
     if not isinstance(result[0], dict):
-        raise TypeError("image object detection epected format List[Dict[]]")
+        raise TypeError("image object detection expected format List[Dict[]]")
     result = result[0]
 
     # validate result
@@ -423,7 +416,7 @@ def get_chariot_inference_parser(
     elif task_type == "Object Detection":
 
         def velour_parser(datum: Datum, result):
-            return _parse_chariot_image_object_detection_with_action_detect(
+            return _parse_chariot_detect_image_object_detection(
                 datum=datum,
                 result=result,
                 label_key=label_key,
