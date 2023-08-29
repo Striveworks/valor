@@ -5,6 +5,7 @@ from velour_api.exceptions import (
     DatasetAlreadyExistsError,
     DatasetDoesNotExistError,
     DatasetFinalizedError,
+    DatasetIsEmptyError,
     DatasetNotFinalizedError,
     JobDoesNotExistError,
     JobStateError,
@@ -12,6 +13,7 @@ from velour_api.exceptions import (
     ModelDoesNotExistError,
     ModelFinalizedError,
     ModelInferencesDoNotExist,
+    ModelIsEmptyError,
     ModelNotFinalizedError,
     StateflowError,
 )
@@ -24,8 +26,15 @@ def _state_transition_error(
     dataset_name: str,
     model_name: str | None = None,
 ):
+    # attempt to operate over non-existent structure
+    if before == State.NONE and after != State.CREATE:
+        if not model_name:
+            raise DatasetIsEmptyError(dataset_name)
+        else:
+            raise ModelIsEmptyError(model_name)
+
     # attempt to duplicate
-    if after == State.NONE:
+    elif after == State.NONE:
         if not model_name:
             raise DatasetAlreadyExistsError(dataset_name)
         else:

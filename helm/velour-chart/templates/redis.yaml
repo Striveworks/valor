@@ -4,14 +4,14 @@ kind: Deployment
 metadata:
   name: {{ include "velour-chart.fullname" . }}-redis
   labels:
-    {{- include "velour-chart.labels" . | nindent 4 }}
+    app: {{ include "velour-chart.fullname" . }}-redis
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "velour-chart.selectorLabels" . | nindent 6 }}
+      app: {{ include "velour-chart.fullname" . }}-redis
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -19,7 +19,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "velour-chart.selectorLabels" . | nindent 8 }}
+        app: {{ include "velour-chart.fullname" . }}-redis
     spec:
       containers:
         - name: {{ .Chart.Name }}-redis
@@ -46,12 +46,12 @@ kind: Service
 metadata:
   name: {{ include "velour-chart.fullname" . }}-redis
   labels:
-    {{- include "velour-chart.labels" . | nindent 4 }}
+    app: {{ include "velour-chart.fullname" . }}-redis
 spec:
   type: {{ .Values.redis.service.type }}
   ports:
     - protocol: TCP
       port: {{ .Values.redis.service.port }}
   selector:
-    {{- include "velour-chart.selectorLabels" . | nindent 4 }}
+    app: {{ include "velour-chart.fullname" . }}-redis
 {{- end }}

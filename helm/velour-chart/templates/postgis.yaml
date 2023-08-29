@@ -4,14 +4,14 @@ kind: Deployment
 metadata:
   name: {{ include "velour-chart.fullname" . }}-postgis
   labels:
-    {{- include "velour-chart.labels" . | nindent 4 }}
+    app: {{ include "velour-chart.fullname" . }}-postgis
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "velour-chart.selectorLabels" . | nindent 6 }}
+      app: {{ include "velour-chart.fullname" . }}-postgis
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -19,7 +19,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "velour-chart.selectorLabels" . | nindent 8 }}
+        app: {{ include "velour-chart.fullname" . }}-postgis
     spec:
       containers:
         - name: {{ .Chart.Name }}-postgis
@@ -48,13 +48,13 @@ kind: Service
 metadata:
   name: {{ include "velour-chart.fullname" . }}-postgis
   labels:
-    {{- include "velour-chart.labels" . | nindent 4 }}
+    app: {{ include "velour-chart.fullname" . }}-postgis
 spec:
   type: {{ .Values.postgis.service.type }}
   ports:
     - port: {{ .Values.postgis.service.port }}
       protocol: TCP
   selector:
-    {{- include "velour-chart.selectorLabels" . | nindent 4 }}
+    app: {{ include "velour-chart.fullname" . }}-postgis
 
 {{- end }}

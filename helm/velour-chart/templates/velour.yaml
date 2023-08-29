@@ -10,7 +10,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "velour-chart.selectorLabels" . | nindent 6 }}
+      app: {{ include "velour-chart.fullname" . }}-api
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -18,7 +18,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "velour-chart.selectorLabels" . | nindent 8 }}
+        app: {{ include "velour-chart.fullname" . }}-api
     spec:
       containers:
         - name: {{ .Chart.Name }}-api
@@ -47,15 +47,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "velour-chart.fullname" . }}-api
+  name: velour-api
   labels:
-    {{- include "velour-chart.labels" . | nindent 4 }}
+    app: {{ include "velour-chart.fullname" . }}-api
 spec:
   type: {{ .Values.api.service.type }}
   ports:
     - port: {{ .Values.api.service.port }}
-      targetPort: http
       protocol: TCP
-      name: http
   selector:
-    {{- include "velour-chart.selectorLabels" . | nindent 4 }}
+    app: {{ include "velour-chart.fullname" . }}-api

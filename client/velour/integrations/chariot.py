@@ -65,6 +65,14 @@ def _retrieve_dataset_manifest(
 
         # Parse into list of json object(s)
         for line in jsonl:
+            if line is None:
+                raise ValueError(
+                    f"manifest url `{manifest_url}` returned null."
+                )
+            elif line == "":
+                raise ValueError(
+                    f"manifest url `{manifest_url}` returned empty string."
+                )
             chariot_dataset.append(json.loads(line))
 
     return chariot_dataset
@@ -239,7 +247,7 @@ def get_chariot_dataset_integration(
 """ Model """
 
 
-def _create_prediction_from_chariot_image_classification(
+def _parse_chariot_predict_proba_image_classification(
     datum: Datum,
     labels: dict,
     result: list,
@@ -247,11 +255,15 @@ def _create_prediction_from_chariot_image_classification(
 ):
     # validate result
     if not isinstance(result, list):
-        raise TypeError
+        raise TypeError(
+            "image classification epected format List[List[float]]"
+        )
     if len(result) != 1:
         raise ValueError("cannot have more than one result per datum")
     if not isinstance(result[0], list):
-        raise TypeError
+        raise TypeError(
+            "image classification epected format List[List[float]]"
+        )
     if len(labels) != len(result[0]):
         raise ValueError("number of labels does not equal number of scores")
 
@@ -274,18 +286,57 @@ def _create_prediction_from_chariot_image_classification(
     )
 
 
-def _create_prediction_from_chariot_image_object_detection(
+def _parse_chariot_predict_image_classification(
+    datum: Datum,
+    labels: dict,
+    result: list,
+    label_key: str = "class_label",
+):
+    # validate result
+    if not isinstance(result, list):
+        raise TypeError(
+            "image classification epected format List[List[float]]"
+        )
+    if len(result) != 1:
+        raise ValueError("cannot have more than one result per datum")
+    if not isinstance(result[0], list):
+        raise TypeError(
+            "image classification epected format List[List[float]]"
+        )
+    if len(labels) != len(result[0]):
+        raise ValueError("number of labels does not equal number of scores")
+
+    # create prediction
+    labels = {v: k for k, v in labels.items()}
+    return Prediction(
+        datum=datum,
+        annotations=[
+            ScoredAnnotation(
+                task_type=enums.TaskType.CLASSIFICATION,
+                scored_labels=[
+                    ScoredLabel(
+                        label=Label(key=label_key, value=label),
+                        score=1.0 if label == result[0] else 0.0,
+                    )
+                    for label in labels
+                ],
+            )
+        ],
+    )
+
+
+def _parse_chariot_image_object_detection_with_action_detect(
     datum: Datum,
     result: dict,
     label_key: str = "class_label",
 ):
     # validate result
     if not isinstance(result, list):
-        raise TypeError
+        raise TypeError("image object detection epected format List[Dict[]]")
     if len(result) != 1:
         raise ValueError("cannot have more than one result per datum")
     if not isinstance(result[0], dict):
-        raise TypeError
+        raise TypeError("image object detection epected format List[Dict[]]")
     result = result[0]
 
     # validate result
@@ -325,18 +376,16 @@ def _create_prediction_from_chariot_image_object_detection(
     )
 
 
-def get_chariot_model_integration(
-    client: Client, model, label_key: str = "class_label"
-) -> Tuple[Model, callable]:
-    """Returns tuple of (velour.client.Model, parsing_fn(datum, result))"""
-
-    # check if model has already been created
+def get_chariot_inference_model(
+    client: Client,
+    model,
+):
     try:
-        velour_model = Model.get(client, model.id)
+        return Model.get(client, model.id)
     except ClientException as e:
         if "does not exist" not in str(e):
             raise e
-        velour_model = Model.create(
+        return Model.create(
             client=client,
             name=model.id,
             integration="chariot",
@@ -345,26 +394,65 @@ def get_chariot_model_integration(
             project_id=model.project_id,
         )
 
-    # retrieve task-related parser
-    if model.task.value == "Image Classification":
 
-        def velour_parser(datum: Datum, result):
-            return _create_prediction_from_chariot_image_classification(
-                datum, model.class_labels, result=result, label_key=label_key
+def get_chariot_inference_parser(
+    task_type: str, action: str, label_key: str, class_labels: list = None
+):
+
+    if task_type == "Image Classification":
+
+        if action == "predict":
+
+            def velour_parser(datum: Datum, result):
+                return _parse_chariot_predict_image_classification(
+                    datum, class_labels, result=result, label_key=label_key
+                )
+
+        elif action == "predict_proba":
+
+            def velour_parser(datum: Datum, result):
+                return _parse_chariot_predict_proba_image_classification(
+                    datum, class_labels, result=result, label_key=label_key
+                )
+
+        else:
+            raise NotImplementedError(
+                f"action `{action}` not supported for task type `Image Classification`"
             )
 
-    elif model.task.value == "Object Detection":
+    elif task_type == "Object Detection":
 
         def velour_parser(datum: Datum, result):
-            return _create_prediction_from_chariot_image_object_detection(
+            return _parse_chariot_image_object_detection_with_action_detect(
                 datum=datum,
                 result=result,
                 label_key=label_key,
             )
 
-    elif model.task.value == "Image Segmentation":
-        raise NotImplementedError(model.task.value)
+    elif task_type == "Image Segmentation":
+        raise NotImplementedError(
+            "Image Segmentation has not been implemented."
+        )
     else:
-        raise NotImplementedError(model.task)
+        raise NotImplementedError(task_type)
+
+    return velour_parser
+
+
+def get_chariot_model_integration(
+    client: Client, model, action: str, label_key: str = "class_label"
+) -> Tuple[Model, callable]:
+    """Returns tuple of (velour.client.Model, parsing_fn(datum, result))"""
+
+    # check if model has already been created
+    velour_model = get_chariot_inference_model(client, model)
+
+    # retrieve task-related parser
+    velour_parser = get_chariot_inference_parser(
+        task_type=model.task.value,
+        action=action,
+        label_key=label_key,
+        class_labels=model.class_labels,
+    )
 
     return (velour_model, velour_parser)
