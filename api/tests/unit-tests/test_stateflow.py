@@ -7,8 +7,10 @@ from velour_api.backend.stateflow import _update_backend_state
 from velour_api.enums import State
 from velour_api.exceptions import (
     DatasetFinalizedError,
+    DatasetIsEmptyError,
     DatasetNotFinalizedError,
     ModelFinalizedError,
+    ModelIsEmptyError,
     ModelNotFinalizedError,
     StateflowError,
 )
@@ -104,8 +106,10 @@ def test__update_backend_state():
     _test_permutation_pos(State.DELETE, State.DELETE)
 
     # dataset - negative cases
-    _test_permutation_neg(State.NONE, State.READY)
-    _test_permutation_neg(State.NONE, State.EVALUATE)
+    _test_permutation_neg(State.NONE, State.READY, error=DatasetIsEmptyError)
+    _test_permutation_neg(
+        State.NONE, State.EVALUATE, error=DatasetIsEmptyError
+    )
     _test_permutation_neg(
         State.CREATE, State.EVALUATE, error=DatasetNotFinalizedError
     )
@@ -170,8 +174,12 @@ def test__update_backend_state():
 
     # model - negative cases
     for state in [State.READY, State.EVALUATE]:
-        _test_permutation_neg(state, None, State.NONE, State.READY)
-        _test_permutation_neg(state, None, State.NONE, State.EVALUATE)
+        _test_permutation_neg(
+            state, None, State.NONE, State.READY, error=ModelIsEmptyError
+        )
+        _test_permutation_neg(
+            state, None, State.NONE, State.EVALUATE, error=ModelIsEmptyError
+        )
         _test_permutation_neg(
             state,
             None,
