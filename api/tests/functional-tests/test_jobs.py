@@ -402,7 +402,7 @@ def test_stateflow_model(db: Session):
                 ious_to_keep=[0.2],
             ),
         )
-    assert "has NOT been finalized" in str(e)
+    assert "has not been finalized" in str(e)
 
     # finalize model over dataset
     crud.finalize(db=db, dataset_name=dset_name, model_name=model_name)

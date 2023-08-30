@@ -1,0 +1,57 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "velour-chart.fullname" . }}-redis
+  labels:
+    app: {{ include "velour-chart.fullname" . }}-redis
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "velour-chart.fullname" . }}-redis
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: {{ include "velour-chart.fullname" . }}-redis
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}-redis
+          image: {{ .Values.redis.repository }}:{{ .Values.redis.tag | default "latest" }}
+          imagePullPolicy: {{ .Values.redis.pullPolicy }}
+          env:
+            - name: REDIS_HOST
+              value: {{ include "velour-chart.fullname" . }}-redis
+            - name: REDIS_PORT
+              value: "{{ .Values.redis.service.port }}"
+          ports:
+            - containerPort: {{ .Values.redis.service.port }}
+          volumeMounts:
+            - mountPath: /var/lib/redis/data
+              name: {{ include "velour-chart.fullname" . }}-db-data
+      volumes:
+        - name: {{ include "velour-chart.fullname" . }}-db-data
+          persistentVolumeClaim:
+            claimName: {{ include "velour-chart.fullname" . }}-persistent-volume-claim
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "velour-chart.fullname" . }}-redis
+  labels:
+    app: {{ include "velour-chart.fullname" . }}-redis
+spec:
+  type: {{ .Values.redis.service.type }}
+  ports:
+    - protocol: TCP
+      port: {{ .Values.redis.service.port }}
+  selector:
+    app: {{ include "velour-chart.fullname" . }}-redis
+{{- end }}
