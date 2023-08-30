@@ -3,11 +3,13 @@ from dataclasses import dataclass
 import pytest
 
 from velour import enums
-from velour.integrations.chariot import (
+from velour.integrations.chariot.datasets import (
+    _parse_groundtruth_from_evaluation_manifest,
+)
+from velour.integrations.chariot.models import (
     _parse_chariot_detect_image_object_detection,
     _parse_chariot_predict_image_classification,
     _parse_chariot_predict_proba_image_classification,
-    _parse_groundtruth,
 )
 from velour.schemas import BoundingBox, ImageMetadata, Point
 
@@ -249,7 +251,7 @@ def test__parse_groundtruth(
     dsv.supported_task_types.image_classification = True
     _test_img_clf_manifest(
         [
-            _parse_groundtruth(
+            _parse_groundtruth_from_evaluation_manifest(
                 dsv,
                 manifest_datum,
             )
@@ -262,7 +264,7 @@ def test__parse_groundtruth(
     dsv.supported_task_types.object_detection = True
     _test_obj_det_manifest(
         [
-            _parse_groundtruth(dsv, manifest_datum)
+            _parse_groundtruth_from_evaluation_manifest(dsv, manifest_datum)
             for manifest_datum in obj_det_manifest
         ]
     )
@@ -272,7 +274,7 @@ def test__parse_groundtruth(
     dsv.supported_task_types.image_segmentation = True
     _test_img_seg_manifest(
         [
-            _parse_groundtruth(
+            _parse_groundtruth_from_evaluation_manifest(
                 dsv,
                 manifest_datum,
             )
