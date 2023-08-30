@@ -19,8 +19,6 @@ from velour.schemas import (
     Polygon,
 )
 
-""" Chariot """
-
 
 def _retrieve_dataset_version(
     dataset,
@@ -96,9 +94,6 @@ def _retrieve_dataset_manifest(
             chariot_dataset.append(json.loads(line))
 
     return chariot_dataset
-
-
-""" Parser """
 
 
 def _parse_labels(annotation: dict):
@@ -207,9 +202,6 @@ def _parse_groundtruth_from_evaluation_manifest(
             for annotation in manifest_datum["annotations"]
         ],
     )
-
-
-""" User """
 
 
 def create_dataset_from_chariot(

@@ -11,8 +11,6 @@ from velour.schemas import (
     ScoredLabel,
 )
 
-""" Parsers """
-
 
 def _parse_chariot_predict_image_classification(
     datum: Datum,
@@ -22,15 +20,11 @@ def _parse_chariot_predict_image_classification(
 ):
     # validate result
     if not isinstance(result, list):
-        raise TypeError(
-            "image classification expected format List[List[float]]"
-        )
+        raise TypeError("expected format List[str]")
     if len(result) != 1:
         raise ValueError("cannot have more than one result per datum")
     if not isinstance(result[0], str):
-        raise TypeError(
-            "image classification expected format List[List[float]]"
-        )
+        raise TypeError("expected format List[str]")
 
     # create prediction
     return Prediction(
@@ -58,11 +52,11 @@ def _parse_chariot_predict_proba_image_classification(
 ):
     # validate result
     if not isinstance(result, list):
-        raise TypeError("image classification expected format List[str]")
+        raise TypeError("expected format List[List[float]]")
     if len(result) != 1:
         raise ValueError("cannot have more than one result per datum")
     if not isinstance(result[0], list):
-        raise TypeError("image classification expected format List[str]")
+        raise TypeError("expected format List[List[float]]")
     if len(labels) != len(result[0]):
         raise ValueError("number of labels does not equal number of scores")
 
@@ -134,9 +128,6 @@ def _parse_chariot_detect_image_object_detection(
             )
         ],
     )
-
-
-""" User """
 
 
 def create_model_from_chariot(
