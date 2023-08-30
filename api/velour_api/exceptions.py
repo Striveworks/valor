@@ -11,6 +11,13 @@ class DatasetDoesNotExistError(Exception):
         return super().__init__(f"Dataset with name `{name}` does not exist.")
 
 
+class DatasetIsEmptyError(Exception):
+    def __init__(self, name: str):
+        return super().__init__(
+            f"Dataset with name `{name}` contains no groundtruths."
+        )
+
+
 class DatasetFinalizedError(Exception):
     def __init__(self, name: str):
         return super().__init__(
@@ -38,6 +45,13 @@ class ModelDoesNotExistError(Exception):
         return super().__init__(f"Model with name `{name}` does not exist.")
 
 
+class ModelIsEmptyError(Exception):
+    def __init__(self, name: str):
+        return super().__init__(
+            f"Model with name `{name}` contains no inferences."
+        )
+
+
 class ModelFinalizedError(Exception):
     def __init__(self, *, dataset_name: str, model_name: str):
         return super().__init__(
@@ -48,7 +62,7 @@ class ModelFinalizedError(Exception):
 class ModelNotFinalizedError(Exception):
     def __init__(self, *, dataset_name: str, model_name: str):
         return super().__init__(
-            f"cannot evaluate inferences for model `{model_name}` on dataset `{dataset_name}` since it has NOT been finalized."
+            f"cannot evaluate inferences for model `{model_name}` on dataset `{dataset_name}` since it has not been finalized."
         )
 
 

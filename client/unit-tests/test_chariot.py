@@ -3,10 +3,13 @@ from dataclasses import dataclass
 import pytest
 
 from velour import enums
-from velour.integrations.chariot import (
-    _create_prediction_from_chariot_image_classification,
-    _create_prediction_from_chariot_image_object_detection,
-    _parse_groundtruth,
+from velour.integrations.chariot.datasets import (
+    _parse_groundtruth_from_evaluation_manifest,
+)
+from velour.integrations.chariot.models import (
+    _parse_chariot_detect_image_object_detection,
+    _parse_chariot_predict_image_classification,
+    _parse_chariot_predict_proba_image_classification,
 )
 from velour.schemas import BoundingBox, ImageMetadata, Point
 
@@ -248,7 +251,7 @@ def test__parse_groundtruth(
     dsv.supported_task_types.image_classification = True
     _test_img_clf_manifest(
         [
-            _parse_groundtruth(
+            _parse_groundtruth_from_evaluation_manifest(
                 dsv,
                 manifest_datum,
             )
@@ -261,7 +264,7 @@ def test__parse_groundtruth(
     dsv.supported_task_types.object_detection = True
     _test_obj_det_manifest(
         [
-            _parse_groundtruth(dsv, manifest_datum)
+            _parse_groundtruth_from_evaluation_manifest(dsv, manifest_datum)
             for manifest_datum in obj_det_manifest
         ]
     )
@@ -271,7 +274,7 @@ def test__parse_groundtruth(
     dsv.supported_task_types.image_segmentation = True
     _test_img_seg_manifest(
         [
-            _parse_groundtruth(
+            _parse_groundtruth_from_evaluation_manifest(
                 dsv,
                 manifest_datum,
             )
@@ -286,6 +289,13 @@ def test__parse_groundtruth(
 
 @pytest.fixture
 def img_clf_prediction():
+    labels = {"dog": 0, "cat": 1, "elephant": 2}
+    pred = ["dog"]
+    return pred, labels
+
+
+@pytest.fixture
+def img_clf_prediction_proba():
     labels = {"dog": 0, "cat": 1, "elephant": 2}
     scores = [[0.2, 0.5, 0.3]]
     return scores, labels
@@ -324,7 +334,7 @@ def sem_seg_prediction():
     pass
 
 
-def test__create_prediction_from_chariot_image_classification(
+def test__parse_chariot_predict_image_classification(
     img_clf_prediction,
 ):
 
@@ -332,12 +342,57 @@ def test__create_prediction_from_chariot_image_classification(
 
     datum = ImageMetadata(uid="", width=1000, height=2000).to_datum()
 
-    velour_classifications = (
-        _create_prediction_from_chariot_image_classification(
-            datum,
-            chariot_labels,
-            chariot_classifications,
-        )
+    velour_classifications = _parse_chariot_predict_image_classification(
+        datum,
+        chariot_labels,
+        chariot_classifications,
+    )
+
+    assert len(velour_classifications.annotations) == 1
+    assert (
+        velour_classifications.annotations[0].task_type
+        == enums.TaskType.CLASSIFICATION
+    )
+    assert velour_classifications.datum == datum
+
+    # validate label key set
+    assert set(
+        [
+            scored_label.label.key
+            for det in velour_classifications.annotations
+            for scored_label in det.scored_labels
+        ]
+    ) == {"class_label"}
+
+    # validate label value set
+    assert set(
+        [
+            scored_label.label.value
+            for det in velour_classifications.annotations
+            for scored_label in det.scored_labels
+        ]
+    ) == {"dog", "cat", "elephant"}
+
+    # validate scores
+    for scored_label in velour_classifications.annotations[0].scored_labels:
+        if scored_label.label.value == chariot_classifications[0]:
+            assert scored_label.score == 1.0
+        else:
+            assert scored_label.score == 0.0
+
+
+def test__parse_chariot_predict_proba_image_classification(
+    img_clf_prediction_proba,
+):
+
+    chariot_classifications, chariot_labels = img_clf_prediction_proba
+
+    datum = ImageMetadata(uid="", width=1000, height=2000).to_datum()
+
+    velour_classifications = _parse_chariot_predict_proba_image_classification(
+        datum,
+        chariot_labels,
+        chariot_classifications,
     )
 
     assert len(velour_classifications.annotations) == 1
@@ -371,14 +426,14 @@ def test__create_prediction_from_chariot_image_classification(
         assert chariot_classifications[0][idx] == scored_label.score
 
 
-def test__create_prediction_from_chariot_image_object_detection(
+def test__parse_chariot_detect_image_object_detection(
     obj_det_prediction,
 ):
 
     datum = ImageMetadata(uid="", width=1000, height=2000).to_datum()
 
     # test parsing
-    velour_detections = _create_prediction_from_chariot_image_object_detection(
+    velour_detections = _parse_chariot_detect_image_object_detection(
         datum, obj_det_prediction
     )
 
