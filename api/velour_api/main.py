@@ -260,10 +260,9 @@ def get_dataset_status(
 def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     try:
         crud.finalize(db=db, dataset_name=dataset_name)
-    except (
-        exceptions.DatasetDoesNotExistError,
-        exceptions.DatasetIsEmptyError,
-    ) as e:
+    except exceptions.DatasetIsEmptyError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -425,10 +424,13 @@ def finalize_inferences(
             dataset_name=dataset_name,
         )
     except (
-        exceptions.DatasetDoesNotExistError,
         exceptions.DatasetIsEmptyError,
-        exceptions.ModelDoesNotExistError,
         exceptions.ModelIsEmptyError,
+    ) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except (
+        exceptions.DatasetDoesNotExistError,
+        exceptions.ModelDoesNotExistError,
     ) as e:
         raise HTTPException(status_code=404, detail=str(e))
 
