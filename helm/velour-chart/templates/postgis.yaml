@@ -1,0 +1,60 @@
+{{- if .Values.postgis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "velour-chart.fullname" . }}-postgis
+  labels:
+    app: {{ include "velour-chart.fullname" . }}-postgis
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: {{ include "velour-chart.fullname" . }}-postgis
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: {{ include "velour-chart.fullname" . }}-postgis
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}-postgis
+          image: {{ .Values.postgis.repository }}:{{ .Values.postgis.tag | default "latest" }}
+          imagePullPolicy: {{ .Values.postgis.pullPolicy }}
+          env:
+            - name: POSTGRES_HOST
+              value: {{ include "velour-chart.fullname" . }}-postgis
+            - name: POSTGRES_DB
+              value: {{ .Values.postgis.login.database }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgis.login.user }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.postgis.login.password }}
+          volumeMounts:
+            - mountPath: /var/lib/postgis/data
+              name: {{ include "velour-chart.fullname" . }}-db-data
+      volumes:
+        - name: {{ include "velour-chart.fullname" . }}-db-data
+          persistentVolumeClaim:
+            claimName: {{ include "velour-chart.fullname" . }}-persistent-volume-claim
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "velour-chart.fullname" . }}-postgis
+  labels:
+    app: {{ include "velour-chart.fullname" . }}-postgis
+spec:
+  type: {{ .Values.postgis.service.type }}
+  ports:
+    - port: {{ .Values.postgis.service.port }}
+      protocol: TCP
+  selector:
+    app: {{ include "velour-chart.fullname" . }}-postgis
+
+{{- end }}
