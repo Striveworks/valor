@@ -257,7 +257,7 @@ def get_chariot_dataset_integration(
     return (velour_dataset, velour_parser)
 
 
-def convert_chariot_evaluation_manifest(
+def create_dataset_from_chariot_evaluation_manifest(
     client: Client,
     dataset,
     dataset_version_id,
