@@ -199,7 +199,7 @@ def get_chariot_model_integration(
     except ClientException as e:
         if "does not exist" not in str(e):
             raise e
-        velour_model = create_model_from_chariot(client, model.id)
+        velour_model = create_model_from_chariot(client, model)
 
     # retrieve task-related parser
     velour_parser = get_prediction_parser_from_chariot(
