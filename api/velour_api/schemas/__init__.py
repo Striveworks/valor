@@ -21,7 +21,7 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .info import Filter, LabelDistribution, ScoredLabelDistribution
+from .info import Filter, MetadataFilter
 from .metrics import (
     AccuracyMetric,
     APMetric,
@@ -47,6 +47,7 @@ from .stateflow import Stateflow
 __all__ = [
     "User",
     "Filter",
+    "MetadataFilter",
     "Image",
     "VideoFrame",
     "Annotation",

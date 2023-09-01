@@ -1,3 +1,5 @@
+import operator
+
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import BinaryExpression
@@ -26,18 +28,6 @@ model_mapping = {
     "prediction": models.Prediction,
     "label": models.Label,
     "metadatum": models.MetaDatum,
-}
-
-
-schemas_mapping = {
-    "dataset": schemas.Dataset,
-    "model": schemas.Model,
-    "datum": schemas.Datum,
-    "annotation": schemas.Annotation,
-    "groundtruth": schemas.GroundTruth,
-    "prediction": schemas.Prediction,
-    "label": schemas.Label,
-    "metadatum": schemas.MetaDatum,
 }
 
 
@@ -77,6 +67,18 @@ model_relationships = {
         "datum": models.MetaDatum.datum_id == models.Datum.id,
         "annotation": models.MetaDatum.annotation_id == models.Annotation.id,
     },
+}
+
+
+schemas_mapping = {
+    "dataset": schemas.Dataset,
+    "model": schemas.Model,
+    "datum": schemas.Datum,
+    "annotation": schemas.Annotation,
+    "groundtruth": schemas.GroundTruth,
+    "prediction": schemas.Prediction,
+    "label": schemas.Label,
+    "metadatum": schemas.MetaDatum,
 }
 
 
@@ -122,37 +124,46 @@ class Join:
 
 
 def _graph_generator(
-    source: str,
-    target: str,
-    prune: set = set(),
+    start: str,
+    end: str,
+    invalid: set = None,
 ):
-    if source in prune or target in prune:
+    """Recursive function,"""
+
+    # initialize
+    if invalid is None:
+        invalid = set()
+
+    # check if source or target invalid
+    if start in invalid or end in invalid:
         return None
 
-    if source == target:
-        return target
+    # check if source is target
+    if start == end:
+        return end
 
-    remaining_options = model_graph[source] - prune
-    prune.add(source)
-    if target in prune:
-        prune.remove(target)
+    # get options for next step
+    remaining_options = model_graph[start] - invalid
 
+    # add current position to list of traveled nodes
+    invalid.add(start)
+
+    # check & remote
+    # if end in invalid:
+    # invalid.remove(end)
+
+    # iterate through branch options, construct path recursively
     path = {}
     for option in list(remaining_options):
-        if retval := _graph_generator(
-            source=option, target=target, prune=prune
-        ):
+        if retval := _graph_generator(start=option, end=end, invalid=invalid):
             path[option] = retval
-
-    if path:
-        return path
-    return None
+    return path if path else None
 
 
 def _flatten_graph(
     graph: dict,
-    source: str,
-    target: str,
+    start: str,
+    end: str,
     join_list: dict,
 ) -> list[Join]:
     """Recursive function"""
@@ -160,17 +171,17 @@ def _flatten_graph(
     # update from current layer
     for key in graph:
         if key in join_list:
-            join_list[key].or_(root=key, link=source)
+            join_list[key].or_(root=key, link=start)
         else:
-            join_list[key] = Join(root=key, link=source)
+            join_list[key] = Join(root=key, link=start)
 
     # recurse to next layer
     for key in graph:
-        if key not in target:
+        if key not in end:
             join_list = _flatten_graph(
                 graph=graph[key],
-                source=key,
-                target=target,
+                start=key,
+                end=end,
                 join_list=join_list,
             )
 
@@ -277,28 +288,28 @@ class BackendQuery:
 
     def prune_graph(self) -> set[str]:
         # Set of id's to prune
-        prune = self.constraints.copy()
+        invalid = self.constraints.copy()
 
-        # Prune if not referenced
+        # invalidate metadatum node if not referenced
         if "metadatum" not in [self.source, *self.targets]:
-            prune.add("metadatum")
+            invalid.add("metadatum")
 
-        # Prune if not referenced
+        # invalidate label node if not referenced
         if "label" not in [self.source, *self.targets]:
-            prune.add("label")
+            invalid.add("label")
 
-        # Prune if model is source/target
+        # invalidate groundtruth node if model is source/target
         if "model" in [self.source, *self.targets]:
-            prune.add("groundtruth")
+            invalid.add("groundtruth")
 
         # validate source
-        if self.source in prune:
+        if self.source in invalid:
             return None
 
         # validate targets
-        self.targets = list(set(self.targets) - prune)
+        self.targets = list(set(self.targets) - invalid)
 
-        return prune
+        return invalid
 
     def __str__(self):
 
@@ -367,38 +378,64 @@ class BackendQuery:
             db.query(model_mapping[self.source]).where(src.id.in_(q_ids)).all()
         )
 
-    def filter(self, req: schemas.Filter):
+    def filter(self, filt: schemas.Filter):
         """Parses `schemas.Filter` and operates all filters."""
 
-        # generate filter expressions
-        self.filter_by_dataset_names(req.datasets)
-        self.filter_by_model_names(req.models)
-        self.filter_by_datum_uids(req.datum_uids)
-        self.filter_by_task_types(req.task_types)
-        self.filter_by_annotation_types(req.annotation_types)
-        self.filter_by_label_keys(req.label_keys)
-        self.filter_by_labels(req.labels)
-        self.filter_by_metadata(req.metadata)
+        # datasets
+        if filt.datasets is not None:
+            if filt.datasets.names:
+                self.filter_by_dataset_names(filt.datasets.names)
+            if filt.datasets.metadata:
+                self.filter_by_metadata(filt.datasets.metadata)
 
-        # limit metadata connections
-        if not req.allow_dataset_metadata:
-            pass
-        if not req.allow_model_metadata:
-            pass
-        if not req.allow_datum_metadata:
-            pass
-        if not req.allow_annotation_metadata:
-            pass
+        # models
+        if filt.models is not None:
+            if filt.models.names:
+                self.filter_by_model_names(filt.models.names)
+            if filt.models.metadata:
+                self.filter_by_metadata(filt.models.metadata)
 
-        # constrain over groundtruths or predictions
-        if not req.allow_groundtruths and req.allow_predictions:
+        # datums
+        if filt.datums is not None:
+            if filt.datums.uids:
+                self.filter_by_datum_uids(filt.datums.uids)
+            if filt.datums.metadata:
+                self.filter_by_metadata(filt.datums.metadata)
+
+        # annotations
+        if filt.annotations is not None:
+            if filt.annotations.task_types:
+                self.filter_by_task_types(filt.annotations.task_types)
+
+            if filt.annotations.annotation_types:
+                self.filter_by_annotation_types(
+                    filt.annotations.annotation_types
+                )
+            if filt.annotations.min_area:
+                pass
+            if filt.annotations.max_area:
+                pass
+            if filt.annotations.metadata:
+                self.filter_by_metadata(filt.annotations.metadata)
+
+        # toggles
+        # @TODO
+        # unsure of what to do with this one
+        # maybe just make it a evaluate param
+        # filt.annotations.allow_conversion
+
+        # labels
+        if filt.labels is not None:
+            if filt.labels.labels:
+                self.filter_by_labels(filt.labels.labels)
+            if filt.labels.keys:
+                self.filter_by_label_keys(filt.labels.label_keys)
+
+        # toggles
+        if not filt.labels.include_groundtruths:
             self.constraints.add("groundtruth")
-        elif req.allow_groundtruths and not req.allow_predictions:
+        if not filt.labels.include_predictions:
             self.constraints.add("prediction")
-        elif not req.allow_groundtruths and not req.allow_predictions:
-            raise ValueError(
-                "Either groundtruths or predictions need to be allowed."
-            )
 
         return self
 
@@ -562,9 +599,22 @@ class BackendQuery:
 
     """ filter by metadata """
 
-    def _create_metadatum_expression(
-        self, metadatum: schemas.MetaDatum | models.MetaDatum
+    def filter_by_metadatum(
+        self,
+        metadatum: schemas.MetaDatum | models.MetaDatum,
+        operator: str,
     ):
+
+        ops = {
+            ">": operator.gt,
+            "<": operator.lt,
+            ">=": operator.ge,
+            "<=": operator.le,
+            "==": operator.eq,
+            "!=": operator.ne,
+        }
+        if operator not in ops:
+            raise ValueError(f"invalid comparison operator `{operator}`")
 
         # Compare name
         expression = [models.MetaDatum.name == metadatum.name]
@@ -572,28 +622,36 @@ class BackendQuery:
         # sqlalchemy handler
         if isinstance(metadatum, models.MetaDatum):
             expression.append(
-                models.MetaDatum.string_value == metadatum.string_value
+                ops[operator](
+                    models.MetaDatum.string_value, metadatum.string_value
+                )
             )
             expression.append(
-                models.MetaDatum.numeric_value == metadatum.numeric_value
+                ops[operator](
+                    models.MetaDatum.numeric_value, metadatum.numeric_value
+                )
             )
-            expression.append(models.MetaDatum.geo == metadatum.geo)
+            expression.append(
+                ops[operator](models.MetaDatum.geo, metadatum.geo)
+            )
 
         # schema handler
         elif isinstance(metadatum, schemas.MetaDatum):
             # Compare value
             if isinstance(metadatum.value, str):
                 expression.append(
-                    models.MetaDatum.string_value == metadatum.value
+                    ops[operator](
+                        models.MetaDatum.string_value, metadatum.value
+                    )
                 )
             if isinstance(metadatum.value, float):
                 expression.append(
-                    models.MetaDatum.numeric_value == metadatum.value
+                    ops[operator](
+                        models.MetaDatum.numeric_value, metadatum.value
+                    )
                 )
             if isinstance(metadatum.value, schemas.GeoJSON):
-                raise NotImplementedError(
-                    "Havent implemented GeoJSON support."
-                )
+                raise NotImplementedError("GeoJSON currently unsupported.")
 
         # unknown type
         else:
@@ -601,14 +659,11 @@ class BackendQuery:
 
         return or_(*expression)
 
-    def filter_by_metadata(
-        self, metadata: list[schemas.MetaDatum | models.MetaDatum]
-    ):
+    def filter_by_metadata(self, metadata: list[schemas.MetadataFilter]):
         # generate binary expressions
         expressions = [
-            self._create_metadatum_expression(metadatum)
-            for metadatum in metadata
-            if metadatum is not None
+            self.filter_by_metadatum(filt.metadatum, filt.operator)
+            for filt in metadata
         ]
 
         # generate filter
