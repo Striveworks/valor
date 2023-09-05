@@ -8,14 +8,24 @@ from velour_api import enums, schemas
 from velour_api.backend import models
 
 model_graph = {
-    "dataset": {"datum", "metadatum"},
-    "model": {"annotation", "metadatum"},
-    "datum": {"annotation", "dataset", "metadatum"},
-    "annotation": {"datum", "model", "prediction", "groundtruth", "metadatum"},
-    "groundtruth": {"annotation", "label"},
-    "prediction": {"annotation", "label"},
-    "label": {"prediction", "groundtruth"},
-    "metadatum": {"dataset", "model", "datum", "annotation"},
+    "dataset": {"datum", "dataset_metadatum"},
+    "model": {"annotation", "model_metadatum"},
+    "datum": {"annotation", "dataset", "datum_metadatum"},
+    "annotation": {
+        "datum",
+        "model",
+        "prediction",
+        "groundtruth",
+        "annotation_metadatum",
+    },
+    "groundtruth": {"annotation", "groundtruth_label"},
+    "prediction": {"annotation", "prediction_label"},
+    "groundtruth_label": {"groundtruth"},
+    "prediction_label": {"prediction"},
+    "dataset_metadatum": {"dataset"},
+    "model_metadatum": {"model"},
+    "datum_metadatum": {"datum"},
+    "annotation_metadatum": {"annotation"},
 }
 
 
@@ -27,23 +37,26 @@ model_mapping = {
     "groundtruth": models.GroundTruth,
     "prediction": models.Prediction,
     "label": models.Label,
-    "metadatum": models.MetaDatum,
+    "dataset_metadatum": models.MetaDatum,
+    "model_metadatum": models.MetaDatum,
+    "datum_metadatum": models.MetaDatum,
+    "annotation_metadatum": models.MetaDatum,
 }
 
 
 model_relationships = {
     "dataset": {
         "datum": models.Dataset.id == models.Datum.dataset_id,
-        "metadatum": models.Dataset.id == models.MetaDatum.dataset_id,
+        "dataset_metadatum": models.Dataset.id == models.MetaDatum.dataset_id,
     },
     "model": {
         "annotation": models.Model.id == models.Annotation.model_id,
-        "metadatum": models.Model.id == models.MetaDatum.model_id,
+        "model_metadatum": models.Model.id == models.MetaDatum.model_id,
     },
     "datum": {
         "annotation": models.Datum.id == models.Annotation.datum_id,
         "dataset": models.Datum.dataset_id == models.Dataset.id,
-        "metadatum": models.Datum.id == models.MetaDatum.datum_id,
+        "datum_metadatum": models.Datum.id == models.MetaDatum.datum_id,
     },
     "annotation": {
         "datum": models.Annotation.datum_id == models.Datum.id,
@@ -51,7 +64,8 @@ model_relationships = {
         "prediction": models.Annotation.id == models.Prediction.annotation_id,
         "groundtruth": models.Annotation.id
         == models.GroundTruth.annotation_id,
-        "metadatum": models.Annotation.id == models.MetaDatum.annotation_id,
+        "annotation_metadatum": models.Annotation.id
+        == models.MetaDatum.annotation_id,
     },
     "groundtruth": {
         "annotation": models.GroundTruth.annotation_id == models.Annotation.id,
@@ -61,10 +75,16 @@ model_relationships = {
         "annotation": models.Prediction.annotation_id == models.Annotation.id,
         "label": models.Prediction.label_id == models.Label.id,
     },
-    "metadatum": {
+    "dataset_metadatum": {
         "dataset": models.MetaDatum.dataset_id == models.Dataset.id,
+    },
+    "model_metadatum": {
         "model": models.MetaDatum.model_id == models.Model.id,
+    },
+    "datum_metadatum": {
         "datum": models.MetaDatum.datum_id == models.Datum.id,
+    },
+    "annotation_metadatum": {
         "annotation": models.MetaDatum.annotation_id == models.Annotation.id,
     },
 }
@@ -78,7 +98,10 @@ schemas_mapping = {
     "groundtruth": schemas.GroundTruth,
     "prediction": schemas.Prediction,
     "label": schemas.Label,
-    "metadatum": schemas.MetaDatum,
+    "dataset_metadatum": schemas.MetaDatum,
+    "model_metadatum": schemas.MetaDatum,
+    "datum_metadatum": schemas.MetaDatum,
+    "annotation_metadatum": schemas.MetaDatum,
 }
 
 
@@ -279,8 +302,20 @@ class BackendQuery:
         return cls("label")
 
     @classmethod
-    def metadatum(cls):
-        return cls("metadatum")
+    def metadata_dataset(cls):
+        return cls("dataset_metadatum")
+
+    @classmethod
+    def metadata_model(cls):
+        return cls("model_metadatum")
+
+    @classmethod
+    def metadata_datum(cls):
+        return cls("datum_metadatum")
+
+    @classmethod
+    def metadata_annotation(cls):
+        return cls("annotation_metadatum")
 
     @property
     def filters(self) -> list[BinaryExpression]:
@@ -291,8 +326,8 @@ class BackendQuery:
         invalid = self.constraints.copy()
 
         # invalidate metadatum node if not referenced
-        if "metadatum" not in [self.source, *self.targets]:
-            invalid.add("metadatum")
+        # if "metadatum" not in [self.source, *self.targets]:
+        #     invalid.add("metadatum")
 
         # invalidate label node if not referenced
         if "label" not in [self.source, *self.targets]:
@@ -386,27 +421,32 @@ class BackendQuery:
             if filt.datasets.names:
                 self.filter_by_dataset_names(filt.datasets.names)
             if filt.datasets.metadata:
-                self.filter_by_metadata(filt.datasets.metadata)
+                self.filter_by_metadata(
+                    filt.datasets.metadata, "dataset_metadatum"
+                )
 
         # models
         if filt.models is not None:
             if filt.models.names:
                 self.filter_by_model_names(filt.models.names)
             if filt.models.metadata:
-                self.filter_by_metadata(filt.models.metadata)
+                self.filter_by_metadata(
+                    filt.models.metadata, "model_metadatum"
+                )
 
         # datums
         if filt.datums is not None:
             if filt.datums.uids:
                 self.filter_by_datum_uids(filt.datums.uids)
             if filt.datums.metadata:
-                self.filter_by_metadata(filt.datums.metadata)
+                self.filter_by_metadata(
+                    filt.datums.metadata, "datum_metadatum"
+                )
 
         # annotations
         if filt.annotations is not None:
             if filt.annotations.task_types:
                 self.filter_by_task_types(filt.annotations.task_types)
-
             if filt.annotations.annotation_types:
                 self.filter_by_annotation_types(
                     filt.annotations.annotation_types
@@ -416,7 +456,9 @@ class BackendQuery:
             if filt.annotations.max_area:
                 pass
             if filt.annotations.metadata:
-                self.filter_by_metadata(filt.annotations.metadata)
+                self.filter_by_metadata(
+                    filt.annotations.metadata, "annotation_metadatum"
+                )
 
         # toggles
         # @TODO
@@ -599,10 +641,11 @@ class BackendQuery:
 
     """ filter by metadata """
 
-    def filter_by_metadatum(
+    def _filter_by_metadatum(
         self,
         metadatum: schemas.MetaDatum | models.MetaDatum,
-        operator: str,
+        op: str,
+        node: str,
     ):
 
         ops = {
@@ -613,42 +656,39 @@ class BackendQuery:
             "==": operator.eq,
             "!=": operator.ne,
         }
-        if operator not in ops:
+        if op not in ops:
             raise ValueError(f"invalid comparison operator `{operator}`")
 
-        # Compare name
+        # compare name
         expression = [models.MetaDatum.name == metadatum.name]
 
         # sqlalchemy handler
         if isinstance(metadatum, models.MetaDatum):
-            expression.append(
-                ops[operator](
-                    models.MetaDatum.string_value, metadatum.string_value
+            if metadatum.string_value is not None:
+                expression.append(
+                    ops[op](
+                        models.MetaDatum.string_value, metadatum.string_value
+                    )
                 )
-            )
-            expression.append(
-                ops[operator](
-                    models.MetaDatum.numeric_value, metadatum.numeric_value
+            elif metadatum.numeric_value is not None:
+                expression.append(
+                    ops[op](
+                        models.MetaDatum.numeric_value, metadatum.numeric_value
+                    )
                 )
-            )
-            expression.append(
-                ops[operator](models.MetaDatum.geo, metadatum.geo)
-            )
+            elif metadatum.geo is not None:
+                raise NotImplementedError("GeoJSON currently unsupported.")
 
         # schema handler
         elif isinstance(metadatum, schemas.MetaDatum):
-            # Compare value
+            # compare value
             if isinstance(metadatum.value, str):
                 expression.append(
-                    ops[operator](
-                        models.MetaDatum.string_value, metadatum.value
-                    )
+                    ops[op](models.MetaDatum.string_value, metadatum.value)
                 )
             if isinstance(metadatum.value, float):
                 expression.append(
-                    ops[operator](
-                        models.MetaDatum.numeric_value, metadatum.value
-                    )
+                    ops[op](models.MetaDatum.numeric_value, metadatum.value)
                 )
             if isinstance(metadatum.value, schemas.GeoJSON):
                 raise NotImplementedError("GeoJSON currently unsupported.")
@@ -657,21 +697,25 @@ class BackendQuery:
         else:
             return None
 
-        return or_(*expression)
+        return and_(*expression)
 
-    def filter_by_metadata(self, metadata: list[schemas.MetadataFilter]):
+    def filter_by_metadata(
+        self,
+        metadata: list[schemas.MetadataFilter],
+        node: str,
+    ):
         # generate binary expressions
         expressions = [
-            self.filter_by_metadatum(filt.metadatum, filt.operator)
+            self._filter_by_metadatum(filt.metadatum, filt.operator, node)
             for filt in metadata
         ]
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add("metadatum")
+            self.targets.add(node)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add("metadatum")
+            self.targets.add(node)
             self._filters.append(or_(*expressions))
 
         return self

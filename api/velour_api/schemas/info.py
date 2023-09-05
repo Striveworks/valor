@@ -1,5 +1,3 @@
-from enum import Enum
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from velour_api import schemas
@@ -101,6 +99,8 @@ class AnnotationFilter(BaseModel):
 
     # toggle
     allow_conversion: bool = False
+    include_groundtruths: bool = True
+    include_predictions: bool = True
 
     model_config = ConfigDict(extra="forbid")
 
@@ -119,9 +119,5 @@ class Filter(BaseModel):
     datums: DatumFilter | None = None
     annotations: AnnotationFilter | None = None
     labels: LabelFilter | None = None
-
-    # toggle graph nodes
-    include_predictions: bool = True
-    include_groundtruths: bool = True
 
     model_config = ConfigDict(extra="forbid")
