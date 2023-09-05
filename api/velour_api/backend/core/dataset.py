@@ -1,3 +1,4 @@
+from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -35,17 +36,22 @@ def create_datum(
     datum: schemas.Datum,
 ) -> models.Datum:
 
+    # get dataset
+    dataset = get_dataset(db, datum.dataset)
+
     # check if datum already exists
     row = (
         db.query(models.Datum)
-        .where(models.Datum.uid == datum.uid)
+        .where(
+            and_(
+                models.Datum.dataset_id == dataset.id,
+                models.Datum.uid == datum.uid,
+            )
+        )
         .one_or_none()
     )
     if row is not None:
         return row
-
-    # get dataset
-    dataset = get_dataset(db, datum.dataset)
 
     # create datum
     try:

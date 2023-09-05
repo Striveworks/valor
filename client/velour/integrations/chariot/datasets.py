@@ -289,3 +289,5 @@ def create_dataset_from_chariot_evaluation_manifest(
 
     # Finalize groundtruths
     velour_dataset.finalize()
+
+    return velour_dataset
