@@ -130,7 +130,6 @@ def img_seg_manifest():
 
 
 def _test_img_clf_manifest(groundtruths):
-
     assert len(groundtruths) == 2
 
     # check img 1
@@ -139,7 +138,7 @@ def _test_img_clf_manifest(groundtruths):
     assert gt.datum.uid == "1"
     assert len(gt.annotations) == 1
     assert len(gt.annotations[0].labels) == 1
-    assert gt.annotations[0].labels[0].tuple() == ("class_label", "dog")
+    assert gt.annotations[0].labels[0].tuple() == ("class_label", "dog", None)
     assert gt.datum.uid == "1"
 
     # check img 2
@@ -148,12 +147,11 @@ def _test_img_clf_manifest(groundtruths):
     assert gt.datum.uid == "2"
     assert len(gt.annotations) == 1
     assert len(gt.annotations[0].labels) == 1
-    assert gt.annotations[0].labels[0].tuple() == ("class_label", "cat")
+    assert gt.annotations[0].labels[0].tuple() == ("class_label", "cat", None)
     assert gt.datum.uid == "2"
 
 
 def _test_obj_det_manifest(groundtruths):
-
     assert len(groundtruths) == 3
 
     # Item 1
@@ -163,7 +161,7 @@ def _test_obj_det_manifest(groundtruths):
 
     # Item 1.a
     assert len(gt.annotations[0].labels) == 1
-    assert gt.annotations[0].labels[0].tuple() == ("class_label", "dog")
+    assert gt.annotations[0].labels[0].tuple() == ("class_label", "dog", None)
     assert gt.annotations[0].polygon is None
     assert gt.annotations[0].bounding_box == BoundingBox.from_extrema(
         xmin=16, ymin=130, xmax=70, ymax=150
@@ -171,7 +169,11 @@ def _test_obj_det_manifest(groundtruths):
 
     # Item 1.b
     assert len(gt.annotations[1].labels) == 1
-    assert gt.annotations[1].labels[0].tuple() == ("class_label", "person")
+    assert gt.annotations[1].labels[0].tuple() == (
+        "class_label",
+        "person",
+        None,
+    )
     assert gt.annotations[1].polygon is None
     assert gt.annotations[1].bounding_box == BoundingBox.from_extrema(
         xmin=89, ymin=10, xmax=97, ymax=110
@@ -182,7 +184,7 @@ def _test_obj_det_manifest(groundtruths):
     assert gt.datum.uid == "2"
     assert len(gt.annotations) == 1
     assert len(gt.annotations[0].labels) == 1
-    assert gt.annotations[0].labels[0].tuple() == ("class_label", "cat")
+    assert gt.annotations[0].labels[0].tuple() == ("class_label", "cat", None)
     assert gt.annotations[0].polygon is None
     assert gt.annotations[0].bounding_box == BoundingBox.from_extrema(
         xmin=500, ymin=220, xmax=530, ymax=260
@@ -190,7 +192,6 @@ def _test_obj_det_manifest(groundtruths):
 
 
 def _test_img_seg_manifest(groundtruths):
-
     assert len(groundtruths) == 2
 
     # Item 1
@@ -198,7 +199,7 @@ def _test_img_seg_manifest(groundtruths):
     assert gt.datum.uid == "1"
     assert len(gt.annotations) == 1
     assert len(gt.annotations[0].labels) == 1
-    assert gt.annotations[0].labels[0].tuple() == ("class_label", "dog")
+    assert gt.annotations[0].labels[0].tuple() == ("class_label", "dog", None)
 
     assert gt.annotations[0].polygon.boundary.points == [
         Point(10.0, 15.5),
@@ -212,7 +213,7 @@ def _test_img_seg_manifest(groundtruths):
     assert gt.datum.uid == "2"
     assert len(gt.annotations) == 1
     assert len(gt.annotations[0].labels) == 1
-    assert gt.annotations[0].labels[0].tuple() == ("class_label", "car")
+    assert gt.annotations[0].labels[0].tuple() == ("class_label", "car", None)
 
     assert gt.annotations[0].polygon.boundary.points == [
         Point(97.2, 40.2),
@@ -337,7 +338,6 @@ def sem_seg_prediction():
 def test__parse_chariot_predict_image_classification(
     img_clf_prediction,
 ):
-
     chariot_classifications, chariot_labels = img_clf_prediction
 
     datum = ImageMetadata(uid="", width=1000, height=2000).to_datum()
@@ -358,24 +358,24 @@ def test__parse_chariot_predict_image_classification(
     # validate label key set
     assert set(
         [
-            scored_label.label.key
+            scored_label.key
             for det in velour_classifications.annotations
-            for scored_label in det.scored_labels
+            for scored_label in det.labels
         ]
     ) == {"class_label"}
 
     # validate label value set
     assert set(
         [
-            scored_label.label.value
+            scored_label.value
             for det in velour_classifications.annotations
-            for scored_label in det.scored_labels
+            for scored_label in det.labels
         ]
     ) == {"dog", "cat", "elephant"}
 
     # validate scores
-    for scored_label in velour_classifications.annotations[0].scored_labels:
-        if scored_label.label.value == chariot_classifications[0]:
+    for scored_label in velour_classifications.annotations[0].labels:
+        if scored_label.value == chariot_classifications[0]:
             assert scored_label.score == 1.0
         else:
             assert scored_label.score == 0.0
@@ -384,7 +384,6 @@ def test__parse_chariot_predict_image_classification(
 def test__parse_chariot_predict_proba_image_classification(
     img_clf_prediction_proba,
 ):
-
     chariot_classifications, chariot_labels = img_clf_prediction_proba
 
     datum = ImageMetadata(uid="", width=1000, height=2000).to_datum()
@@ -405,31 +404,30 @@ def test__parse_chariot_predict_proba_image_classification(
     # validate label key set
     assert set(
         [
-            scored_label.label.key
+            scored_label.key
             for det in velour_classifications.annotations
-            for scored_label in det.scored_labels
+            for scored_label in det.labels
         ]
     ) == {"class_label"}
 
     # validate label value set
     assert set(
         [
-            scored_label.label.value
+            scored_label.value
             for det in velour_classifications.annotations
-            for scored_label in det.scored_labels
+            for scored_label in det.labels
         ]
     ) == {"dog", "cat", "elephant"}
 
     # validate scores
-    for scored_label in velour_classifications.annotations[0].scored_labels:
-        idx = chariot_labels[scored_label.label.value]
+    for scored_label in velour_classifications.annotations[0].labels:
+        idx = chariot_labels[scored_label.value]
         assert chariot_classifications[0][idx] == scored_label.score
 
 
 def test__parse_chariot_detect_image_object_detection(
     obj_det_prediction,
 ):
-
     datum = ImageMetadata(uid="", width=1000, height=2000).to_datum()
 
     # test parsing
@@ -439,17 +437,17 @@ def test__parse_chariot_detect_image_object_detection(
 
     assert set(
         [
-            scored_label.label.key
+            scored_label.key
             for det in velour_detections.annotations
-            for scored_label in det.scored_labels
+            for scored_label in det.labels
         ]
     ) == {"class_label"}
 
     assert set(
         [
-            scored_label.label.value
+            scored_label.value
             for det in velour_detections.annotations
-            for scored_label in det.scored_labels
+            for scored_label in det.labels
         ]
     ) == {"person", "car"}
 
