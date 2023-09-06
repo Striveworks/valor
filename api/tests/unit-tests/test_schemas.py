@@ -131,13 +131,12 @@ def labels() -> list[schemas.Label]:
 
 
 @pytest.fixture
-def scored_labels(labels) -> list[schemas.ScoredLabel]:
-    return [
-        schemas.ScoredLabel(label=labels[0], score=0.1),
-        schemas.ScoredLabel(label=labels[1], score=0.9),
-        schemas.ScoredLabel(label=labels[2], score=1.0),
-        schemas.ScoredLabel(label=labels[3], score=1.0),
-    ]
+def scored_labels(labels) -> list[schemas.Label]:
+    ret = [la.model_copy() for la in labels]
+    for la, score in zip(ret, [0.1, 0.9, 1.0, 1.0]):
+        la.score = score
+
+    return ret
 
 
 @pytest.fixture
@@ -157,19 +156,17 @@ def groundtruth_annotations(labels) -> list[schemas.Annotation]:
 
 
 @pytest.fixture
-def predicted_annotations(scored_labels) -> list[schemas.ScoredAnnotation]:
+def predicted_annotations(scored_labels) -> list[schemas.Annotation]:
     return [
-        schemas.ScoredAnnotation(
-            scored_labels=[scored_labels[0], scored_labels[1]],
+        schemas.Annotation(
+            labels=[scored_labels[0], scored_labels[1]],
             task_type=enums.TaskType.CLASSIFICATION,
         ),
-        schemas.ScoredAnnotation(
-            scored_labels=[scored_labels[2]],
-            task_type=enums.TaskType.CLASSIFICATION,
+        schemas.Annotation(
+            labels=[scored_labels[2]], task_type=enums.TaskType.CLASSIFICATION
         ),
-        schemas.ScoredAnnotation(
-            scored_labels=[scored_labels[3]],
-            task_type=enums.TaskType.CLASSIFICATION,
+        schemas.Annotation(
+            labels=[scored_labels[3]], task_type=enums.TaskType.CLASSIFICATION
         ),
     ]
 
@@ -366,7 +363,9 @@ def test_core_Datum(metadata):
         )
 
 
-def test_core_Annotation(metadata, bbox, polygon, raster, labels):
+def test_core_annotation_without_scores(
+    metadata, bbox, polygon, raster, labels
+):
     # valid
     gt = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
@@ -472,118 +471,93 @@ def test_core_Annotation(metadata, bbox, polygon, raster, labels):
         )
 
 
-def test_core_ScoredAnnotation(metadata, bbox, polygon, raster, scored_labels):
-
+def test_core_annotation_with_scores(
+    metadata, bbox, polygon, raster, scored_labels
+):
     # valid
-    pd = schemas.ScoredAnnotation(
-        task_type=enums.TaskType.CLASSIFICATION,
-        scored_labels=scored_labels,
+    pd = schemas.Annotation(
+        task_type=enums.TaskType.CLASSIFICATION, labels=scored_labels
     )
-    schemas.ScoredAnnotation(
-        task_type=enums.TaskType.DETECTION,
-        scored_labels=scored_labels,
-        metadata=[],
+    schemas.Annotation(
+        task_type=enums.TaskType.DETECTION, labels=scored_labels, metadata=[]
     )
-    schemas.ScoredAnnotation(
+    schemas.Annotation(
         task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-        scored_labels=scored_labels,
+        labels=scored_labels,
         metadata=metadata,
     )
-    schemas.ScoredAnnotation(
+    schemas.Annotation(
         task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-        scored_labels=scored_labels,
+        labels=scored_labels,
         metadata=[],
         bounding_box=bbox,
         polygon=polygon,
         raster=raster,
     )
-    schemas.ScoredAnnotation(
-        task_type="classification",
-        scored_labels=scored_labels,
-    )
-    schemas.ScoredAnnotation(
-        task_type="detection",
-        scored_labels=scored_labels,
-    )
-    schemas.ScoredAnnotation(
-        task_type="instance_segmentation",
-        scored_labels=scored_labels,
-    )
-    schemas.ScoredAnnotation(
-        task_type="semantic_segmentation",
-        scored_labels=scored_labels,
-    )
+    schemas.Annotation(task_type="classification", labels=scored_labels)
+    schemas.Annotation(task_type="detection", labels=scored_labels)
+    schemas.Annotation(task_type="instance_segmentation", labels=scored_labels)
+    schemas.Annotation(task_type="semantic_segmentation", labels=scored_labels)
 
     # test property `task_type`
     with pytest.raises(ValidationError):
-        schemas.ScoredAnnotation(
+        schemas.Annotation(
             task_type="custom",
         )
 
     # test property `scored_labels`
     with pytest.raises(ValidationError) as e:
-        schemas.ScoredAnnotation(
-            scored_labels=scored_labels[0],
-            task_type=enums.TaskType.CLASSIFICATION,
+        schemas.Annotation(
+            labels=scored_labels[0], task_type=enums.TaskType.CLASSIFICATION
         )
-    assert "should be a valid dictionary or instance of ScoredLabel" in str(
+    assert "should be a valid dictionary or instance of Label" in str(
         e.value.errors()[0]["msg"]
     )
-    with pytest.raises(ValidationError) as e:
-        schemas.ScoredAnnotation(
-            scored_labels=scored_labels[1:],
-            task_type=enums.TaskType.CLASSIFICATION,
-        )
-    assert "prediction scores must sum to 1" in str(e.value.errors()[0]["msg"])
-    schemas.ScoredAnnotation(
-        scored_labels=scored_labels[1:],
-        # Only classifcation tasks have the "sum to 1" requirement
-        task_type=enums.TaskType.DETECTION,
-    )
-    assert set(pd.scored_labels) == set(scored_labels)
+
+    assert set(pd.labels) == set(scored_labels)
 
     # test property `metadata`
     with pytest.raises(ValidationError):
-        schemas.ScoredAnnotation(
+        schemas.Annotation(
             task_type="classification",
-            scored_labels=scored_labels,
+            labels=scored_labels,
             metadata=metadata[0],
         )
     with pytest.raises(ValidationError):
-        schemas.ScoredAnnotation(
+        schemas.Annotation(
             task_type="classification",
-            scored_labels=scored_labels,
+            labels=scored_labels,
             metadata=[metadata[0], "123"],
         )
 
     # test geometric properties
     with pytest.raises(ValidationError):
-        schemas.ScoredAnnotation(
+        schemas.Annotation(
             task_type=enums.TaskType.DETECTION,
-            scored_labels=scored_labels,
+            labels=scored_labels,
             bounding_box=polygon,
         )
     with pytest.raises(ValidationError):
-        schemas.ScoredAnnotation(
+        schemas.Annotation(
             task_type=enums.TaskType.DETECTION,
-            scored_labels=scored_labels,
+            labels=scored_labels,
             polygon=bbox,
         )
     with pytest.raises(ValidationError):
-        schemas.ScoredAnnotation(
+        schemas.Annotation(
             task_type=enums.TaskType.DETECTION,
-            scored_labels=scored_labels,
+            labels=scored_labels,
             multipolygon=bbox,
         )
     with pytest.raises(ValidationError) as e:
-        schemas.ScoredAnnotation(
+        schemas.Annotation(
             task_type=enums.TaskType.DETECTION,
-            scored_labels=scored_labels,
+            labels=scored_labels,
             raster=bbox,
         )
 
 
-def test_core_Groundtruth(metadata, groundtruth_annotations):
+def test_core_groundtruth(metadata, groundtruth_annotations):
     # valid
     gt = schemas.GroundTruth(
         datum=schemas.Datum(
@@ -634,7 +608,7 @@ def test_core_Groundtruth(metadata, groundtruth_annotations):
         )
 
 
-def test_core_Prediction(metadata, predicted_annotations):
+def test_core_prediction(metadata, predicted_annotations, scored_labels):
     # valid
     md = schemas.Prediction(
         model="name1",
@@ -698,6 +672,23 @@ def test_core_Prediction(metadata, predicted_annotations):
             ),
             annotations=[predicted_annotations[0], 1234],
         )
+
+    # check sum to 1
+    with pytest.raises(ValidationError) as e:
+        schemas.Prediction(
+            model="name",
+            datum=schemas.Datum(
+                uid="uid",
+                dataset="name",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=scored_labels[1:],
+                    task_type=enums.TaskType.CLASSIFICATION,
+                )
+            ],
+        )
+    assert "prediction scores must sum to 1" in str(e.value.errors()[0]["msg"])
 
 
 """ velour_api.schemas.metadata """
@@ -1133,7 +1124,7 @@ def test_info_Job():
 """ velour_api.schemas.label """
 
 
-def test_label_Label():
+def test_label_no_scores():
     # valid
     l1 = schemas.Label(key="k1", value="v1")
     l2 = schemas.Label(key="k2", value="v2")
@@ -1159,19 +1150,19 @@ def test_label_Label():
     assert l1.__hash__() != l2.__hash__()
 
 
-def test_label_ScoredLabel():
-    label = schemas.Label(key="k1", value="v1")
-
-    # valid
-    schemas.ScoredLabel(label=label, score=0.5)
-
-    # test property `label`
-    with pytest.raises(ValidationError):
-        schemas.ScoredLabel(label="label", score=0.5)
-
+def test_label_with_scores():
     # test property `score`
     with pytest.raises(ValidationError):
-        schemas.ScoredLabel(label=label, score="score")
+        schemas.Label(key="k1", value="v1", score="score")
+
+    l1 = schemas.Label(key="k1", value="v1", score=0.75)
+    l2 = schemas.Label(key="k1", value="v1", score=0.5)
+    l3 = schemas.Label(key="k1", value="v1")
+    l4 = schemas.Label(key="k1", value="v1", score=0.75000000000000001)
+
+    assert l1 != l2
+    assert l2 != l3
+    assert l1 == l4
 
 
 """ velour_api.schemas.auth """

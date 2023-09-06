@@ -299,12 +299,9 @@ def test_post_prediction(client: TestClient):
         },
         "annotations": [
             {
-                "scored_labels": [
-                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
-                    {
-                        "label": {"key": "k1", "value": "v2"},
-                        "score": 0.1,
-                    },
+                "labels": [
+                    {"key": "k1", "value": "v1", "score": 0.9},
+                    {"key": "k1", "value": "v2", "score": 0.1},
                 ],
                 "task_type": "classification",
                 "metadata": [],
@@ -342,12 +339,9 @@ def test_post_prediction_classification(client: TestClient):
         },
         "annotations": [
             {
-                "scored_labels": [
-                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
-                    {
-                        "label": {"key": "k1", "value": "v2"},
-                        "score": 0.1,
-                    },
+                "labels": [
+                    {"key": "k1", "value": "v1", "score": 0.9},
+                    {"key": "k1", "value": "v2", "score": 0.1},
                 ],
                 "task_type": "classification",
                 "metadata": [
@@ -356,12 +350,9 @@ def test_post_prediction_classification(client: TestClient):
                 ],
             },
             {
-                "scored_labels": [
-                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
-                    {
-                        "label": {"key": "k1", "value": "v2"},
-                        "score": 0.1,
-                    },
+                "labels": [
+                    {"key": "k1", "value": "v1", "score": 0.9},
+                    {"key": "k1", "value": "v2", "score": 0.1},
                 ],
                 "task_type": "classification",
                 "metadata": [
@@ -392,12 +383,9 @@ def test_post_prediction_bbox_detection(client: TestClient):
         },
         "annotations": [
             {
-                "scored_labels": [
-                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
-                    {
-                        "label": {"key": "k1", "value": "v2"},
-                        "score": 0.1,
-                    },
+                "labels": [
+                    {"key": "k1", "value": "v1", "score": 0.9},
+                    {"key": "k1", "value": "v2", "score": 0.1},
                 ],
                 "task_type": "detection",
                 "metadata": [
@@ -438,12 +426,9 @@ def test_post_prediction_polygon_detection(client: TestClient):
         },
         "annotations": [
             {
-                "scored_labels": [
-                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
-                    {
-                        "label": {"key": "k1", "value": "v2"},
-                        "score": 0.1,
-                    },
+                "labels": [
+                    {"key": "k1", "value": "v1", "score": 0.9},
+                    {"key": "k1", "value": "v2", "score": 0.1},
                 ],
                 "task_type": "detection",
                 "metadata": [
@@ -508,12 +493,9 @@ def test_post_prediction_raster_segmentation(client: TestClient):
         },
         "annotations": [
             {
-                "scored_labels": [
-                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
-                    {
-                        "label": {"key": "k1", "value": "v2"},
-                        "score": 0.1,
-                    },
+                "labels": [
+                    {"key": "k1", "value": "v1", "score": 0.9},
+                    {"key": "k1", "value": "v2", "score": 0.1},
                 ],
                 "task_type": "instance_segmentation",
                 "metadata": [
@@ -525,12 +507,9 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                 },
             },
             {
-                "scored_labels": [
-                    {"label": {"key": "k1", "value": "v1"}, "score": 0.9},
-                    {
-                        "label": {"key": "k1", "value": "v2"},
-                        "score": 0.1,
-                    },
+                "labels": [
+                    {"key": "k1", "value": "v1", "score": 0.9},
+                    {"key": "k1", "value": "v2", "score": 0.1},
                 ],
                 "task_type": "semantic_segmentation",
                 "metadata": [

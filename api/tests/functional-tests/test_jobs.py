@@ -83,21 +83,12 @@ def pred_clfs_create(
             model=model_name,
             datum=img1.to_datum(),
             annotations=[
-                schemas.ScoredAnnotation(
+                schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    scored_labels=[
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k1", value="v1"),
-                            score=0.2,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k1", value="v2"),
-                            score=0.8,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k4", value="v4"),
-                            score=1.0,
-                        ),
+                    labels=[
+                        schemas.Label(key="k1", value="v1", score=0.2),
+                        schemas.Label(key="k1", value="v2", score=0.8),
+                        schemas.Label(key="k4", value="v4", score=1.0),
                     ],
                 ),
             ],
@@ -106,21 +97,12 @@ def pred_clfs_create(
             model=model_name,
             datum=img2.to_datum(),
             annotations=[
-                schemas.ScoredAnnotation(
+                schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    scored_labels=[
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k2", value="v2"),
-                            score=1.0,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k3", value="v3"),
-                            score=0.87,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k3", value="v0"),
-                            score=0.13,
-                        ),
+                    labels=[
+                        schemas.Label(key="k2", value="v2", score=1.0),
+                        schemas.Label(key="k3", value="v3", score=0.87),
+                        schemas.Label(key="k3", value="v0", score=0.13),
                     ],
                 ),
             ],
@@ -129,7 +111,6 @@ def pred_clfs_create(
 
 
 def test_job_status():
-
     dataset_name = "md"
     model_name = "ds"
     stateflow = schemas.Stateflow(
@@ -258,7 +239,6 @@ def test_job_status():
 
 
 def test_stateflow_dataset(db: Session):
-
     # should have no record of dataset
     with pytest.raises(exceptions.DatasetDoesNotExistError) as e:
         crud.get_backend_state(dataset_name=dset_name)
@@ -311,7 +291,6 @@ def test_stateflow_dataset(db: Session):
 
 
 def test_stateflow_model(db: Session):
-
     # create dataset
     crud.create_dataset(
         db=db,
@@ -364,15 +343,11 @@ def test_stateflow_model(db: Session):
                 uid="uid1",
             ),
             annotations=[
-                schemas.ScoredAnnotation(
+                schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    scored_labels=[
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k", value="v"), score=0.9
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k", value="w"), score=0.1
-                        ),
+                    labels=[
+                        schemas.Label(key="k", value="v", score=0.9),
+                        schemas.Label(key="k", value="w", score=0.1),
                     ],
                 )
             ],

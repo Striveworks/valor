@@ -1,3 +1,4 @@
+import copy
 from typing import List
 
 import numpy as np
@@ -473,7 +474,7 @@ def test_core_label():
     assert "should be of type `str`" in str(e)
 
     # test member fn `tuple`
-    assert l1.tuple() == ("test", "value")
+    assert l1.tuple() == ("test", "value", None)
 
     # test member fn `__eq__`
     l2 = schemas.Label(key="test", value="value")
@@ -485,22 +486,18 @@ def test_core_label():
 
 def test_core_scored_label():
     l1 = schemas.Label(key="test", value="value")
-    l2 = schemas.Label(key="test", value="other")
-    l3 = schemas.Label(key="other", value="value")
 
     # valid
-    s1 = schemas.ScoredLabel(label=l1, score=0.5)
-    s2 = schemas.ScoredLabel(label=l1, score=0.5)
-    s3 = schemas.ScoredLabel(label=l1, score=0.1)
-    s4 = schemas.ScoredLabel(label=l2, score=0.5)
-    s5 = schemas.ScoredLabel(label=l3, score=0.5)
+    s1 = schemas.Label(key="test", value="value", score=0.5)
+    s2 = schemas.Label(key="test", value="value", score=0.5)
+    s3 = schemas.Label(key="test", value="value", score=0.1)
+    s4 = schemas.Label(key="test", value="other", score=0.5)
+    s5 = schemas.Label(key="other", value="value", score=0.5)
 
     # test `__post_init__`
+
     with pytest.raises(TypeError) as e:
-        schemas.ScoredLabel(label="label", score=0.5)
-    assert "label should be of type `velour.schemas.Label`" in str(e)
-    with pytest.raises(TypeError) as e:
-        schemas.ScoredLabel(label=l1, score="0.5")
+        schemas.Label(key="k", value="v", score="0.5")
     assert "score should be of type `float`" in str(e)
 
     # test property `key`
@@ -585,41 +582,33 @@ def test_core_prediction_annotation():
     l1 = schemas.Label(key="test", value="value")
     l2 = schemas.Label(key="test", value="other")
     l3 = schemas.Label(key="other", value="value")
-    s1 = schemas.ScoredLabel(label=l1, score=0.5)
-    s2 = schemas.ScoredLabel(label=l2, score=0.5)
-    s3 = schemas.ScoredLabel(label=l3, score=1.0)
+
+    s1 = copy.deepcopy(l1)
+    s1.score = 0.5
+    s2 = copy.deepcopy(l2)
+    s2.score = 0.5
+    s3 = copy.deepcopy(l3)
+    s3.score = 1.0
 
     # valid
-    schemas.ScoredAnnotation(
-        task_type=enums.TaskType.CLASSIFICATION,
-        scored_labels=[s1, s2, s3],
+    schemas.Annotation(
+        task_type=enums.TaskType.CLASSIFICATION, labels=[s1, s2, s3]
     )
 
     # test `__post_init__`
     with pytest.raises(ValueError) as e:
-        schemas.ScoredAnnotation(
-            task_type="something", scored_labels=[s1, s2, s3]
-        )
+        schemas.Annotation(task_type="something", labels=[s1, s2, s3])
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.ScoredAnnotation(
-            task_type=enums.TaskType.CLASSIFICATION, scored_labels=s1
-        )
+        schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=s1)
     assert "should be of type `list`" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.ScoredAnnotation(
-            task_type=enums.TaskType.CLASSIFICATION,
-            scored_labels=[s1, s2, "label"],
+        schemas.Annotation(
+            task_type=enums.TaskType.CLASSIFICATION, labels=[s1, s2, "label"]
         )
     assert (
-        "elements of scored_labels should be of type `velour.schemas.ScoredLabel`"
-        in str(e)
+        "elements of labels should be of type `velour.schemas.Label`" in str(e)
     )
-    with pytest.raises(ValueError) as e:
-        schemas.ScoredAnnotation(
-            task_type=enums.TaskType.CLASSIFICATION, scored_labels=[s1, s3]
-        )
-    assert "for label key test got scores summing to 0.5" in str(e)
 
 
 def test_core_groundtruth():
@@ -662,33 +651,26 @@ def test_core_groundtruth():
 
 
 def test_core_prediction():
-    label = schemas.Label(key="test", value="value")
-    scored_label = schemas.ScoredLabel(label=label, score=1.0)
+    scored_label = schemas.Label(key="test", value="value", score=1.0)
     datum = schemas.Datum(uid="somefile")
     pds = [
-        schemas.ScoredAnnotation(
+        schemas.Annotation(
             task_type=enums.TaskType.CLASSIFICATION,
-            scored_labels=[scored_label],
+            labels=[scored_label],
         ),
-        schemas.ScoredAnnotation(
+        schemas.Annotation(
             task_type=enums.TaskType.CLASSIFICATION,
-            scored_labels=[scored_label],
+            labels=[scored_label],
         ),
     ]
 
     # valid
-    schemas.Prediction(
-        datum=datum,
-        annotations=pds,
-    )
+    schemas.Prediction(datum=datum, annotations=pds)
     schemas.Prediction(datum=datum, annotations=pds, model="test")
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
-        schemas.Prediction(
-            datum="datum",
-            annotations=pds,
-        )
+        schemas.Prediction(datum="datum", annotations=pds)
     assert "should be of type `velour.schemas.Datum`" in str(e)
     with pytest.raises(TypeError) as e:
         schemas.Prediction(
@@ -701,7 +683,7 @@ def test_core_prediction():
             datum=datum,
             annotations=[pds[0], pds[1], "annotation"],
         )
-    assert "should be of type `velour.schemas.ScoredAnnotation`" in str(e)
+    assert "should be of type `velour.schemas.Annotation`" in str(e)
     with pytest.raises(TypeError) as e:
         schemas.Prediction(
             datum=datum,
@@ -709,3 +691,19 @@ def test_core_prediction():
             model=1234,
         )
     assert "should be of type `str`" in str(e)
+
+    with pytest.raises(ValueError) as e:
+        schemas.Prediction(
+            datum=datum,
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[
+                        schemas.Label(key="test", value="value", score=0.8),
+                        schemas.Label(key="test", value="other", score=0.1),
+                    ],
+                )
+            ],
+            model="",
+        )
+    assert "for label key test got scores summing to 0.9" in str(e)

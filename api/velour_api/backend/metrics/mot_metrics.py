@@ -24,45 +24,6 @@ MOT_METRICS_NAMES = [
 ]
 
 
-# class BoundingBox:
-#     def __init__(self, ymin: float, xmin: float, ymax: float, xmax: float):
-#         self.ymin = ymin
-#         self.xmin = xmin
-#         self.ymax = ymax
-#         self.xmax = xmax
-
-#     @property
-#     def left(self):
-#         return self.xmin
-
-#     @property
-#     def top(self):
-#         return self.ymin
-
-#     @property
-#     def width(self):
-#         return self.xmax - self.xmin
-
-#     @property
-#     def height(self):
-#         return self.ymax - self.ymin
-
-#     @classmethod
-#     def from_polygon(self, polygon: schemas.Polygon):
-#         """Convert from polygon to BoundingBox"""
-#         xmin = np.infty
-#         ymin = np.infty
-#         xmax = -np.infty
-#         ymax = -np.infty
-#         for coord in polygon:
-#             xmin = min(xmin, coord[0])
-#             ymin = min(ymin, coord[1])
-#             xmax = max(xmax, coord[0])
-#             ymax = max(ymax, coord[1])
-
-#         return BoundingBox(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax)
-
-
 class MOTDetection:
     """Class to convert detection data into MOT format.
     See https://arxiv.org/abs/1603.00831
@@ -124,21 +85,21 @@ def ground_truth_det_to_mot(
 
 def pred_det_to_mot(
     datum: schemas.Datum,
-    pred: schemas.ScoredAnnotation,
+    pred: schemas.Annotation,
     obj_id_to_int: dict,
     object_id_label_key: str = OBJECT_ID_LABEL_KEY,
 ) -> list[float]:
     """Helper to convert a predicted detection into MOT format"""
 
-    for scored_label in pred.scored_labels:
-        if scored_label.label.key == object_id_label_key:
+    for scored_label in pred.labels:
+        if scored_label.key == object_id_label_key:
             break
 
     bbox = pred.bounding_box
     mot_det = MOTDetection(
         frame_number=schemas.VideoFrame.from_datum(datum).frame,
         object_id=obj_id_to_int[
-            scored_label.label.value
+            scored_label.value
         ],  # Label's value is used as object id
         bbox=bbox,
         confidence=scored_label.score,
@@ -163,9 +124,9 @@ def compute_mot_metrics(
                     obj_ids.add(label.value)
     for annotated_datum in predictions:
         for pd in annotated_datum.annotations:
-            for scored_label in pd.scored_labels:
-                if scored_label.label.key == OBJECT_ID_LABEL_KEY:
-                    obj_ids.add(scored_label.label.value)
+            for scored_label in pd.labels:
+                if scored_label.key == OBJECT_ID_LABEL_KEY:
+                    obj_ids.add(scored_label.value)
     obj_id_to_int = {_id: i for i, _id in enumerate(obj_ids)}
 
     # Convert to MOT format

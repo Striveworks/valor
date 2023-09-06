@@ -23,7 +23,6 @@ np.random.seed(29)
 
 
 def drop_all(db):
-
     # clear redis
     jobs.connect_to_redis()
     jobs.r.flushdb()
@@ -296,14 +295,11 @@ def predictions(
             model=model_name,
             datum=image,
             annotations=[
-                schemas.ScoredAnnotation(
+                schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
-                    scored_labels=[
-                        schemas.ScoredLabel(
-                            label=schemas.Label(
-                                key="class", value=class_label
-                            ),
-                            score=score,
+                    labels=[
+                        schemas.Label(
+                            key="class", value=class_label, score=score
                         )
                     ],
                     bounding_box=schemas.BoundingBox.from_extrema(

@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class Label(BaseModel):
     key: str
     value: str
+    score: float | None = None
 
     @classmethod
     def from_key_value_tuple(cls, kv_tuple: tuple[str, str]):
@@ -16,26 +17,26 @@ class Label(BaseModel):
         return cls(key=str(kv_tuple[0]), value=str(kv_tuple[1]))
 
     def __eq__(self, other):
-        if hasattr(other, "key") and hasattr(other, "value"):
-            return self.key == other.key and self.value == other.value
-        return False
+        if (
+            not hasattr(other, "key")
+            or not hasattr(other, "key")
+            or not hasattr(other, "score")
+        ):
+            return False
 
-    def __hash__(self) -> int:
-        return hash(f"key:{self.key},value:{self.value}")
+        # if the scores aren't the same type return False
+        if (other.score is None) != (self.score is None):
+            return False
 
-
-class ScoredLabel(BaseModel):
-    label: Label
-    score: float
-
-    def __eq__(self, other):
-        if hasattr(other, "label") and hasattr(other, "score"):
-            return self.label == other.label and math.isclose(
-                self.score, other.score
-            )
-        return False
-
-    def __hash__(self) -> int:
-        return hash(
-            f"key:{self.label.key},value:{self.label.value},score:{self.score}"
+        scores_equal = (other.score is None and self.score is None) or (
+            math.isclose(self.score, other.score)
         )
+
+        return (
+            scores_equal
+            and self.key == other.key
+            and self.value == other.value
+        )
+
+    def __hash__(self) -> int:
+        return hash(f"key:{self.key},value:{self.value},score:{self.score}")
