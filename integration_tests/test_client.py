@@ -1338,9 +1338,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
     }
 
@@ -1413,9 +1412,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
         "min_area": 10,
         "max_area": 2000,
@@ -1440,9 +1438,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
         "min_area": 1200,
     }
@@ -1465,9 +1462,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
         "max_area": 1200,
     }
@@ -1492,9 +1488,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
         "min_area": 1200,
         "max_area": 1800,
@@ -1908,9 +1903,8 @@ def test_evaluate_tabular_clf(
     assert eval_settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "none",
-        "gt_type": "none",
         "task_type": "classification",
+        "target_type": "none",
     }
 
     metrics_from_eval_settings_id = eval_jobs[0].metrics

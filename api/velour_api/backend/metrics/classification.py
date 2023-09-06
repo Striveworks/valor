@@ -360,7 +360,7 @@ def get_confusion_matrix_and_metrics_at_label_key(
 
 
 def compute_clf_metrics(
-    db: Session, dataset_name: str, model_name: str, group_by: str
+    db: Session, dataset_name: str, model_name: str
 ) -> tuple[
     list[schemas.ConfusionMatrix],
     list[
@@ -372,9 +372,6 @@ def compute_clf_metrics(
         | schemas.F1Metric
     ],
 ]:
-    dataset = core.get_dataset(db, dataset_name)
-    # model = core.get_model(db, model_name)
-
     ds_labels = {
         schemas.Label(key=label[0], value=label[1])
         for label in (
@@ -435,13 +432,13 @@ def compute_clf_metrics(
     labels = list(ds_labels.union(md_labels))
     unique_label_keys = set([label.key for label in labels])
 
-    if group_by:
-        metadata_ids = [
-            metadatum.id
-            for metadatum in core.get_metadata(
-                db, dataset=dataset, name=group_by
-            )
-        ]
+    # if group_by:
+    #     metadata_ids = [
+    #         metadatum.id
+    #         for metadatum in core.get_metadata(
+    #             db, dataset=dataset, name=group_by
+    #         )
+    #     ]
 
     confusion_matrices, metrics = [], []
 
@@ -461,11 +458,11 @@ def compute_clf_metrics(
                 confusion_matrices.append(cm_and_metrics[0])
                 metrics.extend(cm_and_metrics[1])
 
-        if group_by is None:
-            _add_confusion_matrix_and_metrics()
-        else:
-            for md_id in metadata_ids:
-                _add_confusion_matrix_and_metrics(metadatum_id=md_id)
+        # if group_by is None:
+        _add_confusion_matrix_and_metrics()
+        # else:
+        #     for md_id in metadata_ids:
+        #         _add_confusion_matrix_and_metrics(metadatum_id=md_id)
 
     return confusion_matrices, metrics
 
@@ -675,9 +672,7 @@ def create_clf_evaluation(
             "dataset_id": dataset.id,
             "model_id": model.id,
             "task_type": enums.TaskType.CLASSIFICATION,
-            "pd_type": enums.AnnotationType.NONE,
-            "gt_type": enums.AnnotationType.NONE,
-            "group_by": request_info.settings.group_by,
+            "target_type": enums.AnnotationType.NONE,
         },
     )
 
@@ -692,12 +687,10 @@ def create_clf_metrics(
     """
     Intended to run as background
     """
-
     confusion_matrices, metrics = compute_clf_metrics(
         db=db,
         dataset_name=request_info.settings.dataset,
         model_name=request_info.settings.model,
-        group_by=request_info.settings.group_by,
     )
 
     confusion_matrices_mappings = create_metric_mappings(

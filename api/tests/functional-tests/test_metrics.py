@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
+from velour_api.backend.core import get_dataset, get_model
 from velour_api.backend.metrics.classification import (
     accuracy_from_cm,
     confusion_matrix_at_label_key,
@@ -124,14 +125,11 @@ def test_compute_ap_metrics(
     groundtruths: list[list[GroundTruth]],
     predictions: list[list[Prediction]],
 ):
-    model_name = "test_model"
-    dataset_name = "test_dataset"
-
     iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
     metrics = compute_ap_metrics(
         db=db,
-        dataset_name=dataset_name,
-        model_name=model_name,
+        dataset=get_dataset(db, "test_dataset"),
+        model=get_model(db, "test_model"),
         target_type=enums.AnnotationType.BOX,
         gt_type=enums.AnnotationType.BOX,
         pd_type=enums.AnnotationType.BOX,
