@@ -8,7 +8,6 @@ from .core import (
     MetaDatum,
     Model,
     Prediction,
-    ScoredAnnotation,
     ScoredLabel,
 )
 from .datatypes import ImageMetadata, VideoFrameMetadata
@@ -41,7 +40,6 @@ __all__ = [
     "Label",
     "ScoredLabel",
     "Annotation",
-    "ScoredAnnotation",
     "AnnotationDistribution",
     "GroundTruth",
     "Prediction",

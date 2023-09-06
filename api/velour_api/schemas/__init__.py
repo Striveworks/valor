@@ -8,8 +8,6 @@ from .core import (
     MetaDatum,
     Model,
     Prediction,
-    ScoredAnnotation,
-    ScoredLabel,
 )
 from .datatypes import Image, VideoFrame
 from .geojson import GeoJSON
@@ -50,7 +48,6 @@ __all__ = [
     "Image",
     "VideoFrame",
     "Annotation",
-    "ScoredAnnotation",
     "Dataset",
     "Datum",
     "AnnotatedDatum",
@@ -60,7 +57,6 @@ __all__ = [
     "GroundTruth",
     "Prediction",
     "Label",
-    "ScoredLabel",
     "Point",
     "BasicPolygon",
     "BoundingBox",
