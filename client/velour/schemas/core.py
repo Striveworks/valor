@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass, field
 from typing import List, Tuple, Union
 
@@ -112,60 +113,42 @@ class Datum:
 class Label:
     key: str
     value: str
+    score: Union[float, None] = None
 
     def __post_init__(self):
         if not isinstance(self.key, str):
             raise TypeError("key should be of type `str`")
         if not isinstance(self.value, str):
             raise TypeError("value should be of type `str`")
-
-    def tuple(self) -> Tuple[str, str]:
-        return (self.key, self.value)
-
-    def __eq__(self, other):
-        if hasattr(other, "key") and hasattr(other, "value"):
-            return self.key == other.key and self.value == other.value
-        return False
-
-    def __hash__(self) -> int:
-        return hash(f"key:{self.key},value:{self.value}")
-
-
-@dataclass
-class ScoredLabel:
-    label: Label
-    score: float
-
-    def __post_init__(self):
-        # unpack
-        if isinstance(self.label, dict):
-            self.label = Label(**self.label)
-
-        # validate
-        if not isinstance(self.label, Label):
-            raise TypeError("label should be of type `velour.schemas.Label`.")
         if isinstance(self.score, int):
             self.score = float(self.score)
-        if not isinstance(self.score, float):
+        if not isinstance(self.score, (float, type(None))):
             raise TypeError("score should be of type `float`")
 
-    @property
-    def key(self):
-        return self.label.key
-
-    @property
-    def value(self):
-        return self.label.value
+    def tuple(self) -> Tuple[str, str, Union[float, None]]:
+        return (self.key, self.value, self.score)
 
     def __eq__(self, other):
-        if hasattr(other, "label") and hasattr(other, "score"):
-            return self.score == other.score and self.label == other.label
-        return False
+        if (
+            not hasattr(other, "key")
+            or not hasattr(other, "key")
+            or not hasattr(other, "score")
+        ):
+            return False
 
-    def __neq__(self, other):
-        if hasattr(other, "label") and hasattr(other, "score"):
-            return not self == other
-        return True
+        # if the scores aren't the same type return False
+        if (other.score is None) != (self.score is None):
+            return False
+
+        scores_equal = (other.score is None and self.score is None) or (
+            math.isclose(self.score, other.score)
+        )
+
+        return (
+            scores_equal
+            and self.key == other.key
+            and self.value == other.value
+        )
 
     def __hash__(self) -> int:
         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
@@ -242,94 +225,6 @@ class Annotation:
 
 
 @dataclass
-class ScoredAnnotation:
-    task_type: enums.TaskType
-    scored_labels: List[ScoredLabel] = field(default_factory=list)
-    metadata: List[MetaDatum] = field(default_factory=list)
-
-    # geometric types
-    bounding_box: BoundingBox = None
-    polygon: Polygon = None
-    multipolygon: MultiPolygon = None
-    raster: Raster = None
-
-    def __post_init__(self):
-        # task_type
-        if not isinstance(self.task_type, enums.TaskType):
-            self.task_type = enums.TaskType(self.task_type)
-
-        # scored_labels
-        if not isinstance(self.scored_labels, list):
-            raise TypeError("scored_labels should be of type `list`")
-        for i in range(len(self.scored_labels)):
-            if isinstance(self.scored_labels[i], dict):
-                self.scored_labels[i] = ScoredLabel(**self.scored_labels[i])
-            if not isinstance(self.scored_labels[i], ScoredLabel):
-                raise TypeError(
-                    "elements of scored_labels should be of type `velour.schemas.ScoredLabel`"
-                )
-
-        # annotation data
-        if self.bounding_box:
-            if isinstance(self.bounding_box, dict):
-                self.bounding_box = BoundingBox(**self.bounding_box)
-            if not isinstance(self.bounding_box, BoundingBox):
-                raise TypeError(
-                    "bounding_box should be of type `velour.schemas.BoundingBox` or None"
-                )
-        if self.polygon:
-            if isinstance(self.polygon, dict):
-                self.polygon = Polygon(**self.polygon)
-            if not isinstance(self.polygon, Polygon):
-                raise TypeError(
-                    "polygon should be of type `velour.schemas.Polygon` or None"
-                )
-        if self.multipolygon:
-            if isinstance(self.multipolygon, dict):
-                self.multipolygon = MultiPolygon(**self.multipolygon)
-            if not isinstance(self.multipolygon, MultiPolygon):
-                raise TypeError(
-                    "multipolygon should be of type `velour.schemas.MultiPolygon` or None"
-                )
-        if self.raster:
-            if isinstance(self.raster, dict):
-                self.raster = Raster(**self.raster)
-            if not isinstance(self.raster, Raster):
-                raise TypeError(
-                    "raster should be of type `velour.schemas.Raster` or None"
-                )
-
-        # metadata
-        if not isinstance(self.metadata, list):
-            raise TypeError("metadata should be of type `list`")
-        for i in range(len(self.metadata)):
-            if isinstance(self.metadata[i], dict):
-                self.metadata[i] = MetaDatum(**self.metadata[i])
-            if not isinstance(self.metadata[i], MetaDatum):
-                raise TypeError(
-                    "elements of metadata should be of type `velour.schemas.MetaDatum`"
-                )
-
-        # check that for each label key all the predictions sum to ~1
-        # the backend should also do this validation but its good to do
-        # it here on creation, before sending to backend
-        if self.task_type == enums.TaskType.CLASSIFICATION:
-            label_keys_to_sum = {}
-            for scored_label in self.scored_labels:
-                label_key = scored_label.label.key
-                if label_key not in label_keys_to_sum:
-                    label_keys_to_sum[label_key] = 0.0
-                label_keys_to_sum[label_key] += scored_label.score
-
-            for k, total_score in label_keys_to_sum.items():
-                if abs(total_score - 1) > 1e-5:
-                    raise ValueError(
-                        "For each label key, prediction scores must sum to 1, but"
-                        f" for label key {k} got scores summing to {total_score}."
-                    )
-
-
-@dataclass
 class GroundTruth:
     datum: Datum
     annotations: List[Annotation] = field(default_factory=list)
@@ -356,7 +251,7 @@ class GroundTruth:
 @dataclass
 class Prediction:
     datum: Datum
-    annotations: List[ScoredAnnotation] = field(default_factory=list)
+    annotations: List[Annotation] = field(default_factory=list)
     model: str = field(default="")
 
     def __post_init__(self):
@@ -371,12 +266,40 @@ class Prediction:
             raise TypeError("annotations should be of type `list`")
         for i in range(len(self.annotations)):
             if isinstance(self.annotations[i], dict):
-                self.annotations[i] = ScoredAnnotation(**self.annotations[i])
-            if not isinstance(self.annotations[i], ScoredAnnotation):
+                self.annotations[i] = Annotation(**self.annotations[i])
+            if not isinstance(self.annotations[i], Annotation):
                 raise TypeError(
-                    "elements of annotations should be of type `velour.schemas.ScoredAnnotation`."
+                    "elements of annotations should be of type `velour.schemas.Annotation`."
                 )
 
         # validate model
         if not isinstance(self.model, str):
             raise TypeError("model should be of type `str`")
+
+        for annotation in self.annotations:
+            if annotation.task_type in [
+                enums.TaskType.CLASSIFICATION,
+                enums.TaskType.DETECTION,
+                enums.TaskType.INSTANCE_SEGMENTATION,
+            ]:
+                for label in annotation.labels:
+                    if label.score is None:
+                        raise ValueError(
+                            f"For task type {annotation.task_type} prediction labels must have scores, but got None."
+                        )
+
+        for annotation in self.annotations:
+            if annotation.task_type == enums.TaskType.CLASSIFICATION:
+                label_keys_to_sum = {}
+                for scored_label in annotation.labels:
+                    label_key = scored_label.key
+                    if label_key not in label_keys_to_sum:
+                        label_keys_to_sum[label_key] = 0.0
+                    label_keys_to_sum[label_key] += scored_label.score
+
+                for k, total_score in label_keys_to_sum.items():
+                    if abs(total_score - 1) > 1e-5:
+                        raise ValueError(
+                            "For each label key, prediction scores must sum to 1, but"
+                            f" for label key {k} got scores summing to {total_score}."
+                        )

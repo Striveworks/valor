@@ -2,14 +2,7 @@ from typing import Tuple
 
 from velour import enums
 from velour.client import Client, ClientException, Model
-from velour.schemas import (
-    BoundingBox,
-    Datum,
-    Label,
-    Prediction,
-    ScoredAnnotation,
-    ScoredLabel,
-)
+from velour.schemas import Annotation, BoundingBox, Datum, Label, Prediction
 
 
 def _parse_chariot_predict_image_classification(
@@ -30,11 +23,12 @@ def _parse_chariot_predict_image_classification(
     return Prediction(
         datum=datum,
         annotations=[
-            ScoredAnnotation(
+            Annotation(
                 task_type=enums.TaskType.CLASSIFICATION,
-                scored_labels=[
-                    ScoredLabel(
-                        label=Label(key=label_key, value=label),
+                labels=[
+                    Label(
+                        key=label_key,
+                        value=label,
                         score=1.0 if label == result[0] else 0.0,
                     )
                     for label in labels
@@ -65,13 +59,10 @@ def _parse_chariot_predict_proba_image_classification(
     return Prediction(
         datum=datum,
         annotations=[
-            ScoredAnnotation(
+            Annotation(
                 task_type=enums.TaskType.CLASSIFICATION,
-                scored_labels=[
-                    ScoredLabel(
-                        label=Label(key=label_key, value=labels[i]),
-                        score=score,
-                    )
+                labels=[
+                    Label(key=label_key, value=labels[i], score=score)
                     for i, score in enumerate(result[0])
                 ],
             )
@@ -109,14 +100,9 @@ def _parse_chariot_detect_image_object_detection(
     return Prediction(
         datum=datum,
         annotations=[
-            ScoredAnnotation(
+            Annotation(
                 task_type=enums.TaskType.DETECTION,
-                scored_labels=[
-                    ScoredLabel(
-                        label=Label(key=label_key, value=label),
-                        score=float(score),
-                    )
-                ],
+                labels=[Label(key=label_key, value=label, score=float(score))],
                 bounding_box=BoundingBox.from_extrema(
                     ymin=box[0], xmin=box[1], ymax=box[2], xmax=box[3]
                 ),
@@ -147,9 +133,7 @@ def create_model_from_chariot(
 def get_prediction_parser_from_chariot(
     task_type: str, action: str, label_key: str, class_labels: list = None
 ):
-
     if task_type == "Image Classification":
-
         if action == "predict":
 
             def velour_parser(datum: Datum, result):

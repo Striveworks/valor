@@ -23,11 +23,10 @@ def _wkt_multipolygon_to_raster(wkt: str):
 
 def create_annotation(
     db: Session,
-    annotation: schemas.Annotation | schemas.ScoredAnnotation,
+    annotation: schemas.Annotation,
     datum: models.Datum,
     model: models.Model = None,
 ) -> models.Annotation:
-
     box = None
     polygon = None
     raster = None
@@ -65,7 +64,7 @@ def create_annotation(
 
 def create_annotations(
     db: Session,
-    annotations: list[schemas.Annotation | schemas.ScoredAnnotation],
+    annotations: list[schemas.Annotation],
     datum: models.Datum,
     model: models.Model = None,
 ) -> list[models.Annotation]:
@@ -120,7 +119,6 @@ def get_annotation(
     db: Session,
     annotation: models.Annotation,
 ) -> schemas.Annotation:
-
     # Retrieve all labels associated with annotation
     labels = [
         schemas.Label(key=label[0], value=label[1])
@@ -184,7 +182,6 @@ def get_annotations(
     db: Session,
     datum: models.Datum,
 ) -> list[schemas.Annotation]:
-
     return [
         get_annotation(db, annotation=annotation)
         for annotation in (
@@ -203,12 +200,12 @@ def get_annotations(
 def get_scored_annotation(
     db: Session,
     annotation: models.Annotation,
-) -> schemas.ScoredAnnotation:
-
+) -> schemas.Annotation:
     # Retrieve all labels associated with annotation
     scored_labels = [
-        schemas.ScoredLabel(
-            label=schemas.Label(key=scored_label[0], value=scored_label[1]),
+        schemas.Label(
+            key=scored_label[0],
+            value=scored_label[1],
             score=scored_label[2],
         )
         for scored_label in (
@@ -225,9 +222,9 @@ def get_scored_annotation(
     ]
 
     # Initialize
-    retval = schemas.ScoredAnnotation(
+    retval = schemas.Annotation(
         task_type=annotation.task_type,
-        scored_labels=scored_labels,
+        labels=scored_labels,
         metadata=get_metadata(db, annotation=annotation),
         bounding_box=None,
         polygon=None,
@@ -273,8 +270,7 @@ def get_scored_annotations(
     db: Session,
     model: models.Model,
     datum: models.Datum,
-) -> list[schemas.ScoredAnnotation]:
-
+) -> list[schemas.Annotation]:
     return [
         get_scored_annotation(db, annotation=annotation)
         for annotation in (
