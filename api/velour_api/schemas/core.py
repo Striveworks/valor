@@ -186,6 +186,13 @@ class Prediction(BaseModel):
                         raise ValueError(
                             f"Missing score for label in {annotation.task_type} task."
                         )
+            elif annotation.task_type == enums.TaskType.SEMANTIC_SEGMENTATION:
+                for label in annotation.labels:
+                    if label.score is not None:
+                        raise ValueError(
+                            "Semantic segmentation tasks cannot have scores; only metrics with "
+                            "hard predictions are supported."
+                        )
 
         return v
 

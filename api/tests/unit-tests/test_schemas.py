@@ -408,9 +408,7 @@ def test_core_annotation_without_scores(
 
     # test property `task_type`
     with pytest.raises(ValidationError):
-        schemas.Annotation(
-            task_type="custom",
-        )
+        schemas.Annotation(task_type="custom")
 
     # test property `labels`
     with pytest.raises(ValidationError):
@@ -608,7 +606,9 @@ def test_core_groundtruth(metadata, groundtruth_annotations):
         )
 
 
-def test_core_prediction(metadata, predicted_annotations, scored_labels):
+def test_core_prediction(
+    metadata, predicted_annotations, labels, scored_labels
+):
     # valid
     md = schemas.Prediction(
         model="name1",
@@ -690,8 +690,43 @@ def test_core_prediction(metadata, predicted_annotations, scored_labels):
         )
     assert "prediction scores must sum to 1" in str(e.value.errors()[0]["msg"])
 
+    # check score is provided
+    for task_type in [
+        enums.TaskType.CLASSIFICATION,
+        enums.TaskType.DETECTION,
+        enums.TaskType.INSTANCE_SEGMENTATION,
+    ]:
+        with pytest.raises(ValueError) as e:
+            schemas.Prediction(
+                model="name",
+                datum=schemas.Datum(
+                    uid="uid",
+                    dataset="name",
+                ),
+                annotations=[
+                    schemas.Annotation(labels=labels, task_type=task_type)
+                ],
+            )
+        assert "Missing score for label" in str(e)
 
-""" velour_api.schemas.metadata """
+    with pytest.raises(ValueError) as e:
+        schemas.Prediction(
+            model="name",
+            datum=schemas.Datum(
+                uid="uid",
+                dataset="name",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    labels=scored_labels,
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                )
+            ],
+        )
+    assert "Semantic segmentation tasks cannot have scores" in str(e)
+
+
+# velour_api.schemas.metadata
 
 
 # @TODO
