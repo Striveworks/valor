@@ -1,3 +1,6 @@
+from typing import NamedTuple
+
+from sqlalchemy import and_, select
 from sqlalchemy.sql.elements import BinaryExpression
 
 from velour_api import schemas
@@ -5,12 +8,22 @@ from velour_api.backend import models
 
 
 class Node:
-    def __init__(self, name: str, schema, model, edge: bool = False):
+    def __init__(
+        self,
+        name: str,
+        schema,
+        model,
+        edge: bool = False,
+        relationships: dict[BinaryExpression] | None = None,
+    ):
         self.name = name
         self.schema = schema
         self.model = model
-        self.relationships = {}
+        self.relationships = relationships if relationships else {}
         self.edge = edge
+
+    def __str__(self):
+        return f"Node: `{self.name}`, Relationships: {len(self.relationships)}, Edge: {self.edge}"
 
     def __contains__(self, node: "Node"):
         if not isinstance(node, Node):
@@ -31,222 +44,250 @@ class Node:
         self.relationships[node] = relationship
 
 
-class DirectedAcyclicGraph:
-    def __init__(self, root: Node):
-        self.root = root
-        self.nodes = set(root.relationships.keys())
+def recursive_acyclic_walk(
+    root: Node,
+    target: Node,
+    path: list[Node],
+    invalid: set[Node],
+):
+    if root == target:
+        path.append(root)
+        return [path]
+    elif root.edge:
+        return None
+    else:
+        path.append(root)
+        invalid.add(root)
+        steps = []
+        for node in root.relationships.keys():
+            if node not in invalid:
+                step = recursive_acyclic_walk(
+                    node, target, path.copy(), invalid.copy()
+                )
+                if step is not None:
+                    steps.extend(step)
+        return steps if steps else None
 
-    def _walk_recursion(
-        self, current: Node, target: Node, path: list[Node], invalid: set[Node]
-    ):
-        if current == target:
-            path.append(current)
-            return [path]
-        elif current.edge:
-            return None
-        else:
-            path.append(current)
-            invalid.add(current)
-            steps = []
-            for node in current.relationships.keys():
-                if node not in invalid:
-                    step = self._walk_recursion(
-                        node, target, path.copy(), invalid.copy()
-                    )
-                    if step is not None:
-                        steps.extend(step)
-            return steps if steps else None
 
-    def walk(self, targets: list[Node]):
-        walks = []
-        for target in targets:
-            if target == self.root:
-                continue
-            walks.extend(
-                self._walk_recursion(self.root, target, list(), set())
+def create_acyclic_graph(root: Node, targets: list[Node]):
+    walks = []
+    for target in targets:
+        if target == root:
+            continue
+        walks.extend(recursive_acyclic_walk(root, target, list(), set()))
+    return walks
+
+
+def reduce(walks: list[list[Node]]):
+    """flatten into a sequence that respects order-of-operations"""
+    visited = set()
+    sequence = []
+    for walk in walks:
+        for node in walk:
+            if node not in visited:
+                visited.add(node)
+                sequence.append(node)
+    return sequence
+
+
+def prune(sequence: list[Node]):
+    """prune unused relationships"""
+    pruned_nodes = []
+    for node in sequence:
+        pruned_nodes.append(
+            Node(
+                name=node.name,
+                schema=node.schema,
+                model=node.model,
+                edge=node.edge,
+                relationships={
+                    relation: node.relationships[relation]
+                    for relation in node.relationships
+                    if relation in pruned_nodes
+                },
             )
-        return walks
+        )
+    return pruned_nodes
 
 
-class VelourDAG:
-    def __init__(self):
-        self.dataset = Node(
-            "dataset",
-            schema=schemas.Dataset,
-            model=models.Dataset,
-        )
+# Velour SQL Graph
 
-        self.model = Node(
-            "model",
-            schema=schemas.Model,
-            model=models.Model,
-        )
 
-        self.datum = Node(
-            "datum",
-            schema=schemas.Datum,
-            model=models.Datum,
-        )
+dataset = Node(
+    "dataset",
+    schema=schemas.Dataset,
+    model=models.Dataset,
+)
 
-        self.annotation = Node(
-            "annotation",
-            schema=schemas.Annotation,
-            model=models.Annotation,
-        )
+model = Node(
+    "model",
+    schema=schemas.Model,
+    model=models.Model,
+)
 
-        self.groundtruth = Node(
-            "groundtruth",
-            schema=schemas.GroundTruth,
-            model=models.GroundTruth,
-        )
+datum = Node(
+    "datum",
+    schema=schemas.Datum,
+    model=models.Datum,
+)
 
-        self.prediction = Node(
-            "prediction",
-            schema=schemas.Prediction,
-            model=models.Prediction,
-        )
+annotation = Node(
+    "annotation",
+    schema=schemas.Annotation,
+    model=models.Annotation,
+)
 
-        self.groundtruth_label = Node(
-            "groundtruth_label",
-            schema=schemas.Label,
-            model=models.Label,
-            edge=True,
-        )
+groundtruth = Node(
+    "groundtruth",
+    schema=schemas.GroundTruth,
+    model=models.GroundTruth,
+)
 
-        self.prediction_label = Node(
-            "prediction_label",
-            schema=schemas.Label,
-            model=models.Label,
-            edge=True,
-        )
+prediction = Node(
+    "prediction",
+    schema=schemas.Prediction,
+    model=models.Prediction,
+)
 
-        self.dataset_metadatum = Node(
-            "dataset_metadatum",
-            schema=schemas.MetaDatum,
-            model=models.MetaDatum,
-            edge=True,
-        )
+label_groundtruth = Node(
+    "label_groundtruth",
+    schema=schemas.Label,
+    model=models.Label,
+    edge=True,
+)
 
-        self.model_metadatum = Node(
-            "model_metadatum",
-            schema=schemas.MetaDatum,
-            model=models.MetaDatum,
-            edge=True,
-        )
+label_prediction = Node(
+    "label_prediction",
+    schema=schemas.Label,
+    model=models.Label,
+    edge=True,
+)
 
-        self.datum_metadatum = Node(
-            "datum_metadatum",
-            schema=schemas.MetaDatum,
-            model=models.MetaDatum,
-            edge=True,
-        )
+metadatum_dataset = Node(
+    "metadatum_dataset",
+    schema=schemas.MetaDatum,
+    model=models.MetaDatum,
+    edge=True,
+)
 
-        self.annotation_metadatum = Node(
-            "annotation_metadatum",
-            schema=schemas.MetaDatum,
-            model=models.MetaDatum,
-            edge=True,
-        )
+metadatum_model = Node(
+    "metadatum_model",
+    schema=schemas.MetaDatum,
+    model=models.MetaDatum,
+    edge=True,
+)
 
-        self.dataset.connect(
-            self.datum, models.Dataset.id == models.Datum.dataset_id
-        )
-        self.dataset.connect(
-            self.dataset_metadatum,
-            models.Dataset.id == models.MetaDatum.dataset_id,
-        )
+metadatum_datum = Node(
+    "metadatum_datum",
+    schema=schemas.MetaDatum,
+    model=models.MetaDatum,
+    edge=True,
+)
 
-        self.model.connect(
-            self.annotation, models.Model.id == models.Annotation.model_id
-        )
-        self.model.connect(
-            self.model_metadatum, models.Model.id == models.MetaDatum.model_id
-        )
+metadatum_annotation = Node(
+    "metadatum_annotation",
+    schema=schemas.MetaDatum,
+    model=models.MetaDatum,
+    edge=True,
+)
 
-        self.datum.connect(
-            self.dataset, models.Datum.dataset_id == models.Dataset.id
-        )
-        self.datum.connect(
-            self.annotation, models.Datum.id == models.Annotation.datum_id
-        )
-        self.datum.connect(
-            self.datum_metadatum, models.Datum.id == models.MetaDatum.datum_id
-        )
+dataset.connect(datum, models.Dataset.id == models.Datum.dataset_id)
+dataset.connect(
+    metadatum_dataset,
+    models.Dataset.id == models.MetaDatum.dataset_id,
+)
 
-        self.annotation.connect(
-            self.datum, models.Annotation.datum_id == models.Datum.id
-        )
-        self.annotation.connect(
-            self.model, models.Annotation.model_id == models.Model.id
-        )
-        self.annotation.connect(
-            self.groundtruth,
-            models.Annotation.id == models.GroundTruth.annotation_id,
-        )
-        self.annotation.connect(
-            self.prediction,
-            models.Annotation.id == models.Prediction.annotation_id,
-        )
-        self.annotation.connect(
-            self.annotation_metadatum,
-            models.Annotation.id == models.MetaDatum.annotation_id,
-        )
+model.connect(annotation, models.Model.id == models.Annotation.model_id)
+model.connect(metadatum_model, models.Model.id == models.MetaDatum.model_id)
 
-        self.groundtruth.connect(
-            self.annotation,
-            models.GroundTruth.annotation_id == models.Annotation.id,
-        )
-        self.groundtruth.connect(
-            self.groundtruth_label,
-            models.GroundTruth.label_id == models.Label.id,
-        )
+datum.connect(dataset, models.Datum.dataset_id == models.Dataset.id)
+datum.connect(annotation, models.Datum.id == models.Annotation.datum_id)
+datum.connect(metadatum_datum, models.Datum.id == models.MetaDatum.datum_id)
 
-        self.prediction.connect(
-            self.annotation,
-            models.Prediction.annotation_id == models.Annotation.id,
-        )
-        self.prediction.connect(
-            self.prediction_label,
-            models.Prediction.label_id == models.Label.id,
-        )
+annotation.connect(datum, models.Annotation.datum_id == models.Datum.id)
+annotation.connect(model, models.Annotation.model_id == models.Model.id)
+annotation.connect(
+    groundtruth,
+    models.Annotation.id == models.GroundTruth.annotation_id,
+)
+annotation.connect(
+    prediction,
+    models.Annotation.id == models.Prediction.annotation_id,
+)
+annotation.connect(
+    metadatum_annotation,
+    models.Annotation.id == models.MetaDatum.annotation_id,
+)
 
-        self.groundtruth_label.connect(
-            self.groundtruth, models.Label.id == models.GroundTruth.label_id
-        )
-        self.prediction_label.connect(
-            self.prediction, models.Label.id == models.Prediction.label_id
-        )
+groundtruth.connect(
+    annotation,
+    models.GroundTruth.annotation_id == models.Annotation.id,
+)
+groundtruth.connect(
+    label_groundtruth,
+    models.GroundTruth.label_id == models.Label.id,
+)
 
-        self.dataset_metadatum.connect(
-            self.dataset, models.MetaDatum.dataset_id == models.Dataset.id
-        )
-        self.model_metadatum.connect(
-            self.model, models.MetaDatum.model_id == models.Model.id
-        )
-        self.datum_metadatum.connect(
-            self.datum, models.MetaDatum.datum_id == models.Datum.id
-        )
-        self.annotation_metadatum.connect(
-            self.annotation,
-            models.MetaDatum.annotation_id == models.Annotation.id,
-        )
+prediction.connect(
+    annotation,
+    models.Prediction.annotation_id == models.Annotation.id,
+)
+prediction.connect(
+    label_prediction,
+    models.Prediction.label_id == models.Label.id,
+)
 
-    def sequence(self, walks: list[list[Node]]):
-        visited = set()
-        sequence = []
-        for walk in walks:
-            for node in walk:
-                if node not in visited:
-                    visited.add(node)
-                    sequence.append(node)
-        return sequence
+label_groundtruth.connect(
+    groundtruth, models.Label.id == models.GroundTruth.label_id
+)
+label_prediction.connect(
+    prediction, models.Label.id == models.Prediction.label_id
+)
 
-    def graph(self, root: Node, targets: list[Node]):
-        g = DirectedAcyclicGraph(root)
-        walks = g.walk(targets)
-        return self.sequence(walks)
+metadatum_dataset.connect(
+    dataset, models.MetaDatum.dataset_id == models.Dataset.id
+)
+metadatum_model.connect(model, models.MetaDatum.model_id == models.Model.id)
+metadatum_datum.connect(datum, models.MetaDatum.datum_id == models.Datum.id)
+metadatum_annotation.connect(
+    annotation,
+    models.MetaDatum.annotation_id == models.Annotation.id,
+)
+
+
+class SQLGraph(NamedTuple):
+    dataset: Node
+    model: Node
+    datum: Node
+    annotation: Node
+    groundtruth: Node
+    prediction: Node
+    label_groundtruth: Node
+    label_prediction: Node
+    metadatum_dataset: Node
+    metadatum_model: Node
+    metadatum_datum: Node
+    metadatum_annotation: Node
+
+
+# generate sql alchemy relationships
+def generate_query(root: Node, targets: list[Node]):
+    graph = create_acyclic_graph(root, targets)
+    sequence = reduce(graph)
+    min_walk = prune(sequence)
+
+    # construct sql query
+    query = select(root.model.id)
+    for node in min_walk[1:]:
+        query = query.join(
+            node.model,
+            and_(*list(node.relationships.values())),
+        )
+    return query
 
 
 if __name__ == "__main__":
+    q = generate_query(dataset, [model, label_prediction, metadatum_dataset])
+    print(q)
 
-    g = VelourDAG()
+    dataset.schema = schemas.Model

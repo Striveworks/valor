@@ -1,273 +1,15 @@
 import operator
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import BinaryExpression
 
 from velour_api import enums, schemas
-from velour_api.backend import models
-
-model_graph = {
-    "dataset": {"datum", "dataset_metadatum"},
-    "model": {"annotation", "model_metadatum"},
-    "datum": {"annotation", "dataset", "datum_metadatum"},
-    "annotation": {
-        "datum",
-        "model",
-        "prediction",
-        "groundtruth",
-        "annotation_metadatum",
-    },
-    "groundtruth": {"annotation", "groundtruth_label"},
-    "prediction": {"annotation", "prediction_label"},
-    "groundtruth_label": {"groundtruth"},
-    "prediction_label": {"prediction"},
-    "dataset_metadatum": {"dataset"},
-    "model_metadatum": {"model"},
-    "datum_metadatum": {"datum"},
-    "annotation_metadatum": {"annotation"},
-}
-
-
-model_mapping = {
-    "dataset": models.Dataset,
-    "model": models.Model,
-    "datum": models.Datum,
-    "annotation": models.Annotation,
-    "groundtruth": models.GroundTruth,
-    "prediction": models.Prediction,
-    "label": models.Label,
-    "dataset_metadatum": models.MetaDatum,
-    "model_metadatum": models.MetaDatum,
-    "datum_metadatum": models.MetaDatum,
-    "annotation_metadatum": models.MetaDatum,
-}
-
-
-model_relationships = {
-    "dataset": {
-        "datum": models.Dataset.id == models.Datum.dataset_id,
-        "dataset_metadatum": models.Dataset.id == models.MetaDatum.dataset_id,
-    },
-    "model": {
-        "annotation": models.Model.id == models.Annotation.model_id,
-        "model_metadatum": models.Model.id == models.MetaDatum.model_id,
-    },
-    "datum": {
-        "annotation": models.Datum.id == models.Annotation.datum_id,
-        "dataset": models.Datum.dataset_id == models.Dataset.id,
-        "datum_metadatum": models.Datum.id == models.MetaDatum.datum_id,
-    },
-    "annotation": {
-        "datum": models.Annotation.datum_id == models.Datum.id,
-        "model": models.Annotation.model_id == models.Model.id,
-        "prediction": models.Annotation.id == models.Prediction.annotation_id,
-        "groundtruth": models.Annotation.id
-        == models.GroundTruth.annotation_id,
-        "annotation_metadatum": models.Annotation.id
-        == models.MetaDatum.annotation_id,
-    },
-    "groundtruth": {
-        "annotation": models.GroundTruth.annotation_id == models.Annotation.id,
-        "label": models.GroundTruth.label_id == models.Label.id,
-    },
-    "prediction": {
-        "annotation": models.Prediction.annotation_id == models.Annotation.id,
-        "label": models.Prediction.label_id == models.Label.id,
-    },
-    "dataset_metadatum": {
-        "dataset": models.MetaDatum.dataset_id == models.Dataset.id,
-    },
-    "model_metadatum": {
-        "model": models.MetaDatum.model_id == models.Model.id,
-    },
-    "datum_metadatum": {
-        "datum": models.MetaDatum.datum_id == models.Datum.id,
-    },
-    "annotation_metadatum": {
-        "annotation": models.MetaDatum.annotation_id == models.Annotation.id,
-    },
-}
-
-
-schemas_mapping = {
-    "dataset": schemas.Dataset,
-    "model": schemas.Model,
-    "datum": schemas.Datum,
-    "annotation": schemas.Annotation,
-    "groundtruth": schemas.GroundTruth,
-    "prediction": schemas.Prediction,
-    "label": schemas.Label,
-    "dataset_metadatum": schemas.MetaDatum,
-    "model_metadatum": schemas.MetaDatum,
-    "datum_metadatum": schemas.MetaDatum,
-    "annotation_metadatum": schemas.MetaDatum,
-}
-
-
-class Join:
-    def __init__(self, root: str, link: str):
-        self.root = root
-        self.links = set([link])
-
-    def or_(self, root: str, link: str):
-        if self.root != root:
-            raise ValueError
-        if isinstance(link, str):
-            self.links.add(link)
-        else:
-            self.links.update(link)
-
-    def __str__(self):
-        if len(self.links) == 1:
-            return f"JOIN {self.root} ON {self.root} == {list(self.links)[0]}"
-        ret = f"JOIN {self.root} ON \nOR(\n"
-        for e in self.links:
-            ret += f"  {self.root} == {e}"
-            ret += "\n"
-        ret += ")"
-        return ret
-
-    def relation(self) -> tuple:
-        # generate binary expressions
-        expressions = [
-            model_relationships[self.root][link] for link in self.links
-        ]
-
-        if len(expressions) == 1:
-            return (
-                model_mapping[self.root],
-                expressions[0],
-            )
-        else:
-            return (
-                model_mapping[self.root],
-                or_(*expressions),
-            )
-
-
-def _graph_generator(
-    start: str,
-    end: str,
-    invalid: set = None,
-):
-    """Recursive function,"""
-
-    # initialize
-    if invalid is None:
-        invalid = set()
-
-    # check if source or target invalid
-    if start in invalid or end in invalid:
-        return None
-
-    # check if source is target
-    if start == end:
-        return end
-
-    # get options for next step
-    remaining_options = model_graph[start] - invalid
-
-    # add current position to list of traveled nodes
-    invalid.add(start)
-
-    # check & remote
-    # if end in invalid:
-    # invalid.remove(end)
-
-    # iterate through branch options, construct path recursively
-    path = {}
-    for option in list(remaining_options):
-        if retval := _graph_generator(start=option, end=end, invalid=invalid):
-            path[option] = retval
-    return path if path else None
-
-
-def _flatten_graph(
-    graph: dict,
-    start: str,
-    end: str,
-    join_list: dict,
-) -> list[Join]:
-    """Recursive function"""
-
-    # update from current layer
-    for key in graph:
-        if key in join_list:
-            join_list[key].or_(root=key, link=start)
-        else:
-            join_list[key] = Join(root=key, link=start)
-
-    # recurse to next layer
-    for key in graph:
-        if key not in end:
-            join_list = _flatten_graph(
-                graph=graph[key],
-                start=key,
-                end=end,
-                join_list=join_list,
-            )
-
-    return join_list
-
-
-def _generate_joins(source, targets, prune):
-    # generate graphs
-    graphs_with_target = [
-        (_graph_generator(source, target, prune=prune.copy()), target)
-        if target not in model_graph[source]  # check for direct connection
-        else ({target: target}, target)
-        for target in targets
-    ]
-
-    # Generate object relationships
-    return [
-        _flatten_graph(
-            graph=graph,
-            source=source,
-            target=target,
-            join_list=dict(),
-        )
-        for graph, target in graphs_with_target
-        if graph is not None
-    ]
-
-
-def generate_query(source: str, targets: list[str], prune: set[str]):
-
-    # Generate graphs
-    graphs = _generate_joins(source=source, targets=targets, prune=prune)
-
-    # edge case
-    if not graphs:
-        return None
-
-    # Merge graphs
-    master_graph = {}
-    existing_keys = set()
-    for graph in graphs:
-        for key in graph:
-            existing_keys.add(key)
-            if key not in master_graph:
-                master_graph[key] = graph[key]
-            else:
-                master_graph[key].or_(graph[key].root, graph[key].links)
-
-    # Validate order-of-operations
-    retlist = []
-    sources = set([source])
-    while len(existing_keys) > 0:
-        for key in existing_keys:
-            if master_graph[key].links.issubset(sources):
-                retlist.append(master_graph[key])
-                sources.add(key)
-        existing_keys = existing_keys - sources
-
-    return retlist
+from velour_api.backend import graph, models
 
 
 class BackendQuery:
-    def __init__(self, source: str):
+    def __init__(self, source: graph.Node):
         self._filters = []
         self.source = source
         self.targets = set()
@@ -275,142 +17,69 @@ class BackendQuery:
 
     @classmethod
     def model(cls):
-        return cls("model")
+        return cls(graph.model)
 
     @classmethod
     def dataset(cls):
-        return cls("dataset")
+        return cls(graph.dataset)
 
     @classmethod
     def datum(cls):
-        return cls("datum")
+        return cls(graph.datum)
 
     @classmethod
     def annotation(cls):
-        return cls("annotation")
+        return cls(graph.annotation)
 
     @classmethod
     def groundtruth(cls):
-        return cls("groundtruth")
+        return cls(graph.groundtruth)
 
     @classmethod
     def prediction(cls):
-        return cls("prediction")
+        return cls(graph.prediction)
 
     @classmethod
-    def label(cls):
-        return cls("label")
+    def label_groundtruth(cls):
+        return cls(graph.label_groundtruth)
+
+    @classmethod
+    def label_prediction(cls):
+        return cls(graph.label_prediction)
 
     @classmethod
     def metadata_dataset(cls):
-        return cls("dataset_metadatum")
+        return cls(graph.metadatum_dataset)
 
     @classmethod
     def metadata_model(cls):
-        return cls("model_metadatum")
+        return cls(graph.metadatum_model)
 
     @classmethod
     def metadata_datum(cls):
-        return cls("datum_metadatum")
+        return cls(graph.metadatum_datum)
 
     @classmethod
     def metadata_annotation(cls):
-        return cls("annotation_metadatum")
+        return cls(graph.metadatum_annotation)
 
     @property
     def filters(self) -> list[BinaryExpression]:
         return self._filters
 
-    def prune_graph(self) -> set[str]:
-        # Set of id's to prune
-        invalid = self.constraints.copy()
-
-        # invalidate metadatum node if not referenced
-        # if "metadatum" not in [self.source, *self.targets]:
-        #     invalid.add("metadatum")
-
-        # invalidate label node if not referenced
-        if "label" not in [self.source, *self.targets]:
-            invalid.add("label")
-
-        # invalidate groundtruth node if model is source/target
-        if "model" in [self.source, *self.targets]:
-            invalid.add("groundtruth")
-
-        # validate source
-        if self.source in invalid:
-            return None
-
-        # validate targets
-        self.targets = list(set(self.targets) - invalid)
-
-        return invalid
-
-    def __str__(self):
-
-        # Get all rows of source table
-        if len(self.targets) == 0:
-            return f"SELECT FROM {self.source}"
-
-        # sanity check
-        if self.source in self.targets:
-            self.targets.remove(self.source)
-
-        qstruct = generate_query(
-            source=self.source, targets=self.targets, prune=self.prune_graph()
-        )
-
-        ret = f"SELECT FROM {self.source}\n"
-        for join in qstruct:
-            ret += f"{str(join)}\n"
-        ret += "WHERE\n"
-        for filt in self._filters:
-            ret += f"  {filt},\n"
-        return ret
-
-    def query_ids(self, db: Session):
-        """Returns list of rows from source that meet filter criteria."""
-
-        # sanity check
-        if self.source in self.targets:
-            self.targets.remove(self.source)
-
-        # Get all rows of source table
-        if len(self.targets) == 0:
-            return select(model_mapping[self.source].id)
-
-        # serialize request from graph
-        qstruct = generate_query(
-            source=self.source, targets=self.targets, prune=self.prune_graph()
-        )
-
-        # select source
-        src = model_mapping[self.source]
-        q_ids = select(src.id)
-
-        # join intermediate tables
-        for join in qstruct:
-            m, r = join.relation()
-            q_ids = q_ids.join(m, r)
-
-        # add filter conditions
-        q_ids = q_ids.where(and_(*self._filters))
-
-        # return select statement of valid row ids
-        return q_ids
+    def ids(self, db: Session):
+        """Returns ids from source that meet filter criteria."""
+        id_query = graph.generate_query(self.source, self.targets)
+        id_query = id_query.where(and_(*self._filters))
+        return db.query(id_query).all()
 
     def query(self, db: Session):
         """Returns sqlalchemy table rows"""
-
-        # get source object
-        src = model_mapping[self.source]
-
-        # get valid row ids
         q_ids = self.ids(db)
-
-        # return rows from source table
         return (
-            db.query(model_mapping[self.source]).where(src.id.in_(q_ids)).all()
+            db.query(self.source.model)
+            .where(self.source.model.id.in_(q_ids))
+            .all()
         )
 
     def filter(self, filt: schemas.Filter):
@@ -422,7 +91,7 @@ class BackendQuery:
                 self.filter_by_dataset_names(filt.datasets.names)
             if filt.datasets.metadata:
                 self.filter_by_metadata(
-                    filt.datasets.metadata, "dataset_metadatum"
+                    filt.datasets.metadata, graph.metadatum_dataset
                 )
 
         # models
@@ -431,7 +100,7 @@ class BackendQuery:
                 self.filter_by_model_names(filt.models.names)
             if filt.models.metadata:
                 self.filter_by_metadata(
-                    filt.models.metadata, "model_metadatum"
+                    filt.models.metadata, graph.metadatum_model
                 )
 
         # datums
@@ -440,7 +109,7 @@ class BackendQuery:
                 self.filter_by_datum_uids(filt.datums.uids)
             if filt.datums.metadata:
                 self.filter_by_metadata(
-                    filt.datums.metadata, "datum_metadatum"
+                    filt.datums.metadata, graph.metadatum_datum
                 )
 
         # annotations
@@ -457,8 +126,16 @@ class BackendQuery:
                 pass
             if filt.annotations.metadata:
                 self.filter_by_metadata(
-                    filt.annotations.metadata, "annotation_metadatum"
+                    filt.annotations.metadata, graph.metadatum_annotation
                 )
+
+        # groundtruths
+        if filt.groundtruths is not None:
+            pass
+
+        # predictions
+        if filt.predictions is not None:
+            pass
 
         # toggles
         # @TODO
@@ -495,10 +172,10 @@ class BackendQuery:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add("dataset")
+            self.targets.add(graph.dataset)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add("dataset")
+            self.targets.add(graph.dataset)
             self._filters.append(or_(*expressions))
 
         return self
@@ -513,10 +190,10 @@ class BackendQuery:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add("dataset")
+            self.targets.add(graph.dataset)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add("dataset")
+            self.targets.add(graph.dataset)
             self._filters.append(or_(*expressions))
 
         return self
@@ -533,10 +210,10 @@ class BackendQuery:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add("model")
+            self.targets.add(graph.model)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add("model")
+            self.targets.add(graph.model)
             self._filters.append(or_(*expressions))
 
         return self
@@ -551,10 +228,10 @@ class BackendQuery:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add("model")
+            self.targets.add(graph.model)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add("model")
+            self.targets.add(graph.model)
             self._filters.append(or_(*expressions))
 
         return self
@@ -571,10 +248,10 @@ class BackendQuery:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add("datum")
+            self.targets.add(graph.datum)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add("datum")
+            self.targets.add(graph.datum)
             self._filters.append(or_(*expressions))
 
         return self
@@ -587,17 +264,22 @@ class BackendQuery:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add("datum")
+            self.targets.add(graph.datum)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add("datum")
+            self.targets.add(graph.datum)
             self._filters.append(or_(*expressions))
 
         return self
 
     """ filter by label """
 
-    def filter_by_labels(self, labels: list[schemas.Label | models.Label]):
+    def filter_by_labels(
+        self,
+        labels: list[schemas.Label | models.Label],
+        include_groundtruths: bool = True,
+        include_predictions: bool = True,
+    ):
         # generate binary expressions
         expressions = [
             and_(
@@ -607,20 +289,27 @@ class BackendQuery:
             for label in labels
             if isinstance(label, schemas.Label | models.Label)
         ]
-
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add("label")
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add("label")
-            self._filters.append(or_(*expressions))
+        if len(expressions) > 0:
+            if include_groundtruths:
+                self.targets.add(graph.label_groundtruth)
+            elif include_predictions:
+                self.targets.add(graph.label_prediction)
+            else:
+                raise ValueError(
+                    "expected inclusion of groundtruths and/or prediction labels."
+                )
+            if len(expressions) == 1:
+                self._filters.extend(expressions)
+            else:
+                self._filters.append(or_(*expressions))
 
         return self
 
     def filter_by_label_keys(
         self,
         label_keys: list[str],
+        include_groundtruths: bool = True,
+        include_predictions: bool = True,
     ):
         # generate binary expressions
         expressions = [
@@ -628,14 +317,19 @@ class BackendQuery:
             for label_key in label_keys
             if isinstance(label_key, str)
         ]
-
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add("label")
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add("label")
-            self._filters.append(or_(*expressions))
+        if len(expressions) > 0:
+            if include_groundtruths:
+                self.targets.add(graph.label_groundtruth)
+            elif include_predictions:
+                self.targets.add(graph.label_prediction)
+            else:
+                raise ValueError(
+                    "expected inclusion of groundtruths and/or prediction labels."
+                )
+            if len(expressions) == 1:
+                self._filters.extend(expressions)
+            else:
+                self._filters.append(or_(*expressions))
 
         return self
 
@@ -645,7 +339,7 @@ class BackendQuery:
         self,
         metadatum: schemas.MetaDatum | models.MetaDatum,
         op: str,
-        node: str,
+        node: graph.Node,
     ):
 
         ops = {
@@ -730,10 +424,10 @@ class BackendQuery:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add("metadatum")
+            self.targets.add(graph.metadatum)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add("metadatum")
+            self.targets.add(graph.metadatum)
             self._filters.append(or_(*expressions))
 
         return self
@@ -750,10 +444,10 @@ class BackendQuery:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add("annotation")
+            self.targets.add(graph.annotation)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add("annotation")
+            self.targets.add(graph.annotation)
             self._filters.append(or_(*expressions))
 
         return self
@@ -762,7 +456,7 @@ class BackendQuery:
         self, annotation_types: list[enums.AnnotationType]
     ):
         if enums.AnnotationType.NONE in annotation_types:
-            self.targets.add("annotation")
+            self.targets.add(graph.annotation)
             self._filters.append(
                 and_(
                     models.Annotation.box.is_(None),
@@ -785,10 +479,10 @@ class BackendQuery:
 
             # generate joint filter
             if len(expressions) == 1:
-                self.targets.add("annotation")
+                self.targets.add(graph.annotation)
                 self._filters.extend(expressions)
             elif len(expressions) > 1:
-                self.targets.add("annotation")
+                self.targets.add(graph.annotation)
                 self._filters.append(or_(*expressions))
 
         return self

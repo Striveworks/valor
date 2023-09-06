@@ -12,7 +12,6 @@ from .label import (
     get_disjoint_labels,
     get_joint_keys,
     get_joint_labels,
-    get_label_distribution,
     get_labels,
 )
 from .metadata import get_metadata
@@ -44,8 +43,6 @@ __all__ = [
     "get_prediction",
     "get_predictions",
     "get_labels",
-    "get_label_distribution",
-    "get_scored_label_distribution",
     "get_joint_labels",
     "get_disjoint_labels",
     "get_joint_keys",

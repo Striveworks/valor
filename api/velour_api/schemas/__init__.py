@@ -12,6 +12,7 @@ from .core import (
     ScoredLabel,
 )
 from .datatypes import Image, VideoFrame
+from .filters import Filter, MetadataFilter
 from .geojson import GeoJSON
 from .geometry import (
     BasicPolygon,
@@ -21,7 +22,6 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .info import Filter, MetadataFilter
 from .metrics import (
     AccuracyMetric,
     APMetric,

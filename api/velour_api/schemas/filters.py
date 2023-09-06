@@ -54,32 +54,29 @@ class GeometricFilter(BaseModel):
     width: NumericFilter | None = None
 
 
-class MetadataFilter(BaseModel):
+class MetaDatumFilter(BaseModel):
     """target.filter(metadatum, operator) ==> target > metadatum"""
 
     key: str
     value: NumericFilter | StringFilter | GeospatialFilter
-
     model_config = ConfigDict(extra="forbid")
 
 
 class DatasetFilter(BaseModel):
     names: list[str] = Field(default_factory=list)
-    metadata: list[MetadataFilter] = Field(default_factory=list)
-
+    metadata: list[MetaDatumFilter] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")
 
 
 class ModelFilter(BaseModel):
     names: list[str] = Field(default_factory=list)
-    metadata: list[MetadataFilter] = Field(default_factory=list)
-
+    metadata: list[MetaDatumFilter] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")
 
 
 class DatumFilter(BaseModel):
     uids: list[str] = Field(default_factory=list)
-    metadata: list[MetadataFilter] = Field(default_factory=list)
+    metadata: list[MetaDatumFilter] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -90,17 +87,14 @@ class AnnotationFilter(BaseModel):
     task_types: list[TaskType] = Field(default_factory=list)
     annotation_types: list[AnnotationType] = Field(default_factory=list)
 
-    # filter by geometric area
-    min_area: float | None = None
-    max_area: float | None = None
+    # filter by attributes
+    geometry: GeometricFilter | None = None
 
     # filter by metadata
-    metadata: list[MetadataFilter] = Field(default_factory=list)
+    metadata: list[MetaDatumFilter] = Field(default_factory=list)
 
     # toggle
     allow_conversion: bool = False
-    include_groundtruths: bool = True
-    include_predictions: bool = True
 
     model_config = ConfigDict(extra="forbid")
 
@@ -108,7 +102,17 @@ class AnnotationFilter(BaseModel):
 class LabelFilter(BaseModel):
     labels: list[schemas.Label] = Field(default_factory=list)
     keys: list[str] = Field(default_factory=list)
+    model_config = ConfigDict(extra="forbid")
 
+
+class GroundTruthFilter(BaseModel):
+    labels: LabelFilter | None = None
+    model_config = ConfigDict(extra="forbid")
+
+
+class PredictionFilter(BaseModel):
+    labels: LabelFilter | None = None
+    score: NumericFilter | None = None
     model_config = ConfigDict(extra="forbid")
 
 
@@ -118,6 +122,8 @@ class Filter(BaseModel):
     models: ModelFilter | None = None
     datums: DatumFilter | None = None
     annotations: AnnotationFilter | None = None
+    groundtruths: GroundTruthFilter | None = None
+    predictions: PredictionFilter | None = None
     labels: LabelFilter | None = None
 
     model_config = ConfigDict(extra="forbid")
