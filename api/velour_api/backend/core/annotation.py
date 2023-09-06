@@ -203,8 +203,9 @@ def get_scored_annotation(
 ) -> schemas.Annotation:
     # Retrieve all labels associated with annotation
     scored_labels = [
-        schemas.ScoredLabel(
-            label=schemas.Label(key=scored_label[0], value=scored_label[1]),
+        schemas.Label(
+            key=scored_label[0],
+            value=scored_label[1],
             score=scored_label[2],
         )
         for scored_label in (
@@ -221,9 +222,9 @@ def get_scored_annotation(
     ]
 
     # Initialize
-    retval = schemas.ScoredAnnotation(
+    retval = schemas.Annotation(
         task_type=annotation.task_type,
-        scored_labels=scored_labels,
+        labels=scored_labels,
         metadata=get_metadata(db, annotation=annotation),
         bounding_box=None,
         polygon=None,

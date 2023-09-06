@@ -42,10 +42,10 @@ def create_prediction(
         rows += [
             models.Prediction(
                 annotation_id=annotation.id,
-                label_id=core.create_label(db, scored_label.label).id,
+                label_id=core.create_label(db, scored_label).id,
                 score=scored_label.score,
             )
-            for scored_label in predicted_annotation.scored_labels
+            for scored_label in predicted_annotation.labels
         ]
     try:
         db.add_all(rows)
@@ -61,7 +61,6 @@ def get_prediction(
     model_name: str,
     datum_uid: str,
 ) -> schemas.Prediction:
-
     # get datum
     datum = core.get_datum(db, datum_uid)
 
@@ -90,7 +89,6 @@ def get_predictions(
     db: Session,
     request: schemas.Filter,
 ) -> list[schemas.Prediction]:
-
     datums = ops.BackendQuery.datum().filter(request).all(db)
 
     return [core.get_scored_annotations(db, datum) for datum in datums]
