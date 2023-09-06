@@ -83,8 +83,7 @@ def get_labels(
 def get_scored_labels(
     db: Session,
     annotation: models.Annotation,
-) -> list[schemas.ScoredLabel]:
-
+) -> list[schemas.Label]:
     scored_labels = (
         db.query(models.Prediction.score, models.Label.key, models.Label.value)
         .select_from(models.Prediction)
@@ -94,11 +93,9 @@ def get_scored_labels(
     )
 
     return [
-        schemas.ScoredLabel(
-            label=schemas.Label(
-                key=label[1],
-                value=label[2],
-            ),
+        schemas.Label(
+            key=label[1],
+            value=label[2],
             score=label[0],
         )
         for label in scored_labels

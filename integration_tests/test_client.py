@@ -37,8 +37,6 @@ from velour.schemas import (
     Polygon,
     Prediction,
     Raster,
-    ScoredAnnotation,
-    ScoredLabel,
 )
 from velour_api import crud, exceptions
 from velour_api.backend import jobs, models
@@ -461,13 +459,9 @@ def pred_dets(
             model=model_name,
             datum=img1.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.DETECTION,
-                    scored_labels=[
-                        ScoredLabel(
-                            label=Label(key="k1", value="v1"), score=0.3
-                        )
-                    ],
+                    labels=[Label(key="k1", value="v1", score=0.3)],
                     bounding_box=rect1,
                 )
             ],
@@ -476,13 +470,9 @@ def pred_dets(
             model=model_name,
             datum=img2.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.DETECTION,
-                    scored_labels=[
-                        ScoredLabel(
-                            label=Label(key="k2", value="v2"), score=0.98
-                        )
-                    ],
+                    labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=rect2,
                 )
             ],
@@ -499,9 +489,9 @@ def pred_poly_dets(
             model=det.model,
             datum=det.datum,
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.DETECTION,
-                    scored_labels=annotation.scored_labels,
+                    labels=annotation.labels,
                     polygon=bbox_to_poly(annotation.bounding_box),
                 )
                 for annotation in det.annotations
@@ -526,13 +516,9 @@ def pred_segs(img1: ImageMetadata, img2: ImageMetadata) -> list[Prediction]:
             model=model_name,
             datum=img1.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.INSTANCE_SEGMENTATION,
-                    scored_labels=[
-                        ScoredLabel(
-                            label=Label(key="k1", value="v1"), score=0.87
-                        )
-                    ],
+                    labels=[Label(key="k1", value="v1", score=0.87)],
                     raster=Raster.from_numpy(mask_1),
                 )
             ],
@@ -541,13 +527,9 @@ def pred_segs(img1: ImageMetadata, img2: ImageMetadata) -> list[Prediction]:
             model=model_name,
             datum=img2.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.INSTANCE_SEGMENTATION,
-                    scored_labels=[
-                        ScoredLabel(
-                            label=Label(key="k2", value="v2"), score=0.92
-                        )
-                    ],
+                    labels=[Label(key="k2", value="v2", score=0.92)],
                     raster=Raster.from_numpy(mask_2),
                 )
             ],
@@ -562,18 +544,12 @@ def pred_clfs(img5: ImageMetadata, img6: ImageMetadata) -> list[Prediction]:
             model=model_name,
             datum=img5.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.CLASSIFICATION,
-                    scored_labels=[
-                        ScoredLabel(
-                            label=Label(key="k12", value="v12"), score=0.47
-                        ),
-                        ScoredLabel(
-                            label=Label(key="k12", value="v16"), score=0.53
-                        ),
-                        ScoredLabel(
-                            label=Label(key="k13", value="v13"), score=1.0
-                        ),
+                    labels=[
+                        Label(key="k12", value="v12", score=0.47),
+                        Label(key="k12", value="v16", score=0.53),
+                        Label(key="k13", value="v13", score=1.0),
                     ],
                 )
             ],
@@ -582,15 +558,11 @@ def pred_clfs(img5: ImageMetadata, img6: ImageMetadata) -> list[Prediction]:
             model=model_name,
             datum=img6.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.CLASSIFICATION,
-                    scored_labels=[
-                        ScoredLabel(
-                            label=Label(key="k4", value="v4"), score=0.71
-                        ),
-                        ScoredLabel(
-                            label=Label(key="k4", value="v5"), score=0.29
-                        ),
+                    labels=[
+                        Label(key="k4", value="v4", score=0.71),
+                        Label(key="k4", value="v5", score=0.29),
                     ],
                 )
             ],
@@ -989,20 +961,16 @@ def test_create_pred_detections_as_bbox_or_poly(
         model=model_name,
         datum=img1.to_datum(),
         annotations=[
-            ScoredAnnotation(
+            Annotation(
                 task_type=TaskType.DETECTION,
-                scored_labels=[
-                    ScoredLabel(label=Label(key="k", value="v"), score=0.6)
-                ],
+                labels=[Label(key="k", value="v", score=0.6)],
                 bounding_box=BoundingBox.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
             ),
-            ScoredAnnotation(
+            Annotation(
                 task_type=TaskType.DETECTION,
-                scored_labels=[
-                    ScoredLabel(label=Label(key="k", value="v"), score=0.4)
-                ],
+                labels=[Label(key="k", value="v", score=0.4)],
                 polygon=Polygon(
                     boundary=BasicPolygon(
                         points=[
@@ -1293,12 +1261,10 @@ def test_iou(
             model=model_name,
             datum=img1.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.DETECTION,
                     polygon=rect2_poly,
-                    scored_labels=[
-                        ScoredLabel(label=Label("k", "v"), score=0.6)
-                    ],
+                    labels=[Label("k", "v", score=0.6)],
                 )
             ],
         )
@@ -1745,18 +1711,12 @@ def test_create_tabular_model_with_predicted_classifications(
                 model=model_name,
                 datum=Datum(dataset=dset_name, uid="uid1"),
                 annotations=[
-                    ScoredAnnotation(
+                    Annotation(
                         task_type=TaskType.CLASSIFICATION,
-                        scored_labels=[
-                            ScoredLabel(
-                                label=Label(key="k1", value="v1"), score=0.6
-                            ),
-                            ScoredLabel(
-                                label=Label(key="k1", value="v2"), score=0.4
-                            ),
-                            ScoredLabel(
-                                label=Label(key="k2", value="v6"), score=1.0
-                            ),
+                        labels=[
+                            Label(key="k1", value="v1", score=0.6),
+                            Label(key="k1", value="v2", score=0.4),
+                            Label(key="k2", value="v6", score=1.0),
                         ],
                     )
                 ],
@@ -1768,15 +1728,11 @@ def test_create_tabular_model_with_predicted_classifications(
                     uid="uid2",
                 ),
                 annotations=[
-                    ScoredAnnotation(
+                    Annotation(
                         task_type=TaskType.CLASSIFICATION,
-                        scored_labels=[
-                            ScoredLabel(
-                                label=Label(key="k1", value="v1"), score=0.1
-                            ),
-                            ScoredLabel(
-                                label=Label(key="k1", value="v2"), score=0.9
-                            ),
+                        labels=[
+                            Label(key="k1", value="v1", score=0.1),
+                            Label(key="k1", value="v2", score=0.9),
                         ],
                     )
                 ],
@@ -1832,12 +1788,10 @@ def test_evaluate_tabular_clf(
             model=model_name,
             datum=Datum(dataset=dset_name, uid=f"uid{i}"),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.CLASSIFICATION,
-                    scored_labels=[
-                        ScoredLabel(
-                            Label(key="class", value=str(i)), score=pred[i]
-                        )
+                    labels=[
+                        Label(key="class", value=str(i), score=pred[i])
                         for i in range(len(pred))
                     ],
                 )
@@ -2080,9 +2034,9 @@ def test_evaluate_tabular_clf(
 #         model=model_name,
 #         datum=tabular_datum,
 #         annotations=[
-#             ScoredAnnotation(
+#             Annotation(
 #                 task_type=TaskType.CLASSIFICATION,
-#                 scored_labels=[
+#                 labels=[
 #                     ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
 #                     for i in range(len(pred))
 #                 ]

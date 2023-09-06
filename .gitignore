@@ -16,3 +16,5 @@ build
 site/*
 *.ipynb
 runs
+
+.ipynb_checkpoints

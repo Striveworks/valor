@@ -183,9 +183,7 @@ def draw_detections_on_image(
 
 
 def _draw_detection_on_image(
-    detection: Union[schemas.Annotation, schemas.ScoredAnnotation],
-    img: Image.Image,
-    inplace: bool,
+    detection: schemas.Annotation, img: Image.Image, inplace: bool
 ) -> Image.Image:
     text = ", ".join(
         [f"{label.key}:{label.value}" for label in detection.labels]

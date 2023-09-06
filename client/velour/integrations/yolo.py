@@ -6,13 +6,12 @@ from PIL.Image import Resampling
 
 from velour import enums
 from velour.schemas import (
+    Annotation,
     BoundingBox,
     ImageMetadata,
     Label,
     Prediction,
     Raster,
-    ScoredAnnotation,
-    ScoredLabel,
 )
 
 
@@ -34,11 +33,8 @@ def parse_yolo_image_classification(
         raise RuntimeError
 
     # Create scored label list
-    scored_labels = [
-        ScoredLabel(
-            label=Label(key=label_key, value=labels[key]),
-            score=probability.item(),
-        )
+    labels = [
+        Label(key=label_key, value=labels[key], score=probability.item())
         for key, probability in list(zip(labels, probabilities))
     ]
 
@@ -46,10 +42,7 @@ def parse_yolo_image_classification(
     return Prediction(
         datum=image.to_datum(),
         annotations=[
-            ScoredAnnotation(
-                task_type=enums.TaskType.CLASSIFICATION,
-                scored_labels=scored_labels,
-            )
+            Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=labels)
         ],
     )
 
@@ -71,11 +64,8 @@ def parse_yolo_object_detection(
         raise RuntimeError
 
     # Create scored label list
-    scored_labels = [
-        ScoredLabel(
-            label=Label(key=label_key, value=label),
-            score=probability,
-        )
+    labels = [
+        Label(key=label_key, value=label, score=probability)
         for label, probability in list(zip(labels, probabilities))
     ]
 
@@ -93,12 +83,12 @@ def parse_yolo_object_detection(
     return Prediction(
         datum=image.to_datum(),
         annotations=[
-            ScoredAnnotation(
+            Annotation(
                 task_type=enums.TaskType.DETECTION,
-                scored_labels=[scored_label],
+                labels=[scored_label],
                 bounding_box=bbox,
             )
-            for bbox, scored_label in list(zip(bboxes, scored_labels))
+            for bbox, scored_label in list(zip(bboxes, labels))
         ],
     )
 
@@ -141,11 +131,8 @@ def parse_yolo_image_segmentation(
         raise RuntimeError
 
     # Create scored label list
-    scored_labels = [
-        ScoredLabel(
-            label=Label(key=label_key, value=label),
-            score=probability,
-        )
+    labels = [
+        Label(key=label_key, value=label, score=probability)
         for label, probability in list(zip(labels, probabilities))
     ]
 
@@ -161,12 +148,12 @@ def parse_yolo_image_segmentation(
     return Prediction(
         datum=image.to_datum(),
         annotations=[
-            ScoredAnnotation(
+            Annotation(
                 task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-                scored_labels=[scored_label],
+                labels=[scored_label],
                 raster=Raster.from_numpy(mask),
             )
-            for mask, scored_label in list(zip(masks, scored_labels))
+            for mask, scored_label in list(zip(masks, labels))
         ],
     )
 
