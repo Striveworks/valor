@@ -22,7 +22,7 @@ from sqlalchemy import and_, create_engine, func, select, text
 from sqlalchemy.orm import Session
 
 from velour.client import Client, ClientException, Dataset, Model
-from velour.enums import AnnotationType, DataType, JobStatus, TaskType
+from velour.enums import DataType, JobStatus, TaskType
 from velour.schemas import (
     Annotation,
     BasicPolygon,
@@ -1318,8 +1318,6 @@ def test_evaluate_ap(
 
     eval_job = model.evaluate_ap(
         dataset=dataset,
-        gt_type=AnnotationType.BOX,
-        pd_type=AnnotationType.BOX,
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
         label_key="k1",
@@ -1397,8 +1395,6 @@ def test_evaluate_ap(
     # are not None
     eval_job_bounded_area_10_2000 = model.evaluate_ap(
         dataset=dataset,
-        pd_type="box",
-        gt_type="box",
         task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1424,8 +1420,6 @@ def test_evaluate_ap(
     # min area threshold should divide the set of annotations
     eval_job_min_area_1200 = model.evaluate_ap(
         dataset=dataset,
-        pd_type="box",
-        gt_type="box",
         task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1448,8 +1442,6 @@ def test_evaluate_ap(
     # check for difference with max area now dividing the set of annotations
     eval_job_max_area_1200 = model.evaluate_ap(
         dataset=dataset,
-        pd_type="box",
-        gt_type="box",
         task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1473,8 +1465,6 @@ def test_evaluate_ap(
     # except now has an upper bound
     eval_job_bounded_area_1200_1800 = model.evaluate_ap(
         dataset=dataset,
-        pd_type="box",
-        gt_type="box",
         task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
