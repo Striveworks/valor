@@ -187,7 +187,16 @@ def evaluate(fn: callable) -> callable:
             model_name=model_name,
         )
 
-        results = fn(*args, **kwargs)
+        try:
+            results = fn(*args, **kwargs)
+        except Exception as e:
+            _update_backend_state(
+                status=State.READY,
+                dataset_name=dataset_name,
+                model_name=model_name,
+            )
+            logger.debug(f"Evaluation request failed. Exception: {str(e)}")
+            raise e
 
         if hasattr(results, "job_id"):
             _update_job_state(
