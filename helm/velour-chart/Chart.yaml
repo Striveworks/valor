@@ -1,6 +1,7 @@
 apiVersion: v2
 name: velour-chart
 description: A Helm chart for Kubernetes
+icon: "https://www.nzherald.co.nz/resizer/1ivNOyxe01Dg7k-4FgtRrA6HVRo=/576x613/smart/filters:quality(70)/cloudfront-ap-southeast-2.images.arcpublishing.com/nzme/JIF74DGTB5QQ7VPSG5V3JJ552A.jpg"
 
 # A chart can be either an 'application' or a 'library' chart.
 #
