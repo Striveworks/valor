@@ -214,7 +214,7 @@ def gt_instance_segs_create(
             datum=img2.to_datum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     polygon=poly_without_hole,
                 ),
@@ -683,7 +683,7 @@ def test_create_predicted_classifications_and_delete_model(
     assert db.scalar(func.count(models.GroundTruth.id)) == 0
 
 
-def test_create_groundtruth_segmentations_and_delete_dataset(
+def test_create_groundtruth_instance_segmentations_and_delete_dataset(
     db: Session, gt_instance_segs_create: list[schemas.GroundTruth]
 ):
     # sanity check nothing in db
@@ -699,6 +699,9 @@ def test_create_groundtruth_segmentations_and_delete_dataset(
     assert db.scalar(func.count(models.Datum.id)) == 2
     assert db.scalar(func.count(models.GroundTruth.id)) == 4
     assert db.scalar(func.count(models.Label.id)) == 2
+
+    for a in db.scalars(select(models.Annotation)):
+        assert a.task_type == enums.TaskType.INSTANCE_SEGMENTATION
 
     # delete dataset and check the cascade worked
     crud.delete(db=db, dataset_name=dset_name)
