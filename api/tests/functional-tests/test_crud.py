@@ -191,12 +191,12 @@ def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
 
 
 @pytest.fixture
-def gt_segs_create(
+def gt_instance_segs_create(
     poly_with_hole: schemas.BasicPolygon,
     poly_without_hole: schemas.BasicPolygon,
     img1: schemas.Image,
     img2: schemas.Image,
-) -> list[schemas.GroundTruth :]:
+) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
             dataset=dset_name,
@@ -236,7 +236,7 @@ def gt_segs_create(
 
 
 @pytest.fixture
-def pred_segs_create(
+def pred_instance_segs_create(
     mask_bytes1: bytes,
     img1: schemas.Image,
 ) -> list[schemas.Prediction]:
@@ -684,14 +684,14 @@ def test_create_predicted_classifications_and_delete_model(
 
 
 def test_create_groundtruth_segmentations_and_delete_dataset(
-    db: Session, gt_segs_create: list[schemas.GroundTruth]
+    db: Session, gt_instance_segs_create: list[schemas.GroundTruth]
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
-    for gt in gt_segs_create:
+    for gt in gt_instance_segs_create:
         gt.datum.dataset = dset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
@@ -716,27 +716,27 @@ def test_create_groundtruth_segmentations_and_delete_dataset(
 
 def test_create_predicted_segmentations_check_area_and_delete_model(
     db: Session,
-    pred_segs_create: list[schemas.Prediction],
-    gt_segs_create: list[schemas.GroundTruth],
+    pred_instance_segs_create: list[schemas.Prediction],
+    gt_instance_segs_create: list[schemas.GroundTruth],
 ):
     # create dataset, add images, and add predictions
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.StateflowError) as exc_info:
-        for pd in pred_segs_create:
+        for pd in pred_instance_segs_create:
             pd.model = model_name
             crud.create_prediction(db=db, prediction=pd)
     assert "does not support model operations" in str(exc_info)
 
     # create groundtruths
-    for gt in gt_segs_create:
+    for gt in gt_instance_segs_create:
         gt.datum.dataset = dset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     # check this gives an error since the model has not been crated yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        for pd in pred_segs_create:
+        for pd in pred_instance_segs_create:
             crud.create_prediction(db=db, prediction=pd)
     assert "does not exist" in str(exc_info)
 
@@ -745,7 +745,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        for pd in pred_segs_create:
+        for pd in pred_instance_segs_create:
             crud.create_prediction(db=db, prediction=pd)
     assert "does not exist" in str(exc_info)
 
@@ -753,7 +753,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.DatumDoesNotExistError) as exc_info:
-        for i, pd in enumerate(pred_segs_create):
+        for i, pd in enumerate(pred_instance_segs_create):
             temp_pd = pd.__deepcopy__()
             temp_pd.model = model_name
             temp_pd.datum.uid = f"random{i}"
@@ -761,7 +761,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     assert "does not exist" in str(exc_info)
 
     # create predictions
-    for pd in pred_segs_create:
+    for pd in pred_instance_segs_create:
         pd.model = model_name
         crud.create_prediction(db=db, prediction=pd)
 
@@ -783,7 +783,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     for i in range(len(img.annotations)):
         mask = bytes_to_pil(
-            b64decode(pred_segs_create[0].annotations[i].raster.mask)
+            b64decode(pred_instance_segs_create[0].annotations[i].raster.mask)
         )
         assert np.array(mask).sum() in raster_counts
 
