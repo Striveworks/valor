@@ -728,7 +728,7 @@ def test_core_prediction(
 
 def test_semantic_segmentation_validation():
     # this is valid
-    schemas.GroundTruth(
+    gt = schemas.GroundTruth(
         datum=schemas.Datum(
             uid="uid",
             dataset="name",
@@ -747,6 +747,8 @@ def test_semantic_segmentation_validation():
             ),
         ],
     )
+
+    assert len(gt.annotations) == 2
 
     with pytest.raises(ValueError) as e:
         schemas.GroundTruth(
