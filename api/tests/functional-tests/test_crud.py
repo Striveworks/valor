@@ -237,10 +237,10 @@ def gt_instance_segs_create(
 
 @pytest.fixture
 def pred_instance_segs_create(
-    mask_bytes1: bytes,
+    img1_pred_mask_bytes1: bytes,
     img1: schemas.Image,
 ) -> list[schemas.Prediction]:
-    b64_mask1 = b64encode(mask_bytes1).decode()
+    b64_mask1 = b64encode(img1_pred_mask_bytes1).decode()
 
     return [
         schemas.Prediction(
@@ -258,7 +258,7 @@ def pred_instance_segs_create(
                     ),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.03),
                         schemas.Label(key="k2", value="v2", score=0.97),

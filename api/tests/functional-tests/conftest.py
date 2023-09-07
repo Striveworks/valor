@@ -21,6 +21,9 @@ tablenames = [v.__tablename__ for v in classes if hasattr(v, "__tablename__")]
 
 np.random.seed(29)
 
+dset_name = "test dataset"
+model_name = "test model"
+
 
 def drop_all(db):
     # clear redis
@@ -41,13 +44,17 @@ def random_mask_bytes(size: tuple[int, int]) -> bytes:
     return f.read()
 
 
+img1_size = (100, 200)
+img2_size = (80, 32)
+
+
 @pytest.fixture
 def img1() -> schemas.Image:
     return schemas.Image(
         dataset="test_dataset",
         uid="uid1",
-        height=10,
-        width=20,
+        height=img1_size[0],
+        width=img1_size[1],
     )
 
 
@@ -56,19 +63,54 @@ def img2() -> schemas.Image:
     return schemas.Image(
         dataset="test_dataset",
         uid="uid2",
-        height=16,
-        width=12,
+        height=img2_size[0],
+        width=img2_size[1],
     )
 
 
 @pytest.fixture
-def mask_bytes1(img1):
-    return random_mask_bytes(size=(img1.height, img1.width))
+def img1_pred_mask_bytes1():
+    return random_mask_bytes(size=img1_size)
 
 
 @pytest.fixture
-def mask_bytes2(img2):
-    return random_mask_bytes(size=(img2.height, img2.width))
+def img1_pred_mask_bytes2():
+    return random_mask_bytes(size=img1_size)
+
+
+@pytest.fixture
+def img1_pred_mask_bytes3():
+    return random_mask_bytes(size=img1_size)
+
+
+@pytest.fixture
+def img1_gt_mask_bytes1():
+    return random_mask_bytes(size=img1_size)
+
+
+@pytest.fixture
+def img1_gt_mask_bytes2():
+    return random_mask_bytes(size=img1_size)
+
+
+@pytest.fixture
+def img1_gt_mask_bytes3():
+    return random_mask_bytes(size=img1_size)
+
+
+@pytest.fixture
+def img2_pred_mask_bytes1():
+    return random_mask_bytes(size=img2_size)
+
+
+@pytest.fixture
+def img2_pred_mask_bytes2():
+    return random_mask_bytes(size=img2_size)
+
+
+@pytest.fixture
+def img2_gt_mask_bytes1():
+    return random_mask_bytes(size=img2_size)
 
 
 @pytest.fixture
@@ -325,3 +367,107 @@ def predictions(
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
     return db.query(models.Prediction).all()
+
+
+# @pytest.fixture
+# def pred_semantic_segs_img1_create(
+#     img1_pred_mask_bytes1: bytes,
+#     img1_pred_mask_bytes2: bytes,
+#     img1_pred_mask_bytes3: bytes,
+#     img1: schemas.Image,
+# ) -> schemas.PredictedSegmentationsCreate:
+#     b64_mask1 = b64encode(img1_pred_mask_bytes1).decode()
+#     b64_mask2 = b64encode(img1_pred_mask_bytes2).decode()
+#     b64_mask3 = b64encode(img1_pred_mask_bytes3).decode()
+#     return schemas.PredictedSegmentationsCreate(
+#         model_name=model_name,
+#         dataset_name=dset_name,
+#         segmentations=[
+#             schemas.PredictedSemanticSegmentation(
+#                 base64_mask=b64_mask1,
+#                 image=img1,
+#                 labels=[schemas.Label(key="k1", value="v1")],
+#             ),
+#             schemas.PredictedSemanticSegmentation(
+#                 base64_mask=b64_mask2,
+#                 image=img1,
+#                 labels=[schemas.Label(key="k2", value="v2")],
+#             ),
+#             schemas.PredictedSemanticSegmentation(
+#                 base64_mask=b64_mask3,
+#                 is_instance=True,
+#                 image=img1,
+#                 labels=[schemas.Label(key="k2", value="v2")],
+#             ),
+#         ],
+#     )
+
+
+# @pytest.fixture
+# def pred_semantic_segs_img2_create(
+#     img2_pred_mask_bytes1: bytes,
+#     img2_pred_mask_bytes2: bytes,
+#     img2: schemas.Image,
+# ) -> schemas.PredictedSegmentationsCreate:
+#     b64_mask1 = b64encode(img2_pred_mask_bytes1).decode()
+#     b64_mask2 = b64encode(img2_pred_mask_bytes2).decode()
+#     return schemas.PredictedSegmentationsCreate(
+#         model_name=model_name,
+#         dataset_name=dset_name,
+#         segmentations=[
+#             schemas.PredictedSemanticSegmentation(
+#                 base64_mask=b64_mask1,
+#                 image=img2,
+#                 labels=[schemas.Label(key="k1", value="v1")],
+#             ),
+#             schemas.PredictedSemanticSegmentation(
+#                 base64_mask=b64_mask2,
+#                 image=img2,
+#                 labels=[schemas.Label(key="k2", value="v3")],
+#             ),
+#         ],
+#     )
+
+
+# @pytest.fixture
+# def gt_semantic_segs_create(
+#     img1_gt_mask_bytes1: bytes,
+#     img1_gt_mask_bytes2: bytes,
+#     img1_gt_mask_bytes3: bytes,
+#     img2_gt_mask_bytes1,
+#     img1: schemas.Image,
+#     img2: schemas.Image,
+# ) -> schemas.GroundTruthSegmentationsCreate:
+#     b64_mask1 = b64encode(img1_gt_mask_bytes1).decode()
+#     b64_mask2 = b64encode(img1_gt_mask_bytes2).decode()
+#     b64_mask3 = b64encode(img1_gt_mask_bytes3).decode()
+#     b64_mask4 = b64encode(img2_gt_mask_bytes1).decode()
+#     return schemas.GroundTruthSegmentationsCreate(
+#         dataset_name=dset_name,
+#         segmentations=[
+#             schemas.GroundTruthSegmentation(
+#                 is_instance=False,
+#                 shape=b64_mask1,
+#                 image=img1,
+#                 labels=[schemas.Label(key="k1", value="v1")],
+#             ),
+#             schemas.GroundTruthSegmentation(
+#                 is_instance=False,
+#                 shape=b64_mask2,
+#                 image=img1,
+#                 labels=[schemas.Label(key="k1", value="v1")],
+#             ),
+#             schemas.GroundTruthSegmentation(
+#                 is_instance=False,
+#                 shape=b64_mask3,
+#                 image=img1,
+#                 labels=[schemas.Label(key="k3", value="v3")],
+#             ),
+#             schemas.GroundTruthSegmentation(
+#                 is_instance=False,
+#                 shape=b64_mask4,
+#                 image=img2,
+#                 labels=[schemas.Label(key="k1", value="v1")],
+#             ),
+#         ],
+#     )
