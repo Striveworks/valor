@@ -726,6 +726,121 @@ def test_core_prediction(
     assert "Semantic segmentation tasks cannot have scores" in str(e)
 
 
+def test_semantic_segmentation_validation():
+    # this is valid
+    schemas.GroundTruth(
+        datum=schemas.Datum(
+            uid="uid",
+            dataset="name",
+        ),
+        annotations=[
+            schemas.Annotation(
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                labels=[
+                    schemas.Label(key="k1", value="v1"),
+                    schemas.Label(key="k2", value="v2"),
+                ],
+            ),
+            schemas.Annotation(
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                labels=[schemas.Label(key="k1", value="v3")],
+            ),
+        ],
+    )
+
+    with pytest.raises(ValueError) as e:
+        schemas.GroundTruth(
+            datum=schemas.Datum(
+                uid="uid",
+                dataset="name",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k1", value="v1"),
+                    ],
+                ),
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[schemas.Label(key="k3", value="v3")],
+                ),
+            ],
+        )
+
+    assert "appears more than" in str(e)
+
+    with pytest.raises(ValueError) as e:
+        schemas.GroundTruth(
+            datum=schemas.Datum(
+                uid="uid",
+                dataset="name",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k1", value="v2"),
+                    ],
+                ),
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                ),
+            ],
+        )
+
+    assert "appears more than" in str(e)
+
+    # this is valid
+    schemas.Prediction(
+        model="model",
+        datum=schemas.Datum(
+            uid="uid",
+            dataset="name",
+        ),
+        annotations=[
+            schemas.Annotation(
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                labels=[
+                    schemas.Label(key="k1", value="v1"),
+                    schemas.Label(key="k2", value="v2"),
+                ],
+            ),
+            schemas.Annotation(
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                labels=[schemas.Label(key="k1", value="v3")],
+            ),
+        ],
+    )
+
+    with pytest.raises(ValueError) as e:
+        schemas.Prediction(
+            model="model",
+            datum=schemas.Datum(
+                uid="uid",
+                dataset="name",
+            ),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k1", value="v1"),
+                    ],
+                ),
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[schemas.Label(key="k3", value="v3")],
+                ),
+            ],
+        )
+
+    assert "appears more than" in str(e)
+
+
 # velour_api.schemas.metadata
 
 

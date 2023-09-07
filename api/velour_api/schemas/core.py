@@ -127,15 +127,38 @@ class Annotation(BaseModel):
         return v
 
 
+def _check_semantic_segmentations_single_label(
+    annotations: list[Annotation],
+) -> None:
+    # check that a label on appears once in the annotations for semenatic segmentations
+    labels = []
+    for annotation in annotations:
+        if annotation.task_type == enums.TaskType.SEMANTIC_SEGMENTATION:
+            for label in annotation.labels:
+                if label in labels:
+                    raise ValueError(
+                        f"Label {label} appears more than once but semantic segmentation "
+                        "tasks can only have at most one annotation per label."
+                    )
+                labels.append(label)
+
+
 class GroundTruth(BaseModel):
     datum: Datum
     annotations: list[Annotation]
 
     @field_validator("annotations")
     @classmethod
-    def check_annotations(cls, v):
+    def check_annotations_not_empty(cls, v: list[Annotation]):
         if not v:
             raise ValueError("annotations is empty")
+        return v
+
+    @field_validator("annotations")
+    @classmethod
+    def check_semantic_segmentation_annotations(cls, v: list[Annotation]):
+        # make sure a label doesn't appear more than once
+        _check_semantic_segmentations_single_label(v)
         return v
 
     @model_validator(mode="after")
@@ -216,6 +239,13 @@ class Prediction(BaseModel):
                             "For each label key, prediction scores must sum to 1, but"
                             f" for label key {k} got scores summing to {total_score}."
                         )
+        return v
+
+    @field_validator("annotations")
+    @classmethod
+    def check_semantic_segmentation_annotations(cls, v: list[Annotation]):
+        # make sure a label doesn't appear more than once
+        _check_semantic_segmentations_single_label(v)
         return v
 
 
