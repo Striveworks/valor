@@ -95,10 +95,9 @@ def _remove_backend_state(
 
 def create(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
-
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 2:
-            raise RuntimeError
+            raise RuntimeError("input arguments should be explicitly defined")
 
         # unpack args
         dataset_name = None
@@ -138,7 +137,6 @@ def create(fn: callable) -> callable:
 
 def finalize(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
-
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 3:
             raise RuntimeError
@@ -165,7 +163,6 @@ def finalize(fn: callable) -> callable:
 
 def evaluate(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
-
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 2:
             raise RuntimeError
@@ -204,7 +201,6 @@ def evaluate(fn: callable) -> callable:
 
 def computation(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
-
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 2:
             raise RuntimeError
@@ -293,7 +289,6 @@ def computation(fn: callable) -> callable:
 
 def delete(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
-
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 3:
             raise RuntimeError

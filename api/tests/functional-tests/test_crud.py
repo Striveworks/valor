@@ -683,15 +683,15 @@ def test_create_predicted_classifications_and_delete_model(
     assert db.scalar(func.count(models.GroundTruth.id)) == 0
 
 
-def test_create_groundtruth_instance_segmentations_and_delete_dataset(
-    db: Session, gt_instance_segs_create: list[schemas.GroundTruth]
+def _test_create_groundtruth_segmentations_and_delete_dataset(
+    db: Session, gts: list[schemas.GroundTruth], task: enums.TaskType
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
-    for gt in gt_instance_segs_create:
+    for gt in gts:
         gt.datum.dataset = dset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
@@ -701,7 +701,7 @@ def test_create_groundtruth_instance_segmentations_and_delete_dataset(
     assert db.scalar(func.count(models.Label.id)) == 2
 
     for a in db.scalars(select(models.Annotation)):
-        assert a.task_type == enums.TaskType.INSTANCE_SEGMENTATION
+        assert a.task_type == task
 
     # delete dataset and check the cascade worked
     crud.delete(db=db, dataset_name=dset_name)
@@ -715,6 +715,22 @@ def test_create_groundtruth_instance_segmentations_and_delete_dataset(
 
     # make sure labels are still there`
     assert db.scalar(func.count(models.Label.id)) == 2
+
+
+def test_create_groundtruth_instance_segmentations_and_delete_dataset(
+    db: Session, gt_instance_segs_create: list[schemas.GroundTruth]
+):
+    _test_create_groundtruth_segmentations_and_delete_dataset(
+        db, gt_instance_segs_create, enums.TaskType.INSTANCE_SEGMENTATION
+    )
+
+
+def test_create_groundtruth_semantic_segmentations_and_delete_dataset(
+    db: Session, gt_semantic_segs_create: list[schemas.GroundTruth]
+):
+    _test_create_groundtruth_segmentations_and_delete_dataset(
+        db, gt_semantic_segs_create, enums.TaskType.SEMANTIC_SEGMENTATION
+    )
 
 
 def test_create_predicted_segmentations_check_area_and_delete_model(

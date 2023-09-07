@@ -1,4 +1,5 @@
 import io
+from base64 import b64encode
 
 import numpy as np
 import pytest
@@ -21,8 +22,8 @@ tablenames = [v.__tablename__ for v in classes if hasattr(v, "__tablename__")]
 
 np.random.seed(29)
 
-dset_name = "test dataset"
-model_name = "test model"
+dset_name = "test_dataset"
+model_name = "test_model"
 
 
 def drop_all(db):
@@ -369,105 +370,110 @@ def predictions(
     return db.query(models.Prediction).all()
 
 
-# @pytest.fixture
-# def pred_semantic_segs_img1_create(
-#     img1_pred_mask_bytes1: bytes,
-#     img1_pred_mask_bytes2: bytes,
-#     img1_pred_mask_bytes3: bytes,
-#     img1: schemas.Image,
-# ) -> schemas.PredictedSegmentationsCreate:
-#     b64_mask1 = b64encode(img1_pred_mask_bytes1).decode()
-#     b64_mask2 = b64encode(img1_pred_mask_bytes2).decode()
-#     b64_mask3 = b64encode(img1_pred_mask_bytes3).decode()
-#     return schemas.PredictedSegmentationsCreate(
-#         model_name=model_name,
-#         dataset_name=dset_name,
-#         segmentations=[
-#             schemas.PredictedSemanticSegmentation(
-#                 base64_mask=b64_mask1,
-#                 image=img1,
-#                 labels=[schemas.Label(key="k1", value="v1")],
-#             ),
-#             schemas.PredictedSemanticSegmentation(
-#                 base64_mask=b64_mask2,
-#                 image=img1,
-#                 labels=[schemas.Label(key="k2", value="v2")],
-#             ),
-#             schemas.PredictedSemanticSegmentation(
-#                 base64_mask=b64_mask3,
-#                 is_instance=True,
-#                 image=img1,
-#                 labels=[schemas.Label(key="k2", value="v2")],
-#             ),
-#         ],
-#     )
+@pytest.fixture
+def pred_semantic_segs_img1_create(
+    img1_pred_mask_bytes1: bytes,
+    img1_pred_mask_bytes2: bytes,
+    img1_pred_mask_bytes3: bytes,
+    img1: schemas.Image,
+) -> schemas.Prediction:
+    b64_mask1 = b64encode(img1_pred_mask_bytes1).decode()
+    b64_mask2 = b64encode(img1_pred_mask_bytes2).decode()
+    b64_mask3 = b64encode(img1_pred_mask_bytes3).decode()
+    return schemas.Prediction(
+        model=model_name,
+        datum=img1.to_datum(),
+        annotations=[
+            schemas.Annotation(
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                raster=schemas.Raster(mask=b64_mask1),
+                labels=[schemas.Label(key="k1", value="v1")],
+            ),
+            schemas.Annotation(
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                raster=schemas.Raster(mask=b64_mask2),
+                labels=[schemas.Label(key="k2", value="v2")],
+            ),
+            schemas.Annotation(
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                raster=schemas.Raster(mask=b64_mask3),
+                labels=[schemas.Label(key="k2", value="v3")],
+            ),
+        ],
+    )
 
 
-# @pytest.fixture
-# def pred_semantic_segs_img2_create(
-#     img2_pred_mask_bytes1: bytes,
-#     img2_pred_mask_bytes2: bytes,
-#     img2: schemas.Image,
-# ) -> schemas.PredictedSegmentationsCreate:
-#     b64_mask1 = b64encode(img2_pred_mask_bytes1).decode()
-#     b64_mask2 = b64encode(img2_pred_mask_bytes2).decode()
-#     return schemas.PredictedSegmentationsCreate(
-#         model_name=model_name,
-#         dataset_name=dset_name,
-#         segmentations=[
-#             schemas.PredictedSemanticSegmentation(
-#                 base64_mask=b64_mask1,
-#                 image=img2,
-#                 labels=[schemas.Label(key="k1", value="v1")],
-#             ),
-#             schemas.PredictedSemanticSegmentation(
-#                 base64_mask=b64_mask2,
-#                 image=img2,
-#                 labels=[schemas.Label(key="k2", value="v3")],
-#             ),
-#         ],
-#     )
+@pytest.fixture
+def pred_semantic_segs_img2_create(
+    img2_pred_mask_bytes1: bytes,
+    img2_pred_mask_bytes2: bytes,
+    img2: schemas.Image,
+) -> schemas.Prediction:
+    b64_mask1 = b64encode(img2_pred_mask_bytes1).decode()
+    b64_mask2 = b64encode(img2_pred_mask_bytes2).decode()
+    return schemas.Prediction(
+        model=model_name,
+        datum=img2.to_datum(),
+        annotations=[
+            schemas.Annotation(
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                raster=schemas.Raster(mask=b64_mask1),
+                labels=[schemas.Label(key="k1", value="v1")],
+            ),
+            schemas.Annotation(
+                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                raster=schemas.Raster(mask=b64_mask2),
+                labels=[schemas.Label(key="k2", value="v3")],
+            ),
+        ],
+    )
 
 
-# @pytest.fixture
-# def gt_semantic_segs_create(
-#     img1_gt_mask_bytes1: bytes,
-#     img1_gt_mask_bytes2: bytes,
-#     img1_gt_mask_bytes3: bytes,
-#     img2_gt_mask_bytes1,
-#     img1: schemas.Image,
-#     img2: schemas.Image,
-# ) -> schemas.GroundTruthSegmentationsCreate:
-#     b64_mask1 = b64encode(img1_gt_mask_bytes1).decode()
-#     b64_mask2 = b64encode(img1_gt_mask_bytes2).decode()
-#     b64_mask3 = b64encode(img1_gt_mask_bytes3).decode()
-#     b64_mask4 = b64encode(img2_gt_mask_bytes1).decode()
-#     return schemas.GroundTruthSegmentationsCreate(
-#         dataset_name=dset_name,
-#         segmentations=[
-#             schemas.GroundTruthSegmentation(
-#                 is_instance=False,
-#                 shape=b64_mask1,
-#                 image=img1,
-#                 labels=[schemas.Label(key="k1", value="v1")],
-#             ),
-#             schemas.GroundTruthSegmentation(
-#                 is_instance=False,
-#                 shape=b64_mask2,
-#                 image=img1,
-#                 labels=[schemas.Label(key="k1", value="v1")],
-#             ),
-#             schemas.GroundTruthSegmentation(
-#                 is_instance=False,
-#                 shape=b64_mask3,
-#                 image=img1,
-#                 labels=[schemas.Label(key="k3", value="v3")],
-#             ),
-#             schemas.GroundTruthSegmentation(
-#                 is_instance=False,
-#                 shape=b64_mask4,
-#                 image=img2,
-#                 labels=[schemas.Label(key="k1", value="v1")],
-#             ),
-#         ],
-#     )
+@pytest.fixture
+def gt_semantic_segs_create(
+    img1_gt_mask_bytes1: bytes,
+    img1_gt_mask_bytes2: bytes,
+    img1_gt_mask_bytes3: bytes,
+    img2_gt_mask_bytes1: bytes,
+    img1: schemas.Image,
+    img2: schemas.Image,
+) -> list[schemas.GroundTruth]:
+    b64_mask1 = b64encode(img1_gt_mask_bytes1).decode()
+    b64_mask2 = b64encode(img1_gt_mask_bytes2).decode()
+    b64_mask3 = b64encode(img1_gt_mask_bytes3).decode()
+    b64_mask4 = b64encode(img2_gt_mask_bytes1).decode()
+
+    return [
+        schemas.GroundTruth(
+            dataset_name=dset_name,
+            datum=img1.to_datum(),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    raster=schemas.Raster(mask=b64_mask1),
+                    labels=[schemas.Label(key="k1", value="v1")],
+                ),
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    raster=schemas.Raster(mask=b64_mask2),
+                    labels=[schemas.Label(key="k1", value="v2")],
+                ),
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    raster=schemas.Raster(mask=b64_mask3),
+                    labels=[schemas.Label(key="k3", value="v3")],
+                ),
+            ],
+        ),
+        schemas.GroundTruth(
+            dataset_name=dset_name,
+            datum=img2.to_datum(),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    raster=schemas.Raster(mask=b64_mask4),
+                    labels=[schemas.Label(key="k1", value="v1")],
+                )
+            ],
+        ),
+    ]

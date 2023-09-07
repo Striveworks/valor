@@ -1,5 +1,5 @@
 import pytest
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
@@ -9,7 +9,8 @@ from velour_api.backend.metrics.classification import (
     roc_auc,
 )
 from velour_api.backend.metrics.detection import compute_ap_metrics
-from velour_api.backend.models import GroundTruth, MetaDatum, Prediction
+from velour_api.backend.metrics.segmentation import _gt_query, _pred_query
+from velour_api.backend.models import GroundTruth, Label, MetaDatum, Prediction
 
 dataset_name = "test_dataset"
 model_name = "test_model"
@@ -364,6 +365,69 @@ def test_roc_auc(db, classification_test_data):
     with pytest.raises(RuntimeError) as exc_info:
         roc_auc(db, dataset_name, model_name, label_key="not a key")
     assert "is not a classification label" in str(exc_info)
+
+
+def test__gt_query_and_pred_query(
+    db: Session,
+    gt_semantic_segs_create: list[schemas.GroundTruth],
+    pred_semantic_segs_img1_create: schemas.Prediction,
+    pred_semantic_segs_img2_create: schemas.Prediction,
+):
+    crud.create_dataset(
+        db=db,
+        dataset=schemas.Dataset(name=dataset_name),
+    )
+    for gt in gt_semantic_segs_create:
+        crud.create_groundtruth(db=db, groundtruth=gt)
+
+    crud.create_model(db=db, model=schemas.Model(name=model_name))
+
+    crud.create_prediction(db=db, prediction=pred_semantic_segs_img1_create)
+    crud.create_prediction(db=db, prediction=pred_semantic_segs_img2_create)
+
+    for label_key, label_value, expected_number in [
+        ("k1", "v1", 2),
+        ("k1", "v2", 1),
+        ("k2", "v2", 0),
+        ("k3", "v3", 1),
+    ]:
+        label_id = db.scalar(
+            select(Label.id).where(
+                and_(Label.key == label_key, Label.value == label_value)
+            )
+        )
+
+        assert label_id is not None
+
+        q = _gt_query(dataset_name, label_id=label_id)
+        data = db.execute(q).all()
+        assert len(data) == expected_number
+
+    q = _gt_query(dataset_name, label_id=10000000)
+    data = db.execute(q).all()
+    assert len(data) == 0
+
+    for label_key, label_value, expected_number in [
+        ("k1", "v1", 2),
+        ("k1", "v2", 0),
+        ("k2", "v2", 1),
+        ("k2", "v3", 2),
+    ]:
+        label_id = db.scalar(
+            select(Label.id).where(
+                and_(Label.key == label_key, Label.value == label_value)
+            )
+        )
+
+        assert label_id is not None
+
+        q = _pred_query(dataset_name, model_name=model_name, label_id=label_id)
+        data = db.execute(q).all()
+        assert len(data) == expected_number
+
+    q = _pred_query(dataset_name, model_name=model_name, label_id=10000000)
+    data = db.execute(q).all()
+    assert len(data) == 0
 
 
 # @TODO: Will support in second PR, need to validate `ops.BackendQuery`
