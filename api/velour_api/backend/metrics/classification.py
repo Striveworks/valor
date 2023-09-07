@@ -17,7 +17,6 @@ def binary_roc_auc(
     dataset_name: str,
     model_name: str,
     label: schemas.Label,
-    metadatum: schemas.MetaDatum,
 ) -> float:
     """Computes the binary ROC AUC score of a dataset and label
 
@@ -30,8 +29,6 @@ def binary_roc_auc(
     label
         the label that represents the positive class. all other labels with
         the same key as `label` will represent the negative class
-    metadatum_id
-        if not None, then filter out to just the datums that have this as a metadatum
 
     Returns
     -------
@@ -64,16 +61,6 @@ def binary_roc_auc(
             ),
         )
     )
-    # @TODO:
-    # if metadatum:
-    #     gts_query = gts_query.join(
-    #         models.MetaDatum, models.MetaDatum.datum_id == "datum_id"
-    #     ).where(
-    #         and_(
-    #             models.MetaDatum.key == metadatum.key,
-    #             models.MetaDatum.value == metadatum.value,
-    #         )
-    #     )
     gts_query = gts_query.subquery()
 
     # get the prediction scores for the given label (key and value)
@@ -100,15 +87,6 @@ def binary_roc_auc(
             ),
         )
     )
-    if metadatum:
-        preds_query = preds_query.join(
-            models.Metadatum, models.MetaDatum.datum_id == "datum_id"
-        ).where(
-            and_(
-                models.Metadatum.name == metadatum.name,
-                models.Metadatum.value == metadatum.value,
-            )
-        )
     preds_query = preds_query.subquery()
 
     # number of groundtruth labels that match the given label value
@@ -230,9 +208,7 @@ def roc_auc(
     sum_roc_aucs = 0
     label_count = 0
     for label in labels:
-        bin_roc = binary_roc_auc(
-            db, dataset_name, model_name, label, metadatum
-        )
+        bin_roc = binary_roc_auc(db, dataset_name, model_name, label)
 
         if bin_roc is not None:
             sum_roc_aucs += bin_roc
@@ -247,7 +223,6 @@ def get_confusion_matrix_and_metrics_at_label_key(
     model_name: str,
     label_key: str,
     labels: list[models.Label],
-    metadatum: schemas.MetaDatum = None,
 ) -> (
     tuple[
         schemas.ConfusionMatrix,
@@ -274,8 +249,6 @@ def get_confusion_matrix_and_metrics_at_label_key(
     labels
         all of the labels in both the groundtruths and predictions that have key
         equal to `label_key`
-    metadatum_id
-        if not None, then filter out to just the datums that have this as a metadatum
 
     Returns
     -------
@@ -297,7 +270,6 @@ def get_confusion_matrix_and_metrics_at_label_key(
         dataset_name=dataset_name,
         model_name=model_name,
         label_key=label_key,
-        metadatum=metadatum,
     )
 
     if confusion_matrix is None:
@@ -317,7 +289,6 @@ def get_confusion_matrix_and_metrics_at_label_key(
                 dataset_name,
                 model_name,
                 label_key,
-                metadatum=metadatum,
             ),
             group=confusion_matrix.group,
         ),
@@ -432,14 +403,6 @@ def compute_clf_metrics(
     labels = list(ds_labels.union(md_labels))
     unique_label_keys = set([label.key for label in labels])
 
-    # if group_by:
-    #     metadata_ids = [
-    #         metadatum.id
-    #         for metadatum in core.get_metadata(
-    #             db, dataset=dataset, name=group_by
-    #         )
-    #     ]
-
     confusion_matrices, metrics = [], []
 
     for label_key in unique_label_keys:
@@ -458,11 +421,7 @@ def compute_clf_metrics(
                 confusion_matrices.append(cm_and_metrics[0])
                 metrics.extend(cm_and_metrics[1])
 
-        # if group_by is None:
         _add_confusion_matrix_and_metrics()
-        # else:
-        #     for md_id in metadata_ids:
-        #         _add_confusion_matrix_and_metrics(metadatum_id=md_id)
 
     return confusion_matrices, metrics
 
