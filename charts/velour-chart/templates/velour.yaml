@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "velour-chart.fullname" . }}-api
+  name: {{- include "velour-chart.fullname" . }}-api
   labels:
     {{- include "velour-chart.labels" . | nindent 4 }}
 spec:

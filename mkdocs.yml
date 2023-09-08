@@ -10,8 +10,8 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
-plugins:
-  - search
-  - mkdocs-simple-hooks:
-      hooks:
-        on_post_build: "docs.hooks:copy_get"
+# plugins:
+#   - search
+#   - mkdocs-simple-hooks:
+#       hooks:
+#         on_post_build: "docs.hooks:copy_get"
