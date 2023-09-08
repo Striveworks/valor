@@ -9,7 +9,11 @@ from velour_api.backend.metrics.classification import (
     roc_auc,
 )
 from velour_api.backend.metrics.detection import compute_ap_metrics
-from velour_api.backend.metrics.segmentation import _gt_query, _pred_query
+from velour_api.backend.metrics.segmentation import (
+    _gt_query,
+    _pred_query,
+    tp_count,
+)
 from velour_api.backend.models import GroundTruth, Label, MetaDatum, Prediction
 
 dataset_name = "test_dataset"
@@ -367,7 +371,7 @@ def test_roc_auc(db, classification_test_data):
     assert "is not a classification label" in str(exc_info)
 
 
-def test__gt_query_and_pred_query(
+def _create_data(
     db: Session,
     gt_semantic_segs_create: list[schemas.GroundTruth],
     pred_semantic_segs_img1_create: schemas.Prediction,
@@ -385,10 +389,24 @@ def test__gt_query_and_pred_query(
     crud.create_prediction(db=db, prediction=pred_semantic_segs_img1_create)
     crud.create_prediction(db=db, prediction=pred_semantic_segs_img2_create)
 
+
+def test__gt_query_and_pred_query(
+    db: Session,
+    gt_semantic_segs_create: list[schemas.GroundTruth],
+    pred_semantic_segs_img1_create: schemas.Prediction,
+    pred_semantic_segs_img2_create: schemas.Prediction,
+):
+    _create_data(
+        db=db,
+        gt_semantic_segs_create=gt_semantic_segs_create,
+        pred_semantic_segs_img1_create=pred_semantic_segs_img1_create,
+        pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
+    )
+
     for label_key, label_value, expected_number in [
         ("k1", "v1", 2),
         ("k1", "v2", 1),
-        ("k2", "v2", 0),
+        ("k2", "v2", 1),
         ("k3", "v3", 1),
     ]:
         label_id = db.scalar(
@@ -428,6 +446,73 @@ def test__gt_query_and_pred_query(
     q = _pred_query(dataset_name, model_name=model_name, label_id=10000000)
     data = db.execute(q).all()
     assert len(data) == 0
+
+
+def _tp_count(
+    gts: list[schemas.GroundTruth],
+    preds: list[schemas.Prediction],
+    label: schemas.Label,
+):
+    gts = [
+        (gt.datum.uid, ann.raster.array)
+        for gt in gts
+        for ann in gt.annotations
+        if label in ann.labels
+    ]
+
+    preds = [
+        (pred.datum.uid, ann.raster.array)
+        for pred in preds
+        for ann in pred.annotations
+        if label in ann.labels
+    ]
+
+    datum_ids = set([gt[0] for gt in gts]).intersection(
+        [pred[0] for pred in preds]
+    )
+
+    ret = 0
+    for datum_id in datum_ids:
+        gt_mask = [gt[1] for gt in gts if gt[0] == datum_id][0]
+        pred_mask = [pred[1] for pred in preds if pred[0] == datum_id][0]
+
+        ret += (gt_mask * pred_mask).sum()
+
+    return ret
+
+
+def test_tp_count(
+    db: Session,
+    gt_semantic_segs_create: list[schemas.GroundTruth],
+    pred_semantic_segs_img1_create: schemas.Prediction,
+    pred_semantic_segs_img2_create: schemas.Prediction,
+):
+    _create_data(
+        db=db,
+        gt_semantic_segs_create=gt_semantic_segs_create,
+        pred_semantic_segs_img1_create=pred_semantic_segs_img1_create,
+        pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
+    )
+
+    for k, v in [("k1", "v1"), ("k2", "v2")]:
+        label_id = db.scalar(
+            select(Label).where(and_(Label.key == k, Label.value == v))
+        ).id
+
+        expected = _tp_count(
+            gt_semantic_segs_create,
+            [pred_semantic_segs_img1_create, pred_semantic_segs_img2_create],
+            schemas.Label(key=k, value=v),
+        )
+
+        tps = tp_count(
+            db=db,
+            dataset_name=dataset_name,
+            model_name=model_name,
+            label_id=label_id,
+        )
+
+        assert expected == tps
 
 
 # @TODO: Will support in second PR, need to validate `ops.BackendQuery`

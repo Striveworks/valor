@@ -1,4 +1,6 @@
-from sqlalchemy.sql import and_, select
+from geoalchemy2.functions import ST_Count, ST_MapAlgebra
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import and_, func, join, select
 
 from velour_api.backend import models
 from velour_api.enums import TaskType
@@ -61,3 +63,33 @@ def _pred_query(dataset_name: str, label_id: int, model_name: str):
             )
         )
     )
+
+
+def tp_count(
+    db: Session, dataset_name: str, model_name: str, label_id: int
+) -> int:
+    """Computes the pixelwise true positives for the given dataset, model, and label"""
+
+    gt = _gt_query(dataset_name, label_id).subquery()
+    pred = _pred_query(
+        dataset_name=dataset_name, label_id=label_id, model_name=model_name
+    ).subquery()
+
+    ret = db.scalar(
+        select(
+            func.sum(
+                ST_Count(
+                    ST_MapAlgebra(
+                        gt.c.raster,
+                        pred.c.raster,
+                        "[rast1]*[rast2]",  # https://postgis.net/docs/RT_ST_MapAlgebra_expr.html
+                    )
+                )
+            )
+        ).select_from(join(gt, pred, gt.c.datum_id == pred.c.datum_id))
+    )
+
+    if ret is None:
+        return 0
+
+    return int(ret)

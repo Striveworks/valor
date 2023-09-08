@@ -684,7 +684,13 @@ def test_create_predicted_classifications_and_delete_model(
 
 
 def _test_create_groundtruth_segmentations_and_delete_dataset(
-    db: Session, gts: list[schemas.GroundTruth], task: enums.TaskType
+    db: Session,
+    gts: list[schemas.GroundTruth],
+    task: enums.TaskType,
+    expected_anns: int,
+    expected_gts: int,
+    expected_datums: int,
+    expected_labels: int,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -695,10 +701,10 @@ def _test_create_groundtruth_segmentations_and_delete_dataset(
         gt.datum.dataset = dset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
-    assert db.scalar(func.count(models.Annotation.id)) == 4
-    assert db.scalar(func.count(models.Datum.id)) == 2
-    assert db.scalar(func.count(models.GroundTruth.id)) == 4
-    assert db.scalar(func.count(models.Label.id)) == 2
+    assert db.scalar(func.count(models.Annotation.id)) == expected_anns
+    assert db.scalar(func.count(models.Datum.id)) == expected_datums
+    assert db.scalar(func.count(models.GroundTruth.id)) == expected_gts
+    assert db.scalar(func.count(models.Label.id)) == expected_labels
 
     for a in db.scalars(select(models.Annotation)):
         assert a.task_type == task
@@ -714,14 +720,20 @@ def _test_create_groundtruth_segmentations_and_delete_dataset(
         assert db.scalar(func.count(model_cls.id)) == 0
 
     # make sure labels are still there`
-    assert db.scalar(func.count(models.Label.id)) == 2
+    assert db.scalar(func.count(models.Label.id)) == expected_labels
 
 
 def test_create_groundtruth_instance_segmentations_and_delete_dataset(
     db: Session, gt_instance_segs_create: list[schemas.GroundTruth]
 ):
     _test_create_groundtruth_segmentations_and_delete_dataset(
-        db, gt_instance_segs_create, enums.TaskType.INSTANCE_SEGMENTATION
+        db,
+        gt_instance_segs_create,
+        enums.TaskType.INSTANCE_SEGMENTATION,
+        expected_labels=2,
+        expected_anns=4,
+        expected_gts=4,
+        expected_datums=2,
     )
 
 
@@ -729,7 +741,13 @@ def test_create_groundtruth_semantic_segmentations_and_delete_dataset(
     db: Session, gt_semantic_segs_create: list[schemas.GroundTruth]
 ):
     _test_create_groundtruth_segmentations_and_delete_dataset(
-        db, gt_semantic_segs_create, enums.TaskType.SEMANTIC_SEGMENTATION
+        db,
+        gt_semantic_segs_create,
+        enums.TaskType.SEMANTIC_SEGMENTATION,
+        expected_labels=4,
+        expected_anns=4,
+        expected_gts=5,
+        expected_datums=2,
     )
 
 

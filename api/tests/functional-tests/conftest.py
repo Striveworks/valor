@@ -472,7 +472,10 @@ def gt_semantic_segs_create(
                 schemas.Annotation(
                     task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask4),
-                    labels=[schemas.Label(key="k1", value="v1")],
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k2", value="v2"),
+                    ],
                 )
             ],
         ),
