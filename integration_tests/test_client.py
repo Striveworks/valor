@@ -1075,6 +1075,31 @@ def test_create_gt_segs_as_polys_or_masks(
         )
     )
 
+    dataset = Dataset.create(client, dset_name)
+
+    # check we get an error for adding semantic segmentation with duplicate labels
+    with pytest.raises(ClientException) as exc_info:
+        gts = GroundTruth(
+            datum=img1.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[Label(key="k1", value="v1")],
+                    raster=Raster.from_numpy(mask),
+                ),
+                Annotation(
+                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[Label(key="k1", value="v1")],
+                    multipolygon=MultiPolygon(polygons=[poly]),
+                ),
+            ],
+        )
+
+        dataset.add_groundtruth(gts)
+
+    assert "appears more than once" in str(exc_info.value)
+
+    # fine with instance segmentation though
     gts = GroundTruth(
         datum=img1.to_datum(),
         annotations=[
@@ -1084,14 +1109,13 @@ def test_create_gt_segs_as_polys_or_masks(
                 raster=Raster.from_numpy(mask),
             ),
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                task_type=TaskType.INSTANCE_SEGMENTATION,
                 labels=[Label(key="k1", value="v1")],
                 multipolygon=MultiPolygon(polygons=[poly]),
             ),
         ],
     )
 
-    dataset = Dataset.create(client, dset_name)
     dataset.add_groundtruth(gts)
 
     wkts = db.scalars(
