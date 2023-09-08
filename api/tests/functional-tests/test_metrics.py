@@ -12,6 +12,7 @@ from velour_api.backend.metrics.detection import compute_ap_metrics
 from velour_api.backend.metrics.segmentation import (
     _gt_query,
     _pred_query,
+    compute_segmentation_metrics,
     get_groundtruth_labels,
     gt_count,
     pred_count,
@@ -636,6 +637,29 @@ def test_get_groundtruth_labels(
     }
 
     assert len(set([label[-1] for label in labels])) == 4
+
+
+def test_compute_segmentation_metrics(
+    db: Session,
+    gt_semantic_segs_create: list[schemas.GroundTruth],
+    pred_semantic_segs_img1_create: schemas.Prediction,
+    pred_semantic_segs_img2_create: schemas.Prediction,
+):
+    _create_data(
+        db=db,
+        gt_semantic_segs_create=gt_semantic_segs_create,
+        pred_semantic_segs_img1_create=pred_semantic_segs_img1_create,
+        pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
+    )
+
+    metrics = compute_segmentation_metrics(db, dataset_name, model_name)
+    # should have five metrics (one IOU for each of the four labels, and one mIOU)
+    assert len(metrics) == 5
+    for metric in metrics[:-1]:
+        assert isinstance(metric, schemas.IOUMetric)
+        assert metric.value < 1.0
+    assert isinstance(metrics[-1], schemas.mIOUMetric)
+    assert metrics[-1].value < 1.0
 
 
 # @TODO: Will support in second PR, need to validate `ops.BackendQuery`

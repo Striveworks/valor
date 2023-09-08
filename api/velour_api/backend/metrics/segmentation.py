@@ -4,6 +4,8 @@ from sqlalchemy.sql import Select, and_, func, join, select
 
 from velour_api.backend import models
 from velour_api.enums import TaskType
+from velour_api.schemas import Label
+from velour_api.schemas.metrics import IOUMetric, mIOUMetric
 
 # iterate through al the dataset and accumate:
 # tp, fp, fn, tn
@@ -159,5 +161,23 @@ def get_groundtruth_labels(
 
 def compute_segmentation_metrics(
     db: Session, dataset_name: str, model_name: str
-):
-    pass
+) -> list[IOUMetric | mIOUMetric]:
+    """Computes the IOU metrics. The return is one `IOUMetric` for each label in groundtruth
+    and one `mIOUMetric` for the mean IOU over all labels.
+    """
+    labels = get_groundtruth_labels(db, dataset_name)
+    ret = []
+    for label in labels:
+        iou_score = iou(db, dataset_name, model_name, label[2])
+
+        ret.append(
+            IOUMetric(
+                label=Label(key=label[0], value=label[1]), value=iou_score
+            )
+        )
+
+    ret.append(
+        mIOUMetric(value=sum([metric.value for metric in ret]) / len(ret))
+    )
+
+    return ret

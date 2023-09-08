@@ -269,3 +269,12 @@ class ROCAUCMetric(BaseModel):
             "evaluation_settings_id": evaluation_settings_id,
             "group": self.group,
         }
+
+
+class IOUMetric(BaseModel):
+    value: float
+    label: Label
+
+
+class mIOUMetric(BaseModel):
+    value: float

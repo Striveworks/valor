@@ -33,12 +33,14 @@ from .metrics import (
     CreateClfMetricsResponse,
     EvaluationSettings,
     F1Metric,
+    IOUMetric,
     Metric,
     PrecisionMetric,
     RecallMetric,
     ROCAUCMetric,
     mAPMetric,
     mAPMetricAveragedOverIOUs,
+    mIOUMetric,
 )
 from .stateflow import Stateflow
 
@@ -69,6 +71,8 @@ __all__ = [
     "AccuracyMetric",
     "ConfusionMatrix",
     "F1Metric",
+    "IOUMetric",
+    "mIOUMetric",
     "PrecisionMetric",
     "RecallMetric",
     "ROCAUCMetric",
