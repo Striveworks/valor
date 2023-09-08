@@ -12,6 +12,7 @@ from velour_api.backend.metrics.detection import compute_ap_metrics
 from velour_api.backend.metrics.segmentation import (
     _gt_query,
     _pred_query,
+    get_groundtruth_labels,
     gt_count,
     pred_count,
     tp_count,
@@ -617,6 +618,24 @@ def test_pred_count(
         )
         == 0
     )
+
+
+def test_get_groundtruth_labels(
+    db: Session, gt_semantic_segs_create: list[schemas.GroundTruth]
+):
+    _create_gt_data(db=db, gt_semantic_segs_create=gt_semantic_segs_create)
+    labels = get_groundtruth_labels(db, dataset_name)
+
+    assert len(labels) == 4
+
+    assert set([label[:2] for label in labels]) == {
+        ("k1", "v1"),
+        ("k1", "v2"),
+        ("k2", "v2"),
+        ("k3", "v3"),
+    }
+
+    assert len(set([label[-1] for label in labels])) == 4
 
 
 # @TODO: Will support in second PR, need to validate `ops.BackendQuery`

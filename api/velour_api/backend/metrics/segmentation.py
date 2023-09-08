@@ -129,3 +129,35 @@ def iou(
     pred = pred_count(db, dataset_name, model_name, label_id)
 
     return tp / (gt + pred - tp)
+
+
+def get_groundtruth_labels(
+    db: Session, dataset_name: str
+) -> list[tuple[str, str, int]]:
+    """Gets all unique groundtruth labels for semenatic segmentations
+    in the dataset. Return is list of tuples (label key, label value, label id)
+    """
+    return db.execute(
+        select(models.Label.key, models.Label.value, models.Label.id)
+        .join(models.GroundTruth)
+        .join(
+            models.Annotation,
+            models.GroundTruth.annotation_id == models.Annotation.id,
+        )
+        .join(models.Dataset, models.Dataset.name == dataset_name)
+        .join(
+            models.Datum,
+            and_(
+                models.Datum.dataset_id == models.Dataset.id,
+                models.Datum.id == models.Annotation.datum_id,
+            ),
+        )
+        .where(models.Annotation.task_type == TaskType.SEMANTIC_SEGMENTATION)
+        .distinct()
+    ).all()
+
+
+def compute_segmentation_metrics(
+    db: Session, dataset_name: str, model_name: str
+):
+    pass
