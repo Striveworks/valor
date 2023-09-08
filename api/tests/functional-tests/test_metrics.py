@@ -13,6 +13,7 @@ from velour_api.backend.metrics.segmentation import (
     _gt_query,
     _pred_query,
     gt_count,
+    pred_count,
     tp_count,
 )
 from velour_api.backend.models import GroundTruth, Label, MetaDatum, Prediction
@@ -553,14 +554,69 @@ def test_gt_count(
             gt_semantic_segs_create, schemas.Label(key=k, value=v)
         )
 
-        tps = gt_count(db=db, dataset_name=dataset_name, label_id=label_id)
-
-        assert expected == tps
+        assert (
+            gt_count(db=db, dataset_name=dataset_name, label_id=label_id)
+            == expected
+        )
 
     with pytest.raises(RuntimeError) as exc_info:
         gt_count(db=db, dataset_name=dataset_name, label_id=1000000)
 
     assert "No groundtruth pixels for label" in str(exc_info)
+
+
+def _pred_count(preds: list[schemas.Prediction], label: schemas.Label) -> int:
+    preds = _pred_tuples(preds, label)
+
+    ret = 0
+    for pred in preds:
+        ret += pred[1].sum()
+
+    return ret
+
+
+def test_pred_count(
+    db: Session,
+    gt_semantic_segs_create: list[schemas.GroundTruth],
+    pred_semantic_segs_img1_create: schemas.Prediction,
+    pred_semantic_segs_img2_create: schemas.Prediction,
+):
+    _create_data(
+        db=db,
+        gt_semantic_segs_create=gt_semantic_segs_create,
+        pred_semantic_segs_img1_create=pred_semantic_segs_img1_create,
+        pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
+    )
+
+    for k, v in [("k1", "v1"), ("k1", "v2"), ("k2", "v3"), ("k2", "v2")]:
+        label_id = db.scalar(
+            select(Label).where(and_(Label.key == k, Label.value == v))
+        ).id
+
+        expected = _pred_count(
+            [pred_semantic_segs_img1_create, pred_semantic_segs_img2_create],
+            schemas.Label(key=k, value=v),
+        )
+
+        assert (
+            pred_count(
+                db=db,
+                model_name=model_name,
+                dataset_name=dataset_name,
+                label_id=label_id,
+            )
+            == expected
+        )
+
+    assert (
+        pred_count(
+            db=db,
+            dataset_name=dataset_name,
+            model_name=model_name,
+            label_id=1000000,
+        )
+        == 0
+    )
 
 
 # @TODO: Will support in second PR, need to validate `ops.BackendQuery`

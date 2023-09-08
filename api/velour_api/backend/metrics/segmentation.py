@@ -105,3 +105,27 @@ def gt_count(db: Session, dataset_name: str, label_id: int) -> int:
         )
 
     return int(ret)
+
+
+def pred_count(
+    db: Session, dataset_name: str, model_name: str, label_id: int
+) -> int:
+    """Total number of predicted pixels for the given dataset, model, and label"""
+    pred = _pred_query(
+        dataset_name=dataset_name, label_id=label_id, model_name=model_name
+    ).subquery()
+    ret = db.scalar(select(func.sum(ST_Count(pred.c.raster))))
+    if ret is None:
+        return 0
+    return int(ret)
+
+
+def iou(
+    db: Session, dataset_name: str, model_name: str, label_id: int
+) -> float:
+    """Computes the pixelwise intersection over union for the given dataset, model, and label"""
+    tp = tp_count(db, dataset_name, model_name, label_id)
+    gt = gt_count(db, dataset_name, label_id)
+    pred = pred_count(db, dataset_name, model_name, label_id)
+
+    return tp / (gt + pred - tp)
