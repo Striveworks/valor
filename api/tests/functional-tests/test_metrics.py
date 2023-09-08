@@ -12,6 +12,7 @@ from velour_api.backend.metrics.detection import compute_ap_metrics
 from velour_api.backend.metrics.segmentation import (
     _gt_query,
     _pred_query,
+    gt_count,
     tp_count,
 )
 from velour_api.backend.models import GroundTruth, Label, MetaDatum, Prediction
@@ -371,11 +372,8 @@ def test_roc_auc(db, classification_test_data):
     assert "is not a classification label" in str(exc_info)
 
 
-def _create_data(
-    db: Session,
-    gt_semantic_segs_create: list[schemas.GroundTruth],
-    pred_semantic_segs_img1_create: schemas.Prediction,
-    pred_semantic_segs_img2_create: schemas.Prediction,
+def _create_gt_data(
+    db: Session, gt_semantic_segs_create: list[schemas.GroundTruth]
 ):
     crud.create_dataset(
         db=db,
@@ -383,6 +381,15 @@ def _create_data(
     )
     for gt in gt_semantic_segs_create:
         crud.create_groundtruth(db=db, groundtruth=gt)
+
+
+def _create_data(
+    db: Session,
+    gt_semantic_segs_create: list[schemas.GroundTruth],
+    pred_semantic_segs_img1_create: schemas.Prediction,
+    pred_semantic_segs_img2_create: schemas.Prediction,
+):
+    _create_gt_data(db=db, gt_semantic_segs_create=gt_semantic_segs_create)
 
     crud.create_model(db=db, model=schemas.Model(name=model_name))
 
@@ -448,24 +455,31 @@ def test__gt_query_and_pred_query(
     assert len(data) == 0
 
 
-def _tp_count(
-    gts: list[schemas.GroundTruth],
-    preds: list[schemas.Prediction],
-    label: schemas.Label,
-):
-    gts = [
+def _gt_tuples(gts: list[schemas.GroundTruth], label: schemas.Label):
+    return [
         (gt.datum.uid, ann.raster.array)
         for gt in gts
         for ann in gt.annotations
         if label in ann.labels
     ]
 
-    preds = [
+
+def _pred_tuples(preds: list[schemas.Prediction], label: schemas.Label):
+    return [
         (pred.datum.uid, ann.raster.array)
         for pred in preds
         for ann in pred.annotations
         if label in ann.labels
     ]
+
+
+def _tp_count(
+    gts: list[schemas.GroundTruth],
+    preds: list[schemas.Prediction],
+    label: schemas.Label,
+) -> int:
+    gts = _gt_tuples(gts, label)
+    preds = _pred_tuples(preds, label)
 
     datum_ids = set([gt[0] for gt in gts]).intersection(
         [pred[0] for pred in preds]
@@ -513,6 +527,40 @@ def test_tp_count(
         )
 
         assert expected == tps
+
+
+def _gt_count(gts: list[schemas.GroundTruth], label: schemas.Label) -> int:
+    gts = _gt_tuples(gts, label)
+
+    ret = 0
+    for gt in gts:
+        ret += gt[1].sum()
+
+    return ret
+
+
+def test_gt_count(
+    db: Session, gt_semantic_segs_create: list[schemas.GroundTruth]
+):
+    _create_gt_data(db=db, gt_semantic_segs_create=gt_semantic_segs_create)
+
+    for k, v in [("k1", "v1"), ("k1", "v2"), ("k3", "v3"), ("k2", "v2")]:
+        label_id = db.scalar(
+            select(Label).where(and_(Label.key == k, Label.value == v))
+        ).id
+
+        expected = _gt_count(
+            gt_semantic_segs_create, schemas.Label(key=k, value=v)
+        )
+
+        tps = gt_count(db=db, dataset_name=dataset_name, label_id=label_id)
+
+        assert expected == tps
+
+    with pytest.raises(RuntimeError) as exc_info:
+        gt_count(db=db, dataset_name=dataset_name, label_id=1000000)
+
+    assert "No groundtruth pixels for label" in str(exc_info)
 
 
 # @TODO: Will support in second PR, need to validate `ops.BackendQuery`

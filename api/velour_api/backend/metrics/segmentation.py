@@ -1,6 +1,6 @@
 from geoalchemy2.functions import ST_Count, ST_MapAlgebra
 from sqlalchemy.orm import Session
-from sqlalchemy.sql import and_, func, join, select
+from sqlalchemy.sql import Select, and_, func, join, select
 
 from velour_api.backend import models
 from velour_api.enums import TaskType
@@ -9,7 +9,7 @@ from velour_api.enums import TaskType
 # tp, fp, fn, tn
 
 
-def _gt_query(dataset_name: str, label_id: int):
+def _gt_query(dataset_name: str, label_id: int) -> Select:
     return (
         select(
             models.Annotation.raster.label("raster"),
@@ -34,7 +34,7 @@ def _gt_query(dataset_name: str, label_id: int):
     )
 
 
-def _pred_query(dataset_name: str, label_id: int, model_name: str):
+def _pred_query(dataset_name: str, label_id: int, model_name: str) -> Select:
     return (
         select(
             models.Annotation.raster.label("raster"),
@@ -91,5 +91,17 @@ def tp_count(
 
     if ret is None:
         return 0
+
+    return int(ret)
+
+
+def gt_count(db: Session, dataset_name: str, label_id: int) -> int:
+    """Total number of groundtruth pixels for the given dataset and label"""
+    gt = _gt_query(dataset_name, label_id).subquery()
+    ret = db.scalar(select(func.sum(ST_Count(gt.c.raster))))
+    if ret is None:
+        raise RuntimeError(
+            f"No groundtruth pixels for label id '{label_id}' found in dataset '{dataset_name}'"
+        )
 
     return int(ret)
