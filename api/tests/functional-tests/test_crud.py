@@ -991,8 +991,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
                 min_area=min_area,
                 max_area=max_area,
                 task_type=enums.TaskType.DETECTION,
-                gt_type=enums.AnnotationType.BOX,
-                pd_type=enums.AnnotationType.BOX,
+                target_type=enums.AnnotationType.BOX,
                 label_key=label_key,
             ),
             iou_thresholds=[0.2, 0.6],
@@ -1128,8 +1127,6 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         dataset=dset_name,
         task_type=enums.TaskType.DETECTION,
         target_type=enums.AnnotationType.BOX,
-        gt_type=enums.AnnotationType.BOX,
-        pd_type=enums.AnnotationType.BOX,
         label_key="class",
         id=1,
     )

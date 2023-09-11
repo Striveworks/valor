@@ -534,7 +534,7 @@ def create_ap_evaluation(
         },
     )
 
-    return es.id
+    return es.id, gt_type, pd_type
 
 
 def create_ap_metrics(
