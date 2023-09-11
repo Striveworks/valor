@@ -111,9 +111,7 @@ def test_label(
     crud.create_model(db=db, model=schemas.Model(name=model_name))
 
     datum1 = img1.to_datum()
-    datum1.dataset = dset_name
     datum2 = img2.to_datum()
-    datum2.dataset = dset_name
 
     gts = [
         schemas.GroundTruth(
