@@ -126,32 +126,30 @@ def compute_ap_metrics(
     )
 
     # Select annotations column
-    geometry = {
-        AnnotationType.BOX: models.Annotation.box,
-        AnnotationType.POLYGON: models.Annotation.polygon,
-        AnnotationType.MULTIPOLYGON: models.Annotation.multipolygon,
-        AnnotationType.RASTER: models.Annotation.raster,
-    }
 
     # Filter by area
     area_filters = []
     if target_type == AnnotationType.RASTER:
         if min_area:
             area_filters.append(
-                gfunc.ST_Count(geometry[target_type]) >= min_area
+                gfunc.ST_Count(models.annotation_type_to_geometry[target_type])
+                >= min_area
             )
         if max_area:
             area_filters.append(
-                gfunc.ST_Count(geometry[target_type]) <= max_area
+                gfunc.ST_Count(models.annotation_type_to_geometry[target_type])
+                <= max_area
             )
     else:
         if min_area:
             area_filters.append(
-                gfunc.ST_Area(geometry[target_type]) >= min_area
+                gfunc.ST_Area(models.annotation_type_to_geometry[target_type])
+                >= min_area
             )
         if max_area:
             area_filters.append(
-                gfunc.ST_Area(geometry[target_type]) <= max_area
+                gfunc.ST_Area(models.annotation_type_to_geometry[target_type])
+                <= max_area
             )
 
     # Join gt, datum, annotation, label
@@ -159,7 +157,7 @@ def compute_ap_metrics(
         select(
             models.GroundTruth.id.label("id"),
             models.Datum.id.label("datum_id"),
-            geometry[target_type].label("geom"),
+            models.annotation_type_to_geometry[target_type].label("geom"),
             models.Label.id.label("label_id"),
         )
         .select_from(models.GroundTruth)
@@ -184,7 +182,7 @@ def compute_ap_metrics(
         select(
             models.Prediction.id.label("id"),
             models.Datum.id.label("datum_id"),
-            geometry[target_type].label("geom"),
+            models.annotation_type_to_geometry[target_type].label("geom"),
             models.Label.id.label("label_id"),
             models.Prediction.score.label("score"),
         )
@@ -298,7 +296,6 @@ def compute_ap_metrics(
     pd_set = set()
     ranking = {}
     for row in ordered_ious:
-
         # datum_id = row[0]
         gt_id = row[1]
         pd_id = row[2]

@@ -455,9 +455,9 @@ class Model:
             json=asdict(prediction),
         )
 
-    def get_prediction(self, uid: str) -> schemas.Prediction:
+    def get_prediction(self, datum: schemas.Datum) -> schemas.Prediction:
         resp = self.client._requests_get_rel_host(
-            f"predictions/model/{self.info.name}/datum/{uid}",
+            f"predictions/model/{self.info.name}/dataset/{datum.dataset}/datum/{datum.uid}",
         ).json()
         return schemas.Prediction(**resp)
 

@@ -1,4 +1,3 @@
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -10,27 +9,12 @@ def create_prediction(
     db: Session,
     prediction: schemas.Prediction,
 ):
-    # get model
+    # retrieve existing table entries
     model = core.get_model(db, name=prediction.model)
-    if not model:
-        raise exceptions.ModelDoesNotExistError(prediction.model)
+    dataset = core.get_dataset(db, name=prediction.datum.dataset)
+    datum = core.get_datum(db, dataset_id=dataset.id, uid=prediction.datum.uid)
 
-    # get dataset
-    dataset = core.get_dataset(db, prediction.datum.dataset)
-    if not dataset:
-        raise exceptions.DatasetDoesNotExistError(prediction.datum.dataset)
-
-    # get datum
-    datum = core.get_datum(db, prediction.datum.uid)
-    if not datum:
-        raise exceptions.DatumDoesNotExistError(prediction.datum.uid)
-
-    # validate
-    if dataset.id != datum.dataset_id:
-        raise exceptions.DatumDoesNotBelongToDatasetError(
-            prediction.datum.dataset, prediction.datum.uid
-        )
-
+    # create tables entries
     rows = []
     for predicted_annotation in prediction.annotations:
         annotation = core.create_annotation(
@@ -50,30 +34,22 @@ def create_prediction(
     try:
         db.add_all(rows)
         db.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
-        raise exceptions.PredictionAlreadyExistsError
+        raise e
     return rows
 
 
 def get_prediction(
     db: Session,
     model_name: str,
+    dataset_name: str,
     datum_uid: str,
 ) -> schemas.Prediction:
-    # get datum
-    datum = core.get_datum(db, datum_uid)
-
-    # get model
-    model = core.get_model(db, model_name)
-
-    # get dataset
-    dataset = db.scalar(
-        select(models.Dataset).where(models.Dataset.id == datum.dataset_id)
-    )
-    if dataset is None:
-        raise exceptions.DatasetDoesNotExistError(dataset.name)
-
+    """Returns prediction schema."""
+    model = core.get_model(db, name=model_name)
+    dataset = core.get_dataset(db, name=dataset_name)
+    datum = core.get_datum(db, dataset_id=dataset.id, uid=datum_uid)
     return schemas.Prediction(
         model=model_name,
         datum=schemas.Datum(
@@ -90,5 +66,4 @@ def get_predictions(
     request: schemas.Filter,
 ) -> list[schemas.Prediction]:
     datums = ops.BackendQuery.datum().filter(request).all(db)
-
     return [core.get_scored_annotations(db, datum) for datum in datums]
