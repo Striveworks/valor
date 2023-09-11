@@ -16,146 +16,140 @@ model_name = "test_model"
 
 
 @pytest.fixture
-def semantic_seg_gts(
-    img1: schemas.Image,
-    img2: schemas.Image,
+def semantic_seg_gt_anns1(
     img1_gt_mask_bytes1: bytes,
-    img2_gt_mask_bytes1: bytes,
-) -> list[schemas.GroundTruth]:
-    return [
-        schemas.GroundTruth(
-            datum=img1.to_datum(),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    raster=schemas.Raster(
-                        mask=b64encode(img1_gt_mask_bytes1).decode()
-                    ),
-                    labels=[
-                        schemas.Label(key="semsegk1", value="semsegv1"),
-                        schemas.Label(key="semsegk2", value="semsegv2"),
-                    ],
-                )
-            ],
-        ),
-        schemas.GroundTruth(
-            datum=img2.to_datum(),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    raster=schemas.Raster(
-                        mask=b64encode(img2_gt_mask_bytes1).decode()
-                    ),
-                    labels=[
-                        schemas.Label(key="semsegk2", value="semsegv2"),
-                        schemas.Label(key="semsegk3", value="semsegv3"),
-                    ],
-                )
-            ],
-        ),
-    ]
+) -> schemas.Annotation:
+    return schemas.Annotation(
+        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        raster=schemas.Raster(mask=b64encode(img1_gt_mask_bytes1).decode()),
+        labels=[
+            schemas.Label(key="semsegk1", value="semsegv1"),
+            schemas.Label(key="semsegk2", value="semsegv2"),
+        ],
+    )
 
 
 @pytest.fixture
-def semantic_seg_preds(
-    img1: schemas.Image,
-    img2: schemas.Image,
-    img1_gt_mask_bytes1: bytes,
+def semantic_seg_gt_anns2(
     img2_gt_mask_bytes1: bytes,
-) -> list[schemas.Prediction]:
-    return [
-        schemas.Prediction(
-            model=model_name,
-            datum=img1.to_datum(),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    raster=schemas.Raster(
-                        mask=b64encode(img1_gt_mask_bytes1).decode()
-                    ),
-                    labels=[
-                        schemas.Label(key="semsegk1", value="semsegv1"),
-                        schemas.Label(key="semsegk2", value="semsegv2"),
-                    ],
-                )
-            ],
-        ),
-        schemas.Prediction(
-            model=model_name,
-            datum=img2.to_datum(),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    raster=schemas.Raster(
-                        mask=b64encode(img2_gt_mask_bytes1).decode()
-                    ),
-                    labels=[
-                        schemas.Label(key="semsegk2", value="semsegv2"),
-                        schemas.Label(
-                            key="semsegk3_pred", value="semsegv3_pred"
-                        ),
-                    ],
-                )
-            ],
-        ),
-    ]
+) -> schemas.Annotation:
+    return schemas.Annotation(
+        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        raster=schemas.Raster(mask=b64encode(img2_gt_mask_bytes1).decode()),
+        labels=[
+            schemas.Label(key="semsegk2", value="semsegv2"),
+            schemas.Label(key="semsegk3", value="semsegv3"),
+        ],
+    )
 
 
 @pytest.fixture
-def instance_segs_gt(
-    img1: schemas.Image,
-    img2: schemas.Image,
+def semantic_seg_pred_anns1(img1_gt_mask_bytes1: bytes) -> schemas.Annotation:
+    return schemas.Annotation(
+        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        raster=schemas.Raster(mask=b64encode(img1_gt_mask_bytes1).decode()),
+        labels=[
+            schemas.Label(key="semsegk1", value="semsegv1"),
+            schemas.Label(key="semsegk2", value="semsegv2"),
+        ],
+    )
+
+
+@pytest.fixture
+def semantic_seg_pred_anns2(img2_gt_mask_bytes1: bytes) -> schemas.Annotation:
+    return schemas.Annotation(
+        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        raster=schemas.Raster(mask=b64encode(img2_gt_mask_bytes1).decode()),
+        labels=[
+            schemas.Label(key="semsegk2", value="semsegv2"),
+            schemas.Label(key="semsegk3_pred", value="semsegv3_pred"),
+        ],
+    )
+
+
+@pytest.fixture
+def instance_seg_gt_anns1(
     img1_gt_mask_bytes1: bytes,
+) -> schemas.Annotation:
+    return schemas.Annotation(
+        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+        raster=schemas.Raster(mask=b64encode(img1_gt_mask_bytes1).decode()),
+        labels=[
+            schemas.Label(key="inssegk1", value="inssegv1"),
+            schemas.Label(key="inssegk2", value="inssegv2"),
+        ],
+    )
+
+
+@pytest.fixture
+def instance_seg_gt_anns2(
     img2_gt_mask_bytes1: bytes,
-) -> list[schemas.GroundTruth]:
-    return [
-        schemas.GroundTruth(
-            datum=img1.to_datum(),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-                    raster=schemas.Raster(
-                        mask=b64encode(img1_gt_mask_bytes1).decode()
-                    ),
-                    labels=[
-                        schemas.Label(key="inssegk1", value="inssegv1"),
-                        schemas.Label(key="inssegk2", value="inssegv2"),
-                    ],
-                )
-            ],
-        ),
-        schemas.GroundTruth(
-            datum=img2.to_datum(),
-            annotations=[
-                schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-                    raster=schemas.Raster(
-                        mask=b64encode(img2_gt_mask_bytes1).decode()
-                    ),
-                    labels=[
-                        schemas.Label(key="inssegk2", value="inssegv2"),
-                        schemas.Label(key="inssegk3", value="inssegv3"),
-                    ],
-                )
-            ],
-        ),
-    ]
+) -> schemas.Annotation:
+    return schemas.Annotation(
+        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+        raster=schemas.Raster(mask=b64encode(img2_gt_mask_bytes1).decode()),
+        labels=[
+            schemas.Label(key="inssegk2", value="inssegv2"),
+            schemas.Label(key="inssegk3", value="inssegv3"),
+        ],
+    )
 
 
 def test_label(
     db: Session,
-    semantic_seg_gts: list[schemas.GroundTruth],
-    semantic_seg_preds: list[schemas.Prediction],
-    instance_segs_gt: list[schemas.GroundTruth],
+    img1: schemas.Image,
+    img2: schemas.Image,
+    semantic_seg_gt_anns1: schemas.Annotation,
+    semantic_seg_gt_anns2: schemas.Annotation,
+    semantic_seg_pred_anns1: schemas.Annotation,
+    semantic_seg_pred_anns2: schemas.Annotation,
+    instance_seg_gt_anns1: schemas.Annotation,
+    instance_seg_gt_anns2: schemas.Annotation,
 ):
     """Tests the label query methods"""
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
     crud.create_model(db=db, model=schemas.Model(name=model_name))
 
-    for gt in semantic_seg_gts:
+    datum1 = img1.to_datum()
+    datum2 = img2.to_datum()
+
+    gts = [
+        schemas.GroundTruth(
+            datum=datum1,
+            annotations=[
+                semantic_seg_gt_anns1,
+                instance_seg_gt_anns1,
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=datum2,
+            annotations=[
+                semantic_seg_gt_anns2,
+                instance_seg_gt_anns2,
+            ],
+        ),
+    ]
+    pds = [
+        schemas.Prediction(
+            model=model_name,
+            datum=datum1,
+            annotations=[
+                semantic_seg_pred_anns1,
+            ],
+        ),
+        schemas.Prediction(
+            model=model_name,
+            datum=datum2,
+            annotations=[
+                semantic_seg_pred_anns2,
+            ],
+        ),
+    ]
+
+    for gt in gts:
         crud.create_groundtruth(db=db, groundtruth=gt)
 
-    for pred in semantic_seg_preds:
+    for pred in pds:
         crud.create_prediction(db=db, prediction=pred)
 
     assert _get_dataset_label_keys(
@@ -215,7 +209,6 @@ def test_label(
     )
 
     for task_type in [
-        enums.TaskType.INSTANCE_SEGMENTATION,
         enums.TaskType.DETECTION,
         enums.TaskType.CLASSIFICATION,
     ]:
@@ -234,9 +227,6 @@ def test_label(
             )
             == set()
         )
-
-    for gt in instance_segs_gt:
-        crud.create_groundtruth(db=db, groundtruth=gt)
 
     assert _get_dataset_label_keys(
         db,
