@@ -190,10 +190,13 @@ def get_models(
 
 
 def get_prediction(
-    *, db: Session, model_name: str, datum_uid: str
+    *, db: Session, model_name: str, dataset_name: str, datum_uid: str
 ) -> schemas.Prediction:
     return backend.get_prediction(
-        db, model_name=model_name, datum_uid=datum_uid
+        db,
+        model_name=model_name,
+        dataset_name=dataset_name,
+        datum_uid=datum_uid,
     )
 
 
