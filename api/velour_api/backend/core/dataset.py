@@ -1,3 +1,4 @@
+from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -8,9 +9,19 @@ from velour_api.backend.core.metadata import create_metadata
 
 def get_datum(
     db: Session,
+    dataset_id: int,
     uid: str,
 ) -> models.Datum:
-    datum = db.query(models.Datum).where(models.Datum.uid == uid).one_or_none()
+    datum = (
+        db.query(models.Datum)
+        .where(
+            and_(
+                models.Datum.dataset_id == dataset_id,
+                models.Datum.uid == uid,
+            )
+        )
+        .one_or_none()
+    )
     if datum is None:
         raise exceptions.DatumDoesNotExistError(uid)
     return datum
@@ -35,16 +46,7 @@ def create_datum(
     datum: schemas.Datum,
 ) -> models.Datum:
 
-    # check if datum already exists
-    row = (
-        db.query(models.Datum)
-        .where(models.Datum.uid == datum.uid)
-        .one_or_none()
-    )
-    if row is not None:
-        return row
-
-    # get dataset
+    # retrieve dataset
     dataset = get_dataset(db, datum.dataset)
 
     # create datum

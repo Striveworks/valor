@@ -17,7 +17,6 @@ model_name = "test_model"
 
 @pytest.fixture
 def classification_test_data(db: Session):
-
     animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
     animal_preds = [
         {"bird": 0.6, "dog": 0.2, "cat": 0.2},
@@ -73,20 +72,14 @@ def classification_test_data(db: Session):
             model=model_name,
             datum=imgs[i],
             annotations=[
-                schemas.ScoredAnnotation(
+                schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    scored_labels=[
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="animal", value=value),
-                            score=score,
-                        )
+                    labels=[
+                        schemas.Label(key="animal", value=value, score=score)
                         for value, score in animal_preds[i].items()
                     ]
                     + [
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="color", value=value),
-                            score=score,
-                        )
+                        schemas.Label(key="color", value=value, score=score)
                         for value, score in color_preds[i].items()
                     ],
                 )
@@ -131,7 +124,6 @@ def test_compute_ap_metrics(
     groundtruths: list[list[GroundTruth]],
     predictions: list[list[Prediction]],
 ):
-
     model_name = "test_model"
     dataset_name = "test_dataset"
 
@@ -148,7 +140,7 @@ def test_compute_ap_metrics(
         ious_to_keep=[0.5, 0.75],
     )
 
-    metrics = [m.model_dump() for m in metrics]
+    metrics = [m.model_dump(exclude_none=True) for m in metrics]
 
     for m in metrics:
         round_dict_(m, 3)

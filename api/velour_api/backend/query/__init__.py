@@ -2,7 +2,6 @@ from .dataset import (
     create_dataset,
     delete_dataset,
     get_dataset,
-    get_dataset_name_from_datum_uid,
     get_datasets,
     get_datums,
 )
@@ -29,7 +28,6 @@ __all__ = [
     "create_dataset",
     "get_dataset",
     "get_datasets",
-    "get_dataset_name_from_datum_uid",
     "get_datums",
     "delete_dataset",
     "create_model",

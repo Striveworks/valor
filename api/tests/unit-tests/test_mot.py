@@ -39,11 +39,8 @@ def generate_mot_data(num_frames: int):
     create_label = lambda obj_id: schemas.Label(  # noqa: E731
         key=OBJECT_ID_LABEL_KEY, value=obj_id
     )
-    create_scored_label = (
-        lambda obj_id, score: schemas.ScoredLabel(  # noqa: E731
-            label=schemas.Label(key=OBJECT_ID_LABEL_KEY, value=obj_id),
-            score=score,
-        )
+    create_scored_label = lambda obj_id, score: schemas.Label(  # noqa: E731
+        key=OBJECT_ID_LABEL_KEY, value=obj_id, score=score
     )
 
     # Square Boundary moving diagonally
@@ -105,18 +102,18 @@ def generate_mot_data(num_frames: int):
             model="test",
             datum=image,
             annotations=[
-                schemas.ScoredAnnotation(
-                    scored_labels=scored_labels1,
+                schemas.Annotation(
+                    labels=scored_labels1,
                     task_type=enums.TaskType.DETECTION,
                     bounding_box=boundary1,
                 ),
-                schemas.ScoredAnnotation(
-                    scored_labels=scored_labels2,
+                schemas.Annotation(
+                    labels=scored_labels2,
                     task_type=enums.TaskType.DETECTION,
                     bounding_box=boundary2,
                 ),
-                schemas.ScoredAnnotation(
-                    scored_labels=scored_labels3,
+                schemas.Annotation(
+                    labels=scored_labels3,
                     task_type=enums.TaskType.DETECTION,
                     bounding_box=boundary3,
                 ),

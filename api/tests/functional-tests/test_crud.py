@@ -149,25 +149,13 @@ def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
             model=model_name,
             datum=img1.to_datum(),
             annotations=[
-                schemas.ScoredAnnotation(
+                schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
-                    scored_labels=[
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k1", value="v1"),
-                            score=0.6,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k1", value="v2"),
-                            score=0.4,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k2", value="v1"),
-                            score=0.8,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k2", value="v2"),
-                            score=0.2,
-                        ),
+                    labels=[
+                        schemas.Label(key="k1", value="v1", score=0.6),
+                        schemas.Label(key="k1", value="v2", score=0.4),
+                        schemas.Label(key="k2", value="v1", score=0.8),
+                        schemas.Label(key="k2", value="v2", score=0.2),
                     ],
                     bounding_box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
@@ -180,17 +168,11 @@ def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
                         )
                     ),
                 ),
-                schemas.ScoredAnnotation(
+                schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
-                    scored_labels=[
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k2", value="v1"),
-                            score=0.1,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k2", value="v2"),
-                            score=0.9,
-                        ),
+                    labels=[
+                        schemas.Label(key="k2", value="v1", score=0.1),
+                        schemas.Label(key="k2", value="v2", score=0.9),
                     ],
                     bounding_box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
@@ -256,10 +238,8 @@ def gt_segs_create(
 @pytest.fixture
 def pred_segs_create(
     mask_bytes1: bytes,
-    mask_bytes2: bytes,
     img1: schemas.Image,
 ) -> list[schemas.Prediction]:
-
     b64_mask1 = b64encode(mask_bytes1).decode()
 
     return [
@@ -267,65 +247,41 @@ def pred_segs_create(
             model=model_name,
             datum=img1.to_datum(),
             annotations=[
-                schemas.ScoredAnnotation(
+                schemas.Annotation(
                     task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-                    scored_labels=[
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k1", value="v1"),
-                            score=0.43,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k1", value="v2"),
-                            score=0.57,
-                        ),
+                    labels=[
+                        schemas.Label(key="k1", value="v1", score=0.43),
+                        schemas.Label(key="k1", value="v2", score=0.57),
                     ],
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
                 ),
-                schemas.ScoredAnnotation(
+                schemas.Annotation(
                     task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
-                    scored_labels=[
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k2", value="v1"),
-                            score=0.03,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k2", value="v2"),
-                            score=0.97,
-                        ),
+                    labels=[
+                        schemas.Label(key="k2", value="v1", score=0.03),
+                        schemas.Label(key="k2", value="v2", score=0.97),
                     ],
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
                 ),
-                schemas.ScoredAnnotation(
+                schemas.Annotation(
                     task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-                    scored_labels=[
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k2", value="v1"),
-                            score=0.26,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k2", value="v2"),
-                            score=0.74,
-                        ),
+                    labels=[
+                        schemas.Label(key="k2", value="v1", score=0.26),
+                        schemas.Label(key="k2", value="v2", score=0.74),
                     ],
                     raster=schemas.Raster(
                         mask=b64_mask1,
                     ),
                 ),
-                schemas.ScoredAnnotation(
+                schemas.Annotation(
                     task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-                    scored_labels=[
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k2", value="v1"),
-                            score=0.86,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k2", value="v2"),
-                            score=0.14,
-                        ),
+                    labels=[
+                        schemas.Label(key="k2", value="v1", score=0.86),
+                        schemas.Label(key="k2", value="v2", score=0.14),
                     ],
                     raster=schemas.Raster(
                         mask=b64_mask1,
@@ -377,21 +333,12 @@ def pred_clfs_create(
             model=model_name,
             datum=img1.to_datum(),
             annotations=[
-                schemas.ScoredAnnotation(
+                schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    scored_labels=[
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k1", value="v1"),
-                            score=0.2,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k1", value="v2"),
-                            score=0.8,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k4", value="v4"),
-                            score=1.0,
-                        ),
+                    labels=[
+                        schemas.Label(key="k1", value="v1", score=0.2),
+                        schemas.Label(key="k1", value="v2", score=0.8),
+                        schemas.Label(key="k4", value="v4", score=1.0),
                     ],
                 ),
             ],
@@ -400,21 +347,12 @@ def pred_clfs_create(
             model=model_name,
             datum=img2.to_datum(),
             annotations=[
-                schemas.ScoredAnnotation(
+                schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    scored_labels=[
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k2", value="v2"),
-                            score=1.0,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k3", value="v3"),
-                            score=0.87,
-                        ),
-                        schemas.ScoredLabel(
-                            label=schemas.Label(key="k3", value="v0"),
-                            score=0.13,
-                        ),
+                    labels=[
+                        schemas.Label(key="k2", value="v2", score=1.0),
+                        schemas.Label(key="k3", value="v3", score=0.87),
+                        schemas.Label(key="k3", value="v0", score=0.13),
                     ],
                 ),
             ],
@@ -477,7 +415,6 @@ def dataset_model_create(
 
 
 def test_create_and_get_datasets(db: Session):
-
     # Create dataset
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
@@ -834,7 +771,9 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # grab the first one and check that the area of the raster
     # matches the area of the image
-    img = crud.get_prediction(db=db, datum_uid="uid1", model_name=model_name)
+    img = crud.get_prediction(
+        db=db, model_name=model_name, dataset_name=dset_name, datum_uid="uid1"
+    )
 
     raster_counts = set(
         db.scalars(
@@ -1548,7 +1487,6 @@ def test_get_labels_from_model(
     model_names: list[str],
     dataset_model_create,
 ):
-
     # Test get all labels from model 1
     md1 = crud.get_labels(
         db=db,
@@ -1602,6 +1540,9 @@ def test_get_joint_labels(
             db=db,
             dataset_name=dataset_names[0],
             model_name=model_names[0],
+            task_types=[enums.TaskType.DETECTION],
+            gt_type=enums.AnnotationType.BOX,
+            pd_type=enums.AnnotationType.BOX,
         )
     ) == set(
         [

@@ -8,8 +8,6 @@ from .core import (
     MetaDatum,
     Model,
     Prediction,
-    ScoredAnnotation,
-    ScoredLabel,
 )
 from .datatypes import Image, VideoFrame
 from .filters import Filter, MetadataFilter
@@ -51,7 +49,6 @@ __all__ = [
     "Image",
     "VideoFrame",
     "Annotation",
-    "ScoredAnnotation",
     "Dataset",
     "Datum",
     "AnnotatedDatum",
@@ -61,7 +58,6 @@ __all__ = [
     "GroundTruth",
     "Prediction",
     "Label",
-    "ScoredLabel",
     "Point",
     "BasicPolygon",
     "BoundingBox",

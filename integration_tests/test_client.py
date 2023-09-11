@@ -37,8 +37,6 @@ from velour.schemas import (
     Polygon,
     Prediction,
     Raster,
-    ScoredAnnotation,
-    ScoredLabel,
 )
 from velour_api import crud, exceptions
 from velour_api.backend import jobs, models
@@ -222,6 +220,7 @@ def rect3():
 def gt_dets1(
     rect1: BoundingBox,
     rect2: BoundingBox,
+    rect3: BoundingBox,
     img1: ImageMetadata,
     img2: ImageMetadata,
 ) -> list[GroundTruth]:
@@ -233,7 +232,12 @@ def gt_dets1(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=rect1,
-                )
+                ),
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k2", value="v2")],
+                    bounding_box=rect3,
+                ),
             ],
         ),
         GroundTruth(
@@ -250,14 +254,62 @@ def gt_dets1(
 
 
 @pytest.fixture
-def gt_poly_dets1(
+def gt_dets2(
     rect1: BoundingBox,
     rect2: BoundingBox,
+    rect3: BoundingBox,
+    img5: ImageMetadata,
+    img6: ImageMetadata,
+    img8: ImageMetadata,
+) -> list[GroundTruth]:
+
+    return [
+        GroundTruth(
+            datum=img5.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k1", value="v1")],
+                    polygon=Polygon(boundary=rect1.polygon, holes=None),
+                ),
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k2", value="v2")],
+                    bounding_box=rect3,
+                ),
+            ],
+        ),
+        GroundTruth(
+            datum=img6.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k1", value="v1")],
+                    polygon=Polygon(boundary=rect2.polygon, holes=None),
+                )
+            ],
+        ),
+        GroundTruth(
+            datum=img8.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k3", value="v3")],
+                    bounding_box=rect3,
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def gt_poly_dets1(
     img1: ImageMetadata,
     img2: ImageMetadata,
-) -> list[GroundTruth]:
+    rect1: BoundingBox,
+    rect2: BoundingBox,
+):
     """Same thing as gt_dets1 but represented as a polygon instead of bounding box"""
-
     return [
         GroundTruth(
             datum=img1.to_datum(),
@@ -266,7 +318,7 @@ def gt_poly_dets1(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon(boundary=rect1.polygon, holes=None),
-                )
+                ),
             ],
         ),
         GroundTruth(
@@ -283,43 +335,13 @@ def gt_poly_dets1(
 
 
 @pytest.fixture
-def gt_dets2(rect3: BoundingBox, img1: ImageMetadata) -> list[GroundTruth]:
-    return [
-        GroundTruth(
-            datum=img1.to_datum(),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.DETECTION,
-                    labels=[Label(key="k2", value="v2")],
-                    bounding_box=rect3,
-                )
-            ],
-        ),
-    ]
-
-
-@pytest.fixture
-def gt_dets3(rect3: BoundingBox, img8: ImageMetadata) -> list[GroundTruth]:
-    return [
-        GroundTruth(
-            datum=img8.to_datum(),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.DETECTION,
-                    labels=[Label(key="k3", value="v3")],
-                    bounding_box=rect3,
-                )
-            ],
-        ),
-    ]
-
-
-@pytest.fixture
-def gt_segs1(
+def gt_segs(
     rect1: BoundingBox,
     rect2: BoundingBox,
+    rect3: BoundingBox,
     img1: ImageMetadata,
     img2: ImageMetadata,
+    img9: ImageMetadata,
 ) -> list[Annotation]:
     return [
         GroundTruth(
@@ -331,7 +353,17 @@ def gt_segs1(
                     multipolygon=MultiPolygon(
                         polygons=[Polygon(boundary=rect1.polygon)]
                     ),
-                )
+                ),
+                Annotation(
+                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[Label(key="k2", value="v2")],
+                    multipolygon=MultiPolygon(
+                        polygons=[
+                            Polygon(boundary=rect3.polygon),
+                            Polygon(boundary=rect1.polygon),
+                        ]
+                    ),
+                ),
             ],
         ),
         GroundTruth(
@@ -351,35 +383,6 @@ def gt_segs1(
                 )
             ],
         ),
-    ]
-
-
-@pytest.fixture
-def gt_segs2(
-    rect1: BoundingBox, rect3: BoundingBox, img1: ImageMetadata
-) -> list[GroundTruth]:
-    return [
-        GroundTruth(
-            datum=img1.to_datum(),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[Label(key="k2", value="v2")],
-                    multipolygon=MultiPolygon(
-                        polygons=[
-                            Polygon(boundary=rect3.polygon),
-                            Polygon(boundary=rect1.polygon),
-                        ]
-                    ),
-                )
-            ],
-        ),
-    ]
-
-
-@pytest.fixture
-def gt_segs3(rect3: BoundingBox, img9: ImageMetadata) -> list[GroundTruth]:
-    return [
         GroundTruth(
             datum=img9.to_datum(),
             annotations=[
@@ -396,15 +399,22 @@ def gt_segs3(rect3: BoundingBox, img9: ImageMetadata) -> list[GroundTruth]:
 
 
 @pytest.fixture
-def gt_clfs1(img5: ImageMetadata, img6: ImageMetadata) -> list[GroundTruth]:
+def gt_clfs(
+    img5: ImageMetadata,
+    img6: ImageMetadata,
+    img8: ImageMetadata,
+) -> list[GroundTruth]:
     return [
         GroundTruth(
             datum=img5.to_datum(),
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
-                    labels=[Label(key="k5", value="v5")],
-                )
+                    labels=[
+                        Label(key="k4", value="v4"),
+                        Label(key="k5", value="v5"),
+                    ],
+                ),
             ],
         ),
         GroundTruth(
@@ -416,27 +426,6 @@ def gt_clfs1(img5: ImageMetadata, img6: ImageMetadata) -> list[GroundTruth]:
                 )
             ],
         ),
-    ]
-
-
-@pytest.fixture
-def gt_clfs2(img5: ImageMetadata) -> list[GroundTruth]:
-    return [
-        GroundTruth(
-            datum=img5.to_datum(),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.CLASSIFICATION,
-                    labels=[Label(key="k4", value="v4")],
-                )
-            ],
-        ),
-    ]
-
-
-@pytest.fixture
-def gt_clfs3(img8: ImageMetadata) -> list[GroundTruth]:
-    return [
         GroundTruth(
             datum=img8.to_datum(),
             annotations=[
@@ -461,13 +450,9 @@ def pred_dets(
             model=model_name,
             datum=img1.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.DETECTION,
-                    scored_labels=[
-                        ScoredLabel(
-                            label=Label(key="k1", value="v1"), score=0.3
-                        )
-                    ],
+                    labels=[Label(key="k1", value="v1", score=0.3)],
                     bounding_box=rect1,
                 )
             ],
@@ -476,13 +461,9 @@ def pred_dets(
             model=model_name,
             datum=img2.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.DETECTION,
-                    scored_labels=[
-                        ScoredLabel(
-                            label=Label(key="k2", value="v2"), score=0.98
-                        )
-                    ],
+                    labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=rect2,
                 )
             ],
@@ -499,9 +480,9 @@ def pred_poly_dets(
             model=det.model,
             datum=det.datum,
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.DETECTION,
-                    scored_labels=annotation.scored_labels,
+                    labels=annotation.labels,
                     polygon=bbox_to_poly(annotation.bounding_box),
                 )
                 for annotation in det.annotations
@@ -526,13 +507,9 @@ def pred_segs(img1: ImageMetadata, img2: ImageMetadata) -> list[Prediction]:
             model=model_name,
             datum=img1.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.INSTANCE_SEGMENTATION,
-                    scored_labels=[
-                        ScoredLabel(
-                            label=Label(key="k1", value="v1"), score=0.87
-                        )
-                    ],
+                    labels=[Label(key="k1", value="v1", score=0.87)],
                     raster=Raster.from_numpy(mask_1),
                 )
             ],
@@ -541,13 +518,9 @@ def pred_segs(img1: ImageMetadata, img2: ImageMetadata) -> list[Prediction]:
             model=model_name,
             datum=img2.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.INSTANCE_SEGMENTATION,
-                    scored_labels=[
-                        ScoredLabel(
-                            label=Label(key="k2", value="v2"), score=0.92
-                        )
-                    ],
+                    labels=[Label(key="k2", value="v2", score=0.92)],
                     raster=Raster.from_numpy(mask_2),
                 )
             ],
@@ -562,18 +535,12 @@ def pred_clfs(img5: ImageMetadata, img6: ImageMetadata) -> list[Prediction]:
             model=model_name,
             datum=img5.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.CLASSIFICATION,
-                    scored_labels=[
-                        ScoredLabel(
-                            label=Label(key="k12", value="v12"), score=0.47
-                        ),
-                        ScoredLabel(
-                            label=Label(key="k12", value="v16"), score=0.53
-                        ),
-                        ScoredLabel(
-                            label=Label(key="k13", value="v13"), score=1.0
-                        ),
+                    labels=[
+                        Label(key="k12", value="v12", score=0.47),
+                        Label(key="k12", value="v16", score=0.53),
+                        Label(key="k13", value="v13", score=1.0),
                     ],
                 )
             ],
@@ -582,15 +549,11 @@ def pred_clfs(img5: ImageMetadata, img6: ImageMetadata) -> list[Prediction]:
             model=model_name,
             datum=img6.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.CLASSIFICATION,
-                    scored_labels=[
-                        ScoredLabel(
-                            label=Label(key="k4", value="v4"), score=0.71
-                        ),
-                        ScoredLabel(
-                            label=Label(key="k4", value="v5"), score=0.29
-                        ),
+                    labels=[
+                        Label(key="k4", value="v4", score=0.71),
+                        Label(key="k4", value="v5", score=0.29),
                     ],
                 )
             ],
@@ -621,12 +584,9 @@ def tabular_preds() -> list[list[float]]:
     ]
 
 
-# @TODO: Stateflow
 def _test_create_image_dataset_with_gts(
     client: Client,
-    gts1: list[Any],
-    gts2: list[Any],
-    gts3: list[Any],
+    gts: list[Any],
     expected_labels_tuples: set[tuple[str, str]],
     expected_image_uids: list[str],
 ) -> Dataset:
@@ -640,11 +600,7 @@ def _test_create_image_dataset_with_gts(
     Parameters
     ----------
     client
-    gts1
-        list of groundtruth objects (from `velour.data_types`)
-    gts2
-        list of groundtruth objects (from `velour.data_types`)
-    gts3
+    gts
         list of groundtruth objects (from `velour.data_types`)
     expected_labels_tuples
         set of tuples of key/value labels to check were added to the database
@@ -658,9 +614,7 @@ def _test_create_image_dataset_with_gts(
         Dataset.create(client, dset_name)
     assert "already exists" in str(exc_info)
 
-    for gt in gts1:
-        dataset.add_groundtruth(gt)
-    for gt in gts2:
+    for gt in gts:
         dataset.add_groundtruth(gt)
 
     # check that the dataset has two images
@@ -676,13 +630,12 @@ def _test_create_image_dataset_with_gts(
         == expected_labels_tuples
     )
 
-    # TODO Stateflow
-    # dataset.finalize()
-    # # check that we get an error when trying to add more images
-    # # to the dataset since it is finalized
-    # with pytest.raises(ClientException) as exc_info:
-    #     dataset.add_groundtruth(gts3)
-    # assert "since it is finalized" in str(exc_info)
+    dataset.finalize()
+    # check that we get an error when trying to add more images
+    # to the dataset since it is finalized
+    with pytest.raises(ClientException) as exc_info:
+        dataset.add_groundtruth(gts[0])
+    assert "has been finalized" in str(exc_info)
 
     return dataset
 
@@ -820,18 +773,16 @@ def test_create_image_dataset_with_detections(
     client: Client,
     gt_dets1: list[GroundTruth],
     gt_dets2: list[GroundTruth],
-    gt_dets3: list[GroundTruth],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     dataset = _test_create_image_dataset_with_gts(
         client=client,
-        gts1=gt_dets1,
-        gts2=gt_dets2,
-        gts3=gt_dets3,
-        expected_image_uids={"uid1", "uid2"},
+        gts=gt_dets1 + gt_dets2,
+        expected_image_uids={"uid2", "uid8", "uid1", "uid6", "uid5"},
         expected_labels_tuples={
             ("k1", "v1"),
             ("k2", "v2"),
+            ("k3", "v3"),
         },
     )
 
@@ -841,7 +792,7 @@ def test_create_image_dataset_with_detections(
     # check we get back what we inserted
     gt_dets_uid1 = []
     gt_dets_uid2 = []
-    for gt in gt_dets1 + gt_dets2 + gt_dets3:
+    for gt in gt_dets1 + gt_dets2:
         if gt.datum.uid == "uid1":
             gt_dets_uid1.extend(gt.annotations)
         elif gt.datum.uid == "uid2":
@@ -989,20 +940,16 @@ def test_create_pred_detections_as_bbox_or_poly(
         model=model_name,
         datum=img1.to_datum(),
         annotations=[
-            ScoredAnnotation(
+            Annotation(
                 task_type=TaskType.DETECTION,
-                scored_labels=[
-                    ScoredLabel(label=Label(key="k", value="v"), score=0.6)
-                ],
+                labels=[Label(key="k", value="v", score=0.6)],
                 bounding_box=BoundingBox.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
             ),
-            ScoredAnnotation(
+            Annotation(
                 task_type=TaskType.DETECTION,
-                scored_labels=[
-                    ScoredLabel(label=Label(key="k", value="v"), score=0.4)
-                ],
+                labels=[Label(key="k", value="v", score=0.4)],
                 polygon=Polygon(
                     boundary=BasicPolygon(
                         points=[
@@ -1033,20 +980,17 @@ def test_create_pred_detections_as_bbox_or_poly(
 
 def test_create_image_dataset_with_segmentations(
     client: Client,
-    gt_segs1: list[GroundTruth],
-    gt_segs2: list[GroundTruth],
-    gt_segs3: list[GroundTruth],
+    gt_segs: list[GroundTruth],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     dataset = _test_create_image_dataset_with_gts(
         client=client,
-        gts1=gt_segs1,
-        gts2=gt_segs2,
-        gts3=gt_segs3,
-        expected_image_uids={"uid1", "uid2"},
+        gts=gt_segs,
+        expected_image_uids={"uid1", "uid2", "uid9"},
         expected_labels_tuples={
             ("k1", "v1"),
             ("k2", "v2"),
+            ("k3", "v3"),
         },
     )
 
@@ -1139,7 +1083,7 @@ def test_create_gt_segs_as_polys_or_masks(
 
 def test_create_model_with_predicted_segmentations(
     client: Client,
-    gt_segs1: list[GroundTruth],
+    gt_segs: list[GroundTruth],
     pred_segs: list[Prediction],
     db: Session,
 ):
@@ -1147,7 +1091,7 @@ def test_create_model_with_predicted_segmentations(
     _test_create_model_with_preds(
         client=client,
         datum_type=DataType.IMAGE,
-        gts=gt_segs1,
+        gts=gt_segs,
         preds=pred_segs,
         preds_model_class=models.Prediction,
         preds_expected_number=2,
@@ -1190,34 +1134,31 @@ def test_create_model_with_predicted_segmentations(
 
 def test_create_image_dataset_with_classifications(
     client: Client,
-    gt_clfs1: list[GroundTruth],
-    gt_clfs2: list[GroundTruth],
-    gt_clfs3: list[GroundTruth],
+    gt_clfs: list[GroundTruth],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     _test_create_image_dataset_with_gts(
         client=client,
-        gts1=gt_clfs1,
-        gts2=gt_clfs2,
-        gts3=gt_clfs3,
-        expected_image_uids={"uid5", "uid6"},
+        gts=gt_clfs,
+        expected_image_uids={"uid5", "uid6", "uid8"},
         expected_labels_tuples={
             ("k5", "v5"),
             ("k4", "v4"),
+            ("k3", "v3"),
         },
     )
 
 
 def test_create_image_model_with_predicted_classifications(
     client: Client,
-    gt_clfs1: list[GroundTruth],
+    gt_clfs: list[GroundTruth],
     pred_clfs: list[Prediction],
     db: Session,
 ):
     _test_create_model_with_preds(
         client=client,
         datum_type=DataType.IMAGE,
-        gts=gt_clfs1,
+        gts=gt_clfs,
         preds=pred_clfs,
         preds_model_class=models.Prediction,
         preds_expected_number=5,
@@ -1293,12 +1234,10 @@ def test_iou(
             model=model_name,
             datum=img1.to_datum(),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.DETECTION,
                     polygon=rect2_poly,
-                    scored_labels=[
-                        ScoredLabel(label=Label("k", "v"), score=0.6)
-                    ],
+                    labels=[Label("k", "v", score=0.6)],
                 )
             ],
         )
@@ -1359,7 +1298,7 @@ def test_evaluate_ap(
         label_key="k1",
     )
 
-    assert eval_job.ignored_pred_labels == [Label(key="k2", value="v2")]
+    assert eval_job.ignored_pred_labels == []
     assert eval_job.missing_pred_labels == []
     assert isinstance(eval_job._id, int)
 
@@ -1542,12 +1481,12 @@ def test_evaluate_ap(
 
 def test_evaluate_image_clf(
     client: Client,
-    gt_clfs1: list[GroundTruth],
+    gt_clfs: list[GroundTruth],
     pred_clfs: list[Prediction],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     dataset = Dataset.create(client, dset_name)
-    for gt in gt_clfs1:
+    for gt in gt_clfs:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
@@ -1559,7 +1498,7 @@ def test_evaluate_image_clf(
     eval_job = model.evaluate_classification(dataset=dataset)
 
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
-    assert set(eval_job.missing_pred_keys) == {"k5"}
+    assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
 
     # sleep to give the backend time to compute
     time.sleep(1)
@@ -1745,18 +1684,12 @@ def test_create_tabular_model_with_predicted_classifications(
                 model=model_name,
                 datum=Datum(dataset=dset_name, uid="uid1"),
                 annotations=[
-                    ScoredAnnotation(
+                    Annotation(
                         task_type=TaskType.CLASSIFICATION,
-                        scored_labels=[
-                            ScoredLabel(
-                                label=Label(key="k1", value="v1"), score=0.6
-                            ),
-                            ScoredLabel(
-                                label=Label(key="k1", value="v2"), score=0.4
-                            ),
-                            ScoredLabel(
-                                label=Label(key="k2", value="v6"), score=1.0
-                            ),
+                        labels=[
+                            Label(key="k1", value="v1", score=0.6),
+                            Label(key="k1", value="v2", score=0.4),
+                            Label(key="k2", value="v6", score=1.0),
                         ],
                     )
                 ],
@@ -1768,15 +1701,11 @@ def test_create_tabular_model_with_predicted_classifications(
                     uid="uid2",
                 ),
                 annotations=[
-                    ScoredAnnotation(
+                    Annotation(
                         task_type=TaskType.CLASSIFICATION,
-                        scored_labels=[
-                            ScoredLabel(
-                                label=Label(key="k1", value="v1"), score=0.1
-                            ),
-                            ScoredLabel(
-                                label=Label(key="k1", value="v2"), score=0.9
-                            ),
+                        labels=[
+                            Label(key="k1", value="v1", score=0.1),
+                            Label(key="k1", value="v2", score=0.9),
                         ],
                     )
                 ],
@@ -1832,12 +1761,10 @@ def test_evaluate_tabular_clf(
             model=model_name,
             datum=Datum(dataset=dset_name, uid=f"uid{i}"),
             annotations=[
-                ScoredAnnotation(
+                Annotation(
                     task_type=TaskType.CLASSIFICATION,
-                    scored_labels=[
-                        ScoredLabel(
-                            Label(key="class", value=str(i)), score=pred[i]
-                        )
+                    labels=[
+                        Label(key="class", value=str(i), score=pred[i])
                         for i in range(len(pred))
                     ],
                 )
@@ -2080,9 +2007,9 @@ def test_evaluate_tabular_clf(
 #         model=model_name,
 #         datum=tabular_datum,
 #         annotations=[
-#             ScoredAnnotation(
+#             Annotation(
 #                 task_type=TaskType.CLASSIFICATION,
-#                 scored_labels=[
+#                 labels=[
 #                     ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
 #                     for i in range(len(pred))
 #                 ]
