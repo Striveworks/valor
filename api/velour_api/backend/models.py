@@ -69,7 +69,7 @@ class Prediction(Base):
     label_id: Mapped[int] = mapped_column(
         ForeignKey("label.id"), nullable=False
     )
-    score: Mapped[float] = mapped_column(nullable=False)
+    score: Mapped[float] = mapped_column(nullable=True)
 
     # relationships
     annotation: Mapped["Annotation"] = relationship(
@@ -262,3 +262,11 @@ class ConfusionMatrix(Base):
     evaluation_settings_id: Mapped[int] = mapped_column(
         ForeignKey("evaluation_settings.id")
     )
+
+
+annotation_type_to_geometry = {
+    AnnotationType.BOX: Annotation.box,
+    AnnotationType.POLYGON: Annotation.polygon,
+    AnnotationType.MULTIPOLYGON: Annotation.multipolygon,
+    AnnotationType.RASTER: Annotation.raster,
+}

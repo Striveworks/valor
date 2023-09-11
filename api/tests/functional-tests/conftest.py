@@ -21,6 +21,9 @@ tablenames = [v.__tablename__ for v in classes if hasattr(v, "__tablename__")]
 
 np.random.seed(29)
 
+img1_size = (100, 200)
+img2_size = (80, 32)
+
 
 def drop_all(db):
     # clear redis
@@ -46,8 +49,8 @@ def img1() -> schemas.Image:
     return schemas.Image(
         dataset="test_dataset",
         uid="uid1",
-        height=10,
-        width=20,
+        height=img1_size[0],
+        width=img1_size[1],
     )
 
 
@@ -56,9 +59,54 @@ def img2() -> schemas.Image:
     return schemas.Image(
         dataset="test_dataset",
         uid="uid2",
-        height=16,
-        width=12,
+        height=img2_size[0],
+        width=img2_size[1],
     )
+
+
+@pytest.fixture
+def img1_pred_mask_bytes1():
+    return random_mask_bytes(size=img1_size)
+
+
+@pytest.fixture
+def img1_pred_mask_bytes2():
+    return random_mask_bytes(size=img1_size)
+
+
+@pytest.fixture
+def img1_pred_mask_bytes3():
+    return random_mask_bytes(size=img1_size)
+
+
+@pytest.fixture
+def img1_gt_mask_bytes1():
+    return random_mask_bytes(size=img1_size)
+
+
+@pytest.fixture
+def img1_gt_mask_bytes2():
+    return random_mask_bytes(size=img1_size)
+
+
+@pytest.fixture
+def img1_gt_mask_bytes3():
+    return random_mask_bytes(size=img1_size)
+
+
+@pytest.fixture
+def img2_pred_mask_bytes1():
+    return random_mask_bytes(size=img2_size)
+
+
+@pytest.fixture
+def img2_pred_mask_bytes2():
+    return random_mask_bytes(size=img2_size)
+
+
+@pytest.fixture
+def img2_gt_mask_bytes1():
+    return random_mask_bytes(size=img2_size)
 
 
 @pytest.fixture

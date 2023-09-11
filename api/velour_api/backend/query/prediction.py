@@ -50,9 +50,9 @@ def create_prediction(
     try:
         db.add_all(rows)
         db.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
-        raise exceptions.PredictionAlreadyExistsError
+        raise e
     return rows
 
 
