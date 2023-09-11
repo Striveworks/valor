@@ -69,7 +69,7 @@ class Prediction(Base):
     label_id: Mapped[int] = mapped_column(
         ForeignKey("label.id"), nullable=False
     )
-    score: Mapped[float] = mapped_column(nullable=False)
+    score: Mapped[float] = mapped_column(nullable=True)
 
     # relationships
     annotation: Mapped["Annotation"] = relationship(
