@@ -102,6 +102,12 @@ def create_ap_evaluation(
         db=db,
         dataset_name=request_info.settings.dataset,
         model_name=request_info.settings.model,
+        task_types=[
+            enums.TaskType.DETECTION,
+            enums.TaskType.INSTANCE_SEGMENTATION,
+        ],
+        gt_type=request_info.settings.gt_type,
+        pd_type=request_info.settings.pd_type,
     )
 
     # create evaluation setting

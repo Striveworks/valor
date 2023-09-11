@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 from velour_api import crud, enums, schemas
 from velour_api.backend.query.label import (
     _get_dataset_label_keys,
+    _get_dataset_labels,
     _get_model_label_keys,
+    _get_model_labels,
 )
 
 dset_name = "test_dataset"
@@ -162,12 +164,55 @@ def test_label(
         task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
     ) == {"semsegk1", "semsegk2", "semsegk3"}
 
+    assert _get_dataset_labels(
+        db,
+        dataset_name=dset_name,
+        annotation_type=enums.AnnotationType.RASTER,
+        task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+    ) == {
+        schemas.Label(key="semsegk1", value="semsegv1"),
+        schemas.Label(key="semsegk2", value="semsegv2"),
+        schemas.Label(key="semsegk3", value="semsegv3"),
+    }
+    assert (
+        _get_dataset_labels(
+            db,
+            dataset_name=dset_name,
+            annotation_type=enums.AnnotationType.POLYGON,
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+        )
+        == set()
+    )
+
     assert _get_model_label_keys(
         db,
         dataset_name=dset_name,
         model_name=model_name,
         task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
     ) == {"semsegk1", "semsegk2", "semsegk3_pred"}
+
+    assert _get_model_labels(
+        db,
+        dataset_name=dset_name,
+        model_name=model_name,
+        annotation_type=enums.AnnotationType.RASTER,
+        task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+    ) == {
+        schemas.Label(key="semsegk1", value="semsegv1"),
+        schemas.Label(key="semsegk2", value="semsegv2"),
+        schemas.Label(key="semsegk3_pred", value="semsegv3_pred"),
+    }
+
+    assert (
+        _get_model_labels(
+            db,
+            dataset_name=dset_name,
+            model_name=model_name,
+            annotation_type=enums.AnnotationType.POLYGON,
+            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+        )
+        == set()
+    )
 
     for task_type in [
         enums.TaskType.INSTANCE_SEGMENTATION,
@@ -199,6 +244,33 @@ def test_label(
         task_type=enums.TaskType.INSTANCE_SEGMENTATION,
     ) == {"inssegk1", "inssegk2", "inssegk3"}
 
+    assert _get_dataset_labels(
+        db,
+        dataset_name=dset_name,
+        annotation_type=enums.AnnotationType.RASTER,
+        task_types=[enums.TaskType.INSTANCE_SEGMENTATION],
+    ) == {
+        schemas.Label(key="inssegk1", value="inssegv1"),
+        schemas.Label(key="inssegk2", value="inssegv2"),
+        schemas.Label(key="inssegk3", value="inssegv3"),
+    }
+    assert _get_dataset_labels(
+        db,
+        dataset_name=dset_name,
+        annotation_type=enums.AnnotationType.RASTER,
+        task_types=[
+            enums.TaskType.INSTANCE_SEGMENTATION,
+            enums.TaskType.SEMANTIC_SEGMENTATION,
+        ],
+    ) == {
+        schemas.Label(key="inssegk1", value="inssegv1"),
+        schemas.Label(key="inssegk2", value="inssegv2"),
+        schemas.Label(key="inssegk3", value="inssegv3"),
+        schemas.Label(key="semsegk1", value="semsegv1"),
+        schemas.Label(key="semsegk2", value="semsegv2"),
+        schemas.Label(key="semsegk3", value="semsegv3"),
+    }
+
     assert _get_dataset_label_keys(
         db,
         dataset_name=dset_name,
@@ -215,6 +287,31 @@ def test_label(
     assert (
         _get_model_label_keys(
             db, dset_name, model_name, enums.TaskType.INSTANCE_SEGMENTATION
+        )
+        == set()
+    )
+
+    assert _get_model_labels(
+        db,
+        dset_name,
+        model_name,
+        annotation_type=enums.AnnotationType.RASTER,
+        task_types=[
+            enums.TaskType.INSTANCE_SEGMENTATION,
+            enums.TaskType.SEMANTIC_SEGMENTATION,
+        ],
+    ) == {
+        schemas.Label(key="semsegk1", value="semsegv1"),
+        schemas.Label(key="semsegk2", value="semsegv2"),
+        schemas.Label(key="semsegk3_pred", value="semsegv3_pred"),
+    }
+    assert (
+        _get_model_labels(
+            db,
+            dset_name,
+            model_name,
+            annotation_type=enums.AnnotationType.RASTER,
+            task_types=[enums.TaskType.INSTANCE_SEGMENTATION],
         )
         == set()
     )

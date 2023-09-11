@@ -262,3 +262,11 @@ class ConfusionMatrix(Base):
     evaluation_settings_id: Mapped[int] = mapped_column(
         ForeignKey("evaluation_settings.id")
     )
+
+
+annotation_type_to_geometry = {
+    AnnotationType.BOX: Annotation.box,
+    AnnotationType.POLYGON: Annotation.polygon,
+    AnnotationType.MULTIPOLYGON: Annotation.multipolygon,
+    AnnotationType.RASTER: Annotation.raster,
+}

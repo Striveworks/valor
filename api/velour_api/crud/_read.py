@@ -61,6 +61,9 @@ def get_joint_labels(
     db: Session,
     dataset_name: str,
     model_name: str,
+    task_types: list[enums.TaskType],
+    gt_type: enums.AnnotationType,
+    pd_type: enums.AnnotationType,
 ) -> dict[str, list[schemas.Label]]:
     """Returns a dictionary containing disjoint sets of labels. Keys are (dataset, model) and contain sets of labels disjoint from the other."""
 
@@ -68,6 +71,9 @@ def get_joint_labels(
         db,
         dataset_name=dataset_name,
         model_name=model_name,
+        task_types=task_types,
+        gt_type=gt_type,
+        pd_type=pd_type,
     )
 
 
@@ -76,6 +82,9 @@ def get_disjoint_labels(
     db: Session,
     dataset_name: str,
     model_name: str,
+    task_types: list[enums.TaskType],
+    gt_type: enums.AnnotationType,
+    pd_type: enums.AnnotationType,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """Returns a dictionary containing disjoint sets of labels. Keys are (dataset, model) and contain sets of labels disjoint from the other."""
 
@@ -83,6 +92,9 @@ def get_disjoint_labels(
         db,
         dataset_name=dataset_name,
         model_name=model_name,
+        task_types=task_types,
+        gt_type=gt_type,
+        pd_type=pd_type,
     )
 
 
