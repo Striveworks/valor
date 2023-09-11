@@ -10,14 +10,6 @@ def create_model(
     db: Session,
     model: schemas.Model,
 ):
-    # Check if dataset already exists.
-    if (
-        db.query(models.Model)
-        .where(models.Model.name == model.name)
-        .one_or_none()
-    ):
-        raise exceptions.ModelAlreadyExistsError(model.name)
-
     # Create model
     row = models.Model(name=model.name)
     try:
@@ -36,35 +28,8 @@ def get_model(
     db: Session,
     name: str,
 ) -> schemas.Model:
-
-    model = (
-        db.query(models.Model).where(models.Model.name == name).one_or_none()
-    )
-    if not model:
-        raise exceptions.ModelDoesNotExistError(name)
-
-    metadata = []
-    for row in (
-        db.query(models.MetaDatum)
-        .where(models.MetaDatum.model_id == model.id)
-        .all()
-    ):
-        if row.string_value:
-            metadata.append(
-                schemas.MetaDatum(key=row.key, value=row.string_value)
-            )
-        elif row.numeric_value:
-            metadata.append(
-                schemas.MetaDatum(key=row.key, value=row.numeric_value)
-            )
-        elif row.geo:
-            metadata.append(
-                schemas.MetaDatum(
-                    key=row.key,
-                    value=row.geo,
-                )
-            )
-
+    model = core.get_model(db, name=name)
+    metadata = core.get_metadata(db, model=model)
     return schemas.Model(id=model.id, name=model.name, metadata=metadata)
 
 
@@ -80,11 +45,9 @@ def delete_model(
     db: Session,
     name: str,
 ):
-    md = db.query(models.Model).where(models.Model.name == name).one_or_none()
-    if not md:
-        raise exceptions.ModelDoesNotExistError(name)
+    model = core.get_model(db, name=name)
     try:
-        db.delete(md)
+        db.delete(model)
         db.commit()
     except IntegrityError:
         db.rollback()
