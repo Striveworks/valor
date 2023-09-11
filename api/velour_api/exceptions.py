@@ -100,10 +100,6 @@ class GroundTruthAlreadyExistsError(Exception):
     pass
 
 
-class PredictionAlreadyExistsError(Exception):
-    pass
-
-
 class AnnotationAlreadyExistsError(Exception):
     pass
 
