@@ -64,7 +64,10 @@ def create_groundtruths(
         exceptions.DatumDoesNotExistError,
     ) as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except (exceptions.DatasetFinalizedError,) as e:
+    except (
+        exceptions.DatasetFinalizedError,
+        exceptions.DatumAlreadyExistsError,
+    ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -119,18 +122,19 @@ def create_predictions(
 
 
 @app.get(
-    "/predictions/model/{model_name}/datum/{uid}",
+    "/predictions/model/{model_name}/dataset/{dataset_name}/datum/{uid}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Predictions"],
 )
 def get_prediction(
-    model_name: str, uid: str, db: Session = Depends(get_db)
+    model_name: str, dataset_name: str, uid: str, db: Session = Depends(get_db)
 ) -> schemas.Prediction | None:
     try:
         return crud.get_prediction(
             db=db,
             model_name=model_name,
+            dataset_name=dataset_name,
             datum_uid=uid,
         )
     except (

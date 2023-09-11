@@ -12,6 +12,7 @@ def create_groundtruth(
     # create datum
     datum = core.create_datum(db, groundtruth.datum)
 
+    # Create annotation, groundtruths, labels
     rows = []
     for groundtruth_annotation in groundtruth.annotations:
         annotation = core.create_annotation(
@@ -41,18 +42,9 @@ def get_groundtruth(
     dataset_name: str,
     datum_uid: str,
 ):
-    # get dataset
-    dataset = core.get_dataset(db, dataset_name)
-
-    # get datum
-    datum = core.get_datum(db, datum_uid)
-
-    # validate
-    if dataset.id != datum.dataset_id:
-        raise exceptions.DatumDoesNotBelongToDatasetError(
-            dataset_name, datum_uid
-        )
-
+    # retrieve from table
+    dataset = core.get_dataset(db, name=dataset_name)
+    datum = core.get_datum(db, dataset_id=dataset.id, uid=datum_uid)
     return schemas.GroundTruth(
         datum=schemas.Datum(
             uid=datum.uid,
@@ -67,7 +59,5 @@ def get_groundtruths(
     db: Session,
     request: schemas.Filter,
 ) -> list[schemas.GroundTruth]:
-
     datums = ops.BackendQuery.datum().filter(request).all(db)
-
     return [core.get_annotations(db, datum) for datum in datums]
