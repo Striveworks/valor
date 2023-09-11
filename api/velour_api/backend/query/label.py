@@ -1,4 +1,4 @@
-from sqlalchemy import and_
+from sqlalchemy import Select, and_, select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
@@ -25,37 +25,50 @@ def get_labels(
     ]
 
 
+def get_dataset_labels_query(
+    dataset_name: str,
+    annotation_type: enums.AnnotationType,
+    task_types: list[enums.TaskType],
+) -> Select:
+    return (
+        select(models.Label)
+        .join(
+            models.GroundTruth,
+            models.GroundTruth.label_id == models.Label.id,
+        )
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.GroundTruth.annotation_id,
+        )
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(models.Dataset, models.Dataset.id == models.Dataset.id)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.annotation_type_to_geometry[annotation_type].is_not(
+                    None
+                ),
+                models.Annotation.task_type.in_(task_types),
+            )
+        )
+        .distinct()
+    )
+
+
 def _get_dataset_labels(
     db: Session,
     dataset_name: str,
     annotation_type: enums.AnnotationType,
     task_types: list[enums.TaskType],
 ) -> set[schemas.Label]:
+    q = get_dataset_labels_query(
+        dataset_name=dataset_name,
+        annotation_type=annotation_type,
+        task_types=task_types,
+    )
     return {
-        schemas.Label(key=label[0], value=label[1])
-        for label in (
-            db.query(models.Label.key, models.Label.value)
-            .join(
-                models.GroundTruth,
-                models.GroundTruth.label_id == models.Label.id,
-            )
-            .join(
-                models.Annotation,
-                models.Annotation.id == models.GroundTruth.annotation_id,
-            )
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .join(models.Dataset, models.Dataset.id == models.Dataset.id)
-            .where(
-                and_(
-                    models.Dataset.name == dataset_name,
-                    models.annotation_type_to_geometry[annotation_type].is_not(
-                        None
-                    ),
-                    models.Annotation.task_type.in_(task_types),
-                )
-            )
-            .distinct()
-        )
+        schemas.Label(key=label.key, value=label.value)
+        for label in db.scalars(q)
     }
 
 

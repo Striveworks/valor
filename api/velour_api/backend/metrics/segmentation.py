@@ -2,13 +2,16 @@ from geoalchemy2.functions import ST_Count, ST_MapAlgebra
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select, and_, func, join, select
 
-from velour_api.backend import models
-from velour_api.enums import TaskType
+from velour_api.backend import core, models
+from velour_api.backend.metrics.core import get_or_create_row
+from velour_api.backend.query.label import get_dataset_labels_query
+from velour_api.enums import AnnotationType, TaskType
 from velour_api.schemas import Label
-from velour_api.schemas.metrics import IOUMetric, mIOUMetric
-
-# iterate through al the dataset and accumate:
-# tp, fp, fn, tn
+from velour_api.schemas.metrics import (
+    IOUMetric,
+    SemanticSegmentationMetricsRequest,
+    mIOUMetric,
+)
 
 
 def _gt_query(dataset_name: str, label_id: int) -> Select:
@@ -139,24 +142,16 @@ def get_groundtruth_labels(
     """Gets all unique groundtruth labels for semenatic segmentations
     in the dataset. Return is list of tuples (label key, label value, label id)
     """
-    return db.execute(
-        select(models.Label.key, models.Label.value, models.Label.id)
-        .join(models.GroundTruth)
-        .join(
-            models.Annotation,
-            models.GroundTruth.annotation_id == models.Annotation.id,
+    return [
+        (label.key, label.value, label.id)
+        for label in db.scalars(
+            get_dataset_labels_query(
+                dataset_name=dataset_name,
+                annotation_type=AnnotationType.RASTER,
+                task_types=[TaskType.SEMANTIC_SEGMENTATION],
+            )
         )
-        .join(models.Dataset, models.Dataset.name == dataset_name)
-        .join(
-            models.Datum,
-            and_(
-                models.Datum.dataset_id == models.Dataset.id,
-                models.Datum.id == models.Annotation.datum_id,
-            ),
-        )
-        .where(models.Annotation.task_type == TaskType.SEMANTIC_SEGMENTATION)
-        .distinct()
-    ).all()
+    ]
 
 
 def compute_segmentation_metrics(
@@ -181,3 +176,24 @@ def compute_segmentation_metrics(
     )
 
     return ret
+
+
+def create_semantic_segmentation_evaluation(
+    db: Session, request_info: SemanticSegmentationMetricsRequest
+) -> int:
+    dataset = core.get_dataset(db, request_info.settings.dataset)
+    model = core.get_model(db, request_info.settings.model)
+
+    es = get_or_create_row(
+        db,
+        models.EvaluationSettings,
+        mapping={
+            "dataset_id": dataset.id,
+            "model_id": model.id,
+            "task_type": TaskType.SEMANTIC_SEGMENTATION,
+            "pd_type": AnnotationType.RASTER,
+            "gt_type": AnnotationType.RASTER,
+        },
+    )
+
+    return es.id
