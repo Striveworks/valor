@@ -25,7 +25,12 @@ def get_labels(
     ]
 
 
-def _get_dataset_labels(db: Session, dataset_name: str) -> set[schemas.Label]:
+def _get_dataset_labels(
+    db: Session,
+    dataset_name: str,
+    annotation_type: enums.AnnotationType,
+    task_types: list[enums.TaskType],
+) -> set[schemas.Label]:
     return {
         schemas.Label(key=label[0], value=label[1])
         for label in (
@@ -43,16 +48,23 @@ def _get_dataset_labels(db: Session, dataset_name: str) -> set[schemas.Label]:
             .where(
                 and_(
                     models.Dataset.name == dataset_name,
-                    models.Annotation.model_id.is_(None),
+                    models.annotation_type_to_geometry[annotation_type].is_not(
+                        None
+                    ),
+                    models.Annotation.task_type.in_(task_types),
                 )
             )
-            .all()
+            .distinct()
         )
     }
 
 
 def _get_model_labels(
-    db: Session, dataset_name: str, model_name: str
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    annotation_type: enums.AnnotationType,
+    task_types: list[enums.TaskType],
 ) -> set[schemas.Label]:
     return {
         schemas.Label(key=label[0], value=label[1])
@@ -73,9 +85,13 @@ def _get_model_labels(
                 and_(
                     models.Dataset.name == dataset_name,
                     models.Model.name == model_name,
+                    models.annotation_type_to_geometry[annotation_type].is_not(
+                        None
+                    ),
+                    models.Annotation.task_type.in_(task_types),
                 )
             )
-            .all()
+            .distinct()
         )
     }
 
@@ -142,10 +158,21 @@ def get_joint_labels(
     db: Session,
     dataset_name: str,
     model_name: str,
+    task_types: list[enums.TaskType],
+    gt_type: enums.AnnotationType,
+    pd_type: enums.AnnotationType,
 ) -> list[schemas.Label]:
     return list(
-        _get_dataset_labels(db, dataset_name).intersection(
-            _get_model_labels(db, dataset_name, model_name)
+        _get_dataset_labels(
+            db, dataset_name, task_types=task_types, annotation_type=gt_type
+        ).intersection(
+            _get_model_labels(
+                db,
+                dataset_name,
+                model_name,
+                task_types=task_types,
+                annotation_type=pd_type,
+            )
         )
     )
 
@@ -167,12 +194,23 @@ def get_disjoint_labels(
     db: Session,
     dataset_name: str,
     model_name: str,
+    task_types: list[enums.TaskType],
+    gt_type: enums.AnnotationType,
+    pd_type: enums.AnnotationType,
 ) -> dict[str, list[schemas.Label]]:
     """Returns tuple with elements (dataset, model) which contain lists of Labels."""
 
     # get labels
-    ds_labels = _get_dataset_labels(db, dataset_name)
-    md_labels = _get_model_labels(db, dataset_name, model_name)
+    ds_labels = _get_dataset_labels(
+        db, dataset_name, task_types=task_types, annotation_type=gt_type
+    )
+    md_labels = _get_model_labels(
+        db,
+        dataset_name,
+        model_name,
+        task_types=task_types,
+        annotation_type=pd_type,
+    )
 
     # set operation to get disjoint sets wrt the lhs operand
     ds_unique = list(ds_labels - md_labels)
