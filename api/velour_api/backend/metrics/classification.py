@@ -3,12 +3,13 @@ from sqlalchemy import Float, Integer
 from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
 
-from velour_api import enums, schemas
+from velour_api import schemas
 from velour_api.backend import core, models
 from velour_api.backend.metrics.core import (
     create_metric_mappings,
     get_or_create_row,
 )
+from velour_api.enums import AnnotationType, TaskType
 
 
 # @TODO: Implement metadata filtering using `ops.BackendQuerys`
@@ -46,17 +47,20 @@ def binary_roc_auc(
             models.Annotation.datum_id.label("datum_id"),
             models.Label.value.label("label_value"),
         )
-        .select_from(models.Annotation)
-        .join(models.Datum, models.Datum.dataset_id == dataset.id)
+        .select_from(models.Label)
         .join(
-            models.GroundTruth,
-            models.GroundTruth.annotation_id == models.Annotation.id,
+            models.GroundTruth, models.GroundTruth.label_id == models.Label.id
         )
-        .join(models.Label, models.Label.id == models.GroundTruth.label_id)
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.GroundTruth.annotation_id,
+        )
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .where(
             and_(
-                models.Annotation.task_type == "classification",
+                models.Datum.dataset_id == dataset.id,
                 models.Annotation.model_id.is_(None),
+                models.Annotation.task_type == TaskType.CLASSIFICATION.value,
                 models.Label.key == label.key,
             ),
         )
@@ -70,18 +74,18 @@ def binary_roc_auc(
             models.Prediction.score.label("score"),
             models.Label.value.label("label_value"),
         )
-        .select_from(models.Annotation)
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .join(models.Model, models.Model.name == model_name)
+        .select_from(models.Label)
+        .join(models.Prediction, models.Prediction.label_id == models.Label.id)
         .join(
-            models.Prediction,
-            models.Prediction.annotation_id == models.Annotation.id,
+            models.Annotation,
+            models.Annotation.id == models.Prediction.annotation_id,
         )
-        .join(models.Label, models.Label.id == models.Prediction.label_id)
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .where(
             and_(
                 models.Datum.dataset_id == dataset.id,
                 models.Annotation.model_id == model.id,
+                models.Annotation.task_type == TaskType.CLASSIFICATION.value,
                 models.Label.key == label.key,
                 models.Label.value == label.value,
             ),
@@ -361,7 +365,8 @@ def compute_clf_metrics(
             .where(
                 and_(
                     models.Dataset.name == dataset_name,
-                    models.Annotation.task_type == "classification",
+                    models.Annotation.task_type
+                    == TaskType.CLASSIFICATION.value,
                     models.Annotation.model_id.is_(None),
                 )
             )
@@ -392,7 +397,8 @@ def compute_clf_metrics(
             .where(
                 and_(
                     models.Dataset.name == dataset_name,
-                    models.Annotation.task_type == "classification",
+                    models.Annotation.task_type
+                    == TaskType.CLASSIFICATION.value,
                     models.Annotation.model_id.isnot(None),
                     models.Model.name == model_name,
                 )
@@ -630,8 +636,8 @@ def create_clf_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "task_type": enums.TaskType.CLASSIFICATION,
-            "target_type": enums.AnnotationType.NONE,
+            "task_type": TaskType.CLASSIFICATION,
+            "target_type": AnnotationType.NONE,
         },
     )
 
