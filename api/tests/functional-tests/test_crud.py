@@ -1538,6 +1538,9 @@ def test_get_joint_labels(
             db=db,
             dataset_name=dataset_names[0],
             model_name=model_names[0],
+            task_types=[enums.TaskType.DETECTION],
+            gt_type=enums.AnnotationType.BOX,
+            pd_type=enums.AnnotationType.BOX,
         )
     ) == set(
         [
