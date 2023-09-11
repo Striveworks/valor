@@ -91,6 +91,7 @@ def get_disjoint_keys(
     db: Session,
     dataset_name: str,
     model_name: str,
+    task_type: enums.TaskType,
 ) -> tuple[list[str], list[str]]:
     """Returns a dictionary containing disjoint sets of label keys. Keys are (dataset, model) and contain sets of keys disjoint from the other."""
 
@@ -98,6 +99,7 @@ def get_disjoint_keys(
         db,
         dataset_name=dataset_name,
         model_name=model_name,
+        task_type=task_type,
     )
 
 

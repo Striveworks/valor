@@ -1,7 +1,7 @@
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from velour_api import schemas
+from velour_api import enums, schemas
 from velour_api.backend import models, ops
 
 
@@ -80,7 +80,9 @@ def _get_model_labels(
     }
 
 
-def _get_dataset_label_keys(db: Session, dataset_name: str) -> set[str]:
+def _get_dataset_label_keys(
+    db: Session, dataset_name: str, task_type: enums.TaskType
+) -> set[str]:
     return {
         label[0]
         for label in (
@@ -98,16 +100,16 @@ def _get_dataset_label_keys(db: Session, dataset_name: str) -> set[str]:
             .where(
                 and_(
                     models.Dataset.name == dataset_name,
-                    models.Annotation.model_id.is_(None),
+                    models.Annotation.task_type == task_type,
                 )
             )
-            .all()
+            .distinct()
         )
     }
 
 
 def _get_model_label_keys(
-    db: Session, dataset_name: str, model_name: str
+    db: Session, dataset_name: str, model_name: str, task_type: enums.TaskType
 ) -> set[str]:
     return {
         label[0]
@@ -128,9 +130,10 @@ def _get_model_label_keys(
                 and_(
                     models.Dataset.name == dataset_name,
                     models.Model.name == model_name,
+                    models.Annotation.task_type == task_type,
                 )
             )
-            .all()
+            .distinct()
         )
     }
 
@@ -151,10 +154,11 @@ def get_joint_keys(
     db: Session,
     dataset_name: str,
     model_name: str,
+    task_type: enums.TaskType,
 ) -> list[schemas.Label]:
     return list(
-        _get_dataset_label_keys(db, dataset_name).intersection(
-            _get_model_label_keys(db, dataset_name, model_name)
+        _get_dataset_label_keys(db, dataset_name, task_type).intersection(
+            _get_model_label_keys(db, dataset_name, model_name, task_type)
         )
     )
 
@@ -179,14 +183,12 @@ def get_disjoint_labels(
 
 
 def get_disjoint_keys(
-    db: Session,
-    dataset_name: str,
-    model_name: str,
+    db: Session, dataset_name: str, model_name: str, task_type: enums.TaskType
 ) -> dict[str, list[schemas.Label]]:
     """Returns tuple with elements (dataset, model) which contain lists of Labels."""
 
-    ds_labels = _get_dataset_label_keys(db, dataset_name)
-    md_labels = _get_model_label_keys(db, dataset_name, model_name)
+    ds_labels = _get_dataset_label_keys(db, dataset_name, task_type)
+    md_labels = _get_model_label_keys(db, dataset_name, model_name, task_type)
 
     # set operation to get disjoint sets wrt the lhs operand
     ds_unique = list(ds_labels - md_labels)
@@ -196,7 +198,5 @@ def get_disjoint_keys(
     return (ds_unique, md_unique)
 
 
-def get_label_distribution(
-    db: Session,
-) -> list[schemas.LabelDistribution]:
+def get_label_distribution(db: Session) -> list[schemas.LabelDistribution]:
     return []

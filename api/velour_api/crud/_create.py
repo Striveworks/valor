@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from velour_api import backend, schemas
+from velour_api import backend, enums, schemas
 from velour_api.backend import stateflow
 from velour_api.crud._read import get_disjoint_keys, get_disjoint_labels
 
@@ -60,6 +60,7 @@ def create_clf_evaluation(
         db=db,
         dataset_name=request_info.settings.dataset,
         model_name=request_info.settings.model,
+        task_type=enums.TaskType.CLASSIFICATION,
     )
 
     # create evaluation setting
