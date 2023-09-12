@@ -211,19 +211,23 @@ def create_dataset_from_chariot(
 
     Creates a new Velour dataset from a Chariot dataset.
 
-    Args:
-        client: (velour.client.Client)
-        dataset: (chariot.datasets.Dataset)
-        dataset_version_id: (str)
-            Chariot dataset version id.
+    Parameters
+    ----------
+    client: velour.client.Client
+    dataset: chariot.datasets.Dataset
+    dataset_version_id: str
+        Chariot dataset version id.
 
-    Returns:
-        Velour dataset object (velour.client.Dataset) that links to the dataset
-        on the backend. The dataset will be empty and ready for groundtruths
-        to be uploaded.
+    Returns
+    ----------
+    velour.client.Dataset
+        Velour dataset object links to the dataset on the backend.
+        The dataset will be empty and ready for groundtruths.
 
-    Raises:
-        velour.client.ClientException: Any error propagated from the backend.
+    Raises
+    ----------
+    velour.client.ClientException
+        Any error propagated from the backend.
     """
     return Dataset.create(
         client=client,
@@ -255,21 +259,24 @@ def get_chariot_dataset_integration(
     Creates or gets a new Velour dataset from a Chariot dataset. Returns
     Velour dataset along with matched Chariot groundtruth parser.
 
-    Args:
-        client: (velour.client.Client)
-        dataset: (chariot.datasets.Dataset)
-        dataset_version_id: (str)
-            Chariot dataset version id.
+    Parameters
+    ----------
+    client: velour.client.Client
+    dataset: chariot.datasets.Dataset
+    dataset_version_id: str
+        Chariot dataset version id.
 
-    Returns:
-        Tuple
-            dataset: (velour.client.Dataset)
-            parser: (callable)
-                Args:
-                    annotation: (dict) Chariot groundtruth annotation.
+    Returns
+    ----------
+    tuple
+        dataset: velour.client.Dataset
+        parser: callable(annotation: dict)
+            Parsing function that converts Chariot groundtruth annotations.
 
-    Raises:
-        velour.client.ClientException: Any error propagated from the backend.
+    Raises
+    ----------
+    velour.client.ClientException
+        Any error propagated from the backend.
     """
 
     # get chariot dataset version
@@ -303,20 +310,25 @@ def create_dataset_from_chariot_evaluation_manifest(
     this does not expose image metadata and therefore metadata-based filtering
     is not supported.
 
-    Args:
-        client: (velour.client.Client)
-        dataset: (chariot.datasets.Dataset)
-        dataset_version_id: (str)
-            Chariot dataset version id.
-        disable_progress_bar: (bool) Toggles tqdm progress bar.
+    Parameters
+    ----------
+    client: velour.client.Client
+    dataset: chariot.datasets.Dataset
+    dataset_version_id: str
+        Chariot dataset version id.
+    disable_progress_bar: bool
+        Toggles tqdm progress bar.
 
-    Returns:
-        Velour dataset object (velour.client.Dataset) that links to the dataset
-        on the backend. The dataset will be finalized and ready for evaluation
-        jobs.
+    Returns
+    ----------
+    velour.client.Dataset
+        Velour dataset object that links to the dataset on the backend.
+        The dataset will be finalized and ready for evaluation jobs.
 
-    Raises:
-        velour.client.ClientException: Any error propagated from the backend.
+    Raises
+    ----------
+    velour.client.ClientException
+        Any error propagated from the backend.
     """
     # get chariot dataset version
     dataset_version = _retrieve_dataset_version(dataset, dataset_version_id)
