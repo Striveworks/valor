@@ -148,13 +148,15 @@ class Annotation(Base):
 
 class Datum(Base):
     __tablename__ = "datum"
+    __table_args__ = (UniqueConstraint("dataset_id", "uid"),)
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    uid: Mapped[str] = mapped_column(nullable=False)
     dataset_id: Mapped[int] = mapped_column(
-        ForeignKey("dataset.id"), index=True
+        ForeignKey("dataset.id"),
+        nullable=False,
     )
+    uid: Mapped[str] = mapped_column(nullable=False)
 
     # relationship
     dataset: Mapped["Dataset"] = relationship(back_populates="datums")
@@ -162,8 +164,6 @@ class Datum(Base):
         cascade="all, delete-orphan"
     )
     metadatums: Mapped[list["MetaDatum"]] = relationship(cascade="all, delete")
-
-    __table_args__ = (UniqueConstraint("dataset_id", "uid"),)
 
 
 class Model(Base):
@@ -205,8 +205,7 @@ class EvaluationSettings(Base):
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
     task_type: Mapped[str] = mapped_column(Enum(TaskType))
-    pd_type: Mapped[str] = mapped_column(Enum(AnnotationType))
-    gt_type: Mapped[str] = mapped_column(Enum(AnnotationType))
+    target_type: Mapped[str] = mapped_column(Enum(AnnotationType))
     min_area: Mapped[float] = mapped_column(nullable=True)
     max_area: Mapped[float] = mapped_column(nullable=True)
     group_by: Mapped[str] = mapped_column(nullable=True)

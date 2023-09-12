@@ -10,14 +10,6 @@ def create_dataset(
     db: Session,
     dataset: schemas.Dataset,
 ):
-    # Check if dataset already exists.
-    if (
-        db.query(models.Dataset)
-        .where(models.Dataset.name == dataset.name)
-        .one_or_none()
-    ):
-        raise exceptions.DatasetAlreadyExistsError(dataset.name)
-
     # Create dataset
     try:
         row = models.Dataset(name=dataset.name)
@@ -36,50 +28,10 @@ def get_dataset(
     db: Session,
     name: str,
 ) -> schemas.Dataset:
-
-    dataset = (
-        db.query(models.Dataset)
-        .where(models.Dataset.name == name)
-        .one_or_none()
-    )
-    if not dataset:
-        raise exceptions.DatasetDoesNotExistError(name)
-
-    metadata = []
-    for row in (
-        db.query(models.MetaDatum)
-        .where(models.MetaDatum.dataset_id == dataset.id)
-        .all()
-    ):
-        if row.string_value:
-            metadata.append(
-                schemas.MetaDatum(key=row.key, value=row.string_value)
-            )
-        elif row.numeric_value:
-            metadata.append(
-                schemas.MetaDatum(key=row.key, value=row.numeric_value)
-            )
-        elif row.geo:
-            metadata.append(
-                schemas.MetaDatum(
-                    key=row.key,
-                    value=row.geo,
-                )
-            )
-
+    # retrieve dataset
+    dataset = core.get_dataset(db, name=name)
+    metadata = core.get_metadata(db, dataset=dataset)
     return schemas.Dataset(id=dataset.id, name=dataset.name, metadata=metadata)
-
-
-def get_dataset_name_from_datum_uid(
-    db: Session,
-    uid: str,
-) -> str | None:
-    """Returns dataset name"""
-    return db.scalar(
-        select(models.Dataset.name)
-        .join(models.Datum, models.Datum.dataset_id == models.Dataset.id)
-        .where(models.Datum.uid == uid)
-    )
 
 
 def get_datasets(
@@ -91,6 +43,7 @@ def get_datasets(
     ]
 
 
+# @TODO
 def get_datums(
     db: Session,
     request: schemas.Filter | None = None,
@@ -119,16 +72,10 @@ def delete_dataset(
     db: Session,
     name: str,
 ):
-    ds = (
-        db.query(models.Dataset)
-        .where(models.Dataset.name == name)
-        .one_or_none()
-    )
-    if not ds:
-        raise exceptions.DatasetDoesNotExistError(name)
+    dataset = core.get_dataset(db, name=name)
     try:
-        db.delete(ds)
+        db.delete(dataset)
         db.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
-        raise RuntimeError
+        raise e

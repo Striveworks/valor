@@ -22,7 +22,7 @@ from sqlalchemy import and_, create_engine, func, select, text
 from sqlalchemy.orm import Session
 
 from velour.client import Client, ClientException, Dataset, Model
-from velour.enums import AnnotationType, DataType, JobStatus, TaskType
+from velour.enums import DataType, JobStatus, TaskType
 from velour.schemas import (
     Annotation,
     BasicPolygon,
@@ -220,6 +220,7 @@ def rect3():
 def gt_dets1(
     rect1: BoundingBox,
     rect2: BoundingBox,
+    rect3: BoundingBox,
     img1: ImageMetadata,
     img2: ImageMetadata,
 ) -> list[GroundTruth]:
@@ -231,7 +232,12 @@ def gt_dets1(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=rect1,
-                )
+                ),
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k2", value="v2")],
+                    bounding_box=rect3,
+                ),
             ],
         ),
         GroundTruth(
@@ -248,14 +254,61 @@ def gt_dets1(
 
 
 @pytest.fixture
-def gt_poly_dets1(
+def gt_dets2(
     rect1: BoundingBox,
     rect2: BoundingBox,
+    rect3: BoundingBox,
+    img5: ImageMetadata,
+    img6: ImageMetadata,
+    img8: ImageMetadata,
+) -> list[GroundTruth]:
+    return [
+        GroundTruth(
+            datum=img5.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k1", value="v1")],
+                    polygon=Polygon(boundary=rect1.polygon, holes=None),
+                ),
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k2", value="v2")],
+                    bounding_box=rect3,
+                ),
+            ],
+        ),
+        GroundTruth(
+            datum=img6.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k1", value="v1")],
+                    polygon=Polygon(boundary=rect2.polygon, holes=None),
+                )
+            ],
+        ),
+        GroundTruth(
+            datum=img8.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k3", value="v3")],
+                    bounding_box=rect3,
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def gt_poly_dets1(
     img1: ImageMetadata,
     img2: ImageMetadata,
-) -> list[GroundTruth]:
+    rect1: BoundingBox,
+    rect2: BoundingBox,
+):
     """Same thing as gt_dets1 but represented as a polygon instead of bounding box"""
-
     return [
         GroundTruth(
             datum=img1.to_datum(),
@@ -264,7 +317,7 @@ def gt_poly_dets1(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon(boundary=rect1.polygon, holes=None),
-                )
+                ),
             ],
         ),
         GroundTruth(
@@ -281,43 +334,13 @@ def gt_poly_dets1(
 
 
 @pytest.fixture
-def gt_dets2(rect3: BoundingBox, img1: ImageMetadata) -> list[GroundTruth]:
-    return [
-        GroundTruth(
-            datum=img1.to_datum(),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.DETECTION,
-                    labels=[Label(key="k2", value="v2")],
-                    bounding_box=rect3,
-                )
-            ],
-        ),
-    ]
-
-
-@pytest.fixture
-def gt_dets3(rect3: BoundingBox, img8: ImageMetadata) -> list[GroundTruth]:
-    return [
-        GroundTruth(
-            datum=img8.to_datum(),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.DETECTION,
-                    labels=[Label(key="k3", value="v3")],
-                    bounding_box=rect3,
-                )
-            ],
-        ),
-    ]
-
-
-@pytest.fixture
-def gt_instance_segs(
+def gt_segs(
     rect1: BoundingBox,
     rect2: BoundingBox,
+    rect3: BoundingBox,
     img1: ImageMetadata,
     img2: ImageMetadata,
+    img9: ImageMetadata,
 ) -> list[Annotation]:
     return [
         GroundTruth(
@@ -329,7 +352,17 @@ def gt_instance_segs(
                     multipolygon=MultiPolygon(
                         polygons=[Polygon(boundary=rect1.polygon)]
                     ),
-                )
+                ),
+                Annotation(
+                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[Label(key="k2", value="v2")],
+                    multipolygon=MultiPolygon(
+                        polygons=[
+                            Polygon(boundary=rect3.polygon),
+                            Polygon(boundary=rect1.polygon),
+                        ]
+                    ),
+                ),
             ],
         ),
         GroundTruth(
@@ -349,37 +382,6 @@ def gt_instance_segs(
                 )
             ],
         ),
-    ]
-
-
-@pytest.fixture
-def gt_semantic_segs1(
-    rect1: BoundingBox, rect3: BoundingBox, img1: ImageMetadata
-) -> list[GroundTruth]:
-    return [
-        GroundTruth(
-            datum=img1.to_datum(),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[Label(key="k2", value="v2")],
-                    multipolygon=MultiPolygon(
-                        polygons=[
-                            Polygon(boundary=rect3.polygon),
-                            Polygon(boundary=rect1.polygon),
-                        ]
-                    ),
-                )
-            ],
-        ),
-    ]
-
-
-@pytest.fixture
-def gt_semantic_segs2(
-    rect3: BoundingBox, img9: ImageMetadata
-) -> list[GroundTruth]:
-    return [
         GroundTruth(
             datum=img9.to_datum(),
             annotations=[
@@ -396,15 +398,22 @@ def gt_semantic_segs2(
 
 
 @pytest.fixture
-def gt_clfs1(img5: ImageMetadata, img6: ImageMetadata) -> list[GroundTruth]:
+def gt_clfs(
+    img5: ImageMetadata,
+    img6: ImageMetadata,
+    img8: ImageMetadata,
+) -> list[GroundTruth]:
     return [
         GroundTruth(
             datum=img5.to_datum(),
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
-                    labels=[Label(key="k5", value="v5")],
-                )
+                    labels=[
+                        Label(key="k4", value="v4"),
+                        Label(key="k5", value="v5"),
+                    ],
+                ),
             ],
         ),
         GroundTruth(
@@ -416,27 +425,6 @@ def gt_clfs1(img5: ImageMetadata, img6: ImageMetadata) -> list[GroundTruth]:
                 )
             ],
         ),
-    ]
-
-
-@pytest.fixture
-def gt_clfs2(img5: ImageMetadata) -> list[GroundTruth]:
-    return [
-        GroundTruth(
-            datum=img5.to_datum(),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.CLASSIFICATION,
-                    labels=[Label(key="k4", value="v4")],
-                )
-            ],
-        ),
-    ]
-
-
-@pytest.fixture
-def gt_clfs3(img8: ImageMetadata) -> list[GroundTruth]:
-    return [
         GroundTruth(
             datum=img8.to_datum(),
             annotations=[
@@ -597,12 +585,9 @@ def tabular_preds() -> list[list[float]]:
     ]
 
 
-# @TODO: Stateflow
 def _test_create_image_dataset_with_gts(
     client: Client,
-    gts1: list[Any],
-    gts2: list[Any],
-    gts3: list[Any],
+    gts: list[Any],
     expected_labels_tuples: set[tuple[str, str]],
     expected_image_uids: list[str],
 ) -> Dataset:
@@ -616,11 +601,7 @@ def _test_create_image_dataset_with_gts(
     Parameters
     ----------
     client
-    gts1
-        list of groundtruth objects (from `velour.data_types`)
-    gts2
-        list of groundtruth objects (from `velour.data_types`)
-    gts3
+    gts
         list of groundtruth objects (from `velour.data_types`)
     expected_labels_tuples
         set of tuples of key/value labels to check were added to the database
@@ -634,9 +615,7 @@ def _test_create_image_dataset_with_gts(
         Dataset.create(client, dset_name)
     assert "already exists" in str(exc_info)
 
-    for gt in gts1:
-        dataset.add_groundtruth(gt)
-    for gt in gts2:
+    for gt in gts:
         dataset.add_groundtruth(gt)
 
     # check that the dataset has two images
@@ -652,13 +631,12 @@ def _test_create_image_dataset_with_gts(
         == expected_labels_tuples
     )
 
-    # TODO Stateflow
-    # dataset.finalize()
-    # # check that we get an error when trying to add more images
-    # # to the dataset since it is finalized
-    # with pytest.raises(ClientException) as exc_info:
-    #     dataset.add_groundtruth(gts3)
-    # assert "since it is finalized" in str(exc_info)
+    dataset.finalize()
+    # check that we get an error when trying to add more images
+    # to the dataset since it is finalized
+    with pytest.raises(ClientException) as exc_info:
+        dataset.add_groundtruth(gts[0])
+    assert "has been finalized" in str(exc_info)
 
     return dataset
 
@@ -796,18 +774,16 @@ def test_create_image_dataset_with_detections(
     client: Client,
     gt_dets1: list[GroundTruth],
     gt_dets2: list[GroundTruth],
-    gt_dets3: list[GroundTruth],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     dataset = _test_create_image_dataset_with_gts(
         client=client,
-        gts1=gt_dets1,
-        gts2=gt_dets2,
-        gts3=gt_dets3,
-        expected_image_uids={"uid1", "uid2"},
+        gts=gt_dets1 + gt_dets2,
+        expected_image_uids={"uid2", "uid8", "uid1", "uid6", "uid5"},
         expected_labels_tuples={
             ("k1", "v1"),
             ("k2", "v2"),
+            ("k3", "v3"),
         },
     )
 
@@ -817,7 +793,7 @@ def test_create_image_dataset_with_detections(
     # check we get back what we inserted
     gt_dets_uid1 = []
     gt_dets_uid2 = []
-    for gt in gt_dets1 + gt_dets2 + gt_dets3:
+    for gt in gt_dets1 + gt_dets2:
         if gt.datum.uid == "uid1":
             gt_dets_uid1.extend(gt.annotations)
         elif gt.datum.uid == "uid2":
@@ -1005,20 +981,17 @@ def test_create_pred_detections_as_bbox_or_poly(
 
 def test_create_image_dataset_with_segmentations(
     client: Client,
-    gt_instance_segs: list[GroundTruth],
-    gt_semantic_segs1: list[GroundTruth],
-    gt_semantic_segs2: list[GroundTruth],
+    gt_segs: list[GroundTruth],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     dataset = _test_create_image_dataset_with_gts(
         client=client,
-        gts1=gt_instance_segs,
-        gts2=gt_semantic_segs1,
-        gts3=gt_semantic_segs2,
-        expected_image_uids={"uid1", "uid2"},
+        gts=gt_segs,
+        expected_image_uids={"uid1", "uid2", "uid9"},
         expected_labels_tuples={
             ("k1", "v1"),
             ("k2", "v2"),
+            ("k3", "v3"),
         },
     )
 
@@ -1135,7 +1108,7 @@ def test_create_gt_segs_as_polys_or_masks(
 
 def test_create_model_with_predicted_segmentations(
     client: Client,
-    gt_instance_segs: list[GroundTruth],
+    gt_segs: list[GroundTruth],
     pred_instance_segs: list[Prediction],
     db: Session,
 ):
@@ -1143,7 +1116,7 @@ def test_create_model_with_predicted_segmentations(
     _test_create_model_with_preds(
         client=client,
         datum_type=DataType.IMAGE,
-        gts=gt_instance_segs,
+        gts=gt_segs,
         preds=pred_instance_segs,
         preds_model_class=models.Prediction,
         preds_expected_number=2,
@@ -1186,34 +1159,31 @@ def test_create_model_with_predicted_segmentations(
 
 def test_create_image_dataset_with_classifications(
     client: Client,
-    gt_clfs1: list[GroundTruth],
-    gt_clfs2: list[GroundTruth],
-    gt_clfs3: list[GroundTruth],
+    gt_clfs: list[GroundTruth],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     _test_create_image_dataset_with_gts(
         client=client,
-        gts1=gt_clfs1,
-        gts2=gt_clfs2,
-        gts3=gt_clfs3,
-        expected_image_uids={"uid5", "uid6"},
+        gts=gt_clfs,
+        expected_image_uids={"uid5", "uid6", "uid8"},
         expected_labels_tuples={
             ("k5", "v5"),
             ("k4", "v4"),
+            ("k3", "v3"),
         },
     )
 
 
 def test_create_image_model_with_predicted_classifications(
     client: Client,
-    gt_clfs1: list[GroundTruth],
+    gt_clfs: list[GroundTruth],
     pred_clfs: list[Prediction],
     db: Session,
 ):
     _test_create_model_with_preds(
         client=client,
         datum_type=DataType.IMAGE,
-        gts=gt_clfs1,
+        gts=gt_clfs,
         preds=pred_clfs,
         preds_model_class=models.Prediction,
         preds_expected_number=5,
@@ -1346,14 +1316,12 @@ def test_evaluate_ap(
 
     eval_job = model.evaluate_ap(
         dataset=dataset,
-        gt_type=AnnotationType.BOX,
-        pd_type=AnnotationType.BOX,
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
         label_key="k1",
     )
 
-    assert eval_job.ignored_pred_labels == [Label(key="k2", value="v2")]
+    assert eval_job.ignored_pred_labels == []
     assert eval_job.missing_pred_labels == []
     assert isinstance(eval_job._id, int)
 
@@ -1366,9 +1334,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
     }
 
@@ -1426,8 +1393,6 @@ def test_evaluate_ap(
     # are not None
     eval_job_bounded_area_10_2000 = model.evaluate_ap(
         dataset=dataset,
-        pd_type="box",
-        gt_type="box",
         task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1441,9 +1406,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
         "min_area": 10,
         "max_area": 2000,
@@ -1454,8 +1418,6 @@ def test_evaluate_ap(
     # min area threshold should divide the set of annotations
     eval_job_min_area_1200 = model.evaluate_ap(
         dataset=dataset,
-        pd_type="box",
-        gt_type="box",
         task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1468,9 +1430,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
         "min_area": 1200,
     }
@@ -1479,8 +1440,6 @@ def test_evaluate_ap(
     # check for difference with max area now dividing the set of annotations
     eval_job_max_area_1200 = model.evaluate_ap(
         dataset=dataset,
-        pd_type="box",
-        gt_type="box",
         task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1493,9 +1452,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
         "max_area": 1200,
     }
@@ -1505,8 +1463,6 @@ def test_evaluate_ap(
     # except now has an upper bound
     eval_job_bounded_area_1200_1800 = model.evaluate_ap(
         dataset=dataset,
-        pd_type="box",
-        gt_type="box",
         task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1520,9 +1476,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
         "min_area": 1200,
         "max_area": 1800,
@@ -1536,12 +1491,12 @@ def test_evaluate_ap(
 
 def test_evaluate_image_clf(
     client: Client,
-    gt_clfs1: list[GroundTruth],
+    gt_clfs: list[GroundTruth],
     pred_clfs: list[Prediction],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     dataset = Dataset.create(client, dset_name)
-    for gt in gt_clfs1:
+    for gt in gt_clfs:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
@@ -1553,7 +1508,7 @@ def test_evaluate_image_clf(
     eval_job = model.evaluate_classification(dataset=dataset)
 
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
-    assert set(eval_job.missing_pred_keys) == {"k5"}
+    assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
 
     # sleep to give the backend time to compute
     time.sleep(1)
@@ -1936,9 +1891,8 @@ def test_evaluate_tabular_clf(
     assert eval_settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "none",
-        "gt_type": "none",
         "task_type": "classification",
+        "target_type": "none",
     }
 
     metrics_from_eval_settings_id = eval_jobs[0].metrics

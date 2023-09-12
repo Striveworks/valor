@@ -97,8 +97,8 @@ def calculate_ap_101_pt_interp(precisions, recalls) -> float:
 
 def compute_ap_metrics(
     db: Session,
-    dataset_name: str,
-    model_name: str,
+    dataset: models.Dataset,
+    model: models.Model,
     label_key: str,
     iou_thresholds: list[float],
     ious_to_keep: list[float],
@@ -114,10 +114,6 @@ def compute_ap_metrics(
     | schemas.mAPMetricAveragedOverIOUs
 ]:
     """Computes average precision metrics."""
-
-    # Retrieve sql models
-    dataset = core.get_dataset(db, dataset_name)
-    model = core.get_model(db, model_name)
 
     # Convert geometries to target type (if required)
     core.convert_geometry(
@@ -516,6 +512,14 @@ def create_ap_evaluation(
     dataset = core.get_dataset(db, request_info.settings.dataset)
     model = core.get_model(db, request_info.settings.model)
 
+    gt_type = core.get_annotation_type(db, dataset, None)
+    pd_type = core.get_annotation_type(db, dataset, model)
+
+    if not request_info.settings.target_type:
+        target_type = gt_type if gt_type < pd_type else pd_type
+    else:
+        target_type = request_info.settings.target_type
+
     es = get_or_create_row(
         db,
         models.EvaluationSettings,
@@ -523,15 +527,14 @@ def create_ap_evaluation(
             "dataset_id": dataset.id,
             "model_id": model.id,
             "task_type": enums.TaskType.DETECTION,
-            "pd_type": request_info.settings.pd_type,
-            "gt_type": request_info.settings.gt_type,
+            "target_type": target_type,
             "label_key": request_info.settings.label_key,
             "min_area": request_info.settings.min_area,
             "max_area": request_info.settings.max_area,
         },
     )
 
-    return es.id
+    return es.id, gt_type, pd_type
 
 
 def create_ap_metrics(
@@ -543,23 +546,26 @@ def create_ap_metrics(
     Intended to run as background
     """
 
-    # @TODO: This is hacky, fix schemas.APRequest
-    # START HACKY
-    dataset_name = request_info.settings.dataset
-    model_name = request_info.settings.model
-    gt_type = request_info.settings.gt_type
-    pd_type = request_info.settings.pd_type
+    # @TODO: This is hacky, fix schemas.EvaluationSettings
     label_key = request_info.settings.label_key
     min_area = request_info.settings.min_area
     max_area = request_info.settings.max_area
-    # END HACKY
 
-    target_type = gt_type if gt_type < pd_type else pd_type
+    #
+    dataset = core.get_dataset(db, request_info.settings.dataset)
+    model = core.get_model(db, request_info.settings.model)
+    gt_type = core.get_annotation_type(db, dataset, None)
+    pd_type = core.get_annotation_type(db, dataset, model)
+
+    if not request_info.settings.target_type:
+        target_type = gt_type if gt_type < pd_type else pd_type
+    else:
+        target_type = request_info.settings.target_type
 
     metrics = compute_ap_metrics(
         db=db,
-        dataset_name=dataset_name,
-        model_name=model_name,
+        dataset=dataset,
+        model=model,
         iou_thresholds=request_info.iou_thresholds,
         ious_to_keep=request_info.ious_to_keep,
         label_key=label_key,

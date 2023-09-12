@@ -808,7 +808,9 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # grab the first one and check that the area of the raster
     # matches the area of the image
-    img = crud.get_prediction(db=db, datum_uid="uid1", model_name=model_name)
+    img = crud.get_prediction(
+        db=db, model_name=model_name, dataset_name=dset_name, datum_uid="uid1"
+    )
 
     raster_counts = set(
         db.scalars(
@@ -1026,8 +1028,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
                 min_area=min_area,
                 max_area=max_area,
                 task_type=enums.TaskType.DETECTION,
-                gt_type=enums.AnnotationType.BOX,
-                pd_type=enums.AnnotationType.BOX,
+                target_type=enums.AnnotationType.BOX,
                 label_key=label_key,
             ),
             iou_thresholds=[0.2, 0.6],
@@ -1162,8 +1163,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         model=model_name,
         dataset=dset_name,
         task_type=enums.TaskType.DETECTION,
-        gt_type=enums.AnnotationType.BOX,
-        pd_type=enums.AnnotationType.BOX,
+        target_type=enums.AnnotationType.BOX,
         label_key="class",
         id=1,
     )
@@ -1171,6 +1171,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         model=model_name,
         dataset=dset_name,
         task_type=enums.TaskType.DETECTION,
+        target_type=enums.AnnotationType.BOX,
         gt_type=enums.AnnotationType.BOX,
         pd_type=enums.AnnotationType.BOX,
         label_key="class",

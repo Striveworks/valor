@@ -14,19 +14,6 @@ from velour_api.schemas.core import MetaDatum
 from velour_api.schemas.label import Label
 
 
-# @TODO: Implement later for metrics + metadata overhaul
-class MetricFilter(BaseModel):
-    datum_uids: list[str] = []
-    task_types: list[TaskType] = []
-    annotation_types: list[AnnotationType] = []
-    labels: list[Label] = []
-    label_keys: list[str] = []
-    metadata: list[MetaDatum] = []
-    min_area: float | None = None
-    max_area: float | None = None
-    allow_conversion: bool = True
-
-
 class EvaluationSettings(BaseModel):
     """General parameters defining any filters of the data such
     as model, dataset, groundtruth and prediction type, model, dataset,
@@ -35,13 +22,11 @@ class EvaluationSettings(BaseModel):
 
     model: str
     dataset: str
-    gt_type: AnnotationType | None = None
-    pd_type: AnnotationType | None = None
     task_type: TaskType | None = None
+    target_type: AnnotationType | None = None
+    label_key: str | None = None
     min_area: float | None = None
     max_area: float | None = None
-    group_by: str | None = None
-    label_key: str | None = None
     id: int | None = None
 
 
@@ -49,6 +34,7 @@ class APRequest(BaseModel):
     """Request to compute average precision"""
 
     settings: EvaluationSettings
+
     # (mutable defaults are ok for pydantic models)
     iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
     ious_to_keep: set[float] = {0.5, 0.75}

@@ -451,9 +451,9 @@ class Model:
             json=asdict(prediction),
         )
 
-    def get_prediction(self, uid: str) -> schemas.Prediction:
+    def get_prediction(self, datum: schemas.Datum) -> schemas.Prediction:
         resp = self.client._requests_get_rel_host(
-            f"predictions/model/{self.info.name}/datum/{uid}",
+            f"predictions/model/{self.info.name}/dataset/{datum.dataset}/datum/{datum.uid}",
         ).json()
         return schemas.Prediction(**resp)
 
@@ -486,7 +486,6 @@ class Model:
             "settings": {
                 "model": self.name,
                 "dataset": dataset.name,
-                "group": asdict(group_by),
             }
         }
 
@@ -519,8 +518,7 @@ class Model:
         self,
         dataset: "Dataset",
         task_type: TaskType = None,
-        pd_type: AnnotationType = None,
-        gt_type: AnnotationType = None,
+        target_type: AnnotationType = None,
         iou_thresholds: List[float] = None,
         ious_to_keep: List[float] = None,
         min_area: float = None,
@@ -532,8 +530,7 @@ class Model:
                 "model": self.name,
                 "dataset": dataset.name,
                 "task_type": task_type,
-                "gt_type": gt_type,
-                "pd_type": pd_type,
+                "target_type": target_type,
                 "min_area": min_area,
                 "max_area": max_area,
                 "label_key": label_key,
