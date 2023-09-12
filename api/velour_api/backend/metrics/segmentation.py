@@ -194,8 +194,7 @@ def create_semantic_segmentation_evaluation(
             "dataset_id": dataset.id,
             "model_id": model.id,
             "task_type": TaskType.SEMANTIC_SEGMENTATION,
-            "pd_type": AnnotationType.RASTER,
-            "gt_type": AnnotationType.RASTER,
+            "target_type": AnnotationType.NONE,
         },
     )
 
