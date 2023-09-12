@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select, and_, func, join, select
 
 from velour_api.backend import core, models
+from velour_api.backend.core.label import get_dataset_labels_query
 from velour_api.backend.metrics.core import (
     create_metric_mappings,
     get_or_create_row,
 )
-from velour_api.backend.query.label import get_dataset_labels_query
 from velour_api.enums import AnnotationType, TaskType
 from velour_api.schemas import Label
 from velour_api.schemas.metrics import (

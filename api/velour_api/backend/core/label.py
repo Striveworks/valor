@@ -1,8 +1,8 @@
-from sqlalchemy import and_, or_
+from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import schemas
+from velour_api import enums, schemas
 from velour_api.backend import models
 
 
@@ -100,3 +100,33 @@ def get_scored_labels(
         )
         for label in scored_labels
     ]
+
+
+def get_dataset_labels_query(
+    dataset_name: str,
+    annotation_type: enums.AnnotationType,
+    task_types: list[enums.TaskType],
+) -> Select:
+    return (
+        select(models.Label)
+        .join(
+            models.GroundTruth,
+            models.GroundTruth.label_id == models.Label.id,
+        )
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.GroundTruth.annotation_id,
+        )
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(models.Dataset, models.Dataset.id == models.Dataset.id)
+        .where(
+            and_(
+                models.Dataset.name == dataset_name,
+                models.annotation_type_to_geometry[annotation_type].is_not(
+                    None
+                ),
+                models.Annotation.task_type.in_(task_types),
+            )
+        )
+        .distinct()
+    )
