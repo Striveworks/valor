@@ -648,7 +648,7 @@ def create_clf_metrics(
     db: Session,
     request_info: schemas.ClfMetricsRequest,
     evaluation_settings_id: int,
-):
+) -> int:
     """
     Intended to run as background
     """

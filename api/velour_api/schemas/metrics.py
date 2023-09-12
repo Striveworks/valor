@@ -56,6 +56,12 @@ class CreateAPMetricsResponse(BaseModel):
     job_id: int
 
 
+class CreateSemanticSegmentationMetricsResponse(BaseModel):
+    missing_pred_labels: list[Label]
+    ignored_pred_labels: list[Label]
+    job_id: int
+
+
 class CreateClfMetricsResponse(BaseModel):
     missing_pred_keys: list[str]
     ignored_pred_keys: list[str]
@@ -69,6 +75,10 @@ class Job(BaseModel):
 
 
 class ClfMetricsRequest(BaseModel):
+    settings: EvaluationSettings
+
+
+class SemanticSegmentationMetricsRequest(BaseModel):
     settings: EvaluationSettings
 
 
@@ -254,4 +264,28 @@ class ROCAUCMetric(BaseModel):
             "parameters": {"label_key": self.label_key},
             "evaluation_settings_id": evaluation_settings_id,
             "group": self.group,
+        }
+
+
+class IOUMetric(BaseModel):
+    value: float
+    label: Label
+
+    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "label_id": label_id,
+            "type": "IOU",
+            "evaluation_settings_id": evaluation_settings_id,
+        }
+
+
+class mIOUMetric(BaseModel):
+    value: float
+
+    def db_mapping(self, evaluation_settings_id: int) -> dict:
+        return {
+            "value": self.value,
+            "type": "mIOU",
+            "evaluation_settings_id": evaluation_settings_id,
         }

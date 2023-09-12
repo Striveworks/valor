@@ -17,10 +17,6 @@ class ClientException(Exception):
     pass
 
 
-def _remove_none_from_dict(d: dict) -> dict:
-    return {k: v for k, v in d.items() if v is not None}
-
-
 class Client:
     """Client for interacting with the velour backend"""
 
@@ -495,6 +491,20 @@ class Model:
 
         resp = self.client._requests_post_rel_host(
             "evaluations/clf-metrics", json=payload
+        ).json()
+
+        return Evaluation(
+            client=self.client,
+            dataset_name=dataset.name,
+            model_name=self.name,
+            **resp,
+        )
+
+    def evaluate_semantic_segmentation(self, dataset: Dataset) -> Evaluation:
+        payload = {"settings": {"model": self.name, "dataset": dataset.name}}
+
+        resp = self.client._requests_post_rel_host(
+            "evaluations/semantic-segmentation-metrics", json=payload
         ).json()
 
         return Evaluation(
