@@ -313,7 +313,7 @@ def gt_dets3(rect3: BoundingBox, img8: ImageMetadata) -> list[GroundTruth]:
 
 
 @pytest.fixture
-def gt_segs1(
+def gt_instance_segs(
     rect1: BoundingBox,
     rect2: BoundingBox,
     img1: ImageMetadata,
@@ -353,7 +353,7 @@ def gt_segs1(
 
 
 @pytest.fixture
-def gt_segs2(
+def gt_semantic_segs1(
     rect1: BoundingBox, rect3: BoundingBox, img1: ImageMetadata
 ) -> list[GroundTruth]:
     return [
@@ -376,7 +376,9 @@ def gt_segs2(
 
 
 @pytest.fixture
-def gt_segs3(rect3: BoundingBox, img9: ImageMetadata) -> list[GroundTruth]:
+def gt_semantic_segs2(
+    rect3: BoundingBox, img9: ImageMetadata
+) -> list[GroundTruth]:
     return [
         GroundTruth(
             datum=img9.to_datum(),
@@ -502,7 +504,9 @@ def pred_poly_dets(
 
 
 @pytest.fixture
-def pred_segs(img1: ImageMetadata, img2: ImageMetadata) -> list[Prediction]:
+def pred_instance_segs(
+    img1: ImageMetadata, img2: ImageMetadata
+) -> list[Prediction]:
     # mask_1 = np.random.randint(0, 2, size=(64, 32), dtype=bool)
     # mask_2 = np.random.randint(0, 2, size=(12, 23), dtype=bool)
     mask_1 = np.random.randint(
@@ -1001,16 +1005,16 @@ def test_create_pred_detections_as_bbox_or_poly(
 
 def test_create_image_dataset_with_segmentations(
     client: Client,
-    gt_segs1: list[GroundTruth],
-    gt_segs2: list[GroundTruth],
-    gt_segs3: list[GroundTruth],
+    gt_instance_segs: list[GroundTruth],
+    gt_semantic_segs1: list[GroundTruth],
+    gt_semantic_segs2: list[GroundTruth],
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     dataset = _test_create_image_dataset_with_gts(
         client=client,
-        gts1=gt_segs1,
-        gts2=gt_segs2,
-        gts3=gt_segs3,
+        gts1=gt_instance_segs,
+        gts2=gt_semantic_segs1,
+        gts3=gt_semantic_segs2,
         expected_image_uids={"uid1", "uid2"},
         expected_labels_tuples={
             ("k1", "v1"),
@@ -1131,16 +1135,16 @@ def test_create_gt_segs_as_polys_or_masks(
 
 def test_create_model_with_predicted_segmentations(
     client: Client,
-    gt_segs1: list[GroundTruth],
-    pred_segs: list[Prediction],
+    gt_instance_segs: list[GroundTruth],
+    pred_instance_segs: list[Prediction],
     db: Session,
 ):
     """Tests that we can create a predicted segmentation from a mask array"""
     _test_create_model_with_preds(
         client=client,
         datum_type=DataType.IMAGE,
-        gts=gt_segs1,
-        preds=pred_segs,
+        gts=gt_instance_segs,
+        preds=pred_instance_segs,
         preds_model_class=models.Prediction,
         preds_expected_number=2,
         expected_labels_tuples={("k1", "v1"), ("k2", "v2")},
@@ -1168,7 +1172,7 @@ def test_create_model_with_predicted_segmentations(
     f = io.BytesIO(png_from_db.tobytes())
     mask_array = np.array(PIL.Image.open(f))
     np.testing.assert_equal(
-        mask_array, pred_segs[0].annotations[0].raster.to_numpy()
+        mask_array, pred_instance_segs[0].annotations[0].raster.to_numpy()
     )
 
     # test raster 2
@@ -1176,7 +1180,7 @@ def test_create_model_with_predicted_segmentations(
     f = io.BytesIO(png_from_db.tobytes())
     mask_array = np.array(PIL.Image.open(f))
     np.testing.assert_equal(
-        mask_array, pred_segs[1].annotations[0].raster.to_numpy()
+        mask_array, pred_instance_segs[1].annotations[0].raster.to_numpy()
     )
 
 
@@ -2173,11 +2177,11 @@ def test_evaluate_tabular_clf(
 #     gt_clfs1: list[GroundTruth],
 #     gt_dets1: list[GroundTruth],
 #     gt_poly_dets1: list[GroundTruth],
-#     gt_segs1: list[GroundTruth],
+#     gt_instance_segs: list[GroundTruth],
 #     pred_clfs: list[Prediction],
 #     pred_dets: list[Prediction],
 #     pred_poly_dets: list[Prediction],
-#     pred_segs: list[Prediction],
+#     pred_instance_segs: list[Prediction],
 #     db: Session,
 # ):
 #     """Tests that the client can retrieve info about datasets and models.
@@ -2195,14 +2199,14 @@ def test_evaluate_tabular_clf(
 #     ds.add_groundtruth(gt_clfs1)
 #     ds.add_groundtruth(gt_dets1)
 #     ds.add_groundtruth(gt_poly_dets1)
-#     ds.add_groundtruth(gt_segs1)
+#     ds.add_groundtruth(gt_instance_segs)
 #     ds.finalize()
 
 #     md = Model.create(client, "info_test_model")
 #     md.add_prediction(ds, pred_clfs)
 #     md.add_prediction(ds, pred_dets)
 #     md.add_prediction(ds, pred_poly_dets)
-#     md.add_prediction(ds, pred_segs)
+#     md.add_prediction(ds, pred_instance_segs)
 #     md.finalize_inferences(ds)
 
 #     ds_info = ds.get_info()
