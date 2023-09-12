@@ -490,7 +490,6 @@ class Model:
             "settings": {
                 "model": self.name,
                 "dataset": dataset.name,
-                "group": asdict(group_by),
             }
         }
 
@@ -509,8 +508,7 @@ class Model:
         self,
         dataset: "Dataset",
         task_type: TaskType = None,
-        pd_type: AnnotationType = None,
-        gt_type: AnnotationType = None,
+        target_type: AnnotationType = None,
         iou_thresholds: List[float] = None,
         ious_to_keep: List[float] = None,
         min_area: float = None,
@@ -522,8 +520,7 @@ class Model:
                 "model": self.name,
                 "dataset": dataset.name,
                 "task_type": task_type,
-                "gt_type": gt_type,
-                "pd_type": pd_type,
+                "target_type": target_type,
                 "min_area": min_area,
                 "max_area": max_area,
                 "label_key": label_key,

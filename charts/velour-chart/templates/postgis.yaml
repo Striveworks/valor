@@ -1,4 +1,4 @@
-{{- if .Values.postgis.enabled }}
+{{ if .Values.postgis.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -57,4 +57,4 @@ spec:
   selector:
     app: {{ include "velour-chart.fullname" . }}-postgis
 
-{{- end }}
+{{ end }}

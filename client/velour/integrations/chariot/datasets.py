@@ -207,6 +207,28 @@ def _parse_groundtruth_from_evaluation_manifest(
 def create_dataset_from_chariot(
     client: Client, dataset, dataset_version_id: str
 ):
+    """Create empty dataset from Chariot dataset attributes.
+
+    Creates a new Velour dataset from a Chariot dataset.
+
+    Parameters
+    ----------
+    client: velour.client.Client
+    dataset: chariot.datasets.Dataset
+    dataset_version_id: str
+        Chariot dataset version id.
+
+    Returns
+    ----------
+    velour.client.Dataset
+        Velour dataset object links to the dataset on the backend.
+        The dataset will be empty and ready for groundtruths.
+
+    Raises
+    ----------
+    velour.client.ClientException
+        Any error propagated from the backend.
+    """
     return Dataset.create(
         client=client,
         name=dataset_version_id,
@@ -219,6 +241,8 @@ def create_dataset_from_chariot(
 
 
 def get_groundtruth_parser_from_chariot(dataset_version):
+    """Returns groundtruth parser with dataset_version object embedded."""
+
     def velour_parser(annotation: dict):
         return _parse_annotation(dataset_version, annotation)
 
@@ -230,6 +254,31 @@ def get_chariot_dataset_integration(
     dataset,
     dataset_version_id: str = None,
 ):
+    """Returns Velour dataset and groundtruth parser.
+
+    Creates or gets a new Velour dataset from a Chariot dataset. Returns
+    Velour dataset along with matched Chariot groundtruth parser.
+
+    Parameters
+    ----------
+    client: velour.client.Client
+    dataset: chariot.datasets.Dataset
+    dataset_version_id: str
+        Chariot dataset version id.
+
+    Returns
+    ----------
+    tuple
+        dataset: velour.client.Dataset
+        parser: callable(annotation: dict)
+            Parsing function that converts Chariot groundtruth annotations.
+
+    Raises
+    ----------
+    velour.client.ClientException
+        Any error propagated from the backend.
+    """
+
     # get chariot dataset version
     dataset_version = _retrieve_dataset_version(dataset, dataset_version_id)
 
@@ -254,7 +303,33 @@ def create_dataset_from_chariot_evaluation_manifest(
     dataset,
     dataset_version_id,
     disable_progress_bar: bool = False,
-):
+) -> Dataset:
+    """Create dataset from an evaluation manifest.
+
+    Creates a finalized Velour dataset from an existing Chariot dataset version. Note that
+    this does not expose image metadata and therefore metadata-based filtering
+    is not supported.
+
+    Parameters
+    ----------
+    client: velour.client.Client
+    dataset: chariot.datasets.Dataset
+    dataset_version_id: str
+        Chariot dataset version id.
+    disable_progress_bar: bool
+        Toggles tqdm progress bar.
+
+    Returns
+    ----------
+    velour.client.Dataset
+        Velour dataset object that links to the dataset on the backend.
+        The dataset will be finalized and ready for evaluation jobs.
+
+    Raises
+    ----------
+    velour.client.ClientException
+        Any error propagated from the backend.
+    """
     # get chariot dataset version
     dataset_version = _retrieve_dataset_version(dataset, dataset_version_id)
 
@@ -289,3 +364,5 @@ def create_dataset_from_chariot_evaluation_manifest(
 
     # Finalize groundtruths
     velour_dataset.finalize()
+
+    return velour_dataset
