@@ -520,6 +520,42 @@ def create_clf_metrics(
         raise HTTPException(status_code=409, detail=str(e))
 
 
+@app.post(
+    "/evaluations/semantic-segmentation-metrics",
+    status_code=202,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Evaluations"],
+)
+def create_semantic_segmentation_metrics(
+    request_info: schemas.SemanticSegmentationMetricsRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+) -> schemas.CreateSemanticSegmentationMetricsResponse:
+    try:
+        # create evaluation
+        resp = crud.create_semantic_segmentation_evaluation(
+            db=db, request_info=request_info
+        )
+
+        # add metric computation to background tasks
+        background_tasks.add_task(
+            crud.compute_semantic_segmentation_metrics,
+            db=db,
+            request_info=request_info,
+            job_id=resp.job_id,
+        )
+        return resp
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except (
+        exceptions.DatasetNotFinalizedError,
+        exceptions.ModelNotFinalizedError,
+    ) as e:
+        raise HTTPException(status_code=405, detail=str(e))
+    except exceptions.StateflowError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
 @app.get(
     "/evaluations/datasets/{dataset_name}",
     status_code=200,

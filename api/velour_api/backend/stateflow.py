@@ -171,12 +171,8 @@ def evaluate(fn: callable) -> callable:
         dataset_name = None
         model_name = None
         if "request_info" in kwargs:
-            if isinstance(kwargs["request_info"], schemas.ClfMetricsRequest):
-                dataset_name = kwargs["request_info"].settings.dataset
-                model_name = kwargs["request_info"].settings.model
-            elif isinstance(kwargs["request_info"], schemas.APRequest):
-                dataset_name = kwargs["request_info"].settings.dataset
-                model_name = kwargs["request_info"].settings.model
+            dataset_name = kwargs["request_info"].settings.dataset
+            model_name = kwargs["request_info"].settings.model
 
         _update_backend_state(
             status=State.EVALUATE,

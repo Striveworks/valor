@@ -3,7 +3,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select, and_, func, join, select
 
 from velour_api.backend import core, models
-from velour_api.backend.metrics.core import get_or_create_row
+from velour_api.backend.metrics.core import (
+    create_metric_mappings,
+    get_or_create_row,
+)
 from velour_api.backend.query.label import get_dataset_labels_query
 from velour_api.enums import AnnotationType, TaskType
 from velour_api.schemas import Label
@@ -197,3 +200,30 @@ def create_semantic_segmentation_evaluation(
     )
 
     return es.id
+
+
+def create_semantic_segmentation_metrics(
+    db: Session,
+    request_info: SemanticSegmentationMetricsRequest,
+    evaluation_settings_id: int,
+) -> int:
+    metrics = compute_segmentation_metrics(
+        db,
+        dataset_name=request_info.settings.dataset,
+        model_name=request_info.settings.model,
+    )
+    metric_mappings = create_metric_mappings(
+        db, metrics, evaluation_settings_id
+    )
+    for mapping in metric_mappings:
+        # ignore value since the other columns are unique identifiers
+        # and have empirically noticed value can slightly change due to floating
+        # point errors
+        get_or_create_row(
+            db,
+            models.Metric,
+            mapping,
+            columns_to_ignore=["value"],
+        )
+
+    return evaluation_settings_id
