@@ -22,7 +22,7 @@ from sqlalchemy import and_, create_engine, func, select, text
 from sqlalchemy.orm import Session
 
 from velour.client import Client, ClientException, Dataset, Model
-from velour.enums import AnnotationType, DataType, JobStatus, TaskType
+from velour.enums import DataType, JobStatus, TaskType
 from velour.schemas import (
     Annotation,
     BasicPolygon,
@@ -1291,8 +1291,6 @@ def test_evaluate_ap(
 
     eval_job = model.evaluate_ap(
         dataset=dataset,
-        gt_type=AnnotationType.BOX,
-        pd_type=AnnotationType.BOX,
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
         label_key="k1",
@@ -1311,9 +1309,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
     }
 
@@ -1371,8 +1368,6 @@ def test_evaluate_ap(
     # are not None
     eval_job_bounded_area_10_2000 = model.evaluate_ap(
         dataset=dataset,
-        pd_type="box",
-        gt_type="box",
         task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1386,9 +1381,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
         "min_area": 10,
         "max_area": 2000,
@@ -1399,8 +1393,6 @@ def test_evaluate_ap(
     # min area threshold should divide the set of annotations
     eval_job_min_area_1200 = model.evaluate_ap(
         dataset=dataset,
-        pd_type="box",
-        gt_type="box",
         task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1413,9 +1405,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
         "min_area": 1200,
     }
@@ -1424,8 +1415,6 @@ def test_evaluate_ap(
     # check for difference with max area now dividing the set of annotations
     eval_job_max_area_1200 = model.evaluate_ap(
         dataset=dataset,
-        pd_type="box",
-        gt_type="box",
         task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1438,9 +1427,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
         "max_area": 1200,
     }
@@ -1450,8 +1438,6 @@ def test_evaluate_ap(
     # except now has an upper bound
     eval_job_bounded_area_1200_1800 = model.evaluate_ap(
         dataset=dataset,
-        pd_type="box",
-        gt_type="box",
         task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1465,9 +1451,8 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "box",
-        "gt_type": "box",
         "task_type": "detection",
+        "target_type": "box",
         "label_key": "k1",
         "min_area": 1200,
         "max_area": 1800,
@@ -1881,9 +1866,8 @@ def test_evaluate_tabular_clf(
     assert eval_settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "pd_type": "none",
-        "gt_type": "none",
         "task_type": "classification",
+        "target_type": "none",
     }
 
     metrics_from_eval_settings_id = eval_jobs[0].metrics

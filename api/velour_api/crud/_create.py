@@ -97,6 +97,9 @@ def create_ap_evaluation(
 ) -> schemas.CreateAPMetricsResponse:
     """create ap evaluation"""
 
+    # create evaluation setting
+    job_id, gt_type, pd_type = backend.create_ap_evaluation(db, request_info)
+
     # get disjoint label sets
     missing_pred_labels, ignored_pred_labels = get_disjoint_labels(
         db=db,
@@ -106,12 +109,9 @@ def create_ap_evaluation(
             enums.TaskType.DETECTION,
             enums.TaskType.INSTANCE_SEGMENTATION,
         ],
-        gt_type=request_info.settings.gt_type,
-        pd_type=request_info.settings.pd_type,
+        gt_type=gt_type,
+        pd_type=pd_type,
     )
-
-    # create evaluation setting
-    job_id = backend.create_ap_evaluation(db, request_info)
 
     # create response
     return schemas.CreateAPMetricsResponse(
