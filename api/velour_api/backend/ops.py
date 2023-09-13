@@ -1,43 +1,18 @@
 import operator
 
-from sqlalchemy import and_, or_
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_, select
 from sqlalchemy.sql.elements import BinaryExpression
 
 from velour_api import enums, schemas
 from velour_api.backend import graph, models
 
 
-class BackendQuery:
+class Query:
     def __init__(self, source: graph.Node):
-        self._filters = []
+        self._filters: list[BinaryExpression] = []
         self.source = source
         self.targets = set()
         self.constraints = set()
-
-    @classmethod
-    def model(cls):
-        return cls(graph.model)
-
-    @classmethod
-    def dataset(cls):
-        return cls(graph.dataset)
-
-    @classmethod
-    def datum(cls):
-        return cls(graph.datum)
-
-    @classmethod
-    def annotation(cls):
-        return cls(graph.annotation)
-
-    @classmethod
-    def groundtruth(cls):
-        return cls(graph.groundtruth)
-
-    @classmethod
-    def prediction(cls):
-        return cls(graph.prediction)
 
     @classmethod
     def label_groundtruth(cls):
@@ -63,24 +38,29 @@ class BackendQuery:
     def metadata_annotation(cls):
         return cls(graph.metadatum_annotation)
 
-    @property
-    def filters(self) -> list[BinaryExpression]:
-        return self._filters
+    """ User methods """
 
-    def ids(self, db: Session):
-        """Returns ids from source that meet filter criteria."""
-        id_query = graph.generate_query(self.source, self.targets)
-        id_query = id_query.where(and_(*self._filters))
-        return db.query(id_query).all()
-
-    def query(self, db: Session):
-        """Returns sqlalchemy table rows"""
-        q_ids = self.ids(db)
-        return (
-            db.query(self.source.model)
-            .where(self.source.model.id.in_(q_ids))
-            .all()
-        )
+    @classmethod
+    def select(cls, v):
+        match v:
+            case models.Model:
+                return cls(graph.model)
+            case models.Dataset:
+                return cls(graph.dataset)
+            case models.Datum:
+                return cls(graph.datum)
+            case models.Annotation:
+                return cls(graph.annotation)
+            case models.GroundTruth:
+                return cls(graph.groundtruth)
+            case models.Prediction:
+                return cls(graph.prediction)
+            case models.Label:
+                raise NotImplementedError
+            case models.MetaDatum:
+                raise NotImplementedError
+            case _:
+                raise ValueError
 
     def filter(self, filt: schemas.Filter):
         """Parses `schemas.Filter` and operates all filters."""
@@ -157,6 +137,17 @@ class BackendQuery:
             self.constraints.add("prediction")
 
         return self
+
+    def ids(self):
+        """Returns ids from source that meet filter criteria."""
+        id_query = graph.generate_query(self.source, self.targets)
+        id_query = id_query.where(and_(*self._filters))
+        return id_query
+
+    def query(self):
+        """Returns sqlalchemy table rows"""
+        q_ids = self.ids()
+        return select(self.source.model).where(self.source.model.id.in_(q_ids))
 
     """ dataset filter """
 
