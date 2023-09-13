@@ -3,12 +3,13 @@ from sqlalchemy import Float, Integer
 from sqlalchemy.orm import Bundle, Session
 from sqlalchemy.sql import and_, func, select
 
-from velour_api import enums, schemas
+from velour_api import schemas
 from velour_api.backend import core, models
 from velour_api.backend.metrics.core import (
     create_metric_mappings,
     get_or_create_row,
 )
+from velour_api.enums import AnnotationType, TaskType
 
 
 # @TODO: Implement metadata filtering using `ops.BackendQuerys`
@@ -17,7 +18,6 @@ def binary_roc_auc(
     dataset_name: str,
     model_name: str,
     label: schemas.Label,
-    metadatum: schemas.MetaDatum,
 ) -> float:
     """Computes the binary ROC AUC score of a dataset and label
 
@@ -30,8 +30,6 @@ def binary_roc_auc(
     label
         the label that represents the positive class. all other labels with
         the same key as `label` will represent the negative class
-    metadatum_id
-        if not None, then filter out to just the datums that have this as a metadatum
 
     Returns
     -------
@@ -49,31 +47,24 @@ def binary_roc_auc(
             models.Annotation.datum_id.label("datum_id"),
             models.Label.value.label("label_value"),
         )
-        .select_from(models.Annotation)
-        .join(models.Datum, models.Datum.dataset_id == dataset.id)
+        .select_from(models.Label)
         .join(
-            models.GroundTruth,
-            models.GroundTruth.annotation_id == models.Annotation.id,
+            models.GroundTruth, models.GroundTruth.label_id == models.Label.id
         )
-        .join(models.Label, models.Label.id == models.GroundTruth.label_id)
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.GroundTruth.annotation_id,
+        )
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .where(
             and_(
-                models.Annotation.task_type == "classification",
+                models.Datum.dataset_id == dataset.id,
                 models.Annotation.model_id.is_(None),
+                models.Annotation.task_type == TaskType.CLASSIFICATION.value,
                 models.Label.key == label.key,
             ),
         )
     )
-    # @TODO:
-    # if metadatum:
-    #     gts_query = gts_query.join(
-    #         models.MetaDatum, models.MetaDatum.datum_id == "datum_id"
-    #     ).where(
-    #         and_(
-    #             models.MetaDatum.key == metadatum.key,
-    #             models.MetaDatum.value == metadatum.value,
-    #         )
-    #     )
     gts_query = gts_query.subquery()
 
     # get the prediction scores for the given label (key and value)
@@ -83,32 +74,23 @@ def binary_roc_auc(
             models.Prediction.score.label("score"),
             models.Label.value.label("label_value"),
         )
-        .select_from(models.Annotation)
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .join(models.Model, models.Model.name == model_name)
+        .select_from(models.Label)
+        .join(models.Prediction, models.Prediction.label_id == models.Label.id)
         .join(
-            models.Prediction,
-            models.Prediction.annotation_id == models.Annotation.id,
+            models.Annotation,
+            models.Annotation.id == models.Prediction.annotation_id,
         )
-        .join(models.Label, models.Label.id == models.Prediction.label_id)
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
         .where(
             and_(
                 models.Datum.dataset_id == dataset.id,
                 models.Annotation.model_id == model.id,
+                models.Annotation.task_type == TaskType.CLASSIFICATION.value,
                 models.Label.key == label.key,
                 models.Label.value == label.value,
             ),
         )
     )
-    if metadatum:
-        preds_query = preds_query.join(
-            models.Metadatum, models.MetaDatum.datum_id == "datum_id"
-        ).where(
-            and_(
-                models.Metadatum.name == metadatum.name,
-                models.Metadatum.value == metadatum.value,
-            )
-        )
     preds_query = preds_query.subquery()
 
     # number of groundtruth labels that match the given label value
@@ -230,9 +212,7 @@ def roc_auc(
     sum_roc_aucs = 0
     label_count = 0
     for label in labels:
-        bin_roc = binary_roc_auc(
-            db, dataset_name, model_name, label, metadatum
-        )
+        bin_roc = binary_roc_auc(db, dataset_name, model_name, label)
 
         if bin_roc is not None:
             sum_roc_aucs += bin_roc
@@ -247,7 +227,6 @@ def get_confusion_matrix_and_metrics_at_label_key(
     model_name: str,
     label_key: str,
     labels: list[models.Label],
-    metadatum: schemas.MetaDatum = None,
 ) -> (
     tuple[
         schemas.ConfusionMatrix,
@@ -274,8 +253,6 @@ def get_confusion_matrix_and_metrics_at_label_key(
     labels
         all of the labels in both the groundtruths and predictions that have key
         equal to `label_key`
-    metadatum_id
-        if not None, then filter out to just the datums that have this as a metadatum
 
     Returns
     -------
@@ -297,7 +274,6 @@ def get_confusion_matrix_and_metrics_at_label_key(
         dataset_name=dataset_name,
         model_name=model_name,
         label_key=label_key,
-        metadatum=metadatum,
     )
 
     if confusion_matrix is None:
@@ -317,7 +293,6 @@ def get_confusion_matrix_and_metrics_at_label_key(
                 dataset_name,
                 model_name,
                 label_key,
-                metadatum=metadatum,
             ),
             group=confusion_matrix.group,
         ),
@@ -360,7 +335,7 @@ def get_confusion_matrix_and_metrics_at_label_key(
 
 
 def compute_clf_metrics(
-    db: Session, dataset_name: str, model_name: str, group_by: str
+    db: Session, dataset_name: str, model_name: str
 ) -> tuple[
     list[schemas.ConfusionMatrix],
     list[
@@ -372,9 +347,6 @@ def compute_clf_metrics(
         | schemas.F1Metric
     ],
 ]:
-    dataset = core.get_dataset(db, dataset_name)
-    # model = core.get_model(db, model_name)
-
     ds_labels = {
         schemas.Label(key=label[0], value=label[1])
         for label in (
@@ -393,7 +365,8 @@ def compute_clf_metrics(
             .where(
                 and_(
                     models.Dataset.name == dataset_name,
-                    models.Annotation.task_type == "classification",
+                    models.Annotation.task_type
+                    == TaskType.CLASSIFICATION.value,
                     models.Annotation.model_id.is_(None),
                 )
             )
@@ -424,7 +397,8 @@ def compute_clf_metrics(
             .where(
                 and_(
                     models.Dataset.name == dataset_name,
-                    models.Annotation.task_type == "classification",
+                    models.Annotation.task_type
+                    == TaskType.CLASSIFICATION.value,
                     models.Annotation.model_id.isnot(None),
                     models.Model.name == model_name,
                 )
@@ -434,14 +408,6 @@ def compute_clf_metrics(
     }
     labels = list(ds_labels.union(md_labels))
     unique_label_keys = set([label.key for label in labels])
-
-    if group_by:
-        metadata_ids = [
-            metadatum.id
-            for metadatum in core.get_metadata(
-                db, dataset=dataset, name=group_by
-            )
-        ]
 
     confusion_matrices, metrics = [], []
 
@@ -461,11 +427,7 @@ def compute_clf_metrics(
                 confusion_matrices.append(cm_and_metrics[0])
                 metrics.extend(cm_and_metrics[1])
 
-        if group_by is None:
-            _add_confusion_matrix_and_metrics()
-        else:
-            for md_id in metadata_ids:
-                _add_confusion_matrix_and_metrics(metadatum_id=md_id)
+        _add_confusion_matrix_and_metrics()
 
     return confusion_matrices, metrics
 
@@ -674,10 +636,8 @@ def create_clf_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "task_type": enums.TaskType.CLASSIFICATION,
-            "pd_type": enums.AnnotationType.NONE,
-            "gt_type": enums.AnnotationType.NONE,
-            "group_by": request_info.settings.group_by,
+            "task_type": TaskType.CLASSIFICATION,
+            "target_type": AnnotationType.NONE,
         },
     )
 
@@ -688,16 +648,14 @@ def create_clf_metrics(
     db: Session,
     request_info: schemas.ClfMetricsRequest,
     evaluation_settings_id: int,
-):
+) -> int:
     """
     Intended to run as background
     """
-
     confusion_matrices, metrics = compute_clf_metrics(
         db=db,
         dataset_name=request_info.settings.dataset,
         model_name=request_info.settings.model,
-        group_by=request_info.settings.group_by,
     )
 
     confusion_matrices_mappings = create_metric_mappings(

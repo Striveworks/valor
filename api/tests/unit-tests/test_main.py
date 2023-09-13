@@ -508,8 +508,8 @@ def test_post_prediction_raster_segmentation(client: TestClient):
             },
             {
                 "labels": [
-                    {"key": "k1", "value": "v1", "score": 0.9},
-                    {"key": "k1", "value": "v2", "score": 0.1},
+                    {"key": "k1", "value": "v1"},
+                    {"key": "k1", "value": "v2"},
                 ],
                 "task_type": "semantic_segmentation",
                 "metadata": [

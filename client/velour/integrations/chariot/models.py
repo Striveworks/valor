@@ -175,7 +175,16 @@ def get_prediction_parser_from_chariot(
 def get_chariot_model_integration(
     client: Client, model, action: str, label_key: str = "class_label"
 ) -> Tuple[Model, callable]:
-    """Returns tuple of (velour.client.Model, parsing_fn(datum, result))"""
+    """Creates or retrieves Velour model and parsing function for annotation type.
+
+    Returns
+    ----------
+    tuple
+        model: velour.client.Model
+        parser: callable
+            datum: velour.schemas.Datum
+            result: chariot result
+    """
 
     # get or create model
     try:

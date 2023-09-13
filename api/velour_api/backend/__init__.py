@@ -3,6 +3,8 @@ from .metrics import (
     create_ap_metrics,
     create_clf_evaluation,
     create_clf_metrics,
+    create_semantic_segmentation_evaluation,
+    create_semantic_segmentation_metrics,
 )
 from .ops import BackendQuery
 from .query import (
@@ -64,6 +66,8 @@ __all__ = [
     "get_datums",
     "create_ap_metrics",
     "create_clf_metrics",
+    "create_semantic_segmentation_metrics",
     "create_ap_evaluation",
     "create_clf_evaluation",
+    "create_semantic_segmentation_evaluation",
 ]

@@ -90,12 +90,58 @@ def compute_clf_metrics(
 
 
 @stateflow.evaluate
+def create_semantic_segmentation_evaluation(
+    *,
+    db: Session,
+    request_info: schemas.SemanticSegmentationMetricsRequest,
+) -> schemas.CreateSemanticSegmentationMetricsResponse:
+    """create a semantic segmentation evaluation"""
+
+    # get disjoint label sets
+    missing_pred_labels, ignored_pred_labels = get_disjoint_labels(
+        db=db,
+        dataset_name=request_info.settings.dataset,
+        model_name=request_info.settings.model,
+        task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+        gt_type=enums.AnnotationType.RASTER,
+        pd_type=enums.AnnotationType.RASTER,
+    )
+
+    # create evaluation setting
+    job_id = backend.create_semantic_segmentation_evaluation(db, request_info)
+
+    # create response
+    return schemas.CreateSemanticSegmentationMetricsResponse(
+        missing_pred_labels=missing_pred_labels,
+        ignored_pred_labels=ignored_pred_labels,
+        job_id=job_id,
+    )
+
+
+@stateflow.computation
+def compute_semantic_segmentation_metrics(
+    *,
+    db: Session,
+    request_info: schemas.SemanticSegmentationMetricsRequest,
+    job_id: int,
+):
+    backend.create_semantic_segmentation_metrics(
+        db,
+        request_info=request_info,
+        evaluation_settings_id=job_id,
+    )
+
+
+@stateflow.evaluate
 def create_ap_evaluation(
     *,
     db: Session,
     request_info: schemas.APRequest,
 ) -> schemas.CreateAPMetricsResponse:
     """create ap evaluation"""
+
+    # create evaluation setting
+    job_id, gt_type, pd_type = backend.create_ap_evaluation(db, request_info)
 
     # get disjoint label sets
     missing_pred_labels, ignored_pred_labels = get_disjoint_labels(
@@ -106,12 +152,9 @@ def create_ap_evaluation(
             enums.TaskType.DETECTION,
             enums.TaskType.INSTANCE_SEGMENTATION,
         ],
-        gt_type=request_info.settings.gt_type,
-        pd_type=request_info.settings.pd_type,
+        gt_type=gt_type,
+        pd_type=pd_type,
     )
-
-    # create evaluation setting
-    job_id = backend.create_ap_evaluation(db, request_info)
 
     # create response
     return schemas.CreateAPMetricsResponse(

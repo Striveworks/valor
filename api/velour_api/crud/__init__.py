@@ -1,12 +1,14 @@
 from ._create import (
     compute_ap_metrics,
     compute_clf_metrics,
+    compute_semantic_segmentation_metrics,
     create_ap_evaluation,
     create_clf_evaluation,
     create_dataset,
     create_groundtruth,
     create_model,
     create_prediction,
+    create_semantic_segmentation_evaluation,
 )
 from ._delete import delete
 from ._read import (
@@ -58,8 +60,10 @@ __all__ = [
     "get_prediction",
     "create_ap_evaluation",
     "create_clf_evaluation",
+    "create_semantic_segmentation_evaluation",
     "compute_clf_metrics",
     "compute_ap_metrics",
+    "compute_semantic_segmentation_metrics",
     "get_metrics_from_evaluation_settings_id",
     "get_confusion_matrices_from_evaluation_settings_id",
     "get_evaluation_settings_from_id",

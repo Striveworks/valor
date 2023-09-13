@@ -17,10 +17,6 @@ class ClientException(Exception):
     pass
 
 
-def _remove_none_from_dict(d: dict) -> dict:
-    return {k: v for k, v in d.items() if v is not None}
-
-
 class Client:
     """Client for interacting with the velour backend"""
 
@@ -490,7 +486,6 @@ class Model:
             "settings": {
                 "model": self.name,
                 "dataset": dataset.name,
-                "group": asdict(group_by),
             }
         }
 
@@ -505,12 +500,25 @@ class Model:
             **resp,
         )
 
+    def evaluate_semantic_segmentation(self, dataset: Dataset) -> Evaluation:
+        payload = {"settings": {"model": self.name, "dataset": dataset.name}}
+
+        resp = self.client._requests_post_rel_host(
+            "evaluations/semantic-segmentation-metrics", json=payload
+        ).json()
+
+        return Evaluation(
+            client=self.client,
+            dataset_name=dataset.name,
+            model_name=self.name,
+            **resp,
+        )
+
     def evaluate_ap(
         self,
         dataset: "Dataset",
         task_type: TaskType = None,
-        pd_type: AnnotationType = None,
-        gt_type: AnnotationType = None,
+        target_type: AnnotationType = None,
         iou_thresholds: List[float] = None,
         ious_to_keep: List[float] = None,
         min_area: float = None,
@@ -522,8 +530,7 @@ class Model:
                 "model": self.name,
                 "dataset": dataset.name,
                 "task_type": task_type,
-                "gt_type": gt_type,
-                "pd_type": pd_type,
+                "target_type": target_type,
                 "min_area": min_area,
                 "max_area": max_area,
                 "label_key": label_key,

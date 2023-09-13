@@ -95,10 +95,9 @@ def _remove_backend_state(
 
 def create(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
-
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 2:
-            raise RuntimeError
+            raise RuntimeError("input arguments should be explicitly defined")
 
         # unpack args
         dataset_name = None
@@ -138,7 +137,6 @@ def create(fn: callable) -> callable:
 
 def finalize(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
-
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 3:
             raise RuntimeError
@@ -165,7 +163,6 @@ def finalize(fn: callable) -> callable:
 
 def evaluate(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
-
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 2:
             raise RuntimeError
@@ -174,12 +171,8 @@ def evaluate(fn: callable) -> callable:
         dataset_name = None
         model_name = None
         if "request_info" in kwargs:
-            if isinstance(kwargs["request_info"], schemas.ClfMetricsRequest):
-                dataset_name = kwargs["request_info"].settings.dataset
-                model_name = kwargs["request_info"].settings.model
-            elif isinstance(kwargs["request_info"], schemas.APRequest):
-                dataset_name = kwargs["request_info"].settings.dataset
-                model_name = kwargs["request_info"].settings.model
+            dataset_name = kwargs["request_info"].settings.dataset
+            model_name = kwargs["request_info"].settings.model
 
         _update_backend_state(
             status=State.EVALUATE,
@@ -187,7 +180,16 @@ def evaluate(fn: callable) -> callable:
             model_name=model_name,
         )
 
-        results = fn(*args, **kwargs)
+        try:
+            results = fn(*args, **kwargs)
+        except Exception as e:
+            _update_backend_state(
+                status=State.READY,
+                dataset_name=dataset_name,
+                model_name=model_name,
+            )
+            logger.debug(f"Evaluation request failed. Exception: {str(e)}")
+            raise e
 
         if hasattr(results, "job_id"):
             _update_job_state(
@@ -204,7 +206,6 @@ def evaluate(fn: callable) -> callable:
 
 def computation(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
-
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 2:
             raise RuntimeError
@@ -293,7 +294,6 @@ def computation(fn: callable) -> callable:
 
 def delete(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
-
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 3:
             raise RuntimeError

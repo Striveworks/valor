@@ -2,6 +2,7 @@ import io
 import math
 from base64 import b64decode
 
+import numpy as np
 import PIL.Image
 from pydantic import BaseModel, Field, field_validator
 
@@ -291,7 +292,6 @@ class BoundingBox(BaseModel):
         return self.polygon.height
 
     def is_rectangular(self):
-
         # retrieve segments
         segments = self.polygon.segments
 
@@ -354,6 +354,6 @@ class Raster(BaseModel):
         return self._mask_bytes
 
     @property
-    def pil_mask(self) -> PIL.Image:
+    def array(self) -> np.ndarray:
         with io.BytesIO(self.mask_bytes) as f:
-            return PIL.Image.open(f)
+            return np.array(PIL.Image.open(f))

@@ -191,12 +191,12 @@ def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
 
 
 @pytest.fixture
-def gt_segs_create(
+def gt_instance_segs_create(
     poly_with_hole: schemas.BasicPolygon,
     poly_without_hole: schemas.BasicPolygon,
     img1: schemas.Image,
     img2: schemas.Image,
-) -> list[schemas.GroundTruth :]:
+) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
             dataset=dset_name,
@@ -214,7 +214,7 @@ def gt_segs_create(
             datum=img2.to_datum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     polygon=poly_without_hole,
                 ),
@@ -236,11 +236,11 @@ def gt_segs_create(
 
 
 @pytest.fixture
-def pred_segs_create(
-    mask_bytes1: bytes,
+def pred_instance_segs_create(
+    img1_pred_mask_bytes1: bytes,
     img1: schemas.Image,
 ) -> list[schemas.Prediction]:
-    b64_mask1 = b64encode(mask_bytes1).decode()
+    b64_mask1 = b64encode(img1_pred_mask_bytes1).decode()
 
     return [
         schemas.Prediction(
@@ -258,7 +258,7 @@ def pred_segs_create(
                     ),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.03),
                         schemas.Label(key="k2", value="v2", score=0.97),
@@ -683,22 +683,31 @@ def test_create_predicted_classifications_and_delete_model(
     assert db.scalar(func.count(models.GroundTruth.id)) == 0
 
 
-def test_create_groundtruth_segmentations_and_delete_dataset(
-    db: Session, gt_segs_create: list[schemas.GroundTruth]
+def _test_create_groundtruth_segmentations_and_delete_dataset(
+    db: Session,
+    gts: list[schemas.GroundTruth],
+    task: enums.TaskType,
+    expected_anns: int,
+    expected_gts: int,
+    expected_datums: int,
+    expected_labels: int,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
-    for gt in gt_segs_create:
+    for gt in gts:
         gt.datum.dataset = dset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
-    assert db.scalar(func.count(models.Annotation.id)) == 4
-    assert db.scalar(func.count(models.Datum.id)) == 2
-    assert db.scalar(func.count(models.GroundTruth.id)) == 4
-    assert db.scalar(func.count(models.Label.id)) == 2
+    assert db.scalar(func.count(models.Annotation.id)) == expected_anns
+    assert db.scalar(func.count(models.Datum.id)) == expected_datums
+    assert db.scalar(func.count(models.GroundTruth.id)) == expected_gts
+    assert db.scalar(func.count(models.Label.id)) == expected_labels
+
+    for a in db.scalars(select(models.Annotation)):
+        assert a.task_type == task
 
     # delete dataset and check the cascade worked
     crud.delete(db=db, dataset_name=dset_name)
@@ -711,32 +720,60 @@ def test_create_groundtruth_segmentations_and_delete_dataset(
         assert db.scalar(func.count(model_cls.id)) == 0
 
     # make sure labels are still there`
-    assert db.scalar(func.count(models.Label.id)) == 2
+    assert db.scalar(func.count(models.Label.id)) == expected_labels
+
+
+def test_create_groundtruth_instance_segmentations_and_delete_dataset(
+    db: Session, gt_instance_segs_create: list[schemas.GroundTruth]
+):
+    _test_create_groundtruth_segmentations_and_delete_dataset(
+        db,
+        gt_instance_segs_create,
+        enums.TaskType.INSTANCE_SEGMENTATION,
+        expected_labels=2,
+        expected_anns=4,
+        expected_gts=4,
+        expected_datums=2,
+    )
+
+
+def test_create_groundtruth_semantic_segmentations_and_delete_dataset(
+    db: Session, gt_semantic_segs_create: list[schemas.GroundTruth]
+):
+    _test_create_groundtruth_segmentations_and_delete_dataset(
+        db,
+        gt_semantic_segs_create,
+        enums.TaskType.SEMANTIC_SEGMENTATION,
+        expected_labels=4,
+        expected_anns=4,
+        expected_gts=5,
+        expected_datums=2,
+    )
 
 
 def test_create_predicted_segmentations_check_area_and_delete_model(
     db: Session,
-    pred_segs_create: list[schemas.Prediction],
-    gt_segs_create: list[schemas.GroundTruth],
+    pred_instance_segs_create: list[schemas.Prediction],
+    gt_instance_segs_create: list[schemas.GroundTruth],
 ):
     # create dataset, add images, and add predictions
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.StateflowError) as exc_info:
-        for pd in pred_segs_create:
+        for pd in pred_instance_segs_create:
             pd.model = model_name
             crud.create_prediction(db=db, prediction=pd)
     assert "does not support model operations" in str(exc_info)
 
     # create groundtruths
-    for gt in gt_segs_create:
+    for gt in gt_instance_segs_create:
         gt.datum.dataset = dset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     # check this gives an error since the model has not been crated yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        for pd in pred_segs_create:
+        for pd in pred_instance_segs_create:
             crud.create_prediction(db=db, prediction=pd)
     assert "does not exist" in str(exc_info)
 
@@ -745,7 +782,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        for pd in pred_segs_create:
+        for pd in pred_instance_segs_create:
             crud.create_prediction(db=db, prediction=pd)
     assert "does not exist" in str(exc_info)
 
@@ -753,7 +790,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.DatumDoesNotExistError) as exc_info:
-        for i, pd in enumerate(pred_segs_create):
+        for i, pd in enumerate(pred_instance_segs_create):
             temp_pd = pd.__deepcopy__()
             temp_pd.model = model_name
             temp_pd.datum.uid = f"random{i}"
@@ -761,7 +798,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     assert "does not exist" in str(exc_info)
 
     # create predictions
-    for pd in pred_segs_create:
+    for pd in pred_instance_segs_create:
         pd.model = model_name
         crud.create_prediction(db=db, prediction=pd)
 
@@ -785,7 +822,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     for i in range(len(img.annotations)):
         mask = bytes_to_pil(
-            b64decode(pred_segs_create[0].annotations[i].raster.mask)
+            b64decode(pred_instance_segs_create[0].annotations[i].raster.mask)
         )
         assert np.array(mask).sum() in raster_counts
 
@@ -991,8 +1028,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
                 min_area=min_area,
                 max_area=max_area,
                 task_type=enums.TaskType.DETECTION,
-                gt_type=enums.AnnotationType.BOX,
-                pd_type=enums.AnnotationType.BOX,
+                target_type=enums.AnnotationType.BOX,
                 label_key=label_key,
             ),
             iou_thresholds=[0.2, 0.6],
@@ -1127,8 +1163,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         model=model_name,
         dataset=dset_name,
         task_type=enums.TaskType.DETECTION,
-        gt_type=enums.AnnotationType.BOX,
-        pd_type=enums.AnnotationType.BOX,
+        target_type=enums.AnnotationType.BOX,
         label_key="class",
         id=1,
     )
@@ -1136,6 +1171,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         model=model_name,
         dataset=dset_name,
         task_type=enums.TaskType.DETECTION,
+        target_type=enums.AnnotationType.BOX,
         gt_type=enums.AnnotationType.BOX,
         pd_type=enums.AnnotationType.BOX,
         label_key="class",
