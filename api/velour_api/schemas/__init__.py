@@ -19,7 +19,7 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .info import Filter, LabelDistribution, ScoredLabelDistribution
+from .info import Filter
 from .metadata import DateTime, Metadatum
 from .metrics import (
     AccuracyMetric,
@@ -55,8 +55,6 @@ __all__ = [
     "Dataset",
     "Datum",
     "AnnotatedDatum",
-    "LabelDistribution",
-    "ScoredLabelDistribution",
     "Model",
     "GroundTruth",
     "Prediction",

@@ -48,14 +48,6 @@ def get_labels(
     return backend.get_labels(db, request)
 
 
-def get_label_distribution(
-    *,
-    db: Session,
-    request: schemas.Filter,
-) -> list[schemas.LabelDistribution]:
-    return []
-
-
 def get_joint_labels(
     *,
     db: Session,

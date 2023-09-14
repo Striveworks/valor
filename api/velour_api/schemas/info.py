@@ -1,23 +1,8 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from velour_api import schemas
 from velour_api.enums import AnnotationType, TaskType
-
-
-class LabelDistribution(BaseModel):
-    label: schemas.Label
-    count: int
-
-
-class ScoredLabelDistribution(BaseModel):
-    label: schemas.Label
-    count: int
-    scores: list[float]
-
-
-class AnnotationDistribution(BaseModel):
-    annotation_type: AnnotationType
-    count: int
+from velour_api.schemas.core import Label
+from velour_api.schemas.metadata import Metadatum
 
 
 class Filter(BaseModel):
@@ -26,9 +11,9 @@ class Filter(BaseModel):
     datum_uids: list[str] = Field(default_factory=list)
     task_types: list[TaskType] = Field(default_factory=list)
     annotation_types: list[AnnotationType] = Field(default_factory=list)
-    labels: list[schemas.Label] = Field(default_factory=list)
+    labels: list[Label] = Field(default_factory=list)
     label_keys: list[str] = Field(default_factory=list)
-    metadata: list[schemas.Metadatum] = Field(default_factory=list)
+    metadata: list[Metadatum] = Field(default_factory=list)
 
     allow_dataset_metadata: bool = True
     allow_model_metadata: bool = True

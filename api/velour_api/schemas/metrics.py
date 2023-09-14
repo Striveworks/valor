@@ -10,8 +10,9 @@ from pydantic import (
 )
 
 from velour_api.enums import JobStatus
-from velour_api.schemas.core import Evaluation, Metadatum
+from velour_api.schemas.core import Evaluation
 from velour_api.schemas.label import Label
+from velour_api.schemas.metadata import Metadatum
 
 
 class APRequest(BaseModel):
