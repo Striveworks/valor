@@ -1,17 +1,18 @@
 from pydantic import BaseModel
 
-from velour_api.schemas.core import Datum, MetaDatum
+from velour_api.schemas.core import Datum
+from velour_api.schemas.metadata import Metadatum
 
 
-class Image(BaseModel):
+class ImageMetadata(BaseModel):
     dataset: str
     uid: str
     height: int
     width: int
-    metadata: list[MetaDatum] = []
+    metadata: list[Metadatum] = []
 
     @classmethod
-    def from_datum(cls, datum: Datum):
+    def fromDatum(cls, datum: Datum):
         if not isinstance(datum, Datum):
             raise TypeError("Expecting `velour.schemas.Datum`")
 
@@ -35,13 +36,13 @@ class Image(BaseModel):
             height=height,
             width=width,
             metadata=[
-                MetaDatum(key=key, value=metadata[key]) for key in metadata
+                Metadatum(key=key, value=metadata[key]) for key in metadata
             ],
         )
 
-    def to_datum(self) -> Datum:
-        self.metadata.append(MetaDatum(key="height", value=self.height))
-        self.metadata.append(MetaDatum(key="width", value=self.width))
+    def toDatum(self) -> Datum:
+        self.metadata.append(Metadatum(key="height", value=self.height))
+        self.metadata.append(Metadatum(key="width", value=self.width))
         return Datum(
             uid=self.uid,
             dataset=self.dataset,
@@ -49,17 +50,17 @@ class Image(BaseModel):
         )
 
 
-class VideoFrame(BaseModel):
-    image: Image
+class VideoFrameMetadata(BaseModel):
+    image: ImageMetadata
     frame: int | None = None
 
     @classmethod
-    def from_datum(cls, datum: Datum):
+    def fromDatum(cls, datum: Datum):
         if not isinstance(datum, Datum):
             raise TypeError("Expecting `velour.schemas.Datum`")
 
         # Extract image
-        image = Image.from_datum(datum)
+        image = ImageMetadata.from_datum(datum)
 
         # Extract Video frame number
         metadata = {
@@ -72,7 +73,7 @@ class VideoFrame(BaseModel):
         frame = int(metadata["frame"])
         del metadata["frame"]
         image.metadata = [
-            MetaDatum(key=key, value=metadata[key]) for key in metadata
+            Metadatum(key=key, value=metadata[key]) for key in metadata
         ]
 
         return cls(
@@ -80,7 +81,7 @@ class VideoFrame(BaseModel):
             frame=frame,
         )
 
-    def to_datum(self) -> Datum:
+    def toDatum(self) -> Datum:
         datum = self.image.to_datum()
-        datum.metadata.append(MetaDatum(key="frame", value=self.frame))
+        datum.metadata.append(Metadatum(key="frame", value=self.frame))
         return datum

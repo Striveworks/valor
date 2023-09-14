@@ -14,7 +14,6 @@ from .label import (
     get_label_distribution,
     get_labels,
 )
-from .metadata import get_metadata
 from .metrics import (
     get_confusion_matrices_from_evaluation_settings_id,
     get_evaluation_settings_from_id,
@@ -48,7 +47,6 @@ __all__ = [
     "get_disjoint_labels",
     "get_joint_keys",
     "get_disjoint_keys",
-    "get_metadata",
     "get_metrics_from_evaluation_settings_id",
     "get_confusion_matrices_from_evaluation_settings_id",
     "get_evaluation_settings_from_id",

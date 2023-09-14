@@ -28,7 +28,7 @@ class Filter(BaseModel):
     annotation_types: list[AnnotationType] = Field(default_factory=list)
     labels: list[schemas.Label] = Field(default_factory=list)
     label_keys: list[str] = Field(default_factory=list)
-    metadata: list[schemas.MetaDatum] = Field(default_factory=list)
+    metadata: list[schemas.Metadatum] = Field(default_factory=list)
 
     allow_dataset_metadata: bool = True
     allow_model_metadata: bool = True

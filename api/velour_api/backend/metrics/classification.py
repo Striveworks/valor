@@ -157,7 +157,7 @@ def roc_auc(
     dataset_name: str,
     model_name: str,
     label_key: str,
-    metadatum: list[schemas.MetaDatum] = None,
+    metadatum: list[schemas.Metadatum] = None,
 ) -> float:
     """Computes the area under the ROC curve. Note that for the multi-class setting
     this does one-vs-rest AUC for each class and then averages those scores. This should give
@@ -437,7 +437,7 @@ def confusion_matrix_at_label_key(
     dataset_name: str,
     model_name: str,
     label_key: str,
-    metadatum: schemas.MetaDatum = None,
+    metadatum: schemas.Metadatum = None,
 ) -> schemas.ConfusionMatrix | None:
     """Computes the confusion matrix at a label_key.
 
@@ -492,11 +492,11 @@ def confusion_matrix_at_label_key(
             metadatum.value if isinstance(metadatum.value, float) else None
         )
         q1 = q1.join(
-            models.MetaDatum, models.MetaDatum.datum_id == models.Datum.id
+            models.Metadatum, models.Metadatum.datum_id == models.Datum.id
         ).where(
-            models.MetaDatum.name == metadatum.name,
-            models.MetaDatum.string_value == string_value,
-            models.MetaDatum.numeric_value == numeric_value,
+            models.Metadatum.name == metadatum.name,
+            models.Metadatum.string_value == string_value,
+            models.Metadatum.numeric_value == numeric_value,
         )
     q1 = q1.group_by(models.Datum.id)
     subquery = q1.alias()

@@ -3,10 +3,15 @@ import re
 from base64 import b64decode
 
 import PIL.Image
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
-from velour_api import enums
-from velour_api.schemas.geojson import GeoJSON
+from velour_api.enums import AnnotationType, EvaluationType, TaskType
 from velour_api.schemas.geometry import (
     BoundingBox,
     MultiPolygon,
@@ -14,6 +19,7 @@ from velour_api.schemas.geometry import (
     Raster,
 )
 from velour_api.schemas.label import Label
+from velour_api.schemas.metadata import Metadatum
 
 
 def _format_name(name: str):
@@ -28,34 +34,10 @@ def _format_uid(uid: str):
     return re.sub(pattern, "", uid)
 
 
-class MetaDatum(BaseModel):
-    key: str
-    value: float | str | GeoJSON
-
-    @field_validator("key")
-    @classmethod
-    def check_key(cls, v):
-        if not isinstance(v, str):
-            raise ValueError
-        return v
-
-    @property
-    def string_value(self) -> str | None:
-        if isinstance(self.value, str):
-            return self.value
-        return None
-
-    @property
-    def numeric_value(self) -> float | None:
-        if isinstance(self.value, float):
-            return self.value
-        return None
-
-
 class Dataset(BaseModel):
     id: int | None = None
     name: str
-    metadata: list[MetaDatum] = []
+    metadata: list[Metadatum] = Field(default_factory=list)
 
     @field_validator("name")
     @classmethod
@@ -70,7 +52,7 @@ class Dataset(BaseModel):
 class Model(BaseModel):
     id: int | None = None
     name: str
-    metadata: list[MetaDatum] = []
+    metadata: list[Metadatum] = Field(default_factory=list)
 
     @field_validator("name")
     @classmethod
@@ -85,7 +67,7 @@ class Model(BaseModel):
 class Datum(BaseModel):
     uid: str
     dataset: str
-    metadata: list[MetaDatum] = []
+    metadata: list[Metadatum] = Field(default_factory=list)
 
     @field_validator("uid")
     @classmethod
@@ -107,15 +89,16 @@ class Datum(BaseModel):
 
 
 class Annotation(BaseModel):
-    task_type: enums.TaskType
+    task_type: TaskType
     labels: list[Label]
-    metadata: list[MetaDatum] | None = None
+    metadata: list[Metadatum] = Field(default_factory=list)
 
     # Geometric types
     bounding_box: BoundingBox | None = None
     polygon: Polygon | None = None
     multipolygon: MultiPolygon | None = None
     raster: Raster | None = None
+    jsonb: dict[str, str] | None = None
 
     model_config = ConfigDict(use_enum_values=True)
 
@@ -133,7 +116,7 @@ def _check_semantic_segmentations_single_label(
     # check that a label on appears once in the annotations for semenatic segmentations
     labels = []
     for annotation in annotations:
-        if annotation.task_type == enums.TaskType.SEMANTIC_SEGMENTATION:
+        if annotation.task_type == TaskType.SEMANTIC_SEGMENTATION:
             for label in annotation.labels:
                 if label in labels:
                     raise ValueError(
@@ -200,16 +183,16 @@ class Prediction(BaseModel):
         # the task type requires it
         for annotation in v:
             if annotation.task_type in [
-                enums.TaskType.CLASSIFICATION,
-                enums.TaskType.DETECTION,
-                enums.TaskType.INSTANCE_SEGMENTATION,
+                TaskType.CLASSIFICATION,
+                TaskType.DETECTION,
+                TaskType.INSTANCE_SEGMENTATION,
             ]:
                 for label in annotation.labels:
                     if label.score is None:
                         raise ValueError(
                             f"Missing score for label in {annotation.task_type} task."
                         )
-            elif annotation.task_type == enums.TaskType.SEMANTIC_SEGMENTATION:
+            elif annotation.task_type == TaskType.SEMANTIC_SEGMENTATION:
                 for label in annotation.labels:
                     if label.score is not None:
                         raise ValueError(
@@ -225,7 +208,7 @@ class Prediction(BaseModel):
         # check that for classification tasks, the label scores
         # sum to 1
         for annotation in v:
-            if annotation.task_type == enums.TaskType.CLASSIFICATION:
+            if annotation.task_type == TaskType.CLASSIFICATION:
                 label_keys_to_sum = {}
                 for scored_label in annotation.labels:
                     label_key = scored_label.key
@@ -258,8 +241,8 @@ def _validate_rasters(d: GroundTruth | Prediction):
         if annotation.raster is not None:
             # unpack datum metadata
             metadata = {
-                metadatum.key: metadatum.value
-                for metadatum in filter(
+                metadatadatum.key: metadatadatum.value
+                for metadatadatum in filter(
                     lambda x: x.key in ["height", "width"], d.datum.metadata
                 )
             }
@@ -278,3 +261,18 @@ def _validate_rasters(d: GroundTruth | Prediction):
                     f"Expected raster and image to have the same size, but got size {mask_size} for the mask and {image_size} for image."
                 )
     return d
+
+
+class Evaluation(BaseModel):
+    """General parameters defining any filters of the data such
+    as model, dataset, groundtruth and prediction type, model, dataset,
+    size constraints, coincidence/intersection constraints, etc.
+    """
+
+    model: str
+    dataset: str
+    evaluation_type: EvaluationType
+    task_type: TaskType
+    target_type: AnnotationType = AnnotationType.NONE
+    parameters: dict[str, Metadatum] = Field(default_factory=dict)
+    id: int | None = None

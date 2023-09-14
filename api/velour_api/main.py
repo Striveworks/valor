@@ -611,7 +611,7 @@ def get_evaluation_settings(
     model_name: str,
     job_id: int,
     db: Session = Depends(get_db),
-) -> schemas.EvaluationSettings:
+) -> schemas.Evaluation:
     try:
         # status = crud.get_evaluation_status(
         #     dataset_name=dataset_name,

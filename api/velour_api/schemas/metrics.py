@@ -9,31 +9,15 @@ from pydantic import (
     model_validator,
 )
 
-from velour_api.enums import AnnotationType, JobStatus, TaskType
-from velour_api.schemas.core import MetaDatum
+from velour_api.enums import JobStatus
+from velour_api.schemas.core import Evaluation, Metadatum
 from velour_api.schemas.label import Label
-
-
-class EvaluationSettings(BaseModel):
-    """General parameters defining any filters of the data such
-    as model, dataset, groundtruth and prediction type, model, dataset,
-    size constraints, coincidence/intersection constraints, etc.
-    """
-
-    model: str
-    dataset: str
-    task_type: TaskType | None = None
-    target_type: AnnotationType | None = None
-    label_key: str | None = None
-    min_area: float | None = None
-    max_area: float | None = None
-    id: int | None = None
 
 
 class APRequest(BaseModel):
     """Request to compute average precision"""
 
-    settings: EvaluationSettings
+    settings: Evaluation
 
     # (mutable defaults are ok for pydantic models)
     iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
@@ -75,11 +59,11 @@ class Job(BaseModel):
 
 
 class ClfMetricsRequest(BaseModel):
-    settings: EvaluationSettings
+    settings: Evaluation
 
 
 class SemanticSegmentationMetricsRequest(BaseModel):
-    settings: EvaluationSettings
+    settings: Evaluation
 
 
 class Metric(BaseModel):
@@ -89,7 +73,7 @@ class Metric(BaseModel):
     parameters: dict | None = None
     value: float | dict | None = None
     label: Label | None = None
-    group: MetaDatum | None = None
+    group: Metadatum | None = None
 
 
 class APMetric(BaseModel):
@@ -160,7 +144,7 @@ class ConfusionMatrixEntry(BaseModel):
 class _BaseConfusionMatrix(BaseModel):
     label_key: str
     entries: list[ConfusionMatrixEntry]
-    group: MetaDatum | None = None
+    group: Metadatum | None = None
 
 
 class ConfusionMatrix(_BaseConfusionMatrix):
@@ -206,7 +190,7 @@ class ConfusionMatrixResponse(_BaseConfusionMatrix):
 class AccuracyMetric(BaseModel):
     label_key: str
     value: float
-    group: MetaDatum | None = None
+    group: Metadatum | None = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {
@@ -221,7 +205,7 @@ class AccuracyMetric(BaseModel):
 class _PrecisionRecallF1Base(BaseModel):
     label: Label
     value: float | None = None
-    group: MetaDatum | None = None
+    group: Metadatum | None = None
 
     @field_validator("value")
     @classmethod
@@ -255,7 +239,7 @@ class F1Metric(_PrecisionRecallF1Base):
 class ROCAUCMetric(BaseModel):
     label_key: str
     value: float
-    group: MetaDatum | None = None
+    group: Metadatum | None = None
 
     def db_mapping(self, evaluation_settings_id: int) -> dict:
         return {

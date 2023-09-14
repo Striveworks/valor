@@ -1,7 +1,7 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import exceptions, schemas
+from velour_api import schemas
 from velour_api.backend import core, models, ops
 
 
@@ -57,7 +57,7 @@ def get_prediction(
             dataset=dataset.name,
             metadata=core.get_metadata(db, datum=datum),
         ),
-        annotations=core.get_scored_annotations(db, model=model, datum=datum),
+        annotations=core.get_annotations(db, datum=datum, model=model),
     )
 
 

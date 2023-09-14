@@ -11,7 +11,10 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.metadata import create_metadata, get_metadata
+from velour_api.backend.core.metadata import (
+    deserialize_metadatums,
+    serialize_metadatums,
+)
 from velour_api.enums import AnnotationType
 
 
@@ -31,6 +34,7 @@ def create_annotation(
     box = None
     polygon = None
     raster = None
+    jsonb = None
 
     if isinstance(annotation.bounding_box, schemas.BoundingBox):
         box = annotation.bounding_box.wkt()
@@ -40,15 +44,19 @@ def create_annotation(
         raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
     elif isinstance(annotation.raster, schemas.Raster):
         raster = annotation.raster.mask_bytes
+    elif isinstance(annotation.jsonb, dict):
+        jsonb = annotation.jsonb
     # @TODO: Add more annotation types
 
     mapping = {
         "datum_id": datum.id,
         "model_id": model.id if model else None,
         "task_type": annotation.task_type,
+        "metadatums": deserialize_metadatums(annotation.meta),
         "box": box,
         "polygon": polygon,
         "raster": raster,
+        "json": jsonb,
     }
 
     try:
@@ -59,7 +67,6 @@ def create_annotation(
         db.rollback()
         raise exceptions.AnnotationAlreadyExistsError
 
-    create_metadata(db, annotation.metadata, annotation=row)
     return row
 
 
@@ -138,7 +145,7 @@ def get_annotation(
     retval = schemas.Annotation(
         task_type=annotation.task_type,
         labels=labels,
-        metadata=get_metadata(db, annotation=annotation),
+        meta=serialize_metadatums(annotation.meta),
         bounding_box=None,
         polygon=None,
         multipolygon=None,
@@ -166,8 +173,13 @@ def get_annotation(
 
     # Raster
     if annotation.raster is not None:
-        height = get_metadata(db, annotation=annotation, key="height")[0].value
-        width = get_metadata(db, annotation=annotation, key="width")[0].value
+        if (
+            "height" not in annotation.metadatums
+            and "width" not in annotation.metadatums
+        ):
+            raise ValueError("missing height and width")
+        height = int(annotation.metadatums["height"])
+        width = int(annotation.metadatums["width"])
         retval.raster = schemas.Raster(
             mask=_raster_to_png_b64(
                 db, raster=annotation.raster, height=height, width=width
@@ -182,105 +194,22 @@ def get_annotation(
 def get_annotations(
     db: Session,
     datum: models.Datum,
+    model: models.Model | None = None,
 ) -> list[schemas.Annotation]:
+    model_expr = (
+        models.Annotation.model_id.is_(None)
+        if model is None
+        else models.Annotation.model_id == model.id
+    )
     return [
         get_annotation(db, annotation=annotation)
         for annotation in (
             db.query(models.Annotation)
             .where(
                 and_(
-                    models.Annotation.model_id.is_(None),
+                    model_expr,
                     models.Annotation.datum_id == datum.id,
                 )
-            )
-            .all()
-        )
-    ]
-
-
-def get_scored_annotation(
-    db: Session,
-    annotation: models.Annotation,
-) -> schemas.Annotation:
-    # Retrieve all labels associated with annotation
-    scored_labels = [
-        schemas.Label(
-            key=scored_label[0],
-            value=scored_label[1],
-            score=scored_label[2],
-        )
-        for scored_label in (
-            db.query(
-                models.Label.key, models.Label.value, models.Prediction.score
-            )
-            .join(
-                models.Prediction,
-                models.Prediction.label_id == models.Label.id,
-            )
-            .where(models.Prediction.annotation_id == annotation.id)
-            .all()
-        )
-    ]
-
-    # Initialize
-    retval = schemas.Annotation(
-        task_type=annotation.task_type,
-        labels=scored_labels,
-        metadata=get_metadata(db, annotation=annotation),
-        bounding_box=None,
-        polygon=None,
-        multipolygon=None,
-        raster=None,
-    )
-
-    # Bounding Box
-    if annotation.box is not None:
-        geojson = db.scalar(ST_AsGeoJSON(annotation.box))
-        retval.bounding_box = schemas.BoundingBox(
-            polygon=schemas.GeoJSON.from_json(geojson=geojson)
-            .shape()
-            .boundary,
-            box=None,
-        )
-
-    # Polygon
-    if annotation.polygon is not None:
-        geojson = (
-            db.scalar(ST_AsGeoJSON(annotation.polygon))
-            if annotation.polygon is not None
-            else None
-        )
-        retval.polygon = schemas.GeoJSON.from_json(geojson=geojson).shape()
-
-    # Raster
-    if annotation.raster is not None:
-        height = get_metadata(db, annotation=annotation, key="height")[0].value
-        width = get_metadata(db, annotation=annotation, key="width")[0].value
-        retval.raster = schemas.Raster(
-            mask=_raster_to_png_b64(
-                db, raster=annotation.raster, height=height, width=width
-            ),
-            height=height,
-            width=width,
-        )
-
-    return retval
-
-
-def get_scored_annotations(
-    db: Session,
-    model: models.Model,
-    datum: models.Datum,
-) -> list[schemas.Annotation]:
-    return [
-        get_scored_annotation(db, annotation=annotation)
-        for annotation in (
-            db.query(models.Annotation)
-            .where(
-                and_(
-                    models.Annotation.model_id == model.id,
-                    models.Annotation.datum_id == datum.id,
-                ),
             )
             .all()
         )

@@ -3,13 +3,13 @@ from .core import (
     Annotation,
     Dataset,
     Datum,
+    Evaluation,
     GroundTruth,
     Label,
-    MetaDatum,
     Model,
     Prediction,
 )
-from .datatypes import Image, VideoFrame
+from .datatypes import ImageMetadata, VideoFrameMetadata
 from .geojson import GeoJSON
 from .geometry import (
     BasicPolygon,
@@ -20,6 +20,7 @@ from .geometry import (
     Raster,
 )
 from .info import Filter, LabelDistribution, ScoredLabelDistribution
+from .metadata import DateTime, Metadatum
 from .metrics import (
     AccuracyMetric,
     APMetric,
@@ -32,7 +33,6 @@ from .metrics import (
     CreateAPMetricsResponse,
     CreateClfMetricsResponse,
     CreateSemanticSegmentationMetricsResponse,
-    EvaluationSettings,
     F1Metric,
     IOUMetric,
     Metric,
@@ -49,8 +49,8 @@ from .stateflow import Stateflow
 __all__ = [
     "User",
     "Filter",
-    "Image",
-    "VideoFrame",
+    "ImageMetadata",
+    "VideoFrameMetadata",
     "Annotation",
     "Dataset",
     "Datum",
@@ -67,8 +67,9 @@ __all__ = [
     "MultiPolygon",
     "Polygon",
     "Raster",
-    "MetaDatum",
-    "EvaluationSettings",
+    "Metadatum",
+    "DateTime",
+    "Evaluation",
     "Metric",
     "AccuracyMetric",
     "ConfusionMatrix",
