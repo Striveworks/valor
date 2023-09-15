@@ -53,8 +53,8 @@ def raster(raster_raw_mask) -> schemas.Raster:
 
 
 @pytest.fixture
-def metadatum() -> schemas.MetaDatum:
-    return schemas.MetaDatum(
+def metadatum() -> schemas.Metadatum:
+    return schemas.Metadatum(
         key="test",
         value=1234,
     )
@@ -288,38 +288,38 @@ def test_core__validate_href():
 
 
 def test_core_metadatum():
-    schemas.MetaDatum(key="test", value="test")
-    schemas.MetaDatum(key="test", value=1)
-    schemas.MetaDatum(key="test", value=1.0)
+    schemas.Metadatum(key="test", value="test")
+    schemas.Metadatum(key="test", value=1)
+    schemas.Metadatum(key="test", value=1.0)
     # @TODO: Fix when geojson is implemented
-    schemas.MetaDatum(
+    schemas.Metadatum(
         key="test", value=schemas.GeoJSON(type="test", coordinates=[])
     )
 
     with pytest.raises(TypeError) as e:
-        schemas.MetaDatum(key=123, value=123)
+        schemas.Metadatum(key=123, value=123)
     assert "should always be of type string" in str(e)
 
     # Test supported value types
     with pytest.raises(NotImplementedError):
-        schemas.MetaDatum(key="test", value=(1, 2))
+        schemas.Metadatum(key="test", value=(1, 2))
     assert "has unsupported type <class 'tuple'>"
     with pytest.raises(NotImplementedError):
-        schemas.MetaDatum(key="test", value=[1, 2])
+        schemas.Metadatum(key="test", value=[1, 2])
     assert "has unsupported type <class 'list'>"
 
     # Test special type with name=href
-    schemas.MetaDatum(key="href", value="http://test")
-    schemas.MetaDatum(key="href", value="https://test")
+    schemas.Metadatum(key="href", value="http://test")
+    schemas.Metadatum(key="href", value="https://test")
     with pytest.raises(ValueError) as e:
-        schemas.MetaDatum(key="href", value="test")
+        schemas.Metadatum(key="href", value="test")
     assert "`href` must start with http:// or https://" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.MetaDatum(key="href", value=1)
+        schemas.Metadatum(key="href", value=1)
     assert "passed something other than 'str'" in str(e)
 
     # Check int to float conversion
-    m = schemas.MetaDatum(key="test", value=1)
+    m = schemas.Metadatum(key="test", value=1)
     assert isinstance(m.value, float)
 
 
@@ -327,7 +327,7 @@ def test_core_dataset():
     # valid
     schemas.Dataset(
         name="test",
-        metadata=[schemas.MetaDatum(key="test", value=123)],
+        metadata=[schemas.Metadatum(key="test", value=123)],
     )
     schemas.Dataset(
         name="test",
@@ -358,7 +358,7 @@ def test_core_model():
     # valid
     schemas.Model(
         name="test",
-        metadata=[schemas.MetaDatum(key="test", value=123)],
+        metadata=[schemas.Metadatum(key="test", value=123)],
     )
     schemas.Model(
         name="test",
@@ -393,7 +393,7 @@ def test_core_info():
 def test_core_datum():
     schemas.Datum(uid="123")
     schemas.Datum(uid="123", metadata=[])
-    schemas.Datum(uid="123", metadata=[schemas.MetaDatum(key="name", value=1)])
+    schemas.Datum(uid="123", metadata=[schemas.Metadatum(key="name", value=1)])
     schemas.Datum(uid="123", dataset="dataset")
 
     # test `__post_init__`
@@ -458,7 +458,7 @@ def test_core_annotation(bbox, polygon, raster, metadatum):
         schemas.Annotation(
             task_type=enums.TaskType.CLASSIFICATION, metadata=[123]
         )
-    assert "should be of type `velour.schemas.MetaDatum`" in str(e)
+    assert "should be of type `velour.schemas.Metadatum`" in str(e)
 
 
 def test_core_label():
@@ -707,3 +707,41 @@ def test_core_prediction():
             model="",
         )
     assert "for label key test got scores summing to 0.9" in str(e)
+
+
+""" velour.schemas.Evaluation """
+
+
+def test_core_evaluation():
+    params = {
+        "model": "md",
+        "dataset": "ds",
+        "evaluation_type": enums.EvaluationType.AP,
+        "task_type": enums.TaskType.DETECTION,
+        "target_type": enums.AnnotationType.BOX,
+        "parameters": [],
+        "id": None,
+    }
+    schemas.Evaluation(**params)
+
+    params["id"] = 123
+    params["parameters"] = [schemas.Metadatum(key="hello", value="world")]
+    schemas.Evaluation(**params)
+
+    # type checking
+    def type_check(kwargs):
+        with pytest.raises(TypeError) as e:
+            schemas.Evaluation(**kwargs)
+        assert "should be of type" in str(e)
+
+    for key in params:
+        temp = params[key]
+        params[key] = 123 if key != "id" else "123"
+        type_check(params)
+        params[key] = temp
+
+    # type checking - parameters list
+    temp = params["parameters"]
+    params["parameters"] = [123]
+    type_check(params)
+    params["parameters"] = temp

@@ -114,4 +114,4 @@ class State(str, Enum):
 # @TODO: Fill in methods, will we have multiple per task_type?
 class EvaluationType(str, Enum):
     CLF = "classification"
-    AP = ("average-precision",)
+    AP = "average-precision"

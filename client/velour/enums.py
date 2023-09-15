@@ -35,12 +35,7 @@ class TaskType(str, Enum):
     SEMANTIC_SEGMENTATION = "semantic_segmentation"
 
 
-class Table(str, Enum):
-    DATASET = "dataset"
-    MODEL = "model"
-    DATUM = "datum"
-    ANNOTATION = "annotation"
-    GROUND_TRUTH = "groundtruth"
-    PREDICTION = "prediction"
-    LABEL = "label"
-    METADATA = "metadatum"
+# @TODO: Fill in methods, will we have multiple per task_type?
+class EvaluationType(str, Enum):
+    CLF = "classification"
+    AP = "average-precision"

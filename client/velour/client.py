@@ -131,14 +131,14 @@ class Evaluation:
         dataset_name: str,
         model_name: str,
         job_id: int,
-        **kwargs,
+        parameters: dict,
     ):
         self._id = job_id
         self.client = client
         self.dataset_name = dataset_name
         self.model_name = model_name
 
-        for k, v in kwargs.items():
+        for k, v in parameters.items():
             setattr(self, k, v)
 
     @property
@@ -220,7 +220,7 @@ class Dataset:
         )
         for key in kwargs:
             ds.metadata.append(
-                schemas.MetaDatum(
+                schemas.Metadatum(
                     key=key,
                     value=kwargs[key],
                 )
@@ -238,7 +238,7 @@ class Dataset:
     def get(cls, client: Client, name: str):
         resp = client._requests_get_rel_host(f"datasets/{name}").json()
         metadata = [
-            schemas.MetaDatum(
+            schemas.Metadatum(
                 key=metadatum["key"],
                 value=metadatum["value"],
             )
@@ -254,7 +254,7 @@ class Dataset:
             info=info,
         )
 
-    def add_metadatum(self, metadatum: schemas.MetaDatum):
+    def add_metadatum(self, metadatum: schemas.Metadatum):
         # @TODO: Add endpoint to allow adding custom metadatums
         self.info.metadata.append(metadatum)
         self.__metadata__[metadatum.key] = metadatum
@@ -388,7 +388,7 @@ class Model:
         )
         for key in kwargs:
             md.metadata.append(
-                schemas.MetaDatum(
+                schemas.Metadatum(
                     key=key,
                     value=kwargs[key],
                 )
@@ -406,7 +406,7 @@ class Model:
     def get(cls, client: Client, name: str):
         resp = client._requests_get_rel_host(f"models/{name}").json()
         metadata = [
-            schemas.MetaDatum(
+            schemas.Metadatum(
                 key=metadatum["key"],
                 value=metadatum["value"],
             )
@@ -426,7 +426,7 @@ class Model:
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
         del self
 
-    def add_metadatum(self, metadatum: schemas.MetaDatum):
+    def add_metadatum(self, metadatum: schemas.Metadatum):
         # @TODO: Add endpoint to allow adding custom metadatums
         self.info.metadata.append(metadatum)
         self.__metadata__[metadatum.key] = metadatum
@@ -465,7 +465,7 @@ class Model:
     def evaluate_classification(
         self,
         dataset: Dataset,
-        group_by: schemas.MetaDatum = schemas.MetaDatum(key="k", value="v"),
+        group_by: schemas.Metadatum = schemas.Metadatum(key="k", value="v"),
     ) -> Evaluation:
         """Start a classification evaluation job
 
