@@ -13,6 +13,7 @@ from velour.schemas import (
     GroundTruth,
     ImageMetadata,
     Label,
+    Metadatum,
     Raster,
 )
 
@@ -52,6 +53,48 @@ def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
             res[x, y] = True
         idx += length
     return res
+
+
+def _create_annotation(segment, mask_ids, category_id_to_category):
+    if category_id_to_category[segment["category_id"]]["isthing"]:
+        return Annotation(
+            task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+            labels=[
+                Label(
+                    key=k,
+                    value=str(
+                        category_id_to_category[segment["category_id"]][k]
+                    ),
+                )
+                for k in ["supercategory", "name"]
+            ]
+            + [Label(key="iscrowd", value=str(segment["iscrowd"]))],
+            raster=Raster.from_numpy(mask_ids == segment["id"]),
+        )
+    else:
+        return Annotation(
+            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+            labels=[
+                Label(
+                    key="name",
+                    value=str(
+                        category_id_to_category[segment["category_id"]]["name"]
+                    ),
+                )
+            ],
+            metadata=[
+                Metadatum(
+                    key="supercategory",
+                    value=str(
+                        category_id_to_category[segment["category_id"]][
+                            "supercategory"
+                        ]
+                    ),
+                ),
+                Metadatum(key="iscrowd", value=str(segment["iscrowd"])),
+            ],
+            raster=Raster.from_numpy(mask_ids == segment["id"]),
+        )
 
 
 def upload_coco_panoptic(
@@ -97,28 +140,7 @@ def upload_coco_panoptic(
         return GroundTruth(
             datum=img,
             annotations=[
-                Annotation(
-                    task_type=(
-                        enums.TaskType.INSTANCE_SEGMENTATION
-                        if category_id_to_category[segment["category_id"]][
-                            "isthing"
-                        ]
-                        else enums.TaskType.SEMANTIC_SEGMENTATION
-                    ),
-                    labels=[
-                        Label(
-                            key=k,
-                            value=str(
-                                category_id_to_category[
-                                    segment["category_id"]
-                                ][k]
-                            ),
-                        )
-                        for k in ["supercategory", "name"]
-                    ]
-                    + [Label(key="iscrowd", value=str(segment["iscrowd"]))],
-                    raster=Raster.from_numpy(mask_ids == segment["id"]),
-                )
+                _create_annotation(segment, mask_ids, category_id_to_category)
                 for segment in ann_dict["segments_info"]
             ],
         )

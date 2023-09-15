@@ -54,7 +54,7 @@ def create_datum(
         row = models.Datum(
             uid=datum.uid,
             dataset_id=dataset.id,
-            meta=deserialize_metadatums(datum.meta),
+            meta=deserialize_metadatums(datum.metadata),
         )
         db.add(row)
         db.commit()

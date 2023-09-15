@@ -205,6 +205,8 @@ class MultiPolygon:
 @dataclass
 class Raster:
     mask: str
+    height: int
+    width: int
 
     def __post_init__(self):
         if not isinstance(self.mask, str):
@@ -223,8 +225,11 @@ class Raster:
         f.seek(0)
         mask_bytes = f.read()
         f.close()
+        height, width = mask.shape
         return cls(
             mask=b64encode(mask_bytes).decode(),
+            height=height,
+            width=width,
         )
 
     def to_numpy(self) -> np.ndarray:

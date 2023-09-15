@@ -141,7 +141,7 @@ class Evaluation:
         settings = self._client._requests_get_rel_host(
             f"evaluations/{self._id}/dataset/{self.dataset}/model/{self.model}/settings"
         ).json()
-        self.evaluation = schemas.Evaluation(**settings)
+        self.evaluation = schemas.EvaluationSettings(**settings)
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -466,10 +466,23 @@ class Model:
             f"models/{self.name}/datasets/{dataset.name}/finalize"
         ).json()
 
+    def evaluate(
+        self,
+        dataset: Dataset,
+        task_type: enums.TaskType,
+        evaluation_type: enums.EvaluationType = None,
+        **kwargs,
+    ) -> Evaluation:
+        settings = schemas.EvaluationSettings(
+            model=self.name,
+            dataset=dataset,
+            evaluation_type=evaluation_type,
+        )
+
     def evaluate_classification(
         self,
         dataset: Dataset,
-        group_by: schemas.Metadatum = schemas.Metadatum(key="k", value="v"),
+        task_type: enums.TaskType,
     ) -> Evaluation:
         """Start a classification evaluation job
 
@@ -486,10 +499,19 @@ class Model:
             a job object that can be used to track the status of the job
             and get the metrics of it upon completion
         """
+
+        settings = schemas.EvaluationSettings(
+            model=self.name,
+            dataset=dataset.name,
+            evaluation_type=enums.EvaluationType.CLF,
+            target_type=target_type,
+        )
+
         payload = {
             "settings": {
                 "model": self.name,
                 "dataset": dataset.name,
+                "evaluation_type": enums.EvaluationType.CLF,
             }
         }
 
@@ -505,7 +527,15 @@ class Model:
         )
 
     def evaluate_semantic_segmentation(self, dataset: Dataset) -> Evaluation:
-        payload = {"settings": {"model": self.name, "dataset": dataset.name}}
+        settings = schemas.EvaluationSettings()
+
+        payload = {
+            "settings": {
+                "model": self.name,
+                "dataset": dataset.name,
+                "evaluation_type": enums.EvaluationType.CLF,
+            }
+        }
 
         resp = self.client._requests_post_rel_host(
             "evaluations/semantic-segmentation-metrics", json=payload
@@ -529,17 +559,30 @@ class Model:
         max_area: float = None,
         label_key: Optional[str] = None,
     ) -> Evaluation:
-        payload = {
-            "settings": {
-                "model": self.name,
-                "dataset": dataset.name,
-                "task_type": task_type,
-                "target_type": target_type,
-                "min_area": min_area,
-                "max_area": max_area,
-                "label_key": label_key,
-            }
-        }
+
+        parameters = []
+        if min_area:
+            parameters.append(
+                schemas.Metadatum(key="min_area", value=min_area)
+            )
+        if max_area:
+            parameters.append(
+                schemas.Metadatum(key="max_area", value=max_area)
+            )
+        if label_key:
+            parameters.append(
+                schemas.Metadatum(key="label_key", value=label_key)
+            )
+
+        settings = schemas.EvaluationSettings(
+            model=self.name,
+            dataset=dataset.name,
+            evaluation_type=enums.EvaluationType.AP,
+            task_type=task_type,
+            target_type=target_type,
+            parameters=parameters,
+        )
+        payload = {"settings": json.dumps(settings)}
 
         if iou_thresholds is not None:
             payload["iou_thresholds"] = iou_thresholds

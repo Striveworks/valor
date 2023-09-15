@@ -9,7 +9,7 @@ from sqlalchemy import and_, distinct, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import enums, exceptions, schemas
+from velour_api import enums, exceptions, logger, schemas
 from velour_api.backend import models
 from velour_api.backend.core.metadata import (
     deserialize_metadatums,
@@ -36,6 +36,8 @@ def create_annotation(
     raster = None
     jsonb = None
 
+    metadata = deserialize_metadatums(annotation.metadata)
+
     if isinstance(annotation.bounding_box, schemas.BoundingBox):
         box = annotation.bounding_box.wkt()
     elif isinstance(annotation.polygon, schemas.Polygon):
@@ -44,6 +46,8 @@ def create_annotation(
         raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
     elif isinstance(annotation.raster, schemas.Raster):
         raster = annotation.raster.mask_bytes
+        metadata["height"] = annotation.raster.height
+        metadata["width"] = annotation.raster.width
     elif isinstance(annotation.jsonb, dict):
         jsonb = annotation.jsonb
     # @TODO: Add more annotation types
@@ -52,7 +56,7 @@ def create_annotation(
         "datum_id": datum.id,
         "model_id": model.id if model else None,
         "task_type": annotation.task_type,
-        "metadatums": deserialize_metadatums(annotation.meta),
+        "meta": metadata,
         "box": box,
         "polygon": polygon,
         "raster": raster,
@@ -145,7 +149,7 @@ def get_annotation(
     retval = schemas.Annotation(
         task_type=annotation.task_type,
         labels=labels,
-        meta=serialize_metadatums(annotation.meta),
+        metadata=serialize_metadatums(annotation.meta),
         bounding_box=None,
         polygon=None,
         multipolygon=None,
@@ -173,13 +177,11 @@ def get_annotation(
 
     # Raster
     if annotation.raster is not None:
-        if (
-            "height" not in annotation.metadatums
-            and "width" not in annotation.metadatums
-        ):
+        if "height" not in annotation.meta and "width" not in annotation.meta:
             raise ValueError("missing height and width")
-        height = int(annotation.metadatums["height"])
-        width = int(annotation.metadatums["width"])
+        metadata = annotation.meta
+        height = int(metadata.pop("height"))
+        width = int(metadata.pop("width"))
         retval.raster = schemas.Raster(
             mask=_raster_to_png_b64(
                 db, raster=annotation.raster, height=height, width=width

@@ -13,7 +13,7 @@ def create_model(
     # Create model
     row = models.Model(
         name=model.name,
-        meta=core.deserialize_metadatums(model.meta),
+        meta=core.deserialize_metadatums(model.metadata),
     )
     try:
         db.add(row)

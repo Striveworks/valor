@@ -366,17 +366,6 @@ class BackendQuery:
         self.filter_by_annotation_types(req.annotation_types)
         self.filter_by_label_keys(req.label_keys)
         self.filter_by_labels(req.labels)
-        self.filter_by_metadata(req.metadata)
-
-        # limit metadata connections
-        if not req.allow_dataset_metadata:
-            pass
-        if not req.allow_model_metadata:
-            pass
-        if not req.allow_datum_metadata:
-            pass
-        if not req.allow_annotation_metadata:
-            pass
 
         # constrain over groundtruths or predictions
         if not req.allow_groundtruths and req.allow_predictions:

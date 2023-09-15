@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass, field
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 from velour.enums import AnnotationType, DataType, EvaluationType, TaskType
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
@@ -167,7 +167,7 @@ class Annotation:
     raster: Raster = None
 
     # @ TODO implement json annotation type
-    # jsonb: Dict
+    jsonb: Dict | None = None
 
     def __post_init__(self):
         # task_type
@@ -309,7 +309,7 @@ class Prediction:
 
 
 @dataclass
-class Evaluation:
+class EvaluationSettings:
     """General parameters defining any filters of the data such
     as model, dataset, groundtruth and prediction type, model, dataset,
     size constraints, coincidence/intersection constraints, etc.
