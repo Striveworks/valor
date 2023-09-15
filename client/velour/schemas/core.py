@@ -166,6 +166,9 @@ class Annotation:
     multipolygon: MultiPolygon = None
     raster: Raster = None
 
+    # @ TODO implement json annotation type
+    # jsonb: Dict
+
     def __post_init__(self):
         # task_type
         if not isinstance(self.task_type, TaskType):

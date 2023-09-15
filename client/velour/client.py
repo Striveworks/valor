@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 
 import requests
 
-from velour import schemas
+from velour import enums, schemas
 from velour.enums import AnnotationType, JobStatus, TaskType
 
 
@@ -128,18 +128,27 @@ class Evaluation:
     def __init__(
         self,
         client: Client,
-        dataset_name: str,
-        model_name: str,
         job_id: int,
-        parameters: dict,
+        dataset: str,
+        model: str,
+        **kwargs,
     ):
-        self._id = job_id
-        self.client = client
-        self.dataset_name = dataset_name
-        self.model_name = model_name
+        self._id: int = job_id
+        self._client: Client = client
+        self.dataset = (dataset,)
+        self.model = (model,)
 
-        for k, v in parameters.items():
+        settings = self._client._requests_get_rel_host(
+            f"evaluations/{self._id}/dataset/{self.dataset}/model/{self.model}/settings"
+        ).json()
+        self.evaluation = schemas.Evaluation(**settings)
+
+        for k, v in kwargs.items():
             setattr(self, k, v)
+
+    @property
+    def id(self) -> int:
+        return self._id
 
     @property
     def status(self) -> str:
@@ -148,11 +157,36 @@ class Evaluation:
         ).json()
         return JobStatus(resp)
 
-    # TODO: replace value with a dataclass?
     @property
-    def settings(self) -> dict:
-        return self.client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/settings"
+    def evaluation_type(self) -> enums.EvaluationType:
+        return self.evaluation.evaluation_type
+
+    @property
+    def task_type(self) -> enums.TaskType:
+        return self.evaluation.task_type
+
+    @property
+    def target_type(self) -> enums.TaskType:
+        return self.evaluation.target_type
+
+    @property
+    def parameters(self) -> List[schemas.Metadatum]:
+        return self.evaluation.parameters
+
+    @property
+    def metrics(self) -> List[dict]:
+        if self.status != JobStatus.DONE:
+            return []
+        return self._client._requests_get_rel_host(
+            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/metrics"
+        ).json()
+
+    @property
+    def confusion_matrices(self) -> List[dict]:
+        if self.status != JobStatus.DONE:
+            return []
+        return self._client._requests_get_rel_host(
+            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/confusion-matrices"
         ).json()
 
     def wait_for_completion(self, *, interval=1.0, timeout=None):
@@ -164,22 +198,6 @@ class Evaluation:
                 timeout_counter -= 1
                 if timeout_counter < 0:
                     raise TimeoutError
-
-    @property
-    def metrics(self) -> List[dict]:
-        if self.status != JobStatus.DONE:
-            return []
-        return self.client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/metrics"
-        ).json()
-
-    @property
-    def confusion_matrices(self) -> List[dict]:
-        if self.status != JobStatus.DONE:
-            return []
-        return self.client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/confusion-matrices"
-        ).json()
 
 
 class Dataset:
@@ -286,7 +304,7 @@ class Dataset:
         ).json()
         return schemas.GroundTruth(**resp)
 
-    def get_labels(self) -> List[schemas.LabelDistribution]:
+    def get_labels(self) -> List[schemas.Label]:
         labels = self.client._requests_get_rel_host(
             f"labels/dataset/{self.name}"
         ).json()
@@ -318,27 +336,13 @@ class Dataset:
         return [
             Evaluation(
                 client=self.client,
-                dataset_name=self.name,
-                model_name=model_name,
+                dataset=self.name,
+                model=model_name,
                 job_id=job_id,
             )
             for model_name in model_evaluations
             for job_id in model_evaluations[model_name]
         ]
-
-    def get_info(self) -> schemas.Info:
-        resp = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/info"
-        ).json()
-
-        return schemas.Info(
-            annotation_type=resp["annotation_type"],
-            number_of_classifications=resp["number_of_classifications"],
-            number_of_bounding_boxes=resp["number_of_bounding_boxes"],
-            number_of_bounding_polygons=resp["number_of_bounding_polygons"],
-            number_of_segmentations=resp["number_of_segmentation_rasters"],
-            associated=resp["associated"],
-        )
 
     def finalize(self):
         return self.client._requests_put_rel_host(
@@ -495,8 +499,8 @@ class Model:
 
         return Evaluation(
             client=self.client,
-            dataset_name=dataset.name,
-            model_name=self.name,
+            dataset=dataset.name,
+            model=self.name,
             **resp,
         )
 
@@ -509,8 +513,8 @@ class Model:
 
         return Evaluation(
             client=self.client,
-            dataset_name=dataset.name,
-            model_name=self.name,
+            dataset=dataset.name,
+            model=self.name,
             **resp,
         )
 
@@ -554,8 +558,8 @@ class Model:
 
         return Evaluation(
             client=self.client,
-            dataset_name=dataset.name,
-            model_name=self.name,
+            dataset=dataset.name,
+            model=self.name,
             **resp,
         )
 
@@ -611,32 +615,3 @@ class Model:
             schemas.Label(key=label["key"], value=label["value"])
             for label in labels
         ]
-
-    def get_label_distribution(self) -> Dict[schemas.Label, int]:
-        distribution = self.client._requests_get_rel_host(
-            f"models/{self.name}/labels/distribution"
-        ).json()
-
-        return {
-            schemas.Label(
-                key=label["label"]["key"], value=label["label"]["value"]
-            ): {
-                "count": label["count"],
-                "scores": label["scores"],
-            }
-            for label in distribution
-        }
-
-    def get_info(self) -> schemas.Info:
-        resp = self.client._requests_get_rel_host(
-            f"models/{self.name}/info"
-        ).json()
-
-        return schemas.Info(
-            annotation_type=resp["annotation_type"],
-            number_of_classifications=resp["number_of_classifications"],
-            number_of_bounding_boxes=resp["number_of_bounding_boxes"],
-            number_of_bounding_polygons=resp["number_of_bounding_polygons"],
-            number_of_segmentations=resp["number_of_segmentation_rasters"],
-            associated=resp["associated"],
-        )
