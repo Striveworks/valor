@@ -1130,7 +1130,10 @@ def test_create_gt_segs_as_polys_or_masks(
 
         dataset.add_groundtruth(gts)
 
-    assert "appears more than once" in str(exc_info.value)
+    assert (
+        "semantic segmentation tasks can only have one annotation per label"
+        in str(exc_info.value)
+    )
 
     # fine with instance segmentation though
     gts = GroundTruth(
