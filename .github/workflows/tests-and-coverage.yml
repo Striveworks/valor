@@ -7,6 +7,7 @@ on:
       - "client/**"
       - "tests/**"
       - "docs/**"
+    branches: "**"
 
 jobs:
   backend-functional-tests:
