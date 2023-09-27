@@ -271,7 +271,9 @@ def _validate_rasters(d: GroundTruth | Prediction):
                 )
 
             # validate raster wrt datum metadata
-            mask_size = _mask_bytes_to_pil(b64decode(annotation.raster.mask)).size
+            mask_size = _mask_bytes_to_pil(
+                b64decode(annotation.raster.mask)
+            ).size
             image_size = (metadata["width"], metadata["height"])
             if mask_size != image_size:
                 raise ValueError(

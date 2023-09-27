@@ -1,7 +1,8 @@
 import json
+from collections import defaultdict
 from pathlib import Path, PosixPath
 from typing import Any, Dict, List, Union
-from collections import defaultdict
+from copy import deepcopy
 
 import numpy as np
 import PIL.Image
@@ -64,66 +65,43 @@ def _get_task_type(isthing: bool) -> enums.TaskType:
     )
 
 
-def _is_segmentation_task_type(task_type: enums.TaskType) -> bool:
+def _is_semantic_task_type(task_type: enums.TaskType) -> bool:
     """Check if a label is a semantic segmentation"""
     return True if task_type == enums.TaskType.SEMANTIC_SEGMENTATION else False
 
 
-class DisjointSet:
-    """Implement a Disjoint Union Set to match annotations that have at least one similar label"""
+def _merge_annotations(annotation_list: list, label_map: dict):
+    """Aggregate masks of annotations that share a common label"""
 
-    def __init__(self, parents, weights):
-        self.parents = parents
-        self.weights = weights
+    # deepcopy since we use .remove()
+    annotation_list = deepcopy(annotation_list)
 
-    def find(self, item):
-        if self.parents[item] == item:
-            return item
-        else:
-            res = self.find(self.parents[item])
-            self.parents[item] = res
-            return res
+    for label, indices in label_map.items():
+        if len(indices) > 1:
+            joined_mask = annotation_list[indices[0]]["mask"]
+            task_type = annotation_list[indices[0]]["task_type"]
 
-    def union(self, set1, set2):
-        root1 = self.find(set1)
-        root2 = self.find(set2)
+            # remove the label from the parent node
+            annotation_list[indices[0]]["labels"].remove(label)
 
-        if self.weights[root1] > self.weights[root2]:
-            self.weights[root1] += self.weights[root2]
-            self.parents[root2] = root1
-        else:
-            self.weights[root2] += self.weights[root1]
-            self.parents[root1] = root2
+            for child_index in indices[1:]:
+                if indices[0] != child_index:
+                    child = annotation_list[child_index]
+                    joined_mask = np.logical_or(joined_mask, child["mask"])
 
+                    # remove the label from the child node
+                    annotation_list[child_index]["labels"].remove(label)
 
-def _merge_annotation_list(annotation_list: list, label_map: dict):
-    """Use a disjoint union set to merge the masks and labels of annotations that share similar labels"""
-    disjoint_set = DisjointSet(
-        parents={i: i for i, v in enumerate(annotation_list)},
-        weights={i: 1 for i, v in enumerate(annotation_list)},
-    )
+            annotation_list.append(
+                dict(task_type=task_type, labels=set([label]), mask=joined_mask)
+            )
 
-    for indices in label_map.values():
-        for index in indices[1:]:
-            disjoint_set.union(indices[0], index)
+    # delete any annotations without labels remaining (i.e., their mask is now incorporated into grouped annotations)
+    annotation_list = [
+        annotation for annotation in annotation_list if len(annotation["labels"]) > 0
+    ]
 
-    # iterate through the parents, merging the labels and masks of any related annotations
-    parent_to_child_mappings = defaultdict(set)
-    for key, value in disjoint_set.parents.items():
-        parent_to_child_mappings[value].add(key)
-
-    final_annotation_list = []
-    for parent_index, child_indices in parent_to_child_mappings.items():
-        parent = annotation_list[parent_index]
-
-        for child_index in child_indices:
-            if child_index != parent_index:
-                child = annotation_list[child_index]
-                parent["mask"] = np.logical_or(parent["mask"], child["mask"])
-                parent["labels"] = parent["labels"].union(child["labels"])
-        final_annotation_list.append(parent)
-
-    return final_annotation_list
+    return annotation_list
 
 
 def _get_segs_groundtruth_for_single_image(
@@ -147,15 +125,18 @@ def _get_segs_groundtruth_for_single_image(
 
     # create initial list of annotations
     annotation_list = []
-    segmentation_labels = defaultdict(list)
+
+    semantic_labels = defaultdict(list)
 
     for index, segment in enumerate(ann_dict["segments_info"]):
         mask = mask_ids == segment["id"]
         task_type = _get_task_type(
             category_id_to_category[segment["category_id"]]["isthing"]
         )
+        is_semantic = _is_semantic_task_type(task_type=task_type)
 
         labels = set()
+
         for k in ["supercategory", "name"]:
             category_desc = str(category_id_to_category[segment["category_id"]][k])
 
@@ -164,16 +145,23 @@ def _get_segs_groundtruth_for_single_image(
                 value=category_desc,
             )
 
-            # if multiple annotations have the same label, then we need to combine them
-            if _is_segmentation_task_type(task_type=task_type):
-                segmentation_labels[label].append(index)
+            # identify the location of all semantic segmentation labels
+            if is_semantic:
+                semantic_labels[label].append(index)
 
             labels.add(label)
 
         annotation_list.append(dict(task_type=task_type, labels=labels, mask=mask))
+        is_crowd_label = Label(key="iscrowd", value=str(segment["iscrowd"]))
 
-    final_annotation_list = _merge_annotation_list(
-        annotation_list=annotation_list, label_map=segmentation_labels
+    if is_semantic:
+        semantic_labels[is_crowd_label].append(len(ann_dict["segments_info"]) - 1)
+    else:
+        annotation_list.append(is_crowd_label)
+
+    # combine semantic segmentation masks by label
+    final_annotation_list = _merge_annotations(
+        annotation_list=annotation_list, label_map=semantic_labels
     )
 
     # create groundtruth
