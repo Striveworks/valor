@@ -31,8 +31,9 @@ jobs:
           docker tag $IMAGE_NAME $IMAGE_NAME_WITH_COMMIT_HASH
           docker push $IMAGE_NAME_WITH_COMMIT_HASH
       # if there's a git tag then add another tag to the image with the git tag and push it
+      - run: echo ${{ github.ref }}
       - name: push git tag
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           docker tag $IMAGE_NAME $IMAGE_NAME:${{ github.ref }}
           docker push $IMAGE_NAME:${{ github.ref }}
