@@ -760,7 +760,7 @@ def test_semantic_segmentation_validation():
         )
 
     assert "semantic segmentation tasks can only have one annotation per label" in str(
-        e
+        e.value
     )
 
     with pytest.raises(ValueError) as e:
