@@ -5,7 +5,7 @@ on:
     paths:
       - api/**
       - .github/workflows/docker.yml
-    branches: [main]
+    branches: [181-tag-api-image-with-app-version]
     tags:
       - "v*"
 
