@@ -2,6 +2,11 @@ name: Unit, functional, integration tests and code coverage
 
 on:
   push:
+    paths:
+      - "api/**"
+      - "client/**"
+      - "tests/**"
+      - "docs/**"
 
 jobs:
   backend-functional-tests:
