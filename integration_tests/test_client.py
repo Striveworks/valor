@@ -412,9 +412,7 @@ def gt_semantic_segs1(
 
 
 @pytest.fixture
-def gt_semantic_segs2(
-    rect3: BoundingBox, img2: ImageMetadata
-) -> list[GroundTruth]:
+def gt_semantic_segs2(rect3: BoundingBox, img2: ImageMetadata) -> list[GroundTruth]:
     return [
         GroundTruth(
             datum=img2.to_datum(),
@@ -526,9 +524,7 @@ def pred_poly_dets(
 
 
 @pytest.fixture
-def pred_instance_segs(
-    img1: ImageMetadata, img2: ImageMetadata
-) -> list[Prediction]:
+def pred_instance_segs(img1: ImageMetadata, img2: ImageMetadata) -> list[Prediction]:
     mask_1 = random_mask(img1)
     mask_2 = random_mask(img2)
     return [
@@ -558,9 +554,7 @@ def pred_instance_segs(
 
 
 @pytest.fixture
-def pred_semantic_segs(
-    img1: ImageMetadata, img2: ImageMetadata
-) -> list[Prediction]:
+def pred_semantic_segs(img1: ImageMetadata, img2: ImageMetadata) -> list[Prediction]:
     mask_1 = random_mask(img1)
     mask_2 = random_mask(img2)
     return [
@@ -686,10 +680,7 @@ def _test_create_image_dataset_with_gts(
     # check that there are two labels
     labels = dataset.get_labels()
     assert len(labels) == len(expected_labels_tuples)
-    assert (
-        set([(label.key, label.value) for label in labels])
-        == expected_labels_tuples
-    )
+    assert set([(label.key, label.value) for label in labels]) == expected_labels_tuples
 
     dataset.finalize()
     # check that we get an error when trying to add more images
@@ -761,8 +752,7 @@ def _test_create_model_with_preds(
 
     # check labels
     assert (
-        set([(p.label.key, p.label.value) for p in db_preds])
-        == expected_labels_tuples
+        set([(p.label.key, p.label.value) for p in db_preds]) == expected_labels_tuples
     )
 
     # check scores
@@ -776,9 +766,7 @@ def _test_create_model_with_preds(
     return db_preds
 
 
-def test_create_image_dataset_with_href_and_description(
-    client: Client, db: Session
-):
+def test_create_image_dataset_with_href_and_description(client: Client, db: Session):
     href = "http://a.com/b"
     description = "a description"
     Dataset.create(client, dset_name, href=href, description=description)
@@ -809,9 +797,7 @@ def test_create_model_with_href_and_description(client: Client, db: Session):
     description = "a description"
     Model.create(client, model_name, href=href, description=description)
 
-    model_id = db.scalar(
-        select(models.Model.id).where(models.Model.name == model_name)
-    )
+    model_id = db.scalar(select(models.Model.id).where(models.Model.name == model_name))
     assert href == db.scalar(
         select(models.MetaDatum.string_value).where(
             and_(
@@ -964,13 +950,7 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
     detections = dataset.get_groundtruth("uid")
     assert len(detections.annotations) == 2
     assert (
-        len(
-            [
-                det
-                for det in detections.annotations
-                if det.bounding_box is not None
-            ]
-        )
+        len([det for det in detections.annotations if det.bounding_box is not None])
         == 1
     )
     for det in detections.annotations:
@@ -1130,7 +1110,9 @@ def test_create_gt_segs_as_polys_or_masks(
 
         dataset.add_groundtruth(gts)
 
-    assert "appears more than once" in str(exc_info.value)
+    assert "semantic segmentation tasks can only have one annotation per label" in str(
+        exc_info.value
+    )
 
     # fine with instance segmentation though
     gts = GroundTruth(
@@ -1151,9 +1133,7 @@ def test_create_gt_segs_as_polys_or_masks(
 
     dataset.add_groundtruth(gts)
 
-    wkts = db.scalars(
-        select(ST_AsText(ST_Polygon(models.Annotation.raster)))
-    ).all()
+    wkts = db.scalars(select(ST_AsText(ST_Polygon(models.Annotation.raster)))).all()
 
     for wkt in wkts:
         assert (
@@ -1184,9 +1164,7 @@ def test_create_model_with_predicted_segmentations(
     # grab the segmentation from the db, recover the mask, and check
     # its equal to the mask the client sent over
     db_annotations = (
-        db.query(models.Annotation)
-        .where(models.Annotation.model_id.isnot(None))
-        .all()
+        db.query(models.Annotation).where(models.Annotation.model_id.isnot(None)).all()
     )
 
     if db_annotations[0].datum_id < db_annotations[1].datum_id:
@@ -1255,9 +1233,7 @@ def test_create_image_model_with_predicted_classifications(
     )
 
 
-def test_boundary(
-    client: Client, db: Session, rect1: Polygon, img1: ImageMetadata
-):
+def test_boundary(client: Client, db: Session, rect1: Polygon, img1: ImageMetadata):
     """Test consistency of boundary in backend and client"""
     dataset = Dataset.create(client, dset_name)
     rect1_poly = bbox_to_poly(rect1)
@@ -1539,10 +1515,7 @@ def test_evaluate_ap(
         "max_area": 1800,
     }
     assert eval_job_bounded_area_1200_1800.metrics != expected_metrics
-    assert (
-        eval_job_bounded_area_1200_1800.metrics
-        == eval_job_min_area_1200.metrics
-    )
+    assert eval_job_bounded_area_1200_1800.metrics == eval_job_min_area_1200.metrics
 
 
 def test_evaluate_image_clf(
@@ -1632,23 +1605,15 @@ def test_evaluate_semantic_segmentation(
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_semantic_segmentation(dataset)
-    assert eval_job.missing_pred_labels == [
-        {"key": "k3", "value": "v3", "score": None}
-    ]
-    assert eval_job.ignored_pred_labels == [
-        {"key": "k1", "value": "v1", "score": None}
-    ]
+    assert eval_job.missing_pred_labels == [{"key": "k3", "value": "v3", "score": None}]
+    assert eval_job.ignored_pred_labels == [{"key": "k1", "value": "v1", "score": None}]
 
     time.sleep(1)
     metrics = eval_job.metrics
 
     assert len(metrics) == 3
     assert set(
-        [
-            (m["label"]["key"], m["label"]["value"])
-            for m in metrics
-            if "label" in m
-        ]
+        [(m["label"]["key"], m["label"]["value"]) for m in metrics if "label" in m]
     ) == {("k2", "v2"), ("k3", "v3")}
     assert set([m["type"] for m in metrics]) == {"IOU", "mIOU"}
 

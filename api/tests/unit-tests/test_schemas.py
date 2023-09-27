@@ -142,12 +142,8 @@ def scored_labels(labels) -> list[schemas.Label]:
 @pytest.fixture
 def groundtruth_annotations(labels) -> list[schemas.Annotation]:
     return [
-        schemas.Annotation(
-            labels=[labels[0]], task_type=enums.TaskType.CLASSIFICATION
-        ),
-        schemas.Annotation(
-            labels=[labels[2]], task_type=enums.TaskType.CLASSIFICATION
-        ),
+        schemas.Annotation(labels=[labels[0]], task_type=enums.TaskType.CLASSIFICATION),
+        schemas.Annotation(labels=[labels[2]], task_type=enums.TaskType.CLASSIFICATION),
         schemas.Annotation(
             labels=[labels[3]],
             task_type=enums.TaskType.CLASSIFICATION,
@@ -363,9 +359,7 @@ def test_core_Datum(metadata):
         )
 
 
-def test_core_annotation_without_scores(
-    metadata, bbox, polygon, raster, labels
-):
+def test_core_annotation_without_scores(metadata, bbox, polygon, raster, labels):
     # valid
     gt = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
@@ -469,9 +463,7 @@ def test_core_annotation_without_scores(
         )
 
 
-def test_core_annotation_with_scores(
-    metadata, bbox, polygon, raster, scored_labels
-):
+def test_core_annotation_with_scores(metadata, bbox, polygon, raster, scored_labels):
     # valid
     pd = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION, labels=scored_labels
@@ -606,9 +598,7 @@ def test_core_groundtruth(metadata, groundtruth_annotations):
         )
 
 
-def test_core_prediction(
-    metadata, predicted_annotations, labels, scored_labels
-):
+def test_core_prediction(metadata, predicted_annotations, labels, scored_labels):
     # valid
     md = schemas.Prediction(
         model="name1",
@@ -703,9 +693,7 @@ def test_core_prediction(
                     uid="uid",
                     dataset="name",
                 ),
-                annotations=[
-                    schemas.Annotation(labels=labels, task_type=task_type)
-                ],
+                annotations=[schemas.Annotation(labels=labels, task_type=task_type)],
             )
         assert "Missing score for label" in str(e)
 
@@ -771,7 +759,9 @@ def test_semantic_segmentation_validation():
             ],
         )
 
-    assert "appears more than" in str(e)
+    assert "semantic segmentation tasks can only have one annotation per label" in str(
+        e
+    )
 
     with pytest.raises(ValueError) as e:
         schemas.GroundTruth(
@@ -1001,16 +991,10 @@ def test_geometry_BasicPolygon(box_points):
     ]
 
     # test member fn `__str__`
-    assert (
-        str(poly)
-        == "((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0))"
-    )
+    assert str(poly) == "((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0))"
 
     # test member fn `wkt`
-    assert (
-        poly.wkt()
-        == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
-    )
+    assert poly.wkt() == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
 
 
 def test_geometry_Polygon(
@@ -1058,20 +1042,14 @@ def test_geometry_Polygon(
         )
 
     # test member fn `__str__`
-    assert (
-        str(p1)
-        == "(((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0)))"
-    )
+    assert str(p1) == "(((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0)))"
     assert (
         str(p2)
         == "(((0.0,0.0),(10.0,0.0),(15.0,10.0),(5.0,10.0),(0.0,0.0)),((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0)))"
     )
 
     # test member fn `wkt`
-    assert (
-        p1.wkt()
-        == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
-    )
+    assert p1.wkt() == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
     assert (
         p2.wkt()
         == "POLYGON ((0.0 0.0, 10.0 0.0, 15.0 10.0, 5.0 10.0, 0.0 0.0), (-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
@@ -1135,8 +1113,7 @@ def test_geometry_BoundingBox(
         schemas.BoundingBox(polygon=[component_polygon_box])
     with pytest.raises(ValidationError):
         box_plus_one = schemas.geometry.BasicPolygon(
-            points=component_polygon_box.points
-            + [schemas.geometry.Point(x=15, y=15)]
+            points=component_polygon_box.points + [schemas.geometry.Point(x=15, y=15)]
         )
         schemas.BoundingBox(polygon=box_plus_one)  # check for 4 unique points
 
@@ -1180,17 +1157,13 @@ def test_geometry_BoundingBox(
 
     # test member fn `wkt`
     assert (
-        bbox1.wkt()
-        == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
+        bbox1.wkt() == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
     )
     assert (
         bbox2.wkt()
         == "POLYGON ((0.0 7.0710678118654755, 7.0710678118654755 0.0, 0.0 -7.0710678118654755, -7.0710678118654755 0.0, 0.0 7.0710678118654755))"
     )
-    assert (
-        bbox3.wkt()
-        == "POLYGON ((0.0 0.0, 10.0 0.0, 15.0 10.0, 5.0 10.0, 0.0 0.0))"
-    )
+    assert bbox3.wkt() == "POLYGON ((0.0 0.0, 10.0 0.0, 15.0 10.0, 5.0 10.0, 0.0 0.0))"
 
 
 def test_geometry_Raster(raster):
@@ -1207,17 +1180,13 @@ def test_geometry_Raster(raster):
         # not any string can be passed
         schemas.Raster(mask="text")
     with pytest.raises(ValueError) as exc_info:
-        base64_mask = _create_b64_mask(
-            mode="RGB", ext="png", size=(width, height)
-        )
+        base64_mask = _create_b64_mask(mode="RGB", ext="png", size=(width, height))
         schemas.Raster(
             mask=base64_mask,  # only supports binary images
         )
     assert "Expected image mode to be binary but got mode" in str(exc_info)
     with pytest.raises(ValueError) as exc_info:
-        base64_mask = _create_b64_mask(
-            mode="1", ext="jpg", size=(width, height)
-        )
+        base64_mask = _create_b64_mask(mode="1", ext="jpg", size=(width, height))
         schemas.Raster(
             mask=base64_mask,  # Check we get an error if the format is not PNG
         )

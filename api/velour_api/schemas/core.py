@@ -133,16 +133,16 @@ def _check_semantic_segmentations_single_label(
     # check that a label on appears once in the annotations for semenatic segmentations
     labels = []
     indices = dict()
-    for index1, annotation in enumerate(annotations):
+    for index, annotation in enumerate(annotations):
         if annotation.task_type == enums.TaskType.SEMANTIC_SEGMENTATION:
             for label in annotation.labels:
                 if label in labels:
                     raise ValueError(
-                        f"Label {label} appears in both annotation {index1} and {indices[label]}, but semantic segmentation "
+                        f"Label {label} appears in both annotation {index} and {indices[label]}, but semantic segmentation "
                         "tasks can only have one annotation per label."
                     )
                 labels.append(label)
-                indices[label] = index1
+                indices[label] = index
 
 
 class GroundTruth(BaseModel):
