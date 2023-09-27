@@ -132,15 +132,17 @@ def _check_semantic_segmentations_single_label(
 ) -> None:
     # check that a label on appears once in the annotations for semenatic segmentations
     labels = []
-    for annotation in annotations:
+    indices = dict()
+    for index1, annotation in enumerate(annotations):
         if annotation.task_type == enums.TaskType.SEMANTIC_SEGMENTATION:
             for label in annotation.labels:
                 if label in labels:
                     raise ValueError(
-                        f"Label {label} appears more than once but semantic segmentation "
-                        "tasks can only have at most one annotation per label."
+                        f"Label {label} appears in both annotation {index1} and {indices[label]}, but semantic segmentation "
+                        "tasks can only have one annotation per label."
                     )
                 labels.append(label)
+                indices[label] = index1
 
 
 class GroundTruth(BaseModel):
@@ -269,9 +271,7 @@ def _validate_rasters(d: GroundTruth | Prediction):
                 )
 
             # validate raster wrt datum metadata
-            mask_size = _mask_bytes_to_pil(
-                b64decode(annotation.raster.mask)
-            ).size
+            mask_size = _mask_bytes_to_pil(b64decode(annotation.raster.mask)).size
             image_size = (metadata["width"], metadata["height"])
             if mask_size != image_size:
                 raise ValueError(
