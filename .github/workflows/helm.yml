@@ -1,10 +1,10 @@
 name: Release Charts
 on:
   push:
-    # paths:
-    #   - charts/**
-    #   - .github/workflows/helm.yml
-    # branches: [main]
+    paths:
+      - charts/**
+      - .github/workflows/helm.yml
+    branches: [main]
 jobs:
   release:
     permissions:
