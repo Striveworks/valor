@@ -6,6 +6,19 @@ This repo contains the python [client](client) and [backend api](api) packages.
 
 Docs are [here](https://striveworks.github.io/velour/).
 
+## Dev setup
+
+To ensure formatting consistency, we use [pre-commit](https://pre-commit.com/) to manage git hooks. To install it, run
+
+```shell
+pip install pre-commit
+pre-commit install
+```
+
+## Release process
+
+A release is made by publishing a tag of the form `vX.Y.Z` (e.g. `v0.1.0`). This will trigger a GitHub action that will build and publish the python client to [PyPI](https://pypi.org/project/velour-client/). These releases should be created using the [GitHub UI](https://github.com/Striveworks/velour/releases).
+
 ## Tests
 
 There are integration tests, backend unit tests, and backend functional tests.
@@ -23,7 +36,7 @@ These can be run locally as follows:
 1. Install the client: from the `client` directory run
 
 ```shell
-pip install .[test]
+pip install ".[test]"
 ```
 
 2. Install the backend: from the `api` directory run
