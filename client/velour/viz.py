@@ -31,7 +31,9 @@ COLOR_MAP = [
 ]
 
 
-def _polygons_to_binary_mask(polys: List[schemas.Polygon], img_w, img_h) -> np.ndarray:
+def _polygons_to_binary_mask(
+    polys: List[schemas.Polygon], img_w, img_h
+) -> np.ndarray:
     """note there's some aliasing/areas differences between this
     and e.g. postgis, so this method should only be used for visualization
     """
@@ -80,10 +82,19 @@ def combined_segmentation_mask(
         raise ValueError("`segs` cannot be empty.")
 
     if (
-        len(set([annotated_datum.datum.uid for annotated_datum in annotated_datums]))
+        len(
+            set(
+                [
+                    annotated_datum.datum.uid
+                    for annotated_datum in annotated_datums
+                ]
+            )
+        )
         > 1
     ):
-        raise RuntimeError("Expected all segmentation to belong to the same image")
+        raise RuntimeError(
+            "Expected all segmentation to belong to the same image"
+        )
 
     # Validate task type
     if task_type is not None and task_type not in [
@@ -117,7 +128,9 @@ def combined_segmentation_mask(
                 label_values.append(label.value)
 
     unique_label_values = list(set(label_values))
-    label_value_to_color = {v: COLOR_MAP[i] for i, v in enumerate(unique_label_values)}
+    label_value_to_color = {
+        v: COLOR_MAP[i] for i, v in enumerate(unique_label_values)
+    }
     seg_colors = [label_value_to_color[v] for v in label_values]
 
     image = schemas.ImageMetadata.from_datum(annotated_datums[0].datum)
@@ -165,7 +178,9 @@ def draw_detections_on_image(
 def _draw_detection_on_image(
     detection: schemas.Annotation, img: Image.Image, inplace: bool
 ) -> Image.Image:
-    text = ", ".join([f"{label.key}:{label.value}" for label in detection.labels])
+    text = ", ".join(
+        [f"{label.key}:{label.value}" for label in detection.labels]
+    )
     if detection.polygon is not None:
         img = _draw_bounding_polygon_on_image(
             detection.polygon.boundary,
