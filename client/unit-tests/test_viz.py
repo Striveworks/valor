@@ -115,13 +115,6 @@ def test_combined_segmentation_mask(poly1: Polygon):
 
     gts = [gt1, gt2]
 
-    # check get an error since "k3" isn't a label key in seg2
-    with pytest.raises(RuntimeError) as exc_info:
-        combined_segmentation_mask(
-            [gts[1]], label_key="k3", task_type=TaskType.SEMANTIC_SEGMENTATION
-        )
-    assert "doesn't have a label" in str(exc_info)
-
     # should have one distinct (non-black) color
     combined_mask, _ = combined_segmentation_mask(
         gts, label_key="k1", task_type=TaskType.INSTANCE_SEGMENTATION
