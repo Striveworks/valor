@@ -3,6 +3,7 @@ from base64 import b64decode
 
 import PIL
 import pytest
+
 from velour.client import Client
 from velour.data_generation import generate_segmentation_data
 

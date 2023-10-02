@@ -1,8 +1,9 @@
 import random
+from typing import Tuple
 
 import numpy as np
 from tqdm import tqdm
-from typing import Tuple
+
 from velour import enums
 from velour.client import ClientException
 from velour.client import Dataset as VelourDataset
