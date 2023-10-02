@@ -1,0 +1,104 @@
+{
+  "info": {
+    "description": "Sample of COCO 2018 Panoptic Dataset",
+    "url": "http://cocodataset.org",
+    "version": "1.0",
+    "year": 2018,
+    "contributor": "https://arxiv.org/abs/1801.00868",
+    "date_created": "2018-06-01 00:00:00.0"
+  },
+  "licenses": [
+    {
+      "url": "http://creativecommons.org/licenses/by-nc-sa/2.0/",
+      "id": 1,
+      "name": "Attribution-NonCommercial-ShareAlike License"
+    },
+    {
+      "url": "http://creativecommons.org/licenses/by-nc/2.0/",
+      "id": 2,
+      "name": "Attribution-NonCommercial License"
+    },
+    {
+      "url": "http://creativecommons.org/licenses/by-nc-nd/2.0/",
+      "id": 3,
+      "name": "Attribution-NonCommercial-NoDerivs License"
+    },
+    {
+      "url": "http://creativecommons.org/licenses/by/2.0/",
+      "id": 4,
+      "name": "Attribution License"
+    },
+    {
+      "url": "http://creativecommons.org/licenses/by-sa/2.0/",
+      "id": 5,
+      "name": "Attribution-ShareAlike License"
+    },
+    {
+      "url": "http://creativecommons.org/licenses/by-nd/2.0/",
+      "id": 6,
+      "name": "Attribution-NoDerivs License"
+    },
+    {
+      "url": "http://flickr.com/commons/usage/",
+      "id": 7,
+      "name": "No known copyright restrictions"
+    },
+    {
+      "url": "http://www.usa.gov/copyright.shtml",
+      "id": 8,
+      "name": "United States Government Work"
+    }
+  ],
+  "images": [
+    {
+      "license": 4,
+      "file_name": "000000397133.jpg",
+      "coco_url": "http://images.cocodataset.org/val2017/000000397133.jpg",
+      "height": 427,
+      "width": 640,
+      "date_captured": "2013-11-14 17:02:52",
+      "flickr_url": "http://farm7.staticflickr.com/6116/6255196340_da26cf2c9e_z.jpg",
+      "id": 397133
+    },
+    {
+      "license": 1,
+      "file_name": "000000037777.jpg",
+      "coco_url": "http://images.cocodataset.org/val2017/000000037777.jpg",
+      "height": 230,
+      "width": 352,
+      "date_captured": "2013-11-14 20:55:31",
+      "flickr_url": "http://farm9.staticflickr.com/8429/7839199426_f6d48aa585_z.jpg",
+      "id": 37777
+    },
+    {
+      "license": 4,
+      "file_name": "000000252219.jpg",
+      "coco_url": "http://images.cocodataset.org/val2017/000000252219.jpg",
+      "height": 428,
+      "width": 640,
+      "date_captured": "2013-11-14 22:32:02",
+      "flickr_url": "http://farm4.staticflickr.com/3446/3232237447_13d84bd0a1_z.jpg",
+      "id": 252219
+    },
+    {
+      "license": 1,
+      "file_name": "000000087038.jpg",
+      "coco_url": "http://images.cocodataset.org/val2017/000000087038.jpg",
+      "height": 480,
+      "width": 640,
+      "date_captured": "2013-11-14 23:11:37",
+      "flickr_url": "http://farm8.staticflickr.com/7355/8825114508_b0fa4d7168_z.jpg",
+      "id": 87038
+    },
+    {
+      "license": 6,
+      "file_name": "000000174482.jpg",
+      "coco_url": "http://images.cocodataset.org/val2017/000000174482.jpg",
+      "height": 388,
+      "width": 640,
+      "date_captured": "2013-11-14 23:16:55",
+      "flickr_url": "http://farm8.staticflickr.com/7020/6478877255_242f741dd1_z.jpg",
+      "id": 174482
+    }
+  ]
+}

@@ -23,6 +23,3 @@ start-server:
 	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost uvicorn velour_api.main:app --reload --host 0.0.0.0
 
 start-local: start-postgis-docker start-redis-docker start-serve
-
-run-precommit:
-	pre-commit run --all-files
