@@ -2028,7 +2028,7 @@ def test_evaluate_tabular_clf(
     assert len(client.get_models()) == 0
 
 
-def test_get_groundtruth_validate_rasters(
+def test_add_groundtruth_validate_rasters(
     client: Client,
     gt_semantic_segs_error: list[GroundTruth],
 ):
