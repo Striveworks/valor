@@ -417,18 +417,16 @@ def gt_semantic_segs1_mask(img1: ImageMetadata) -> GroundTruth:
     mask = _generate_mask(height=900, width=300)
     raster = Raster.from_numpy(mask)
 
-    return [
-        GroundTruth(
-            datum=img1.to_datum(),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[Label(key="k2", value="v2")],
-                    raster=raster,
-                )
-            ],
-        ),
-    ]
+    return GroundTruth(
+        datum=img1.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                labels=[Label(key="k2", value="v2")],
+                raster=raster,
+            )
+        ],
+    )
 
 
 @pytest.fixture
@@ -454,18 +452,16 @@ def gt_semantic_segs2_mask(img2: ImageMetadata) -> GroundTruth:
     mask = _generate_mask(height=40, width=30)
     raster = Raster.from_numpy(mask)
 
-    return [
-        GroundTruth(
-            datum=img2.to_datum(),
-            annotations=[
-                Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
-                    labels=[Label(key="k2", value="v2")],
-                    raster=raster,
-                )
-            ],
-        ),
-    ]
+    return GroundTruth(
+        datum=img2.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                labels=[Label(key="k2", value="v2")],
+                raster=raster,
+            )
+        ],
+    )
 
 
 @pytest.fixture
@@ -2084,15 +2080,14 @@ def test_get_groundtruth(
     gt_semantic_segs2_mask: GroundTruth,
 ):
     dataset = Dataset.create(client, dset_name)
-
     dataset.add_groundtruth(gt_semantic_segs1_mask)
     dataset.add_groundtruth(gt_semantic_segs2_mask)
 
     try:
-        client.get_groundtruth(dataset, "uid1")
-        client.get_groundtruth(dataset, "uid2")
-    except Exception:
-        raise AssertionError("Failed to `get_groundtruth`")
+        dataset.get_groundtruth("uid1")
+        dataset.get_groundtruth("uid2")
+    except Exception as e:
+        raise AssertionError(e)
 
     client.delete_dataset(dset_name)
 
