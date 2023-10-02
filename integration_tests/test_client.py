@@ -22,6 +22,7 @@ from sqlalchemy import and_, create_engine, func, select, text
 from sqlalchemy.orm import Session
 
 from velour.client import Client, ClientException, Dataset, Model
+from velour.data_generation import _generate_mask
 from velour.enums import DataType, JobStatus, TaskType
 from velour.schemas import (
     Annotation,
@@ -429,6 +430,24 @@ def gt_semantic_segs2(
             ],
         ),
     ]
+
+
+@pytest.fixture
+def gt_semantic_segs_error(img1: ImageMetadata) -> list[GroundTruth]:
+    mask = _generate_mask(height=100, width=100)
+    raster = Raster.from_numpy(mask)
+
+    # expected to throw an error since the mask size differs from the image size
+    return GroundTruth(
+        datum=img1.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                labels=[Label(key="k3", value="v3")],
+                raster=raster,
+            )
+        ],
+    )
 
 
 @pytest.fixture
@@ -2007,6 +2026,18 @@ def test_evaluate_tabular_clf(
     model.delete()
 
     assert len(client.get_models()) == 0
+
+
+def test_get_groundtruth_validate_rasters(
+    client: Client,
+    gt_semantic_segs_error: list[GroundTruth],
+):
+    dataset = Dataset.create(client, dset_name)
+
+    with pytest.raises(ClientException) as exc_info:
+        dataset.add_groundtruth(gt_semantic_segs_error)
+
+    assert "raster and image to have" in str(exc_info)
 
 
 # @TODO: Implement metadata querying + geojson
