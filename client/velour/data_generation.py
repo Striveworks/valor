@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 
 from velour import enums
-from velour.client import ClientException
+from velour.client import Client, ClientException
 from velour.client import Dataset as VelourDataset
 from velour.schemas import (
     Annotation,
@@ -118,7 +118,7 @@ def _generate_ground_truth(
 
 
 def generate_segmentation_data(
-    client: str,
+    client: Client,
     dataset_name: str,
     n_images: int = 10,
     n_annotations: int = 10,
@@ -130,15 +130,15 @@ def generate_segmentation_data(
     Parameters
     ----------
     client
-        The host to connect to. Should start with "http://" or "https://"
+        The Client object used to access your velour instance
     dataset_name
         The name of the dataset you want to generate in velour
     n_images
-        the access token if the host requires authentication
+        The number of images you'd like your dataset to contain
     n_annotations
-        the access token if the host requires authentication
+        The number of annotations per image you'd like your dataset to contain
     n_labels
-        the access token if the host requires authentication
+        The number of labels per annotation you'd like your dataset to contain
     """
 
     try:

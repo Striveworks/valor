@@ -413,9 +413,26 @@ def gt_semantic_segs1(
 
 
 @pytest.fixture
-def gt_semantic_segs2(
-    rect3: BoundingBox, img2: ImageMetadata
-) -> list[GroundTruth]:
+def gt_semantic_segs1_mask(img1: ImageMetadata) -> GroundTruth:
+    mask = _generate_mask(height=900, width=300)
+    raster = Raster.from_numpy(mask)
+
+    return [
+        GroundTruth(
+            datum=img1.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[Label(key="k2", value="v2")],
+                    raster=raster,
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def gt_semantic_segs2(rect3: BoundingBox, img2: ImageMetadata) -> GroundTruth:
     return [
         GroundTruth(
             datum=img2.to_datum(),
@@ -433,7 +450,26 @@ def gt_semantic_segs2(
 
 
 @pytest.fixture
-def gt_semantic_segs_error(img1: ImageMetadata) -> list[GroundTruth]:
+def gt_semantic_segs2_mask(img2: ImageMetadata) -> GroundTruth:
+    mask = _generate_mask(height=40, width=30)
+    raster = Raster.from_numpy(mask)
+
+    return [
+        GroundTruth(
+            datum=img2.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    labels=[Label(key="k2", value="v2")],
+                    raster=raster,
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def gt_semantic_segs_error(img1: ImageMetadata) -> GroundTruth:
     mask = _generate_mask(height=100, width=100)
     raster = Raster.from_numpy(mask)
 
@@ -2028,9 +2064,9 @@ def test_evaluate_tabular_clf(
     assert len(client.get_models()) == 0
 
 
-def test_add_groundtruth_validate_rasters(
+def test_add_groundtruth(
     client: Client,
-    gt_semantic_segs_error: list[GroundTruth],
+    gt_semantic_segs_error: GroundTruth,
 ):
     dataset = Dataset.create(client, dset_name)
 
@@ -2038,6 +2074,27 @@ def test_add_groundtruth_validate_rasters(
         dataset.add_groundtruth(gt_semantic_segs_error)
 
     assert "raster and image to have" in str(exc_info)
+
+    client.delete_dataset(dset_name)
+
+
+def test_get_groundtruth(
+    client: Client,
+    gt_semantic_segs1_mask: GroundTruth,
+    gt_semantic_segs2_mask: GroundTruth,
+):
+    dataset = Dataset.create(client, dset_name)
+
+    dataset.add_groundtruth(gt_semantic_segs1_mask)
+    dataset.add_groundtruth(gt_semantic_segs2_mask)
+
+    try:
+        client.get_groundtruth(dataset, "uid1")
+        client.get_groundtruth(dataset, "uid2")
+    except Exception:
+        raise AssertionError("Failed to `get_groundtruth`")
+
+    client.delete_dataset(dset_name)
 
 
 # @TODO: Implement metadata querying + geojson
