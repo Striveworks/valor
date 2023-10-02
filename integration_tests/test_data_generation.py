@@ -3,12 +3,10 @@ from base64 import b64decode
 
 import PIL
 import pytest
-from utils.src.generation import generate_segmentation_data
-
 from velour.client import Client
+from velour.data_generation import generate_segmentation_data
 
-LOCAL_HOST = "http://localhost:8000"
-client = Client(LOCAL_HOST)
+dset_name = "test_dataset"
 
 
 def _mask_bytes_to_pil(mask_bytes):
@@ -16,33 +14,32 @@ def _mask_bytes_to_pil(mask_bytes):
         return PIL.Image.open(f)
 
 
-def test_generate_segmentation_data():
+@pytest.fixture
+def client():
+    return Client(host="http://localhost:8000")
+
+
+def test_generate_segmentation_data(client: Client):
     """Check that our generated dataset correctly matches our input parameters"""
-    with pytest.raises(ValueError):
-        dataset = generate_segmentation_data(
-            dataset_name="test_generate_segmentation_data",
-            metadata_json_path="utils/sample_images/sample_coco_images.json",
-            client=client,
-            n_images=10,
-            n_annotations=10,
-            n_labels=2,
-        )
+
+    n_images = 100
+    n_annotations = 10
+    n_labels = 2
 
     dataset = generate_segmentation_data(
-        dataset_name="test_generate_segmentation_data",
-        metadata_json_path="utils/sample_images/sample_coco_images.json",
         client=client,
-        n_images=5,
-        n_annotations=10,
-        n_labels=2,
+        dataset_name=dset_name,
+        n_images=n_images,
+        n_annotations=n_annotations,
+        n_labels=n_labels,
     )
 
     sample_images = dataset.get_images()
     assert (
-        len(sample_images) == 5
+        len(sample_images) == n_images
     ), "Number of images doesn't match the test input"
 
-    for image in dataset.get_images()[:5]:
+    for image in dataset.get_images():
         uid = image.uid
         sample_gt = dataset.get_groundtruth(uid)
 
@@ -56,13 +53,17 @@ def test_generate_segmentation_data():
         )
 
         assert (
-            len(sample_annotations) == 10
+            len(sample_annotations) == n_annotations
         ), "Number of annotations doesn't match the test input"
         assert (
-            len(sample_annotations[0].labels) == 2
+            len(sample_annotations[0].labels) == n_labels
         ), "Number of labels on the sample annotation doesn't match the test input"
         assert (
             sample_image_size == sample_mask_size
         ), f"Image is size {sample_image_size}, but mask is size {sample_mask_size}"
 
-    client.delete_dataset("test_generate_segmentation_data")
+    client.delete_dataset(dset_name)
+
+
+client = Client(host="http://localhost:8000")
+test_generate_segmentation_data(client)
