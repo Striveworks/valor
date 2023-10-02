@@ -124,9 +124,8 @@ def get_metadata(
 ) -> list[schemas.MetaDatum]:
     """Returns list of metadatums from a union of sources (dataset, model, datum, annotation) filtered by (key, value_type)."""
 
-    assert (
-        union_type in UNION_FUNCTIONS
-    ), f"union_type must be one of {UNION_FUNCTIONS.keys()}"
+    if union_type not in UNION_FUNCTIONS:
+        raise ValueError(f"union_type must be one of {UNION_FUNCTIONS.keys()}")
 
     union_func = UNION_FUNCTIONS[union_type]
     metadata = select(models.MetaDatum)
