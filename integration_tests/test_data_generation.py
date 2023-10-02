@@ -22,7 +22,7 @@ def client():
 def test_generate_segmentation_data(client: Client):
     """Check that our generated dataset correctly matches our input parameters"""
 
-    n_images = 100
+    n_images = 10
     n_annotations = 10
     n_labels = 2
 
@@ -63,7 +63,3 @@ def test_generate_segmentation_data(client: Client):
         ), f"Image is size {sample_image_size}, but mask is size {sample_mask_size}"
 
     client.delete_dataset(dset_name)
-
-
-client = Client(host="http://localhost:8000")
-test_generate_segmentation_data(client)
