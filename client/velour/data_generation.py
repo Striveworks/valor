@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 
 from velour import enums
-from velour.client import Client, ClientException
+from velour.client import Client
 from velour.client import Dataset as VelourDataset
 from velour.schemas import (
     Annotation,
@@ -141,11 +141,8 @@ def generate_segmentation_data(
         The number of labels per annotation you'd like your dataset to contain
     """
 
-    try:
-        client.delete_dataset(dataset_name)
-        dataset = VelourDataset.create(client, dataset_name)
-    except ClientException:
-        dataset = VelourDataset.get(client, dataset_name)
+    client.delete_dataset(dataset_name)
+    dataset = VelourDataset.create(client, dataset_name)
 
     unique_image_ids = list(range(n_images))
     for _ in tqdm(range(n_images)):
