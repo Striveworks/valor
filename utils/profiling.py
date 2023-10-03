@@ -1,15 +1,16 @@
-# %%
 import cProfile
+import os
 import pickle
 import pstats
 import timeit
 import tracemalloc
-from datetime import datetime
 from io import BytesIO
+
+import docker
 
 # import matplotlib.pyplot as plt
 # import numpy as np
-# import pandas as pd
+import pandas as pd
 import PIL.Image
 import requests
 
@@ -24,9 +25,6 @@ LOCAL_HOST = "http://localhost:8000"
 ULTRALYTICS_MODEL_NAME = "yolov8n-seg"
 CHARIOT_PROJECT_NAME = "n.lind"
 CHARIOT_MODEL_NAME = "fasterrcnnresnet-50fpn"
-
-
-# %%
 
 
 # %%
@@ -50,40 +48,75 @@ def setup_database(
     return dataset
 
 
-def _profile_func(fn: callable, dump: bool = True, **kwargs) -> dict:
-    dt = datetime.now.strftime("%d/%m/%Y_%H:%M:%S")
-    print(f"Profiling {fn.__name__} with args {kwargs} at {dt}")
-
+def _generate_cprofile(fn: callable, **kwargs):
     pr = cProfile.Profile()
     pr.enable()
+
+    fn(**kwargs)
+
+    pr.disable()
+    filename = f"profiles/{callable.__name__}_{str(kwargs)}.cprofile"
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    pr.dump_stats(filename)
+
+
+def _profile_tracemalloc(fn, output, top_n_traces: int = 10, **kwargs):
     tracemalloc.start()
-    start = timeit.default_timer()
+    fn(**kwargs)
+    snapshot = (
+        tracemalloc.take_snapshot()
+        .filter_traces(
+            (tracemalloc.Filter(True, f"{os.getcwd()}/*", all_frames=True),)
+        )
+        .statistics("lineno")
+    )
+    tracemalloc_output = dict()
+    for i, stat in enumerate(snapshot[:top_n_traces]):
+        tracemalloc_output.update(
+            {
+                i: {
+                    "filename": stat.traceback._frames[0][0],
+                    "line": stat.traceback._frames[0][1],
+                    "size": stat.size,
+                    "count": stat.count,
+                }
+            }
+        )
+
+    output.update(tracemalloc_output)
+
+
+def _profile_func(
+    fn: callable,
+    top_n_traces: int = 10,
+    **kwargs,
+) -> dict:
+    print(f"Profiling {fn.__name__} with args {kwargs}")
 
     success = False
     exception = " "
+    output = {}
+    start = timeit.default_timer()
+
     try:
-        fn(**kwargs)
+        _profile_tracemalloc(
+            fn=fn, output=output, top_n_traces=top_n_traces, **kwargs
+        )
         success = True
     except Exception as e:
         exception = str(e)
 
     stop = timeit.default_timer()
-    tracemalloc.take_snapshot()
-    pr.disable()
-
+    timeit_output = {
+        "start": start,
+        "total_runtime_seconds": round(stop - start, 2),
+    }
     if success:
         print(f"Succeeded in {stop-start} seconds")
     else:
         print(f"Failed in {stop-start} seconds with error {exception}")
 
-    if dump:
-        pr.dump_stats(f"profiles/{callable.__name__}_{dt}.cprofile")
-
-    return kwargs | {
-        "total_runtime_seconds": stop - start,
-        "min_memory_usage": 0,
-        "max_memory_usage": 0,
-    }
+    return kwargs | timeit_output | output | {"exception": exception}
 
 
 def profile_velour(
@@ -92,7 +125,21 @@ def profile_velour(
     n_image_grid: list,
     n_annotation_grid: list,
     n_label_grid: list,
-):
+    using_docker: bool = True,
+    db_container_name: str = "velour_db_1",
+    service_container_name: str = "velour_service_1",
+) -> list:
+    if using_docker:
+        docker_client = docker.from_env()
+        db_container = docker_client.containers.get(db_container_name)
+        service_container = docker_client.containers.get(
+            service_container_name
+        )
+
+        # restart containerss to clear extraneous objects
+        # db_container.restart()
+        # service_container.restart()
+
     output = list()
     for n_images in n_image_grid:
         for n_annotations in n_annotation_grid:
@@ -106,16 +153,76 @@ def profile_velour(
                 }
 
                 results = _profile_func(setup_database, **kwargs)
+
+                if using_docker:
+                    service_stats = get_container_stats(
+                        container=service_container,
+                        indicator="service",
+                    )
+                    db_stats = get_container_stats(
+                        container=db_container,
+                        indicator="db",
+                    )
+                    results = results | service_stats | db_stats
+
                 output.append(results)
 
                 # create checkpoint
+                filename = f"{os.getcwd()}/utils/profiles/{dataset_name}.pkl"
+                os.makedirs(os.path.dirname(filename), exist_ok=True)
                 with open(
-                    f"profiles/{n_images}_images_{n_annotations}_annotations_{n_labels}_labels.pkl",
-                    "wb",
+                    filename,
+                    "wb+",
                 ) as f:
                     pickle.dump(output, f)
 
     return output
+
+
+def load_results_from_disk(
+    dataset_name: str,
+):
+    with open(f"{os.getcwd()}/utils/profiles/{dataset_name}.pkl", "rb") as f:
+        output = pickle.load(f)
+
+    df = pd.DataFrame.from_records(output)
+
+    return df
+
+
+# TODO type
+def get_container_stats(container, indicator: str = "") -> dict:
+    stats = container.stats(stream=False)
+    return {
+        f"{indicator}memory_usage": stats["memory_stats"]["usage"],
+        f"{indicator}memory_limit": stats["memory_stats"]["limit"],
+        f"{indicator}cpu_usage": stats["cpu_stats"]["cpu_usage"][
+            "total_usage"
+        ],
+        f"{indicator}cpu_usage_kernel": stats["cpu_stats"]["cpu_usage"][
+            "usage_in_kernelmode"
+        ],
+        f"{indicator}cpu_usage_user": stats["cpu_stats"]["cpu_usage"][
+            "usage_in_usermode"
+        ],
+        f"{indicator}cpu_usage_system": stats["cpu_stats"]["system_cpu_usage"],
+        f"{indicator}cpu_throttled_time": stats["cpu_stats"][
+            "throttling_data"
+        ]["throttled_time"],
+    }
+
+
+client = Client(LOCAL_HOST)
+
+results = profile_velour(
+    client=client,
+    dataset_name="profiling",
+    n_image_grid=[2, 4, 5],
+    n_annotation_grid=[5],
+    n_label_grid=[2],
+)
+
+# %%
 
 
 # %%
@@ -133,18 +240,6 @@ def get_profile_stats(name: str, number_of_images: int):
     )
 
     return stats
-
-
-def load_results_from_disk(
-    n_images: int,
-    n_annotations: int,
-):
-    with open(
-        f"profiles/{n_images}_images_{n_annotations}_annotations.pkl", "rb"
-    ) as f:
-        output = pickle.load(f)
-
-    return output
 
 
 # %%
