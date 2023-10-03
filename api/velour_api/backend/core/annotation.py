@@ -117,8 +117,7 @@ def _raster_to_png_b64(
 
 
 def get_annotation(
-    db: Session,
-    annotation: models.Annotation,
+    db: Session, annotation: models.Annotation, datum: models.Datum = None
 ) -> schemas.Annotation:
     # Retrieve all labels associated with annotation
     labels = [
@@ -166,8 +165,12 @@ def get_annotation(
 
     # Raster
     if annotation.raster is not None:
-        height = get_metadata(db, annotation=annotation, key="height")[0].value
-        width = get_metadata(db, annotation=annotation, key="width")[0].value
+        height = get_metadata(db, datum=datum, key="height", union_type="and")[
+            0
+        ].value
+        width = get_metadata(db, datum=datum, key="width", union_type="and")[
+            0
+        ].value
         retval.raster = schemas.Raster(
             mask=_raster_to_png_b64(
                 db, raster=annotation.raster, height=height, width=width
@@ -184,7 +187,7 @@ def get_annotations(
     datum: models.Datum,
 ) -> list[schemas.Annotation]:
     return [
-        get_annotation(db, annotation=annotation)
+        get_annotation(db, annotation=annotation, datum=datum)
         for annotation in (
             db.query(models.Annotation)
             .where(

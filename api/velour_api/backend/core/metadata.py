@@ -1,12 +1,14 @@
 import json
 
 from geoalchemy2.functions import ST_GeomFromGeoJSON
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
+
+UNION_FUNCTIONS = {"or": or_, "and": and_}
 
 
 def create_metadatum(
@@ -18,7 +20,6 @@ def create_metadatum(
     annotation: models.Annotation = None,
     commit: bool = True,
 ) -> models.MetaDatum:
-
     if not (dataset or model or datum or annotation):
         raise ValueError("Need some target to attach metadatum to.")
 
@@ -92,7 +93,6 @@ def create_metadata(
 def get_metadatum_schema(
     metadatum: models.MetaDatum,
 ) -> schemas.MetaDatum | None:
-
     if metadatum is None:
         return None
 
@@ -120,9 +120,14 @@ def get_metadata(
     datum: models.Datum = None,
     annotation: models.Annotation = None,
     key: str = None,
+    union_type: str = "or",
 ) -> list[schemas.MetaDatum]:
     """Returns list of metadatums from a union of sources (dataset, model, datum, annotation) filtered by (key, value_type)."""
 
+    if union_type not in UNION_FUNCTIONS:
+        raise ValueError(f"union_type must be one of {UNION_FUNCTIONS.keys()}")
+
+    union_func = UNION_FUNCTIONS[union_type]
     metadata = select(models.MetaDatum)
 
     # Query relationships
@@ -142,7 +147,7 @@ def get_metadata(
     if len(relationships) == 1:
         metadata = metadata.where(relationships[0])
     elif relationships:
-        metadata = metadata.where(or_(*relationships))
+        metadata = metadata.where(union_func(*relationships))
 
     return [
         get_metadatum_schema(metadatum)

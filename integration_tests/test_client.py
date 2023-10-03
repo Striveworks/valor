@@ -22,6 +22,7 @@ from sqlalchemy import and_, create_engine, func, select, text
 from sqlalchemy.orm import Session
 
 from velour.client import Client, ClientException, Dataset, Model
+from velour.data_generation import _generate_mask
 from velour.enums import DataType, JobStatus, TaskType
 from velour.schemas import (
     Annotation,
@@ -412,9 +413,24 @@ def gt_semantic_segs1(
 
 
 @pytest.fixture
-def gt_semantic_segs2(
-    rect3: BoundingBox, img2: ImageMetadata
-) -> list[GroundTruth]:
+def gt_semantic_segs1_mask(img1: ImageMetadata) -> GroundTruth:
+    mask = _generate_mask(height=900, width=300)
+    raster = Raster.from_numpy(mask)
+
+    return GroundTruth(
+        datum=img1.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                labels=[Label(key="k2", value="v2")],
+                raster=raster,
+            )
+        ],
+    )
+
+
+@pytest.fixture
+def gt_semantic_segs2(rect3: BoundingBox, img2: ImageMetadata) -> GroundTruth:
     return [
         GroundTruth(
             datum=img2.to_datum(),
@@ -429,6 +445,41 @@ def gt_semantic_segs2(
             ],
         ),
     ]
+
+
+@pytest.fixture
+def gt_semantic_segs2_mask(img2: ImageMetadata) -> GroundTruth:
+    mask = _generate_mask(height=40, width=30)
+    raster = Raster.from_numpy(mask)
+
+    return GroundTruth(
+        datum=img2.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                labels=[Label(key="k2", value="v2")],
+                raster=raster,
+            )
+        ],
+    )
+
+
+@pytest.fixture
+def gt_semantic_segs_error(img1: ImageMetadata) -> GroundTruth:
+    mask = _generate_mask(height=100, width=100)
+    raster = Raster.from_numpy(mask)
+
+    # expected to throw an error since the mask size differs from the image size
+    return GroundTruth(
+        datum=img1.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                labels=[Label(key="k3", value="v3")],
+                raster=raster,
+            )
+        ],
+    )
 
 
 @pytest.fixture
@@ -2007,6 +2058,38 @@ def test_evaluate_tabular_clf(
     model.delete()
 
     assert len(client.get_models()) == 0
+
+
+def test_add_groundtruth(
+    client: Client,
+    gt_semantic_segs_error: GroundTruth,
+):
+    dataset = Dataset.create(client, dset_name)
+
+    with pytest.raises(ClientException) as exc_info:
+        dataset.add_groundtruth(gt_semantic_segs_error)
+
+    assert "raster and image to have" in str(exc_info)
+
+    client.delete_dataset(dset_name)
+
+
+def test_get_groundtruth(
+    client: Client,
+    gt_semantic_segs1_mask: GroundTruth,
+    gt_semantic_segs2_mask: GroundTruth,
+):
+    dataset = Dataset.create(client, dset_name)
+    dataset.add_groundtruth(gt_semantic_segs1_mask)
+    dataset.add_groundtruth(gt_semantic_segs2_mask)
+
+    try:
+        dataset.get_groundtruth("uid1")
+        dataset.get_groundtruth("uid2")
+    except Exception as e:
+        raise AssertionError(e)
+
+    client.delete_dataset(dset_name)
 
 
 # @TODO: Implement metadata querying + geojson
