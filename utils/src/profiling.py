@@ -36,16 +36,16 @@ def _setup_dataset(
     return dataset
 
 
-def _generate_cprofile(fn: callable, filename: str, **kwargs) -> None:
-    """Wrapper to generate a cprofile report and save it in a given filename"""
+def _generate_cprofile(fn: callable, filepath: str, **kwargs) -> None:
+    """Wrapper to generate a cprofile report and dump it to a given path"""
     pr = cProfile.Profile()
     pr.enable()
 
     fn(**kwargs)
 
     pr.disable()
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    pr.dump_stats(filename)
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    pr.dump_stats(filepath)
 
 
 def _profile_tracemalloc(
@@ -219,10 +219,10 @@ def profile_velour(
                 output.append(results)
 
                 # create checkpoint in case of system failure
-                filename = f"{os.getcwd()}/profiles/{dataset_name}.pkl"
-                os.makedirs(os.path.dirname(filename), exist_ok=True)
+                filepath = f"{os.getcwd()}/profiles/{dataset_name}.pkl"
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
                 with open(
-                    filename,
+                    filepath,
                     "wb+",
                 ) as f:
                     pickle.dump(output, f)
