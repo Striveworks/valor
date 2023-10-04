@@ -57,7 +57,8 @@ def _profile_tracemalloc(
     snapshot = (
         tracemalloc.take_snapshot()
         .filter_traces(
-            (tracemalloc.Filter(True, f"{os.getcwd()}/*", all_frames=True),)(
+            (
+                tracemalloc.Filter(True, f"{os.getcwd()}/*", all_frames=True),
                 tracemalloc.Filter(False, "*/profiling.py"),
             )
         )
