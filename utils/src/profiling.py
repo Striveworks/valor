@@ -57,7 +57,9 @@ def _profile_tracemalloc(
     snapshot = (
         tracemalloc.take_snapshot()
         .filter_traces(
-            (tracemalloc.Filter(True, f"{os.getcwd()}/*", all_frames=True),)
+            (tracemalloc.Filter(True, f"{os.getcwd()}/*", all_frames=True),)(
+                tracemalloc.Filter(False, "*/profiling.py"),
+            )
         )
         .statistics("lineno")
     )
@@ -114,6 +116,16 @@ def _profile_func(
 # TODO add type to container when available: https://github.com/docker/docker-py/issues/2796
 def _get_container_stats(container, indicator: str = "") -> dict:
     stats = container.stats(stream=False)
+
+    # cpu_perc calculation from https://stackoverflow.com/questions/30271942/get-docker-container-cpu-usage-as-percentage
+    cpu_delta = (
+        stats["cpu_stats"]["cpu_usage"]["total_usage"]
+        - stats["precpu_stats"]["cpu_usage"]["total_usage"]
+    )
+    system_delta = (
+        stats["cpu_stats"]["system_cpu_usage"]
+        - stats["precpu_stats"]["system_cpu_usage"]
+    )
     return {
         f"{indicator}memory_usage": stats["memory_stats"]["usage"],
         f"{indicator}memory_limit": stats["memory_stats"]["limit"],
@@ -130,6 +142,7 @@ def _get_container_stats(container, indicator: str = "") -> dict:
         f"{indicator}cpu_throttled_time": stats["cpu_stats"][
             "throttling_data"
         ]["throttled_time"],
+        f"{indicator}cpu_usage_perc": cpu_delta / system_delta,
     }
 
 
@@ -140,8 +153,8 @@ def profile_velour(
     n_annotation_grid: List[int],
     n_label_grid: List[int],
     using_docker: bool = True,
-    db_container_name: str = "velour_db_1",
-    service_container_name: str = "velour_service_1",
+    db_container_name: str = "velour-db-1",
+    service_container_name: str = "velour-service-1",
 ) -> List[dict]:
     """
     Profile velour while generating VelourDatasets of various sizes
@@ -177,10 +190,6 @@ def profile_velour(
             service_container_name
         )
 
-        # restart containerss to clear extraneous objects
-        db_container.restart()
-        service_container.restart()
-
     output = list()
     for n_images in n_image_grid:
         for n_annotations in n_annotation_grid:
@@ -198,11 +207,11 @@ def profile_velour(
                 if using_docker:
                     service_stats = _get_container_stats(
                         container=service_container,
-                        indicator="service",
+                        indicator="service_",
                     )
                     db_stats = _get_container_stats(
                         container=db_container,
-                        indicator="db",
+                        indicator="db_",
                     )
                     results = results | service_stats | db_stats
 
