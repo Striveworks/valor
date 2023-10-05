@@ -18,5 +18,3 @@ site/*
 runs
 
 .ipynb_checkpoints
-*.pkl
-*.cprofile

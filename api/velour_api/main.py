@@ -13,6 +13,10 @@ from fastapi.middleware.cors import CORSMiddleware
 # from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from utils.src.profiling import (
+    generate_fastapi_cprofile,
+    generate_fastapi_yappi_profile,
+)
 
 from velour_api import auth, crud, enums, exceptions, logger, schemas
 from velour_api.backend import database
@@ -53,6 +57,12 @@ def get_db():
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["GroundTruths"],
+)
+@generate_fastapi_yappi_profile(
+    filepath="utils/profiles/create_groundtruths.yappi"
+)
+@generate_fastapi_cprofile(
+    filepath="utils/profiles/create_groundtruths.cprofile"
 )
 def create_groundtruths(
     gt: schemas.GroundTruth, db: Session = Depends(get_db)

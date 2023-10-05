@@ -1,0 +1,1 @@
+py-spy record -o utils/profiles/profile.svg -- python3 utils/run_profiling.py

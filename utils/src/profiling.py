@@ -1,15 +1,104 @@
 import cProfile
+import functools
+import io
 import os
 import pickle
+import pstats
 import timeit
 import tracemalloc
+from pstats import SortKey
 from typing import List
 
 import docker
+import yappi
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 from velour.client import Client
 from velour.client import Dataset as VelourDataset
 from velour.data_generation import generate_segmentation_data
+
+
+def generate_fastapi_yappi_profile(filepath: str) -> any:
+    """
+    A decorator for generating a yappi report at a given filepath. yappi is generally preferred over cprofile for multi-threaded applications.
+
+    Parameters
+    ----------
+    filepath
+        The path where you want to store the yappi output (e.g., 'utils/profiles/foo.out')
+    func
+        The function you want to profile
+    db
+        The sqlalchemy session used by your backend
+    args
+        Positional args to pass to your function
+    kwargs
+        Keyword args to pass to your function
+    """
+
+    def decorator(func: callable):
+        @functools.wraps(func)
+        def wrap_func(*args, db: Session, **kwargs):
+            try:
+                yappi.set_clock_type("wall")
+                yappi.start()
+
+                result = func(*args, db=db, **kwargs)
+
+                func_stats = yappi.get_func_stats()
+                func_stats.save(filepath)
+                yappi.stop()
+            except HTTPException as e:
+                raise e
+            return result
+
+        return wrap_func
+
+    return decorator
+
+
+def generate_fastapi_cprofile(filepath: str) -> any:
+    """
+    A decorator for generating a cprofile report at a given filepath. cprofile is the go-to profiler for most single-threaded applications
+
+    Parameters
+    ----------
+    filepath
+        The path where you want to store the yappi output (e.g., 'utils/profiles/foo.out')
+    func
+        The function you want to profile
+    db
+        The sqlalchemy session used by your backend
+    args
+        Positional args to pass to your function
+    kwargs
+        Keyword args to pass to your function
+    """
+
+    def decorator(func: callable):
+        @functools.wraps(func)
+        def wrap_func(*args, db: Session, **kwargs):
+            try:
+                # Creating profile object
+                profiler = cProfile.Profile()
+                profiler.enable()
+
+                result = func(*args, db=db, **kwargs)
+
+                profiler.disable()
+                sec = io.StringIO()
+                sortby = SortKey.CUMULATIVE
+                ps = pstats.Stats(profiler, stream=sec).sort_stats(sortby)
+                ps.dump_stats(filepath)
+
+            except HTTPException as e:
+                raise e
+            return result
+
+        return wrap_func
+
+    return decorator
 
 
 def _setup_dataset(
@@ -34,18 +123,6 @@ def _setup_dataset(
     dataset.finalize()
 
     return dataset
-
-
-def _generate_cprofile(fn: callable, filepath: str, **kwargs) -> None:
-    """Wrapper to generate a cprofile report and dump it to a given path"""
-    pr = cProfile.Profile()
-    pr.enable()
-
-    fn(**kwargs)
-
-    pr.disable()
-    os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    pr.dump_stats(filepath)
 
 
 def _profile_tracemalloc(
