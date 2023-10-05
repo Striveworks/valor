@@ -15,6 +15,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from utils.src.profiling import (
     generate_fastapi_cprofile,
+    generate_fastapi_tracemalloc_profile,
     generate_fastapi_yappi_profile,
 )
 
@@ -63,6 +64,9 @@ def get_db():
 )
 @generate_fastapi_cprofile(
     filepath="utils/profiles/create_groundtruths.cprofile"
+)
+@generate_fastapi_tracemalloc_profile(
+    filepath="utils/profiles/create_groundtruths.tracemalloc"
 )
 def create_groundtruths(
     gt: schemas.GroundTruth, db: Session = Depends(get_db)

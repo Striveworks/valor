@@ -10,6 +10,7 @@ from pstats import SortKey
 from typing import List
 
 import docker
+import memory_profiler
 import yappi
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -17,6 +18,102 @@ from sqlalchemy.orm import Session
 from velour.client import Client
 from velour.client import Dataset as VelourDataset
 from velour.data_generation import generate_segmentation_data
+
+
+# FastAPI Profiling Decorators
+def generate_fastapi_tracemalloc_profile(filepath: str) -> any:
+    """
+    A decorator for generating a tracemalloc Snapshot and peak/size pkl at a given filepath
+
+    Parameters
+    ----------
+    filepath
+        The path where you want to store the yappi output (e.g., 'utils/profiles/foo.out')
+    func
+        The function you want to profile
+    db
+        The sqlalchemy session used by your backend
+    args
+        Positional args to pass to your function
+    kwargs
+        Keyword args to pass to your function
+    """
+
+    def decorator(func: callable):
+        @functools.wraps(func)
+        def wrap_func(*args, db: Session, **kwargs):
+            try:
+                tracemalloc.start()
+                first_size, first_peak = tracemalloc.get_traced_memory()
+                tracemalloc.reset_peak()
+
+                result = func(*args, db=db, **kwargs)
+
+                # save size and peak
+                second_size, second_peak = tracemalloc.get_traced_memory()
+                output = {
+                    "first_size": first_size,
+                    "second_size": second_size,
+                    "first_peak": first_peak,
+                    "second_peak": second_peak,
+                }
+                with open(
+                    f"{filepath}.pkl",
+                    "wb+",
+                ) as f:
+                    pickle.dump(output, f)
+
+                # save snapshot
+                snapshot = tracemalloc.take_snapshot()
+                os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                snapshot.dump(filepath)
+            except HTTPException as e:
+                raise e
+            return result
+
+        return wrap_func
+
+    return decorator
+
+
+# NOTE: doesn't correctly write to filepath due to a bug with memory_profiler
+# (able to reproduce the bug locally). repo is no longer being maintained
+def generate_fastapi_memory_profile(filepath: str) -> any:
+    """
+    A decorator for generating a memory_profiler report at a given filepath
+
+    Parameters
+    ----------
+    filepath
+        The path where you want to store the yappi output (e.g., 'utils/profiles/foo.out')
+    func
+        The function you want to profile
+    db
+        The sqlalchemy session used by your backend
+    args
+        Positional args to pass to your function
+    kwargs
+        Keyword args to pass to your function
+    """
+
+    def decorator(func: callable):
+        @functools.wraps(func)
+        def wrap_func(*args, db: Session, **kwargs):
+            try:
+                with open(
+                    filepath,
+                    "wb+",
+                ) as f:
+                    result = memory_profiler.profile(
+                        func=func(*args, db=db, **kwargs), stream=f
+                    )
+            except HTTPException as e:
+                raise e
+            return result
+
+        return wrap_func
+
+    return decorator
 
 
 def generate_fastapi_yappi_profile(filepath: str) -> any:
@@ -42,9 +139,9 @@ def generate_fastapi_yappi_profile(filepath: str) -> any:
         def wrap_func(*args, db: Session, **kwargs):
             try:
                 yappi.set_clock_type("wall")
-                yappi.start()
 
-                result = func(*args, db=db, **kwargs)
+                with yappi.run():
+                    result = func(*args, db=db, **kwargs)
 
                 func_stats = yappi.get_func_stats()
                 func_stats.save(filepath)
@@ -307,8 +404,8 @@ def profile_velour(
     return output
 
 
-def load_profile_from_disk(
-    dataset_name: str,
+def load_pkl(
+    filepath: str,
 ) -> List[dict]:
     """
     Helper function to retrieve a saved profile from disk
@@ -323,7 +420,7 @@ def load_profile_from_disk(
     list
         A list of output records from your profiling function
     """
-    with open(f"{os.getcwd()}/profiles/{dataset_name}.pkl", "rb") as f:
+    with open(filepath, "rb") as f:
         output = pickle.load(f)
 
     return output
