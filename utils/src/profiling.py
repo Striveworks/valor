@@ -4,10 +4,11 @@ import io
 import os
 import pickle
 import pstats
+import time
 import timeit
 import tracemalloc
 from pstats import SortKey
-from typing import List
+from typing import List, Tuple
 
 import memory_profiler
 import pandas as pd
@@ -17,7 +18,13 @@ from sqlalchemy.orm import Session
 
 from velour.client import Client
 from velour.client import Dataset as VelourDataset
-from velour.data_generation import generate_segmentation_data
+from velour.client import Evaluation as VelourEvaluation
+from velour.client import Model as VelourModel
+from velour.data_generation import (
+    generate_predictions,
+    generate_segmentation_data,
+)
+from velour.enums import JobStatus
 
 # FastAPI Profiling Decorators
 
@@ -223,6 +230,36 @@ def _setup_dataset(
     return dataset
 
 
+def _get_evaluation_metrics(
+    client: Client,
+    dataset: VelourDataset,
+    model_name: str,
+    n_annotations: int,
+    n_labels: int,
+) -> Tuple[VelourModel, VelourEvaluation]:
+    """Create arbitrary evaluation metrics based on some dataset"""
+
+    model = generate_predictions(
+        client=client,
+        dataset=dataset,
+        model_name=model_name,
+        n_annotations=n_annotations,
+        n_labels=n_labels,
+    )
+
+    eval_job = model.evaluate_ap(
+        dataset=dataset,
+        iou_thresholds=[0, 1],
+        ious_to_keep=[0, 1],
+        label_key="k1",
+    )
+
+    # sleep to give the backend time to compute
+    time.sleep(1)
+    assert eval_job.status == JobStatus.DONE
+    return (model, eval_job)
+
+
 # Client-side profilers
 def _profile_tracemalloc(
     fn: callable, output: dict, top_n_traces: int = 10, **kwargs
@@ -341,6 +378,21 @@ def _get_docker_disk_stats() -> pd.DataFrame:
     return pd.read_csv(
         string_tsv, sep="    ", header=0, names=["id", "image", "disk_space"]
     )
+
+
+def _get_docker_pids():
+    string = ""
+    for _ in range(4):
+        string += os.popen(
+            "for i in $(docker container ls --format '{{.ID}}'); do docker inspect -f '{{.State.Pid}}    {{.Name}}' $i; done"
+        ).read()
+
+    string_tsv = io.StringIO(string)
+    df = pd.read_csv(
+        string_tsv, sep="    ", header=0, names=["pid", "name"]
+    ).drop_duplicates()
+    df["name"] = df["name"].str[1:]
+    return df
 
 
 def generate_docker_snapshot():
