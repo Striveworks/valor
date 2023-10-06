@@ -9,8 +9,8 @@ import tracemalloc
 from pstats import SortKey
 from typing import List
 
-import docker
 import memory_profiler
+import pandas as pd
 import yappi
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -19,9 +19,10 @@ from velour.client import Client
 from velour.client import Dataset as VelourDataset
 from velour.data_generation import generate_segmentation_data
 
-
 # FastAPI Profiling Decorators
-def generate_fastapi_tracemalloc_profile(filepath: str) -> any:
+
+
+def generate_tracemalloc_profile(filepath: str) -> any:
     """
     A decorator for generating a tracemalloc Snapshot and peak/size pkl at a given filepath
 
@@ -78,7 +79,7 @@ def generate_fastapi_tracemalloc_profile(filepath: str) -> any:
 
 # NOTE: doesn't correctly write to filepath due to a bug with memory_profiler
 # (able to reproduce the bug locally). repo is no longer being maintained
-def generate_fastapi_memory_profile(filepath: str) -> any:
+def generate_memory_profile(filepath: str) -> any:
     """
     A decorator for generating a memory_profiler report at a given filepath
 
@@ -116,7 +117,7 @@ def generate_fastapi_memory_profile(filepath: str) -> any:
     return decorator
 
 
-def generate_fastapi_yappi_profile(filepath: str) -> any:
+def generate_yappi_profile(filepath: str) -> any:
     """
     A decorator for generating a yappi report at a given filepath. yappi is generally preferred over cprofile for multi-threaded applications.
 
@@ -155,7 +156,7 @@ def generate_fastapi_yappi_profile(filepath: str) -> any:
     return decorator
 
 
-def generate_fastapi_cprofile(filepath: str) -> any:
+def generate_cprofile(filepath: str) -> any:
     """
     A decorator for generating a cprofile report at a given filepath. cprofile is the go-to profiler for most single-threaded applications
 
@@ -222,6 +223,7 @@ def _setup_dataset(
     return dataset
 
 
+# Client-side profilers
 def _profile_tracemalloc(
     fn: callable, output: dict, top_n_traces: int = 10, **kwargs
 ) -> None:
@@ -321,15 +323,47 @@ def _get_container_stats(container, indicator: str = "") -> dict:
     }
 
 
+def _get_docker_cpu_memory_stats() -> pd.DataFrame:
+    tsv = os.popen(
+        'docker stats --no-stream --format "table {{.Container}}     {{.CPUPerc}}     {{.MemPerc}}"'
+    ).read()
+    string_tsv = io.StringIO(tsv)
+    return pd.read_csv(
+        string_tsv, sep="    ", header=0, names=["id", "cpu_util", "mem_util"]
+    )
+
+
+def _get_docker_disk_stats() -> pd.DataFrame:
+    tsv = os.popen(
+        'docker ps --size  --format "table {{.ID}}    {{.Image}}    {{.Size}}"'
+    ).read()
+    string_tsv = io.StringIO(tsv)
+    return pd.read_csv(
+        string_tsv, sep="    ", header=0, names=["id", "image", "disk_space"]
+    )
+
+
+def generate_docker_snapshot():
+    """
+    Takes a snapshot of all running Docker containers, returning a list of nested dictionaries containing the memory utilization, CPU utilization, and disk usage
+    """
+    mem_stats = _get_docker_cpu_memory_stats()
+    disk_stats = _get_docker_disk_stats()
+
+    mem_stats["id"] = mem_stats["id"].astype(str)
+    disk_stats["id"] = disk_stats["id"].astype(str)
+
+    snapshot = pd.merge(disk_stats, mem_stats, on="id")
+
+    return snapshot.to_dict("records")
+
+
 def profile_velour(
     client: Client,
     dataset_name: str,
     n_image_grid: List[int],
     n_annotation_grid: List[int],
     n_label_grid: List[int],
-    using_docker: bool = True,
-    db_container_name: str = "velour-db-1",
-    service_container_name: str = "velour-service-1",
 ) -> List[dict]:
     """
     Profile velour while generating VelourDatasets of various sizes
@@ -346,25 +380,12 @@ def profile_velour(
         A list of integers describing the various annotation sizes you want to test
     n_label_grid
         A list of integers describing the various label sizes you want to test
-    using_docker
-        A boolean describing whether or not you're using Docker. If True, various Docker memory and CPU stats will be added to the output.
-    db_container_name
-        The name of your database container on Docker
-    service_container_name
-        The name of your service container on Docker
 
     Returns
     -------
     list
         A list of output records which are also saved to ./profiles/{dataset_name}.pkl (in case of system failures)
     """
-    if using_docker:
-        docker_client = docker.from_env()
-        db_container = docker_client.containers.get(db_container_name)
-        service_container = docker_client.containers.get(
-            service_container_name
-        )
-
     output = list()
     for n_images in n_image_grid:
         for n_annotations in n_annotation_grid:
@@ -379,16 +400,8 @@ def profile_velour(
 
                 results = _profile_func(_setup_dataset, **kwargs)
 
-                if using_docker:
-                    service_stats = _get_container_stats(
-                        container=service_container,
-                        indicator="service_",
-                    )
-                    db_stats = _get_container_stats(
-                        container=db_container,
-                        indicator="db_",
-                    )
-                    results = results | service_stats | db_stats
+                snapshot = generate_docker_snapshot()
+                results = results | snapshot
 
                 output.append(results)
 

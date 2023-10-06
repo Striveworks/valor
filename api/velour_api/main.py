@@ -14,9 +14,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from utils.src.profiling import (
-    generate_fastapi_cprofile,
-    generate_fastapi_tracemalloc_profile,
-    generate_fastapi_yappi_profile,
+    generate_cprofile,
+    generate_tracemalloc_profile,
+    generate_yappi_profile,
 )
 
 from velour_api import auth, crud, enums, exceptions, logger, schemas
@@ -59,13 +59,9 @@ def get_db():
     dependencies=[Depends(token_auth_scheme)],
     tags=["GroundTruths"],
 )
-@generate_fastapi_yappi_profile(
-    filepath="utils/profiles/create_groundtruths.yappi"
-)
-@generate_fastapi_cprofile(
-    filepath="utils/profiles/create_groundtruths.cprofile"
-)
-@generate_fastapi_tracemalloc_profile(
+@generate_yappi_profile(filepath="utils/profiles/create_groundtruths.yappi")
+@generate_cprofile(filepath="utils/profiles/create_groundtruths.cprofile")
+@generate_tracemalloc_profile(
     filepath="utils/profiles/create_groundtruths.tracemalloc"
 )
 def create_groundtruths(
