@@ -1,8 +1,8 @@
 import json
 from collections import defaultdict
+from copy import deepcopy
 from pathlib import Path, PosixPath
 from typing import Any, Dict, List, Union
-from copy import deepcopy
 
 import numpy as np
 import PIL.Image
@@ -93,12 +93,16 @@ def _merge_annotations(annotation_list: list, label_map: dict):
                     annotation_list[child_index]["labels"].remove(label)
 
             annotation_list.append(
-                dict(task_type=task_type, labels=set([label]), mask=joined_mask)
+                dict(
+                    task_type=task_type, labels=set([label]), mask=joined_mask
+                )
             )
 
     # delete any annotations without labels remaining (i.e., their mask is now incorporated into grouped annotations)
     annotation_list = [
-        annotation for annotation in annotation_list if len(annotation["labels"]) > 0
+        annotation
+        for annotation in annotation_list
+        if len(annotation["labels"]) > 0
     ]
 
     return annotation_list
@@ -111,7 +115,9 @@ def _get_segs_groundtruth_for_single_image(
     image_id_to_width: dict,
     category_id_to_category: dict,
 ) -> List[GroundTruth]:
-    mask = np.array(PIL.Image.open(masks_path / ann_dict["file_name"])).astype(int)
+    mask = np.array(PIL.Image.open(masks_path / ann_dict["file_name"])).astype(
+        int
+    )
     # convert the colors in the mask to ids
     mask_ids = mask[:, :, 0] + 256 * mask[:, :, 1] + (256**2) * mask[:, :, 2]
 
@@ -138,7 +144,9 @@ def _get_segs_groundtruth_for_single_image(
         labels = set()
 
         for k in ["supercategory", "name"]:
-            category_desc = str(category_id_to_category[segment["category_id"]][k])
+            category_desc = str(
+                category_id_to_category[segment["category_id"]][k]
+            )
 
             label = Label(
                 key=k,
@@ -151,13 +159,19 @@ def _get_segs_groundtruth_for_single_image(
 
             labels.add(label)
 
-        annotation_list.append(dict(task_type=task_type, labels=labels, mask=mask))
-        is_crowd_label = Label(key="iscrowd", value=str(segment["iscrowd"]))
+        annotation_list.append(
+            dict(task_type=task_type, labels=labels, mask=mask)
+        )
 
+    # add iscrowed label
+    iscrowd_label = Label(key="iscrowd", value=str(segment["iscrowd"]))
     if is_semantic:
-        semantic_labels[is_crowd_label].append(len(ann_dict["segments_info"]) - 1)
+        semantic_labels[iscrowd_label].append(
+            len(ann_dict["segments_info"]) - 1
+        )
     else:
-        annotation_list.append(is_crowd_label)
+        for annotation in annotation_list:
+            annotation["labels"].add(iscrowd_label)
 
     # combine semantic segmentation masks by label
     final_annotation_list = _merge_annotations(
@@ -188,7 +202,9 @@ def upload_coco_panoptic(
         with open(annotations) as f:
             annotations = json.load(f)
 
-    category_id_to_category = {cat["id"]: cat for cat in annotations["categories"]}
+    category_id_to_category = {
+        cat["id"]: cat for cat in annotations["categories"]
+    }
 
     image_id_to_height, image_id_to_width, image_id_to_coco_url = {}, {}, {}
     for image in annotations["images"]:
