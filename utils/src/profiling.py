@@ -21,12 +21,12 @@ from velour.client import Dataset as VelourDataset
 from velour.client import Evaluation as VelourEvaluation
 from velour.client import Model as VelourModel
 from velour.data_generation import (
-    generate_predictions,
+    generate_prediction_data,
     generate_segmentation_data,
 )
 from velour.enums import JobStatus
 
-# FastAPI Profiling Decorators
+""" FastAPI Profiling Decorators """
 
 
 def generate_tracemalloc_profile(filepath: str) -> any:
@@ -84,8 +84,7 @@ def generate_tracemalloc_profile(filepath: str) -> any:
     return decorator
 
 
-# NOTE: doesn't correctly write to filepath due to a bug with memory_profiler
-# (able to reproduce the bug locally). repo is no longer being maintained
+# NOTE: I don't recommend using the memory_profiler module since it doesn't correctly write to filepath. See README.md for alternative instructions
 def generate_memory_profile(filepath: str) -> any:
     """
     A decorator for generating a memory_profiler report at a given filepath
@@ -206,61 +205,9 @@ def generate_cprofile(filepath: str) -> any:
     return decorator
 
 
-def _setup_dataset(
-    client: Client,
-    dataset_name: str,
-    n_images: int,
-    n_annotations: int,
-    n_labels: int,
-) -> VelourDataset:
-    """Generate a velour dataset with a given number of images, annotations, and labels"""
-    assert (
-        min(n_images, n_annotations, n_labels) > 0
-    ), "You must generate at least one image, annotation, and label"
-    dataset = generate_segmentation_data(
-        client=client,
-        dataset_name=dataset_name,
-        n_images=n_images,
-        n_annotations=n_annotations,
-        n_labels=n_labels,
-    )
-
-    dataset.finalize()
-
-    return dataset
+""" Client-Side Profilers """
 
 
-def _get_evaluation_metrics(
-    client: Client,
-    dataset: VelourDataset,
-    model_name: str,
-    n_annotations: int,
-    n_labels: int,
-) -> Tuple[VelourModel, VelourEvaluation]:
-    """Create arbitrary evaluation metrics based on some dataset"""
-
-    model = generate_predictions(
-        client=client,
-        dataset=dataset,
-        model_name=model_name,
-        n_annotations=n_annotations,
-        n_labels=n_labels,
-    )
-
-    eval_job = model.evaluate_ap(
-        dataset=dataset,
-        iou_thresholds=[0, 1],
-        ious_to_keep=[0, 1],
-        label_key="k1",
-    )
-
-    # sleep to give the backend time to compute
-    time.sleep(1)
-    assert eval_job.status == JobStatus.DONE
-    return (model, eval_job)
-
-
-# Client-side profilers
 def _profile_tracemalloc(
     fn: callable, output: dict, top_n_traces: int = 10, **kwargs
 ) -> None:
@@ -395,7 +342,7 @@ def _get_docker_pids():
     return df
 
 
-def generate_docker_snapshot():
+def _generate_docker_snapshot():
     """
     Takes a snapshot of all running Docker containers, returning a list of nested dictionaries containing the memory utilization, CPU utilization, and disk usage
     """
@@ -407,7 +354,73 @@ def generate_docker_snapshot():
 
     snapshot = pd.merge(disk_stats, mem_stats, on="id")
 
-    return snapshot.to_dict("records")
+    records = snapshot.to_dict("records")
+    output = {}
+    for record in records:
+        record_output = {}
+        image = record["image"]
+        for field in ["disk_space", "cpu_util", "mem_util"]:
+            record_output.update({f"{image}_{field}": record[field]})
+        output.update(record_output)
+
+    return output
+
+
+""" Velour-Specific Functions """
+
+
+def _setup_dataset(
+    client: Client,
+    dataset_name: str,
+    n_images: int,
+    n_annotations: int,
+    n_labels: int,
+) -> VelourDataset:
+    """Generate a velour dataset with a given number of images, annotations, and labels"""
+    assert (
+        min(n_images, n_annotations, n_labels) > 0
+    ), "You must generate at least one image, annotation, and label"
+    dataset = generate_segmentation_data(
+        client=client,
+        dataset_name=dataset_name,
+        n_images=n_images,
+        n_annotations=n_annotations,
+        n_labels=n_labels,
+    )
+
+    dataset.finalize()
+
+    return dataset
+
+
+def _get_evaluation_metrics(
+    client: Client,
+    dataset: VelourDataset,
+    model_name: str,
+    n_annotations: int,
+    n_labels: int,
+) -> Tuple[VelourModel, VelourEvaluation]:
+    """Create arbitrary evaluation metrics based on some dataset"""
+
+    model = generate_prediction_data(
+        client=client,
+        dataset=dataset,
+        model_name=model_name,
+        n_annotations=n_annotations,
+        n_labels=n_labels,
+    )
+
+    eval_job = model.evaluate_ap(
+        dataset=dataset,
+        iou_thresholds=[0, 1],
+        ious_to_keep=[0, 1],
+        label_key="k1",
+    )
+
+    # sleep to give the backend time to compute
+    time.sleep(1)
+    assert eval_job.status == JobStatus.DONE
+    return (model, eval_job)
 
 
 def profile_velour(
@@ -452,13 +465,13 @@ def profile_velour(
 
                 results = _profile_func(_setup_dataset, **kwargs)
 
-                snapshot = generate_docker_snapshot()
+                snapshot = _generate_docker_snapshot()
                 results = results | snapshot
 
                 output.append(results)
 
                 # create checkpoint in case of system failure
-                filepath = f"{os.getcwd()}/profiles/{dataset_name}.pkl"
+                filepath = f"{os.getcwd()}/utils/profiles/{dataset_name}.pkl"
                 os.makedirs(os.path.dirname(filepath), exist_ok=True)
                 with open(
                     filepath,
@@ -467,6 +480,9 @@ def profile_velour(
                     pickle.dump(output, f)
 
     return output
+
+
+""" I/O Helpers """
 
 
 def load_pkl(

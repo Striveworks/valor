@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 
 import matplotlib.ticker as tkr
@@ -5,10 +6,11 @@ import pandas as pd
 import seaborn as sns
 
 
-def _bytes_to_readable_fmt(x, pos):
+def bytes_to_readable_fmt(x, pos):
+    """Convert an integer of bytes into a human-readable format"""
     if x < 0:
         return ""
-    for x_unit in ["bytes", "kB", "MB", "GB", "TB"]:
+    for x_unit in ["B", "KB", "MB", "GB", "TB"]:
         if x < 1024.0:
             return "%3.1f %s" % (x, x_unit)
         x /= 1024.0
@@ -25,6 +27,7 @@ def plot_grouped_barchart(
     y_axis_label: Optional[str] = None,
     x_axis_label: Optional[str] = None,
     convert_bytes: bool = False,
+    convert_perc: bool = False,
 ) -> None:
     """
     Plot 2D or 3D data in a barchart
@@ -49,6 +52,8 @@ def plot_grouped_barchart(
         The label you want displayed on the x-axis
     convert_bytes
         Converts your y-axis to a human-readable bytes format if True
+    convert_perc
+        Converts your y-axis to a human-readable percentage format if True
     Returns
     -------
     list
@@ -58,7 +63,12 @@ def plot_grouped_barchart(
 
     if not hue:
         df = df.groupby(x, as_index=False)[y].aggregate(agg_func)
-        ax = sns.barplot(x=x, y=y, data=df, palette=palette)
+        ax = sns.barplot(
+            x=x,
+            y=y,
+            data=df,
+            palette=palette,
+        )
     else:
         df = df.groupby([x, hue], as_index=False)[y].aggregate(agg_func)
         df[hue] = df[hue].astype(str)
@@ -80,4 +90,31 @@ def plot_grouped_barchart(
     ax.set(xlabel=x_axis_label, ylabel=y_axis_label)
 
     if convert_bytes:
-        ax.yaxis.set_major_formatter(tkr.FuncFormatter(_bytes_to_readable_fmt))
+        ax.yaxis.set_major_formatter(tkr.FuncFormatter(bytes_to_readable_fmt))
+    elif convert_perc:
+        ax.yaxis.set_major_formatter(tkr.PercentFormatter(1))
+
+
+def convert_shortened_bytes_to_int(shortened_bytes_str: str) -> int:
+    """Convert a byte-like string (e.g., '64MB') to an int for plotting"""
+
+    unit_mapping = {
+        "B": 1,
+        "KB": 1024,
+        "MB": 1024**2,
+        "GB": 1024**3,
+        "TB": 1024**4,
+    }
+
+    numeric_part, unit_part = re.match(
+        r"([0-9]+)([a-z]+)", shortened_bytes_str, re.I
+    ).groups()
+
+    numeric_value = int(numeric_part)
+
+    if unit_part in unit_mapping:
+        bytes_value = numeric_value * unit_mapping[unit_part]
+
+        return bytes_value
+    else:
+        raise ValueError("Invalid unit abbreviation in the input string")

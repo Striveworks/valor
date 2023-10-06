@@ -247,7 +247,7 @@ def generate_segmentation_data(
     return dataset
 
 
-def generate_predictions(
+def generate_prediction_data(
     client: Client,
     dataset: Dataset,
     model_name: str,
