@@ -7,7 +7,7 @@ import pytest
 
 from velour.client import Client
 from velour.data_generation import (
-    generate_predictions,
+    generate_prediction_data,
     generate_segmentation_data,
 )
 from velour.enums import JobStatus
@@ -71,7 +71,7 @@ def test_generate_segmentation_data(client: Client):
     client.delete_dataset(dset_name)
 
 
-def test_generate_predictions(client: Client):
+def test_ggenerate_prediction_data(client: Client):
     """Check that our generated predictions correctly matches our input parameters"""
 
     n_images = 2
@@ -91,7 +91,7 @@ def test_generate_predictions(client: Client):
     assert len(dataset.get_images()) == n_images
     assert len(dataset.get_datums()) == n_images
 
-    model = generate_predictions(
+    model = generate_prediction_data(
         client=client,
         dataset=dataset,
         model_name=model_name,

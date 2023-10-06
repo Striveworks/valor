@@ -183,7 +183,7 @@ def _generate_prediction(
     n_annotations: int,
     n_labels: int,
 ):
-    """Generate an arbitrary prediction based on some annotation"""
+    """Generate an arbitrary prediction based on some image"""
 
     # ensure that some labels are common
     n_label_ids = n_annotations * n_labels
