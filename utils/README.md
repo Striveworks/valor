@@ -75,3 +75,7 @@ To delete all memory_profiler `.dat` outputs created by the memory profiler, use
 mprof clean
 
 ```
+
+### 4. Analyze results
+
+See `utils/analyze_profiling_data.ipynb` for examples of how you can use these various profilers.

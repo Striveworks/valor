@@ -112,6 +112,11 @@ def get_groundtruth(
     dependencies=[Depends(token_auth_scheme)],
     tags=["Predictions"],
 )
+@generate_yappi_profile(filepath="utils/profiles/create_predictions.yappi")
+@generate_cprofile(filepath="utils/profiles/create_predictions.cprofile")
+@generate_tracemalloc_profile(
+    filepath="utils/profiles/create_predictions.tracemalloc"
+)
 def create_predictions(
     pd: schemas.Prediction,
     db: Session = Depends(get_db),
@@ -471,6 +476,11 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
     status_code=202,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
+)
+@generate_yappi_profile(filepath="utils/profiles/create_ap_metrics.yappi")
+@generate_cprofile(filepath="utils/profiles/create_ap_metrics.cprofile")
+@generate_tracemalloc_profile(
+    filepath="utils/profiles/create_ap_metrics.tracemalloc"
 )
 def create_ap_metrics(
     request_info: schemas.APRequest,

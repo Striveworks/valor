@@ -397,6 +397,7 @@ def _get_evaluation_metrics(
     client: Client,
     dataset: VelourDataset,
     model_name: str,
+    n_predictions: int,
     n_annotations: int,
     n_labels: int,
 ) -> Tuple[VelourModel, VelourEvaluation]:
@@ -406,6 +407,7 @@ def _get_evaluation_metrics(
         client=client,
         dataset=dataset,
         model_name=model_name,
+        n_predictions=n_predictions,
         n_annotations=n_annotations,
         n_labels=n_labels,
     )
@@ -418,15 +420,45 @@ def _get_evaluation_metrics(
     )
 
     # sleep to give the backend time to compute
-    time.sleep(1)
-    assert eval_job.status == JobStatus.DONE
+    while eval_job.status != JobStatus.DONE:
+        time.sleep(1)
+
     return (model, eval_job)
+
+
+def _run_velour_profiling_functions(
+    client: Client,
+    dataset_name: str,
+    model_name: str,
+    n_images: int,
+    n_predictions: int,
+    n_annotations: int,
+    n_labels: int,
+):
+    """Call the various functions that we want to use to profile velour"""
+    dataset = _setup_dataset(
+        client=client,
+        dataset_name=dataset_name,
+        n_images=n_images,
+        n_annotations=n_annotations,
+        n_labels=n_labels,
+    )
+
+    model, eval_job = _get_evaluation_metrics(
+        client=client,
+        dataset=dataset,
+        model_name=model_name,
+        n_predictions=n_predictions,
+        n_annotations=n_annotations,
+        n_labels=n_labels,
+    )
 
 
 def profile_velour(
     client: Client,
     dataset_name: str,
     n_image_grid: List[int],
+    n_predictions_grid: List[int],
     n_annotation_grid: List[int],
     n_label_grid: List[int],
 ) -> List[dict]:
@@ -441,6 +473,8 @@ def profile_velour(
         The name of the dataset you want to use for profiling
     n_image_grid
         A list of integers describing the various image sizes you want to test
+    n_prediction_grid
+        A list of integers describing the various prediction sizes you want to test
     n_annotation_grid
         A list of integers describing the various annotation sizes you want to test
     n_label_grid
@@ -453,31 +487,38 @@ def profile_velour(
     """
     output = list()
     for n_images in n_image_grid:
-        for n_annotations in n_annotation_grid:
-            for n_labels in n_label_grid:
-                kwargs = {
-                    "client": client,
-                    "dataset_name": dataset_name,
-                    "n_images": n_images,
-                    "n_annotations": n_annotations,
-                    "n_labels": n_labels,
-                }
+        for n_predictions in n_predictions_grid:
+            for n_annotations in n_annotation_grid:
+                for n_labels in n_label_grid:
+                    kwargs = {
+                        "client": client,
+                        "dataset_name": dataset_name,
+                        "model_name": dataset_name + "_model",
+                        "n_images": n_images,
+                        "n_predictions": n_predictions,
+                        "n_annotations": n_annotations,
+                        "n_labels": n_labels,
+                    }
 
-                results = _profile_func(_setup_dataset, **kwargs)
+                    results = _profile_func(
+                        _run_velour_profiling_functions, **kwargs
+                    )
 
-                snapshot = _generate_docker_snapshot()
-                results = results | snapshot
+                    snapshot = _generate_docker_snapshot()
+                    results = results | snapshot
 
-                output.append(results)
+                    output.append(results)
 
-                # create checkpoint in case of system failure
-                filepath = f"{os.getcwd()}/utils/profiles/{dataset_name}.pkl"
-                os.makedirs(os.path.dirname(filepath), exist_ok=True)
-                with open(
-                    filepath,
-                    "wb+",
-                ) as f:
-                    pickle.dump(output, f)
+                    # create checkpoint in case of system failure
+                    filepath = (
+                        f"{os.getcwd()}/utils/profiles/{dataset_name}.pkl"
+                    )
+                    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+                    with open(
+                        filepath,
+                        "wb+",
+                    ) as f:
+                        pickle.dump(output, f)
 
     return output
 
