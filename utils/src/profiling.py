@@ -213,7 +213,7 @@ def _profile_tracemalloc(
 ) -> None:
     """Use tracemalloc to identify the top 10 memory traces for the current directory (sorted by size)"""
     tracemalloc.start()
-    fn(**kwargs)
+    intermediary_outout = fn(**kwargs)
     snapshot = (
         tracemalloc.take_snapshot()
         .filter_traces(
@@ -237,7 +237,7 @@ def _profile_tracemalloc(
             }
         )
 
-    output.update(tracemalloc_output)
+    output.update(tracemalloc_output | intermediary_outout)
 
 
 def _profile_func(
@@ -434,8 +434,12 @@ def _run_velour_profiling_functions(
     n_predictions: int,
     n_annotations: int,
     n_labels: int,
-):
-    """Call the various functions that we want to use to profile velour"""
+) -> dict:
+    """Call the various functions that we want to use to profile velour. Returns a dict of intermediary times that we want to include in our output"""
+
+    start = timeit.default_timer()
+
+    timeit_output = {}
     dataset = _setup_dataset(
         client=client,
         dataset_name=dataset_name,
@@ -443,6 +447,12 @@ def _run_velour_profiling_functions(
         n_annotations=n_annotations,
         n_labels=n_labels,
     )
+
+    timeit_output.update(
+        {"setup_runtime_seconds": round(timeit.default_timer() - start, 2)}
+    )
+
+    start = timeit.default_timer()
 
     model, eval_job = _get_evaluation_metrics(
         client=client,
@@ -452,6 +462,16 @@ def _run_velour_profiling_functions(
         n_annotations=n_annotations,
         n_labels=n_labels,
     )
+
+    timeit_output.update(
+        {
+            "evaluation_runtime_seconds": round(
+                timeit.default_timer() - start, 2
+            )
+        }
+    )
+
+    return timeit_output
 
 
 def profile_velour(

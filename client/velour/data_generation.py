@@ -279,7 +279,7 @@ def generate_prediction_data(
     for datum in datums:
         height, width = (datum.metadata[0].value, datum.metadata[1].value)
 
-        for _ in tqdm(range(n_predictions)):
+        for _ in range(n_predictions):
             prediction = _generate_prediction(
                 model_name=model_name,
                 datum=datum,

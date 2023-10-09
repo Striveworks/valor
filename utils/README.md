@@ -56,7 +56,7 @@ To run these profiles while measuring client-side memory usage, we'd recommend u
 
 ```
 
-mprof run utils/run_profiling.py --multiprocess
+python -m mprof run utils/run_profiling.py --multiprocess
 
 ```
 
@@ -64,7 +64,7 @@ Visualize client-side memory usage using:
 
 ```
 
-mprof plot -s
+python -m mprof plot -s
 
 ```
 
@@ -72,7 +72,7 @@ To delete all memory_profiler `.dat` outputs created by the memory profiler, use
 
 ```
 
-mprof clean
+python -m mprof clean
 
 ```
 
