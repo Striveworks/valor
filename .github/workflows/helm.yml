@@ -30,6 +30,7 @@ jobs:
       - name: Run chart-releaser
         uses: czaloom/chart-releaser-action@v1.6.0
         with:
+          pages_branch: gh-charts
           packages_with_index: true
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
