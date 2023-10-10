@@ -13,11 +13,6 @@ from fastapi.middleware.cors import CORSMiddleware
 # from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from utils.src.profiling import (
-    generate_cprofile,
-    generate_tracemalloc_profile,
-    generate_yappi_profile,
-)
 
 from velour_api import auth, crud, enums, exceptions, logger, schemas
 from velour_api.backend import database
@@ -58,11 +53,6 @@ def get_db():
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["GroundTruths"],
-)
-@generate_yappi_profile(filepath="utils/profiles/create_groundtruths.yappi")
-@generate_cprofile(filepath="utils/profiles/create_groundtruths.cprofile")
-@generate_tracemalloc_profile(
-    filepath="utils/profiles/create_groundtruths.tracemalloc"
 )
 def create_groundtruths(
     gt: schemas.GroundTruth, db: Session = Depends(get_db)
@@ -111,11 +101,6 @@ def get_groundtruth(
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Predictions"],
-)
-@generate_yappi_profile(filepath="utils/profiles/create_predictions.yappi")
-@generate_cprofile(filepath="utils/profiles/create_predictions.cprofile")
-@generate_tracemalloc_profile(
-    filepath="utils/profiles/create_predictions.tracemalloc"
 )
 def create_predictions(
     pd: schemas.Prediction,
@@ -476,11 +461,6 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
     status_code=202,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
-)
-@generate_yappi_profile(filepath="utils/profiles/create_ap_metrics.yappi")
-@generate_cprofile(filepath="utils/profiles/create_ap_metrics.cprofile")
-@generate_tracemalloc_profile(
-    filepath="utils/profiles/create_ap_metrics.tracemalloc"
 )
 def create_ap_metrics(
     request_info: schemas.APRequest,
