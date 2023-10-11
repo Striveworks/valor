@@ -78,37 +78,6 @@ class Prediction(Base):
     label: Mapped["Label"] = relationship(back_populates="predictions")
 
 
-class GIS(Base):
-    __tablename__ = "geospatial"
-
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    geo = mapped_column(Geography(), nullable=False)
-
-    # targets
-    dataset_id: Mapped[int] = mapped_column(
-        ForeignKey("dataset.id"), nullable=True
-    )
-    model_id: Mapped[int] = mapped_column(
-        ForeignKey("model.id"), nullable=True
-    )
-    datum_id: Mapped[int] = mapped_column(
-        ForeignKey("datum.id"), nullable=True
-    )
-    annotation_id: Mapped[int] = mapped_column(
-        ForeignKey("annotation.id"), nullable=True
-    )
-    evaluation_id: Mapped[int] = mapped_column(
-        ForeignKey("evaluation.id"), nullable=True
-    )
-
-    # relationships
-    dataset: Mapped["Dataset"] = relationship(back_populates="geo")
-    model: Mapped["Model"] = relationship(back_populates="geo")
-    datum: Mapped["Datum"] = relationship(back_populates="geo")
-    annotation: Mapped["Annotation"] = relationship(back_populates="geo")
-    evaluation: Mapped["Evaluation"] = relationship(back_populates="geo")
-
-
 class Annotation(Base):
     __tablename__ = "annotation"
 
@@ -121,6 +90,7 @@ class Annotation(Base):
     )
     task_type: Mapped[str] = mapped_column(nullable=False)
     meta = mapped_column(JSONB)
+    geo = mapped_column(Geography(), nullable=True)
 
     # Geometric
     box = mapped_column(Geometry("POLYGON"), nullable=True)
@@ -140,7 +110,6 @@ class Annotation(Base):
     predictions: Mapped[list["Prediction"]] = relationship(
         cascade="all, delete-orphan"
     )
-    geo: Mapped[list["GIS"]] = relationship(cascade="all, delete")
 
 
 class Datum(Base):
@@ -155,13 +124,13 @@ class Datum(Base):
     )
     uid: Mapped[str] = mapped_column(nullable=False)
     meta = mapped_column(JSONB)
+    geo = mapped_column(Geography(), nullable=True)
 
     # relationship
     dataset: Mapped["Dataset"] = relationship(back_populates="datums")
     annotations: Mapped[list[Annotation]] = relationship(
         cascade="all, delete-orphan"
     )
-    geo: Mapped[list["GIS"]] = relationship(cascade="all, delete")
 
 
 class Model(Base):
@@ -172,12 +141,12 @@ class Model(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
     meta = mapped_column(JSONB)
+    geo = mapped_column(Geography(), nullable=True)
 
     # relationships
     annotations: Mapped[list[Annotation]] = relationship(
         cascade="all, delete-orphan"
     )
-    geo: Mapped[list["GIS"]] = relationship(cascade="all, delete")
     evaluation = relationship("Evaluation", cascade="all, delete")
 
 
@@ -187,10 +156,10 @@ class Dataset(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
     meta = mapped_column(JSONB)
+    geo = mapped_column(Geography(), nullable=True)
 
     # relationships
     datums: Mapped[list[Datum]] = relationship(cascade="all, delete")
-    geo: Mapped[list[GIS]] = relationship(cascade="all, delete")
     evaluation = relationship(
         "Evaluation", cascade="all, delete", back_populates="dataset"
     )
@@ -205,6 +174,7 @@ class Evaluation(Base):
     task_type: Mapped[str] = mapped_column(Enum(TaskType))
     target_type: Mapped[str] = mapped_column(Enum(AnnotationType))
     parameters = mapped_column(JSONB)
+    geo = mapped_column(Geography(), nullable=True)
 
     # relationships
     dataset = relationship(Dataset, viewonly=True)
@@ -212,7 +182,6 @@ class Evaluation(Base):
     metrics: Mapped[list["Metric"]] = relationship(
         "Metric", cascade="all, delete"
     )
-    geo: Mapped[list[GIS]] = relationship(cascade="all, delete")
     confusion_matrices: Mapped[list["ConfusionMatrix"]] = relationship(
         "ConfusionMatrix", cascade="all, delete"
     )
@@ -229,16 +198,13 @@ class Metric(Base):
     value: Mapped[float] = mapped_column(nullable=True)
     parameters = mapped_column(JSONB)  # {"label": ..., "iou": ..., }
     evaluation_id: Mapped[int] = mapped_column(ForeignKey("evaluation.id"))
-    group_id: Mapped[int] = mapped_column(
-        ForeignKey("geospatial.id"), nullable=True
-    )
+    group_by = mapped_column(JSONB)
 
     # relationships
     label = relationship(Label)
     settings: Mapped[Evaluation] = relationship(
         "Evaluation", back_populates="metrics"
     )
-    group = relationship(GIS)
 
 
 class ConfusionMatrix(Base):
