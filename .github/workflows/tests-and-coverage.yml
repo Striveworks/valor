@@ -46,10 +46,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: password
       redis:
-        image: 724664234782.dkr.ecr.us-east-1.amazonaws.com/library/hardened/docker/redis:7.0-alpine
-        credentials:
-          username: ${{ needs.login-to-amazon-ecr.outputs.docker_username }}
-          password: ${{ needs.login-to-amazon-ecr.outputs.docker_password }}
+        image: public.ecr.aws/bitnami/redis:7.0
         ports:
           - 6379:6379
     steps:
