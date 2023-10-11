@@ -19,7 +19,7 @@ def create_dataset(*, db: Session, dataset: schemas.Dataset):
 
 @stateflow.create
 def create_model(*, db: Session, model: schemas.Model):
-    """Creates a dataset
+    """Creates a model
 
     Raises
     ------
