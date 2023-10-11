@@ -5,13 +5,17 @@ import numpy as np
 from tqdm import tqdm
 
 from velour import enums
-from velour.client import Client, ClientException
+from velour.client import Client
 from velour.client import Dataset as VelourDataset
+from velour.client import Model as VelourModel
 from velour.schemas import (
     Annotation,
+    BoundingBox,
+    Dataset,
     GroundTruth,
     ImageMetadata,
     Label,
+    Prediction,
     Raster,
 )
 
@@ -37,7 +41,7 @@ def _generate_mask(
     return mask
 
 
-def _generate_annotation(
+def _generate_gt_annotation(
     height: int,
     width: int,
     unique_label_ids: list,
@@ -50,6 +54,9 @@ def _generate_annotation(
     ]
     mask = _generate_mask(height=height, width=width)
     raster = Raster.from_numpy(mask)
+    bounding_box = _generate_bounding_box(
+        max_height=height, max_width=width, is_random=True
+    )
     task_type = random.choice(task_types)
 
     labels = []
@@ -58,12 +65,24 @@ def _generate_annotation(
         label = _generate_label(str(unique_id))
         labels.append(label)
 
-    return Annotation(task_type=task_type, labels=labels, raster=raster)
+    return Annotation(
+        task_type=task_type,
+        labels=labels,
+        raster=raster,
+        bounding_box=bounding_box,
+    )
 
 
-def _generate_label(unique_id: str) -> Label:
+def _generate_label(unique_id: str, add_score: bool = False) -> Label:
     """Generate a label given some unique ID"""
-    return Label(key="k" + unique_id, value="v" + unique_id)
+    if not add_score:
+        return Label(key="k" + unique_id, value="v" + unique_id)
+    else:
+        return Label(
+            key="k" + unique_id,
+            value="v" + unique_id,
+            score=random.uniform(0, 1),
+        )
 
 
 def _generate_image_metadata(
@@ -73,6 +92,7 @@ def _generate_image_metadata(
     min_width: int = 360,
     max_width: int = 640,
 ) -> Tuple[ImageMetadata, int, int]:
+    """Generate metadata for an image"""
     height = random.randrange(min_height, max_height)
     width = random.randrange(min_width, max_width)
 
@@ -100,7 +120,7 @@ def _generate_ground_truth(
     unique_label_ids = list(range(n_annotations * n_labels))
 
     annotations = [
-        _generate_annotation(
+        _generate_gt_annotation(
             height=image_metadata["height"],
             width=image_metadata["width"],
             n_labels=n_labels,
@@ -115,6 +135,73 @@ def _generate_ground_truth(
     )
 
     return gt
+
+
+def _generate_bounding_box(
+    max_height: int, max_width: int, is_random: bool = False
+):
+    """Generate an arbitrary bounding box"""
+
+    if is_random:
+        x_min = int(random.uniform(0, max_width // 2))
+        x_max = int(random.uniform(max_width // 2, max_width))
+        y_min = int(random.uniform(0, max_height // 2))
+        y_max = int(random.uniform(max_height // 2, max_height))
+    else:
+        # use the whole image as the bounding box to ensure that we have predictions overlap with groundtruths
+        x_min = 0
+        x_max = max_width
+        y_min = 0
+        y_max = max_height
+
+    return BoundingBox.from_extrema(
+        xmin=x_min, ymin=y_min, xmax=x_max, ymax=y_max
+    )
+
+
+def _generate_prediction_annotation(
+    height: int, width: int, unique_label_ids: list, n_labels: int
+):
+    """Generate an arbitrary inference annotation"""
+    box = _generate_bounding_box(max_height=height, max_width=width)
+    labels = []
+    for i in range(n_labels):
+        unique_id = _sample_without_replacement(unique_label_ids, 1)[0]
+        label = _generate_label(str(unique_id), add_score=True)
+        labels.append(label)
+
+    return Annotation(
+        task_type=enums.TaskType.DETECTION, labels=labels, bounding_box=box
+    )
+
+
+def _generate_prediction(
+    model_name: str,
+    datum: ImageMetadata,
+    height: int,
+    width: int,
+    n_annotations: int,
+    n_labels: int,
+):
+    """Generate an arbitrary prediction based on some image"""
+
+    # ensure that some labels are common
+    n_label_ids = n_annotations * n_labels
+    unique_label_ids = list(range(2, (n_label_ids)))
+    common_label_ids = [1 for _ in range(n_label_ids // 2)]
+    label_ids = unique_label_ids + common_label_ids
+
+    annotations = [
+        _generate_prediction_annotation(
+            height=height,
+            width=width,
+            unique_label_ids=label_ids,
+            n_labels=n_labels,
+        )
+        for _ in range(n_annotations)
+    ]
+
+    return Prediction(model=model_name, datum=datum, annotations=annotations)
 
 
 def generate_segmentation_data(
@@ -141,11 +228,8 @@ def generate_segmentation_data(
         The number of labels per annotation you'd like your dataset to contain
     """
 
-    try:
-        client.delete_dataset(dataset_name)
-        dataset = VelourDataset.create(client, dataset_name)
-    except ClientException:
-        dataset = VelourDataset.get(client, dataset_name)
+    client.delete_dataset(dataset_name)
+    dataset = VelourDataset.create(client, dataset_name)
 
     unique_image_ids = list(range(n_images))
     for _ in tqdm(range(n_images)):
@@ -161,3 +245,50 @@ def generate_segmentation_data(
     dataset.finalize()
 
     return dataset
+
+
+def generate_prediction_data(
+    client: Client,
+    dataset: Dataset,
+    model_name: str,
+    n_predictions: int = 10,
+    n_annotations: int = 10,
+    n_labels: int = 2,
+):
+    """
+    Generate an arbitrary number of predictions for a previously-generated dataset
+
+    Parameters
+    ----------
+    client
+        The Client object used to access your velour instance
+    dataset
+        The dataset object to create predictions for
+    n_predictions
+        The number of images you'd like your dataset to contain
+    n_annotations
+        The number of annotations per prediction you'd like your dataset to contain
+    n_labels
+        The number of labels per annotation you'd like your dataset to contain
+    """
+    client.delete_model(model_name)
+    model = VelourModel.create(client, model_name)
+
+    datums = dataset.get_datums()
+
+    for datum in datums:
+        height, width = (datum.metadata[0].value, datum.metadata[1].value)
+
+        for _ in range(n_predictions):
+            prediction = _generate_prediction(
+                model_name=model_name,
+                datum=datum,
+                height=height,
+                width=width,
+                n_annotations=n_annotations,
+                n_labels=n_labels,
+            )
+            model.add_prediction(prediction)
+
+    model.finalize_inferences(dataset)
+    return model
