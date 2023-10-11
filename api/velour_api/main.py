@@ -275,14 +275,18 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datasets"],
 )
-def delete_dataset(
+async def delete_dataset(
     dataset_name: str,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
-        crud.delete(db=db, dataset_name=dataset_name)
+        background_tasks.add_task(
+            crud.delete,
+            db=db,
+            dataset_name=dataset_name,
+        )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except exceptions.StateflowError as e:
