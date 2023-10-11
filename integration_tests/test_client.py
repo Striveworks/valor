@@ -2092,6 +2092,41 @@ def test_get_groundtruth(
     client.delete_dataset(dset_name)
 
 
+def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
+    img_size = [900, 300]
+    mask = _generate_mask(height=img_size[0], width=img_size[1])
+    raster = Raster.from_numpy(mask)
+
+    gt = GroundTruth(
+        datum=img1.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=TaskType.DETECTION,
+                labels=[Label(key="k3", value="v3")],
+                bounding_box=BoundingBox.from_extrema(
+                    xmin=10, ymin=10, xmax=60, ymax=40
+                ),
+                raster=raster,
+            )
+        ],
+    )
+
+    dataset = Dataset.create(client, dset_name)
+
+    dataset.add_groundtruth(gt)
+
+    fetched_gt = dataset.get_groundtruth("uid1")
+
+    assert (
+        fetched_gt.annotations[0].raster is not None
+    ), "Raster doesn't exist on fetched gt"
+    assert (
+        fetched_gt.annotations[0].bounding_box is not None
+    ), "Bounding box doesn't exist on fetched gt"
+
+    client.delete_dataset(dset_name)
+
+
 # @TODO: Implement metadata querying + geojson
 # def test_create_images_with_metadata(
 #     client: Client, db: Session, metadata: list[MetaDatum], rect1: BoundingBox

@@ -1,7 +1,7 @@
 import PIL.Image
 
-from velour.integrations.coco import coco_rle_to_mask, _merge_annotations
 from velour.enums import TaskType
+from velour.integrations.coco import _merge_annotations, coco_rle_to_mask
 from velour.schemas import Label
 
 
@@ -11,12 +11,16 @@ def test__merge_annotations():
     initial_annotations = [
         dict(
             task_type=TaskType.SEMANTIC_SEGMENTATION,
-            labels=set([Label(key="k1", value="v1"), Label(key="k2", value="v2")]),
+            labels=set(
+                [Label(key="k1", value="v1"), Label(key="k2", value="v2")]
+            ),
             mask=[[True, False, False, False], [True, False, False, False]],
         ),
         dict(
             task_type=TaskType.SEMANTIC_SEGMENTATION,
-            labels=set([Label(key="k1", value="v1"), Label(key="k3", value="v3")]),
+            labels=set(
+                [Label(key="k1", value="v1"), Label(key="k3", value="v3")]
+            ),
             mask=[[False, False, True, False], [False, False, True, False]],
         ),
         dict(
@@ -32,7 +36,9 @@ def test__merge_annotations():
         ),
         dict(
             task_type=TaskType.INSTANCE_SEGMENTATION,
-            labels=set([Label(key="k1", value="v1"), Label(key="k3", value="v3")]),
+            labels=set(
+                [Label(key="k1", value="v1"), Label(key="k3", value="v3")]
+            ),
             mask=[[False, True, False, False], [False, True, False, False]],
         ),
     ]
