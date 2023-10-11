@@ -4,6 +4,10 @@ on:
   push:
     branches: "**"
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   login-to-amazon-ecr:
     runs-on: ubuntu-latest
@@ -11,7 +15,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          role-to-assume: arn:aws:iam::724664234782:Striveworks-Role-github_runner_npe
+          role-to-assume: arn:aws:iam::724664234782:role/Striveworks-Role-github_runner_npe
           aws-region: us-east-1
           mask-aws-account-id: "false"
       - name: Login to Amazon ECR
