@@ -76,7 +76,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: login to ECR
-        run: docker login --username ${{ needs.login-to-amazon-ecr.outputs.docker_username }} --password ${{ needs.login-to-amazon-ecr.outputs.docker_password }}
+        run: echo ${{ needs.login-to-amazon-ecr.outputs.docker_password }} | docker login -u ${{ needs.login-to-amazon-ecr.outputs.docker_username }} --password-stdin 724664234782.dkr.ecr.us-east-1.amazonaws.com
       - name: setup backend test env
         run: docker compose -p velour -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
       - uses: actions/setup-python@v4
