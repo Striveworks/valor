@@ -534,33 +534,19 @@ class Model:
         max_area: float = None,
         label_key: Optional[str] = None,
     ) -> Evaluation:
+        """Evaluate object detections."""
 
-        constraints = []
-
-        # Annotation type to perform AP over.
-        constraints.append(
-            schemas.Metadatum(key="annotation_type", value=annotation_type)
+        constraints = schemas.EvaluationConstraints(
+            target_type=annotation_type,
+            label_key=label_key,
+            min_area=min_area,
+            max_area=max_area,
         )
 
-        # Geometric constraints
-        if min_area:
-            constraints.append(
-                schemas.Metadatum(key="min_area", value=min_area)
-            )
-        if max_area:
-            constraints.append(
-                schemas.Metadatum(key="max_area", value=max_area)
-            )
-
-        # Label constraints
-        if label_key:
-            constraints.append(
-                schemas.Metadatum(key="label_key", value=label_key)
-            )
-
-        thresholds = dict()
-        thresholds["iou_thresholds_to_compute"] = iou_thresholds
-        thresholds["iou_thresholds_to_keep"] = ious_to_keep
+        thresholds = schemas.EvaluationThresholds(
+            iou_thresholds_to_compute=iou_thresholds,
+            iou_thresholds_to_keep=ious_to_keep,
+        )
 
         evaluation = schemas.EvaluationSettings(
             model=self.name,

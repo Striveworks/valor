@@ -14,16 +14,16 @@ from velour_api.schemas.label import Label
 from velour_api.schemas.metadata import Metadatum
 
 
-class EvaluationConstraints:
+class EvaluationConstraints(BaseModel):
     # type
-    target_type: AnnotationType | None = None
+    annotation_type: AnnotationType | None = None
     label_key: str | None = None
     # geometric
     min_area: float | None = None
     max_area: float | None = None
 
 
-class EvaluationThresholds:
+class EvaluationThresholds(BaseModel):
     # (mutable defaults are ok for pydantic models)
     iou_thresholds_to_compute: list[float] | None = [
         round(0.5 + 0.05 * i, 2) for i in range(10)

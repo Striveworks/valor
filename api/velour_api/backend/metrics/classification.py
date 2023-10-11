@@ -619,7 +619,7 @@ def precision_and_recall_f1_from_confusion_matrix(
 
 def create_clf_evaluation(
     db: Session,
-    request_info: schemas.ClfMetricsRequest,
+    settings: schemas.EvaluationSettings,
 ) -> int:
     """This will always run in foreground.
 
@@ -627,12 +627,12 @@ def create_clf_evaluation(
         Evaluations settings id.
     """
 
-    dataset = core.get_dataset(db, request_info.settings.dataset)
-    model = core.get_model(db, request_info.settings.model)
+    dataset = core.get_dataset(db, settings.dataset)
+    model = core.get_model(db, settings.model)
 
     es = get_or_create_row(
         db,
-        models.EvaluationSettings,
+        models.Evaluation,
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
@@ -646,7 +646,7 @@ def create_clf_evaluation(
 
 def create_clf_metrics(
     db: Session,
-    request_info: schemas.ClfMetricsRequest,
+    settings: schemas.EvaluationSettings,
     evaluation_settings_id: int,
 ) -> int:
     """
@@ -654,8 +654,8 @@ def create_clf_metrics(
     """
     confusion_matrices, metrics = compute_clf_metrics(
         db=db,
-        dataset_name=request_info.settings.dataset,
-        model_name=request_info.settings.model,
+        dataset_name=settings.dataset,
+        model_name=settings.model,
     )
 
     confusion_matrices_mappings = create_metric_mappings(

@@ -11,8 +11,8 @@ from velour_api.backend.metrics.core import (
 from velour_api.enums import AnnotationType, TaskType
 from velour_api.schemas import Label
 from velour_api.schemas.metrics import (
+    EvaluationSettings,
     IOUMetric,
-    SemanticSegmentationMetricsRequest,
     mIOUMetric,
 )
 
@@ -182,14 +182,14 @@ def compute_segmentation_metrics(
 
 
 def create_semantic_segmentation_evaluation(
-    db: Session, request_info: SemanticSegmentationMetricsRequest
+    db: Session, settings: EvaluationSettings
 ) -> int:
-    dataset = core.get_dataset(db, request_info.settings.dataset)
-    model = core.get_model(db, request_info.settings.model)
+    dataset = core.get_dataset(db, settings.dataset)
+    model = core.get_model(db, settings.model)
 
     es = get_or_create_row(
         db,
-        models.EvaluationSettings,
+        models.Evaluation,
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
@@ -203,13 +203,13 @@ def create_semantic_segmentation_evaluation(
 
 def create_semantic_segmentation_metrics(
     db: Session,
-    request_info: SemanticSegmentationMetricsRequest,
+    settings: EvaluationSettings,
     evaluation_settings_id: int,
 ) -> int:
     metrics = compute_segmentation_metrics(
         db,
-        dataset_name=request_info.settings.dataset,
-        model_name=request_info.settings.model,
+        dataset_name=settings.dataset,
+        model_name=settings.model,
     )
     metric_mappings = create_metric_mappings(
         db, metrics, evaluation_settings_id

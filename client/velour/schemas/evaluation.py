@@ -7,7 +7,7 @@ from velour.enums import AnnotationType, EvaluationType
 @dataclass
 class EvaluationConstraints:
     # type
-    target_type: AnnotationType = None
+    annotation_type: AnnotationType = None
     label_key: str = None
     # geometric
     min_area: float = None

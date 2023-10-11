@@ -22,8 +22,8 @@ def _db_metric_to_pydantic_metric(db, metric: models.Metric) -> schemas.Metric:
 
 def _db_evaluation_settings_to_pydantic_evaluation_settings(
     evaluation_settings: models.Evaluation,
-) -> schemas.Evaluation:
-    return schemas.Evaluation(
+) -> schemas.EvaluationSettings:
+    return schemas.EvaluationSettings(
         model=evaluation_settings.model.name,
         dataset=evaluation_settings.dataset.name,
         task_type=evaluation_settings.task_type,
@@ -80,7 +80,7 @@ def get_confusion_matrices_from_evaluation_settings_id(
 
 def get_evaluation_settings_from_id(
     db: Session, evaluation_settings_id: int
-) -> schemas.Evaluation:
+) -> schemas.EvaluationSettings:
     ms = db.scalar(
         select(models.Evaluation).where(
             models.Evaluation.id == evaluation_settings_id
@@ -112,7 +112,7 @@ def get_model_metrics(
 
 def get_model_evaluation_settings(
     db: Session, model_name: str
-) -> list[schemas.Evaluation]:
+) -> list[schemas.EvaluationSettings]:
     model = core.get_model(db, model_name)
     all_eval_settings = db.scalars(
         select(models.Evaluation).where(models.Evaluation.model_id == model.id)

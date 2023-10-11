@@ -502,7 +502,7 @@ def compute_map_metrics_from_aps(
 
 def create_ap_evaluation(
     db: Session,
-    settings: schemas.APRequest,
+    settings: schemas.EvaluationSettings,
 ) -> int:
     """This will always run in foreground.
 
@@ -515,10 +515,10 @@ def create_ap_evaluation(
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
 
-    if not settings.target_type:
+    if not settings.const:
         target_type = gt_type if gt_type < pd_type else pd_type
     else:
-        target_type = settings.target_type
+        target_type = settings.constraints.annotation_type
 
     es = get_or_create_row(
         db,
@@ -528,9 +528,9 @@ def create_ap_evaluation(
             "model_id": model.id,
             "task_type": enums.TaskType.DETECTION,
             "target_type": target_type,
-            "label_key": settings.label_key,
-            "min_area": settings.min_area,
-            "max_area": settings.max_area,
+            "label_key": settings.constraints.label_key,
+            "min_area": settings.constraints.min_area,
+            "max_area": settings.constraints.max_area,
         },
     )
 
@@ -539,7 +539,7 @@ def create_ap_evaluation(
 
 def create_ap_metrics(
     db: Session,
-    settings: schemas.APRequest,
+    settings: schemas.EvaluationSettings,
     evaluation_settings_id: int,
 ):
     """
@@ -547,9 +547,9 @@ def create_ap_metrics(
     """
 
     # @TODO: This is hacky, fix schemas.EvaluationSettings
-    label_key = settings.label_key
-    min_area = settings.min_area
-    max_area = settings.max_area
+    label_key = settings.constraints.label_key
+    min_area = settings.constraints.min_area
+    max_area = settings.constraints.max_area
 
     #
     dataset = core.get_dataset(db, settings.dataset)
@@ -557,17 +557,17 @@ def create_ap_metrics(
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
 
-    if not settings.target_type:
+    if not settings.constraints.annotation_type:
         target_type = gt_type if gt_type < pd_type else pd_type
     else:
-        target_type = settings.target_type
+        target_type = settings.constraints.annotation_type
 
     metrics = compute_ap_metrics(
         db=db,
         dataset=dataset,
         model=model,
-        iou_thresholds=settings.iou_thresholds,
-        ious_to_keep=settings.ious_to_keep,
+        iou_thresholds=settings.thresholds.iou_thresholds_to_compute,
+        ious_to_keep=settings.thresholds.iou_thresholds_to_keep,
         label_key=label_key,
         target_type=target_type,
         gt_type=gt_type,
