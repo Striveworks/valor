@@ -6,8 +6,19 @@ import pandas as pd
 import seaborn as sns
 
 
-def bytes_to_readable_fmt(x, pos):
-    """Convert an integer of bytes into a human-readable format"""
+def bytes_to_readable_fmt(x: int, pos: int):
+    """
+    Convert an integer of bytes into a human-readable format
+
+
+    Parameters
+    ----------
+    x
+        The number of bytes to convert to human-readable format
+    pos
+        An unused positional argument that's needed when using this function as a seaborn formatter
+
+    """
     if x < 0:
         return ""
     for x_unit in ["B", "KB", "MB", "GB", "TB"]:

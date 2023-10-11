@@ -327,7 +327,7 @@ def _get_docker_disk_stats() -> pd.DataFrame:
     )
 
 
-def _get_docker_pids():
+def _get_docker_pids() -> pd.DataFrame:
     string = ""
     for _ in range(4):
         string += os.popen(
@@ -342,7 +342,7 @@ def _get_docker_pids():
     return df
 
 
-def _generate_docker_snapshot():
+def _generate_docker_snapshot() -> dict:
     """
     Takes a snapshot of all running Docker containers, returning a list of nested dictionaries containing the memory utilization, CPU utilization, and disk usage
     """
