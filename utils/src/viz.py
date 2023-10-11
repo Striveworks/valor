@@ -16,7 +16,6 @@ def bytes_to_readable_fmt(x, pos):
         x /= 1024.0
 
 
-# TODO update docstring
 def plot_grouped_barchart(
     df: pd.DataFrame,
     x: str,
