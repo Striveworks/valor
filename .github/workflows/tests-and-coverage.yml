@@ -69,13 +69,14 @@ jobs:
           path: api/${{ env.COVERAGE_FILE }}
 
   integration-tests:
+    needs: login-to-amazon-ecr
     env:
       COVERAGE_FILE: .coverage.integration-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: setup backend test env
-        run: make test-env
+        run: docker compose -p velour -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
@@ -93,7 +94,7 @@ jobs:
           name: ${{ env.COVERAGE_FILE }}
           path: ${{ env.COVERAGE_FILE }}
       - run: make stop-env
-      - run: make test-env
+      - run: docker compose -p velour -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
         env:
           AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
           AUTH0_AUDIENCE: ${{ vars.AUTH0_AUDIENCE }}
