@@ -502,35 +502,35 @@ def compute_map_metrics_from_aps(
 
 def create_ap_evaluation(
     db: Session,
-    request_info: schemas.APRequest,
+    settings: schemas.APRequest,
 ) -> int:
     """This will always run in foreground.
 
     Returns
         Evaluations settings id.
     """
-    dataset = core.get_dataset(db, request_info.settings.dataset)
-    model = core.get_model(db, request_info.settings.model)
+    dataset = core.get_dataset(db, settings.dataset)
+    model = core.get_model(db, settings.model)
 
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
 
-    if not request_info.settings.target_type:
+    if not settings.target_type:
         target_type = gt_type if gt_type < pd_type else pd_type
     else:
-        target_type = request_info.settings.target_type
+        target_type = settings.target_type
 
     es = get_or_create_row(
         db,
-        models.EvaluationSettings,
+        models.Evaluation,
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
             "task_type": enums.TaskType.DETECTION,
             "target_type": target_type,
-            "label_key": request_info.settings.label_key,
-            "min_area": request_info.settings.min_area,
-            "max_area": request_info.settings.max_area,
+            "label_key": settings.label_key,
+            "min_area": settings.min_area,
+            "max_area": settings.max_area,
         },
     )
 
@@ -539,7 +539,7 @@ def create_ap_evaluation(
 
 def create_ap_metrics(
     db: Session,
-    request_info: schemas.APRequest,
+    settings: schemas.APRequest,
     evaluation_settings_id: int,
 ):
     """
@@ -547,27 +547,27 @@ def create_ap_metrics(
     """
 
     # @TODO: This is hacky, fix schemas.EvaluationSettings
-    label_key = request_info.settings.label_key
-    min_area = request_info.settings.min_area
-    max_area = request_info.settings.max_area
+    label_key = settings.label_key
+    min_area = settings.min_area
+    max_area = settings.max_area
 
     #
-    dataset = core.get_dataset(db, request_info.settings.dataset)
-    model = core.get_model(db, request_info.settings.model)
+    dataset = core.get_dataset(db, settings.dataset)
+    model = core.get_model(db, settings.model)
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
 
-    if not request_info.settings.target_type:
+    if not settings.target_type:
         target_type = gt_type if gt_type < pd_type else pd_type
     else:
-        target_type = request_info.settings.target_type
+        target_type = settings.target_type
 
     metrics = compute_ap_metrics(
         db=db,
         dataset=dataset,
         model=model,
-        iou_thresholds=request_info.iou_thresholds,
-        ious_to_keep=request_info.ious_to_keep,
+        iou_thresholds=settings.iou_thresholds,
+        ious_to_keep=settings.ious_to_keep,
         label_key=label_key,
         target_type=target_type,
         gt_type=gt_type,

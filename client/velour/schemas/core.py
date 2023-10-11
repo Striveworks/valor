@@ -2,7 +2,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Union
 
-from velour.enums import AnnotationType, DataType, EvaluationType, TaskType
+from velour.enums import AnnotationType, DataType, TaskType
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import GeoJSON
 
@@ -20,11 +20,11 @@ class Metadatum:
     value: Union[float, str, GeoJSON]
 
     def __post_init__(self):
-        if isinstance(self.value, int):
-            self.value = float(self.value)
         if not isinstance(self.key, str):
             raise TypeError("Name parameter should always be of type string.")
-        if (
+        if isinstance(self.value, int):
+            self.value = float(self.value)
+        elif (
             not isinstance(self.value, float)
             and not isinstance(self.value, str)
             and not isinstance(self.value, GeoJSON)
@@ -167,7 +167,7 @@ class Annotation:
     raster: Raster = None
 
     # @ TODO implement json annotation type
-    jsonb: Dict | None = None
+    jsonb: Dict = None
 
     def __post_init__(self):
         # task_type
@@ -306,48 +306,3 @@ class Prediction:
                             "For each label key, prediction scores must sum to 1, but"
                             f" for label key {k} got scores summing to {total_score}."
                         )
-
-
-@dataclass
-class EvaluationSettings:
-    """General parameters defining any filters of the data such
-    as model, dataset, groundtruth and prediction type, model, dataset,
-    size constraints, coincidence/intersection constraints, etc.
-    """
-
-    model: str
-    dataset: str
-    evaluation_type: EvaluationType
-    task_type: TaskType
-    target_type: AnnotationType = AnnotationType.NONE
-    parameters: List[Metadatum] = field(default_factory=list)
-    id: int | None = None
-
-    def __post_init__(self):
-        if not isinstance(self.model, str):
-            raise TypeError("model should be of type `str`")
-        if not isinstance(self.dataset, str):
-            raise TypeError("dataset should be of type `str`")
-        if not isinstance(self.evaluation_type, EvaluationType):
-            raise TypeError(
-                "evaluation_type should be of type `enums.EvaluationType`"
-            )
-        if not isinstance(self.task_type, TaskType):
-            raise TypeError("task_type should be of type `enums.TaskType`")
-        if not isinstance(self.target_type, AnnotationType):
-            raise TypeError(
-                "target_type should be of type `enums.AnnotationType`"
-            )
-        if not isinstance(self.parameters, list):
-            raise TypeError(
-                "parameters should be of type list[schemas.Metadatum]"
-            )
-        for idx in range(len(self.parameters)):
-            if isinstance(self.parameters[idx], dict):
-                self.parameters[idx] = Metadatum(**self.parameters[idx])
-            if not isinstance(self.parameters[idx], Metadatum):
-                raise TypeError(
-                    "parameter should be of type `schemas.Metadatum`"
-                )
-        if self.id is not None and not isinstance(self.id, int):
-            raise TypeError("id should be of type `int`")

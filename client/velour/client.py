@@ -466,19 +466,6 @@ class Model:
             f"models/{self.name}/datasets/{dataset.name}/finalize"
         ).json()
 
-    def evaluate(
-        self,
-        dataset: Dataset,
-        task_type: enums.TaskType,
-        evaluation_type: enums.EvaluationType = None,
-        **kwargs,
-    ) -> Evaluation:
-        settings = schemas.EvaluationSettings(
-            model=self.name,
-            dataset=dataset,
-            evaluation_type=evaluation_type,
-        )
-
     def evaluate_classification(
         self,
         dataset: Dataset,
@@ -500,23 +487,14 @@ class Model:
             and get the metrics of it upon completion
         """
 
-        settings = schemas.EvaluationSettings(
+        evaluation = schemas.EvaluationSettingsSettings(
             model=self.name,
             dataset=dataset.name,
             evaluation_type=enums.EvaluationType.CLF,
-            target_type=target_type,
         )
 
-        payload = {
-            "settings": {
-                "model": self.name,
-                "dataset": dataset.name,
-                "evaluation_type": enums.EvaluationType.CLF,
-            }
-        }
-
         resp = self.client._requests_post_rel_host(
-            "evaluations/clf-metrics", json=payload
+            "evaluations/clf-metrics", json=asdict(evaluation)
         ).json()
 
         return Evaluation(
@@ -527,18 +505,15 @@ class Model:
         )
 
     def evaluate_semantic_segmentation(self, dataset: Dataset) -> Evaluation:
-        settings = schemas.EvaluationSettings()
-
-        payload = {
-            "settings": {
-                "model": self.name,
-                "dataset": dataset.name,
-                "evaluation_type": enums.EvaluationType.CLF,
-            }
-        }
+        evaluation = schemas.EvaluationSettings(
+            model=self.name,
+            dataset=dataset.name,
+            evaluation_type=enums.EvaluationType.CLF,
+        )
 
         resp = self.client._requests_post_rel_host(
-            "evaluations/semantic-segmentation-metrics", json=payload
+            "evaluations/semantic-segmentation-metrics",
+            json=asdict(evaluation),
         ).json()
 
         return Evaluation(
@@ -552,7 +527,7 @@ class Model:
         self,
         dataset: "Dataset",
         task_type: TaskType = None,
-        target_type: AnnotationType = None,
+        annotation_type: AnnotationType = AnnotationType.NONE,
         iou_thresholds: List[float] = None,
         ious_to_keep: List[float] = None,
         min_area: float = None,
@@ -560,37 +535,43 @@ class Model:
         label_key: Optional[str] = None,
     ) -> Evaluation:
 
-        parameters = []
+        constraints = []
+
+        # Annotation type to perform AP over.
+        constraints.append(
+            schemas.Metadatum(key="annotation_type", value=annotation_type)
+        )
+
+        # Geometric constraints
         if min_area:
-            parameters.append(
+            constraints.append(
                 schemas.Metadatum(key="min_area", value=min_area)
             )
         if max_area:
-            parameters.append(
+            constraints.append(
                 schemas.Metadatum(key="max_area", value=max_area)
             )
+
+        # Label constraints
         if label_key:
-            parameters.append(
+            constraints.append(
                 schemas.Metadatum(key="label_key", value=label_key)
             )
 
-        settings = schemas.EvaluationSettings(
+        thresholds = dict()
+        thresholds["iou_thresholds_to_compute"] = iou_thresholds
+        thresholds["iou_thresholds_to_keep"] = ious_to_keep
+
+        evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
             evaluation_type=enums.EvaluationType.AP,
-            task_type=task_type,
-            target_type=target_type,
-            parameters=parameters,
+            constraints=constraints,
+            thresholds=thresholds,
         )
-        payload = {"settings": json.dumps(settings)}
-
-        if iou_thresholds is not None:
-            payload["iou_thresholds"] = iou_thresholds
-        if ious_to_keep is not None:
-            payload["ious_to_keep"] = ious_to_keep
 
         resp = self.client._requests_post_rel_host(
-            "evaluations/ap-metrics", json=payload
+            "evaluations/ap-metrics", json=asdict(evaluation)
         ).json()
 
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values

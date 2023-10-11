@@ -2,7 +2,6 @@ from .core import (
     Annotation,
     Dataset,
     Datum,
-    Evaluation,
     GroundTruth,
     Info,
     Label,
@@ -11,6 +10,11 @@ from .core import (
     Prediction,
 )
 from .datatypes import ImageMetadata, VideoFrameMetadata
+from .evaluation import (
+    EvaluationConstraints,
+    EvaluationSettings,
+    EvaluationThresholds,
+)
 from .geometry import (
     BasicPolygon,
     BoundingBox,
@@ -42,5 +46,7 @@ __all__ = [
     "Raster",
     "Metadatum",
     "GeoJSON",
-    "Evaluation",
+    "EvaluationSettings",
+    "EvaluationConstraints",
+    "EvaluationThresholds",
 ]

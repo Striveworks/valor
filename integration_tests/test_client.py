@@ -31,7 +31,7 @@ from velour.schemas import (
     GroundTruth,
     ImageMetadata,
     Label,
-    MetaDatum,
+    Metadatum,
     MultiPolygon,
     Point,
     Polygon,
@@ -105,16 +105,16 @@ def random_mask(img: ImageMetadata) -> np.ndarray:
 def metadata():
     """Some sample metadata of different types"""
     return [
-        # MetaDatum(
+        # Metadatum(
         #     key="metadatum name1",
         #     value=GeoJSON(
         #         type="Point",
         #         coordinates=[-48.23456, 20.12345],
         #     )
         # ),
-        MetaDatum(key="metadatum1", value="temporary"),
-        MetaDatum(key="metadatum2", value="a string"),
-        MetaDatum(key="metadatum3", value=0.45),
+        Metadatum(key="metadatum1", value="temporary"),
+        Metadatum(key="metadatum2", value="a string"),
+        Metadatum(key="metadatum3", value=0.45),
     ]
 
 
@@ -787,18 +787,18 @@ def test_create_image_dataset_with_href_and_description(
         select(models.Dataset.id).where(models.Dataset.name == dset_name)
     )
     assert href == db.scalar(
-        select(models.MetaDatum.string_value).where(
+        select(models.Metadatum.string_value).where(
             and_(
-                models.MetaDatum.dataset_id == dataset_id,
-                models.MetaDatum.key == "href",
+                models.Metadatum.dataset_id == dataset_id,
+                models.Metadatum.key == "href",
             )
         )
     )
     assert description == db.scalar(
-        select(models.MetaDatum.string_value).where(
+        select(models.Metadatum.string_value).where(
             and_(
-                models.MetaDatum.dataset_id == dataset_id,
-                models.MetaDatum.key == "description",
+                models.Metadatum.dataset_id == dataset_id,
+                models.Metadatum.key == "description",
             )
         )
     )
@@ -813,18 +813,18 @@ def test_create_model_with_href_and_description(client: Client, db: Session):
         select(models.Model.id).where(models.Model.name == model_name)
     )
     assert href == db.scalar(
-        select(models.MetaDatum.string_value).where(
+        select(models.Metadatum.string_value).where(
             and_(
-                models.MetaDatum.model_id == model_id,
-                models.MetaDatum.key == "href",
+                models.Metadatum.model_id == model_id,
+                models.Metadatum.key == "href",
             )
         )
     )
     assert description == db.scalar(
-        select(models.MetaDatum.string_value).where(
+        select(models.Metadatum.string_value).where(
             and_(
-                models.MetaDatum.model_id == model_id,
-                models.MetaDatum.key == "description",
+                models.Metadatum.model_id == model_id,
+                models.Metadatum.key == "description",
             )
         )
     )
@@ -1654,7 +1654,7 @@ def test_evaluate_semantic_segmentation(
 
 
 def test_create_tabular_dataset_and_add_groundtruth(
-    client: Client, db: Session, metadata: list[MetaDatum]
+    client: Client, db: Session, metadata: list[Metadatum]
 ):
     dataset = Dataset.create(client, name=dset_name)
     assert isinstance(dataset, Dataset)
@@ -1858,7 +1858,9 @@ def test_evaluate_tabular_clf(
     # test
     model = Model.create(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset)
+        model.evaluate_classification(
+            dataset=dataset, task_type=TaskType.CLASSIFICATION
+        )
     assert "has not been finalized" in str(exc_info)
 
     dataset.finalize()
@@ -2008,7 +2010,7 @@ def test_evaluate_tabular_clf(
 
 # @TODO: Implement metadata querying + geojson
 # def test_create_images_with_metadata(
-#     client: Client, db: Session, metadata: list[MetaDatum], rect1: BoundingBox
+#     client: Client, db: Session, metadata: list[Metadatum], rect1: BoundingBox
 # ):
 #     dataset = Dataset.create(client, dset_name)
 
@@ -2098,8 +2100,8 @@ def test_evaluate_tabular_clf(
 #                 task_type=TaskType.CLASSIFICATION,
 #                 labels=[Label(key="class", value=str(t))],
 #                 metadata=[
-#                     MetaDatum(key="md1", value=f"md1-val{i % 3}"),
-#                     MetaDatum(key="md2", value=f"md2-val{i % 4}"),
+#                     Metadatum(key="md1", value=f"md1-val{i % 3}"),
+#                     Metadatum(key="md2", value=f"md2-val{i % 4}"),
 #                 ]
 #             )
 #             for i, t in enumerate(y_true)

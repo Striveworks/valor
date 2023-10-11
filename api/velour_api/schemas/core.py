@@ -11,7 +11,7 @@ from pydantic import (
     model_validator,
 )
 
-from velour_api.enums import AnnotationType, EvaluationType, TaskType
+from velour_api.enums import TaskType
 from velour_api.schemas.geometry import (
     BoundingBox,
     MultiPolygon,
@@ -261,18 +261,3 @@ def _validate_rasters(d: GroundTruth | Prediction):
                     f"Expected raster and image to have the same size, but got size {mask_size} for the mask and {image_size} for image."
                 )
     return d
-
-
-class Evaluation(BaseModel):
-    """General parameters defining any filters of the data such
-    as model, dataset, groundtruth and prediction type, model, dataset,
-    size constraints, coincidence/intersection constraints, etc.
-    """
-
-    model: str
-    dataset: str
-    evaluation_type: EvaluationType
-    task_type: TaskType
-    target_type: AnnotationType = AnnotationType.NONE
-    parameters: dict[str, Metadatum] = Field(default_factory=dict)
-    id: int | None = None

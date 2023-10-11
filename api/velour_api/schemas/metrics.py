@@ -9,30 +9,50 @@ from pydantic import (
     model_validator,
 )
 
-from velour_api.enums import JobStatus
-from velour_api.schemas.core import Evaluation
+from velour_api.enums import AnnotationType, EvaluationType, JobStatus
 from velour_api.schemas.label import Label
 from velour_api.schemas.metadata import Metadatum
 
 
-class APRequest(BaseModel):
-    """Request to compute average precision"""
+class EvaluationConstraints:
+    # type
+    target_type: AnnotationType | None = None
+    label_key: str | None = None
+    # geometric
+    min_area: float | None = None
+    max_area: float | None = None
 
-    settings: Evaluation
 
+class EvaluationThresholds:
     # (mutable defaults are ok for pydantic models)
-    iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
-    ious_to_keep: set[float] = {0.5, 0.75}
+    iou_thresholds_to_compute: list[float] | None = [
+        round(0.5 + 0.05 * i, 2) for i in range(10)
+    ]
+    iou_thresholds_to_keep: set[float] | None = {0.5, 0.75}
 
     @model_validator(mode="after")
     @classmethod
     def check_ious(cls, values):
-        for iou in values.ious_to_keep:
-            if iou not in values.iou_thresholds:
+        for iou in values.iou_thresholds_to_keep:
+            if iou not in values.iou_thresholds_to_compute:
                 raise ValueError(
-                    "`ious_to_keep` must be contained in `iou_thresholds`"
+                    "`iou_thresholds_to_keep` must be contained in `iou_thresholds_to_compute`"
                 )
         return values
+
+
+class EvaluationSettings(BaseModel):
+    """General parameters defining any filters of the data such
+    as model, dataset, groundtruth and prediction type, model, dataset,
+    size constraints, coincidence/intersection constraints, etc.
+    """
+
+    model: str
+    dataset: str
+    evaluation_type: EvaluationType
+    constraints: EvaluationConstraints | None = None
+    thresholds: EvaluationThresholds | None = None
+    id: int | None = None
 
 
 class CreateAPMetricsResponse(BaseModel):
@@ -57,14 +77,6 @@ class Job(BaseModel):
     uid: str = Field(default_factory=lambda: str(uuid4()))
     status: JobStatus = JobStatus.PENDING
     model_config = ConfigDict(extra="allow")
-
-
-class ClfMetricsRequest(BaseModel):
-    settings: Evaluation
-
-
-class SemanticSegmentationMetricsRequest(BaseModel):
-    settings: Evaluation
 
 
 class Metric(BaseModel):

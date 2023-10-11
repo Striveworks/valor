@@ -51,20 +51,20 @@ def create_prediction(
 def create_clf_evaluation(
     *,
     db: Session,
-    request_info: schemas.ClfMetricsRequest,
+    settings: schemas.EvaluationSettings,
 ) -> schemas.CreateClfMetricsResponse:
     """create clf evaluation"""
 
     # get disjoint label sets
     missing_pred_keys, ignored_pred_keys = get_disjoint_keys(
         db=db,
-        dataset_name=request_info.settings.dataset,
-        model_name=request_info.settings.model,
+        dataset_name=settings.dataset,
+        model_name=settings.model,
         task_type=enums.TaskType.CLASSIFICATION,
     )
 
     # create evaluation setting
-    job_id = backend.create_clf_evaluation(db, request_info)
+    job_id = backend.create_clf_evaluation(db, settings)
 
     # create response
     return schemas.CreateClfMetricsResponse(
@@ -78,13 +78,13 @@ def create_clf_evaluation(
 def compute_clf_metrics(
     *,
     db: Session,
-    request_info: schemas.ClfMetricsRequest,
+    settings: schemas.EvaluationSettings,
     job_id: int,
 ):
     """compute clf metrics"""
     backend.create_clf_metrics(
         db,
-        request_info=request_info,
+        settings=settings,
         evaluation_settings_id=job_id,
     )
 
@@ -93,22 +93,22 @@ def compute_clf_metrics(
 def create_semantic_segmentation_evaluation(
     *,
     db: Session,
-    request_info: schemas.SemanticSegmentationMetricsRequest,
+    settings: schemas.EvaluationSettings,
 ) -> schemas.CreateSemanticSegmentationMetricsResponse:
     """create a semantic segmentation evaluation"""
 
     # get disjoint label sets
     missing_pred_labels, ignored_pred_labels = get_disjoint_labels(
         db=db,
-        dataset_name=request_info.settings.dataset,
-        model_name=request_info.settings.model,
+        dataset_name=settings.dataset,
+        model_name=settings.model,
         task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
         gt_type=enums.AnnotationType.RASTER,
         pd_type=enums.AnnotationType.RASTER,
     )
 
     # create evaluation setting
-    job_id = backend.create_semantic_segmentation_evaluation(db, request_info)
+    job_id = backend.create_semantic_segmentation_evaluation(db, settings)
 
     # create response
     return schemas.CreateSemanticSegmentationMetricsResponse(
@@ -122,12 +122,12 @@ def create_semantic_segmentation_evaluation(
 def compute_semantic_segmentation_metrics(
     *,
     db: Session,
-    request_info: schemas.SemanticSegmentationMetricsRequest,
+    settings: schemas.EvaluationSettings,
     job_id: int,
 ):
     backend.create_semantic_segmentation_metrics(
         db,
-        request_info=request_info,
+        settings=settings,
         evaluation_settings_id=job_id,
     )
 
@@ -136,18 +136,18 @@ def compute_semantic_segmentation_metrics(
 def create_ap_evaluation(
     *,
     db: Session,
-    request_info: schemas.APRequest,
+    settings: schemas.EvaluationSettings,
 ) -> schemas.CreateAPMetricsResponse:
     """create ap evaluation"""
 
     # create evaluation setting
-    job_id, gt_type, pd_type = backend.create_ap_evaluation(db, request_info)
+    job_id, gt_type, pd_type = backend.create_ap_evaluation(db, settings)
 
     # get disjoint label sets
     missing_pred_labels, ignored_pred_labels = get_disjoint_labels(
         db=db,
-        dataset_name=request_info.settings.dataset,
-        model_name=request_info.settings.model,
+        dataset_name=settings.dataset,
+        model_name=settings.model,
         task_types=[
             enums.TaskType.DETECTION,
             enums.TaskType.INSTANCE_SEGMENTATION,
@@ -168,12 +168,12 @@ def create_ap_evaluation(
 def compute_ap_metrics(
     *,
     db: Session,
-    request_info: schemas.APRequest,
+    settings: schemas.EvaluationSettings,
     job_id: int,
 ):
     """compute ap metrics"""
     backend.create_ap_metrics(
         db=db,
-        request_info=request_info,
+        settings=settings,
         evaluation_settings_id=job_id,
     )
