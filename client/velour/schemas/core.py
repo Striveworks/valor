@@ -235,7 +235,7 @@ class GroundTruth:
             self.datum = Datum(**self.datum)
         if not isinstance(self.datum, Datum):
             raise TypeError(
-                f"datum should be of type `velour.schemas.Datum`., not {type(self.datum)}"
+                f"datum should be of type `velour.schemas.Datum`, not {type(self.datum)}."
             )
 
         # validate annotations
