@@ -62,3 +62,5 @@ def test_generate_segmentation_data(client: Client):
         assert (
             sample_image_size == sample_mask_size
         ), f"Image is size {sample_image_size}, but mask is size {sample_mask_size}"
+
+    client.delete_dataset(dset_name)
