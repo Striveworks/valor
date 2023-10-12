@@ -71,7 +71,7 @@ def test_generate_segmentation_data(client: Client):
     client.delete_dataset(dset_name, wait_for_deletion=True)
 
 
-def test_ggenerate_prediction_data(client: Client):
+def test_generate_prediction_data(client: Client):
     """Check that our generated predictions correctly matches our input parameters"""
 
     n_images = 2
