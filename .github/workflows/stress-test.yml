@@ -94,7 +94,7 @@ jobs:
       - run: pip install coverage
       - uses: actions/download-artifact@v3
         with:
-          name: .coverage.integration-stress-testss
+          name: .coverage.integration-stress-tests
       - run: coverage combine
       - run: coverage report
       # https://nedbatchelder.com/blog/202209/making_a_coverage_badge.html
