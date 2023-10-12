@@ -126,7 +126,7 @@ class Client:
             if timeout:
                 i = 0
                 while i <= timeout:
-                    if self.get_dataset_status(name) == "not_found":
+                    if self.get_dataset_status(name) == State.NONE:
                         break
                     else:
                         time.sleep(1)
