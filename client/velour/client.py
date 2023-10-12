@@ -114,11 +114,13 @@ class Client:
             self._requests_delete_rel_host(f"datasets/{name}")
 
             if wait_for_deletion:
-                while (_ := 0) < 30:
+                i = 0
+                while i < 30:
                     if self.get_dataset_status(name) == "not_found":
                         break
                     else:
                         time.sleep(1)
+                        i += 1
 
         except ClientException as e:
             if "does not exist" not in str(e):
