@@ -2130,9 +2130,8 @@ def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
 def test_get_dataset_status(
     client: Client, img1: ImageMetadata, gt_dets1: list
 ):
-    # throws an http error since the dataset doesn't exist
-    with pytest.raises(Exception):
-        status = client.get_dataset_status(dset_name)
+    status = client.get_dataset_status(dset_name)
+    assert status == "not_found"
 
     dataset = Dataset.create(client, dset_name)
 
@@ -2147,9 +2146,8 @@ def test_get_dataset_status(
 
     client.delete_dataset(dset_name, wait_for_deletion=True)
 
-    # throws an http error since the dataset doesn't exist
-    with pytest.raises(Exception):
-        status = client.get_dataset_status(dset_name)
+    status = client.get_dataset_status(dset_name)
+    assert status == "not_found"
 
 
 # @TODO: Implement metadata querying + geojson
