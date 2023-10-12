@@ -10,7 +10,7 @@ from urllib.parse import urljoin
 import requests
 
 from velour import schemas
-from velour.enums import AnnotationType, JobStatus, TaskType
+from velour.enums import AnnotationType, JobStatus, State, TaskType
 
 
 class ClientException(Exception):
@@ -109,13 +109,23 @@ class Client:
     def get_labels(self) -> List[schemas.Label]:
         return self._requests_get_rel_host("labels").json()
 
-    def delete_dataset(self, name: str, wait_for_deletion: bool = False):
+    def delete_dataset(self, name: str, timeout: int = 0) -> None:
+        """
+        Delete a dataset using FastAPI's BackgroundProcess
+
+        Parameters
+        ----------
+        name
+            The name of the dataset to be deleted
+        timeout
+            The number of seconds to wait in order to confirm that the dataset was deleted
+        """
         try:
             self._requests_delete_rel_host(f"datasets/{name}")
 
-            if wait_for_deletion:
+            if timeout:
                 i = 0
-                while i < 30:
+                while i <= timeout:
                     if self.get_dataset_status(name) == "not_found":
                         break
                     else:
@@ -136,13 +146,13 @@ class Client:
     def get_dataset_status(
         self,
         dataset_name: str,
-    ) -> dict:
+    ) -> State:
         try:
             resp = self._requests_get_rel_host(
                 f"datasets/{dataset_name}/status"
             ).json()
         except Exception:
-            resp = "not_found"
+            resp = State.NONE
 
         return resp
 

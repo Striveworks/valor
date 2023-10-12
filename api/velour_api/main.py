@@ -250,7 +250,7 @@ def get_dataset_status(
     try:
         resp = crud.get_backend_state(dataset_name=dataset_name)
         return resp
-    except exceptions.ModelDoesNotExistError as e:
+    except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
