@@ -68,7 +68,7 @@ def test_generate_segmentation_data(client: Client):
             sample_image_size == sample_mask_size
         ), f"Image is size {sample_image_size}, but mask is size {sample_mask_size}"
 
-    client.delete_dataset(dset_name)
+    client.delete_dataset(dset_name, wait_for_deletion=True)
 
 
 def test_ggenerate_prediction_data(client: Client):
@@ -121,4 +121,4 @@ def test_ggenerate_prediction_data(client: Client):
     }
     assert len(eval_job.metrics) > 0
 
-    client.delete_dataset(dset_name)
+    client.delete_dataset(dset_name, wait_for_deletion=True)

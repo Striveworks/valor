@@ -109,9 +109,14 @@ class Client:
     def get_labels(self) -> List[schemas.Label]:
         return self._requests_get_rel_host("labels").json()
 
-    def delete_dataset(self, name: str):
+    def delete_dataset(self, name: str, wait_for_deletion: bool = False):
         try:
             self._requests_delete_rel_host(f"datasets/{name}")
+
+            if wait_for_deletion:
+                while self.get_dataset_status(name) != "not_found":
+                    time.sleep(1)
+
         except ClientException as e:
             if "does not exist" not in str(e):
                 raise e
@@ -127,9 +132,12 @@ class Client:
         self,
         dataset_name: str,
     ) -> dict:
-        resp = self._requests_get_rel_host(
-            f"datasets/{dataset_name}/status"
-        ).json()
+        try:
+            resp = self._requests_get_rel_host(
+                f"datasets/{dataset_name}/status"
+            ).json()
+        except Exception:
+            resp = "not_found"
 
         return resp
 
