@@ -14,5 +14,5 @@ def client():
 def test_large_dataset_upload(client: Client):
     """Tests the upload of a large dataset to velour (runtime: ~20 minutes)"""
     test_generate_segmentation_data(
-        n_images=1000, n_annotations=10, n_labels=2
+        client=client, n_images=1000, n_annotations=10, n_labels=2
     )
