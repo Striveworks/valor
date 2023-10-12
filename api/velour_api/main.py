@@ -239,18 +239,17 @@ def get_dataset(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-app.get(
+@app.get(
     "/datasets/{dataset_name}/status",
     dependencies=[Depends(token_auth_scheme)],
-    tags=["Models"],
+    tags=["Datasets"],
 )
-
-
 def get_dataset_status(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> enums.State:
     try:
-        return crud.get_backend_state(dataset_name=dataset_name)
+        resp = crud.get_backend_state(dataset_name=dataset_name)
+        return resp
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

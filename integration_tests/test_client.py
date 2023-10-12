@@ -1,7 +1,7 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
-
+# %%
 import io
 import json
 import time
@@ -2125,6 +2125,31 @@ def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
     ), "Bounding box doesn't exist on fetched gt"
 
     client.delete_dataset(dset_name)
+
+
+def test_get_dataset_status(
+    client: Client, img1: ImageMetadata, gt_dets1: list
+):
+    # throws an http error since the dataset doesn't exist
+    with pytest.raises(Exception):
+        status = client.get_dataset_status(dset_name)
+
+    dataset = Dataset.create(client, dset_name)
+
+    assert client.get_dataset_status(dset_name) == "none"
+
+    gt = gt_dets1[0]
+
+    dataset.add_groundtruth(gt)
+    dataset.finalize()
+    status = client.get_dataset_status(dset_name)
+    assert status == "ready"
+
+    client.delete_dataset(dset_name)
+
+    # throws an http error since the dataset doesn't exist
+    with pytest.raises(Exception):
+        status = client.get_dataset_status(dset_name)
 
 
 # @TODO: Implement metadata querying + geojson

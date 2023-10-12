@@ -123,6 +123,16 @@ class Client:
             if "does not exist" not in str(e):
                 raise e
 
+    def get_dataset_status(
+        self,
+        dataset_name: str,
+    ) -> dict:
+        resp = self._requests_get_rel_host(
+            f"datasets/{dataset_name}/status"
+        ).json()
+
+        return resp
+
 
 class Evaluation:
     def __init__(
