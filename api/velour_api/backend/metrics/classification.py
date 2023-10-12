@@ -9,7 +9,7 @@ from velour_api.backend.metrics.core import (
     create_metric_mappings,
     get_or_create_row,
 )
-from velour_api.enums import AnnotationType, TaskType
+from velour_api.enums import EvaluationType, TaskType
 
 
 # @TODO: Implement metadata filtering using `ops.BackendQuerys`
@@ -636,8 +636,8 @@ def create_clf_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "task_type": TaskType.CLASSIFICATION,
-            "target_type": AnnotationType.NONE,
+            "type": EvaluationType.CLF,
+            "constraints": None,
         },
     )
 

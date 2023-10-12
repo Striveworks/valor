@@ -8,7 +8,7 @@ from velour_api.backend.metrics.core import (
     create_metric_mappings,
     get_or_create_row,
 )
-from velour_api.enums import AnnotationType, TaskType
+from velour_api.enums import AnnotationType, EvaluationType, TaskType
 from velour_api.schemas import Label
 from velour_api.schemas.metrics import (
     EvaluationSettings,
@@ -193,8 +193,7 @@ def create_semantic_segmentation_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "task_type": TaskType.SEMANTIC_SEGMENTATION,
-            "target_type": AnnotationType.NONE,
+            "type": EvaluationType.DICE,
         },
     )
 

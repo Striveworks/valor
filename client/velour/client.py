@@ -10,7 +10,7 @@ from urllib.parse import urljoin
 import requests
 
 from velour import enums, schemas
-from velour.enums import AnnotationType, JobStatus, TaskType
+from velour.enums import AnnotationType, JobStatus
 
 
 class ClientException(Exception):
@@ -469,7 +469,6 @@ class Model:
     def evaluate_classification(
         self,
         dataset: Dataset,
-        task_type: enums.TaskType,
     ) -> Evaluation:
         """Start a classification evaluation job
 
@@ -487,7 +486,7 @@ class Model:
             and get the metrics of it upon completion
         """
 
-        evaluation = schemas.EvaluationSettingsSettings(
+        evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
             evaluation_type=enums.EvaluationType.CLF,
@@ -526,7 +525,6 @@ class Model:
     def evaluate_ap(
         self,
         dataset: "Dataset",
-        task_type: TaskType = None,
         annotation_type: AnnotationType = AnnotationType.NONE,
         iou_thresholds: List[float] = None,
         ious_to_keep: List[float] = None,

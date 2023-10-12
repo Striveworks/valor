@@ -515,10 +515,14 @@ def create_ap_evaluation(
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
 
-    if not settings.const:
-        target_type = gt_type if gt_type < pd_type else pd_type
+    if not settings.constraints.annotation_type:
+        settings.constraints.annotation_type = (
+            gt_type if gt_type < pd_type else pd_type
+        )
     else:
-        target_type = settings.constraints.annotation_type
+        settings.constraints.annotation_type = (
+            settings.constraints.annotation_type
+        )
 
     es = get_or_create_row(
         db,
@@ -526,11 +530,8 @@ def create_ap_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "task_type": enums.TaskType.DETECTION,
-            "target_type": target_type,
-            "label_key": settings.constraints.label_key,
-            "min_area": settings.constraints.min_area,
-            "max_area": settings.constraints.max_area,
+            "type": enums.EvaluationType.AP,
+            "constraints": settings.constraints.model_dump(),
         },
     )
 
@@ -546,21 +547,15 @@ def create_ap_metrics(
     Intended to run as background
     """
 
-    # @TODO: This is hacky, fix schemas.EvaluationSettings
-    label_key = settings.constraints.label_key
-    min_area = settings.constraints.min_area
-    max_area = settings.constraints.max_area
-
-    #
     dataset = core.get_dataset(db, settings.dataset)
     model = core.get_model(db, settings.model)
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
 
     if not settings.constraints.annotation_type:
-        target_type = gt_type if gt_type < pd_type else pd_type
-    else:
-        target_type = settings.constraints.annotation_type
+        settings.constraints.annotation_type = (
+            gt_type if gt_type < pd_type else pd_type
+        )
 
     metrics = compute_ap_metrics(
         db=db,
@@ -568,12 +563,12 @@ def create_ap_metrics(
         model=model,
         iou_thresholds=settings.thresholds.iou_thresholds_to_compute,
         ious_to_keep=settings.thresholds.iou_thresholds_to_keep,
-        label_key=label_key,
-        target_type=target_type,
+        label_key=settings.constraints.label_key,
+        target_type=settings.constraints.annotation_type,
         gt_type=gt_type,
         pd_type=pd_type,
-        min_area=min_area,
-        max_area=max_area,
+        min_area=settings.constraints.min_area,
+        max_area=settings.constraints.max_area,
     )
 
     metric_mappings = create_metric_mappings(

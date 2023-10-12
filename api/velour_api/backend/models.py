@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from velour_api.backend.database import Base
-from velour_api.enums import AnnotationType, TaskType
+from velour_api.enums import AnnotationType, EvaluationType
 
 
 class Label(Base):
@@ -147,7 +147,9 @@ class Model(Base):
     annotations: Mapped[list[Annotation]] = relationship(
         cascade="all, delete-orphan"
     )
-    evaluation = relationship("Evaluation", cascade="all, delete")
+    evaluation: Mapped[list["Evaluation"]] = relationship(
+        cascade="all, delete"
+    )
 
 
 class Dataset(Base):
@@ -160,8 +162,8 @@ class Dataset(Base):
 
     # relationships
     datums: Mapped[list[Datum]] = relationship(cascade="all, delete")
-    evaluation = relationship(
-        "Evaluation", cascade="all, delete", back_populates="dataset"
+    evaluation: Mapped[list["Evaluation"]] = relationship(
+        cascade="all, delete"
     )
 
 
@@ -171,13 +173,12 @@ class Evaluation(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
-    task_type: Mapped[str] = mapped_column(Enum(TaskType))
-    target_type: Mapped[str] = mapped_column(Enum(AnnotationType))
-    parameters = mapped_column(JSONB)
+    type: Mapped[str] = mapped_column(Enum(EvaluationType))
+    constraints = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
 
     # relationships
-    dataset = relationship(Dataset, viewonly=True)
+    dataset = relationship(Dataset, back_populates="evaluation")
     model = relationship(Model, back_populates="evaluation")
     metrics: Mapped[list["Metric"]] = relationship(
         "Metric", cascade="all, delete"
@@ -196,9 +197,7 @@ class Metric(Base):
     )
     type: Mapped[str] = mapped_column()
     value: Mapped[float] = mapped_column(nullable=True)
-    parameters = mapped_column(JSONB)  # {"label": ..., "iou": ..., }
     evaluation_id: Mapped[int] = mapped_column(ForeignKey("evaluation.id"))
-    group_by = mapped_column(JSONB)
 
     # relationships
     label = relationship(Label)

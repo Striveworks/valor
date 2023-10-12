@@ -38,7 +38,7 @@ from velour.schemas import (
     Prediction,
     Raster,
 )
-from velour_api import crud, exceptions
+from velour_api import exceptions
 from velour_api.backend import jobs, models
 
 dset_name = "test_dataset"
@@ -184,13 +184,13 @@ def db(client: Client) -> Session:
 
     for model in client.get_models():
         try:
-            crud.delete(db=sess, model_name=model["name"])
+            client.delete_model(model["name"])
         except exceptions.ModelDoesNotExistError:
             continue
 
     for dataset in client.get_datasets():
         try:
-            crud.delete(db=sess, dataset_name=dataset["name"])
+            client.delete_dataset(dataset["name"])
         except exceptions.DatasetDoesNotExistError:
             continue
 
@@ -786,22 +786,15 @@ def test_create_image_dataset_with_href_and_description(
     dataset_id = db.scalar(
         select(models.Dataset.id).where(models.Dataset.name == dset_name)
     )
-    assert href == db.scalar(
-        select(models.Metadatum.string_value).where(
-            and_(
-                models.Metadatum.dataset_id == dataset_id,
-                models.Metadatum.key == "href",
-            )
-        )
+    assert isinstance(dataset_id, int)
+
+    dataset_meta = db.scalar(
+        select(models.Dataset.meta).where(models.Dataset.name == dset_name)
     )
-    assert description == db.scalar(
-        select(models.Metadatum.string_value).where(
-            and_(
-                models.Metadatum.dataset_id == dataset_id,
-                models.Metadatum.key == "description",
-            )
-        )
-    )
+    assert dataset_meta == {
+        "href": "http://a.com/b",
+        "description": "a description",
+    }
 
 
 def test_create_model_with_href_and_description(client: Client, db: Session):
@@ -812,22 +805,15 @@ def test_create_model_with_href_and_description(client: Client, db: Session):
     model_id = db.scalar(
         select(models.Model.id).where(models.Model.name == model_name)
     )
-    assert href == db.scalar(
-        select(models.Metadatum.string_value).where(
-            and_(
-                models.Metadatum.model_id == model_id,
-                models.Metadatum.key == "href",
-            )
-        )
+    assert isinstance(model_id, int)
+
+    model_meta = db.scalar(
+        select(models.Model.meta).where(models.Model.name == model_name)
     )
-    assert description == db.scalar(
-        select(models.Metadatum.string_value).where(
-            and_(
-                models.Metadatum.model_id == model_id,
-                models.Metadatum.key == "description",
-            )
-        )
-    )
+    assert model_meta == {
+        "href": "http://a.com/b",
+        "description": "a description",
+    }
 
 
 def test_create_image_dataset_with_detections(
@@ -1390,9 +1376,10 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "task_type": "detection",
-        "target_type": "box",
-        "label_key": "k1",
+        "constraints": {
+            "annotation_type": "box",
+            "label_key": "k1",
+        },
     }
 
     expected_metrics = [
@@ -1449,7 +1436,6 @@ def test_evaluate_ap(
     # are not None
     eval_job_bounded_area_10_2000 = model.evaluate_ap(
         dataset=dataset,
-        task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
         label_key="k1",
@@ -1462,11 +1448,12 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "task_type": "detection",
-        "target_type": "box",
-        "label_key": "k1",
-        "min_area": 10,
-        "max_area": 2000,
+        "constraints": {
+            "annotation_type": "box",
+            "label_key": "k1",
+            "min_area": 10,
+            "max_area": 2000,
+        },
     }
     assert eval_job_bounded_area_10_2000.metrics == expected_metrics
 
@@ -1474,7 +1461,6 @@ def test_evaluate_ap(
     # min area threshold should divide the set of annotations
     eval_job_min_area_1200 = model.evaluate_ap(
         dataset=dataset,
-        task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
         label_key="k1",
@@ -1486,17 +1472,17 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "task_type": "detection",
-        "target_type": "box",
-        "label_key": "k1",
-        "min_area": 1200,
+        "constraints": {
+            "annotation_type": "box",
+            "label_key": "k1",
+            "min_area": 1200,
+        },
     }
     assert eval_job_min_area_1200.metrics != expected_metrics
 
     # check for difference with max area now dividing the set of annotations
     eval_job_max_area_1200 = model.evaluate_ap(
         dataset=dataset,
-        task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
         label_key="k1",
@@ -1508,10 +1494,11 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "task_type": "detection",
-        "target_type": "box",
-        "label_key": "k1",
-        "max_area": 1200,
+        "constraints": {
+            "annotation_type": "box",
+            "label_key": "k1",
+            "max_area": 1200,
+        },
     }
     assert eval_job_max_area_1200.metrics != expected_metrics
 
@@ -1519,7 +1506,6 @@ def test_evaluate_ap(
     # except now has an upper bound
     eval_job_bounded_area_1200_1800 = model.evaluate_ap(
         dataset=dataset,
-        task_type="detection",
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
         label_key="k1",
@@ -1532,11 +1518,12 @@ def test_evaluate_ap(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "task_type": "detection",
-        "target_type": "box",
-        "label_key": "k1",
-        "min_area": 1200,
-        "max_area": 1800,
+        "constraints": {
+            "annotation_type": "box",
+            "label_key": "k1",
+            "min_area": 1200,
+            "max_area": 1800,
+        },
     }
     assert eval_job_bounded_area_1200_1800.metrics != expected_metrics
     assert (
@@ -1858,9 +1845,7 @@ def test_evaluate_tabular_clf(
     # test
     model = Model.create(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(
-            dataset=dataset, task_type=TaskType.CLASSIFICATION
-        )
+        model.evaluate_classification(dataset=dataset)
     assert "has not been finalized" in str(exc_info)
 
     dataset.finalize()

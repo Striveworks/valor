@@ -469,12 +469,12 @@ def create_ap_metrics(
 ) -> schemas.CreateAPMetricsResponse:
     try:
         # create evaluation
-        resp = crud.create_ap_evaluation(db=db, request_info=settings)
+        resp = crud.create_ap_evaluation(db=db, settings=settings)
         # add metric computation to background tasks
         background_tasks.add_task(
             crud.compute_ap_metrics,
             db=db,
-            request_info=settings,
+            settings=settings,
             job_id=resp.job_id,
         )
         # return AP Response
@@ -503,12 +503,12 @@ def create_clf_metrics(
 ) -> schemas.CreateClfMetricsResponse:
     try:
         # create evaluation
-        resp = crud.create_clf_evaluation(db=db, request_info=settings)
+        resp = crud.create_clf_evaluation(db=db, settings=settings)
         # add metric computation to background tasks
         background_tasks.add_task(
             crud.compute_clf_metrics,
             db=db,
-            request_info=settings,
+            settings=settings,
             job_id=resp.job_id,
         )
         # return Clf Response
@@ -538,14 +538,14 @@ def create_semantic_segmentation_metrics(
     try:
         # create evaluation
         resp = crud.create_semantic_segmentation_evaluation(
-            db=db, request_info=settings
+            db=db, settings=settings
         )
 
         # add metric computation to background tasks
         background_tasks.add_task(
             crud.compute_semantic_segmentation_metrics,
             db=db,
-            request_info=settings,
+            settings=settings,
             job_id=resp.job_id,
         )
         return resp

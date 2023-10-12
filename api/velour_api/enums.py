@@ -115,3 +115,4 @@ class State(str, Enum):
 class EvaluationType(str, Enum):
     CLF = "classification"
     AP = "average-precision"
+    DICE = "semantic-ap"
