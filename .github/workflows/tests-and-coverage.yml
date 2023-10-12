@@ -74,6 +74,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::724664234782:role/Striveworks-Role-github_runner_npe
+          aws-region: us-east-1
+          mask-aws-account-id: "false"
       - uses: aws-actions/amazon-ecr-login@v1
         id: login-ecr
       - name: login to ECR
