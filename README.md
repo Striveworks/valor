@@ -56,7 +56,7 @@ conda activate velour_api_env
 
 ```
 
-Install the `api` directory in bash (note: may not work with zsh):
+Install the `api` directory in bash (note: may not work in zsh):
 
 ```bash
 
@@ -83,7 +83,7 @@ make start-server
 
 ### 5. (Optional) Setup pgAdmin to debug postgis
 
-You can use the free pgAdmin utility to debug your postgis tables as you code. Start by [installing pgAdmin](https://www.pgadmin.org/download/), then using `Object > Register > Server` to connect to your postgis container:
+You can use the free pgAdmin utility to debug your postgis tables as you code. Start by [installing pgAdmin](https://www.pgadmin.org/download/), then select `Object > Register > Server` to connect to your postgis container:
 - *Host name/address*: 0.0.0.0
 - *Port*: 5432
 - *Maintenance database*: postgres
