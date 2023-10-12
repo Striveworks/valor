@@ -28,7 +28,7 @@ def client():
 def test_generate_segmentation_data(client: Client):
     """Check that our generated dataset correctly matches our input parameters"""
 
-    n_images = 10
+    n_images = 1000
     n_annotations = 10
     n_labels = 2
 
