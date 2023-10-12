@@ -35,7 +35,7 @@ There are two ways to develop locally:
 1. *Run everything in Docker*: This method is easier to setup and mirrors how velour will be used in production, but prevents you from debugging `api/*` directly.
 2. *Run postgis and redis in Docker, but run the API service locally*: Slightly more difficult to setup, but allows you to debug `api/*` as you code.
 
-#### Approach #1: Running everything in Docker
+#### Approach #1: Run everything in Docker
 
 Simply run:
 
@@ -47,7 +47,7 @@ make dev-env
 
 #### Approach #2: Run the API service locally
 
-Make or activate a python 3.10+ environment:
+Make and/or activate a python 3.10+ environment:
 
 ```shell
 
@@ -83,7 +83,7 @@ make start-server
 
 ### 5. (Optional) Setup pgAdmin to debug postgis
 
-You can use the free pgAdmin utility to debug your postgis tables as you code. Start by [installing pgAdmin](https://www.pgadmin.org/download/), then select `Object > Register > Server` to connect to your postgis container:
+You can use the pgAdmin utility to debug your postgis tables as you code. Start by [installing pgAdmin](https://www.pgadmin.org/download/), then select `Object > Register > Server` to connect to your postgis container:
 - *Host name/address*: 0.0.0.0
 - *Port*: 5432
 - *Maintenance database*: postgres
