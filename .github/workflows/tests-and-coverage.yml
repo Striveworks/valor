@@ -13,6 +13,8 @@ env:
   AWS_REGION: us-east-1
 
 jobs:
+  # this job is necessary to set up docker auth for the service containers for the
+  # backend functional test
   login-to-amazon-ecr:
     runs-on: ubuntu-latest
     steps:
