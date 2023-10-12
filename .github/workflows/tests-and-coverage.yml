@@ -69,14 +69,15 @@ jobs:
   #         path: api/${{ env.COVERAGE_FILE }}
 
   integration-tests:
-    needs: login-to-amazon-ecr
     env:
       COVERAGE_FILE: .coverage.integration-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: aws-actions/amazon-ecr-login@v1
+        id: login-ecr
       - name: login to ECR
-        run: aws ecr get-login-password --region us-east-1 | docker login -u ${{ needs.login-to-amazon-ecr.outputs.docker_username }} --password-stdin 724664234782.dkr.ecr.us-east-1.amazonaws.com
+        run: aws ecr get-login-password --region us-east-1 | docker login -u AWS --password-stdin 724664234782.dkr.ecr.us-east-1.amazonaws.com
       - name: setup backend test env
         run: docker compose -p velour -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
       - uses: actions/setup-python@v4
