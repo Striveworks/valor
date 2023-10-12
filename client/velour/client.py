@@ -124,13 +124,15 @@ class Client:
             self._requests_delete_rel_host(f"datasets/{name}")
 
             if timeout:
-                i = 0
-                while i <= timeout:
+                for _ in range(timeout):
                     if self.get_dataset_status(name) == State.NONE:
                         break
                     else:
                         time.sleep(1)
-                        i += 1
+                else:
+                    raise TimeoutError(
+                        "Dataset wasn't deleted within timeout interval"
+                    )
 
         except ClientException as e:
             if "does not exist" not in str(e):
