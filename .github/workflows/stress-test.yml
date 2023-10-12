@@ -1,4 +1,4 @@
-name: Run stress test
+name: Run stress tests manually via the GitHub Actions UI
 
 on:
   workflow_dispatch:
