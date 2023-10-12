@@ -1394,7 +1394,7 @@ def test_client_delete_dataset(client: Client, db: Session):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
     Dataset.create(client, dset_name)
     assert db.scalar(select(func.count(models.Dataset.name))) == 1
-    client.delete_dataset(dset_name, timeout=True)
+    client.delete_dataset(dset_name, timeout=30)
     time.sleep(1.0)
     assert db.scalar(select(func.count(models.Dataset.name))) == 0
 
@@ -2071,7 +2071,7 @@ def test_add_groundtruth(
 
     assert "raster and image to have" in str(exc_info)
 
-    client.delete_dataset(dset_name, timeout=True)
+    client.delete_dataset(dset_name, timeout=30)
 
 
 def test_get_groundtruth(
@@ -2089,7 +2089,7 @@ def test_get_groundtruth(
     except Exception as e:
         raise AssertionError(e)
 
-    client.delete_dataset(dset_name, timeout=True)
+    client.delete_dataset(dset_name, timeout=30)
 
 
 def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
@@ -2124,7 +2124,7 @@ def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
         fetched_gt.annotations[0].bounding_box is not None
     ), "Bounding box doesn't exist on fetched gt"
 
-    client.delete_dataset(dset_name, timeout=True)
+    client.delete_dataset(dset_name, timeout=30)
 
 
 def test_get_dataset_status(
@@ -2144,7 +2144,7 @@ def test_get_dataset_status(
     status = client.get_dataset_status(dset_name)
     assert status == "ready"
 
-    client.delete_dataset(dset_name, timeout=True)
+    client.delete_dataset(dset_name, timeout=30)
 
     status = client.get_dataset_status(dset_name)
     assert status == "none"
