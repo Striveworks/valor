@@ -2,7 +2,6 @@ name: Run stress tests manually via the GitHub Actions UI
 
 on:
   workflow_dispatch:
-  pull_request:
 
 permissions:
   id-token: write
