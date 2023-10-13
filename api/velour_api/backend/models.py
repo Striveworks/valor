@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from velour_api.backend.database import Base
-from velour_api.enums import AnnotationType, EvaluationType
+from velour_api.enums import AnnotationType, TaskType
 
 
 class Label(Base):
@@ -173,7 +173,7 @@ class Evaluation(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
-    type: Mapped[str] = mapped_column(Enum(EvaluationType))
+    type: Mapped[str] = mapped_column(Enum(TaskType))
     constraints = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
 

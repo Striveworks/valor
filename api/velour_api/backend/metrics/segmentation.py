@@ -8,7 +8,7 @@ from velour_api.backend.metrics.core import (
     create_metric_mappings,
     get_or_create_row,
 )
-from velour_api.enums import AnnotationType, EvaluationType, TaskType
+from velour_api.enums import AnnotationType, TaskType
 from velour_api.schemas import Label
 from velour_api.schemas.metrics import (
     EvaluationSettings,
@@ -193,7 +193,7 @@ def create_semantic_segmentation_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "type": EvaluationType.DICE,
+            "type": TaskType.DICE,
         },
     )
 
@@ -203,16 +203,14 @@ def create_semantic_segmentation_evaluation(
 def create_semantic_segmentation_metrics(
     db: Session,
     settings: EvaluationSettings,
-    evaluation_settings_id: int,
+    evaluation_id: int,
 ) -> int:
     metrics = compute_segmentation_metrics(
         db,
         dataset_name=settings.dataset,
         model_name=settings.model,
     )
-    metric_mappings = create_metric_mappings(
-        db, metrics, evaluation_settings_id
-    )
+    metric_mappings = create_metric_mappings(db, metrics, evaluation_id)
     for mapping in metric_mappings:
         # ignore value since the other columns are unique identifiers
         # and have empirically noticed value can slightly change due to floating
@@ -224,4 +222,4 @@ def create_semantic_segmentation_metrics(
             columns_to_ignore=["value"],
         )
 
-    return evaluation_settings_id
+    return evaluation_id

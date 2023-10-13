@@ -624,7 +624,7 @@ def get_evaluation_settings(
         #         detail=f"No settings for job {job_id} since its status is {status}",
         #     )
         return crud.get_evaluation_settings_from_id(
-            db=db, evaluation_settings_id=job_id
+            db=db, evaluation_id=job_id
         )
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -653,9 +653,7 @@ def get_evaluation_metrics(
                 status_code=404,
                 detail=f"No metrics for job {job_id} since its status is {status}",
             )
-        return crud.get_metrics_from_evaluation_settings_id(
-            db=db, evaluation_settings_id=job_id
-        )
+        return crud.get_metrics_from_evaluation_id(db=db, evaluation_id=job_id)
     except (
         exceptions.JobDoesNotExistError,
         AttributeError,
@@ -690,8 +688,8 @@ def get_evaluation_confusion_matrices(
                 status_code=404,
                 detail=f"No metrics for job {job_id} since its status is {status}",
             )
-        return crud.get_confusion_matrices_from_evaluation_settings_id(
-            db=db, evaluation_settings_id=job_id
+        return crud.get_confusion_matrices_from_evaluation_id(
+            db=db, evaluation_id=job_id
         )
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))

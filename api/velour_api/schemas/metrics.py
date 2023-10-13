@@ -9,9 +9,8 @@ from pydantic import (
     model_validator,
 )
 
-from velour_api.enums import AnnotationType, EvaluationType, JobStatus
+from velour_api.enums import AnnotationType, JobStatus, TaskType
 from velour_api.schemas.label import Label
-from velour_api.schemas.metadata import Metadatum
 
 
 class EvaluationConstraints(BaseModel):
@@ -49,7 +48,7 @@ class EvaluationSettings(BaseModel):
 
     model: str
     dataset: str
-    evaluation_type: EvaluationType
+    type: TaskType
     constraints: EvaluationConstraints | None = None
     thresholds: EvaluationThresholds | None = None
     id: int | None = None
@@ -86,7 +85,6 @@ class Metric(BaseModel):
     parameters: dict | None = None
     value: float | dict | None = None
     label: Label | None = None
-    group: Metadatum | None = None
 
 
 class APMetric(BaseModel):
@@ -157,7 +155,6 @@ class ConfusionMatrixEntry(BaseModel):
 class _BaseConfusionMatrix(BaseModel):
     label_key: str
     entries: list[ConfusionMatrixEntry]
-    group: Metadatum | None = None
 
 
 class ConfusionMatrix(_BaseConfusionMatrix):
@@ -203,7 +200,6 @@ class ConfusionMatrixResponse(_BaseConfusionMatrix):
 class AccuracyMetric(BaseModel):
     label_key: str
     value: float
-    group: Metadatum | None = None
 
     def db_mapping(self, evaluation_id: int) -> dict:
         return {
@@ -211,14 +207,12 @@ class AccuracyMetric(BaseModel):
             "type": "Accuracy",
             "evaluation_id": evaluation_id,
             "parameters": {"label_key": self.label_key},
-            "group": self.group,
         }
 
 
 class _PrecisionRecallF1Base(BaseModel):
     label: Label
     value: float | None = None
-    group: Metadatum | None = None
 
     @field_validator("value")
     @classmethod
@@ -233,7 +227,6 @@ class _PrecisionRecallF1Base(BaseModel):
             "label_id": label_id,
             "type": self.__type__,
             "evaluation_id": evaluation_id,
-            "group": self.group,
         }
 
 
@@ -252,7 +245,6 @@ class F1Metric(_PrecisionRecallF1Base):
 class ROCAUCMetric(BaseModel):
     label_key: str
     value: float
-    group: Metadatum | None = None
 
     def db_mapping(self, evaluation_id: int) -> dict:
         return {
@@ -260,7 +252,6 @@ class ROCAUCMetric(BaseModel):
             "type": "ROCAUC",
             "parameters": {"label_key": self.label_key},
             "evaluation_id": evaluation_id,
-            "group": self.group,
         }
 
 

@@ -18,6 +18,7 @@ def get_or_create_row(
     (and where the other columns serve as unique identifiers)
     """
     columns_to_ignore = columns_to_ignore or []
+
     # create the query from the mapping
     where_expressions = [
         (getattr(model_class, k) == v)

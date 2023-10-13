@@ -85,7 +85,7 @@ def compute_clf_metrics(
     backend.create_clf_metrics(
         db,
         settings=settings,
-        evaluation_settings_id=job_id,
+        evaluation_id=job_id,
     )
 
 
@@ -128,7 +128,7 @@ def compute_semantic_segmentation_metrics(
     backend.create_semantic_segmentation_metrics(
         db,
         settings=settings,
-        evaluation_settings_id=job_id,
+        evaluation_id=job_id,
     )
 
 
@@ -175,5 +175,5 @@ def compute_ap_metrics(
     backend.create_ap_metrics(
         db=db,
         settings=settings,
-        evaluation_settings_id=job_id,
+        evaluation_id=job_id,
     )

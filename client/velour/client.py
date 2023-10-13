@@ -162,7 +162,7 @@ class Evaluation:
         return JobStatus(resp)
 
     @property
-    def evaluation_type(self) -> enums.EvaluationType:
+    def evaluation_type(self) -> enums.TaskType:
         return self._settings.evaluation_type
 
     @property
@@ -493,7 +493,7 @@ class Model:
         evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
-            evaluation_type=enums.EvaluationType.CLF,
+            evaluation_type=enums.TaskType.CLF,
         )
 
         resp = self.client._requests_post_rel_host(
@@ -507,11 +507,11 @@ class Model:
             **resp,
         )
 
-    def evaluate_semantic_segmentation(self, dataset: Dataset) -> Evaluation:
+    def evaluate_segmentation(self, dataset: Dataset) -> Evaluation:
         evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
-            evaluation_type=enums.EvaluationType.CLF,
+            evaluation_type=enums.TaskType.CLF,
         )
 
         resp = self.client._requests_post_rel_host(
@@ -526,7 +526,7 @@ class Model:
             **resp,
         )
 
-    def evaluate_ap(
+    def evaluate_detection(
         self,
         dataset: "Dataset",
         annotation_type: AnnotationType = AnnotationType.NONE,
@@ -553,7 +553,7 @@ class Model:
         evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
-            evaluation_type=enums.EvaluationType.AP,
+            evaluation_type=enums.TaskType.DET,
             constraints=constraints,
             thresholds=thresholds,
         )
@@ -582,8 +582,8 @@ class Model:
         return [
             Evaluation(
                 client=self.client,
-                dataset_name=dataset_name,
-                model_name=self.name,
+                dataset=dataset_name,
+                model=self.name,
                 job_id=job_id,
             )
             for dataset_name in dataset_evaluations

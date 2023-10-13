@@ -530,7 +530,7 @@ def create_ap_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "type": enums.EvaluationType.AP,
+            "type": enums.TaskType.AP,
             "constraints": settings.constraints.model_dump(),
         },
     )
@@ -541,7 +541,7 @@ def create_ap_evaluation(
 def create_ap_metrics(
     db: Session,
     settings: schemas.EvaluationSettings,
-    evaluation_settings_id: int,
+    evaluation_id: int,
 ):
     """
     Intended to run as background
@@ -572,7 +572,7 @@ def create_ap_metrics(
     )
 
     metric_mappings = create_metric_mappings(
-        db=db, metrics=metrics, evaluation_id=evaluation_settings_id
+        db=db, metrics=metrics, evaluation_id=evaluation_id
     )
 
     for mapping in metric_mappings:

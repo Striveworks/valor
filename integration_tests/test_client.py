@@ -234,12 +234,12 @@ def gt_dets1(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=rect1,
                 ),
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k2", value="v2")],
                     bounding_box=rect3,
                 ),
@@ -249,7 +249,7 @@ def gt_dets1(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k1", value="v1")],
                     bounding_box=rect2,
                 )
@@ -272,12 +272,12 @@ def gt_dets2(
             datum=img5.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon(boundary=rect1.polygon, holes=None),
                 ),
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k2", value="v2")],
                     bounding_box=rect3,
                 ),
@@ -287,7 +287,7 @@ def gt_dets2(
             datum=img6.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon(boundary=rect2.polygon, holes=None),
                 )
@@ -297,7 +297,7 @@ def gt_dets2(
             datum=img8.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k3", value="v3")],
                     bounding_box=rect3,
                 )
@@ -319,7 +319,7 @@ def gt_poly_dets1(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon(boundary=rect1.polygon, holes=None),
                 ),
@@ -329,7 +329,7 @@ def gt_poly_dets1(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k1", value="v1")],
                     polygon=Polygon(boundary=rect2.polygon, holes=None),
                 )
@@ -351,14 +351,14 @@ def gt_segs(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.INSTANCE_SEGMENTATION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k1", value="v1")],
                     multipolygon=MultiPolygon(
                         polygons=[Polygon(boundary=rect1.polygon)]
                     ),
                 ),
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEG,
                     labels=[Label(key="k2", value="v2")],
                     multipolygon=MultiPolygon(
                         polygons=[
@@ -373,7 +373,7 @@ def gt_segs(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.INSTANCE_SEGMENTATION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k1", value="v1")],
                     multipolygon=MultiPolygon(
                         polygons=[
@@ -398,7 +398,7 @@ def gt_semantic_segs1(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEG,
                     labels=[Label(key="k2", value="v2")],
                     multipolygon=MultiPolygon(
                         polygons=[
@@ -421,7 +421,7 @@ def gt_semantic_segs2(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEG,
                     labels=[Label(key="k3", value="v3")],
                     multipolygon=MultiPolygon(
                         polygons=[Polygon(boundary=rect3.polygon)],
@@ -443,7 +443,7 @@ def gt_clfs(
             datum=img5.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
+                    task_type=TaskType.CLF,
                     labels=[
                         Label(key="k4", value="v4"),
                         Label(key="k5", value="v5"),
@@ -455,7 +455,7 @@ def gt_clfs(
             datum=img6.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
+                    task_type=TaskType.CLF,
                     labels=[Label(key="k4", value="v4")],
                 )
             ],
@@ -464,7 +464,7 @@ def gt_clfs(
             datum=img8.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
+                    task_type=TaskType.CLF,
                     labels=[Label(key="k3", value="v3")],
                 )
             ],
@@ -485,7 +485,7 @@ def pred_dets(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k1", value="v1", score=0.3)],
                     bounding_box=rect1,
                 )
@@ -496,7 +496,7 @@ def pred_dets(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=rect2,
                 )
@@ -515,7 +515,7 @@ def pred_poly_dets(
             datum=det.datum,
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=annotation.labels,
                     polygon=bbox_to_poly(annotation.bounding_box),
                 )
@@ -538,7 +538,7 @@ def pred_instance_segs(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.INSTANCE_SEGMENTATION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k1", value="v1", score=0.87)],
                     raster=Raster.from_numpy(mask_1),
                 )
@@ -549,7 +549,7 @@ def pred_instance_segs(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.INSTANCE_SEGMENTATION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k2", value="v2", score=0.92)],
                     raster=Raster.from_numpy(mask_2),
                 )
@@ -570,7 +570,7 @@ def pred_semantic_segs(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEG,
                     labels=[Label(key="k2", value="v2")],
                     raster=Raster.from_numpy(mask_1),
                 )
@@ -581,7 +581,7 @@ def pred_semantic_segs(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEG,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_numpy(mask_2),
                 )
@@ -598,7 +598,7 @@ def pred_clfs(img5: ImageMetadata, img6: ImageMetadata) -> list[Prediction]:
             datum=img5.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
+                    task_type=TaskType.CLF,
                     labels=[
                         Label(key="k12", value="v12", score=0.47),
                         Label(key="k12", value="v16", score=0.53),
@@ -612,7 +612,7 @@ def pred_clfs(img5: ImageMetadata, img6: ImageMetadata) -> list[Prediction]:
             datum=img6.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
+                    task_type=TaskType.CLF,
                     labels=[
                         Label(key="k4", value="v4", score=0.71),
                         Label(key="k4", value="v5", score=0.29),
@@ -910,14 +910,14 @@ def test_create_gt_detections_as_bbox_or_poly(db: Session, client: Client):
         datum=image,
         annotations=[
             Annotation(
-                task_type=TaskType.DETECTION,
+                task_type=TaskType.DET,
                 labels=[Label(key="k", value="v")],
                 bounding_box=BoundingBox.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
             ),
             Annotation(
-                task_type=TaskType.DETECTION,
+                task_type=TaskType.DET,
                 labels=[Label(key="k", value="v")],
                 polygon=Polygon(
                     boundary=BasicPolygon(
@@ -989,14 +989,14 @@ def test_create_pred_detections_as_bbox_or_poly(
         datum=img1.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.DETECTION,
+                task_type=TaskType.DET,
                 labels=[Label(key="k", value="v", score=0.6)],
                 bounding_box=BoundingBox.from_extrema(
                     xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax
                 ),
             ),
             Annotation(
-                task_type=TaskType.DETECTION,
+                task_type=TaskType.DET,
                 labels=[Label(key="k", value="v", score=0.4)],
                 polygon=Polygon(
                     boundary=BasicPolygon(
@@ -1046,9 +1046,9 @@ def test_create_image_dataset_with_segmentations(
     semantic_segs = []
     for seg in segs:
         assert isinstance(seg, Annotation)
-        if seg.task_type == TaskType.INSTANCE_SEGMENTATION:
+        if seg.task_type == TaskType.DET:
             instance_segs.append(seg)
-        elif seg.task_type == TaskType.SEMANTIC_SEGMENTATION:
+        elif seg.task_type == TaskType.SEG:
             semantic_segs.append(seg)
 
     # should have one instance segmentation that's a rectangle
@@ -1103,12 +1103,12 @@ def test_create_gt_segs_as_polys_or_masks(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEG,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_numpy(mask),
                 ),
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEG,
                     labels=[Label(key="k1", value="v1")],
                     multipolygon=MultiPolygon(polygons=[poly]),
                 ),
@@ -1124,12 +1124,12 @@ def test_create_gt_segs_as_polys_or_masks(
         datum=img1.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                task_type=TaskType.SEG,
                 labels=[Label(key="k1", value="v1")],
                 raster=Raster.from_numpy(mask),
             ),
             Annotation(
-                task_type=TaskType.INSTANCE_SEGMENTATION,
+                task_type=TaskType.DET,
                 labels=[Label(key="k1", value="v1")],
                 multipolygon=MultiPolygon(polygons=[poly]),
             ),
@@ -1253,7 +1253,7 @@ def test_boundary(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label(key="k1", value="v1")],
                     polygon=rect1_poly,
                 )
@@ -1286,7 +1286,7 @@ def test_iou(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label("k", "v")],
                     polygon=rect1_poly,
                 )
@@ -1303,7 +1303,7 @@ def test_iou(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     polygon=rect2_poly,
                     labels=[Label("k", "v", score=0.6)],
                 )
@@ -1341,7 +1341,7 @@ def test_client_delete_model(client: Client, db: Session):
     assert db.scalar(select(func.count(models.Model.name))) == 0
 
 
-def test_evaluate_ap(
+def test_evaluate_detection(
     client: Client,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
@@ -1357,7 +1357,7 @@ def test_evaluate_ap(
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_ap(
+    eval_job = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1437,7 +1437,7 @@ def test_evaluate_ap(
 
     # sanity check this should give us the same thing excpet min_area and max_area
     # are not None
-    eval_job_bounded_area_10_2000 = model.evaluate_ap(
+    eval_job_bounded_area_10_2000 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1464,7 +1464,7 @@ def test_evaluate_ap(
 
     # now check we get different things by setting the thresholds accordingly
     # min area threshold should divide the set of annotations
-    eval_job_min_area_1200 = model.evaluate_ap(
+    eval_job_min_area_1200 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1488,7 +1488,7 @@ def test_evaluate_ap(
     assert eval_job_min_area_1200.metrics != expected_metrics
 
     # check for difference with max area now dividing the set of annotations
-    eval_job_max_area_1200 = model.evaluate_ap(
+    eval_job_max_area_1200 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1513,7 +1513,7 @@ def test_evaluate_ap(
 
     # should perform the same as the first min area evaluation
     # except now has an upper bound
-    eval_job_bounded_area_1200_1800 = model.evaluate_ap(
+    eval_job_bounded_area_1200_1800 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds=[0.1, 0.6],
         ious_to_keep=[0.1, 0.6],
@@ -1668,7 +1668,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
+                    task_type=TaskType.CLF,
                     labels=[
                         Label(key="k1", value="v1"),
                         Label(key="k2", value="v2"),
@@ -1684,7 +1684,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
             ),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
+                    task_type=TaskType.CLF,
                     labels=[Label(key="k1", value="v3")],
                 )
             ],
@@ -1701,24 +1701,21 @@ def test_create_tabular_dataset_and_add_groundtruth(
     assert set(d.uid for d in data) == {"uid1", "uid2"}
 
     # check metadata is there
-    metadata_links = data[0].metadatums
+    metadata_links = data[0].meta
     assert len(metadata_links) == 1
-    metadatum = data[0].metadatums[0]
-    assert metadatum.key == "metadatum1"
-    assert metadatum.string_value == "temporary"
+    assert "metadatum1" in metadata_links
+    assert metadata_links["metadatum1"] == "temporary"
     # assert json.loads(db.scalar(ST_AsGeoJSON(metadatum.geo))) == {
     #     "type": "Point",
     #     "coordinates": [-48.23456, 20.12345],
     # }
 
-    metadata_links = data[1].metadatums
+    metadata_links = data[1].meta
     assert len(metadata_links) == 2
-    metadatum1 = metadata_links[0]
-    metadatum2 = metadata_links[1]
-    assert metadatum1.key == "metadatum2"
-    assert metadatum1.string_value == "a string"
-    assert metadatum2.key == "metadatum3"
-    assert metadatum2.numeric_value == 0.45
+    assert "metadatum2" in metadata_links
+    assert metadata_links["metadatum2"] == "a string"
+    assert "metadatum3" in metadata_links
+    assert metadata_links["metadatum3"] == 0.45
 
     # check that we can add data with specified uids
     new_gts = [
@@ -1726,7 +1723,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
             datum=Datum(dataset=dset_name, uid="uid3"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
+                    task_type=TaskType.CLF,
                     labels=[Label(key="k1", value="v1")],
                 )
             ],
@@ -1735,7 +1732,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
             datum=Datum(dataset=dset_name, uid="uid4"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
+                    task_type=TaskType.CLF,
                     labels=[Label(key="k1", value="v5")],
                 )
             ],
@@ -1763,7 +1760,7 @@ def test_create_tabular_model_with_predicted_classifications(
                 datum=Datum(dataset=dset_name, uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.CLASSIFICATION,
+                        task_type=TaskType.CLF,
                         labels=[
                             Label(key="k1", value="v1"),
                             Label(key="k2", value="v2"),
@@ -1778,7 +1775,7 @@ def test_create_tabular_model_with_predicted_classifications(
                 ),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.CLASSIFICATION,
+                        task_type=TaskType.CLF,
                         labels=[Label(key="k1", value="v3")],
                     )
                 ],
@@ -1790,7 +1787,7 @@ def test_create_tabular_model_with_predicted_classifications(
                 datum=Datum(dataset=dset_name, uid="uid1"),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.CLASSIFICATION,
+                        task_type=TaskType.CLF,
                         labels=[
                             Label(key="k1", value="v1", score=0.6),
                             Label(key="k1", value="v2", score=0.4),
@@ -1807,7 +1804,7 @@ def test_create_tabular_model_with_predicted_classifications(
                 ),
                 annotations=[
                     Annotation(
-                        task_type=TaskType.CLASSIFICATION,
+                        task_type=TaskType.CLF,
                         labels=[
                             Label(key="k1", value="v1", score=0.1),
                             Label(key="k1", value="v2", score=0.9),
@@ -1843,7 +1840,7 @@ def test_evaluate_tabular_clf(
             datum=Datum(dataset=dset_name, uid=f"uid{i}"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
+                    task_type=TaskType.CLF,
                     labels=[Label(key="class", value=str(t))],
                 )
             ],
@@ -1867,7 +1864,7 @@ def test_evaluate_tabular_clf(
             datum=Datum(dataset=dset_name, uid=f"uid{i}"),
             annotations=[
                 Annotation(
-                    task_type=TaskType.CLASSIFICATION,
+                    task_type=TaskType.CLF,
                     labels=[
                         Label(key="class", value=str(i), score=pred[i])
                         for i in range(len(pred))
@@ -1981,13 +1978,14 @@ def test_evaluate_tabular_clf(
 
     eval_jobs = model.get_evaluations()
     assert len(eval_jobs) == 1
-    eval_settings = eval_jobs[0].settings
+    eval_settings = asdict(eval_jobs[0].settings)
     eval_settings.pop("id")
     assert eval_settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "task_type": "classification",
-        "target_type": "none",
+        "evaluation_type": "classification",
+        "constraints": {},
+        "thresholds": None,
     }
 
     metrics_from_eval_settings_id = eval_jobs[0].metrics
@@ -2019,7 +2017,7 @@ def test_evaluate_tabular_clf(
 #             datum=img1.to_datum(),
 #             annotations=[
 #                 Annotation(
-#                     task_type=TaskType.DETECTION,
+#                     task_type=TaskType.DET,
 #                     labels=[Label(key="k", value="v")],
 #                     bounding_box=rect1,
 #                 ),
@@ -2032,7 +2030,7 @@ def test_evaluate_tabular_clf(
 #             datum=img1.to_datum(),
 #             annotations=[
 #                 Annotation(
-#                     task_type=TaskType.DETECTION,
+#                     task_type=TaskType.DET,
 #                     labels=[Label(key="k", value="v")],
 #                     bounding_box=rect1,
 #                 ),
@@ -2045,7 +2043,7 @@ def test_evaluate_tabular_clf(
 #             datum=img2.to_datum(),
 #             annotations=[
 #                 Annotation(
-#                     task_type=TaskType.CLASSIFICATION,
+#                     task_type=TaskType.CLF,
 #                     labels=[Label(key="k", value="v")],
 #                 )
 #             ]
@@ -2093,7 +2091,7 @@ def test_evaluate_tabular_clf(
 #         datum=tabular_datum,
 #         annotations=[
 #             Annotation(
-#                 task_type=TaskType.CLASSIFICATION,
+#                 task_type=TaskType.CLF,
 #                 labels=[Label(key="class", value=str(t))],
 #                 metadata=[
 #                     Metadatum(key="md1", value=f"md1-val{i % 3}"),
@@ -2112,7 +2110,7 @@ def test_evaluate_tabular_clf(
 #         datum=tabular_datum,
 #         annotations=[
 #             Annotation(
-#                 task_type=TaskType.CLASSIFICATION,
+#                 task_type=TaskType.CLF,
 #                 labels=[
 #                     ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
 #                     for i in range(len(pred))

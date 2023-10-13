@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 
-from velour.enums import AnnotationType, EvaluationType
+from velour.enums import AnnotationType, TaskType
 
 
 @dataclass
@@ -29,7 +29,7 @@ class EvaluationSettings:
 
     model: str
     dataset: str
-    evaluation_type: EvaluationType
+    type: TaskType
     constraints: EvaluationConstraints = None
     thresholds: EvaluationThresholds = None
     id: int = None

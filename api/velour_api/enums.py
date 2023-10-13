@@ -64,10 +64,9 @@ class AnnotationType(str, Enum):
 
 
 class TaskType(str, Enum):
-    CLASSIFICATION = "classification"
-    DETECTION = "detection"
-    INSTANCE_SEGMENTATION = "instance_segmentation"
-    SEMANTIC_SEGMENTATION = "semantic_segmentation"
+    CLF = "classification"
+    DET = "object-detection"
+    SEG = "semantic-segmentation"
 
 
 class JobStatus(Enum):
@@ -109,10 +108,3 @@ class State(str, Enum):
             return {self.DELETE}
         else:
             raise ValueError
-
-
-# @TODO: Fill in methods, will we have multiple per task_type?
-class EvaluationType(str, Enum):
-    CLF = "classification"
-    AP = "average-precision"
-    DICE = "semantic-ap"

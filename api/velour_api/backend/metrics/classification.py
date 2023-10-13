@@ -9,7 +9,7 @@ from velour_api.backend.metrics.core import (
     create_metric_mappings,
     get_or_create_row,
 )
-from velour_api.enums import EvaluationType, TaskType
+from velour_api.enums import TaskType
 
 
 # @TODO: Implement metadata filtering using `ops.BackendQuerys`
@@ -284,7 +284,6 @@ def get_confusion_matrix_and_metrics_at_label_key(
         schemas.AccuracyMetric(
             label_key=label_key,
             value=accuracy_from_cm(confusion_matrix),
-            group=confusion_matrix.group,
         ),
         schemas.ROCAUCMetric(
             label_key=label_key,
@@ -294,7 +293,6 @@ def get_confusion_matrix_and_metrics_at_label_key(
                 model_name,
                 label_key,
             ),
-            group=confusion_matrix.group,
         ),
     ]
 
@@ -313,21 +311,18 @@ def get_confusion_matrix_and_metrics_at_label_key(
             schemas.PrecisionMetric(
                 label=pydantic_label,
                 value=precision,
-                group=confusion_matrix.group,
             )
         )
         metrics.append(
             schemas.RecallMetric(
                 label=pydantic_label,
                 value=recall,
-                group=confusion_matrix.group,
             )
         )
         metrics.append(
             schemas.F1Metric(
                 label=pydantic_label,
                 value=f1,
-                group=confusion_matrix.group,
             )
         )
 
@@ -437,7 +432,6 @@ def confusion_matrix_at_label_key(
     dataset_name: str,
     model_name: str,
     label_key: str,
-    metadatum: schemas.Metadatum = None,
 ) -> schemas.ConfusionMatrix | None:
     """Computes the confusion matrix at a label_key.
 
@@ -484,20 +478,6 @@ def confusion_matrix_at_label_key(
             )
         )
     )
-    if metadatum:
-        string_value = (
-            metadatum.value if isinstance(metadatum.value, str) else None
-        )
-        numeric_value = (
-            metadatum.value if isinstance(metadatum.value, float) else None
-        )
-        q1 = q1.join(
-            models.Metadatum, models.Metadatum.datum_id == models.Datum.id
-        ).where(
-            models.Metadatum.name == metadatum.name,
-            models.Metadatum.string_value == string_value,
-            models.Metadatum.numeric_value == numeric_value,
-        )
     q1 = q1.group_by(models.Datum.id)
     subquery = q1.alias()
 
@@ -584,7 +564,6 @@ def confusion_matrix_at_label_key(
             )
             for r in res
         ],
-        group=metadatum,
     )
 
 
@@ -636,7 +615,7 @@ def create_clf_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "type": EvaluationType.CLF,
+            "type": TaskType.CLF,
             "constraints": None,
         },
     )
@@ -647,7 +626,7 @@ def create_clf_evaluation(
 def create_clf_metrics(
     db: Session,
     settings: schemas.EvaluationSettings,
-    evaluation_settings_id: int,
+    evaluation_id: int,
 ) -> int:
     """
     Intended to run as background
@@ -661,7 +640,7 @@ def create_clf_metrics(
     confusion_matrices_mappings = create_metric_mappings(
         db=db,
         metrics=confusion_matrices,
-        evaluation_settings_id=evaluation_settings_id,
+        evaluation_id=evaluation_id,
     )
 
     for mapping in confusion_matrices_mappings:
@@ -672,7 +651,7 @@ def create_clf_metrics(
         )
 
     metric_mappings = create_metric_mappings(
-        db=db, metrics=metrics, evaluation_settings_id=evaluation_settings_id
+        db=db, metrics=metrics, evaluation_id=evaluation_id
     )
 
     for mapping in metric_mappings:
@@ -686,4 +665,4 @@ def create_clf_metrics(
             columns_to_ignore=["value"],
         )
 
-    return evaluation_settings_id
+    return evaluation_id

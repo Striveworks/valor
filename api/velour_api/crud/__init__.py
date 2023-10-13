@@ -13,7 +13,7 @@ from ._create import (
 from ._delete import delete
 from ._read import (
     get_backend_state,
-    get_confusion_matrices_from_evaluation_settings_id,
+    get_confusion_matrices_from_evaluation_id,
     get_dataset,
     get_dataset_evaluations,
     get_datasets,
@@ -26,7 +26,7 @@ from ._read import (
     get_groundtruth,
     get_joint_labels,
     get_labels,
-    get_metrics_from_evaluation_settings_id,
+    get_metrics_from_evaluation_id,
     get_model,
     get_model_evaluation_settings,
     get_model_evaluations,
@@ -64,8 +64,8 @@ __all__ = [
     "compute_clf_metrics",
     "compute_ap_metrics",
     "compute_semantic_segmentation_metrics",
-    "get_metrics_from_evaluation_settings_id",
-    "get_confusion_matrices_from_evaluation_settings_id",
+    "get_metrics_from_evaluation_id",
+    "get_confusion_matrices_from_evaluation_id",
     "get_evaluation_settings_from_id",
     "get_model_metrics",
     "get_model_evaluation_settings",

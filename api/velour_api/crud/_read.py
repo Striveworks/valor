@@ -204,32 +204,28 @@ def get_predictions(
 """ Evaluation """
 
 
-def get_metrics_from_evaluation_settings_id(
-    *, db: Session, evaluation_settings_id: int
+def get_metrics_from_evaluation_id(
+    *, db: Session, evaluation_id: int
 ) -> list[schemas.Metric]:
-    return backend.get_metrics_from_evaluation_settings_id(
-        db, evaluation_settings_id
-    )
+    return backend.get_metrics_from_evaluation_id(db, evaluation_id)
 
 
-def get_confusion_matrices_from_evaluation_settings_id(
-    *, db: Session, evaluation_settings_id: int
+def get_confusion_matrices_from_evaluation_id(
+    *, db: Session, evaluation_id: int
 ) -> list[schemas.ConfusionMatrix]:
-    return backend.get_confusion_matrices_from_evaluation_settings_id(
-        db, evaluation_settings_id
-    )
+    return backend.get_confusion_matrices_from_evaluation_id(db, evaluation_id)
 
 
 def get_evaluation_settings_from_id(
-    *, db: Session, evaluation_settings_id: int
+    *, db: Session, evaluation_id: int
 ) -> schemas.EvaluationSettings:
-    return backend.get_evaluation_settings_from_id(db, evaluation_settings_id)
+    return backend.get_evaluation_settings_from_id(db, evaluation_id)
 
 
 def get_model_metrics(
-    *, db: Session, model_name: str, evaluation_settings_id: int
+    *, db: Session, model_name: str, evaluation_id: int
 ) -> list[schemas.Metric]:
-    return backend.get_model_metrics(db, model_name, evaluation_settings_id)
+    return backend.get_model_metrics(db, model_name, evaluation_id)
 
 
 def get_model_evaluation_settings(

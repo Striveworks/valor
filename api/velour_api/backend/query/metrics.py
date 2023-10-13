@@ -48,24 +48,20 @@ def get_metrics_from_evaluation_settings(
     ]
 
 
-def get_metrics_from_evaluation_settings_id(
-    db: Session, evaluation_settings_id: int
+def get_metrics_from_evaluation_id(
+    db: Session, evaluation_id: int
 ) -> list[schemas.Metric]:
     eval_settings = db.scalar(
-        select(models.Evaluation).where(
-            models.Evaluation.id == evaluation_settings_id
-        )
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     )
     return get_metrics_from_evaluation_settings(db, [eval_settings])
 
 
-def get_confusion_matrices_from_evaluation_settings_id(
-    db: Session, evaluation_settings_id: int
+def get_confusion_matrices_from_evaluation_id(
+    db: Session, evaluation_id: int
 ) -> list[schemas.ConfusionMatrix]:
     eval_settings = db.scalar(
-        select(models.Evaluation).where(
-            models.Evaluation.id == evaluation_settings_id
-        )
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     )
     db_cms = eval_settings.confusion_matrices
 
@@ -81,18 +77,16 @@ def get_confusion_matrices_from_evaluation_settings_id(
 
 
 def get_evaluation_settings_from_id(
-    db: Session, evaluation_settings_id: int
+    db: Session, evaluation_id: int
 ) -> schemas.EvaluationSettings:
     ms = db.scalar(
-        select(models.Evaluation).where(
-            models.Evaluation.id == evaluation_settings_id
-        )
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     )
     return _db_evaluation_settings_to_pydantic_evaluation_settings(ms)
 
 
 def get_model_metrics(
-    db: Session, model_name: str, evaluation_settings_id: int
+    db: Session, model_name: str, evaluation_id: int
 ) -> list[schemas.Metric]:
     # TODO: may return multiple types of metrics
     # use get_model so exception get's raised if model does
@@ -104,7 +98,7 @@ def get_model_metrics(
         .where(
             and_(
                 models.Model.id == model.id,
-                models.Evaluation.id == evaluation_settings_id,
+                models.Evaluation.id == evaluation_id,
             )
         )
     )
