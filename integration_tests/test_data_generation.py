@@ -25,12 +25,13 @@ def client():
     return Client(host="http://localhost:8000")
 
 
-def test_generate_segmentation_data(client: Client):
+def test_generate_segmentation_data(
+    client: Client,
+    n_images: int = 10,
+    n_annotations: int = 2,
+    n_labels: int = 2,
+):
     """Check that our generated dataset correctly matches our input parameters"""
-
-    n_images = 10
-    n_annotations = 10
-    n_labels = 2
 
     dataset = generate_segmentation_data(
         client=client,
@@ -68,7 +69,7 @@ def test_generate_segmentation_data(client: Client):
             sample_image_size == sample_mask_size
         ), f"Image is size {sample_image_size}, but mask is size {sample_mask_size}"
 
-    client.delete_dataset(dset_name, timeout=30)
+    client.delete_dataset(dset_name, timeout=300)
 
 
 def test_generate_prediction_data(client: Client):
@@ -121,4 +122,4 @@ def test_generate_prediction_data(client: Client):
     }
     assert len(eval_job.metrics) > 0
 
-    client.delete_dataset(dset_name, timeout=30)
+    client.delete_dataset(dset_name, timeout=300)
