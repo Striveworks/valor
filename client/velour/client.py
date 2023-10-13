@@ -80,36 +80,60 @@ class Client:
 
         return resp
 
-    def _requests_post_rel_host(self, endpoint: str, *args, **kwargs):
+    def _requests_post_rel_host(
+        self, endpoint: str, *args, **kwargs
+    ):  # pragma: no cover (tested in api/tests/unit-tests/test_main.py)
         return self._requests_wrapper(
             method_name="post", endpoint=endpoint, *args, **kwargs
         )
 
-    def _requests_get_rel_host(self, endpoint: str, *args, **kwargs):
+    def _requests_get_rel_host(
+        self, endpoint: str, *args, **kwargs
+    ):  # pragma: no cover (tested in api/tests/unit-tests/test_main.py)
         return self._requests_wrapper(
             method_name="get", endpoint=endpoint, *args, **kwargs
         )
 
-    def _requests_put_rel_host(self, endpoint: str, *args, **kwargs):
+    def _requests_put_rel_host(
+        self, endpoint: str, *args, **kwargs
+    ):  # pragma: no cover (tested in api/tests/unit-tests/test_main.py)
         return self._requests_wrapper(
             method_name="put", endpoint=endpoint, *args, **kwargs
         )
 
-    def _requests_delete_rel_host(self, endpoint: str, *args, **kwargs):
+    def _requests_delete_rel_host(
+        self, endpoint: str, *args, **kwargs
+    ):  # pragma: no cover (tested in api/tests/unit-tests/test_main.py)
         return self._requests_wrapper(
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
-    def get_datasets(self) -> List[dict]:
+    def get_datasets(
+        self,
+    ) -> List[
+        dict
+    ]:  # pragma: no cover (tested in api/tests/unit-tests/test_main.py)
         return self._requests_get_rel_host("datasets").json()
 
-    def get_models(self) -> List[dict]:
+    def get_models(
+        self,
+    ) -> List[
+        dict
+    ]:  # pragma: no cover (tested in api/tests/unit-tests/test_main.py)
         return self._requests_get_rel_host("models").json()
 
-    def get_labels(self) -> List[schemas.Label]:
+    def get_labels(
+        self,
+    ) -> List[
+        schemas.Label
+    ]:  # pragma: no cover (tested in api/tests/unit-tests/test_main.py)
         return self._requests_get_rel_host("labels").json()
 
-    def delete_dataset(self, name: str, timeout: int = 0) -> None:
+    def delete_dataset(
+        self, name: str, timeout: int = 0
+    ) -> (
+        None
+    ):  # pragma: no cover (tested in api/tests/unit-tests/test_main.py)
         """
         Delete a dataset using FastAPI's BackgroundProcess
 
@@ -138,7 +162,9 @@ class Client:
             if "does not exist" not in str(e):
                 raise e
 
-    def delete_model(self, name: str):
+    def delete_model(
+        self, name: str
+    ):  # pragma: no cover (tested in api/tests/unit-tests/test_main.py)
         try:
             self._requests_delete_rel_host(f"models/{name}")
         except ClientException as e:
@@ -148,7 +174,9 @@ class Client:
     def get_dataset_status(
         self,
         dataset_name: str,
-    ) -> State:
+    ) -> (
+        State
+    ):  # pragma: no cover (tested in api/tests/unit-tests/test_main.py)
         try:
             resp = self._requests_get_rel_host(
                 f"datasets/{dataset_name}/status"
@@ -247,7 +275,7 @@ class Dataset:
         client: Client,
         name: str,
         **kwargs,
-    ):
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         # Create the dataset on server side first to get ID info
         ds = schemas.Dataset(
             name=name,
@@ -297,7 +325,7 @@ class Dataset:
     def add_groundtruth(
         self,
         groundtruth: schemas.GroundTruth,
-    ):
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         try:
             assert isinstance(groundtruth, schemas.GroundTruth)
         except AssertionError:
@@ -315,13 +343,21 @@ class Dataset:
             json=asdict(groundtruth),
         )
 
-    def get_groundtruth(self, uid: str) -> schemas.GroundTruth:
+    def get_groundtruth(
+        self, uid: str
+    ) -> (
+        schemas.GroundTruth
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         resp = self.client._requests_get_rel_host(
             f"groundtruths/dataset/{self.info.name}/datum/{uid}"
         ).json()
         return schemas.GroundTruth(**resp)
 
-    def get_labels(self) -> List[schemas.LabelDistribution]:
+    def get_labels(
+        self,
+    ) -> List[
+        schemas.LabelDistribution
+    ]:  # pragma: no cover (tested in integration_tests/test_client.py)
         labels = self.client._requests_get_rel_host(
             f"labels/dataset/{self.name}"
         ).json()
@@ -331,14 +367,22 @@ class Dataset:
             for label in labels
         ]
 
-    def get_datums(self) -> List[schemas.Datum]:
+    def get_datums(
+        self,
+    ) -> List[
+        schemas.Datum
+    ]:  # pragma: no cover (tested in integration_tests/test_data_generation.py)
         """Returns a list of datums."""
         datums = self.client._requests_get_rel_host(
             f"data/dataset/{self.name}"
         ).json()
         return [schemas.Datum(**datum) for datum in datums]
 
-    def get_images(self) -> List[schemas.ImageMetadata]:
+    def get_images(
+        self,
+    ) -> List[
+        schemas.ImageMetadata
+    ]:  # pragma: no cover (tested in integration_tests/test_client.py)
         """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
         return [
             schemas.ImageMetadata.from_datum(datum)
@@ -346,7 +390,11 @@ class Dataset:
             if schemas.ImageMetadata.valid(datum)
         ]
 
-    def get_evaluations(self) -> List[Evaluation]:
+    def get_evaluations(
+        self,
+    ) -> List[
+        Evaluation
+    ]:  # pragma: no cover (tested in integration_tests/test_client.py)
         model_evaluations = self.client._requests_get_rel_host(
             f"evaluations/datasets/{self.name}"
         ).json()
@@ -375,12 +423,16 @@ class Dataset:
             associated=resp["associated"],
         )
 
-    def finalize(self):
+    def finalize(
+        self,
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         return self.client._requests_put_rel_host(
             f"datasets/{self.name}/finalize"
         )
 
-    def delete(self):
+    def delete(
+        self,
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
         del self
 
@@ -415,7 +467,7 @@ class Model:
         client: Client,
         name: str,
         **kwargs,
-    ):
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         # Create the dataset on server side first to get ID info
         md = schemas.Model(
             name=name,
@@ -438,7 +490,9 @@ class Model:
         return cls.get(client, name)
 
     @classmethod
-    def get(cls, client: Client, name: str):
+    def get(
+        cls, client: Client, name: str
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         resp = client._requests_get_rel_host(f"models/{name}").json()
         metadata = [
             schemas.MetaDatum(
@@ -457,16 +511,22 @@ class Model:
             info=info,
         )
 
-    def delete(self):
+    def delete(
+        self,
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
         del self
 
-    def add_metadatum(self, metadatum: schemas.MetaDatum):
+    def add_metadatum(
+        self, metadatum: schemas.MetaDatum
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         # @TODO: Add endpoint to allow adding custom metadatums
         self.info.metadata.append(metadatum)
         self.__metadata__[metadatum.key] = metadatum
 
-    def add_prediction(self, prediction: schemas.Prediction):
+    def add_prediction(
+        self, prediction: schemas.Prediction
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         try:
             assert isinstance(prediction, schemas.Prediction)
         except AssertionError:
@@ -486,13 +546,19 @@ class Model:
             json=asdict(prediction),
         )
 
-    def get_prediction(self, datum: schemas.Datum) -> schemas.Prediction:
+    def get_prediction(
+        self, datum: schemas.Datum
+    ) -> (
+        schemas.Prediction
+    ):  # pragma: no cover (tested in api/tests/functional-tests.py)
         resp = self.client._requests_get_rel_host(
             f"predictions/model/{self.info.name}/dataset/{datum.dataset}/datum/{datum.uid}",
         ).json()
         return schemas.Prediction(**resp)
 
-    def finalize_inferences(self, dataset: "Dataset") -> None:
+    def finalize_inferences(
+        self, dataset: "Dataset"
+    ) -> None:  # pragma: no cover (tested in integration_tests/test_client.py)
         return self.client._requests_put_rel_host(
             f"models/{self.name}/datasets/{dataset.name}/finalize"
         ).json()
@@ -501,7 +567,9 @@ class Model:
         self,
         dataset: Dataset,
         group_by: schemas.MetaDatum = schemas.MetaDatum(key="k", value="v"),
-    ) -> Evaluation:
+    ) -> (
+        Evaluation
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         """Start a classification evaluation job
 
         Parameters
@@ -535,7 +603,11 @@ class Model:
             **resp,
         )
 
-    def evaluate_semantic_segmentation(self, dataset: Dataset) -> Evaluation:
+    def evaluate_semantic_segmentation(
+        self, dataset: Dataset
+    ) -> (
+        Evaluation
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         payload = {"settings": {"model": self.name, "dataset": dataset.name}}
 
         resp = self.client._requests_post_rel_host(
@@ -559,7 +631,9 @@ class Model:
         min_area: float = None,
         max_area: float = None,
         label_key: Optional[str] = None,
-    ) -> Evaluation:
+    ) -> (
+        Evaluation
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         payload = {
             "settings": {
                 "model": self.name,
@@ -594,7 +668,11 @@ class Model:
             **resp,
         )
 
-    def get_evaluations(self) -> List[Evaluation]:
+    def get_evaluations(
+        self,
+    ) -> List[
+        Evaluation
+    ]:  # pragma: no cover (tested in integration_tests/test_client.py)
         dataset_evaluations = self.client._requests_get_rel_host(
             f"evaluations/models/{self.name}"
         ).json()
