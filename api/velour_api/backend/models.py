@@ -192,12 +192,13 @@ class Metric(Base):
     __tablename__ = "metric"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    evaluation_id: Mapped[int] = mapped_column(ForeignKey("evaluation.id"))
     label_id: Mapped[int] = mapped_column(
         ForeignKey("label.id"), nullable=True
     )
     type: Mapped[str] = mapped_column()
     value: Mapped[float] = mapped_column(nullable=True)
-    evaluation_id: Mapped[int] = mapped_column(ForeignKey("evaluation.id"))
+    parameters = mapped_column(JSONB)
 
     # relationships
     label = relationship(Label)
@@ -210,14 +211,14 @@ class ConfusionMatrix(Base):
     __tablename__ = "confusion_matrix"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    evaluation_id: Mapped[int] = mapped_column(ForeignKey("evaluation.id"))
     label_key: Mapped[str] = mapped_column()
     value = mapped_column(JSONB)
 
     # relationships
     settings: Mapped[Evaluation] = relationship(
-        "Evaluation", back_populates="confusion_matrices"
+        back_populates="confusion_matrices"
     )
-    evaluation_id: Mapped[int] = mapped_column(ForeignKey("evaluation.id"))
 
 
 annotation_type_to_geometry = {

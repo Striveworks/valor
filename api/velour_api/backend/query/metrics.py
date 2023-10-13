@@ -13,10 +13,10 @@ def _db_metric_to_pydantic_metric(db, metric: models.Metric) -> schemas.Metric:
     )
     return schemas.Metric(
         type=metric.type,
-        parameters=metric.parameters,
         value=metric.value,
         label=label,
-        group=core.get_metadatum_schema(metric.group),
+        parameters=metric.parameters,
+        group=None,
     )
 
 

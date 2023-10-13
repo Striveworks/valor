@@ -552,7 +552,7 @@ def create_ap_metrics(
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
 
-    if not settings.constraints.annotation_type:
+    if settings.constraints.annotation_type == AnnotationType.NONE:
         settings.constraints.annotation_type = (
             gt_type if gt_type < pd_type else pd_type
         )
@@ -572,7 +572,7 @@ def create_ap_metrics(
     )
 
     metric_mappings = create_metric_mappings(
-        db=db, metrics=metrics, evaluation_settings_id=evaluation_settings_id
+        db=db, metrics=metrics, evaluation_id=evaluation_settings_id
     )
 
     for mapping in metric_mappings:

@@ -135,13 +135,13 @@ class Evaluation:
     ):
         self._id: int = job_id
         self._client: Client = client
-        self.dataset = (dataset,)
-        self.model = (model,)
+        self.dataset = dataset
+        self.model = model
 
         settings = self._client._requests_get_rel_host(
             f"evaluations/{self._id}/dataset/{self.dataset}/model/{self.model}/settings"
         ).json()
-        self.evaluation = schemas.EvaluationSettings(**settings)
+        self._settings = schemas.EvaluationSettings(**settings)
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -151,34 +151,38 @@ class Evaluation:
         return self._id
 
     @property
+    def settings(self) -> schemas.EvaluationSettings:
+        return self._settings
+
+    @property
     def status(self) -> str:
-        resp = self.client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}"
+        resp = self._client._requests_get_rel_host(
+            f"evaluations/{self._id}/dataset/{self.dataset}/model/{self.model}"
         ).json()
         return JobStatus(resp)
 
     @property
     def evaluation_type(self) -> enums.EvaluationType:
-        return self.evaluation.evaluation_type
+        return self._settings.evaluation_type
 
     @property
     def task_type(self) -> enums.TaskType:
-        return self.evaluation.task_type
+        return self._settings.task_type
 
     @property
-    def target_type(self) -> enums.TaskType:
-        return self.evaluation.target_type
+    def annotation_type(self) -> enums.TaskType:
+        return self._settings.annotation_type
 
     @property
     def parameters(self) -> List[schemas.Metadatum]:
-        return self.evaluation.parameters
+        return self._settings.parameters
 
     @property
     def metrics(self) -> List[dict]:
         if self.status != JobStatus.DONE:
             return []
         return self._client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/metrics"
+            f"evaluations/{self._id}/dataset/{self.dataset}/model/{self.model}/metrics"
         ).json()
 
     @property
@@ -186,7 +190,7 @@ class Evaluation:
         if self.status != JobStatus.DONE:
             return []
         return self._client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/confusion-matrices"
+            f"evaluations/{self._id}/dataset/{self.dataset}/model/{self.model}/confusion-matrices"
         ).json()
 
     def wait_for_completion(self, *, interval=1.0, timeout=None):
@@ -535,7 +539,7 @@ class Model:
         """Evaluate object detections."""
 
         constraints = schemas.EvaluationConstraints(
-            target_type=annotation_type,
+            annotation_type=annotation_type,
             label_key=label_key,
             min_area=min_area,
             max_area=max_area,

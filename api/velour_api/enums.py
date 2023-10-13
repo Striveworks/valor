@@ -6,7 +6,7 @@ class DataType(str, Enum):
     TABULAR = "tabular"
 
 
-class AnnotationType(Enum):
+class AnnotationType(str, Enum):
     NONE = "none"
     BOX = "box"
     POLYGON = "polygon"

@@ -5,6 +5,7 @@ that is no auth
 import io
 import json
 import time
+from dataclasses import asdict
 from typing import Any
 
 import numpy as np
@@ -1371,15 +1372,17 @@ def test_evaluate_ap(
     time.sleep(1)
     assert eval_job.status == JobStatus.DONE
 
-    settings = eval_job.settings
+    settings = asdict(eval_job.settings)
     settings.pop("id")
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
+        "evaluation_type": "average-precision",
         "constraints": {
-            "annotation_type": "box",
+            "annotation_type": "none",
             "label_key": "k1",
         },
+        "thresholds": None,
     }
 
     expected_metrics = [
@@ -1443,17 +1446,19 @@ def test_evaluate_ap(
         max_area=2000,
     )
     time.sleep(1)
-    settings = eval_job_bounded_area_10_2000.settings
+    settings = asdict(eval_job_bounded_area_10_2000.settings)
     settings.pop("id")
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
+        "evaluation_type": "average-precision",
         "constraints": {
-            "annotation_type": "box",
+            "annotation_type": "none",
             "label_key": "k1",
             "min_area": 10,
             "max_area": 2000,
         },
+        "thresholds": None,
     }
     assert eval_job_bounded_area_10_2000.metrics == expected_metrics
 
@@ -1467,16 +1472,18 @@ def test_evaluate_ap(
         min_area=1200,
     )
     time.sleep(1)
-    settings = eval_job_min_area_1200.settings
+    settings = asdict(eval_job_min_area_1200.settings)
     settings.pop("id")
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
+        "evaluation_type": "average-precision",
         "constraints": {
-            "annotation_type": "box",
+            "annotation_type": "none",
             "label_key": "k1",
             "min_area": 1200,
         },
+        "thresholds": None,
     }
     assert eval_job_min_area_1200.metrics != expected_metrics
 
@@ -1489,16 +1496,18 @@ def test_evaluate_ap(
         max_area=1200,
     )
     time.sleep(1)
-    settings = eval_job_max_area_1200.settings
+    settings = asdict(eval_job_max_area_1200.settings)
     settings.pop("id")
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
+        "evaluation_type": "average-precision",
         "constraints": {
-            "annotation_type": "box",
+            "annotation_type": "none",
             "label_key": "k1",
             "max_area": 1200,
         },
+        "thresholds": None,
     }
     assert eval_job_max_area_1200.metrics != expected_metrics
 
@@ -1513,17 +1522,19 @@ def test_evaluate_ap(
         max_area=1800,
     )
     time.sleep(1)
-    settings = eval_job_bounded_area_1200_1800.settings
+    settings = asdict(eval_job_bounded_area_1200_1800.settings)
     settings.pop("id")
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
+        "evaluation_type": "average-precision",
         "constraints": {
-            "annotation_type": "box",
+            "annotation_type": "none",
             "label_key": "k1",
             "min_area": 1200,
             "max_area": 1800,
         },
+        "thresholds": None,
     }
     assert eval_job_bounded_area_1200_1800.metrics != expected_metrics
     assert (

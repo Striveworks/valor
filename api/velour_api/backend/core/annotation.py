@@ -9,7 +9,7 @@ from sqlalchemy import and_, distinct, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import enums, exceptions, logger, schemas
+from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
 from velour_api.backend.core.metadata import (
     deserialize_metadatums,
@@ -36,8 +36,6 @@ def create_annotation(
     raster = None
     jsonb = None
 
-    metadata = deserialize_metadatums(annotation.metadata)
-
     if isinstance(annotation.bounding_box, schemas.BoundingBox):
         box = annotation.bounding_box.wkt()
     elif isinstance(annotation.polygon, schemas.Polygon):
@@ -46,11 +44,11 @@ def create_annotation(
         raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
     elif isinstance(annotation.raster, schemas.Raster):
         raster = annotation.raster.mask_bytes
-        metadata["height"] = annotation.raster.height
-        metadata["width"] = annotation.raster.width
     elif isinstance(annotation.jsonb, dict):
         jsonb = annotation.jsonb
     # @TODO: Add more annotation types
+
+    metadata = deserialize_metadatums(annotation.metadata)
 
     mapping = {
         "datum_id": datum.id,
@@ -177,11 +175,13 @@ def get_annotation(
 
     # Raster
     if annotation.raster is not None:
-        if "height" not in annotation.meta and "width" not in annotation.meta:
-            raise ValueError("missing height and width")
-        metadata = annotation.meta
-        height = int(metadata.pop("height"))
-        width = int(metadata.pop("width"))
+        datum = db.scalar(
+            select(models.Datum).where(models.Datum.id == annotation.datum_id)
+        )
+        if "height" not in datum.meta or "width" not in datum.meta:
+            raise ValueError("missing height or width")
+        height = datum.meta["height"]
+        width = datum.meta["width"]
         retval.raster = schemas.Raster(
             mask=_raster_to_png_b64(
                 db, raster=annotation.raster, height=height, width=width
