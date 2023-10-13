@@ -7,6 +7,7 @@ import time
 from typing import Any
 
 import numpy as np
+import pandas
 import PIL.Image
 import pytest
 from geoalchemy2.functions import (
@@ -2036,11 +2037,12 @@ def test_evaluate_tabular_clf(
     labels = model.get_labels()
     df = model.get_metric_dataframes()
 
-    assert model.id == 0
-    assert model.name == 0
-    assert model.metadata == 0
+    assert model.id == 16
+    assert model.name == "test_model"
+    assert len(model.metadata) == 0
+
     assert len(labels) == 3
-    assert df[0]["df"] is pd.DataFrame
+    assert isinstance(df[0]["df"], pandas.DataFrame)
 
     # check evaluation
     eval_jobs = model.get_evaluations()
@@ -2144,13 +2146,7 @@ def test_get_dataset(
 
     # check get
     fetched_dataset = Dataset.get(client, dset_name)
-    assert fetched_dataset == dataset
-
-    # check get_info
-    info = dataset.get_info()
-    assert info.annotation_type == TaskType.SEMANTIC_SEGMENTATION
-    assert info.number_of_segmentations == 1
-    assert info.number_of_bounding_boxes == 0
+    assert fetched_dataset.info == dataset.info
 
     client.delete_dataset(dset_name, timeout=30)
 

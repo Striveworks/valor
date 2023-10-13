@@ -425,23 +425,22 @@ class Dataset:
             for job_id in model_evaluations[model_name]
         ]
 
-    def get_info(
-        self,
-    ) -> (
-        schemas.Info
-    ):  # pragma: no cover (tested in integration_tests/test_client.py)
-        resp = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/info"
-        ).json()
+        # TODO: implement after backend functions are complete
+        # def get_info(
+        #     self,
+        # ) -> schemas.Info:
+        #     resp = self.client._requests_get_rel_host(
+        #         f"datasets/{self.name}/info"
+        #     ).json()
 
-        return schemas.Info(
-            annotation_type=resp["annotation_type"],
-            number_of_classifications=resp["number_of_classifications"],
-            number_of_bounding_boxes=resp["number_of_bounding_boxes"],
-            number_of_bounding_polygons=resp["number_of_bounding_polygons"],
-            number_of_segmentations=resp["number_of_segmentation_rasters"],
-            associated=resp["associated"],
-        )
+        # return schemas.Info(
+        #     annotation_type=resp["annotation_type"],
+        #     number_of_classifications=resp["number_of_classifications"],
+        #     number_of_bounding_boxes=resp["number_of_bounding_boxes"],
+        #     number_of_bounding_polygons=resp["number_of_bounding_polygons"],
+        #     number_of_segmentations=resp["number_of_segmentation_rasters"],
+        #     associated=resp["associated"],
+        # )
 
     def finalize(
         self,
@@ -768,18 +767,19 @@ class Model:
             for label in distribution
         }
 
-    def get_info(
-        self,
-    ) -> schemas.Info:
-        resp = self.client._requests_get_rel_host(
-            f"models/{self.name}/info"
-        ).json()
+    # TODO: implement after crud.get_info is complete
+    # def get_info(
+    #     self,
+    # ) -> schemas.Info:
+    #     resp = self.client._requests_get_rel_host(
+    #         f"models/{self.name}/info"
+    #     ).json()
 
-        return schemas.Info(
-            annotation_type=resp["annotation_type"],
-            number_of_classifications=resp["number_of_classifications"],
-            number_of_bounding_boxes=resp["number_of_bounding_boxes"],
-            number_of_bounding_polygons=resp["number_of_bounding_polygons"],
-            number_of_segmentations=resp["number_of_segmentation_rasters"],
-            associated=resp["associated"],
-        )
+    #     return schemas.Info(
+    #         annotation_type=resp["annotation_type"],
+    #         number_of_classifications=resp["number_of_classifications"],
+    #         number_of_bounding_boxes=resp["number_of_bounding_boxes"],
+    #         number_of_bounding_polygons=resp["number_of_bounding_polygons"],
+    #         number_of_segmentations=resp["number_of_segmentation_rasters"],
+    #         associated=resp["associated"],
+    #     )
