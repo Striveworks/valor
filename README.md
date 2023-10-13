@@ -2,18 +2,97 @@
 
 ![badge](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ekorman/501428c92df8d0de6805f40fb78b1363/raw/velour-coverage.json)
 
-This repo contains the python [client](client) and [backend api](api) packages.
-
-Docs are [here](https://striveworks.github.io/velour/).
+This repo contains the python [client](client) and [backend api](api) packages for velour. For velour's user documentation, [click here](https://striveworks.github.io/velour/).
 
 ## Dev setup
 
-To ensure formatting consistency, we use [pre-commit](https://pre-commit.com/) to manage git hooks. To install it, run
+### 1. Install Docker
+
+As a first step, be sure your machine has Docker installed. [Click here](https://docs.docker.com/engine/install/) for basic installation instructions.
+
+### 2. Setup pre-commit
+
+To ensure formatting consistency, we use [pre-commit](https://pre-commit.com/) to manage git hooks. To install pre-commit, run:
 
 ```shell
 pip install pre-commit
 pre-commit install
 ```
+
+### 3. Install the client module
+
+Run the following in bash (note: may not work in zsh):
+
+```bash
+
+python -m pip install -e client/.[test]
+
+```
+
+### 4. Run the API, postgis, and redis services
+
+There are two ways to develop locally:
+1. *Run everything in Docker*: This method is easier to setup and mirrors how velour will be used in production, but prevents you from debugging `api/*` directly.
+2. *Run postgis and redis in Docker, but run the API service locally*: Slightly more difficult to setup, but allows you to debug `api/*` as you code.
+
+#### Approach #1: Run everything in Docker
+
+Simply run:
+
+```shell
+
+make dev-env
+
+```
+
+#### Approach #2: Run the API service locally
+
+Make and/or activate a python 3.10+ environment:
+
+```shell
+
+conda create --name velour_api_env python=3.11
+conda activate velour_api_env
+
+```
+
+Install the `api` directory in bash (note: may not work in zsh):
+
+```bash
+
+python -m pip install -e api/.[test]
+
+```
+
+Start the postgis and redis containers:
+
+```shell
+
+make start-redis-docker
+make start-postgis-docker
+
+```
+
+Start the service:
+
+```shell
+
+make start-server
+
+```
+
+### 5. (Optional) Setup pgAdmin to debug postgis
+
+You can use the pgAdmin utility to debug your postgis tables as you code. Start by [installing pgAdmin](https://www.pgadmin.org/download/), then select `Object > Register > Server` to connect to your postgis container:
+- *Host name/address*: 0.0.0.0
+- *Port*: 5432
+- *Maintenance database*: postgres
+- *Username*: postgres
+
+
+### 6. Try it out!
+We'd recommend starting with the notebooks in `sample_notebooks/*.ipynb`.
+
 
 ## Release process
 
