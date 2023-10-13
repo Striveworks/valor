@@ -54,7 +54,7 @@ class Client:
 
     def _requests_wrapper(
         self, method_name: str, endpoint: str, *args, **kwargs
-    ):
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         assert method_name in ["get", "post", "put", "delete"]
 
         if endpoint[0] == "/":
