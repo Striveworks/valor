@@ -42,10 +42,8 @@ class Client:
         # check the connection by hitting the users endpoint
         email = self._get_users_email()
         success_str = f"Succesfully connected to {self.host}"
-        if email is None:
-            print(f"{success_str}.")
-        else:
-            print(f"{success_str} with user {email}.")
+        success_str += f" with user {email}." if email else "."
+        print(success_str)
 
     def _get_users_email(self) -> Union[str, None]:
         """Gets the users e-mail address (in the case when auth is enabled)
@@ -67,7 +65,9 @@ class Client:
         url = urljoin(self.host, endpoint)
         requests_method = getattr(requests, method_name)
 
-        if self.access_token is not None:
+        if (
+            self.access_token is not None
+        ):  # pragma: no cover (tested in integration_tests/test_client_auth.py)
             headers = {"Authorization": f"Bearer {self.access_token}"}
         else:
             headers = None
@@ -195,7 +195,7 @@ class Evaluation:
         model_name: str,
         job_id: int,
         **kwargs,
-    ):
+    ):  # pragma: no cover (tested in api/tests/unit-tests/test_crud.py)
         self._id = job_id
         self.client = client
         self.dataset_name = dataset_name
@@ -205,7 +205,9 @@ class Evaluation:
             setattr(self, k, v)
 
     @property
-    def status(self) -> str:
+    def status(
+        self,
+    ) -> str:  # pragma: no cover (tested in integration_tests/test_client.py)
         resp = self.client._requests_get_rel_host(
             f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}"
         ).json()
@@ -213,12 +215,16 @@ class Evaluation:
 
     # TODO: replace value with a dataclass?
     @property
-    def settings(self) -> dict:
+    def settings(
+        self,
+    ) -> dict:  # pragma: no cover (tested in integration_tests/test_client.py)
         return self.client._requests_get_rel_host(
             f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/settings"
         ).json()
 
-    def wait_for_completion(self, *, interval=1.0, timeout=None):
+    def wait_for_completion(
+        self, *, interval=1.0, timeout=None
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         if timeout:
             timeout_counter = int(math.ceil(timeout / interval))
         while self.status not in [JobStatus.DONE, JobStatus.FAILED]:
@@ -229,7 +235,11 @@ class Evaluation:
                     raise TimeoutError
 
     @property
-    def metrics(self) -> List[dict]:
+    def metrics(
+        self,
+    ) -> List[
+        dict
+    ]:  # pragma: no cover (tested in integration_tests/test_client.py)
         if self.status != JobStatus.DONE:
             return []
         return self.client._requests_get_rel_host(
@@ -237,7 +247,11 @@ class Evaluation:
         ).json()
 
     @property
-    def confusion_matrices(self) -> List[dict]:
+    def confusion_matrices(
+        self,
+    ) -> List[
+        dict
+    ]:  # pragma: no cover (tested in integration_tests/test_client.py)
         if self.status != JobStatus.DONE:
             return []
         return self.client._requests_get_rel_host(
@@ -298,7 +312,9 @@ class Dataset:
         return cls.get(client, name)
 
     @classmethod
-    def get(cls, client: Client, name: str):
+    def get(
+        cls, client: Client, name: str
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         resp = client._requests_get_rel_host(f"datasets/{name}").json()
         metadata = [
             schemas.MetaDatum(
@@ -409,7 +425,11 @@ class Dataset:
             for job_id in model_evaluations[model_name]
         ]
 
-    def get_info(self) -> schemas.Info:
+    def get_info(
+        self,
+    ) -> (
+        schemas.Info
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         resp = self.client._requests_get_rel_host(
             f"datasets/{self.name}/info"
         ).json()
@@ -687,7 +707,9 @@ class Model:
             for job_id in dataset_evaluations[dataset_name]
         ]
 
-    def get_metric_dataframes(self):
+    def get_metric_dataframes(
+        self,
+    ):  # pragma: no cover (tested in integration_tests/test_client.py)
         try:
             import pandas as pd
         except ModuleNotFoundError:
@@ -715,7 +737,11 @@ class Model:
 
         return ret
 
-    def get_labels(self) -> List[schemas.Label]:
+    def get_labels(
+        self,
+    ) -> List[
+        schemas.Label
+    ]:  # pragma: no cover (tested in integration_tests/test_client.py)
         labels = self.client._requests_get_rel_host(
             f"labels/model/{self.name}"
         ).json()
@@ -725,7 +751,9 @@ class Model:
             for label in labels
         ]
 
-    def get_label_distribution(self) -> Dict[schemas.Label, int]:
+    def get_label_distribution(
+        self,
+    ) -> Dict[schemas.Label, int]:
         distribution = self.client._requests_get_rel_host(
             f"models/{self.name}/labels/distribution"
         ).json()
@@ -740,7 +768,9 @@ class Model:
             for label in distribution
         }
 
-    def get_info(self) -> schemas.Info:
+    def get_info(
+        self,
+    ) -> schemas.Info:
         resp = self.client._requests_get_rel_host(
             f"models/{self.name}/info"
         ).json()

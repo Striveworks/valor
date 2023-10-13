@@ -727,7 +727,6 @@ def _test_create_image_dataset_with_gts(
 
     for gt in gts:
         dataset.add_groundtruth(gt)
-
     # check that the dataset has two images
     images = dataset.get_images()
     assert len(images) == len(expected_image_uids)
@@ -1434,8 +1433,7 @@ def test_evaluate_ap(
     assert eval_job.missing_pred_labels == []
     assert isinstance(eval_job._id, int)
 
-    # sleep to give the backend time to compute
-    time.sleep(1)
+    eval_job.wait_for_completion()
     assert eval_job.status == JobStatus.DONE
 
     settings = eval_job.settings
@@ -2034,6 +2032,17 @@ def test_evaluate_tabular_clf(
     for expected_matrix in expected_confusion_matrices:
         assert expected_matrix in confusion_matrices
 
+    # check model methods
+    labels = model.get_labels()
+    df = model.get_metric_dataframes()
+
+    assert model.id == 0
+    assert model.name == 0
+    assert model.metadata == 0
+    assert len(labels) == 3
+    assert df[0]["df"] is pd.DataFrame
+
+    # check evaluation
     eval_jobs = model.get_evaluations()
     assert len(eval_jobs) == 1
     eval_settings = eval_jobs[0].settings
@@ -2126,9 +2135,27 @@ def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
     client.delete_dataset(dset_name, timeout=30)
 
 
-def test_get_dataset_status(
-    client: Client, img1: ImageMetadata, gt_dets1: list
+def test_get_dataset(
+    client: Client,
+    gt_semantic_segs1_mask: GroundTruth,
 ):
+    dataset = Dataset.create(client, dset_name)
+    dataset.add_groundtruth(gt_semantic_segs1_mask)
+
+    # check get
+    fetched_dataset = Dataset.get(client, dset_name)
+    assert fetched_dataset == dataset
+
+    # check get_info
+    info = dataset.get_info()
+    assert info.annotation_type == TaskType.SEMANTIC_SEGMENTATION
+    assert info.number_of_segmentations == 1
+    assert info.number_of_bounding_boxes == 0
+
+    client.delete_dataset(dset_name, timeout=30)
+
+
+def test_get_dataset_status(client: Client, gt_dets1: list):
     status = client.get_dataset_status(dset_name)
     assert status == "none"
 
