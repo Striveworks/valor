@@ -530,7 +530,7 @@ def create_ap_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "type": enums.TaskType.AP,
+            "type": enums.TaskType.DET,
             "constraints": settings.constraints.model_dump(),
         },
     )

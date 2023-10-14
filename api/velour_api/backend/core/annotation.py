@@ -5,7 +5,7 @@ from base64 import b64encode
 from geoalchemy2 import RasterElement
 from geoalchemy2.functions import ST_AsGeoJSON, ST_AsPNG, ST_Envelope
 from PIL import Image
-from sqlalchemy import and_, distinct, or_, select, text
+from sqlalchemy import and_, distinct, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -243,14 +243,9 @@ def get_annotation_type(
             .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
             .where(
                 models.Datum.dataset_id == dataset.id,
+                models.Annotation.task_type == enums.TaskType.DET.value,
                 model_expr,
                 col.isnot(None),
-                or_(
-                    models.Annotation.task_type
-                    == enums.TaskType.DETECTION.value,
-                    models.Annotation.task_type
-                    == enums.TaskType.INSTANCE_SEGMENTATION.value,
-                ),
             )
             .one_or_none()
         )

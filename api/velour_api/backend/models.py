@@ -1,12 +1,12 @@
 from geoalchemy2 import Geography, Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
-from sqlalchemy import Enum, ForeignKey, UniqueConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from velour_api.backend.database import Base
-from velour_api.enums import AnnotationType, TaskType
+from velour_api.enums import AnnotationType
 
 
 class Label(Base):
@@ -173,8 +173,8 @@ class Evaluation(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
-    type: Mapped[str] = mapped_column(Enum(TaskType))
-    constraints = mapped_column(JSONB)
+    type: Mapped[str] = mapped_column(nullable=False)
+    constraints = mapped_column(JSONB, nullable=True)
     geo = mapped_column(Geography(), nullable=True)
 
     # relationships

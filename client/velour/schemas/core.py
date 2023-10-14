@@ -281,9 +281,8 @@ class Prediction:
 
         for annotation in self.annotations:
             if annotation.task_type in [
-                TaskType.CLASSIFICATION,
-                TaskType.DETECTION,
-                TaskType.INSTANCE_SEGMENTATION,
+                TaskType.CLF,
+                TaskType.DET,
             ]:
                 for label in annotation.labels:
                     if label.score is None:
@@ -292,7 +291,7 @@ class Prediction:
                         )
 
         for annotation in self.annotations:
-            if annotation.task_type == TaskType.CLASSIFICATION:
+            if annotation.task_type == TaskType.CLF:
                 label_keys_to_sum = {}
                 for scored_label in annotation.labels:
                     label_key = scored_label.key

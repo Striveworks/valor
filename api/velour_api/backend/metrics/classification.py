@@ -60,7 +60,7 @@ def binary_roc_auc(
             and_(
                 models.Datum.dataset_id == dataset.id,
                 models.Annotation.model_id.is_(None),
-                models.Annotation.task_type == TaskType.CLASSIFICATION.value,
+                models.Annotation.task_type == TaskType.CLF,
                 models.Label.key == label.key,
             ),
         )
@@ -85,7 +85,7 @@ def binary_roc_auc(
             and_(
                 models.Datum.dataset_id == dataset.id,
                 models.Annotation.model_id == model.id,
-                models.Annotation.task_type == TaskType.CLASSIFICATION.value,
+                models.Annotation.task_type == TaskType.CLF,
                 models.Label.key == label.key,
                 models.Label.value == label.value,
             ),
@@ -360,8 +360,7 @@ def compute_clf_metrics(
             .where(
                 and_(
                     models.Dataset.name == dataset_name,
-                    models.Annotation.task_type
-                    == TaskType.CLASSIFICATION.value,
+                    models.Annotation.task_type == TaskType.CLF,
                     models.Annotation.model_id.is_(None),
                 )
             )
@@ -392,8 +391,7 @@ def compute_clf_metrics(
             .where(
                 and_(
                     models.Dataset.name == dataset_name,
-                    models.Annotation.task_type
-                    == TaskType.CLASSIFICATION.value,
+                    models.Annotation.task_type == TaskType.CLF,
                     models.Annotation.model_id.isnot(None),
                     models.Model.name == model_name,
                 )
@@ -616,7 +614,6 @@ def create_clf_evaluation(
             "dataset_id": dataset.id,
             "model_id": model.id,
             "type": TaskType.CLF,
-            "constraints": None,
         },
     )
 

@@ -162,8 +162,8 @@ class Evaluation:
         return JobStatus(resp)
 
     @property
-    def evaluation_type(self) -> enums.TaskType:
-        return self._settings.evaluation_type
+    def type(self) -> enums.TaskType:
+        return self._settings.type
 
     @property
     def task_type(self) -> enums.TaskType:
@@ -493,7 +493,7 @@ class Model:
         evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
-            evaluation_type=enums.TaskType.CLF,
+            type=enums.TaskType.CLF,
         )
 
         resp = self.client._requests_post_rel_host(
@@ -511,7 +511,7 @@ class Model:
         evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
-            evaluation_type=enums.TaskType.CLF,
+            type=enums.TaskType.CLF,
         )
 
         resp = self.client._requests_post_rel_host(
@@ -553,7 +553,7 @@ class Model:
         evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
-            evaluation_type=enums.TaskType.DET,
+            type=enums.TaskType.DET,
             constraints=constraints,
             thresholds=thresholds,
         )

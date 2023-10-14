@@ -1377,7 +1377,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "evaluation_type": "average-precision",
+        "type": TaskType.DET.value,
         "constraints": {
             "annotation_type": "none",
             "label_key": "k1",
@@ -1451,7 +1451,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "evaluation_type": "average-precision",
+        "type": TaskType.DET.value,
         "constraints": {
             "annotation_type": "none",
             "label_key": "k1",
@@ -1477,7 +1477,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "evaluation_type": "average-precision",
+        "type": TaskType.DET.value,
         "constraints": {
             "annotation_type": "none",
             "label_key": "k1",
@@ -1501,7 +1501,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "evaluation_type": "average-precision",
+        "type": TaskType.DET.value,
         "constraints": {
             "annotation_type": "none",
             "label_key": "k1",
@@ -1527,7 +1527,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "evaluation_type": "average-precision",
+        "type": TaskType.DET.value,
         "constraints": {
             "annotation_type": "none",
             "label_key": "k1",
@@ -1610,7 +1610,7 @@ def test_evaluate_image_clf(
     ]
 
 
-def test_evaluate_semantic_segmentation(
+def test_evaluate_segmentation(
     client: Client,
     db: Session,
     gt_semantic_segs1: list[GroundTruth],
@@ -1629,7 +1629,7 @@ def test_evaluate_semantic_segmentation(
     dataset.finalize()
     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_semantic_segmentation(dataset)
+    eval_job = model.evaluate_segmentation(dataset)
     assert eval_job.missing_pred_labels == [
         {"key": "k3", "value": "v3", "score": None}
     ]
@@ -1983,7 +1983,7 @@ def test_evaluate_tabular_clf(
     assert eval_settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "evaluation_type": "classification",
+        "type": "classification",
         "constraints": {},
         "thresholds": None,
     }

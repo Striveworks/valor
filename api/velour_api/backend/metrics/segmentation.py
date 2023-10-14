@@ -38,7 +38,7 @@ def _gt_query(dataset_name: str, label_id: int) -> Select:
                 models.Datum.id == models.Annotation.datum_id,
             ),
         )
-        .where(models.Annotation.task_type == TaskType.SEMANTIC_SEGMENTATION)
+        .where(models.Annotation.task_type == TaskType.SEG)
     )
 
 
@@ -66,7 +66,7 @@ def _pred_query(dataset_name: str, label_id: int, model_name: str) -> Select:
         )
         .where(
             and_(
-                models.Annotation.task_type == TaskType.SEMANTIC_SEGMENTATION,
+                models.Annotation.task_type == TaskType.SEG,
                 models.Model.id == models.Annotation.model_id,
             )
         )
@@ -151,7 +151,7 @@ def get_groundtruth_labels(
             get_dataset_labels_query(
                 dataset_name=dataset_name,
                 annotation_type=AnnotationType.RASTER,
-                task_types=[TaskType.SEMANTIC_SEGMENTATION],
+                task_types=[TaskType.SEG],
             )
         )
     ]
@@ -193,7 +193,7 @@ def create_semantic_segmentation_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "type": TaskType.DICE,
+            "type": TaskType.SEG,
         },
     )
 

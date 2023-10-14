@@ -31,8 +31,9 @@ def _db_evaluation_settings_to_pydantic_evaluation_settings(
     return schemas.EvaluationSettings(
         model=evaluation_settings.model.name,
         dataset=evaluation_settings.dataset.name,
-        evaluation_type=evaluation_settings.type,
+        type=evaluation_settings.type,
         constraints=schemas.EvaluationConstraints(**constraints),
+        thresholds=None,
         id=evaluation_settings.id,
     )
 
