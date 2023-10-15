@@ -24,7 +24,7 @@ def _parse_chariot_predict_image_classification(
         datum=datum,
         annotations=[
             Annotation(
-                task_type=enums.TaskType.CLASSIFICATION,
+                task_type=enums.TaskType.CLF,
                 labels=[
                     Label(
                         key=label_key,
@@ -60,7 +60,7 @@ def _parse_chariot_predict_proba_image_classification(
         datum=datum,
         annotations=[
             Annotation(
-                task_type=enums.TaskType.CLASSIFICATION,
+                task_type=enums.TaskType.CLF,
                 labels=[
                     Label(key=label_key, value=labels[i], score=score)
                     for i, score in enumerate(result[0])
@@ -101,7 +101,7 @@ def _parse_chariot_detect_image_object_detection(
         datum=datum,
         annotations=[
             Annotation(
-                task_type=enums.TaskType.DETECTION,
+                task_type=enums.TaskType.DET,
                 labels=[Label(key=label_key, value=label, score=float(score))],
                 bounding_box=BoundingBox.from_extrema(
                     ymin=box[0], xmin=box[1], ymax=box[2], xmax=box[3]

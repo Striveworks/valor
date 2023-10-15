@@ -98,8 +98,8 @@ def combined_segmentation_mask(
 
     # Validate task type
     if task_type is not None and task_type not in [
-        enums.TaskType.INSTANCE_SEGMENTATION,
-        enums.TaskType.SEMANTIC_SEGMENTATION,
+        enums.TaskType.DET,
+        enums.TaskType.SEG,
     ]:
         raise RuntimeError(
             "Expected either Instance or Semantic segmentation task_type."
@@ -108,8 +108,8 @@ def combined_segmentation_mask(
     # Create valid task type list
     if task_type is None:
         task_types = [
-            enums.TaskType.INSTANCE_SEGMENTATION,
-            enums.TaskType.SEMANTIC_SEGMENTATION,
+            enums.TaskType.DET,
+            enums.TaskType.SEG,
         ]
     else:
         task_types = [task_type]
@@ -177,7 +177,7 @@ def draw_detections_on_image(
         annotations.extend(datum.annotations)
 
     for i, detection in enumerate(annotations):
-        if detection.task_type in [enums.TaskType.DETECTION]:
+        if detection.task_type in [enums.TaskType.DET]:
             img = _draw_detection_on_image(detection, img, inplace=i != 0)
     return img
 

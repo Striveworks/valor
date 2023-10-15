@@ -76,7 +76,9 @@ def test__polygons_to_binary_mask(poly1):
 def test_combined_segmentation_mask(poly1: Polygon):
     with pytest.raises(ValueError) as exc_info:
         combined_segmentation_mask(
-            [], label_key="", task_type=TaskType.INSTANCE_SEGMENTATION
+            [],
+            label_key="",
+            task_type=TaskType.DET,
         )
     assert "cannot be empty" in str(exc_info)
 
@@ -86,7 +88,7 @@ def test_combined_segmentation_mask(poly1: Polygon):
         datum=image,
         annotations=[
             Annotation(
-                task_type=TaskType.INSTANCE_SEGMENTATION,
+                task_type=TaskType.DET,
                 labels=[
                     Label(key="k1", value="v1"),
                     Label(key="k2", value="v2"),
@@ -101,7 +103,7 @@ def test_combined_segmentation_mask(poly1: Polygon):
         datum=image,
         annotations=[
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                task_type=TaskType.SEG,
                 labels=[
                     Label(key="k1", value="v1"),
                     Label(key="k2", value="v3"),
@@ -118,13 +120,17 @@ def test_combined_segmentation_mask(poly1: Polygon):
     # check get an error since "k3" isn't a label key in seg2
     with pytest.raises(RuntimeError) as exc_info:
         combined_segmentation_mask(
-            [gts[1]], label_key="k3", task_type=TaskType.SEMANTIC_SEGMENTATION
+            [gts[1]],
+            label_key="k3",
+            task_type=TaskType.SEG,
         )
     assert "doesn't have a label" in str(exc_info)
 
     # should have one distinct (non-black) color
     combined_mask, _ = combined_segmentation_mask(
-        gts, label_key="k1", task_type=TaskType.INSTANCE_SEGMENTATION
+        gts,
+        label_key="k1",
+        task_type=TaskType.SEG,
     )
     combined_mask = np.array(combined_mask)
     # check that we get two unique RGB values (black and one color for label value "v1")
@@ -160,7 +166,7 @@ def test_draw_detections_on_image(bounding_poly: BasicPolygon):
             datum=ImageMetadata("test", 300, 300).to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DETECTION,
+                    task_type=TaskType.DET,
                     labels=[Label("k", "v")],
                     polygon=Polygon(
                         boundary=bounding_poly,

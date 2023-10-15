@@ -328,8 +328,8 @@ class BoundingBox(BaseModel):
 
 class Raster(BaseModel):
     mask: str = Field(frozen=True)
-    height: int
-    width: int
+    # height: int
+    # width: int
     # model_config = ConfigDict(extra="allow", validate_assignment=True)
 
     @field_validator("mask")

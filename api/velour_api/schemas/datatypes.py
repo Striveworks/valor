@@ -60,7 +60,7 @@ class VideoFrameMetadata(BaseModel):
             raise TypeError("Expecting `velour.schemas.Datum`")
 
         # Extract image
-        image = ImageMetadata.from_datum(datum)
+        image = ImageMetadata.fromDatum(datum)
 
         # Extract Video frame number
         metadata = {
@@ -82,6 +82,6 @@ class VideoFrameMetadata(BaseModel):
         )
 
     def toDatum(self) -> Datum:
-        datum = self.image.to_datum()
+        datum = self.image.toDatum()
         datum.metadata.append(Metadatum(key="frame", value=self.frame))
         return datum

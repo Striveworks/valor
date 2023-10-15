@@ -44,16 +44,16 @@ def setup_and_teardown():
 
 @pytest.fixture
 def gt_clfs_create(
-    img1: schemas.Image,
-    img2: schemas.Image,
+    img1: schemas.ImageMetadata,
+    img2: schemas.ImageMetadata,
 ) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
             dataset=dset_name,
-            datum=img1.to_datum(),
+            datum=img1.toDatum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
+                    task_type=enums.TaskType.CLF,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
@@ -63,10 +63,10 @@ def gt_clfs_create(
         ),
         schemas.GroundTruth(
             dataset=dset_name,
-            datum=img2.to_datum(),
+            datum=img2.toDatum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
+                    task_type=enums.TaskType.CLF,
                     labels=[schemas.Label(key="k2", value="v3")],
                 ),
             ],
@@ -76,15 +76,15 @@ def gt_clfs_create(
 
 @pytest.fixture
 def pred_clfs_create(
-    img1: schemas.Image, img2: schemas.Image
+    img1: schemas.ImageMetadata, img2: schemas.ImageMetadata
 ) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
             model=model_name,
-            datum=img1.to_datum(),
+            datum=img1.toDatum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
+                    task_type=enums.TaskType.CLF,
                     labels=[
                         schemas.Label(key="k1", value="v1", score=0.2),
                         schemas.Label(key="k1", value="v2", score=0.8),
@@ -95,10 +95,10 @@ def pred_clfs_create(
         ),
         schemas.Prediction(
             model=model_name,
-            datum=img2.to_datum(),
+            datum=img2.toDatum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
+                    task_type=enums.TaskType.CLF,
                     labels=[
                         schemas.Label(key="k2", value="v2", score=1.0),
                         schemas.Label(key="k3", value="v3", score=0.87),
@@ -265,7 +265,7 @@ def test_stateflow_dataset(db: Session):
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
+                    task_type=enums.TaskType.CLF,
                     labels=[schemas.Label(key="k", value="v")],
                 )
             ],
@@ -307,7 +307,7 @@ def test_stateflow_model(db: Session):
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
+                    task_type=enums.TaskType.CLF,
                     labels=[schemas.Label(key="k", value="v")],
                 )
             ],
@@ -344,7 +344,7 @@ def test_stateflow_model(db: Session):
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLASSIFICATION,
+                    task_type=enums.TaskType.CLF,
                     labels=[
                         schemas.Label(key="k", value="v", score=0.9),
                         schemas.Label(key="k", value="w", score=0.1),
@@ -364,16 +364,18 @@ def test_stateflow_model(db: Session):
     with pytest.raises(exceptions.ModelNotFinalizedError) as e:
         crud.create_ap_evaluation(
             db=db,
-            request_info=schemas.APRequest(
-                settings=schemas.EvaluationSettings(
-                    model=model_name,
-                    dataset=dset_name,
-                    task_type=enums.TaskType.DETECTION,
-                    target_type=enums.AnnotationType.BOX,
+            settings=schemas.EvaluationSettings(
+                model=model_name,
+                dataset=dset_name,
+                type=enums.TaskType.DET,
+                constraints=schemas.EvaluationConstraints(
+                    annotation_type=enums.AnnotationType.BOX,
                     label_key="class",
                 ),
-                iou_thresholds=[0.2, 0.6],
-                ious_to_keep=[0.2],
+                thresholds=schemas.EvaluationThresholds(
+                    iou_thresholds_to_compute=[0.2, 0.6],
+                    iou_thresholds_to_keep=[0.2],
+                ),
             ),
         )
     assert "has not been finalized" in str(e)
@@ -397,16 +399,18 @@ def test_stateflow_model(db: Session):
 
 
 def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
-    request_info = schemas.APRequest(
-        settings=schemas.EvaluationSettings(
-            model=model_name,
-            dataset=dset_name,
-            task_type=enums.TaskType.DETECTION,
-            target_type=enums.AnnotationType.BOX,
+    settings = schemas.EvaluationSettings(
+        model=model_name,
+        dataset=dset_name,
+        type=enums.TaskType.DET,
+        constraints=schemas.EvaluationConstraints(
+            annotation_type=enums.AnnotationType.BOX,
             label_key="class",
         ),
-        iou_thresholds=[0.2, 0.6],
-        ious_to_keep=[0.2],
+        thresholds=schemas.EvaluationThresholds(
+            iou_thresholds_to_compute=[0.2, 0.6],
+            iou_thresholds_to_keep=[0.2],
+        ),
     )
 
     # check ready
@@ -417,7 +421,7 @@ def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
     )
 
     # create evaluation (return AP Response)
-    resp = crud.create_ap_evaluation(db=db, request_info=request_info)
+    resp = crud.create_ap_evaluation(db=db, settings=settings)
 
     # check in evalutation
     assert (
@@ -444,7 +448,7 @@ def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
     # run computation (returns nothing on completion)
     crud.compute_ap_metrics(
         db=db,
-        request_info=request_info,
+        settings=settings,
         job_id=resp.job_id,
     )
 
@@ -479,10 +483,10 @@ def test_stateflow_clf_evaluation(
     crud.finalize(db=db, model_name=model_name, dataset_name=dset_name)
 
     # create clf request
-    request_info = schemas.ClfMetricsRequest(
-        settings=schemas.EvaluationSettings(
-            model=model_name, dataset=dset_name
-        )
+    settings = schemas.EvaluationSettings(
+        model=model_name,
+        dataset=dset_name,
+        type=enums.TaskType.CLF,
     )
 
     # check dataset READY
@@ -497,7 +501,7 @@ def test_stateflow_clf_evaluation(
     # create clf evaluation (returns Clf Response)
     resp = crud.create_clf_evaluation(
         db=db,
-        request_info=request_info,
+        settings=settings,
     )
 
     # check EVALUATE
@@ -525,7 +529,7 @@ def test_stateflow_clf_evaluation(
     # compute clf metrics
     crud.compute_clf_metrics(
         db=db,
-        request_info=request_info,
+        settings=settings,
         job_id=resp.job_id,
     )
 

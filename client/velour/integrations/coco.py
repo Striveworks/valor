@@ -58,7 +58,7 @@ def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
 def _create_annotation(segment, mask_ids, category_id_to_category):
     if category_id_to_category[segment["category_id"]]["isthing"]:
         return Annotation(
-            task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+            task_type=enums.TaskType.DET,
             labels=[
                 Label(
                     key=k,
@@ -73,7 +73,7 @@ def _create_annotation(segment, mask_ids, category_id_to_category):
         )
     else:
         return Annotation(
-            task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+            task_type=enums.TaskType.SEG,
             labels=[
                 Label(
                     key="name",

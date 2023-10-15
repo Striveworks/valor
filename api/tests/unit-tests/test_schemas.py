@@ -12,13 +12,13 @@ from velour_api.schemas.core import _format_name, _format_uid
 
 
 @pytest.fixture
-def metadata() -> list[schemas.MetaDatum]:
+def metadata() -> list[schemas.Metadatum]:
     return [
-        schemas.MetaDatum(
+        schemas.Metadatum(
             key="m1",
             value="v1",
         ),
-        schemas.MetaDatum(
+        schemas.Metadatum(
             key="m2",
             value=0.1,
         ),
@@ -142,15 +142,11 @@ def scored_labels(labels) -> list[schemas.Label]:
 @pytest.fixture
 def groundtruth_annotations(labels) -> list[schemas.Annotation]:
     return [
-        schemas.Annotation(
-            labels=[labels[0]], task_type=enums.TaskType.CLASSIFICATION
-        ),
-        schemas.Annotation(
-            labels=[labels[2]], task_type=enums.TaskType.CLASSIFICATION
-        ),
+        schemas.Annotation(labels=[labels[0]], task_type=enums.TaskType.CLF),
+        schemas.Annotation(labels=[labels[2]], task_type=enums.TaskType.CLF),
         schemas.Annotation(
             labels=[labels[3]],
-            task_type=enums.TaskType.CLASSIFICATION,
+            task_type=enums.TaskType.CLF,
         ),
     ]
 
@@ -160,13 +156,13 @@ def predicted_annotations(scored_labels) -> list[schemas.Annotation]:
     return [
         schemas.Annotation(
             labels=[scored_labels[0], scored_labels[1]],
-            task_type=enums.TaskType.CLASSIFICATION,
+            task_type=enums.TaskType.CLF,
         ),
         schemas.Annotation(
-            labels=[scored_labels[2]], task_type=enums.TaskType.CLASSIFICATION
+            labels=[scored_labels[2]], task_type=enums.TaskType.CLF
         ),
         schemas.Annotation(
-            labels=[scored_labels[3]], task_type=enums.TaskType.CLASSIFICATION
+            labels=[scored_labels[3]], task_type=enums.TaskType.CLF
         ),
     ]
 
@@ -192,41 +188,41 @@ def test_core__format_uid():
 
 def test_metadata_Metadatum():
     # valid
-    schemas.MetaDatum(key="name", value="value")
-    schemas.MetaDatum(
+    schemas.Metadatum(key="name", value="value")
+    schemas.Metadatum(
         key="name",
         value=123,
     )
-    schemas.MetaDatum(
+    schemas.Metadatum(
         key="name",
         value=123.0,
     )
     # @TODO: After implement geojson
-    # schemas.MetaDatum(
+    # schemas.Metadatum(
     #     name="name",
     #     value=schemas.GeoJSON(),
     # )
 
     # test property `name`
     with pytest.raises(ValidationError):
-        schemas.MetaDatum(
+        schemas.Metadatum(
             key=("name",),
             value=123,
         )
 
     # test property `value`
     with pytest.raises(ValidationError):
-        schemas.MetaDatum(
+        schemas.Metadatum(
             key="name",
             value=[1, 2, 3],
         )
     with pytest.raises(ValidationError):
-        schemas.MetaDatum(
+        schemas.Metadatum(
             key="name",
             value=(1, 2, 3),
         )
     with pytest.raises(ValidationError):
-        schemas.MetaDatum(
+        schemas.Metadatum(
             key="name",
             value=schemas.geometry.Point(x=1, y=1),
         )
@@ -368,21 +364,16 @@ def test_core_annotation_without_scores(
 ):
     # valid
     gt = schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION,
+        task_type=enums.TaskType.CLF,
         labels=labels,
     )
     schemas.Annotation(
-        task_type=enums.TaskType.DETECTION,
+        task_type=enums.TaskType.DET,
         labels=labels,
         metadata=[],
     )
     schemas.Annotation(
-        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-        labels=labels,
-        metadata=metadata,
-    )
-    schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        task_type=enums.TaskType.SEG,
         labels=labels,
         metadata=[],
         bounding_box=bbox,
@@ -390,19 +381,15 @@ def test_core_annotation_without_scores(
         raster=raster,
     )
     schemas.Annotation(
-        task_type="classification",
+        task_type=enums.TaskType.CLF.value,
         labels=labels,
     )
     schemas.Annotation(
-        task_type="detection",
+        task_type=enums.TaskType.DET.value,
         labels=labels,
     )
     schemas.Annotation(
-        task_type="instance_segmentation",
-        labels=labels,
-    )
-    schemas.Annotation(
-        task_type="semantic_segmentation",
+        task_type=enums.TaskType.SEG.value,
         labels=labels,
     )
 
@@ -414,30 +401,30 @@ def test_core_annotation_without_scores(
     with pytest.raises(ValidationError):
         schemas.Annotation(
             labels=labels[0],
-            task_type=enums.TaskType.CLASSIFICATION,
+            task_type=enums.TaskType.CLF,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
             labels=[labels[0], 123],
-            task_type=enums.TaskType.CLASSIFICATION,
+            task_type=enums.TaskType.CLF,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
             labels=[],
-            task_type=enums.TaskType.CLASSIFICATION,
+            task_type=enums.TaskType.CLF,
         )
     assert gt.labels == labels
 
     # test property `metadata`
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type="classification",
+            task_type=enums.TaskType.CLF.value,
             labels=labels,
             metadata=metadata[0],
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type="classification",
+            task_type=enums.TaskType.CLF.value,
             labels=labels,
             metadata=[metadata[0], "123"],
         )
@@ -445,25 +432,25 @@ def test_core_annotation_without_scores(
     # test geometric properties
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.DET,
             labels=labels,
             bounding_box=polygon,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.DET,
             labels=labels,
             polygon=bbox,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.DET,
             labels=labels,
             multipolygon=bbox,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.DET,
             labels=labels,
             raster=bbox,
         )
@@ -473,29 +460,27 @@ def test_core_annotation_with_scores(
     metadata, bbox, polygon, raster, scored_labels
 ):
     # valid
-    pd = schemas.Annotation(
-        task_type=enums.TaskType.CLASSIFICATION, labels=scored_labels
+    pd = schemas.Annotation(task_type=enums.TaskType.CLF, labels=scored_labels)
+    schemas.Annotation(
+        task_type=enums.TaskType.DET, labels=scored_labels, metadata=[]
     )
     schemas.Annotation(
-        task_type=enums.TaskType.DETECTION, labels=scored_labels, metadata=[]
-    )
-    schemas.Annotation(
-        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
-        labels=scored_labels,
-        metadata=metadata,
-    )
-    schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        task_type=enums.TaskType.SEG,
         labels=scored_labels,
         metadata=[],
         bounding_box=bbox,
         polygon=polygon,
         raster=raster,
     )
-    schemas.Annotation(task_type="classification", labels=scored_labels)
-    schemas.Annotation(task_type="detection", labels=scored_labels)
-    schemas.Annotation(task_type="instance_segmentation", labels=scored_labels)
-    schemas.Annotation(task_type="semantic_segmentation", labels=scored_labels)
+    schemas.Annotation(
+        task_type=enums.TaskType.CLF.value, labels=scored_labels
+    )
+    schemas.Annotation(
+        task_type=enums.TaskType.DET.value, labels=scored_labels
+    )
+    schemas.Annotation(
+        task_type=enums.TaskType.SEG.value, labels=scored_labels
+    )
 
     # test property `task_type`
     with pytest.raises(ValidationError):
@@ -506,7 +491,7 @@ def test_core_annotation_with_scores(
     # test property `scored_labels`
     with pytest.raises(ValidationError) as e:
         schemas.Annotation(
-            labels=scored_labels[0], task_type=enums.TaskType.CLASSIFICATION
+            labels=scored_labels[0], task_type=enums.TaskType.CLF
         )
     assert "should be a valid dictionary or instance of Label" in str(
         e.value.errors()[0]["msg"]
@@ -517,13 +502,13 @@ def test_core_annotation_with_scores(
     # test property `metadata`
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type="classification",
+            task_type=enums.TaskType.CLF.value,
             labels=scored_labels,
             metadata=metadata[0],
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type="classification",
+            task_type=enums.TaskType.CLF.value,
             labels=scored_labels,
             metadata=[metadata[0], "123"],
         )
@@ -531,25 +516,25 @@ def test_core_annotation_with_scores(
     # test geometric properties
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.DET,
             labels=scored_labels,
             bounding_box=polygon,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.DET,
             labels=scored_labels,
             polygon=bbox,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.DET,
             labels=scored_labels,
             multipolygon=bbox,
         )
     with pytest.raises(ValidationError) as e:
         schemas.Annotation(
-            task_type=enums.TaskType.DETECTION,
+            task_type=enums.TaskType.DET,
             labels=scored_labels,
             raster=bbox,
         )
@@ -684,7 +669,7 @@ def test_core_prediction(
             annotations=[
                 schemas.Annotation(
                     labels=scored_labels[1:],
-                    task_type=enums.TaskType.CLASSIFICATION,
+                    task_type=enums.TaskType.CLF,
                 )
             ],
         )
@@ -692,9 +677,8 @@ def test_core_prediction(
 
     # check score is provided
     for task_type in [
-        enums.TaskType.CLASSIFICATION,
-        enums.TaskType.DETECTION,
-        enums.TaskType.INSTANCE_SEGMENTATION,
+        enums.TaskType.CLF,
+        enums.TaskType.DET,
     ]:
         with pytest.raises(ValueError) as e:
             schemas.Prediction(
@@ -719,7 +703,7 @@ def test_core_prediction(
             annotations=[
                 schemas.Annotation(
                     labels=scored_labels,
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.SEG,
                 )
             ],
         )
@@ -735,14 +719,14 @@ def test_semantic_segmentation_validation():
         ),
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                task_type=enums.TaskType.SEG,
                 labels=[
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
                 ],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                task_type=enums.TaskType.SEG,
                 labels=[schemas.Label(key="k1", value="v3")],
             ),
         ],
@@ -758,14 +742,14 @@ def test_semantic_segmentation_validation():
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.SEG,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k1", value="v1"),
                     ],
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.SEG,
                     labels=[schemas.Label(key="k3", value="v3")],
                 ),
             ],
@@ -781,14 +765,14 @@ def test_semantic_segmentation_validation():
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.SEG,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k1", value="v2"),
                     ],
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.SEG,
                     labels=[schemas.Label(key="k1", value="v1")],
                 ),
             ],
@@ -805,14 +789,14 @@ def test_semantic_segmentation_validation():
         ),
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                task_type=enums.TaskType.SEG,
                 labels=[
                     schemas.Label(key="k1", value="v1"),
                     schemas.Label(key="k2", value="v2"),
                 ],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                task_type=enums.TaskType.SEG,
                 labels=[schemas.Label(key="k1", value="v3")],
             ),
         ],
@@ -827,14 +811,14 @@ def test_semantic_segmentation_validation():
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.SEG,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k1", value="v1"),
                     ],
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.SEG,
                     labels=[schemas.Label(key="k3", value="v3")],
                 ),
             ],
