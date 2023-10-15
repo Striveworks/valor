@@ -1,7 +1,6 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
-
 import io
 import json
 import time
@@ -23,6 +22,7 @@ from sqlalchemy import and_, create_engine, func, select, text
 from sqlalchemy.orm import Session
 
 from velour.client import Client, ClientException, Dataset, Model
+from velour.data_generation import _generate_mask
 from velour.enums import DataType, JobStatus, TaskType
 from velour.schemas import (
     Annotation,
@@ -413,9 +413,24 @@ def gt_semantic_segs1(
 
 
 @pytest.fixture
-def gt_semantic_segs2(
-    rect3: BoundingBox, img2: ImageMetadata
-) -> list[GroundTruth]:
+def gt_semantic_segs1_mask(img1: ImageMetadata) -> GroundTruth:
+    mask = _generate_mask(height=900, width=300)
+    raster = Raster.from_numpy(mask)
+
+    return GroundTruth(
+        datum=img1.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                labels=[Label(key="k2", value="v2")],
+                raster=raster,
+            )
+        ],
+    )
+
+
+@pytest.fixture
+def gt_semantic_segs2(rect3: BoundingBox, img2: ImageMetadata) -> GroundTruth:
     return [
         GroundTruth(
             datum=img2.to_datum(),
@@ -430,6 +445,41 @@ def gt_semantic_segs2(
             ],
         ),
     ]
+
+
+@pytest.fixture
+def gt_semantic_segs2_mask(img2: ImageMetadata) -> GroundTruth:
+    mask = _generate_mask(height=40, width=30)
+    raster = Raster.from_numpy(mask)
+
+    return GroundTruth(
+        datum=img2.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                labels=[Label(key="k2", value="v2")],
+                raster=raster,
+            )
+        ],
+    )
+
+
+@pytest.fixture
+def gt_semantic_segs_error(img1: ImageMetadata) -> GroundTruth:
+    mask = _generate_mask(height=100, width=100)
+    raster = Raster.from_numpy(mask)
+
+    # expected to throw an error since the mask size differs from the image size
+    return GroundTruth(
+        datum=img1.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                labels=[Label(key="k3", value="v3")],
+                raster=raster,
+            )
+        ],
+    )
 
 
 @pytest.fixture
@@ -1117,7 +1167,10 @@ def test_create_gt_segs_as_polys_or_masks(
 
         dataset.add_groundtruth(gts)
 
-    assert "appears more than once" in str(exc_info.value)
+    assert (
+        "semantic segmentation tasks can only have one annotation per label"
+        in str(exc_info.value)
+    )
 
     # fine with instance segmentation though
     gts = GroundTruth(
@@ -1327,7 +1380,7 @@ def test_client_delete_dataset(client: Client, db: Session):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
     Dataset.create(client, dset_name)
     assert db.scalar(select(func.count(models.Dataset.name))) == 1
-    client.delete_dataset(dset_name)
+    client.delete_dataset(dset_name, timeout=30)
     time.sleep(1.0)
     assert db.scalar(select(func.count(models.Dataset.name))) == 0
 
@@ -2000,6 +2053,96 @@ def test_evaluate_tabular_clf(
     model.delete()
 
     assert len(client.get_models()) == 0
+
+
+def test_add_groundtruth(
+    client: Client,
+    gt_semantic_segs_error: GroundTruth,
+):
+    dataset = Dataset.create(client, dset_name)
+
+    with pytest.raises(ClientException) as exc_info:
+        dataset.add_groundtruth(gt_semantic_segs_error)
+
+    assert "raster and image to have" in str(exc_info)
+
+    client.delete_dataset(dset_name, timeout=30)
+
+
+def test_get_groundtruth(
+    client: Client,
+    gt_semantic_segs1_mask: GroundTruth,
+    gt_semantic_segs2_mask: GroundTruth,
+):
+    dataset = Dataset.create(client, dset_name)
+    dataset.add_groundtruth(gt_semantic_segs1_mask)
+    dataset.add_groundtruth(gt_semantic_segs2_mask)
+
+    try:
+        dataset.get_groundtruth("uid1")
+        dataset.get_groundtruth("uid2")
+    except Exception as e:
+        raise AssertionError(e)
+
+    client.delete_dataset(dset_name, timeout=30)
+
+
+def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
+    img_size = [900, 300]
+    mask = _generate_mask(height=img_size[0], width=img_size[1])
+    raster = Raster.from_numpy(mask)
+
+    gt = GroundTruth(
+        datum=img1.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=TaskType.DETECTION,
+                labels=[Label(key="k3", value="v3")],
+                bounding_box=BoundingBox.from_extrema(
+                    xmin=10, ymin=10, xmax=60, ymax=40
+                ),
+                raster=raster,
+            )
+        ],
+    )
+
+    dataset = Dataset.create(client, dset_name)
+
+    dataset.add_groundtruth(gt)
+
+    fetched_gt = dataset.get_groundtruth("uid1")
+
+    assert (
+        fetched_gt.annotations[0].raster is not None
+    ), "Raster doesn't exist on fetched gt"
+    assert (
+        fetched_gt.annotations[0].bounding_box is not None
+    ), "Bounding box doesn't exist on fetched gt"
+
+    client.delete_dataset(dset_name, timeout=30)
+
+
+def test_get_dataset_status(
+    client: Client, img1: ImageMetadata, gt_dets1: list
+):
+    status = client.get_dataset_status(dset_name)
+    assert status == "none"
+
+    dataset = Dataset.create(client, dset_name)
+
+    assert client.get_dataset_status(dset_name) == "none"
+
+    gt = gt_dets1[0]
+
+    dataset.add_groundtruth(gt)
+    dataset.finalize()
+    status = client.get_dataset_status(dset_name)
+    assert status == "ready"
+
+    client.delete_dataset(dset_name, timeout=30)
+
+    status = client.get_dataset_status(dset_name)
+    assert status == "none"
 
 
 # @TODO: Implement metadata querying + geojson

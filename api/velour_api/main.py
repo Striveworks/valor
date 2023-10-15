@@ -239,19 +239,18 @@ def get_dataset(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-app.get(
+@app.get(
     "/datasets/{dataset_name}/status",
     dependencies=[Depends(token_auth_scheme)],
-    tags=["Models"],
+    tags=["Datasets"],
 )
-
-
 def get_dataset_status(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> enums.State:
     try:
-        return crud.get_backend_state(dataset_name=dataset_name)
-    except exceptions.ModelDoesNotExistError as e:
+        resp = crud.get_backend_state(dataset_name=dataset_name)
+        return resp
+    except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -282,7 +281,11 @@ def delete_dataset(
 ):
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
-        crud.delete(db=db, dataset_name=dataset_name)
+        background_tasks.add_task(
+            crud.delete,
+            db=db,
+            dataset_name=dataset_name,
+        )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except exceptions.StateflowError as e:

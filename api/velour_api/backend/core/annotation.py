@@ -38,11 +38,11 @@ def create_annotation(
 
     if isinstance(annotation.bounding_box, schemas.BoundingBox):
         box = annotation.bounding_box.wkt()
-    elif isinstance(annotation.polygon, schemas.Polygon):
+    if isinstance(annotation.polygon, schemas.Polygon):
         polygon = annotation.polygon.wkt()
-    elif isinstance(annotation.multipolygon, schemas.MultiPolygon):
+    if isinstance(annotation.multipolygon, schemas.MultiPolygon):
         raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
-    elif isinstance(annotation.raster, schemas.Raster):
+    if isinstance(annotation.raster, schemas.Raster):
         raster = annotation.raster.mask_bytes
     elif isinstance(annotation.jsonb, dict):
         jsonb = annotation.jsonb
@@ -126,8 +126,7 @@ def _raster_to_png_b64(
 
 
 def get_annotation(
-    db: Session,
-    annotation: models.Annotation,
+    db: Session, annotation: models.Annotation, datum: models.Datum = None
 ) -> schemas.Annotation:
     # Retrieve all labels associated with annotation
     gt_labels = [
@@ -223,7 +222,7 @@ def get_annotations(
         else models.Annotation.model_id == model.id
     )
     return [
-        get_annotation(db, annotation=annotation)
+        get_annotation(db, annotation=annotation, datum=datum)
         for annotation in (
             db.query(models.Annotation)
             .where(

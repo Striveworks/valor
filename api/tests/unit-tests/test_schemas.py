@@ -755,7 +755,10 @@ def test_semantic_segmentation_validation():
             ],
         )
 
-    assert "appears more than" in str(e)
+    assert (
+        "semantic segmentation tasks can only have one annotation per label"
+        in str(e.value)
+    )
 
     with pytest.raises(ValueError) as e:
         schemas.GroundTruth(
@@ -778,7 +781,10 @@ def test_semantic_segmentation_validation():
             ],
         )
 
-    assert "appears more than" in str(e)
+    assert (
+        "semantic segmentation tasks can only have one annotation per label"
+        in str(e.value)
+    )
 
     # this is valid
     schemas.Prediction(
@@ -824,10 +830,10 @@ def test_semantic_segmentation_validation():
             ],
         )
 
-    assert "appears more than" in str(e)
-
-
-# velour_api.schemas.metadata
+    assert (
+        "semantic segmentation tasks can only have one annotation per label"
+        in str(e.value)
+    )
 
 
 # @TODO

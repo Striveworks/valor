@@ -18,9 +18,11 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
   redis:
-    image: "redis"
+    image: "public.ecr.aws/bitnami/redis:7.0"
     ports:
       - "6379:6379"
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
   web:
     build: ./web
     ports:

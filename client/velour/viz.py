@@ -123,16 +123,9 @@ def combined_segmentation_mask(
 
     label_values = []
     for annotation in annotations:
-        found_label = False
         for label in annotation.labels:
             if label.key == label_key:
-                found_label = True
                 label_values.append(label.value)
-        if not found_label:
-            raise RuntimeError(
-                "Found a segmentation that doesn't have a label with key 'label_key'."
-                f" Available label keys are: {[label.key for label in annotation.labels]}"
-            )
 
     unique_label_values = list(set(label_values))
     label_value_to_color = {
