@@ -1,7 +1,6 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
-
 import io
 import json
 import time
@@ -1394,7 +1393,7 @@ def test_client_delete_dataset(client: Client, db: Session):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
     Dataset.create(client, dset_name)
     assert db.scalar(select(func.count(models.Dataset.name))) == 1
-    client.delete_dataset(dset_name)
+    client.delete_dataset(dset_name, timeout=30)
     time.sleep(1.0)
     assert db.scalar(select(func.count(models.Dataset.name))) == 0
 
@@ -2071,7 +2070,7 @@ def test_add_groundtruth(
 
     assert "raster and image to have" in str(exc_info)
 
-    client.delete_dataset(dset_name)
+    client.delete_dataset(dset_name, timeout=30)
 
 
 def test_get_groundtruth(
@@ -2089,7 +2088,65 @@ def test_get_groundtruth(
     except Exception as e:
         raise AssertionError(e)
 
-    client.delete_dataset(dset_name)
+    client.delete_dataset(dset_name, timeout=30)
+
+
+def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
+    img_size = [900, 300]
+    mask = _generate_mask(height=img_size[0], width=img_size[1])
+    raster = Raster.from_numpy(mask)
+
+    gt = GroundTruth(
+        datum=img1.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=TaskType.DETECTION,
+                labels=[Label(key="k3", value="v3")],
+                bounding_box=BoundingBox.from_extrema(
+                    xmin=10, ymin=10, xmax=60, ymax=40
+                ),
+                raster=raster,
+            )
+        ],
+    )
+
+    dataset = Dataset.create(client, dset_name)
+
+    dataset.add_groundtruth(gt)
+
+    fetched_gt = dataset.get_groundtruth("uid1")
+
+    assert (
+        fetched_gt.annotations[0].raster is not None
+    ), "Raster doesn't exist on fetched gt"
+    assert (
+        fetched_gt.annotations[0].bounding_box is not None
+    ), "Bounding box doesn't exist on fetched gt"
+
+    client.delete_dataset(dset_name, timeout=30)
+
+
+def test_get_dataset_status(
+    client: Client, img1: ImageMetadata, gt_dets1: list
+):
+    status = client.get_dataset_status(dset_name)
+    assert status == "none"
+
+    dataset = Dataset.create(client, dset_name)
+
+    assert client.get_dataset_status(dset_name) == "none"
+
+    gt = gt_dets1[0]
+
+    dataset.add_groundtruth(gt)
+    dataset.finalize()
+    status = client.get_dataset_status(dset_name)
+    assert status == "ready"
+
+    client.delete_dataset(dset_name, timeout=30)
+
+    status = client.get_dataset_status(dset_name)
+    assert status == "none"
 
 
 # @TODO: Implement metadata querying + geojson

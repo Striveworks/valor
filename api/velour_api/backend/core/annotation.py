@@ -34,11 +34,11 @@ def create_annotation(
 
     if isinstance(annotation.bounding_box, schemas.BoundingBox):
         box = annotation.bounding_box.wkt()
-    elif isinstance(annotation.polygon, schemas.Polygon):
+    if isinstance(annotation.polygon, schemas.Polygon):
         polygon = annotation.polygon.wkt()
-    elif isinstance(annotation.multipolygon, schemas.MultiPolygon):
+    if isinstance(annotation.multipolygon, schemas.MultiPolygon):
         raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
-    elif isinstance(annotation.raster, schemas.Raster):
+    if isinstance(annotation.raster, schemas.Raster):
         raster = annotation.raster.mask_bytes
     # @TODO: Add more annotation types
 

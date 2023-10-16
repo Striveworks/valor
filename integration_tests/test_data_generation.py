@@ -1,11 +1,16 @@
 import io
+import time
 from base64 import b64decode
 
 import PIL
 import pytest
 
 from velour.client import Client
-from velour.data_generation import generate_segmentation_data
+from velour.data_generation import (
+    generate_prediction_data,
+    generate_segmentation_data,
+)
+from velour.enums import JobStatus
 
 dset_name = "test_dataset"
 
@@ -20,12 +25,13 @@ def client():
     return Client(host="http://localhost:8000")
 
 
-def test_generate_segmentation_data(client: Client):
+def test_generate_segmentation_data(
+    client: Client,
+    n_images: int = 10,
+    n_annotations: int = 2,
+    n_labels: int = 2,
+):
     """Check that our generated dataset correctly matches our input parameters"""
-
-    n_images = 10
-    n_annotations = 10
-    n_labels = 2
 
     dataset = generate_segmentation_data(
         client=client,
@@ -63,4 +69,57 @@ def test_generate_segmentation_data(client: Client):
             sample_image_size == sample_mask_size
         ), f"Image is size {sample_image_size}, but mask is size {sample_mask_size}"
 
-    client.delete_dataset(dset_name)
+    client.delete_dataset(dset_name, timeout=300)
+
+
+def test_generate_prediction_data(client: Client):
+    """Check that our generated predictions correctly matches our input parameters"""
+
+    n_images = 2
+    n_annotations = 2
+    n_labels = 2
+    dset_name = "dset"
+    model_name = "model"
+
+    dataset = generate_segmentation_data(
+        client=client,
+        dataset_name=dset_name,
+        n_images=n_images,
+        n_annotations=n_annotations,
+        n_labels=n_labels,
+    )
+
+    assert len(dataset.get_images()) == n_images
+    assert len(dataset.get_datums()) == n_images
+
+    model = generate_prediction_data(
+        client=client,
+        dataset=dataset,
+        model_name=model_name,
+        n_annotations=2,
+        n_labels=2,
+    )
+
+    eval_job = model.evaluate_ap(
+        dataset=dataset,
+        iou_thresholds=[0, 1],
+        ious_to_keep=[0, 1],
+        label_key="k1",
+    )
+
+    # sleep to give the backend time to compute
+    time.sleep(1)
+    assert eval_job.status == JobStatus.DONE
+
+    settings = eval_job.settings
+    settings.pop("id")
+    assert settings == {
+        "model": model_name,
+        "dataset": dset_name,
+        "task_type": "detection",
+        "target_type": "box",
+        "label_key": "k1",
+    }
+    assert len(eval_job.metrics) > 0
+
+    client.delete_dataset(dset_name, timeout=300)
