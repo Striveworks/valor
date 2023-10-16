@@ -565,13 +565,21 @@ class Model:
         self,
         dataset: "Dataset",
         annotation_type: AnnotationType = AnnotationType.NONE,
-        iou_thresholds: List[float] = None,
-        ious_to_keep: List[float] = None,
+        iou_thresholds_to_compute: List[float] = None,
+        iou_thresholds_to_keep: List[float] = None,
         min_area: float = None,
         max_area: float = None,
         label_key: Optional[str] = None,
     ) -> Evaluation:
         """Evaluate object detections."""
+
+        # Default iou thresholds
+        if iou_thresholds_to_compute is None:
+            iou_thresholds_to_compute = [
+                round(0.5 + 0.05 * i, 2) for i in range(10)
+            ]
+        if iou_thresholds_to_keep is None:
+            iou_thresholds_to_keep = [0.5, 0.75]
 
         constraints = schemas.EvaluationConstraints(
             annotation_type=annotation_type,
@@ -581,8 +589,8 @@ class Model:
         )
 
         thresholds = schemas.EvaluationThresholds(
-            iou_thresholds_to_compute=iou_thresholds,
-            iou_thresholds_to_keep=ious_to_keep,
+            iou_thresholds_to_compute=iou_thresholds_to_compute,
+            iou_thresholds_to_keep=iou_thresholds_to_keep,
         )
 
         evaluation = schemas.EvaluationSettings(
@@ -636,7 +644,7 @@ class Model:
         ret = []
         for evaluation in self.get_evaluations():
             metrics = [
-                {**m, "dataset": evaluation.dataset_name}
+                {**m, "dataset": evaluation.dataset}
                 for m in evaluation.metrics
             ]
             df = pd.DataFrame(metrics)

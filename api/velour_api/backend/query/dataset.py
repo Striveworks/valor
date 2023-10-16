@@ -76,7 +76,6 @@ def delete_dataset(
     name: str,
 ):
     dataset = core.get_dataset(db, name=name)
-    print(dataset)
     try:
         db.delete(dataset)
         db.commit()
