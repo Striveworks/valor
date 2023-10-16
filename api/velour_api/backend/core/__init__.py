@@ -1,6 +1,7 @@
 from .annotation import (
     create_annotation,
-    create_annotations,
+    create_annotations_and_labels,
+    create_metadata_for_multiple_annotations,
     get_annotation,
     get_annotation_type,
     get_annotations,
@@ -25,8 +26,9 @@ from .metadata import (
 from .model import get_model
 
 __all__ = [
+    "create_metadata_for_multiple_annotations",
     "create_annotation",
-    "create_annotations",
+    "create_annotations_and_labels",
     "get_annotation",
     "get_annotations",
     "get_annotation_type",
