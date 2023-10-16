@@ -105,8 +105,8 @@ def test_generate_prediction_data(client: Client):
     eval_job = model.evaluate_detection(
         dataset=dataset,
         annotation_type=AnnotationType.BOX,
-        iou_thresholds=[0, 1],
-        ious_to_keep=[0, 1],
+        iou_thresholds_to_compute=[0, 1],
+        iou_thresholds_to_keep=[0, 1],
         label_key="k1",
     )
 

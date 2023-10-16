@@ -1410,8 +1410,8 @@ def test_evaluate_detection(
 
     eval_job = model.evaluate_detection(
         dataset=dataset,
-        iou_thresholds=[0.1, 0.6],
-        ious_to_keep=[0.1, 0.6],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
     )
 
@@ -1490,8 +1490,8 @@ def test_evaluate_detection(
     # are not None
     eval_job_bounded_area_10_2000 = model.evaluate_detection(
         dataset=dataset,
-        iou_thresholds=[0.1, 0.6],
-        ious_to_keep=[0.1, 0.6],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
         min_area=10,
         max_area=2000,
@@ -1517,8 +1517,8 @@ def test_evaluate_detection(
     # min area threshold should divide the set of annotations
     eval_job_min_area_1200 = model.evaluate_detection(
         dataset=dataset,
-        iou_thresholds=[0.1, 0.6],
-        ious_to_keep=[0.1, 0.6],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
         min_area=1200,
     )
@@ -1541,8 +1541,8 @@ def test_evaluate_detection(
     # check for difference with max area now dividing the set of annotations
     eval_job_max_area_1200 = model.evaluate_detection(
         dataset=dataset,
-        iou_thresholds=[0.1, 0.6],
-        ious_to_keep=[0.1, 0.6],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
         max_area=1200,
     )
@@ -1566,8 +1566,8 @@ def test_evaluate_detection(
     # except now has an upper bound
     eval_job_bounded_area_1200_1800 = model.evaluate_detection(
         dataset=dataset,
-        iou_thresholds=[0.1, 0.6],
-        ious_to_keep=[0.1, 0.6],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
         min_area=1200,
         max_area=1800,
