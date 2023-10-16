@@ -127,7 +127,7 @@ def test_job_status():
     )
 
     # check that job id: 0 is non-existent
-    assert stateflow.get_job_status(dataset_name, model_name, 0) is None
+    assert stateflow.get_job_status(0) is None
 
     # test invalid transitions from `None`
     with pytest.raises(exceptions.JobDoesNotExistError) as e:
@@ -147,7 +147,7 @@ def test_job_status():
     assert "does not exist" in str(e)
 
     # check that nothing affected the state
-    assert stateflow.get_job_status(dataset_name, model_name, 0) is None
+    assert stateflow.get_job_status(0) is None
 
     """test valid transition"""
     stateflow.set_job_status(
@@ -235,7 +235,7 @@ def test_job_status():
     stateflow.remove_job(dataset_name, model_name, 0)
 
     """confirm removal"""
-    assert stateflow.get_job_status(dataset_name, model_name, 0) is None
+    assert stateflow.get_job_status(0) is None
 
 
 def test_stateflow_dataset(db: Session):

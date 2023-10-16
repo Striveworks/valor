@@ -4,12 +4,8 @@ from velour_api import backend, enums, schemas
 from velour_api.backend import jobs
 
 
-def get_evaluation_status(
-    *, dataset_name: str, model_name: str, job_id: int
-) -> enums.JobStatus:
+def get_evaluation_status(job_id: int) -> enums.JobStatus:
     return jobs.get_stateflow().get_job_status(
-        dataset_name=dataset_name,
-        model_name=model_name,
         job_id=job_id,
     )
 

@@ -586,17 +586,13 @@ def get_model_evaluations(model_name: str) -> dict[str, list[int]]:
 
 
 @app.get(
-    "/evaluations/{job_id}/dataset/{dataset_name}/model/{model_name}",
+    "/evaluations/{job_id}",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def get_evaluation_status(
-    dataset_name: str, model_name: str, job_id: int
-) -> enums.JobStatus:
+def get_evaluation_status(job_id: int) -> enums.JobStatus:
     try:
         return crud.get_evaluation_status(
-            dataset_name=dataset_name,
-            model_name=model_name,
             job_id=job_id,
         )
     except exceptions.JobDoesNotExistError as e:
@@ -604,28 +600,16 @@ def get_evaluation_status(
 
 
 @app.get(
-    "/evaluations/{job_id}/dataset/{dataset_name}/model/{model_name}/settings",
+    "/evaluations/{job_id}/settings",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
     tags=["Evaluations"],
 )
 def get_evaluation_settings(
-    dataset_name: str,
-    model_name: str,
     job_id: int,
     db: Session = Depends(get_db),
 ) -> schemas.EvaluationSettings:
     try:
-        # status = crud.get_evaluation_status(
-        #     dataset_name=dataset_name,
-        #     model_name=model_name,
-        #     job_id=job_id,
-        # )
-        # if status != enums.JobStatus.DONE:
-        #     raise HTTPException(
-        #         status_code=404,
-        #         detail=f"No settings for job {job_id} since its status is {status}",
-        #     )
         return crud.get_evaluation_settings_from_id(
             db=db, evaluation_settings_id=job_id
         )
@@ -634,21 +618,17 @@ def get_evaluation_settings(
 
 
 @app.get(
-    "/evaluations/{job_id}/dataset/{dataset_name}/model/{model_name}/metrics",
+    "/evaluations/{job_id}/metrics",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
     tags=["Evaluations"],
 )
 def get_evaluation_metrics(
-    dataset_name: str,
-    model_name: str,
     job_id: int,
     db: Session = Depends(get_db),
 ) -> list[schemas.Metric]:
     try:
         status = crud.get_evaluation_status(
-            dataset_name=dataset_name,
-            model_name=model_name,
             job_id=job_id,
         )
         if status != enums.JobStatus.DONE:
@@ -671,21 +651,17 @@ def get_evaluation_metrics(
 
 
 @app.get(
-    "/evaluations/{job_id}/dataset/{dataset_name}/model/{model_name}/confusion-matrices",
+    "/evaluations/{job_id}/confusion-matrices",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
     tags=["Evaluations"],
 )
 def get_evaluation_confusion_matrices(
-    dataset_name: str,
-    model_name: str,
     job_id: int,
     db: Session = Depends(get_db),
 ) -> list[schemas.ConfusionMatrixResponse]:
     try:
         status = crud.get_evaluation_status(
-            dataset_name=dataset_name,
-            model_name=model_name,
             job_id=job_id,
         )
         if status != enums.JobStatus.DONE:

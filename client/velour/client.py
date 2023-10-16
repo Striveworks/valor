@@ -179,7 +179,7 @@ class Evaluation:
     @property
     def status(self) -> str:
         resp = self.client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}"
+            f"evaluations/{self._id}"
         ).json()
         return JobStatus(resp)
 
@@ -187,7 +187,7 @@ class Evaluation:
     @property
     def settings(self) -> dict:
         return self.client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/settings"
+            f"evaluations/{self._id}/settings"
         ).json()
 
     def wait_for_completion(self, *, interval=1.0, timeout=None):
@@ -205,7 +205,7 @@ class Evaluation:
         if self.status != JobStatus.DONE:
             return []
         return self.client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/metrics"
+            f"evaluations/{self._id}/metrics"
         ).json()
 
     @property
@@ -213,7 +213,7 @@ class Evaluation:
         if self.status != JobStatus.DONE:
             return []
         return self.client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/confusion-matrices"
+            f"evaluations/{self._id}/confusion-matrices"
         ).json()
 
 
