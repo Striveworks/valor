@@ -734,7 +734,7 @@ def test_semantic_segmentation_validation():
 
     assert len(gt.annotations) == 2
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValidationError) as e:
         schemas.GroundTruth(
             datum=schemas.Datum(
                 uid="uid",
@@ -754,13 +754,12 @@ def test_semantic_segmentation_validation():
                 ),
             ],
         )
-
     assert (
-        "semantic segmentation tasks can only have one annotation per label"
+        "semantic segmentation tasks can only have at most one annotation per label"
         in str(e.value)
     )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValidationError) as e:
         schemas.GroundTruth(
             datum=schemas.Datum(
                 uid="uid",
@@ -782,7 +781,7 @@ def test_semantic_segmentation_validation():
         )
 
     assert (
-        "semantic segmentation tasks can only have one annotation per label"
+        "semantic segmentation tasks can only have at most one annotation per label"
         in str(e.value)
     )
 
@@ -831,7 +830,7 @@ def test_semantic_segmentation_validation():
         )
 
     assert (
-        "semantic segmentation tasks can only have one annotation per label"
+        "semantic segmentation tasks can only have at most one annotation per label"
         in str(e.value)
     )
 
