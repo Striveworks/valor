@@ -754,10 +754,7 @@ def test_semantic_segmentation_validation():
                 ),
             ],
         )
-    assert (
-        "semantic segmentation tasks can only have at most one annotation per label"
-        in str(e.value)
-    )
+    assert "one annotation per label" in str(e.value)
 
     with pytest.raises(ValidationError) as e:
         schemas.GroundTruth(
@@ -780,10 +777,7 @@ def test_semantic_segmentation_validation():
             ],
         )
 
-    assert (
-        "semantic segmentation tasks can only have at most one annotation per label"
-        in str(e.value)
-    )
+    assert "one annotation per label" in str(e.value)
 
     # this is valid
     schemas.Prediction(
@@ -829,10 +823,7 @@ def test_semantic_segmentation_validation():
             ],
         )
 
-    assert (
-        "semantic segmentation tasks can only have at most one annotation per label"
-        in str(e.value)
-    )
+    assert "one annotation per label" in str(e.value)
 
 
 # @TODO

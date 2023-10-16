@@ -186,19 +186,20 @@ def db(client: Client) -> Session:
     for model in client.get_models():
         try:
             client.delete_model(model["name"])
+            time.sleep(1)
         except exceptions.ModelDoesNotExistError:
             continue
 
     for dataset in client.get_datasets():
         try:
             client.delete_dataset(dataset["name"])
+            time.sleep(1)
         except exceptions.DatasetDoesNotExistError:
             continue
 
     labels = sess.scalars(select(models.Label))
     for label in labels:
         sess.delete(label)
-
     sess.commit()
 
     # clean redis
@@ -421,7 +422,7 @@ def gt_semantic_segs1_mask(img1: ImageMetadata) -> GroundTruth:
         datum=img1.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                task_type=TaskType.SEG,
                 labels=[Label(key="k2", value="v2")],
                 raster=raster,
             )
@@ -456,7 +457,7 @@ def gt_semantic_segs2_mask(img2: ImageMetadata) -> GroundTruth:
         datum=img2.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                task_type=TaskType.SEG,
                 labels=[Label(key="k2", value="v2")],
                 raster=raster,
             )
@@ -474,7 +475,7 @@ def gt_semantic_segs_error(img1: ImageMetadata) -> GroundTruth:
         datum=img1.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                task_type=TaskType.SEG,
                 labels=[Label(key="k3", value="v3")],
                 raster=raster,
             )
@@ -1167,10 +1168,7 @@ def test_create_gt_segs_as_polys_or_masks(
 
         dataset.add_groundtruth(gts)
 
-    assert (
-        "semantic segmentation tasks can only have one annotation per label"
-        in str(exc_info.value)
-    )
+    assert "one annotation per label" in str(exc_info.value)
 
     # fine with instance segmentation though
     gts = GroundTruth(
@@ -2096,7 +2094,7 @@ def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
         datum=img1.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.DETECTION,
+                task_type=TaskType.DET,
                 labels=[Label(key="k3", value="v3")],
                 bounding_box=BoundingBox.from_extrema(
                     xmin=10, ymin=10, xmax=60, ymax=40
@@ -2401,9 +2399,9 @@ def test_get_dataset_status(
 
 #     ds_info = ds.get_info()
 #     assert ds_info.annotation_type == [
-#         "CLASSIFICATION",
-#         "DETECTION",
-#         "SEGMENTATION",
+#         "CLF",
+#         "DET",
+#         "SEG",
 #     ]
 #     assert ds_info.number_of_classifications == 2
 #     assert ds_info.number_of_bounding_boxes == 2
@@ -2413,9 +2411,9 @@ def test_get_dataset_status(
 
 #     md_info = md.get_info()
 #     assert md_info.annotation_type == [
-#         "CLASSIFICATION",
-#         "DETECTION",
-#         "SEGMENTATION",
+#         "CLF",
+#         "DET",
+#         "SEG",
 #     ]
 #     assert md_info.number_of_classifications == 5
 #     assert md_info.number_of_bounding_boxes == 2
