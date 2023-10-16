@@ -126,6 +126,10 @@ def combined_segmentation_mask(
         for label in annotation.labels:
             if label.key == label_key:
                 label_values.append(label.value)
+    if not label_values:
+        raise RuntimeError(
+            "Annoation doesn't have a label with key `{label.key}`"
+        )
 
     unique_label_values = list(set(label_values))
     label_value_to_color = {
