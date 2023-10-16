@@ -1,6 +1,7 @@
 import io
 import time
 from base64 import b64decode
+from dataclasses import asdict
 
 import PIL
 import pytest
@@ -10,7 +11,8 @@ from velour.data_generation import (
     generate_prediction_data,
     generate_segmentation_data,
 )
-from velour.enums import JobStatus
+from velour.enums import AnnotationType, JobStatus, TaskType
+from velour.schemas import ImageMetadata
 
 dset_name = "test_dataset"
 
@@ -22,7 +24,10 @@ def _mask_bytes_to_pil(mask_bytes):
 
 @pytest.fixture
 def client():
-    return Client(host="http://localhost:8000")
+    client = Client(host="http://localhost:8000")
+    yield client
+    for dataset in client.get_datasets():
+        client.delete_dataset(dataset["name"], timeout=300)
 
 
 def test_generate_segmentation_data(
@@ -54,10 +59,9 @@ def test_generate_segmentation_data(
         sample_mask_size = _mask_bytes_to_pil(
             b64decode(sample_annotations[0].raster.mask)
         ).size
-        sample_image_size = (
-            sample_gt.datum.metadata[1].value,
-            sample_gt.datum.metadata[0].value,
-        )
+
+        sample_image = ImageMetadata.from_datum(sample_gt.datum)
+        sample_image_size = (sample_image.width, sample_image.height)
 
         assert (
             len(sample_annotations) == n_annotations
@@ -68,8 +72,6 @@ def test_generate_segmentation_data(
         assert (
             sample_image_size == sample_mask_size
         ), f"Image is size {sample_image_size}, but mask is size {sample_mask_size}"
-
-    client.delete_dataset(dset_name, timeout=300)
 
 
 def test_generate_prediction_data(client: Client):
@@ -102,6 +104,7 @@ def test_generate_prediction_data(client: Client):
 
     eval_job = model.evaluate_detection(
         dataset=dataset,
+        annotation_type=AnnotationType.BOX,
         iou_thresholds=[0, 1],
         ious_to_keep=[0, 1],
         label_key="k1",
@@ -111,15 +114,16 @@ def test_generate_prediction_data(client: Client):
     time.sleep(1)
     assert eval_job.status == JobStatus.DONE
 
-    settings = eval_job.settings
+    settings = asdict(eval_job.settings)
     settings.pop("id")
     assert settings == {
         "model": model_name,
         "dataset": dset_name,
-        "task_type": "detection",
-        "target_type": "box",
-        "label_key": "k1",
+        "type": TaskType.DET.value,
+        "constraints": {
+            "annotation_type": AnnotationType.BOX,
+            "label_key": "k1",
+        },
+        "thresholds": None,
     }
     assert len(eval_job.metrics) > 0
-
-    client.delete_dataset(dset_name, timeout=300)
