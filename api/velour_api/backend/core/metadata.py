@@ -90,6 +90,43 @@ def create_metadata(
     return rows
 
 
+def create_metadata_for_multiple_annotations(
+    db: Session,
+    metadata: list[schemas.MetaDatum],
+    annotations: list[models.Annotation] = None,
+    dataset: models.Dataset = None,
+    model: models.Model = None,
+    datum: models.Datum = None,
+) -> list[models.MetaDatum]:
+    """Post metadata for multiple annotations at once"""
+    if not metadata:
+        return None
+
+    rows = []
+
+    for i, annotation in enumerate(annotations):
+        if metadata[i]:
+            rows.append(
+                create_metadatum(
+                    db,
+                    metadata[i],
+                    dataset=dataset,
+                    model=model,
+                    datum=datum,
+                    annotation=annotation,
+                    commit=False,
+                )
+            )
+
+    try:
+        db.add_all(rows)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.MetaDatumAlreadyExistsError
+    return rows
+
+
 def get_metadatum_schema(
     metadatum: models.MetaDatum,
 ) -> schemas.MetaDatum | None:

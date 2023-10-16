@@ -12,21 +12,20 @@ def create_groundtruth(
     # create datum
     datum = core.create_datum(db, groundtruth.datum)
 
-    # Create annotation, groundtruths, labels
+    annotation_list, label_list = core.create_annotations_and_labels(
+        db=db, annotations=groundtruth.annotations, datum=datum
+    )
+
     rows = []
-    for groundtruth_annotation in groundtruth.annotations:
-        annotation = core.create_annotation(
-            db,
-            annotation=groundtruth_annotation,
-            datum=datum,
-        )
-        rows += [
-            models.GroundTruth(
-                annotation_id=annotation.id,
-                label_id=label.id,
-            )
-            for label in core.create_labels(db, groundtruth_annotation.labels)
-        ]
+
+    for i, annotation in enumerate(annotation_list):
+        for label in label_list[i]:
+            rows += [
+                models.GroundTruth(
+                    annotation_id=annotation.id, label_id=label.id
+                )
+            ]
+
     try:
         db.add_all(rows)
         db.commit()
