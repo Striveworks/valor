@@ -261,7 +261,7 @@ def get_annotation_type(
             .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
             .where(
                 models.Datum.dataset_id == dataset.id,
-                models.Annotation.task_type == enums.TaskType.DET.value,
+                models.Annotation.task_type == enums.TaskType.DETECTION.value,
                 model_expr,
                 col.isnot(None),
             )

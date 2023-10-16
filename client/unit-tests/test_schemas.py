@@ -409,41 +409,51 @@ def test_core_datum():
 
 def test_core_annotation(bbox, polygon, raster, metadatum):
     # valid
-    schemas.Annotation(task_type=enums.TaskType.DET, bounding_box=bbox)
-    schemas.Annotation(task_type=enums.TaskType.DET, polygon=polygon)
-    schemas.Annotation(task_type=enums.TaskType.DET, raster=raster)
-    schemas.Annotation(task_type=enums.TaskType.SEG, raster=raster)
+    schemas.Annotation(task_type=enums.TaskType.DETECTION, bounding_box=bbox)
+    schemas.Annotation(task_type=enums.TaskType.DETECTION, polygon=polygon)
+    schemas.Annotation(task_type=enums.TaskType.DETECTION, raster=raster)
+    schemas.Annotation(task_type=enums.TaskType.SEGMENTATION, raster=raster)
     schemas.Annotation(
-        task_type=enums.TaskType.DET,
+        task_type=enums.TaskType.DETECTION,
         bounding_box=bbox,
         polygon=polygon,
         raster=raster,
     )
-    schemas.Annotation(task_type=enums.TaskType.CLF)
-    schemas.Annotation(task_type=enums.TaskType.CLF, metadata=[])
-    schemas.Annotation(task_type=enums.TaskType.CLF, metadata=[metadatum])
+    schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION)
+    schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION, metadata=[])
+    schemas.Annotation(
+        task_type=enums.TaskType.CLASSIFICATION, metadata=[metadatum]
+    )
 
     # test `__post_init__`
     with pytest.raises(ValueError) as e:
         schemas.Annotation(task_type="something")
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Annotation(task_type=enums.TaskType.DET, bounding_box=polygon)
+        schemas.Annotation(
+            task_type=enums.TaskType.DETECTION, bounding_box=polygon
+        )
     assert "should be of type `velour.schemas.BoundingBox" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Annotation(task_type=enums.TaskType.DET, polygon=bbox)
+        schemas.Annotation(task_type=enums.TaskType.DETECTION, polygon=bbox)
     assert "should be of type `velour.schemas.Polygon`" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Annotation(task_type=enums.TaskType.DET, multipolygon=bbox)
+        schemas.Annotation(
+            task_type=enums.TaskType.DETECTION, multipolygon=bbox
+        )
     assert "should be of type `velour.schemas.MultiPolygon`" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Annotation(task_type=enums.TaskType.DET, raster=bbox)
+        schemas.Annotation(task_type=enums.TaskType.DETECTION, raster=bbox)
     assert "should be of type `velour.schemas.Raster`" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Annotation(task_type=enums.TaskType.CLF, metadata=metadatum)
+        schemas.Annotation(
+            task_type=enums.TaskType.CLASSIFICATION, metadata=metadatum
+        )
     assert "should be of type `list`" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Annotation(task_type=enums.TaskType.CLF, metadata=[123])
+        schemas.Annotation(
+            task_type=enums.TaskType.CLASSIFICATION, metadata=[123]
+        )
     assert "should be of type `velour.schemas.Metadatum`" in str(e)
 
 
@@ -522,7 +532,7 @@ def test_core_groundtruth_annotation():
 
     # valid
     schemas.Annotation(
-        task_type=enums.TaskType.CLF,
+        task_type=enums.TaskType.CLASSIFICATION,
         labels=[l1, l2, l3],
     )
 
@@ -531,11 +541,11 @@ def test_core_groundtruth_annotation():
         schemas.Annotation(task_type="soemthing", labels=[l1])
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Annotation(task_type=enums.TaskType.CLF, labels=l1)
+        schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=l1)
     assert "should be of type `list`" in str(e)
     with pytest.raises(TypeError) as e:
         schemas.Annotation(
-            task_type=enums.TaskType.CLF, labels=[l1, l2, "label"]
+            task_type=enums.TaskType.CLASSIFICATION, labels=[l1, l2, "label"]
         )
     assert (
         "elements of labels should be of type `velour.schemas.Label`" in str(e)
@@ -555,18 +565,20 @@ def test_core_prediction_annotation():
     s3.score = 1.0
 
     # valid
-    schemas.Annotation(task_type=enums.TaskType.CLF, labels=[s1, s2, s3])
+    schemas.Annotation(
+        task_type=enums.TaskType.CLASSIFICATION, labels=[s1, s2, s3]
+    )
 
     # test `__post_init__`
     with pytest.raises(ValueError) as e:
         schemas.Annotation(task_type="something", labels=[s1, s2, s3])
     assert "is not a valid TaskType" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Annotation(task_type=enums.TaskType.CLF, labels=s1)
+        schemas.Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=s1)
     assert "should be of type `list`" in str(e)
     with pytest.raises(TypeError) as e:
         schemas.Annotation(
-            task_type=enums.TaskType.CLF, labels=[s1, s2, "label"]
+            task_type=enums.TaskType.CLASSIFICATION, labels=[s1, s2, "label"]
         )
     assert (
         "elements of labels should be of type `velour.schemas.Label`" in str(e)
@@ -577,8 +589,12 @@ def test_core_groundtruth():
     label = schemas.Label(key="test", value="value")
     datum = schemas.Datum(uid="somefile")
     gts = [
-        schemas.Annotation(task_type=enums.TaskType.CLF, labels=[label]),
-        schemas.Annotation(task_type=enums.TaskType.CLF, labels=[label]),
+        schemas.Annotation(
+            task_type=enums.TaskType.CLASSIFICATION, labels=[label]
+        ),
+        schemas.Annotation(
+            task_type=enums.TaskType.CLASSIFICATION, labels=[label]
+        ),
     ]
 
     # valid
@@ -613,11 +629,11 @@ def test_core_prediction():
     datum = schemas.Datum(uid="somefile")
     pds = [
         schemas.Annotation(
-            task_type=enums.TaskType.CLF,
+            task_type=enums.TaskType.CLASSIFICATION,
             labels=[scored_label],
         ),
         schemas.Annotation(
-            task_type=enums.TaskType.CLF,
+            task_type=enums.TaskType.CLASSIFICATION,
             labels=[scored_label],
         ),
     ]
@@ -655,7 +671,7 @@ def test_core_prediction():
             datum=datum,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLF,
+                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="test", value="value", score=0.8),
                         schemas.Label(key="test", value="other", score=0.1),
@@ -674,7 +690,7 @@ def test_core_evaluation():
     params = {
         "model": "md",
         "dataset": "ds",
-        "type": enums.TaskType.DET,
+        "type": enums.TaskType.DETECTION,
         "constraints": {
             "annotation_type": enums.AnnotationType.BOX,
         },

@@ -119,7 +119,7 @@ def test_generate_prediction_data(client: Client):
     assert settings == {
         "model": model_name,
         "dataset": dset_name,
-        "type": TaskType.DET.value,
+        "type": TaskType.DETECTION.value,
         "constraints": {
             "annotation_type": AnnotationType.BOX,
             "label_key": "k1",

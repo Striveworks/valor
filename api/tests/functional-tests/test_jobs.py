@@ -53,7 +53,7 @@ def gt_clfs_create(
             datum=img1.toDatum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLF,
+                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
@@ -66,7 +66,7 @@ def gt_clfs_create(
             datum=img2.toDatum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLF,
+                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[schemas.Label(key="k2", value="v3")],
                 ),
             ],
@@ -84,7 +84,7 @@ def pred_clfs_create(
             datum=img1.toDatum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLF,
+                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="k1", value="v1", score=0.2),
                         schemas.Label(key="k1", value="v2", score=0.8),
@@ -98,7 +98,7 @@ def pred_clfs_create(
             datum=img2.toDatum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLF,
+                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="k2", value="v2", score=1.0),
                         schemas.Label(key="k3", value="v3", score=0.87),
@@ -265,7 +265,7 @@ def test_stateflow_dataset(db: Session):
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLF,
+                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[schemas.Label(key="k", value="v")],
                 )
             ],
@@ -307,7 +307,7 @@ def test_stateflow_model(db: Session):
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLF,
+                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[schemas.Label(key="k", value="v")],
                 )
             ],
@@ -344,7 +344,7 @@ def test_stateflow_model(db: Session):
             ),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLF,
+                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="k", value="v", score=0.9),
                         schemas.Label(key="k", value="w", score=0.1),
@@ -367,7 +367,7 @@ def test_stateflow_model(db: Session):
             settings=schemas.EvaluationSettings(
                 model=model_name,
                 dataset=dset_name,
-                type=enums.TaskType.DET,
+                type=enums.TaskType.DETECTION,
                 constraints=schemas.EvaluationConstraints(
                     annotation_type=enums.AnnotationType.BOX,
                     label_key="class",
@@ -402,7 +402,7 @@ def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
     settings = schemas.EvaluationSettings(
         model=model_name,
         dataset=dset_name,
-        type=enums.TaskType.DET,
+        type=enums.TaskType.DETECTION,
         constraints=schemas.EvaluationConstraints(
             annotation_type=enums.AnnotationType.BOX,
             label_key="class",
@@ -486,7 +486,7 @@ def test_stateflow_clf_evaluation(
     settings = schemas.EvaluationSettings(
         model=model_name,
         dataset=dset_name,
-        type=enums.TaskType.CLF,
+        type=enums.TaskType.CLASSIFICATION,
     )
 
     # check dataset READY

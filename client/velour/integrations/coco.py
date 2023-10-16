@@ -58,12 +58,12 @@ def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
 
 def _get_task_type(isthing: bool) -> enums.TaskType:
     """Get the correct TaskType for a given label"""
-    return enums.TaskType.DET if isthing else enums.TaskType.SEG
+    return enums.TaskType.DETECTION if isthing else enums.TaskType.SEGMENTATION
 
 
 def _is_semantic_task_type(task_type: enums.TaskType) -> bool:
     """Check if a label is a semantic segmentation"""
-    return True if task_type == enums.TaskType.SEG else False
+    return True if task_type == enums.TaskType.SEGMENTATION else False
 
 
 def _merge_annotations(annotation_list: list, label_map: dict):

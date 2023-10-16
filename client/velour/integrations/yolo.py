@@ -41,7 +41,9 @@ def parse_yolo_image_classification(
     # create prediction
     return Prediction(
         datum=image.to_datum(),
-        annotations=[Annotation(task_type=enums.TaskType.CLF, labels=labels)],
+        annotations=[
+            Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=labels)
+        ],
     )
 
 
@@ -82,7 +84,7 @@ def parse_yolo_object_detection(
         datum=image.to_datum(),
         annotations=[
             Annotation(
-                task_type=enums.TaskType.DET,
+                task_type=enums.TaskType.DETECTION,
                 labels=[scored_label],
                 bounding_box=bbox,
             )
@@ -147,7 +149,7 @@ def parse_yolo_image_segmentation(
         datum=image.to_datum(),
         annotations=[
             Annotation(
-                task_type=enums.TaskType.DET,
+                task_type=enums.TaskType.DETECTION,
                 labels=[scored_label],
                 raster=Raster.from_numpy(mask),
             )

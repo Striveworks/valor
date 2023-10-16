@@ -60,7 +60,7 @@ def create_clf_evaluation(
         db=db,
         dataset_name=settings.dataset,
         model_name=settings.model,
-        task_type=enums.TaskType.CLF,
+        task_type=enums.TaskType.CLASSIFICATION,
     )
 
     # create evaluation setting
@@ -102,7 +102,7 @@ def create_semantic_segmentation_evaluation(
         db=db,
         dataset_name=settings.dataset,
         model_name=settings.model,
-        task_types=[enums.TaskType.SEG],
+        task_types=[enums.TaskType.SEGMENTATION],
         gt_type=enums.AnnotationType.RASTER,
         pd_type=enums.AnnotationType.RASTER,
     )
@@ -148,7 +148,7 @@ def create_ap_evaluation(
         db=db,
         dataset_name=settings.dataset,
         model_name=settings.model,
-        task_types=[enums.TaskType.DET],
+        task_types=[enums.TaskType.DETECTION],
         gt_type=gt_type,
         pd_type=pd_type,
     )

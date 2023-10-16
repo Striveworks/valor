@@ -229,7 +229,7 @@ def groundtruths(
             datum=image,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.DET,
+                    task_type=enums.TaskType.DETECTION,
                     labels=[schemas.Label(key="class", value=class_label)],
                     bounding_box=schemas.BoundingBox.from_extrema(
                         xmin=box[0],
@@ -339,7 +339,7 @@ def predictions(
             datum=image,
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.DET,
+                    task_type=enums.TaskType.DETECTION,
                     labels=[
                         schemas.Label(
                             key="class", value=class_label, score=score
@@ -385,17 +385,17 @@ def pred_semantic_segs_img1_create(
         datum=img1.toDatum(),
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.SEG,
+                task_type=enums.TaskType.SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask1),
                 labels=[schemas.Label(key="k1", value="v1")],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEG,
+                task_type=enums.TaskType.SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask2),
                 labels=[schemas.Label(key="k2", value="v2")],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEG,
+                task_type=enums.TaskType.SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask3),
                 labels=[schemas.Label(key="k2", value="v3")],
             ),
@@ -416,12 +416,12 @@ def pred_semantic_segs_img2_create(
         datum=img2.toDatum(),
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.SEG,
+                task_type=enums.TaskType.SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask1),
                 labels=[schemas.Label(key="k1", value="v1")],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEG,
+                task_type=enums.TaskType.SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask2),
                 labels=[schemas.Label(key="k2", value="v3")],
             ),
@@ -449,17 +449,17 @@ def gt_semantic_segs_create(
             datum=img1.toDatum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEG,
+                    task_type=enums.TaskType.SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask1),
                     labels=[schemas.Label(key="k1", value="v1")],
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEG,
+                    task_type=enums.TaskType.SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask2),
                     labels=[schemas.Label(key="k1", value="v2")],
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEG,
+                    task_type=enums.TaskType.SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask3),
                     labels=[schemas.Label(key="k3", value="v3")],
                 ),
@@ -470,7 +470,7 @@ def gt_semantic_segs_create(
             datum=img2.toDatum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEG,
+                    task_type=enums.TaskType.SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask4),
                     labels=[
                         schemas.Label(key="k1", value="v1"),

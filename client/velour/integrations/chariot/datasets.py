@@ -119,11 +119,11 @@ def _parse_annotation(dataset_version, annotation: dict):
 
     # Image Classification
     if dataset_version.supported_task_types.image_classification:
-        task_types.append(enums.TaskType.CLF)
+        task_types.append(enums.TaskType.CLASSIFICATION)
 
     # Image Object Detection
     if dataset_version.supported_task_types.object_detection:
-        task_types.append(enums.TaskType.DET)
+        task_types.append(enums.TaskType.DETECTION)
         if "bbox" in annotation:
             bounding_box = BoundingBox.from_extrema(
                 xmin=annotation["bbox"]["xmin"],
@@ -134,7 +134,7 @@ def _parse_annotation(dataset_version, annotation: dict):
 
     # Image Segmentation
     if dataset_version.supported_task_types.image_segmentation:
-        task_types.append(enums.TaskType.SEG)
+        task_types.append(enums.TaskType.SEGMENTATION)
         if "contours" in annotation:
             polygon = Polygon(
                 boundary=BasicPolygon(

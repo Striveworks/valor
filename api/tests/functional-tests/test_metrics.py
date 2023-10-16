@@ -66,7 +66,7 @@ def classification_test_data(db: Session):
             datum=imgs[i],
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLF,
+                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="animal", value=animal_gts[i]),
                         schemas.Label(key="color", value=color_gts[i]),
@@ -83,7 +83,7 @@ def classification_test_data(db: Session):
             datum=imgs[i],
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.CLF,
+                    task_type=enums.TaskType.CLASSIFICATION,
                     labels=[
                         schemas.Label(key="animal", value=value, score=score)
                         for value, score in animal_preds[i].items()

@@ -350,7 +350,8 @@ def test__parse_chariot_predict_image_classification(
 
     assert len(velour_classifications.annotations) == 1
     assert (
-        velour_classifications.annotations[0].task_type == enums.TaskType.CLF
+        velour_classifications.annotations[0].task_type
+        == enums.TaskType.CLASSIFICATION
     )
     assert velour_classifications.datum == datum
 
@@ -395,7 +396,8 @@ def test__parse_chariot_predict_proba_image_classification(
 
     assert len(velour_classifications.annotations) == 1
     assert (
-        velour_classifications.annotations[0].task_type == enums.TaskType.CLF
+        velour_classifications.annotations[0].task_type
+        == enums.TaskType.CLASSIFICATION
     )
     assert velour_classifications.datum == datum
 

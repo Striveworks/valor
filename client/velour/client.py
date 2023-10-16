@@ -528,7 +528,7 @@ class Model:
         evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
-            type=enums.TaskType.CLF,
+            type=enums.TaskType.CLASSIFICATION,
         )
 
         resp = self.client._requests_post_rel_host(
@@ -546,7 +546,7 @@ class Model:
         evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
-            type=enums.TaskType.CLF,
+            type=enums.TaskType.CLASSIFICATION,
         )
 
         resp = self.client._requests_post_rel_host(
@@ -596,7 +596,7 @@ class Model:
         evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
-            type=enums.TaskType.DET,
+            type=enums.TaskType.DETECTION,
             constraints=constraints,
             thresholds=thresholds,
         )

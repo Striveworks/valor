@@ -10,21 +10,21 @@ def test__merge_annotations():
 
     initial_annotations = [
         dict(
-            task_type=TaskType.SEG,
+            task_type=TaskType.SEGMENTATION,
             labels=set(
                 [Label(key="k1", value="v1"), Label(key="k2", value="v2")]
             ),
             mask=[[True, False, False, False], [True, False, False, False]],
         ),
         dict(
-            task_type=TaskType.SEG,
+            task_type=TaskType.SEGMENTATION,
             labels=set(
                 [Label(key="k1", value="v1"), Label(key="k3", value="v3")]
             ),
             mask=[[False, False, True, False], [False, False, True, False]],
         ),
         dict(
-            task_type=TaskType.SEG,
+            task_type=TaskType.SEGMENTATION,
             labels=set(
                 [
                     Label(key="k1", value="v1"),
@@ -35,7 +35,7 @@ def test__merge_annotations():
             mask=[[False, False, False, True], [False, False, False, True]],
         ),
         dict(
-            task_type=TaskType.DET,
+            task_type=TaskType.DETECTION,
             labels=set(
                 [Label(key="k1", value="v1"), Label(key="k3", value="v3")]
             ),
@@ -45,17 +45,17 @@ def test__merge_annotations():
 
     expected = [
         dict(
-            task_type=TaskType.SEG,
+            task_type=TaskType.SEGMENTATION,
             labels=set([Label(key="k3", value="v3")]),
             mask=[[False, False, True, False], [False, False, True, False]],
         ),
         dict(
-            task_type=TaskType.SEG,
+            task_type=TaskType.SEGMENTATION,
             labels=set([Label(key="k4", value="v4")]),
             mask=[[False, False, False, True], [False, False, False, True]],
         ),
         dict(
-            task_type=TaskType.DET,
+            task_type=TaskType.DETECTION,
             labels=set(
                 [
                     Label(key="k1", value="v1"),
@@ -65,12 +65,12 @@ def test__merge_annotations():
             mask=[[False, True, False, False], [False, True, False, False]],
         ),
         dict(
-            task_type=TaskType.SEG,
+            task_type=TaskType.SEGMENTATION,
             labels=set([Label(key="k1", value="v1")]),
             mask=[[True, False, True, True], [True, False, True, True]],
         ),
         dict(
-            task_type=TaskType.SEG,
+            task_type=TaskType.SEGMENTATION,
             labels=set([Label(key="k2", value="v2")]),
             mask=[[True, False, False, True], [True, False, False, True]],
         ),

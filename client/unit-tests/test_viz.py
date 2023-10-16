@@ -78,7 +78,7 @@ def test_combined_segmentation_mask(poly1: Polygon):
         combined_segmentation_mask(
             [],
             label_key="",
-            task_type=TaskType.DET,
+            task_type=TaskType.DETECTION,
         )
     assert "cannot be empty" in str(exc_info)
 
@@ -88,7 +88,7 @@ def test_combined_segmentation_mask(poly1: Polygon):
         datum=image,
         annotations=[
             Annotation(
-                task_type=TaskType.DET,
+                task_type=TaskType.DETECTION,
                 labels=[
                     Label(key="k1", value="v1"),
                     Label(key="k2", value="v2"),
@@ -103,7 +103,7 @@ def test_combined_segmentation_mask(poly1: Polygon):
         datum=image,
         annotations=[
             Annotation(
-                task_type=TaskType.SEG,
+                task_type=TaskType.SEGMENTATION,
                 labels=[
                     Label(key="k1", value="v1"),
                     Label(key="k2", value="v3"),
@@ -122,7 +122,7 @@ def test_combined_segmentation_mask(poly1: Polygon):
         combined_segmentation_mask(
             [gts[1]],
             label_key="k3",
-            task_type=TaskType.SEG,
+            task_type=TaskType.SEGMENTATION,
         )
     assert "doesn't have a label" in str(exc_info)
 
@@ -130,7 +130,7 @@ def test_combined_segmentation_mask(poly1: Polygon):
     combined_mask, _ = combined_segmentation_mask(
         gts,
         label_key="k1",
-        task_type=TaskType.SEG,
+        task_type=TaskType.SEGMENTATION,
     )
     combined_mask = np.array(combined_mask)
     # check that we get two unique RGB values (black and one color for label value "v1")
@@ -166,7 +166,7 @@ def test_draw_detections_on_image(bounding_poly: BasicPolygon):
             datum=ImageMetadata("test", 300, 300).to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.DET,
+                    task_type=TaskType.DETECTION,
                     labels=[Label("k", "v")],
                     polygon=Polygon(
                         boundary=bounding_poly,

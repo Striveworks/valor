@@ -117,7 +117,7 @@ def _check_semantic_segmentations_single_label(
     labels = []
     indices = dict()
     for index, annotation in enumerate(annotations):
-        if annotation.task_type == TaskType.SEG:
+        if annotation.task_type == TaskType.SEGMENTATION:
             for label in annotation.labels:
                 if label in labels:
                     raise ValueError(
@@ -185,15 +185,15 @@ class Prediction(BaseModel):
         # the task type requires it
         for annotation in v:
             if annotation.task_type in [
-                TaskType.CLF,
-                TaskType.DET,
+                TaskType.CLASSIFICATION,
+                TaskType.DETECTION,
             ]:
                 for label in annotation.labels:
                     if label.score is None:
                         raise ValueError(
                             f"Missing score for label in {annotation.task_type} task."
                         )
-            elif annotation.task_type == TaskType.SEG:
+            elif annotation.task_type == TaskType.SEGMENTATION:
                 for label in annotation.labels:
                     if label.score is not None:
                         raise ValueError(
@@ -209,7 +209,7 @@ class Prediction(BaseModel):
         # check that for classification tasks, the label scores
         # sum to 1
         for annotation in v:
-            if annotation.task_type == TaskType.CLF:
+            if annotation.task_type == TaskType.CLASSIFICATION:
                 label_keys_to_sum = {}
                 for scored_label in annotation.labels:
                     label_key = scored_label.key

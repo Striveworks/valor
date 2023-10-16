@@ -64,9 +64,9 @@ class AnnotationType(str, Enum):
 
 
 class TaskType(str, Enum):
-    CLF = "classification"
-    DET = "object-detection"
-    SEG = "semantic-segmentation"
+    CLASSIFICATION = "classification"
+    DETECTION = "object-detection"
+    SEGMENTATION = "semantic-segmentation"
 
 
 class JobStatus(Enum):
