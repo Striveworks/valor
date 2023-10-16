@@ -100,7 +100,7 @@ def test_generate_prediction_data(client: Client):
         n_labels=2,
     )
 
-    eval_job = model.evaluate_ap(
+    eval_job = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds=[0, 1],
         ious_to_keep=[0, 1],
