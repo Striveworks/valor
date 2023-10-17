@@ -12,7 +12,7 @@ from velour_api.backend.metrics.core import (
     create_metric_mappings,
     get_or_create_row,
 )
-from velour_api.enums import AnnotationType
+from velour_api.enums import AnnotationType, TaskType
 
 
 @dataclass
@@ -35,7 +35,7 @@ def _ap(
     of the scores across all of the IoU thresholds.
     """
 
-    ap_metrics = []
+    detection_metrics = []
     for iou_threshold in iou_thresholds:
         for label_id in sorted_ranked_pairs:
             precisions = []
@@ -57,7 +57,7 @@ def _ap(
                     cnt_tp / (cnt_tp + cnt_fn) if (cnt_tp + cnt_fn) else 0
                 )
 
-            ap_metrics.append(
+            detection_metrics.append(
                 schemas.APMetric(
                     iou=iou_threshold,
                     value=calculate_ap_101_pt_interp(
@@ -66,7 +66,7 @@ def _ap(
                     label=labels[label_id],
                 )
             )
-    return ap_metrics
+    return detection_metrics
 
 
 def calculate_ap_101_pt_interp(precisions, recalls) -> float:
@@ -95,7 +95,7 @@ def calculate_ap_101_pt_interp(precisions, recalls) -> float:
     return ret / 101
 
 
-def compute_ap_metrics(
+def compute_detection_metrics(
     db: Session,
     dataset: models.Dataset,
     model: models.Model,
@@ -394,7 +394,7 @@ def compute_ap_metrics(
     }
 
     # Compute AP
-    ap_metrics = _ap(
+    detection_metrics = _ap(
         sorted_ranked_pairs=ranking,
         number_of_ground_truths=number_of_ground_truths,
         labels=labels,
@@ -402,27 +402,29 @@ def compute_ap_metrics(
     )
 
     # now extend to the averaged AP metrics and mAP metric
-    map_metrics = compute_map_metrics_from_aps(ap_metrics)
-    ap_metrics_ave_over_ious = compute_ap_metrics_ave_over_ious_from_aps(
-        ap_metrics
+    mdetection_metrics = compute_mdetection_metrics_from_aps(detection_metrics)
+    detection_metrics_ave_over_ious = (
+        compute_detection_metrics_ave_over_ious_from_aps(detection_metrics)
     )
-    map_metrics_ave_over_ious = compute_map_metrics_from_aps(
-        ap_metrics_ave_over_ious
+    mdetection_metrics_ave_over_ious = compute_mdetection_metrics_from_aps(
+        detection_metrics_ave_over_ious
     )
 
     # filter out only specified ious
-    ap_metrics = [m for m in ap_metrics if m.iou in ious_to_keep]
-    map_metrics = [m for m in map_metrics if m.iou in ious_to_keep]
+    detection_metrics = [m for m in detection_metrics if m.iou in ious_to_keep]
+    mdetection_metrics = [
+        m for m in mdetection_metrics if m.iou in ious_to_keep
+    ]
 
     return (
-        ap_metrics
-        + map_metrics
-        + ap_metrics_ave_over_ious
-        + map_metrics_ave_over_ious
+        detection_metrics
+        + mdetection_metrics
+        + detection_metrics_ave_over_ious
+        + mdetection_metrics_ave_over_ious
     )
 
 
-def compute_ap_metrics_ave_over_ious_from_aps(
+def compute_detection_metrics_ave_over_ious_from_aps(
     ap_scores: list[schemas.APMetric],
 ) -> list[schemas.APMetricAveragedOverIOUs]:
     label_tuple_to_values = {}
@@ -449,7 +451,7 @@ def compute_ap_metrics_ave_over_ious_from_aps(
     return ret
 
 
-def compute_map_metrics_from_aps(
+def compute_mdetection_metrics_from_aps(
     ap_scores: list[schemas.APMetric | schemas.APMetricAveragedOverIOUs],
 ) -> list[schemas.mAPMetric]:
     """
@@ -488,7 +490,7 @@ def compute_map_metrics_from_aps(
             labels.append(ap.label)
 
     # get mAP metrics at the individual IOUs
-    map_metrics = [
+    mdetection_metrics = [
         schemas.mAPMetric(iou=iou, value=_ave_ignore_minus_one(vals[iou]))
         if isinstance(iou, float)
         else schemas.mAPMetricAveragedOverIOUs(
@@ -497,10 +499,10 @@ def compute_map_metrics_from_aps(
         for iou in vals.keys()
     ]
 
-    return map_metrics
+    return mdetection_metrics
 
 
-def create_ap_evaluation(
+def create_detection_evaluation(
     db: Session,
     settings: schemas.EvaluationSettings,
 ) -> int:
@@ -515,13 +517,18 @@ def create_ap_evaluation(
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
 
-    if not settings.constraints.annotation_type:
-        settings.constraints.annotation_type = (
+    # default parameters
+    if not settings.parameters:
+        settings.parameters = schemas.DetectionParameters()
+
+    # if annotation type not specified, define as greatest common type.
+    if not settings.parameters.annotation_type:
+        settings.parameters.annotation_type = (
             gt_type if gt_type < pd_type else pd_type
         )
     else:
-        settings.constraints.annotation_type = (
-            settings.constraints.annotation_type
+        settings.parameters.annotation_type = (
+            settings.parameters.annotation_type
         )
 
     es = get_or_create_row(
@@ -530,15 +537,15 @@ def create_ap_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "type": enums.TaskType.DETECTION,
-            "constraints": settings.constraints.model_dump(),
+            "type": TaskType.DETECTION,
+            "parameters": settings.parameters.model_dump(),
         },
     )
 
     return es.id, gt_type, pd_type
 
 
-def create_ap_metrics(
+def create_detection_metrics(
     db: Session,
     settings: schemas.EvaluationSettings,
     evaluation_id: int,
@@ -552,23 +559,23 @@ def create_ap_metrics(
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
 
-    if settings.constraints.annotation_type == AnnotationType.NONE:
-        settings.constraints.annotation_type = (
+    if settings.parameters.annotation_type == AnnotationType.NONE:
+        settings.parameters.annotation_type = (
             gt_type if gt_type < pd_type else pd_type
         )
 
-    metrics = compute_ap_metrics(
+    metrics = compute_detection_metrics(
         db=db,
         dataset=dataset,
         model=model,
-        iou_thresholds=settings.thresholds.iou_thresholds_to_compute,
-        ious_to_keep=settings.thresholds.iou_thresholds_to_keep,
-        label_key=settings.constraints.label_key,
-        target_type=settings.constraints.annotation_type,
+        iou_thresholds=settings.parameters.iou_thresholds_to_compute,
+        ious_to_keep=settings.parameters.iou_thresholds_to_keep,
+        label_key=settings.parameters.label_key,
+        target_type=settings.parameters.annotation_type,
         gt_type=gt_type,
         pd_type=pd_type,
-        min_area=settings.constraints.min_area,
-        max_area=settings.constraints.max_area,
+        min_area=settings.parameters.min_area,
+        max_area=settings.parameters.max_area,
     )
 
     metric_mappings = create_metric_mappings(

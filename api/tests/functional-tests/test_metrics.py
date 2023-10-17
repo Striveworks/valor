@@ -9,7 +9,7 @@ from velour_api.backend.metrics.classification import (
     confusion_matrix_at_label_key,
     roc_auc,
 )
-from velour_api.backend.metrics.detection import compute_ap_metrics
+from velour_api.backend.metrics.detection import compute_detection_metrics
 from velour_api.backend.metrics.segmentation import (
     _gt_query,
     _pred_query,
@@ -129,13 +129,13 @@ def round_dict_(d: dict, prec: int) -> None:
             round_dict_(v, prec)
 
 
-def test_compute_ap_metrics(
+def test_compute_detection_metrics(
     db: Session,
     groundtruths: list[list[GroundTruth]],
     predictions: list[list[Prediction]],
 ):
     iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
-    metrics = compute_ap_metrics(
+    metrics = compute_detection_metrics(
         db=db,
         dataset=get_dataset(db, "test_dataset"),
         model=get_model(db, "test_model"),

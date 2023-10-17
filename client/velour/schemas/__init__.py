@@ -10,11 +10,7 @@ from .core import (
     Prediction,
 )
 from .datatypes import ImageMetadata, VideoFrameMetadata
-from .evaluation import (
-    EvaluationConstraints,
-    EvaluationSettings,
-    EvaluationThresholds,
-)
+from .evaluation import DetectionParameters, EvaluationSettings
 from .geometry import (
     BasicPolygon,
     BoundingBox,
@@ -47,6 +43,5 @@ __all__ = [
     "Metadatum",
     "GeoJSON",
     "EvaluationSettings",
-    "EvaluationConstraints",
-    "EvaluationThresholds",
+    "DetectionParameters",
 ]

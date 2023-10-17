@@ -9,25 +9,25 @@ from pydantic import (
     model_validator,
 )
 
-from velour_api.enums import AnnotationType, JobStatus, TaskType
+from velour_api.enums import AnnotationType, JobStatus
 from velour_api.schemas.label import Label
 
 
-class EvaluationConstraints(BaseModel):
-    # type
-    annotation_type: AnnotationType | None = None
-    label_key: str | None = None
-    # geometric
-    min_area: float | None = None
-    max_area: float | None = None
-
-
-class EvaluationThresholds(BaseModel):
-    # (mutable defaults are ok for pydantic models)
+class DetectionParameters(BaseModel):
+    # thresholds to iterate over (mutable defaults are ok for pydantic models)
     iou_thresholds_to_compute: list[float] | None = [
         round(0.5 + 0.05 * i, 2) for i in range(10)
     ]
-    iou_thresholds_to_keep: set[float] | None = {0.5, 0.75}
+    iou_thresholds_to_keep: list[float] | None = [0.5, 0.75]
+
+    # constraints
+    annotation_type: AnnotationType | None = None
+    label_key: str | None = None
+    min_area: float | None = None
+    max_area: float | None = None
+
+    # pydantic setting
+    model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
     @classmethod
@@ -48,10 +48,11 @@ class EvaluationSettings(BaseModel):
 
     model: str
     dataset: str
-    type: TaskType
-    constraints: EvaluationConstraints | None = None
-    thresholds: EvaluationThresholds | None = None
+    parameters: DetectionParameters | None = None
     id: int | None = None
+
+    # pydantic setting
+    model_config = ConfigDict(extra="forbid")
 
 
 class CreateAPMetricsResponse(BaseModel):

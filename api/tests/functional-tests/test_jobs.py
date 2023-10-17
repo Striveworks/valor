@@ -362,17 +362,14 @@ def test_stateflow_model(db: Session):
 
     # check that evaluation fails before finalization
     with pytest.raises(exceptions.ModelNotFinalizedError) as e:
-        crud.create_ap_evaluation(
+        crud.create_detection_evaluation(
             db=db,
             settings=schemas.EvaluationSettings(
                 model=model_name,
                 dataset=dset_name,
-                type=enums.TaskType.DETECTION,
-                constraints=schemas.EvaluationConstraints(
+                parameters=schemas.DetectionParameters(
                     annotation_type=enums.AnnotationType.BOX,
                     label_key="class",
-                ),
-                thresholds=schemas.EvaluationThresholds(
                     iou_thresholds_to_compute=[0.2, 0.6],
                     iou_thresholds_to_keep=[0.2],
                 ),
@@ -398,16 +395,15 @@ def test_stateflow_model(db: Session):
     assert "do not exist" in str(e)
 
 
-def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
+def test_stateflow_detection_evaluation(
+    db: Session, groundtruths, predictions
+):
     settings = schemas.EvaluationSettings(
         model=model_name,
         dataset=dset_name,
-        type=enums.TaskType.DETECTION,
-        constraints=schemas.EvaluationConstraints(
+        parameters=schemas.DetectionParameters(
             annotation_type=enums.AnnotationType.BOX,
             label_key="class",
-        ),
-        thresholds=schemas.EvaluationThresholds(
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_keep=[0.2],
         ),
@@ -421,7 +417,7 @@ def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
     )
 
     # create evaluation (return AP Response)
-    resp = crud.create_ap_evaluation(db=db, settings=settings)
+    resp = crud.create_detection_evaluation(db=db, settings=settings)
 
     # check in evalutation
     assert (
@@ -446,7 +442,7 @@ def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
     assert "invalid transititon from evaluate to delete" in str(e)
 
     # run computation (returns nothing on completion)
-    crud.compute_ap_metrics(
+    crud.compute_detection_metrics(
         db=db,
         settings=settings,
         job_id=resp.job_id,
@@ -486,7 +482,6 @@ def test_stateflow_clf_evaluation(
     settings = schemas.EvaluationSettings(
         model=model_name,
         dataset=dset_name,
-        type=enums.TaskType.CLASSIFICATION,
     )
 
     # check dataset READY

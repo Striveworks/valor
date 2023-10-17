@@ -96,6 +96,13 @@ def get_dataset_labels_query(
     annotation_type: enums.AnnotationType,
     task_types: list[enums.TaskType],
 ) -> Select:
+
+    annotation_type_expr = (
+        [models.annotation_type_to_geometry[annotation_type].is_not(None)]
+        if annotation_type is not enums.AnnotationType.NONE
+        else []
+    )
+
     return (
         select(models.Label)
         .join(
@@ -111,10 +118,8 @@ def get_dataset_labels_query(
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.annotation_type_to_geometry[annotation_type].is_not(
-                    None
-                ),
                 models.Annotation.task_type.in_(task_types),
+                *annotation_type_expr,
             )
         )
         .distinct()

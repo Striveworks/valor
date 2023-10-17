@@ -30,9 +30,8 @@ from .metrics import (
     CreateAPMetricsResponse,
     CreateClfMetricsResponse,
     CreateSemanticSegmentationMetricsResponse,
-    EvaluationConstraints,
+    DetectionParameters,
     EvaluationSettings,
-    EvaluationThresholds,
     F1Metric,
     IOUMetric,
     Metric,
@@ -89,6 +88,5 @@ __all__ = [
     "ConfusionMatrixEntry",
     "Stateflow",
     "EvaluationSettings",
-    "EvaluationConstraints",
-    "EvaluationThresholds",
+    "DetectionParameters",
 ]

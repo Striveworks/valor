@@ -186,14 +186,13 @@ def db(client: Client) -> Session:
     for model in client.get_models():
         try:
             client.delete_model(model["name"])
-            time.sleep(1)
+            time.sleep(0.1)
         except exceptions.ModelDoesNotExistError:
             continue
 
     for dataset in client.get_datasets():
         try:
-            client.delete_dataset(dataset["name"])
-            time.sleep(1)
+            client.delete_dataset(dataset["name"], timeout=5)
         except exceptions.DatasetDoesNotExistError:
             continue
 
@@ -1428,12 +1427,12 @@ def test_evaluate_detection(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "type": TaskType.DETECTION.value,
-        "constraints": {
+        "parameters": {
             "annotation_type": "none",
             "label_key": "k1",
+            "iou_thresholds_to_compute": [0.1, 0.6],
+            "iou_thresholds_to_keep": [0.1, 0.6],
         },
-        "thresholds": None,
     }
 
     expected_metrics = [
@@ -1502,14 +1501,14 @@ def test_evaluate_detection(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "type": TaskType.DETECTION.value,
-        "constraints": {
+        "parameters": {
             "annotation_type": "none",
             "label_key": "k1",
             "min_area": 10,
             "max_area": 2000,
+            "iou_thresholds_to_compute": [0.1, 0.6],
+            "iou_thresholds_to_keep": [0.1, 0.6],
         },
-        "thresholds": None,
     }
     assert eval_job_bounded_area_10_2000.metrics == expected_metrics
 
@@ -1528,13 +1527,13 @@ def test_evaluate_detection(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "type": TaskType.DETECTION.value,
-        "constraints": {
+        "parameters": {
             "annotation_type": "none",
             "label_key": "k1",
             "min_area": 1200,
+            "iou_thresholds_to_compute": [0.1, 0.6],
+            "iou_thresholds_to_keep": [0.1, 0.6],
         },
-        "thresholds": None,
     }
     assert eval_job_min_area_1200.metrics != expected_metrics
 
@@ -1552,13 +1551,13 @@ def test_evaluate_detection(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "type": TaskType.DETECTION.value,
-        "constraints": {
+        "parameters": {
             "annotation_type": "none",
             "label_key": "k1",
             "max_area": 1200,
+            "iou_thresholds_to_compute": [0.1, 0.6],
+            "iou_thresholds_to_keep": [0.1, 0.6],
         },
-        "thresholds": None,
     }
     assert eval_job_max_area_1200.metrics != expected_metrics
 
@@ -1578,14 +1577,14 @@ def test_evaluate_detection(
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "type": TaskType.DETECTION.value,
-        "constraints": {
+        "parameters": {
             "annotation_type": "none",
             "label_key": "k1",
             "min_area": 1200,
             "max_area": 1800,
+            "iou_thresholds_to_compute": [0.1, 0.6],
+            "iou_thresholds_to_keep": [0.1, 0.6],
         },
-        "thresholds": None,
     }
     assert eval_job_bounded_area_1200_1800.metrics != expected_metrics
     assert (
@@ -1703,7 +1702,9 @@ def test_evaluate_segmentation(
 
 
 def test_create_tabular_dataset_and_add_groundtruth(
-    client: Client, db: Session, metadata: list[Metadatum]
+    client: Client,
+    db: Session,
+    metadata: list[Metadatum],
 ):
     dataset = Dataset.create(client, name=dset_name)
     assert isinstance(dataset, Dataset)
@@ -2034,9 +2035,7 @@ def test_evaluate_tabular_clf(
     assert eval_settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "type": "classification",
-        "constraints": {},
-        "thresholds": None,
+        "parameters": None,
     }
 
     metrics_from_eval_settings_id = eval_jobs[0].metrics
@@ -2055,6 +2054,7 @@ def test_evaluate_tabular_clf(
 
 def test_add_groundtruth(
     client: Client,
+    db: Session,
     gt_semantic_segs_error: GroundTruth,
 ):
     dataset = Dataset.create(client, dset_name)
@@ -2069,6 +2069,7 @@ def test_add_groundtruth(
 
 def test_get_groundtruth(
     client: Client,
+    db: Session,
     gt_semantic_segs1_mask: GroundTruth,
     gt_semantic_segs2_mask: GroundTruth,
 ):
@@ -2085,7 +2086,9 @@ def test_get_groundtruth(
     client.delete_dataset(dset_name, timeout=30)
 
 
-def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
+def test_add_raster_and_boundary_box(
+    client: Client, db: Session, img1: ImageMetadata
+):
     img_size = [900, 300]
     mask = _generate_mask(height=img_size[0], width=img_size[1])
     raster = Raster.from_numpy(mask)
@@ -2121,7 +2124,7 @@ def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
 
 
 def test_get_dataset_status(
-    client: Client, img1: ImageMetadata, gt_dets1: list
+    client: Client, db: Session, img1: ImageMetadata, gt_dets1: list
 ):
     status = client.get_dataset_status(dset_name)
     assert status == "none"

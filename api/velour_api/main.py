@@ -465,17 +465,17 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def create_ap_metrics(
+def create_detection_metrics(
     settings: schemas.EvaluationSettings,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> schemas.CreateAPMetricsResponse:
     try:
         # create evaluation
-        resp = crud.create_ap_evaluation(db=db, settings=settings)
+        resp = crud.create_detection_evaluation(db=db, settings=settings)
         # add metric computation to background tasks
         background_tasks.add_task(
-            crud.compute_ap_metrics,
+            crud.compute_detection_metrics,
             db=db,
             settings=settings,
             job_id=resp.job_id,

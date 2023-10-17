@@ -1,23 +1,19 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Union
 
-from velour.enums import AnnotationType, TaskType
-
-
-@dataclass
-class EvaluationConstraints:
-    # type
-    annotation_type: AnnotationType = None
-    label_key: str = None
-    # geometric
-    min_area: float = None
-    max_area: float = None
+from velour.enums import AnnotationType
 
 
 @dataclass
-class EvaluationThresholds:
+class DetectionParameters:
+    # thresholds to iterate over
     iou_thresholds_to_compute: List[float] = None
     iou_thresholds_to_keep: List[float] = None
+    # constraints
+    annotation_type: AnnotationType = None
+    label_key: str = None
+    min_area: float = None
+    max_area: float = None
 
 
 @dataclass
@@ -29,7 +25,5 @@ class EvaluationSettings:
 
     model: str
     dataset: str
-    type: TaskType
-    constraints: EvaluationConstraints = None
-    thresholds: EvaluationThresholds = None
+    parameters: Union[DetectionParameters, None] = None
     id: int = None

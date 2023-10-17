@@ -23,17 +23,10 @@ def _db_metric_to_pydantic_metric(db, metric: models.Metric) -> schemas.Metric:
 def _db_evaluation_settings_to_pydantic_evaluation_settings(
     evaluation_settings: models.Evaluation,
 ) -> schemas.EvaluationSettings:
-    constraints = (
-        evaluation_settings.constraints
-        if evaluation_settings.constraints
-        else {}
-    )
     return schemas.EvaluationSettings(
         model=evaluation_settings.model.name,
         dataset=evaluation_settings.dataset.name,
-        type=evaluation_settings.type,
-        constraints=schemas.EvaluationConstraints(**constraints),
-        thresholds=None,
+        parameters=evaluation_settings.parameters,
         id=evaluation_settings.id,
     )
 

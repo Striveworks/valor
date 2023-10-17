@@ -78,15 +78,15 @@ def test__ap():
         ),
     ]
 
-    ap_metrics = _ap(
+    detection_metrics = _ap(
         sorted_ranked_pairs=pairs,
         number_of_ground_truths=number_of_ground_truths,
         labels=labels,
         iou_thresholds=iou_thresholds,
     )
 
-    assert len(reference_metrics) == len(ap_metrics)
-    for pd, gt in zip(ap_metrics, reference_metrics):
+    assert len(reference_metrics) == len(detection_metrics)
+    for pd, gt in zip(detection_metrics, reference_metrics):
         assert pd.iou == gt.iou
         assert truncate_float(pd.value) == truncate_float(gt.value)
         assert pd.label == gt.label

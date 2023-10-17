@@ -1018,7 +1018,7 @@ def test_gt_seg_as_mask_or_polys(db: Session):
     assert segs.annotations[0].labels == gt.annotations[0].labels
 
 
-def test_create_ap_metrics(db: Session, groundtruths, predictions):
+def test_create_detection_metrics(db: Session, groundtruths, predictions):
     # the groundtruths and predictions arguments are not used but
     # those fixtures create the necessary dataset, model, groundtruths, and predictions
 
@@ -1028,24 +1028,21 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
         settings = schemas.EvaluationSettings(
             model="test_model",
             dataset="test_dataset",
-            type=enums.TaskType.DETECTION,
-            constraints=schemas.EvaluationConstraints(
+            parameters=schemas.DetectionParameters(
                 min_area=min_area,
                 max_area=max_area,
                 annotation_type=enums.AnnotationType.BOX,
                 label_key=label_key,
-            ),
-            thresholds=schemas.EvaluationThresholds(
                 iou_thresholds_to_compute=[0.2, 0.6],
                 iou_thresholds_to_keep=[0.2],
             ),
         )
 
         # create evaluation (return AP Response)
-        resp = crud.create_ap_evaluation(db=db, settings=settings)
+        resp = crud.create_detection_evaluation(db=db, settings=settings)
 
         # run computation (returns nothing on completion)
-        crud.compute_ap_metrics(
+        crud.compute_detection_metrics(
             db=db,
             settings=settings,
             job_id=resp.job_id,
@@ -1166,22 +1163,24 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     assert model_evals[0] == schemas.EvaluationSettings(
         model=model_name,
         dataset=dset_name,
-        type=enums.TaskType.DETECTION,
-        constraints=schemas.EvaluationConstraints(
+        parameters=schemas.DetectionParameters(
             annotation_type=enums.AnnotationType.BOX,
             label_key="class",
+            iou_thresholds_to_compute=[0.2, 0.6],
+            iou_thresholds_to_keep=[0.2],
         ),
         id=1,
     )
     assert model_evals[1] == schemas.EvaluationSettings(
         model=model_name,
         dataset=dset_name,
-        type=enums.TaskType.DETECTION,
-        constraints=schemas.EvaluationConstraints(
+        parameters=schemas.DetectionParameters(
             annotation_type=enums.AnnotationType.BOX,
             label_key="class",
             min_area=min_area,
             max_area=max_area,
+            iou_thresholds_to_compute=[0.2, 0.6],
+            iou_thresholds_to_keep=[0.2],
         ),
         id=2,
     )
@@ -1210,7 +1209,6 @@ def test_create_clf_metrics(
     settings = schemas.EvaluationSettings(
         model=model_name,
         dataset=dset_name,
-        type=enums.TaskType.CLASSIFICATION,
     )
 
     # create clf evaluation (returns Clf Response)

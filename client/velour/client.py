@@ -528,7 +528,6 @@ class Model:
         evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
-            type=enums.TaskType.CLASSIFICATION,
         )
 
         resp = self.client._requests_post_rel_host(
@@ -546,7 +545,6 @@ class Model:
         evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
-            type=enums.TaskType.CLASSIFICATION,
         )
 
         resp = self.client._requests_post_rel_host(
@@ -581,14 +579,11 @@ class Model:
         if iou_thresholds_to_keep is None:
             iou_thresholds_to_keep = [0.5, 0.75]
 
-        constraints = schemas.EvaluationConstraints(
+        parameters = schemas.DetectionParameters(
             annotation_type=annotation_type,
             label_key=label_key,
             min_area=min_area,
             max_area=max_area,
-        )
-
-        thresholds = schemas.EvaluationThresholds(
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_keep=iou_thresholds_to_keep,
         )
@@ -596,9 +591,7 @@ class Model:
         evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
-            type=enums.TaskType.DETECTION,
-            constraints=constraints,
-            thresholds=thresholds,
+            parameters=parameters,
         )
 
         resp = self.client._requests_post_rel_host(

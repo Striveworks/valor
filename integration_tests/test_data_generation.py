@@ -11,7 +11,7 @@ from velour.data_generation import (
     generate_prediction_data,
     generate_segmentation_data,
 )
-from velour.enums import AnnotationType, JobStatus, TaskType
+from velour.enums import AnnotationType, JobStatus
 from velour.schemas import ImageMetadata
 
 dset_name = "test_dataset"
@@ -119,11 +119,11 @@ def test_generate_prediction_data(client: Client):
     assert settings == {
         "model": model_name,
         "dataset": dset_name,
-        "type": TaskType.DETECTION.value,
-        "constraints": {
+        "parameters": {
             "annotation_type": AnnotationType.BOX,
             "label_key": "k1",
+            "iou_thresholds_to_compute": [0.0, 1.0],
+            "iou_thresholds_to_keep": [0.0, 1.0],
         },
-        "thresholds": None,
     }
     assert len(eval_job.metrics) > 0

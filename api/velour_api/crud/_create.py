@@ -133,7 +133,7 @@ def compute_semantic_segmentation_metrics(
 
 
 @stateflow.evaluate
-def create_ap_evaluation(
+def create_detection_evaluation(
     *,
     db: Session,
     settings: schemas.EvaluationSettings,
@@ -141,7 +141,9 @@ def create_ap_evaluation(
     """create ap evaluation"""
 
     # create evaluation setting
-    job_id, gt_type, pd_type = backend.create_ap_evaluation(db, settings)
+    job_id, gt_type, pd_type = backend.create_detection_evaluation(
+        db, settings
+    )
 
     # get disjoint label sets
     missing_pred_labels, ignored_pred_labels = get_disjoint_labels(
@@ -162,14 +164,14 @@ def create_ap_evaluation(
 
 
 @stateflow.computation
-def compute_ap_metrics(
+def compute_detection_metrics(
     *,
     db: Session,
     settings: schemas.EvaluationSettings,
     job_id: int,
 ):
     """compute ap metrics"""
-    backend.create_ap_metrics(
+    backend.create_detection_metrics(
         db=db,
         settings=settings,
         evaluation_id=job_id,

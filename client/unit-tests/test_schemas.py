@@ -683,15 +683,14 @@ def test_core_prediction():
     assert "for label key test got scores summing to 0.9" in str(e)
 
 
-""" velour.schemas.Evaluation """
+""" velour.schemas.EvaluationSettings """
 
 
-def test_core_evaluation():
+def test_evaluation_evaluation_settings():
     params = {
         "model": "md",
         "dataset": "ds",
-        "type": enums.TaskType.DETECTION,
-        "constraints": {
+        "parameters": {
             "annotation_type": enums.AnnotationType.BOX,
         },
         "id": None,

@@ -1,8 +1,8 @@
 from .metrics import (
-    create_ap_evaluation,
-    create_ap_metrics,
     create_clf_evaluation,
     create_clf_metrics,
+    create_detection_evaluation,
+    create_detection_metrics,
     create_semantic_segmentation_evaluation,
     create_semantic_segmentation_metrics,
 )
@@ -62,10 +62,10 @@ __all__ = [
     "get_model_metrics",
     "get_model_evaluation_settings",
     "get_datums",
-    "create_ap_metrics",
+    "create_detection_metrics",
     "create_clf_metrics",
     "create_semantic_segmentation_metrics",
-    "create_ap_evaluation",
+    "create_detection_evaluation",
     "create_clf_evaluation",
     "create_semantic_segmentation_evaluation",
 ]
