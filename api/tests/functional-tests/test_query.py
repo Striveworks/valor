@@ -110,8 +110,8 @@ def test_label(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
     crud.create_model(db=db, model=schemas.Model(name=model_name))
 
-    datum1 = img1.toDatum()
-    datum2 = img2.toDatum()
+    datum1 = img1.to_datum()
+    datum2 = img2.to_datum()
 
     gts = [
         schemas.GroundTruth(

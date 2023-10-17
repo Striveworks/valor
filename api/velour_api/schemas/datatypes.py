@@ -40,7 +40,7 @@ class ImageMetadata(BaseModel):
             ],
         )
 
-    def toDatum(self) -> Datum:
+    def to_datum(self) -> Datum:
         self.metadata.append(Metadatum(key="height", value=self.height))
         self.metadata.append(Metadatum(key="width", value=self.width))
         return Datum(
@@ -81,7 +81,7 @@ class VideoFrameMetadata(BaseModel):
             frame=frame,
         )
 
-    def toDatum(self) -> Datum:
-        datum = self.image.toDatum()
+    def to_datum(self) -> Datum:
+        datum = self.image.to_datum()
         datum.metadata.append(Metadatum(key="frame", value=self.frame))
         return datum

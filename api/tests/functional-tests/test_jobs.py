@@ -50,7 +50,7 @@ def gt_clfs_create(
     return [
         schemas.GroundTruth(
             dataset=dset_name,
-            datum=img1.toDatum(),
+            datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -63,7 +63,7 @@ def gt_clfs_create(
         ),
         schemas.GroundTruth(
             dataset=dset_name,
-            datum=img2.toDatum(),
+            datum=img2.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -81,7 +81,7 @@ def pred_clfs_create(
     return [
         schemas.Prediction(
             model=model_name,
-            datum=img1.toDatum(),
+            datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -95,7 +95,7 @@ def pred_clfs_create(
         ),
         schemas.Prediction(
             model=model_name,
-            datum=img2.toDatum(),
+            datum=img2.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,

@@ -150,7 +150,7 @@ def images() -> list[schemas.Datum]:
             uid=f"{i}",
             height=1000,
             width=2000,
-        ).toDatum()
+        ).to_datum()
         for i in range(4)
     ]
 
@@ -382,7 +382,7 @@ def pred_semantic_segs_img1_create(
     b64_mask3 = b64encode(img1_pred_mask_bytes3).decode()
     return schemas.Prediction(
         model=model_name,
-        datum=img1.toDatum(),
+        datum=img1.to_datum(),
         annotations=[
             schemas.Annotation(
                 task_type=enums.TaskType.SEGMENTATION,
@@ -413,7 +413,7 @@ def pred_semantic_segs_img2_create(
     b64_mask2 = b64encode(img2_pred_mask_bytes2).decode()
     return schemas.Prediction(
         model=model_name,
-        datum=img2.toDatum(),
+        datum=img2.to_datum(),
         annotations=[
             schemas.Annotation(
                 task_type=enums.TaskType.SEGMENTATION,
@@ -446,7 +446,7 @@ def gt_semantic_segs_create(
     return [
         schemas.GroundTruth(
             dataset_name=dset_name,
-            datum=img1.toDatum(),
+            datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.SEGMENTATION,
@@ -467,7 +467,7 @@ def gt_semantic_segs_create(
         ),
         schemas.GroundTruth(
             dataset_name=dset_name,
-            datum=img2.toDatum(),
+            datum=img2.to_datum(),
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.SEGMENTATION,
