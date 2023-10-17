@@ -6,6 +6,7 @@ from velour_api import enums, schemas
 from velour_api.backend import models
 
 
+# TODO
 def create_label(
     db: Session,
     label: schemas.Label,
@@ -31,7 +32,41 @@ def create_labels(
     db: Session,
     labels: list[schemas.Label],
 ) -> list[models.Label]:
-    return [create_label(db, label) for label in labels]
+    replace_val = "to_be_replaced"
+
+    # get existing labels
+    existing_labels = {
+        (label.key, label.value): label
+        for label in get_labels_for_creation(db=db, labels=labels)
+    }
+
+    output = []
+    to_be_added = []
+
+    for label in labels:
+        lookup = (label.key, label.value)
+        if lookup in existing_labels:
+            output.append(existing_labels[lookup])
+        else:
+            to_be_added.append(models.Label(key=label.key, value=label.value))
+            output.append(replace_val)
+
+    # upload the labels that were missing
+    try:
+        db.add_all(to_be_added)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise RuntimeError  # this should never be called
+
+    # move those fetched labels into output in the correct order
+    for i in range(len(output)):
+        if output[i] == replace_val:
+            output[i] = to_be_added.pop(0)
+
+    assert not to_be_added, "Not all new labels were added"
+
+    return output
 
 
 def get_label(
@@ -78,6 +113,25 @@ def get_labels(
     )
 
     return [schemas.Label(key=label[0], value=label[1]) for label in labels]
+
+
+def get_labels_for_creation(
+    db: Session,
+    labels: schemas.Label,
+) -> models.Label | None:
+    label_keys, label_values = zip(
+        *[(label.key, label.value) for label in labels]
+    )
+    return (
+        db.query(models.Label)
+        .where(
+            and_(
+                models.Label.key in label_keys,
+                models.Label.value in label_values,
+            )
+        )
+        .all()
+    )
 
 
 def get_scored_labels(
