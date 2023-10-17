@@ -53,7 +53,9 @@ def create_labels(
         if output[i] == replace_val:
             output[i] = labels_to_be_added_to_db.pop(0)
 
-    assert not labels_to_be_added_to_db, "Not all new labels were added"
+    assert (
+        not labels_to_be_added_to_db
+    ), "Error when merging existing labels with new labels"
 
     return output
 
