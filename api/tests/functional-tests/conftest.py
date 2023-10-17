@@ -50,8 +50,8 @@ img2_size = (80, 32)
 
 
 @pytest.fixture
-def img1() -> schemas.Image:
-    return schemas.Image(
+def img1() -> schemas.ImageMetadata:
+    return schemas.ImageMetadata(
         dataset="test_dataset",
         uid="uid1",
         height=img1_size[0],
@@ -60,8 +60,8 @@ def img1() -> schemas.Image:
 
 
 @pytest.fixture
-def img2() -> schemas.Image:
-    return schemas.Image(
+def img2() -> schemas.ImageMetadata:
+    return schemas.ImageMetadata(
         dataset="test_dataset",
         uid="uid2",
         height=img2_size[0],
@@ -145,7 +145,7 @@ def dset(db: Session) -> models.Dataset:
 @pytest.fixture
 def images() -> list[schemas.Datum]:
     return [
-        schemas.Image(
+        schemas.ImageMetadata(
             dataset="test_dataset",
             uid=f"{i}",
             height=1000,
@@ -158,7 +158,7 @@ def images() -> list[schemas.Datum]:
 # groundtruths to use for testing AP
 @pytest.fixture
 def groundtruths(
-    db: Session, images: list[schemas.Image]
+    db: Session, images: list[schemas.ImageMetadata]
 ) -> list[list[models.GroundTruth]]:
     """Creates a dataset called "test_dataset" with some groundtruth
     detections. These detections are taken from a torchmetrics unit test (see test_metrics.py)
@@ -169,7 +169,7 @@ def groundtruths(
         dataset=schemas.Dataset(
             name=dataset_name,
             metadata=[
-                schemas.MetaDatum(
+                schemas.Metadatum(
                     key="type", value=enums.DataType.IMAGE.value
                 ),
             ],
@@ -270,7 +270,7 @@ def predictions(
         model=schemas.Model(
             name=model_name,
             metadata=[
-                schemas.MetaDatum(
+                schemas.Metadatum(
                     key="type", value=enums.DataType.IMAGE.value
                 ),
             ],
@@ -375,7 +375,7 @@ def pred_semantic_segs_img1_create(
     img1_pred_mask_bytes1: bytes,
     img1_pred_mask_bytes2: bytes,
     img1_pred_mask_bytes3: bytes,
-    img1: schemas.Image,
+    img1: schemas.ImageMetadata,
 ) -> schemas.Prediction:
     b64_mask1 = b64encode(img1_pred_mask_bytes1).decode()
     b64_mask2 = b64encode(img1_pred_mask_bytes2).decode()
@@ -385,17 +385,17 @@ def pred_semantic_segs_img1_create(
         datum=img1.to_datum(),
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                task_type=enums.TaskType.SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask1),
                 labels=[schemas.Label(key="k1", value="v1")],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                task_type=enums.TaskType.SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask2),
                 labels=[schemas.Label(key="k2", value="v2")],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                task_type=enums.TaskType.SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask3),
                 labels=[schemas.Label(key="k2", value="v3")],
             ),
@@ -407,7 +407,7 @@ def pred_semantic_segs_img1_create(
 def pred_semantic_segs_img2_create(
     img2_pred_mask_bytes1: bytes,
     img2_pred_mask_bytes2: bytes,
-    img2: schemas.Image,
+    img2: schemas.ImageMetadata,
 ) -> schemas.Prediction:
     b64_mask1 = b64encode(img2_pred_mask_bytes1).decode()
     b64_mask2 = b64encode(img2_pred_mask_bytes2).decode()
@@ -416,12 +416,12 @@ def pred_semantic_segs_img2_create(
         datum=img2.to_datum(),
         annotations=[
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                task_type=enums.TaskType.SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask1),
                 labels=[schemas.Label(key="k1", value="v1")],
             ),
             schemas.Annotation(
-                task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                task_type=enums.TaskType.SEGMENTATION,
                 raster=schemas.Raster(mask=b64_mask2),
                 labels=[schemas.Label(key="k2", value="v3")],
             ),
@@ -435,8 +435,8 @@ def gt_semantic_segs_create(
     img1_gt_mask_bytes2: bytes,
     img1_gt_mask_bytes3: bytes,
     img2_gt_mask_bytes1: bytes,
-    img1: schemas.Image,
-    img2: schemas.Image,
+    img1: schemas.ImageMetadata,
+    img2: schemas.ImageMetadata,
 ) -> list[schemas.GroundTruth]:
     b64_mask1 = b64encode(img1_gt_mask_bytes1).decode()
     b64_mask2 = b64encode(img1_gt_mask_bytes2).decode()
@@ -449,17 +449,17 @@ def gt_semantic_segs_create(
             datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask1),
                     labels=[schemas.Label(key="k1", value="v1")],
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask2),
                     labels=[schemas.Label(key="k1", value="v2")],
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask3),
                     labels=[schemas.Label(key="k3", value="v3")],
                 ),
@@ -470,7 +470,7 @@ def gt_semantic_segs_create(
             datum=img2.to_datum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.SEGMENTATION,
                     raster=schemas.Raster(mask=b64_mask4),
                     labels=[
                         schemas.Label(key="k1", value="v1"),

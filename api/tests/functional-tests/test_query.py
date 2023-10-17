@@ -20,7 +20,7 @@ def semantic_seg_gt_anns1(
     img1_gt_mask_bytes1: bytes,
 ) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        task_type=enums.TaskType.SEGMENTATION,
         raster=schemas.Raster(mask=b64encode(img1_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="semsegk1", value="semsegv1"),
@@ -34,7 +34,7 @@ def semantic_seg_gt_anns2(
     img2_gt_mask_bytes1: bytes,
 ) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        task_type=enums.TaskType.SEGMENTATION,
         raster=schemas.Raster(mask=b64encode(img2_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="semsegk2", value="semsegv2"),
@@ -46,7 +46,7 @@ def semantic_seg_gt_anns2(
 @pytest.fixture
 def semantic_seg_pred_anns1(img1_gt_mask_bytes1: bytes) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        task_type=enums.TaskType.SEGMENTATION,
         raster=schemas.Raster(mask=b64encode(img1_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="semsegk1", value="semsegv1"),
@@ -58,7 +58,7 @@ def semantic_seg_pred_anns1(img1_gt_mask_bytes1: bytes) -> schemas.Annotation:
 @pytest.fixture
 def semantic_seg_pred_anns2(img2_gt_mask_bytes1: bytes) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        task_type=enums.TaskType.SEGMENTATION,
         raster=schemas.Raster(mask=b64encode(img2_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="semsegk2", value="semsegv2"),
@@ -72,7 +72,7 @@ def instance_seg_gt_anns1(
     img1_gt_mask_bytes1: bytes,
 ) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+        task_type=enums.TaskType.DETECTION,
         raster=schemas.Raster(mask=b64encode(img1_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="inssegk1", value="inssegv1"),
@@ -86,7 +86,7 @@ def instance_seg_gt_anns2(
     img2_gt_mask_bytes1: bytes,
 ) -> schemas.Annotation:
     return schemas.Annotation(
-        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+        task_type=enums.TaskType.DETECTION,
         raster=schemas.Raster(mask=b64encode(img2_gt_mask_bytes1).decode()),
         labels=[
             schemas.Label(key="inssegk2", value="inssegv2"),
@@ -97,8 +97,8 @@ def instance_seg_gt_anns2(
 
 def test_label(
     db: Session,
-    img1: schemas.Image,
-    img2: schemas.Image,
+    img1: schemas.ImageMetadata,
+    img2: schemas.ImageMetadata,
     semantic_seg_gt_anns1: schemas.Annotation,
     semantic_seg_gt_anns2: schemas.Annotation,
     semantic_seg_pred_anns1: schemas.Annotation,
@@ -155,14 +155,14 @@ def test_label(
     assert _get_dataset_label_keys(
         db,
         dataset_name=dset_name,
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        task_type=enums.TaskType.SEGMENTATION,
     ) == {"semsegk1", "semsegk2", "semsegk3"}
 
     assert _get_dataset_labels(
         db,
         dataset_name=dset_name,
         annotation_type=enums.AnnotationType.RASTER,
-        task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+        task_types=[enums.TaskType.SEGMENTATION],
     ) == {
         schemas.Label(key="semsegk1", value="semsegv1"),
         schemas.Label(key="semsegk2", value="semsegv2"),
@@ -173,7 +173,7 @@ def test_label(
             db,
             dataset_name=dset_name,
             annotation_type=enums.AnnotationType.POLYGON,
-            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+            task_types=[enums.TaskType.SEGMENTATION],
         )
         == set()
     )
@@ -182,7 +182,7 @@ def test_label(
         db,
         dataset_name=dset_name,
         model_name=model_name,
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        task_type=enums.TaskType.SEGMENTATION,
     ) == {"semsegk1", "semsegk2", "semsegk3_pred"}
 
     assert _get_model_labels(
@@ -190,7 +190,7 @@ def test_label(
         dataset_name=dset_name,
         model_name=model_name,
         annotation_type=enums.AnnotationType.RASTER,
-        task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+        task_types=[enums.TaskType.SEGMENTATION],
     ) == {
         schemas.Label(key="semsegk1", value="semsegv1"),
         schemas.Label(key="semsegk2", value="semsegv2"),
@@ -203,42 +203,38 @@ def test_label(
             dataset_name=dset_name,
             model_name=model_name,
             annotation_type=enums.AnnotationType.POLYGON,
-            task_types=[enums.TaskType.SEMANTIC_SEGMENTATION],
+            task_types=[enums.TaskType.SEGMENTATION],
         )
         == set()
     )
 
-    for task_type in [
-        enums.TaskType.DETECTION,
-        enums.TaskType.CLASSIFICATION,
-    ]:
-        assert (
-            _get_dataset_label_keys(
-                db, dataset_name=dset_name, task_type=task_type
-            )
-            == set()
+    assert (
+        _get_dataset_label_keys(
+            db, dataset_name=dset_name, task_type=enums.TaskType.CLASSIFICATION
         )
-        assert (
-            _get_model_label_keys(
-                db,
-                dataset_name=dset_name,
-                model_name=model_name,
-                task_type=task_type,
-            )
-            == set()
+        == set()
+    )
+    assert (
+        _get_model_label_keys(
+            db,
+            dataset_name=dset_name,
+            model_name=model_name,
+            task_type=enums.TaskType.CLASSIFICATION,
         )
+        == set()
+    )
 
     assert _get_dataset_label_keys(
         db,
         dataset_name=dset_name,
-        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+        task_type=enums.TaskType.DETECTION,
     ) == {"inssegk1", "inssegk2", "inssegk3"}
 
     assert _get_dataset_labels(
         db,
         dataset_name=dset_name,
         annotation_type=enums.AnnotationType.RASTER,
-        task_types=[enums.TaskType.INSTANCE_SEGMENTATION],
+        task_types=[enums.TaskType.DETECTION],
     ) == {
         schemas.Label(key="inssegk1", value="inssegv1"),
         schemas.Label(key="inssegk2", value="inssegv2"),
@@ -249,8 +245,8 @@ def test_label(
         dataset_name=dset_name,
         annotation_type=enums.AnnotationType.RASTER,
         task_types=[
-            enums.TaskType.INSTANCE_SEGMENTATION,
-            enums.TaskType.SEMANTIC_SEGMENTATION,
+            enums.TaskType.DETECTION,
+            enums.TaskType.SEGMENTATION,
         ],
     ) == {
         schemas.Label(key="inssegk1", value="inssegv1"),
@@ -264,19 +260,19 @@ def test_label(
     assert _get_dataset_label_keys(
         db,
         dataset_name=dset_name,
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        task_type=enums.TaskType.SEGMENTATION,
     ) == {"semsegk1", "semsegk2", "semsegk3"}
 
     assert _get_model_label_keys(
         db,
         dataset_name=dset_name,
         model_name=model_name,
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        task_type=enums.TaskType.SEGMENTATION,
     ) == {"semsegk1", "semsegk2", "semsegk3_pred"}
 
     assert (
         _get_model_label_keys(
-            db, dset_name, model_name, enums.TaskType.INSTANCE_SEGMENTATION
+            db, dset_name, model_name, enums.TaskType.DETECTION
         )
         == set()
     )
@@ -287,8 +283,8 @@ def test_label(
         model_name,
         annotation_type=enums.AnnotationType.RASTER,
         task_types=[
-            enums.TaskType.INSTANCE_SEGMENTATION,
-            enums.TaskType.SEMANTIC_SEGMENTATION,
+            enums.TaskType.DETECTION,
+            enums.TaskType.SEGMENTATION,
         ],
     ) == {
         schemas.Label(key="semsegk1", value="semsegv1"),
@@ -301,7 +297,7 @@ def test_label(
             dset_name,
             model_name,
             annotation_type=enums.AnnotationType.RASTER,
-            task_types=[enums.TaskType.INSTANCE_SEGMENTATION],
+            task_types=[enums.TaskType.DETECTION],
         )
         == set()
     )

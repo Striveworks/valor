@@ -465,19 +465,19 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def create_ap_metrics(
-    request_info: schemas.APRequest,
+def create_detection_metrics(
+    settings: schemas.EvaluationSettings,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> schemas.CreateAPMetricsResponse:
     try:
         # create evaluation
-        resp = crud.create_ap_evaluation(db=db, request_info=request_info)
+        resp = crud.create_detection_evaluation(db=db, settings=settings)
         # add metric computation to background tasks
         background_tasks.add_task(
-            crud.compute_ap_metrics,
+            crud.compute_detection_metrics,
             db=db,
-            request_info=request_info,
+            settings=settings,
             job_id=resp.job_id,
         )
         # return AP Response
@@ -500,18 +500,18 @@ def create_ap_metrics(
     tags=["Evaluations"],
 )
 def create_clf_metrics(
-    request_info: schemas.ClfMetricsRequest,
+    settings: schemas.EvaluationSettings,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> schemas.CreateClfMetricsResponse:
     try:
         # create evaluation
-        resp = crud.create_clf_evaluation(db=db, request_info=request_info)
+        resp = crud.create_clf_evaluation(db=db, settings=settings)
         # add metric computation to background tasks
         background_tasks.add_task(
             crud.compute_clf_metrics,
             db=db,
-            request_info=request_info,
+            settings=settings,
             job_id=resp.job_id,
         )
         # return Clf Response
@@ -534,21 +534,21 @@ def create_clf_metrics(
     tags=["Evaluations"],
 )
 def create_semantic_segmentation_metrics(
-    request_info: schemas.SemanticSegmentationMetricsRequest,
+    settings: schemas.EvaluationSettings,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> schemas.CreateSemanticSegmentationMetricsResponse:
     try:
         # create evaluation
         resp = crud.create_semantic_segmentation_evaluation(
-            db=db, request_info=request_info
+            db=db, settings=settings
         )
 
         # add metric computation to background tasks
         background_tasks.add_task(
             crud.compute_semantic_segmentation_metrics,
             db=db,
-            request_info=request_info,
+            settings=settings,
             job_id=resp.job_id,
         )
         return resp
@@ -611,7 +611,7 @@ def get_evaluation_settings(
 ) -> schemas.EvaluationSettings:
     try:
         return crud.get_evaluation_settings_from_id(
-            db=db, evaluation_settings_id=job_id
+            db=db, evaluation_id=job_id
         )
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -636,9 +636,7 @@ def get_evaluation_metrics(
                 status_code=404,
                 detail=f"No metrics for job {job_id} since its status is {status}",
             )
-        return crud.get_metrics_from_evaluation_settings_id(
-            db=db, evaluation_settings_id=job_id
-        )
+        return crud.get_metrics_from_evaluation_id(db=db, evaluation_id=job_id)
     except (
         exceptions.JobDoesNotExistError,
         AttributeError,
@@ -669,8 +667,8 @@ def get_evaluation_confusion_matrices(
                 status_code=404,
                 detail=f"No metrics for job {job_id} since its status is {status}",
             )
-        return crud.get_confusion_matrices_from_evaluation_settings_id(
-            db=db, evaluation_settings_id=job_id
+        return crud.get_confusion_matrices_from_evaluation_id(
+            db=db, evaluation_id=job_id
         )
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))

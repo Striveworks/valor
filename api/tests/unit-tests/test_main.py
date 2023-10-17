@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from velour_api import exceptions, schemas
 from velour_api.backend import database
+from velour_api.enums import TaskType
 
 
 @pytest.fixture
@@ -75,7 +76,7 @@ def test_post_groundtruth(client: TestClient):
                 "labels": [
                     {"key": "k1", "value": "v1"},
                 ],
-                "task_type": "classification",
+                "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": [],
             }
         ],
@@ -106,7 +107,7 @@ def test_post_groundtruth_classification(client: TestClient):
                     {"key": "k1", "value": "v1"},
                     {"key": "k1", "value": "v2"},
                 ],
-                "task_type": "classification",
+                "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": [
                     {"key": "meta1", "value": 0.4},
                     {"key": "meta1", "value": "v1"},
@@ -117,7 +118,7 @@ def test_post_groundtruth_classification(client: TestClient):
                     {"key": "k2", "value": "v1"},
                     {"key": "k2", "value": "v2"},
                 ],
-                "task_type": "classification",
+                "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": [
                     {"key": "meta2", "value": 0.4},
                     {"key": "meta2", "value": "v1"},
@@ -150,7 +151,7 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
                     {"key": "k1", "value": "v1"},
                     {"key": "k1", "value": "v2"},
                 ],
-                "task_type": "detection",
+                "task_type": TaskType.DETECTION.value,
                 "metadata": [
                     {"key": "meta1", "value": 0.4},
                     {"key": "meta1", "value": "v1"},
@@ -192,7 +193,7 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
                     {"key": "k1", "value": "v1"},
                     {"key": "k1", "value": "v2"},
                 ],
-                "task_type": "detection",
+                "task_type": TaskType.DETECTION.value,
                 "metadata": [
                     {"key": "meta1", "value": 0.4},
                     {"key": "meta1", "value": "v1"},
@@ -253,7 +254,7 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                     {"key": "k1", "value": "v1"},
                     {"key": "k1", "value": "v2"},
                 ],
-                "task_type": "instance_segmentation",
+                "task_type": TaskType.DETECTION.value,
                 "metadata": [
                     {"key": "meta1", "value": 0.4},
                     {"key": "meta1", "value": "v1"},
@@ -267,7 +268,7 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                     {"key": "k1", "value": "v1"},
                     {"key": "k1", "value": "v2"},
                 ],
-                "task_type": "semantic_segmentation",
+                "task_type": TaskType.SEGMENTATION.value,
                 "metadata": [
                     {"key": "meta1", "value": 0.4},
                     {"key": "meta1", "value": "v1"},
@@ -303,7 +304,7 @@ def test_post_prediction(client: TestClient):
                     {"key": "k1", "value": "v1", "score": 0.9},
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
-                "task_type": "classification",
+                "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": [],
             }
         ],
@@ -343,7 +344,7 @@ def test_post_prediction_classification(client: TestClient):
                     {"key": "k1", "value": "v1", "score": 0.9},
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
-                "task_type": "classification",
+                "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": [
                     {"key": "meta1", "value": 0.4},
                     {"key": "meta1", "value": "v1"},
@@ -354,7 +355,7 @@ def test_post_prediction_classification(client: TestClient):
                     {"key": "k1", "value": "v1", "score": 0.9},
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
-                "task_type": "classification",
+                "task_type": TaskType.CLASSIFICATION.value,
                 "metadata": [
                     {"key": "meta2", "value": 0.4},
                     {"key": "meta2", "value": "v1"},
@@ -387,7 +388,7 @@ def test_post_prediction_bbox_detection(client: TestClient):
                     {"key": "k1", "value": "v1", "score": 0.9},
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
-                "task_type": "detection",
+                "task_type": TaskType.DETECTION.value,
                 "metadata": [
                     {"key": "meta1", "value": 0.4},
                     {"key": "meta1", "value": "v1"},
@@ -405,6 +406,7 @@ def test_post_prediction_bbox_detection(client: TestClient):
             },
         ],
     }
+    schemas.Prediction(**example_json)
     _test_post_endpoints(
         client=client,
         endpoint="/predictions",
@@ -430,7 +432,7 @@ def test_post_prediction_polygon_detection(client: TestClient):
                     {"key": "k1", "value": "v1", "score": 0.9},
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
-                "task_type": "detection",
+                "task_type": TaskType.DETECTION.value,
                 "metadata": [
                     {"key": "meta1", "value": 0.4},
                     {"key": "meta1", "value": "v1"},
@@ -497,7 +499,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                     {"key": "k1", "value": "v1", "score": 0.9},
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
-                "task_type": "instance_segmentation",
+                "task_type": TaskType.DETECTION.value,
                 "metadata": [
                     {"key": "meta1", "value": 0.4},
                     {"key": "meta1", "value": "v1"},
@@ -511,7 +513,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                     {"key": "k1", "value": "v1"},
                     {"key": "k1", "value": "v2"},
                 ],
-                "task_type": "semantic_segmentation",
+                "task_type": TaskType.SEGMENTATION.value,
                 "metadata": [
                     {"key": "meta1", "value": 0.4},
                     {"key": "meta1", "value": "v1"},

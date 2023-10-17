@@ -3,10 +3,15 @@ import re
 from base64 import b64decode
 
 import PIL.Image
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
-from velour_api import enums
-from velour_api.schemas.geojson import GeoJSON
+from velour_api.enums import TaskType
 from velour_api.schemas.geometry import (
     BoundingBox,
     MultiPolygon,
@@ -14,6 +19,7 @@ from velour_api.schemas.geometry import (
     Raster,
 )
 from velour_api.schemas.label import Label
+from velour_api.schemas.metadata import Metadatum
 
 
 def _format_name(name: str):
@@ -28,34 +34,10 @@ def _format_uid(uid: str):
     return re.sub(pattern, "", uid)
 
 
-class MetaDatum(BaseModel):
-    key: str
-    value: float | str | GeoJSON
-
-    @field_validator("key")
-    @classmethod
-    def check_key(cls, v):
-        if not isinstance(v, str):
-            raise ValueError
-        return v
-
-    @property
-    def string_value(self) -> str | None:
-        if isinstance(self.value, str):
-            return self.value
-        return None
-
-    @property
-    def numeric_value(self) -> float | None:
-        if isinstance(self.value, float):
-            return self.value
-        return None
-
-
 class Dataset(BaseModel):
     id: int | None = None
     name: str
-    metadata: list[MetaDatum] = []
+    metadata: list[Metadatum] = Field(default_factory=list)
 
     @field_validator("name")
     @classmethod
@@ -70,7 +52,7 @@ class Dataset(BaseModel):
 class Model(BaseModel):
     id: int | None = None
     name: str
-    metadata: list[MetaDatum] = []
+    metadata: list[Metadatum] = Field(default_factory=list)
 
     @field_validator("name")
     @classmethod
@@ -85,7 +67,7 @@ class Model(BaseModel):
 class Datum(BaseModel):
     uid: str
     dataset: str
-    metadata: list[MetaDatum] = []
+    metadata: list[Metadatum] = Field(default_factory=list)
 
     @field_validator("uid")
     @classmethod
@@ -107,15 +89,16 @@ class Datum(BaseModel):
 
 
 class Annotation(BaseModel):
-    task_type: enums.TaskType
+    task_type: TaskType
     labels: list[Label]
-    metadata: list[MetaDatum] | None = None
+    metadata: list[Metadatum] = Field(default_factory=list)
 
     # Geometric types
     bounding_box: BoundingBox | None = None
     polygon: Polygon | None = None
     multipolygon: MultiPolygon | None = None
     raster: Raster | None = None
+    jsonb: dict[str, str] | None = None
 
     model_config = ConfigDict(use_enum_values=True)
 
@@ -134,7 +117,7 @@ def _check_semantic_segmentations_single_label(
     labels = []
     indices = dict()
     for index, annotation in enumerate(annotations):
-        if annotation.task_type == enums.TaskType.SEMANTIC_SEGMENTATION:
+        if annotation.task_type == TaskType.SEGMENTATION:
             for label in annotation.labels:
                 if label in labels:
                     raise ValueError(
@@ -202,16 +185,15 @@ class Prediction(BaseModel):
         # the task type requires it
         for annotation in v:
             if annotation.task_type in [
-                enums.TaskType.CLASSIFICATION,
-                enums.TaskType.DETECTION,
-                enums.TaskType.INSTANCE_SEGMENTATION,
+                TaskType.CLASSIFICATION,
+                TaskType.DETECTION,
             ]:
                 for label in annotation.labels:
                     if label.score is None:
                         raise ValueError(
                             f"Missing score for label in {annotation.task_type} task."
                         )
-            elif annotation.task_type == enums.TaskType.SEMANTIC_SEGMENTATION:
+            elif annotation.task_type == TaskType.SEGMENTATION:
                 for label in annotation.labels:
                     if label.score is not None:
                         raise ValueError(
@@ -227,7 +209,7 @@ class Prediction(BaseModel):
         # check that for classification tasks, the label scores
         # sum to 1
         for annotation in v:
-            if annotation.task_type == enums.TaskType.CLASSIFICATION:
+            if annotation.task_type == TaskType.CLASSIFICATION:
                 label_keys_to_sum = {}
                 for scored_label in annotation.labels:
                     label_key = scored_label.key
