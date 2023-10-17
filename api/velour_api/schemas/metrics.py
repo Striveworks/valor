@@ -14,6 +14,15 @@ from velour_api.schemas.label import Label
 
 
 class DetectionParameters(BaseModel):
+    """Parameters for evaluating a Object Detection.
+    ----------
+    iou_thresholds_to_compute
+        Compute all thresholds in this list to create the mAP value.
+    iou_thresholds_to_keep
+        Must be subset of `iou_thresholds_to_compute`, returns an `schemas.APMetric`
+        for each threshold.
+    """
+
     # thresholds to iterate over (mutable defaults are ok for pydantic models)
     iou_thresholds_to_compute: list[float] | None = [
         round(0.5 + 0.05 * i, 2) for i in range(10)
