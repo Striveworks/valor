@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.metadata import create_metadata
+from velour_api.backend.core.metadata import deserialize_meta
 
 
 def get_datum(
@@ -54,14 +54,12 @@ def create_datum(
         row = models.Datum(
             uid=datum.uid,
             dataset_id=dataset.id,
+            meta=deserialize_meta(datum.metadata),
         )
         db.add(row)
         db.commit()
     except IntegrityError:
         db.rollback()
         raise exceptions.DatumAlreadyExistsError(datum.uid)
-
-    # create metadata
-    create_metadata(db, datum.metadata, datum=row)
 
     return row

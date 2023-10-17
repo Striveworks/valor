@@ -5,11 +5,12 @@ from .core import (
     GroundTruth,
     Info,
     Label,
-    MetaDatum,
+    Metadatum,
     Model,
     Prediction,
 )
 from .datatypes import ImageMetadata, VideoFrameMetadata
+from .evaluation import DetectionParameters, EvaluationSettings
 from .geometry import (
     BasicPolygon,
     BoundingBox,
@@ -18,11 +19,6 @@ from .geometry import (
     Point,
     Polygon,
     Raster,
-)
-from .info import (
-    AnnotationDistribution,
-    LabelDistribution,
-    ScoredLabelDistribution,
 )
 from .metadata import GeoJSON
 
@@ -38,15 +34,14 @@ __all__ = [
     "VideoFrameMetadata",
     "Label",
     "Annotation",
-    "AnnotationDistribution",
     "GroundTruth",
     "Prediction",
     "BoundingBox",
     "Polygon",
     "MultiPolygon",
     "Raster",
-    "MetaDatum",
+    "Metadatum",
     "GeoJSON",
-    "LabelDistribution",
-    "ScoredLabelDistribution",
+    "EvaluationSettings",
+    "DetectionParameters",
 ]

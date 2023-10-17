@@ -4,6 +4,7 @@ that is no auth
 import io
 import json
 import time
+from dataclasses import asdict
 from typing import Any
 
 import numpy as np
@@ -32,14 +33,14 @@ from velour.schemas import (
     GroundTruth,
     ImageMetadata,
     Label,
-    MetaDatum,
+    Metadatum,
     MultiPolygon,
     Point,
     Polygon,
     Prediction,
     Raster,
 )
-from velour_api import crud, exceptions
+from velour_api import exceptions
 from velour_api.backend import jobs, models
 
 dset_name = "test_dataset"
@@ -106,16 +107,16 @@ def random_mask(img: ImageMetadata) -> np.ndarray:
 def metadata():
     """Some sample metadata of different types"""
     return [
-        # MetaDatum(
+        # Metadatum(
         #     key="metadatum name1",
         #     value=GeoJSON(
         #         type="Point",
         #         coordinates=[-48.23456, 20.12345],
         #     )
         # ),
-        MetaDatum(key="metadatum1", value="temporary"),
-        MetaDatum(key="metadatum2", value="a string"),
-        MetaDatum(key="metadatum3", value=0.45),
+        Metadatum(key="metadatum1", value="temporary"),
+        Metadatum(key="metadatum2", value="a string"),
+        Metadatum(key="metadatum3", value=0.45),
     ]
 
 
@@ -185,20 +186,20 @@ def db(client: Client) -> Session:
 
     for model in client.get_models():
         try:
-            crud.delete(db=sess, model_name=model["name"])
+            client.delete_model(model["name"])
+            time.sleep(0.1)
         except exceptions.ModelDoesNotExistError:
             continue
 
     for dataset in client.get_datasets():
         try:
-            crud.delete(db=sess, dataset_name=dataset["name"])
+            client.delete_dataset(dataset["name"], timeout=5)
         except exceptions.DatasetDoesNotExistError:
             continue
 
     labels = sess.scalars(select(models.Label))
     for label in labels:
         sess.delete(label)
-
     sess.commit()
 
     # clean redis
@@ -351,14 +352,14 @@ def gt_segs(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.INSTANCE_SEGMENTATION,
+                    task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     multipolygon=MultiPolygon(
                         polygons=[Polygon(boundary=rect1.polygon)]
                     ),
                 ),
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEGMENTATION,
                     labels=[Label(key="k2", value="v2")],
                     multipolygon=MultiPolygon(
                         polygons=[
@@ -373,7 +374,7 @@ def gt_segs(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.INSTANCE_SEGMENTATION,
+                    task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
                     multipolygon=MultiPolygon(
                         polygons=[
@@ -398,7 +399,7 @@ def gt_semantic_segs1(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEGMENTATION,
                     labels=[Label(key="k2", value="v2")],
                     multipolygon=MultiPolygon(
                         polygons=[
@@ -421,7 +422,7 @@ def gt_semantic_segs1_mask(img1: ImageMetadata) -> GroundTruth:
         datum=img1.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                task_type=TaskType.SEGMENTATION,
                 labels=[Label(key="k2", value="v2")],
                 raster=raster,
             )
@@ -436,7 +437,7 @@ def gt_semantic_segs2(rect3: BoundingBox, img2: ImageMetadata) -> GroundTruth:
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEGMENTATION,
                     labels=[Label(key="k3", value="v3")],
                     multipolygon=MultiPolygon(
                         polygons=[Polygon(boundary=rect3.polygon)],
@@ -456,7 +457,7 @@ def gt_semantic_segs2_mask(img2: ImageMetadata) -> GroundTruth:
         datum=img2.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                task_type=TaskType.SEGMENTATION,
                 labels=[Label(key="k2", value="v2")],
                 raster=raster,
             )
@@ -474,7 +475,7 @@ def gt_semantic_segs_error(img1: ImageMetadata) -> GroundTruth:
         datum=img1.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                task_type=TaskType.SEGMENTATION,
                 labels=[Label(key="k3", value="v3")],
                 raster=raster,
             )
@@ -588,7 +589,7 @@ def pred_instance_segs(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.INSTANCE_SEGMENTATION,
+                    task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1", score=0.87)],
                     raster=Raster.from_numpy(mask_1),
                 )
@@ -599,7 +600,7 @@ def pred_instance_segs(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.INSTANCE_SEGMENTATION,
+                    task_type=TaskType.DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.92)],
                     raster=Raster.from_numpy(mask_2),
                 )
@@ -620,7 +621,7 @@ def pred_semantic_segs(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEGMENTATION,
                     labels=[Label(key="k2", value="v2")],
                     raster=Raster.from_numpy(mask_1),
                 )
@@ -631,7 +632,7 @@ def pred_semantic_segs(
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_numpy(mask_2),
                 )
@@ -866,22 +867,15 @@ def test_create_image_dataset_with_href_and_description(
     dataset_id = db.scalar(
         select(models.Dataset.id).where(models.Dataset.name == dset_name)
     )
-    assert href == db.scalar(
-        select(models.MetaDatum.string_value).where(
-            and_(
-                models.MetaDatum.dataset_id == dataset_id,
-                models.MetaDatum.key == "href",
-            )
-        )
+    assert isinstance(dataset_id, int)
+
+    dataset_metadata = db.scalar(
+        select(models.Dataset.meta).where(models.Dataset.name == dset_name)
     )
-    assert description == db.scalar(
-        select(models.MetaDatum.string_value).where(
-            and_(
-                models.MetaDatum.dataset_id == dataset_id,
-                models.MetaDatum.key == "description",
-            )
-        )
-    )
+    assert dataset_metadata == {
+        "href": "http://a.com/b",
+        "description": "a description",
+    }
 
 
 def test_create_model_with_href_and_description(client: Client, db: Session):
@@ -892,22 +886,15 @@ def test_create_model_with_href_and_description(client: Client, db: Session):
     model_id = db.scalar(
         select(models.Model.id).where(models.Model.name == model_name)
     )
-    assert href == db.scalar(
-        select(models.MetaDatum.string_value).where(
-            and_(
-                models.MetaDatum.model_id == model_id,
-                models.MetaDatum.key == "href",
-            )
-        )
+    assert isinstance(model_id, int)
+
+    model_metadata = db.scalar(
+        select(models.Model.meta).where(models.Model.name == model_name)
     )
-    assert description == db.scalar(
-        select(models.MetaDatum.string_value).where(
-            and_(
-                models.MetaDatum.model_id == model_id,
-                models.MetaDatum.key == "description",
-            )
-        )
-    )
+    assert model_metadata == {
+        "href": "http://a.com/b",
+        "description": "a description",
+    }
 
 
 def test_create_image_dataset_with_detections(
@@ -1139,9 +1126,9 @@ def test_create_image_dataset_with_segmentations(
     semantic_segs = []
     for seg in segs:
         assert isinstance(seg, Annotation)
-        if seg.task_type == TaskType.INSTANCE_SEGMENTATION:
+        if seg.task_type == TaskType.DETECTION:
             instance_segs.append(seg)
-        elif seg.task_type == TaskType.SEMANTIC_SEGMENTATION:
+        elif seg.task_type == TaskType.SEGMENTATION:
             semantic_segs.append(seg)
 
     # should have one instance segmentation that's a rectangle
@@ -1196,12 +1183,12 @@ def test_create_gt_segs_as_polys_or_masks(
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
                     raster=Raster.from_numpy(mask),
                 ),
                 Annotation(
-                    task_type=TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=TaskType.SEGMENTATION,
                     labels=[Label(key="k1", value="v1")],
                     multipolygon=MultiPolygon(polygons=[poly]),
                 ),
@@ -1210,22 +1197,19 @@ def test_create_gt_segs_as_polys_or_masks(
 
         dataset.add_groundtruth(gts)
 
-    assert (
-        "semantic segmentation tasks can only have one annotation per label"
-        in str(exc_info.value)
-    )
+    assert "one annotation per label" in str(exc_info.value)
 
     # fine with instance segmentation though
     gts = GroundTruth(
         datum=img1.to_datum(),
         annotations=[
             Annotation(
-                task_type=TaskType.SEMANTIC_SEGMENTATION,
+                task_type=TaskType.SEGMENTATION,
                 labels=[Label(key="k1", value="v1")],
                 raster=Raster.from_numpy(mask),
             ),
             Annotation(
-                task_type=TaskType.INSTANCE_SEGMENTATION,
+                task_type=TaskType.DETECTION,
                 labels=[Label(key="k1", value="v1")],
                 multipolygon=MultiPolygon(polygons=[poly]),
             ),
@@ -1437,7 +1421,7 @@ def test_client_delete_model(client: Client, db: Session):
     assert db.scalar(select(func.count(models.Model.name))) == 0
 
 
-def test_evaluate_ap(
+def test_evaluate_detection(
     client: Client,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
@@ -1453,10 +1437,10 @@ def test_evaluate_ap(
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_ap(
+    eval_job = model.evaluate_detection(
         dataset=dataset,
-        iou_thresholds=[0.1, 0.6],
-        ious_to_keep=[0.1, 0.6],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
     )
 
@@ -1467,14 +1451,17 @@ def test_evaluate_ap(
     eval_job.wait_for_completion()
     assert eval_job.status == JobStatus.DONE
 
-    settings = eval_job.settings
+    settings = asdict(eval_job.settings)
     settings.pop("id")
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "task_type": "detection",
-        "target_type": "box",
-        "label_key": "k1",
+        "parameters": {
+            "annotation_type": "none",
+            "label_key": "k1",
+            "iou_thresholds_to_compute": [0.1, 0.6],
+            "iou_thresholds_to_keep": [0.1, 0.6],
+        },
     }
 
     expected_metrics = [
@@ -1529,96 +1516,104 @@ def test_evaluate_ap(
 
     # sanity check this should give us the same thing excpet min_area and max_area
     # are not None
-    eval_job_bounded_area_10_2000 = model.evaluate_ap(
+    eval_job_bounded_area_10_2000 = model.evaluate_detection(
         dataset=dataset,
-        task_type="detection",
-        iou_thresholds=[0.1, 0.6],
-        ious_to_keep=[0.1, 0.6],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
         min_area=10,
         max_area=2000,
     )
     time.sleep(1)
-    settings = eval_job_bounded_area_10_2000.settings
+    settings = asdict(eval_job_bounded_area_10_2000.settings)
     settings.pop("id")
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "task_type": "detection",
-        "target_type": "box",
-        "label_key": "k1",
-        "min_area": 10,
-        "max_area": 2000,
+        "parameters": {
+            "annotation_type": "none",
+            "label_key": "k1",
+            "min_area": 10,
+            "max_area": 2000,
+            "iou_thresholds_to_compute": [0.1, 0.6],
+            "iou_thresholds_to_keep": [0.1, 0.6],
+        },
     }
     assert eval_job_bounded_area_10_2000.metrics == expected_metrics
 
     # now check we get different things by setting the thresholds accordingly
     # min area threshold should divide the set of annotations
-    eval_job_min_area_1200 = model.evaluate_ap(
+    eval_job_min_area_1200 = model.evaluate_detection(
         dataset=dataset,
-        task_type="detection",
-        iou_thresholds=[0.1, 0.6],
-        ious_to_keep=[0.1, 0.6],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
         min_area=1200,
     )
     time.sleep(1)
-    settings = eval_job_min_area_1200.settings
+    settings = asdict(eval_job_min_area_1200.settings)
     settings.pop("id")
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "task_type": "detection",
-        "target_type": "box",
-        "label_key": "k1",
-        "min_area": 1200,
+        "parameters": {
+            "annotation_type": "none",
+            "label_key": "k1",
+            "min_area": 1200,
+            "iou_thresholds_to_compute": [0.1, 0.6],
+            "iou_thresholds_to_keep": [0.1, 0.6],
+        },
     }
     assert eval_job_min_area_1200.metrics != expected_metrics
 
     # check for difference with max area now dividing the set of annotations
-    eval_job_max_area_1200 = model.evaluate_ap(
+    eval_job_max_area_1200 = model.evaluate_detection(
         dataset=dataset,
-        task_type="detection",
-        iou_thresholds=[0.1, 0.6],
-        ious_to_keep=[0.1, 0.6],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
         max_area=1200,
     )
     time.sleep(1)
-    settings = eval_job_max_area_1200.settings
+    settings = asdict(eval_job_max_area_1200.settings)
     settings.pop("id")
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "task_type": "detection",
-        "target_type": "box",
-        "label_key": "k1",
-        "max_area": 1200,
+        "parameters": {
+            "annotation_type": "none",
+            "label_key": "k1",
+            "max_area": 1200,
+            "iou_thresholds_to_compute": [0.1, 0.6],
+            "iou_thresholds_to_keep": [0.1, 0.6],
+        },
     }
     assert eval_job_max_area_1200.metrics != expected_metrics
 
     # should perform the same as the first min area evaluation
     # except now has an upper bound
-    eval_job_bounded_area_1200_1800 = model.evaluate_ap(
+    eval_job_bounded_area_1200_1800 = model.evaluate_detection(
         dataset=dataset,
-        task_type="detection",
-        iou_thresholds=[0.1, 0.6],
-        ious_to_keep=[0.1, 0.6],
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
         min_area=1200,
         max_area=1800,
     )
     time.sleep(1)
-    settings = eval_job_bounded_area_1200_1800.settings
+    settings = asdict(eval_job_bounded_area_1200_1800.settings)
     settings.pop("id")
     assert settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "task_type": "detection",
-        "target_type": "box",
-        "label_key": "k1",
-        "min_area": 1200,
-        "max_area": 1800,
+        "parameters": {
+            "annotation_type": "none",
+            "label_key": "k1",
+            "min_area": 1200,
+            "max_area": 1800,
+            "iou_thresholds_to_compute": [0.1, 0.6],
+            "iou_thresholds_to_keep": [0.1, 0.6],
+        },
     }
     assert eval_job_bounded_area_1200_1800.metrics != expected_metrics
     assert (
@@ -1629,9 +1624,9 @@ def test_evaluate_ap(
 
 def test_evaluate_image_clf(
     client: Client,
+    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
     gt_clfs: list[GroundTruth],
     pred_clfs: list[Prediction],
-    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     dataset = Dataset.create(client, dset_name)
     for gt in gt_clfs:
@@ -1694,7 +1689,7 @@ def test_evaluate_image_clf(
     ]
 
 
-def test_evaluate_semantic_segmentation(
+def test_evaluate_segmentation(
     client: Client,
     db: Session,
     gt_semantic_segs1: list[GroundTruth],
@@ -1713,7 +1708,7 @@ def test_evaluate_semantic_segmentation(
     dataset.finalize()
     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_semantic_segmentation(dataset)
+    eval_job = model.evaluate_segmentation(dataset)
     assert eval_job.missing_pred_labels == [
         {"key": "k3", "value": "v3", "score": None}
     ]
@@ -1736,7 +1731,9 @@ def test_evaluate_semantic_segmentation(
 
 
 def test_create_tabular_dataset_and_add_groundtruth(
-    client: Client, db: Session, metadata: list[MetaDatum]
+    client: Client,
+    db: Session,
+    metadata: list[Metadatum],
 ):
     dataset = Dataset.create(client, name=dset_name)
     assert isinstance(dataset, Dataset)
@@ -1785,24 +1782,21 @@ def test_create_tabular_dataset_and_add_groundtruth(
     assert set(d.uid for d in data) == {"uid1", "uid2"}
 
     # check metadata is there
-    metadata_links = data[0].metadatums
+    metadata_links = data[0].meta
     assert len(metadata_links) == 1
-    metadatum = data[0].metadatums[0]
-    assert metadatum.key == "metadatum1"
-    assert metadatum.string_value == "temporary"
+    assert "metadatum1" in metadata_links
+    assert metadata_links["metadatum1"] == "temporary"
     # assert json.loads(db.scalar(ST_AsGeoJSON(metadatum.geo))) == {
     #     "type": "Point",
     #     "coordinates": [-48.23456, 20.12345],
     # }
 
-    metadata_links = data[1].metadatums
+    metadata_links = data[1].meta
     assert len(metadata_links) == 2
-    metadatum1 = metadata_links[0]
-    metadatum2 = metadata_links[1]
-    assert metadatum1.key == "metadatum2"
-    assert metadatum1.string_value == "a string"
-    assert metadatum2.key == "metadatum3"
-    assert metadatum2.numeric_value == 0.45
+    assert "metadatum2" in metadata_links
+    assert metadata_links["metadatum2"] == "a string"
+    assert "metadatum3" in metadata_links
+    assert metadata_links["metadatum3"] == 0.45
 
     # check that we can add data with specified uids
     new_gts = [
@@ -2077,13 +2071,12 @@ def test_evaluate_tabular_clf(
     # check evaluation
     eval_jobs = model.get_evaluations()
     assert len(eval_jobs) == 1
-    eval_settings = eval_jobs[0].settings
+    eval_settings = asdict(eval_jobs[0].settings)
     eval_settings.pop("id")
     assert eval_settings == {
         "model": "test_model",
         "dataset": "test_dataset",
-        "task_type": "classification",
-        "target_type": "none",
+        "parameters": None,
     }
 
     metrics_from_eval_settings_id = eval_jobs[0].metrics
@@ -2102,6 +2095,7 @@ def test_evaluate_tabular_clf(
 
 def test_add_groundtruth(
     client: Client,
+    db: Session,
     gt_semantic_segs_error: GroundTruth,
 ):
     dataset = Dataset.create(client, dset_name)
@@ -2116,6 +2110,7 @@ def test_add_groundtruth(
 
 def test_get_groundtruth(
     client: Client,
+    db: Session,
     gt_semantic_segs1_mask: GroundTruth,
     gt_semantic_segs2_mask: GroundTruth,
 ):
@@ -2132,7 +2127,9 @@ def test_get_groundtruth(
     client.delete_dataset(dset_name, timeout=30)
 
 
-def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
+def test_add_raster_and_boundary_box(
+    client: Client, db: Session, img1: ImageMetadata
+):
     img_size = [900, 300]
     mask = _generate_mask(height=img_size[0], width=img_size[1])
     raster = Raster.from_numpy(mask)
@@ -2169,6 +2166,7 @@ def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
 
 def test_get_dataset(
     client: Client,
+    db: Session,
     gt_semantic_segs1_mask: GroundTruth,
 ):
     dataset = Dataset.create(client, dset_name)
@@ -2181,7 +2179,7 @@ def test_get_dataset(
     client.delete_dataset(dset_name, timeout=30)
 
 
-def test_get_dataset_status(client: Client, gt_dets1: list):
+def test_get_dataset_status(client: Client, db: Session, gt_dets1: list):
     status = client.get_dataset_status(dset_name)
     assert status == "none"
 
@@ -2204,7 +2202,7 @@ def test_get_dataset_status(client: Client, gt_dets1: list):
 
 # @TODO: Implement metadata querying + geojson
 # def test_create_images_with_metadata(
-#     client: Client, db: Session, metadata: list[MetaDatum], rect1: BoundingBox
+#     client: Client, db: Session, metadata: list[Metadatum], rect1: BoundingBox
 # ):
 #     dataset = Dataset.create(client, dset_name)
 
@@ -2294,8 +2292,8 @@ def test_get_dataset_status(client: Client, gt_dets1: list):
 #                 task_type=TaskType.CLASSIFICATION,
 #                 labels=[Label(key="class", value=str(t))],
 #                 metadata=[
-#                     MetaDatum(key="md1", value=f"md1-val{i % 3}"),
-#                     MetaDatum(key="md2", value=f"md2-val{i % 4}"),
+#                     Metadatum(key="md1", value=f"md1-val{i % 3}"),
+#                     Metadatum(key="md2", value=f"md2-val{i % 4}"),
 #                 ]
 #             )
 #             for i, t in enumerate(y_true)
@@ -2416,122 +2414,3 @@ def test_get_dataset_status(client: Client, gt_dets1: list):
 #         assert m in expected_metrics
 #     for m in expected_metrics:
 #         assert m in val2_metrics
-
-
-# @TODO: Future PR
-# def test_get_info_and_label_distributions(
-#     client: Client,
-#     gt_clfs1: list[GroundTruth],
-#     gt_dets1: list[GroundTruth],
-#     gt_poly_dets1: list[GroundTruth],
-#     gt_instance_segs: list[GroundTruth],
-#     pred_clfs: list[Prediction],
-#     pred_dets: list[Prediction],
-#     pred_poly_dets: list[Prediction],
-#     pred_instance_segs: list[Prediction],
-#     db: Session,
-# ):
-#     """Tests that the client can retrieve info about datasets and models.
-
-#     Parameters
-#     ----------
-#     client
-#     gts
-#         list of groundtruth objects (from `velour.data_types`) of each type
-#     preds
-#         list of prediction objects (from `velour.data_types`) of each type
-#     """
-
-#     ds = Dataset.create(client, "info_test_dataset")
-#     ds.add_groundtruth(gt_clfs1)
-#     ds.add_groundtruth(gt_dets1)
-#     ds.add_groundtruth(gt_poly_dets1)
-#     ds.add_groundtruth(gt_instance_segs)
-#     ds.finalize()
-
-#     md = Model.create(client, "info_test_model")
-#     md.add_prediction(ds, pred_clfs)
-#     md.add_prediction(ds, pred_dets)
-#     md.add_prediction(ds, pred_poly_dets)
-#     md.add_prediction(ds, pred_instance_segs)
-#     md.finalize_inferences(ds)
-
-#     ds_info = ds.get_info()
-#     assert ds_info.annotation_type == [
-#         "CLASSIFICATION",
-#         "DETECTION",
-#         "SEGMENTATION",
-#     ]
-#     assert ds_info.number_of_classifications == 2
-#     assert ds_info.number_of_bounding_boxes == 2
-#     assert ds_info.number_of_bounding_polygons == 2
-#     assert ds_info.number_of_segmentations == 2
-#     assert ds_info.associated_models == ["info_test_model"]
-
-#     md_info = md.get_info()
-#     assert md_info.annotation_type == [
-#         "CLASSIFICATION",
-#         "DETECTION",
-#         "SEGMENTATION",
-#     ]
-#     assert md_info.number_of_classifications == 5
-#     assert md_info.number_of_bounding_boxes == 2
-#     assert md_info.number_of_bounding_polygons == 2
-#     assert md_info.number_of_segmentations == 2
-#     assert md_info.associated_datasets == ["info_test_dataset"]
-
-#     ds_dist = ds.get_label_distribution()
-#     assert len(ds_dist) == 3
-#     assert ds_dist[Label(key="k1", value="v1")] == 6
-#     assert ds_dist[Label(key="k4", value="v4")] == 1
-#     assert ds_dist[Label(key="k5", value="v5")] == 1
-
-#     md_dist = md.get_label_distribution()
-#     assert len(md_dist) == 7
-#     assert md_dist[Label(key="k1", value="v1")] == {
-#         "count": 3,
-#         "scores": [0.3, 0.3, 0.87],
-#     }
-#     assert md_dist[Label(key="k12", value="v12")] == {
-#         "count": 1,
-#         "scores": [0.47],
-#     }
-#     assert md_dist[Label(key="k12", value="v16")] == {
-#         "count": 1,
-#         "scores": [0.53],
-#     }
-#     assert md_dist[Label(key="k13", value="v13")] == {
-#         "count": 1,
-#         "scores": [1.0],
-#     }
-#     assert md_dist[Label(key="k2", value="v2")] == {
-#         "count": 3,
-#         "scores": [0.98, 0.98, 0.92],
-#     }
-#     assert md_dist[Label(key="k4", value="v5")] == {
-#         "count": 1,
-#         "scores": [0.29],
-#     }
-#     assert md_dist[Label(key="k4", value="v4")] == {
-#         "count": 1,
-#         "scores": [0.71],
-#     }
-
-#     # Check that info is consistent with distribution
-#     N_ds_info = (
-#         ds_info.number_of_classifications
-#         + ds_info.number_of_bounding_boxes
-#         + ds_info.number_of_bounding_polygons
-#         + ds_info.number_of_segmentations
-#     )
-#     N_ds_dist = sum([ds_dist[label] for label in ds_dist])
-#     assert N_ds_info == N_ds_dist
-
-#     N_md_info = (
-#         md_info.number_of_classifications
-#         + md_info.number_of_bounding_boxes
-#         + md_info.number_of_bounding_polygons
-#         + md_info.number_of_segmentations
-#     )
-#     N_md_dist = sum([md_dist[label]["count"] for label in md_dist])
-#     assert N_md_info == N_md_dist

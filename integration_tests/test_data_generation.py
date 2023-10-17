@@ -1,16 +1,21 @@
 import io
 import time
 from base64 import b64decode
+from dataclasses import asdict
 
 import PIL
 import pytest
+from sqlalchemy import create_engine, select, text
+from sqlalchemy.orm import Session
 
 from velour.client import Client
 from velour.data_generation import (
     generate_prediction_data,
     generate_segmentation_data,
 )
-from velour.enums import JobStatus
+from velour.enums import AnnotationType, JobStatus
+from velour.schemas import ImageMetadata
+from velour_api.backend import jobs, models
 
 dset_name = "test_dataset"
 
@@ -22,7 +27,52 @@ def _mask_bytes_to_pil(mask_bytes):
 
 @pytest.fixture
 def client():
-    return Client(host="http://localhost:8000")
+    """This fixture makes sure there's not datasets, models, or labels in the backend
+    (raising a RuntimeError if there are). It returns a db session and as cleanup
+    clears out all datasets, models, and labels from the backend.
+    """
+
+    client = Client(host="http://localhost:8000")
+
+    if len(client.get_datasets()) > 0:
+        raise RuntimeError(
+            "Tests should be run on an empty velour backend but found existing datasets.",
+            [ds["name"] for ds in client.get_datasets()],
+        )
+
+    if len(client.get_models()) > 0:
+        raise RuntimeError(
+            "Tests should be run on an empty velour backend but found existing models."
+        )
+
+    if len(client.get_labels()) > 0:
+        raise RuntimeError(
+            "Tests should be run on an empty velour backend but found existing labels."
+        )
+
+    engine = create_engine("postgresql://postgres:password@localhost/postgres")
+    sess = Session(engine)
+    sess.execute(text("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';"))
+    sess.execute(text("SET postgis.enable_outdb_rasters = True;"))
+
+    yield client
+
+    for model in client.get_models():
+        client.delete_model(model["name"])
+        time.sleep(0.1)
+
+    for dataset in client.get_datasets():
+        client.delete_dataset(dataset["name"], timeout=5)
+
+    labels = sess.scalars(select(models.Label))
+    for label in labels:
+        sess.delete(label)
+
+    sess.commit()
+
+    # clean redis
+    jobs.connect_to_redis()
+    jobs.r.flushdb()
 
 
 def test_generate_segmentation_data(
@@ -54,10 +104,9 @@ def test_generate_segmentation_data(
         sample_mask_size = _mask_bytes_to_pil(
             b64decode(sample_annotations[0].raster.mask)
         ).size
-        sample_image_size = (
-            sample_gt.datum.metadata[1].value,
-            sample_gt.datum.metadata[0].value,
-        )
+
+        sample_image = ImageMetadata.from_datum(sample_gt.datum)
+        sample_image_size = (sample_image.width, sample_image.height)
 
         assert (
             len(sample_annotations) == n_annotations
@@ -68,8 +117,6 @@ def test_generate_segmentation_data(
         assert (
             sample_image_size == sample_mask_size
         ), f"Image is size {sample_image_size}, but mask is size {sample_mask_size}"
-
-    client.delete_dataset(dset_name, timeout=300)
 
 
 def test_generate_prediction_data(client: Client):
@@ -100,10 +147,11 @@ def test_generate_prediction_data(client: Client):
         n_labels=2,
     )
 
-    eval_job = model.evaluate_ap(
+    eval_job = model.evaluate_detection(
         dataset=dataset,
-        iou_thresholds=[0, 1],
-        ious_to_keep=[0, 1],
+        annotation_type=AnnotationType.BOX,
+        iou_thresholds_to_compute=[0, 1],
+        iou_thresholds_to_keep=[0, 1],
         label_key="k1",
     )
 
@@ -111,15 +159,16 @@ def test_generate_prediction_data(client: Client):
     time.sleep(1)
     assert eval_job.status == JobStatus.DONE
 
-    settings = eval_job.settings
+    settings = asdict(eval_job.settings)
     settings.pop("id")
     assert settings == {
         "model": model_name,
         "dataset": dset_name,
-        "task_type": "detection",
-        "target_type": "box",
-        "label_key": "k1",
+        "parameters": {
+            "annotation_type": AnnotationType.BOX,
+            "label_key": "k1",
+            "iou_thresholds_to_compute": [0.0, 1.0],
+            "iou_thresholds_to_keep": [0.0, 1.0],
+        },
     }
     assert len(eval_job.metrics) > 0
-
-    client.delete_dataset(dset_name, timeout=300)

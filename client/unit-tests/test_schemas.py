@@ -53,8 +53,8 @@ def raster(raster_raw_mask) -> schemas.Raster:
 
 
 @pytest.fixture
-def metadatum() -> schemas.MetaDatum:
-    return schemas.MetaDatum(
+def metadatum() -> schemas.Metadatum:
+    return schemas.Metadatum(
         key="test",
         value=1234,
     )
@@ -288,38 +288,38 @@ def test_core__validate_href():
 
 
 def test_core_metadatum():
-    schemas.MetaDatum(key="test", value="test")
-    schemas.MetaDatum(key="test", value=1)
-    schemas.MetaDatum(key="test", value=1.0)
+    schemas.Metadatum(key="test", value="test")
+    schemas.Metadatum(key="test", value=1)
+    schemas.Metadatum(key="test", value=1.0)
     # @TODO: Fix when geojson is implemented
-    schemas.MetaDatum(
+    schemas.Metadatum(
         key="test", value=schemas.GeoJSON(type="test", coordinates=[])
     )
 
     with pytest.raises(TypeError) as e:
-        schemas.MetaDatum(key=123, value=123)
+        schemas.Metadatum(key=123, value=123)
     assert "should always be of type string" in str(e)
 
     # Test supported value types
     with pytest.raises(NotImplementedError):
-        schemas.MetaDatum(key="test", value=(1, 2))
+        schemas.Metadatum(key="test", value=(1, 2))
     assert "has unsupported type <class 'tuple'>"
     with pytest.raises(NotImplementedError):
-        schemas.MetaDatum(key="test", value=[1, 2])
+        schemas.Metadatum(key="test", value=[1, 2])
     assert "has unsupported type <class 'list'>"
 
     # Test special type with name=href
-    schemas.MetaDatum(key="href", value="http://test")
-    schemas.MetaDatum(key="href", value="https://test")
+    schemas.Metadatum(key="href", value="http://test")
+    schemas.Metadatum(key="href", value="https://test")
     with pytest.raises(ValueError) as e:
-        schemas.MetaDatum(key="href", value="test")
+        schemas.Metadatum(key="href", value="test")
     assert "`href` must start with http:// or https://" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.MetaDatum(key="href", value=1)
+        schemas.Metadatum(key="href", value=1)
     assert "passed something other than 'str'" in str(e)
 
     # Check int to float conversion
-    m = schemas.MetaDatum(key="test", value=1)
+    m = schemas.Metadatum(key="test", value=1)
     assert isinstance(m.value, float)
 
 
@@ -327,7 +327,7 @@ def test_core_dataset():
     # valid
     schemas.Dataset(
         name="test",
-        metadata=[schemas.MetaDatum(key="test", value=123)],
+        metadata=[schemas.Metadatum(key="test", value=123)],
     )
     schemas.Dataset(
         name="test",
@@ -358,7 +358,7 @@ def test_core_model():
     # valid
     schemas.Model(
         name="test",
-        metadata=[schemas.MetaDatum(key="test", value=123)],
+        metadata=[schemas.Metadatum(key="test", value=123)],
     )
     schemas.Model(
         name="test",
@@ -393,7 +393,7 @@ def test_core_info():
 def test_core_datum():
     schemas.Datum(uid="123")
     schemas.Datum(uid="123", metadata=[])
-    schemas.Datum(uid="123", metadata=[schemas.MetaDatum(key="name", value=1)])
+    schemas.Datum(uid="123", metadata=[schemas.Metadatum(key="name", value=1)])
     schemas.Datum(uid="123", dataset="dataset")
 
     # test `__post_init__`
@@ -411,12 +411,8 @@ def test_core_annotation(bbox, polygon, raster, metadatum):
     # valid
     schemas.Annotation(task_type=enums.TaskType.DETECTION, bounding_box=bbox)
     schemas.Annotation(task_type=enums.TaskType.DETECTION, polygon=polygon)
-    schemas.Annotation(
-        task_type=enums.TaskType.INSTANCE_SEGMENTATION, raster=raster
-    )
-    schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION, raster=raster
-    )
+    schemas.Annotation(task_type=enums.TaskType.DETECTION, raster=raster)
+    schemas.Annotation(task_type=enums.TaskType.SEGMENTATION, raster=raster)
     schemas.Annotation(
         task_type=enums.TaskType.DETECTION,
         bounding_box=bbox,
@@ -458,7 +454,7 @@ def test_core_annotation(bbox, polygon, raster, metadatum):
         schemas.Annotation(
             task_type=enums.TaskType.CLASSIFICATION, metadata=[123]
         )
-    assert "should be of type `velour.schemas.MetaDatum`" in str(e)
+    assert "should be of type `velour.schemas.Metadatum`" in str(e)
 
 
 def test_core_label():
@@ -527,28 +523,6 @@ def test_core_scored_label():
     assert s1.__hash__() != s3.__hash__()
     assert s1.__hash__() != s4.__hash__()
     assert s1.__hash__() != s5.__hash__()
-
-
-def test_core_label_distribution():
-    l1 = schemas.Label(key="test", value="value")
-
-    # valid
-    schemas.LabelDistribution(label=l1, count=10)
-
-
-def test_core_scored_label_distribiution():
-    l1 = schemas.Label(key="test", value="value")
-
-    # valid
-    schemas.ScoredLabelDistribution(label=l1, count=2, scores=[0.1, 0.5])
-
-
-def test_core_annotation_distribution():
-    # valid
-    schemas.AnnotationDistribution(
-        annotation_type=enums.AnnotationType.BOX,
-        count=10,
-    )
 
 
 def test_core_groundtruth_annotation():
@@ -707,3 +681,21 @@ def test_core_prediction():
             model="",
         )
     assert "for label key test got scores summing to 0.9" in str(e)
+
+
+""" velour.schemas.EvaluationSettings """
+
+
+def test_evaluation_evaluation_settings():
+    params = {
+        "model": "md",
+        "dataset": "ds",
+        "parameters": {
+            "annotation_type": enums.AnnotationType.BOX,
+        },
+        "id": None,
+    }
+    schemas.EvaluationSettings(**params)
+
+    params["id"] = 123
+    schemas.EvaluationSettings(**params)

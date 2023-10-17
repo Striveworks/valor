@@ -30,20 +30,8 @@ class AnnotationType(str, Enum):
 
 class TaskType(str, Enum):
     CLASSIFICATION = "classification"
-    DETECTION = "detection"
-    INSTANCE_SEGMENTATION = "instance_segmentation"
-    SEMANTIC_SEGMENTATION = "semantic_segmentation"
-
-
-class Table(str, Enum):
-    DATASET = "dataset"
-    MODEL = "model"
-    DATUM = "datum"
-    ANNOTATION = "annotation"
-    GROUND_TRUTH = "groundtruth"
-    PREDICTION = "prediction"
-    LABEL = "label"
-    METADATA = "metadatum"
+    DETECTION = "object-detection"
+    SEGMENTATION = "semantic-segmentation"
 
 
 class State(str, Enum):
