@@ -30,10 +30,10 @@ def generate_mot_data(num_frames: int):
         uid="test",
         dataset="name",
         metadata=[
-            schemas.MetaDatum(key="type", value="image"),
-            schemas.MetaDatum(key="height", value=500),
-            schemas.MetaDatum(key="width", value=500),
-            schemas.MetaDatum(key="frame", value=frame),
+            schemas.Metadatum(key="type", value="image"),
+            schemas.Metadatum(key="height", value=500),
+            schemas.Metadatum(key="width", value=500),
+            schemas.Metadatum(key="frame", value=frame),
         ],
     )
     create_label = lambda obj_id: schemas.Label(  # noqa: E731

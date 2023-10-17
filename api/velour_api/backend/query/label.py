@@ -218,7 +218,3 @@ def get_disjoint_keys(
 
     # returns tuple of label lists
     return (ds_unique, md_unique)
-
-
-def get_label_distribution(db: Session) -> list[schemas.LabelDistribution]:
-    return []

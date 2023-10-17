@@ -13,7 +13,6 @@ model_graph = {
     "groundtruth": {"annotation", "label"},
     "prediction": {"annotation", "label"},
     "label": {"prediction", "groundtruth"},
-    "metadatum": {"dataset", "model", "datum", "annotation"},
 }
 
 
@@ -25,7 +24,6 @@ model_mapping = {
     "groundtruth": models.GroundTruth,
     "prediction": models.Prediction,
     "label": models.Label,
-    "metadatum": models.MetaDatum,
 }
 
 
@@ -37,23 +35,20 @@ schemas_mapping = {
     "groundtruth": schemas.GroundTruth,
     "prediction": schemas.Prediction,
     "label": schemas.Label,
-    "metadatum": schemas.MetaDatum,
+    "metadatum": schemas.Metadatum,
 }
 
 
 model_relationships = {
     "dataset": {
         "datum": models.Dataset.id == models.Datum.dataset_id,
-        "metadatum": models.Dataset.id == models.MetaDatum.dataset_id,
     },
     "model": {
         "annotation": models.Model.id == models.Annotation.model_id,
-        "metadatum": models.Model.id == models.MetaDatum.model_id,
     },
     "datum": {
         "annotation": models.Datum.id == models.Annotation.datum_id,
         "dataset": models.Datum.dataset_id == models.Dataset.id,
-        "metadatum": models.Datum.id == models.MetaDatum.datum_id,
     },
     "annotation": {
         "datum": models.Annotation.datum_id == models.Datum.id,
@@ -61,7 +56,6 @@ model_relationships = {
         "prediction": models.Annotation.id == models.Prediction.annotation_id,
         "groundtruth": models.Annotation.id
         == models.GroundTruth.annotation_id,
-        "metadatum": models.Annotation.id == models.MetaDatum.annotation_id,
     },
     "groundtruth": {
         "annotation": models.GroundTruth.annotation_id == models.Annotation.id,
@@ -70,12 +64,6 @@ model_relationships = {
     "prediction": {
         "annotation": models.Prediction.annotation_id == models.Annotation.id,
         "label": models.Prediction.label_id == models.Label.id,
-    },
-    "metadatum": {
-        "dataset": models.MetaDatum.dataset_id == models.Dataset.id,
-        "model": models.MetaDatum.model_id == models.Model.id,
-        "datum": models.MetaDatum.datum_id == models.Datum.id,
-        "annotation": models.MetaDatum.annotation_id == models.Annotation.id,
     },
 }
 
@@ -378,17 +366,6 @@ class BackendQuery:
         self.filter_by_annotation_types(req.annotation_types)
         self.filter_by_label_keys(req.label_keys)
         self.filter_by_labels(req.labels)
-        self.filter_by_metadata(req.metadata)
-
-        # limit metadata connections
-        if not req.allow_dataset_metadata:
-            pass
-        if not req.allow_model_metadata:
-            pass
-        if not req.allow_datum_metadata:
-            pass
-        if not req.allow_annotation_metadata:
-            pass
 
         # constrain over groundtruths or predictions
         if not req.allow_groundtruths and req.allow_predictions:
@@ -562,83 +539,6 @@ class BackendQuery:
 
     """ filter by metadata """
 
-    def _create_metadatum_expression(
-        self, metadatum: schemas.MetaDatum | models.MetaDatum
-    ):
-
-        # Compare name
-        expression = [models.MetaDatum.name == metadatum.name]
-
-        # sqlalchemy handler
-        if isinstance(metadatum, models.MetaDatum):
-            expression.append(
-                models.MetaDatum.string_value == metadatum.string_value
-            )
-            expression.append(
-                models.MetaDatum.numeric_value == metadatum.numeric_value
-            )
-            expression.append(models.MetaDatum.geo == metadatum.geo)
-
-        # schema handler
-        elif isinstance(metadatum, schemas.MetaDatum):
-            # Compare value
-            if isinstance(metadatum.value, str):
-                expression.append(
-                    models.MetaDatum.string_value == metadatum.value
-                )
-            if isinstance(metadatum.value, float):
-                expression.append(
-                    models.MetaDatum.numeric_value == metadatum.value
-                )
-            if isinstance(metadatum.value, schemas.GeoJSON):
-                raise NotImplementedError(
-                    "Havent implemented GeoJSON support."
-                )
-
-        # unknown type
-        else:
-            return None
-
-        return or_(*expression)
-
-    def filter_by_metadata(
-        self, metadata: list[schemas.MetaDatum | models.MetaDatum]
-    ):
-        # generate binary expressions
-        expressions = [
-            self._create_metadatum_expression(metadatum)
-            for metadatum in metadata
-            if metadatum is not None
-        ]
-
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add("metadatum")
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add("metadatum")
-            self._filters.append(or_(*expressions))
-
-        return self
-
-    def filter_by_metadatum_names(self, names: list[str]):
-        # generate binary expressions
-        expressions = [
-            models.MetaDatum.name == name
-            for name in names
-            if isinstance(name, str)
-        ]
-
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add("metadatum")
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add("metadatum")
-            self._filters.append(or_(*expressions))
-
-        return self
-
     """ filter by annotation """
 
     def filter_by_task_types(self, task_types: list[enums.TaskType]):
@@ -712,11 +612,11 @@ class BackendQuery:
 #     .filter_by_label_key("k4")
 #     .filter_by_metadata(
 #         [
-#             schemas.MetaDatum(name="n1", value=0.5),
-#             schemas.MetaDatum(name="n2", value=0.1),
+#             schemas.Metadatum(name="n1", value=0.5),
+#             schemas.Metadatum(name="n2", value=0.1),
 #         ]
 #     )
-#     .filter_by_metadatum(schemas.MetaDatum(name="n3", value="v1"))
+#     .filter_by_metadatum(schemas.Metadatum(name="n3", value="v1"))
 #     .filter_by_metadatum_name("n4")
 #     .filter_by_task_type(enums.TaskType.CLASSIFICATION)
 #     .query(db)

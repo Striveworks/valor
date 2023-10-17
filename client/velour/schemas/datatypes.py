@@ -12,7 +12,7 @@ class ImageMetadata:
     height: int
     width: int
     dataset: str = field(default="")
-    metadata: List[schemas.MetaDatum] = field(default_factory=list)
+    metadata: List[schemas.Metadatum] = field(default_factory=list)
 
     def __post_init__(self):
         if not isinstance(self.dataset, str):
@@ -65,8 +65,8 @@ class ImageMetadata:
             dataset=self.dataset,
             uid=self.uid,
             metadata=[
-                schemas.MetaDatum(key="height", value=self.height),
-                schemas.MetaDatum(key="width", value=self.width),
+                schemas.Metadatum(key="height", value=self.height),
+                schemas.Metadatum(key="width", value=self.width),
                 *self.metadata,
             ],
         )
@@ -117,7 +117,7 @@ class VideoFrameMetadata:
                 height=int(metadata.pop("height")),
                 width=int(metadata.pop("width")),
                 metadata=[
-                    schemas.MetaDatum(key=key, value=metadata[key])
+                    schemas.Metadatum(key=key, value=metadata[key])
                     for key in metadata
                 ],
             ),
@@ -129,9 +129,9 @@ class VideoFrameMetadata:
             dataset=self.image.dataset,
             uid=self.image.uid,
             metadata=[
-                schemas.MetaDatum(key="height", value=self.image.height),
-                schemas.MetaDatum(key="width", value=self.image.width),
-                schemas.MetaDatum(key="frame", value=self.frame)
+                schemas.Metadatum(key="height", value=self.image.height),
+                schemas.Metadatum(key="width", value=self.image.width),
+                schemas.Metadatum(key="frame", value=self.frame)
                 * self.metadata,
             ],
         )

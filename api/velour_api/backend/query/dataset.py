@@ -12,16 +12,16 @@ def create_dataset(
 ):
     # Create dataset
     try:
-        row = models.Dataset(name=dataset.name)
+        row = models.Dataset(
+            name=dataset.name,
+            meta=core.deserialize_meta(dataset.metadata),
+        )
         db.add(row)
         db.commit()
+        return row
     except IntegrityError:
         db.rollback()
         raise exceptions.DatasetAlreadyExistsError(dataset.name)
-
-    # Create metadata
-    core.create_metadata(db, dataset.metadata, dataset=row)
-    return row
 
 
 def get_dataset(
@@ -30,8 +30,11 @@ def get_dataset(
 ) -> schemas.Dataset:
     # retrieve dataset
     dataset = core.get_dataset(db, name=name)
-    metadata = core.get_metadata(db, dataset=dataset)
-    return schemas.Dataset(id=dataset.id, name=dataset.name, metadata=metadata)
+    return schemas.Dataset(
+        id=dataset.id,
+        name=dataset.name,
+        metadata=core.serialize_meta(dataset.meta),
+    )
 
 
 def get_datasets(
@@ -62,7 +65,7 @@ def get_datums(
                 )
             ),
             uid=datum.uid,
-            metadata=core.get_metadata(db, datum=datum),
+            metadata=core.serialize_meta(datum.meta),
         )
         for datum in datums
     ]
