@@ -63,7 +63,7 @@ def _get_task_type(isthing: bool) -> enums.TaskType:
 
 def _is_semantic_task_type(task_type: enums.TaskType) -> bool:
     """Check if a label is a semantic segmentation"""
-    return True if task_type == enums.TaskType.SEGMENTATION else False
+    return task_type == enums.TaskType.SEGMENTATION
 
 
 def _merge_annotations(annotation_list: list, label_map: dict):

@@ -129,7 +129,7 @@ def get_annotation(
     db: Session, annotation: models.Annotation, datum: models.Datum = None
 ) -> schemas.Annotation:
     # Retrieve all labels associated with annotation
-    gt_labels = [
+    groundtruth_labels = [
         schemas.Label(key=label[0], value=label[1])
         for label in (
             db.query(models.Label.key, models.Label.value)
@@ -143,7 +143,7 @@ def get_annotation(
             .all()
         )
     ]
-    pd_labels = [
+    prediction_labels = [
         schemas.Label(key=label[0], value=label[1], score=label[2])
         for label in (
             db.query(
@@ -159,7 +159,7 @@ def get_annotation(
             .all()
         )
     ]
-    labels = gt_labels if gt_labels else pd_labels
+    labels = groundtruth_labels if groundtruth_labels else prediction_labels
 
     # Initialize
     retval = schemas.Annotation(

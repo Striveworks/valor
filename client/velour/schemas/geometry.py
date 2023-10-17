@@ -223,7 +223,6 @@ class Raster:
         f.seek(0)
         mask_bytes = f.read()
         f.close()
-        height, width = mask.shape
         return cls(
             mask=b64encode(mask_bytes).decode(),
         )
