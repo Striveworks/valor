@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 
-# @TODO implement properly
+# @TODO placeholder
 class DateTime(BaseModel):
     timestamp: int
     timestamp_local: int
