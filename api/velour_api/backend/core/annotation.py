@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
 from velour_api.backend.core.metadata import (
-    create_metadata,
     create_metadata_for_multiple_annotations,
     get_metadata,
 )
@@ -54,28 +53,6 @@ def _get_annotation_mapping(
     }
 
     return mapping
-
-
-def create_annotation(
-    db: Session,
-    annotation: schemas.Annotation,
-    datum: models.Datum,
-    model: models.Model = None,
-) -> models.Annotation:
-    mapping = _get_annotation_mapping(
-        annotation=annotation, datum=datum, model=model
-    )
-
-    try:
-        row = models.Annotation(**mapping)
-        db.add(row)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise exceptions.AnnotationAlreadyExistsError
-
-    create_metadata(db, annotation.metadata, annotation=row)
-    return row
 
 
 def create_annotations_and_labels(
