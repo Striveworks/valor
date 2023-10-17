@@ -69,9 +69,7 @@ def create_annotations_and_labels(
             annotation=annotation, datum=datum, model=model
         )
         annotation_list.append(models.Annotation(**mapping))
-        label_list.append(
-            core.create_bulk_labels(db=db, labels=annotation.labels)
-        )
+        label_list.append(core.create_labels(db=db, labels=annotation.labels))
         if annotation.metadata:
             metadata_list.append(
                 [
