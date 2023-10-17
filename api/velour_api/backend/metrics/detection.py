@@ -521,6 +521,12 @@ def create_detection_evaluation(
     if not settings.parameters:
         settings.parameters = schemas.DetectionParameters()
 
+    # validate parameters
+    if not isinstance(settings.parameters, schemas.DetectionParameters):
+        raise TypeError(
+            "expected evaluation settings to have parameters of type `DetectionParameters` for task type `DETECTION`"
+        )
+
     # if annotation type not specified, define as greatest common type.
     if not settings.parameters.annotation_type:
         settings.parameters.annotation_type = (
