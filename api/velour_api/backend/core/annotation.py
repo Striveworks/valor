@@ -93,13 +93,17 @@ def create_annotations_and_labels(
         )
         annotation_list.append(models.Annotation(**mapping))
         label_list.append(core.create_labels(db=db, labels=annotation.labels))
-        metadata_list.append(
-            [models.MetaDatum(**metadata) for metadata in annotation.metadata]
-        )
+        if annotation.metadata:
+            metadata_list.append(
+                [
+                    models.MetaDatum(**metadata)
+                    for metadata in annotation.metadata
+                ]
+            )
 
-    create_metadata_for_multiple_annotations(
-        db, annotations=annotation_list, metadata=metadata_list
-    )
+            create_metadata_for_multiple_annotations(
+                db, annotations=annotation_list, metadata=metadata_list
+            )
 
     try:
         db.add_all(annotation_list)
