@@ -196,7 +196,7 @@ def get_annotation(
         datum = db.scalar(
             select(models.Datum).where(models.Datum.id == annotation.datum_id)
         )
-        if "height" not in datum.meta or "width" not in datum.meta:
+        if "height" not in datum.metadata or "width" not in datum.meta:
             raise ValueError("missing height or width")
         height = datum.meta["height"]
         width = datum.meta["width"]

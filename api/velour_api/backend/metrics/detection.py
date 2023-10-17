@@ -402,25 +402,29 @@ def compute_detection_metrics(
     )
 
     # now extend to the averaged AP metrics and mAP metric
-    mdetection_metrics = compute_mdetection_metrics_from_aps(detection_metrics)
+    mean_detection_metrics = compute_mean_detection_metrics_from_aps(
+        detection_metrics
+    )
     detection_metrics_ave_over_ious = (
         compute_detection_metrics_ave_over_ious_from_aps(detection_metrics)
     )
-    mdetection_metrics_ave_over_ious = compute_mdetection_metrics_from_aps(
-        detection_metrics_ave_over_ious
+    mean_detection_metrics_ave_over_ious = (
+        compute_mean_detection_metrics_from_aps(
+            detection_metrics_ave_over_ious
+        )
     )
 
     # filter out only specified ious
     detection_metrics = [m for m in detection_metrics if m.iou in ious_to_keep]
-    mdetection_metrics = [
-        m for m in mdetection_metrics if m.iou in ious_to_keep
+    mean_detection_metrics = [
+        m for m in mean_detection_metrics if m.iou in ious_to_keep
     ]
 
     return (
         detection_metrics
-        + mdetection_metrics
+        + mean_detection_metrics
         + detection_metrics_ave_over_ious
-        + mdetection_metrics_ave_over_ious
+        + mean_detection_metrics_ave_over_ious
     )
 
 
@@ -451,7 +455,7 @@ def compute_detection_metrics_ave_over_ious_from_aps(
     return ret
 
 
-def compute_mdetection_metrics_from_aps(
+def compute_mean_detection_metrics_from_aps(
     ap_scores: list[schemas.APMetric | schemas.APMetricAveragedOverIOUs],
 ) -> list[schemas.mAPMetric]:
     """
@@ -490,7 +494,7 @@ def compute_mdetection_metrics_from_aps(
             labels.append(ap.label)
 
     # get mAP metrics at the individual IOUs
-    mdetection_metrics = [
+    mean_detection_metrics = [
         schemas.mAPMetric(iou=iou, value=_ave_ignore_minus_one(vals[iou]))
         if isinstance(iou, float)
         else schemas.mAPMetricAveragedOverIOUs(
@@ -499,7 +503,7 @@ def compute_mdetection_metrics_from_aps(
         for iou in vals.keys()
     ]
 
-    return mdetection_metrics
+    return mean_detection_metrics
 
 
 def create_detection_evaluation(

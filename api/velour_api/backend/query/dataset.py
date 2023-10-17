@@ -14,7 +14,7 @@ def create_dataset(
     try:
         row = models.Dataset(
             name=dataset.name,
-            meta=core.deserialize_metadatums(dataset.metadata),
+            metadata=core.deserialize_metadatums(dataset.metadata),
         )
         db.add(row)
         db.commit()
