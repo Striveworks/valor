@@ -126,8 +126,8 @@ def get_labels_for_creation(
         db.query(models.Label)
         .where(
             and_(
-                models.Label.key in label_keys,
-                models.Label.value in label_values,
+                models.Label.key.in_(label_keys),
+                models.Label.value.in_(label_values),
             )
         )
         .all()
