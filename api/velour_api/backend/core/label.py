@@ -6,7 +6,6 @@ from velour_api import enums, schemas
 from velour_api.backend import models
 
 
-# TODO
 def create_label(
     db: Session,
     label: schemas.Label,
