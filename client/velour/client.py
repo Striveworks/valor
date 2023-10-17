@@ -42,10 +42,8 @@ class Client:
         # check the connection by hitting the users endpoint
         email = self._get_users_email()
         success_str = f"Succesfully connected to {self.host}"
-        if email is None:
-            print(f"{success_str}.")
-        else:
-            print(f"{success_str} with user {email}.")
+        success_str += f" with user {email}." if email else "."
+        print(success_str)
 
     def _get_users_email(self) -> Union[str, None]:
         """Gets the users e-mail address (in the case when auth is enabled)
@@ -100,13 +98,19 @@ class Client:
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
-    def get_datasets(self) -> List[dict]:
+    def get_datasets(
+        self,
+    ) -> List[dict]:
         return self._requests_get_rel_host("datasets").json()
 
-    def get_models(self) -> List[dict]:
+    def get_models(
+        self,
+    ) -> List[dict]:
         return self._requests_get_rel_host("models").json()
 
-    def get_labels(self) -> List[schemas.Label]:
+    def get_labels(
+        self,
+    ) -> List[schemas.Label]:
         return self._requests_get_rel_host("labels").json()
 
     def delete_dataset(self, name: str, timeout: int = 0) -> None:
@@ -177,7 +181,9 @@ class Evaluation:
             setattr(self, k, v)
 
     @property
-    def status(self) -> str:
+    def status(
+        self,
+    ) -> str:
         resp = self.client._requests_get_rel_host(
             f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}"
         ).json()
@@ -185,7 +191,9 @@ class Evaluation:
 
     # TODO: replace value with a dataclass?
     @property
-    def settings(self) -> dict:
+    def settings(
+        self,
+    ) -> dict:
         return self.client._requests_get_rel_host(
             f"evaluations/{self._id}/dataset/{self.dataset_name}/model/{self.model_name}/settings"
         ).json()
@@ -201,7 +209,9 @@ class Evaluation:
                     raise TimeoutError
 
     @property
-    def metrics(self) -> List[dict]:
+    def metrics(
+        self,
+    ) -> List[dict]:
         if self.status != JobStatus.DONE:
             return []
         return self.client._requests_get_rel_host(
@@ -209,7 +219,9 @@ class Evaluation:
         ).json()
 
     @property
-    def confusion_matrices(self) -> List[dict]:
+    def confusion_matrices(
+        self,
+    ) -> List[dict]:
         if self.status != JobStatus.DONE:
             return []
         return self.client._requests_get_rel_host(
@@ -321,7 +333,9 @@ class Dataset:
         ).json()
         return schemas.GroundTruth(**resp)
 
-    def get_labels(self) -> List[schemas.LabelDistribution]:
+    def get_labels(
+        self,
+    ) -> List[schemas.LabelDistribution]:
         labels = self.client._requests_get_rel_host(
             f"labels/dataset/{self.name}"
         ).json()
@@ -331,14 +345,18 @@ class Dataset:
             for label in labels
         ]
 
-    def get_datums(self) -> List[schemas.Datum]:
+    def get_datums(
+        self,
+    ) -> List[schemas.Datum]:
         """Returns a list of datums."""
         datums = self.client._requests_get_rel_host(
             f"data/dataset/{self.name}"
         ).json()
         return [schemas.Datum(**datum) for datum in datums]
 
-    def get_images(self) -> List[schemas.ImageMetadata]:
+    def get_images(
+        self,
+    ) -> List[schemas.ImageMetadata]:
         """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
         return [
             schemas.ImageMetadata.from_datum(datum)
@@ -346,7 +364,9 @@ class Dataset:
             if schemas.ImageMetadata.valid(datum)
         ]
 
-    def get_evaluations(self) -> List[Evaluation]:
+    def get_evaluations(
+        self,
+    ) -> List[Evaluation]:
         model_evaluations = self.client._requests_get_rel_host(
             f"evaluations/datasets/{self.name}"
         ).json()
@@ -361,26 +381,33 @@ class Dataset:
             for job_id in model_evaluations[model_name]
         ]
 
-    def get_info(self) -> schemas.Info:
-        resp = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/info"
-        ).json()
+        # TODO: implement after backend functions are complete
+        # def get_info(
+        #     self,
+        # ) -> schemas.Info:
+        #     resp = self.client._requests_get_rel_host(
+        #         f"datasets/{self.name}/info"
+        #     ).json()
 
-        return schemas.Info(
-            annotation_type=resp["annotation_type"],
-            number_of_classifications=resp["number_of_classifications"],
-            number_of_bounding_boxes=resp["number_of_bounding_boxes"],
-            number_of_bounding_polygons=resp["number_of_bounding_polygons"],
-            number_of_segmentations=resp["number_of_segmentation_rasters"],
-            associated=resp["associated"],
-        )
+        # return schemas.Info(
+        #     annotation_type=resp["annotation_type"],
+        #     number_of_classifications=resp["number_of_classifications"],
+        #     number_of_bounding_boxes=resp["number_of_bounding_boxes"],
+        #     number_of_bounding_polygons=resp["number_of_bounding_polygons"],
+        #     number_of_segmentations=resp["number_of_segmentation_rasters"],
+        #     associated=resp["associated"],
+        # )
 
-    def finalize(self):
+    def finalize(
+        self,
+    ):
         return self.client._requests_put_rel_host(
             f"datasets/{self.name}/finalize"
         )
 
-    def delete(self):
+    def delete(
+        self,
+    ):
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
         del self
 
@@ -457,7 +484,9 @@ class Model:
             info=info,
         )
 
-    def delete(self):
+    def delete(
+        self,
+    ):
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
         del self
 
@@ -594,7 +623,9 @@ class Model:
             **resp,
         )
 
-    def get_evaluations(self) -> List[Evaluation]:
+    def get_evaluations(
+        self,
+    ) -> List[Evaluation]:
         dataset_evaluations = self.client._requests_get_rel_host(
             f"evaluations/models/{self.name}"
         ).json()
@@ -609,7 +640,9 @@ class Model:
             for job_id in dataset_evaluations[dataset_name]
         ]
 
-    def get_metric_dataframes(self):
+    def get_metric_dataframes(
+        self,
+    ):
         try:
             import pandas as pd
         except ModuleNotFoundError:
@@ -637,7 +670,9 @@ class Model:
 
         return ret
 
-    def get_labels(self) -> List[schemas.Label]:
+    def get_labels(
+        self,
+    ) -> List[schemas.Label]:
         labels = self.client._requests_get_rel_host(
             f"labels/model/{self.name}"
         ).json()
@@ -647,7 +682,9 @@ class Model:
             for label in labels
         ]
 
-    def get_label_distribution(self) -> Dict[schemas.Label, int]:
+    def get_label_distribution(
+        self,
+    ) -> Dict[schemas.Label, int]:
         distribution = self.client._requests_get_rel_host(
             f"models/{self.name}/labels/distribution"
         ).json()
@@ -662,16 +699,19 @@ class Model:
             for label in distribution
         }
 
-    def get_info(self) -> schemas.Info:
-        resp = self.client._requests_get_rel_host(
-            f"models/{self.name}/info"
-        ).json()
+    # TODO: implement after crud.get_info is complete
+    # def get_info(
+    #     self,
+    # ) -> schemas.Info:
+    #     resp = self.client._requests_get_rel_host(
+    #         f"models/{self.name}/info"
+    #     ).json()
 
-        return schemas.Info(
-            annotation_type=resp["annotation_type"],
-            number_of_classifications=resp["number_of_classifications"],
-            number_of_bounding_boxes=resp["number_of_bounding_boxes"],
-            number_of_bounding_polygons=resp["number_of_bounding_polygons"],
-            number_of_segmentations=resp["number_of_segmentation_rasters"],
-            associated=resp["associated"],
-        )
+    #     return schemas.Info(
+    #         annotation_type=resp["annotation_type"],
+    #         number_of_classifications=resp["number_of_classifications"],
+    #         number_of_bounding_boxes=resp["number_of_bounding_boxes"],
+    #         number_of_bounding_polygons=resp["number_of_bounding_polygons"],
+    #         number_of_segmentations=resp["number_of_segmentation_rasters"],
+    #         associated=resp["associated"],
+    #     )

@@ -7,6 +7,7 @@ import time
 from typing import Any
 
 import numpy as np
+import pandas
 import PIL.Image
 import pytest
 from geoalchemy2.functions import (
@@ -695,6 +696,36 @@ def tabular_preds() -> list[list[float]]:
     ]
 
 
+def test_client():
+    bad_url = "localhost:8000"
+
+    with pytest.raises(ValueError):
+        Client(host=bad_url)
+
+    bad_url2 = "http://localhost:8111"
+
+    with pytest.raises(Exception):
+        Client(host=bad_url2)
+
+    good_url = "http://localhost:8000"
+
+    assert Client(host=good_url)
+
+
+def test__requests_wrapper(client: Client):
+    with pytest.raises(ValueError):
+        client._requests_wrapper("get", "/datasets/fake_dataset/status")
+
+    with pytest.raises(AssertionError):
+        client._requests_wrapper("bad_method", "datasets/fake_dataset/status")
+
+    with pytest.raises(ClientException):
+        client._requests_wrapper("get", "not_an_endpoint")
+
+    with pytest.raises(ClientException):
+        client._requests_wrapper("get", "datasets/fake_dataset/status")
+
+
 def _test_create_image_dataset_with_gts(
     client: Client,
     gts: list[Any],
@@ -727,7 +758,6 @@ def _test_create_image_dataset_with_gts(
 
     for gt in gts:
         dataset.add_groundtruth(gt)
-
     # check that the dataset has two images
     images = dataset.get_images()
     assert len(images) == len(expected_image_uids)
@@ -1434,8 +1464,7 @@ def test_evaluate_ap(
     assert eval_job.missing_pred_labels == []
     assert isinstance(eval_job._id, int)
 
-    # sleep to give the backend time to compute
-    time.sleep(1)
+    eval_job.wait_for_completion()
     assert eval_job.status == JobStatus.DONE
 
     settings = eval_job.settings
@@ -2034,6 +2063,18 @@ def test_evaluate_tabular_clf(
     for expected_matrix in expected_confusion_matrices:
         assert expected_matrix in confusion_matrices
 
+    # check model methods
+    labels = model.get_labels()
+    df = model.get_metric_dataframes()
+
+    assert model.id == 16
+    assert model.name == "test_model"
+    assert len(model.metadata) == 0
+
+    assert len(labels) == 3
+    assert isinstance(df[0]["df"], pandas.DataFrame)
+
+    # check evaluation
     eval_jobs = model.get_evaluations()
     assert len(eval_jobs) == 1
     eval_settings = eval_jobs[0].settings
@@ -2126,9 +2167,21 @@ def test_add_raster_and_boundary_box(client: Client, img1: ImageMetadata):
     client.delete_dataset(dset_name, timeout=30)
 
 
-def test_get_dataset_status(
-    client: Client, img1: ImageMetadata, gt_dets1: list
+def test_get_dataset(
+    client: Client,
+    gt_semantic_segs1_mask: GroundTruth,
 ):
+    dataset = Dataset.create(client, dset_name)
+    dataset.add_groundtruth(gt_semantic_segs1_mask)
+
+    # check get
+    fetched_dataset = Dataset.get(client, dset_name)
+    assert fetched_dataset.info == dataset.info
+
+    client.delete_dataset(dset_name, timeout=30)
+
+
+def test_get_dataset_status(client: Client, gt_dets1: list):
     status = client.get_dataset_status(dset_name)
     assert status == "none"
 

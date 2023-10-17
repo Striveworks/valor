@@ -330,11 +330,6 @@ def obj_det_prediction():
     ]
 
 
-@pytest.fixture
-def sem_seg_prediction():
-    pass
-
-
 def test__parse_chariot_predict_image_classification(
     img_clf_prediction,
 ):
