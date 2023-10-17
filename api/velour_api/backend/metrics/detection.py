@@ -60,7 +60,7 @@ def _ap(
             detection_metrics.append(
                 schemas.APMetric(
                     iou=iou_threshold,
-                    value=calculate_ap_101_pt_interp(
+                    value=_calculate_101_pt_interp(
                         precisions=precisions, recalls=recalls
                     ),
                     label=labels[label_id],
@@ -69,7 +69,7 @@ def _ap(
     return detection_metrics
 
 
-def calculate_ap_101_pt_interp(precisions, recalls) -> float:
+def _calculate_101_pt_interp(precisions, recalls) -> float:
     """Use the 101 point interpolation method (following torchmetrics)"""
 
     assert len(precisions) == len(recalls)
