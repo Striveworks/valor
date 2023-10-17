@@ -98,6 +98,25 @@ def _get_existing_labels(
     )
 
 
+def get_labels_for_creation(
+    db: Session,
+    labels: schemas.Label,
+) -> models.Label | None:
+    label_keys, label_values = zip(
+        *[(label.key, label.value) for label in labels]
+    )
+    return (
+        db.query(models.Label)
+        .where(
+            and_(
+                models.Label.key in label_keys,
+                models.Label.value in label_values,
+            )
+        )
+        .all()
+    )
+
+
 def get_scored_labels(
     db: Session,
     annotation: models.Annotation,
