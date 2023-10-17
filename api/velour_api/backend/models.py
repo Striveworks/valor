@@ -89,7 +89,7 @@ class Annotation(Base):
         ForeignKey("model.id"), nullable=True
     )
     task_type: Mapped[str] = mapped_column(nullable=False)
-    metadata = mapped_column(JSONB)
+    meta = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
 
     # Geometric
@@ -123,7 +123,7 @@ class Datum(Base):
         nullable=False,
     )
     uid: Mapped[str] = mapped_column(nullable=False)
-    metadata = mapped_column(JSONB)
+    meta = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
 
     # relationship
@@ -140,7 +140,7 @@ class Model(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
-    metadata = mapped_column(JSONB)
+    meta = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
 
     # relationships
@@ -157,7 +157,7 @@ class Dataset(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
-    metadata = mapped_column(JSONB)
+    meta = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
 
     # relationships

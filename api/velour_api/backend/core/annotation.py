@@ -11,10 +11,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.metadata import (
-    deserialize_metadatums,
-    serialize_metadatums,
-)
+from velour_api.backend.core.metadata import deserialize_meta, serialize_meta
 from velour_api.enums import AnnotationType
 
 
@@ -44,11 +41,11 @@ def create_annotation(
         raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
     if isinstance(annotation.raster, schemas.Raster):
         raster = annotation.raster.mask_bytes
-    elif isinstance(annotation.jsonb, dict):
+    if isinstance(annotation.jsonb, dict):
         jsonb = annotation.jsonb
     # @TODO: Add more annotation types
 
-    metadata = deserialize_metadatums(annotation.metadata)
+    metadata = deserialize_meta(annotation.metadata)
 
     mapping = {
         "datum_id": datum.id,
@@ -165,7 +162,7 @@ def get_annotation(
     retval = schemas.Annotation(
         task_type=annotation.task_type,
         labels=labels,
-        metadata=serialize_metadatums(annotation.meta),
+        metadata=serialize_meta(annotation.meta),
         bounding_box=None,
         polygon=None,
         multipolygon=None,
@@ -196,7 +193,7 @@ def get_annotation(
         datum = db.scalar(
             select(models.Datum).where(models.Datum.id == annotation.datum_id)
         )
-        if "height" not in datum.metadata or "width" not in datum.meta:
+        if "height" not in datum.meta or "width" not in datum.meta:
             raise ValueError("missing height or width")
         height = datum.meta["height"]
         width = datum.meta["width"]

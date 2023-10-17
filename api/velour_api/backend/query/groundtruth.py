@@ -49,7 +49,7 @@ def get_groundtruth(
         datum=schemas.Datum(
             uid=datum.uid,
             dataset=dataset_name,
-            metadata=core.serialize_metadatums(datum.meta),
+            metadata=core.serialize_meta(datum.meta),
         ),
         annotations=core.get_annotations(db, datum),
     )

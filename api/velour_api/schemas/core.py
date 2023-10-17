@@ -242,8 +242,8 @@ def _validate_rasters(d: GroundTruth | Prediction):
         if annotation.raster is not None:
             # unpack datum metadata
             metadata = {
-                metadatadatum.key: metadatadatum.value
-                for metadatadatum in filter(
+                metadatum.key: metadatum.value
+                for metadatum in filter(
                     lambda x: x.key in ["height", "width"], d.datum.metadata
                 )
             }

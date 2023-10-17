@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.metadata import deserialize_metadatums
+from velour_api.backend.core.metadata import deserialize_meta
 
 
 def get_datum(
@@ -54,7 +54,7 @@ def create_datum(
         row = models.Datum(
             uid=datum.uid,
             dataset_id=dataset.id,
-            metadata=deserialize_metadatums(datum.metadata),
+            meta=deserialize_meta(datum.metadata),
         )
         db.add(row)
         db.commit()

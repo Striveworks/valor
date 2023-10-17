@@ -8,7 +8,7 @@ from .annotation import (
 from .dataset import create_datum, get_dataset, get_datum
 from .geometry import convert_geometry
 from .label import create_label, create_labels, get_label, get_labels
-from .metadata import deserialize_metadatums, serialize_metadatums
+from .metadata import deserialize_meta, serialize_meta
 from .model import get_model
 
 __all__ = [
@@ -21,8 +21,8 @@ __all__ = [
     "get_dataset",
     "get_datum",
     "get_model",
-    "serialize_metadatums",
-    "deserialize_metadatums",
+    "serialize_meta",
+    "deserialize_meta",
     "create_label",
     "create_labels",
     "get_label",
