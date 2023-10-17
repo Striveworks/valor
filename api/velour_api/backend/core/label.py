@@ -6,7 +6,6 @@ from velour_api import enums, schemas
 from velour_api.backend import models
 
 
-# TODO
 def create_label(
     db: Session,
     label: schemas.Label,
@@ -64,7 +63,9 @@ def create_labels(
         if output[i] == replace_val:
             output[i] = to_be_added.pop(0)
 
-    assert not to_be_added, "Not all new labels were added"
+    assert (
+        not to_be_added
+    ), "Error when merging existing labels with new labels"
 
     return output
 
