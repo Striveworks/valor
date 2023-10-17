@@ -42,12 +42,12 @@ class Client:
         # check the connection by hitting the users endpoint
         email = self._get_users_email()
         success_str = f"Succesfully connected to {self.host}"
-        if email is None:
-            print(f"{success_str}.")
-        else:
-            print(f"{success_str} with user {email}.")
+        success_str += f" with user {email}." if email else "."
+        print(success_str)
 
-    def _get_users_email(self) -> Union[str, None]:
+    def _get_users_email(
+        self,
+    ) -> Union[str, None]:
         """Gets the users e-mail address (in the case when auth is enabled)
         or returns None in the case of a no-auth backend.
         """
@@ -100,13 +100,19 @@ class Client:
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
-    def get_datasets(self) -> List[dict]:
+    def get_datasets(
+        self,
+    ) -> List[dict]:
         return self._requests_get_rel_host("datasets").json()
 
-    def get_models(self) -> List[dict]:
+    def get_models(
+        self,
+    ) -> List[dict]:
         return self._requests_get_rel_host("models").json()
 
-    def get_labels(self) -> List[schemas.Label]:
+    def get_labels(
+        self,
+    ) -> List[schemas.Label]:
         return self._requests_get_rel_host("labels").json()
 
     def delete_dataset(self, name: str, timeout: int = 0) -> None:
@@ -182,38 +188,54 @@ class Evaluation:
             setattr(self, k, v)
 
     @property
-    def id(self) -> int:
+    def id(
+        self,
+    ) -> int:
         return self._id
 
     @property
-    def settings(self) -> schemas.EvaluationSettings:
+    def settings(
+        self,
+    ) -> schemas.EvaluationSettings:
         return self._settings
 
     @property
-    def status(self) -> str:
+    def status(
+        self,
+    ) -> str:
         resp = self._client._requests_get_rel_host(
             f"evaluations/{self._id}/dataset/{self.dataset}/model/{self.model}"
         ).json()
         return JobStatus(resp)
 
     @property
-    def type(self) -> enums.TaskType:
+    def type(
+        self,
+    ) -> enums.TaskType:
         return self._settings.type
 
     @property
-    def task_type(self) -> enums.TaskType:
+    def task_type(
+        self,
+    ) -> enums.TaskType:
         return self._settings.task_type
 
     @property
-    def annotation_type(self) -> enums.TaskType:
+    def annotation_type(
+        self,
+    ) -> enums.TaskType:
         return self._settings.annotation_type
 
     @property
-    def parameters(self) -> List[schemas.Metadatum]:
+    def parameters(
+        self,
+    ) -> List[schemas.Metadatum]:
         return self._settings.parameters
 
     @property
-    def metrics(self) -> List[dict]:
+    def metrics(
+        self,
+    ) -> List[dict]:
         if self.status != JobStatus.DONE:
             return []
         return self._client._requests_get_rel_host(
@@ -221,7 +243,9 @@ class Evaluation:
         ).json()
 
     @property
-    def confusion_matrices(self) -> List[dict]:
+    def confusion_matrices(
+        self,
+    ) -> List[dict]:
         if self.status != JobStatus.DONE:
             return []
         return self._client._requests_get_rel_host(
@@ -252,15 +276,21 @@ class Dataset:
         }
 
     @property
-    def id(self):
+    def id(
+        self,
+    ):
         return self.info.id
 
     @property
-    def name(self):
+    def name(
+        self,
+    ):
         return self.info.name
 
     @property
-    def metadata(self) -> Dict[str, Any]:
+    def metadata(
+        self,
+    ) -> Dict[str, Any]:
         return self._metadata
 
     @classmethod
@@ -343,7 +373,9 @@ class Dataset:
         ).json()
         return schemas.GroundTruth(**resp)
 
-    def get_labels(self) -> List[schemas.Label]:
+    def get_labels(
+        self,
+    ) -> List[schemas.Label]:
         labels = self.client._requests_get_rel_host(
             f"labels/dataset/{self.name}"
         ).json()
@@ -353,14 +385,18 @@ class Dataset:
             for label in labels
         ]
 
-    def get_datums(self) -> List[schemas.Datum]:
+    def get_datums(
+        self,
+    ) -> List[schemas.Datum]:
         """Returns a list of datums."""
         datums = self.client._requests_get_rel_host(
             f"data/dataset/{self.name}"
         ).json()
         return [schemas.Datum(**datum) for datum in datums]
 
-    def get_images(self) -> List[schemas.ImageMetadata]:
+    def get_images(
+        self,
+    ) -> List[schemas.ImageMetadata]:
         """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
         return [
             schemas.ImageMetadata.from_datum(datum)
@@ -368,7 +404,9 @@ class Dataset:
             if schemas.ImageMetadata.valid(datum)
         ]
 
-    def get_evaluations(self) -> List[Evaluation]:
+    def get_evaluations(
+        self,
+    ) -> List[Evaluation]:
         model_evaluations = self.client._requests_get_rel_host(
             f"evaluations/datasets/{self.name}"
         ).json()
@@ -383,12 +421,16 @@ class Dataset:
             for job_id in model_evaluations[model_name]
         ]
 
-    def finalize(self):
+    def finalize(
+        self,
+    ):
         return self.client._requests_put_rel_host(
             f"datasets/{self.name}/finalize"
         )
 
-    def delete(self):
+    def delete(
+        self,
+    ):
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
         del self
 
@@ -406,15 +448,21 @@ class Model:
         }
 
     @property
-    def id(self):
+    def id(
+        self,
+    ):
         return self.info.id
 
     @property
-    def name(self):
+    def name(
+        self,
+    ):
         return self.info.name
 
     @property
-    def metadata(self) -> Dict[str, Any]:
+    def metadata(
+        self,
+    ) -> Dict[str, Any]:
         return self._metadata
 
     @classmethod
@@ -465,7 +513,9 @@ class Model:
             info=info,
         )
 
-    def delete(self):
+    def delete(
+        self,
+    ):
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
         del self
 
@@ -611,7 +661,9 @@ class Model:
             **resp,
         )
 
-    def get_evaluations(self) -> List[Evaluation]:
+    def get_evaluations(
+        self,
+    ) -> List[Evaluation]:
         dataset_evaluations = self.client._requests_get_rel_host(
             f"evaluations/models/{self.name}"
         ).json()
@@ -626,7 +678,9 @@ class Model:
             for job_id in dataset_evaluations[dataset_name]
         ]
 
-    def get_metric_dataframes(self):
+    def get_metric_dataframes(
+        self,
+    ):
         try:
             import pandas as pd
         except ModuleNotFoundError:
@@ -654,7 +708,9 @@ class Model:
 
         return ret
 
-    def get_labels(self) -> List[schemas.Label]:
+    def get_labels(
+        self,
+    ) -> List[schemas.Label]:
         labels = self.client._requests_get_rel_host(
             f"labels/model/{self.name}"
         ).json()
