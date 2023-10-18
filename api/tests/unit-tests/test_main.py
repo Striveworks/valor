@@ -785,7 +785,7 @@ def test_delete_model(crud, client: TestClient):
 
 
 @patch("velour_api.main.crud")
-def test_get_labels(crud, client: TestClient):
+def test_get_labels_for_annotation(crud, client: TestClient):
     crud.get_labels.return_value = []
     resp = client.get("/labels")
     assert resp.status_code == 200

@@ -98,7 +98,7 @@ def _get_existing_labels(
     )
 
 
-def get_labels_for_creation(
+def get_existing_labels(
     db: Session,
     labels: schemas.Label,
 ) -> models.Label | None:
