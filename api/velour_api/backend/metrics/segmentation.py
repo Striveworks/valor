@@ -11,8 +11,8 @@ from velour_api.backend.metrics.core import (
 from velour_api.enums import AnnotationType, TaskType
 from velour_api.schemas import Label
 from velour_api.schemas.metrics import (
+    EvaluationSettings,
     IOUMetric,
-    SemanticSegmentationMetricsRequest,
     mIOUMetric,
 )
 
@@ -38,7 +38,7 @@ def _gt_query(dataset_name: str, label_id: int) -> Select:
                 models.Datum.id == models.Annotation.datum_id,
             ),
         )
-        .where(models.Annotation.task_type == TaskType.SEMANTIC_SEGMENTATION)
+        .where(models.Annotation.task_type == TaskType.SEGMENTATION)
     )
 
 
@@ -66,7 +66,7 @@ def _pred_query(dataset_name: str, label_id: int, model_name: str) -> Select:
         )
         .where(
             and_(
-                models.Annotation.task_type == TaskType.SEMANTIC_SEGMENTATION,
+                models.Annotation.task_type == TaskType.SEGMENTATION,
                 models.Model.id == models.Annotation.model_id,
             )
         )
@@ -151,7 +151,7 @@ def get_groundtruth_labels(
             get_dataset_labels_query(
                 dataset_name=dataset_name,
                 annotation_type=AnnotationType.RASTER,
-                task_types=[TaskType.SEMANTIC_SEGMENTATION],
+                task_types=[TaskType.SEGMENTATION],
             )
         )
     ]
@@ -182,19 +182,18 @@ def compute_segmentation_metrics(
 
 
 def create_semantic_segmentation_evaluation(
-    db: Session, request_info: SemanticSegmentationMetricsRequest
+    db: Session, settings: EvaluationSettings
 ) -> int:
-    dataset = core.get_dataset(db, request_info.settings.dataset)
-    model = core.get_model(db, request_info.settings.model)
+    dataset = core.get_dataset(db, settings.dataset)
+    model = core.get_model(db, settings.model)
 
     es = get_or_create_row(
         db,
-        models.EvaluationSettings,
+        models.Evaluation,
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "task_type": TaskType.SEMANTIC_SEGMENTATION,
-            "target_type": AnnotationType.NONE,
+            "type": TaskType.SEGMENTATION,
         },
     )
 
@@ -203,17 +202,15 @@ def create_semantic_segmentation_evaluation(
 
 def create_semantic_segmentation_metrics(
     db: Session,
-    request_info: SemanticSegmentationMetricsRequest,
-    evaluation_settings_id: int,
+    settings: EvaluationSettings,
+    evaluation_id: int,
 ) -> int:
     metrics = compute_segmentation_metrics(
         db,
-        dataset_name=request_info.settings.dataset,
-        model_name=request_info.settings.model,
+        dataset_name=settings.dataset,
+        model_name=settings.model,
     )
-    metric_mappings = create_metric_mappings(
-        db, metrics, evaluation_settings_id
-    )
+    metric_mappings = create_metric_mappings(db, metrics, evaluation_id)
     for mapping in metric_mappings:
         # ignore value since the other columns are unique identifiers
         # and have empirically noticed value can slightly change due to floating
@@ -225,4 +222,4 @@ def create_semantic_segmentation_metrics(
             columns_to_ignore=["value"],
         )
 
-    return evaluation_settings_id
+    return evaluation_id

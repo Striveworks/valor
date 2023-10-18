@@ -465,19 +465,19 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def create_ap_metrics(
-    request_info: schemas.APRequest,
+def create_detection_metrics(
+    settings: schemas.EvaluationSettings,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> schemas.CreateAPMetricsResponse:
     try:
         # create evaluation
-        resp = crud.create_ap_evaluation(db=db, request_info=request_info)
+        resp = crud.create_detection_evaluation(db=db, settings=settings)
         # add metric computation to background tasks
         background_tasks.add_task(
-            crud.compute_ap_metrics,
+            crud.compute_detection_metrics,
             db=db,
-            request_info=request_info,
+            settings=settings,
             job_id=resp.job_id,
         )
         # return AP Response
@@ -500,18 +500,18 @@ def create_ap_metrics(
     tags=["Evaluations"],
 )
 def create_clf_metrics(
-    request_info: schemas.ClfMetricsRequest,
+    settings: schemas.EvaluationSettings,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> schemas.CreateClfMetricsResponse:
     try:
         # create evaluation
-        resp = crud.create_clf_evaluation(db=db, request_info=request_info)
+        resp = crud.create_clf_evaluation(db=db, settings=settings)
         # add metric computation to background tasks
         background_tasks.add_task(
             crud.compute_clf_metrics,
             db=db,
-            request_info=request_info,
+            settings=settings,
             job_id=resp.job_id,
         )
         # return Clf Response
@@ -534,21 +534,21 @@ def create_clf_metrics(
     tags=["Evaluations"],
 )
 def create_semantic_segmentation_metrics(
-    request_info: schemas.SemanticSegmentationMetricsRequest,
+    settings: schemas.EvaluationSettings,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> schemas.CreateSemanticSegmentationMetricsResponse:
     try:
         # create evaluation
         resp = crud.create_semantic_segmentation_evaluation(
-            db=db, request_info=request_info
+            db=db, settings=settings
         )
 
         # add metric computation to background tasks
         background_tasks.add_task(
             crud.compute_semantic_segmentation_metrics,
             db=db,
-            request_info=request_info,
+            settings=settings,
             job_id=resp.job_id,
         )
         return resp
@@ -586,17 +586,13 @@ def get_model_evaluations(model_name: str) -> dict[str, list[int]]:
 
 
 @app.get(
-    "/evaluations/{job_id}/dataset/{dataset_name}/model/{model_name}",
+    "/evaluations/{job_id}",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def get_evaluation_status(
-    dataset_name: str, model_name: str, job_id: int
-) -> enums.JobStatus:
+def get_evaluation_status(job_id: int) -> enums.JobStatus:
     try:
         return crud.get_evaluation_status(
-            dataset_name=dataset_name,
-            model_name=model_name,
             job_id=job_id,
         )
     except exceptions.JobDoesNotExistError as e:
@@ -604,51 +600,35 @@ def get_evaluation_status(
 
 
 @app.get(
-    "/evaluations/{job_id}/dataset/{dataset_name}/model/{model_name}/settings",
+    "/evaluations/{job_id}/settings",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
     tags=["Evaluations"],
 )
 def get_evaluation_settings(
-    dataset_name: str,
-    model_name: str,
     job_id: int,
     db: Session = Depends(get_db),
 ) -> schemas.EvaluationSettings:
     try:
-        # status = crud.get_evaluation_status(
-        #     dataset_name=dataset_name,
-        #     model_name=model_name,
-        #     job_id=job_id,
-        # )
-        # if status != enums.JobStatus.DONE:
-        #     raise HTTPException(
-        #         status_code=404,
-        #         detail=f"No settings for job {job_id} since its status is {status}",
-        #     )
         return crud.get_evaluation_settings_from_id(
-            db=db, evaluation_settings_id=job_id
+            db=db, evaluation_id=job_id
         )
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
-    "/evaluations/{job_id}/dataset/{dataset_name}/model/{model_name}/metrics",
+    "/evaluations/{job_id}/metrics",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
     tags=["Evaluations"],
 )
 def get_evaluation_metrics(
-    dataset_name: str,
-    model_name: str,
     job_id: int,
     db: Session = Depends(get_db),
 ) -> list[schemas.Metric]:
     try:
         status = crud.get_evaluation_status(
-            dataset_name=dataset_name,
-            model_name=model_name,
             job_id=job_id,
         )
         if status != enums.JobStatus.DONE:
@@ -656,9 +636,7 @@ def get_evaluation_metrics(
                 status_code=404,
                 detail=f"No metrics for job {job_id} since its status is {status}",
             )
-        return crud.get_metrics_from_evaluation_settings_id(
-            db=db, evaluation_settings_id=job_id
-        )
+        return crud.get_metrics_from_evaluation_id(db=db, evaluation_id=job_id)
     except (
         exceptions.JobDoesNotExistError,
         AttributeError,
@@ -671,21 +649,17 @@ def get_evaluation_metrics(
 
 
 @app.get(
-    "/evaluations/{job_id}/dataset/{dataset_name}/model/{model_name}/confusion-matrices",
+    "/evaluations/{job_id}/confusion-matrices",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
     tags=["Evaluations"],
 )
 def get_evaluation_confusion_matrices(
-    dataset_name: str,
-    model_name: str,
     job_id: int,
     db: Session = Depends(get_db),
 ) -> list[schemas.ConfusionMatrixResponse]:
     try:
         status = crud.get_evaluation_status(
-            dataset_name=dataset_name,
-            model_name=model_name,
             job_id=job_id,
         )
         if status != enums.JobStatus.DONE:
@@ -693,8 +667,8 @@ def get_evaluation_confusion_matrices(
                 status_code=404,
                 detail=f"No metrics for job {job_id} since its status is {status}",
             )
-        return crud.get_confusion_matrices_from_evaluation_settings_id(
-            db=db, evaluation_settings_id=job_id
+        return crud.get_confusion_matrices_from_evaluation_id(
+            db=db, evaluation_id=job_id
         )
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))

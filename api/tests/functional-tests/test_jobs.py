@@ -44,8 +44,8 @@ def setup_and_teardown():
 
 @pytest.fixture
 def gt_clfs_create(
-    img1: schemas.Image,
-    img2: schemas.Image,
+    img1: schemas.ImageMetadata,
+    img2: schemas.ImageMetadata,
 ) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
@@ -76,7 +76,7 @@ def gt_clfs_create(
 
 @pytest.fixture
 def pred_clfs_create(
-    img1: schemas.Image, img2: schemas.Image
+    img1: schemas.ImageMetadata, img2: schemas.ImageMetadata
 ) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
@@ -127,7 +127,7 @@ def test_job_status():
     )
 
     # check that job id: 0 is non-existent
-    assert stateflow.get_job_status(dataset_name, model_name, 0) is None
+    assert stateflow.get_job_status(0) is None
 
     # test invalid transitions from `None`
     with pytest.raises(exceptions.JobDoesNotExistError) as e:
@@ -147,7 +147,7 @@ def test_job_status():
     assert "does not exist" in str(e)
 
     # check that nothing affected the state
-    assert stateflow.get_job_status(dataset_name, model_name, 0) is None
+    assert stateflow.get_job_status(0) is None
 
     """test valid transition"""
     stateflow.set_job_status(
@@ -235,7 +235,7 @@ def test_job_status():
     stateflow.remove_job(dataset_name, model_name, 0)
 
     """confirm removal"""
-    assert stateflow.get_job_status(dataset_name, model_name, 0) is None
+    assert stateflow.get_job_status(0) is None
 
 
 def test_stateflow_dataset(db: Session):
@@ -362,18 +362,17 @@ def test_stateflow_model(db: Session):
 
     # check that evaluation fails before finalization
     with pytest.raises(exceptions.ModelNotFinalizedError) as e:
-        crud.create_ap_evaluation(
+        crud.create_detection_evaluation(
             db=db,
-            request_info=schemas.APRequest(
-                settings=schemas.EvaluationSettings(
-                    model=model_name,
-                    dataset=dset_name,
-                    task_type=enums.TaskType.DETECTION,
-                    target_type=enums.AnnotationType.BOX,
+            settings=schemas.EvaluationSettings(
+                model=model_name,
+                dataset=dset_name,
+                parameters=schemas.DetectionParameters(
+                    annotation_type=enums.AnnotationType.BOX,
                     label_key="class",
+                    iou_thresholds_to_compute=[0.2, 0.6],
+                    iou_thresholds_to_keep=[0.2],
                 ),
-                iou_thresholds=[0.2, 0.6],
-                ious_to_keep=[0.2],
             ),
         )
     assert "has not been finalized" in str(e)
@@ -396,17 +395,18 @@ def test_stateflow_model(db: Session):
     assert "do not exist" in str(e)
 
 
-def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
-    request_info = schemas.APRequest(
-        settings=schemas.EvaluationSettings(
-            model=model_name,
-            dataset=dset_name,
-            task_type=enums.TaskType.DETECTION,
-            target_type=enums.AnnotationType.BOX,
+def test_stateflow_detection_evaluation(
+    db: Session, groundtruths, predictions
+):
+    settings = schemas.EvaluationSettings(
+        model=model_name,
+        dataset=dset_name,
+        parameters=schemas.DetectionParameters(
+            annotation_type=enums.AnnotationType.BOX,
             label_key="class",
+            iou_thresholds_to_compute=[0.2, 0.6],
+            iou_thresholds_to_keep=[0.2],
         ),
-        iou_thresholds=[0.2, 0.6],
-        ious_to_keep=[0.2],
     )
 
     # check ready
@@ -417,7 +417,7 @@ def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
     )
 
     # create evaluation (return AP Response)
-    resp = crud.create_ap_evaluation(db=db, request_info=request_info)
+    resp = crud.create_detection_evaluation(db=db, settings=settings)
 
     # check in evalutation
     assert (
@@ -442,9 +442,9 @@ def test_stateflow_ap_evalutation(db: Session, groundtruths, predictions):
     assert "invalid transititon from evaluate to delete" in str(e)
 
     # run computation (returns nothing on completion)
-    crud.compute_ap_metrics(
+    crud.compute_detection_metrics(
         db=db,
-        request_info=request_info,
+        settings=settings,
         job_id=resp.job_id,
     )
 
@@ -479,10 +479,9 @@ def test_stateflow_clf_evaluation(
     crud.finalize(db=db, model_name=model_name, dataset_name=dset_name)
 
     # create clf request
-    request_info = schemas.ClfMetricsRequest(
-        settings=schemas.EvaluationSettings(
-            model=model_name, dataset=dset_name
-        )
+    settings = schemas.EvaluationSettings(
+        model=model_name,
+        dataset=dset_name,
     )
 
     # check dataset READY
@@ -497,7 +496,7 @@ def test_stateflow_clf_evaluation(
     # create clf evaluation (returns Clf Response)
     resp = crud.create_clf_evaluation(
         db=db,
-        request_info=request_info,
+        settings=settings,
     )
 
     # check EVALUATE
@@ -525,7 +524,7 @@ def test_stateflow_clf_evaluation(
     # compute clf metrics
     crud.compute_clf_metrics(
         db=db,
-        request_info=request_info,
+        settings=settings,
         job_id=resp.job_id,
     )
 

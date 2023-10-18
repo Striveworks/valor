@@ -9,9 +9,44 @@ from pydantic import (
     model_validator,
 )
 
-from velour_api.enums import AnnotationType, JobStatus, TaskType
-from velour_api.schemas.core import MetaDatum
+from velour_api.enums import AnnotationType, JobStatus
 from velour_api.schemas.label import Label
+
+
+class DetectionParameters(BaseModel):
+    """Parameters for evaluating a Object Detection.
+    ----------
+    iou_thresholds_to_compute
+        Compute all thresholds in this list to create the mAP value.
+    iou_thresholds_to_keep
+        Must be subset of `iou_thresholds_to_compute`, returns an `schemas.APMetric`
+        for each threshold.
+    """
+
+    # thresholds to iterate over (mutable defaults are ok for pydantic models)
+    iou_thresholds_to_compute: list[float] | None = [
+        round(0.5 + 0.05 * i, 2) for i in range(10)
+    ]
+    iou_thresholds_to_keep: list[float] | None = [0.5, 0.75]
+
+    # constraints
+    annotation_type: AnnotationType | None = None
+    label_key: str | None = None
+    min_area: float | None = None
+    max_area: float | None = None
+
+    # pydantic setting
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    @classmethod
+    def check_ious(cls, values):
+        for iou in values.iou_thresholds_to_keep:
+            if iou not in values.iou_thresholds_to_compute:
+                raise ValueError(
+                    "`iou_thresholds_to_keep` must be contained in `iou_thresholds_to_compute`"
+                )
+        return values
 
 
 class EvaluationSettings(BaseModel):
@@ -22,32 +57,11 @@ class EvaluationSettings(BaseModel):
 
     model: str
     dataset: str
-    task_type: TaskType | None = None
-    target_type: AnnotationType | None = None
-    label_key: str | None = None
-    min_area: float | None = None
-    max_area: float | None = None
+    parameters: DetectionParameters | None = None
     id: int | None = None
 
-
-class APRequest(BaseModel):
-    """Request to compute average precision"""
-
-    settings: EvaluationSettings
-
-    # (mutable defaults are ok for pydantic models)
-    iou_thresholds: list[float] = [round(0.5 + 0.05 * i, 2) for i in range(10)]
-    ious_to_keep: set[float] = {0.5, 0.75}
-
-    @model_validator(mode="after")
-    @classmethod
-    def check_ious(cls, values):
-        for iou in values.ious_to_keep:
-            if iou not in values.iou_thresholds:
-                raise ValueError(
-                    "`ious_to_keep` must be contained in `iou_thresholds`"
-                )
-        return values
+    # pydantic setting
+    model_config = ConfigDict(extra="forbid")
 
 
 class CreateAPMetricsResponse(BaseModel):
@@ -74,14 +88,6 @@ class Job(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
-class ClfMetricsRequest(BaseModel):
-    settings: EvaluationSettings
-
-
-class SemanticSegmentationMetricsRequest(BaseModel):
-    settings: EvaluationSettings
-
-
 class Metric(BaseModel):
     """This is used for responses from the API"""
 
@@ -89,7 +95,6 @@ class Metric(BaseModel):
     parameters: dict | None = None
     value: float | dict | None = None
     label: Label | None = None
-    group: MetaDatum | None = None
 
 
 class APMetric(BaseModel):
@@ -97,12 +102,12 @@ class APMetric(BaseModel):
     value: float
     label: Label
 
-    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         return {
             "value": self.value,
             "label_id": label_id,
             "type": "AP",
-            "evaluation_settings_id": evaluation_settings_id,
+            "evaluation_id": evaluation_id,
             "parameters": {"iou": self.iou},
         }
 
@@ -112,12 +117,12 @@ class APMetricAveragedOverIOUs(BaseModel):
     value: float
     label: Label
 
-    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         return {
             "value": self.value,
             "label_id": label_id,
             "type": "APAveragedOverIOUs",
-            "evaluation_settings_id": evaluation_settings_id,
+            "evaluation_id": evaluation_id,
             "parameters": {"ious": list(self.ious)},
         }
 
@@ -126,11 +131,11 @@ class mAPMetric(BaseModel):
     iou: float
     value: float
 
-    def db_mapping(self, evaluation_settings_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         return {
             "value": self.value,
             "type": "mAP",
-            "evaluation_settings_id": evaluation_settings_id,
+            "evaluation_id": evaluation_id,
             "parameters": {"iou": self.iou},
         }
 
@@ -139,11 +144,11 @@ class mAPMetricAveragedOverIOUs(BaseModel):
     ious: set[float]
     value: float
 
-    def db_mapping(self, evaluation_settings_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         return {
             "value": self.value,
             "type": "mAPAveragedOverIOUs",
-            "evaluation_settings_id": evaluation_settings_id,
+            "evaluation_id": evaluation_id,
             "parameters": {"ious": list(self.ious)},
         }
 
@@ -160,7 +165,6 @@ class ConfusionMatrixEntry(BaseModel):
 class _BaseConfusionMatrix(BaseModel):
     label_key: str
     entries: list[ConfusionMatrixEntry]
-    group: MetaDatum | None = None
 
 
 class ConfusionMatrix(_BaseConfusionMatrix):
@@ -187,11 +191,11 @@ class ConfusionMatrix(_BaseConfusionMatrix):
 
         self.matrix = matrix
 
-    def db_mapping(self, evaluation_settings_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         return {
             "label_key": self.label_key,
             "value": [entry.model_dump() for entry in self.entries],
-            "evaluation_settings_id": evaluation_settings_id,
+            "evaluation_id": evaluation_id,
         }
 
 
@@ -206,22 +210,19 @@ class ConfusionMatrixResponse(_BaseConfusionMatrix):
 class AccuracyMetric(BaseModel):
     label_key: str
     value: float
-    group: MetaDatum | None = None
 
-    def db_mapping(self, evaluation_settings_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         return {
             "value": self.value,
             "type": "Accuracy",
-            "evaluation_settings_id": evaluation_settings_id,
+            "evaluation_id": evaluation_id,
             "parameters": {"label_key": self.label_key},
-            "group": self.group,
         }
 
 
 class _PrecisionRecallF1Base(BaseModel):
     label: Label
     value: float | None = None
-    group: MetaDatum | None = None
 
     @field_validator("value")
     @classmethod
@@ -230,13 +231,12 @@ class _PrecisionRecallF1Base(BaseModel):
             return -1
         return v
 
-    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         return {
             "value": self.value,
             "label_id": label_id,
             "type": self.__type__,
-            "evaluation_settings_id": evaluation_settings_id,
-            "group": self.group,
+            "evaluation_id": evaluation_id,
         }
 
 
@@ -255,15 +255,13 @@ class F1Metric(_PrecisionRecallF1Base):
 class ROCAUCMetric(BaseModel):
     label_key: str
     value: float
-    group: MetaDatum | None = None
 
-    def db_mapping(self, evaluation_settings_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         return {
             "value": self.value,
             "type": "ROCAUC",
             "parameters": {"label_key": self.label_key},
-            "evaluation_settings_id": evaluation_settings_id,
-            "group": self.group,
+            "evaluation_id": evaluation_id,
         }
 
 
@@ -271,21 +269,21 @@ class IOUMetric(BaseModel):
     value: float
     label: Label
 
-    def db_mapping(self, label_id: int, evaluation_settings_id: int) -> dict:
+    def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
         return {
             "value": self.value,
             "label_id": label_id,
             "type": "IOU",
-            "evaluation_settings_id": evaluation_settings_id,
+            "evaluation_id": evaluation_id,
         }
 
 
 class mIOUMetric(BaseModel):
     value: float
 
-    def db_mapping(self, evaluation_settings_id: int) -> dict:
+    def db_mapping(self, evaluation_id: int) -> dict:
         return {
             "value": self.value,
             "type": "mIOU",
-            "evaluation_settings_id": evaluation_settings_id,
+            "evaluation_id": evaluation_id,
         }

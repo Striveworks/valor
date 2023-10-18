@@ -93,7 +93,16 @@ def _get_existing_labels(
                 models.Label.key.in_(label_keys),
                 models.Label.value.in_(label_values),
             )
+#     annotation: models.Annotation,
+# ):
+#     labels = (
+#         db.query(models.Label.key, models.Label.value)
+#         .select_from(models.GroundTruth)
+#         .join(
+#             models.Label,
+#             models.GroundTruth.label_id == models.Label.id,
         )
+        .where(models.GroundTruth.annotation_id == annotation.id)
         .all()
     )
 
@@ -104,20 +113,30 @@ def get_scored_labels(
 ) -> list[schemas.Label]:
     scored_labels = (
         db.query(models.Prediction.score, models.Label.key, models.Label.value)
+#     labels_with_score = (
+#         db.query(models.Label.key, models.Label.value, models.Prediction.score)
         .select_from(models.Prediction)
-        .join(models.Label, models.Label.id == models.Prediction.label_id)
+        .join(
+            models.Label,
+            models.Prediction.label_id == models.Label.id,
+        )
         .where(models.Prediction.annotation_id == annotation.id)
         .all()
     )
 
-    return [
-        schemas.Label(
-            key=label[1],
-            value=label[2],
-            score=label[0],
+    if labels:
+        return [
+            schemas.Label(key=label[0], value=label[1]) for label in labels
+        ]
+    elif labels_with_score:
+        return [
+            schemas.Label(key=label[0], value=label[1], score=label[2])
+            for label in labels_with_score
+        ]
+    else:
+        raise ValueError(
+            f"no labels found for annotation with id: `{annotation.id}`"
         )
-        for label in scored_labels
-    ]
 
 
 def get_dataset_labels_query(
@@ -125,6 +144,13 @@ def get_dataset_labels_query(
     annotation_type: enums.AnnotationType,
     task_types: list[enums.TaskType],
 ) -> Select:
+
+    annotation_type_expr = (
+        [models.annotation_type_to_geometry[annotation_type].is_not(None)]
+        if annotation_type is not enums.AnnotationType.NONE
+        else []
+    )
+
     return (
         select(models.Label)
         .join(
@@ -140,10 +166,8 @@ def get_dataset_labels_query(
         .where(
             and_(
                 models.Dataset.name == dataset_name,
-                models.annotation_type_to_geometry[annotation_type].is_not(
-                    None
-                ),
                 models.Annotation.task_type.in_(task_types),
+                *annotation_type_expr,
             )
         )
         .distinct()

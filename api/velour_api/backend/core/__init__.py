@@ -4,8 +4,6 @@ from .annotation import (
     get_annotation,
     get_annotation_type,
     get_annotations,
-    get_scored_annotation,
-    get_scored_annotations,
 )
 from .dataset import create_datum, get_dataset, get_datum
 from .geometry import convert_geometry
@@ -24,8 +22,6 @@ __all__ = [
     "get_annotation",
     "get_annotations",
     "get_annotation_type",
-    "get_scored_annotation",
-    "get_scored_annotations",
     "create_datum",
     "get_dataset",
     "get_datum",
@@ -34,6 +30,11 @@ __all__ = [
     "create_metadatum",
     "get_metadatum_schema",
     "get_metadata",
+    "create_labels",
+    "get_label",
+    "get_scored_labels",
+    "serialize_meta",
+    "deserialize_meta",
     "create_labels",
     "get_label",
     "get_scored_labels",

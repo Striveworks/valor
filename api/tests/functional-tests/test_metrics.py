@@ -9,7 +9,7 @@ from velour_api.backend.metrics.classification import (
     confusion_matrix_at_label_key,
     roc_auc,
 )
-from velour_api.backend.metrics.detection import compute_ap_metrics
+from velour_api.backend.metrics.detection import compute_detection_metrics
 from velour_api.backend.metrics.segmentation import (
     _gt_query,
     _pred_query,
@@ -19,7 +19,7 @@ from velour_api.backend.metrics.segmentation import (
     pred_count,
     tp_count,
 )
-from velour_api.backend.models import GroundTruth, Label, MetaDatum, Prediction
+from velour_api.backend.models import GroundTruth, Label, Prediction
 
 dataset_name = "test_dataset"
 model_name = "test_model"
@@ -52,10 +52,10 @@ def classification_test_data(db: Session):
             dataset=dataset_name,
             uid=f"uid{i}",
             metadata=[
-                schemas.MetaDatum(key="height", value=128),
-                schemas.MetaDatum(key="width", value=256),
-                schemas.MetaDatum(key="md1", value=f"md1-val{int(i == 4)}"),
-                schemas.MetaDatum(key="md2", value=f"md1-val{i % 3}"),
+                schemas.Metadatum(key="height", value=128),
+                schemas.Metadatum(key="width", value=256),
+                schemas.Metadatum(key="md1", value=f"md1-val{int(i == 4)}"),
+                schemas.Metadatum(key="md2", value=f"md1-val{i % 3}"),
             ],
         )
         for i in range(6)
@@ -103,7 +103,7 @@ def classification_test_data(db: Session):
         dataset=schemas.Dataset(
             name=dataset_name,
             metadata=[
-                schemas.MetaDatum(key="type", value=enums.DataType.IMAGE.value)
+                schemas.Metadatum(key="type", value=enums.DataType.IMAGE.value)
             ],
         ),
     )
@@ -129,13 +129,13 @@ def round_dict_(d: dict, prec: int) -> None:
             round_dict_(v, prec)
 
 
-def test_compute_ap_metrics(
+def test_compute_detection_metrics(
     db: Session,
     groundtruths: list[list[GroundTruth]],
     predictions: list[list[Prediction]],
 ):
     iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
-    metrics = compute_ap_metrics(
+    metrics = compute_detection_metrics(
         db=db,
         dataset=get_dataset(db, "test_dataset"),
         model=get_model(db, "test_model"),
@@ -277,13 +277,14 @@ def test_confusion_matrix_at_label_key(db: Session, classification_test_data):
     assert accuracy_from_cm(cm) == 3 / 6
 
 
-def _get_md1_val0_id(db):
-    # helper function to get metadata id for "md1", "md1-val0"
-    mds = db.scalars(select(MetaDatum).where(MetaDatum.key == "md1")).all()
-    md0 = mds[0]
-    assert md0.string_value == "md1-val0"
+# TODO -- Convert to use json column
+# def _get_md1_val0_id(db):
+#     # helper function to get metadata id for "md1", "md1-val0"
+#     mds = db.scalars(select(Metadatum).where(Metadatum.key == "md1")).all()
+#     md0 = mds[0]
+#     assert md0.string_value == "md1-val0"
 
-    return md0.id
+#     return md0.id
 
 
 # @TODO: Will add support in second PR, need to validate `ops.BackendQuery`

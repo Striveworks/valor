@@ -18,6 +18,7 @@ def get_or_create_row(
     (and where the other columns serve as unique identifiers)
     """
     columns_to_ignore = columns_to_ignore or []
+
     # create the query from the mapping
     where_expressions = [
         (getattr(model_class, k) == v)
@@ -47,7 +48,7 @@ def create_metric_mappings(
         | schemas.mAPMetric
         | schemas.mAPMetricAveragedOverIOUs
     ],
-    evaluation_settings_id: int,
+    evaluation_id: int,
 ) -> list[dict]:
 
     labels = set(
@@ -70,14 +71,10 @@ def create_metric_mappings(
             ret.append(
                 metric.db_mapping(
                     label_id=label_map[(metric.label.key, metric.label.value)],
-                    evaluation_settings_id=evaluation_settings_id,
+                    evaluation_id=evaluation_id,
                 )
             )
         else:
-            ret.append(
-                metric.db_mapping(
-                    evaluation_settings_id=evaluation_settings_id
-                )
-            )
+            ret.append(metric.db_mapping(evaluation_id=evaluation_id))
 
     return ret

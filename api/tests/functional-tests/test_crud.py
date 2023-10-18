@@ -41,12 +41,11 @@ def check_db_empty(db: Session):
         models.Label,
         models.GroundTruth,
         models.Prediction,
-        models.MetaDatum,
         models.Annotation,
         models.Datum,
         models.Model,
         models.Dataset,
-        models.EvaluationSettings,
+        models.Evaluation,
         models.Metric,
         models.ConfusionMatrix,
     ]:
@@ -194,8 +193,8 @@ def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
 def gt_instance_segs_create(
     poly_with_hole: schemas.BasicPolygon,
     poly_without_hole: schemas.BasicPolygon,
-    img1: schemas.Image,
-    img2: schemas.Image,
+    img1: schemas.ImageMetadata,
+    img2: schemas.ImageMetadata,
 ) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
@@ -203,7 +202,7 @@ def gt_instance_segs_create(
             datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    task_type=enums.TaskType.DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     polygon=poly_with_hole,
                 ),
@@ -214,17 +213,17 @@ def gt_instance_segs_create(
             datum=img2.to_datum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    task_type=enums.TaskType.DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     polygon=poly_without_hole,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    task_type=enums.TaskType.DETECTION,
                     labels=[schemas.Label(key="k3", value="v3")],
                     polygon=poly_without_hole,
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    task_type=enums.TaskType.DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     multipolygon=schemas.MultiPolygon(
                         polygons=[poly_with_hole, poly_without_hole],
@@ -238,7 +237,7 @@ def gt_instance_segs_create(
 @pytest.fixture
 def pred_instance_segs_create(
     img1_pred_mask_bytes1: bytes,
-    img1: schemas.Image,
+    img1: schemas.ImageMetadata,
 ) -> list[schemas.Prediction]:
     b64_mask1 = b64encode(img1_pred_mask_bytes1).decode()
 
@@ -248,7 +247,7 @@ def pred_instance_segs_create(
             datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    task_type=enums.TaskType.DETECTION,
                     labels=[
                         schemas.Label(key="k1", value="v1", score=0.43),
                         schemas.Label(key="k1", value="v2", score=0.57),
@@ -258,7 +257,7 @@ def pred_instance_segs_create(
                     ),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    task_type=enums.TaskType.DETECTION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.03),
                         schemas.Label(key="k2", value="v2", score=0.97),
@@ -268,7 +267,7 @@ def pred_instance_segs_create(
                     ),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    task_type=enums.TaskType.DETECTION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.26),
                         schemas.Label(key="k2", value="v2", score=0.74),
@@ -278,7 +277,7 @@ def pred_instance_segs_create(
                     ),
                 ),
                 schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    task_type=enums.TaskType.DETECTION,
                     labels=[
                         schemas.Label(key="k2", value="v1", score=0.86),
                         schemas.Label(key="k2", value="v2", score=0.14),
@@ -294,8 +293,8 @@ def pred_instance_segs_create(
 
 @pytest.fixture
 def gt_clfs_create(
-    img1: schemas.Image,
-    img2: schemas.Image,
+    img1: schemas.ImageMetadata,
+    img2: schemas.ImageMetadata,
 ) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
@@ -326,7 +325,7 @@ def gt_clfs_create(
 
 @pytest.fixture
 def pred_clfs_create(
-    img1: schemas.Image, img2: schemas.Image
+    img1: schemas.ImageMetadata, img2: schemas.ImageMetadata
 ) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
@@ -477,8 +476,10 @@ def test_create_detection_ground_truth_and_delete_dataset(
         new_gt = crud.get_groundtruth(
             db=db, dataset_name=gt.datum.dataset, datum_uid=gt.datum.uid
         )
+        assert gt.datum.uid == new_gt.datum.uid
         assert gt.datum.dataset == new_gt.datum.dataset
-        assert gt.datum == new_gt.datum
+        for metadatum in gt.datum.metadata:
+            assert metadatum in new_gt.datum.metadata
         for gta, new_gta in zip(gt.annotations, new_gt.annotations):
             assert set(gta.labels) == set(new_gta.labels)
             assert gta == new_gta
@@ -729,7 +730,7 @@ def test_create_groundtruth_instance_segmentations_and_delete_dataset(
     _test_create_groundtruth_segmentations_and_delete_dataset(
         db,
         gt_instance_segs_create,
-        enums.TaskType.INSTANCE_SEGMENTATION,
+        enums.TaskType.DETECTION,
         expected_labels=2,
         expected_anns=4,
         expected_gts=4,
@@ -743,7 +744,7 @@ def test_create_groundtruth_semantic_segmentations_and_delete_dataset(
     _test_create_groundtruth_segmentations_and_delete_dataset(
         db,
         gt_semantic_segs_create,
-        enums.TaskType.SEMANTIC_SEGMENTATION,
+        enums.TaskType.SEGMENTATION,
         expected_labels=4,
         expected_anns=4,
         expected_gts=5,
@@ -836,7 +837,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 def test_segmentation_area_no_hole(
     db: Session,
     poly_without_hole: schemas.Polygon,
-    img1: schemas.Image,
+    img1: schemas.ImageMetadata,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -849,7 +850,7 @@ def test_segmentation_area_no_hole(
             datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    task_type=enums.TaskType.DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     multipolygon=schemas.MultiPolygon(
                         polygons=[poly_without_hole],
@@ -878,7 +879,7 @@ def test_segmentation_area_with_hole(
             datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+                    task_type=enums.TaskType.SEGMENTATION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     multipolygon=schemas.MultiPolygon(
                         polygons=[poly_with_hole],
@@ -898,7 +899,7 @@ def test_segmentation_area_multi_polygon(
     db: Session,
     poly_with_hole: schemas.Polygon,
     poly_without_hole: schemas.Polygon,
-    img1: schemas.Image,
+    img1: schemas.ImageMetadata,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -912,7 +913,7 @@ def test_segmentation_area_multi_polygon(
             datum=img1.to_datum(),
             annotations=[
                 schemas.Annotation(
-                    task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                    task_type=enums.TaskType.DETECTION,
                     labels=[schemas.Label(key="k1", value="v1")],
                     multipolygon=schemas.MultiPolygon(
                         polygons=[poly_with_hole, poly_without_hole],
@@ -944,7 +945,7 @@ def test_gt_seg_as_mask_or_polys(db: Session):
     mask[ymin:ymax, xmin:xmax] = True
     mask_b64 = b64encode(np_to_bytes(mask)).decode()
 
-    img = schemas.Image(
+    img = schemas.ImageMetadata(
         dataset=dset_name,
         uid="uid",
         height=h,
@@ -961,7 +962,7 @@ def test_gt_seg_as_mask_or_polys(db: Session):
     )
 
     gt1 = schemas.Annotation(
-        task_type=enums.TaskType.SEMANTIC_SEGMENTATION,
+        task_type=enums.TaskType.SEGMENTATION,
         labels=[schemas.Label(key="k1", value="v1")],
         raster=schemas.Raster(
             mask=mask_b64,
@@ -970,7 +971,7 @@ def test_gt_seg_as_mask_or_polys(db: Session):
         ),
     )
     gt2 = schemas.Annotation(
-        task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+        task_type=enums.TaskType.DETECTION,
         labels=[schemas.Label(key="k1", value="v1")],
         multipolygon=schemas.MultiPolygon(
             polygons=[
@@ -1010,38 +1011,40 @@ def test_gt_seg_as_mask_or_polys(db: Session):
     decoded_mask_arr = np.array(decoded_mask)
 
     np.testing.assert_equal(decoded_mask_arr, mask)
-    assert segs.datum == gt.datum
+    assert segs.datum.uid == gt.datum.uid
+    assert segs.datum.dataset == gt.datum.dataset
+    for metadatum in segs.datum.metadata:
+        assert metadatum in gt.datum.metadata
     assert segs.annotations[0].labels == gt.annotations[0].labels
 
 
-def test_create_ap_metrics(db: Session, groundtruths, predictions):
+def test_create_detection_metrics(db: Session, groundtruths, predictions):
     # the groundtruths and predictions arguments are not used but
     # those fixtures create the necessary dataset, model, groundtruths, and predictions
 
     def method_to_test(
         label_key: str, min_area: float = None, max_area: float = None
     ):
-        request_info = schemas.APRequest(
-            settings=schemas.EvaluationSettings(
-                model="test_model",
-                dataset="test_dataset",
+        settings = schemas.EvaluationSettings(
+            model="test_model",
+            dataset="test_dataset",
+            parameters=schemas.DetectionParameters(
                 min_area=min_area,
                 max_area=max_area,
-                task_type=enums.TaskType.DETECTION,
-                target_type=enums.AnnotationType.BOX,
+                annotation_type=enums.AnnotationType.BOX,
                 label_key=label_key,
+                iou_thresholds_to_compute=[0.2, 0.6],
+                iou_thresholds_to_keep=[0.2],
             ),
-            iou_thresholds=[0.2, 0.6],
-            ious_to_keep=[0.2],
         )
 
         # create evaluation (return AP Response)
-        resp = crud.create_ap_evaluation(db=db, request_info=request_info)
+        resp = crud.create_detection_evaluation(db=db, settings=settings)
 
         # run computation (returns nothing on completion)
-        crud.compute_ap_metrics(
+        crud.compute_detection_metrics(
             db=db,
-            request_info=request_info,
+            settings=settings,
             job_id=resp.job_id,
         )
 
@@ -1059,7 +1062,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
 
     # run evaluation
     (
-        evaluation_settings_id,
+        evaluation_id,
         missing_pred_labels,
         ignored_pred_labels,
     ) = method_to_test(label_key="class")
@@ -1074,9 +1077,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
 
     metrics = db.scalar(
-        select(models.EvaluationSettings).where(
-            models.EvaluationSettings.id == evaluation_settings_id
-        )
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     ).metrics
 
     metric_ids = [m.id for m in metrics]
@@ -1096,21 +1097,21 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 5
 
     # test getting metrics from evaluation settings id
-    pydantic_metrics = crud.get_metrics_from_evaluation_settings_id(
-        db=db, evaluation_settings_id=evaluation_settings_id
+    pydantic_metrics = crud.get_metrics_from_evaluation_id(
+        db=db, evaluation_id=evaluation_id
     )
     for m in pydantic_metrics:
         assert isinstance(m, schemas.Metric)
     assert len(pydantic_metrics) == len(metric_ids)
 
     # run again and make sure no new ids were created
-    evaluation_settings_id_again, _, _ = method_to_test(label_key="class")
-    assert evaluation_settings_id == evaluation_settings_id_again
+    evaluation_id_again, _, _ = method_to_test(label_key="class")
+    assert evaluation_id == evaluation_id_again
     metric_ids_again = [
         m.id
         for m in db.scalar(
-            select(models.EvaluationSettings).where(
-                models.EvaluationSettings.id == evaluation_settings_id_again
+            select(models.Evaluation).where(
+                models.Evaluation.id == evaluation_id_again
             )
         ).metrics
     ]
@@ -1120,7 +1121,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     metrics_pydantic = crud.get_model_metrics(
         db=db,
         model_name="test_model",
-        evaluation_settings_id=evaluation_settings_id,
+        evaluation_id=evaluation_id,
     )
 
     assert len(metrics_pydantic) == len(metrics)
@@ -1136,7 +1137,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     # test when min area and max area are specified
     min_area, max_area = 10, 3000
     (
-        evaluation_settings_id,
+        evaluation_id,
         missing_pred_labels,
         ignored_pred_labels,
     ) = method_to_test(label_key="class", min_area=min_area, max_area=max_area)
@@ -1144,7 +1145,7 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     metrics_pydantic = crud.get_model_metrics(
         db=db,
         model_name="test_model",
-        evaluation_settings_id=evaluation_settings_id,
+        evaluation_id=evaluation_id,
     )
     for m in metrics_pydantic:
         assert m.type in {
@@ -1162,21 +1163,25 @@ def test_create_ap_metrics(db: Session, groundtruths, predictions):
     assert model_evals[0] == schemas.EvaluationSettings(
         model=model_name,
         dataset=dset_name,
-        task_type=enums.TaskType.DETECTION,
-        target_type=enums.AnnotationType.BOX,
-        label_key="class",
+        parameters=schemas.DetectionParameters(
+            annotation_type=enums.AnnotationType.BOX,
+            label_key="class",
+            iou_thresholds_to_compute=[0.2, 0.6],
+            iou_thresholds_to_keep=[0.2],
+        ),
         id=1,
     )
     assert model_evals[1] == schemas.EvaluationSettings(
         model=model_name,
         dataset=dset_name,
-        task_type=enums.TaskType.DETECTION,
-        target_type=enums.AnnotationType.BOX,
-        gt_type=enums.AnnotationType.BOX,
-        pd_type=enums.AnnotationType.BOX,
-        label_key="class",
-        min_area=min_area,
-        max_area=max_area,
+        parameters=schemas.DetectionParameters(
+            annotation_type=enums.AnnotationType.BOX,
+            label_key="class",
+            min_area=min_area,
+            max_area=max_area,
+            iou_thresholds_to_compute=[0.2, 0.6],
+            iou_thresholds_to_keep=[0.2],
+        ),
         id=2,
     )
 
@@ -1201,20 +1206,19 @@ def test_create_clf_metrics(
         crud.create_prediction(db=db, prediction=pd)
     crud.finalize(db=db, model_name=model_name, dataset_name=dset_name)
 
-    request_info = schemas.ClfMetricsRequest(
-        settings=schemas.EvaluationSettings(
-            model=model_name, dataset=dset_name
-        )
+    settings = schemas.EvaluationSettings(
+        model=model_name,
+        dataset=dset_name,
     )
 
     # create clf evaluation (returns Clf Response)
     resp = crud.create_clf_evaluation(
         db=db,
-        request_info=request_info,
+        settings=settings,
     )
     missing_pred_keys = resp.missing_pred_keys
     ignored_pred_keys = resp.ignored_pred_keys
-    evaluation_settings_id = resp.job_id
+    evaluation_id = resp.job_id
 
     assert missing_pred_keys == []
     assert set(ignored_pred_keys) == {"k3", "k4"}
@@ -1222,8 +1226,8 @@ def test_create_clf_metrics(
     # compute clf metrics
     crud.compute_clf_metrics(
         db=db,
-        request_info=request_info,
-        job_id=evaluation_settings_id,
+        settings=settings,
+        job_id=evaluation_id,
     )
 
     # check we have one evaluation
@@ -1234,9 +1238,7 @@ def test_create_clf_metrics(
 
     # get all metrics
     metrics = db.scalar(
-        select(models.EvaluationSettings).where(
-            models.EvaluationSettings.id == evaluation_settings_id
-        )
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     ).metrics
 
     assert set([metric.type for metric in metrics]) == {
@@ -1266,8 +1268,7 @@ def test_create_clf_metrics(
 
     confusion_matrices = db.scalars(
         select(models.ConfusionMatrix).where(
-            models.ConfusionMatrix.evaluation_settings_id
-            == evaluation_settings_id
+            models.ConfusionMatrix.evaluation_id == evaluation_id
         )
     ).all()
 
@@ -1275,16 +1276,16 @@ def test_create_clf_metrics(
     assert len(confusion_matrices) == 2
 
     # test getting metrics from evaluation settings id
-    pydantic_metrics = crud.get_metrics_from_evaluation_settings_id(
-        db=db, evaluation_settings_id=evaluation_settings_id
+    pydantic_metrics = crud.get_metrics_from_evaluation_id(
+        db=db, evaluation_id=evaluation_id
     )
     for m in pydantic_metrics:
         assert isinstance(m, schemas.Metric)
     assert len(pydantic_metrics) == len(metrics)
 
     # test getting confusion matrices from evaluation settings id
-    cms = crud.get_confusion_matrices_from_evaluation_settings_id(
-        db=db, evaluation_settings_id=evaluation_settings_id
+    cms = crud.get_confusion_matrices_from_evaluation_id(
+        db=db, evaluation_id=evaluation_id
     )
     cms = sorted(cms, key=lambda cm: cm.label_key)
     assert len(cms) == 2
@@ -1304,8 +1305,8 @@ def test_create_clf_metrics(
     # attempting to run again should just return the existing job id
     crud.compute_clf_metrics(
         db=db,
-        request_info=request_info,
-        job_id=evaluation_settings_id,
+        settings=settings,
+        job_id=evaluation_id,
     )
     assert (
         len(crud.get_model_evaluation_settings(db=db, model_name=model_name))
@@ -1313,15 +1314,12 @@ def test_create_clf_metrics(
     )
 
     metrics = db.scalar(
-        select(models.EvaluationSettings).where(
-            models.EvaluationSettings.id == evaluation_settings_id
-        )
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     ).metrics
     assert len(metrics) == 2 + 2 + 4 + 4 + 4
     confusion_matrices = db.scalars(
         select(models.ConfusionMatrix).where(
-            models.ConfusionMatrix.evaluation_settings_id
-            == evaluation_settings_id
+            models.ConfusionMatrix.evaluation_id == evaluation_id
         )
     ).all()
     assert len(confusion_matrices) == 2
@@ -1461,7 +1459,7 @@ def test_get_labels_from_dataset(
     assert schemas.Label(key="k1", value="v1") in ds1
     assert schemas.Label(key="k2", value="v2") in ds1
 
-    # NEGTAIVE - Test filter by task type
+    # NEGATIVE - Test filter by task type
     ds1 = crud.get_labels(
         db=db,
         request=schemas.Filter(
@@ -1469,8 +1467,7 @@ def test_get_labels_from_dataset(
             allow_predictions=False,
             task_types=[
                 enums.TaskType.CLASSIFICATION,
-                enums.TaskType.INSTANCE_SEGMENTATION,
-                enums.TaskType.SEMANTIC_SEGMENTATION,
+                enums.TaskType.SEGMENTATION,
             ],
         ),
     )

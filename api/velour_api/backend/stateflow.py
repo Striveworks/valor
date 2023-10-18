@@ -48,12 +48,7 @@ def _update_job_state(
 ):
     # retrieve from redis
     stateflow = get_stateflow()
-
-    # check if job has already completed (if it exists)
-    if (
-        stateflow.get_job_status(dataset_name, model_name, job_id)
-        == JobStatus.DONE
-    ):
+    if stateflow.get_job_status(job_id) == JobStatus.DONE:
         return
 
     # update stateflow object
@@ -170,9 +165,9 @@ def evaluate(fn: callable) -> callable:
         # unpack args
         dataset_name = None
         model_name = None
-        if "request_info" in kwargs:
-            dataset_name = kwargs["request_info"].settings.dataset
-            model_name = kwargs["request_info"].settings.model
+        if "settings" in kwargs:
+            dataset_name = kwargs["settings"].dataset
+            model_name = kwargs["settings"].model
 
         _update_backend_state(
             status=State.EVALUATE,
@@ -210,21 +205,18 @@ def computation(fn: callable) -> callable:
         if len(args) != 0 and len(kwargs) != 2:
             raise RuntimeError
 
-        # unpack request_info
-        if "request_info" in kwargs:
-            if hasattr(kwargs["request_info"], "settings"):
-                if isinstance(
-                    kwargs["request_info"].settings, schemas.EvaluationSettings
-                ):
-                    dataset_name = kwargs["request_info"].settings.dataset
-                    model_name = kwargs["request_info"].settings.model
+        # unpack settings
+        if "settings" in kwargs:
+            if isinstance(kwargs["settings"], schemas.EvaluationSettings):
+                dataset_name = kwargs["settings"].dataset
+                model_name = kwargs["settings"].model
             else:
                 raise ValueError(
-                    "request_info object must contain an attribute named `settings` of type `schemas.EvaluationSettings`"
+                    "settings object must be of type `schemas.EvaluationSettings`"
                 )
         else:
             raise ValueError(
-                "missing request_info which should be an evaluation request type (e.g. `schemas.APRequest`)"
+                "missing settings which should be an evaluation request type (e.g. `schemas.EvaluationSettings`)"
             )
 
         # unpack job_id
@@ -233,11 +225,7 @@ def computation(fn: callable) -> callable:
         else:
             raise ValueError("missing job_id")
 
-        # check if job has already successfully ran
-        if (
-            get_stateflow().get_job_status(dataset_name, model_name, job_id)
-            == JobStatus.DONE
-        ):
+        if get_stateflow().get_job_status(job_id) == JobStatus.DONE:
             _update_backend_state(
                 status=State.READY,
                 dataset_name=dataset_name,

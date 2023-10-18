@@ -5,11 +5,10 @@ from .core import (
     Datum,
     GroundTruth,
     Label,
-    MetaDatum,
     Model,
     Prediction,
 )
-from .datatypes import Image, VideoFrame
+from .datatypes import ImageMetadata, VideoFrameMetadata
 from .geojson import GeoJSON
 from .geometry import (
     BasicPolygon,
@@ -19,19 +18,19 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .info import Filter, LabelDistribution, ScoredLabelDistribution
+from .info import Filter
+from .metadata import DateTime, Metadatum
 from .metrics import (
     AccuracyMetric,
     APMetric,
     APMetricAveragedOverIOUs,
-    APRequest,
-    ClfMetricsRequest,
     ConfusionMatrix,
     ConfusionMatrixEntry,
     ConfusionMatrixResponse,
     CreateAPMetricsResponse,
     CreateClfMetricsResponse,
     CreateSemanticSegmentationMetricsResponse,
+    DetectionParameters,
     EvaluationSettings,
     F1Metric,
     IOUMetric,
@@ -39,7 +38,6 @@ from .metrics import (
     PrecisionMetric,
     RecallMetric,
     ROCAUCMetric,
-    SemanticSegmentationMetricsRequest,
     mAPMetric,
     mAPMetricAveragedOverIOUs,
     mIOUMetric,
@@ -49,14 +47,12 @@ from .stateflow import Stateflow
 __all__ = [
     "User",
     "Filter",
-    "Image",
-    "VideoFrame",
+    "ImageMetadata",
+    "VideoFrameMetadata",
     "Annotation",
     "Dataset",
     "Datum",
     "AnnotatedDatum",
-    "LabelDistribution",
-    "ScoredLabelDistribution",
     "Model",
     "GroundTruth",
     "Prediction",
@@ -67,8 +63,9 @@ __all__ = [
     "MultiPolygon",
     "Polygon",
     "Raster",
-    "MetaDatum",
-    "EvaluationSettings",
+    "Metadatum",
+    "DateTime",
+    "Evaluation",
     "Metric",
     "AccuracyMetric",
     "ConfusionMatrix",
@@ -80,12 +77,9 @@ __all__ = [
     "ROCAUCMetric",
     "ConfusionMatrixResponse",
     "APMetric",
-    "APRequest",
     "CreateAPMetricsResponse",
     "APMetricAveragedOverIOUs",
-    "ClfMetricsRequest",
     "CreateClfMetricsResponse",
-    "SemanticSegmentationMetricsRequest",
     "CreateSemanticSegmentationMetricsResponse",
     "Job",
     "GeoJSON",
@@ -93,4 +87,6 @@ __all__ = [
     "mAPMetricAveragedOverIOUs",
     "ConfusionMatrixEntry",
     "Stateflow",
+    "EvaluationSettings",
+    "DetectionParameters",
 ]

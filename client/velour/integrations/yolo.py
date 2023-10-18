@@ -149,7 +149,7 @@ def parse_yolo_image_segmentation(
         datum=image.to_datum(),
         annotations=[
             Annotation(
-                task_type=enums.TaskType.INSTANCE_SEGMENTATION,
+                task_type=enums.TaskType.DETECTION,
                 labels=[scored_label],
                 raster=Raster.from_numpy(mask),
             )

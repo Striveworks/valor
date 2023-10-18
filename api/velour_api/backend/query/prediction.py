@@ -54,9 +54,9 @@ def get_prediction(
         datum=schemas.Datum(
             uid=datum.uid,
             dataset=dataset.name,
-            metadata=core.get_metadata(db, datum=datum),
+            metadata=core.serialize_meta(datum.meta),
         ),
-        annotations=core.get_scored_annotations(db, model=model, datum=datum),
+        annotations=core.get_annotations(db, datum=datum, model=model),
     )
 
 

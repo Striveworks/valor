@@ -154,6 +154,7 @@ class DatasetState(BaseModel):
 
 class Stateflow(BaseModel):
     datasets: dict[str, DatasetState] = Field(default_factory=dict)
+    key_to_values: dict[int, list[str]] = Field(default_factory=dict)
 
     """ DATASET """
 
@@ -184,6 +185,10 @@ class Stateflow(BaseModel):
     def remove_dataset(self, dataset_name: str):
         if dataset_name not in self.datasets:
             raise DatasetDoesNotExistError(dataset_name)
+        # remove inferences
+        for model_name in self.datasets[dataset_name].models:
+            self.remove_inference(dataset_name, model_name)
+        # delete dataset
         del self.datasets[dataset_name]
 
     """ MODEL """
@@ -196,11 +201,13 @@ class Stateflow(BaseModel):
                 )
 
     def remove_model(self, model_name: str):
-        for dataset_name in self.datasets:
-            if model_name in self.datasets[dataset_name].models:
-                self.datasets[dataset_name].remove_inference(
-                    dataset_name, model_name
-                )
+        for dataset_name, dataset in self.datasets.items():
+            if model_name in dataset.models:
+                # purge key_to_values
+                for job_id in dataset.models[model_name].jobs:
+                    del self.key_to_values[job_id]
+                # remove inference
+                dataset.remove_inference(dataset_name, model_name)
 
     """ INFERENCE """
 
@@ -250,6 +257,10 @@ class Stateflow(BaseModel):
     def remove_inference(self, dataset_name: str, model_name: str):
         if dataset_name not in self.datasets:
             raise DatasetDoesNotExistError(dataset_name)
+        # purge key_to_values
+        for job_id in self.datasets[dataset_name].models[model_name].jobs:
+            del self.key_to_values[job_id]
+        # remove inference
         self.datasets[dataset_name].remove_inference(dataset_name, model_name)
 
     """ JOBS """
@@ -268,17 +279,16 @@ class Stateflow(BaseModel):
         self.datasets[dataset_name].models[model_name].set_job_status(
             job_id, status
         )
+        if job_id not in self.key_to_values:
+            self.key_to_values[job_id] = [dataset_name, model_name]
 
     def get_job_status(
         self,
-        dataset_name: str,
-        model_name: str,
         job_id: int,
-    ):
-        if dataset_name not in self.datasets:
-            raise DatasetDoesNotExistError(dataset_name)
-        elif model_name not in self.datasets[dataset_name].models:
-            raise ModelDoesNotExistError(model_name)
+    ) -> JobStatus | None:
+        if job_id not in self.key_to_values:
+            return None
+        dataset_name, model_name = self.key_to_values[job_id]
         return (
             self.datasets[dataset_name]
             .models[model_name]

@@ -14,7 +14,7 @@ from velour.schemas import (
     Datum,
     GroundTruth,
     Label,
-    MetaDatum,
+    Metadatum,
     Point,
     Polygon,
 )
@@ -134,7 +134,7 @@ def _parse_annotation(dataset_version, annotation: dict):
 
     # Image Segmentation
     if dataset_version.supported_task_types.image_segmentation:
-        task_types.append(enums.TaskType.SEMANTIC_SEGMENTATION)
+        task_types.append(enums.TaskType.SEGMENTATION)
         if "contours" in annotation:
             polygon = Polygon(
                 boundary=BasicPolygon(
@@ -195,7 +195,7 @@ def _parse_groundtruth_from_evaluation_manifest(
     return GroundTruth(
         datum=Datum(
             uid=manifest_datum["datum_id"],
-            metadata=[MetaDatum(key="path", value=manifest_datum["path"])],
+            metadata=[Metadatum(key="path", value=manifest_datum["path"])],
         ),
         annotations=[
             _parse_annotation(dataset_version, annotation)

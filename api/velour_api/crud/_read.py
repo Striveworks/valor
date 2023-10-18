@@ -4,12 +4,8 @@ from velour_api import backend, enums, schemas
 from velour_api.backend import jobs
 
 
-def get_evaluation_status(
-    *, dataset_name: str, model_name: str, job_id: int
-) -> enums.JobStatus:
+def get_evaluation_status(job_id: int) -> enums.JobStatus:
     return jobs.get_stateflow().get_job_status(
-        dataset_name=dataset_name,
-        model_name=model_name,
         job_id=job_id,
     )
 
@@ -46,14 +42,6 @@ def get_labels(
 ) -> list[schemas.Label]:
     """Retrieves all existing labels that meet the filter request."""
     return backend.get_labels(db, request)
-
-
-def get_label_distribution(
-    *,
-    db: Session,
-    request: schemas.Filter,
-) -> list[schemas.LabelDistribution]:
-    return []
 
 
 def get_joint_labels(
@@ -212,32 +200,28 @@ def get_predictions(
 """ Evaluation """
 
 
-def get_metrics_from_evaluation_settings_id(
-    *, db: Session, evaluation_settings_id: int
+def get_metrics_from_evaluation_id(
+    *, db: Session, evaluation_id: int
 ) -> list[schemas.Metric]:
-    return backend.get_metrics_from_evaluation_settings_id(
-        db, evaluation_settings_id
-    )
+    return backend.get_metrics_from_evaluation_id(db, evaluation_id)
 
 
-def get_confusion_matrices_from_evaluation_settings_id(
-    *, db: Session, evaluation_settings_id: int
+def get_confusion_matrices_from_evaluation_id(
+    *, db: Session, evaluation_id: int
 ) -> list[schemas.ConfusionMatrix]:
-    return backend.get_confusion_matrices_from_evaluation_settings_id(
-        db, evaluation_settings_id
-    )
+    return backend.get_confusion_matrices_from_evaluation_id(db, evaluation_id)
 
 
 def get_evaluation_settings_from_id(
-    *, db: Session, evaluation_settings_id: int
+    *, db: Session, evaluation_id: int
 ) -> schemas.EvaluationSettings:
-    return backend.get_evaluation_settings_from_id(db, evaluation_settings_id)
+    return backend.get_evaluation_settings_from_id(db, evaluation_id)
 
 
 def get_model_metrics(
-    *, db: Session, model_name: str, evaluation_settings_id: int
+    *, db: Session, model_name: str, evaluation_id: int
 ) -> list[schemas.Metric]:
-    return backend.get_model_metrics(db, model_name, evaluation_settings_id)
+    return backend.get_model_metrics(db, model_name, evaluation_id)
 
 
 def get_model_evaluation_settings(

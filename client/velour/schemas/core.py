@@ -1,8 +1,8 @@
 import math
 from dataclasses import dataclass, field
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
-from velour import enums
+from velour.enums import AnnotationType, DataType, TaskType
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import GeoJSON
 
@@ -15,16 +15,16 @@ def _validate_href(v: str):
 
 
 @dataclass
-class MetaDatum:
+class Metadatum:
     key: str
     value: Union[float, str, GeoJSON]
 
     def __post_init__(self):
-        if isinstance(self.value, int):
-            self.value = float(self.value)
         if not isinstance(self.key, str):
             raise TypeError("Name parameter should always be of type string.")
-        if (
+        if isinstance(self.value, int):
+            self.value = float(self.value)
+        elif (
             not isinstance(self.value, float)
             and not isinstance(self.value, str)
             and not isinstance(self.value, GeoJSON)
@@ -40,7 +40,7 @@ class MetaDatum:
 class Dataset:
     name: str
     id: int = None
-    metadata: List[MetaDatum] = field(default_factory=list)
+    metadata: List[Metadatum] = field(default_factory=list)
 
     def __post_init__(self):
         if not isinstance(self.name, str):
@@ -51,10 +51,10 @@ class Dataset:
             raise TypeError("metadata should be of type `list`")
         for i in range(len(self.metadata)):
             if isinstance(self.metadata[i], dict):
-                self.metadata[i] = MetaDatum(**self.metadata[i])
-            if not isinstance(self.metadata[i], MetaDatum):
+                self.metadata[i] = Metadatum(**self.metadata[i])
+            if not isinstance(self.metadata[i], Metadatum):
                 raise TypeError(
-                    "elements of metadata should be of type `velour.schemas.MetaDatum`"
+                    "elements of metadata should be of type `velour.schemas.Metadatum`"
                 )
 
 
@@ -62,7 +62,7 @@ class Dataset:
 class Model:
     name: str
     id: int = None
-    metadata: List[MetaDatum] = field(default_factory=list)
+    metadata: List[Metadatum] = field(default_factory=list)
 
     def __post_init__(self):
         if not isinstance(self.name, str):
@@ -73,24 +73,24 @@ class Model:
             raise TypeError("metadata should be of type `list`")
         for i in range(len(self.metadata)):
             if isinstance(self.metadata[i], dict):
-                self.metadata[i] = MetaDatum(**self.metadata[i])
-            if not isinstance(self.metadata[i], MetaDatum):
+                self.metadata[i] = Metadatum(**self.metadata[i])
+            if not isinstance(self.metadata[i], Metadatum):
                 raise TypeError(
-                    "elements should be of type `velour.schemas.MetaDatum`"
+                    "elements should be of type `velour.schemas.Metadatum`"
                 )
 
 
 @dataclass
 class Info:
-    type: enums.DataType = None
-    annotation_types: List[enums.AnnotationType] = field(default_factory=list)
+    type: DataType = None
+    annotation_types: List[AnnotationType] = field(default_factory=list)
     associated_datasets: List[str] = field(default_factory=list)
 
 
 @dataclass
 class Datum:
     uid: str
-    metadata: List[MetaDatum] = field(default_factory=list)
+    metadata: List[Metadatum] = field(default_factory=list)
     dataset: str = field(default="")
 
     def __post_init__(self):
@@ -102,10 +102,10 @@ class Datum:
             raise TypeError("metadata should be of type `list`")
         for i in range(len(self.metadata)):
             if isinstance(self.metadata[i], dict):
-                self.metadata[i] = MetaDatum(**self.metadata[i])
-            if not isinstance(self.metadata[i], MetaDatum):
+                self.metadata[i] = Metadatum(**self.metadata[i])
+            if not isinstance(self.metadata[i], Metadatum):
                 raise TypeError(
-                    "element of metadata should be of type `velour.schemas.MetaDatum`"
+                    "element of metadata should be of type `velour.schemas.Metadatum`"
                 )
 
 
@@ -156,9 +156,9 @@ class Label:
 
 @dataclass
 class Annotation:
-    task_type: enums.TaskType
+    task_type: TaskType
     labels: List[Label] = field(default_factory=list)
-    metadata: List[MetaDatum] = field(default_factory=list)
+    metadata: List[Metadatum] = field(default_factory=list)
 
     # geometric types
     bounding_box: BoundingBox = None
@@ -166,10 +166,13 @@ class Annotation:
     multipolygon: MultiPolygon = None
     raster: Raster = None
 
+    # @ TODO implement json annotation type
+    jsonb: Dict = None
+
     def __post_init__(self):
         # task_type
-        if not isinstance(self.task_type, enums.TaskType):
-            self.task_type = enums.TaskType(self.task_type)
+        if not isinstance(self.task_type, TaskType):
+            self.task_type = TaskType(self.task_type)
 
         # labels
         if not isinstance(self.labels, list):
@@ -217,10 +220,10 @@ class Annotation:
             raise TypeError("metadata should be of type `list`")
         for i in range(len(self.metadata)):
             if isinstance(self.metadata[i], dict):
-                self.metadata[i] = MetaDatum(**self.metadata[i])
-            if not isinstance(self.metadata[i], MetaDatum):
+                self.metadata[i] = Metadatum(**self.metadata[i])
+            if not isinstance(self.metadata[i], Metadatum):
                 raise TypeError(
-                    "elements of metadata should be of type `velour.schemas.MetaDatum`"
+                    "elements of metadata should be of type `velour.schemas.Metadatum`"
                 )
 
 
@@ -280,9 +283,8 @@ class Prediction:
 
         for annotation in self.annotations:
             if annotation.task_type in [
-                enums.TaskType.CLASSIFICATION,
-                enums.TaskType.DETECTION,
-                enums.TaskType.INSTANCE_SEGMENTATION,
+                TaskType.CLASSIFICATION,
+                TaskType.DETECTION,
             ]:
                 for label in annotation.labels:
                     if label.score is None:
@@ -291,7 +293,7 @@ class Prediction:
                         )
 
         for annotation in self.annotations:
-            if annotation.task_type == enums.TaskType.CLASSIFICATION:
+            if annotation.task_type == TaskType.CLASSIFICATION:
                 label_keys_to_sum = {}
                 for scored_label in annotation.labels:
                     label_key = scored_label.key
