@@ -98,28 +98,6 @@ def _get_existing_labels(
     )
 
 
-def _get_existing_labels(
-    db: Session,
-    labels: schemas.Label,
-) -> models.Label | None:
-    """
-    Fetch labels from postgis that match some list of labels (in terms of both their keys and values).
-    """
-    label_keys, label_values = zip(
-        *[(label.key, label.value) for label in labels]
-    )
-    return (
-        db.query(models.Label)
-        .where(
-            and_(
-                models.Label.key.in_(label_keys),
-                models.Label.value.in_(label_values),
-            )
-        )
-        .all()
-    )
-
-
 def get_scored_labels(
     db: Session,
     annotation: models.Annotation,
