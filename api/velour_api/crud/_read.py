@@ -39,13 +39,13 @@ def get_model_evaluations(model_name: str):
 """ Labels """
 
 
-def get_labels_for_annotation(
+def get_labels(
     *,
     db: Session,
     request: schemas.Filter = None,
 ) -> list[schemas.Label]:
     """Retrieves all existing labels that meet the filter request."""
-    return backend.get_labels_for_annotation(db, request)
+    return backend.get_labels(db, request)
 
 
 def get_label_distribution(

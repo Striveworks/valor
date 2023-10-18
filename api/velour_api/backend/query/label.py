@@ -6,7 +6,7 @@ from velour_api.backend import models, ops
 from velour_api.backend.core.label import get_dataset_labels_query
 
 
-def get_labels_for_annotation(
+def get_labels(
     db: Session,
     request_info: schemas.Filter | None,
 ) -> list[schemas.Label]:
