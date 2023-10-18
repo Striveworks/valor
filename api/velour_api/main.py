@@ -154,7 +154,7 @@ def get_prediction(
     tags=["Labels"],
 )
 def get_all_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
-    return crud.get_labels_for_annotation(db=db)
+    return crud.get_labels(db=db)
 
 
 @app.get(
@@ -167,7 +167,7 @@ def get_labels_from_dataset(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
     try:
-        return crud.get_labels_for_annotation(
+        return crud.get_labels(
             db=db,
             request=schemas.Filter(
                 datasets=[dataset_name],
@@ -188,7 +188,7 @@ def get_labels_from_model(
     model_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
     try:
-        return crud.get_labels_for_annotation(
+        return crud.get_labels(
             db=db,
             request=schemas.Filter(
                 models=[model_name],
