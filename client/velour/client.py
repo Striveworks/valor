@@ -106,7 +106,7 @@ class Client:
     def get_models(self) -> List[dict]:
         return self._requests_get_rel_host("models").json()
 
-    def get_labels(self) -> List[schemas.Label]:
+    def get_labels_for_annotation(self) -> List[schemas.Label]:
         return self._requests_get_rel_host("labels").json()
 
     def delete_dataset(self, name: str, timeout: int = 0) -> None:
@@ -321,7 +321,7 @@ class Dataset:
         ).json()
         return schemas.GroundTruth(**resp)
 
-    def get_labels(self) -> List[schemas.LabelDistribution]:
+    def get_labels_for_annotation(self) -> List[schemas.LabelDistribution]:
         labels = self.client._requests_get_rel_host(
             f"labels/dataset/{self.name}"
         ).json()
@@ -637,7 +637,7 @@ class Model:
 
         return ret
 
-    def get_labels(self) -> List[schemas.Label]:
+    def get_labels_for_annotation(self) -> List[schemas.Label]:
         labels = self.client._requests_get_rel_host(
             f"labels/model/{self.name}"
         ).json()

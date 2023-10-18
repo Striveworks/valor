@@ -1436,7 +1436,7 @@ def test_get_all_labels(db: Session, gt_dets_create: schemas.GroundTruth):
     for gt in gt_dets_create:
         crud.create_groundtruth(db=db, groundtruth=gt)
 
-    labels = crud.get_labels(db=db, request=schemas.Filter())
+    labels = crud.get_labels_for_annotation(db=db, request=schemas.Filter())
 
     assert len(labels) == 2
     assert set([(label.key, label.value) for label in labels]) == set(
@@ -1450,7 +1450,7 @@ def test_get_labels_from_dataset(
     dataset_model_create,
 ):
     # Test get all from dataset 1
-    ds1 = crud.get_labels(
+    ds1 = crud.get_labels_for_annotation(
         db=db,
         request=schemas.Filter(
             datasets=[dataset_names[0]],
@@ -1462,7 +1462,7 @@ def test_get_labels_from_dataset(
     assert schemas.Label(key="k2", value="v2") in ds1
 
     # NEGTAIVE - Test filter by task type
-    ds1 = crud.get_labels(
+    ds1 = crud.get_labels_for_annotation(
         db=db,
         request=schemas.Filter(
             datasets=[dataset_names[0]],
@@ -1477,7 +1477,7 @@ def test_get_labels_from_dataset(
     assert ds1 == []
 
     # POSITIVE - Test filter by task type
-    ds1 = crud.get_labels(
+    ds1 = crud.get_labels_for_annotation(
         db=db,
         request=schemas.Filter(
             datasets=[dataset_names[0]],
@@ -1490,7 +1490,7 @@ def test_get_labels_from_dataset(
     assert schemas.Label(key="k2", value="v2") in ds1
 
     # NEGATIVE - Test filter by annotation type
-    ds1 = crud.get_labels(
+    ds1 = crud.get_labels_for_annotation(
         db=db,
         request=schemas.Filter(
             datasets=[dataset_names[0]],
@@ -1505,7 +1505,7 @@ def test_get_labels_from_dataset(
     assert ds1 == []
 
     # POSITIVE - Test filter by annotation type
-    ds1 = crud.get_labels(
+    ds1 = crud.get_labels_for_annotation(
         db=db,
         request=schemas.Filter(
             datasets=[dataset_names[0]],
@@ -1524,7 +1524,7 @@ def test_get_labels_from_model(
     dataset_model_create,
 ):
     # Test get all labels from model 1
-    md1 = crud.get_labels(
+    md1 = crud.get_labels_for_annotation(
         db=db,
         request=schemas.Filter(
             models=[model_names[0]],
@@ -1538,7 +1538,7 @@ def test_get_labels_from_model(
     assert schemas.Label(key="k2", value="v2") in md1
 
     # Test get all but polygon labels from model 1
-    md1 = crud.get_labels(
+    md1 = crud.get_labels_for_annotation(
         db=db,
         request=schemas.Filter(
             models=[model_names[0]],
@@ -1549,7 +1549,7 @@ def test_get_labels_from_model(
     assert md1 == []
 
     # Test get only polygon labels from model 1
-    md1 = crud.get_labels(
+    md1 = crud.get_labels_for_annotation(
         db=db,
         request=schemas.Filter(
             models=[model_names[0]],
