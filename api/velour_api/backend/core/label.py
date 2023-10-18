@@ -1,4 +1,4 @@
-from sqlalchemy import Select, and_, or_, select
+from sqlalchemy import Select, and_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -74,46 +74,6 @@ def get_label(
         )
         .one_or_none()
     )
-
-
-def get_labels_for_annotation(
-    db: Session,
-    annotation: models.Annotation,
-) -> list[models.Label]:
-    """
-    Get a list of labels that exist for a particular annotation
-
-    Parameters
-    -------
-    db
-        The database session you want to query against
-    annotation
-        The annotation you want to get labels for
-    """
-    labels = (
-        db.query(models.Label.key, models.Label.value)
-        .select_from(models.Annotation)
-        .join(
-            models.Prediction,
-            models.Prediction.annotation_id == annotation.id,
-            full=True,
-        )
-        .join(
-            models.GroundTruth,
-            models.GroundTruth.annotation_id == annotation.id,
-            full=True,
-        )
-        .join(
-            models.Label,
-            or_(
-                models.GroundTruth.label_id == models.Label.id,
-                models.Prediction.label_id == models.Label.id,
-            ),
-        )
-        .all()
-    )
-
-    return [schemas.Label(key=label[0], value=label[1]) for label in labels]
 
 
 def _get_existing_labels(

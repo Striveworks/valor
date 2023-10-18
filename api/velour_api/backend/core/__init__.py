@@ -9,12 +9,7 @@ from .annotation import (
 )
 from .dataset import create_datum, get_dataset, get_datum
 from .geometry import convert_geometry
-from .label import (
-    create_labels,
-    get_label,
-    get_labels_for_annotation,
-    get_scored_labels,
-)
+from .label import create_labels, get_label, get_scored_labels
 from .metadata import (
     create_metadata,
     create_metadatum,
@@ -41,7 +36,6 @@ __all__ = [
     "get_metadata",
     "create_labels",
     "get_label",
-    "get_labels_for_annotation",
     "get_scored_labels",
     "convert_geometry",
 ]
