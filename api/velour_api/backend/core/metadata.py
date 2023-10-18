@@ -18,7 +18,6 @@ def create_metadatum(
     model: models.Model = None,
     datum: models.Datum = None,
     annotation: models.Annotation = None,
-    commit: bool = True,
 ) -> models.MetaDatum:
     if not (dataset or model or datum or annotation):
         raise ValueError("Need some target to attach metadatum to.")
@@ -49,13 +48,6 @@ def create_metadatum(
         )
 
     row = models.MetaDatum(**mapping)
-    if commit:
-        try:
-            db.add(row)
-            db.commit()
-        except IntegrityError:
-            db.rollback()
-            raise exceptions.MetaDatumAlreadyExistsError
     return row
 
 
@@ -77,7 +69,6 @@ def create_metadata(
             model=model,
             datum=datum,
             annotation=annotation,
-            commit=False,
         )
         for metadatum in metadata
     ]
@@ -114,7 +105,6 @@ def create_metadata_for_multiple_annotations(
                     model=model,
                     datum=datum,
                     annotation=annotation,
-                    commit=False,
                 )
             )
 
