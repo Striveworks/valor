@@ -11,17 +11,17 @@ def create_model(
     model: schemas.Model,
 ):
     # Create model
-    row = models.Model(name=model.name)
+    row = models.Model(
+        name=model.name,
+        meta=core.deserialize_meta(model.metadata),
+    )
     try:
         db.add(row)
         db.commit()
+        return row
     except IntegrityError:
         db.rollback()
         raise exceptions.ModelAlreadyExistsError(model.name)
-
-    # Create metadata
-    core.create_metadata(db, model.metadata, model=row)
-    return row
 
 
 def get_model(
@@ -29,8 +29,11 @@ def get_model(
     name: str,
 ) -> schemas.Model:
     model = core.get_model(db, name=name)
-    metadata = core.get_metadata(db, model=model)
-    return schemas.Model(id=model.id, name=model.name, metadata=metadata)
+    return schemas.Model(
+        id=model.id,
+        name=model.name,
+        metadata=core.serialize_meta(model.meta),
+    )
 
 
 def get_models(

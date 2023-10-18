@@ -98,8 +98,8 @@ def combined_segmentation_mask(
 
     # Validate task type
     if task_type is not None and task_type not in [
-        enums.TaskType.INSTANCE_SEGMENTATION,
-        enums.TaskType.SEMANTIC_SEGMENTATION,
+        enums.TaskType.DETECTION,
+        enums.TaskType.SEGMENTATION,
     ]:
         raise RuntimeError(
             "Expected either Instance or Semantic segmentation task_type."
@@ -108,8 +108,8 @@ def combined_segmentation_mask(
     # Create valid task type list
     if task_type is None:
         task_types = [
-            enums.TaskType.INSTANCE_SEGMENTATION,
-            enums.TaskType.SEMANTIC_SEGMENTATION,
+            enums.TaskType.DETECTION,
+            enums.TaskType.SEGMENTATION,
         ]
     else:
         task_types = [task_type]
@@ -123,16 +123,13 @@ def combined_segmentation_mask(
 
     label_values = []
     for annotation in annotations:
-        found_label = False
         for label in annotation.labels:
             if label.key == label_key:
-                found_label = True
                 label_values.append(label.value)
-        if not found_label:
-            raise RuntimeError(
-                "Found a segmentation that doesn't have a label with key 'label_key'."
-                f" Available label keys are: {[label.key for label in annotation.labels]}"
-            )
+    if not label_values:
+        raise RuntimeError(
+            "Annoation doesn't have a label with key `{label.key}`"
+        )
 
     unique_label_values = list(set(label_values))
     label_value_to_color = {

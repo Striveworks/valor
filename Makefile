@@ -14,7 +14,7 @@ start-postgis-docker:
 	docker run -p 5432:5432 -e POSTGRES_PASSWORD=password -d postgis/postgis
 
 start-redis-docker:
-	docker run -p 6379:6379 -d redis
+	docker run -p 6379:6379 -e ALLOW_EMPTY_PASSWORD=yes -d public.ecr.aws/bitnami/redis:7.0
 
 functional-tests:
 	POSTGRES_PASSWORD=password POSTGRES_HOST=localhost pytest -v ./api/tests/functional-tests

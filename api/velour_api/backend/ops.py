@@ -496,11 +496,11 @@ class Query:
 #     .filter_by_label_key("k4")
 #     .filter_by_metadata(
 #         [
-#             schemas.MetaDatum(name="n1", value=0.5),
-#             schemas.MetaDatum(name="n2", value=0.1),
+#             schemas.Metadatum(name="n1", value=0.5),
+#             schemas.Metadatum(name="n2", value=0.1),
 #         ]
 #     )
-#     .filter_by_metadatum(schemas.MetaDatum(name="n3", value="v1"))
+#     .filter_by_metadatum(schemas.Metadatum(name="n3", value="v1"))
 #     .filter_by_metadatum_name("n4")
 #     .filter_by_task_type(enums.TaskType.CLASSIFICATION)
 #     .query(db)

@@ -1,0 +1,115 @@
+name: Run stress tests manually via the GitHub Actions UI
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_ROLE: arn:aws:iam::724664234782:role/Striveworks-Role-github_runner_npe
+  AWS_REGION: us-east-1
+
+jobs:
+  # this job is necessary to set up docker auth for the service containers for the
+  # backend functional test
+  login-to-amazon-ecr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: "false"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: "false"
+    outputs:
+      docker_username: ${{ steps.login-ecr.outputs.docker_username_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
+      docker_password: ${{ steps.login-ecr.outputs.docker_password_724664234782_dkr_ecr_us_east_1_amazonaws_com }}
+
+  integration-stress-tests:
+    env:
+      COVERAGE_FILE: .coverage.integration-stress-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: "false"
+      - uses: aws-actions/amazon-ecr-login@v1
+        id: login-ecr
+      - name: login to ECR
+        run: aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login -u AWS --password-stdin 724664234782.dkr.ecr.us-east-1.amazonaws.com
+      - name: setup backend test env
+        run: docker compose -p velour -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: install api
+        run: pip install -e ".[test]"
+        working-directory: ./api
+      - name: install client
+        run: pip install -e ".[test]"
+        working-directory: ./client
+      - run: coverage run --source="api/velour_api,client/velour" -m pytest -v integration_tests/stress_test_data_generation.py
+      - run: coverage report
+      - name: upload coverage report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.COVERAGE_FILE }}
+          path: ${{ env.COVERAGE_FILE }}
+      - run: make stop-env
+      - run: docker compose -p velour -f docker-compose.yml -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
+        env:
+          AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
+          AUTH0_AUDIENCE: ${{ vars.AUTH0_AUDIENCE }}
+          AUTH0_ALGORITHMS: ${{ vars.AUTH0_ALGORITHMS }}
+      - name: sleep to give backend time to spin up
+        run: sleep 15
+      - name: test auth
+        run: pytest -v integration_tests/test_client_auth.py
+        env:
+          AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
+          AUTH0_AUDIENCE: ${{ vars.AUTH0_AUDIENCE }}
+          AUTH0_CLIENT_ID: ${{ vars.AUTH0_CLIENT_ID }}
+          AUTH0_CLIENT_SECRET: ${{ vars.AUTH0_CLIENT_SECRET }}
+
+  combine-coverage-report:
+    needs: [integration-stress-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - run: pip install coverage
+      - uses: actions/download-artifact@v3
+        with:
+          name: .coverage.integration-stress-tests
+      - run: coverage combine
+      - run: coverage report
+      # https://nedbatchelder.com/blog/202209/making_a_coverage_badge.html
+      - run: |
+          coverage json
+          export TOTAL=$(python -c "import json;print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "total=$TOTAL" >> $GITHUB_ENV
+      - name: "Make badge"
+        if: github.ref == 'refs/heads/main'
+        uses: schneegans/dynamic-badges-action@v1.4.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 501428c92df8d0de6805f40fb78b1363
+          filename: velour-coverage.json
+          label: Coverage
+          message: ${{ env.total }}%
+          minColorRange: 50
+          maxColorRange: 90
+          valColorRange: ${{ env.total }}

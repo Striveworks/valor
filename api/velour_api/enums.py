@@ -6,7 +6,7 @@ class DataType(str, Enum):
     TABULAR = "tabular"
 
 
-class AnnotationType(Enum):
+class AnnotationType(str, Enum):
     NONE = "none"
     BOX = "box"
     POLYGON = "polygon"
@@ -65,9 +65,8 @@ class AnnotationType(Enum):
 
 class TaskType(str, Enum):
     CLASSIFICATION = "classification"
-    DETECTION = "detection"
-    INSTANCE_SEGMENTATION = "instance_segmentation"
-    SEMANTIC_SEGMENTATION = "semantic_segmentation"
+    DETECTION = "object-detection"
+    SEGMENTATION = "semantic-segmentation"
 
 
 class JobStatus(Enum):
@@ -109,14 +108,3 @@ class State(str, Enum):
             return {self.DELETE}
         else:
             raise ValueError
-
-
-class Table(str, Enum):
-    DATASET = "dataset"
-    MODEL = "model"
-    DATUM = "datum"
-    ANNOTATION = "annotation"
-    GROUND_TRUTH = "groundtruth"
-    PREDICTION = "prediction"
-    LABEL = "label"
-    METADATA = "metadatum"
