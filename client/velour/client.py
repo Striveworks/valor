@@ -180,7 +180,7 @@ class Evaluation:
         self.model = model
 
         settings = self._client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset}/model/{self.model}/settings"
+            f"evaluations/{self._id}/settings"
         ).json()
         self._settings = schemas.EvaluationSettings(**settings)
 
@@ -204,7 +204,7 @@ class Evaluation:
         self,
     ) -> str:
         resp = self._client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset}/model/{self.model}"
+            f"evaluations/{self._id}"
         ).json()
         return JobStatus(resp)
 
@@ -239,7 +239,7 @@ class Evaluation:
         if self.status != JobStatus.DONE:
             return []
         return self._client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset}/model/{self.model}/metrics"
+            f"evaluations/{self._id}/metrics"
         ).json()
 
     @property
@@ -249,7 +249,7 @@ class Evaluation:
         if self.status != JobStatus.DONE:
             return []
         return self._client._requests_get_rel_host(
-            f"evaluations/{self._id}/dataset/{self.dataset}/model/{self.model}/confusion-matrices"
+            f"evaluations/{self._id}/confusion-matrices"
         ).json()
 
     def wait_for_completion(self, *, interval=1.0, timeout=None):

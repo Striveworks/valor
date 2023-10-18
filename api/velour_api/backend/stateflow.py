@@ -48,12 +48,7 @@ def _update_job_state(
 ):
     # retrieve from redis
     stateflow = get_stateflow()
-
-    # check if job has already completed (if it exists)
-    if (
-        stateflow.get_job_status(dataset_name, model_name, job_id)
-        == JobStatus.DONE
-    ):
+    if stateflow.get_job_status(job_id) == JobStatus.DONE:
         return
 
     # update stateflow object
@@ -230,11 +225,7 @@ def computation(fn: callable) -> callable:
         else:
             raise ValueError("missing job_id")
 
-        # check if job has already successfully ran
-        if (
-            get_stateflow().get_job_status(dataset_name, model_name, job_id)
-            == JobStatus.DONE
-        ):
+        if get_stateflow().get_job_status(job_id) == JobStatus.DONE:
             _update_backend_state(
                 status=State.READY,
                 dataset_name=dataset_name,
