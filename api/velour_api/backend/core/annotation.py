@@ -29,7 +29,10 @@ def _get_annotation_mapping(
     annotation: schemas.Annotation,
     datum: models.Datum,
     model: models.Model = None,
-) -> models.Annotation:
+) -> dict:
+    """
+    Return a mapping dict that can be used to create an Annotation
+    """
     box = None
     polygon = None
     raster = None
@@ -61,6 +64,18 @@ def create_annotations_and_labels(
     datum: models.Datum,
     model: models.Model = None,
 ) -> list[models.Annotation]:
+    """
+    Create a list of annotations and associated labels in postgis
+
+    Parameters
+    ----------
+    db
+        The database Session you want to query against.
+    datum
+        The datum you want to query against.
+    model
+        The model you want to query against.
+    """
     annotation_list = []
     label_list = []
     metadata_list = []
@@ -199,6 +214,16 @@ def get_annotations(
     db: Session,
     datum: models.Datum,
 ) -> list[schemas.Annotation]:
+    """
+    Query postgis to get all annotations for a particular datum
+
+    Parameters
+    -------
+    db
+        The database session to query against.
+    datum
+        The datum you want to fetch annotations for
+    """
     return [
         get_annotation(db, annotation=annotation, datum=datum)
         for annotation in (

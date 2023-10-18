@@ -84,12 +84,29 @@ def create_metadata(
 def create_metadata_for_multiple_annotations(
     db: Session,
     metadata: list[schemas.MetaDatum],
-    annotations: list[models.Annotation] = None,
+    annotations: list[models.Annotation],
     dataset: models.Dataset = None,
     model: models.Model = None,
     datum: models.Datum = None,
 ) -> list[models.MetaDatum]:
-    """Post metadata for multiple annotations at once"""
+    """
+    Add metadata for multiple annotations to postgis
+
+    Parameters
+    -------
+    db
+        The database session to query against.
+    metadata
+        The list of metadata you want to upload.
+    annotations
+        The list of annotations you want to create metadata for.
+    dataset
+        (Optional) The dataset you want to query against.
+    model
+        (Optional) The model you want to query against.
+    datum
+        (Optional) The datum you want to query against.
+    """
     if not metadata:
         return None
 

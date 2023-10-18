@@ -11,14 +11,19 @@ def create_labels(
     labels: list[schemas.Label],
 ) -> list[models.Label]:
     """
-    Add a a list of labels to postgis
+    Add a list of labels to postgis, checking first to make sure that the labels don't already exist.
+
+    Parameters
+    -------
+    labels
+        A list of labels that you want to add to postgis
     """
     replace_val = "to_be_replaced"
 
     # get existing labels
     existing_labels = {
         (label.key, label.value): label
-        for label in get_existing_labels(db=db, labels=labels)
+        for label in _get_existing_labels(db=db, labels=labels)
     }
 
     output = []
@@ -72,7 +77,17 @@ def get_label(
 def get_labels_for_annotation(
     db: Session,
     annotation: models.Annotation,
-):
+) -> list[models.Label]:
+    """
+    Get a list of labels that exist for a particular annotation
+
+    Parameters
+    -------
+    db
+        The database session you want to query against
+    annotation
+        The annotation you want to get labels for
+    """
     labels = (
         db.query(models.Label.key, models.Label.value)
         .select_from(models.Annotation)
@@ -99,10 +114,13 @@ def get_labels_for_annotation(
     return [schemas.Label(key=label[0], value=label[1]) for label in labels]
 
 
-def get_existing_labels(
+def _get_existing_labels(
     db: Session,
     labels: schemas.Label,
 ) -> models.Label | None:
+    """
+    Fetch labels from postgis that match some list of labels (in terms of both their keys and values).
+    """
     label_keys, label_values = zip(
         *[(label.key, label.value) for label in labels]
     )
