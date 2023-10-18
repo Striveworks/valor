@@ -40,19 +40,21 @@ def create_labels(
     }
 
     output = []
-    to_be_added = []
+    labels_to_be_added_to_db = []
 
     for label in labels:
         lookup = (label.key, label.value)
         if lookup in existing_labels:
             output.append(existing_labels[lookup])
         else:
-            to_be_added.append(models.Label(key=label.key, value=label.value))
+            labels_to_be_added_to_db.append(
+                models.Label(key=label.key, value=label.value)
+            )
             output.append(replace_val)
 
     # upload the labels that were missing
     try:
-        db.add_all(to_be_added)
+        db.add_all(labels_to_be_added_to_db)
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -61,10 +63,10 @@ def create_labels(
     # move those fetched labels into output in the correct order
     for i in range(len(output)):
         if output[i] == replace_val:
-            output[i] = to_be_added.pop(0)
+            output[i] = labels_to_be_added_to_db.pop(0)
 
     assert (
-        not to_be_added
+        not labels_to_be_added_to_db
     ), "Error when merging existing labels with new labels"
 
     return output
