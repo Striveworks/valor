@@ -6,31 +6,13 @@ from velour_api import enums, schemas
 from velour_api.backend import models
 
 
-def create_label(
-    db: Session,
-    label: schemas.Label,
-) -> models.Label:
-    """Create label always commits a new label as it operates as a Many-To-One mapping."""
-
-    # Get label if it already exists
-    if row := get_label(db, label):
-        return row
-
-    # Otherwise, create new label
-    row = models.Label(key=label.key, value=label.value)
-    try:
-        db.add(row)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise RuntimeError  # this should never be called
-    return row
-
-
 def create_labels(
     db: Session,
     labels: list[schemas.Label],
 ) -> list[models.Label]:
+    """
+    Add a a list of labels to postgis
+    """
     replace_val = "to_be_replaced"
 
     # get existing labels
