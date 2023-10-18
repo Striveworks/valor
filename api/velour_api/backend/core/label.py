@@ -18,7 +18,7 @@ def create_labels(
     # get existing labels
     existing_labels = {
         (label.key, label.value): label
-        for label in get_labels_for_creation(db=db, labels=labels)
+        for label in get_existing_labels(db=db, labels=labels)
     }
 
     output = []
@@ -69,7 +69,7 @@ def get_label(
     )
 
 
-def get_labels(
+def get_labels_for_annotation(
     db: Session,
     annotation: models.Annotation,
 ):
@@ -99,7 +99,7 @@ def get_labels(
     return [schemas.Label(key=label[0], value=label[1]) for label in labels]
 
 
-def get_labels_for_creation(
+def get_existing_labels(
     db: Session,
     labels: schemas.Label,
 ) -> models.Label | None:

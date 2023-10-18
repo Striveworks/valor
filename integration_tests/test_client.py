@@ -170,7 +170,7 @@ def db(client: Client) -> Session:
             "Tests should be run on an empty velour backend but found existing models."
         )
 
-    if len(client.get_labels()) > 0:
+    if len(client.get_labels_for_annotation()) > 0:
         raise RuntimeError(
             "Tests should be run on an empty velour backend but found existing labels."
         )
@@ -734,7 +734,7 @@ def _test_create_image_dataset_with_gts(
     assert set([image.uid for image in images]) == expected_image_uids
 
     # check that there are two labels
-    labels = dataset.get_labels()
+    labels = dataset.get_labels_for_annotation()
     assert len(labels) == len(expected_labels_tuples)
     assert (
         set([(label.key, label.value) for label in labels])
