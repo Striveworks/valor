@@ -77,7 +77,7 @@ def get_label(
 def _get_existing_labels(
     db: Session,
     labels: schemas.Label,
-) -> models.Label | None:
+) -> list[models.Label] | None:
     """
     Fetch labels from postgis that match some list of labels (in terms of both their keys and values).
     """
