@@ -1,20 +1,21 @@
-# DISABLING BECAUSE IT IS OVERRWRITING THE HELM REPO
+name: Builds and publishes docs to GitHub pages
 
-# name: Builds and publishes docs to GitHub pages
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - .github/workflows/publish-docs.yml
 
-# on:
-#   push:
-#     branches: [main]
-
-# jobs:
-#   build-and-publish-docs:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v3
-#         with:
-#           fetch-depth: 0
-#       - uses: actions/setup-python@v4
-#         with:
-#           python-version: "3.8"
-#       - run: pip install mkdocs-material
-#       - run: mkdocs gh-deploy
+jobs:
+  build-and-publish-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+      - run: pip install mkdocs-material
+      - run: mkdocs gh-deploy
