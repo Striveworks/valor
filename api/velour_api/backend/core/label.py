@@ -24,6 +24,7 @@ def create_labels(
     output = []
     labels_to_be_added_to_db = []
 
+    # determine which labels already exist
     for label in labels:
         lookup = (label.key, label.value)
         if lookup in existing_labels:
