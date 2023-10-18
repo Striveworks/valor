@@ -79,6 +79,7 @@ def get_label(
 def _get_existing_labels(
     db: Session,
     labels: schemas.Label,
+    annotation: models.Annotation,
 ) -> list[models.Label] | None:
     """
     Fetch labels from postgis that match some list of labels (in terms of both their keys and values).
@@ -93,14 +94,14 @@ def _get_existing_labels(
                 models.Label.key.in_(label_keys),
                 models.Label.value.in_(label_values),
             )
-#     annotation: models.Annotation,
-# ):
-#     labels = (
-#         db.query(models.Label.key, models.Label.value)
-#         .select_from(models.GroundTruth)
-#         .join(
-#             models.Label,
-#             models.GroundTruth.label_id == models.Label.id,
+        )
+        # ):
+        #     labels = (
+        #         db.query(models.Label.key, models.Label.value)
+        #         .select_from(models.GroundTruth)
+        .join(
+            models.Label,
+            models.GroundTruth.label_id == models.Label.id,
         )
         .where(models.GroundTruth.annotation_id == annotation.id)
         .all()
@@ -111,10 +112,10 @@ def get_scored_labels(
     db: Session,
     annotation: models.Annotation,
 ) -> list[schemas.Label]:
-    scored_labels = (
+    labels_with_score = (
         db.query(models.Prediction.score, models.Label.key, models.Label.value)
-#     labels_with_score = (
-#         db.query(models.Label.key, models.Label.value, models.Prediction.score)
+        #     labels_with_score = (
+        #         db.query(models.Label.key, models.Label.value, models.Prediction.score)
         .select_from(models.Prediction)
         .join(
             models.Label,
@@ -124,9 +125,10 @@ def get_scored_labels(
         .all()
     )
 
-    if labels:
+    if labels_with_score:
         return [
-            schemas.Label(key=label[0], value=label[1]) for label in labels
+            schemas.Label(key=label[0], value=label[1])
+            for label in labels_with_score
         ]
     elif labels_with_score:
         return [
@@ -144,7 +146,6 @@ def get_dataset_labels_query(
     annotation_type: enums.AnnotationType,
     task_types: list[enums.TaskType],
 ) -> Select:
-
     annotation_type_expr = (
         [models.annotation_type_to_geometry[annotation_type].is_not(None)]
         if annotation_type is not enums.AnnotationType.NONE

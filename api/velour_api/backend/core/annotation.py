@@ -13,10 +13,9 @@ from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
 from velour_api.backend.core.metadata import (
     create_metadata_for_multiple_annotations,
-    get_metadata,
+    deserialize_meta,
+    serialize_meta,
 )
-from velour_api.backend import models
-from velour_api.backend.core.metadata import deserialize_meta, serialize_meta
 from velour_api.enums import AnnotationType
 
 
@@ -66,7 +65,6 @@ def _get_annotation_mapping(
     }
 
     return mapping
-
 
 
 def create_annotations_and_labels(
@@ -172,79 +170,6 @@ def get_annotation(
         )
     ]
 
-    # Initialize
-#     retval = schemas.Annotation(
-#         task_type=annotation.task_type,
-#         labels=labels,
-#         metadata=get_metadata(db, annotation=annotation),
-#         bounding_box=None,
-#         polygon=None,
-#         multipolygon=None,
-#         raster=None,
-#     )
-
-#     # Bounding Box
-#     if annotation.box is not None:
-#         geojson = db.scalar(ST_AsGeoJSON(annotation.box))
-#         retval.bounding_box = schemas.BoundingBox(
-#             polygon=schemas.GeoJSON.from_json(geojson=geojson)
-#             .shape()
-#             .boundary,
-#             box=None,
-#         )
-
-#     # Polygon
-#     if annotation.polygon is not None:
-#         geojson = (
-#             db.scalar(ST_AsGeoJSON(annotation.polygon))
-#             if annotation.polygon is not None
-#             else None
-#         )
-#         retval.polygon = schemas.GeoJSON.from_json(geojson=geojson).shape()
-
-#     # Raster
-#     if annotation.raster is not None:
-#         height = get_metadata(db, datum=datum, key="height", union_type="and")[
-#             0
-#         ].value
-#         width = get_metadata(db, datum=datum, key="width", union_type="and")[
-#             0
-#         ].value
-#         retval.raster = schemas.Raster(
-#             mask=_raster_to_png_b64(
-#                 db, raster=annotation.raster, height=height, width=width
-#             ),
-#             height=height,
-#             width=width,
-#         )
-
-#     return retval
-
-
-# def get_annotations(
-#     db: Session,
-#     datum: models.Datum,
-# ) -> list[schemas.Annotation]:
-#     """
-#     Query postgis to get all annotations for a particular datum
-
-#     Parameters
-#     -------
-#     db
-#         The database session to query against.
-#     datum
-#         The datum you want to fetch annotations for
-#     """
-#     return [
-#         get_annotation(db, annotation=annotation, datum=datum)
-#         for annotation in (
-#             db.query(models.Annotation)
-            .where(
-                models.GroundTruth.annotation_id == annotation.id,
-            )
-            .all()
-        )
-    ]
     prediction_labels = [
         schemas.Label(key=label[0], value=label[1], score=label[2])
         for label in (
@@ -318,6 +243,16 @@ def get_annotations(
     datum: models.Datum,
     model: models.Model | None = None,
 ) -> list[schemas.Annotation]:
+    """
+    Query postgis to get all annotations for a particular datum
+
+    Parameters
+    -------
+    db
+        The database session to query against.
+    datum
+        The datum you want to fetch annotations for
+    """
     model_expr = (
         models.Annotation.model_id.is_(None)
         if model is None
