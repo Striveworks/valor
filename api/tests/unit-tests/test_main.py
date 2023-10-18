@@ -669,13 +669,13 @@ def test_finalize_datasets(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_dataset_labels(crud, client: TestClient):
-    crud.get_labels.return_value = []
+    crud.get_labels_for_annotation.return_value = []
     resp = client.get("/labels/dataset/dsetname")
     assert resp.status_code == 200
-    crud.get_labels.assert_called_once()
+    crud.get_labels_for_annotation.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_labels",
+        "velour_api.main.crud.get_labels_for_annotation",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("/labels/dataset/dsetname")
@@ -786,10 +786,10 @@ def test_delete_model(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_labels_for_annotation(crud, client: TestClient):
-    crud.get_labels.return_value = []
+    crud.get_labels_for_annotation.return_value = []
     resp = client.get("/labels")
     assert resp.status_code == 200
-    crud.get_labels.assert_called_once()
+    crud.get_labels_for_annotation.assert_called_once()
 
     resp = client.post("/labels")
     assert resp.status_code == 405
