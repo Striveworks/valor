@@ -2036,26 +2036,31 @@ def test_evaluate_tabular_clf(
 
     confusion_matrices = eval_job.confusion_matrices
 
-    expected_confusion_matrices = [
-        {
-            "label_key": "class",
-            "entries": [
-                {"prediction": "0", "groundtruth": "0", "count": 3},
-                {"prediction": "0", "groundtruth": "1", "count": 3},
-                {"prediction": "1", "groundtruth": "1", "count": 2},
-                {"prediction": "1", "groundtruth": "2", "count": 1},
-                {"prediction": "2", "groundtruth": "1", "count": 1},
-            ],
-        }
-    ]
+    expected_confusion_matrix = {
+        "label_key": "class",
+        "entries": [
+            {"prediction": "0", "groundtruth": "0", "count": 3},
+            {"prediction": "0", "groundtruth": "1", "count": 3},
+            {"prediction": "1", "groundtruth": "1", "count": 2},
+            {"prediction": "1", "groundtruth": "2", "count": 1},
+            {"prediction": "2", "groundtruth": "1", "count": 1},
+        ],
+    }
 
-    # check eval maps to expected
-    for confusion_matrix in confusion_matrices:
-        assert confusion_matrix in expected_confusion_matrices
+    # validate return schema
+    assert len(confusion_matrices) == 1
+    confusion_matrix = confusion_matrices[0]
+    assert "label_key" in confusion_matrix
+    assert "entries" in confusion_matrix
 
-    # check expected maps to eval
-    for expected_matrix in expected_confusion_matrices:
-        assert expected_matrix in confusion_matrices
+    # validate values
+    assert (
+        confusion_matrix["label_key"] == expected_confusion_matrix["label_key"]
+    )
+    for entry in confusion_matrix["entries"]:
+        assert entry in expected_confusion_matrix["entries"]
+    for entry in expected_confusion_matrix["entries"]:
+        assert entry in confusion_matrix["entries"]
 
     # check model methods
     labels = model.get_labels()
@@ -2086,7 +2091,23 @@ def test_evaluate_tabular_clf(
     for m in expected_metrics:
         assert m in metrics_from_eval_settings_id
 
-    assert eval_jobs[0].confusion_matrices == expected_confusion_matrices
+    # check confusion matrix
+    confusion_matrices = eval_jobs[0].confusion_matrices
+
+    # validate return schema
+    assert len(confusion_matrices) == 1
+    confusion_matrix = confusion_matrices[0]
+    assert "label_key" in confusion_matrix
+    assert "entries" in confusion_matrix
+
+    # validate values
+    assert (
+        confusion_matrix["label_key"] == expected_confusion_matrix["label_key"]
+    )
+    for entry in confusion_matrix["entries"]:
+        assert entry in expected_confusion_matrix["entries"]
+    for entry in expected_confusion_matrix["entries"]:
+        assert entry in confusion_matrix["entries"]
 
     model.delete()
 
