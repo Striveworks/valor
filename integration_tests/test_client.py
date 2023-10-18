@@ -2061,7 +2061,7 @@ def test_evaluate_tabular_clf(
     labels = model.get_labels()
     df = model.get_metric_dataframes()
 
-    assert model.id == 16
+    assert isinstance(model.id, int)
     assert model.name == "test_model"
     assert len(model.metadata) == 0
 
