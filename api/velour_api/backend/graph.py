@@ -13,17 +13,25 @@ class Node:
         name: str,
         schema,
         model,
-        edge: bool = False,
         relationships: dict[BinaryExpression] | None = None,
+        only_groundtruths: bool = False,
+        only_predictions: bool = False,
     ):
         self.name = name
         self.schema = schema
         self.model = model
         self.relationships = relationships if relationships else {}
-        self.edge = edge
+
+        if only_groundtruths and only_predictions:
+            raise ValueError(
+                "only_groundtruths and only_predictions cannot be true at the same time."
+            )
+
+        self.only_groundtruths = only_groundtruths
+        self.only_predictions = only_predictions
 
     def __str__(self):
-        return f"Node: `{self.name}`, Relationships: {len(self.relationships)}, Edge: {self.edge}"
+        return f"Node: `{self.name}`, Relationships: {len(self.relationships)}"
 
     def __contains__(self, node: "Node"):
         if not isinstance(node, Node):
@@ -50,11 +58,10 @@ def recursive_acyclic_walk(
     path: list[Node],
     invalid: set[Node],
 ):
+    """Recursively populates the path argument."""
     if root == target:
         path.append(root)
         return [path]
-    elif root.edge:
-        return None
     else:
         path.append(root)
         invalid.add(root)
@@ -74,7 +81,8 @@ def create_acyclic_graph(root: Node, targets: list[Node]):
     for target in targets:
         if target == root:
             continue
-        walks.extend(recursive_acyclic_walk(root, target, list(), set()))
+        walk = recursive_acyclic_walk(root, target, list(), set())
+        walks.extend(walk)
     return walks
 
 
@@ -99,7 +107,6 @@ def prune(sequence: list[Node]):
                 name=node.name,
                 schema=node.schema,
                 model=node.model,
-                edge=node.edge,
                 relationships={
                     relation: node.relationships[relation]
                     for relation in node.relationships
@@ -137,6 +144,18 @@ annotation = Node(
     model=models.Annotation,
 )
 
+annotation_groundtruth = Node(
+    "annotation_groundtruth",
+    schema=schemas.Annotation,
+    model=models.Annotation,
+)
+
+annotation_prediction = Node(
+    "annotation_prediction",
+    schema=schemas.Annotation,
+    model=models.Annotation,
+)
+
 groundtruth = Node(
     "groundtruth",
     schema=schemas.GroundTruth,
@@ -153,74 +172,49 @@ label_groundtruth = Node(
     "label_groundtruth",
     schema=schemas.Label,
     model=models.Label,
-    edge=True,
 )
 
 label_prediction = Node(
     "label_prediction",
     schema=schemas.Label,
     model=models.Label,
-    edge=True,
-)
-
-metadatum_dataset = Node(
-    "metadatum_dataset",
-    schema=schemas.MetaDatum,
-    model=models.MetaDatum,
-    edge=True,
-)
-
-metadatum_model = Node(
-    "metadatum_model",
-    schema=schemas.MetaDatum,
-    model=models.MetaDatum,
-    edge=True,
-)
-
-metadatum_datum = Node(
-    "metadatum_datum",
-    schema=schemas.MetaDatum,
-    model=models.MetaDatum,
-    edge=True,
-)
-
-metadatum_annotation = Node(
-    "metadatum_annotation",
-    schema=schemas.MetaDatum,
-    model=models.MetaDatum,
-    edge=True,
 )
 
 dataset.connect(datum, models.Dataset.id == models.Datum.dataset_id)
-dataset.connect(
-    metadatum_dataset,
-    models.Dataset.id == models.MetaDatum.dataset_id,
+
+model.connect(
+    annotation_prediction, models.Model.id == models.Annotation.model_id
 )
 
-model.connect(annotation, models.Model.id == models.Annotation.model_id)
-model.connect(metadatum_model, models.Model.id == models.MetaDatum.model_id)
-
 datum.connect(dataset, models.Datum.dataset_id == models.Dataset.id)
-datum.connect(annotation, models.Datum.id == models.Annotation.datum_id)
-datum.connect(metadatum_datum, models.Datum.id == models.MetaDatum.datum_id)
+datum.connect(
+    annotation_groundtruth, models.Datum.id == models.Annotation.datum_id
+)
+datum.connect(
+    annotation_prediction, models.Datum.id == models.Annotation.datum_id
+)
 
-annotation.connect(datum, models.Annotation.datum_id == models.Datum.id)
-annotation.connect(model, models.Annotation.model_id == models.Model.id)
-annotation.connect(
+annotation_groundtruth.connect(
+    datum, models.Annotation.datum_id == models.Datum.id
+)
+annotation_groundtruth.connect(
     groundtruth,
     models.Annotation.id == models.GroundTruth.annotation_id,
 )
-annotation.connect(
+
+annotation_prediction.connect(
+    datum, models.Annotation.datum_id == models.Datum.id
+)
+annotation_prediction.connect(
+    model, models.Annotation.model_id == models.Model.id
+)
+annotation_prediction.connect(
     prediction,
     models.Annotation.id == models.Prediction.annotation_id,
 )
-annotation.connect(
-    metadatum_annotation,
-    models.Annotation.id == models.MetaDatum.annotation_id,
-)
 
 groundtruth.connect(
-    annotation,
+    annotation_groundtruth,
     models.GroundTruth.annotation_id == models.Annotation.id,
 )
 groundtruth.connect(
@@ -229,7 +223,7 @@ groundtruth.connect(
 )
 
 prediction.connect(
-    annotation,
+    annotation_prediction,
     models.Prediction.annotation_id == models.Annotation.id,
 )
 prediction.connect(
@@ -240,18 +234,9 @@ prediction.connect(
 label_groundtruth.connect(
     groundtruth, models.Label.id == models.GroundTruth.label_id
 )
+
 label_prediction.connect(
     prediction, models.Label.id == models.Prediction.label_id
-)
-
-metadatum_dataset.connect(
-    dataset, models.MetaDatum.dataset_id == models.Dataset.id
-)
-metadatum_model.connect(model, models.MetaDatum.model_id == models.Model.id)
-metadatum_datum.connect(datum, models.MetaDatum.datum_id == models.Datum.id)
-metadatum_annotation.connect(
-    annotation,
-    models.MetaDatum.annotation_id == models.Annotation.id,
 )
 
 
@@ -264,20 +249,16 @@ class SQLGraph(NamedTuple):
     prediction: Node
     label_groundtruth: Node
     label_prediction: Node
-    metadatum_dataset: Node
-    metadatum_model: Node
-    metadatum_datum: Node
-    metadatum_annotation: Node
 
 
 # generate sql alchemy relationships
-def generate_query(root: Node, targets: list[Node]):
-    graph = create_acyclic_graph(root, targets)
+def generate_query(target: Node, filter_by: list[Node]):
+    graph = create_acyclic_graph(target, filter_by)
     sequence = reduce(graph)
     min_walk = prune(sequence)
 
     # construct sql query
-    query = select(root.model.id)
+    query = select(target.model.id)
     for node in min_walk[1:]:
         query = query.join(
             node.model,
@@ -287,7 +268,14 @@ def generate_query(root: Node, targets: list[Node]):
 
 
 if __name__ == "__main__":
-    q = generate_query(dataset, [model, label_prediction, metadatum_dataset])
+
+    q = generate_query(label_groundtruth, [label_prediction])
     print(q)
 
-    dataset.schema = schemas.Model
+    # queries to get set of prediction labels from a set of groundtruth labels
+
+    # datums = generate_query(datum, [label_groundtruth])
+    # print(datums)
+
+    # prediction_labels = generate_query(label_prediction, [datum])
+    # print(prediction_labels)

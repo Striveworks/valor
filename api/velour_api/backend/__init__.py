@@ -6,7 +6,7 @@ from .metrics import (
     create_semantic_segmentation_evaluation,
     create_semantic_segmentation_metrics,
 )
-from .ops import BackendQuery
+from .ops import Query
 from .query import (
     create_dataset,
     create_groundtruth,
@@ -36,7 +36,7 @@ from .query import (
 )
 
 __all__ = [
-    "BackendQuery",
+    "Query",
     "create_dataset",
     "get_dataset",
     "get_datasets",

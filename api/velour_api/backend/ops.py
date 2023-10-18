@@ -1,4 +1,4 @@
-import operator
+# import operator
 
 from sqlalchemy import and_, or_, select
 from sqlalchemy.sql.elements import BinaryExpression
@@ -8,59 +8,29 @@ from velour_api.backend import graph, models
 
 
 class Query:
-    def __init__(self, source: graph.Node):
+    def __init__(self, target: graph.Node | None = None):
         self._filters: list[BinaryExpression] = []
-        self.source = source
-        self.targets = set()
+        self.target = target
+        self.filter_by = set()
         self.constraints = set()
 
     @classmethod
-    def label_groundtruth(cls):
-        return cls(graph.label_groundtruth)
-
-    @classmethod
-    def label_prediction(cls):
-        return cls(graph.label_prediction)
-
-    @classmethod
-    def metadata_dataset(cls):
-        return cls(graph.metadatum_dataset)
-
-    @classmethod
-    def metadata_model(cls):
-        return cls(graph.metadatum_model)
-
-    @classmethod
-    def metadata_datum(cls):
-        return cls(graph.metadatum_datum)
-
-    @classmethod
-    def metadata_annotation(cls):
-        return cls(graph.metadatum_annotation)
-
-    """ User methods """
-
-    @classmethod
-    def select(cls, v):
-        match v:
-            case models.Model:
-                return cls(graph.model)
+    def select_from(cls, table):
+        match table:
             case models.Dataset:
                 return cls(graph.dataset)
+            case models.Model:
+                return cls(graph.model)
             case models.Datum:
                 return cls(graph.datum)
-            case models.Annotation:
-                return cls(graph.annotation)
-            case models.GroundTruth:
-                return cls(graph.groundtruth)
-            case models.Prediction:
-                return cls(graph.prediction)
-            case models.Label:
-                raise NotImplementedError
-            case models.MetaDatum:
-                raise NotImplementedError
             case _:
-                raise ValueError
+                raise ValueError("select_from ")
+
+    @classmethod
+    def select_groundtruth_from(cls, table):
+        pass
+
+    """ User methods """
 
     def filter(self, filt: schemas.Filter):
         """Parses `schemas.Filter` and operates all filters."""
@@ -139,15 +109,15 @@ class Query:
         return self
 
     def ids(self):
-        """Returns ids from source that meet filter criteria."""
-        id_query = graph.generate_query(self.source, self.targets)
+        """Returns ids from target that meet filter criteria."""
+        id_query = graph.generate_query(self.target, self.filter_by)
         id_query = id_query.where(and_(*self._filters))
         return id_query
 
     def query(self):
         """Returns sqlalchemy table rows"""
         q_ids = self.ids()
-        return select(self.source.model).where(self.source.model.id.in_(q_ids))
+        return select(self.target.model).where(self.target.model.id.in_(q_ids))
 
     """ dataset filter """
 
@@ -163,10 +133,10 @@ class Query:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add(graph.dataset)
+            self.filter_by.add(graph.dataset)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add(graph.dataset)
+            self.filter_by.add(graph.dataset)
             self._filters.append(or_(*expressions))
 
         return self
@@ -181,10 +151,10 @@ class Query:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add(graph.dataset)
+            self.filter_by.add(graph.dataset)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add(graph.dataset)
+            self.filter_by.add(graph.dataset)
             self._filters.append(or_(*expressions))
 
         return self
@@ -201,10 +171,10 @@ class Query:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add(graph.model)
+            self.filter_by.add(graph.model)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add(graph.model)
+            self.filter_by.add(graph.model)
             self._filters.append(or_(*expressions))
 
         return self
@@ -219,10 +189,10 @@ class Query:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add(graph.model)
+            self.filter_by.add(graph.model)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add(graph.model)
+            self.filter_by.add(graph.model)
             self._filters.append(or_(*expressions))
 
         return self
@@ -239,10 +209,10 @@ class Query:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add(graph.datum)
+            self.filter_by.add(graph.datum)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add(graph.datum)
+            self.filter_by.add(graph.datum)
             self._filters.append(or_(*expressions))
 
         return self
@@ -255,10 +225,10 @@ class Query:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add(graph.datum)
+            self.filter_by.add(graph.datum)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add(graph.datum)
+            self.filter_by.add(graph.datum)
             self._filters.append(or_(*expressions))
 
         return self
@@ -282,9 +252,9 @@ class Query:
         ]
         if len(expressions) > 0:
             if include_groundtruths:
-                self.targets.add(graph.label_groundtruth)
+                self.filter_by.add(graph.label_groundtruth)
             elif include_predictions:
-                self.targets.add(graph.label_prediction)
+                self.filter_by.add(graph.label_prediction)
             else:
                 raise ValueError(
                     "expected inclusion of groundtruths and/or prediction labels."
@@ -310,9 +280,9 @@ class Query:
         ]
         if len(expressions) > 0:
             if include_groundtruths:
-                self.targets.add(graph.label_groundtruth)
+                self.filter_by.add(graph.label_groundtruth)
             elif include_predictions:
-                self.targets.add(graph.label_prediction)
+                self.filter_by.add(graph.label_prediction)
             else:
                 raise ValueError(
                     "expected inclusion of groundtruths and/or prediction labels."
@@ -324,104 +294,114 @@ class Query:
 
         return self
 
+    """ filter by groundtruth """
+
+    def filter_by_groundtruth():
+        pass
+
+    """ filter by prediction """
+
+    def filter_by_prediction():
+        pass
+
     """ filter by metadata """
 
-    def _filter_by_metadatum(
-        self,
-        metadatum: schemas.MetaDatum | models.MetaDatum,
-        op: str,
-        node: graph.Node,
-    ):
+    # def _filter_by_metadatum(
+    #     self,
+    #     metadatum: schemas.MetaDatum | models.MetaDatum,
+    #     op: str,
+    #     node: graph.Node,
+    # ):
 
-        ops = {
-            ">": operator.gt,
-            "<": operator.lt,
-            ">=": operator.ge,
-            "<=": operator.le,
-            "==": operator.eq,
-            "!=": operator.ne,
-        }
-        if op not in ops:
-            raise ValueError(f"invalid comparison operator `{operator}`")
+    #     ops = {
+    #         ">": operator.gt,
+    #         "<": operator.lt,
+    #         ">=": operator.ge,
+    #         "<=": operator.le,
+    #         "==": operator.eq,
+    #         "!=": operator.ne,
+    #     }
+    #     if op not in ops:
+    #         raise ValueError(f"invalid comparison operator `{operator}`")
 
-        # compare name
-        expression = [models.MetaDatum.name == metadatum.name]
+    #     # compare name
+    #     expression = [models.MetaDatum.name == metadatum.name]
 
-        # sqlalchemy handler
-        if isinstance(metadatum, models.MetaDatum):
-            if metadatum.string_value is not None:
-                expression.append(
-                    ops[op](
-                        models.MetaDatum.string_value, metadatum.string_value
-                    )
-                )
-            elif metadatum.numeric_value is not None:
-                expression.append(
-                    ops[op](
-                        models.MetaDatum.numeric_value, metadatum.numeric_value
-                    )
-                )
-            elif metadatum.geo is not None:
-                raise NotImplementedError("GeoJSON currently unsupported.")
+    #     # sqlalchemy handler
+    #     if isinstance(metadatum, models.MetaDatum):
+    #         if metadatum.string_value is not None:
+    #             expression.append(
+    #                 ops[op](
+    #                     models.MetaDatum.string_value, metadatum.string_value
+    #                 )
+    #             )
+    #         elif metadatum.numeric_value is not None:
+    #             expression.append(
+    #                 ops[op](
+    #                     models.MetaDatum.numeric_value, metadatum.numeric_value
+    #                 )
+    #             )
+    #         elif metadatum.geo is not None:
+    #             raise NotImplementedError("GeoJSON currently unsupported.")
 
-        # schema handler
-        elif isinstance(metadatum, schemas.MetaDatum):
-            # compare value
-            if isinstance(metadatum.value, str):
-                expression.append(
-                    ops[op](models.MetaDatum.string_value, metadatum.value)
-                )
-            if isinstance(metadatum.value, float):
-                expression.append(
-                    ops[op](models.MetaDatum.numeric_value, metadatum.value)
-                )
-            if isinstance(metadatum.value, schemas.GeoJSON):
-                raise NotImplementedError("GeoJSON currently unsupported.")
+    #     # schema handler
+    #     elif isinstance(metadatum, schemas.MetaDatum):
+    #         # compare value
+    #         if isinstance(metadatum.value, str):
+    #             expression.append(
+    #                 ops[op](models.MetaDatum.string_value, metadatum.value)
+    #             )
+    #         if isinstance(metadatum.value, float):
+    #             expression.append(
+    #                 ops[op](models.MetaDatum.numeric_value, metadatum.value)
+    #             )
+    #         if isinstance(metadatum.value, schemas.GeoJSON):
+    #             raise NotImplementedError("GeoJSON currently unsupported.")
 
-        # unknown type
-        else:
-            return None
+    #     # unknown type
+    #     else:
+    #         return None
 
-        return and_(*expression)
+    #     return and_(*expression)
 
-    def filter_by_metadata(
-        self,
-        metadata: list[schemas.MetadataFilter],
-        node: str,
-    ):
-        # generate binary expressions
-        expressions = [
-            self._filter_by_metadatum(filt.metadatum, filt.operator, node)
-            for filt in metadata
-        ]
+    # def filter_by_metadata(
+    #     self,
+    #     metadata: list[schemas.MetadataFilter],
+    #     node: str,
+    # ):
+    #     # generate binary expressions
+    #     expressions = [
+    #         self._filter_by_metadatum(filt.metadatum, filt.operator, node)
+    #         for filt in metadata
+    #     ]
 
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add(node)
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add(node)
-            self._filters.append(or_(*expressions))
+    #     # generate filter
+    #     if len(expressions) == 1:
+    #         self.filter_by.add(node)
+    #         self._filters.extend(expressions)
+    #     elif len(expressions) > 1:
+    #         self.filter_by.add(node)
+    #         self._filters.append(or_(*expressions))
 
-        return self
+    #     return self
 
-    def filter_by_metadatum_names(self, names: list[str]):
-        # generate binary expressions
-        expressions = [
-            models.MetaDatum.name == name
-            for name in names
-            if isinstance(name, str)
-        ]
+    # def filter_by_metadatum_names(self, names: list[str]):
+    #     # generate binary expressions
+    #     expressions = [
+    #         models.MetaDatum.name == name
+    #         for name in names
+    #         if isinstance(name, str)
+    #     ]
 
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add(graph.metadatum)
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add(graph.metadatum)
-            self._filters.append(or_(*expressions))
+    #     # generate filter
+    #     if len(expressions) == 1:
+    #         self.filter_by.add(graph.metadatum)
+    #         self._filters.extend(expressions)
+    #     elif len(expressions) > 1:
+    #         self.filter_by.add(graph.metadatum)
+    #         self._filters.append(or_(*expressions))
 
-        return self
+    #     return self
 
     """ filter by annotation """
 
@@ -435,10 +415,10 @@ class Query:
 
         # generate filter
         if len(expressions) == 1:
-            self.targets.add(graph.annotation)
+            self.filter_by.add(graph.annotation)
             self._filters.extend(expressions)
         elif len(expressions) > 1:
-            self.targets.add(graph.annotation)
+            self.filter_by.add(graph.annotation)
             self._filters.append(or_(*expressions))
 
         return self
@@ -447,7 +427,7 @@ class Query:
         self, annotation_types: list[enums.AnnotationType]
     ):
         if enums.AnnotationType.NONE in annotation_types:
-            self.targets.add(graph.annotation)
+            self.filter_by.add(graph.annotation)
             self._filters.append(
                 and_(
                     models.Annotation.box.is_(None),
@@ -470,48 +450,40 @@ class Query:
 
             # generate joint filter
             if len(expressions) == 1:
-                self.targets.add(graph.annotation)
+                self.filter_by.add(graph.annotation)
                 self._filters.extend(expressions)
             elif len(expressions) > 1:
-                self.targets.add(graph.annotation)
+                self.filter_by.add(graph.annotation)
                 self._filters.append(or_(*expressions))
 
         return self
 
 
-# db = None
-# query = (
-#     BackendQuery.datum()
-#     .filter_by_dataset_name("dataset1")
-#     .filter_by_model_name("model1")
-#     .filter_by_datum_uid("uid1")
-#     .filter_by_label(schemas.Label(key="k1", value="v1"))
-#     .filter_by_labels(
-#         [
-#             schemas.Label(key="k2", value="v2"),
-#             schemas.Label(key="k2", value="v3"),
-#             schemas.Label(key="k2", value="v4"),
-#         ]
-#     )
-#     .filter_by_label_key("k4")
-#     .filter_by_metadata(
-#         [
-#             schemas.Metadatum(name="n1", value=0.5),
-#             schemas.Metadatum(name="n2", value=0.1),
-#         ]
-#     )
-#     .filter_by_metadatum(schemas.Metadatum(name="n3", value="v1"))
-#     .filter_by_metadatum_name("n4")
-#     .filter_by_task_type(enums.TaskType.CLASSIFICATION)
-#     .query(db)
-# )
-# print(str(query))
+if __name__ == "__main__":
+    db = None
+    query = (
+        Query(graph.datum)
+        .filter_by_dataset_names(["dataset1"])
+        .filter_by_model_names(["model1"])
+        .filter_by_datum_uids(["uid1"])
+        .filter_by_labels([schemas.Label(key="k1", value="v1")])
+        .filter_by_labels(
+            [
+                schemas.Label(key="k2", value="v2"),
+                schemas.Label(key="k2", value="v3"),
+                schemas.Label(key="k2", value="v4"),
+            ]
+        )
+        .filter_by_label_keys(["k4"])
+        .filter_by_task_types([enums.TaskType.CLASSIFICATION])
+        .query()
+    )
+    print(str(query))
 
+    # filter_by = ["annotation", "model"]
+    # target = "label"
 
-# targets = ["annotation", "model"]
-# source = "label"
-
-# output = generate_query(source, targets)
-# print(f"SELECT FROM {source}")
-# for o in output:
-#     print(o)
+    # output = generate_query(target, filter_by)
+    # print(f"SELECT FROM {target}")
+    # for o in output:
+    # print(o)
