@@ -23,10 +23,7 @@ def create_labels(
     replace_val = "to_be_replaced"
 
     # get existing labels
-    existing_labels = {
-        (label.key, label.value): label
-        for label in _get_existing_labels(db=db, labels=labels)
-    }
+    existing_labels = _get_existing_labels(db=db, labels=labels)
 
     output = []
     labels_to_be_added_to_db = []
