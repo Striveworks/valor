@@ -14,23 +14,23 @@ def create_prediction(
     dataset = core.get_dataset(db, name=prediction.datum.dataset)
     datum = core.get_datum(db, dataset_id=dataset.id, uid=prediction.datum.uid)
 
+    annotation_list, label_list = core.create_annotations_and_labels(
+        db=db, annotations=prediction.annotations, datum=datum, model=model
+    )
+
     # create tables entries
     rows = []
-    for predicted_annotation in prediction.annotations:
-        annotation = core.create_annotation(
-            db,
-            annotation=predicted_annotation,
-            datum=datum,
-            model=model,
-        )
-        rows += [
-            models.Prediction(
-                annotation_id=annotation.id,
-                label_id=core.create_label(db, scored_label).id,
-                score=scored_label.score,
-            )
-            for scored_label in predicted_annotation.labels
-        ]
+
+    for i, annotation in enumerate(annotation_list):
+        for j, label in enumerate(label_list[i]):
+            rows += [
+                models.Prediction(
+                    annotation_id=annotation.id,
+                    label_id=label.id,
+                    score=prediction.annotations[i].labels[j].score,
+                )
+            ]
+
     try:
         db.add_all(rows)
         db.commit()

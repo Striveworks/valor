@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
+from velour_api.backend.core.label import create_labels
 from velour_api.backend.core.metadata import deserialize_meta, serialize_meta
 from velour_api.enums import AnnotationType
 
@@ -22,8 +23,7 @@ def _wkt_multipolygon_to_raster(wkt: str):
     ).scalar_subquery()
 
 
-def create_annotation(
-    db: Session,
+def _get_annotation_mapping(
     annotation: schemas.Annotation,
     datum: models.Datum,
     model: models.Model = None,
@@ -58,32 +58,57 @@ def create_annotation(
         "json": jsonb,
     }
 
-    try:
-        row = models.Annotation(**mapping)
-        db.add(row)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise exceptions.AnnotationAlreadyExistsError
-
-    return row
+    return mapping
 
 
-def create_annotations(
+def create_annotations_and_labels(
     db: Session,
     annotations: list[schemas.Annotation],
     datum: models.Datum,
     model: models.Model = None,
 ) -> list[models.Annotation]:
-    return [
-        create_annotation(
-            db,
-            annotation=annotation,
-            datum=datum,
-            model=model,
+    """
+    Create a list of annotations and associated labels in postgis
+
+    Parameters
+    ----------
+    db
+        The database Session you want to query against.
+    datum
+        The datum you want to query against.
+    model
+        The model you want to query against.
+    """
+    annotation_list = []
+    label_list = []
+    # metadata_list = []
+    for annotation in annotations:
+        mapping = _get_annotation_mapping(
+            annotation=annotation, datum=datum, model=model
         )
-        for annotation in annotations
-    ]
+        annotation_list.append(models.Annotation(**mapping))
+        label_list.append(create_labels(db=db, labels=annotation.labels))
+        # if annotation.metadata:
+        #     metadata_list.append(
+        #         [
+        #             models.MetaDatum(**metadata)
+        #             for metadata in annotation.metadata
+        #         ]
+        #     )
+
+        #     create_metadata_for_multiple_annotations(
+        #         db, annotations=annotation_list, metadata=metadata_list
+        #     )
+
+    try:
+        db.add_all(annotation_list)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.AnnotationAlreadyExistsError
+
+    # return the label_list, too, since these are needed for GroundTruth
+    return (annotation_list, label_list)
 
 
 # @TODO: Clean up??
@@ -213,6 +238,15 @@ def get_annotations(
     datum: models.Datum,
     model: models.Model | None = None,
 ) -> list[schemas.Annotation]:
+    """
+    Query postgis to get all annotations for a particular datum
+    Parameters
+    -------
+    db
+        The database session to query against.
+    datum
+        The datum you want to fetch annotations for
+    """
     model_expr = (
         models.Annotation.model_id.is_(None)
         if model is None

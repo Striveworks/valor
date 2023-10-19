@@ -6,32 +6,86 @@ from velour_api import enums, schemas
 from velour_api.backend import models
 
 
-def create_label(
-    db: Session,
-    label: schemas.Label,
-) -> models.Label:
-    """Create label always commits a new label as it operates as a Many-To-One mapping."""
-
-    # Get label if it already exists
-    if row := get_label(db, label):
-        return row
-
-    # Otherwise, create new label
-    row = models.Label(key=label.key, value=label.value)
-    try:
-        db.add(row)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise RuntimeError  # this should never be called
-    return row
-
-
 def create_labels(
     db: Session,
     labels: list[schemas.Label],
 ) -> list[models.Label]:
-    return [create_label(db, label) for label in labels]
+    """
+    Add a list of labels to postgis, checking first to make sure that the labels don't already exist.
+
+    Parameters
+    -------
+    labels
+        A list of labels that you want to add to postgis
+    """
+    replace_val = "to_be_replaced"
+
+    # get existing labels
+    existing_labels = {
+        (label.key, label.value): label
+        for label in _get_existing_labels(db=db, labels=labels)
+    }
+
+    output = []
+    labels_to_be_added_to_db = []
+
+    # determine which labels already exist
+    for label in labels:
+        lookup = (label.key, label.value)
+        if lookup in existing_labels:
+            output.append(existing_labels[lookup])
+        else:
+            labels_to_be_added_to_db.append(
+                models.Label(key=label.key, value=label.value)
+            )
+            output.append(replace_val)
+
+    # upload the labels that were missing
+    try:
+        db.add_all(labels_to_be_added_to_db)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise RuntimeError  # this should never be called
+
+    # move those fetched labels into output in the correct order
+    for i in range(len(output)):
+        if output[i] == replace_val:
+            output[i] = labels_to_be_added_to_db.pop(0)
+
+    assert (
+        not labels_to_be_added_to_db
+    ), "Error when merging existing labels with new labels"
+
+    return output
+
+
+def _get_existing_labels(
+    db: Session,
+    labels: schemas.Label,
+    annotation: models.Annotation,
+) -> list[models.Label] | None:
+    """
+    Fetch labels from postgis that match some list of labels (in terms of both their keys and values).
+    """
+    label_keys, label_values = zip(
+        *[(label.key, label.value) for label in labels]
+    )
+    return (
+        db.query(models.Label)
+        .where(
+            and_(
+                models.Label.key.in_(label_keys),
+                models.Label.value.in_(label_values),
+            )
+        )
+        .join(
+            models.Label,
+            models.GroundTruth.label_id == models.Label.id,
+        )
+        .where(models.GroundTruth.annotation_id == annotation.id)
+        .all()
+    )
 
 
 def get_label(
@@ -96,7 +150,6 @@ def get_dataset_labels_query(
     annotation_type: enums.AnnotationType,
     task_types: list[enums.TaskType],
 ) -> Select:
-
     annotation_type_expr = (
         [models.annotation_type_to_geometry[annotation_type].is_not(None)]
         if annotation_type is not enums.AnnotationType.NONE

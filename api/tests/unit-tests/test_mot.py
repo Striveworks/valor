@@ -36,7 +36,7 @@ def generate_mot_data(num_frames: int):
             schemas.Metadatum(key="frame", value=frame),
         ],
     )
-    create_label = lambda obj_id: schemas.Label(  # noqa: E731
+    create_label_lambda = lambda obj_id: schemas.Label(  # noqa: E731
         key=OBJECT_ID_LABEL_KEY, value=obj_id
     )
     create_scored_label = lambda obj_id, score: schemas.Label(  # noqa: E731
@@ -71,9 +71,9 @@ def generate_mot_data(num_frames: int):
             create_scored_label("object 3", 1.0),
         ]
 
-        labels1 = [create_label("object 1")]
-        labels2 = [create_label("object 2")]
-        labels3 = [create_label("object 3")]
+        labels1 = [create_label_lambda("object 1")]
+        labels2 = [create_label_lambda("object 2")]
+        labels3 = [create_label_lambda("object 3")]
 
         gts = schemas.GroundTruth(
             dataset="test",
