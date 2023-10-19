@@ -227,8 +227,6 @@ def generate_segmentation_data(
     n_labels
         The number of labels per annotation you'd like your dataset to contain
     """
-
-    client.delete_dataset(dataset_name)
     dataset = VelourDataset.create(client, dataset_name)
 
     unique_image_ids = list(range(n_images))
@@ -271,7 +269,6 @@ def generate_prediction_data(
     n_labels
         The number of labels per annotation you'd like your dataset to contain
     """
-    client.delete_model(model_name)
     model = VelourModel.create(client, model_name)
 
     datums = dataset.get_datums()
