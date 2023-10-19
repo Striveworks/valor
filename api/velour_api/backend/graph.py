@@ -13,25 +13,17 @@ class Node:
         name: str,
         schema,
         model,
+        tablename: str | None = None,
         relationships: dict[BinaryExpression] | None = None,
-        only_groundtruths: bool = False,
-        only_predictions: bool = False,
     ):
         self.name = name
+        self.tablename = tablename if tablename else name
         self.schema = schema
         self.model = model
         self.relationships = relationships if relationships else {}
 
-        if only_groundtruths and only_predictions:
-            raise ValueError(
-                "only_groundtruths and only_predictions cannot be true at the same time."
-            )
-
-        self.only_groundtruths = only_groundtruths
-        self.only_predictions = only_predictions
-
     def __str__(self):
-        return f"Node: `{self.name}`, Relationships: {len(self.relationships)}"
+        return f"Node: `{self.name}`, Table: `{self.tablename}`, Relationships: {len(self.relationships)}"
 
     def __contains__(self, node: "Node"):
         if not isinstance(node, Node):
@@ -105,6 +97,7 @@ def prune(sequence: list[Node]):
         pruned_nodes.append(
             Node(
                 name=node.name,
+                tablename=node.tablename,
                 schema=node.schema,
                 model=node.model,
                 relationships={
@@ -138,20 +131,16 @@ datum = Node(
     model=models.Datum,
 )
 
-annotation = Node(
-    "annotation",
-    schema=schemas.Annotation,
-    model=models.Annotation,
-)
-
 annotation_groundtruth = Node(
     "annotation_groundtruth",
+    tablename="annotation",
     schema=schemas.Annotation,
     model=models.Annotation,
 )
 
 annotation_prediction = Node(
     "annotation_prediction",
+    tablename="annotation",
     schema=schemas.Annotation,
     model=models.Annotation,
 )
@@ -170,12 +159,14 @@ prediction = Node(
 
 label_groundtruth = Node(
     "label_groundtruth",
+    tablename="label",
     schema=schemas.Label,
     model=models.Label,
 )
 
 label_prediction = Node(
     "label_prediction",
+    tablename="label",
     schema=schemas.Label,
     model=models.Label,
 )
@@ -252,30 +243,63 @@ class SQLGraph(NamedTuple):
 
 
 # generate sql alchemy relationships
-def generate_query(target: Node, filter_by: list[Node]):
-    graph = create_acyclic_graph(target, filter_by)
-    sequence = reduce(graph)
-    min_walk = prune(sequence)
+def generate_query(target: Node, filters: set[Node]):
+    """Generates joins and optionally a subquery to construct sql statement."""
+
+    gt_only_set = {label_groundtruth, groundtruth, annotation_groundtruth}
+    pd_only_set = {label_prediction, prediction, annotation_prediction, model}
+
+    subtarget = None
+    subfilters = None
+    if target in gt_only_set and pd_only_set.intersection(filters):
+        # groundtruth target requires groundtruth filters
+        subtarget = datum
+        subfilters = pd_only_set.intersection(filters)
+        filters = filters - pd_only_set.intersection(filters)
+        filters.add(datum)
+    elif target in pd_only_set and gt_only_set.intersection(filters):
+        # prediction target requires groundtruth filters
+        subtarget = datum
+        subfilters = gt_only_set.intersection(filters)
+        filters = filters - gt_only_set.intersection(filters)
+        filters.add(datum)
 
     # construct sql query
+    graph = create_acyclic_graph(target, filters)
+    sequence = reduce(graph)
+    minwalk = prune(sequence)
     query = select(target.model.id)
-    for node in min_walk[1:]:
+    for node in minwalk[1:]:
         query = query.join(
             node.model,
             and_(*list(node.relationships.values())),
         )
-    return query
+
+    # (edge case) construct sql subquery
+    subquery = None
+    if subtarget and subfilters:
+        subgraphs = create_acyclic_graph(subtarget, subfilters)
+        subseq = reduce(subgraphs)
+        subminwalk = prune(subseq)
+
+        # construct sql query
+        subquery = select(subtarget.model.id)
+        for node in subminwalk[1:]:
+            subquery = subquery.join(
+                node.model,
+                and_(*list(node.relationships.values())),
+            )
+
+    return query, subquery
 
 
 if __name__ == "__main__":
+    target = label_groundtruth
+    filters = {model, dataset, label_prediction, label_groundtruth}
+    # filters = {annotation_groundtruth}
 
-    q = generate_query(label_groundtruth, [label_prediction])
-    print(q)
+    query, subquery = generate_query(target, filters)
 
-    # queries to get set of prediction labels from a set of groundtruth labels
-
-    # datums = generate_query(datum, [label_groundtruth])
-    # print(datums)
-
-    # prediction_labels = generate_query(label_prediction, [datum])
-    # print(prediction_labels)
+    print(query)
+    print()
+    print(subquery)
