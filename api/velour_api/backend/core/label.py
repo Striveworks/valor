@@ -33,8 +33,9 @@ def create_labels(
 
     # determine which labels already exist
     for label in labels:
-        if label in existing_labels:
-            output.append(existing_labels[label])
+        lookup = (label.key, label.value)
+        if lookup in existing_labels:
+            output.append(existing_labels[lookup])
         else:
             labels_to_be_added_to_db.append(
                 models.Label(key=label.key, value=label.value)
@@ -45,9 +46,9 @@ def create_labels(
     try:
         db.add_all(labels_to_be_added_to_db)
         db.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
-        raise RuntimeError  # this should never be called
+        raise e  # this should never be called
 
     # move those fetched labels into output in the correct order
     for i in range(len(output)):
