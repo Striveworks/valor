@@ -40,3 +40,7 @@ class Label(BaseModel):
 
     def __hash__(self) -> int:
         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
+
+    def __members(self):
+        """Used to compare labels of different types (e.g., prediction labels with groundtruth labels)"""
+        return (self.key, self.value)
