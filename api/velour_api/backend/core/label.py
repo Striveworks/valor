@@ -63,7 +63,6 @@ def create_labels(
 def _get_existing_labels(
     db: Session,
     labels: schemas.Label,
-    annotation: models.Annotation,
 ) -> list[models.Label] | None:
     """
     Fetch labels from postgis that match some list of labels (in terms of both their keys and values).
@@ -79,11 +78,6 @@ def _get_existing_labels(
                 models.Label.value.in_(label_values),
             )
         )
-        .join(
-            models.Label,
-            models.GroundTruth.label_id == models.Label.id,
-        )
-        .where(models.GroundTruth.annotation_id == annotation.id)
         .all()
     )
 
