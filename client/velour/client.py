@@ -144,9 +144,31 @@ class Client:
             if "does not exist" not in str(e):
                 raise e
 
-    def delete_model(self, name: str):
+    def delete_model(self, name: str, timeout: int = 0) -> None:
+        """
+        Delete a model using FastAPI's BackgroundProcess
+
+        Parameters
+        ----------
+        name
+            The name of the model to be deleted
+        timeout
+            The number of seconds to wait in order to confirm that the model was deleted
+        """
         try:
             self._requests_delete_rel_host(f"models/{name}")
+
+            if timeout:
+                for _ in range(timeout):
+                    if self.get_dataset_status(name) == State.NONE:
+                        break
+                    else:
+                        time.sleep(1)
+                else:
+                    raise TimeoutError(
+                        "Dataset wasn't deleted within timeout interval"
+                    )
+
         except ClientException as e:
             if "does not exist" not in str(e):
                 raise e
