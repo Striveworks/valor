@@ -30,13 +30,17 @@ def create_labels(
 
     # determine which labels already exist
     for label in labels:
-        if label in existing_labels:
-            output.append(label)
-        else:
+        try:
+            # label exists
+            index = existing_labels.index(label)
+            output.append(existing_labels[index])
+        except IndexError:
+            # label doesn't exist
             labels_to_be_added_to_db.append(
                 models.Label(key=label.key, value=label.value)
             )
             output.append(replace_val)
+
     # upload the labels that were missing
     try:
         db.add_all(labels_to_be_added_to_db)
