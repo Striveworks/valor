@@ -11,12 +11,14 @@ def create_labels(
     labels: list[schemas.Label],
 ) -> list[models.Label]:
     """
-    Add a list of labels to postgis, checking first to make sure that the labels don't already exist.
+    Add a list of labels to postgis. Automatically handles cases where the label already exists in the database.
 
     Parameters
     -------
+    db
+        The database session to query against.
     labels
-        A list of labels that you want to add to postgis
+        A list of labels that you want to add to postgis.
     """
     replace_val = "to_be_replaced"
 

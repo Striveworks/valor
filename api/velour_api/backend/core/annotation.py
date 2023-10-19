@@ -74,31 +74,22 @@ def create_annotations_and_labels(
     ----------
     db
         The database Session you want to query against.
+    annotations
+        The list of annotations you want to create.
     datum
-        The datum you want to query against.
+        The datum you want to create the annotations for.
     model
-        The model you want to query against.
+        The model you want to query against (optional).
     """
     annotation_list = []
     label_list = []
-    # metadata_list = []
+
     for annotation in annotations:
         mapping = _get_annotation_mapping(
             annotation=annotation, datum=datum, model=model
         )
         annotation_list.append(models.Annotation(**mapping))
         label_list.append(create_labels(db=db, labels=annotation.labels))
-        # if annotation.metadata:
-        #     metadata_list.append(
-        #         [
-        #             models.MetaDatum(**metadata)
-        #             for metadata in annotation.metadata
-        #         ]
-        #     )
-
-        #     create_metadata_for_multiple_annotations(
-        #         db, annotations=annotation_list, metadata=metadata_list
-        #     )
 
     try:
         db.add_all(annotation_list)
@@ -245,7 +236,9 @@ def get_annotations(
     db
         The database session to query against.
     datum
-        The datum you want to fetch annotations for
+        The datum you want to fetch annotations for.
+    model
+        The model you want to query against (optional).
     """
     model_expr = (
         models.Annotation.model_id.is_(None)
