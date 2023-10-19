@@ -242,64 +242,75 @@ class SQLGraph(NamedTuple):
     label_prediction: Node
 
 
-# generate sql alchemy relationships
-def generate_query(target: Node, filters: set[Node]):
-    """Generates joins and optionally a subquery to construct sql statement."""
-
-    gt_only_set = {label_groundtruth, groundtruth, annotation_groundtruth}
-    pd_only_set = {label_prediction, prediction, annotation_prediction, model}
-
-    subtarget = None
-    subfilters = None
-    if target in gt_only_set and pd_only_set.intersection(filters):
-        # groundtruth target requires groundtruth filters
-        subtarget = datum
-        subfilters = pd_only_set.intersection(filters)
-        filters = filters - pd_only_set.intersection(filters)
-        filters.add(datum)
-    elif target in pd_only_set and gt_only_set.intersection(filters):
-        # prediction target requires groundtruth filters
-        subtarget = datum
-        subfilters = gt_only_set.intersection(filters)
-        filters = filters - gt_only_set.intersection(filters)
-        filters.add(datum)
+def _generate_query(target_node, filter_nodes, filters):
+    """Does the actual work"""
 
     # construct sql query
-    graph = create_acyclic_graph(target, filters)
+    graph = create_acyclic_graph(target_node, filter_nodes)
     sequence = reduce(graph)
     minwalk = prune(sequence)
-    query = select(target.model.id)
+    query = select(target_node.model.id)
     for node in minwalk[1:]:
         query = query.join(
             node.model,
             and_(*list(node.relationships.values())),
         )
 
-    # (edge case) construct sql subquery
+    # construct where expression
+    expr = []
+    for node in filter_nodes:
+        if node in filters:
+            expr.extend(filters[node])
+    query = query.where(and_(*expr))
+
+    return query
+
+
+# generate sql alchemy relationships
+def generate_query(target: Node, filters: dict[Node, list[BinaryExpression]]):
+    """Generates joins and optionally a subquery to construct sql statement."""
+
+    filter_nodes = set(filters.keys())
+    gt_only_set = {label_groundtruth, groundtruth, annotation_groundtruth}
+    pd_only_set = {label_prediction, prediction, annotation_prediction, model}
+
+    subtarget = None
+    filter_subnodes = None
+    if target in gt_only_set and pd_only_set.intersection(filter_nodes):
+        # groundtruth target requires groundtruth filter_nodes
+        subtarget = datum
+        filter_subnodes = pd_only_set.intersection(filter_nodes)
+        filter_nodes = filter_nodes - pd_only_set.intersection(filter_nodes)
+        filter_nodes.add(datum)
+    elif target in pd_only_set and gt_only_set.intersection(filter_nodes):
+        # prediction target requires groundtruth filter_nodes
+        subtarget = datum
+        filter_subnodes = gt_only_set.intersection(filter_nodes)
+        filter_nodes = filter_nodes - gt_only_set.intersection(filter_nodes)
+        filter_nodes.add(datum)
+
+    query = _generate_query(target, filter_nodes, filters)
+
     subquery = None
-    if subtarget and subfilters:
-        subgraphs = create_acyclic_graph(subtarget, subfilters)
-        subseq = reduce(subgraphs)
-        subminwalk = prune(subseq)
+    if subtarget and filter_subnodes:
+        subquery = _generate_query(
+            subtarget, filter_subnodes, filters
+        ).subquery()
+        query = query.where(models.Datum.id.in_(subquery))
 
-        # construct sql query
-        subquery = select(subtarget.model.id)
-        for node in subminwalk[1:]:
-            subquery = subquery.join(
-                node.model,
-                and_(*list(node.relationships.values())),
-            )
-
-    return query, subquery
+    return query
 
 
 if __name__ == "__main__":
     target = label_groundtruth
-    filters = {model, dataset, label_prediction, label_groundtruth}
+    filters = {
+        model: [models.Model.name == "model1"],
+        dataset: [models.Dataset.name == "dataset1"],
+        label_prediction: [models.Label.key == "k1"],
+        label_groundtruth: [models.Label.key == "k1"],
+    }
     # filters = {annotation_groundtruth}
 
-    query, subquery = generate_query(target, filters)
+    query = generate_query(target, filters)
 
     print(query)
-    print()
-    print(subquery)
