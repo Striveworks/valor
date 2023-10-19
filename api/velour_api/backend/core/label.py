@@ -33,9 +33,8 @@ def create_labels(
 
     # determine which labels already exist
     for label in labels:
-        lookup = (label.key, label.value)
-        if lookup in existing_labels:
-            output.append(existing_labels[lookup])
+        if label in existing_labels:
+            output.append(existing_labels[label])
         else:
             labels_to_be_added_to_db.append(
                 models.Label(key=label.key, value=label.value)
