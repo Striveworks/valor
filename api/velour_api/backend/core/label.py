@@ -23,19 +23,19 @@ def create_labels(
     replace_val = "to_be_replaced"
 
     # get existing labels
-    existing_labels = _get_existing_labels(db=db, labels=labels)
+    existing_labels = {
+        (label.key, label.value): label
+        for label in _get_existing_labels(db=db, labels=labels)
+    }
 
     output = []
     labels_to_be_added_to_db = []
 
     # determine which labels already exist
     for label in labels:
-        try:
-            # label exists
-            index = existing_labels.index(label)
-            output.append(existing_labels[index])
-        except IndexError:
-            # label doesn't exist
+        if label in existing_labels:
+            output.append(existing_labels[label])
+        else:
             labels_to_be_added_to_db.append(
                 models.Label(key=label.key, value=label.value)
             )
@@ -45,9 +45,9 @@ def create_labels(
     try:
         db.add_all(labels_to_be_added_to_db)
         db.commit()
-    except IntegrityError as e:
+    except IntegrityError:
         db.rollback()
-        raise e
+        raise RuntimeError  # this should never be called
 
     # move those fetched labels into output in the correct order
     for i in range(len(output)):

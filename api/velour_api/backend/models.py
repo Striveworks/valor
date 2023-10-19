@@ -10,23 +10,6 @@ from velour_api.enums import AnnotationType
 
 
 class Label(Base):
-    def __init__(self, key, value):
-        self.key = key
-        self.value = value
-
-    def __eq__(self, other):
-        first = self.__members()
-        second = other.__members()
-        print(first, second, first == second)
-        return self.__members() == other.__members()
-
-    def __hash__(self):
-        return hash(self.__members())
-
-    def __members(self):
-        """Used to compare labels of different types (e.g., prediction labels with groundtruth labels)"""
-        return (self.key, self.value)
-
     __tablename__ = "label"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
