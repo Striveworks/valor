@@ -22,3 +22,5 @@ site/*
 web/.env
 web/.npmrc
 node_modules
+
+.npmrc
