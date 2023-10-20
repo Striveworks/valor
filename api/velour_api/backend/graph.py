@@ -303,7 +303,9 @@ def generate_query(target: Node, filters: dict[Node, list[BinaryExpression]]):
 
     subquery = None
     if subtarget and filter_subnodes:
-        subquery = _generate_query(subtarget, filter_subnodes, filters)
+        subquery = _generate_query(
+            subtarget, filter_subnodes, filters
+        ).subquery()
         query = query.where(models.Datum.id.in_(subquery))
 
     return query
