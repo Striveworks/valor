@@ -44,14 +44,14 @@ class Node:
         self.relationships[node] = relationship
 
 
-def recursive_acyclic_walk(
+def _recursive_acyclic_walk(
     root: Node,
-    target: Node,
+    leaf: Node,
     path: list[Node],
     invalid: set[Node],
 ):
     """Recursively populates the path argument."""
-    if root == target:
+    if root == leaf:
         path.append(root)
         return [path]
     else:
@@ -60,25 +60,25 @@ def recursive_acyclic_walk(
         steps = []
         for node in root.relationships.keys():
             if node not in invalid:
-                step = recursive_acyclic_walk(
-                    node, target, path.copy(), invalid.copy()
+                step = _recursive_acyclic_walk(
+                    node, leaf, path.copy(), invalid.copy()
                 )
                 if step is not None:
                     steps.extend(step)
         return steps if steps else None
 
 
-def create_acyclic_graph(root: Node, targets: list[Node]):
+def _walk_graph(root: Node, leaves: list[Node]) -> list[list[Node]]:
     walks = []
-    for target in targets:
-        if target == root:
+    for leaf in leaves:
+        if leaf == root:
             continue
-        walk = recursive_acyclic_walk(root, target, list(), set())
+        walk = _recursive_acyclic_walk(root, leaf, list(), set())
         walks.extend(walk)
     return walks
 
 
-def reduce(walks: list[list[Node]]):
+def _reduce(walks: list[list[Node]]) -> list[Node]:
     """flatten into a sequence that respects order-of-operations"""
     visited = set()
     sequence = []
@@ -90,11 +90,11 @@ def reduce(walks: list[list[Node]]):
     return sequence
 
 
-def prune(sequence: list[Node]):
+def _prune_relationships(sequence: list[Node]) -> list[Node]:
     """prune unused relationships"""
-    pruned_nodes = []
+    _pruned_nodes = []
     for node in sequence:
-        pruned_nodes.append(
+        _pruned_nodes.append(
             Node(
                 name=node.name,
                 tablename=node.tablename,
@@ -103,11 +103,11 @@ def prune(sequence: list[Node]):
                 relationships={
                     relation: node.relationships[relation]
                     for relation in node.relationships
-                    if relation in pruned_nodes
+                    if relation in _pruned_nodes
                 },
             )
         )
-    return pruned_nodes
+    return _pruned_nodes
 
 
 # Velour SQL Graph
@@ -131,15 +131,15 @@ datum = Node(
     model=models.Datum,
 )
 
-annotation_groundtruth = Node(
-    "annotation_groundtruth",
+groundtruth_annotation = Node(
+    "groundtruth_annotation",
     tablename="annotation",
     schema=schemas.Annotation,
     model=models.Annotation,
 )
 
-annotation_prediction = Node(
-    "annotation_prediction",
+prediction_annotation = Node(
+    "prediction_annotation",
     tablename="annotation",
     schema=schemas.Annotation,
     model=models.Annotation,
@@ -157,15 +157,15 @@ prediction = Node(
     model=models.Prediction,
 )
 
-label_groundtruth = Node(
-    "label_groundtruth",
+groundtruth_label = Node(
+    "groundtruth_label",
     tablename="label",
     schema=schemas.Label,
     model=models.Label,
 )
 
-label_prediction = Node(
-    "label_prediction",
+prediction_label = Node(
+    "prediction_label",
     tablename="label",
     schema=schemas.Label,
     model=models.Label,
@@ -174,59 +174,59 @@ label_prediction = Node(
 dataset.connect(datum, models.Dataset.id == models.Datum.dataset_id)
 
 model.connect(
-    annotation_prediction, models.Model.id == models.Annotation.model_id
+    prediction_annotation, models.Model.id == models.Annotation.model_id
 )
 
 datum.connect(dataset, models.Datum.dataset_id == models.Dataset.id)
 datum.connect(
-    annotation_groundtruth, models.Datum.id == models.Annotation.datum_id
+    groundtruth_annotation, models.Datum.id == models.Annotation.datum_id
 )
 datum.connect(
-    annotation_prediction, models.Datum.id == models.Annotation.datum_id
+    prediction_annotation, models.Datum.id == models.Annotation.datum_id
 )
 
-annotation_groundtruth.connect(
+groundtruth_annotation.connect(
     datum, models.Annotation.datum_id == models.Datum.id
 )
-annotation_groundtruth.connect(
+groundtruth_annotation.connect(
     groundtruth,
     models.Annotation.id == models.GroundTruth.annotation_id,
 )
 
-annotation_prediction.connect(
+prediction_annotation.connect(
     datum, models.Annotation.datum_id == models.Datum.id
 )
-annotation_prediction.connect(
+prediction_annotation.connect(
     model, models.Annotation.model_id == models.Model.id
 )
-annotation_prediction.connect(
+prediction_annotation.connect(
     prediction,
     models.Annotation.id == models.Prediction.annotation_id,
 )
 
 groundtruth.connect(
-    annotation_groundtruth,
+    groundtruth_annotation,
     models.GroundTruth.annotation_id == models.Annotation.id,
 )
 groundtruth.connect(
-    label_groundtruth,
+    groundtruth_label,
     models.GroundTruth.label_id == models.Label.id,
 )
 
 prediction.connect(
-    annotation_prediction,
+    prediction_annotation,
     models.Prediction.annotation_id == models.Annotation.id,
 )
 prediction.connect(
-    label_prediction,
+    prediction_label,
     models.Prediction.label_id == models.Label.id,
 )
 
-label_groundtruth.connect(
+groundtruth_label.connect(
     groundtruth, models.Label.id == models.GroundTruth.label_id
 )
 
-label_prediction.connect(
+prediction_label.connect(
     prediction, models.Label.id == models.Prediction.label_id
 )
 
@@ -238,17 +238,17 @@ class SQLGraph(NamedTuple):
     annotation: Node
     groundtruth: Node
     prediction: Node
-    label_groundtruth: Node
-    label_prediction: Node
+    groundtruth_label: Node
+    prediction_label: Node
 
 
 def _generate_query(target_node, filter_nodes, filters):
-    """Does the actual work"""
+    """Constructs a sql query"""
 
     # construct sql query
-    graph = create_acyclic_graph(target_node, filter_nodes)
-    sequence = reduce(graph)
-    minwalk = prune(sequence)
+    graph = _walk_graph(target_node, filter_nodes)
+    sequence = _reduce(graph)
+    minwalk = _prune_relationships(sequence)
     query = select(target_node.model.id)
     for node in minwalk[1:]:
         query = query.join(
@@ -271,8 +271,8 @@ def generate_query(target: Node, filters: dict[Node, list[BinaryExpression]]):
     """Generates joins and optionally a subquery to construct sql statement."""
 
     filter_nodes = set(filters.keys())
-    gt_only_set = {label_groundtruth, groundtruth, annotation_groundtruth}
-    pd_only_set = {label_prediction, prediction, annotation_prediction, model}
+    gt_only_set = {groundtruth_label, groundtruth, groundtruth_annotation}
+    pd_only_set = {prediction_label, prediction, prediction_annotation, model}
 
     subtarget = None
     filter_subnodes = None
@@ -288,28 +288,36 @@ def generate_query(target: Node, filters: dict[Node, list[BinaryExpression]]):
         filter_subnodes = gt_only_set.intersection(filter_nodes)
         filter_nodes = filter_nodes - gt_only_set.intersection(filter_nodes)
         filter_nodes.add(datum)
+    elif (
+        target not in gt_only_set.union(pd_only_set)
+        and gt_only_set.intersection(filter_nodes)
+        and pd_only_set.intersection(filter_nodes)
+    ):
+        # target is neither groundtruth or prediction specific but filters are from both.
+        subtarget = datum
+        filter_subnodes = pd_only_set.intersection(filter_nodes)
+        filter_nodes = filter_nodes - pd_only_set.intersection(filter_nodes)
+        filter_nodes.add(datum)
 
     query = _generate_query(target, filter_nodes, filters)
 
     subquery = None
     if subtarget and filter_subnodes:
-        subquery = _generate_query(
-            subtarget, filter_subnodes, filters
-        ).subquery()
+        subquery = _generate_query(subtarget, filter_subnodes, filters)
         query = query.where(models.Datum.id.in_(subquery))
 
     return query
 
 
 if __name__ == "__main__":
-    target = label_groundtruth
+    target = groundtruth_label
     filters = {
         model: [models.Model.name == "model1"],
         dataset: [models.Dataset.name == "dataset1"],
-        label_prediction: [models.Label.key == "k1"],
-        label_groundtruth: [models.Label.key == "k1"],
+        prediction_label: [models.Label.key == "k1"],
+        groundtruth_label: [models.Label.key == "k1"],
     }
-    # filters = {annotation_groundtruth}
+    # filters = {groundtruth_annotation}
 
     query = generate_query(target, filters)
 

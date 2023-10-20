@@ -4,17 +4,22 @@ from velour_api import schemas
 from velour_api.enums import AnnotationType, TaskType
 
 
+def _validate_comparison_operators(op: str):
+    if op not in [">", "<", ">=", "<=", "==", "!="]:
+        raise ValueError(f"`{op}` is not a valid comparison operator")
+    return op
+
+
 class StringFilter(BaseModel):
     value: str
     operator: str = "=="
 
     @field_validator("operator")
     @classmethod
-    def validate_numeric_comparison_operator(cls, v: str) -> str:
-        if v is not None:
-            if v not in [">", "<", ">=", "<=", "==", "!="]:
-                raise ValueError(f"`{v}` is not a valid comparison operator")
-        return v
+    def validate_comparison_operator(cls, op: str) -> str:
+        if op is not None:
+            _validate_comparison_operators(op)
+        return op
 
     model_config = ConfigDict(extra="forbid")
 
@@ -25,11 +30,10 @@ class NumericFilter(BaseModel):
 
     @field_validator("operator")
     @classmethod
-    def validate_numeric_comparison_operator(cls, v: str) -> str:
-        if v is not None:
-            if v not in [">", "<", ">=", "<=", "==", "!="]:
-                raise ValueError(f"`{v}` is not a valid comparison operator")
-        return v
+    def validate_comparison_operator(cls, op: str) -> str:
+        if op is not None:
+            _validate_comparison_operators(op)
+        return op
 
     model_config = ConfigDict(extra="forbid")
 
@@ -39,11 +43,10 @@ class GeospatialFilter(BaseModel):
 
     @field_validator("operator")
     @classmethod
-    def validate_numeric_comparison_operator(cls, v: str) -> str:
-        if v is not None:
-            if v not in [">", "<", ">=", "<=", "==", "!="]:
-                raise ValueError(f"`{v}` is not a valid comparison operator")
-        return v
+    def validate_comparison_operator(cls, op: str) -> str:
+        if op is not None:
+            _validate_comparison_operators(op)
+        return op
 
     model_config = ConfigDict(extra="forbid")
 

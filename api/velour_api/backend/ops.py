@@ -1,6 +1,6 @@
 # import operator
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.sql.elements import BinaryExpression
 
 from velour_api import schemas
@@ -12,22 +12,6 @@ class Query:
         self.target = target
         self.filter_by: dict[graph.Node, list[BinaryExpression]] = {}
         self.constraints = set()
-
-    @classmethod
-    def select_from(cls, table):
-        match table:
-            case models.Dataset:
-                return cls(graph.dataset)
-            case models.Model:
-                return cls(graph.model)
-            case models.Datum:
-                return cls(graph.datum)
-            case _:
-                raise ValueError("select_from ")
-
-    @classmethod
-    def select_groundtruth_from(cls, table):
-        pass
 
     def add_expressions(
         self, node: graph.Node, expressions: list[BinaryExpression]
@@ -54,7 +38,7 @@ class Query:
     """ filtering member functions, always return self so that they can be chained """
 
     def filter(self, filt: schemas.Filter):
-        """Parses `schemas.Filter` and operates all filters."""
+        """Parses `schemas.Filter`"""
         return self
 
     """ dataset filter """
@@ -119,23 +103,37 @@ class Query:
 
     """ filter by label """
 
-    # def filter_by_labels(
-    #     self,
-    #     labels: list[schemas.Label | models.Label],
-    #     include_groundtruths: bool = True,
-    #     include_predictions: bool = True,
-    # ):
-    #     # generate binary expressions
-    #     expressions = [
-    #         and_(
-    #             models.Label.key == label.key,
-    #             models.Label.value == label.value,
-    #         )
-    #         for label in labels
-    #         if isinstance(label, schemas.Label | models.Label)
-    #     ]
-    #     self.add_expressions(???, expressions)
-    #     return self
+    def filter_by_groundtruth_labels(
+        self,
+        labels: list[schemas.Label | models.Label],
+    ):
+        # generate binary expressions
+        expressions = [
+            and_(
+                models.Label.key == label.key,
+                models.Label.value == label.value,
+            )
+            for label in labels
+            if isinstance(label, schemas.Label | models.Label)
+        ]
+        self.add_expressions(graph.label_groundtruth, expressions)
+        return self
+
+    def filter_by_prediction_labels(
+        self,
+        labels: list[schemas.Label | models.Label],
+    ):
+        # generate binary expressions
+        expressions = [
+            and_(
+                models.Label.key == label.key,
+                models.Label.value == label.value,
+            )
+            for label in labels
+            if isinstance(label, schemas.Label | models.Label)
+        ]
+        self.add_expressions(graph.label_groundtruth, expressions)
+        return self
 
     # def filter_by_label_keys(
     #     self,
