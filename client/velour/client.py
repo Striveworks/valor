@@ -433,7 +433,7 @@ class Dataset:
         self,
     ) -> List[Evaluation]:
         model_evaluations = self.client._requests_get_rel_host(
-            f"evaluations/get_jobs/datasets/{self.name}"
+            f"evaluations/datasets/{self.name}"
         ).json()
         return [
             Evaluation(
@@ -690,7 +690,7 @@ class Model:
         self,
     ) -> List[Evaluation]:
         dataset_evaluations = self.client._requests_get_rel_host(
-            f"evaluations/get_jobs/models/{self.name}"
+            f"evaluations/models/{self.name}"
         ).json()
         return [
             Evaluation(

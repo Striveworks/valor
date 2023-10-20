@@ -619,31 +619,6 @@ def get_bulk_evaluations(
 
 
 @app.get(
-    "/evaluations/get_evaluations/models/{model_name}",
-    dependencies=[Depends(token_auth_scheme)],
-    response_model_exclude_none=True,
-    tags=["Evaluations"],
-)
-def get_evaluation_for_model(
-    model_name: str,
-    db: Session = Depends(get_db),
-) -> list[schemas.Metric]:
-    """Returns all of the evaluations for a given model."""
-    try:
-        return crud.get_evaluations_for_model(db=db, name=model_name)
-    except (
-        exceptions.JobDoesNotExistError,
-        exceptions.JobStateError,
-        AttributeError,
-    ) as e:
-        if "'NoneType' object has no attribute 'metrics'" in str(e):
-            raise HTTPException(
-                status_code=404, detail="Evaluation ID does not exist."
-            )
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
     "/evaluations/{job_id}",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
