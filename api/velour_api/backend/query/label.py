@@ -2,7 +2,7 @@ from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend import models, ops
+from velour_api.backend import models
 from velour_api.backend.core.label import get_dataset_labels_query
 
 
@@ -15,7 +15,7 @@ def get_labels(
     if request_info is None:
         labels = db.query(models.Label).all()
     else:
-        labels = ops.BackendQuery.label().filter(request_info).all(db)
+        raise NotImplementedError("query generator is WIP")
 
     return [
         schemas.Label(

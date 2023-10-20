@@ -55,7 +55,7 @@ def get_datums(
     if not request:
         datums = db.query(models.Datum).all()
     else:
-        datums = ops.BackendQuery.datum().filter(request).all(db)
+        datums = ops.Query.datum().filter(request).all(db)
 
     return [
         schemas.Datum(
