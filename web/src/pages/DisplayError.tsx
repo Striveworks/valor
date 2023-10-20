@@ -15,7 +15,7 @@ export function DisplayError({ error }: { error: Error }) {
         }}
       >
         <Typography.SectionTitle>
-          Sorry, an unexpected error has occured.
+          Sorry, an unexpected error has occurred.
         </Typography.SectionTitle>
         <p>{error.message}</p>
       </Page.Content>
