@@ -426,7 +426,7 @@ class Dataset:
             if schemas.ImageMetadata.valid(datum)
         ]
 
-    def get_evaluations(
+    def get_evaluation_job_ids(
         self,
     ) -> List[Evaluation]:
         model_evaluations = self.client._requests_get_rel_host(
@@ -683,7 +683,7 @@ class Model:
             **resp,
         )
 
-    def get_evaluations(
+    def get_evaluation_job_ids(
         self,
     ) -> List[Evaluation]:
         dataset_evaluations = self.client._requests_get_rel_host(
@@ -711,7 +711,7 @@ class Model:
             )
 
         ret = []
-        for evaluation in self.get_evaluations():
+        for evaluation in self.get_evaluation_job_ids():
             metrics = [
                 {**metric, "dataset": evaluation.dataset}
                 for metric in evaluation.metrics

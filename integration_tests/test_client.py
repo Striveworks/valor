@@ -2074,7 +2074,7 @@ def test_evaluate_tabular_clf(
     assert isinstance(df[0]["df"], pandas.DataFrame)
 
     # check evaluation
-    eval_jobs = model.get_evaluations()
+    eval_jobs = model.get_evaluation_job_ids()
     assert len(eval_jobs) == 1
     eval_settings = asdict(eval_jobs[0].settings)
     eval_settings.pop("id")
