@@ -24,11 +24,11 @@ def get_backend_state(
     )
 
 
-def get_dataset_evaluations(dataset_name: str):
+def get_evaluation_jobs_for_dataset(dataset_name: str):
     return jobs.get_stateflow().get_dataset_jobs(dataset_name)
 
 
-def get_model_evaluations(model_name: str):
+def get_evaluation_jobs_for_model(model_name: str):
     return jobs.get_stateflow().get_model_jobs(model_name)
 
 

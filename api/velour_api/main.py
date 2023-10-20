@@ -569,9 +569,9 @@ def create_semantic_segmentation_metrics(
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def get_dataset_evaluations(dataset_name: str) -> dict[str, list[int]]:
-    """Returns mapping of model names to list of job ids."""
-    return crud.get_dataset_evaluations(dataset_name)
+def get_evaluation_jobs_for_dataset(dataset_name: str) -> dict[str, list[int]]:
+    """Returns all of the job ids for a given dataset."""
+    return crud.get_evaluation_jobs_for_dataset(dataset_name)
 
 
 @app.get(
@@ -580,9 +580,9 @@ def get_dataset_evaluations(dataset_name: str) -> dict[str, list[int]]:
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def get_model_evaluations(model_name: str) -> dict[str, list[int]]:
-    """Returns mapping of dataset names to list of job ids."""
-    return crud.get_model_evaluations(model_name)
+def get_evaluation_jobs_for_model(model_name: str) -> dict[str, list[int]]:
+    """Returns all of the job ids for a given model."""
+    return crud.get_evaluation_jobs_for_model(model_name)
 
 
 @app.get(
@@ -617,6 +617,7 @@ def get_evaluation_settings(
         raise HTTPException(status_code=404, detail=str(e))
 
 
+# TODO use this
 @app.get(
     "/evaluations/{job_id}/metrics",
     dependencies=[Depends(token_auth_scheme)],
