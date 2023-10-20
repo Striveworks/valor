@@ -4,16 +4,15 @@ build
 .tox
 .coverage*
 
-.env
+.venv
 .env.auth
 .env-*
-.venv
+*/.env
+*/.venv
 
 .vscode
 */dist/*
-sample_notebooks/coco/*
 .DS_Store
-sample_notebooks/*.pt
 site/*
 *.ipynb
 !coco-panoptic.ipynb
@@ -24,3 +23,7 @@ web/.npmrc
 node_modules
 
 .npmrc
+runs
+
+.ipynb_checkpoints
+*.dat

@@ -3,6 +3,9 @@ name: Builds and publishes docs to GitHub pages
 on:
   push:
     branches: [main]
+    paths:
+      - docs/**
+      - .github/workflows/publish-docs.yml
 
 jobs:
   build-and-publish-docs:

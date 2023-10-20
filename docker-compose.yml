@@ -1,7 +1,7 @@
 services:
   service:
     image: ghcr.io/striveworks/velour/velour-service
-    build: ./backend
+    build: ./api
     ports:
       - "8000:8000"
     environment:
@@ -18,9 +18,11 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
   redis:
-    image: "redis"
+    image: "public.ecr.aws/bitnami/redis:7.0"
     ports:
       - "6379:6379"
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
   web:
     build: ./web
     ports:

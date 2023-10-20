@@ -3,16 +3,18 @@ name: Builds and publishes a docker image for the backend service
 on:
   push:
     paths:
-      - backend/**
+      - api/**
       - .github/workflows/docker.yml
     branches: [main]
+    tags:
+      - "v*"
 
 jobs:
   build-and-publish-docker:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./backend
+        working-directory: ./api
     env:
       IMAGE_NAME: ghcr.io/striveworks/velour/velour-service
       IMAGE_NAME_WITH_COMMIT_HASH: $IMAGE_NAME:${{ github.sha }}
@@ -28,3 +30,10 @@ jobs:
           IMAGE_NAME_WITH_COMMIT_HASH=$IMAGE_NAME:${{ github.sha }}
           docker tag $IMAGE_NAME $IMAGE_NAME_WITH_COMMIT_HASH
           docker push $IMAGE_NAME_WITH_COMMIT_HASH
+      # if there's a git tag then add another tag to the image with the git tag and push it
+      - name: push git tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG=$(git describe --tags --abbrev=0)
+          docker tag $IMAGE_NAME $IMAGE_NAME:$TAG
+          docker push $IMAGE_NAME:$TAG

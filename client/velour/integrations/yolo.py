@@ -4,48 +4,93 @@ import numpy
 import PIL
 from PIL.Image import Resampling
 
-from velour.data_types import (
+from velour import enums
+from velour.schemas import (
+    Annotation,
     BoundingBox,
-    Image,
+    ImageMetadata,
     Label,
-    PredictedDetection,
-    PredictedImageClassification,
-    PredictedInstanceSegmentation,
-    ScoredLabel,
+    Prediction,
+    Raster,
 )
 
 
 def parse_yolo_image_classification(
-    result, uid: str, label_key: str = "class"
-):
+    result,
+    image: ImageMetadata,
+    label_key: str = "class",
+) -> Prediction:
     """Parses Ultralytic's result for an image classification task."""
 
     # Extract data
-    image_uid = uid
-    image_height = result.orig_shape[0]
-    image_width = result.orig_shape[1]
     probabilities = result.probs
     labels = result.names
 
+    # validate dimensions
+    if image.height != result.orig_shape[0]:
+        raise RuntimeError
+    if image.width != result.orig_shape[1]:
+        raise RuntimeError
+
     # Create scored label list
-    scored_labels = [
-        ScoredLabel(
-            label=Label(key=label_key, value=labels[key]),
-            score=probability.item(),
-        )
+    labels = [
+        Label(key=label_key, value=labels[key], score=probability.item())
         for key, probability in list(zip(labels, probabilities))
     ]
 
-    return [
-        PredictedImageClassification(
-            image=Image(
-                uid=image_uid,
-                height=image_height,
-                width=image_width,
-            ),
-            scored_labels=scored_labels,
-        )
+    # create prediction
+    return Prediction(
+        datum=image.to_datum(),
+        annotations=[
+            Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=labels)
+        ],
+    )
+
+
+def parse_yolo_object_detection(
+    result, image: ImageMetadata, label_key: str = "class"
+) -> Prediction:
+    """Parses Ultralytic's result for an object detection task."""
+
+    # Extract data
+    probabilities = [conf.item() for conf in result.boxes.conf]
+    labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
+    bboxes = [numpy.asarray(box.cpu()) for box in result.boxes.xyxy]
+
+    # validate dimensions
+    if image.height != result.orig_shape[0]:
+        raise RuntimeError
+    if image.width != result.orig_shape[1]:
+        raise RuntimeError
+
+    # Create scored label list
+    labels = [
+        Label(key=label_key, value=label, score=probability)
+        for label, probability in list(zip(labels, probabilities))
     ]
+
+    # Extract Bounding Boxes
+    bboxes = [
+        BoundingBox.from_extrema(
+            xmin=int(box[0]),
+            ymin=int(box[1]),
+            xmax=int(box[2]),
+            ymax=int(box[3]),
+        )
+        for box in bboxes
+    ]
+
+    return Prediction(
+        datum=image.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=enums.TaskType.DETECTION,
+                labels=[scored_label],
+                bounding_box=bbox,
+            )
+            for bbox, scored_label in list(zip(bboxes, labels))
+        ],
+    )
 
 
 def _convert_yolo_segmentation(
@@ -65,97 +110,52 @@ def _convert_yolo_segmentation(
 
 def parse_yolo_image_segmentation(
     result,
-    uid: str,
+    image: ImageMetadata,
     label_key: str = "class",
     resample: Resampling = Resampling.BILINEAR,
-):
+) -> Union[Prediction, None]:
     """Parses Ultralytic's result for an image segmentation task."""
 
     if result.masks.data is None:
-        return []
+        return None
 
     # Extract data
-    image_uid = uid
-    image_height = result.orig_shape[0]
-    image_width = result.orig_shape[1]
     probabilities = [conf.item() for conf in result.boxes.conf]
     labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
     masks = [mask for mask in result.masks.data]
 
+    # validate dimensions
+    if image.height != result.orig_shape[0]:
+        raise RuntimeError
+    if image.width != result.orig_shape[1]:
+        raise RuntimeError
+
     # Create scored label list
-    scored_labels = [
-        ScoredLabel(
-            label=Label(key=label_key, value=label),
-            score=probability,
-        )
+    labels = [
+        Label(key=label_key, value=label, score=probability)
         for label, probability in list(zip(labels, probabilities))
     ]
 
     # Extract masks
     masks = [
         _convert_yolo_segmentation(
-            raw, height=image_height, width=image_width, resample=resample
+            raw, height=image.height, width=image.width, resample=resample
         )
         for raw in result.masks.data
     ]
 
-    return [
-        PredictedInstanceSegmentation(
-            mask=mask,
-            scored_labels=[scored_label],
-            image=Image(
-                uid=image_uid,
-                height=image_height,
-                width=image_width,
-            ),
-        )
-        for mask, scored_label in list(zip(masks, scored_labels))
-    ]
-
-
-def parse_yolo_object_detection(result, uid: str, label_key: str = "class"):
-    """Parses Ultralytic's result for an object detection task."""
-
-    # Extract data
-    image_uid = uid
-    image_height = result.orig_shape[0]
-    image_width = result.orig_shape[1]
-    probabilities = [conf.item() for conf in result.boxes.conf]
-    labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
-    bboxes = [numpy.asarray(box.cpu()) for box in result.boxes.xyxy]
-
-    # Create scored label list
-    scored_labels = [
-        ScoredLabel(
-            label=Label(key=label_key, value=label),
-            score=probability,
-        )
-        for label, probability in list(zip(labels, probabilities))
-    ]
-
-    # Extract Bounding Boxes
-    bboxes = [
-        BoundingBox(
-            xmin=int(box[0]),
-            ymin=int(box[1]),
-            xmax=int(box[2]),
-            ymax=int(box[3]),
-        )
-        for box in bboxes
-    ]
-
-    return [
-        PredictedDetection(
-            scored_labels=[scored_label],
-            image=Image(
-                uid=image_uid,
-                height=image_height,
-                width=image_width,
-            ),
-            bbox=bbox,
-        )
-        for bbox, scored_label in list(zip(bboxes, scored_labels))
-    ]
+    # create prediction
+    return Prediction(
+        datum=image.to_datum(),
+        annotations=[
+            Annotation(
+                task_type=enums.TaskType.DETECTION,
+                labels=[scored_label],
+                raster=Raster.from_numpy(mask),
+            )
+            for mask, scored_label in list(zip(masks, labels))
+        ],
+    )
 
 
 def parse_yolo_results(
@@ -163,11 +163,7 @@ def parse_yolo_results(
     uid: str,
     label_key: str = "class",
     segmentation_resample: Resampling = Resampling.BILINEAR,
-) -> Union[
-    PredictedDetection,
-    PredictedImageClassification,
-    PredictedInstanceSegmentation,
-]:
+) -> Prediction:
     """Automatically chooses correct parser for Ultralytic YOLO model inferences.
 
     Parameters
