@@ -564,7 +564,7 @@ def create_semantic_segmentation_metrics(
 
 
 @app.get(
-    "/evaluations/datasets/{dataset_name}",
+    "/evaluations/get_jobs/datasets/{dataset_name}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
@@ -575,7 +575,7 @@ def get_evaluation_jobs_for_dataset(dataset_name: str) -> dict[str, list[int]]:
 
 
 @app.get(
-    "/evaluations/models/{model_name}",
+    "/evaluations/get_jobs/models/{model_name}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
