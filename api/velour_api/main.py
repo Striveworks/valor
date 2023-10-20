@@ -1,4 +1,5 @@
 import os
+from typing import List, Optional
 
 from fastapi import (  # Request,; status,
     BackgroundTasks,
@@ -564,7 +565,7 @@ def create_semantic_segmentation_metrics(
 
 
 @app.get(
-    "/evaluations/get_jobs/datasets/{dataset_name}",
+    "/evaluations/datasets/{dataset_name}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
@@ -575,7 +576,7 @@ def get_evaluation_jobs_for_dataset(dataset_name: str) -> dict[str, list[int]]:
 
 
 @app.get(
-    "/evaluations/get_jobs/models/{model_name}",
+    "/evaluations/models/{model_name}",
     status_code=200,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
@@ -583,6 +584,63 @@ def get_evaluation_jobs_for_dataset(dataset_name: str) -> dict[str, list[int]]:
 def get_evaluation_jobs_for_model(model_name: str) -> dict[str, list[int]]:
     """Returns all of the job ids for a given model."""
     return crud.get_evaluation_jobs_for_model(model_name)
+
+
+@app.get(
+    "/evaluations/",
+    dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
+    tags=["Evaluations"],
+)
+def get_bulk_evaluations(
+    datasets: Optional[List[str]],
+    models: Optional[List[str]],
+    db: Session = Depends(get_db),
+) -> list[schemas.Metric]:
+    """Returns all of the evaluations for a given dataset and/or model."""
+
+    dataset_names = datasets.split(",")
+    model_names = models.split(",")
+
+    try:
+        return crud.get_bulk_evaluations(
+            db=db, dataset_names=dataset_names, model_names=model_names
+        )
+    except (
+        exceptions.JobDoesNotExistError,
+        exceptions.JobStateError,
+        AttributeError,
+    ) as e:
+        if "'NoneType' object has no attribute 'metrics'" in str(e):
+            raise HTTPException(
+                status_code=404, detail="Evaluation ID does not exist."
+            )
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/evaluations/get_evaluations/models/{model_name}",
+    dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
+    tags=["Evaluations"],
+)
+def get_evaluation_for_model(
+    model_name: str,
+    db: Session = Depends(get_db),
+) -> list[schemas.Metric]:
+    """Returns all of the evaluations for a given model."""
+    try:
+        return crud.get_evaluations_for_model(db=db, name=model_name)
+    except (
+        exceptions.JobDoesNotExistError,
+        exceptions.JobStateError,
+        AttributeError,
+    ) as e:
+        if "'NoneType' object has no attribute 'metrics'" in str(e):
+            raise HTTPException(
+                status_code=404, detail="Evaluation ID does not exist."
+            )
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(

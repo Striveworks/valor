@@ -1,3 +1,5 @@
+from typing import List, Optional
+
 from sqlalchemy.orm import Session
 
 from velour_api import backend, enums, schemas
@@ -30,6 +32,61 @@ def get_evaluation_jobs_for_dataset(dataset_name: str):
 
 def get_evaluation_jobs_for_model(model_name: str):
     return jobs.get_stateflow().get_model_jobs(model_name)
+
+
+def get_bulk_evaluations(
+    db: Session,
+    dataset_names: Optional[List[str]],
+    model_names: Optional[List[str]],
+) -> list:
+    job_ids = set()
+
+    for dataset in dataset_names:
+        job_ids.update(jobs.get_stateflow().get_dataset_jobs(dataset))
+
+    for model in model_names:
+        job_ids.update(jobs.get_stateflow().get_model_jobs(model))
+
+    statuses = [
+        (
+            job_id,
+            jobs.get_stateflow().get_job_status(
+                job_id=job_id,
+            ),
+        )
+        for job_id in job_ids
+    ]
+
+    not_finished = [
+        status for status in statuses if status != enums.JobStatus.Done
+    ]
+
+    assert (
+        not not_finished
+    ), f"Please wait for the following evaluation IDs to finish running: {not_finished}"
+
+    return backend.get_metrics_from_evaluation_ids(
+        db=db, evaluation_ids=job_ids
+    )
+
+    # [{dataset_name: "", model_name:"", metrics:{}}, ]
+
+    # output = []
+
+    # # TODO add to queue and just wait?
+    # for job_id, status in statuses:
+    #     if status != enums.JobStatus.DONE:
+    #         raise JobStateError(
+    #             f"Job {job_id} for dataset {dataset_name} is still running. Please try your bulk evaluation request again later."
+    #         )
+    #     else:
+    #         output.append(
+    #             backend.get_metrics_from_evaluation_ids(
+    #                 db=db, evaluation_ids=job_id
+    #             )
+    #         )
+
+    # return output
 
 
 """ Labels """

@@ -45,10 +45,26 @@ def get_metrics_from_evaluation_settings(
 def get_metrics_from_evaluation_id(
     db: Session, evaluation_id: int
 ) -> list[schemas.Metric]:
+    """Return metrics for a specific evaluation id"""
     eval_settings = db.scalar(
         select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     )
     return get_metrics_from_evaluation_settings(db, [eval_settings])
+
+
+def get_metrics_from_evaluation_ids(
+    db: Session, evaluation_ids: list[int]
+) -> list[schemas.Metric]:
+    """Return metrics for a list of evaluation ids"""
+    eval_settings = db.scalar(
+        select(models.Evaluation)
+        .where(models.Evaluation.id.in_(evaluation_ids))
+        .all()
+    )
+    return [
+        get_metrics_from_evaluation_settings(db, [setting])
+        for setting in eval_settings
+    ]
 
 
 def get_confusion_matrices_from_evaluation_id(

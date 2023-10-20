@@ -100,6 +100,9 @@ class Client:
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
+    def get_bulk_evaluations():
+        pass
+
     def get_datasets(
         self,
     ) -> List[dict]:
@@ -426,8 +429,7 @@ class Dataset:
             if schemas.ImageMetadata.valid(datum)
         ]
 
-    # TODO
-    def get_evaluation_job_ids(
+    def get_evaluations(
         self,
     ) -> List[Evaluation]:
         model_evaluations = self.client._requests_get_rel_host(
@@ -684,7 +686,7 @@ class Model:
             **resp,
         )
 
-    def get_evaluation_job_ids(
+    def get_evaluations(
         self,
     ) -> List[Evaluation]:
         dataset_evaluations = self.client._requests_get_rel_host(
@@ -712,7 +714,7 @@ class Model:
             )
 
         ret = []
-        for evaluation in self.get_evaluation_job_ids():
+        for evaluation in self.get_evaluations():
             metrics = [
                 {**metric, "dataset": evaluation.dataset}
                 for metric in evaluation.metrics
