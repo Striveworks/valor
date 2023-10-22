@@ -40,12 +40,30 @@ def get_bulk_evaluations(
     model_names: Optional[List[str]],
 ) -> list:
     job_ids = set()
+    id_to_model_dataset_mappings = dict()
 
+    # get all relevant job IDs from all of the specified models and datasets
     for dataset in dataset_names:
-        job_ids.update(jobs.get_stateflow().get_dataset_jobs(dataset))
+        dataset_jobs = jobs.get_stateflow().get_dataset_jobs(dataset)
+        for model_name, values in dataset_jobs.items():
+            job_ids.update(values)
+            for job_id in values:
+                if job_id not in id_to_model_dataset_mappings:
+                    id_to_model_dataset_mappings[job_id] = {
+                        "model": model_name,
+                        "dataset": dataset,
+                    }
 
     for model in model_names:
-        job_ids.update(jobs.get_stateflow().get_model_jobs(model))
+        model_jobs = jobs.get_stateflow().get_model_jobs(model)
+        for dataset_name, values in model_jobs.items():
+            job_ids.update(values)
+            for job_id in values:
+                if job_id not in id_to_model_dataset_mappings:
+                    id_to_model_dataset_mappings[job_id] = {
+                        "model": model,
+                        "dataset": dataset_name,
+                    }
 
     statuses = [
         (
@@ -57,36 +75,19 @@ def get_bulk_evaluations(
         for job_id in job_ids
     ]
 
-    not_finished = [
-        status for status in statuses if status != enums.JobStatus.Done
-    ]
+    not_finished = []
+    for job_id, status in statuses:
+        if status != enums.JobStatus.DONE:
+            not_finished.append(job_id)
 
-    assert (
-        not not_finished
-    ), f"Please wait for the following evaluation IDs to finish running: {not_finished}"
+    if not_finished:
+        raise ValueError(
+            f"Please wait for the following evaluation IDs to finish running: {not_finished}"
+        )
 
     return backend.get_metrics_from_evaluation_ids(
         db=db, evaluation_ids=job_ids
     )
-
-    # [{dataset_name: "", model_name:"", metrics:{}}, ]
-
-    # output = []
-
-    # # TODO add to queue and just wait?
-    # for job_id, status in statuses:
-    #     if status != enums.JobStatus.DONE:
-    #         raise JobStateError(
-    #             f"Job {job_id} for dataset {dataset_name} is still running. Please try your bulk evaluation request again later."
-    #         )
-    #     else:
-    #         output.append(
-    #             backend.get_metrics_from_evaluation_ids(
-    #                 db=db, evaluation_ids=job_id
-    #             )
-    #         )
-
-    # return output
 
 
 """ Labels """

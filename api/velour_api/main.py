@@ -1,5 +1,4 @@
 import os
-from typing import List, Optional
 
 from fastapi import (  # Request,; status,
     BackgroundTasks,
@@ -44,6 +43,16 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def _split_query_params(param_string: str | None) -> list[str] | None:
+    """Split GET query parameters and return a list when possible."""
+    if not param_string:
+        return None
+    elif "," in param_string:
+        return param_string.split(",")
+    else:
+        return [param_string]
 
 
 """ GROUNDTRUTHS """
@@ -586,6 +595,7 @@ def get_evaluation_jobs_for_model(model_name: str) -> dict[str, list[int]]:
     return crud.get_evaluation_jobs_for_model(model_name)
 
 
+# TODO: create schema to validate return type
 @app.get(
     "/evaluations/",
     dependencies=[Depends(token_auth_scheme)],
@@ -593,14 +603,14 @@ def get_evaluation_jobs_for_model(model_name: str) -> dict[str, list[int]]:
     tags=["Evaluations"],
 )
 def get_bulk_evaluations(
-    datasets: Optional[List[str]],
-    models: Optional[List[str]],
+    datasets: str = None,
+    models: str = None,
     db: Session = Depends(get_db),
-) -> list[schemas.Metric]:
+) -> list[dict]:
     """Returns all of the evaluations for a given dataset and/or model."""
 
-    dataset_names = datasets.split(",")
-    model_names = models.split(",")
+    model_names = _split_query_params(models)
+    dataset_names = _split_query_params(datasets)
 
     try:
         return crud.get_bulk_evaluations(

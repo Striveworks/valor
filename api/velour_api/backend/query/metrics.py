@@ -42,6 +42,21 @@ def get_metrics_from_evaluation_settings(
     ]
 
 
+def _get_bulk_metrics_from_evaluation_settings(
+    db: Session,
+    evaluation_settings: list[models.Evaluation],
+) -> list[schemas.Metric]:
+    return [
+        {
+            "dataset": m.settings.dataset.name,
+            "model": m.settings.model.name,
+            "metric": _db_metric_to_pydantic_metric(db, m),
+        }
+        for ms in evaluation_settings
+        for m in ms.metrics
+    ]
+
+
 def get_metrics_from_evaluation_id(
     db: Session, evaluation_id: int
 ) -> list[schemas.Metric]:
@@ -57,14 +72,12 @@ def get_metrics_from_evaluation_ids(
 ) -> list[schemas.Metric]:
     """Return metrics for a list of evaluation ids"""
     eval_settings = db.scalar(
-        select(models.Evaluation)
-        .where(models.Evaluation.id.in_(evaluation_ids))
-        .all()
+        select(models.Evaluation).where(
+            models.Evaluation.id.in_(evaluation_ids)
+        )
     )
-    return [
-        get_metrics_from_evaluation_settings(db, [setting])
-        for setting in eval_settings
-    ]
+
+    return _get_bulk_metrics_from_evaluation_settings(db, [eval_settings])
 
 
 def get_confusion_matrices_from_evaluation_id(

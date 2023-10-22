@@ -100,8 +100,29 @@ class Client:
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
-    def get_bulk_evaluations():
-        pass
+    def get_bulk_evaluations(
+        self,
+        models: List[str] | str | None = None,
+        datasets: List[str] | str | None = None,
+    ) -> list[dict]:
+        assert (
+            models or datasets
+        ), "Please provide atleast one model name or dataset name"
+
+        # let users just pass one name as a string
+        if isinstance(models, str):
+            models = [models]
+
+        if isinstance(datasets, str):
+            datasets = [datasets]
+
+        model_params = ",".join(models)
+        dataset_params = ",".join(datasets)
+
+        evals = self._requests_get_rel_host(
+            f"evaluations?models={model_params}&datasets={dataset_params}"
+        ).json()
+        return evals
 
     def get_datasets(
         self,

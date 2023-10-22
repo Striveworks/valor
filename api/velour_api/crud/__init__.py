@@ -13,6 +13,7 @@ from ._create import (
 from ._delete import delete
 from ._read import (
     get_backend_state,
+    get_bulk_evaluations,
     get_confusion_matrices_from_evaluation_id,
     get_dataset,
     get_datasets,
@@ -20,8 +21,6 @@ from ._read import (
     get_datums,
     get_disjoint_keys,
     get_disjoint_labels,
-    get_evaluation_for_dataset,
-    get_evaluation_for_model,
     get_evaluation_jobs_for_dataset,
     get_evaluation_jobs_for_model,
     get_evaluation_settings_from_id,
@@ -47,8 +46,7 @@ __all__ = [
     "get_backend_state",
     "get_evaluation_jobs_for_dataset",
     "get_evaluation_jobs_for_model",
-    "get_evaluation_for_dataset",
-    "get_evaluation_for_model",
+    "get_bulk_evaluations",
     "get_datasets",
     "get_dataset",
     "get_datums",

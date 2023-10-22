@@ -1621,6 +1621,23 @@ def test_evaluate_detection(
         == eval_job_min_area_1200.metrics
     )
 
+    # test get_bulk_evaluations
+    evaluations = client.get_bulk_evaluations(
+        datasets=dset_name, models="test_model"
+    )
+    # print("00000a")
+    # evaluations = client.get_bulk_evaluations(
+    #     datasets=dset_name, models=["test_model", "fake_test_model"]
+    # )
+    # print("00000b")
+    # evaluations = client.get_bulk_evaluations(datasets=dset_name)
+    # print("000000c")
+    # evaluations = client.get_bulk_evaluations(models="test_model")
+
+    print("000000---")
+    print(evaluations)
+    assert evaluations == 1
+
 
 def test_evaluate_image_clf(
     client: Client,

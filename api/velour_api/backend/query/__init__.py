@@ -17,6 +17,7 @@ from .metrics import (
     get_confusion_matrices_from_evaluation_id,
     get_evaluation_settings_from_id,
     get_metrics_from_evaluation_id,
+    get_metrics_from_evaluation_ids,
     get_model_evaluation_settings,
     get_model_metrics,
 )
@@ -45,6 +46,7 @@ __all__ = [
     "get_joint_keys",
     "get_disjoint_keys",
     "get_metrics_from_evaluation_id",
+    "get_metrics_from_evaluation_ids",
     "get_confusion_matrices_from_evaluation_id",
     "get_evaluation_settings_from_id",
     "get_model_metrics",
