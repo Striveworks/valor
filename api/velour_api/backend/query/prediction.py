@@ -59,12 +59,3 @@ def get_prediction(
         ),
         annotations=core.get_annotations(db, datum=datum, model=model),
     )
-
-
-def get_predictions(
-    db: Session,
-    request: schemas.Filter,
-) -> list[schemas.Prediction]:
-    raise NotImplementedError("query generator is WIP")
-    # datums = ops.Query.datum().filter(request).all(db)
-    # return [core.get_scored_annotations(db, datum) for datum in datums]

@@ -154,14 +154,6 @@ def get_groundtruth(
     )
 
 
-def get_groundtruths(
-    *,
-    db: Session,
-    request: schemas.Filter,
-) -> list[schemas.GroundTruth]:
-    return backend.get_groundtruths(db, request)
-
-
 """ Models """
 
 
@@ -186,15 +178,6 @@ def get_prediction(
         dataset_name=dataset_name,
         datum_uid=datum_uid,
     )
-
-
-# @TODO
-def get_predictions(
-    *,
-    db: Session,
-    request: schemas.Filter = None,
-) -> list[schemas.Prediction]:
-    return []
 
 
 """ Evaluation """

@@ -52,12 +52,3 @@ def get_groundtruth(
         ),
         annotations=core.get_annotations(db, datum),
     )
-
-
-def get_groundtruths(
-    db: Session,
-    request: schemas.Filter,
-) -> list[schemas.GroundTruth]:
-    raise NotImplementedError("query generator is WIP")
-    # datums = ops.Query.datum().filter(request).all(db)
-    # return [core.get_annotations(db, datum) for datum in datums]

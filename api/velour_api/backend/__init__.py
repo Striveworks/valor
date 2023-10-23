@@ -22,7 +22,6 @@ from .query import (
     get_disjoint_labels,
     get_evaluation_settings_from_id,
     get_groundtruth,
-    get_groundtruths,
     get_joint_keys,
     get_joint_labels,
     get_labels,
@@ -32,7 +31,6 @@ from .query import (
     get_model_metrics,
     get_models,
     get_prediction,
-    get_predictions,
 )
 
 __all__ = [
@@ -47,10 +45,8 @@ __all__ = [
     "delete_model",
     "create_groundtruth",
     "get_groundtruth",
-    "get_groundtruths",
     "create_prediction",
     "get_prediction",
-    "get_predictions",
     "get_labels",
     "get_joint_labels",
     "get_disjoint_labels",

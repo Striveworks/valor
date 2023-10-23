@@ -1,10 +1,15 @@
 import pytest
 
-from velour_api.backend import graph
+from velour_api.backend.graph import Graph, Node, _recursive_acyclic_walk
 
 
 @pytest.fixture
-def model_to_dataset():
+def graph():
+    return Graph()
+
+
+@pytest.fixture
+def model_to_dataset(graph):
     return [
         graph.model,
         graph.prediction_annotation,
@@ -14,7 +19,7 @@ def model_to_dataset():
 
 
 @pytest.fixture
-def model_to_groundtruth_labels():
+def model_to_groundtruth_labels(graph):
     return [
         graph.model,
         graph.prediction_annotation,
@@ -26,7 +31,7 @@ def model_to_groundtruth_labels():
 
 
 @pytest.fixture
-def model_to_prediction_labels():
+def model_to_prediction_labels(graph):
     return [
         graph.model,
         graph.prediction_annotation,
@@ -41,7 +46,7 @@ def dataset_to_model(model_to_dataset):
 
 
 @pytest.fixture
-def dataset_to_groundtruth_labels():
+def dataset_to_groundtruth_labels(graph):
     return [
         graph.dataset,
         graph.datum,
@@ -52,7 +57,7 @@ def dataset_to_groundtruth_labels():
 
 
 @pytest.fixture
-def dataset_to_prediction_labels():
+def dataset_to_prediction_labels(graph):
     return [
         graph.dataset,
         graph.datum,
@@ -73,7 +78,7 @@ def groundtruth_labels_to_dataset(dataset_to_groundtruth_labels):
 
 
 @pytest.fixture
-def groundtruth_labels_to_prediction_labels():
+def groundtruth_labels_to_prediction_labels(graph):
     return [
         graph.groundtruth_label,
         graph.groundtruth,
@@ -103,6 +108,7 @@ def prediction_labels_to_groundtruth_labels(
 
 
 def test__recursive_acyclic_walk(
+    graph,
     model_to_dataset,
     model_to_groundtruth_labels,
     model_to_prediction_labels,
@@ -118,54 +124,55 @@ def test__recursive_acyclic_walk(
 ):
     # model --> extremities
     root = graph.model
-    assert graph._recursive_acyclic_walk(
-        root, graph.dataset, list(), set()
-    ) == [model_to_dataset]
-    assert graph._recursive_acyclic_walk(
+    assert _recursive_acyclic_walk(root, graph.dataset, list(), set()) == [
+        model_to_dataset
+    ]
+    assert _recursive_acyclic_walk(
         root, graph.groundtruth_label, list(), set()
     ) == [model_to_groundtruth_labels]
-    assert graph._recursive_acyclic_walk(
+    assert _recursive_acyclic_walk(
         root, graph.prediction_label, list(), set()
     ) == [model_to_prediction_labels]
 
     # dataset --> extremities
     root = graph.dataset
-    assert graph._recursive_acyclic_walk(root, graph.model, list(), set()) == [
+    assert _recursive_acyclic_walk(root, graph.model, list(), set()) == [
         dataset_to_model
     ]
-    assert graph._recursive_acyclic_walk(
+    assert _recursive_acyclic_walk(
         root, graph.groundtruth_label, list(), set()
     ) == [dataset_to_groundtruth_labels]
-    assert graph._recursive_acyclic_walk(
+    assert _recursive_acyclic_walk(
         root, graph.prediction_label, list(), set()
     ) == [dataset_to_prediction_labels]
 
     # groundtruth labels --> extremities
     root = graph.groundtruth_label
-    assert graph._recursive_acyclic_walk(root, graph.model, list(), set()) == [
+    assert _recursive_acyclic_walk(root, graph.model, list(), set()) == [
         groundtruth_labels_to_model
     ]
-    assert graph._recursive_acyclic_walk(
-        root, graph.dataset, list(), set()
-    ) == [groundtruth_labels_to_dataset]
-    assert graph._recursive_acyclic_walk(
+    assert _recursive_acyclic_walk(root, graph.dataset, list(), set()) == [
+        groundtruth_labels_to_dataset
+    ]
+    assert _recursive_acyclic_walk(
         root, graph.prediction_label, list(), set()
     ) == [groundtruth_labels_to_prediction_labels]
 
     # prediction labels --> extremities
     root = graph.prediction_label
-    assert graph._recursive_acyclic_walk(root, graph.model, list(), set()) == [
+    assert _recursive_acyclic_walk(root, graph.model, list(), set()) == [
         prediction_labels_to_model
     ]
-    assert graph._recursive_acyclic_walk(
-        root, graph.dataset, list(), set()
-    ) == [prediction_labels_to_dataset]
-    assert graph._recursive_acyclic_walk(
+    assert _recursive_acyclic_walk(root, graph.dataset, list(), set()) == [
+        prediction_labels_to_dataset
+    ]
+    assert _recursive_acyclic_walk(
         root, graph.groundtruth_label, list(), set()
     ) == [prediction_labels_to_groundtruth_labels]
 
 
 def test__walk_graph(
+    graph,
     model_to_dataset,
     model_to_groundtruth_labels,
     model_to_prediction_labels,
@@ -179,7 +186,7 @@ def test__walk_graph(
     prediction_labels_to_model,
     prediction_labels_to_groundtruth_labels,
 ):
-    def leaves(root: graph.Node):
+    def leaves(root: Node):
         return [
             node
             for node in [
@@ -228,7 +235,7 @@ def test__walk_graph(
     )
 
 
-def test__reduce():
+def test__reduce(graph):
     root = graph.model
     leaves = [graph.dataset, graph.groundtruth_label, graph.prediction_label]
     walks = graph._walk_graph(root, leaves)
@@ -246,7 +253,7 @@ def test__reduce():
     ]
 
 
-def test__prune_relationships():
+def test__prune_relationships(graph):
     root = graph.model
     leaves = [graph.dataset, graph.groundtruth_label, graph.prediction_label]
     walks = graph._walk_graph(root, leaves)
