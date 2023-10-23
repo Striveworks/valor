@@ -49,13 +49,14 @@ def get_datasets(
 # @TODO
 def get_datums(
     db: Session,
-    request: schemas.Filter | None = None,
+    filters: schemas.Filter | None = None,
 ) -> list[schemas.Datum]:
 
-    if not request:
+    if not filters:
         datums = db.query(models.Datum).all()
     else:
-        datums = ops.Query.datum().filter(request).all(db)
+        q = ops.Query(models.Datum).filter(filters).query()
+        datums = db.query(q).all()
 
     return [
         schemas.Datum(

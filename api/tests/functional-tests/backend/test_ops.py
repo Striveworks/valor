@@ -1,9 +1,7 @@
 import pytest
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from velour_api import crud, schemas
-from velour_api.backend import Query, graph, models
 from velour_api.enums import TaskType
 
 dset_name = "dataset1"

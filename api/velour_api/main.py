@@ -170,8 +170,8 @@ def get_labels_from_dataset(
         return crud.get_labels(
             db=db,
             request=schemas.Filter(
-                datasets=[dataset_name],
-                allow_predictions=False,
+                datasets=schemas.DatasetFilter(names=[dataset_name]),
+                groundtruth_labels=schemas.LabelFilter(),
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
@@ -191,8 +191,8 @@ def get_labels_from_model(
         return crud.get_labels(
             db=db,
             request=schemas.Filter(
-                models=[model_name],
-                allow_groundtruths=False,
+                models=schemas.ModelFilter(names=[model_name]),
+                prediction_labels=schemas.LabelFilter(),
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
@@ -308,33 +308,32 @@ def get_datums(
         return crud.get_datums(
             db=db,
             request=schemas.Filter(
-                datasets=[dataset_name],
-                allow_predictions=False,
+                datasets=schemas.DatasetFilter(names=[dataset_name]),
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# @TODO: Enforce datum typing with an enum
-@app.get(
-    "/data/dataset/{dataset_name}/filter/{data_type}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datums"],
-)
-def get_filtered_dataset_datums(
-    dataset_name: str, data_type: str, db: Session = Depends(get_db)
-) -> list[schemas.Datum]:
-    try:
-        return crud.get_datums(
-            db=db,
-            filter=schemas.Filter(
-                datasets=[dataset_name],
-            ),
-        )
-    except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+# TODO - Add custom endpoints for retrieving datums by filter parameters
+# @app.get(
+#     "/data/dataset/{dataset_name}/filter/{data_type}",
+#     status_code=200,
+#     dependencies=[Depends(token_auth_scheme)],
+#     tags=["Datums"],
+# )
+# def get_filtered_dataset_datums(
+#     dataset_name: str, data_type: str, db: Session = Depends(get_db)
+# ) -> list[schemas.Datum]:
+#     try:
+#         return crud.get_datums(
+#             db=db,
+#             filter=schemas.Filter(
+#                 datasets=[dataset_name],
+#             ),
+#         )
+#     except exceptions.DatasetDoesNotExistError as e:
+#         raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
