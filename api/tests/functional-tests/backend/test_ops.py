@@ -165,3 +165,16 @@ def test_Query_extremities(
     assert len(scores) == 2
     assert 0.1 in scores
     assert 0.8 in scores
+
+    # Q: Get prediction score(s) where both groundtruth and prediction labels are of "dog" and constrain by dataset_name.
+    f = schemas.Filter(
+        datasets=schemas.DatasetFilter(names=[dset_name]),
+        labels=schemas.LabelFilter(
+            labels=[schemas.Label(key=label_key, value="dog")]
+        ),
+    )
+    q = Query(models.Prediction).filter(f).query()
+    scores = [prediction.score for prediction in db.query(q).all()]
+    assert len(scores) == 2
+    assert 0.1 in scores
+    assert 0.8 in scores
