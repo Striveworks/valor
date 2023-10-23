@@ -40,30 +40,19 @@ def get_bulk_evaluations(
     model_names: Optional[List[str]],
 ) -> list:
     job_ids = set()
-    id_to_model_dataset_mappings = dict()
 
     # get all relevant job IDs from all of the specified models and datasets
-    for dataset in dataset_names:
-        dataset_jobs = jobs.get_stateflow().get_dataset_jobs(dataset)
-        for model_name, values in dataset_jobs.items():
-            job_ids.update(values)
-            for job_id in values:
-                if job_id not in id_to_model_dataset_mappings:
-                    id_to_model_dataset_mappings[job_id] = {
-                        "model": model_name,
-                        "dataset": dataset,
-                    }
+    if dataset_names:
+        for dataset in dataset_names:
+            dataset_jobs = jobs.get_stateflow().get_dataset_jobs(dataset)
+            for _, values in dataset_jobs.items():
+                job_ids.update(values)
 
-    for model in model_names:
-        model_jobs = jobs.get_stateflow().get_model_jobs(model)
-        for dataset_name, values in model_jobs.items():
-            job_ids.update(values)
-            for job_id in values:
-                if job_id not in id_to_model_dataset_mappings:
-                    id_to_model_dataset_mappings[job_id] = {
-                        "model": model,
-                        "dataset": dataset_name,
-                    }
+    if model_names:
+        for model in model_names:
+            model_jobs = jobs.get_stateflow().get_model_jobs(model)
+            for _, values in model_jobs.items():
+                job_ids.update(values)
 
     statuses = [
         (
@@ -262,6 +251,12 @@ def get_metrics_from_evaluation_id(
     *, db: Session, evaluation_id: int
 ) -> list[schemas.Metric]:
     return backend.get_metrics_from_evaluation_id(db, evaluation_id)
+
+
+def get_metrics_from_evaluation_ids(
+    *, db: Session, evaluation_id: int
+) -> list[schemas.Metric]:
+    return backend.get_metrics_from_evaluation_ids(db, evaluation_id)
 
 
 def get_confusion_matrices_from_evaluation_id(

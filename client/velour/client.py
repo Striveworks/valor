@@ -105,23 +105,36 @@ class Client:
         models: List[str] | str | None = None,
         datasets: List[str] | str | None = None,
     ) -> list[dict]:
-        assert (
-            models or datasets
-        ), "Please provide atleast one model name or dataset name"
+        if not (models or datasets):
+            raise ValueError(
+                "Please provide atleast one model name or dataset name"
+            )
 
-        # let users just pass one name as a string
-        if isinstance(models, str):
-            models = [models]
+        if models:
+            # let users just pass one name as a string
+            if isinstance(models, str):
+                models = [models]
+            model_params = ",".join(models)
+        else:
+            model_params = None
 
-        if isinstance(datasets, str):
-            datasets = [datasets]
+        if datasets:
+            if isinstance(datasets, str):
+                datasets = [datasets]
+            dataset_params = ",".join(datasets)
+        else:
+            dataset_params = None
 
-        model_params = ",".join(models)
-        dataset_params = ",".join(datasets)
+        if model_params and dataset_params:
+            endpoint = (
+                f"evaluations?models={model_params}&datasets={dataset_params}"
+            )
+        elif model_params:
+            endpoint = f"evaluations?models={model_params}"
+        else:
+            endpoint = f"evaluations?datasets={dataset_params}"
 
-        evals = self._requests_get_rel_host(
-            f"evaluations?models={model_params}&datasets={dataset_params}"
-        ).json()
+        evals = self._requests_get_rel_host(endpoint).json()
         return evals
 
     def get_datasets(

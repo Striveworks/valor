@@ -617,14 +617,10 @@ def get_bulk_evaluations(
             db=db, dataset_names=dataset_names, model_names=model_names
         )
     except (
-        exceptions.JobDoesNotExistError,
-        exceptions.JobStateError,
-        AttributeError,
+        exceptions.DatasetDoesNotExistError,
+        exceptions.ModelDoesNotExistError,
+        ValueError,
     ) as e:
-        if "'NoneType' object has no attribute 'metrics'" in str(e):
-            raise HTTPException(
-                status_code=404, detail="Evaluation ID does not exist."
-            )
         raise HTTPException(status_code=404, detail=str(e))
 
 

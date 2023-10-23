@@ -1621,20 +1621,132 @@ def test_evaluate_detection(
         == eval_job_min_area_1200.metrics
     )
 
-    # test get_bulk_evaluations
+
+def test_get_bulk_evaluations(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    db: Session,
+):
+    dataset_ = dset_name
+    model_ = model_name
+
+    dataset = Dataset.create(client, dataset_)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(client, model_)
+    for pd in pred_dets:
+        model.add_prediction(pd)
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        label_key="k1",
+    )
+    eval_job.wait_for_completion()
+
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.1,
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.6,
+            },
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+        },
+    ]
+
     evaluations = client.get_bulk_evaluations(
         datasets=dset_name, models=model_name
     )
 
-    assert len(evaluations) == 6
-    for evaluation in evaluations:
-        assert all(
-            (
-                key
-                for key in evaluation.keys()
-                if key in ("dataset", "metric", "model")
-            )
-        )
+    assert len(evaluations) == 1
+    assert all(
+        [
+            name in ["dataset", "metrics", "model"]
+            for name in evaluations[0].keys()
+        ]
+    )
+    assert evaluations[0]["metrics"] == expected_metrics
+
+    # test incorrect names
+    with pytest.raises(Exception):
+        client.get_bulk_evaluations(datasets="wrong_dataset_name")
+
+    with pytest.raises(Exception):
+        client.get_bulk_evaluations(datasets="wrong_modle_name")
+
+    # test with multiple models
+    second_model = Model.create(client, "second_model")
+    for pd in pred_dets:
+        second_model.add_prediction(pd)
+    second_model.finalize_inferences(dataset)
+
+    eval_job = second_model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        label_key="k1",
+    )
+    eval_job.wait_for_completion()
+
+    second_model_evaluations = client.get_bulk_evaluations(
+        models="second_model"
+    )
+
+    assert len(second_model_evaluations) == 1
+    assert all(
+        [
+            name in ["dataset", "metrics", "model"]
+            for name in second_model_evaluations[0].keys()
+        ]
+    )
+    assert second_model_evaluations[0]["metrics"] == expected_metrics
+
+    both_evaluations = client.get_bulk_evaluations(datasets=["test_dataset"])
+
+    # should contain two different entries, one for each model
+    assert len(both_evaluations) == 2
+    assert all(
+        [
+            evaluation["model"] in ["second_model", model_name]
+            for evaluation in both_evaluations
+        ]
+    )
+    assert both_evaluations[0]["metrics"] == expected_metrics
 
 
 def test_evaluate_image_clf(
