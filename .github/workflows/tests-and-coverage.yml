@@ -196,7 +196,7 @@ jobs:
         with:
           name: .coverage.backend-functional-tests
       - run: coverage combine
-      - run: coverage report
+      - run: coverage report -m
       # https://nedbatchelder.com/blog/202209/making_a_coverage_badge.html
       - run: |
           coverage json
