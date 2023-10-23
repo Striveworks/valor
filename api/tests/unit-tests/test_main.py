@@ -708,27 +708,6 @@ def test_get_dataset_datums(crud, client: TestClient):
     assert resp.status_code == 405
 
 
-""" GET /data/dataset/{dataset_name}/filter/{data_type} """
-
-# TODO - Need to reimplement endpoint
-# @patch("velour_api.main.crud")
-# def test_get_dataset_datums_by_filter(crud, client: TestClient):
-#     crud.get_datums.return_value = []
-#     resp = client.get("/data/dataset/dsetname/filter/task_type")
-#     assert resp.status_code == 200
-#     crud.get_datums.assert_called_once()
-
-#     with patch(
-#         "velour_api.main.crud.get_datums",
-#         side_effect=exceptions.DatasetDoesNotExistError(""),
-#     ):
-#         resp = client.get("/data/dataset/dsetname/filter/task_type")
-#         assert resp.status_code == 404
-
-#     resp = client.post("/data/dataset/dsetname/filter/task_type")
-#     assert resp.status_code == 405
-
-
 """ GET /data/dataset/{dataset_name}/uid/{uid} """
 
 

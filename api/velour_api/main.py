@@ -315,27 +315,6 @@ def get_datums(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# TODO - Add custom endpoints for retrieving datums by filter parameters
-# @app.get(
-#     "/data/dataset/{dataset_name}/filter/{data_type}",
-#     status_code=200,
-#     dependencies=[Depends(token_auth_scheme)],
-#     tags=["Datums"],
-# )
-# def get_filtered_dataset_datums(
-#     dataset_name: str, data_type: str, db: Session = Depends(get_db)
-# ) -> list[schemas.Datum]:
-#     try:
-#         return crud.get_datums(
-#             db=db,
-#             filter=schemas.Filter(
-#                 datasets=[dataset_name],
-#             ),
-#         )
-#     except exceptions.DatasetDoesNotExistError as e:
-#         raise HTTPException(status_code=404, detail=str(e))
-
-
 @app.get(
     "/data/dataset/{dataset_name}/uid/{uid}",
     status_code=200,
