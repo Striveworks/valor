@@ -38,7 +38,18 @@ def get_bulk_evaluations(
     db: Session,
     dataset_names: Optional[List[str]],
     model_names: Optional[List[str]],
-) -> list:
+) -> list[schemas.BulkEvaluations]:
+    """
+    Returns all metrics associated with user-supplied dataset and model names
+
+    Parameters
+    ----------
+    dataset_names
+        A list of dataset names that we want to return metrics for
+    model_names
+        A list of model names that we want to return metrics for
+    """
+
     job_ids = set()
 
     # get all relevant job IDs from all of the specified models and datasets

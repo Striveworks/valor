@@ -45,7 +45,8 @@ def get_metrics_from_evaluation_settings(
 def _get_bulk_metrics_from_evaluation_settings(
     db: Session,
     evaluation_settings: list[models.Evaluation],
-) -> list[schemas.Metric]:
+) -> list[schemas.BulkEvaluations]:
+    """Groups a list of Evaluations by model and dataset, returning a list of {dataset, model, metrics} entries"""
     unnested_metrics = [
         {
             "dataset": m.settings.dataset.name,
@@ -92,7 +93,7 @@ def get_metrics_from_evaluation_id(
 def get_metrics_from_evaluation_ids(
     db: Session, evaluation_ids: list[int]
 ) -> list[schemas.Metric]:
-    """Return metrics for a list of evaluation ids"""
+    """Return all metrics for a list of evaluation ids"""
     eval_settings = db.scalars(
         select(models.Evaluation).where(
             models.Evaluation.id.in_(evaluation_ids)

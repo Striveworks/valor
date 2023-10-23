@@ -655,7 +655,6 @@ def get_evaluation_settings(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# TODO use this
 @app.get(
     "/evaluations/{job_id}/metrics",
     dependencies=[Depends(token_auth_scheme)],

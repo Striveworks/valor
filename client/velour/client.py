@@ -105,6 +105,17 @@ class Client:
         models: List[str] | str | None = None,
         datasets: List[str] | str | None = None,
     ) -> list[dict]:
+        """
+        Returns all metrics associated with user-supplied dataset and model names
+
+        Parameters
+        ----------
+        models
+            A list of dataset names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
+        datasets
+            A list of model names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
+        """
+
         if not (models or datasets):
             raise ValueError(
                 "Please provide atleast one model name or dataset name"
