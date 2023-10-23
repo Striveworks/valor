@@ -606,7 +606,18 @@ def get_bulk_evaluations(
     models: str = None,
     db: Session = Depends(get_db),
 ) -> list[schemas.BulkEvaluations]:
-    """Returns all of the evaluations for a given dataset and/or model."""
+    """
+    Returns all metrics associated with user-supplied dataset and model names. Users
+    may query using model names, dataset names, or both. All metrics for all specified
+    models and datasets will be returned in a list of BulkEvaluations.
+
+    Parameters
+    ----------
+    datasets
+        An optional set of dataset names to return metrics for
+    models
+        An optional set of model names to return metrics for
+    """
 
     model_names = _split_query_params(models)
     dataset_names = _split_query_params(datasets)
