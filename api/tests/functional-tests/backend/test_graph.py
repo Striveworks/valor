@@ -3,7 +3,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from velour_api import crud, schemas
-from velour_api.backend import graph, models
+from velour_api.backend import models
+from velour_api.backend.graph import Graph
 from velour_api.enums import TaskType
 
 dset_name = "dataset1"
@@ -109,6 +110,9 @@ def test_generate_query(
     db: Session,
     model_sim,
 ):
+    # instantiate graph model
+    graph = Graph()
+
     # Q: Get model ids for all models that operate over a dataset that meets the name equality
     target = graph.model
     filters = {graph.dataset: [models.Dataset.name == dset_name]}
@@ -127,6 +131,9 @@ def test_generate_query_extremities(
     db: Session,
     model_sim,
 ):
+    # instantiate graph model
+    graph = Graph()
+
     # checking that this is how the data was initialized
     assert gt_label == "dog"
     assert pd_label == "cat"

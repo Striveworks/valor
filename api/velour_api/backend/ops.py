@@ -4,56 +4,36 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.sql.elements import BinaryExpression
 
 from velour_api import enums, schemas
-from velour_api.backend import graph, models
+from velour_api.backend import models
+from velour_api.backend.graph import Graph, Node
 
-
-def _select_groundtruth_graph_node(table):
-    match table:
-        case models.Dataset:
-            return graph.dataset
-        case models.Model:
-            return graph.model
-        case models.Datum:
-            return graph.datum
-        case models.Annotation:
-            return graph.groundtruth_annotation
-        case models.GroundTruth:
-            return graph.groundtruth
-        case models.Prediction:
-            return graph.prediction
-        case models.Label:
-            return graph.groundtruth_label
-
-
-def _select_prediction_graph_node(table):
-    match table:
-        case models.Dataset:
-            return graph.dataset
-        case models.Model:
-            return graph.model
-        case models.Datum:
-            return graph.datum
-        case models.Annotation:
-            return graph.prediction_annotation
-        case models.GroundTruth:
-            return graph.groundtruth
-        case models.Prediction:
-            return graph.prediction
-        case models.Label:
-            return graph.prediction_label
+# Global instance of Graph, prevents recomputation
+graph = Graph()
 
 
 class Query:
+    """
+    Query generator object.
+
+    Attributes
+    ----------
+    table : velour_api.backend.database.Base
+        sqlalchemy table
+    groundtruth_target : Node, optional
+        groundtruth Node is targeted if not None
+    prediction_target : Node, optional
+        prediction Node is targeted if not None
+    filter_by : dict[Node, list[BinaryExpression]]
+        List of BinaryExpressions to apply per node.
+    """
+
     def __init__(self, table):
         self.table = table
-        self.groundtruth_target = _select_groundtruth_graph_node(table)
-        self.prediction_target = _select_prediction_graph_node(table)
-        self.filter_by: dict[graph.Node, list[BinaryExpression]] = {}
-        self.constraints = set()
+        self.groundtruth_target = graph.select_groundtruth_graph_node(table)
+        self.prediction_target = graph.select_prediction_graph_node(table)
+        self.filter_by: dict[Node, list[BinaryExpression]] = {}
 
-    def add_expressions(
-        self, node: graph.Node, expressions: list[BinaryExpression]
-    ):
+    def add_expressions(self, node: Node, expressions: list[BinaryExpression]):
         if node not in self.filter_by:
             self.filter_by[node] = []
         if len(expressions) == 1:
@@ -272,7 +252,7 @@ class Query:
     #     self,
     #     metadatum: schemas.MetaDatum | models.MetaDatum,
     #     op: str,
-    #     node: graph.Node,
+    #     node: Node,
     # ):
 
     #     ops = {
