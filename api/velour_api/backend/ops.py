@@ -3,13 +3,51 @@
 from sqlalchemy import and_, or_, select
 from sqlalchemy.sql.elements import BinaryExpression
 
-from velour_api import schemas
+from velour_api import enums, schemas
 from velour_api.backend import graph, models
 
 
+def _select_groundtruth_graph_node(table):
+    match table:
+        case models.Dataset:
+            return graph.dataset
+        case models.Model:
+            return graph.model
+        case models.Datum:
+            return graph.datum
+        case models.Annotation:
+            return graph.groundtruth_annotation
+        case models.GroundTruth:
+            return graph.groundtruth
+        case models.Prediction:
+            return graph.prediction
+        case models.Label:
+            return graph.groundtruth_label
+
+
+def _select_prediction_graph_node(table):
+    match table:
+        case models.Dataset:
+            return graph.dataset
+        case models.Model:
+            return graph.model
+        case models.Datum:
+            return graph.datum
+        case models.Annotation:
+            return graph.prediction_annotation
+        case models.GroundTruth:
+            return graph.groundtruth
+        case models.Prediction:
+            return graph.prediction
+        case models.Label:
+            return graph.prediction_label
+
+
 class Query:
-    def __init__(self, target: graph.Node | None = None):
-        self.target = target
+    def __init__(self, table):
+        self.table = table
+        self.groundtruth_target = _select_groundtruth_graph_node(table)
+        self.prediction_target = _select_prediction_graph_node(table)
         self.filter_by: dict[graph.Node, list[BinaryExpression]] = {}
         self.constraints = set()
 
@@ -19,149 +57,204 @@ class Query:
         if node not in self.filter_by:
             self.filter_by[node] = []
         if len(expressions) == 1:
-            self.filter_by[graph.dataset].extend(expressions)
+            self.filter_by[node].extend(expressions)
         elif len(expressions) > 1:
-            self.filter_by[graph.dataset].append(or_(*expressions))
+            self.filter_by[node].append(or_(*expressions))
 
     """ User methods """
 
+    def _ids(self):
+        """Returns id select statement for target that meets filter criteria."""
+
+        # generate queries by groundtruth and prediction
+        groundtruth_id_query = None
+        prediction_id_query = None
+        if self.groundtruth_target:
+            groundtruth_id_query = graph.generate_query(
+                self.groundtruth_target, self.filter_by
+            )
+        if self.prediction_target:
+            prediction_id_query = graph.generate_query(
+                self.prediction_target, self.filter_by
+            )
+
+        # resolve groundtruth and prediction split
+        if self.groundtruth_target and self.prediction_target:
+            q_ids = groundtruth_id_query.union(prediction_id_query)
+        else:
+            q_ids = (
+                groundtruth_id_query
+                if groundtruth_id_query is not None
+                else prediction_id_query
+            )
+        return q_ids
+
     def ids(self):
-        """Returns ids from target that meet filter criteria."""
-        id_query = graph.generate_query(self.target, self.filter_by)
-        return id_query
+        """Returns id subquery for target that meets filter criteria."""
+        return self._ids().subquery("id")
 
     def query(self):
         """Returns sqlalchemy table rows"""
-        q_ids = self.ids()
-        return select(self.target.model).where(self.target.model.id.in_(q_ids))
+        q_ids = self._ids()
+        return (
+            select(self.table)
+            .where(self.table.id.in_(q_ids))
+            .subquery("labels")
+        )
 
-    """ filtering member functions, always return self so that they can be chained """
-
-    def filter(self, filt: schemas.Filter):
+    def filter(self, filters: schemas.Filter):
         """Parses `schemas.Filter`"""
+
+        # Check if groundtruth or predictions are discarded
+        if filters.groundtruth_labels and not filters.prediction_labels:
+            self.prediction_target = None
+        elif not filters.groundtruth_labels and filters.prediction_labels:
+            self.groundtruth_target = None
+
+        # dataset filters
+        if filters.datasets:
+            self.filter_by_datasets(filters.datasets)
+
+        # models
+        if filters.models:
+            self.filter_by_models(filters.models)
+
+        # datums
+        if filters.datums:
+            self.filter_by_datums(filters.datums)
+
+        # annotations
+        if filters.annotations:
+            self.filter_by_annotations(filters.annotations)
+        if filters.groundtruth_annotations:
+            self.filter_by_groundtruth_annotations(
+                filters.groundtruth_annotations
+            )
+        if filters.prediction_annotations:
+            self.filter_by_prediction_annotations(
+                filters.prediction_annotations
+            )
+
+        # groundtruth
+        if filters.groundtruths:
+            raise NotImplementedError("groundtruth filters are WIP")
+
+        # prediction
+        if filters.predictions:
+            raise NotImplementedError("prediction filters are WIP")
+
+        # labels
+        if filters.labels:
+            self.filter_by_labels(filters.labels)
+        if filters.groundtruth_labels:
+            self.filter_by_groundtruth_labels(filters.groundtruth_labels)
+        if filters.prediction_labels:
+            self.filter_by_prediction_labels(filters.prediction_labels)
+
         return self
 
     """ dataset filter """
 
-    def filter_by_datasets(
-        self, datasets: list[schemas.Dataset | models.Dataset]
-    ):
-        expressions = [
-            models.Dataset.name == dataset.name
-            for dataset in datasets
-            if isinstance(dataset, schemas.Dataset | models.Dataset)
-        ]
-        self.add_expressions(graph.dataset, expressions)
-        return self
-
-    def filter_by_dataset_names(self, names: list[str]):
-        expressions = [
-            models.Dataset.name == name
-            for name in names
-            if isinstance(name, str)
-        ]
-        self.add_expressions(graph.dataset, expressions)
+    def filter_by_datasets(self, filters: schemas.DatasetFilter):
+        if filters.ids:
+            expressions = [
+                models.Dataset.id == id
+                for id in filters.ids
+                if isinstance(id, int)
+            ]
+            self.add_expressions(graph.dataset, expressions)
+        if filters.names:
+            expressions = [
+                models.Dataset.name == name
+                for name in filters.names
+                if isinstance(name, str)
+            ]
+            self.add_expressions(graph.dataset, expressions)
+        if filters.metadata:
+            pass
         return self
 
     """ model filter """
 
-    def filter_by_models(self, models_: list[schemas.Model | models.Model]):
-        expressions = [
-            models.Model.name == model.name
-            for model in models_
-            if isinstance(model, schemas.Model | models.Model)
-        ]
-        self.add_expressions(graph.model, expressions)
-        return self
-
-    def filter_by_model_names(self, names: list[str]):
-        expressions = [
-            models.Model.name == name
-            for name in names
-            if isinstance(name, str)
-        ]
-        self.add_expressions(graph.model, expressions)
+    def filter_by_models(self, filters: schemas.ModelFilter):
+        if filters.ids:
+            expressions = [
+                models.Model.id == id
+                for id in filters.ids
+                if isinstance(id, int)
+            ]
+            self.add_expressions(graph.model, expressions)
+        if filters.names:
+            expressions = [
+                models.Model.name == name
+                for name in filters.names
+                if isinstance(name, str)
+            ]
+            self.add_expressions(graph.model, expressions)
+        if filters.metadata:
+            pass
         return self
 
     """ datum filter """
 
-    def filter_by_datums(self, datums: list[schemas.Datum | models.Datum]):
-        expressions = [
-            models.Datum.uid == datum.uid
-            for datum in datums
-            if isinstance(datum, schemas.Datum | models.Datum)
-        ]
-        self.add_expressions(graph.datum, expressions)
-        return self
-
-    def filter_by_datum_uids(self, uids: list[str]):
-        expressions = [
-            models.Datum.uid == uid for uid in uids if isinstance(uid, str)
-        ]
-        self.add_expressions(graph.datum, expressions)
+    def filter_by_datums(self, filters: schemas.DatumFilter):
+        if filters.uids:
+            expressions = [
+                models.Datum.uid == uid
+                for uid in filters.uids
+                if isinstance(uid, str)
+            ]
+            self.add_expressions(graph.model, expressions)
+        if filters.metadata:
+            pass
         return self
 
     """ filter by label """
 
+    def filter_by_labels(
+        self,
+        filters: schemas.LabelFilter,
+        add_to_groundtruths: bool = True,
+        add_to_predictions: bool = True,
+    ):
+        if filters.labels:
+            expressions = [
+                and_(
+                    models.Label.key == label.key,
+                    models.Label.value == label.value,
+                )
+                for label in filters.labels
+                if isinstance(label, schemas.Label)
+            ]
+            if add_to_groundtruths:
+                self.add_expressions(graph.groundtruth_label, expressions)
+            if add_to_predictions:
+                self.add_expressions(graph.prediction_label, expressions)
+        if filters.keys:
+            expressions = [
+                models.Label.key == key
+                for key in filters.keys
+                if isinstance(key, str)
+            ]
+            if add_to_groundtruths:
+                self.add_expressions(graph.groundtruth_label, expressions)
+            if add_to_predictions:
+                self.add_expressions(graph.prediction_label, expressions)
+        return self
+
     def filter_by_groundtruth_labels(
         self,
-        labels: list[schemas.Label | models.Label],
+        filters: schemas.LabelFilter,
     ):
-        # generate binary expressions
-        expressions = [
-            and_(
-                models.Label.key == label.key,
-                models.Label.value == label.value,
-            )
-            for label in labels
-            if isinstance(label, schemas.Label | models.Label)
-        ]
-        self.add_expressions(graph.label_groundtruth, expressions)
-        return self
+        """Only applies filter to groundtruth labels."""
+        return self.filter_by_labels(filters, add_to_predictions=False)
 
     def filter_by_prediction_labels(
         self,
-        labels: list[schemas.Label | models.Label],
+        filters: schemas.LabelFilter,
     ):
-        # generate binary expressions
-        expressions = [
-            and_(
-                models.Label.key == label.key,
-                models.Label.value == label.value,
-            )
-            for label in labels
-            if isinstance(label, schemas.Label | models.Label)
-        ]
-        self.add_expressions(graph.label_groundtruth, expressions)
-        return self
-
-    # def filter_by_label_keys(
-    #     self,
-    #     label_keys: list[str],
-    #     include_groundtruths: bool = True,
-    #     include_predictions: bool = True,
-    # ):
-    #     # generate binary expressions
-    #     expressions = [
-    #         models.Label.key == label_key
-    #         for label_key in label_keys
-    #         if isinstance(label_key, str)
-    #     ]
-    #     if len(expressions) > 0:
-    #         if include_groundtruths:
-    #             self.filter_by.add(graph.label_groundtruth)
-    #         elif include_predictions:
-    #             self.filter_by.add(graph.label_prediction)
-    #         else:
-    #             raise ValueError(
-    #                 "expected inclusion of groundtruths and/or prediction labels."
-    #             )
-    #         if len(expressions) == 1:
-    #             self._filters.extend(expressions)
-    #         else:
-    #             self._filters.append(or_(*expressions))
-
-    #     return self
+        """Only applies filter to prediction labels."""
+        return self.filter_by_labels(filters, add_to_groundtruths=False)
 
     """ filter by groundtruth """
 
@@ -274,50 +367,67 @@ class Query:
 
     """ filter by annotation """
 
-    # def filter_by_task_types(self, task_types: list[enums.TaskType]):
-    #     # generate binary expressions
-    #     expressions = [
-    #         models.Annotation.task_type == task_type.value
-    #         for task_type in task_types
-    #         if isinstance(task_type, enums.TaskType)
-    #     ]
-    #     self.add_expressions(gra)
-    #     return self
+    def filter_by_annotations(
+        self,
+        filters: schemas.AnnotationFilter,
+        add_to_groundtruths: bool = True,
+        add_to_predictions: bool = True,
+    ):
+        if filters.task_types:
+            expressions = [
+                models.Annotation.task_type == task_type.value
+                for task_type in filters.task_types
+                if isinstance(task_type, enums.TaskType)
+            ]
+            if add_to_groundtruths:
+                self.add_expressions(self.groundtruth_target, expressions)
+            if add_to_predictions:
+                self.add_expressions(self.prediction_target, expressions)
+        if filters.annotation_types:
+            if enums.AnnotationType.NONE in filters.annotation_types:
+                expressions = [
+                    and_(
+                        models.Annotation.box.is_(None),
+                        models.Annotation.polygon.is_(None),
+                        models.Annotation.multipolygon.is_(None),
+                        models.Annotation.raster.is_(None),
+                    )
+                ]
+                if add_to_groundtruths:
+                    self.add_expressions(self.groundtruth_target, expressions)
+                if add_to_predictions:
+                    self.add_expressions(self.prediction_target, expressions)
+            else:
+                expressions = []
+                if enums.AnnotationType.BOX in filters.annotation_types:
+                    expressions.append(models.Annotation.box.isnot(None))
+                if enums.AnnotationType.POLYGON in filters.annotation_types:
+                    expressions.append(models.Annotation.polygon.isnot(None))
+                if (
+                    enums.AnnotationType.MULTIPOLYGON
+                    in filters.annotation_types
+                ):
+                    expressions.append(
+                        models.Annotation.multipolygon.isnot(None)
+                    )
+                if enums.AnnotationType.RASTER in filters.annotation_types:
+                    expressions.append(models.Annotation.raster.isnot(None))
 
-    # def filter_by_annotation_types(
-    #     self, annotation_types: list[enums.AnnotationType]
-    # ):
-    #     if enums.AnnotationType.NONE in annotation_types:
-    #         self.filter_by.add(graph.annotation)
-    #         self._filters.append(
-    #             and_(
-    #                 models.Annotation.box.is_(None),
-    #                 models.Annotation.polygon.is_(None),
-    #                 models.Annotation.multipolygon.is_(None),
-    #                 models.Annotation.raster.is_(None),
-    #             )
-    #         )
-    #     else:
-    #         # collect binary expressions
-    #         expressions = []
-    #         if enums.AnnotationType.BOX in annotation_types:
-    #             expressions.append(models.Annotation.box.isnot(None))
-    #         if enums.AnnotationType.POLYGON in annotation_types:
-    #             expressions.append(models.Annotation.polygon.isnot(None))
-    #         if enums.AnnotationType.MULTIPOLYGON in annotation_types:
-    #             expressions.append(models.Annotation.multipolygon.isnot(None))
-    #         if enums.AnnotationType.RASTER in annotation_types:
-    #             expressions.append(models.Annotation.raster.isnot(None))
+                if add_to_groundtruths:
+                    self.add_expressions(self.groundtruth_target, expressions)
+                if add_to_predictions:
+                    self.add_expressions(self.prediction_target, expressions)
+        return self
 
-    #         # generate joint filter
-    #         if len(expressions) == 1:
-    #             self.filter_by.add(graph.annotation)
-    #             self._filters.extend(expressions)
-    #         elif len(expressions) > 1:
-    #             self.filter_by.add(graph.annotation)
-    #             self._filters.append(or_(*expressions))
+    def filter_by_groundtruth_annotations(
+        self, filters: schemas.AnnotationFilter
+    ):
+        return self.filter_by_annotations(filters, add_to_predictions=False)
 
-    #     return self
+    def filter_by_prediction_annotations(
+        self, filters: schemas.AnnotationFilter
+    ):
+        return self.filter_by_annotations(filters, add_to_groundtruths=False)
 
 
 if __name__ == "__main__":

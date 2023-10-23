@@ -1,5 +1,3 @@
-from typing import NamedTuple
-
 from sqlalchemy import and_, select
 from sqlalchemy.sql.elements import BinaryExpression
 
@@ -71,7 +69,7 @@ def _recursive_acyclic_walk(
 def _walk_graph(root: Node, leaves: list[Node]) -> list[list[Node]]:
     walks = []
     for leaf in leaves:
-        if leaf == root:
+        if leaf is None or leaf == root:
             continue
         walk = _recursive_acyclic_walk(root, leaf, list(), set())
         walks.extend(walk)
@@ -231,17 +229,6 @@ prediction_label.connect(
 )
 
 
-class SQLGraph(NamedTuple):
-    dataset: Node
-    model: Node
-    datum: Node
-    annotation: Node
-    groundtruth: Node
-    prediction: Node
-    groundtruth_label: Node
-    prediction_label: Node
-
-
 def _generate_query(target_node, filter_nodes, filters):
     """Constructs a sql query"""
 
@@ -269,6 +256,9 @@ def _generate_query(target_node, filter_nodes, filters):
 # generate sql alchemy relationships
 def generate_query(target: Node, filters: dict[Node, list[BinaryExpression]]):
     """Generates joins and optionally a subquery to construct sql statement."""
+
+    if target is None:
+        raise ValueError("Target node cannot be `NoneType`")
 
     filter_nodes = set(filters.keys())
     gt_only_set = {groundtruth_label, groundtruth, groundtruth_annotation}
@@ -299,13 +289,10 @@ def generate_query(target: Node, filters: dict[Node, list[BinaryExpression]]):
         filter_nodes = filter_nodes - pd_only_set.intersection(filter_nodes)
         filter_nodes.add(datum)
 
+    # create sqlalchemy query
     query = _generate_query(target, filter_nodes, filters)
-
-    subquery = None
     if subtarget and filter_subnodes:
-        subquery = _generate_query(
-            subtarget, filter_subnodes, filters
-        ).subquery()
+        subquery = _generate_query(subtarget, filter_subnodes, filters)
         query = query.where(models.Datum.id.in_(subquery))
 
     return query

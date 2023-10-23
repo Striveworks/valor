@@ -66,12 +66,14 @@ class MetaDatumFilter(BaseModel):
 
 
 class DatasetFilter(BaseModel):
+    ids: list[int] = Field(default_factory=list)
     names: list[str] = Field(default_factory=list)
     metadata: list[MetaDatumFilter] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")
 
 
 class ModelFilter(BaseModel):
+    ids: list[int] = Field(default_factory=list)
     names: list[str] = Field(default_factory=list)
     metadata: list[MetaDatumFilter] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")
@@ -120,13 +122,19 @@ class PredictionFilter(BaseModel):
 
 
 class Filter(BaseModel):
-    # filters
     datasets: DatasetFilter | None = None
     models: ModelFilter | None = None
     datums: DatumFilter | None = None
     annotations: AnnotationFilter | None = None
-    groundtruths: GroundTruthFilter | None = None
-    predictions: PredictionFilter | None = None
     labels: LabelFilter | None = None
 
+    groundtruths: GroundTruthFilter | None = None
+    groundtruth_annotations: AnnotationFilter | None = None
+    groundtruth_labels: LabelFilter | None = None
+
+    predictions: PredictionFilter | None = None
+    prediction_annotations: AnnotationFilter | None = None
+    prediction_labels: LabelFilter | None = None
+
+    # pydantic settings
     model_config = ConfigDict(extra="forbid")

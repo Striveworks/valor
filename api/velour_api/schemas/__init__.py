@@ -9,6 +9,21 @@ from .core import (
     Prediction,
 )
 from .datatypes import ImageMetadata, VideoFrameMetadata
+from .filters import (
+    AnnotationFilter,
+    DatasetFilter,
+    DatumFilter,
+    Filter,
+    GeometricFilter,
+    GeospatialFilter,
+    GroundTruthFilter,
+    LabelFilter,
+    MetaDatumFilter,
+    ModelFilter,
+    NumericFilter,
+    PredictionFilter,
+    StringFilter,
+)
 from .geojson import GeoJSON
 from .geometry import (
     BasicPolygon,
@@ -18,7 +33,6 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .info import Filter
 from .metadata import DateTime, Metadatum
 from .metrics import (
     AccuracyMetric,
@@ -46,7 +60,6 @@ from .stateflow import Stateflow
 
 __all__ = [
     "User",
-    "Filter",
     "ImageMetadata",
     "VideoFrameMetadata",
     "Annotation",
@@ -89,4 +102,17 @@ __all__ = [
     "Stateflow",
     "EvaluationSettings",
     "DetectionParameters",
+    "StringFilter",
+    "NumericFilter",
+    "GeospatialFilter",
+    "GeometricFilter",
+    "MetaDatumFilter",
+    "DatasetFilter",
+    "ModelFilter",
+    "DatumFilter",
+    "AnnotationFilter",
+    "LabelFilter",
+    "GroundTruthFilter",
+    "PredictionFilter",
+    "Filter",
 ]
