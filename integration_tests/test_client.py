@@ -1454,7 +1454,7 @@ def test_evaluate_detection(
     settings = asdict(eval_job.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
         "parameters": {
             "annotation_type": "none",
@@ -1528,7 +1528,7 @@ def test_evaluate_detection(
     settings = asdict(eval_job_bounded_area_10_2000.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
         "parameters": {
             "annotation_type": "none",
@@ -1554,7 +1554,7 @@ def test_evaluate_detection(
     settings = asdict(eval_job_min_area_1200.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
         "parameters": {
             "annotation_type": "none",
@@ -1578,7 +1578,7 @@ def test_evaluate_detection(
     settings = asdict(eval_job_max_area_1200.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
         "parameters": {
             "annotation_type": "none",
@@ -1604,7 +1604,7 @@ def test_evaluate_detection(
     settings = asdict(eval_job_bounded_area_1200_1800.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
         "parameters": {
             "annotation_type": "none",
@@ -1623,20 +1623,18 @@ def test_evaluate_detection(
 
     # test get_bulk_evaluations
     evaluations = client.get_bulk_evaluations(
-        datasets=dset_name, models="test_model"
+        datasets=dset_name, models=model_name
     )
-    # print("00000a")
-    # evaluations = client.get_bulk_evaluations(
-    #     datasets=dset_name, models=["test_model", "fake_test_model"]
-    # )
-    # print("00000b")
-    # evaluations = client.get_bulk_evaluations(datasets=dset_name)
-    # print("000000c")
-    # evaluations = client.get_bulk_evaluations(models="test_model")
 
-    print("000000---")
-    print(evaluations)
-    assert evaluations == 1
+    assert len(evaluations) == 6
+    for evaluation in evaluations:
+        assert all(
+            (
+                key
+                for key in evaluation.keys()
+                if key in ("dataset", "metric", "model")
+            )
+        )
 
 
 def test_evaluate_image_clf(
@@ -2084,7 +2082,7 @@ def test_evaluate_tabular_clf(
     df = model.get_metric_dataframes()
 
     assert isinstance(model.id, int)
-    assert model.name == "test_model"
+    assert model.name == model_name
     assert len(model.metadata) == 0
 
     assert len(labels) == 3
@@ -2096,7 +2094,7 @@ def test_evaluate_tabular_clf(
     eval_settings = asdict(eval_jobs[0].settings)
     eval_settings.pop("id")
     assert eval_settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
         "parameters": None,
     }
