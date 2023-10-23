@@ -595,7 +595,6 @@ def get_evaluation_jobs_for_model(model_name: str) -> dict[str, list[int]]:
     return crud.get_evaluation_jobs_for_model(model_name)
 
 
-# TODO: create schema to validate return type
 @app.get(
     "/evaluations/",
     dependencies=[Depends(token_auth_scheme)],
@@ -606,7 +605,7 @@ def get_bulk_evaluations(
     datasets: str = None,
     models: str = None,
     db: Session = Depends(get_db),
-) -> list[dict]:
+) -> list[schemas.BulkEvaluations]:
     """Returns all of the evaluations for a given dataset and/or model."""
 
     model_names = _split_query_params(models)

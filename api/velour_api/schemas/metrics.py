@@ -97,6 +97,17 @@ class Metric(BaseModel):
     label: Label | None = None
 
 
+class BulkEvaluations(BaseModel):
+    """Used to fetch all metrics for a given dataset of model"""
+
+    model: str
+    dataset: str
+    metrics: list[Metric]
+
+    # pydantic setting
+    model_config = ConfigDict(extra="forbid")
+
+
 class APMetric(BaseModel):
     iou: float
     value: float
