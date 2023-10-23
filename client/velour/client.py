@@ -102,8 +102,8 @@ class Client:
 
     def get_bulk_evaluations(
         self,
-        models: list[str] | str | None = None,
-        datasets: list[str] | str | None = None,
+        models: Union[str, List[str], None] = None,
+        datasets: Union[str, List[str], None] = None,
     ) -> list[dict]:
         """
         Returns all metrics associated with user-supplied dataset and model names
