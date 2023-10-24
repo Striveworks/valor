@@ -761,9 +761,6 @@ def _test_create_image_dataset_with_gts(
         dataset.add_groundtruth(gt)
     # check that the dataset has two images
     images = dataset.get_images()
-    print()
-    for image in images:
-        print(image)
     assert len(images) == len(expected_image_uids)
     assert set([image.uid for image in images]) == expected_image_uids
 
