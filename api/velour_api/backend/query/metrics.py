@@ -64,18 +64,20 @@ def _get_bulk_metrics_from_evaluation_settings(
     grouped_metrics = []
     for dataset in datasets:
         for model in models:
-            grouped_metrics.append(
-                {
-                    "dataset": dataset,
-                    "model": model,
-                    "metrics": [
-                        element["metric"]
-                        for element in unnested_metrics
-                        if element["dataset"] == dataset
-                        and element["model"] == model
-                    ],
-                }
-            )
+            metrics = [
+                element["metric"]
+                for element in unnested_metrics
+                if element["dataset"] == dataset and element["model"] == model
+            ]
+
+            if metrics:
+                grouped_metrics.append(
+                    {
+                        "dataset": dataset,
+                        "model": model,
+                        "metrics": metrics,
+                    }
+                )
 
     return grouped_metrics
 
