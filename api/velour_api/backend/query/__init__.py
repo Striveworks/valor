@@ -9,9 +9,14 @@ from .groundtruth import create_groundtruth, get_groundtruth
 from .label import (
     get_disjoint_keys,
     get_disjoint_labels,
+    get_groundtruth_label_keys,
+    get_groundtruth_labels,
     get_joint_keys,
     get_joint_labels,
+    get_label_keys,
     get_labels,
+    get_prediction_label_keys,
+    get_prediction_labels,
 )
 from .metrics import (
     get_confusion_matrices_from_evaluation_id,
@@ -38,6 +43,11 @@ __all__ = [
     "create_prediction",
     "get_prediction",
     "get_labels",
+    "get_groundtruth_labels",
+    "get_prediction_labels",
+    "get_label_keys",
+    "get_groundtruth_label_keys",
+    "get_prediction_label_keys",
     "get_joint_labels",
     "get_disjoint_labels",
     "get_joint_keys",

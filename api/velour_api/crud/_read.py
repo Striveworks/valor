@@ -35,13 +35,41 @@ def get_model_evaluations(model_name: str):
 """ Labels """
 
 
-def get_labels(
+def get_all_labels(
     *,
     db: Session,
-    request: schemas.Filter = None,
+    filters: schemas.Filter | None = None,
 ) -> list[schemas.Label]:
-    """Retrieves all existing labels that meet the filter request."""
-    return backend.get_labels(db, request)
+    """Retrieves all existing labels."""
+    return list(backend.get_labels(db, filters))
+
+
+def get_dataset_labels(
+    *,
+    db: Session,
+    filters: schemas.Filter | None = None,
+):
+    """Retrieve all labels associated with dataset groundtruths."""
+    return list(
+        backend.get_groundtruth_labels(
+            db=db,
+            filters=filters,
+        )
+    )
+
+
+def get_model_labels(
+    *,
+    db: Session,
+    filters: schemas.Filter | None = None,
+):
+    """Retrieve all labels associated with dataset groundtruths."""
+    return list(
+        backend.get_prediction_labels(
+            db=db,
+            filters=filters,
+        )
+    )
 
 
 def get_joint_labels(
@@ -50,8 +78,8 @@ def get_joint_labels(
     dataset_name: str,
     model_name: str,
     task_types: list[enums.TaskType],
-    gt_type: enums.AnnotationType,
-    pd_type: enums.AnnotationType,
+    groundtruth_type: enums.AnnotationType,
+    prediction_type: enums.AnnotationType,
 ) -> dict[str, list[schemas.Label]]:
     """Returns a dictionary containing disjoint sets of labels. Keys are (dataset, model) and contain sets of labels disjoint from the other."""
 
@@ -60,8 +88,8 @@ def get_joint_labels(
         dataset_name=dataset_name,
         model_name=model_name,
         task_types=task_types,
-        gt_type=gt_type,
-        pd_type=pd_type,
+        groundtruth_type=groundtruth_type,
+        prediction_type=prediction_type,
     )
 
 
@@ -71,8 +99,8 @@ def get_disjoint_labels(
     dataset_name: str,
     model_name: str,
     task_types: list[enums.TaskType],
-    gt_type: enums.AnnotationType,
-    pd_type: enums.AnnotationType,
+    groundtruth_type: enums.AnnotationType,
+    prediction_type: enums.AnnotationType,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """Returns a dictionary containing disjoint sets of labels. Keys are (dataset, model) and contain sets of labels disjoint from the other."""
 
@@ -81,8 +109,8 @@ def get_disjoint_labels(
         dataset_name=dataset_name,
         model_name=model_name,
         task_types=task_types,
-        gt_type=gt_type,
-        pd_type=pd_type,
+        groundtruth_type=groundtruth_type,
+        prediction_type=prediction_type,
     )
 
 

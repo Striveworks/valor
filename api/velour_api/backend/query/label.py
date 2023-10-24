@@ -1,142 +1,80 @@
-from sqlalchemy import and_
+from sqlalchemy import Select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
 from velour_api.backend import models, ops
-from velour_api.backend.core.label import get_dataset_labels_query
 
 
-def get_labels(
+def _get_labels(
     db: Session,
-    request_info: schemas.Filter | None,
-) -> list[schemas.Label]:
-    """Returns a list of unique labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
-
-    if request_info is None:
-        labels = db.query(models.Label).all()
-    else:
-        q = ops.Query(models.Label).filter(request_info).query()
-        labels = db.query(q).all()
-
-    return [
+    stmt: Select,
+) -> set[schemas.Label]:
+    """Evaluates statement to get labels."""
+    return {
         schemas.Label(
             key=label.key,
             value=label.value,
         )
-        for label in labels
-    ]
+        for label in db.query(stmt).all()
+        if label
+    }
 
 
-def _get_dataset_labels(
+def _get_label_keys(
     db: Session,
-    dataset_name: str,
-    annotation_type: enums.AnnotationType,
-    task_types: list[enums.TaskType],
-) -> set[schemas.Label]:
-    q = get_dataset_labels_query(
-        dataset_name=dataset_name,
-        annotation_type=annotation_type,
-        task_types=task_types,
-    )
-    return {
-        schemas.Label(key=label.key, value=label.value)
-        for label in db.scalars(q)
-    }
+    stmt: Select,
+) -> set[str]:
+    """Evaluates statement to get label keys."""
+    return {label.key for label in db.query(stmt).all() if label}
 
 
-def _get_model_labels(
+def get_labels(
     db: Session,
-    dataset_name: str,
-    model_name: str,
-    annotation_type: enums.AnnotationType,
-    task_types: list[enums.TaskType],
+    filters: schemas.Filter | None = None,
 ) -> set[schemas.Label]:
-    return {
-        schemas.Label(key=label[0], value=label[1])
-        for label in (
-            db.query(models.Label.key, models.Label.value)
-            .join(
-                models.Prediction,
-                models.Prediction.label_id == models.Label.id,
-            )
-            .join(
-                models.Annotation,
-                models.Annotation.id == models.Prediction.annotation_id,
-            )
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .join(models.Dataset, models.Dataset.id == models.Dataset.id)
-            .join(models.Model, models.Model.id == models.Annotation.model_id)
-            .where(
-                and_(
-                    models.Dataset.name == dataset_name,
-                    models.Model.name == model_name,
-                    models.annotation_type_to_geometry[annotation_type].is_not(
-                        None
-                    ),
-                    models.Annotation.task_type.in_(task_types),
-                )
-            )
-            .distinct()
-        )
-    }
+    """Returns a list of unique labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
+    stmt = ops.Query(models.Label).filter(filters).joint()
+    return _get_labels(db, stmt)
 
 
-def _get_dataset_label_keys(
-    db: Session, dataset_name: str, task_type: enums.TaskType
-) -> set[str]:
-    return {
-        label[0]
-        for label in (
-            db.query(models.Label.key)
-            .join(
-                models.GroundTruth,
-                models.GroundTruth.label_id == models.Label.id,
-            )
-            .join(
-                models.Annotation,
-                models.Annotation.id == models.GroundTruth.annotation_id,
-            )
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .join(models.Dataset, models.Dataset.id == models.Dataset.id)
-            .where(
-                and_(
-                    models.Dataset.name == dataset_name,
-                    models.Annotation.task_type == task_type,
-                )
-            )
-            .distinct()
-        )
-    }
+def get_groundtruth_labels(
+    db: Session,
+    filters: schemas.Filter | None,
+) -> set[schemas.Label]:
+    stmt = ops.Query(models.Label).filter(filters).groundtruths()
+    return _get_labels(db, stmt)
 
 
-def _get_model_label_keys(
-    db: Session, dataset_name: str, model_name: str, task_type: enums.TaskType
-) -> set[str]:
-    return {
-        label[0]
-        for label in (
-            db.query(models.Label.key)
-            .join(
-                models.Prediction,
-                models.Prediction.label_id == models.Label.id,
-            )
-            .join(
-                models.Annotation,
-                models.Annotation.id == models.Prediction.annotation_id,
-            )
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .join(models.Dataset, models.Dataset.id == models.Dataset.id)
-            .join(models.Model, models.Model.id == models.Annotation.model_id)
-            .where(
-                and_(
-                    models.Dataset.name == dataset_name,
-                    models.Model.name == model_name,
-                    models.Annotation.task_type == task_type,
-                )
-            )
-            .distinct()
-        )
-    }
+def get_prediction_labels(
+    db: Session,
+    filters: schemas.Filter | None,
+) -> set[schemas.Label]:
+    stmt = ops.Query(models.Label).filter(filters).predictions()
+    return _get_labels(db, stmt)
+
+
+def get_label_keys(
+    db: Session,
+    filters: schemas.Filter | None = None,
+) -> set[schemas.Label]:
+    stmt = ops.Query(models.Label).filter(filters).joint()
+    return _get_label_keys(db, stmt)
+
+
+def get_groundtruth_label_keys(
+    db: Session,
+    filters: schemas.Filter | None,
+) -> set[schemas.Label]:
+    stmt = ops.Query(models.Label).filter(filters).groundtruths()
+    return _get_label_keys(db, stmt)
+
+
+def get_prediction_label_keys(
+    db: Session,
+    filters: schemas.Filter | None,
+) -> set[schemas.Label]:
+    stmt = ops.Query(models.Label).filter(filters).predictions()
+    return _get_label_keys(db, stmt)
 
 
 def get_joint_labels(
@@ -144,20 +82,27 @@ def get_joint_labels(
     dataset_name: str,
     model_name: str,
     task_types: list[enums.TaskType],
-    gt_type: enums.AnnotationType,
-    pd_type: enums.AnnotationType,
+    groundtruth_type: enums.AnnotationType,
+    prediction_type: enums.AnnotationType,
 ) -> list[schemas.Label]:
+    gt_filter = schemas.Filter(
+        datasets=schemas.DatasetFilter(names=[dataset_name]),
+        annotations=schemas.AnnotationFilter(
+            task_types=task_types,
+            annotation_types=[groundtruth_type],
+        ),
+    )
+    pd_filter = schemas.Filter(
+        datasets=schemas.DatasetFilter(names=[dataset_name]),
+        models=schemas.ModelFilter(names=[model_name]),
+        annotations=schemas.AnnotationFilter(
+            task_types=task_types,
+            annotation_types=[prediction_type],
+        ),
+    )
     return list(
-        _get_dataset_labels(
-            db, dataset_name, task_types=task_types, annotation_type=gt_type
-        ).intersection(
-            _get_model_labels(
-                db,
-                dataset_name,
-                model_name,
-                task_types=task_types,
-                annotation_type=pd_type,
-            )
+        get_groundtruth_labels(db, gt_filter).intersection(
+            get_prediction_labels(db, pd_filter)
         )
     )
 
@@ -168,9 +113,22 @@ def get_joint_keys(
     model_name: str,
     task_type: enums.TaskType,
 ) -> list[schemas.Label]:
+    gt_filter = schemas.Filter(
+        datasets=schemas.DatasetFilter(names=[dataset_name]),
+        annotations=schemas.AnnotationFilter(
+            task_types=[task_type],
+        ),
+    )
+    pd_filter = schemas.Filter(
+        datasets=schemas.DatasetFilter(names=[dataset_name]),
+        models=schemas.ModelFilter(names=[model_name]),
+        annotations=schemas.AnnotationFilter(
+            task_types=[task_type],
+        ),
+    )
     return list(
-        _get_dataset_label_keys(db, dataset_name, task_type).intersection(
-            _get_model_label_keys(db, dataset_name, model_name, task_type)
+        get_groundtruth_label_keys(db, gt_filter).intersection(
+            get_prediction_label_keys(db, pd_filter)
         )
     )
 
@@ -180,22 +138,31 @@ def get_disjoint_labels(
     dataset_name: str,
     model_name: str,
     task_types: list[enums.TaskType],
-    gt_type: enums.AnnotationType,
-    pd_type: enums.AnnotationType,
+    groundtruth_type: enums.AnnotationType,
+    prediction_type: enums.AnnotationType,
 ) -> dict[str, list[schemas.Label]]:
     """Returns tuple with elements (dataset, model) which contain lists of Labels."""
 
+    # create filters
+    gt_filter = schemas.Filter(
+        datasets=schemas.DatasetFilter(names=[dataset_name]),
+        annotations=schemas.AnnotationFilter(
+            task_types=task_types,
+            annotation_types=[groundtruth_type],
+        ),
+    )
+    pd_filter = schemas.Filter(
+        datasets=schemas.DatasetFilter(names=[dataset_name]),
+        models=schemas.ModelFilter(names=[model_name]),
+        annotations=schemas.AnnotationFilter(
+            task_types=task_types,
+            annotation_types=[prediction_type],
+        ),
+    )
+
     # get labels
-    ds_labels = _get_dataset_labels(
-        db, dataset_name, task_types=task_types, annotation_type=gt_type
-    )
-    md_labels = _get_model_labels(
-        db,
-        dataset_name,
-        model_name,
-        task_types=task_types,
-        annotation_type=pd_type,
-    )
+    ds_labels = get_groundtruth_labels(db, gt_filter)
+    md_labels = get_prediction_labels(db, pd_filter)
 
     # set operation to get disjoint sets wrt the lhs operand
     ds_unique = list(ds_labels - md_labels)
@@ -210,12 +177,28 @@ def get_disjoint_keys(
 ) -> dict[str, list[schemas.Label]]:
     """Returns tuple with elements (dataset, model) which contain lists of Labels."""
 
-    ds_labels = _get_dataset_label_keys(db, dataset_name, task_type)
-    md_labels = _get_model_label_keys(db, dataset_name, model_name, task_type)
+    # create filters
+    gt_filter = schemas.Filter(
+        datasets=schemas.DatasetFilter(names=[dataset_name]),
+        annotations=schemas.AnnotationFilter(
+            task_types=[task_type],
+        ),
+    )
+    pd_filter = schemas.Filter(
+        datasets=schemas.DatasetFilter(names=[dataset_name]),
+        models=schemas.ModelFilter(names=[model_name]),
+        annotations=schemas.AnnotationFilter(
+            task_types=[task_type],
+        ),
+    )
+
+    # get keys
+    ds_keys = get_groundtruth_label_keys(db, gt_filter)
+    md_keys = get_prediction_label_keys(db, pd_filter)
 
     # set operation to get disjoint sets wrt the lhs operand
-    ds_unique = list(ds_labels - md_labels)
-    md_unique = list(md_labels - ds_labels)
+    ds_unique = list(ds_keys - md_keys)
+    md_unique = list(md_keys - ds_keys)
 
     # returns tuple of label lists
     return (ds_unique, md_unique)

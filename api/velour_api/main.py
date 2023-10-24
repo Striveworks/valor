@@ -154,7 +154,7 @@ def get_prediction(
     tags=["Labels"],
 )
 def get_all_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
-    return crud.get_labels(db=db)
+    return crud.get_all_labels(db=db)
 
 
 @app.get(
@@ -167,11 +167,10 @@ def get_labels_from_dataset(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
     try:
-        return crud.get_labels(
+        return crud.get_dataset_labels(
             db=db,
-            request=schemas.Filter(
+            filters=schemas.Filter(
                 datasets=schemas.DatasetFilter(names=[dataset_name]),
-                groundtruth_labels=schemas.LabelFilter(),
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
@@ -188,11 +187,10 @@ def get_labels_from_model(
     model_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
     try:
-        return crud.get_labels(
+        return crud.get_model_labels(
             db=db,
-            request=schemas.Filter(
+            filters=schemas.Filter(
                 models=schemas.ModelFilter(names=[model_name]),
-                prediction_labels=schemas.LabelFilter(),
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:

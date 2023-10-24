@@ -87,6 +87,19 @@ class Datum(BaseModel):
             raise ValueError("invalid string")
         return v
 
+    def __eq__(self, other):
+        if (
+            not hasattr(other, "uid")
+            or not hasattr(other, "dataset")
+            or not hasattr(other, "metadata")
+        ):
+            return False
+
+        return self.uid == other.uid and self.dataset == other.dataset
+
+    def __hash__(self) -> int:
+        return hash(f"uid:{self.uid},dataset:{self.dataset}")
+
 
 class Annotation(BaseModel):
     task_type: TaskType
