@@ -1748,6 +1748,12 @@ def test_get_bulk_evaluations(
     )
     assert both_evaluations[0]["metrics"] == expected_metrics
 
+    # should be equivalent since there are only two models attributed to this dataset
+    both_model_evaluations = client.get_bulk_evaluations(
+        models=["second_model", "test_model"]
+    )
+    assert both_evaluations == both_model_evaluations
+
 
 def test_evaluate_image_clf(
     client: Client,

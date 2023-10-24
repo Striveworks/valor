@@ -1,12 +1,10 @@
 import os
-from typing import Annotated, List
 
 from fastapi import (  # Request,; status,
     BackgroundTasks,
     Depends,
     FastAPI,
     HTTPException,
-    Query,
 )
 
 # from fastapi.exceptions import RequestValidationError
@@ -45,6 +43,16 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def _split_query_params(param_string: str | None) -> list[str] | None:
+    """Split GET query parameters and return a list when possible."""
+    if not param_string:
+        return None
+    elif "," in param_string:
+        return param_string.split(",")
+    else:
+        return [param_string]
 
 
 """ GROUNDTRUTHS """
@@ -594,8 +602,8 @@ def get_evaluation_jobs_for_model(model_name: str) -> dict[str, list[int]]:
     tags=["Evaluations"],
 )
 def get_bulk_evaluations(
-    datasets: Annotated[List[str] | None, Query()] = None,
-    models: Annotated[List[str] | None, Query()] = None,
+    datasets: str = None,
+    models: str = None,
     db: Session = Depends(get_db),
 ) -> list[schemas.BulkEvaluations]:
     """
@@ -610,9 +618,12 @@ def get_bulk_evaluations(
     models
         An optional set of model names to return metrics for
     """
+    model_names = _split_query_params(models)
+    dataset_names = _split_query_params(datasets)
+
     try:
         return crud.get_bulk_evaluations(
-            db=db, dataset_names=datasets, model_names=models
+            db=db, dataset_names=dataset_names, model_names=model_names
         )
     except (
         exceptions.DatasetDoesNotExistError,
