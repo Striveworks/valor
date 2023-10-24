@@ -1,6 +1,6 @@
 import operator
 
-from sqlalchemy import Float, and_, or_, select
+from sqlalchemy import Float, and_, func, or_, select
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression
 
@@ -36,12 +36,23 @@ class Query:
             ]
         )
 
+    """ Private Methods """
+
     def _add_expressions(self, table, expressions: list[BinaryExpression]):
         self._tables.add(table.__tablename__)
         if len(expressions) == 1:
             self._where.extend(expressions)
         elif len(expressions) > 1:
             self._where.append(or_(*expressions))
+
+    def _check_simple_graph(self):
+        joint_table_set = {
+            models.Dataset.__tablename__,
+            models.Model.__tablename__,
+            models.Datum.__tablename__,
+            models.Annotation.__tablename__,
+        }
+        return self._tables.issubset(joint_table_set)
 
     def _check_joint_graph(self):
         joint_table_set = {
@@ -73,20 +84,60 @@ class Query:
         }
         return self._tables.issubset(prediction_table_set)
 
-    """ User methods """
+    def _get_numeric_op(self, opstr) -> operator:
+        ops = {
+            ">": operator.gt,
+            "<": operator.lt,
+            ">=": operator.ge,
+            "<=": operator.le,
+            "==": operator.eq,
+            "!=": operator.ne,
+        }
+        if opstr not in ops:
+            raise ValueError(f"invalid numeric comparison operator `{opstr}`")
+        return ops[opstr]
+
+    def _get_string_op(self, opstr) -> operator:
+        ops = {
+            "==": operator.eq,
+            "!=": operator.ne,
+        }
+        if opstr not in ops:
+            raise ValueError(f"invalid string comparison operator `{opstr}`")
+        return ops[opstr]
+
+    """ Public methods """
 
     def query(self):
         # TODO: Add more graph definitions, query should test graph from simplest to most complex.
-        if self._check_joint_graph():
+        if self._check_simple_graph():
+            return self.simple()
+        elif self._check_joint_graph():
             return self.joint()
         elif self._check_groundtruth_graph():
             return self.groundtruths()
         elif self._check_prediction_graph():
-            return self.predictions
+            return self.predictions()
         else:
             raise RuntimeError(
                 "Query does not conform to any available table graph."
             )
+
+    def simple(self):
+        if not self._check_simple_graph():
+            raise RuntimeError("Query does not conform to simple table graph.")
+        return (
+            select(*self._args)
+            .select_from(models.Dataset)
+            .join(models.Datum, models.Datum.dataset_id == models.Dataset.id)
+            .join(
+                models.Annotation,
+                models.Annotation.datum_id == models.Datum.id,
+            )
+            .join(models.Model, models.Model.id == models.Annotation.model_id)
+            .where(and_(*self._where))
+            .subquery("generated_query")
+        )
 
     def joint(self):
         if not self._check_joint_graph():
@@ -273,6 +324,15 @@ class Query:
     """ datum filter """
 
     def filter_by_datum(self, filters: schemas.DatumFilter):
+        if filters.ids:
+            self._add_expressions(
+                models.Datum,
+                [
+                    models.Datum.id == id
+                    for id in filters.ids
+                    if isinstance(id, int)
+                ],
+            )
         if filters.uids:
             self._add_expressions(
                 models.Datum,
@@ -336,6 +396,36 @@ class Query:
                 if enums.AnnotationType.RASTER in filters.annotation_types:
                     expressions.append(models.Annotation.raster.isnot(None))
                 self._add_expressions(models.Annotation, expressions)
+        if filters.geometry:
+            match filters.geometry.type:
+                case enums.AnnotationType.BOX:
+                    geom = models.Annotation.box
+                case enums.AnnotationType.POLYGON:
+                    geom = models.Annotation.polygon
+                case enums.AnnotationType.MULTIPOLYGON:
+                    geom = models.Annotation.multipolygon
+                case enums.AnnotationType.RASTER:
+                    geom = models.Annotation.raster
+                case _:
+                    raise RuntimeError
+            if filters.geometry.area:
+                op = self._get_numeric_op(filters.geometry.area.operator)
+                self._add_expressions(
+                    models.Annotation,
+                    [op(func.ST_Area(geom), filters.geometry.area.value)],
+                )
+            if filters.geometry.height:
+                op = self._get_numeric_op(filters.geometry.height.operator)
+                self._add_expressions(
+                    models.Annotation,
+                    [op(func.ST_Area(geom), filters.geometry.height.value)],
+                )
+            if filters.geometry.width:
+                op = self._get_numeric_op(filters.geometry.width.operator)
+                self._add_expressions(
+                    models.Annotation,
+                    [op(func.ST_Area(geom), filters.geometry.width.value)],
+                )
         if filters.metadata:
             self._add_expressions(
                 models.Annotation,
@@ -408,27 +498,3 @@ class Query:
             )
 
         return op(lhs, metadatum.comparison.value)
-
-    """ helper """
-
-    def _get_numeric_op(self, opstr) -> operator:
-        ops = {
-            ">": operator.gt,
-            "<": operator.lt,
-            ">=": operator.ge,
-            "<=": operator.le,
-            "==": operator.eq,
-            "!=": operator.ne,
-        }
-        if opstr not in ops:
-            raise ValueError(f"invalid numeric comparison operator `{opstr}`")
-        return ops[opstr]
-
-    def _get_string_op(self, opstr) -> operator:
-        ops = {
-            "==": operator.eq,
-            "!=": operator.ne,
-        }
-        if opstr not in ops:
-            raise ValueError(f"invalid string comparison operator `{opstr}`")
-        return ops[opstr]

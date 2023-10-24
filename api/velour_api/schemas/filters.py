@@ -52,9 +52,24 @@ class GeospatialFilter(BaseModel):
 
 
 class GeometricFilter(BaseModel):
+    type: AnnotationType
     area: NumericFilter | None = None
     height: NumericFilter | None = None
     width: NumericFilter | None = None
+
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v):
+        if v not in {
+            AnnotationType.BOX,
+            AnnotationType.POLYGON,
+            AnnotationType.MULTIPOLYGON,
+            AnnotationType.RASTER,
+        }:
+            raise TypeError(
+                "GeometricFilter can only take geometric annotation types."
+            )
+        return v
 
 
 class MetadatumFilter(BaseModel):
@@ -80,6 +95,7 @@ class ModelFilter(BaseModel):
 
 
 class DatumFilter(BaseModel):
+    ids: list[int] = Field(default_factory=list)
     uids: list[str] = Field(default_factory=list)
     metadata: list[MetadatumFilter] = Field(default_factory=list)
 
