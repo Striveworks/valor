@@ -1,4 +1,5 @@
 import collections
+import json
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -52,7 +53,7 @@ def get_bulk_evaluations(
     """
 
     job_set = set()
-    job_map = collections.defaultdict(dict)
+    job_details = collections.defaultdict(set)
 
     # get all relevant job IDs from all of the specified models and datasets
     if dataset_names:
@@ -60,15 +61,19 @@ def get_bulk_evaluations(
             dataset_jobs = jobs.get_stateflow().get_dataset_jobs(dataset)
             for model, job_ids in dataset_jobs.items():
                 for job_id in job_ids:
-                    job_map[(dataset, model)].update(
-                        {
-                            str(job_id): jobs.get_stateflow()
-                            .get_job_status(
-                                job_id=job_id,
-                            )
-                            .name
-                        }
+                    status = json.dumps(
+                        jobs.get_stateflow().get_job_status(job_id=job_id).name
+                    ).replace('"', "")
+                    job_details[status].add(
+                        json.dumps(
+                            {
+                                "job_id": job_id,
+                                "dataset": dataset,
+                                "model": model,
+                            }
+                        )
                     )
+
                     job_set.update(job_ids)
 
     if model_names:
@@ -76,14 +81,17 @@ def get_bulk_evaluations(
             model_jobs = jobs.get_stateflow().get_model_jobs(model)
             for dataset, job_ids in model_jobs.items():
                 for job_id in job_ids:
-                    job_map[(dataset, model)].update(
-                        {
-                            str(job_id): jobs.get_stateflow()
-                            .get_job_status(
-                                job_id=job_id,
-                            )
-                            .name
-                        }
+                    status = (
+                        jobs.get_stateflow().get_job_status(job_id=job_id).name
+                    ).replace('"', "")
+                    job_details[status].add(
+                        json.dumps(
+                            {
+                                "job_id": job_id,
+                                "dataset": dataset,
+                                "model": model,
+                            }
+                        )
                     )
                     job_set.update(job_ids)
 
@@ -91,12 +99,7 @@ def get_bulk_evaluations(
         db=db, evaluation_ids=job_set
     )
 
-    for evaluation in evaluations:
-        evaluation["statuses"] = job_map[
-            (evaluation["dataset"], evaluation["model"])
-        ]
-
-    return evaluations
+    return {"evaluations": evaluations, "statuses": job_details}
 
 
 """ Labels """

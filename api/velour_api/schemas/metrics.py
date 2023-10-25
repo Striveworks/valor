@@ -289,14 +289,23 @@ class mIOUMetric(BaseModel):
         }
 
 
-class BulkEvaluations(BaseModel):
-    """Used to fetch all metrics for a given dataset of model"""
+class BulkEvaluation(BaseModel):
+    """A bulk evaluation for one particular model / dataset"""
 
     model: str
     dataset: str
     metrics: list[Metric]
-    statuses: dict[str, str]
     confusion_matrices: list[ConfusionMatrixResponse]
+
+    # pydantic setting
+    model_config = ConfigDict(extra="forbid")
+
+
+class BulkEvaluations(BaseModel):
+    """Used to fetch all metrics for a given dataset of model"""
+
+    statuses: dict[str, set]
+    evaluations: list[BulkEvaluation]
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")

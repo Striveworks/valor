@@ -1689,9 +1689,12 @@ def test_get_bulk_evaluations(
         },
     ]
 
-    evaluations = client.get_bulk_evaluations(
-        datasets=dset_name, models=model_name
-    )
+    output = client.get_bulk_evaluations(datasets=dset_name, models=model_name)
+    statuses = output["statuses"]
+    evaluations = output["evaluations"]
+
+    assert "DONE" in statuses.keys()
+    assert len(statuses["DONE"]) == 1
 
     assert len(evaluations) == 1
     assert all(
@@ -1714,7 +1717,7 @@ def test_get_bulk_evaluations(
         client.get_bulk_evaluations(datasets="wrong_dataset_name")
 
     with pytest.raises(Exception):
-        client.get_bulk_evaluations(datasets="wrong_modle_name")
+        client.get_bulk_evaluations(datasets="wrong_model_name")
 
     # test with multiple models
     second_model = Model.create(client, "second_model")
@@ -1730,9 +1733,13 @@ def test_get_bulk_evaluations(
     )
     eval_job.wait_for_completion()
 
-    second_model_evaluations = client.get_bulk_evaluations(
-        models="second_model"
-    )
+    second_output = client.get_bulk_evaluations(models="second_model")
+
+    second_model_statuses = second_output["statuses"]
+    second_model_evaluations = second_output["evaluations"]
+
+    assert "DONE" in second_model_statuses.keys()
+    assert len(second_model_statuses["DONE"]) == 1
 
     assert len(second_model_evaluations) == 1
     assert all(
@@ -1750,7 +1757,13 @@ def test_get_bulk_evaluations(
     )
     assert second_model_evaluations[0]["metrics"] == expected_metrics
 
-    both_evaluations = client.get_bulk_evaluations(datasets=["test_dataset"])
+    both_output = client.get_bulk_evaluations(datasets=["test_dataset"])
+
+    both_statuses = both_output["statuses"]
+    both_evaluations = both_output["evaluations"]
+
+    assert "DONE" in both_statuses.keys()
+    assert len(both_statuses["DONE"]) == 2
 
     # should contain two different entries, one for each model
     assert len(both_evaluations) == 2
@@ -1765,7 +1778,7 @@ def test_get_bulk_evaluations(
     # should be equivalent since there are only two models attributed to this dataset
     both_model_evaluations = client.get_bulk_evaluations(
         models=["second_model", "test_model"]
-    )
+    )["evaluations"]
     assert both_evaluations == both_model_evaluations
 
 
@@ -2195,7 +2208,7 @@ def test_evaluate_tabular_clf(
     }
 
     # validate that we can fetch the confusion matrices through get_bulk_evaluations()
-    bulk_evals = client.get_bulk_evaluations(datasets=dset_name)
+    bulk_evals = client.get_bulk_evaluations(datasets=dset_name)["evaluations"]
 
     assert len(bulk_evals) == 1
     assert all(
