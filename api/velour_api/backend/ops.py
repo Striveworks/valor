@@ -171,8 +171,8 @@ class Query:
         # generate query statement
         graph = self._trim_extremities(subgraph1, joint_set)
         graph.extend(self._trim_extremities(subgraph2, joint_set))
-        repeated_set = set()
         query = select(*args).select_from(models.Model)
+        repeated_set = {models.Model}
         for table in graph:
             if table not in repeated_set:
                 query = query.join(table, connections[table])
@@ -394,7 +394,7 @@ class Query:
                     ),
                 )
 
-        # query - graph g3
+        # query - graph g4
         else:
             query = self._g4_solver(self._args, self._selected, self._filtered)
             subquery = None
@@ -701,20 +701,27 @@ class Query:
 
 f = schemas.Filter(
     datasets=schemas.DatasetFilter(names=["dset"]),
-    predictions=schemas.PredictionFilter(
-        score=schemas.NumericFilter(value=0.5, operator=">=")
-    ),
+    models=schemas.ModelFilter(names=["md"]),
+    annotations=schemas.AnnotationFilter(
+        geometry=schemas.GeometricFilter(
+            type=enums.AnnotationType.BOX,
+            area=schemas.NumericFilter(value=50, operator=">"),
+        )
+    )
+    # predictions=schemas.PredictionFilter(
+    #     score=schemas.NumericFilter(value=0.5, operator=">=")
+    # ),
 )
 
-q, s = Query(models.Label).filter(f)._graph_solver(models.GroundTruth)
-print(q)
-print()
-print(s)
-print()
+# Q: Get prediction labels for predictions with score >= 0.5, constrain to dataset "dset"
+qa = Query(models.Annotation).filter(f).any()
+qp = Query(models.Annotation).filter(f).predictions()
 
+# Q: Get groundtruth labels for datums that predictions had score >= 0.5, constrain to dataset "dset"
+qg = Query(models.Annotation).filter(f).groundtruths()
 
-qg = Query(models.Label).filter(f).groundtruths()
-
-# print(qa)
+print(qa)
 print()
 print(qg)
+print()
+print(qp)
