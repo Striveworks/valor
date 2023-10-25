@@ -103,6 +103,7 @@ class BulkEvaluations(BaseModel):
     model: str
     dataset: str
     metrics: list[Metric]
+    statuses: dict[str, str]
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")

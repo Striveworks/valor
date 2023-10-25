@@ -1,3 +1,4 @@
+import collections
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -50,44 +51,52 @@ def get_bulk_evaluations(
         A list of model names that we want to return metrics for
     """
 
-    job_ids = set()
+    job_set = set()
+    job_map = collections.defaultdict(dict)
 
     # get all relevant job IDs from all of the specified models and datasets
     if dataset_names:
         for dataset in dataset_names:
             dataset_jobs = jobs.get_stateflow().get_dataset_jobs(dataset)
-            for _, values in dataset_jobs.items():
-                job_ids.update(values)
+            for model, job_ids in dataset_jobs.items():
+                for job_id in job_ids:
+                    job_map[(dataset, model)].update(
+                        {
+                            str(job_id): jobs.get_stateflow()
+                            .get_job_status(
+                                job_id=job_id,
+                            )
+                            .name
+                        }
+                    )
+                    job_set.update(job_ids)
 
     if model_names:
         for model in model_names:
             model_jobs = jobs.get_stateflow().get_model_jobs(model)
-            for _, values in model_jobs.items():
-                job_ids.update(values)
+            for dataset, job_ids in model_jobs.items():
+                for job_id in job_ids:
+                    job_map[(dataset, model)].update(
+                        {
+                            str(job_id): jobs.get_stateflow()
+                            .get_job_status(
+                                job_id=job_id,
+                            )
+                            .name
+                        }
+                    )
+                    job_set.update(job_ids)
 
-    statuses = [
-        (
-            job_id,
-            jobs.get_stateflow().get_job_status(
-                job_id=job_id,
-            ),
-        )
-        for job_id in job_ids
-    ]
-
-    not_finished = []
-    for job_id, status in statuses:
-        if status != enums.JobStatus.DONE:
-            not_finished.append(job_id)
-
-    if not_finished:
-        raise ValueError(
-            f"Please wait for the following evaluation IDs to finish running: {not_finished}"
-        )
-
-    return backend.get_metrics_from_evaluation_ids(
-        db=db, evaluation_ids=job_ids
+    evaluations = backend.get_metrics_from_evaluation_ids(
+        db=db, evaluation_ids=job_set
     )
+
+    for evaluation in evaluations:
+        evaluation["statuses"] = job_map[
+            (evaluation["dataset"], evaluation["model"])
+        ]
+
+    return evaluations
 
 
 """ Labels """
