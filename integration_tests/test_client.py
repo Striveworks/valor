@@ -2194,6 +2194,28 @@ def test_evaluate_tabular_clf(
         ],
     }
 
+    # validate that we can fetch the confusion matrices through get_bulk_evaluations()
+    bulk_evals = client.get_bulk_evaluations(datasets=dset_name)
+
+    assert len(bulk_evals) == 1
+    assert all(
+        [
+            name
+            in [
+                "dataset",
+                "metrics",
+                "model",
+                "statuses",
+                "confusion_matrices",
+            ]
+            for name in bulk_evals[0].keys()
+        ]
+    )
+    for metric in bulk_evals[0]["metrics"]:
+        assert metric in expected_metrics
+
+    assert bulk_evals[0]["confusion_matrices"][0] == expected_confusion_matrix
+
     # validate return schema
     assert len(confusion_matrices) == 1
     confusion_matrix = confusion_matrices[0]

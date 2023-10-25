@@ -71,6 +71,13 @@ def _get_bulk_metrics_from_evaluation_settings(
                 if element["dataset"] == dataset and element["model"] == model
             ]
 
+            filtered_confusion_matrices = set(
+                matrix
+                for element in unnested_metrics
+                for matrix in element["confusion_matrices"]
+                if element["dataset"] == dataset and element["model"] == model
+            )
+
             confusion_matrices = [
                 schemas.ConfusionMatrix(
                     label_key=matrix.label_key,
@@ -79,9 +86,7 @@ def _get_bulk_metrics_from_evaluation_settings(
                         for entry in matrix.value
                     ],
                 )
-                for element in unnested_metrics
-                for matrix in element["confusion_matrices"]
-                if element["dataset"] == dataset and element["model"] == model
+                for matrix in filtered_confusion_matrices
             ]
 
             if metrics:

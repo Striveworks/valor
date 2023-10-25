@@ -296,7 +296,7 @@ class BulkEvaluations(BaseModel):
     dataset: str
     metrics: list[Metric]
     statuses: dict[str, str]
-    confusion_matrices: list[ConfusionMatrix]
+    confusion_matrices: list[ConfusionMatrixResponse]
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
