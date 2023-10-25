@@ -264,12 +264,6 @@ def get_metrics_from_evaluation_id(
     return backend.get_metrics_from_evaluation_id(db, evaluation_id)
 
 
-def get_metrics_from_evaluation_ids(
-    *, db: Session, evaluation_id: int
-) -> list[schemas.Metric]:
-    return backend.get_metrics_from_evaluation_ids(db, evaluation_id)
-
-
 def get_confusion_matrices_from_evaluation_id(
     *, db: Session, evaluation_id: int
 ) -> list[schemas.ConfusionMatrix]:
