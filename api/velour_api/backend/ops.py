@@ -1,6 +1,7 @@
 import operator
 
 from sqlalchemy import Float, and_, func, or_, select
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression
 
@@ -26,63 +27,379 @@ class Query:
 
     def __init__(self, *args):
         self._args = args
-        self._where: list[BinaryExpression] = []
-        self._tables: set[str] = set(
+        self._where: dict[DeclarativeMeta, list[BinaryExpression]] = {}
+        self._selected: set[DeclarativeMeta] = set(
             [
-                str(arg.__tablename__)
-                if isinstance(arg, DeclarativeMeta)
-                else str(arg.table)
-                for arg in self._args
+                self._map_attribute_to_table(argument)
+                for argument in args
+                if (
+                    isinstance(argument, DeclarativeMeta)
+                    or isinstance(argument, InstrumentedAttribute)
+                )
             ]
         )
+        self._filtered = set()
 
     """ Private Methods """
 
     def _add_expressions(self, table, expressions: list[BinaryExpression]):
-        self._tables.add(table.__tablename__)
+        self._filtered.add(table)
+        if table not in self._where:
+            self._where[table] = []
         if len(expressions) == 1:
-            self._where.extend(expressions)
+            self._where[table].extend(expressions)
         elif len(expressions) > 1:
-            self._where.append(or_(*expressions))
+            self._where[table].append(or_(*expressions))
 
-    def _check_simple_graph(self):
-        joint_table_set = {
-            models.Dataset.__tablename__,
-            models.Model.__tablename__,
-            models.Datum.__tablename__,
-            models.Annotation.__tablename__,
-        }
-        return self._tables.issubset(joint_table_set)
+    def _map_attribute_to_table(
+        self, attr: InstrumentedAttribute | DeclarativeMeta
+    ) -> DeclarativeMeta | None:
+        if isinstance(attr, DeclarativeMeta):
+            return attr
+        if not isinstance(attr, InstrumentedAttribute):
+            return None
+        match attr.table.name:
+            case models.Dataset.__tablename__:
+                return models.Dataset
+            case models.Model.__tablename__:
+                return models.Model
+            case models.Datum.__tablename__:
+                return models.Datum
+            case models.Annotation.__tablename__:
+                return models.Annotation
+            case models.GroundTruth.__tablename__:
+                return models.GroundTruth
+            case models.Prediction.__tablename__:
+                return models.Prediction
+            case models.Label.__tablename__:
+                return models.Label
+            case _:
+                return None
 
-    def _check_joint_graph(self):
-        joint_table_set = {
-            models.Dataset.__tablename__,
-            models.Datum.__tablename__,
-            models.Annotation.__tablename__,
-            models.Label.__tablename__,
-        }
-        return self._tables.issubset(joint_table_set)
+    def _trim_extremities(
+        self, graph: list[DeclarativeMeta], joint_set: set[DeclarativeMeta]
+    ) -> list[DeclarativeMeta]:
+        """trim graph extremities of unused nodes"""
+        lhi = 0
+        rhi = len(graph)
+        for idx, table in enumerate(graph):
+            if table in joint_set:
+                lhi = idx
+                break
+        for idx, table in enumerate(reversed(graph)):
+            if table in joint_set:
+                rhi = rhi - idx
+                break
+        return graph[lhi:rhi]
 
-    def _check_groundtruth_graph(self):
-        groundtruth_table_set = {
-            models.Dataset.__tablename__,
-            models.Datum.__tablename__,
-            models.Annotation.__tablename__,
-            models.GroundTruth.__tablename__,
-            models.Label.__tablename__,
+    def _g1_solver(
+        self,
+        args: list[DeclarativeMeta | InstrumentedAttribute],
+        selected: list[DeclarativeMeta],
+        filtered: list[DeclarativeMeta],
+    ):
+        """
+        g1 = [models.Dataset, models.Datum, models.Annotation, models.GroundTruth, models.Label]
+        """
+        # Graph defintion
+        graph = [
+            models.Dataset,
+            models.Datum,
+            models.Annotation,
+            models.GroundTruth,
+            models.Label,
+        ]
+        connections = {
+            models.Datum: models.Datum.dataset_id == models.Dataset.id,
+            models.Annotation: models.Annotation.datum_id == models.Datum.id,
+            models.GroundTruth: models.GroundTruth.annotation_id
+            == models.Annotation.id,
+            models.Label: models.Label.id == models.GroundTruth.label_id,
         }
-        return self._tables.issubset(groundtruth_table_set)
 
-    def _check_prediction_graph(self) -> bool:
-        prediction_table_set = {
-            models.Dataset.__tablename__,
-            models.Model.__tablename__,
-            models.Datum.__tablename__,
-            models.Annotation.__tablename__,
-            models.Prediction.__tablename__,
-            models.Label.__tablename__,
+        # set of tables required to construct query
+        joint_set = selected.union(filtered)
+
+        # generate query statement
+        query = None
+        for table in self._trim_extremities(graph, joint_set):
+            if query is None:
+                query = select(*args).select_from(table)
+            else:
+                query = query.join(table, connections[table])
+
+        # generate where statement
+        expressions = [
+            expression
+            for table in joint_set.intersection(set(self._where.keys()))
+            for expression in self._where[table]
+        ]
+        return query.where(and_(*expressions))
+
+    def _g2_solver(
+        self,
+        args: list[DeclarativeMeta | InstrumentedAttribute],
+        selected: list[DeclarativeMeta],
+        filtered: list[DeclarativeMeta],
+    ):
+        """
+        g2 = [[models.Model, models.Annotation, models.Prediction, models.Label], [models.Model, models.Annotation, models.Datum, models.Dataset]]
+        """
+        subgraph1 = [
+            models.Model,
+            models.Annotation,
+            models.Prediction,
+            models.Label,
+        ]
+        subgraph2 = [
+            models.Model,
+            models.Annotation,
+            models.Datum,
+            models.Dataset,
+        ]
+        connections = {
+            models.Annotation: models.Annotation.model_id == models.Model.id,
+            models.Datum: models.Datum.id == models.Annotation.datum_id,
+            models.Dataset: models.Dataset.id == models.Datum.dataset_id,
+            models.Prediction: models.Prediction.annotation_id
+            == models.Annotation.id,
+            models.Label: models.Label.id == models.Prediction.label_id,
         }
-        return self._tables.issubset(prediction_table_set)
+
+        joint_set = selected.union(filtered)
+
+        # generate query statement
+        graph = self._trim_extremities(subgraph1, joint_set)
+        graph.extend(self._trim_extremities(subgraph2, joint_set))
+        repeated_set = set()
+        query = select(*args).select_from(models.Model)
+        for table in graph:
+            if table not in repeated_set:
+                query = query.join(table, connections[table])
+                repeated_set.add(table)
+
+        # generate where statement
+        expressions = [
+            expression
+            for table in joint_set.intersection(set(self._where.keys()))
+            for expression in self._where[table]
+        ]
+        return query.where(and_(*expressions))
+
+    def _g3_solver(
+        self,
+        args: list[DeclarativeMeta | InstrumentedAttribute],
+        selected: list[DeclarativeMeta],
+        filtered: list[DeclarativeMeta],
+    ):
+        """
+        g3 = [models.Dataset, models.Datum, models.Annotation, models.Prediction, models.Label]
+        """
+        # Graph defintion
+        graph = [
+            models.Dataset,
+            models.Datum,
+            models.Annotation,
+            models.Prediction,
+            models.Label,
+        ]
+        connections = {
+            models.Datum: models.Datum.dataset_id == models.Dataset.id,
+            models.Annotation: models.Annotation.datum_id == models.Datum.id,
+            models.Prediction: models.Prediction.annotation_id
+            == models.Annotation.id,
+            models.Label: models.Label.id == models.Prediction.label_id,
+        }
+
+        # set of tables required to construct query
+        joint_set = selected.union(filtered)
+
+        # generate query statement
+        query = None
+        for table in self._trim_extremities(graph, joint_set):
+            if query is None:
+                query = select(*args).select_from(table)
+            else:
+                query = query.join(table, connections[table])
+
+        # generate where statement
+        expressions = [
+            expression
+            for table in joint_set.intersection(set(self._where.keys()))
+            for expression in self._where[table]
+        ]
+        return query.where(and_(*expressions))
+
+    def _g4_solver(
+        self,
+        args: list[DeclarativeMeta | InstrumentedAttribute],
+        selected: list[DeclarativeMeta],
+        filtered: list[DeclarativeMeta],
+    ):
+        """
+        g4 = [[models.Dataset, models.Datum, models.Annotation, models.Label]]
+        """
+        graph = [
+            models.Dataset,
+            models.Datum,
+            models.Annotation,
+            models.Label,
+        ]  # excluding label as edge case due to forking at groundtruth, prediction
+        connections = {
+            models.Datum: models.Datum.dataset_id == models.Dataset.id,
+            models.Annotation: models.Annotation.datum_id == models.Datum.id,
+            models.GroundTruth: models.GroundTruth.annotation_id
+            == models.Annotation.id,
+            models.Prediction: models.Prediction.annotation_id
+            == models.Annotation.id,
+            models.Label: or_(
+                models.Label.id == models.GroundTruth.label_id,
+                models.Label.id == models.Prediction.label_id,
+            ),
+        }
+
+        # set of tables required to construct query
+        joint_set = selected.union(filtered)
+
+        # generate query statement
+        query = None
+        for table in self._trim_extremities(graph, joint_set):
+            if query is None:
+                query = select(*args).select_from(table)
+            else:
+                if table == models.Label:
+                    query = query.join(
+                        models.GroundTruth, connections[models.GroundTruth]
+                    )
+                    query = query.join(
+                        models.Prediction,
+                        connections[models.Prediction],
+                        full=True,
+                    )
+                    query = query.join(models.Label, connections[models.Label])
+                else:
+                    query = query.join(table, connections[table])
+
+        # generate where statement
+        expressions = [
+            expression
+            for table in joint_set.intersection(set(self._where.keys()))
+            for expression in self._where[table]
+        ]
+        return query.where(and_(*expressions))
+
+    def _graph_solver(self, additional_table: DeclarativeMeta | None = None):
+        """
+        There are 4 foundational graphs.
+        g1 = [models.Dataset, models.Datum, models.Annotation, models.GroundTruth, models.Label]
+        g2 = [[models.Model, models.Annotation, models.Prediction, models.Label], [models.Model, models.Annotation, models.Datum, models.Dataset]]
+        g3 = [models.Dataset, models.Datum, models.Annotation, models.Prediction, models.Label],
+        g4 = [models.Dataset, models.Datum, models.Annotation, models.Label]
+
+        Removing common nodes, these are reduced to:
+        g1_unique = [models.Groundtruth]
+        g3_unique = [models.Prediction, models.Model]
+        g2_unique = [models.Prediction]
+        g4_unique = []
+        """
+
+        g1_unique = {models.GroundTruth}
+        g2_unique = {models.Model}
+        g3_unique = {models.Prediction}
+
+        if self._selected.intersection(
+            g1_unique
+        ) and self._selected.intersection(g2_unique):
+            raise RuntimeError(
+                f"Cannot evaluate graph as invalid connection between queried tables. `{self._selected}`"
+            )
+
+        joint_set = self._selected.union(self._filtered)
+        if isinstance(additional_table, DeclarativeMeta):
+            joint_set.add(additional_table)
+
+        # query - graph g1
+        if g1_unique.issubset(joint_set):
+            if g2_unique.issubset(joint_set):
+                query = self._g1_solver(
+                    self._args,
+                    self._selected,
+                    (self._filtered - g2_unique).union({models.Datum}),
+                )
+                subquery = self._g2_solver(
+                    [models.Datum.id],
+                    {models.Datum},
+                    self._filtered.intersection(g2_unique).union(
+                        {models.Datum}
+                    ),
+                )
+            elif g3_unique.issubset(joint_set):
+                query = self._g1_solver(
+                    self._args,
+                    self._selected,
+                    (self._filtered - g3_unique).union({models.Datum}),
+                )
+                subquery = self._g3_solver(
+                    [models.Datum.id],
+                    {models.Datum},
+                    self._filtered.intersection(g3_unique).union(
+                        {models.Datum}
+                    ),
+                )
+            else:
+                query = self._g1_solver(
+                    self._args, self._selected, self._filtered
+                )
+                subquery = None
+
+        # query - graph g2
+        elif g2_unique.issubset(joint_set):
+            if not g1_unique.issubset(joint_set):
+                query = self._g2_solver(
+                    self._args, self._selected, self._filtered
+                )
+                subquery = None
+            else:
+                query = self._g2_solver(
+                    self._args,
+                    self._selected,
+                    (self._filtered - g1_unique).union({models.Datum}),
+                )
+                subquery = self._g1_solver(
+                    [models.Datum.id],
+                    {models.Datum},
+                    self._filtered.intersection(g1_unique).union(
+                        {models.Datum}
+                    ),
+                )
+
+        # query - graph g3
+        elif g3_unique.issubset(joint_set):
+            if not g1_unique.issubset(joint_set):
+                query = self._g3_solver(
+                    self._args, self._selected, self._filtered
+                )
+                subquery = None
+            else:
+                query = self._g3_solver(
+                    self._args,
+                    self._selected,
+                    (self._filtered - g1_unique).union({models.Datum}),
+                )
+                subquery = self._g1_solver(
+                    [models.Datum.id],
+                    {models.Datum},
+                    self._filtered.intersection(g1_unique).union(
+                        {models.Datum}
+                    ),
+                )
+
+        # query - graph g3
+        else:
+            query = self._g4_solver(self._args, self._selected, self._filtered)
+            subquery = None
+
+        return query, subquery
 
     def _get_numeric_op(self, opstr) -> operator:
         ops = {
@@ -108,121 +425,17 @@ class Query:
 
     """ Public methods """
 
-    def query(self):
-        # TODO: Add more graph definitions, query should test graph from simplest to most complex.
-        if self._check_simple_graph():
-            return self.simple()
-        elif self._check_joint_graph():
-            return self.joint()
-        elif self._check_groundtruth_graph():
-            return self.groundtruths()
-        elif self._check_prediction_graph():
-            return self.predictions()
-        else:
-            raise RuntimeError(
-                "Query does not conform to any available table graph."
-            )
-
-    def simple(self):
-        if not self._check_simple_graph():
-            raise RuntimeError("Query does not conform to simple table graph.")
-        return (
-            select(*self._args)
-            .select_from(models.Dataset)
-            .join(models.Datum, models.Datum.dataset_id == models.Dataset.id)
-            .join(
-                models.Annotation,
-                models.Annotation.datum_id == models.Datum.id,
-            )
-            .join(models.Model, models.Model.id == models.Annotation.model_id)
-            .where(and_(*self._where))
-            .subquery("generated_query")
-        )
-
-    def joint(self):
-        if not self._check_joint_graph():
-            raise RuntimeError("Query does not conform to joint table graph.")
-
-        return (
-            select(*self._args)
-            .select_from(models.Dataset)
-            .join(models.Datum, models.Datum.dataset_id == models.Dataset.id)
-            .join(
-                models.Annotation,
-                models.Annotation.datum_id == models.Datum.id,
-            )
-            .join(
-                models.GroundTruth,
-                models.GroundTruth.annotation_id == models.Annotation.id,
-            )
-            .join(
-                models.Prediction,
-                models.Prediction.annotation_id == models.Annotation.id,
-                full=True,
-            )
-            .join(
-                models.Label,
-                or_(
-                    models.Label.id == models.GroundTruth.label_id,
-                    models.Label.id == models.Prediction.label_id,
-                ),
-            )
-            .where(and_(*self._where))
-            .subquery("generated_query")
-        )
+    def any(self, *_, _table: DeclarativeMeta | None = None):
+        query, subquery = self._graph_solver(_table)
+        if subquery is not None:
+            query = query.where(models.Datum.id.in_(subquery))
+        return query.subquery("generated_query")
 
     def groundtruths(self):
-        if not self._check_groundtruth_graph():
-            raise RuntimeError(
-                "Query does not conform to groundtruths table graph."
-            )
-
-        return (
-            select(*self._args)
-            .select_from(models.Dataset)
-            .join(models.Datum, models.Datum.dataset_id == models.Dataset.id)
-            .join(
-                models.Annotation,
-                and_(
-                    models.Annotation.datum_id == models.Datum.id,
-                    models.Annotation.model_id.is_(None),
-                ),
-            )
-            .join(
-                models.GroundTruth,
-                models.GroundTruth.annotation_id == models.Annotation.id,
-            )
-            .join(models.Label, models.Label.id == models.GroundTruth.label_id)
-            .where(and_(*self._where))
-            .subquery("generated_query")
-        )
+        return self.any(_table=models.GroundTruth)
 
     def predictions(self):
-        if not self._check_prediction_graph:
-            raise RuntimeError(
-                "Query does not conform to predictions table graph."
-            )
-
-        return (
-            select(*self._args)
-            .select_from(models.Dataset)
-            .join(models.Datum, models.Datum.dataset_id == models.Dataset.id)
-            .join(
-                models.Annotation,
-                and_(
-                    models.Annotation.datum_id == models.Datum.id,
-                    models.Annotation.model_id.is_not(None),
-                ),
-            )
-            .join(models.Model, models.Model.id == models.Annotation.model_id)
-            .join(
-                models.Prediction,
-                models.Prediction.annotation_id == models.Annotation.id,
-            )
-            .join(models.Label, models.Label.id == models.Prediction.label_id)
-            .where(and_(*self._where))
-            .subquery("generated_query")
-        )
+        return self.any(_table=models.Prediction)
 
     def filter(self, filters: schemas.Filter):
         """Parses `schemas.Filter`"""
@@ -259,8 +472,6 @@ class Query:
 
         return self
 
-    """ dataset filter """
-
     def filter_by_dataset(self, filters: schemas.DatasetFilter):
         if filters.ids:
             self._add_expressions(
@@ -289,8 +500,6 @@ class Query:
                 ],
             )
         return self
-
-    """ model filter """
 
     def filter_by_model(self, filters: schemas.ModelFilter):
         if filters.ids:
@@ -321,8 +530,6 @@ class Query:
             )
         return self
 
-    """ datum filter """
-
     def filter_by_datum(self, filters: schemas.DatumFilter):
         if filters.ids:
             self._add_expressions(
@@ -351,8 +558,6 @@ class Query:
                 ],
             )
         return self
-
-    """ filter by annotation """
 
     def filter_by_annotation(
         self,
@@ -436,8 +641,6 @@ class Query:
             )
         return self
 
-    """ filter by prediction """
-
     def filter_by_prediction(self, filters: schemas.PredictionFilter):
         if filters.score:
             op = self._get_numeric_op(filters.score.operator)
@@ -446,8 +649,6 @@ class Query:
                 [op(models.Prediction.score, filters.score.value)],
             )
         return self
-
-    """ filter by label """
 
     def filter_by_label(
         self,
@@ -476,8 +677,6 @@ class Query:
             )
         return self
 
-    """ filter by metadata """
-
     def _filter_by_metadatum(
         self,
         metadatum: schemas.MetadatumFilter,
@@ -498,3 +697,24 @@ class Query:
             )
 
         return op(lhs, metadatum.comparison.value)
+
+
+f = schemas.Filter(
+    datasets=schemas.DatasetFilter(names=["dset"]),
+    predictions=schemas.PredictionFilter(
+        score=schemas.NumericFilter(value=0.5, operator=">=")
+    ),
+)
+
+q, s = Query(models.Label).filter(f)._graph_solver(models.GroundTruth)
+print(q)
+print()
+print(s)
+print()
+
+
+qg = Query(models.Label).filter(f).groundtruths()
+
+# print(qa)
+print()
+print(qg)
