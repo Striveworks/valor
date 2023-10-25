@@ -100,6 +100,54 @@ class Client:
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
+    def get_bulk_evaluations(
+        self,
+        models: Union[str, List[str], None] = None,
+        datasets: Union[str, List[str], None] = None,
+    ) -> List[dict]:
+        """
+        Returns all metrics associated with user-supplied dataset and model names
+
+        Parameters
+        ----------
+        models
+            A list of dataset names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
+        datasets
+            A list of model names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
+        """
+
+        if not (models or datasets):
+            raise ValueError(
+                "Please provide atleast one model name or dataset name"
+            )
+
+        if models:
+            # let users just pass one name as a string
+            if isinstance(models, str):
+                models = [models]
+            model_params = ",".join(models)
+        else:
+            model_params = None
+
+        if datasets:
+            if isinstance(datasets, str):
+                datasets = [datasets]
+            dataset_params = ",".join(datasets)
+        else:
+            dataset_params = None
+
+        if model_params and dataset_params:
+            endpoint = (
+                f"evaluations?models={model_params}&datasets={dataset_params}"
+            )
+        elif model_params:
+            endpoint = f"evaluations?models={model_params}"
+        else:
+            endpoint = f"evaluations?datasets={dataset_params}"
+
+        evals = self._requests_get_rel_host(endpoint).json()
+        return evals
+
     def get_datasets(
         self,
     ) -> List[dict]:
