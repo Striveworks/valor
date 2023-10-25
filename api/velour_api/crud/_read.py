@@ -46,6 +46,8 @@ def get_bulk_evaluations(
 
     Parameters
     ----------
+    db
+        The database session
     dataset_names
         A list of dataset names that we want to return metrics for
     model_names

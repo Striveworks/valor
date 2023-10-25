@@ -1,3 +1,4 @@
+from typing import Union
 from uuid import uuid4
 
 import numpy as np
@@ -294,8 +295,9 @@ class BulkEvaluation(BaseModel):
 
     model: str
     dataset: str
-    metrics: list[Metric]
-    confusion_matrices: list[ConfusionMatrixResponse]
+    metrics: list[
+        dict[str, Union[list[ConfusionMatrixResponse], list[Metric], str]]
+    ]
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")

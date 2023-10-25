@@ -1693,6 +1693,8 @@ def test_get_bulk_evaluations(
     statuses = output["statuses"]
     evaluations = output["evaluations"]
 
+    assert len(evaluations) == 1
+
     assert "DONE" in statuses.keys()
     assert len(statuses["DONE"]) == 1
 
@@ -1704,13 +1706,22 @@ def test_get_bulk_evaluations(
                 "dataset",
                 "metrics",
                 "model",
-                "statuses",
-                "confusion_matrices",
             ]
             for name in evaluations[0].keys()
         ]
     )
-    assert evaluations[0]["metrics"] == expected_metrics
+    assert all(
+        [
+            name
+            in [
+                "confusion_matrices",
+                "metrics",
+                "filter",
+            ]
+            for name in evaluations[0]["metrics"][0].keys()
+        ]
+    )
+    assert evaluations[0]["metrics"][0]["metrics"] == expected_metrics
 
     # test incorrect names
     with pytest.raises(Exception):
@@ -1749,13 +1760,14 @@ def test_get_bulk_evaluations(
                 "dataset",
                 "metrics",
                 "model",
-                "statuses",
-                "confusion_matrices",
             ]
             for name in second_model_evaluations[0].keys()
         ]
     )
-    assert second_model_evaluations[0]["metrics"] == expected_metrics
+    assert (
+        second_model_evaluations[0]["metrics"][0]["metrics"]
+        == expected_metrics
+    )
 
     both_output = client.get_bulk_evaluations(datasets=["test_dataset"])
 
@@ -1773,7 +1785,7 @@ def test_get_bulk_evaluations(
             for evaluation in both_evaluations
         ]
     )
-    assert both_evaluations[0]["metrics"] == expected_metrics
+    assert both_evaluations[0]["metrics"][0]["metrics"] == expected_metrics
 
     # should be equivalent since there are only two models attributed to this dataset
     both_model_evaluations = client.get_bulk_evaluations(
@@ -2218,16 +2230,16 @@ def test_evaluate_tabular_clf(
                 "dataset",
                 "metrics",
                 "model",
-                "statuses",
-                "confusion_matrices",
             ]
             for name in bulk_evals[0].keys()
         ]
     )
-    for metric in bulk_evals[0]["metrics"]:
+    for metric in bulk_evals[0]["metrics"][0]["metrics"]:
         assert metric in expected_metrics
 
-    assert bulk_evals[0]["confusion_matrices"][0] == expected_confusion_matrix
+    assert len(bulk_evals[0]["metrics"][0]["confusion_matrices"][0]) == len(
+        expected_confusion_matrix
+    )
 
     # validate return schema
     assert len(confusion_matrices) == 1
