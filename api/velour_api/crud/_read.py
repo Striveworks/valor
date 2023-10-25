@@ -1,3 +1,7 @@
+import collections
+import json
+from typing import List, Optional
+
 from sqlalchemy.orm import Session
 
 from velour_api import backend, enums, schemas
@@ -24,12 +28,80 @@ def get_backend_state(
     )
 
 
-def get_dataset_evaluations(dataset_name: str):
+def get_evaluation_jobs_for_dataset(dataset_name: str):
     return jobs.get_stateflow().get_dataset_jobs(dataset_name)
 
 
-def get_model_evaluations(model_name: str):
+def get_evaluation_jobs_for_model(model_name: str):
     return jobs.get_stateflow().get_model_jobs(model_name)
+
+
+def get_bulk_evaluations(
+    db: Session,
+    dataset_names: Optional[List[str]],
+    model_names: Optional[List[str]],
+) -> list[schemas.BulkEvaluations]:
+    """
+    Returns all metrics associated with user-supplied dataset and model names
+
+    Parameters
+    ----------
+    db
+        The database session
+    dataset_names
+        A list of dataset names that we want to return metrics for
+    model_names
+        A list of model names that we want to return metrics for
+    """
+
+    job_set = set()
+    job_details = collections.defaultdict(set)
+
+    # get all relevant job IDs from all of the specified models and datasets
+    if dataset_names:
+        for dataset in dataset_names:
+            dataset_jobs = jobs.get_stateflow().get_dataset_jobs(dataset)
+            for model, job_ids in dataset_jobs.items():
+                for job_id in job_ids:
+                    status = json.dumps(
+                        jobs.get_stateflow().get_job_status(job_id=job_id).name
+                    ).replace('"', "")
+                    job_details[status].add(
+                        json.dumps(
+                            {
+                                "job_id": job_id,
+                                "dataset": dataset,
+                                "model": model,
+                            }
+                        )
+                    )
+
+                    job_set.update(job_ids)
+
+    if model_names:
+        for model in model_names:
+            model_jobs = jobs.get_stateflow().get_model_jobs(model)
+            for dataset, job_ids in model_jobs.items():
+                for job_id in job_ids:
+                    status = (
+                        jobs.get_stateflow().get_job_status(job_id=job_id).name
+                    ).replace('"', "")
+                    job_details[status].add(
+                        json.dumps(
+                            {
+                                "job_id": job_id,
+                                "dataset": dataset,
+                                "model": model,
+                            }
+                        )
+                    )
+                    job_set.update(job_ids)
+
+    evaluations = backend.get_metrics_from_evaluation_ids(
+        db=db, evaluation_ids=job_set
+    )
+
+    return {"evaluations": evaluations, "statuses": job_details}
 
 
 """ Labels """

@@ -69,7 +69,7 @@ class ModelNotFinalizedError(Exception):
 class ModelInferencesDoNotExist(Exception):
     def __init__(self, *, dataset_name: str, model_name: str):
         return super().__init__(
-            f"inferences for model `{model_name}` over datatset `{dataset_name}` do not exist."
+            f"inferences for model `{model_name}` over dataset `{dataset_name}` do not exist."
         )
 
 

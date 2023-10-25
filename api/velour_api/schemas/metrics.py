@@ -1,3 +1,4 @@
+from typing import Union
 from uuid import uuid4
 
 import numpy as np
@@ -287,3 +288,26 @@ class mIOUMetric(BaseModel):
             "type": "mIOU",
             "evaluation_id": evaluation_id,
         }
+
+
+class BulkEvaluation(BaseModel):
+    """A bulk evaluation for one particular model / dataset"""
+
+    model: str
+    dataset: str
+    metrics: list[
+        dict[str, Union[list[ConfusionMatrixResponse], list[Metric], str]]
+    ]
+
+    # pydantic setting
+    model_config = ConfigDict(extra="forbid")
+
+
+class BulkEvaluations(BaseModel):
+    """Used to fetch all metrics for a given dataset of model"""
+
+    statuses: dict[str, set]
+    evaluations: list[BulkEvaluation]
+
+    # pydantic setting
+    model_config = ConfigDict(extra="forbid")

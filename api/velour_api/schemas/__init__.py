@@ -24,6 +24,7 @@ from .metrics import (
     AccuracyMetric,
     APMetric,
     APMetricAveragedOverIOUs,
+    BulkEvaluations,
     ConfusionMatrix,
     ConfusionMatrixEntry,
     ConfusionMatrixResponse,
@@ -88,5 +89,6 @@ __all__ = [
     "ConfusionMatrixEntry",
     "Stateflow",
     "EvaluationSettings",
+    "BulkEvaluations",
     "DetectionParameters",
 ]
