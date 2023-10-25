@@ -97,18 +97,6 @@ class Metric(BaseModel):
     label: Label | None = None
 
 
-class BulkEvaluations(BaseModel):
-    """Used to fetch all metrics for a given dataset of model"""
-
-    model: str
-    dataset: str
-    metrics: list[Metric]
-    statuses: dict[str, str]
-
-    # pydantic setting
-    model_config = ConfigDict(extra="forbid")
-
-
 class APMetric(BaseModel):
     iou: float
     value: float
@@ -299,3 +287,16 @@ class mIOUMetric(BaseModel):
             "type": "mIOU",
             "evaluation_id": evaluation_id,
         }
+
+
+class BulkEvaluations(BaseModel):
+    """Used to fetch all metrics for a given dataset of model"""
+
+    model: str
+    dataset: str
+    metrics: list[Metric]
+    statuses: dict[str, str]
+    confusion_matrices: list[ConfusionMatrix]
+
+    # pydantic setting
+    model_config = ConfigDict(extra="forbid")

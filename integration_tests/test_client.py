@@ -1696,7 +1696,14 @@ def test_get_bulk_evaluations(
     assert len(evaluations) == 1
     assert all(
         [
-            name in ["dataset", "metrics", "model", "statuses"]
+            name
+            in [
+                "dataset",
+                "metrics",
+                "model",
+                "statuses",
+                "confusion_matrices",
+            ]
             for name in evaluations[0].keys()
         ]
     )
@@ -1730,7 +1737,14 @@ def test_get_bulk_evaluations(
     assert len(second_model_evaluations) == 1
     assert all(
         [
-            name in ["dataset", "metrics", "model", "statuses"]
+            name
+            in [
+                "dataset",
+                "metrics",
+                "model",
+                "statuses",
+                "confusion_matrices",
+            ]
             for name in second_model_evaluations[0].keys()
         ]
     )

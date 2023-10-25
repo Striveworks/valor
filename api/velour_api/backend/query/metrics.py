@@ -52,6 +52,7 @@ def _get_bulk_metrics_from_evaluation_settings(
             "dataset": m.settings.dataset.name,
             "model": m.settings.model.name,
             "metric": _db_metric_to_pydantic_metric(db, m),
+            "confusion_matrices": ms.confusion_matrices,
             "job_id": ms.id,
         }
         for ms in evaluation_settings
@@ -70,12 +71,26 @@ def _get_bulk_metrics_from_evaluation_settings(
                 if element["dataset"] == dataset and element["model"] == model
             ]
 
+            confusion_matrices = [
+                schemas.ConfusionMatrix(
+                    label_key=matrix.label_key,
+                    entries=[
+                        schemas.ConfusionMatrixEntry(**entry)
+                        for entry in matrix.value
+                    ],
+                )
+                for element in unnested_metrics
+                for matrix in element["confusion_matrices"]
+                if element["dataset"] == dataset and element["model"] == model
+            ]
+
             if metrics:
                 grouped_metrics.append(
                     {
                         "dataset": dataset,
                         "model": model,
                         "metrics": metrics,
+                        "confusion_matrices": confusion_matrices,
                     }
                 )
 
