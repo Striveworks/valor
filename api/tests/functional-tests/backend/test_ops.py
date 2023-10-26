@@ -193,7 +193,7 @@ def test_basic(
             names=[dset_name],
         )
     )
-    q = Query(models.Model.name).filter(f).query()
+    q = Query(models.Model.name).filter(f).any()
     model_names = db.query(q).distinct().all()
     assert len(model_names) == 2
     assert (model_name1,) in model_names
@@ -213,9 +213,9 @@ def test_annotation_query(
             )
         )
     )
-    q = Query(models.Annotation).filter(f).query()
+    q = Query(models.Annotation).filter(f).any()
     annotations = db.query(q).all()
-    assert len(annotations) == 2
+    assert len(annotations) == 4
     areas = [
         db.scalar(
             select(func.ST_Area(models.Annotation.box)).where(
@@ -235,9 +235,9 @@ def test_annotation_query(
             )
         )
     )
-    q = Query(models.Annotation).filter(f).query()
+    q = Query(models.Annotation).filter(f).any()
     annotations = db.query(q).all()
-    assert len(annotations) == 1
+    assert len(annotations) == 2
     areas = [
         db.scalar(
             select(func.ST_Area(models.Annotation.box)).where(
@@ -264,7 +264,7 @@ def test_numeric_metadata_query(
             ]
         )
     )
-    q = Query(models.Annotation).filter(f).query()
+    q = Query(models.Annotation).filter(f).any()
     numbers = [annotation.meta["number"] for annotation in db.query(q).all()]
     assert len(numbers) == 1
     assert numbers == [0.9]
@@ -280,7 +280,7 @@ def test_numeric_metadata_query(
             ]
         )
     )
-    q = Query(models.Annotation).filter(f).query()
+    q = Query(models.Annotation).filter(f).any()
     numbers = [annotation.meta["number"] for annotation in db.query(q).all()]
     assert len(numbers) == 2
     assert set(numbers) == {0.5, 0.9}
@@ -296,7 +296,7 @@ def test_numeric_metadata_query(
             ]
         )
     )
-    q = Query(models.Annotation).filter(f).query()
+    q = Query(models.Annotation).filter(f).any()
     numbers = [annotation.meta["number"] for annotation in db.query(q).all()]
     assert len(numbers) == 1
     assert set(numbers) == {0.1}
@@ -319,7 +319,7 @@ def test_Query_extremities(
             labels=[schemas.Label(key=label_key, value="dog")]
         ),
     )
-    subq = Query(models.Datum).filter(gt_filter).query()
+    subq = Query(models.Datum).filter(gt_filter).any()
     ids = [datum.id for datum in db.query(subq).all()]
 
     pd_filter = schemas.Filter(
@@ -330,7 +330,7 @@ def test_Query_extremities(
             labels=[schemas.Label(key=label_key, value="cat")]
         ),
     )
-    q = Query(models.Prediction).filter(pd_filter).query()
+    q = Query(models.Prediction).filter(pd_filter).any()
     scores = [prediction.score for prediction in db.query(q).all()]
     assert len(scores) == 3
     assert set(scores) == set([0.9, 0.6, 0.55])
@@ -345,7 +345,7 @@ def test_Query_extremities(
             labels=[schemas.Label(key=label_key, value="dog")]
         ),
     )
-    q = Query(models.Prediction).filter(pd_filter).query()
+    q = Query(models.Prediction).filter(pd_filter).any()
     scores = [prediction.score for prediction in db.query(q).all()]
     assert len(scores) == 3
     assert set(scores) == set([0.1, 0.4, 0.45])
@@ -358,7 +358,7 @@ def test_Query_extremities(
             labels=[schemas.Label(key=label_key, value="dog")]
         ),
     )
-    q = Query(models.Prediction).filter(pd_filter).query()
+    q = Query(models.Prediction).filter(pd_filter).any()
     scores = [prediction.score for prediction in db.query(q).all()]
     assert len(scores) == 4
     assert set(scores) == set([0.1, 0.4, 0.45, 0.8])

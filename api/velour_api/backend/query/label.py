@@ -33,7 +33,7 @@ def get_labels(
     filters: schemas.Filter | None = None,
 ) -> set[schemas.Label]:
     """Returns a list of unique labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
-    stmt = ops.Query(models.Label).filter(filters).joint()
+    stmt = ops.Query(models.Label).filter(filters).any()
     return _get_labels(db, stmt)
 
 
@@ -57,7 +57,7 @@ def get_label_keys(
     db: Session,
     filters: schemas.Filter | None = None,
 ) -> set[schemas.Label]:
-    stmt = ops.Query(models.Label).filter(filters).joint()
+    stmt = ops.Query(models.Label).filter(filters).any()
     return _get_label_keys(db, stmt)
 
 

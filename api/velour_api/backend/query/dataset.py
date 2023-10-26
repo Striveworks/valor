@@ -51,7 +51,7 @@ def get_datums(
     filters: schemas.Filter | None = None,
 ) -> list[schemas.Datum]:
     """Get datums, optional filter."""
-    q = ops.Query(models.Datum).filter(filters).query()
+    q = ops.Query(models.Datum).filter(filters).any()
     return list(
         {
             schemas.Datum(

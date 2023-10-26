@@ -427,15 +427,6 @@ class Query:
 
     def any(self, *, _pivot: DeclarativeMeta | None = None):
         query, subquery = self._graph_selector(_pivot)
-
-        print("=========")
-        print()
-        print(query)
-        print()
-        print(subquery)
-        print()
-        print("=========")
-
         if subquery is not None:
             query = query.where(models.Datum.id.in_(subquery))
         return query.subquery("generated_query")
@@ -706,31 +697,3 @@ class Query:
             )
 
         return op(lhs, metadatum.comparison.value)
-
-
-f = schemas.Filter(
-    datasets=schemas.DatasetFilter(names=["dset"]),
-    models=schemas.ModelFilter(names=["md"]),
-    annotations=schemas.AnnotationFilter(
-        geometry=schemas.GeometricFilter(
-            type=enums.AnnotationType.BOX,
-            area=schemas.NumericFilter(value=50, operator=">"),
-        )
-    )
-    # predictions=schemas.PredictionFilter(
-    #     score=schemas.NumericFilter(value=0.5, operator=">=")
-    # ),
-)
-
-# Q: Get prediction labels for predictions with score >= 0.5, constrain to dataset "dset"
-# qa = Query(models.Prediction).filter(f).any()
-# qp = Query(models.Prediction).filter(f).predictions()
-
-# Q: Get groundtruth labels for datums that predictions had score >= 0.5, constrain to dataset "dset"
-qg = Query(models.Label).filter(f).groundtruths()
-
-# print(qa)
-# print()
-print(qg)
-# print()
-# print(qp)
