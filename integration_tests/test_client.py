@@ -185,7 +185,7 @@ def db(client: Client) -> Session:
 
     for model in client.get_models():
         try:
-            client.delete_model(model["name"], timeout=30)
+            client.delete_model(model["name"], timeout=5)
         except exceptions.ModelDoesNotExistError:
             continue
 

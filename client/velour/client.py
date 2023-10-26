@@ -583,6 +583,17 @@ class Model:
             info=info,
         )
 
+    def get_evaluation_status(
+        self,
+        job_id: int,
+    ) -> State:
+        try:
+            resp = self._requests_get_rel_host(f"/evaluations/{job_id}").json()
+        except Exception:
+            resp = State.NONE
+
+        return resp
+
     def delete(
         self,
     ):
@@ -747,7 +758,7 @@ class Model:
         # use for deterministic testing
         if timeout:
             for _ in range(timeout):
-                if self.get_evaluations(self.name) == State.NONE:
+                if self.get_evaluation_status(self.name) == State.NONE:
                     break
                 else:
                     time.sleep(1)
