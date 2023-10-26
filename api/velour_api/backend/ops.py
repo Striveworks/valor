@@ -442,15 +442,24 @@ class Query:
     """ Public methods """
 
     def any(self, *, _pivot: DeclarativeMeta | None = None):
+        """
+        Generates a sqlalchemy subquery. Graph is chosen automatically as best fit.
+        """
         query, subquery = self._graph_selector(_pivot)
         if subquery is not None:
             query = query.where(models.Datum.id.in_(subquery))
         return query.subquery("generated_query")
 
     def groundtruths(self):
+        """
+        Generates a sqlalchemy subquery using a groundtruths-focused graph.
+        """
         return self.any(_pivot=models.GroundTruth)
 
     def predictions(self):
+        """
+        Generates a sqlalchemy subquery using a predictions-focused graph.
+        """
         return self.any(_pivot=models.Prediction)
 
     def filter(self, filters: schemas.Filter):
