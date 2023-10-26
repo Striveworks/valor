@@ -626,17 +626,18 @@ class Model:
         ).json()
 
     def evaluate_classification(
-        self,
-        dataset: Dataset,
+        self, dataset: Dataset, timeout: Optional[int] = None
     ) -> Evaluation:
         """Start a classification evaluation job
 
         Parameters
         ----------
         dataset
-            the dataset to evaluate against
+            The dataset to evaluate against
         group_by
-            optional name of metadatum to group the results by
+            Optional name of metadatum to group the results by
+        timeout
+            The number of seconds to wait for the job to finish. Used to ensure deterministic behavior when testing.
 
         Returns
         -------
@@ -654,6 +655,17 @@ class Model:
             "evaluations/clf-metrics", json=asdict(evaluation)
         ).json()
 
+        if timeout:
+            for _ in range(timeout):
+                if self.get_evaluation_status(self.name) == State.NONE:
+                    break
+                else:
+                    time.sleep(1)
+            else:
+                raise TimeoutError(
+                    "Dataset wasn't deleted within timeout interval"
+                )
+
         return Evaluation(
             client=self.client,
             dataset=dataset.name,
@@ -661,7 +673,9 @@ class Model:
             **resp,
         )
 
-    def evaluate_segmentation(self, dataset: Dataset) -> Evaluation:
+    def evaluate_segmentation(
+        self, dataset: Dataset, timeout: Optional[int] = None
+    ) -> Evaluation:
         evaluation = schemas.EvaluationSettings(
             model=self.name,
             dataset=dataset.name,
@@ -671,6 +685,17 @@ class Model:
             "evaluations/semantic-segmentation-metrics",
             json=asdict(evaluation),
         ).json()
+
+        if timeout:
+            for _ in range(timeout):
+                if self.get_evaluation_status(self.name) == State.NONE:
+                    break
+                else:
+                    time.sleep(1)
+            else:
+                raise TimeoutError(
+                    "Dataset wasn't deleted within timeout interval"
+                )
 
         return Evaluation(
             client=self.client,
@@ -688,6 +713,7 @@ class Model:
         min_area: float = None,
         max_area: float = None,
         label_key: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> Evaluation:
         """Evaluate object detections."""
 
@@ -717,6 +743,18 @@ class Model:
         resp = self.client._requests_post_rel_host(
             "evaluations/ap-metrics", json=asdict(evaluation)
         ).json()
+
+        # use for deterministic testing
+        if timeout:
+            for _ in range(timeout):
+                if self.get_evaluations(self.name) == State.NONE:
+                    break
+                else:
+                    time.sleep(1)
+            else:
+                raise TimeoutError(
+                    "Evaluation wasn't completed within timeout interval"
+                )
 
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
         # list of label dicts. convert label dicts to Label objects
