@@ -355,6 +355,10 @@ class Raster(BaseModel):
             self._mask_bytes = b64decode(self.mask)
         return self._mask_bytes
 
+    @property
+    def array(self) -> np.ndarray:
+        return self.to_numpy()
+
     @classmethod
     def from_numpy(cls, mask: np.ndarray):
         if len(mask.shape) != 2:
