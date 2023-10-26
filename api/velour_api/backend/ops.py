@@ -288,7 +288,34 @@ class Query:
         ]
         return query.where(and_(*expressions))
 
-    def _graph_solver(self, additional_table: DeclarativeMeta | None = None):
+    def _graph_solver(
+        self,
+        query_solver: callable,
+        subquery_solver: callable,
+        unique_set: set[DeclarativeMeta],
+        pivot_table: DeclarativeMeta | None = None,
+    ):
+        qset = (self._filtered - unique_set).union({models.Datum})
+        query = query_solver(
+            self._args,
+            self._selected,
+            qset,
+        )
+        sub_qset = self._filtered.intersection(unique_set).union(
+            {models.Datum}
+        )
+        subquery = (
+            subquery_solver(
+                [models.Datum.id],
+                {models.Datum},
+                sub_qset,
+            )
+            if pivot_table in self._filtered or sub_qset != {pivot_table}
+            else None
+        )
+        return query, subquery
+
+    def _graph_selector(self, pivot_table: DeclarativeMeta | None = None):
         """
         There are 4 foundational graphs.
         g1 = [models.Dataset, models.Datum, models.Annotation, models.GroundTruth, models.Label]
@@ -307,6 +334,7 @@ class Query:
         g2_unique = {models.Model}
         g3_unique = {models.Prediction}
 
+        # edge case check
         if self._selected.intersection(
             g1_unique
         ) and self._selected.intersection(g2_unique):
@@ -314,92 +342,64 @@ class Query:
                 f"Cannot evaluate graph as invalid connection between queried tables. `{self._selected}`"
             )
 
+        # create joint (selected + filtered) table set
         joint_set = self._selected.union(self._filtered)
-        if isinstance(additional_table, DeclarativeMeta):
-            joint_set.add(additional_table)
+
+        # create set of tables to select graph with
+        selector_set = (
+            {pivot_table}.union(joint_set)
+            if isinstance(pivot_table, DeclarativeMeta)
+            else joint_set
+        )
+
+        subquery_solver = None
+        unique_set = None
 
         # query - graph g1
-        if g1_unique.issubset(joint_set):
+        if (
+            g1_unique.issubset(selector_set)
+            and not g2_unique.issubset(self._selected)
+            and not g3_unique.issubset(self._selected)
+        ):
+            query_solver = self._g1_solver
             if g2_unique.issubset(joint_set):
-                query = self._g1_solver(
-                    self._args,
-                    self._selected,
-                    (self._filtered - g2_unique).union({models.Datum}),
-                )
-                subquery = self._g2_solver(
-                    [models.Datum.id],
-                    {models.Datum},
-                    self._filtered.intersection(g2_unique).union(
-                        {models.Datum}
-                    ),
-                )
+                subquery_solver = self._g2_solver
+                unique_set = g2_unique
             elif g3_unique.issubset(joint_set):
-                query = self._g1_solver(
-                    self._args,
-                    self._selected,
-                    (self._filtered - g3_unique).union({models.Datum}),
-                )
-                subquery = self._g3_solver(
-                    [models.Datum.id],
-                    {models.Datum},
-                    self._filtered.intersection(g3_unique).union(
-                        {models.Datum}
-                    ),
-                )
-            else:
-                query = self._g1_solver(
-                    self._args, self._selected, self._filtered
-                )
-                subquery = None
-
+                subquery_solver = self._g3_solver
+                unique_set = g3_unique
         # query - graph g2
-        elif g2_unique.issubset(joint_set):
-            if not g1_unique.issubset(joint_set):
-                query = self._g2_solver(
-                    self._args, self._selected, self._filtered
-                )
-                subquery = None
-            else:
-                query = self._g2_solver(
-                    self._args,
-                    self._selected,
-                    (self._filtered - g1_unique).union({models.Datum}),
-                )
-                subquery = self._g1_solver(
-                    [models.Datum.id],
-                    {models.Datum},
-                    self._filtered.intersection(g1_unique).union(
-                        {models.Datum}
-                    ),
-                )
-
+        elif g2_unique.issubset(selector_set):
+            query_solver = self._g2_solver
+            if g1_unique.issubset(joint_set):
+                subquery_solver = self._g1_solver
+                unique_set = g1_unique
         # query - graph g3
-        elif g3_unique.issubset(joint_set):
-            if not g1_unique.issubset(joint_set):
-                query = self._g3_solver(
-                    self._args, self._selected, self._filtered
-                )
-                subquery = None
-            else:
-                query = self._g3_solver(
-                    self._args,
-                    self._selected,
-                    (self._filtered - g1_unique).union({models.Datum}),
-                )
-                subquery = self._g1_solver(
-                    [models.Datum.id],
-                    {models.Datum},
-                    self._filtered.intersection(g1_unique).union(
-                        {models.Datum}
-                    ),
-                )
-
+        elif g3_unique.issubset(selector_set):
+            query_solver = self._g3_solver
+            if g1_unique.issubset(joint_set):
+                subquery_solver = self._g1_solver
+                unique_set = g1_unique
         # query - graph g4
         else:
-            query = self._g4_solver(self._args, self._selected, self._filtered)
-            subquery = None
+            query_solver = self._g4_solver
 
-        return query, subquery
+        # generate statement
+        if subquery_solver is not None:
+            return self._graph_solver(
+                query_solver=query_solver,
+                subquery_solver=subquery_solver,
+                unique_set=unique_set,
+                pivot_table=pivot_table,
+            )
+        else:
+            query = query_solver(
+                self._args,
+                self._selected,
+                self._filtered,
+            )
+            subquery = None
+            return query, subquery
 
     def _get_numeric_op(self, opstr) -> operator:
         ops = {
@@ -425,17 +425,26 @@ class Query:
 
     """ Public methods """
 
-    def any(self, *_, _table: DeclarativeMeta | None = None):
-        query, subquery = self._graph_solver(_table)
+    def any(self, *, _pivot: DeclarativeMeta | None = None):
+        query, subquery = self._graph_selector(_pivot)
+
+        print("=========")
+        print()
+        print(query)
+        print()
+        print(subquery)
+        print()
+        print("=========")
+
         if subquery is not None:
             query = query.where(models.Datum.id.in_(subquery))
         return query.subquery("generated_query")
 
     def groundtruths(self):
-        return self.any(_table=models.GroundTruth)
+        return self.any(_pivot=models.GroundTruth)
 
     def predictions(self):
-        return self.any(_table=models.Prediction)
+        return self.any(_pivot=models.Prediction)
 
     def filter(self, filters: schemas.Filter):
         """Parses `schemas.Filter`"""
@@ -714,14 +723,14 @@ f = schemas.Filter(
 )
 
 # Q: Get prediction labels for predictions with score >= 0.5, constrain to dataset "dset"
-qa = Query(models.Annotation).filter(f).any()
-qp = Query(models.Annotation).filter(f).predictions()
+# qa = Query(models.Prediction).filter(f).any()
+# qp = Query(models.Prediction).filter(f).predictions()
 
 # Q: Get groundtruth labels for datums that predictions had score >= 0.5, constrain to dataset "dset"
-qg = Query(models.Annotation).filter(f).groundtruths()
+qg = Query(models.Label).filter(f).groundtruths()
 
-print(qa)
-print()
+# print(qa)
+# print()
 print(qg)
-print()
-print(qp)
+# print()
+# print(qp)
