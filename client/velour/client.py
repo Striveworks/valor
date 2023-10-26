@@ -587,10 +587,9 @@ class Model:
         self,
         job_id: int,
     ) -> State:
-        try:
-            resp = self._requests_get_rel_host(f"/evaluations/{job_id}").json()
-        except Exception:
-            resp = State.NONE
+        resp = self.client._requests_get_rel_host(
+            f"evaluations/{job_id}"
+        ).json()
 
         return resp
 
@@ -668,7 +667,7 @@ class Model:
 
         if timeout:
             for _ in range(timeout):
-                if self.get_evaluation_status(self.name) == State.NONE:
+                if self.get_evaluation_status(resp["job_id"]) == "done":
                     break
                 else:
                     time.sleep(1)
@@ -699,7 +698,7 @@ class Model:
 
         if timeout:
             for _ in range(timeout):
-                if self.get_evaluation_status(self.name) == State.NONE:
+                if self.get_evaluation_status(resp["job_id"]) == "done":
                     break
                 else:
                     time.sleep(1)
@@ -758,7 +757,7 @@ class Model:
         # use for deterministic testing
         if timeout:
             for _ in range(timeout):
-                if self.get_evaluation_status(self.name) == State.NONE:
+                if self.get_evaluation_status(resp["job_id"]) == "done":
                     break
                 else:
                     time.sleep(1)
