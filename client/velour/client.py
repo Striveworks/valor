@@ -214,7 +214,7 @@ class Client:
                         time.sleep(1)
                 else:
                     raise TimeoutError(
-                        "Dataset wasn't deleted within timeout interval"
+                        "Model wasn't deleted within timeout interval"
                     )
 
         except ClientException as e:
@@ -673,7 +673,7 @@ class Model:
                     time.sleep(1)
             else:
                 raise TimeoutError(
-                    "Dataset wasn't deleted within timeout interval"
+                    "Evaluation didn't complete within the allotted time interval"
                 )
 
         return Evaluation(
@@ -704,7 +704,7 @@ class Model:
                     time.sleep(1)
             else:
                 raise TimeoutError(
-                    "Dataset wasn't deleted within timeout interval"
+                    "Evaluation didn't complete within the allotted time interval"
                 )
 
         return Evaluation(
@@ -763,7 +763,7 @@ class Model:
                     time.sleep(1)
             else:
                 raise TimeoutError(
-                    "Evaluation wasn't completed within timeout interval"
+                    "Evaluation didn't complete within the allotted time interval"
                 )
 
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
