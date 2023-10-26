@@ -860,3 +860,47 @@ def test_query_by_annotation_geometry(
     q = Query(models.Annotation).filter(f).any()
     annotations = db.query(q).all()
     assert len(annotations) == 4
+
+
+def test_multiple_tables_in_args(
+    db: Session,
+    model_sim,
+):
+    f = schemas.Filter(
+        datums=schemas.DatumFilter(uids=[datum_uid1]),
+    )
+
+    # Q: Get model + dataset name pairings for a datum with `uid1` using the full tables
+    q = Query(models.Model, models.Dataset).filter(f).any()
+    name_pairings = [
+        (
+            pair[1],
+            pair[5],
+        )
+        for pair in db.query(q).distinct().all()
+    ]
+    assert len(name_pairings) == 2
+    assert (
+        model_name1,
+        dset_name,
+    ) in name_pairings
+    assert (
+        model_name2,
+        dset_name,
+    ) in name_pairings
+
+    # Q: Get model + dataset name pairings for a datum with `uid1` using the table attributes directly
+    f = schemas.Filter(
+        datums=schemas.DatumFilter(uids=[datum_uid1]),
+    )
+    q = Query(models.Model.name, models.Dataset.name).filter(f).any()
+    name_pairings = db.query(q).distinct().all()
+    assert len(name_pairings) == 2
+    assert (
+        model_name1,
+        dset_name,
+    ) in name_pairings
+    assert (
+        model_name2,
+        dset_name,
+    ) in name_pairings

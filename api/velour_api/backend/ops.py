@@ -15,14 +15,18 @@ class Query:
 
     Attributes
     ----------
-    table : velour_api.backend.database.Base
-        sqlalchemy table
-    groundtruth_target : Node, optional
-        groundtruth Node is targeted if not None
-    prediction_target : Node, optional
-        prediction Node is targeted if not None
-    filter_by : dict[Node, list[BinaryExpression]]
-        List of BinaryExpressions to apply per node.
+    *args : DeclarativeMeta | InstrumentedAttribute
+        args is a list of models or model attributes. (e.g. models.Label or models.Label.key)
+
+    Examples
+    ----------
+    Querying models.
+    >>> f = schemas.Filter(...)
+    >>> q = Query(models.Label).filter(f).any()
+
+    Querying model attributes.
+    >>> f = schemas.Filter(...)
+    >>> q = Query(models.Label.key).filter(f).any()
     """
 
     def __init__(self, *args):
