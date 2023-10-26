@@ -1454,7 +1454,7 @@ def test_evaluate_detection(
     settings = asdict(eval_job.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
         "parameters": {
             "annotation_type": "none",
@@ -1528,7 +1528,7 @@ def test_evaluate_detection(
     settings = asdict(eval_job_bounded_area_10_2000.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
         "parameters": {
             "annotation_type": "none",
@@ -1554,7 +1554,7 @@ def test_evaluate_detection(
     settings = asdict(eval_job_min_area_1200.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
         "parameters": {
             "annotation_type": "none",
@@ -1578,7 +1578,7 @@ def test_evaluate_detection(
     settings = asdict(eval_job_max_area_1200.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
         "parameters": {
             "annotation_type": "none",
@@ -1604,7 +1604,7 @@ def test_evaluate_detection(
     settings = asdict(eval_job_bounded_area_1200_1800.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
         "parameters": {
             "annotation_type": "none",
@@ -1620,6 +1620,178 @@ def test_evaluate_detection(
         eval_job_bounded_area_1200_1800.metrics
         == eval_job_min_area_1200.metrics
     )
+
+
+def test_get_bulk_evaluations(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    db: Session,
+):
+    dataset_ = dset_name
+    model_ = model_name
+
+    dataset = Dataset.create(client, dataset_)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(client, model_)
+    for pd in pred_dets:
+        model.add_prediction(pd)
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        label_key="k1",
+    )
+    eval_job.wait_for_completion()
+
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.1,
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.6,
+            },
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+        },
+    ]
+
+    output = client.get_bulk_evaluations(datasets=dset_name, models=model_name)
+    statuses = output["statuses"]
+    evaluations = output["evaluations"]
+
+    assert len(evaluations) == 1
+
+    assert "DONE" in statuses.keys()
+    assert len(statuses["DONE"]) == 1
+
+    assert len(evaluations) == 1
+    assert all(
+        [
+            name
+            in [
+                "dataset",
+                "metrics",
+                "model",
+            ]
+            for name in evaluations[0].keys()
+        ]
+    )
+    assert all(
+        [
+            name
+            in [
+                "confusion_matrices",
+                "metrics",
+                "filter",
+            ]
+            for name in evaluations[0]["metrics"][0].keys()
+        ]
+    )
+    assert evaluations[0]["metrics"][0]["metrics"] == expected_metrics
+
+    # test incorrect names
+    with pytest.raises(Exception):
+        client.get_bulk_evaluations(datasets="wrong_dataset_name")
+
+    with pytest.raises(Exception):
+        client.get_bulk_evaluations(datasets="wrong_model_name")
+
+    # test with multiple models
+    second_model = Model.create(client, "second_model")
+    for pd in pred_dets:
+        second_model.add_prediction(pd)
+    second_model.finalize_inferences(dataset)
+
+    eval_job = second_model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        label_key="k1",
+    )
+    eval_job.wait_for_completion()
+
+    second_output = client.get_bulk_evaluations(models="second_model")
+
+    second_model_statuses = second_output["statuses"]
+    second_model_evaluations = second_output["evaluations"]
+
+    assert "DONE" in second_model_statuses.keys()
+    assert len(second_model_statuses["DONE"]) == 1
+
+    assert len(second_model_evaluations) == 1
+    assert all(
+        [
+            name
+            in [
+                "dataset",
+                "metrics",
+                "model",
+            ]
+            for name in second_model_evaluations[0].keys()
+        ]
+    )
+    assert (
+        second_model_evaluations[0]["metrics"][0]["metrics"]
+        == expected_metrics
+    )
+
+    both_output = client.get_bulk_evaluations(datasets=["test_dataset"])
+
+    both_statuses = both_output["statuses"]
+    both_evaluations = both_output["evaluations"]
+
+    assert "DONE" in both_statuses.keys()
+    assert len(both_statuses["DONE"]) == 2
+
+    # should contain two different entries, one for each model
+    assert len(both_evaluations) == 2
+    assert all(
+        [
+            evaluation["model"] in ["second_model", model_name]
+            for evaluation in both_evaluations
+        ]
+    )
+    assert both_evaluations[0]["metrics"][0]["metrics"] == expected_metrics
+
+    # should be equivalent since there are only two models attributed to this dataset
+    both_model_evaluations = client.get_bulk_evaluations(
+        models=["second_model", "test_model"]
+    )["evaluations"]
+    assert both_evaluations == both_model_evaluations
 
 
 def test_evaluate_image_clf(
@@ -2047,6 +2219,28 @@ def test_evaluate_tabular_clf(
         ],
     }
 
+    # validate that we can fetch the confusion matrices through get_bulk_evaluations()
+    bulk_evals = client.get_bulk_evaluations(datasets=dset_name)["evaluations"]
+
+    assert len(bulk_evals) == 1
+    assert all(
+        [
+            name
+            in [
+                "dataset",
+                "metrics",
+                "model",
+            ]
+            for name in bulk_evals[0].keys()
+        ]
+    )
+    for metric in bulk_evals[0]["metrics"][0]["metrics"]:
+        assert metric in expected_metrics
+
+    assert len(bulk_evals[0]["metrics"][0]["confusion_matrices"][0]) == len(
+        expected_confusion_matrix
+    )
+
     # validate return schema
     assert len(confusion_matrices) == 1
     confusion_matrix = confusion_matrices[0]
@@ -2067,7 +2261,7 @@ def test_evaluate_tabular_clf(
     df = model.get_metric_dataframes()
 
     assert isinstance(model.id, int)
-    assert model.name == "test_model"
+    assert model.name == model_name
     assert len(model.metadata) == 0
 
     assert len(labels) == 3
@@ -2079,7 +2273,7 @@ def test_evaluate_tabular_clf(
     eval_settings = asdict(eval_jobs[0].settings)
     eval_settings.pop("id")
     assert eval_settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
         "parameters": None,
     }

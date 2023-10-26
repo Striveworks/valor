@@ -45,6 +45,16 @@ def get_db():
         db.close()
 
 
+def _split_query_params(param_string: str | None) -> list[str] | None:
+    """Split GET query parameters and return a list when possible."""
+    if not param_string:
+        return None
+    elif "," in param_string:
+        return param_string.split(",")
+    else:
+        return [param_string]
+
+
 """ GROUNDTRUTHS """
 
 
@@ -545,9 +555,9 @@ def create_semantic_segmentation_metrics(
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def get_dataset_evaluations(dataset_name: str) -> dict[str, list[int]]:
-    """Returns mapping of model names to list of job ids."""
-    return crud.get_dataset_evaluations(dataset_name)
+def get_evaluation_jobs_for_dataset(dataset_name: str) -> dict[str, list[int]]:
+    """Returns all of the job ids for a given dataset."""
+    return crud.get_evaluation_jobs_for_dataset(dataset_name)
 
 
 @app.get(
@@ -556,9 +566,47 @@ def get_dataset_evaluations(dataset_name: str) -> dict[str, list[int]]:
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def get_model_evaluations(model_name: str) -> dict[str, list[int]]:
-    """Returns mapping of dataset names to list of job ids."""
-    return crud.get_model_evaluations(model_name)
+def get_evaluation_jobs_for_model(model_name: str) -> dict[str, list[int]]:
+    """Returns all of the job ids for a given model."""
+    return crud.get_evaluation_jobs_for_model(model_name)
+
+
+@app.get(
+    "/evaluations/",
+    dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
+    tags=["Evaluations"],
+)
+def get_bulk_evaluations(
+    datasets: str = None,
+    models: str = None,
+    db: Session = Depends(get_db),
+) -> schemas.BulkEvaluations:
+    """
+    Returns all metrics associated with user-supplied dataset and model names. Users
+    may query using model names, dataset names, or both. All metrics for all specified
+    models and datasets will be returned in a list of BulkEvaluations.
+
+    Parameters
+    ----------
+    datasets
+        An optional set of dataset names to return metrics for
+    models
+        An optional set of model names to return metrics for
+    """
+    model_names = _split_query_params(models)
+    dataset_names = _split_query_params(datasets)
+
+    try:
+        return crud.get_bulk_evaluations(
+            db=db, dataset_names=dataset_names, model_names=model_names
+        )
+    except (
+        exceptions.DatasetDoesNotExistError,
+        exceptions.ModelDoesNotExistError,
+        ValueError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
