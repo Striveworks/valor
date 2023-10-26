@@ -3,7 +3,6 @@ that is no auth
 """
 import io
 import json
-import time
 from dataclasses import asdict
 from typing import Any
 
@@ -186,8 +185,7 @@ def db(client: Client) -> Session:
 
     for model in client.get_models():
         try:
-            client.delete_model(model["name"])
-            time.sleep(0.1)
+            client.delete_model(model["name"], timeout=30)
         except exceptions.ModelDoesNotExistError:
             continue
 
@@ -1408,7 +1406,6 @@ def test_client_delete_dataset(client: Client, db: Session):
     Dataset.create(client, dset_name)
     assert db.scalar(select(func.count(models.Dataset.name))) == 1
     client.delete_dataset(dset_name, timeout=30)
-    time.sleep(1.0)
     assert db.scalar(select(func.count(models.Dataset.name))) == 0
 
 
@@ -1416,8 +1413,7 @@ def test_client_delete_model(client: Client, db: Session):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
     Model.create(client, model_name)
     assert db.scalar(select(func.count(models.Model.name))) == 1
-    client.delete_model(model_name)
-    time.sleep(1.0)
+    client.delete_model(model_name, timeout=30)
     assert db.scalar(select(func.count(models.Model.name))) == 0
 
 
@@ -1442,6 +1438,7 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
+        timeout=30,
     )
 
     assert eval_job.ignored_pred_labels == []
@@ -1523,8 +1520,8 @@ def test_evaluate_detection(
         label_key="k1",
         min_area=10,
         max_area=2000,
+        timeout=30,
     )
-    time.sleep(1)
     settings = asdict(eval_job_bounded_area_10_2000.settings)
     settings.pop("id")
     assert settings == {
@@ -1549,8 +1546,8 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
         min_area=1200,
+        timeout=30,
     )
-    time.sleep(1)
     settings = asdict(eval_job_min_area_1200.settings)
     settings.pop("id")
     assert settings == {
@@ -1573,8 +1570,8 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
         max_area=1200,
+        timeout=30,
     )
-    time.sleep(1)
     settings = asdict(eval_job_max_area_1200.settings)
     settings.pop("id")
     assert settings == {
@@ -1599,8 +1596,8 @@ def test_evaluate_detection(
         label_key="k1",
         min_area=1200,
         max_area=1800,
+        timeout=30,
     )
-    time.sleep(1)
     settings = asdict(eval_job_bounded_area_1200_1800.settings)
     settings.pop("id")
     assert settings == {
@@ -1646,6 +1643,7 @@ def test_get_bulk_evaluations(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
+        timeout=30,
     )
     eval_job.wait_for_completion()
 
@@ -1741,6 +1739,7 @@ def test_get_bulk_evaluations(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
+        timeout=30,
     )
     eval_job.wait_for_completion()
 
@@ -1810,13 +1809,11 @@ def test_evaluate_image_clf(
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_classification(dataset=dataset)
+    eval_job = model.evaluate_classification(dataset=dataset, timeout=30)
 
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
     assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
 
-    # sleep to give the backend time to compute
-    time.sleep(1)
     assert eval_job.status == JobStatus.DONE
 
     metrics = eval_job.metrics
@@ -1880,7 +1877,7 @@ def test_evaluate_segmentation(
     dataset.finalize()
     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_segmentation(dataset)
+    eval_job = model.evaluate_segmentation(dataset, timeout=30)
     assert eval_job.missing_pred_labels == [
         {"key": "k3", "value": "v3", "score": None}
     ]
@@ -1888,7 +1885,6 @@ def test_evaluate_segmentation(
         {"key": "k1", "value": "v1", "score": None}
     ]
 
-    time.sleep(1)
     metrics = eval_job.metrics
 
     assert len(metrics) == 3
@@ -2106,7 +2102,7 @@ def test_evaluate_tabular_clf(
     # test
     model = Model.create(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset)
+        model.evaluate_classification(dataset=dataset, timeout=30)
     assert "has not been finalized" in str(exc_info)
 
     dataset.finalize()
@@ -2132,18 +2128,16 @@ def test_evaluate_tabular_clf(
 
     # test
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset)
+        model.evaluate_classification(dataset=dataset, timeout=30)
     assert "has not been finalized" in str(exc_info)
 
     model.finalize_inferences(dataset)
 
     # evaluate
-    eval_job = model.evaluate_classification(dataset=dataset)
+    eval_job = model.evaluate_classification(dataset=dataset, timeout=30)
     assert eval_job.ignored_pred_keys == []
     assert eval_job.missing_pred_keys == []
 
-    # sleep to give the backend time to compute
-    time.sleep(1)
     assert eval_job.status == JobStatus.DONE
 
     metrics = eval_job.metrics
@@ -2536,7 +2530,6 @@ def test_get_dataset_status(client: Client, db: Session, gt_dets1: list):
 #     model.finalize_inferences(dataset)
 
 #     eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
-#     time.sleep(2)
 
 #     metrics = eval_job.metrics
 
