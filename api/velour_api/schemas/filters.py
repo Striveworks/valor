@@ -54,8 +54,6 @@ class GeospatialFilter(BaseModel):
 class GeometricFilter(BaseModel):
     type: AnnotationType
     area: NumericFilter | None = None
-    height: NumericFilter | None = None
-    width: NumericFilter | None = None
 
     @field_validator("type")
     @classmethod

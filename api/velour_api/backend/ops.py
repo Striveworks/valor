@@ -27,7 +27,7 @@ class Query:
 
     def __init__(self, *args):
         self._args = args
-        self._where: dict[DeclarativeMeta, list[BinaryExpression]] = {}
+        self._expressions: dict[DeclarativeMeta, list[BinaryExpression]] = {}
         self._selected: set[DeclarativeMeta] = set(
             [
                 self._map_attribute_to_table(argument)
@@ -44,12 +44,24 @@ class Query:
 
     def _add_expressions(self, table, expressions: list[BinaryExpression]):
         self._filtered.add(table)
-        if table not in self._where:
-            self._where[table] = []
+        if table not in self._expressions:
+            self._expressions[table] = []
         if len(expressions) == 1:
-            self._where[table].extend(expressions)
+            self._expressions[table].extend(expressions)
         elif len(expressions) > 1:
-            self._where[table].append(or_(*expressions))
+            self._expressions[table].append(or_(*expressions))
+
+    def _expression(self, table_set: set[DeclarativeMeta]) -> BinaryExpression:
+        expressions = []
+        for table in table_set:
+            if table in self._expressions:
+                expressions.extend(self._expressions[table])
+        if len(expressions) == 1:
+            return expressions[0]
+        elif len(expressions) > 1:
+            return and_(*expressions)
+        else:
+            return None
 
     def _map_attribute_to_table(
         self, attr: InstrumentedAttribute | DeclarativeMeta
@@ -129,12 +141,11 @@ class Query:
                 query = query.join(table, connections[table])
 
         # generate where statement
-        expressions = [
-            expression
-            for table in joint_set.intersection(set(self._where.keys()))
-            for expression in self._where[table]
-        ]
-        return query.where(and_(*expressions))
+        expression = self._expression(joint_set)
+        if expression is not None:
+            query = query.where(expression)
+
+        return query
 
     def _g2_solver(
         self,
@@ -179,12 +190,11 @@ class Query:
                 repeated_set.add(table)
 
         # generate where statement
-        expressions = [
-            expression
-            for table in joint_set.intersection(set(self._where.keys()))
-            for expression in self._where[table]
-        ]
-        return query.where(and_(*expressions))
+        expression = self._expression(joint_set)
+        if expression is not None:
+            query = query.where(expression)
+
+        return query
 
     def _g3_solver(
         self,
@@ -223,12 +233,11 @@ class Query:
                 query = query.join(table, connections[table])
 
         # generate where statement
-        expressions = [
-            expression
-            for table in joint_set.intersection(set(self._where.keys()))
-            for expression in self._where[table]
-        ]
-        return query.where(and_(*expressions))
+        expression = self._expression(joint_set)
+        if expression is not None:
+            query = query.where(expression)
+
+        return query
 
     def _g4_solver(
         self,
@@ -281,12 +290,11 @@ class Query:
                     query = query.join(table, connections[table])
 
         # generate where statement
-        expressions = [
-            expression
-            for table in joint_set.intersection(set(self._where.keys()))
-            for expression in self._where[table]
-        ]
-        return query.where(and_(*expressions))
+        expression = self._expression(joint_set)
+        if expression is not None:
+            query = query.where(expression)
+
+        return query
 
     def _graph_solver(
         self,
@@ -329,6 +337,14 @@ class Query:
         g2_unique = [models.Prediction]
         g4_unique = []
         """
+
+        # edge case - only one table required
+        if self._selected == self._filtered and len(self._selected) == 1:
+            query = select(*self._args)
+            expression = self._expression(self._selected)
+            if expression is not None:
+                query = query.where(expression)
+            return query, None
 
         g1_unique = {models.GroundTruth}
         g2_unique = {models.Model}
@@ -494,10 +510,7 @@ class Query:
         if filters.metadata:
             self._add_expressions(
                 models.Dataset,
-                [
-                    self._filter_by_metadatum(metadatum, models.Dataset)
-                    for metadatum in filters.metadata
-                ],
+                self.filter_by_metadata(filters.metadata, models.Dataset),
             )
         return self
 
@@ -523,10 +536,7 @@ class Query:
         if filters.metadata:
             self._add_expressions(
                 models.Model,
-                [
-                    self._filter_by_metadatum(metadatum, models.Model)
-                    for metadatum in filters.metadata
-                ],
+                self.filter_by_metadata(filters.metadata, models.Model),
             )
         return self
 
@@ -552,10 +562,7 @@ class Query:
         if filters.metadata:
             self._add_expressions(
                 models.Datum,
-                [
-                    self._filter_by_metadatum(metadatum, models.Datum)
-                    for metadatum in filters.metadata
-                ],
+                self.filter_by_metadata(filters.metadata, models.Datum),
             )
         return self
 
@@ -619,25 +626,10 @@ class Query:
                     models.Annotation,
                     [op(func.ST_Area(geom), filters.geometry.area.value)],
                 )
-            if filters.geometry.height:
-                op = self._get_numeric_op(filters.geometry.height.operator)
-                self._add_expressions(
-                    models.Annotation,
-                    [op(func.ST_Area(geom), filters.geometry.height.value)],
-                )
-            if filters.geometry.width:
-                op = self._get_numeric_op(filters.geometry.width.operator)
-                self._add_expressions(
-                    models.Annotation,
-                    [op(func.ST_Area(geom), filters.geometry.width.value)],
-                )
         if filters.metadata:
             self._add_expressions(
                 models.Annotation,
-                [
-                    self._filter_by_metadatum(metadatum, models.Annotation)
-                    for metadatum in filters.metadata
-                ],
+                self.filter_by_metadata(filters.metadata, models.Annotation),
             )
         return self
 
@@ -680,8 +672,8 @@ class Query:
     def _filter_by_metadatum(
         self,
         metadatum: schemas.MetadatumFilter,
-        table,
-    ):
+        table: DeclarativeMeta,
+    ) -> BinaryExpression:
         if not isinstance(metadatum, schemas.MetadatumFilter):
             raise TypeError("metadatum should be of type `schemas.Metadatum`")
 
@@ -697,3 +689,17 @@ class Query:
             )
 
         return op(lhs, metadatum.comparison.value)
+
+    def filter_by_metadata(
+        self,
+        metadata: list[schemas.MetadatumFilter],
+        table: DeclarativeMeta,
+    ) -> list[BinaryExpression]:
+        return [
+            and_(
+                *[
+                    self._filter_by_metadatum(metadatum, table)
+                    for metadatum in metadata
+                ]
+            )
+        ]
