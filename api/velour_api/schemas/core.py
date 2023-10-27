@@ -26,7 +26,9 @@ def _format_name(name: str):
     allowed_special = ["-", "_"]
     pattern = re.compile(f"^[a-zA-Z0-9{''.join(allowed_special)}]+$")
     if not pattern.match(name):
-        raise ValueError("Name contains illegal characters.")
+        raise ValueError(
+            "The provided string contains illegal characters. Please ensure your input consists of only alphanumeric characters, hyphens, and underscores."
+        )
     return name
 
 
@@ -34,7 +36,9 @@ def _format_uid(uid: str):
     allowed_special = ["-", "_", "/", "."]
     pattern = re.compile(f"^[a-zA-Z0-9{''.join(allowed_special)}]+$")
     if not pattern.match(uid):
-        raise ValueError("UID contains illegal characters.")
+        raise ValueError(
+            "The provided string contains illegal characters. Please ensure your input consists of only alphanumeric characters, hyphens, underscores, forward slashes, and periods."
+        )
     return uid
 
 
