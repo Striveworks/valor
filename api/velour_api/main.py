@@ -581,7 +581,7 @@ def get_bulk_evaluations(
     datasets: str = None,
     models: str = None,
     db: Session = Depends(get_db),
-) -> schemas.BulkEvaluations:
+) -> list[schemas.BulkEvaluations]:
     """
     Returns all metrics associated with user-supplied dataset and model names. Users
     may query using model names, dataset names, or both. All metrics for all specified
