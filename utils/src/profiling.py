@@ -412,11 +412,12 @@ def _get_evaluation_metrics(
         n_labels=n_labels,
     )
 
-    eval_job = model.evaluate_ap(
+    eval_job = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds=[0, 1],
         ious_to_keep=[0, 1],
         label_key="k1",
+        timeout=30,
     )
 
     # sleep to give the backend time to compute
