@@ -11,6 +11,13 @@ from velour_api import crud, enums, schemas
 from velour_api.backend import jobs, models
 from velour_api.backend.database import Base, create_db, make_session
 
+np.random.seed(29)
+dset_name = "test_dataset"
+model_name = "test_model"
+img1_size = (100, 200)
+img2_size = (80, 32)
+
+
 # get all velour table names
 classes = [
     v
@@ -20,13 +27,23 @@ classes = [
 tablenames = [v.__tablename__ for v in classes if hasattr(v, "__tablename__")]
 
 
-np.random.seed(29)
+@pytest.fixture
+def db():
+    """This fixture provides a db session. a `RuntimeError` is raised if
+    a velour tablename already exists. At teardown, all velour tables are wiped.
+    """
+    db = make_session()
+    inspector = inspect(db.connection())
+    for tablename in tablenames:
+        if inspector.has_table(tablename):
+            raise RuntimeError(
+                f"Table {tablename} already exists; "
+                "functional tests should be run with an empty db."
+            )
 
-dset_name = "test_dataset"
-model_name = "test_model"
+    create_db()
+    yield db
 
-
-def drop_all(db):
     # clear redis
     jobs.connect_to_redis()
     jobs.r.flushdb()
@@ -43,10 +60,6 @@ def random_mask_bytes(size: tuple[int, int]) -> bytes:
     mask.save(f, format="PNG")
     f.seek(0)
     return f.read()
-
-
-img1_size = (100, 200)
-img2_size = (80, 32)
 
 
 @pytest.fixture
@@ -112,26 +125,6 @@ def img2_pred_mask_bytes2():
 @pytest.fixture
 def img2_gt_mask_bytes1():
     return random_mask_bytes(size=img2_size)
-
-
-@pytest.fixture
-def db():
-    """This fixture provides a db session. a `RuntimeError` is raised if
-    a velour tablename already exists. At teardown, all velour tables are wiped.
-    """
-    db = make_session()
-    inspector = inspect(db.connection())
-    for tablename in tablenames:
-        if inspector.has_table(tablename):
-            raise RuntimeError(
-                f"Table {tablename} already exists; "
-                "functional tests should be run with an empty db."
-            )
-
-    create_db()
-    yield db
-    # teardown
-    drop_all(db)
 
 
 @pytest.fixture

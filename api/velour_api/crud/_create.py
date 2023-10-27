@@ -103,8 +103,8 @@ def create_semantic_segmentation_evaluation(
         dataset_name=settings.dataset,
         model_name=settings.model,
         task_types=[enums.TaskType.SEGMENTATION],
-        gt_type=enums.AnnotationType.RASTER,
-        pd_type=enums.AnnotationType.RASTER,
+        groundtruth_type=enums.AnnotationType.RASTER,
+        prediction_type=enums.AnnotationType.RASTER,
     )
 
     # create evaluation setting
@@ -141,9 +141,11 @@ def create_detection_evaluation(
     """create ap evaluation"""
 
     # create evaluation setting
-    job_id, gt_type, pd_type = backend.create_detection_evaluation(
-        db, settings
-    )
+    (
+        job_id,
+        groundtruth_type,
+        prediction_type,
+    ) = backend.create_detection_evaluation(db, settings)
 
     # get disjoint label sets
     missing_pred_labels, ignored_pred_labels = get_disjoint_labels(
@@ -151,8 +153,8 @@ def create_detection_evaluation(
         dataset_name=settings.dataset,
         model_name=settings.model,
         task_types=[enums.TaskType.DETECTION],
-        gt_type=gt_type,
-        pd_type=pd_type,
+        groundtruth_type=groundtruth_type,
+        prediction_type=prediction_type,
     )
 
     # create response

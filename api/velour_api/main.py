@@ -164,7 +164,7 @@ def get_prediction(
     tags=["Labels"],
 )
 def get_all_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
-    return crud.get_labels(db=db)
+    return crud.get_all_labels(db=db)
 
 
 @app.get(
@@ -177,11 +177,10 @@ def get_labels_from_dataset(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
     try:
-        return crud.get_labels(
+        return crud.get_dataset_labels(
             db=db,
-            request=schemas.Filter(
-                datasets=[dataset_name],
-                allow_predictions=False,
+            filters=schemas.Filter(
+                datasets=schemas.DatasetFilter(names=[dataset_name]),
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
@@ -198,11 +197,10 @@ def get_labels_from_model(
     model_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
     try:
-        return crud.get_labels(
+        return crud.get_model_labels(
             db=db,
-            request=schemas.Filter(
-                models=[model_name],
-                allow_groundtruths=False,
+            filters=schemas.Filter(
+                models=schemas.ModelFilter(names=[model_name]),
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
@@ -318,29 +316,7 @@ def get_datums(
         return crud.get_datums(
             db=db,
             request=schemas.Filter(
-                datasets=[dataset_name],
-                allow_predictions=False,
-            ),
-        )
-    except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-# @TODO: Enforce datum typing with an enum
-@app.get(
-    "/data/dataset/{dataset_name}/filter/{data_type}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datums"],
-)
-def get_filtered_dataset_datums(
-    dataset_name: str, data_type: str, db: Session = Depends(get_db)
-) -> list[schemas.Datum]:
-    try:
-        return crud.get_datums(
-            db=db,
-            filter=schemas.Filter(
-                datasets=[dataset_name],
+                datasets=schemas.DatasetFilter(names=[dataset_name]),
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:

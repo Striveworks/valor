@@ -12,7 +12,7 @@ from velour_api.backend.metrics.core import (
 from velour_api.enums import TaskType
 
 
-# @TODO: Implement metadata filtering using `ops.BackendQuerys`
+# @TODO: Implement metadata filtering using `ops.Querys`
 def binary_roc_auc(
     db: Session,
     dataset_name: str,
@@ -151,7 +151,7 @@ def binary_roc_auc(
     return ret
 
 
-# @TODO: Implement metadata filtering by using `ops.BackendQuery`
+# @TODO: Implement metadata filtering by using `ops.Query`
 def roc_auc(
     db: Session,
     dataset_name: str,

@@ -6,7 +6,7 @@ from .metrics import (
     create_semantic_segmentation_evaluation,
     create_semantic_segmentation_metrics,
 )
-from .ops import BackendQuery
+from .ops import Query
 from .query import (
     create_dataset,
     create_groundtruth,
@@ -22,9 +22,11 @@ from .query import (
     get_disjoint_labels,
     get_evaluation_settings_from_id,
     get_groundtruth,
-    get_groundtruths,
+    get_groundtruth_label_keys,
+    get_groundtruth_labels,
     get_joint_keys,
     get_joint_labels,
+    get_label_keys,
     get_labels,
     get_metrics_from_evaluation_id,
     get_metrics_from_evaluation_ids,
@@ -33,11 +35,12 @@ from .query import (
     get_model_metrics,
     get_models,
     get_prediction,
-    get_predictions,
+    get_prediction_label_keys,
+    get_prediction_labels,
 )
 
 __all__ = [
-    "BackendQuery",
+    "Query",
     "create_dataset",
     "get_dataset",
     "get_datasets",
@@ -48,11 +51,14 @@ __all__ = [
     "delete_model",
     "create_groundtruth",
     "get_groundtruth",
-    "get_groundtruths",
     "create_prediction",
     "get_prediction",
-    "get_predictions",
     "get_labels",
+    "get_groundtruth_labels",
+    "get_prediction_labels",
+    "get_label_keys",
+    "get_groundtruth_label_keys",
+    "get_prediction_label_keys",
     "get_joint_labels",
     "get_disjoint_labels",
     "get_joint_keys",

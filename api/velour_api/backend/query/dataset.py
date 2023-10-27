@@ -46,29 +46,26 @@ def get_datasets(
     ]
 
 
-# @TODO
 def get_datums(
     db: Session,
-    request: schemas.Filter | None = None,
+    filters: schemas.Filter | None = None,
 ) -> list[schemas.Datum]:
-
-    if not request:
-        datums = db.query(models.Datum).all()
-    else:
-        datums = ops.BackendQuery.datum().filter(request).all(db)
-
-    return [
-        schemas.Datum(
-            dataset=db.scalar(
-                select(models.Dataset.name).where(
-                    models.Dataset.id == datum.dataset_id
-                )
-            ),
-            uid=datum.uid,
-            metadata=core.serialize_meta(datum.meta),
-        )
-        for datum in datums
-    ]
+    """Get datums, optional filter."""
+    q = ops.Query(models.Datum).filter(filters).any()
+    return list(
+        {
+            schemas.Datum(
+                dataset=db.scalar(
+                    select(models.Dataset.name).where(
+                        models.Dataset.id == datum.dataset_id
+                    )
+                ),
+                uid=datum.uid,
+                metadata=core.serialize_meta(datum.meta),
+            )
+            for datum in db.query(q).all()
+        }
+    )
 
 
 def delete_dataset(

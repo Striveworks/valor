@@ -1,633 +1,739 @@
-from sqlalchemy import and_, or_, select
-from sqlalchemy.orm import Session
+import operator
+
+from sqlalchemy import Float, and_, func, or_, select
+from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression
 
 from velour_api import enums, schemas
 from velour_api.backend import models
 
-model_graph = {
-    "dataset": {"datum", "metadatum"},
-    "model": {"annotation", "metadatum"},
-    "datum": {"annotation", "dataset", "metadatum"},
-    "annotation": {"datum", "model", "prediction", "groundtruth", "metadatum"},
-    "groundtruth": {"annotation", "label"},
-    "prediction": {"annotation", "label"},
-    "label": {"prediction", "groundtruth"},
-}
 
+class Query:
+    """
+    Query generator object.
 
-model_mapping = {
-    "dataset": models.Dataset,
-    "model": models.Model,
-    "datum": models.Datum,
-    "annotation": models.Annotation,
-    "groundtruth": models.GroundTruth,
-    "prediction": models.Prediction,
-    "label": models.Label,
-}
+    Attributes
+    ----------
+    *args : DeclarativeMeta | InstrumentedAttribute
+        args is a list of models or model attributes. (e.g. models.Label or models.Label.key)
 
+    Examples
+    ----------
+    Querying models.
+    >>> f = schemas.Filter(...)
+    >>> q = Query(models.Label).filter(f).any()
 
-schemas_mapping = {
-    "dataset": schemas.Dataset,
-    "model": schemas.Model,
-    "datum": schemas.Datum,
-    "annotation": schemas.Annotation,
-    "groundtruth": schemas.GroundTruth,
-    "prediction": schemas.Prediction,
-    "label": schemas.Label,
-    "metadatum": schemas.Metadatum,
-}
+    Querying model attributes.
+    >>> f = schemas.Filter(...)
+    >>> q = Query(models.Label.key).filter(f).any()
+    """
 
-
-model_relationships = {
-    "dataset": {
-        "datum": models.Dataset.id == models.Datum.dataset_id,
-    },
-    "model": {
-        "annotation": models.Model.id == models.Annotation.model_id,
-    },
-    "datum": {
-        "annotation": models.Datum.id == models.Annotation.datum_id,
-        "dataset": models.Datum.dataset_id == models.Dataset.id,
-    },
-    "annotation": {
-        "datum": models.Annotation.datum_id == models.Datum.id,
-        "model": models.Annotation.model_id == models.Model.id,
-        "prediction": models.Annotation.id == models.Prediction.annotation_id,
-        "groundtruth": models.Annotation.id
-        == models.GroundTruth.annotation_id,
-    },
-    "groundtruth": {
-        "annotation": models.GroundTruth.annotation_id == models.Annotation.id,
-        "label": models.GroundTruth.label_id == models.Label.id,
-    },
-    "prediction": {
-        "annotation": models.Prediction.annotation_id == models.Annotation.id,
-        "label": models.Prediction.label_id == models.Label.id,
-    },
-}
-
-
-class Join:
-    def __init__(self, root: str, link: str):
-        self.root = root
-        self.links = set([link])
-
-    def or_(self, root: str, link: str):
-        if self.root != root:
-            raise ValueError
-        if isinstance(link, str):
-            self.links.add(link)
-        else:
-            self.links.update(link)
-
-    def __str__(self):
-        if len(self.links) == 1:
-            return f"JOIN {self.root} ON {self.root} == {list(self.links)[0]}"
-        ret = f"JOIN {self.root} ON \nOR(\n"
-        for e in self.links:
-            ret += f"  {self.root} == {e}"
-            ret += "\n"
-        ret += ")"
-        return ret
-
-    def relation(self) -> tuple:
-        # generate binary expressions
-        expressions = [
-            model_relationships[self.root][link] for link in self.links
-        ]
-
-        if len(expressions) == 1:
-            return (
-                model_mapping[self.root],
-                expressions[0],
-            )
-        else:
-            return (
-                model_mapping[self.root],
-                or_(*expressions),
-            )
-
-
-def _graph_generator(
-    source: str,
-    target: str,
-    prune: set = set(),
-):
-    if source in prune or target in prune:
-        return None
-
-    if source == target:
-        return target
-
-    remaining_options = model_graph[source] - prune
-    prune.add(source)
-    if target in prune:
-        prune.remove(target)
-
-    path = {}
-    for option in list(remaining_options):
-        if retval := _graph_generator(
-            source=option, target=target, prune=prune
-        ):
-            path[option] = retval
-
-    if path:
-        return path
-    return None
-
-
-def _flatten_graph(
-    graph: dict,
-    source: str,
-    target: str,
-    join_list: dict,
-) -> list[Join]:
-    """Recursive function"""
-
-    # update from current layer
-    for key in graph:
-        if key in join_list:
-            join_list[key].or_(root=key, link=source)
-        else:
-            join_list[key] = Join(root=key, link=source)
-
-    # recurse to next layer
-    for key in graph:
-        if key not in target:
-            join_list = _flatten_graph(
-                graph=graph[key],
-                source=key,
-                target=target,
-                join_list=join_list,
-            )
-
-    return join_list
-
-
-def _generate_joins(source, targets, prune):
-    # generate graphs
-    graphs_with_target = [
-        (_graph_generator(source, target, prune=prune.copy()), target)
-        if target not in model_graph[source]  # check for direct connection
-        else ({target: target}, target)
-        for target in targets
-    ]
-
-    # Generate object relationships
-    return [
-        _flatten_graph(
-            graph=graph,
-            source=source,
-            target=target,
-            join_list=dict(),
+    def __init__(self, *args):
+        self._args = args
+        self._expressions: dict[DeclarativeMeta, list[BinaryExpression]] = {}
+        self._selected: set[DeclarativeMeta] = set(
+            [
+                self._map_attribute_to_table(argument)
+                for argument in args
+                if (
+                    isinstance(argument, DeclarativeMeta)
+                    or isinstance(argument, InstrumentedAttribute)
+                )
+            ]
         )
-        for graph, target in graphs_with_target
-        if graph is not None
-    ]
+        self._filtered = set()
 
+    """ Private Methods """
 
-def generate_query(source: str, targets: list[str], prune: set[str]):
+    def _add_expressions(self, table, expressions: list[BinaryExpression]):
+        self._filtered.add(table)
+        if table not in self._expressions:
+            self._expressions[table] = []
+        if len(expressions) == 1:
+            self._expressions[table].extend(expressions)
+        elif len(expressions) > 1:
+            self._expressions[table].append(or_(*expressions))
 
-    # Generate graphs
-    graphs = _generate_joins(source=source, targets=targets, prune=prune)
-
-    # edge case
-    if not graphs:
-        return None
-
-    # Merge graphs
-    master_graph = {}
-    existing_keys = set()
-    for graph in graphs:
-        for key in graph:
-            existing_keys.add(key)
-            if key not in master_graph:
-                master_graph[key] = graph[key]
-            else:
-                master_graph[key].or_(graph[key].root, graph[key].links)
-
-    # Validate order-of-operations
-    retlist = []
-    sources = set([source])
-    while len(existing_keys) > 0:
-        for key in existing_keys:
-            if master_graph[key].links.issubset(sources):
-                retlist.append(master_graph[key])
-                sources.add(key)
-        existing_keys = existing_keys - sources
-
-    return retlist
-
-
-class BackendQuery:
-    def __init__(self, source: str):
-        self._filters = []
-        self.source = source
-        self.targets = set()
-        self.constraints = set()
-
-    @classmethod
-    def model(cls):
-        return cls("model")
-
-    @classmethod
-    def dataset(cls):
-        return cls("dataset")
-
-    @classmethod
-    def datum(cls):
-        return cls("datum")
-
-    @classmethod
-    def annotation(cls):
-        return cls("annotation")
-
-    @classmethod
-    def groundtruth(cls):
-        return cls("groundtruth")
-
-    @classmethod
-    def prediction(cls):
-        return cls("prediction")
-
-    @classmethod
-    def label(cls):
-        return cls("label")
-
-    @classmethod
-    def metadatum(cls):
-        return cls("metadatum")
-
-    @property
-    def filters(self) -> list[BinaryExpression]:
-        return self._filters
-
-    def prune(self) -> set[str]:
-        # Set of id's to prune
-        prune = self.constraints.copy()
-
-        # Prune if not referenced
-        if "metadatum" not in [self.source, *self.targets]:
-            prune.add("metadatum")
-
-        # Prune if not referenced
-        if "label" not in [self.source, *self.targets]:
-            prune.add("label")
-
-        # Prune if model is source/target
-        if "model" in [self.source, *self.targets]:
-            prune.add("groundtruth")
-
-        # validate source
-        if self.source in prune:
+    def _expression(self, table_set: set[DeclarativeMeta]) -> BinaryExpression:
+        expressions = []
+        for table in table_set:
+            if table in self._expressions:
+                expressions.extend(self._expressions[table])
+        if len(expressions) == 1:
+            return expressions[0]
+        elif len(expressions) > 1:
+            return and_(*expressions)
+        else:
             return None
 
-        # validate targets
-        self.targets = list(set(self.targets) - prune)
+    def _map_attribute_to_table(
+        self, attr: InstrumentedAttribute | DeclarativeMeta
+    ) -> DeclarativeMeta | None:
+        if isinstance(attr, DeclarativeMeta):
+            return attr
+        if not isinstance(attr, InstrumentedAttribute):
+            return None
+        match attr.table.name:
+            case models.Dataset.__tablename__:
+                return models.Dataset
+            case models.Model.__tablename__:
+                return models.Model
+            case models.Datum.__tablename__:
+                return models.Datum
+            case models.Annotation.__tablename__:
+                return models.Annotation
+            case models.GroundTruth.__tablename__:
+                return models.GroundTruth
+            case models.Prediction.__tablename__:
+                return models.Prediction
+            case models.Label.__tablename__:
+                return models.Label
+            case _:
+                return None
 
-        return prune
+    def _trim_extremities(
+        self, graph: list[DeclarativeMeta], joint_set: set[DeclarativeMeta]
+    ) -> list[DeclarativeMeta]:
+        """trim graph extremities of unused nodes"""
+        lhi = 0
+        rhi = len(graph)
+        for idx, table in enumerate(graph):
+            if table in joint_set:
+                lhi = idx
+                break
+        for idx, table in enumerate(reversed(graph)):
+            if table in joint_set:
+                rhi = rhi - idx
+                break
+        return graph[lhi:rhi]
 
-    def __str__(self):
-
-        # Get all rows of source table
-        if len(self.targets) == 0:
-            return f"SELECT FROM {self.source}"
-
-        # sanity check
-        if self.source in self.targets:
-            self.targets.remove(self.source)
-
-        qstruct = generate_query(
-            source=self.source, targets=self.targets, prune=self.prune()
-        )
-
-        ret = f"SELECT FROM {self.source}\n"
-        for join in qstruct:
-            ret += f"{str(join)}\n"
-        ret += "WHERE\n"
-        for filt in self._filters:
-            ret += f"  {filt},\n"
-        return ret
-
-    def ids(self, db: Session):
-        """Returns list of rows from source that meet filter criteria."""
-
-        # sanity check
-        if self.source in self.targets:
-            self.targets.remove(self.source)
-
-        # Get all rows of source table
-        if len(self.targets) == 0:
-            return select(model_mapping[self.source].id)
-
-        # serialize request from graph
-        qstruct = generate_query(
-            source=self.source, targets=self.targets, prune=self.prune()
-        )
-
-        # select source
-        src = model_mapping[self.source]
-        q_ids = select(src.id)
-
-        # join intermediate tables
-        for join in qstruct:
-            m, r = join.relation()
-            q_ids = q_ids.join(m, r)
-
-        # add filter conditions
-        q_ids = q_ids.where(and_(*self._filters))
-
-        # return select statement of valid row ids
-        return q_ids
-
-    def all(self, db: Session):
-        """Returns sqlalchemy table rows"""
-
-        # get source object
-        src = model_mapping[self.source]
-
-        # get valid row ids
-        q_ids = self.ids(db)
-
-        # return rows from source table
-        return (
-            db.query(model_mapping[self.source]).where(src.id.in_(q_ids)).all()
-        )
-
-    def filter(self, req: schemas.Filter):
-        """Parses `schemas.Filter` and operates all filters."""
-
-        # generate filter expressions
-        self.filter_by_dataset_names(req.datasets)
-        self.filter_by_model_names(req.models)
-        self.filter_by_datum_uids(req.datum_uids)
-        self.filter_by_task_types(req.task_types)
-        self.filter_by_annotation_types(req.annotation_types)
-        self.filter_by_label_keys(req.label_keys)
-        self.filter_by_labels(req.labels)
-
-        # constrain over groundtruths or predictions
-        if not req.allow_groundtruths and req.allow_predictions:
-            self.constraints.add("groundtruth")
-        elif req.allow_groundtruths and not req.allow_predictions:
-            self.constraints.add("prediction")
-        elif not req.allow_groundtruths and not req.allow_predictions:
-            raise ValueError(
-                "Either groundtruths or predictions need to be allowed."
-            )
-
-        return self
-
-    """ dataset filter """
-
-    def filter_by_datasets(
-        self, datasets: list[schemas.Dataset | models.Dataset]
-    ):
-        # generate binary expressions
-        expressions = [
-            models.Dataset.name == dataset.name
-            for dataset in datasets
-            if isinstance(dataset, schemas.Dataset | models.Dataset)
-        ]
-
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add("dataset")
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add("dataset")
-            self._filters.append(or_(*expressions))
-
-        return self
-
-    def filter_by_dataset_names(self, names: list[str]):
-        # generate binary expressions
-        expressions = [
-            models.Dataset.name == name
-            for name in names
-            if isinstance(name, str)
-        ]
-
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add("dataset")
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add("dataset")
-            self._filters.append(or_(*expressions))
-
-        return self
-
-    """ model filter """
-
-    def filter_by_models(self, models_: list[schemas.Model | models.Model]):
-        # generate binary expressions
-        expressions = [
-            models.Model.name == model.name
-            for model in models_
-            if isinstance(model, schemas.Model | models.Model)
-        ]
-
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add("model")
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add("model")
-            self._filters.append(or_(*expressions))
-
-        return self
-
-    def filter_by_model_names(self, names: list[str]):
-        # generate binary expressions
-        expressions = [
-            models.Model.name == name
-            for name in names
-            if isinstance(name, str)
-        ]
-
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add("model")
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add("model")
-            self._filters.append(or_(*expressions))
-
-        return self
-
-    """ datum filter """
-
-    def filter_by_datums(self, datums: list[schemas.Datum | models.Datum]):
-        # generate binary expressions
-        expressions = [
-            models.Datum.uid == datum.uid
-            for datum in datums
-            if isinstance(datum, schemas.Datum | models.Datum)
-        ]
-
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add("datum")
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add("datum")
-            self._filters.append(or_(*expressions))
-
-        return self
-
-    def filter_by_datum_uids(self, uids: list[str]):
-        # generate binary expressions
-        expressions = [
-            models.Datum.uid == uid for uid in uids if isinstance(uid, str)
-        ]
-
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add("datum")
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add("datum")
-            self._filters.append(or_(*expressions))
-
-        return self
-
-    """ filter by label """
-
-    def filter_by_labels(self, labels: list[schemas.Label | models.Label]):
-        # generate binary expressions
-        expressions = [
-            and_(
-                models.Label.key == label.key,
-                models.Label.value == label.value,
-            )
-            for label in labels
-            if isinstance(label, schemas.Label | models.Label)
-        ]
-
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add("label")
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add("label")
-            self._filters.append(or_(*expressions))
-
-        return self
-
-    def filter_by_label_keys(
+    def _solve_groundtruth_graph(
         self,
-        label_keys: list[str],
+        args: list[DeclarativeMeta | InstrumentedAttribute],
+        selected: list[DeclarativeMeta],
+        filtered: list[DeclarativeMeta],
     ):
-        # generate binary expressions
-        expressions = [
-            models.Label.key == label_key
-            for label_key in label_keys
-            if isinstance(label_key, str)
+        """
+        groundtruth_graph = [models.Dataset, models.Datum, models.Annotation, models.GroundTruth, models.Label]
+        """
+        # Graph defintion
+        graph = [
+            models.Dataset,
+            models.Datum,
+            models.Annotation,
+            models.GroundTruth,
+            models.Label,
         ]
+        connections = {
+            models.Datum: models.Datum.dataset_id == models.Dataset.id,
+            models.Annotation: models.Annotation.datum_id == models.Datum.id,
+            models.GroundTruth: models.GroundTruth.annotation_id
+            == models.Annotation.id,
+            models.Label: models.Label.id == models.GroundTruth.label_id,
+        }
 
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add("label")
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add("label")
-            self._filters.append(or_(*expressions))
+        # set of tables required to construct query
+        joint_set = selected.union(filtered)
 
-        return self
+        # generate query statement
+        query = None
+        for table in self._trim_extremities(graph, joint_set):
+            if query is None:
+                query = select(*args).select_from(table)
+            else:
+                query = query.join(table, connections[table])
 
-    """ filter by metadata """
+        # generate where statement
+        expression = self._expression(joint_set)
+        if expression is not None:
+            query = query.where(expression)
 
-    """ filter by annotation """
+        return query
 
-    def filter_by_task_types(self, task_types: list[enums.TaskType]):
-        # generate binary expressions
-        expressions = [
-            models.Annotation.task_type == task_type.value
-            for task_type in task_types
-            if isinstance(task_type, enums.TaskType)
-        ]
-
-        # generate filter
-        if len(expressions) == 1:
-            self.targets.add("annotation")
-            self._filters.extend(expressions)
-        elif len(expressions) > 1:
-            self.targets.add("annotation")
-            self._filters.append(or_(*expressions))
-
-        return self
-
-    def filter_by_annotation_types(
-        self, annotation_types: list[enums.AnnotationType]
+    def _solve_model_graph(
+        self,
+        args: list[DeclarativeMeta | InstrumentedAttribute],
+        selected: list[DeclarativeMeta],
+        filtered: list[DeclarativeMeta],
     ):
-        if enums.AnnotationType.NONE in annotation_types:
-            self.targets.add("annotation")
-            self._filters.append(
-                and_(
-                    models.Annotation.box.is_(None),
-                    models.Annotation.polygon.is_(None),
-                    models.Annotation.multipolygon.is_(None),
-                    models.Annotation.raster.is_(None),
-                )
+        """
+        model_graph = [[models.Model, models.Annotation, models.Prediction, models.Label], [models.Model, models.Annotation, models.Datum, models.Dataset]]
+        """
+        subgraph1 = [
+            models.Model,
+            models.Annotation,
+            models.Prediction,
+            models.Label,
+        ]
+        subgraph2 = [
+            models.Model,
+            models.Annotation,
+            models.Datum,
+            models.Dataset,
+        ]
+        connections = {
+            models.Annotation: models.Annotation.model_id == models.Model.id,
+            models.Datum: models.Datum.id == models.Annotation.datum_id,
+            models.Dataset: models.Dataset.id == models.Datum.dataset_id,
+            models.Prediction: models.Prediction.annotation_id
+            == models.Annotation.id,
+            models.Label: models.Label.id == models.Prediction.label_id,
+        }
+
+        joint_set = selected.union(filtered)
+
+        # generate query statement
+        graph = self._trim_extremities(subgraph1, joint_set)
+        graph.extend(self._trim_extremities(subgraph2, joint_set))
+        query = select(*args).select_from(models.Model)
+        repeated_set = {models.Model}
+        for table in graph:
+            if table not in repeated_set:
+                query = query.join(table, connections[table])
+                repeated_set.add(table)
+
+        # generate where statement
+        expression = self._expression(joint_set)
+        if expression is not None:
+            query = query.where(expression)
+
+        return query
+
+    def _solve_prediction_graph(
+        self,
+        args: list[DeclarativeMeta | InstrumentedAttribute],
+        selected: list[DeclarativeMeta],
+        filtered: list[DeclarativeMeta],
+    ):
+        """
+        prediction_graph = [models.Dataset, models.Datum, models.Annotation, models.Prediction, models.Label]
+        """
+        # Graph defintion
+        graph = [
+            models.Dataset,
+            models.Datum,
+            models.Annotation,
+            models.Prediction,
+            models.Label,
+        ]
+        connections = {
+            models.Datum: models.Datum.dataset_id == models.Dataset.id,
+            models.Annotation: models.Annotation.datum_id == models.Datum.id,
+            models.Prediction: models.Prediction.annotation_id
+            == models.Annotation.id,
+            models.Label: models.Label.id == models.Prediction.label_id,
+        }
+
+        # set of tables required to construct query
+        joint_set = selected.union(filtered)
+
+        # generate query statement
+        query = None
+        for table in self._trim_extremities(graph, joint_set):
+            if query is None:
+                query = select(*args).select_from(table)
+            else:
+                query = query.join(table, connections[table])
+
+        # generate where statement
+        expression = self._expression(joint_set)
+        if expression is not None:
+            query = query.where(expression)
+
+        return query
+
+    def _solve_joint_graph(
+        self,
+        args: list[DeclarativeMeta | InstrumentedAttribute],
+        selected: list[DeclarativeMeta],
+        filtered: list[DeclarativeMeta],
+    ):
+        """
+        joint_graph = [[models.Dataset, models.Datum, models.Annotation, models.Label]]
+        """
+        graph = [
+            models.Dataset,
+            models.Datum,
+            models.Annotation,
+            models.Label,
+        ]  # excluding label as edge case due to forking at groundtruth, prediction
+        connections = {
+            models.Datum: models.Datum.dataset_id == models.Dataset.id,
+            models.Annotation: models.Annotation.datum_id == models.Datum.id,
+            models.GroundTruth: models.GroundTruth.annotation_id
+            == models.Annotation.id,
+            models.Prediction: models.Prediction.annotation_id
+            == models.Annotation.id,
+            models.Label: or_(
+                models.Label.id == models.GroundTruth.label_id,
+                models.Label.id == models.Prediction.label_id,
+            ),
+        }
+
+        # set of tables required to construct query
+        joint_set = selected.union(filtered)
+
+        # generate query statement
+        query = None
+        for table in self._trim_extremities(graph, joint_set):
+            if query is None:
+                query = select(*args).select_from(table)
+            else:
+                if table == models.Label:
+                    query = query.join(
+                        models.GroundTruth, connections[models.GroundTruth]
+                    )
+                    query = query.join(
+                        models.Prediction,
+                        connections[models.Prediction],
+                        full=True,
+                    )
+                    query = query.join(models.Label, connections[models.Label])
+                else:
+                    query = query.join(table, connections[table])
+
+        # generate where statement
+        expression = self._expression(joint_set)
+        if expression is not None:
+            query = query.where(expression)
+
+        return query
+
+    def _solve_nested_graphs(
+        self,
+        query_solver: callable,
+        subquery_solver: callable,
+        unique_set: set[DeclarativeMeta],
+        pivot_table: DeclarativeMeta | None = None,
+    ):
+        qset = (self._filtered - unique_set).union({models.Datum})
+        query = query_solver(
+            self._args,
+            self._selected,
+            qset,
+        )
+        sub_qset = self._filtered.intersection(unique_set).union(
+            {models.Datum}
+        )
+        subquery = (
+            subquery_solver(
+                [models.Datum.id],
+                {models.Datum},
+                sub_qset,
+            )
+            if pivot_table in self._filtered or sub_qset != {pivot_table}
+            else None
+        )
+        return query, subquery
+
+    def _select_graph(self, pivot_table: DeclarativeMeta | None = None):
+        """
+        Selects best fitting graph to run query generation and returns tuple(query, subquery | None).
+
+        Description
+        ----------
+        To construct complex queries it is necessary to describe the relationship between predictions and groundtruths.
+        By splitting the underlying table relationships into four foundatational graphs the complex relationships can be described by
+        sequental lists without branches (with the exception of model_graph). From these sequential graphs it is possible to construct
+        the minimum set of nodes required to generate a query. For queries that can be described by a single foundational graph,
+        the solution is to trim both ends of the sequence until you reach nodes in the query set. The relationships of the
+        remaining nodes can then be used to construct the query. Two foundational graphs are required for queries that include both
+        groundtruth and prediction/model constraints. The solver inserts `models.Datum` as the linking point between these two graphs
+        allowing the generation of a query and subquery.
+
+        The four foundational graphs:
+        groundtruth_graph   = [models.Dataset, models.Datum, models.Annotation, models.GroundTruth, models.Label]
+        model_graph         = [[models.Model, models.Annotation, models.Prediction, models.Label], [models.Model, models.Annotation, models.Datum, models.Dataset]]
+        prediction_graph    = [models.Dataset, models.Datum, models.Annotation, models.Prediction, models.Label],
+        joint_graph         = [models.Dataset, models.Datum, models.Annotation, models.Label]
+
+        Removing common nodes, these are reduced to:
+        groundtruth_graph_unique    = {models.Groundtruth}
+        prediction_graph_unique     = {models.Prediction, models.Model}
+        model_graph_unique          = {models.Prediction}
+        joint_graph_unique          = {}
+
+        Descriptions:
+        groundtruth_graph : All prediction or model related information removed.
+        model_graph       : All groundtruth related information removed.
+        prediction_graph  : Subgraph of model_graph. All groundtruth and model information removed.
+        joint_graph       : Predictions and groundtruths combined under a full outer join.
+        """
+
+        groundtruth_graph_unique = {models.GroundTruth}
+        model_graph_unique = {
+            models.Model
+        }  # exclude prediction as it is include in the graph definition.
+        prediction_graph_unique = {models.Prediction}
+
+        # edge case - only one table specified in args and filters
+        if self._selected == self._filtered and len(self._selected) == 1:
+            query = select(*self._args)
+            expression = self._expression(self._selected)
+            if expression is not None:
+                query = query.where(expression)
+            return query, None
+
+        # edge case - catch intersection that resolves into an empty return.
+        if self._selected.intersection(
+            groundtruth_graph_unique
+        ) and self._selected.intersection(model_graph_unique):
+            raise RuntimeError(
+                f"Cannot evaluate graph as invalid connection between queried tables. `{self._selected}`"
+            )
+
+        # create joint (selected + filtered) table set
+        joint_set = self._selected.union(self._filtered)
+
+        # create set of tables to select graph with
+        selector_set = (
+            {pivot_table}.union(joint_set)
+            if isinstance(pivot_table, DeclarativeMeta)
+            else joint_set
+        )
+
+        subquery_solver = None
+        unique_set = None
+
+        # query - graph groundtruth_graph
+        if (
+            groundtruth_graph_unique.issubset(selector_set)
+            and not model_graph_unique.issubset(self._selected)
+            and not prediction_graph_unique.issubset(self._selected)
+        ):
+            query_solver = self._solve_groundtruth_graph
+            if model_graph_unique.issubset(joint_set):
+                subquery_solver = self._solve_model_graph
+                unique_set = model_graph_unique
+            elif prediction_graph_unique.issubset(joint_set):
+                subquery_solver = self._solve_prediction_graph
+                unique_set = prediction_graph_unique
+        # query - graph model_graph
+        elif model_graph_unique.issubset(selector_set):
+            query_solver = self._solve_model_graph
+            if groundtruth_graph_unique.issubset(joint_set):
+                subquery_solver = self._solve_groundtruth_graph
+                unique_set = groundtruth_graph_unique
+        # query - graph prediction_graph
+        elif prediction_graph_unique.issubset(selector_set):
+            query_solver = self._solve_prediction_graph
+            if groundtruth_graph_unique.issubset(joint_set):
+                subquery_solver = self._solve_groundtruth_graph
+                unique_set = groundtruth_graph_unique
+        # query - graph joint_graph
+        else:
+            query_solver = self._solve_joint_graph
+
+        # generate statement
+        if subquery_solver is not None:
+            return self._solve_nested_graphs(
+                query_solver=query_solver,
+                subquery_solver=subquery_solver,
+                unique_set=unique_set,
+                pivot_table=pivot_table,
             )
         else:
-            # collect binary expressions
-            expressions = []
-            if enums.AnnotationType.BOX in annotation_types:
-                expressions.append(models.Annotation.box.isnot(None))
-            if enums.AnnotationType.POLYGON in annotation_types:
-                expressions.append(models.Annotation.polygon.isnot(None))
-            if enums.AnnotationType.MULTIPOLYGON in annotation_types:
-                expressions.append(models.Annotation.multipolygon.isnot(None))
-            if enums.AnnotationType.RASTER in annotation_types:
-                expressions.append(models.Annotation.raster.isnot(None))
+            query = query_solver(
+                self._args,
+                self._selected,
+                self._filtered,
+            )
+            subquery = None
+            return query, subquery
 
-            # generate joint filter
-            if len(expressions) == 1:
-                self.targets.add("annotation")
-                self._filters.extend(expressions)
-            elif len(expressions) > 1:
-                self.targets.add("annotation")
-                self._filters.append(or_(*expressions))
+    def _get_numeric_op(self, opstr) -> operator:
+        ops = {
+            ">": operator.gt,
+            "<": operator.lt,
+            ">=": operator.ge,
+            "<=": operator.le,
+            "==": operator.eq,
+            "!=": operator.ne,
+        }
+        if opstr not in ops:
+            raise ValueError(f"invalid numeric comparison operator `{opstr}`")
+        return ops[opstr]
+
+    def _get_string_op(self, opstr) -> operator:
+        ops = {
+            "==": operator.eq,
+            "!=": operator.ne,
+        }
+        if opstr not in ops:
+            raise ValueError(f"invalid string comparison operator `{opstr}`")
+        return ops[opstr]
+
+    """ Public methods """
+
+    def any(self, *, _pivot: DeclarativeMeta | None = None):
+        """
+        Generates a sqlalchemy subquery. Graph is chosen automatically as best fit.
+        """
+        query, subquery = self._select_graph(_pivot)
+        if subquery is not None:
+            query = query.where(models.Datum.id.in_(subquery))
+        return query.subquery("generated_query")
+
+    def groundtruths(self):
+        """
+        Generates a sqlalchemy subquery using a groundtruths-focused graph.
+        """
+        return self.any(_pivot=models.GroundTruth)
+
+    def predictions(self):
+        """
+        Generates a sqlalchemy subquery using a predictions-focused graph.
+        """
+        return self.any(_pivot=models.Prediction)
+
+    def filter(self, filters: schemas.Filter):
+        """Parses `schemas.Filter`"""
+        if filters is None:
+            return self
+        if not isinstance(filters, schemas.Filter):
+            raise TypeError(
+                "filters should be of type `schemas.Filter` or `None`"
+            )
+
+        # dataset filters
+        if filters.datasets:
+            self.filter_by_dataset(filters.datasets)
+
+        # models
+        if filters.models:
+            self.filter_by_model(filters.models)
+
+        # datums
+        if filters.datums:
+            self.filter_by_datum(filters.datums)
+
+        # annotations
+        if filters.annotations:
+            self.filter_by_annotation(filters.annotations)
+
+        # prediction
+        if filters.predictions:
+            self.filter_by_prediction(filters.predictions)
+
+        # labels
+        if filters.labels:
+            self.filter_by_label(filters.labels)
 
         return self
 
+    def filter_by_dataset(self, filters: schemas.DatasetFilter):
+        if filters.ids:
+            self._add_expressions(
+                models.Dataset,
+                [
+                    models.Dataset.id == id
+                    for id in filters.ids
+                    if isinstance(id, int)
+                ],
+            )
+        if filters.names:
+            self._add_expressions(
+                models.Dataset,
+                [
+                    models.Dataset.name == name
+                    for name in filters.names
+                    if isinstance(name, str)
+                ],
+            )
+        if filters.metadata:
+            self._add_expressions(
+                models.Dataset,
+                self.filter_by_metadata(filters.metadata, models.Dataset),
+            )
+        return self
 
-# db = None
-# query = (
-#     BackendQuery.datum()
-#     .filter_by_dataset_name("dataset1")
-#     .filter_by_model_name("model1")
-#     .filter_by_datum_uid("uid1")
-#     .filter_by_label(schemas.Label(key="k1", value="v1"))
-#     .filter_by_labels(
-#         [
-#             schemas.Label(key="k2", value="v2"),
-#             schemas.Label(key="k2", value="v3"),
-#             schemas.Label(key="k2", value="v4"),
-#         ]
-#     )
-#     .filter_by_label_key("k4")
-#     .filter_by_metadata(
-#         [
-#             schemas.Metadatum(name="n1", value=0.5),
-#             schemas.Metadatum(name="n2", value=0.1),
-#         ]
-#     )
-#     .filter_by_metadatum(schemas.Metadatum(name="n3", value="v1"))
-#     .filter_by_metadatum_name("n4")
-#     .filter_by_task_type(enums.TaskType.CLASSIFICATION)
-#     .query(db)
-# )
-# print(str(query))
+    def filter_by_model(self, filters: schemas.ModelFilter):
+        if filters.ids:
+            self._add_expressions(
+                models.Model,
+                [
+                    models.Model.id == id
+                    for id in filters.ids
+                    if isinstance(id, int)
+                ],
+            )
+        if filters.names:
+            self._add_expressions(
+                models.Model,
+                [
+                    models.Model.name == name
+                    for name in filters.names
+                    if isinstance(name, str)
+                ],
+            )
+        if filters.metadata:
+            self._add_expressions(
+                models.Model,
+                self.filter_by_metadata(filters.metadata, models.Model),
+            )
+        return self
 
+    def filter_by_datum(self, filters: schemas.DatumFilter):
+        if filters.ids:
+            self._add_expressions(
+                models.Datum,
+                [
+                    models.Datum.id == id
+                    for id in filters.ids
+                    if isinstance(id, int)
+                ],
+            )
+        if filters.uids:
+            self._add_expressions(
+                models.Datum,
+                [
+                    models.Datum.uid == uid
+                    for uid in filters.uids
+                    if isinstance(uid, str)
+                ],
+            )
+        if filters.metadata:
+            self._add_expressions(
+                models.Datum,
+                self.filter_by_metadata(filters.metadata, models.Datum),
+            )
+        return self
 
-# targets = ["annotation", "model"]
-# source = "label"
+    def filter_by_annotation(
+        self,
+        filters: schemas.AnnotationFilter,
+    ):
+        if filters.task_types:
+            self._add_expressions(
+                models.Annotation,
+                [
+                    models.Annotation.task_type == task_type.value
+                    for task_type in filters.task_types
+                    if isinstance(task_type, enums.TaskType)
+                ],
+            )
+        if filters.annotation_types:
+            if enums.AnnotationType.NONE in filters.annotation_types:
+                self._add_expressions(
+                    models.Annotation,
+                    [
+                        and_(
+                            models.Annotation.box.is_(None),
+                            models.Annotation.polygon.is_(None),
+                            models.Annotation.multipolygon.is_(None),
+                            models.Annotation.raster.is_(None),
+                        )
+                    ],
+                )
+            else:
+                expressions = []
+                if enums.AnnotationType.BOX in filters.annotation_types:
+                    expressions.append(models.Annotation.box.isnot(None))
+                if enums.AnnotationType.POLYGON in filters.annotation_types:
+                    expressions.append(models.Annotation.polygon.isnot(None))
+                if (
+                    enums.AnnotationType.MULTIPOLYGON
+                    in filters.annotation_types
+                ):
+                    expressions.append(
+                        models.Annotation.multipolygon.isnot(None)
+                    )
+                if enums.AnnotationType.RASTER in filters.annotation_types:
+                    expressions.append(models.Annotation.raster.isnot(None))
+                self._add_expressions(models.Annotation, expressions)
+        if filters.geometry:
+            match filters.geometry.type:
+                case enums.AnnotationType.BOX:
+                    geom = models.Annotation.box
+                case enums.AnnotationType.POLYGON:
+                    geom = models.Annotation.polygon
+                case enums.AnnotationType.MULTIPOLYGON:
+                    geom = models.Annotation.multipolygon
+                case enums.AnnotationType.RASTER:
+                    geom = models.Annotation.raster
+                case _:
+                    raise RuntimeError
+            if filters.geometry.area:
+                op = self._get_numeric_op(filters.geometry.area.operator)
+                self._add_expressions(
+                    models.Annotation,
+                    [op(func.ST_Area(geom), filters.geometry.area.value)],
+                )
+        if filters.metadata:
+            self._add_expressions(
+                models.Annotation,
+                self.filter_by_metadata(filters.metadata, models.Annotation),
+            )
+        return self
 
-# output = generate_query(source, targets)
-# print(f"SELECT FROM {source}")
-# for o in output:
-#     print(o)
+    def filter_by_prediction(self, filters: schemas.PredictionFilter):
+        if filters.score:
+            op = self._get_numeric_op(filters.score.operator)
+            self._add_expressions(
+                models.Prediction,
+                [op(models.Prediction.score, filters.score.value)],
+            )
+        return self
+
+    def filter_by_label(
+        self,
+        filters: schemas.LabelFilter,
+    ):
+        if filters.labels:
+            self._add_expressions(
+                models.Label,
+                [
+                    and_(
+                        models.Label.key == label.key,
+                        models.Label.value == label.value,
+                    )
+                    for label in filters.labels
+                    if isinstance(label, schemas.Label)
+                ],
+            )
+        if filters.keys:
+            self._add_expressions(
+                models.Label,
+                [
+                    models.Label.key == key
+                    for key in filters.keys
+                    if isinstance(key, str)
+                ],
+            )
+        return self
+
+    def _filter_by_metadatum(
+        self,
+        metadatum: schemas.MetadatumFilter,
+        table: DeclarativeMeta,
+    ) -> BinaryExpression:
+        if not isinstance(metadatum, schemas.MetadatumFilter):
+            raise TypeError("metadatum should be of type `schemas.Metadatum`")
+
+        if isinstance(metadatum.comparison.value, str):
+            op = self._get_string_op(metadatum.comparison.operator)
+            lhs = table.meta[metadatum.key].astext
+        elif isinstance(metadatum.comparison.value, float):
+            op = self._get_numeric_op(metadatum.comparison.operator)
+            lhs = table.meta[metadatum.key].astext.cast(Float)
+        else:
+            raise NotImplementedError(
+                f"metadatum value of type `{type(metadatum.comparison.value)}` is currently not supported"
+            )
+
+        return op(lhs, metadatum.comparison.value)
+
+    def filter_by_metadata(
+        self,
+        metadata: list[schemas.MetadatumFilter],
+        table: DeclarativeMeta,
+    ) -> list[BinaryExpression]:
+        return [
+            and_(
+                *[
+                    self._filter_by_metadatum(metadatum, table)
+                    for metadatum in metadata
+                ]
+            )
+        ]
