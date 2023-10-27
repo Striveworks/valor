@@ -2,7 +2,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
-from velour_api.backend import core, models, ops
+from velour_api.backend import core, models
 
 
 def create_groundtruth(
@@ -52,11 +52,3 @@ def get_groundtruth(
         ),
         annotations=core.get_annotations(db, datum),
     )
-
-
-def get_groundtruths(
-    db: Session,
-    request: schemas.Filter,
-) -> list[schemas.GroundTruth]:
-    datums = ops.BackendQuery.datum().filter(request).all(db)
-    return [core.get_annotations(db, datum) for datum in datums]
