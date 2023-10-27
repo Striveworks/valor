@@ -4,7 +4,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from velour_api import schemas
-from velour_api.backend import core, models
+from velour_api.backend import core, jobs, models
 
 
 def _db_metric_to_pydantic_metric(db, metric: models.Metric) -> schemas.Metric:
@@ -48,76 +48,49 @@ def _get_bulk_metrics_from_evaluation_settings(
     db: Session,
     evaluation_settings: list[models.Evaluation],
 ) -> list[schemas.BulkEvaluations]:
-    """Groups a list of Evaluations by model and dataset, returning a list of {dataset, model, metrics} entries"""
-    unnested_metrics = [
-        {
-            "dataset": m.settings.dataset.name,
-            "model": m.settings.model.name,
-            "metric": _db_metric_to_pydantic_metric(db, m),
-            "filter_": json.dumps(m.settings.parameters),
-            "confusion_matrices": ms.confusion_matrices,
-            "job_id": ms.id,
-        }
-        for ms in evaluation_settings
-        for m in ms.metrics
-    ]
+    """Return a list of unnested Evaluations from a list of evaluation settings"""
+    output = []
 
-    datasets = set([element["dataset"] for element in unnested_metrics])
-    models = set([element["model"] for element in unnested_metrics])
-    filters = set([element["filter_"] for element in unnested_metrics])
+    for ms in evaluation_settings:
+        job_id = ms.id
+        status = (
+            jobs.get_stateflow()
+            .get_job_status(job_id=ms.id)
+            .name.replace('"', "")
+        )
+        confusion_matrices = [
+            schemas.ConfusionMatrix(
+                label_key=matrix.label_key,
+                entries=[
+                    schemas.ConfusionMatrixEntry(**entry)
+                    for entry in matrix.value
+                ],
+            )
+            for matrix in ms.confusion_matrices
+        ]
 
-    grouped_metrics = []
-    for dataset in datasets:
-        for model in models:
-            grouped_by_filter = []
-            for filter_ in filters:
-                metrics = [
-                    element["metric"]
-                    for element in unnested_metrics
-                    if element["dataset"] == dataset
-                    and element["model"] == model
-                    and element["filter_"] == filter_
-                ]
+        # shared across evaluation settings, so just pick the first one
+        dataset = ms.metrics[0].settings.dataset.name
+        model = ms.metrics[0].settings.model.name
+        filter_ = json.dumps(ms.metrics[0].settings.parameters)
 
-                filtered_confusion_matrices = set(
-                    matrix
-                    for element in unnested_metrics
-                    for matrix in element["confusion_matrices"]
-                    if element["dataset"] == dataset
-                    and element["model"] == model
-                    and element["filter_"] == filter_
-                )
+        metrics = [
+            _db_metric_to_pydantic_metric(db, metric) for metric in ms.metrics
+        ]
 
-                confusion_matrices = [
-                    schemas.ConfusionMatrix(
-                        label_key=matrix.label_key,
-                        entries=[
-                            schemas.ConfusionMatrixEntry(**entry)
-                            for entry in matrix.value
-                        ],
-                    )
-                    for matrix in filtered_confusion_matrices
-                ]
+        output.append(
+            {
+                "dataset": dataset,
+                "model": model,
+                "filter": filter_,
+                "job_id": job_id,
+                "status": status,
+                "metrics": metrics,
+                "confusion_matrices": confusion_matrices,
+            }
+        )
 
-                if metrics or confusion_matrices:
-                    grouped_by_filter.append(
-                        {
-                            "filter": filter_,
-                            "metrics": metrics,
-                            "confusion_matrices": confusion_matrices,
-                        }
-                    )
-
-            if grouped_by_filter:
-                grouped_metrics.append(
-                    {
-                        "dataset": dataset,
-                        "model": model,
-                        "metrics": grouped_by_filter,
-                    }
-                )
-
-    return grouped_metrics
+    return output
 
 
 def get_metrics_from_evaluation_id(

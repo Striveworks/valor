@@ -1687,14 +1687,9 @@ def test_get_bulk_evaluations(
         },
     ]
 
-    output = client.get_bulk_evaluations(datasets=dset_name, models=model_name)
-    statuses = output["statuses"]
-    evaluations = output["evaluations"]
-
-    assert len(evaluations) == 1
-
-    assert "DONE" in statuses.keys()
-    assert len(statuses["DONE"]) == 1
+    evaluations = client.get_bulk_evaluations(
+        datasets=dset_name, models=model_name
+    )
 
     assert len(evaluations) == 1
     assert all(
@@ -1702,24 +1697,20 @@ def test_get_bulk_evaluations(
             name
             in [
                 "dataset",
-                "metrics",
                 "model",
-            ]
-            for name in evaluations[0].keys()
-        ]
-    )
-    assert all(
-        [
-            name
-            in [
-                "confusion_matrices",
-                "metrics",
                 "filter",
+                "job_id",
+                "status",
+                "metrics",
+                "confusion_matrices",
             ]
-            for name in evaluations[0]["metrics"][0].keys()
+            for evaluation in evaluations
+            for name in evaluation.keys()
         ]
     )
-    assert evaluations[0]["metrics"][0]["metrics"] == expected_metrics
+
+    assert len(evaluations[0]["metrics"])
+    assert evaluations[0]["metrics"] == expected_metrics
 
     # test incorrect names
     with pytest.raises(Exception):
@@ -1743,13 +1734,9 @@ def test_get_bulk_evaluations(
     )
     eval_job.wait_for_completion()
 
-    second_output = client.get_bulk_evaluations(models="second_model")
-
-    second_model_statuses = second_output["statuses"]
-    second_model_evaluations = second_output["evaluations"]
-
-    assert "DONE" in second_model_statuses.keys()
-    assert len(second_model_statuses["DONE"]) == 1
+    second_model_evaluations = client.get_bulk_evaluations(
+        models="second_model"
+    )
 
     assert len(second_model_evaluations) == 1
     assert all(
@@ -1757,24 +1744,20 @@ def test_get_bulk_evaluations(
             name
             in [
                 "dataset",
-                "metrics",
                 "model",
+                "filter",
+                "job_id",
+                "status",
+                "metrics",
+                "confusion_matrices",
             ]
-            for name in second_model_evaluations[0].keys()
+            for evaluation in second_model_evaluations
+            for name in evaluation.keys()
         ]
     )
-    assert (
-        second_model_evaluations[0]["metrics"][0]["metrics"]
-        == expected_metrics
-    )
+    assert second_model_evaluations[0]["metrics"] == expected_metrics
 
-    both_output = client.get_bulk_evaluations(datasets=["test_dataset"])
-
-    both_statuses = both_output["statuses"]
-    both_evaluations = both_output["evaluations"]
-
-    assert "DONE" in both_statuses.keys()
-    assert len(both_statuses["DONE"]) == 2
+    both_evaluations = client.get_bulk_evaluations(datasets=["test_dataset"])
 
     # should contain two different entries, one for each model
     assert len(both_evaluations) == 2
@@ -1784,13 +1767,13 @@ def test_get_bulk_evaluations(
             for evaluation in both_evaluations
         ]
     )
-    assert both_evaluations[0]["metrics"][0]["metrics"] == expected_metrics
+    assert both_evaluations[0]["metrics"] == expected_metrics
 
     # should be equivalent since there are only two models attributed to this dataset
-    both_model_evaluations = client.get_bulk_evaluations(
+    both_evaluations_from_model_names = client.get_bulk_evaluations(
         models=["second_model", "test_model"]
-    )["evaluations"]
-    assert both_evaluations == both_model_evaluations
+    )
+    assert both_evaluations == both_evaluations_from_model_names
 
 
 def test_evaluate_image_clf(
@@ -2214,7 +2197,7 @@ def test_evaluate_tabular_clf(
     }
 
     # validate that we can fetch the confusion matrices through get_bulk_evaluations()
-    bulk_evals = client.get_bulk_evaluations(datasets=dset_name)["evaluations"]
+    bulk_evals = client.get_bulk_evaluations(datasets=dset_name)
 
     assert len(bulk_evals) == 1
     assert all(
@@ -2222,16 +2205,22 @@ def test_evaluate_tabular_clf(
             name
             in [
                 "dataset",
-                "metrics",
                 "model",
+                "filter",
+                "job_id",
+                "status",
+                "metrics",
+                "confusion_matrices",
             ]
-            for name in bulk_evals[0].keys()
+            for evaluation in bulk_evals
+            for name in evaluation.keys()
         ]
     )
-    for metric in bulk_evals[0]["metrics"][0]["metrics"]:
+
+    for metric in bulk_evals[0]["metrics"]:
         assert metric in expected_metrics
 
-    assert len(bulk_evals[0]["metrics"][0]["confusion_matrices"][0]) == len(
+    assert len(bulk_evals[0]["confusion_matrices"][0]) == len(
         expected_confusion_matrix
     )
 

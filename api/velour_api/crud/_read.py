@@ -1,5 +1,3 @@
-import collections
-import json
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -55,53 +53,24 @@ def get_bulk_evaluations(
     """
 
     job_set = set()
-    job_details = collections.defaultdict(set)
 
     # get all relevant job IDs from all of the specified models and datasets
     if dataset_names:
         for dataset in dataset_names:
             dataset_jobs = jobs.get_stateflow().get_dataset_jobs(dataset)
             for model, job_ids in dataset_jobs.items():
-                for job_id in job_ids:
-                    status = json.dumps(
-                        jobs.get_stateflow().get_job_status(job_id=job_id).name
-                    ).replace('"', "")
-                    job_details[status].add(
-                        json.dumps(
-                            {
-                                "job_id": job_id,
-                                "dataset": dataset,
-                                "model": model,
-                            }
-                        )
-                    )
-
-                    job_set.update(job_ids)
+                job_set.update(job_ids)
 
     if model_names:
         for model in model_names:
             model_jobs = jobs.get_stateflow().get_model_jobs(model)
             for dataset, job_ids in model_jobs.items():
-                for job_id in job_ids:
-                    status = (
-                        jobs.get_stateflow().get_job_status(job_id=job_id).name
-                    ).replace('"', "")
-                    job_details[status].add(
-                        json.dumps(
-                            {
-                                "job_id": job_id,
-                                "dataset": dataset,
-                                "model": model,
-                            }
-                        )
-                    )
-                    job_set.update(job_ids)
+                job_set.update(job_ids)
 
-    evaluations = backend.get_metrics_from_evaluation_ids(
+    output = backend.get_metrics_from_evaluation_ids(
         db=db, evaluation_ids=job_set
     )
-
-    return {"evaluations": evaluations, "statuses": job_details}
+    return output
 
 
 """ Labels """
