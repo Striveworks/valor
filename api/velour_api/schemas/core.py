@@ -35,7 +35,7 @@ def _format_uid(uid: str):
     pattern = re.compile(f"^[a-zA-Z0-9{''.join(allowed_special)}]+$")
     if not pattern.match(uid):
         raise ValueError("UID contains illegal characters.")
-    return re.sub(pattern, "", uid)
+    return uid
 
 
 class Dataset(BaseModel):
