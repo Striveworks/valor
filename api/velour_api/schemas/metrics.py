@@ -296,7 +296,7 @@ class BulkEvaluations(BaseModel):
     filter: str
     job_id: int
     status: str
-    metrics: List[Metric | None]
+    metrics: List[Metric]
     confusion_matrices: list[ConfusionMatrixResponse]
 
     # pydantic setting
