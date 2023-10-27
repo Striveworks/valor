@@ -1,5 +1,4 @@
 import io
-import time
 from base64 import b64decode
 from dataclasses import asdict
 
@@ -58,8 +57,7 @@ def client():
     yield client
 
     for model in client.get_models():
-        client.delete_model(model["name"])
-        time.sleep(0.1)
+        client.delete_model(model["name"], timeout=30)
 
     for dataset in client.get_datasets():
         client.delete_dataset(dataset["name"], timeout=5)
@@ -153,10 +151,9 @@ def test_generate_prediction_data(client: Client):
         iou_thresholds_to_compute=[0, 1],
         iou_thresholds_to_keep=[0, 1],
         label_key="k1",
+        timeout=30,
     )
 
-    # sleep to give the backend time to compute
-    time.sleep(1)
     assert eval_job.status == JobStatus.DONE
 
     settings = asdict(eval_job.settings)
