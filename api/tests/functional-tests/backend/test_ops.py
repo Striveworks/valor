@@ -18,8 +18,8 @@ datum_uid4 = "uid4"
 @pytest.fixture
 def metadata_1() -> list[schemas.Metadatum]:
     return [
-        schemas.Metadatum(key="numeric", value=0.4),
-        schemas.Metadatum(key="str", value="abc"),
+        schemas.Metadatum(key="some_numeric_attribute", value=0.4),
+        schemas.Metadatum(key="some_str_attribute", value="abc"),
         schemas.Metadatum(key="height", value=10),
         schemas.Metadatum(key="width", value=10),
     ]
@@ -28,8 +28,8 @@ def metadata_1() -> list[schemas.Metadatum]:
 @pytest.fixture
 def metadata_2() -> list[schemas.Metadatum]:
     return [
-        schemas.Metadatum(key="numeric", value=0.6),
-        schemas.Metadatum(key="str", value="abc"),
+        schemas.Metadatum(key="some_numeric_attribute", value=0.6),
+        schemas.Metadatum(key="some_str_attribute", value="abc"),
         schemas.Metadatum(key="height", value=10),
         schemas.Metadatum(key="width", value=10),
     ]
@@ -38,8 +38,8 @@ def metadata_2() -> list[schemas.Metadatum]:
 @pytest.fixture
 def metadata_3() -> list[schemas.Metadatum]:
     return [
-        schemas.Metadatum(key="numeric", value=0.4),
-        schemas.Metadatum(key="str", value="xyz"),
+        schemas.Metadatum(key="some_numeric_attribute", value=0.4),
+        schemas.Metadatum(key="some_str_attribute", value="xyz"),
         schemas.Metadatum(key="height", value=10),
         schemas.Metadatum(key="width", value=10),
     ]
@@ -48,8 +48,8 @@ def metadata_3() -> list[schemas.Metadatum]:
 @pytest.fixture
 def metadata_4() -> list[schemas.Metadatum]:
     return [
-        schemas.Metadatum(key="numeric", value=0.6),
-        schemas.Metadatum(key="str", value="xyz"),
+        schemas.Metadatum(key="some_numeric_attribute", value=0.6),
+        schemas.Metadatum(key="some_str_attribute", value="xyz"),
         schemas.Metadatum(key="height", value=10),
         schemas.Metadatum(key="width", value=10),
     ]
@@ -598,7 +598,7 @@ def test_query_models(
         models=schemas.ModelFilter(
             metadata=[
                 schemas.MetadatumFilter(
-                    key="numeric",
+                    key="some_numeric_attribute",
                     comparison=schemas.NumericFilter(
                         value=0.5,
                         operator=">",
@@ -617,7 +617,7 @@ def test_query_models(
         models=schemas.ModelFilter(
             metadata=[
                 schemas.MetadatumFilter(
-                    key="numeric",
+                    key="some_numeric_attribute",
                     comparison=schemas.NumericFilter(
                         value=0.5,
                         operator="<",
@@ -641,14 +641,14 @@ def test_query_by_metadata(
         datums=schemas.DatumFilter(
             metadata=[
                 schemas.MetadatumFilter(
-                    key="numeric",
+                    key="some_numeric_attribute",
                     comparison=schemas.NumericFilter(
                         value=0.5,
                         operator="<",
                     ),
                 ),
                 schemas.MetadatumFilter(
-                    key="str",
+                    key="some_str_attribute",
                     comparison=schemas.StringFilter(
                         value="abc",
                         operator="==",
@@ -667,14 +667,14 @@ def test_query_by_metadata(
         datums=schemas.DatumFilter(
             metadata=[
                 schemas.MetadatumFilter(
-                    key="numeric",
+                    key="some_numeric_attribute",
                     comparison=schemas.NumericFilter(
                         value=0.5,
                         operator=">",
                     ),
                 ),
                 schemas.MetadatumFilter(
-                    key="str",
+                    key="some_str_attribute",
                     comparison=schemas.StringFilter(
                         value="abc",
                         operator="==",
@@ -693,14 +693,14 @@ def test_query_by_metadata(
         datums=schemas.DatumFilter(
             metadata=[
                 schemas.MetadatumFilter(
-                    key="numeric",
+                    key="some_numeric_attribute",
                     comparison=schemas.NumericFilter(
                         value=0.5,
                         operator="<",
                     ),
                 ),
                 schemas.MetadatumFilter(
-                    key="str",
+                    key="some_str_attribute",
                     comparison=schemas.StringFilter(
                         value="xyz",
                         operator="==",
@@ -719,14 +719,14 @@ def test_query_by_metadata(
         datums=schemas.DatumFilter(
             metadata=[
                 schemas.MetadatumFilter(
-                    key="numeric",
+                    key="some_numeric_attribute",
                     comparison=schemas.NumericFilter(
                         value=0.5,
                         operator=">",
                     ),
                 ),
                 schemas.MetadatumFilter(
-                    key="str",
+                    key="some_str_attribute",
                     comparison=schemas.StringFilter(
                         value="xyz",
                         operator="==",
