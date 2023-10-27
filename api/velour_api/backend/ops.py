@@ -333,7 +333,16 @@ class Query:
 
         Description
         ----------
-        There are 4 foundational graphs.
+        To construct complex queries it is necessary to describe the relationship between predictions and groundtruths.
+        By splitting the underlying table relationships into four foundatational graphs the complex relationships can be described by
+        sequental lists without branches (with the exception of model_graph). From these sequential graphs it is possible to construct
+        the minimum set of nodes required to generate a query. For queries that can be described by a single foundational graph,
+        the solution is to trim both ends of the sequence until you reach nodes in the query set. The relationships of the
+        remaining nodes can then be used to construct the query. Two foundational graphs are required for queries that include both
+        groundtruth and prediction/model constraints. The solver inserts `models.Datum` as the linking point between these two graphs
+        allowing the generation of a query and subquery.
+
+        The four foundational graphs:
         groundtruth_graph   = [models.Dataset, models.Datum, models.Annotation, models.GroundTruth, models.Label]
         model_graph         = [[models.Model, models.Annotation, models.Prediction, models.Label], [models.Model, models.Annotation, models.Datum, models.Dataset]]
         prediction_graph    = [models.Dataset, models.Datum, models.Annotation, models.Prediction, models.Label],
@@ -345,14 +354,11 @@ class Query:
         model_graph_unique          = {models.Prediction}
         joint_graph_unique          = {}
 
-        To construct complex queries it is necessary to describe the relationship between predictions and groundtruths.
-        By splitting the underlying table relationships into four foundatational graphs the complex relationships can be described by
-        sequental lists without branches (with the exception of model_graph). From these sequential graphs it is possible to construct
-        the minimum set of nodes required to generate a query. For queries that can be described by a single foundational graph,
-        the solution is to trim both ends of the sequence until you reach nodes in the query set. The relationships of the
-        remaining nodes can then be used to construct the query. Two foundational graphs are required for queries that include both
-        groundtruth and prediction/model constraints. The solver inserts `models.Datum` as the linking point between these two graphs
-        allowing the generation of a query and subquery.
+        Descriptions:
+        groundtruth_graph : All prediction or model related information removed.
+        model_graph       : All groundtruth related information removed.
+        prediction_graph  : Subgraph of model_graph. All groundtruth and model information removed.
+        joint_graph       : Predictions and groundtruths combined under a full outer join.
         """
 
         groundtruth_graph_unique = {models.GroundTruth}
