@@ -24,13 +24,17 @@ from velour_api.schemas.metadata import Metadatum
 
 def _format_name(name: str):
     allowed_special = ["-", "_"]
-    pattern = re.compile(f"[^a-zA-Z0-9{''.join(allowed_special)}]")
-    return re.sub(pattern, "", name)
+    pattern = re.compile(f"^[a-zA-Z0-9{''.join(allowed_special)}]+$")
+    if not pattern.match(name):
+        raise ValueError("Name contains illegal characters.")
+    return name
 
 
 def _format_uid(uid: str):
     allowed_special = ["-", "_", "/", "."]
-    pattern = re.compile(f"[^a-zA-Z0-9{''.join(allowed_special)}]")
+    pattern = re.compile(f"^[a-zA-Z0-9{''.join(allowed_special)}]+$")
+    if not pattern.match(uid):
+        raise ValueError("UID contains illegal characters.")
     return re.sub(pattern, "", uid)
 
 
