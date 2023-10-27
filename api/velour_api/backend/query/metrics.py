@@ -48,7 +48,7 @@ def _get_bulk_metrics_from_evaluation_settings(
     db: Session,
     evaluation_settings: list[models.Evaluation],
 ) -> list[schemas.BulkEvaluations]:
-    """Groups a list of Evaluations by model and dataset, returning a list of {dataset, model, metrics} entries"""
+    """Return a list of unnested Evaluations from a list of evaluation settings"""
     output = []
 
     for ms in evaluation_settings:
