@@ -178,7 +178,9 @@ def test_core__format_name():
     assert _format_name("dataset1") == "dataset1"
     assert _format_name("dataset-1") == "dataset-1"
     assert _format_name("dataset_1") == "dataset_1"
-    assert _format_name("data!@#$%^&*()'set_1") == "dataset_1"
+    with pytest.raises(ValueError) as e:
+        _format_name("data!@#$%^&*()'set_1")
+    assert "illegal characters" in str(e)
 
 
 def test_core__format_uid():
@@ -187,7 +189,9 @@ def test_core__format_uid():
     assert _format_uid("uid_1") == "uid_1"
     assert _format_uid("uid1.png") == "uid1.png"
     assert _format_uid("folder/uid1.png") == "folder/uid1.png"
-    assert _format_uid("uid!@#$%^&*()'_1") == "uid_1"
+    with pytest.raises(ValueError) as e:
+        _format_uid("uid!@#$%^&*()'_1")
+    assert "illegal characters" in str(e)
 
 
 def test_metadata_Metadatum():
