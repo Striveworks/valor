@@ -108,14 +108,14 @@ class Query:
                 break
         return graph[lhi:rhi]
 
-    def _g1_solver(
+    def _solve_groundtruth_graph(
         self,
         args: list[DeclarativeMeta | InstrumentedAttribute],
         selected: list[DeclarativeMeta],
         filtered: list[DeclarativeMeta],
     ):
         """
-        g1 = [models.Dataset, models.Datum, models.Annotation, models.GroundTruth, models.Label]
+        groundtruth_graph = [models.Dataset, models.Datum, models.Annotation, models.GroundTruth, models.Label]
         """
         # Graph defintion
         graph = [
@@ -151,14 +151,14 @@ class Query:
 
         return query
 
-    def _g2_solver(
+    def _solve_model_graph(
         self,
         args: list[DeclarativeMeta | InstrumentedAttribute],
         selected: list[DeclarativeMeta],
         filtered: list[DeclarativeMeta],
     ):
         """
-        g2 = [[models.Model, models.Annotation, models.Prediction, models.Label], [models.Model, models.Annotation, models.Datum, models.Dataset]]
+        model_graph = [[models.Model, models.Annotation, models.Prediction, models.Label], [models.Model, models.Annotation, models.Datum, models.Dataset]]
         """
         subgraph1 = [
             models.Model,
@@ -200,14 +200,14 @@ class Query:
 
         return query
 
-    def _g3_solver(
+    def _solve_prediction_graph(
         self,
         args: list[DeclarativeMeta | InstrumentedAttribute],
         selected: list[DeclarativeMeta],
         filtered: list[DeclarativeMeta],
     ):
         """
-        g3 = [models.Dataset, models.Datum, models.Annotation, models.Prediction, models.Label]
+        prediction_graph = [models.Dataset, models.Datum, models.Annotation, models.Prediction, models.Label]
         """
         # Graph defintion
         graph = [
@@ -243,14 +243,14 @@ class Query:
 
         return query
 
-    def _g4_solver(
+    def _solve_joint_graph(
         self,
         args: list[DeclarativeMeta | InstrumentedAttribute],
         selected: list[DeclarativeMeta],
         filtered: list[DeclarativeMeta],
     ):
         """
-        g4 = [[models.Dataset, models.Datum, models.Annotation, models.Label]]
+        joint_graph = [[models.Dataset, models.Datum, models.Annotation, models.Label]]
         """
         graph = [
             models.Dataset,
@@ -300,7 +300,7 @@ class Query:
 
         return query
 
-    def _graph_solver(
+    def _solve_nested_graphs(
         self,
         query_solver: callable,
         subquery_solver: callable,
@@ -327,22 +327,41 @@ class Query:
         )
         return query, subquery
 
-    def _graph_selector(self, pivot_table: DeclarativeMeta | None = None):
+    def _select_graph(self, pivot_table: DeclarativeMeta | None = None):
         """
+        Selects best fitting graph to run query generation and returns tuple(query, subquery | None).
+
+        Description
+        ----------
         There are 4 foundational graphs.
-        g1 = [models.Dataset, models.Datum, models.Annotation, models.GroundTruth, models.Label]
-        g2 = [[models.Model, models.Annotation, models.Prediction, models.Label], [models.Model, models.Annotation, models.Datum, models.Dataset]]
-        g3 = [models.Dataset, models.Datum, models.Annotation, models.Prediction, models.Label],
-        g4 = [models.Dataset, models.Datum, models.Annotation, models.Label]
+        groundtruth_graph   = [models.Dataset, models.Datum, models.Annotation, models.GroundTruth, models.Label]
+        model_graph         = [[models.Model, models.Annotation, models.Prediction, models.Label], [models.Model, models.Annotation, models.Datum, models.Dataset]]
+        prediction_graph    = [models.Dataset, models.Datum, models.Annotation, models.Prediction, models.Label],
+        joint_graph         = [models.Dataset, models.Datum, models.Annotation, models.Label]
 
         Removing common nodes, these are reduced to:
-        g1_unique = [models.Groundtruth]
-        g3_unique = [models.Prediction, models.Model]
-        g2_unique = [models.Prediction]
-        g4_unique = []
+        groundtruth_graph_unique    = {models.Groundtruth}
+        prediction_graph_unique     = {models.Prediction, models.Model}
+        model_graph_unique          = {models.Prediction}
+        joint_graph_unique          = {}
+
+        To construct complex queries it is necessary to describe the relationship between predictions and groundtruths.
+        By splitting the underlying table relationships into four foundatational graphs the complex relationships can be described by
+        sequental lists without branches (with the exception of model_graph). From these sequential graphs it is possible to construct
+        the minimum set of nodes required to generate a query. For queries that can be described by a single foundational graph,
+        the solution is to trim both ends of the sequence until you reach nodes in the query set. The relationships of the
+        remaining nodes can then be used to construct the query. Two foundational graphs are required for queries that include both
+        groundtruth and prediction/model constraints. The solver inserts `models.Datum` as the linking point between these two graphs
+        allowing the generation of a query and subquery.
         """
 
-        # edge case - only one table required
+        groundtruth_graph_unique = {models.GroundTruth}
+        model_graph_unique = {
+            models.Model
+        }  # exclude prediction as it is include in the graph definition.
+        prediction_graph_unique = {models.Prediction}
+
+        # edge case - only one table specified in args and filters
         if self._selected == self._filtered and len(self._selected) == 1:
             query = select(*self._args)
             expression = self._expression(self._selected)
@@ -350,14 +369,10 @@ class Query:
                 query = query.where(expression)
             return query, None
 
-        g1_unique = {models.GroundTruth}
-        g2_unique = {models.Model}
-        g3_unique = {models.Prediction}
-
-        # edge case check
+        # edge case - catch intersection that resolves into an empty return.
         if self._selected.intersection(
-            g1_unique
-        ) and self._selected.intersection(g2_unique):
+            groundtruth_graph_unique
+        ) and self._selected.intersection(model_graph_unique):
             raise RuntimeError(
                 f"Cannot evaluate graph as invalid connection between queried tables. `{self._selected}`"
             )
@@ -375,38 +390,38 @@ class Query:
         subquery_solver = None
         unique_set = None
 
-        # query - graph g1
+        # query - graph groundtruth_graph
         if (
-            g1_unique.issubset(selector_set)
-            and not g2_unique.issubset(self._selected)
-            and not g3_unique.issubset(self._selected)
+            groundtruth_graph_unique.issubset(selector_set)
+            and not model_graph_unique.issubset(self._selected)
+            and not prediction_graph_unique.issubset(self._selected)
         ):
-            query_solver = self._g1_solver
-            if g2_unique.issubset(joint_set):
-                subquery_solver = self._g2_solver
-                unique_set = g2_unique
-            elif g3_unique.issubset(joint_set):
-                subquery_solver = self._g3_solver
-                unique_set = g3_unique
-        # query - graph g2
-        elif g2_unique.issubset(selector_set):
-            query_solver = self._g2_solver
-            if g1_unique.issubset(joint_set):
-                subquery_solver = self._g1_solver
-                unique_set = g1_unique
-        # query - graph g3
-        elif g3_unique.issubset(selector_set):
-            query_solver = self._g3_solver
-            if g1_unique.issubset(joint_set):
-                subquery_solver = self._g1_solver
-                unique_set = g1_unique
-        # query - graph g4
+            query_solver = self._solve_groundtruth_graph
+            if model_graph_unique.issubset(joint_set):
+                subquery_solver = self._solve_model_graph
+                unique_set = model_graph_unique
+            elif prediction_graph_unique.issubset(joint_set):
+                subquery_solver = self._solve_prediction_graph
+                unique_set = prediction_graph_unique
+        # query - graph model_graph
+        elif model_graph_unique.issubset(selector_set):
+            query_solver = self._solve_model_graph
+            if groundtruth_graph_unique.issubset(joint_set):
+                subquery_solver = self._solve_groundtruth_graph
+                unique_set = groundtruth_graph_unique
+        # query - graph prediction_graph
+        elif prediction_graph_unique.issubset(selector_set):
+            query_solver = self._solve_prediction_graph
+            if groundtruth_graph_unique.issubset(joint_set):
+                subquery_solver = self._solve_groundtruth_graph
+                unique_set = groundtruth_graph_unique
+        # query - graph joint_graph
         else:
-            query_solver = self._g4_solver
+            query_solver = self._solve_joint_graph
 
         # generate statement
         if subquery_solver is not None:
-            return self._graph_solver(
+            return self._solve_nested_graphs(
                 query_solver=query_solver,
                 subquery_solver=subquery_solver,
                 unique_set=unique_set,
@@ -449,7 +464,7 @@ class Query:
         """
         Generates a sqlalchemy subquery. Graph is chosen automatically as best fit.
         """
-        query, subquery = self._graph_selector(_pivot)
+        query, subquery = self._select_graph(_pivot)
         if subquery is not None:
             query = query.where(models.Datum.id.in_(subquery))
         return query.subquery("generated_query")
