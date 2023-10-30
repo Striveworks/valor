@@ -129,12 +129,12 @@ class PredictionFilter(BaseModel):
 
 
 class Filter(BaseModel):
-    datasets: DatasetFilter | None = None
-    models: ModelFilter | None = None
-    datums: DatumFilter | None = None
-    annotations: AnnotationFilter | None = None
-    predictions: PredictionFilter | None = None
-    labels: LabelFilter | None = None
+    datasets: DatasetFilter = Field(default=DatasetFilter())
+    models: ModelFilter = Field(default=ModelFilter())
+    datums: DatumFilter = Field(default=DatumFilter())
+    annotations: AnnotationFilter = Field(default=AnnotationFilter())
+    predictions: PredictionFilter = Field(default=PredictionFilter())
+    labels: LabelFilter = Field(default=LabelFilter())
 
     # pydantic settings
     model_config = ConfigDict(extra="forbid")

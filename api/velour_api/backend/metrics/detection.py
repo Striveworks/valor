@@ -508,38 +508,50 @@ def compute_mean_detection_metrics_from_aps(
 
 def create_detection_evaluation(
     db: Session,
-    settings: schemas.EvaluationSettings,
+    job_request: schemas.EvaluationJob,
 ) -> int:
     """This will always run in foreground.
 
     Returns
         Evaluations settings id.
     """
-    dataset = core.get_dataset(db, settings.dataset)
-    model = core.get_model(db, settings.model)
+    dataset = core.get_dataset(db, job_request.dataset)
+    model = core.get_model(db, job_request.model)
 
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
 
     # default parameters
-    if not settings.parameters:
-        settings.parameters = schemas.DetectionParameters()
+    if not job_request.settings.parameters:
+        job_request.settings.parameters = schemas.DetectionParameters()
 
     # validate parameters
-    if not isinstance(settings.parameters, schemas.DetectionParameters):
+    if not isinstance(
+        job_request.settings.parameters, schemas.DetectionParameters
+    ):
         raise TypeError(
             "expected evaluation settings to have parameters of type `DetectionParameters` for task type `DETECTION`"
         )
 
     # if annotation type not specified, define as greatest common type.
-    if not settings.parameters.annotation_type:
-        settings.parameters.annotation_type = (
-            gt_type if gt_type < pd_type else pd_type
+    gct = gt_type if gt_type < pd_type else pd_type
+    if job_request.settings.filters.annotations.annotation_types:
+        sorted_types = sorted(
+            job_request.settings.filters.annotations.annotation_types,
+            key=lambda x: x,
+            reverse=True,
         )
-    else:
-        settings.parameters.annotation_type = (
-            settings.parameters.annotation_type
-        )
+        for annotation_type in sorted_types:
+            # only return annotation type that matches greatest-common-type or is convertible from it.
+            if annotation_type <= gct:
+                gct = annotation_type
+                break
+
+    # update settings
+    job_request.settings.filters.annotations.annotation_types = [gct]
+    job_request.settings.filters.annotations.allow_conversion = (
+        gt_type == pd_type
+    ) == gct  # This overrides user selection.
 
     es = get_or_create_row(
         db,
@@ -548,7 +560,7 @@ def create_detection_evaluation(
             "dataset_id": dataset.id,
             "model_id": model.id,
             "type": TaskType.DETECTION,
-            "parameters": settings.parameters.model_dump(),
+            "settings": job_request.parameters.model_dump(),
         },
     )
 
@@ -557,20 +569,20 @@ def create_detection_evaluation(
 
 def create_detection_metrics(
     db: Session,
-    settings: schemas.EvaluationSettings,
+    job_request: schemas.EvaluationJob,
     evaluation_id: int,
 ):
     """
     Intended to run as background
     """
 
-    dataset = core.get_dataset(db, settings.dataset)
-    model = core.get_model(db, settings.model)
+    dataset = core.get_dataset(db, job_request.dataset)
+    model = core.get_model(db, job_request.model)
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
 
-    if settings.parameters.annotation_type == AnnotationType.NONE:
-        settings.parameters.annotation_type = (
+    if job_request.parameters.annotation_type == AnnotationType.NONE:
+        job_request.parameters.annotation_type = (
             gt_type if gt_type < pd_type else pd_type
         )
 
@@ -578,14 +590,14 @@ def create_detection_metrics(
         db=db,
         dataset=dataset,
         model=model,
-        iou_thresholds=settings.parameters.iou_thresholds_to_compute,
-        ious_to_keep=settings.parameters.iou_thresholds_to_keep,
-        label_key=settings.parameters.label_key,
-        target_type=settings.parameters.annotation_type,
+        iou_thresholds=job_request.parameters.iou_thresholds_to_compute,
+        ious_to_keep=job_request.parameters.iou_thresholds_to_keep,
+        label_key=job_request.parameters.label_key,
+        target_type=job_request.parameters.annotation_type,
         gt_type=gt_type,
         pd_type=pd_type,
-        min_area=settings.parameters.min_area,
-        max_area=settings.parameters.max_area,
+        min_area=job_request.parameters.min_area,
+        max_area=job_request.parameters.max_area,
     )
 
     metric_mappings = create_metric_mappings(

@@ -452,7 +452,7 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
     tags=["Evaluations"],
 )
 def create_detection_metrics(
-    settings: schemas.EvaluationSettings,
+    settings: schemas.EvaluationJob,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> schemas.CreateAPMetricsResponse:
@@ -486,7 +486,7 @@ def create_detection_metrics(
     tags=["Evaluations"],
 )
 def create_clf_metrics(
-    settings: schemas.EvaluationSettings,
+    settings: schemas.EvaluationJob,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> schemas.CreateClfMetricsResponse:
@@ -520,7 +520,7 @@ def create_clf_metrics(
     tags=["Evaluations"],
 )
 def create_semantic_segmentation_metrics(
-    settings: schemas.EvaluationSettings,
+    settings: schemas.EvaluationJob,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> schemas.CreateSemanticSegmentationMetricsResponse:
@@ -632,7 +632,7 @@ def get_evaluation_status(job_id: int) -> enums.JobStatus:
 def get_evaluation_settings(
     job_id: int,
     db: Session = Depends(get_db),
-) -> schemas.EvaluationSettings:
+) -> schemas.EvaluationJob:
     try:
         return crud.get_evaluation_settings_from_id(
             db=db, evaluation_id=job_id
