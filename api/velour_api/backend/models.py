@@ -173,7 +173,6 @@ class Evaluation(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
-    type: Mapped[str] = mapped_column(nullable=False)
     settings = mapped_column(JSONB, nullable=True)
     geo = mapped_column(Geography(), nullable=True)
 

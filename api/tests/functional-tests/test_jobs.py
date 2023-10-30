@@ -479,7 +479,7 @@ def test_stateflow_clf_evaluation(
     crud.finalize(db=db, model_name=model_name, dataset_name=dset_name)
 
     # create clf request
-    settings = schemas.EvaluationSettings(
+    settings = schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
     )

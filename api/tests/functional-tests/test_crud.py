@@ -1025,7 +1025,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
     def method_to_test(
         label_key: str, min_area: float = None, max_area: float = None
     ):
-        settings = schemas.EvaluationSettings(
+        settings = schemas.EvaluationJob(
             model="test_model",
             dataset="test_dataset",
             parameters=schemas.DetectionParameters(
@@ -1160,7 +1160,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         db=db, model_name=model_name
     )
     assert len(model_evals) == 2
-    assert model_evals[0] == schemas.EvaluationSettings(
+    assert model_evals[0] == schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
         parameters=schemas.DetectionParameters(
@@ -1171,7 +1171,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         ),
         id=1,
     )
-    assert model_evals[1] == schemas.EvaluationSettings(
+    assert model_evals[1] == schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
         parameters=schemas.DetectionParameters(
@@ -1206,7 +1206,7 @@ def test_create_clf_metrics(
         crud.create_prediction(db=db, prediction=pd)
     crud.finalize(db=db, model_name=model_name, dataset_name=dset_name)
 
-    settings = schemas.EvaluationSettings(
+    job_request = schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
     )
@@ -1214,7 +1214,7 @@ def test_create_clf_metrics(
     # create clf evaluation (returns Clf Response)
     resp = crud.create_clf_evaluation(
         db=db,
-        settings=settings,
+        job_request=job_request,
     )
     missing_pred_keys = resp.missing_pred_keys
     ignored_pred_keys = resp.ignored_pred_keys
@@ -1226,7 +1226,7 @@ def test_create_clf_metrics(
     # compute clf metrics
     crud.compute_clf_metrics(
         db=db,
-        settings=settings,
+        job_request=job_request,
         job_id=evaluation_id,
     )
 
@@ -1305,7 +1305,7 @@ def test_create_clf_metrics(
     # attempting to run again should just return the existing job id
     crud.compute_clf_metrics(
         db=db,
-        settings=settings,
+        job_request=job_request,
         job_id=evaluation_id,
     )
     assert (

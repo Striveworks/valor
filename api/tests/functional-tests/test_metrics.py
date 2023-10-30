@@ -139,12 +139,21 @@ def test_compute_detection_metrics(
         db=db,
         dataset=get_dataset(db, "test_dataset"),
         model=get_model(db, "test_model"),
-        target_type=enums.AnnotationType.BOX,
         gt_type=enums.AnnotationType.BOX,
         pd_type=enums.AnnotationType.BOX,
-        label_key="class",
-        iou_thresholds=iou_thresholds,
-        ious_to_keep=[0.5, 0.75],
+        settings=schemas.EvaluationSettings(
+            task_type=enums.TaskType.DETECTION,
+            parameters=schemas.DetectionParameters(
+                iou_thresholds_to_compute=iou_thresholds,
+                iou_thresholds_to_keep=[0.5, 0.75],
+            ),
+            filters=schemas.Filter(
+                annotations=schemas.AnnotationFilter(
+                    annotation_types=[enums.AnnotationType.BOX],
+                ),
+                labels=schemas.LabelFilter(keys=["class"]),
+            ),
+        ),
     )
 
     metrics = [m.model_dump(exclude_none=True) for m in metrics]

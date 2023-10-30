@@ -466,26 +466,31 @@ class Query:
 
     """ Public methods """
 
-    def any(self, *, _pivot: DeclarativeMeta | None = None):
+    def any(
+        self,
+        name: str = "generated_subquery",
+        *,
+        _pivot: DeclarativeMeta | None = None,
+    ):
         """
         Generates a sqlalchemy subquery. Graph is chosen automatically as best fit.
         """
         query, subquery = self._select_graph(_pivot)
         if subquery is not None:
             query = query.where(models.Datum.id.in_(subquery))
-        return query.subquery("generated_query")
+        return query.subquery(name)
 
-    def groundtruths(self):
+    def groundtruths(self, name: str = "generated_subquery"):
         """
         Generates a sqlalchemy subquery using a groundtruths-focused graph.
         """
-        return self.any(_pivot=models.GroundTruth)
+        return self.any(name, _pivot=models.GroundTruth)
 
-    def predictions(self):
+    def predictions(self, name: str = "generated_subquery"):
         """
         Generates a sqlalchemy subquery using a predictions-focused graph.
         """
-        return self.any(_pivot=models.Prediction)
+        return self.any(name, _pivot=models.Prediction)
 
     def filter(self, filters: schemas.Filter):
         """Parses `schemas.Filter`"""
@@ -680,6 +685,15 @@ class Query:
         self,
         filters: schemas.LabelFilter,
     ):
+        if filters.ids:
+            self._add_expressions(
+                models.Label,
+                [
+                    models.Label.id == id
+                    for id in filters.ids
+                    if isinstance(id, int)
+                ],
+            )
         if filters.labels:
             self._add_expressions(
                 models.Label,

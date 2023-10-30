@@ -118,6 +118,7 @@ class AnnotationFilter(BaseModel):
 
 
 class LabelFilter(BaseModel):
+    ids: list[int] = Field(default_factory=list)
     labels: list[schemas.Label] = Field(default_factory=list)
     keys: list[str] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")

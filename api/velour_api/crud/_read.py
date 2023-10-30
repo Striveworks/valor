@@ -266,8 +266,8 @@ def get_confusion_matrices_from_evaluation_id(
 
 def get_evaluation_settings_from_id(
     *, db: Session, evaluation_id: int
-) -> schemas.EvaluationSettings:
-    return backend.get_evaluation_settings_from_id(db, evaluation_id)
+) -> schemas.EvaluationJob:
+    return backend.get_evaluation_job_from_id(db, evaluation_id)
 
 
 def get_model_metrics(
@@ -278,5 +278,5 @@ def get_model_metrics(
 
 def get_model_evaluation_settings(
     *, db: Session, model_name: str
-) -> list[schemas.EvaluationSettings]:
-    return backend.get_model_evaluation_settings(db, model_name)
+) -> list[schemas.EvaluationJob]:
+    return backend.get_model_evaluation_jobs(db, model_name)
