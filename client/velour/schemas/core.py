@@ -81,13 +81,6 @@ class Model:
 
 
 @dataclass
-class Info:
-    type: DataType = None
-    annotation_types: List[AnnotationType] = field(default_factory=list)
-    associated_datasets: List[str] = field(default_factory=list)
-
-
-@dataclass
 class Datum:
     uid: str
     metadata: List[Metadatum] = field(default_factory=list)

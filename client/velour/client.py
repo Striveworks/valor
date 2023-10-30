@@ -252,7 +252,7 @@ class Evaluation:
         settings = self._client._requests_get_rel_host(
             f"evaluations/{self._id}/settings"
         ).json()
-        self._settings = schemas.EvaluationSettings(**settings)
+        self._settings = schemas.EvaluationJob(**settings)
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -266,7 +266,7 @@ class Evaluation:
     @property
     def settings(
         self,
-    ) -> schemas.EvaluationSettings:
+    ) -> schemas.EvaluationJob:
         return self._settings
 
     @property
@@ -656,7 +656,7 @@ class Model:
             and get the metrics of it upon completion
         """
 
-        evaluation = schemas.EvaluationSettings(
+        evaluation = schemas.EvaluationJob(
             model=self.name,
             dataset=dataset.name,
         )
@@ -686,7 +686,7 @@ class Model:
     def evaluate_segmentation(
         self, dataset: Dataset, timeout: Optional[int] = None
     ) -> Evaluation:
-        evaluation = schemas.EvaluationSettings(
+        evaluation = schemas.EvaluationJob(
             model=self.name,
             dataset=dataset.name,
         )
@@ -736,18 +736,46 @@ class Model:
             iou_thresholds_to_keep = [0.5, 0.75]
 
         parameters = schemas.DetectionParameters(
-            annotation_type=annotation_type,
-            label_key=label_key,
-            min_area=min_area,
-            max_area=max_area,
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_keep=iou_thresholds_to_keep,
         )
 
-        evaluation = schemas.EvaluationSettings(
+        geometric_filters = []
+        if min_area:
+            geometric_filters.append(
+                schemas.GeometricFilter(
+                    type=annotation_type,
+                    area=schemas.NumericFilter(
+                        value=min_area,
+                        operator=">=",
+                    ),
+                )
+            )
+        if max_area:
+            geometric_filters.append(
+                schemas.GeometricFilter(
+                    type=annotation_type,
+                    area=schemas.NumericFilter(
+                        value=max_area,
+                        operator="<=",
+                    ),
+                )
+            )
+        filters = schemas.Filter(
+            annotations=schemas.AnnotationFilter(
+                annotation_types=[annotation_type],
+                geometry=geometric_filters,
+            ),
+            labels=schemas.LabelFilter(keys=[label_key]),
+        )
+
+        evaluation = schemas.EvaluationJob(
             model=self.name,
             dataset=dataset.name,
-            parameters=parameters,
+            settings=schemas.EvaluationSettings(
+                parameters=parameters,
+                filters=filters,
+            ),
         )
 
         resp = self.client._requests_post_rel_host(

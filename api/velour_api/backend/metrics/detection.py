@@ -100,9 +100,9 @@ def compute_detection_metrics(
     db: Session,
     dataset: models.Dataset,
     model: models.Model,
+    evaluation: models.Evaluation,
     gt_type: enums.AnnotationType,
     pd_type: enums.AnnotationType,
-    settings: schemas.EvaluationSettings,
 ) -> list[
     schemas.APMetric
     | schemas.APMetricAveragedOverIOUs
@@ -110,6 +110,9 @@ def compute_detection_metrics(
     | schemas.mAPMetricAveragedOverIOUs
 ]:
     """Computes average precision metrics."""
+
+    # Populate settings
+    settings = schemas.EvaluationSettings(**evaluation.settings)
 
     # Create groundtruth filter
     gt_filter = settings.filters.model_copy()
@@ -125,6 +128,8 @@ def compute_detection_metrics(
     target_type = max(
         settings.filters.annotations.annotation_types, key=lambda x: x
     )
+    print()
+    print(target_type)
 
     # Convert geometries to target type (if required)
     core.convert_geometry(
@@ -462,6 +467,9 @@ def create_detection_metrics(
 
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)
+    evaluation = db.scalar(
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
+    )
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
 
@@ -469,9 +477,9 @@ def create_detection_metrics(
         db=db,
         dataset=dataset,
         model=model,
+        evaluation=evaluation,
         gt_type=gt_type,
         pd_type=pd_type,
-        settings=job_request.settings,
     )
 
     metric_mappings = create_metric_mappings(
