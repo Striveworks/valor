@@ -53,11 +53,7 @@ def _get_bulk_metrics_from_evaluation_settings(
 
     for ms in evaluation_settings:
         job_id = ms.id
-        status = (
-            jobs.get_stateflow()
-            .get_job_status(job_id=ms.id)
-            .name.replace('"', "")
-        )
+        status = jobs.get_stateflow().get_job_status(job_id=ms.id).value
         confusion_matrices = [
             schemas.ConfusionMatrix(
                 label_key=matrix.label_key,
@@ -70,9 +66,9 @@ def _get_bulk_metrics_from_evaluation_settings(
         ]
 
         # shared across evaluation settings, so just pick the first one
-        dataset = ms.metrics[0].settings.dataset.name
-        model = ms.metrics[0].settings.model.name
-        filter_ = json.dumps(ms.metrics[0].settings.parameters)
+        dataset = ms.dataset.name
+        model = ms.model.name
+        filter_ = json.dumps(ms.parameters)
 
         metrics = [
             _db_metric_to_pydantic_metric(db, metric) for metric in ms.metrics
