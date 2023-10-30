@@ -665,23 +665,18 @@ class Model:
             "evaluations/clf-metrics", json=asdict(evaluation)
         ).json()
 
-        if timeout:
-            for _ in range(timeout):
-                if self.get_evaluation_status(resp["job_id"]) == "done":
-                    break
-                else:
-                    time.sleep(1)
-            else:
-                raise TimeoutError(
-                    "Evaluation didn't complete within the allotted time interval"
-                )
-
-        return Evaluation(
+        evaluation_job = Evaluation(
             client=self.client,
             dataset=dataset.name,
             model=self.name,
             **resp,
         )
+
+        # blocking behavior
+        if timeout:
+            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
+
+        return evaluation_job
 
     def evaluate_segmentation(
         self, dataset: Dataset, timeout: Optional[int] = None
@@ -696,23 +691,18 @@ class Model:
             json=asdict(evaluation),
         ).json()
 
-        if timeout:
-            for _ in range(timeout):
-                if self.get_evaluation_status(resp["job_id"]) == "done":
-                    break
-                else:
-                    time.sleep(1)
-            else:
-                raise TimeoutError(
-                    "Evaluation didn't complete within the allotted time interval"
-                )
-
-        return Evaluation(
+        evaluation_job = Evaluation(
             client=self.client,
             dataset=dataset.name,
             model=self.name,
             **resp,
         )
+
+        # blocking behavior
+        if timeout:
+            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
+
+        return evaluation_job
 
     def evaluate_detection(
         self,
@@ -782,30 +772,24 @@ class Model:
             "evaluations/ap-metrics", json=asdict(evaluation)
         ).json()
 
-        # use for deterministic testing
-        if timeout:
-            for _ in range(timeout):
-                if self.get_evaluation_status(resp["job_id"]) == "done":
-                    break
-                else:
-                    time.sleep(1)
-            else:
-                raise TimeoutError(
-                    "Evaluation didn't complete within the allotted time interval"
-                )
-
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
         # list of label dicts. convert label dicts to Label objects
 
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
             resp[k] = [schemas.Label(**la) for la in resp[k]]
 
-        return Evaluation(
+        evaluation_job = Evaluation(
             client=self.client,
             dataset=dataset.name,
             model=self.name,
             **resp,
         )
+
+        # blocking behavior
+        if timeout:
+            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
+
+        return evaluation_job
 
     def get_evaluations(
         self,
