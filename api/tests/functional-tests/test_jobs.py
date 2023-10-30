@@ -364,14 +364,20 @@ def test_stateflow_model(db: Session):
     with pytest.raises(exceptions.ModelNotFinalizedError) as e:
         crud.create_detection_evaluation(
             db=db,
-            settings=schemas.EvaluationSettings(
+            job_request=schemas.EvaluationJob(
                 model=model_name,
                 dataset=dset_name,
-                parameters=schemas.DetectionParameters(
-                    annotation_type=enums.AnnotationType.BOX,
-                    label_key="class",
-                    iou_thresholds_to_compute=[0.2, 0.6],
-                    iou_thresholds_to_keep=[0.2],
+                settings=schemas.EvaluationSettings(
+                    parameters=schemas.DetectionParameters(
+                        iou_thresholds_to_compute=[0.2, 0.6],
+                        iou_thresholds_to_keep=[0.2],
+                    ),
+                    filters=schemas.Filter(
+                        annotations=schemas.AnnotationFilter(
+                            annotation_types=[enums.AnnotationType.BOX]
+                        ),
+                        labels=schemas.LabelFilter(keys=["class"]),
+                    ),
                 ),
             ),
         )
@@ -398,14 +404,20 @@ def test_stateflow_model(db: Session):
 def test_stateflow_detection_evaluation(
     db: Session, groundtruths, predictions
 ):
-    settings = schemas.EvaluationSettings(
+    job_request = schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
-        parameters=schemas.DetectionParameters(
-            annotation_type=enums.AnnotationType.BOX,
-            label_key="class",
-            iou_thresholds_to_compute=[0.2, 0.6],
-            iou_thresholds_to_keep=[0.2],
+        settings=schemas.EvaluationSettings(
+            parameters=schemas.DetectionParameters(
+                iou_thresholds_to_compute=[0.2, 0.6],
+                iou_thresholds_to_keep=[0.2],
+            ),
+            filters=schemas.Filter(
+                annotations=schemas.AnnotationFilter(
+                    annotation_types=[enums.AnnotationType.BOX],
+                ),
+                labels=schemas.LabelFilter(keys=["class"]),
+            ),
         ),
     )
 
@@ -417,7 +429,7 @@ def test_stateflow_detection_evaluation(
     )
 
     # create evaluation (return AP Response)
-    resp = crud.create_detection_evaluation(db=db, settings=settings)
+    resp = crud.create_detection_evaluation(db=db, job_request=job_request)
 
     # check in evalutation
     assert (
@@ -444,7 +456,7 @@ def test_stateflow_detection_evaluation(
     # run computation (returns nothing on completion)
     crud.compute_detection_metrics(
         db=db,
-        settings=settings,
+        job_request=job_request,
         job_id=resp.job_id,
     )
 
@@ -479,7 +491,7 @@ def test_stateflow_clf_evaluation(
     crud.finalize(db=db, model_name=model_name, dataset_name=dset_name)
 
     # create clf request
-    settings = schemas.EvaluationJob(
+    job_request = schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
     )
@@ -496,7 +508,7 @@ def test_stateflow_clf_evaluation(
     # create clf evaluation (returns Clf Response)
     resp = crud.create_clf_evaluation(
         db=db,
-        settings=settings,
+        job_request=job_request,
     )
 
     # check EVALUATE
@@ -524,7 +536,7 @@ def test_stateflow_clf_evaluation(
     # compute clf metrics
     crud.compute_clf_metrics(
         db=db,
-        settings=settings,
+        job_request=job_request,
         job_id=resp.job_id,
     )
 

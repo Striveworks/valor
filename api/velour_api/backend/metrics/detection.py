@@ -435,8 +435,8 @@ def create_detection_evaluation(
     job_request.settings.task_type = enums.TaskType.DETECTION
     job_request.settings.filters.annotations.annotation_types = [gct]
     job_request.settings.filters.annotations.allow_conversion = (
-        gt_type == pd_type
-    ) == gct  # This overrides user selection.
+        gt_type == pd_type and gt_type == gct
+    )  # This overrides user selection.
 
     es = get_or_create_row(
         db,

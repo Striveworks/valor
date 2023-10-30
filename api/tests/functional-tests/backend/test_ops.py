@@ -840,13 +840,15 @@ def test_query_by_annotation_geometry(
 ):
     f = schemas.Filter(
         annotations=schemas.AnnotationFilter(
-            geometry=schemas.GeometricFilter(
-                type=enums.AnnotationType.BOX,
-                area=schemas.NumericFilter(
-                    value=75,
-                    operator=">",
-                ),
-            )
+            geometry=[
+                schemas.GeometricFilter(
+                    type=enums.AnnotationType.BOX,
+                    area=schemas.NumericFilter(
+                        value=75,
+                        operator=">",
+                    ),
+                )
+            ]
         )
     )
 

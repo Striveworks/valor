@@ -1025,26 +1025,53 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
     def method_to_test(
         label_key: str, min_area: float = None, max_area: float = None
     ):
-        settings = schemas.EvaluationJob(
+        geometric_filters = []
+        if min_area:
+            geometric_filters.append(
+                schemas.GeometricFilter(
+                    type=enums.AnnotationType.BOX,
+                    area=schemas.NumericFilter(
+                        value=min_area,
+                        operator=">=",
+                    ),
+                )
+            )
+        if max_area:
+            geometric_filters.append(
+                schemas.GeometricFilter(
+                    type=enums.AnnotationType.BOX,
+                    area=schemas.NumericFilter(
+                        value=max_area,
+                        operator="<=",
+                    ),
+                )
+            )
+
+        job_request = schemas.EvaluationJob(
             model="test_model",
             dataset="test_dataset",
-            parameters=schemas.DetectionParameters(
-                min_area=min_area,
-                max_area=max_area,
-                annotation_type=enums.AnnotationType.BOX,
-                label_key=label_key,
-                iou_thresholds_to_compute=[0.2, 0.6],
-                iou_thresholds_to_keep=[0.2],
+            settings=schemas.EvaluationSettings(
+                parameters=schemas.DetectionParameters(
+                    iou_thresholds_to_compute=[0.2, 0.6],
+                    iou_thresholds_to_keep=[0.2],
+                ),
+                filters=schemas.Filter(
+                    annotations=schemas.AnnotationFilter(
+                        annotation_types=[enums.AnnotationType.BOX],
+                        geometry=geometric_filters,
+                    ),
+                    labels=schemas.LabelFilter(keys=[label_key]),
+                ),
             ),
         )
 
         # create evaluation (return AP Response)
-        resp = crud.create_detection_evaluation(db=db, settings=settings)
+        resp = crud.create_detection_evaluation(db=db, job_request=job_request)
 
         # run computation (returns nothing on completion)
         crud.compute_detection_metrics(
             db=db,
-            settings=settings,
+            job_request=job_request,
             job_id=resp.job_id,
         )
 
@@ -1163,24 +1190,54 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
     assert model_evals[0] == schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
-        parameters=schemas.DetectionParameters(
-            annotation_type=enums.AnnotationType.BOX,
-            label_key="class",
-            iou_thresholds_to_compute=[0.2, 0.6],
-            iou_thresholds_to_keep=[0.2],
+        settings=schemas.EvaluationSettings(
+            task_type=enums.TaskType.DETECTION,
+            parameters=schemas.DetectionParameters(
+                iou_thresholds_to_compute=[0.2, 0.6],
+                iou_thresholds_to_keep=[0.2],
+            ),
+            filters=schemas.Filter(
+                annotations=schemas.AnnotationFilter(
+                    annotation_types=[enums.AnnotationType.BOX],
+                    allow_conversion=True,
+                ),
+                labels=schemas.LabelFilter(keys=["class"]),
+            ),
         ),
         id=1,
     )
     assert model_evals[1] == schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
-        parameters=schemas.DetectionParameters(
-            annotation_type=enums.AnnotationType.BOX,
-            label_key="class",
-            min_area=min_area,
-            max_area=max_area,
-            iou_thresholds_to_compute=[0.2, 0.6],
-            iou_thresholds_to_keep=[0.2],
+        settings=schemas.EvaluationSettings(
+            task_type=enums.TaskType.DETECTION,
+            parameters=schemas.DetectionParameters(
+                iou_thresholds_to_compute=[0.2, 0.6],
+                iou_thresholds_to_keep=[0.2],
+            ),
+            filters=schemas.Filter(
+                annotations=schemas.AnnotationFilter(
+                    annotation_types=[enums.AnnotationType.BOX],
+                    geometry=[
+                        schemas.GeometricFilter(
+                            type=enums.AnnotationType.BOX,
+                            area=schemas.NumericFilter(
+                                value=min_area,
+                                operator=">=",
+                            ),
+                        ),
+                        schemas.GeometricFilter(
+                            type=enums.AnnotationType.BOX,
+                            area=schemas.NumericFilter(
+                                value=max_area,
+                                operator="<=",
+                            ),
+                        ),
+                    ],
+                    allow_conversion=True,
+                ),
+                labels=schemas.LabelFilter(keys=["class"]),
+            ),
         ),
         id=2,
     )

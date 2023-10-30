@@ -648,23 +648,24 @@ class Query:
                     expressions.append(models.Annotation.raster.isnot(None))
                 self._add_expressions(models.Annotation, expressions)
         if filters.geometry:
-            match filters.geometry.type:
-                case enums.AnnotationType.BOX:
-                    geom = models.Annotation.box
-                case enums.AnnotationType.POLYGON:
-                    geom = models.Annotation.polygon
-                case enums.AnnotationType.MULTIPOLYGON:
-                    geom = models.Annotation.multipolygon
-                case enums.AnnotationType.RASTER:
-                    geom = models.Annotation.raster
-                case _:
-                    raise RuntimeError
-            if filters.geometry.area:
-                op = self._get_numeric_op(filters.geometry.area.operator)
-                self._add_expressions(
-                    models.Annotation,
-                    [op(func.ST_Area(geom), filters.geometry.area.value)],
-                )
+            for gfilter in filters.geometry:
+                match gfilter.type:
+                    case enums.AnnotationType.BOX:
+                        geom = models.Annotation.box
+                    case enums.AnnotationType.POLYGON:
+                        geom = models.Annotation.polygon
+                    case enums.AnnotationType.MULTIPOLYGON:
+                        geom = models.Annotation.multipolygon
+                    case enums.AnnotationType.RASTER:
+                        geom = models.Annotation.raster
+                    case _:
+                        raise RuntimeError
+                if gfilter.area:
+                    op = self._get_numeric_op(gfilter.area.operator)
+                    self._add_expressions(
+                        models.Annotation,
+                        [op(func.ST_Area(geom), gfilter.area.value)],
+                    )
         if filters.metadata:
             self._add_expressions(
                 models.Annotation,

@@ -106,7 +106,7 @@ class AnnotationFilter(BaseModel):
     annotation_types: list[AnnotationType] = Field(default_factory=list)
 
     # filter by attributes
-    geometry: GeometricFilter | None = None
+    geometry: list[GeometricFilter] = Field(default_factory=list)
 
     # filter by metadata
     metadata: list[MetadatumFilter] = Field(default_factory=list)
