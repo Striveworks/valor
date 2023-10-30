@@ -618,7 +618,10 @@ class Query:
                     if isinstance(task_type, enums.TaskType)
                 ],
             )
-        if filters.annotation_types:
+        if filters.geometries:
+            # expressions = []
+            # for geometric_filter in filters.geometries:
+
             if enums.AnnotationType.NONE in filters.annotation_types:
                 self._add_expressions(
                     models.Annotation,
@@ -647,8 +650,8 @@ class Query:
                 if enums.AnnotationType.RASTER in filters.annotation_types:
                     expressions.append(models.Annotation.raster.isnot(None))
                 self._add_expressions(models.Annotation, expressions)
-        if filters.geometry:
-            for gfilter in filters.geometry:
+        if filters.geometric_area:
+            for gfilter in filters.geometric_area:
                 match gfilter.type:
                     case enums.AnnotationType.BOX:
                         geom = models.Annotation.box
@@ -674,12 +677,13 @@ class Query:
         return self
 
     def filter_by_prediction(self, filters: schemas.PredictionFilter):
-        if filters.score:
-            op = self._get_numeric_op(filters.score.operator)
-            self._add_expressions(
-                models.Prediction,
-                [op(models.Prediction.score, filters.score.value)],
-            )
+        if filters.scores:
+            for sfilter in filters.scores:
+                op = self._get_numeric_op(sfilter.operator)
+                self._add_expressions(
+                    models.Prediction,
+                    [op(models.Prediction.score, sfilter.value)],
+                )
         return self
 
     def filter_by_label(

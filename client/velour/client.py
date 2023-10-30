@@ -707,7 +707,7 @@ class Model:
     def evaluate_detection(
         self,
         dataset: "Dataset",
-        annotation_type: AnnotationType = AnnotationType.NONE,
+        annotation_type: AnnotationType = AnnotationType.BOX,
         iou_thresholds_to_compute: List[float] = None,
         iou_thresholds_to_keep: List[float] = None,
         min_area: float = None,
@@ -734,7 +734,6 @@ class Model:
         if min_area:
             geometric_filters.append(
                 schemas.GeometricFilter(
-                    type=annotation_type,
                     area=schemas.NumericFilter(
                         value=min_area,
                         operator=">=",
@@ -744,7 +743,6 @@ class Model:
         if max_area:
             geometric_filters.append(
                 schemas.GeometricFilter(
-                    type=annotation_type,
                     area=schemas.NumericFilter(
                         value=max_area,
                         operator="<=",

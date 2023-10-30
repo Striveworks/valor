@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Union
 
 from velour import schemas
 from velour.enums import AnnotationType, TaskType
@@ -44,15 +44,9 @@ class GeospatialFilter:
 
 
 @dataclass
-class GeometricFilter:
-    type: AnnotationType
-    area: NumericFilter | None = None
-
-
-@dataclass
 class MetadatumFilter:
     key: str
-    comparison: NumericFilter | StringFilter | GeospatialFilter
+    comparison: Union[NumericFilter, StringFilter, GeospatialFilter]
 
 
 @dataclass
@@ -80,7 +74,6 @@ class DatumFilter:
 class AnnotationFilter:
     task_types: List[TaskType] = field(default_factory=list)
     annotation_types: List[AnnotationType] = field(default_factory=list)
-    geometry: List[GeometricFilter] = field(default_factory=list)
     metadata: List[MetadatumFilter] = field(default_factory=list)
     allow_conversion: bool = False
 
@@ -94,7 +87,7 @@ class LabelFilter:
 
 @dataclass
 class PredictionFilter:
-    score: NumericFilter | None = None
+    scores: List[NumericFilter] = field(default_factory=list)
 
 
 @dataclass

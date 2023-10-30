@@ -54,25 +54,6 @@ class GeospatialFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class GeometricFilter(BaseModel):
-    type: AnnotationType
-    area: NumericFilter | None = None
-
-    @field_validator("type")
-    @classmethod
-    def validate_type(cls, v):
-        if v not in {
-            AnnotationType.BOX,
-            AnnotationType.POLYGON,
-            AnnotationType.MULTIPOLYGON,
-            AnnotationType.RASTER,
-        }:
-            raise TypeError(
-                "GeometricFilter can only take geometric annotation types."
-            )
-        return v
-
-
 class MetadatumFilter(BaseModel):
     """target.filter(metadatum, operator) ==> target > metadatum"""
 
@@ -103,18 +84,31 @@ class DatumFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class GeometricFilter(BaseModel):
+    annotation_type: AnnotationType
+    area: list[NumericFilter] = Field(default_factory=list)
+
+    @field_validator("annotation_type")
+    @classmethod
+    def validate_annotation_type(cls, annotation_type):
+        if annotation_type not in [
+            AnnotationType.BOX,
+            AnnotationType.POLYGON,
+            AnnotationType.MULTIPOLYGON,
+            AnnotationType.RASTER,
+        ]:
+            raise ValueError(
+                f"Expected geometric annotation type, got `{annotation_type}`."
+            )
+        return annotation_type
+
+
 class AnnotationFilter(BaseModel):
-    # filter by type
     task_types: list[TaskType] = Field(default_factory=list)
-    annotation_types: list[AnnotationType] = Field(default_factory=list)
-
-    # filter by attributes
-    geometry: list[GeometricFilter] = Field(default_factory=list)
-
-    # filter by metadata
+    geometries: list[GeometricFilter] = Field(default_factory=list)
     metadata: list[MetadatumFilter] = Field(default_factory=list)
 
-    # toggle
+    # TODO
     allow_conversion: bool = False
 
     model_config = ConfigDict(extra="forbid")
@@ -128,7 +122,7 @@ class LabelFilter(BaseModel):
 
 
 class PredictionFilter(BaseModel):
-    score: NumericFilter | None = None
+    scores: list[NumericFilter] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")
 
 

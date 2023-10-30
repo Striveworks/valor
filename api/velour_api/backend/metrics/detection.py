@@ -100,7 +100,7 @@ def compute_detection_metrics(
     db: Session,
     dataset: models.Dataset,
     model: models.Model,
-    evaluation: models.Evaluation,
+    settings: schemas.EvaluationSettings,
     gt_type: enums.AnnotationType,
     pd_type: enums.AnnotationType,
 ) -> list[
@@ -110,9 +110,6 @@ def compute_detection_metrics(
     | schemas.mAPMetricAveragedOverIOUs
 ]:
     """Computes average precision metrics."""
-
-    # Populate settings
-    settings = schemas.EvaluationSettings(**evaluation.settings)
 
     # Create groundtruth filter
     gt_filter = settings.filters.model_copy()
@@ -129,6 +126,7 @@ def compute_detection_metrics(
         settings.filters.annotations.annotation_types, key=lambda x: x
     )
     print()
+    print("convert_geom")
     print(target_type)
 
     # Convert geometries to target type (if required)
@@ -395,6 +393,32 @@ def compute_mean_detection_metrics_from_aps(
     return mean_detection_metrics
 
 
+def _get_annotation_type_for_computation(
+    db: Session,
+    dataset: models.Dataset,
+    model: models.Model,
+    annotation_filter: schemas.AnnotationFilter | None = None,
+) -> AnnotationType:
+    # get dominant type
+    gt_type = core.get_annotation_type(db, dataset, None)
+    pd_type = core.get_annotation_type(db, dataset, model)
+    gct = gt_type if gt_type < pd_type else pd_type
+    if annotation_filter.annotation_types:
+        if gct not in annotation_filter.annotation_types:
+            sorted_types = sorted(
+                annotation_filter.annotation_types,
+                key=lambda x: x,
+                reverse=True,
+            )
+            for annotation_type in sorted_types:
+                if gct <= annotation_type:
+                    return annotation_type, gt_type, pd_type
+            raise RuntimeError(
+                f"Annotation type filter is too restrictive. Attempted filter `{gct}` over `{gt_type, pd_type}`."
+            )
+    return gct, gt_type, pd_type
+
+
 def create_detection_evaluation(
     db: Session,
     job_request: schemas.EvaluationJob,
@@ -406,9 +430,6 @@ def create_detection_evaluation(
     """
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)
-
-    gt_type = core.get_annotation_type(db, dataset, None)
-    pd_type = core.get_annotation_type(db, dataset, model)
 
     # default parameters
     if not job_request.settings.parameters:
@@ -422,26 +443,20 @@ def create_detection_evaluation(
             "expected evaluation settings to have parameters of type `DetectionParameters` for task type `DETECTION`"
         )
 
-    # if annotation type not specified, define as greatest common type.
-    gct = gt_type if gt_type < pd_type else pd_type
-    if job_request.settings.filters.annotations.annotation_types:
-        sorted_types = sorted(
-            job_request.settings.filters.annotations.annotation_types,
-            key=lambda x: x,
-            reverse=True,
-        )
-        for annotation_type in sorted_types:
-            # only return annotation type that matches greatest-common-type or is convertible from it.
-            if annotation_type <= gct:
-                gct = annotation_type
-                break
+    # annotation types
+    gct, gt_type, pd_type = _get_annotation_type_for_computation(
+        db, dataset, model, job_request.settings.filters.annotations
+    )
 
     # update settings
     job_request.settings.task_type = enums.TaskType.DETECTION
     job_request.settings.filters.annotations.annotation_types = [gct]
+    # This overrides user selection.
     job_request.settings.filters.annotations.allow_conversion = (
-        gt_type == pd_type and gt_type == gct
-    )  # This overrides user selection.
+        gt_type == pd_type
+    )
+
+    print(job_request.settings.filters.annotations.annotation_types)
 
     es = get_or_create_row(
         db,
@@ -467,9 +482,6 @@ def create_detection_metrics(
 
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)
-    evaluation = db.scalar(
-        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
-    )
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
 
@@ -477,7 +489,7 @@ def create_detection_metrics(
         db=db,
         dataset=dataset,
         model=model,
-        evaluation=evaluation,
+        settings=job_request.settings,
         gt_type=gt_type,
         pd_type=pd_type,
     )

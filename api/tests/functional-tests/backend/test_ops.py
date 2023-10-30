@@ -797,10 +797,12 @@ def test_complex_queries(
             labels=[schemas.Label(key="class", value="dog")]
         ),
         predictions=schemas.PredictionFilter(
-            score=schemas.NumericFilter(
-                value=0.9,
-                operator=">",
-            )
+            scores=[
+                schemas.NumericFilter(
+                    value=0.9,
+                    operator=">",
+                ),
+            ]
         ),
     )
     q = Query(models.Datum.uid).filter(f).predictions()
@@ -818,10 +820,12 @@ def test_complex_queries(
             labels=[schemas.Label(key="class", value="dog")]
         ),
         predictions=schemas.PredictionFilter(
-            score=schemas.NumericFilter(
-                value=0.75,
-                operator=">",
-            )
+            scores=[
+                schemas.NumericFilter(
+                    value=0.75,
+                    operator=">",
+                )
+            ],
         ),
         annotations=schemas.AnnotationFilter(
             annotation_types=[enums.AnnotationType.BOX]
