@@ -660,7 +660,9 @@ def get_evaluation_metrics(
                 status_code=404,
                 detail=f"No metrics for job {job_id} since its status is {status}",
             )
-        return crud.get_metrics_from_evaluation_id(db=db, evaluation_id=job_id)
+        return crud.get_metrics_from_evaluation_ids(
+            db=db, evaluation_id=job_id
+        )
     except (
         exceptions.JobDoesNotExistError,
         AttributeError,
