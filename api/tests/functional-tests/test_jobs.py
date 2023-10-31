@@ -443,15 +443,12 @@ def test_stateflow_detection_evaluation(
     # attempt to delete dataset
     with pytest.raises(exceptions.StateflowError) as e:
         crud.delete(db=db, dataset_name=dset_name)
-    assert (
-        "cannot transition to delete as an evaluation is currently running."
-        in str(e)
-    )
+    assert "evaluation is running." in str(e)
 
     # attempt to delete model
     with pytest.raises(exceptions.StateflowError) as e:
         crud.delete(db=db, dataset_name=dset_name, model_name=model_name)
-    assert "invalid transititon from evaluate to delete" in str(e)
+    assert f"{enums.State.EVALUATE} to {enums.State.DELETE}" in str(e)
 
     # run computation (returns nothing on completion)
     crud.compute_detection_metrics(
@@ -523,15 +520,12 @@ def test_stateflow_clf_evaluation(
     # attempt to delete dataset
     with pytest.raises(exceptions.StateflowError) as e:
         crud.delete(db=db, dataset_name=dset_name)
-    assert (
-        "cannot transition to delete as an evaluation is currently running."
-        in str(e)
-    )
+    assert "evaluation is running." in str(e)
 
     # attempt to delete model
     with pytest.raises(exceptions.StateflowError) as e:
         crud.delete(db=db, dataset_name=dset_name, model_name=model_name)
-    assert "invalid transititon from evaluate to delete" in str(e)
+    assert f"{enums.State.EVALUATE} to {enums.State.DELETE}" in str(e)
 
     # compute clf metrics
     crud.compute_clf_metrics(
