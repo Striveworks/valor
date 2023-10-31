@@ -1100,9 +1100,9 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
     pydantic_metrics = crud.get_metrics_from_evaluation_ids(
         db=db, evaluation_id=[evaluation_id]
     )
-    for m in pydantic_metrics["metrics"]:
+    for m in pydantic_metrics[0]["metrics"]:
         assert isinstance(m, schemas.Metric)
-    assert len(pydantic_metrics) == len(metric_ids)
+    assert len(pydantic_metrics[0]["metrics"]) == len(metric_ids)
 
     # run again and make sure no new ids were created
     evaluation_id_again, _, _ = method_to_test(label_key="class")
@@ -1279,12 +1279,12 @@ def test_create_clf_metrics(
     pydantic_metrics = crud.get_metrics_from_evaluation_ids(
         db=db, evaluation_id=[evaluation_id]
     )
-    for m in pydantic_metrics["metrics"]:
+    for m in pydantic_metrics[0]["metrics"]:
         assert isinstance(m, schemas.Metric)
-    assert len(pydantic_metrics) == len(metrics)
+    assert len(pydantic_metrics[0]["metrics"]) == len(metrics)
 
     # test getting confusion matrices from evaluation settings id
-    cms = pydantic_metrics["confusion_matrices"]
+    cms = pydantic_metrics[0]["confusion_matrices"]
     cms = sorted(cms, key=lambda cm: cm.label_key)
     assert len(cms) == 2
     assert cms[0].label_key == "k1"
