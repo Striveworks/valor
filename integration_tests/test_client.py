@@ -1501,7 +1501,7 @@ def test_evaluate_detection(
         },
     ]
 
-    assert eval_job.metrics == expected_metrics
+    assert eval_job.metrics["metrics"] == expected_metrics
 
     # now test if we set min_area and/or max_area
     areas = db.scalars(
@@ -1536,7 +1536,7 @@ def test_evaluate_detection(
             "iou_thresholds_to_keep": [0.1, 0.6],
         },
     }
-    assert eval_job_bounded_area_10_2000.metrics == expected_metrics
+    assert eval_job_bounded_area_10_2000.metrics["metrics"] == expected_metrics
 
     # now check we get different things by setting the thresholds accordingly
     # min area threshold should divide the set of annotations
@@ -1561,7 +1561,7 @@ def test_evaluate_detection(
             "iou_thresholds_to_keep": [0.1, 0.6],
         },
     }
-    assert eval_job_min_area_1200.metrics != expected_metrics
+    assert eval_job_min_area_1200.metrics["metrics"] != expected_metrics
 
     # check for difference with max area now dividing the set of annotations
     eval_job_max_area_1200 = model.evaluate_detection(
@@ -1585,7 +1585,7 @@ def test_evaluate_detection(
             "iou_thresholds_to_keep": [0.1, 0.6],
         },
     }
-    assert eval_job_max_area_1200.metrics != expected_metrics
+    assert eval_job_max_area_1200.metrics["metrics"] != expected_metrics
 
     # should perform the same as the first min area evaluation
     # except now has an upper bound
@@ -1612,10 +1612,12 @@ def test_evaluate_detection(
             "iou_thresholds_to_keep": [0.1, 0.6],
         },
     }
-    assert eval_job_bounded_area_1200_1800.metrics != expected_metrics
     assert (
-        eval_job_bounded_area_1200_1800.metrics
-        == eval_job_min_area_1200.metrics
+        eval_job_bounded_area_1200_1800.metrics["metrics"] != expected_metrics
+    )
+    assert (
+        eval_job_bounded_area_1200_1800.metrics["metrics"]
+        == eval_job_min_area_1200.metrics["metrics"]
     )
 
 
@@ -1799,7 +1801,7 @@ def test_evaluate_image_clf(
 
     assert eval_job.status == JobStatus.DONE
 
-    metrics = eval_job.metrics
+    metrics = eval_job.metrics["metrics"]
 
     expected_metrics = [
         {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
@@ -1832,7 +1834,7 @@ def test_evaluate_image_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.confusion_matrices
+    confusion_matrices = eval_job.metrics["confusion_matrices"]
     assert confusion_matrices == [
         {
             "label_key": "k4",
@@ -1868,7 +1870,7 @@ def test_evaluate_segmentation(
         {"key": "k1", "value": "v1", "score": None}
     ]
 
-    metrics = eval_job.metrics
+    metrics = eval_job.metrics["metrics"]
 
     assert len(metrics) == 3
     assert set(
@@ -2123,7 +2125,7 @@ def test_evaluate_tabular_clf(
 
     assert eval_job.status == JobStatus.DONE
 
-    metrics = eval_job.metrics
+    metrics = eval_job.metrics["metrics"]
 
     expected_metrics = [
         {
@@ -2183,7 +2185,7 @@ def test_evaluate_tabular_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.confusion_matrices
+    confusion_matrices = eval_job.metrics["confusion_matrices"]
 
     expected_confusion_matrix = {
         "label_key": "class",
@@ -2261,7 +2263,7 @@ def test_evaluate_tabular_clf(
         "parameters": None,
     }
 
-    metrics_from_eval_settings_id = eval_jobs[0].metrics
+    metrics_from_eval_settings_id = eval_jobs[0].metrics["metrics"]
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
     for m in metrics_from_eval_settings_id:
         assert m in expected_metrics
@@ -2269,7 +2271,7 @@ def test_evaluate_tabular_clf(
         assert m in metrics_from_eval_settings_id
 
     # check confusion matrix
-    confusion_matrices = eval_jobs[0].confusion_matrices
+    confusion_matrices = eval_jobs[0].metrics["confusion_matrices"]
 
     # validate return schema
     assert len(confusion_matrices) == 1
@@ -2520,7 +2522,7 @@ def test_get_dataset_status(client: Client, db: Session, gt_dets1: list):
 
 #     eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
 
-#     metrics = eval_job.metrics
+#     metrics = eval_job['metrics']
 
 #     for m in metrics:
 #         assert m["group"] in [

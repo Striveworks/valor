@@ -36,7 +36,7 @@ def _db_evaluation_settings_to_pydantic_evaluation_settings(
 def _get_metrics_from_evaluation_settings(
     db: Session,
     evaluation_settings: list[models.Evaluation],
-) -> list[schemas.BulkEvaluations]:
+) -> list[schemas.Evaluations]:
     """Return a list of unnested Evaluations from a list of evaluation settings"""
     output = []
 
@@ -82,6 +82,7 @@ def get_metrics_from_evaluation_ids(
     db: Session, evaluation_ids: list[int]
 ) -> list[schemas.Metric]:
     """Return all metrics for a list of evaluation ids"""
+
     eval_settings = db.scalars(
         select(models.Evaluation).where(
             models.Evaluation.id.in_(evaluation_ids)
@@ -89,25 +90,6 @@ def get_metrics_from_evaluation_ids(
     ).all()
 
     return _get_metrics_from_evaluation_settings(db, eval_settings)
-
-
-def get_confusion_matrices_from_evaluation_id(
-    db: Session, evaluation_id: int
-) -> list[schemas.ConfusionMatrix]:
-    eval_settings = db.scalar(
-        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
-    )
-    db_cms = eval_settings.confusion_matrices
-
-    return [
-        schemas.ConfusionMatrix(
-            label_key=db_cm.label_key,
-            entries=[
-                schemas.ConfusionMatrixEntry(**entry) for entry in db_cm.value
-            ],
-        )
-        for db_cm in db_cms
-    ]
 
 
 def get_evaluation_settings_from_id(
