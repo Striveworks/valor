@@ -1098,7 +1098,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
 
     # test getting metrics from evaluation settings id
     pydantic_metrics = crud.get_metrics_from_evaluation_ids(
-        db=db, evaluation_id=evaluation_id
+        db=db, evaluation_id=[evaluation_id]
     )
     for m in pydantic_metrics["metrics"]:
         assert isinstance(m, schemas.Metric)
@@ -1277,7 +1277,7 @@ def test_create_clf_metrics(
 
     # test getting metrics from evaluation settings id
     pydantic_metrics = crud.get_metrics_from_evaluation_ids(
-        db=db, evaluation_id=evaluation_id
+        db=db, evaluation_id=[evaluation_id]
     )
     for m in pydantic_metrics["metrics"]:
         assert isinstance(m, schemas.Metric)
