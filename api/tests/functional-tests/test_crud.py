@@ -1097,12 +1097,12 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
     assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 5
 
     # test getting metrics from evaluation settings id
-    pydantic_metrics = crud.get_metrics_from_evaluation_id(
-        db=db, evaluation_id=evaluation_id
+    pydantic_metrics = crud.get_metrics_from_evaluation_ids(
+        db=db, evaluation_id=[evaluation_id]
     )
-    for m in pydantic_metrics:
+    for m in pydantic_metrics[0]["metrics"]:
         assert isinstance(m, schemas.Metric)
-    assert len(pydantic_metrics) == len(metric_ids)
+    assert len(pydantic_metrics[0]["metrics"]) == len(metric_ids)
 
     # run again and make sure no new ids were created
     evaluation_id_again, _, _ = method_to_test(label_key="class")
@@ -1122,7 +1122,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         db=db,
         model_name="test_model",
         evaluation_id=evaluation_id,
-    )
+    )[0]["metrics"]
 
     assert len(metrics_pydantic) == len(metrics)
 
@@ -1146,7 +1146,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         db=db,
         model_name="test_model",
         evaluation_id=evaluation_id,
-    )
+    )[0]["metrics"]
     for m in metrics_pydantic:
         assert m.type in {
             "AP",
@@ -1276,17 +1276,15 @@ def test_create_clf_metrics(
     assert len(confusion_matrices) == 2
 
     # test getting metrics from evaluation settings id
-    pydantic_metrics = crud.get_metrics_from_evaluation_id(
-        db=db, evaluation_id=evaluation_id
+    pydantic_metrics = crud.get_metrics_from_evaluation_ids(
+        db=db, evaluation_id=[evaluation_id]
     )
-    for m in pydantic_metrics:
+    for m in pydantic_metrics[0]["metrics"]:
         assert isinstance(m, schemas.Metric)
-    assert len(pydantic_metrics) == len(metrics)
+    assert len(pydantic_metrics[0]["metrics"]) == len(metrics)
 
     # test getting confusion matrices from evaluation settings id
-    cms = crud.get_confusion_matrices_from_evaluation_id(
-        db=db, evaluation_id=evaluation_id
-    )
+    cms = pydantic_metrics[0]["confusion_matrices"]
     cms = sorted(cms, key=lambda cm: cm.label_key)
     assert len(cms) == 2
     assert cms[0].label_key == "k1"

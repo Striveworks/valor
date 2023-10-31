@@ -38,7 +38,7 @@ def get_bulk_evaluations(
     db: Session,
     dataset_names: Optional[List[str]],
     model_names: Optional[List[str]],
-) -> list[schemas.BulkEvaluations]:
+) -> list[schemas.Evaluation]:
     """
     Returns all metrics associated with user-supplied dataset and model names
 
@@ -252,16 +252,10 @@ def get_prediction(
 """ Evaluation """
 
 
-def get_metrics_from_evaluation_id(
+def get_metrics_from_evaluation_ids(
     *, db: Session, evaluation_id: int
-) -> list[schemas.Metric]:
-    return backend.get_metrics_from_evaluation_id(db, evaluation_id)
-
-
-def get_confusion_matrices_from_evaluation_id(
-    *, db: Session, evaluation_id: int
-) -> list[schemas.ConfusionMatrix]:
-    return backend.get_confusion_matrices_from_evaluation_id(db, evaluation_id)
+) -> list[schemas.Evaluation]:
+    return backend.get_metrics_from_evaluation_ids(db, evaluation_id)
 
 
 def get_evaluation_settings_from_id(
