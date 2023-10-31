@@ -297,7 +297,7 @@ class mIOUMetric(BaseModel):
 class Evaluation(BaseModel):
     dataset: str
     model: str
-    settings: str  # EvaluationSettings
+    settings: EvaluationSettings
     job_id: int
     status: str
     metrics: List[Metric]

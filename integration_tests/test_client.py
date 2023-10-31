@@ -23,17 +23,22 @@ from sqlalchemy.orm import Session
 
 from velour.client import Client, ClientException, Dataset, Model
 from velour.data_generation import _generate_mask
-from velour.enums import DataType, JobStatus, TaskType
+from velour.enums import AnnotationType, DataType, JobStatus, TaskType
 from velour.schemas import (
     Annotation,
+    AnnotationFilter,
     BasicPolygon,
     BoundingBox,
     Datum,
+    Filter,
+    GeometricAnnotationFilter,
     GroundTruth,
     ImageMetadata,
     Label,
+    LabelFilter,
     Metadatum,
     MultiPolygon,
+    NumericFilter,
     Point,
     Polygon,
     Prediction,
@@ -1453,11 +1458,21 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "task_type": TaskType.DETECTION.value,
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "filters": asdict(
+                Filter(
+                    annotations=AnnotationFilter(
+                        annotation_types=[AnnotationType.BOX.value],
+                        allow_conversion=True,
+                    ),
+                    labels=LabelFilter(keys=["k1"]),
+                )
+            ),
         },
     }
 
@@ -1527,13 +1542,30 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "min_area": 10,
-            "max_area": 2000,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "task_type": TaskType.DETECTION.value,
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "filters": asdict(
+                Filter(
+                    annotations=AnnotationFilter(
+                        annotation_types=[AnnotationType.BOX.value],
+                        geometry=[
+                            GeometricAnnotationFilter(
+                                annotation_type=AnnotationType.BOX.value,
+                                area=[
+                                    NumericFilter(value=10.0, operator=">="),
+                                    NumericFilter(value=2000.0, operator="<="),
+                                ],
+                            )
+                        ],
+                        allow_conversion=True,
+                    ),
+                    labels=LabelFilter(keys=["k1"]),
+                )
+            ),
         },
     }
     assert eval_job_bounded_area_10_2000.metrics["metrics"] == expected_metrics
@@ -1553,12 +1585,29 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "min_area": 1200,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "task_type": TaskType.DETECTION.value,
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "filters": asdict(
+                Filter(
+                    annotations=AnnotationFilter(
+                        annotation_types=[AnnotationType.BOX.value],
+                        geometry=[
+                            GeometricAnnotationFilter(
+                                annotation_type=AnnotationType.BOX.value,
+                                area=[
+                                    NumericFilter(value=1200.0, operator=">="),
+                                ],
+                            )
+                        ],
+                        allow_conversion=True,
+                    ),
+                    labels=LabelFilter(keys=["k1"]),
+                )
+            ),
         },
     }
     assert eval_job_min_area_1200.metrics["metrics"] != expected_metrics
@@ -1577,12 +1626,29 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "max_area": 1200,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "task_type": TaskType.DETECTION.value,
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "filters": asdict(
+                Filter(
+                    annotations=AnnotationFilter(
+                        annotation_types=[AnnotationType.BOX.value],
+                        geometry=[
+                            GeometricAnnotationFilter(
+                                annotation_type=AnnotationType.BOX.value,
+                                area=[
+                                    NumericFilter(value=1200.0, operator="<="),
+                                ],
+                            )
+                        ],
+                        allow_conversion=True,
+                    ),
+                    labels=LabelFilter(keys=["k1"]),
+                )
+            ),
         },
     }
     assert eval_job_max_area_1200.metrics["metrics"] != expected_metrics
@@ -1603,13 +1669,30 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "min_area": 1200,
-            "max_area": 1800,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "task_type": TaskType.DETECTION.value,
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "filters": asdict(
+                Filter(
+                    annotations=AnnotationFilter(
+                        annotation_types=[AnnotationType.BOX.value],
+                        geometry=[
+                            GeometricAnnotationFilter(
+                                annotation_type=AnnotationType.BOX.value,
+                                area=[
+                                    NumericFilter(value=1200.0, operator=">="),
+                                    NumericFilter(value=1800.0, operator="<="),
+                                ],
+                            )
+                        ],
+                        allow_conversion=True,
+                    ),
+                    labels=LabelFilter(keys=["k1"]),
+                )
+            ),
         },
     }
     assert (

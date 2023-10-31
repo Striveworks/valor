@@ -125,9 +125,6 @@ def compute_detection_metrics(
     target_type = max(
         settings.filters.annotations.annotation_types, key=lambda x: x
     )
-    print()
-    print("convert_geom")
-    print(target_type)
 
     # Convert geometries to target type (if required)
     core.convert_geometry(
@@ -455,8 +452,6 @@ def create_detection_evaluation(
     job_request.settings.filters.annotations.allow_conversion = (
         gt_type == pd_type
     )
-
-    print(job_request.settings.filters.annotations.annotation_types)
 
     es = get_or_create_row(
         db,

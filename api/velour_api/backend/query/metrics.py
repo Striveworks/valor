@@ -1,5 +1,3 @@
-import json
-
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
@@ -54,25 +52,20 @@ def _get_metrics_from_evaluation_settings(
             for matrix in ms.confusion_matrices
         ]
 
-        # shared across evaluation settings, so just pick the first one
-        dataset = ms.dataset.name
-        model = ms.model.name
-        filter_ = json.dumps(ms.settings)
-
         metrics = [
             _db_metric_to_pydantic_metric(db, metric) for metric in ms.metrics
         ]
 
         output.append(
-            {
-                "dataset": dataset,
-                "model": model,
-                "filter": filter_,
-                "job_id": job_id,
-                "status": status,
-                "metrics": metrics,
-                "confusion_matrices": confusion_matrices,
-            }
+            schemas.Evaluation(
+                dataset=ms.dataset.name,
+                model=ms.model.name,
+                settings=ms.settings,
+                job_id=job_id,
+                status=status,
+                metrics=metrics,
+                confusion_matrices=confusion_matrices,
+            )
         )
 
     return output

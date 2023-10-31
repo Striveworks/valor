@@ -730,23 +730,27 @@ class Model:
             iou_thresholds_to_keep=iou_thresholds_to_keep,
         )
 
-        geometric_filters = []
+        geometric_area_filters = []
         if min_area:
-            geometric_filters.append(
-                schemas.GeometricFilter(
-                    area=schemas.NumericFilter(
-                        value=min_area,
-                        operator=">=",
-                    ),
-                )
+            geometric_area_filters.append(
+                schemas.NumericFilter(
+                    value=min_area,
+                    operator=">=",
+                ),
             )
         if max_area:
+            geometric_area_filters.append(
+                schemas.NumericFilter(
+                    value=max_area,
+                    operator="<=",
+                ),
+            )
+        geometric_filters = []
+        if geometric_area_filters:
             geometric_filters.append(
-                schemas.GeometricFilter(
-                    area=schemas.NumericFilter(
-                        value=max_area,
-                        operator="<=",
-                    ),
+                schemas.GeometricAnnotationFilter(
+                    annotation_type=annotation_type,
+                    area=geometric_area_filters,
                 )
             )
         filters = schemas.Filter(
