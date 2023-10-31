@@ -581,11 +581,11 @@ def get_bulk_evaluations(
     datasets: str = None,
     models: str = None,
     db: Session = Depends(get_db),
-) -> list[schemas.BulkEvaluations]:
+) -> list[schemas.Evaluation]:
     """
     Returns all metrics associated with user-supplied dataset and model names. Users
     may query using model names, dataset names, or both. All metrics for all specified
-    models and datasets will be returned in a list of BulkEvaluations.
+    models and datasets will be returned in a list of Evaluations.
 
     Parameters
     ----------
@@ -650,7 +650,7 @@ def get_evaluation_settings(
 def get_evaluation_metrics(
     job_id: int,
     db: Session = Depends(get_db),
-) -> list[schemas.Metric]:
+) -> schemas.Evaluation:
     try:
         status = crud.get_evaluation_status(
             job_id=job_id,
@@ -660,7 +660,10 @@ def get_evaluation_metrics(
                 status_code=404,
                 detail=f"No metrics for job {job_id} since its status is {status}",
             )
-        return crud.get_metrics_from_evaluation_id(db=db, evaluation_id=job_id)
+        output = crud.get_metrics_from_evaluation_ids(
+            db=db, evaluation_id=[job_id]
+        )
+        return output[0]
     except (
         exceptions.JobDoesNotExistError,
         AttributeError,
@@ -669,32 +672,6 @@ def get_evaluation_metrics(
             raise HTTPException(
                 status_code=404, detail="Evaluation ID does not exist."
             )
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/evaluations/{job_id}/confusion-matrices",
-    dependencies=[Depends(token_auth_scheme)],
-    response_model_exclude_none=True,
-    tags=["Evaluations"],
-)
-def get_evaluation_confusion_matrices(
-    job_id: int,
-    db: Session = Depends(get_db),
-) -> list[schemas.ConfusionMatrixResponse]:
-    try:
-        status = crud.get_evaluation_status(
-            job_id=job_id,
-        )
-        if status != enums.JobStatus.DONE:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No metrics for job {job_id} since its status is {status}",
-            )
-        return crud.get_confusion_matrices_from_evaluation_id(
-            db=db, evaluation_id=job_id
-        )
-    except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
