@@ -254,7 +254,7 @@ def get_prediction(
 
 def get_metrics_from_evaluation_ids(
     *, db: Session, evaluation_id: int
-) -> list[schemas.Metric]:
+) -> list[schemas.Evaluation]:
     return backend.get_metrics_from_evaluation_ids(db, evaluation_id)
 
 

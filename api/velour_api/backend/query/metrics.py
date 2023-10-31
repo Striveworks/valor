@@ -80,7 +80,7 @@ def _get_metrics_from_evaluation_settings(
 
 def get_metrics_from_evaluation_ids(
     db: Session, evaluation_ids: list[int]
-) -> list[schemas.Metric]:
+) -> list[schemas.Evaluation]:
     """Return all metrics for a list of evaluation ids"""
 
     eval_settings = db.scalars(
