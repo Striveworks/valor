@@ -618,10 +618,7 @@ class Query:
                     if isinstance(task_type, enums.TaskType)
                 ],
             )
-        if filters.geometries:
-            # expressions = []
-            # for geometric_filter in filters.geometries:
-
+        if filters.annotation_types:
             if enums.AnnotationType.NONE in filters.annotation_types:
                 self._add_expressions(
                     models.Annotation,
@@ -650,9 +647,9 @@ class Query:
                 if enums.AnnotationType.RASTER in filters.annotation_types:
                     expressions.append(models.Annotation.raster.isnot(None))
                 self._add_expressions(models.Annotation, expressions)
-        if filters.geometric_area:
-            for gfilter in filters.geometric_area:
-                match gfilter.type:
+        if filters.geometry:
+            for geometric_filter in filters.geometry:
+                match geometric_filter.annotation_type:
                     case enums.AnnotationType.BOX:
                         geom = models.Annotation.box
                     case enums.AnnotationType.POLYGON:
@@ -663,12 +660,13 @@ class Query:
                         geom = models.Annotation.raster
                     case _:
                         raise RuntimeError
-                if gfilter.area:
-                    op = self._get_numeric_op(gfilter.area.operator)
-                    self._add_expressions(
-                        models.Annotation,
-                        [op(func.ST_Area(geom), gfilter.area.value)],
-                    )
+                if geometric_filter.area:
+                    for area_filter in geometric_filter.area:
+                        op = self._get_numeric_op(area_filter.operator)
+                        self._add_expressions(
+                            models.Annotation,
+                            [op(func.ST_Area(geom), area_filter.value)],
+                        )
         if filters.metadata:
             self._add_expressions(
                 models.Annotation,
@@ -724,10 +722,10 @@ class Query:
 
     def _filter_by_metadatum(
         self,
-        metadatum: schemas.MetadatumFilter,
+        metadatum: schemas.KeyValueFilter,
         table: DeclarativeMeta,
     ) -> BinaryExpression:
-        if not isinstance(metadatum, schemas.MetadatumFilter):
+        if not isinstance(metadatum, schemas.KeyValueFilter):
             raise TypeError("metadatum should be of type `schemas.Metadatum`")
 
         if isinstance(metadatum.comparison.value, str):
@@ -745,7 +743,7 @@ class Query:
 
     def filter_by_metadata(
         self,
-        metadata: list[schemas.MetadatumFilter],
+        metadata: list[schemas.KeyValueFilter],
         table: DeclarativeMeta,
     ) -> list[BinaryExpression]:
         return [

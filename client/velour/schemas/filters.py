@@ -44,7 +44,7 @@ class GeospatialFilter:
 
 
 @dataclass
-class MetadatumFilter:
+class KeyValueFilter:
     key: str
     comparison: Union[NumericFilter, StringFilter, GeospatialFilter]
 
@@ -53,28 +53,46 @@ class MetadatumFilter:
 class DatasetFilter:
     ids: List[int] = field(default_factory=list)
     names: List[str] = field(default_factory=list)
-    metadata: List[MetadatumFilter] = field(default_factory=list)
+    metadata: List[KeyValueFilter] = field(default_factory=list)
+    geo: List[GeospatialFilter] = field(default_factory=list)
 
 
 @dataclass
 class ModelFilter:
     ids: List[int] = field(default_factory=list)
     names: List[str] = field(default_factory=list)
-    metadata: List[MetadatumFilter] = field(default_factory=list)
+    metadata: List[KeyValueFilter] = field(default_factory=list)
+    geo: List[GeospatialFilter] = field(default_factory=list)
 
 
 @dataclass
 class DatumFilter:
     ids: List[int] = field(default_factory=list)
     uids: List[str] = field(default_factory=list)
-    metadata: List[MetadatumFilter] = field(default_factory=list)
+    metadata: List[KeyValueFilter] = field(default_factory=list)
+    geo: List[GeospatialFilter] = field(default_factory=list)
+
+
+@dataclass
+class GeometricAnnotationFilter:
+    annotation_type: AnnotationType
+    area: List[NumericFilter] = field(default_factory=list)
+
+
+@dataclass
+class JSONAnnotationFilter:
+    keys: List[str] = field(default_factory=list)
+    values: List[KeyValueFilter] = field(default_factory=list)
 
 
 @dataclass
 class AnnotationFilter:
     task_types: List[TaskType] = field(default_factory=list)
     annotation_types: List[AnnotationType] = field(default_factory=list)
-    metadata: List[MetadatumFilter] = field(default_factory=list)
+    geometry: List[GeometricAnnotationFilter] = field(default_factory=list)
+    json_: List[JSONAnnotationFilter] = field(default_factory=list)
+    metadata: List[KeyValueFilter] = field(default_factory=list)
+    geo: List[GeospatialFilter] = field(default_factory=list)
     allow_conversion: bool = False
 
 

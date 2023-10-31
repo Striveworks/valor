@@ -1028,22 +1028,26 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         geometric_filters = []
         if min_area:
             geometric_filters.append(
-                schemas.GeometricFilter(
-                    type=enums.AnnotationType.BOX,
-                    area=schemas.NumericFilter(
-                        value=min_area,
-                        operator=">=",
-                    ),
+                schemas.GeometricAnnotationFilter(
+                    annotation_type=enums.AnnotationType.BOX,
+                    area=[
+                        schemas.NumericFilter(
+                            value=min_area,
+                            operator=">=",
+                        ),
+                    ],
                 )
             )
         if max_area:
             geometric_filters.append(
-                schemas.GeometricFilter(
-                    type=enums.AnnotationType.BOX,
-                    area=schemas.NumericFilter(
-                        value=max_area,
-                        operator="<=",
-                    ),
+                schemas.GeometricAnnotationFilter(
+                    annotation_type=enums.AnnotationType.BOX,
+                    area=[
+                        schemas.NumericFilter(
+                            value=max_area,
+                            operator="<=",
+                        ),
+                    ],
                 )
             )
 
@@ -1219,19 +1223,23 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
                 annotations=schemas.AnnotationFilter(
                     annotation_types=[enums.AnnotationType.BOX],
                     geometry=[
-                        schemas.GeometricFilter(
-                            type=enums.AnnotationType.BOX,
-                            area=schemas.NumericFilter(
-                                value=min_area,
-                                operator=">=",
-                            ),
+                        schemas.GeometricAnnotationFilter(
+                            annotation_type=enums.AnnotationType.BOX,
+                            area=[
+                                schemas.NumericFilter(
+                                    value=min_area,
+                                    operator=">=",
+                                ),
+                            ],
                         ),
-                        schemas.GeometricFilter(
-                            type=enums.AnnotationType.BOX,
-                            area=schemas.NumericFilter(
-                                value=max_area,
-                                operator="<=",
-                            ),
+                        schemas.GeometricAnnotationFilter(
+                            annotation_type=enums.AnnotationType.BOX,
+                            area=[
+                                schemas.NumericFilter(
+                                    value=max_area,
+                                    operator="<=",
+                                ),
+                            ],
                         ),
                     ],
                     allow_conversion=True,

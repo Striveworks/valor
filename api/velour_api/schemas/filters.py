@@ -54,9 +54,7 @@ class GeospatialFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class MetadatumFilter(BaseModel):
-    """target.filter(metadatum, operator) ==> target > metadatum"""
-
+class KeyValueFilter(BaseModel):
     key: str
     comparison: NumericFilter | StringFilter | GeospatialFilter
     model_config = ConfigDict(extra="forbid")
@@ -65,26 +63,28 @@ class MetadatumFilter(BaseModel):
 class DatasetFilter(BaseModel):
     ids: list[int] = Field(default_factory=list)
     names: list[str] = Field(default_factory=list)
-    metadata: list[MetadatumFilter] = Field(default_factory=list)
+    metadata: list[KeyValueFilter] = Field(default_factory=list)
+    geo: list[GeospatialFilter] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")
 
 
 class ModelFilter(BaseModel):
     ids: list[int] = Field(default_factory=list)
     names: list[str] = Field(default_factory=list)
-    metadata: list[MetadatumFilter] = Field(default_factory=list)
+    metadata: list[KeyValueFilter] = Field(default_factory=list)
+    geo: list[GeospatialFilter] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")
 
 
 class DatumFilter(BaseModel):
     ids: list[int] = Field(default_factory=list)
     uids: list[str] = Field(default_factory=list)
-    metadata: list[MetadatumFilter] = Field(default_factory=list)
-
+    metadata: list[KeyValueFilter] = Field(default_factory=list)
+    geo: list[GeospatialFilter] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")
 
 
-class GeometricFilter(BaseModel):
+class GeometricAnnotationFilter(BaseModel):
     annotation_type: AnnotationType
     area: list[NumericFilter] = Field(default_factory=list)
 
@@ -103,10 +103,18 @@ class GeometricFilter(BaseModel):
         return annotation_type
 
 
+class JSONAnnotationFilter(BaseModel):
+    keys: list[str] = Field(default_factory=list)
+    values: list[KeyValueFilter] = Field(default_factory=list)
+
+
 class AnnotationFilter(BaseModel):
     task_types: list[TaskType] = Field(default_factory=list)
-    geometries: list[GeometricFilter] = Field(default_factory=list)
-    metadata: list[MetadatumFilter] = Field(default_factory=list)
+    annotation_types: list[AnnotationType] = Field(default_factory=list)
+    geometry: list[GeometricAnnotationFilter] = Field(default_factory=list)
+    json_: list[JSONAnnotationFilter] = Field(default_factory=list)
+    metadata: list[KeyValueFilter] = Field(default_factory=list)
+    geo: list[GeospatialFilter] = Field(default_factory=list)
 
     # TODO
     allow_conversion: bool = False

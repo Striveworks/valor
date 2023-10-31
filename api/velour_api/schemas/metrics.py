@@ -297,7 +297,7 @@ class mIOUMetric(BaseModel):
 class BulkEvaluations(BaseModel):
     dataset: str
     model: str
-    settings: EvaluationSettings
+    settings: str  # EvaluationSettings
     job_id: int
     status: str
     metrics: List[Metric]
