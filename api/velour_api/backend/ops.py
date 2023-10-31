@@ -466,26 +466,31 @@ class Query:
 
     """ Public methods """
 
-    def any(self, *, _pivot: DeclarativeMeta | None = None):
+    def any(
+        self,
+        name: str = "generated_subquery",
+        *,
+        _pivot: DeclarativeMeta | None = None,
+    ):
         """
         Generates a sqlalchemy subquery. Graph is chosen automatically as best fit.
         """
         query, subquery = self._select_graph(_pivot)
         if subquery is not None:
             query = query.where(models.Datum.id.in_(subquery))
-        return query.subquery("generated_query")
+        return query.subquery(name)
 
-    def groundtruths(self):
+    def groundtruths(self, name: str = "generated_subquery"):
         """
         Generates a sqlalchemy subquery using a groundtruths-focused graph.
         """
-        return self.any(_pivot=models.GroundTruth)
+        return self.any(name, _pivot=models.GroundTruth)
 
-    def predictions(self):
+    def predictions(self, name: str = "generated_subquery"):
         """
         Generates a sqlalchemy subquery using a predictions-focused graph.
         """
-        return self.any(_pivot=models.Prediction)
+        return self.any(name, _pivot=models.Prediction)
 
     def filter(self, filters: schemas.Filter):
         """Parses `schemas.Filter`"""
@@ -643,23 +648,25 @@ class Query:
                     expressions.append(models.Annotation.raster.isnot(None))
                 self._add_expressions(models.Annotation, expressions)
         if filters.geometry:
-            match filters.geometry.type:
-                case enums.AnnotationType.BOX:
-                    geom = models.Annotation.box
-                case enums.AnnotationType.POLYGON:
-                    geom = models.Annotation.polygon
-                case enums.AnnotationType.MULTIPOLYGON:
-                    geom = models.Annotation.multipolygon
-                case enums.AnnotationType.RASTER:
-                    geom = models.Annotation.raster
-                case _:
-                    raise RuntimeError
-            if filters.geometry.area:
-                op = self._get_numeric_op(filters.geometry.area.operator)
-                self._add_expressions(
-                    models.Annotation,
-                    [op(func.ST_Area(geom), filters.geometry.area.value)],
-                )
+            for geometric_filter in filters.geometry:
+                match geometric_filter.annotation_type:
+                    case enums.AnnotationType.BOX:
+                        geom = models.Annotation.box
+                    case enums.AnnotationType.POLYGON:
+                        geom = models.Annotation.polygon
+                    case enums.AnnotationType.MULTIPOLYGON:
+                        geom = models.Annotation.multipolygon
+                    case enums.AnnotationType.RASTER:
+                        geom = models.Annotation.raster
+                    case _:
+                        raise RuntimeError
+                if geometric_filter.area:
+                    for area_filter in geometric_filter.area:
+                        op = self._get_numeric_op(area_filter.operator)
+                        self._add_expressions(
+                            models.Annotation,
+                            [op(func.ST_Area(geom), area_filter.value)],
+                        )
         if filters.metadata:
             self._add_expressions(
                 models.Annotation,
@@ -668,18 +675,28 @@ class Query:
         return self
 
     def filter_by_prediction(self, filters: schemas.PredictionFilter):
-        if filters.score:
-            op = self._get_numeric_op(filters.score.operator)
-            self._add_expressions(
-                models.Prediction,
-                [op(models.Prediction.score, filters.score.value)],
-            )
+        if filters.scores:
+            for sfilter in filters.scores:
+                op = self._get_numeric_op(sfilter.operator)
+                self._add_expressions(
+                    models.Prediction,
+                    [op(models.Prediction.score, sfilter.value)],
+                )
         return self
 
     def filter_by_label(
         self,
         filters: schemas.LabelFilter,
     ):
+        if filters.ids:
+            self._add_expressions(
+                models.Label,
+                [
+                    models.Label.id == id
+                    for id in filters.ids
+                    if isinstance(id, int)
+                ],
+            )
         if filters.labels:
             self._add_expressions(
                 models.Label,
@@ -705,10 +722,10 @@ class Query:
 
     def _filter_by_metadatum(
         self,
-        metadatum: schemas.MetadatumFilter,
+        metadatum: schemas.KeyValueFilter,
         table: DeclarativeMeta,
     ) -> BinaryExpression:
-        if not isinstance(metadatum, schemas.MetadatumFilter):
+        if not isinstance(metadatum, schemas.KeyValueFilter):
             raise TypeError("metadatum should be of type `schemas.Metadatum`")
 
         if isinstance(metadatum.comparison.value, str):
@@ -726,7 +743,7 @@ class Query:
 
     def filter_by_metadata(
         self,
-        metadata: list[schemas.MetadatumFilter],
+        metadata: list[schemas.KeyValueFilter],
         table: DeclarativeMeta,
     ) -> list[BinaryExpression]:
         return [

@@ -1491,11 +1491,24 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "task_type": TaskType.DETECTION.value,
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
         },
     }
 
@@ -1564,13 +1577,32 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "min_area": 10,
-            "max_area": 2000,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [
+                        {
+                            "annotation_type": "box",
+                            "area": [
+                                {"operator": ">=", "value": 10.0},
+                                {"operator": "<=", "value": 2000.0},
+                            ],
+                        }
+                    ],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "task_type": "object-detection",
         },
     }
     assert eval_job_bounded_area_10_2000.metrics["metrics"] == expected_metrics
@@ -1590,12 +1622,31 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "min_area": 1200,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [
+                        {
+                            "annotation_type": "box",
+                            "area": [
+                                {"operator": ">=", "value": 1200.0},
+                            ],
+                        }
+                    ],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "task_type": "object-detection",
         },
     }
     assert eval_job_min_area_1200.metrics["metrics"] != expected_metrics
@@ -1614,12 +1665,29 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "max_area": 1200,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [
+                        {
+                            "annotation_type": "box",
+                            "area": [{"operator": "<=", "value": 1200.0}],
+                        }
+                    ],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "task_type": "object-detection",
         },
     }
     assert eval_job_max_area_1200.metrics["metrics"] != expected_metrics
@@ -1640,13 +1708,32 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "min_area": 1200,
-            "max_area": 1800,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [
+                        {
+                            "annotation_type": "box",
+                            "area": [
+                                {"operator": ">=", "value": 1200.0},
+                                {"operator": "<=", "value": 1800.0},
+                            ],
+                        }
+                    ],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "task_type": "object-detection",
         },
     }
     assert (
@@ -1766,7 +1853,7 @@ def test_get_bulk_evaluations(
             in [
                 "dataset",
                 "model",
-                "filter",
+                "settings",
                 "job_id",
                 "status",
                 "metrics",
@@ -1813,7 +1900,7 @@ def test_get_bulk_evaluations(
             in [
                 "dataset",
                 "model",
-                "filter",
+                "settings",
                 "job_id",
                 "status",
                 "metrics",
@@ -2334,7 +2421,7 @@ def test_evaluate_tabular_clf(
             in [
                 "dataset",
                 "model",
-                "filter",
+                "settings",
                 "job_id",
                 "status",
                 "metrics",
@@ -2386,7 +2473,9 @@ def test_evaluate_tabular_clf(
     assert eval_settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "parameters": None,
+        "settings": {
+            "task_type": TaskType.CLASSIFICATION.value,
+        },
     }
 
     metrics_from_eval_settings_id = eval_jobs[0].metrics["metrics"]

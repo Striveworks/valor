@@ -330,7 +330,9 @@ def get_confusion_matrix_and_metrics_at_label_key(
 
 
 def compute_clf_metrics(
-    db: Session, dataset_name: str, model_name: str
+    db: Session,
+    dataset_name: str,
+    model_name: str,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
     list[
@@ -596,16 +598,19 @@ def precision_and_recall_f1_from_confusion_matrix(
 
 def create_clf_evaluation(
     db: Session,
-    settings: schemas.EvaluationSettings,
+    job_request: schemas.EvaluationJob,
 ) -> int:
     """This will always run in foreground.
 
     Returns
-        Evaluations settings id.
+        Evaluations job id.
     """
 
-    dataset = core.get_dataset(db, settings.dataset)
-    model = core.get_model(db, settings.model)
+    dataset = core.get_dataset(db, job_request.dataset)
+    model = core.get_model(db, job_request.model)
+
+    # set task type
+    job_request.settings.task_type = TaskType.CLASSIFICATION
 
     es = get_or_create_row(
         db,
@@ -613,7 +618,7 @@ def create_clf_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "type": TaskType.CLASSIFICATION,
+            "settings": job_request.settings.model_dump(),
         },
     )
 
@@ -622,7 +627,7 @@ def create_clf_evaluation(
 
 def create_clf_metrics(
     db: Session,
-    settings: schemas.EvaluationSettings,
+    job_request: schemas.EvaluationJob,
     evaluation_id: int,
 ) -> int:
     """
@@ -630,8 +635,8 @@ def create_clf_metrics(
     """
     confusion_matrices, metrics = compute_clf_metrics(
         db=db,
-        dataset_name=settings.dataset,
-        model_name=settings.model,
+        dataset_name=job_request.dataset,
+        model_name=job_request.model,
     )
 
     confusion_matrices_mappings = create_metric_mappings(

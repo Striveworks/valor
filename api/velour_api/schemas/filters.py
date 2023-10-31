@@ -4,12 +4,6 @@ from velour_api import schemas
 from velour_api.enums import AnnotationType, TaskType
 
 
-def _validate_comparison_operators(op: str):
-    if op not in [">", "<", ">=", "<=", "==", "!="]:
-        raise ValueError(f"`{op}` is not a valid comparison operator")
-    return op
-
-
 class StringFilter(BaseModel):
     value: str
     operator: str = "=="
@@ -17,8 +11,11 @@ class StringFilter(BaseModel):
     @field_validator("operator")
     @classmethod
     def validate_comparison_operator(cls, op: str) -> str:
-        if op is not None:
-            _validate_comparison_operators(op)
+        allowed_operators = ["==", "!="]
+        if op not in allowed_operators:
+            raise ValueError(
+                f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
+            )
         return op
 
     model_config = ConfigDict(extra="forbid")
@@ -31,8 +28,11 @@ class NumericFilter(BaseModel):
     @field_validator("operator")
     @classmethod
     def validate_comparison_operator(cls, op: str) -> str:
-        if op is not None:
-            _validate_comparison_operators(op)
+        allowed_operators = [">", "<", ">=", "<=", "==", "!="]
+        if op not in allowed_operators:
+            raise ValueError(
+                f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
+            )
         return op
 
     model_config = ConfigDict(extra="forbid")
@@ -44,35 +44,17 @@ class GeospatialFilter(BaseModel):
     @field_validator("operator")
     @classmethod
     def validate_comparison_operator(cls, op: str) -> str:
-        if op is not None:
-            _validate_comparison_operators(op)
+        allowed_operators = [">", "<", ">=", "<=", "==", "!="]
+        if op not in allowed_operators:
+            raise ValueError(
+                f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
+            )
         return op
 
     model_config = ConfigDict(extra="forbid")
 
 
-class GeometricFilter(BaseModel):
-    type: AnnotationType
-    area: NumericFilter | None = None
-
-    @field_validator("type")
-    @classmethod
-    def validate_type(cls, v):
-        if v not in {
-            AnnotationType.BOX,
-            AnnotationType.POLYGON,
-            AnnotationType.MULTIPOLYGON,
-            AnnotationType.RASTER,
-        }:
-            raise TypeError(
-                "GeometricFilter can only take geometric annotation types."
-            )
-        return v
-
-
-class MetadatumFilter(BaseModel):
-    """target.filter(metadatum, operator) ==> target > metadatum"""
-
+class KeyValueFilter(BaseModel):
     key: str
     comparison: NumericFilter | StringFilter | GeospatialFilter
     model_config = ConfigDict(extra="forbid")
@@ -81,50 +63,74 @@ class MetadatumFilter(BaseModel):
 class DatasetFilter(BaseModel):
     ids: list[int] = Field(default_factory=list)
     names: list[str] = Field(default_factory=list)
-    metadata: list[MetadatumFilter] = Field(default_factory=list)
+    metadata: list[KeyValueFilter] = Field(default_factory=list)
+    geo: list[GeospatialFilter] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")
 
 
 class ModelFilter(BaseModel):
     ids: list[int] = Field(default_factory=list)
     names: list[str] = Field(default_factory=list)
-    metadata: list[MetadatumFilter] = Field(default_factory=list)
+    metadata: list[KeyValueFilter] = Field(default_factory=list)
+    geo: list[GeospatialFilter] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")
 
 
 class DatumFilter(BaseModel):
     ids: list[int] = Field(default_factory=list)
     uids: list[str] = Field(default_factory=list)
-    metadata: list[MetadatumFilter] = Field(default_factory=list)
-
+    metadata: list[KeyValueFilter] = Field(default_factory=list)
+    geo: list[GeospatialFilter] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")
 
 
+class GeometricAnnotationFilter(BaseModel):
+    annotation_type: AnnotationType
+    area: list[NumericFilter] = Field(default_factory=list)
+
+    @field_validator("annotation_type")
+    @classmethod
+    def validate_annotation_type(cls, annotation_type):
+        if annotation_type not in [
+            AnnotationType.BOX,
+            AnnotationType.POLYGON,
+            AnnotationType.MULTIPOLYGON,
+            AnnotationType.RASTER,
+        ]:
+            raise ValueError(
+                f"Expected geometric annotation type, got `{annotation_type}`."
+            )
+        return annotation_type
+
+
+class JSONAnnotationFilter(BaseModel):
+    keys: list[str] = Field(default_factory=list)
+    values: list[KeyValueFilter] = Field(default_factory=list)
+
+
 class AnnotationFilter(BaseModel):
-    # filter by type
     task_types: list[TaskType] = Field(default_factory=list)
     annotation_types: list[AnnotationType] = Field(default_factory=list)
+    geometry: list[GeometricAnnotationFilter] = Field(default_factory=list)
+    json_: list[JSONAnnotationFilter] = Field(default_factory=list)
+    metadata: list[KeyValueFilter] = Field(default_factory=list)
+    geo: list[GeospatialFilter] = Field(default_factory=list)
 
-    # filter by attributes
-    geometry: GeometricFilter | None = None
-
-    # filter by metadata
-    metadata: list[MetadatumFilter] = Field(default_factory=list)
-
-    # toggle
+    # TODO
     allow_conversion: bool = False
 
     model_config = ConfigDict(extra="forbid")
 
 
 class LabelFilter(BaseModel):
+    ids: list[int] = Field(default_factory=list)
     labels: list[schemas.Label] = Field(default_factory=list)
     keys: list[str] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")
 
 
 class PredictionFilter(BaseModel):
-    score: NumericFilter | None = None
+    scores: list[NumericFilter] = Field(default_factory=list)
     model_config = ConfigDict(extra="forbid")
 
 

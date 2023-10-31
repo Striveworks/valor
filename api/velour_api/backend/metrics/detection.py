@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, List
 
 from geoalchemy2 import functions as gfunc
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
@@ -12,7 +12,8 @@ from velour_api.backend.metrics.core import (
     create_metric_mappings,
     get_or_create_row,
 )
-from velour_api.enums import AnnotationType, TaskType
+from velour_api.backend.ops import Query
+from velour_api.enums import AnnotationType
 
 
 @dataclass
@@ -99,14 +100,9 @@ def compute_detection_metrics(
     db: Session,
     dataset: models.Dataset,
     model: models.Model,
-    label_key: str,
-    iou_thresholds: list[float],
-    ious_to_keep: list[float],
-    target_type: enums.AnnotationType,
+    settings: schemas.EvaluationSettings,
     gt_type: enums.AnnotationType,
     pd_type: enums.AnnotationType,
-    min_area: float | None = None,
-    max_area: float | None = None,
 ) -> list[
     schemas.APMetric
     | schemas.APMetricAveragedOverIOUs
@@ -114,6 +110,21 @@ def compute_detection_metrics(
     | schemas.mAPMetricAveragedOverIOUs
 ]:
     """Computes average precision metrics."""
+
+    # Create groundtruth filter
+    gt_filter = settings.filters.model_copy()
+    gt_filter.datasets = schemas.DatasetFilter(ids=[dataset.id])
+    gt_filter.models = schemas.ModelFilter()
+
+    # Create prediction filter
+    pd_filter = settings.filters.model_copy()
+    pd_filter.datasets = schemas.DatasetFilter(ids=[dataset.id])
+    pd_filter.models = schemas.ModelFilter(ids=[model.id])
+
+    # Get target annotation type
+    target_type = max(
+        settings.filters.annotations.annotation_types, key=lambda x: x
+    )
 
     # Convert geometries to target type (if required)
     core.convert_geometry(
@@ -125,85 +136,32 @@ def compute_detection_metrics(
         evaluation_target_type=target_type,
     )
 
-    # Select annotations column
-
-    # Filter by area
-    area_filters = []
-    if target_type == AnnotationType.RASTER:
-        if min_area:
-            area_filters.append(
-                gfunc.ST_Count(models.annotation_type_to_geometry[target_type])
-                >= min_area
-            )
-        if max_area:
-            area_filters.append(
-                gfunc.ST_Count(models.annotation_type_to_geometry[target_type])
-                <= max_area
-            )
-    else:
-        if min_area:
-            area_filters.append(
-                gfunc.ST_Area(models.annotation_type_to_geometry[target_type])
-                >= min_area
-            )
-        if max_area:
-            area_filters.append(
-                gfunc.ST_Area(models.annotation_type_to_geometry[target_type])
-                <= max_area
-            )
-
     # Join gt, datum, annotation, label
     gt = (
-        select(
+        Query(
             models.GroundTruth.id.label("id"),
             models.Datum.id.label("datum_id"),
             models.annotation_type_to_geometry[target_type].label("geom"),
             models.Label.id.label("label_id"),
         )
-        .select_from(models.GroundTruth)
-        .join(
-            models.Annotation,
-            models.Annotation.id == models.GroundTruth.annotation_id,
-        )
-        .join(models.Label, models.Label.id == models.GroundTruth.label_id)
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .where(
-            and_(
-                models.Datum.dataset_id == dataset.id,
-                models.Annotation.model_id.is_(None),
-                *area_filters,
-            )
-        )
-        .subquery()
+        .filter(gt_filter)
+        .groundtruths("groundtruths")
     )
 
     # Join pd, datum, annotation, label
     pd = (
-        select(
+        Query(
             models.Prediction.id.label("id"),
             models.Datum.id.label("datum_id"),
             models.annotation_type_to_geometry[target_type].label("geom"),
             models.Label.id.label("label_id"),
             models.Prediction.score.label("score"),
         )
-        .select_from(models.Prediction)
-        .join(
-            models.Annotation,
-            models.Annotation.id == models.Prediction.annotation_id,
-        )
-        .join(models.Label, models.Label.id == models.Prediction.label_id)
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .where(
-            and_(
-                models.Datum.dataset_id == dataset.id,
-                models.Annotation.model_id == model.id,
-                *area_filters,
-            )
-        )
-        .subquery()
+        .filter(pd_filter)
+        .predictions("predictions")
     )
 
-    # join gt with pd
+    # Create joint table
     joint = (
         select(
             func.coalesce(gt.c.datum_id, pd.c.datum_id).label("datum_id"),
@@ -226,32 +184,6 @@ def compute_detection_metrics(
         )
         .subquery()
     )
-
-    # Filter label_key
-    if label_key:
-        joint = (
-            select(
-                joint.c.datum_id.label("datum_id"),
-                joint.c.gt_id.label("gt_id"),
-                joint.c.pd_id.label("pd_id"),
-                joint.c.gt_label_id.label("gt_label_id"),
-                joint.c.pd_label_id.label("pd_label_id"),
-                joint.c.gt_geom.label("gt_geom"),
-                joint.c.pd_geom.label("pd_geom"),
-                joint.c.score.label("score"),
-            )
-            .select_from(joint)
-            .join(
-                models.Label,
-                or_(
-                    models.Label.id == joint.c.gt_label_id,
-                    models.Label.id == joint.c.pd_label_id,
-                ),
-                full=True,
-            )
-            .where(models.Label.key == label_key)
-            .subquery()
-        )
 
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
@@ -321,84 +253,30 @@ def compute_detection_metrics(
                 )
             )
 
-    # Filter by geometric type
-    geometric_filters = []
-    if gt_type == enums.AnnotationType.BOX:
-        geometric_filters = [models.Annotation.box.isnot(None)]
-    elif gt_type == enums.AnnotationType.POLYGON:
-        geometric_filters = [models.Annotation.polygon.isnot(None)]
-    elif gt_type == enums.AnnotationType.MULTIPOLYGON:
-        geometric_filters = [models.Annotation.multipolygon.isnot(None)]
-    elif gt_type == enums.AnnotationType.RASTER:
-        geometric_filters = [models.Annotation.raster.isnot(None)]
-    elif gt_type == enums.AnnotationType.NONE:
-        geometric_filters = [
-            models.Annotation.box.is_(None),
-            models.Annotation.polygon.is_(None),
-            models.Annotation.multipolygon.is_(None),
-            models.Annotation.raster.is_(None),
-        ]
-    else:
-        raise RuntimeError("Unknown Type")
-
-    # Filter by label key
-    label_key_filter = []
-    if label_key:
-        label_key_filter.append(models.Label.key == label_key)
-
-    # Merge filters
-    filters = geometric_filters + label_key_filter + area_filters
-
     # Get groundtruth labels
     labels = {
-        label[0]: schemas.Label(key=label[1], value=label[2])
-        for label in (
-            db.query(models.Label.id, models.Label.key, models.Label.value)
-            .join(
-                models.GroundTruth,
-                models.GroundTruth.label_id == models.Label.id,
-            )
-            .join(
-                models.Annotation,
-                models.Annotation.id == models.GroundTruth.annotation_id,
-            )
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .where(
-                and_(
-                    models.Datum.dataset_id == dataset.id,
-                    *filters,
-                )
-            )
-            .all()
-        )
+        label.id: schemas.Label(key=label.key, value=label.value)
+        for label in db.query(
+            Query(models.Label).filter(gt_filter).groundtruths()
+        ).all()
     }
 
     # Get the number of ground truths per label id
-    number_of_ground_truths = {
-        id: db.scalar(
-            select(func.count(models.GroundTruth.id))
-            .join(
-                models.Annotation,
-                models.Annotation.id == models.GroundTruth.annotation_id,
-            )
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .where(
-                and_(
-                    models.Datum.dataset_id == dataset.id,
-                    models.GroundTruth.label_id == id,
-                    *area_filters,
-                )
-            )
-        )
-        for id in labels
-    }
+    number_of_ground_truths = {}
+    for id in labels:
+        gt_filter.labels.ids = [id]
+        number_of_ground_truths[id] = db.query(
+            Query(func.count(models.GroundTruth.id))
+            .filter(gt_filter)
+            .groundtruths()
+        ).scalar()
 
     # Compute AP
     detection_metrics = _ap(
         sorted_ranked_pairs=ranking,
         number_of_ground_truths=number_of_ground_truths,
         labels=labels,
-        iou_thresholds=iou_thresholds,
+        iou_thresholds=settings.parameters.iou_thresholds_to_compute,
     )
 
     # now extend to the averaged AP metrics and mAP metric
@@ -415,9 +293,15 @@ def compute_detection_metrics(
     )
 
     # filter out only specified ious
-    detection_metrics = [m for m in detection_metrics if m.iou in ious_to_keep]
+    detection_metrics = [
+        m
+        for m in detection_metrics
+        if m.iou in settings.parameters.iou_thresholds_to_keep
+    ]
     mean_detection_metrics = [
-        m for m in mean_detection_metrics if m.iou in ious_to_keep
+        m
+        for m in mean_detection_metrics
+        if m.iou in settings.parameters.iou_thresholds_to_keep
     ]
 
     return (
@@ -506,40 +390,68 @@ def compute_mean_detection_metrics_from_aps(
     return mean_detection_metrics
 
 
+def _get_annotation_type_for_computation(
+    db: Session,
+    dataset: models.Dataset,
+    model: models.Model,
+    annotation_filter: schemas.AnnotationFilter | None = None,
+) -> AnnotationType:
+    # get dominant type
+    gt_type = core.get_annotation_type(db, dataset, None)
+    pd_type = core.get_annotation_type(db, dataset, model)
+    gct = gt_type if gt_type < pd_type else pd_type
+    if annotation_filter.annotation_types:
+        if gct not in annotation_filter.annotation_types:
+            sorted_types = sorted(
+                annotation_filter.annotation_types,
+                key=lambda x: x,
+                reverse=True,
+            )
+            for annotation_type in sorted_types:
+                if gct <= annotation_type:
+                    return annotation_type, gt_type, pd_type
+            raise RuntimeError(
+                f"Annotation type filter is too restrictive. Attempted filter `{gct}` over `{gt_type, pd_type}`."
+            )
+    return gct, gt_type, pd_type
+
+
 def create_detection_evaluation(
     db: Session,
-    settings: schemas.EvaluationSettings,
+    job_request: schemas.EvaluationJob,
 ) -> int:
     """This will always run in foreground.
 
     Returns
         Evaluations settings id.
     """
-    dataset = core.get_dataset(db, settings.dataset)
-    model = core.get_model(db, settings.model)
-
-    gt_type = core.get_annotation_type(db, dataset, None)
-    pd_type = core.get_annotation_type(db, dataset, model)
+    dataset = core.get_dataset(db, job_request.dataset)
+    model = core.get_model(db, job_request.model)
 
     # default parameters
-    if not settings.parameters:
-        settings.parameters = schemas.DetectionParameters()
+    if not job_request.settings.parameters:
+        job_request.settings.parameters = schemas.DetectionParameters()
 
     # validate parameters
-    if not isinstance(settings.parameters, schemas.DetectionParameters):
+    if not isinstance(
+        job_request.settings.parameters, schemas.DetectionParameters
+    ):
         raise TypeError(
             "expected evaluation settings to have parameters of type `DetectionParameters` for task type `DETECTION`"
         )
 
-    # if annotation type not specified, define as greatest common type.
-    if not settings.parameters.annotation_type:
-        settings.parameters.annotation_type = (
-            gt_type if gt_type < pd_type else pd_type
-        )
-    else:
-        settings.parameters.annotation_type = (
-            settings.parameters.annotation_type
-        )
+    # annotation types
+    gct, gt_type, pd_type = _get_annotation_type_for_computation(
+        db, dataset, model, job_request.settings.filters.annotations
+    )
+
+    # update settings
+    job_request.settings.task_type = enums.TaskType.DETECTION
+    job_request.settings.filters.annotations.annotation_types = [gct]
+    # This overrides user selection.
+    job_request.settings.filters.annotations.allow_conversion = (
+        gt_type == pd_type
+    )
 
     es = get_or_create_row(
         db,
@@ -547,8 +459,7 @@ def create_detection_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "type": TaskType.DETECTION,
-            "parameters": settings.parameters.model_dump(),
+            "settings": job_request.settings.model_dump(),
         },
     )
 
@@ -557,35 +468,25 @@ def create_detection_evaluation(
 
 def create_detection_metrics(
     db: Session,
-    settings: schemas.EvaluationSettings,
+    job_request: schemas.EvaluationJob,
     evaluation_id: int,
 ):
     """
     Intended to run as background
     """
 
-    dataset = core.get_dataset(db, settings.dataset)
-    model = core.get_model(db, settings.model)
+    dataset = core.get_dataset(db, job_request.dataset)
+    model = core.get_model(db, job_request.model)
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
-
-    if settings.parameters.annotation_type == AnnotationType.NONE:
-        settings.parameters.annotation_type = (
-            gt_type if gt_type < pd_type else pd_type
-        )
 
     metrics = compute_detection_metrics(
         db=db,
         dataset=dataset,
         model=model,
-        iou_thresholds=settings.parameters.iou_thresholds_to_compute,
-        ious_to_keep=settings.parameters.iou_thresholds_to_keep,
-        label_key=settings.parameters.label_key,
-        target_type=settings.parameters.annotation_type,
+        settings=job_request.settings,
         gt_type=gt_type,
         pd_type=pd_type,
-        min_area=settings.parameters.min_area,
-        max_area=settings.parameters.max_area,
     )
 
     metric_mappings = create_metric_mappings(
