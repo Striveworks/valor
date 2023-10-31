@@ -10,7 +10,8 @@ from pydantic import (
     model_validator,
 )
 
-from velour_api.enums import AnnotationType, JobStatus
+from velour_api.enums import JobStatus, TaskType
+from velour_api.schemas.filters import Filter
 from velour_api.schemas.label import Label
 
 
@@ -30,12 +31,6 @@ class DetectionParameters(BaseModel):
     ]
     iou_thresholds_to_keep: list[float] | None = [0.5, 0.75]
 
-    # constraints
-    annotation_type: AnnotationType | None = None
-    label_key: str | None = None
-    min_area: float | None = None
-    max_area: float | None = None
-
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
 
@@ -51,6 +46,15 @@ class DetectionParameters(BaseModel):
 
 
 class EvaluationSettings(BaseModel):
+    task_type: TaskType | None = None
+    parameters: DetectionParameters | None = None
+    filters: Filter | None = None
+
+    # pydantic setting
+    model_config = ConfigDict(extra="forbid")
+
+
+class EvaluationJob(BaseModel):
     """General parameters defining any filters of the data such
     as model, dataset, groundtruth and prediction type, model, dataset,
     size constraints, coincidence/intersection constraints, etc.
@@ -58,7 +62,7 @@ class EvaluationSettings(BaseModel):
 
     model: str
     dataset: str
-    parameters: DetectionParameters | None = None
+    settings: EvaluationSettings = Field(default=EvaluationSettings())
     id: int | None = None
 
     # pydantic setting
@@ -293,7 +297,7 @@ class mIOUMetric(BaseModel):
 class Evaluation(BaseModel):
     dataset: str
     model: str
-    filter: str
+    settings: EvaluationSettings
     job_id: int
     status: str
     metrics: List[Metric]

@@ -102,9 +102,18 @@ def convert_geometry(
         AnnotationType.POLYGON,
         AnnotationType.RASTER,
     ]
-    assert evaluation_target_type in valid_types
-    assert dataset_source_type in valid_types
-    assert model_source_type in valid_types
+    if evaluation_target_type not in valid_types:
+        raise RuntimeError(
+            f"Evaluation type `{evaluation_target_type}` not in valid set `{valid_types}`"
+        )
+    if dataset_source_type not in valid_types:
+        raise RuntimeError(
+            f"Groundtruth type `{evaluation_target_type}` not in valid set `{valid_types}`"
+        )
+    if model_source_type not in valid_types:
+        raise RuntimeError(
+            f"Prediction type `{evaluation_target_type}` not in valid set `{valid_types}`"
+        )
 
     # Check if source type can serve the target type
     assert dataset_source_type >= evaluation_target_type

@@ -10,11 +10,7 @@ from velour_api.backend.metrics.core import (
 )
 from velour_api.enums import AnnotationType, TaskType
 from velour_api.schemas import Label
-from velour_api.schemas.metrics import (
-    EvaluationSettings,
-    IOUMetric,
-    mIOUMetric,
-)
+from velour_api.schemas.metrics import EvaluationJob, IOUMetric, mIOUMetric
 
 
 def _gt_query(dataset_name: str, label_id: int) -> Select:
@@ -182,10 +178,13 @@ def compute_segmentation_metrics(
 
 
 def create_semantic_segmentation_evaluation(
-    db: Session, settings: EvaluationSettings
+    db: Session, job_request: EvaluationJob
 ) -> int:
-    dataset = core.get_dataset(db, settings.dataset)
-    model = core.get_model(db, settings.model)
+    dataset = core.get_dataset(db, job_request.dataset)
+    model = core.get_model(db, job_request.model)
+
+    # set task type
+    job_request.settings.task_type = TaskType.SEGMENTATION
 
     es = get_or_create_row(
         db,
@@ -193,7 +192,7 @@ def create_semantic_segmentation_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "type": TaskType.SEGMENTATION,
+            "settings": job_request.settings.model_dump(),
         },
     )
 
@@ -202,13 +201,13 @@ def create_semantic_segmentation_evaluation(
 
 def create_semantic_segmentation_metrics(
     db: Session,
-    settings: EvaluationSettings,
+    job_request: EvaluationJob,
     evaluation_id: int,
 ) -> int:
     metrics = compute_segmentation_metrics(
         db,
-        dataset_name=settings.dataset,
-        model_name=settings.model,
+        dataset_name=job_request.dataset,
+        model_name=job_request.model,
     )
     metric_mappings = create_metric_mappings(db, metrics, evaluation_id)
     for mapping in metric_mappings:
