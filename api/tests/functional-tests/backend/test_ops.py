@@ -597,7 +597,7 @@ def test_query_models(
     f = schemas.Filter(
         models=schemas.ModelFilter(
             metadata=[
-                schemas.MetadatumFilter(
+                schemas.KeyValueFilter(
                     key="some_numeric_attribute",
                     comparison=schemas.NumericFilter(
                         value=0.5,
@@ -616,7 +616,7 @@ def test_query_models(
     f = schemas.Filter(
         models=schemas.ModelFilter(
             metadata=[
-                schemas.MetadatumFilter(
+                schemas.KeyValueFilter(
                     key="some_numeric_attribute",
                     comparison=schemas.NumericFilter(
                         value=0.5,
@@ -640,14 +640,14 @@ def test_query_by_metadata(
     f = schemas.Filter(
         datums=schemas.DatumFilter(
             metadata=[
-                schemas.MetadatumFilter(
+                schemas.KeyValueFilter(
                     key="some_numeric_attribute",
                     comparison=schemas.NumericFilter(
                         value=0.5,
                         operator="<",
                     ),
                 ),
-                schemas.MetadatumFilter(
+                schemas.KeyValueFilter(
                     key="some_str_attribute",
                     comparison=schemas.StringFilter(
                         value="abc",
@@ -666,14 +666,14 @@ def test_query_by_metadata(
     f = schemas.Filter(
         datums=schemas.DatumFilter(
             metadata=[
-                schemas.MetadatumFilter(
+                schemas.KeyValueFilter(
                     key="some_numeric_attribute",
                     comparison=schemas.NumericFilter(
                         value=0.5,
                         operator=">",
                     ),
                 ),
-                schemas.MetadatumFilter(
+                schemas.KeyValueFilter(
                     key="some_str_attribute",
                     comparison=schemas.StringFilter(
                         value="abc",
@@ -692,14 +692,14 @@ def test_query_by_metadata(
     f = schemas.Filter(
         datums=schemas.DatumFilter(
             metadata=[
-                schemas.MetadatumFilter(
+                schemas.KeyValueFilter(
                     key="some_numeric_attribute",
                     comparison=schemas.NumericFilter(
                         value=0.5,
                         operator="<",
                     ),
                 ),
-                schemas.MetadatumFilter(
+                schemas.KeyValueFilter(
                     key="some_str_attribute",
                     comparison=schemas.StringFilter(
                         value="xyz",
@@ -718,14 +718,14 @@ def test_query_by_metadata(
     f = schemas.Filter(
         datums=schemas.DatumFilter(
             metadata=[
-                schemas.MetadatumFilter(
+                schemas.KeyValueFilter(
                     key="some_numeric_attribute",
                     comparison=schemas.NumericFilter(
                         value=0.5,
                         operator=">",
                     ),
                 ),
-                schemas.MetadatumFilter(
+                schemas.KeyValueFilter(
                     key="some_str_attribute",
                     comparison=schemas.StringFilter(
                         value="xyz",
@@ -797,10 +797,12 @@ def test_complex_queries(
             labels=[schemas.Label(key="class", value="dog")]
         ),
         predictions=schemas.PredictionFilter(
-            score=schemas.NumericFilter(
-                value=0.9,
-                operator=">",
-            )
+            scores=[
+                schemas.NumericFilter(
+                    value=0.9,
+                    operator=">",
+                ),
+            ]
         ),
     )
     q = Query(models.Datum.uid).filter(f).predictions()
@@ -818,10 +820,12 @@ def test_complex_queries(
             labels=[schemas.Label(key="class", value="dog")]
         ),
         predictions=schemas.PredictionFilter(
-            score=schemas.NumericFilter(
-                value=0.75,
-                operator=">",
-            )
+            scores=[
+                schemas.NumericFilter(
+                    value=0.75,
+                    operator=">",
+                )
+            ],
         ),
         annotations=schemas.AnnotationFilter(
             annotation_types=[enums.AnnotationType.BOX]
@@ -840,13 +844,17 @@ def test_query_by_annotation_geometry(
 ):
     f = schemas.Filter(
         annotations=schemas.AnnotationFilter(
-            geometry=schemas.GeometricFilter(
-                type=enums.AnnotationType.BOX,
-                area=schemas.NumericFilter(
-                    value=75,
-                    operator=">",
-                ),
-            )
+            geometry=[
+                schemas.GeometricAnnotationFilter(
+                    annotation_type=enums.AnnotationType.BOX,
+                    area=[
+                        schemas.NumericFilter(
+                            value=75,
+                            operator=">",
+                        ),
+                    ],
+                )
+            ]
         )
     )
 

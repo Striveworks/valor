@@ -2,7 +2,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Union
 
-from velour.enums import AnnotationType, DataType, TaskType
+from velour.enums import TaskType
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import GeoJSON
 
@@ -78,13 +78,6 @@ class Model:
                 raise TypeError(
                     "elements should be of type `velour.schemas.Metadatum`"
                 )
-
-
-@dataclass
-class Info:
-    type: DataType = None
-    annotation_types: List[AnnotationType] = field(default_factory=list)
-    associated_datasets: List[str] = field(default_factory=list)
 
 
 @dataclass

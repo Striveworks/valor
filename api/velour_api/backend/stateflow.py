@@ -165,9 +165,9 @@ def evaluate(fn: callable) -> callable:
         # unpack args
         dataset_name = None
         model_name = None
-        if "settings" in kwargs:
-            dataset_name = kwargs["settings"].dataset
-            model_name = kwargs["settings"].model
+        if "job_request" in kwargs:
+            dataset_name = kwargs["job_request"].dataset
+            model_name = kwargs["job_request"].model
 
         _update_backend_state(
             status=State.EVALUATE,
@@ -205,18 +205,18 @@ def computation(fn: callable) -> callable:
         if len(args) != 0 and len(kwargs) != 2:
             raise RuntimeError
 
-        # unpack settings
-        if "settings" in kwargs:
-            if isinstance(kwargs["settings"], schemas.EvaluationSettings):
-                dataset_name = kwargs["settings"].dataset
-                model_name = kwargs["settings"].model
+        # unpack job_request
+        if "job_request" in kwargs:
+            if isinstance(kwargs["job_request"], schemas.EvaluationJob):
+                dataset_name = kwargs["job_request"].dataset
+                model_name = kwargs["job_request"].model
             else:
                 raise ValueError(
-                    "settings object must be of type `schemas.EvaluationSettings`"
+                    "job_request object must be of type `schemas.EvaluationJob`"
                 )
         else:
             raise ValueError(
-                "missing settings which should be an evaluation request type (e.g. `schemas.EvaluationSettings`)"
+                "missing job_request which should be an evaluation request type (e.g. `schemas.EvaluationJob`)"
             )
 
         # unpack job_id
