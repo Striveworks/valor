@@ -629,14 +629,12 @@ def get_evaluation_status(job_id: int) -> enums.JobStatus:
     response_model_exclude_none=True,
     tags=["Evaluations"],
 )
-def get_evaluation_settings(
+def get_evaluation_job(
     job_id: int,
     db: Session = Depends(get_db),
 ) -> schemas.EvaluationJob:
     try:
-        return crud.get_evaluation_settings_from_id(
-            db=db, evaluation_id=job_id
-        )
+        return crud.get_evaluation_job_from_id(db=db, evaluation_id=job_id)
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

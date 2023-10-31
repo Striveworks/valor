@@ -258,7 +258,7 @@ def get_metrics_from_evaluation_ids(
     return backend.get_metrics_from_evaluation_ids(db, evaluation_id)
 
 
-def get_evaluation_settings_from_id(
+def get_evaluation_job_from_id(
     *, db: Session, evaluation_id: int
 ) -> schemas.EvaluationJob:
     return backend.get_evaluation_job_from_id(db, evaluation_id)
