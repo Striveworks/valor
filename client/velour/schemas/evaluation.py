@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Union
 
-from velour.enums import AnnotationType
 from velour.schemas.filters import Filter
 
 

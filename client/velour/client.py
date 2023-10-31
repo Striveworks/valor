@@ -820,7 +820,7 @@ class Model:
         for evaluation in self.get_evaluations():
             metrics = [
                 {**metric, "dataset": evaluation.dataset}
-                for metric in evaluation.metrics
+                for metric in evaluation.metrics["metrics"]
             ]
             df = pd.DataFrame(metrics)
             for k in ["label", "parameters"]:

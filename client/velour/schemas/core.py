@@ -2,7 +2,7 @@ import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple, Union
 
-from velour.enums import AnnotationType, DataType, TaskType
+from velour.enums import TaskType
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import GeoJSON
 
