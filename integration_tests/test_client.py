@@ -2349,7 +2349,6 @@ def test_evaluate_tabular_clf(
         "dataset": "test_dataset",
         "settings": {
             "task_type": TaskType.CLASSIFICATION.value,
-            "filters": {},
         },
     }
 

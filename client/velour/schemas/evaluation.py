@@ -14,7 +14,7 @@ class DetectionParameters:
 @dataclass
 class EvaluationSettings:
     parameters: Union[DetectionParameters, None] = None
-    filters: Filter = None
+    filters: Union[Filter, None] = None
 
 
 @dataclass
@@ -26,5 +26,5 @@ class EvaluationJob:
 
     model: str
     dataset: str
-    settings: EvaluationSettings = field(default_factory=EvaluationSettings())
+    settings: EvaluationSettings = field(default_factory=EvaluationSettings)
     id: int = None

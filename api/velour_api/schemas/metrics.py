@@ -48,7 +48,7 @@ class DetectionParameters(BaseModel):
 class EvaluationSettings(BaseModel):
     task_type: TaskType | None = None
     parameters: DetectionParameters | None = None
-    filters: Filter = Field(default=Filter())
+    filters: Filter | None = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
