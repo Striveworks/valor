@@ -42,7 +42,7 @@ def _get_metrics_from_evaluation_settings(
         job_id = ms.id
         status = jobs.get_stateflow().get_job_status(job_id=ms.id).value
         confusion_matrices = [
-            schemas.ConfusionMatrix(
+            schemas.ConfusionMatrixResponse(
                 label_key=matrix.label_key,
                 entries=[
                     schemas.ConfusionMatrixEntry(**entry)

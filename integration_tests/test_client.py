@@ -23,22 +23,17 @@ from sqlalchemy.orm import Session
 
 from velour.client import Client, ClientException, Dataset, Model
 from velour.data_generation import _generate_mask
-from velour.enums import AnnotationType, DataType, JobStatus, TaskType
+from velour.enums import DataType, JobStatus, TaskType
 from velour.schemas import (
     Annotation,
-    AnnotationFilter,
     BasicPolygon,
     BoundingBox,
     Datum,
-    Filter,
-    GeometricAnnotationFilter,
     GroundTruth,
     ImageMetadata,
     Label,
-    LabelFilter,
     Metadatum,
     MultiPolygon,
-    NumericFilter,
     Point,
     Polygon,
     Prediction,
@@ -1464,15 +1459,18 @@ def test_evaluate_detection(
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "filters": asdict(
-                Filter(
-                    annotations=AnnotationFilter(
-                        annotation_types=[AnnotationType.BOX.value],
-                        allow_conversion=True,
-                    ),
-                    labels=LabelFilter(keys=["k1"]),
-                )
-            ),
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
         },
     }
 
@@ -1543,29 +1541,31 @@ def test_evaluate_detection(
         "model": model_name,
         "dataset": "test_dataset",
         "settings": {
-            "task_type": TaskType.DETECTION.value,
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [
+                        {
+                            "annotation_type": "box",
+                            "area": [
+                                {"operator": ">=", "value": 10.0},
+                                {"operator": "<=", "value": 2000.0},
+                            ],
+                        }
+                    ],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "filters": asdict(
-                Filter(
-                    annotations=AnnotationFilter(
-                        annotation_types=[AnnotationType.BOX.value],
-                        geometry=[
-                            GeometricAnnotationFilter(
-                                annotation_type=AnnotationType.BOX.value,
-                                area=[
-                                    NumericFilter(value=10.0, operator=">="),
-                                    NumericFilter(value=2000.0, operator="<="),
-                                ],
-                            )
-                        ],
-                        allow_conversion=True,
-                    ),
-                    labels=LabelFilter(keys=["k1"]),
-                )
-            ),
+            "task_type": "object-detection",
         },
     }
     assert eval_job_bounded_area_10_2000.metrics["metrics"] == expected_metrics
@@ -1586,28 +1586,30 @@ def test_evaluate_detection(
         "model": model_name,
         "dataset": "test_dataset",
         "settings": {
-            "task_type": TaskType.DETECTION.value,
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [
+                        {
+                            "annotation_type": "box",
+                            "area": [
+                                {"operator": ">=", "value": 1200.0},
+                            ],
+                        }
+                    ],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "filters": asdict(
-                Filter(
-                    annotations=AnnotationFilter(
-                        annotation_types=[AnnotationType.BOX.value],
-                        geometry=[
-                            GeometricAnnotationFilter(
-                                annotation_type=AnnotationType.BOX.value,
-                                area=[
-                                    NumericFilter(value=1200.0, operator=">="),
-                                ],
-                            )
-                        ],
-                        allow_conversion=True,
-                    ),
-                    labels=LabelFilter(keys=["k1"]),
-                )
-            ),
+            "task_type": "object-detection",
         },
     }
     assert eval_job_min_area_1200.metrics["metrics"] != expected_metrics
@@ -1627,28 +1629,28 @@ def test_evaluate_detection(
         "model": model_name,
         "dataset": "test_dataset",
         "settings": {
-            "task_type": TaskType.DETECTION.value,
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [
+                        {
+                            "annotation_type": "box",
+                            "area": [{"operator": "<=", "value": 1200.0}],
+                        }
+                    ],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "filters": asdict(
-                Filter(
-                    annotations=AnnotationFilter(
-                        annotation_types=[AnnotationType.BOX.value],
-                        geometry=[
-                            GeometricAnnotationFilter(
-                                annotation_type=AnnotationType.BOX.value,
-                                area=[
-                                    NumericFilter(value=1200.0, operator="<="),
-                                ],
-                            )
-                        ],
-                        allow_conversion=True,
-                    ),
-                    labels=LabelFilter(keys=["k1"]),
-                )
-            ),
+            "task_type": "object-detection",
         },
     }
     assert eval_job_max_area_1200.metrics["metrics"] != expected_metrics
@@ -1670,29 +1672,31 @@ def test_evaluate_detection(
         "model": model_name,
         "dataset": "test_dataset",
         "settings": {
-            "task_type": TaskType.DETECTION.value,
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [
+                        {
+                            "annotation_type": "box",
+                            "area": [
+                                {"operator": ">=", "value": 1200.0},
+                                {"operator": "<=", "value": 1800.0},
+                            ],
+                        }
+                    ],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "filters": asdict(
-                Filter(
-                    annotations=AnnotationFilter(
-                        annotation_types=[AnnotationType.BOX.value],
-                        geometry=[
-                            GeometricAnnotationFilter(
-                                annotation_type=AnnotationType.BOX.value,
-                                area=[
-                                    NumericFilter(value=1200.0, operator=">="),
-                                    NumericFilter(value=1800.0, operator="<="),
-                                ],
-                            )
-                        ],
-                        allow_conversion=True,
-                    ),
-                    labels=LabelFilter(keys=["k1"]),
-                )
-            ),
+            "task_type": "object-detection",
         },
     }
     assert (
@@ -1783,7 +1787,7 @@ def test_get_bulk_evaluations(
             in [
                 "dataset",
                 "model",
-                "filter",
+                "settings",
                 "job_id",
                 "status",
                 "metrics",
@@ -1830,7 +1834,7 @@ def test_get_bulk_evaluations(
             in [
                 "dataset",
                 "model",
-                "filter",
+                "settings",
                 "job_id",
                 "status",
                 "metrics",
@@ -2291,7 +2295,7 @@ def test_evaluate_tabular_clf(
             in [
                 "dataset",
                 "model",
-                "filter",
+                "settings",
                 "job_id",
                 "status",
                 "metrics",
@@ -2343,7 +2347,10 @@ def test_evaluate_tabular_clf(
     assert eval_settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "parameters": None,
+        "settings": {
+            "task_type": TaskType.CLASSIFICATION.value,
+            "filters": {},
+        },
     }
 
     metrics_from_eval_settings_id = eval_jobs[0].metrics["metrics"]

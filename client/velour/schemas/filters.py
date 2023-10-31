@@ -110,9 +110,9 @@ class PredictionFilter:
 
 @dataclass
 class Filter:
-    datasets: DatasetFilter = field(default=DatasetFilter())
-    models: ModelFilter = field(default=ModelFilter())
-    datums: DatumFilter = field(default=DatumFilter())
-    annotations: AnnotationFilter = field(default=AnnotationFilter())
-    predictions: PredictionFilter = field(default=PredictionFilter())
-    labels: LabelFilter = field(default=LabelFilter())
+    datasets: DatasetFilter = None
+    models: ModelFilter = None
+    datums: DatumFilter = None
+    annotations: AnnotationFilter = None
+    predictions: PredictionFilter = None
+    labels: LabelFilter = None
