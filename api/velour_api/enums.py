@@ -8,6 +8,7 @@ class DataType(str, Enum):
 
 class AnnotationType(str, Enum):
     NONE = "none"
+    JSON = "json"
     BOX = "box"
     POLYGON = "polygon"
     MULTIPOLYGON = "multipolygon"
@@ -20,10 +21,11 @@ class AnnotationType(str, Enum):
     def numeric(self) -> int:
         mapping = {
             self.NONE: 0,
-            self.BOX: 1,
-            self.POLYGON: 2,
-            self.MULTIPOLYGON: 3,
-            self.RASTER: 4,
+            self.JSON: 1,
+            self.BOX: 2,
+            self.POLYGON: 3,
+            self.MULTIPOLYGON: 4,
+            self.RASTER: 5,
         }
         return mapping[self]
 
