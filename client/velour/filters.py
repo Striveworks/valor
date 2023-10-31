@@ -97,6 +97,4 @@ expressions = [
     Dataset.metadata.key == "angle",
     Dataset.metadata["angle"] > 0.5,
 ]
-
-
 print(expressions)
