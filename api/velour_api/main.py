@@ -581,7 +581,7 @@ def get_bulk_evaluations(
     datasets: str = None,
     models: str = None,
     db: Session = Depends(get_db),
-) -> list[schemas.Evaluations]:
+) -> list[schemas.Evaluation]:
     """
     Returns all metrics associated with user-supplied dataset and model names. Users
     may query using model names, dataset names, or both. All metrics for all specified
@@ -650,7 +650,7 @@ def get_evaluation_settings(
 def get_evaluation_metrics(
     job_id: int,
     db: Session = Depends(get_db),
-) -> schemas.Evaluations:
+) -> schemas.Evaluation:
     try:
         status = crud.get_evaluation_status(
             job_id=job_id,

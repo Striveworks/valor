@@ -36,7 +36,7 @@ def _db_evaluation_settings_to_pydantic_evaluation_settings(
 def _get_metrics_from_evaluation_settings(
     db: Session,
     evaluation_settings: list[models.Evaluation],
-) -> list[schemas.Evaluations]:
+) -> list[schemas.Evaluation]:
     """Return a list of unnested Evaluations from a list of evaluation settings"""
     output = []
 

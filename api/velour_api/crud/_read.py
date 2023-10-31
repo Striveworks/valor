@@ -38,7 +38,7 @@ def get_bulk_evaluations(
     db: Session,
     dataset_names: Optional[List[str]],
     model_names: Optional[List[str]],
-) -> list[schemas.Evaluations]:
+) -> list[schemas.Evaluation]:
     """
     Returns all metrics associated with user-supplied dataset and model names
 

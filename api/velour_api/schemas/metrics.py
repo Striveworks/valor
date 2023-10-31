@@ -290,7 +290,7 @@ class mIOUMetric(BaseModel):
         }
 
 
-class Evaluations(BaseModel):
+class Evaluation(BaseModel):
     dataset: str
     model: str
     filter: str
