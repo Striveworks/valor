@@ -1124,7 +1124,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         evaluation_id=evaluation_id,
     )[0]["metrics"]
 
-    assert len() == len(metrics)
+    assert len(metrics_pydantic) == len(metrics)
 
     for m in metrics_pydantic:
         assert m.type in {
