@@ -13,6 +13,7 @@ import { Login } from './pages/Login';
 import { ModelDetails } from './pages/Models/ModelDetails';
 import { Models } from './pages/Models/Models';
 import { Profile } from './pages/Profile';
+import { Evaluations } from './pages/Evaluations/Evaluations';
 
 function App() {
   const { isAuthenticated } = useAuth0();
@@ -33,6 +34,9 @@ function App() {
           <Route path='/datasets'>
             <Route index element={<Datasets />} />
             <Route path=':name' element={<DatasetDetailsPage />} />
+          </Route>
+          <Route path='/evaluations'>
+            <Route index element={<Evaluations />} />
           </Route>
           <Route path='/profile' element={<Profile />} />
         </Routes>

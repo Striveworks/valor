@@ -1,11 +1,4 @@
-import {
-  Box,
-  Page,
-  TableList,
-  Tag,
-  Tooltip,
-  Typography
-} from '@striveworks/minerva';
+import { Box, Page, TableList, Tag, Tooltip, Typography } from '@striveworks/minerva';
 import { Link } from 'react-router-dom';
 import { Loading } from '../../components/shared/Loading';
 import { SummaryBar } from '../../components/shared/SummaryBar';
