@@ -4,13 +4,22 @@ import os
 import time
 import warnings
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
 
 from velour import enums, schemas
-from velour.enums import AnnotationType, JobStatus, State
+from velour.enums import AnnotationType, JobStatus, State, TaskType
+from velour.filters import (
+    JSON,
+    BinaryExpression,
+    DeclarativeMapper,
+    Geometry,
+    Metadata,
+    _BaseLabel,
+    create_filter,
+)
 
 
 class ClientException(Exception):
@@ -334,6 +343,10 @@ class Evaluation:
 
 
 class Dataset:
+    id = DeclarativeMapper("dataset.id", int)
+    name = DeclarativeMapper("dataset.name", str)
+    metadata = Metadata("dataset.metadata")
+
     def __init__(
         self,
         client: Client,
@@ -341,27 +354,13 @@ class Dataset:
     ):
         self.client = client
         self.info = info
-        self._metadata = {
+
+        # unpack important values
+        self.id = info.id
+        self.name = info.name
+        self.metadata = {
             metadatum.key: metadatum.value for metadatum in info.metadata
         }
-
-    @property
-    def id(
-        self,
-    ):
-        return self.info.id
-
-    @property
-    def name(
-        self,
-    ):
-        return self.info.name
-
-    @property
-    def metadata(
-        self,
-    ) -> Dict[str, Any]:
-        return self._metadata
 
     @classmethod
     def create(
@@ -506,6 +505,10 @@ class Dataset:
 
 
 class Model:
+    id = DeclarativeMapper("model.id", int)
+    name = DeclarativeMapper("model.name", str)
+    metadata = Metadata("model.metadata")
+
     def __init__(
         self,
         client: Client,
@@ -513,27 +516,13 @@ class Model:
     ):
         self.client = client
         self.info = info
-        self._metadata = {
+
+        # Unpack important values
+        self.id = info.id
+        self.name = info.name
+        self.metadata = {
             metadatum.key: metadatum.value for metadatum in info.metadata
         }
-
-    @property
-    def id(
-        self,
-    ):
-        return self.info.id
-
-    @property
-    def name(
-        self,
-    ):
-        return self.info.name
-
-    @property
-    def metadata(
-        self,
-    ) -> Dict[str, Any]:
-        return self._metadata
 
     @classmethod
     def create(
@@ -678,41 +667,12 @@ class Model:
 
         return evaluation_job
 
-    def evaluate_segmentation(
-        self, dataset: Dataset, timeout: Optional[int] = None
-    ) -> Evaluation:
-        evaluation = schemas.EvaluationJob(
-            model=self.name,
-            dataset=dataset.name,
-        )
-
-        resp = self.client._requests_post_rel_host(
-            "evaluations/semantic-segmentation-metrics",
-            json=asdict(evaluation),
-        ).json()
-
-        evaluation_job = Evaluation(
-            client=self.client,
-            dataset=dataset.name,
-            model=self.name,
-            **resp,
-        )
-
-        # blocking behavior
-        if timeout:
-            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
-
-        return evaluation_job
-
     def evaluate_detection(
         self,
         dataset: "Dataset",
-        annotation_type: AnnotationType = AnnotationType.BOX,
         iou_thresholds_to_compute: List[float] = None,
         iou_thresholds_to_keep: List[float] = None,
-        min_area: float = None,
-        max_area: float = None,
-        label_key: Optional[str] = None,
+        filters: Union[Dict, List[BinaryExpression]] = None,
         timeout: Optional[int] = None,
     ) -> Evaluation:
         """Evaluate object detections."""
@@ -730,36 +690,8 @@ class Model:
             iou_thresholds_to_keep=iou_thresholds_to_keep,
         )
 
-        geometric_area_filters = []
-        if min_area:
-            geometric_area_filters.append(
-                schemas.NumericFilter(
-                    value=min_area,
-                    operator=">=",
-                ),
-            )
-        if max_area:
-            geometric_area_filters.append(
-                schemas.NumericFilter(
-                    value=max_area,
-                    operator="<=",
-                ),
-            )
-        geometric_filters = []
-        if geometric_area_filters:
-            geometric_filters.append(
-                schemas.GeometricAnnotationFilter(
-                    annotation_type=annotation_type,
-                    area=geometric_area_filters,
-                )
-            )
-        filters = schemas.Filter(
-            annotations=schemas.AnnotationFilter(
-                annotation_types=[annotation_type],
-                geometry=geometric_filters,
-            ),
-            labels=schemas.LabelFilter(keys=[label_key]),
-        )
+        if not isinstance(filters, dict):
+            filters = create_filter(filters)
 
         evaluation = schemas.EvaluationJob(
             model=self.name,
@@ -779,6 +711,32 @@ class Model:
 
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
             resp[k] = [schemas.Label(**la) for la in resp[k]]
+
+        evaluation_job = Evaluation(
+            client=self.client,
+            dataset=dataset.name,
+            model=self.name,
+            **resp,
+        )
+
+        # blocking behavior
+        if timeout:
+            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
+
+        return evaluation_job
+
+    def evaluate_segmentation(
+        self, dataset: Dataset, timeout: Optional[int] = None
+    ) -> Evaluation:
+        evaluation = schemas.EvaluationJob(
+            model=self.name,
+            dataset=dataset.name,
+        )
+
+        resp = self.client._requests_post_rel_host(
+            "evaluations/semantic-segmentation-metrics",
+            json=asdict(evaluation),
+        ).json()
 
         evaluation_job = Evaluation(
             client=self.client,
@@ -851,3 +809,31 @@ class Model:
             schemas.Label(key=label["key"], value=label["value"])
             for label in labels
         ]
+
+
+class Datum:
+    id = DeclarativeMapper("datum.id", int)
+    uid = DeclarativeMapper("datum.uid", str)
+    metadata = Metadata("datum.metadata")
+
+
+class Annotation:
+    task_type = DeclarativeMapper("annotation.task_type", TaskType)
+    annotation_type = DeclarativeMapper(
+        "annotation.annotation_type", AnnotationType
+    )
+    box = Geometry("box")
+    polygon = Geometry("polygon")
+    multipolygon = Geometry("multipolygon")
+    raster = Geometry("raster")
+    json = JSON("annotation.json")
+    metadata = Metadata("annotation.metadata")
+
+
+class Prediction:
+    score = DeclarativeMapper("prediction.score", Union[int, float])
+
+
+class Label:
+    key = DeclarativeMapper("label.key", str)
+    label = _BaseLabel()

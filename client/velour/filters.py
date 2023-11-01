@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Union
 
 from velour import schemas
-from velour.enums import AnnotationType, TaskType
+from velour.enums import AnnotationType
 from velour.schemas import (
     AnnotationFilter,
     DatasetFilter,
@@ -159,46 +159,6 @@ class _BaseLabel:
         return DeclarativeMapper(
             name="label.value", key=key, object_type=object
         )
-
-
-class Dataset:
-    id = DeclarativeMapper("dataset.id", int)
-    name = DeclarativeMapper("dataset.name", str)
-    metadata = Metadata("dataset.metadata")
-
-
-class Model:
-    id = DeclarativeMapper("model.id", int)
-    name = DeclarativeMapper("model.name", str)
-    metadata = Metadata("model.metadata")
-
-
-class Datum:
-    id = DeclarativeMapper("datum.id", int)
-    uid = DeclarativeMapper("datum.uid", str)
-    metadata = Metadata("datum.metadata")
-
-
-class Annotation:
-    task_type = DeclarativeMapper("annotation.task_type", TaskType)
-    annotation_type = DeclarativeMapper(
-        "annotation.annotation_type", AnnotationType
-    )
-    box = Geometry("box")
-    polygon = Geometry("polygon")
-    multipolygon = Geometry("multipolygon")
-    raster = Geometry("raster")
-    json = JSON("annotation.json")
-    metadata = Metadata("annotation.metadata")
-
-
-class Prediction:
-    score = DeclarativeMapper("prediction.score", Union[int, float])
-
-
-class Label:
-    key = DeclarativeMapper("label.key", str)
-    label = _BaseLabel()
 
 
 def create_filter(expressions: list[BinaryExpression]) -> Filter:
@@ -427,40 +387,3 @@ def create_filter(expressions: list[BinaryExpression]) -> Filter:
                 )
 
     return filter_request
-
-
-if __name__ == "__main__":
-
-    expressions = [
-        Dataset.id.in_([1, 2]),
-        Dataset.name.in_(["world", "foo", "bar"]),
-        Dataset.metadata["angle"] > 0.5,
-        Label.key == "class",
-        Label.label["class"] == "dog",
-        Annotation.box.area >= 220,
-        Annotation.box.area <= 1000,
-        Datum.uid == "uid1",
-        Datum.metadata["type"] == "image",
-        Annotation.raster.area <= 10,
-    ]
-
-    # expressions = {
-    #     "dataset_ids": [1],
-    #     "dataset_names": ["world", "foo", "bar", "hello"],
-    #     "dataset_metadata": {
-    #         "angle": ">0.5"
-    #     },
-    #     "label_keys": ["class"],
-    #     "labels": [("class", "dog")],
-    #     "annotation_box_area": [">=200"],
-    # }
-
-    for expr in expressions:
-        print(expr)
-    print()
-
-    import json
-    from dataclasses import asdict
-
-    f = create_filter(expressions)
-    print(json.dumps(asdict(f), indent=4))
