@@ -160,7 +160,7 @@ class Annotation:
     raster: Raster = None
 
     # @ TODO implement json annotation type
-    json: Dict = None
+    jsonb: Dict = None
 
     def __post_init__(self):
         # task_type

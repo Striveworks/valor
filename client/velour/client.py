@@ -829,6 +829,14 @@ class Annotation:
     json = JSON("annotation.json")
     metadata = Metadata("annotation.metadata")
 
+    @classmethod
+    def create_bounding_box(
+        cls, xmin, xmax, ymin, ymax
+    ) -> schemas.BoundingBox:
+        return schemas.BoundingBox.from_extrema(
+            xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
+        )
+
 
 class Prediction:
     score = DeclarativeMapper("prediction.score", Union[int, float])

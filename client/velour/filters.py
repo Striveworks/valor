@@ -177,9 +177,6 @@ def create_filter(expressions: list[BinaryExpression]) -> Filter:
         if isinstance(expr_, BinaryExpression)
     ]
 
-    for expr in expressions:
-        print(expr)
-
     # parse filters into highest level categories
     keys = {"dataset", "model", "datum", "annotation", "prediction", "label"}
     filters = {
