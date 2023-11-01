@@ -174,9 +174,9 @@ class Model:
 
 
 class Datum:
-    id = DeclarativeMapper("model.id", int)
-    uid = DeclarativeMapper("model.name", str)
-    metadata = Metadata("model.metadata")
+    id = DeclarativeMapper("datum.id", int)
+    uid = DeclarativeMapper("datum.uid", str)
+    metadata = Metadata("datum.metadata")
 
 
 class Annotation:
@@ -206,23 +206,28 @@ def create_filter(expressions: list[BinaryExpression]) -> Filter:
     Parses a list of `BinaryExpression` to create a `schemas.Filter` object.
     """
 
-    #
-    filter_request = Filter()
+    # expand nested expressions
+    expressions = [
+        expr for expr in expressions if isinstance(expr, BinaryExpression)
+    ] + [
+        expr_
+        for expr in expressions
+        if isinstance(expr, list)
+        for expr_ in expr
+        if isinstance(expr_, BinaryExpression)
+    ]
+
+    for expr in expressions:
+        print(expr)
 
     # parse filters into highest level categories
+    keys = {"dataset", "model", "datum", "annotation", "prediction", "label"}
     filters = {
-        "dataset": [],
-        "model": [],
-        "datum": [],
-        "annotation": [],
-        "prediction": [],
-        "label": [],
+        key: [expr for expr in expressions if key in expr.name] for key in keys
     }
-    for expr in expressions:
-        for key in filters:
-            if key in expr.name:
-                filters[key].append(expr)
-                break
+
+    #
+    filter_request = Filter()
 
     # parse dataset filters
     if filters["dataset"]:
@@ -308,11 +313,11 @@ def create_filter(expressions: list[BinaryExpression]) -> Filter:
     if filters["datum"]:
         filter_request.datums = DatumFilter()
         for expr in filters["datum"]:
-            if "id" in expr.name:
+            if ".id" in expr.name:
                 filter_request.datums.ids.append(expr.value)
-            elif "uid" in expr.name:
+            elif ".uid" in expr.name:
                 filter_request.datums.uids.append(expr.value)
-            elif "metadata" in expr.name:
+            elif ".metadata" in expr.name:
                 if isinstance(expr.value, str):
                     filter_request.datums.metadata.append(
                         KeyValueFilter(
@@ -337,7 +342,7 @@ def create_filter(expressions: list[BinaryExpression]) -> Filter:
                     raise NotImplementedError(
                         f"Metadatum value with type `{type(expr.value)}` is not currently supported."
                     )
-            elif "geo" in expr.names:
+            elif ".geo" in expr.names:
                 raise NotImplementedError(
                     "Geospatial filters are not currently supported."
                 )
@@ -425,16 +430,30 @@ def create_filter(expressions: list[BinaryExpression]) -> Filter:
 
 
 if __name__ == "__main__":
+
     expressions = [
-        Dataset.id == 1,
-        *Dataset.name.in_(["world", "foo", "bar"]),
+        Dataset.id.in_([1, 2]),
+        Dataset.name.in_(["world", "foo", "bar"]),
         Dataset.metadata["angle"] > 0.5,
         Label.key == "class",
         Label.label["class"] == "dog",
-        Annotation.box.area >= 200,
-        Dataset.name == "hello",
+        Annotation.box.area >= 220,
+        Annotation.box.area <= 1000,
+        Datum.uid == "uid1",
+        Datum.metadata["type"] == "image",
+        Annotation.raster.area <= 10,
     ]
-    f = create_filter(expressions)
+
+    # expressions = {
+    #     "dataset_ids": [1],
+    #     "dataset_names": ["world", "foo", "bar", "hello"],
+    #     "dataset_metadata": {
+    #         "angle": ">0.5"
+    #     },
+    #     "label_keys": ["class"],
+    #     "labels": [("class", "dog")],
+    #     "annotation_box_area": [">=200"],
+    # }
 
     for expr in expressions:
         print(expr)
@@ -443,4 +462,5 @@ if __name__ == "__main__":
     import json
     from dataclasses import asdict
 
+    f = create_filter(expressions)
     print(json.dumps(asdict(f), indent=4))
