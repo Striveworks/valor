@@ -19,7 +19,7 @@ function App() {
 
   if (isAuthenticated || !usingAuth()) {
     return (
-      <ChariotLayoutTemplate sidebar={<SideMenu />}>
+      <ChariotLayoutTemplate SideBar={<SideMenu />}>
         <Routes>
           <Route path='/' element={<Home />} />
           <Route path='/models'>

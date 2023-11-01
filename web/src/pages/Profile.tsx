@@ -18,22 +18,22 @@ export function Profile() {
   return (
     <Page.Main>
       <Page.Header>
-        <Typography.PageTitle>Profile</Typography.PageTitle>
+        <Typography textStyle='titlePageLarge'>Profile</Typography>
       </Page.Header>
       <Page.Content>
         <Box direction='column' gap='4rem'>
           <Box direction='column' gap='1rem'>
-            <Typography.SectionTitle>User Information</Typography.SectionTitle>
+            <Typography textStyle='titleSectionLarge'>User Information</Typography>
             <p>Name: {user?.name}</p>
             <p>Email: {user?.email}</p>
           </Box>
 
           <Box direction='column' gap='1rem'>
-            <Typography.SectionTitle>Connecting Velour</Typography.SectionTitle>
-            <Typography.SectionTitle>
+            <Typography textStyle='titleSectionLarge'>Connecting Velour</Typography>
+            <Typography textStyle='titleSectionLarge'>
               The python snippet below establishes an authenticated connection to the
               velour instance.
-            </Typography.SectionTitle>
+            </Typography>
             <SyntaxHighlighter language='python' style={atomOneDark}>
               {codeSnippet}
             </SyntaxHighlighter>
@@ -44,7 +44,7 @@ export function Profile() {
           </Box>
 
           <Box direction='column' gap='1rem'>
-            <Typography.SectionTitle>Log Out</Typography.SectionTitle>
+            <Typography textStyle='titleSectionLarge'>Log Out</Typography>
             <LogoutButton />
           </Box>
         </Box>

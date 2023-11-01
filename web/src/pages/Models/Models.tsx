@@ -1,7 +1,6 @@
 import {
   Box,
   Page,
-  ResourceTitle,
   TableList,
   Tag,
   Tooltip,
@@ -31,7 +30,7 @@ export function Models() {
   return (
     <Page.Main>
       <Page.Header>
-        <Typography.PageTitle>Models</Typography.PageTitle>
+        <Typography textStyle='titlePageLarge'>Models</Typography>
       </Page.Header>
       <Page.Content>
         <TableList summaryBar={<SummaryBar stats={stats} />}>
@@ -45,11 +44,11 @@ export function Models() {
               return (
                 <TableList.Row key={model.name}>
                   <Box>
-                    <ResourceTitle>
+                    <TableList.RowLabel>
                       <Link to={`${model.name}`} style={{ color: '#FFF' }}>
                         {model.name}
                       </Link>
-                    </ResourceTitle>
+                    </TableList.RowLabel>
                   </Box>
                   <Box>
                     <Tooltip placement='top' title='Data Type'>

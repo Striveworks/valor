@@ -23,7 +23,7 @@ export function Login() {
         }}
       >
         <Page.Header>
-          <Typography.PageTitle>Velour</Typography.PageTitle>
+          <Typography textStyle='titlePageLarge'>Velour</Typography>
         </Page.Header>
         <Page.Content>
           <Button onClick={handleLogin}>Login</Button>

@@ -4,7 +4,7 @@ export function Home() {
   return (
     <Page.Main>
       <Page.Header>
-        <Typography.PageTitle>Velour</Typography.PageTitle>
+        <Typography textStyle='titlePageLarge'>Velour</Typography>
       </Page.Header>
     </Page.Main>
   );

@@ -22,7 +22,7 @@ export function Datasets() {
   return (
     <Page.Main>
       <Page.Header>
-        <Typography.PageTitle>Datasets</Typography.PageTitle>
+        <Typography textStyle='titlePageLarge'>Datasets</Typography>
       </Page.Header>
       <Page.Content>
         <TableList summaryBar={<SummaryBar stats={stats} />}>

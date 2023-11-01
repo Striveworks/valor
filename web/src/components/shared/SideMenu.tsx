@@ -1,5 +1,5 @@
 import { useAuth0 } from '@auth0/auth0-react';
-import { Sidebar } from '@striveworks/minerva';
+import { SideBar } from '@striveworks/minerva';
 import { Link, useLocation } from 'react-router-dom';
 
 export function SideMenu() {
@@ -8,56 +8,56 @@ export function SideMenu() {
   const basePath = location.pathname.split('/')[1];
 
   return (
-    <Sidebar>
-      <Sidebar.Logo>Velour</Sidebar.Logo>
-      <Sidebar.Nav>
+    <SideBar>
+      <SideBar.Logo>Velour</SideBar.Logo>
+      <SideBar.Nav>
         <Link to={'/'} style={{ textDecoration: 'none' }}>
-          <Sidebar.Tab
+          <SideBar.Tab
             iconName='home'
-            tooltip='Home'
-            isSelected={basePath === '' ? true : false}
+            title='Home'
+            selected={basePath === '' ? true : false}
           >
             Home
-          </Sidebar.Tab>
+          </SideBar.Tab>
         </Link>
         <Link to={'/models'} style={{ textDecoration: 'none' }}>
-          <Sidebar.Tab
+          <SideBar.Tab
             iconName='model'
-            tooltip='Models'
-            isSelected={basePath === 'models' ? true : false}
+            title='Models'
+            selected={basePath === 'models' ? true : false}
           >
             Model
-          </Sidebar.Tab>
+          </SideBar.Tab>
         </Link>
         <Link to={'/datasets'} style={{ textDecoration: 'none' }}>
-          <Sidebar.Tab
+          <SideBar.Tab
             iconName='dataset'
-            tooltip='Datasets'
-            isSelected={basePath === 'datasets' ? true : false}
+            title='Datasets'
+            selected={basePath === 'datasets' ? true : false}
           >
             Datasets
-          </Sidebar.Tab>
+          </SideBar.Tab>
         </Link>
         {user !== undefined && (
           <Link to={'/profile'} style={{ textDecoration: 'none' }}>
-            <Sidebar.Tab
+            <SideBar.Tab
               iconName='user'
-              tooltip='Profile'
-              isSelected={basePath === 'profile' ? true : false}
+              title='Profile'
+              selected={basePath === 'profile' ? true : false}
             >
               Profile
-            </Sidebar.Tab>
+            </SideBar.Tab>
           </Link>
         )}
-        <Sidebar.Tab
+        <SideBar.Tab
           iconName='docs'
-          tooltip='Documentation'
+          title='Documentation'
           target={'_blank'}
           href='https://striveworks.github.io/velour/'
         >
           Documentation
-        </Sidebar.Tab>
-      </Sidebar.Nav>
-    </Sidebar>
+        </SideBar.Tab>
+      </SideBar.Nav>
+    </SideBar>
   );
 }

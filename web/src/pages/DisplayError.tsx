@@ -4,7 +4,7 @@ export function DisplayError({ error }: { error: Error }) {
   return (
     <Page.Main>
       <Page.Header>
-        <Typography.PageTitle>Error</Typography.PageTitle>
+        <Typography textStyle='titlePageLarge'>Error</Typography>
       </Page.Header>
       <Page.Content
         xcss={{
@@ -14,9 +14,9 @@ export function DisplayError({ error }: { error: Error }) {
           alignItems: 'center'
         }}
       >
-        <Typography.SectionTitle>
+        <Typography>
           Sorry, an unexpected error has occurred.
-        </Typography.SectionTitle>
+        </Typography>
         <p>{error.message}</p>
       </Page.Content>
     </Page.Main>

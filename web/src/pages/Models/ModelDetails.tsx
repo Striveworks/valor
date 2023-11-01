@@ -1,7 +1,6 @@
 import {
   Box,
   Page,
-  ResourceTitle,
   TableList,
   Tag,
   Tooltip,
@@ -33,21 +32,21 @@ export function ModelDetails() {
   return (
     <Page.Main>
       <Page.Header>
-        <Typography.PageTitle>{modelName}</Typography.PageTitle>
+        <Typography textStyle='titlePageLarge'>{modelName}</Typography>
       </Page.Header>
       <Page.Content>
-        <Typography.SectionTitle>Evaluation</Typography.SectionTitle>
+        <Typography textStyle='titleSectionLarge'>Evaluation</Typography>
         <TableList>
           {data.length ? (
             data.map((metric) => {
               return (
                 <TableList.Row key={metric.id}>
                   <Box>
-                    <ResourceTitle>
+                    <TableList.RowLabel>
                       <Link to={`${metric.id}`} style={{ color: '#FFF' }}>
                         {metric.dataset_name}
                       </Link>
-                    </ResourceTitle>
+                    </TableList.RowLabel>
                   </Box>
                   <Box gap={8}>
                     <Tooltip placement='top' title='Model Prediction Task Type'>
