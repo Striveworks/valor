@@ -1025,26 +1025,57 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
     def method_to_test(
         label_key: str, min_area: float = None, max_area: float = None
     ):
-        settings = schemas.EvaluationSettings(
+        geometric_filters = []
+        if min_area:
+            geometric_filters.append(
+                schemas.GeometricAnnotationFilter(
+                    annotation_type=enums.AnnotationType.BOX,
+                    area=[
+                        schemas.NumericFilter(
+                            value=min_area,
+                            operator=">=",
+                        ),
+                    ],
+                )
+            )
+        if max_area:
+            geometric_filters.append(
+                schemas.GeometricAnnotationFilter(
+                    annotation_type=enums.AnnotationType.BOX,
+                    area=[
+                        schemas.NumericFilter(
+                            value=max_area,
+                            operator="<=",
+                        ),
+                    ],
+                )
+            )
+
+        job_request = schemas.EvaluationJob(
             model="test_model",
             dataset="test_dataset",
-            parameters=schemas.DetectionParameters(
-                min_area=min_area,
-                max_area=max_area,
-                annotation_type=enums.AnnotationType.BOX,
-                label_key=label_key,
-                iou_thresholds_to_compute=[0.2, 0.6],
-                iou_thresholds_to_keep=[0.2],
+            settings=schemas.EvaluationSettings(
+                parameters=schemas.DetectionParameters(
+                    iou_thresholds_to_compute=[0.2, 0.6],
+                    iou_thresholds_to_keep=[0.2],
+                ),
+                filters=schemas.Filter(
+                    annotations=schemas.AnnotationFilter(
+                        annotation_types=[enums.AnnotationType.BOX],
+                        geometry=geometric_filters,
+                    ),
+                    labels=schemas.LabelFilter(keys=[label_key]),
+                ),
             ),
         )
 
         # create evaluation (return AP Response)
-        resp = crud.create_detection_evaluation(db=db, settings=settings)
+        resp = crud.create_detection_evaluation(db=db, job_request=job_request)
 
         # run computation (returns nothing on completion)
         crud.compute_detection_metrics(
             db=db,
-            settings=settings,
+            job_request=job_request,
             job_id=resp.job_id,
         )
 
@@ -1097,12 +1128,12 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
     assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 5
 
     # test getting metrics from evaluation settings id
-    pydantic_metrics = crud.get_metrics_from_evaluation_id(
-        db=db, evaluation_id=evaluation_id
+    pydantic_metrics = crud.get_metrics_from_evaluation_ids(
+        db=db, evaluation_id=[evaluation_id]
     )
-    for m in pydantic_metrics:
+    for m in pydantic_metrics[0].metrics:
         assert isinstance(m, schemas.Metric)
-    assert len(pydantic_metrics) == len(metric_ids)
+    assert len(pydantic_metrics[0].metrics) == len(metric_ids)
 
     # run again and make sure no new ids were created
     evaluation_id_again, _, _ = method_to_test(label_key="class")
@@ -1122,7 +1153,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         db=db,
         model_name="test_model",
         evaluation_id=evaluation_id,
-    )
+    )[0].metrics
 
     assert len(metrics_pydantic) == len(metrics)
 
@@ -1146,7 +1177,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         db=db,
         model_name="test_model",
         evaluation_id=evaluation_id,
-    )
+    )[0].metrics
     for m in metrics_pydantic:
         assert m.type in {
             "AP",
@@ -1160,27 +1191,61 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         db=db, model_name=model_name
     )
     assert len(model_evals) == 2
-    assert model_evals[0] == schemas.EvaluationSettings(
+    assert model_evals[0] == schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
-        parameters=schemas.DetectionParameters(
-            annotation_type=enums.AnnotationType.BOX,
-            label_key="class",
-            iou_thresholds_to_compute=[0.2, 0.6],
-            iou_thresholds_to_keep=[0.2],
+        settings=schemas.EvaluationSettings(
+            task_type=enums.TaskType.DETECTION,
+            parameters=schemas.DetectionParameters(
+                iou_thresholds_to_compute=[0.2, 0.6],
+                iou_thresholds_to_keep=[0.2],
+            ),
+            filters=schemas.Filter(
+                annotations=schemas.AnnotationFilter(
+                    annotation_types=[enums.AnnotationType.BOX],
+                    allow_conversion=True,
+                ),
+                labels=schemas.LabelFilter(keys=["class"]),
+            ),
         ),
         id=1,
     )
-    assert model_evals[1] == schemas.EvaluationSettings(
+    assert model_evals[1] == schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
-        parameters=schemas.DetectionParameters(
-            annotation_type=enums.AnnotationType.BOX,
-            label_key="class",
-            min_area=min_area,
-            max_area=max_area,
-            iou_thresholds_to_compute=[0.2, 0.6],
-            iou_thresholds_to_keep=[0.2],
+        settings=schemas.EvaluationSettings(
+            task_type=enums.TaskType.DETECTION,
+            parameters=schemas.DetectionParameters(
+                iou_thresholds_to_compute=[0.2, 0.6],
+                iou_thresholds_to_keep=[0.2],
+            ),
+            filters=schemas.Filter(
+                annotations=schemas.AnnotationFilter(
+                    annotation_types=[enums.AnnotationType.BOX],
+                    geometry=[
+                        schemas.GeometricAnnotationFilter(
+                            annotation_type=enums.AnnotationType.BOX,
+                            area=[
+                                schemas.NumericFilter(
+                                    value=min_area,
+                                    operator=">=",
+                                ),
+                            ],
+                        ),
+                        schemas.GeometricAnnotationFilter(
+                            annotation_type=enums.AnnotationType.BOX,
+                            area=[
+                                schemas.NumericFilter(
+                                    value=max_area,
+                                    operator="<=",
+                                ),
+                            ],
+                        ),
+                    ],
+                    allow_conversion=True,
+                ),
+                labels=schemas.LabelFilter(keys=["class"]),
+            ),
         ),
         id=2,
     )
@@ -1206,7 +1271,7 @@ def test_create_clf_metrics(
         crud.create_prediction(db=db, prediction=pd)
     crud.finalize(db=db, model_name=model_name, dataset_name=dset_name)
 
-    settings = schemas.EvaluationSettings(
+    job_request = schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
     )
@@ -1214,7 +1279,7 @@ def test_create_clf_metrics(
     # create clf evaluation (returns Clf Response)
     resp = crud.create_clf_evaluation(
         db=db,
-        settings=settings,
+        job_request=job_request,
     )
     missing_pred_keys = resp.missing_pred_keys
     ignored_pred_keys = resp.ignored_pred_keys
@@ -1226,7 +1291,7 @@ def test_create_clf_metrics(
     # compute clf metrics
     crud.compute_clf_metrics(
         db=db,
-        settings=settings,
+        job_request=job_request,
         job_id=evaluation_id,
     )
 
@@ -1276,17 +1341,15 @@ def test_create_clf_metrics(
     assert len(confusion_matrices) == 2
 
     # test getting metrics from evaluation settings id
-    pydantic_metrics = crud.get_metrics_from_evaluation_id(
-        db=db, evaluation_id=evaluation_id
+    pydantic_metrics = crud.get_metrics_from_evaluation_ids(
+        db=db, evaluation_id=[evaluation_id]
     )
-    for m in pydantic_metrics:
+    for m in pydantic_metrics[0].metrics:
         assert isinstance(m, schemas.Metric)
-    assert len(pydantic_metrics) == len(metrics)
+    assert len(pydantic_metrics[0].metrics) == len(metrics)
 
     # test getting confusion matrices from evaluation settings id
-    cms = crud.get_confusion_matrices_from_evaluation_id(
-        db=db, evaluation_id=evaluation_id
-    )
+    cms = pydantic_metrics[0].confusion_matrices
     cms = sorted(cms, key=lambda cm: cm.label_key)
     assert len(cms) == 2
     assert cms[0].label_key == "k1"
@@ -1305,7 +1368,7 @@ def test_create_clf_metrics(
     # attempting to run again should just return the existing job id
     crud.compute_clf_metrics(
         db=db,
-        settings=settings,
+        job_request=job_request,
         job_id=evaluation_id,
     )
     assert (
@@ -1434,7 +1497,7 @@ def test_get_all_labels(db: Session, gt_dets_create: schemas.GroundTruth):
     for gt in gt_dets_create:
         crud.create_groundtruth(db=db, groundtruth=gt)
 
-    labels = crud.get_labels(db=db, request=schemas.Filter())
+    labels = crud.get_all_labels(db=db)
 
     assert len(labels) == 2
     assert set([(label.key, label.value) for label in labels]) == set(
@@ -1448,11 +1511,10 @@ def test_get_labels_from_dataset(
     dataset_model_create,
 ):
     # Test get all from dataset 1
-    ds1 = crud.get_labels(
+    ds1 = crud.get_dataset_labels(
         db=db,
-        request=schemas.Filter(
-            datasets=[dataset_names[0]],
-            allow_predictions=False,
+        filters=schemas.Filter(
+            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
         ),
     )
     assert len(ds1) == 2
@@ -1460,26 +1522,28 @@ def test_get_labels_from_dataset(
     assert schemas.Label(key="k2", value="v2") in ds1
 
     # NEGATIVE - Test filter by task type
-    ds1 = crud.get_labels(
+    ds1 = crud.get_dataset_labels(
         db=db,
-        request=schemas.Filter(
-            datasets=[dataset_names[0]],
-            allow_predictions=False,
-            task_types=[
-                enums.TaskType.CLASSIFICATION,
-                enums.TaskType.SEGMENTATION,
-            ],
+        filters=schemas.Filter(
+            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
+            annotations=schemas.AnnotationFilter(
+                task_types=[
+                    enums.TaskType.CLASSIFICATION,
+                    enums.TaskType.SEGMENTATION,
+                ]
+            ),
         ),
     )
     assert ds1 == []
 
     # POSITIVE - Test filter by task type
-    ds1 = crud.get_labels(
+    ds1 = crud.get_dataset_labels(
         db=db,
-        request=schemas.Filter(
-            datasets=[dataset_names[0]],
-            allow_predictions=False,
-            task_types=[enums.TaskType.DETECTION],
+        filters=schemas.Filter(
+            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
+            annotations=schemas.AnnotationFilter(
+                task_types=[enums.TaskType.DETECTION]
+            ),
         ),
     )
     assert len(ds1) == 2
@@ -1487,27 +1551,31 @@ def test_get_labels_from_dataset(
     assert schemas.Label(key="k2", value="v2") in ds1
 
     # NEGATIVE - Test filter by annotation type
-    ds1 = crud.get_labels(
+    ds1 = crud.get_dataset_labels(
         db=db,
-        request=schemas.Filter(
-            datasets=[dataset_names[0]],
-            allow_predictions=False,
-            annotation_types=[
-                enums.AnnotationType.POLYGON,
-                enums.AnnotationType.MULTIPOLYGON,
-                enums.AnnotationType.RASTER,
-            ],
+        filters=schemas.Filter(
+            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
+            annotations=schemas.AnnotationFilter(
+                annotation_types=[
+                    enums.AnnotationType.POLYGON,
+                    enums.AnnotationType.MULTIPOLYGON,
+                    enums.AnnotationType.RASTER,
+                ]
+            ),
         ),
     )
     assert ds1 == []
 
     # POSITIVE - Test filter by annotation type
-    ds1 = crud.get_labels(
+    ds1 = crud.get_dataset_labels(
         db=db,
-        request=schemas.Filter(
-            datasets=[dataset_names[0]],
-            allow_predictions=False,
-            annotation_types=[enums.AnnotationType.BOX],
+        filters=schemas.Filter(
+            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
+            annotations=schemas.AnnotationFilter(
+                annotation_types=[
+                    enums.AnnotationType.BOX,
+                ]
+            ),
         ),
     )
     assert len(ds1) == 2
@@ -1521,11 +1589,10 @@ def test_get_labels_from_model(
     dataset_model_create,
 ):
     # Test get all labels from model 1
-    md1 = crud.get_labels(
+    md1 = crud.get_model_labels(
         db=db,
-        request=schemas.Filter(
-            models=[model_names[0]],
-            allow_groundtruths=False,
+        filters=schemas.Filter(
+            models=schemas.ModelFilter(names=[model_names[0]]),
         ),
     )
     assert len(md1) == 4
@@ -1535,23 +1602,25 @@ def test_get_labels_from_model(
     assert schemas.Label(key="k2", value="v2") in md1
 
     # Test get all but polygon labels from model 1
-    md1 = crud.get_labels(
+    md1 = crud.get_model_labels(
         db=db,
-        request=schemas.Filter(
-            models=[model_names[0]],
-            task_types=[enums.TaskType.CLASSIFICATION],
-            allow_groundtruths=False,
+        filters=schemas.Filter(
+            models=schemas.ModelFilter(names=[model_names[0]]),
+            annotations=schemas.AnnotationFilter(
+                task_types=[enums.TaskType.CLASSIFICATION],
+            ),
         ),
     )
     assert md1 == []
 
     # Test get only polygon labels from model 1
-    md1 = crud.get_labels(
+    md1 = crud.get_model_labels(
         db=db,
-        request=schemas.Filter(
-            models=[model_names[0]],
-            annotation_types=[enums.AnnotationType.BOX],
-            allow_groundtruths=False,
+        filters=schemas.Filter(
+            models=schemas.ModelFilter(names=[model_names[0]]),
+            annotations=schemas.AnnotationFilter(
+                annotation_types=[enums.AnnotationType.BOX],
+            ),
         ),
     )
     assert len(md1) == 4
@@ -1574,8 +1643,8 @@ def test_get_joint_labels(
             dataset_name=dataset_names[0],
             model_name=model_names[0],
             task_types=[enums.TaskType.DETECTION],
-            gt_type=enums.AnnotationType.BOX,
-            pd_type=enums.AnnotationType.BOX,
+            groundtruth_type=enums.AnnotationType.BOX,
+            prediction_type=enums.AnnotationType.BOX,
         )
     ) == set(
         [

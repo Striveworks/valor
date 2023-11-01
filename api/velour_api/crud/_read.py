@@ -1,3 +1,5 @@
+from typing import List, Optional
+
 from sqlalchemy.orm import Session
 
 from velour_api import backend, enums, schemas
@@ -24,24 +26,91 @@ def get_backend_state(
     )
 
 
-def get_dataset_evaluations(dataset_name: str):
+def get_evaluation_jobs_for_dataset(dataset_name: str):
     return jobs.get_stateflow().get_dataset_jobs(dataset_name)
 
 
-def get_model_evaluations(model_name: str):
+def get_evaluation_jobs_for_model(model_name: str):
     return jobs.get_stateflow().get_model_jobs(model_name)
+
+
+def get_bulk_evaluations(
+    db: Session,
+    dataset_names: Optional[List[str]],
+    model_names: Optional[List[str]],
+) -> list[schemas.Evaluation]:
+    """
+    Returns all metrics associated with user-supplied dataset and model names
+
+    Parameters
+    ----------
+    db
+        The database session
+    dataset_names
+        A list of dataset names that we want to return metrics for
+    model_names
+        A list of model names that we want to return metrics for
+    """
+
+    job_set = set()
+
+    # get all relevant job IDs from all of the specified models and datasets
+    if dataset_names:
+        for dataset in dataset_names:
+            dataset_jobs = jobs.get_stateflow().get_dataset_jobs(dataset)
+            for model, job_ids in dataset_jobs.items():
+                job_set.update(job_ids)
+
+    if model_names:
+        for model in model_names:
+            model_jobs = jobs.get_stateflow().get_model_jobs(model)
+            for dataset, job_ids in model_jobs.items():
+                job_set.update(job_ids)
+
+    output = backend.get_metrics_from_evaluation_ids(
+        db=db, evaluation_ids=job_set
+    )
+    return output
 
 
 """ Labels """
 
 
-def get_labels(
+def get_all_labels(
     *,
     db: Session,
-    request: schemas.Filter = None,
+    filters: schemas.Filter | None = None,
 ) -> list[schemas.Label]:
-    """Retrieves all existing labels that meet the filter request."""
-    return backend.get_labels(db, request)
+    """Retrieves all existing labels."""
+    return list(backend.get_labels(db, filters))
+
+
+def get_dataset_labels(
+    *,
+    db: Session,
+    filters: schemas.Filter | None = None,
+):
+    """Retrieve all labels associated with dataset groundtruths."""
+    return list(
+        backend.get_groundtruth_labels(
+            db=db,
+            filters=filters,
+        )
+    )
+
+
+def get_model_labels(
+    *,
+    db: Session,
+    filters: schemas.Filter | None = None,
+):
+    """Retrieve all labels associated with dataset groundtruths."""
+    return list(
+        backend.get_prediction_labels(
+            db=db,
+            filters=filters,
+        )
+    )
 
 
 def get_joint_labels(
@@ -50,8 +119,8 @@ def get_joint_labels(
     dataset_name: str,
     model_name: str,
     task_types: list[enums.TaskType],
-    gt_type: enums.AnnotationType,
-    pd_type: enums.AnnotationType,
+    groundtruth_type: enums.AnnotationType,
+    prediction_type: enums.AnnotationType,
 ) -> dict[str, list[schemas.Label]]:
     """Returns a dictionary containing disjoint sets of labels. Keys are (dataset, model) and contain sets of labels disjoint from the other."""
 
@@ -60,8 +129,8 @@ def get_joint_labels(
         dataset_name=dataset_name,
         model_name=model_name,
         task_types=task_types,
-        gt_type=gt_type,
-        pd_type=pd_type,
+        groundtruth_type=groundtruth_type,
+        prediction_type=prediction_type,
     )
 
 
@@ -71,8 +140,8 @@ def get_disjoint_labels(
     dataset_name: str,
     model_name: str,
     task_types: list[enums.TaskType],
-    gt_type: enums.AnnotationType,
-    pd_type: enums.AnnotationType,
+    groundtruth_type: enums.AnnotationType,
+    prediction_type: enums.AnnotationType,
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """Returns a dictionary containing disjoint sets of labels. Keys are (dataset, model) and contain sets of labels disjoint from the other."""
 
@@ -81,8 +150,8 @@ def get_disjoint_labels(
         dataset_name=dataset_name,
         model_name=model_name,
         task_types=task_types,
-        gt_type=gt_type,
-        pd_type=pd_type,
+        groundtruth_type=groundtruth_type,
+        prediction_type=prediction_type,
     )
 
 
@@ -154,14 +223,6 @@ def get_groundtruth(
     )
 
 
-def get_groundtruths(
-    *,
-    db: Session,
-    request: schemas.Filter,
-) -> list[schemas.GroundTruth]:
-    return backend.get_groundtruths(db, request)
-
-
 """ Models """
 
 
@@ -188,34 +249,19 @@ def get_prediction(
     )
 
 
-# @TODO
-def get_predictions(
-    *,
-    db: Session,
-    request: schemas.Filter = None,
-) -> list[schemas.Prediction]:
-    return []
-
-
 """ Evaluation """
 
 
-def get_metrics_from_evaluation_id(
+def get_metrics_from_evaluation_ids(
     *, db: Session, evaluation_id: int
-) -> list[schemas.Metric]:
-    return backend.get_metrics_from_evaluation_id(db, evaluation_id)
+) -> list[schemas.Evaluation]:
+    return backend.get_metrics_from_evaluation_ids(db, evaluation_id)
 
 
-def get_confusion_matrices_from_evaluation_id(
+def get_evaluation_job_from_id(
     *, db: Session, evaluation_id: int
-) -> list[schemas.ConfusionMatrix]:
-    return backend.get_confusion_matrices_from_evaluation_id(db, evaluation_id)
-
-
-def get_evaluation_settings_from_id(
-    *, db: Session, evaluation_id: int
-) -> schemas.EvaluationSettings:
-    return backend.get_evaluation_settings_from_id(db, evaluation_id)
+) -> schemas.EvaluationJob:
+    return backend.get_evaluation_job_from_id(db, evaluation_id)
 
 
 def get_model_metrics(
@@ -226,5 +272,5 @@ def get_model_metrics(
 
 def get_model_evaluation_settings(
     *, db: Session, model_name: str
-) -> list[schemas.EvaluationSettings]:
-    return backend.get_model_evaluation_settings(db, model_name)
+) -> list[schemas.EvaluationJob]:
+    return backend.get_model_evaluation_jobs(db, model_name)

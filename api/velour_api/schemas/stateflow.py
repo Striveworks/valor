@@ -167,7 +167,7 @@ class Stateflow(BaseModel):
             self.datasets[dataset_name].evaluating and status != State.EVALUATE
         ):
             raise StateflowError(
-                f"cannot transition to {status} as an evaluation is currently running."
+                f"cannot transition to {status} as an evaluation is running."
             )
         elif status not in self.datasets[dataset_name].status.next():
             raise _state_transition_error(

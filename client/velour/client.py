@@ -100,6 +100,54 @@ class Client:
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
+    def get_bulk_evaluations(
+        self,
+        models: Union[str, List[str], None] = None,
+        datasets: Union[str, List[str], None] = None,
+    ) -> List[dict]:
+        """
+        Returns all metrics associated with user-supplied dataset and model names
+
+        Parameters
+        ----------
+        models
+            A list of dataset names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
+        datasets
+            A list of model names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
+        """
+
+        if not (models or datasets):
+            raise ValueError(
+                "Please provide atleast one model name or dataset name"
+            )
+
+        if models:
+            # let users just pass one name as a string
+            if isinstance(models, str):
+                models = [models]
+            model_params = ",".join(models)
+        else:
+            model_params = None
+
+        if datasets:
+            if isinstance(datasets, str):
+                datasets = [datasets]
+            dataset_params = ",".join(datasets)
+        else:
+            dataset_params = None
+
+        if model_params and dataset_params:
+            endpoint = (
+                f"evaluations?models={model_params}&datasets={dataset_params}"
+            )
+        elif model_params:
+            endpoint = f"evaluations?models={model_params}"
+        else:
+            endpoint = f"evaluations?datasets={dataset_params}"
+
+        evals = self._requests_get_rel_host(endpoint).json()
+        return evals
+
     def get_datasets(
         self,
     ) -> List[dict]:
@@ -166,7 +214,7 @@ class Client:
                         time.sleep(1)
                 else:
                     raise TimeoutError(
-                        "Dataset wasn't deleted within timeout interval"
+                        "Model wasn't deleted within timeout interval"
                     )
 
         except ClientException as e:
@@ -204,7 +252,7 @@ class Evaluation:
         settings = self._client._requests_get_rel_host(
             f"evaluations/{self._id}/settings"
         ).json()
-        self._settings = schemas.EvaluationSettings(**settings)
+        self._settings = schemas.EvaluationJob(**settings)
 
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -218,7 +266,7 @@ class Evaluation:
     @property
     def settings(
         self,
-    ) -> schemas.EvaluationSettings:
+    ) -> schemas.EvaluationJob:
         return self._settings
 
     @property
@@ -535,6 +583,16 @@ class Model:
             info=info,
         )
 
+    def get_evaluation_status(
+        self,
+        job_id: int,
+    ) -> State:
+        resp = self.client._requests_get_rel_host(
+            f"evaluations/{job_id}"
+        ).json()
+
+        return resp
+
     def delete(
         self,
     ):
@@ -578,17 +636,18 @@ class Model:
         ).json()
 
     def evaluate_classification(
-        self,
-        dataset: Dataset,
+        self, dataset: Dataset, timeout: Optional[int] = None
     ) -> Evaluation:
         """Start a classification evaluation job
 
         Parameters
         ----------
         dataset
-            the dataset to evaluate against
+            The dataset to evaluate against
         group_by
-            optional name of metadatum to group the results by
+            Optional name of metadatum to group the results by
+        timeout
+            The number of seconds to wait for the job to finish. Used to ensure deterministic behavior when testing.
 
         Returns
         -------
@@ -597,7 +656,7 @@ class Model:
             and get the metrics of it upon completion
         """
 
-        evaluation = schemas.EvaluationSettings(
+        evaluation = schemas.EvaluationJob(
             model=self.name,
             dataset=dataset.name,
         )
@@ -606,15 +665,23 @@ class Model:
             "evaluations/clf-metrics", json=asdict(evaluation)
         ).json()
 
-        return Evaluation(
+        evaluation_job = Evaluation(
             client=self.client,
             dataset=dataset.name,
             model=self.name,
             **resp,
         )
 
-    def evaluate_segmentation(self, dataset: Dataset) -> Evaluation:
-        evaluation = schemas.EvaluationSettings(
+        # blocking behavior
+        if timeout:
+            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
+
+        return evaluation_job
+
+    def evaluate_segmentation(
+        self, dataset: Dataset, timeout: Optional[int] = None
+    ) -> Evaluation:
+        evaluation = schemas.EvaluationJob(
             model=self.name,
             dataset=dataset.name,
         )
@@ -624,22 +691,29 @@ class Model:
             json=asdict(evaluation),
         ).json()
 
-        return Evaluation(
+        evaluation_job = Evaluation(
             client=self.client,
             dataset=dataset.name,
             model=self.name,
             **resp,
         )
 
+        # blocking behavior
+        if timeout:
+            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
+
+        return evaluation_job
+
     def evaluate_detection(
         self,
         dataset: "Dataset",
-        annotation_type: AnnotationType = AnnotationType.NONE,
+        annotation_type: AnnotationType = AnnotationType.BOX,
         iou_thresholds_to_compute: List[float] = None,
         iou_thresholds_to_keep: List[float] = None,
         min_area: float = None,
         max_area: float = None,
         label_key: Optional[str] = None,
+        timeout: Optional[int] = None,
     ) -> Evaluation:
         """Evaluate object detections."""
 
@@ -652,18 +726,48 @@ class Model:
             iou_thresholds_to_keep = [0.5, 0.75]
 
         parameters = schemas.DetectionParameters(
-            annotation_type=annotation_type,
-            label_key=label_key,
-            min_area=min_area,
-            max_area=max_area,
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_keep=iou_thresholds_to_keep,
         )
 
-        evaluation = schemas.EvaluationSettings(
+        geometric_area_filters = []
+        if min_area:
+            geometric_area_filters.append(
+                schemas.NumericFilter(
+                    value=min_area,
+                    operator=">=",
+                ),
+            )
+        if max_area:
+            geometric_area_filters.append(
+                schemas.NumericFilter(
+                    value=max_area,
+                    operator="<=",
+                ),
+            )
+        geometric_filters = []
+        if geometric_area_filters:
+            geometric_filters.append(
+                schemas.GeometricAnnotationFilter(
+                    annotation_type=annotation_type,
+                    area=geometric_area_filters,
+                )
+            )
+        filters = schemas.Filter(
+            annotations=schemas.AnnotationFilter(
+                annotation_types=[annotation_type],
+                geometry=geometric_filters,
+            ),
+            labels=schemas.LabelFilter(keys=[label_key]),
+        )
+
+        evaluation = schemas.EvaluationJob(
             model=self.name,
             dataset=dataset.name,
-            parameters=parameters,
+            settings=schemas.EvaluationSettings(
+                parameters=parameters,
+                filters=filters,
+            ),
         )
 
         resp = self.client._requests_post_rel_host(
@@ -676,12 +780,18 @@ class Model:
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
             resp[k] = [schemas.Label(**la) for la in resp[k]]
 
-        return Evaluation(
+        evaluation_job = Evaluation(
             client=self.client,
             dataset=dataset.name,
             model=self.name,
             **resp,
         )
+
+        # blocking behavior
+        if timeout:
+            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
+
+        return evaluation_job
 
     def get_evaluations(
         self,
@@ -714,7 +824,7 @@ class Model:
         for evaluation in self.get_evaluations():
             metrics = [
                 {**metric, "dataset": evaluation.dataset}
-                for metric in evaluation.metrics
+                for metric in evaluation.metrics["metrics"]
             ]
             df = pd.DataFrame(metrics)
             for k in ["label", "parameters"]:

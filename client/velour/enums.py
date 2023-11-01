@@ -22,6 +22,7 @@ class DataType(Enum):
 
 class AnnotationType(str, Enum):
     NONE = "none"
+    JSON = "json"
     BOX = "box"
     POLYGON = "polygon"
     MULTIPOLYGON = "multipolygon"

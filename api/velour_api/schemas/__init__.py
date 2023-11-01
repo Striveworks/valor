@@ -9,6 +9,21 @@ from .core import (
     Prediction,
 )
 from .datatypes import ImageMetadata, VideoFrameMetadata
+from .filters import (
+    AnnotationFilter,
+    DatasetFilter,
+    DatumFilter,
+    Filter,
+    GeometricAnnotationFilter,
+    GeospatialFilter,
+    JSONAnnotationFilter,
+    KeyValueFilter,
+    LabelFilter,
+    ModelFilter,
+    NumericFilter,
+    PredictionFilter,
+    StringFilter,
+)
 from .geojson import GeoJSON
 from .geometry import (
     BasicPolygon,
@@ -18,7 +33,6 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .info import Filter
 from .metadata import DateTime, Metadatum
 from .metrics import (
     AccuracyMetric,
@@ -31,6 +45,8 @@ from .metrics import (
     CreateClfMetricsResponse,
     CreateSemanticSegmentationMetricsResponse,
     DetectionParameters,
+    Evaluation,
+    EvaluationJob,
     EvaluationSettings,
     F1Metric,
     IOUMetric,
@@ -46,7 +62,6 @@ from .stateflow import Stateflow
 
 __all__ = [
     "User",
-    "Filter",
     "ImageMetadata",
     "VideoFrameMetadata",
     "Annotation",
@@ -65,7 +80,6 @@ __all__ = [
     "Raster",
     "Metadatum",
     "DateTime",
-    "Evaluation",
     "Metric",
     "AccuracyMetric",
     "ConfusionMatrix",
@@ -88,5 +102,20 @@ __all__ = [
     "ConfusionMatrixEntry",
     "Stateflow",
     "EvaluationSettings",
+    "EvaluationJob",
+    "Evaluation",
     "DetectionParameters",
+    "StringFilter",
+    "NumericFilter",
+    "GeospatialFilter",
+    "GeometricAnnotationFilter",
+    "JSONAnnotationFilter",
+    "KeyValueFilter",
+    "DatasetFilter",
+    "ModelFilter",
+    "DatumFilter",
+    "AnnotationFilter",
+    "LabelFilter",
+    "PredictionFilter",
+    "Filter",
 ]

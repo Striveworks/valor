@@ -1,6 +1,6 @@
 import io
 import math
-from base64 import b64decode
+from base64 import b64decode, b64encode
 
 import numpy as np
 import PIL.Image
@@ -357,5 +357,27 @@ class Raster(BaseModel):
 
     @property
     def array(self) -> np.ndarray:
-        with io.BytesIO(self.mask_bytes) as f:
-            return np.array(PIL.Image.open(f))
+        return self.to_numpy()
+
+    @classmethod
+    def from_numpy(cls, mask: np.ndarray):
+        if len(mask.shape) != 2:
+            raise ValueError("raster currently only supports 2d arrays")
+        if mask.dtype != bool:
+            raise ValueError(
+                f"Expecting a binary mask (i.e. of dtype bool) but got dtype {mask.dtype}"
+            )
+        f = io.BytesIO()
+        PIL.Image.fromarray(mask).save(f, format="PNG")
+        f.seek(0)
+        mask_bytes = f.read()
+        f.close()
+        return cls(
+            mask=b64encode(mask_bytes).decode(),
+        )
+
+    def to_numpy(self) -> np.ndarray:
+        mask_bytes = b64decode(self.mask)
+        with io.BytesIO(mask_bytes) as f:
+            img = PIL.Image.open(f)
+            return np.array(img)

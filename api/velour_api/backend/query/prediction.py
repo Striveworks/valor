@@ -2,7 +2,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import schemas
-from velour_api.backend import core, models, ops
+from velour_api.backend import core, models
 
 
 def create_prediction(
@@ -59,11 +59,3 @@ def get_prediction(
         ),
         annotations=core.get_annotations(db, datum=datum, model=model),
     )
-
-
-def get_predictions(
-    db: Session,
-    request: schemas.Filter,
-) -> list[schemas.Prediction]:
-    datums = ops.BackendQuery.datum().filter(request).all(db)
-    return [core.get_scored_annotations(db, datum) for datum in datums]

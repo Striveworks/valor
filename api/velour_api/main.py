@@ -45,6 +45,16 @@ def get_db():
         db.close()
 
 
+def _split_query_params(param_string: str | None) -> list[str] | None:
+    """Split GET query parameters and return a list when possible."""
+    if not param_string:
+        return None
+    elif "," in param_string:
+        return param_string.split(",")
+    else:
+        return [param_string]
+
+
 """ GROUNDTRUTHS """
 
 
@@ -154,7 +164,7 @@ def get_prediction(
     tags=["Labels"],
 )
 def get_all_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
-    return crud.get_labels(db=db)
+    return crud.get_all_labels(db=db)
 
 
 @app.get(
@@ -167,11 +177,10 @@ def get_labels_from_dataset(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
     try:
-        return crud.get_labels(
+        return crud.get_dataset_labels(
             db=db,
-            request=schemas.Filter(
-                datasets=[dataset_name],
-                allow_predictions=False,
+            filters=schemas.Filter(
+                datasets=schemas.DatasetFilter(names=[dataset_name]),
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
@@ -188,11 +197,10 @@ def get_labels_from_model(
     model_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
     try:
-        return crud.get_labels(
+        return crud.get_model_labels(
             db=db,
-            request=schemas.Filter(
-                models=[model_name],
-                allow_groundtruths=False,
+            filters=schemas.Filter(
+                models=schemas.ModelFilter(names=[model_name]),
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
@@ -308,29 +316,7 @@ def get_datums(
         return crud.get_datums(
             db=db,
             request=schemas.Filter(
-                datasets=[dataset_name],
-                allow_predictions=False,
-            ),
-        )
-    except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-# @TODO: Enforce datum typing with an enum
-@app.get(
-    "/data/dataset/{dataset_name}/filter/{data_type}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Datums"],
-)
-def get_filtered_dataset_datums(
-    dataset_name: str, data_type: str, db: Session = Depends(get_db)
-) -> list[schemas.Datum]:
-    try:
-        return crud.get_datums(
-            db=db,
-            filter=schemas.Filter(
-                datasets=[dataset_name],
+                datasets=schemas.DatasetFilter(names=[dataset_name]),
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
@@ -466,18 +452,18 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
     tags=["Evaluations"],
 )
 def create_detection_metrics(
-    settings: schemas.EvaluationSettings,
+    job_request: schemas.EvaluationJob,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> schemas.CreateAPMetricsResponse:
     try:
         # create evaluation
-        resp = crud.create_detection_evaluation(db=db, settings=settings)
+        resp = crud.create_detection_evaluation(db=db, job_request=job_request)
         # add metric computation to background tasks
         background_tasks.add_task(
             crud.compute_detection_metrics,
             db=db,
-            settings=settings,
+            job_request=job_request,
             job_id=resp.job_id,
         )
         # return AP Response
@@ -500,18 +486,18 @@ def create_detection_metrics(
     tags=["Evaluations"],
 )
 def create_clf_metrics(
-    settings: schemas.EvaluationSettings,
+    job_request: schemas.EvaluationJob,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> schemas.CreateClfMetricsResponse:
     try:
         # create evaluation
-        resp = crud.create_clf_evaluation(db=db, settings=settings)
+        resp = crud.create_clf_evaluation(db=db, job_request=job_request)
         # add metric computation to background tasks
         background_tasks.add_task(
             crud.compute_clf_metrics,
             db=db,
-            settings=settings,
+            job_request=job_request,
             job_id=resp.job_id,
         )
         # return Clf Response
@@ -534,21 +520,21 @@ def create_clf_metrics(
     tags=["Evaluations"],
 )
 def create_semantic_segmentation_metrics(
-    settings: schemas.EvaluationSettings,
+    job_request: schemas.EvaluationJob,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> schemas.CreateSemanticSegmentationMetricsResponse:
     try:
         # create evaluation
         resp = crud.create_semantic_segmentation_evaluation(
-            db=db, settings=settings
+            db=db, job_request=job_request
         )
 
         # add metric computation to background tasks
         background_tasks.add_task(
             crud.compute_semantic_segmentation_metrics,
             db=db,
-            settings=settings,
+            job_request=job_request,
             job_id=resp.job_id,
         )
         return resp
@@ -569,9 +555,9 @@ def create_semantic_segmentation_metrics(
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def get_dataset_evaluations(dataset_name: str) -> dict[str, list[int]]:
-    """Returns mapping of model names to list of job ids."""
-    return crud.get_dataset_evaluations(dataset_name)
+def get_evaluation_jobs_for_dataset(dataset_name: str) -> dict[str, list[int]]:
+    """Returns all of the job ids for a given dataset."""
+    return crud.get_evaluation_jobs_for_dataset(dataset_name)
 
 
 @app.get(
@@ -580,9 +566,47 @@ def get_dataset_evaluations(dataset_name: str) -> dict[str, list[int]]:
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def get_model_evaluations(model_name: str) -> dict[str, list[int]]:
-    """Returns mapping of dataset names to list of job ids."""
-    return crud.get_model_evaluations(model_name)
+def get_evaluation_jobs_for_model(model_name: str) -> dict[str, list[int]]:
+    """Returns all of the job ids for a given model."""
+    return crud.get_evaluation_jobs_for_model(model_name)
+
+
+@app.get(
+    "/evaluations/",
+    dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
+    tags=["Evaluations"],
+)
+def get_bulk_evaluations(
+    datasets: str = None,
+    models: str = None,
+    db: Session = Depends(get_db),
+) -> list[schemas.Evaluation]:
+    """
+    Returns all metrics associated with user-supplied dataset and model names. Users
+    may query using model names, dataset names, or both. All metrics for all specified
+    models and datasets will be returned in a list of Evaluations.
+
+    Parameters
+    ----------
+    datasets
+        An optional set of dataset names to return metrics for
+    models
+        An optional set of model names to return metrics for
+    """
+    model_names = _split_query_params(models)
+    dataset_names = _split_query_params(datasets)
+
+    try:
+        return crud.get_bulk_evaluations(
+            db=db, dataset_names=dataset_names, model_names=model_names
+        )
+    except (
+        exceptions.DatasetDoesNotExistError,
+        exceptions.ModelDoesNotExistError,
+        ValueError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.get(
@@ -605,14 +629,12 @@ def get_evaluation_status(job_id: int) -> enums.JobStatus:
     response_model_exclude_none=True,
     tags=["Evaluations"],
 )
-def get_evaluation_settings(
+def get_evaluation_job(
     job_id: int,
     db: Session = Depends(get_db),
-) -> schemas.EvaluationSettings:
+) -> schemas.EvaluationJob:
     try:
-        return crud.get_evaluation_settings_from_id(
-            db=db, evaluation_id=job_id
-        )
+        return crud.get_evaluation_job_from_id(db=db, evaluation_id=job_id)
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -626,7 +648,7 @@ def get_evaluation_settings(
 def get_evaluation_metrics(
     job_id: int,
     db: Session = Depends(get_db),
-) -> list[schemas.Metric]:
+) -> schemas.Evaluation:
     try:
         status = crud.get_evaluation_status(
             job_id=job_id,
@@ -636,7 +658,10 @@ def get_evaluation_metrics(
                 status_code=404,
                 detail=f"No metrics for job {job_id} since its status is {status}",
             )
-        return crud.get_metrics_from_evaluation_id(db=db, evaluation_id=job_id)
+        output = crud.get_metrics_from_evaluation_ids(
+            db=db, evaluation_id=[job_id]
+        )
+        return output[0]
     except (
         exceptions.JobDoesNotExistError,
         AttributeError,
@@ -645,32 +670,6 @@ def get_evaluation_metrics(
             raise HTTPException(
                 status_code=404, detail="Evaluation ID does not exist."
             )
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/evaluations/{job_id}/confusion-matrices",
-    dependencies=[Depends(token_auth_scheme)],
-    response_model_exclude_none=True,
-    tags=["Evaluations"],
-)
-def get_evaluation_confusion_matrices(
-    job_id: int,
-    db: Session = Depends(get_db),
-) -> list[schemas.ConfusionMatrixResponse]:
-    try:
-        status = crud.get_evaluation_status(
-            job_id=job_id,
-        )
-        if status != enums.JobStatus.DONE:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No metrics for job {job_id} since its status is {status}",
-            )
-        return crud.get_confusion_matrices_from_evaluation_id(
-            db=db, evaluation_id=job_id
-        )
-    except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 

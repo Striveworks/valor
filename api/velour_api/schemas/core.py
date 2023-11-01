@@ -24,14 +24,22 @@ from velour_api.schemas.metadata import Metadatum
 
 def _format_name(name: str):
     allowed_special = ["-", "_"]
-    pattern = re.compile(f"[^a-zA-Z0-9{''.join(allowed_special)}]")
-    return re.sub(pattern, "", name)
+    pattern = re.compile(f"^[a-zA-Z0-9{''.join(allowed_special)}]+$")
+    if not pattern.match(name):
+        raise ValueError(
+            "The provided string contains illegal characters. Please ensure your input consists of only alphanumeric characters, hyphens, and underscores."
+        )
+    return name
 
 
 def _format_uid(uid: str):
     allowed_special = ["-", "_", "/", "."]
-    pattern = re.compile(f"[^a-zA-Z0-9{''.join(allowed_special)}]")
-    return re.sub(pattern, "", uid)
+    pattern = re.compile(f"^[a-zA-Z0-9{''.join(allowed_special)}]+$")
+    if not pattern.match(uid):
+        raise ValueError(
+            "The provided string contains illegal characters. Please ensure your input consists of only alphanumeric characters, hyphens, underscores, forward slashes, and periods."
+        )
+    return uid
 
 
 class Dataset(BaseModel):
@@ -86,6 +94,19 @@ class Datum(BaseModel):
         if not v:
             raise ValueError("invalid string")
         return v
+
+    def __eq__(self, other):
+        if (
+            not hasattr(other, "uid")
+            or not hasattr(other, "dataset")
+            or not hasattr(other, "metadata")
+        ):
+            return False
+
+        return self.uid == other.uid and self.dataset == other.dataset
+
+    def __hash__(self) -> int:
+        return hash(f"uid:{self.uid},dataset:{self.dataset}")
 
 
 class Annotation(BaseModel):

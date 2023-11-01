@@ -3,7 +3,6 @@ that is no auth
 """
 import io
 import json
-import time
 from dataclasses import asdict
 from typing import Any
 
@@ -186,8 +185,7 @@ def db(client: Client) -> Session:
 
     for model in client.get_models():
         try:
-            client.delete_model(model["name"])
-            time.sleep(0.1)
+            client.delete_model(model["name"], timeout=5)
         except exceptions.ModelDoesNotExistError:
             continue
 
@@ -1408,7 +1406,6 @@ def test_client_delete_dataset(client: Client, db: Session):
     Dataset.create(client, dset_name)
     assert db.scalar(select(func.count(models.Dataset.name))) == 1
     client.delete_dataset(dset_name, timeout=30)
-    time.sleep(1.0)
     assert db.scalar(select(func.count(models.Dataset.name))) == 0
 
 
@@ -1416,8 +1413,7 @@ def test_client_delete_model(client: Client, db: Session):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
     Model.create(client, model_name)
     assert db.scalar(select(func.count(models.Model.name))) == 1
-    client.delete_model(model_name)
-    time.sleep(1.0)
+    client.delete_model(model_name, timeout=30)
     assert db.scalar(select(func.count(models.Model.name))) == 0
 
 
@@ -1442,6 +1438,7 @@ def test_evaluate_detection(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
+        timeout=30,
     )
 
     assert eval_job.ignored_pred_labels == []
@@ -1454,13 +1451,26 @@ def test_evaluate_detection(
     settings = asdict(eval_job.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "task_type": TaskType.DETECTION.value,
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
         },
     }
 
@@ -1504,7 +1514,7 @@ def test_evaluate_detection(
         },
     ]
 
-    assert eval_job.metrics == expected_metrics
+    assert eval_job.metrics["metrics"] == expected_metrics
 
     # now test if we set min_area and/or max_area
     areas = db.scalars(
@@ -1523,23 +1533,42 @@ def test_evaluate_detection(
         label_key="k1",
         min_area=10,
         max_area=2000,
+        timeout=30,
     )
-    time.sleep(1)
     settings = asdict(eval_job_bounded_area_10_2000.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "min_area": 10,
-            "max_area": 2000,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [
+                        {
+                            "annotation_type": "box",
+                            "area": [
+                                {"operator": ">=", "value": 10.0},
+                                {"operator": "<=", "value": 2000.0},
+                            ],
+                        }
+                    ],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "task_type": "object-detection",
         },
     }
-    assert eval_job_bounded_area_10_2000.metrics == expected_metrics
+    assert eval_job_bounded_area_10_2000.metrics["metrics"] == expected_metrics
 
     # now check we get different things by setting the thresholds accordingly
     # min area threshold should divide the set of annotations
@@ -1549,22 +1578,41 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
         min_area=1200,
+        timeout=30,
     )
-    time.sleep(1)
     settings = asdict(eval_job_min_area_1200.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "min_area": 1200,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [
+                        {
+                            "annotation_type": "box",
+                            "area": [
+                                {"operator": ">=", "value": 1200.0},
+                            ],
+                        }
+                    ],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "task_type": "object-detection",
         },
     }
-    assert eval_job_min_area_1200.metrics != expected_metrics
+    assert eval_job_min_area_1200.metrics["metrics"] != expected_metrics
 
     # check for difference with max area now dividing the set of annotations
     eval_job_max_area_1200 = model.evaluate_detection(
@@ -1573,22 +1621,39 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         label_key="k1",
         max_area=1200,
+        timeout=30,
     )
-    time.sleep(1)
     settings = asdict(eval_job_max_area_1200.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "max_area": 1200,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [
+                        {
+                            "annotation_type": "box",
+                            "area": [{"operator": "<=", "value": 1200.0}],
+                        }
+                    ],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "task_type": "object-detection",
         },
     }
-    assert eval_job_max_area_1200.metrics != expected_metrics
+    assert eval_job_max_area_1200.metrics["metrics"] != expected_metrics
 
     # should perform the same as the first min area evaluation
     # except now has an upper bound
@@ -1599,27 +1664,205 @@ def test_evaluate_detection(
         label_key="k1",
         min_area=1200,
         max_area=1800,
+        timeout=30,
     )
-    time.sleep(1)
     settings = asdict(eval_job_bounded_area_1200_1800.settings)
     settings.pop("id")
     assert settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
-        "parameters": {
-            "annotation_type": "none",
-            "label_key": "k1",
-            "min_area": 1200,
-            "max_area": 1800,
-            "iou_thresholds_to_compute": [0.1, 0.6],
-            "iou_thresholds_to_keep": [0.1, 0.6],
+        "settings": {
+            "filters": {
+                "annotations": {
+                    "allow_conversion": True,
+                    "annotation_types": ["box"],
+                    "geo": [],
+                    "geometry": [
+                        {
+                            "annotation_type": "box",
+                            "area": [
+                                {"operator": ">=", "value": 1200.0},
+                                {"operator": "<=", "value": 1800.0},
+                            ],
+                        }
+                    ],
+                    "json_": [],
+                    "metadata": [],
+                    "task_types": [],
+                },
+                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            },
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "task_type": "object-detection",
         },
     }
-    assert eval_job_bounded_area_1200_1800.metrics != expected_metrics
     assert (
-        eval_job_bounded_area_1200_1800.metrics
-        == eval_job_min_area_1200.metrics
+        eval_job_bounded_area_1200_1800.metrics["metrics"] != expected_metrics
     )
+    assert (
+        eval_job_bounded_area_1200_1800.metrics["metrics"]
+        == eval_job_min_area_1200.metrics["metrics"]
+    )
+
+
+def test_get_bulk_evaluations(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    db: Session,
+):
+    dataset_ = dset_name
+    model_ = model_name
+
+    dataset = Dataset.create(client, dataset_)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(client, model_)
+    for pd in pred_dets:
+        model.add_prediction(pd)
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        label_key="k1",
+        timeout=30,
+    )
+    eval_job.wait_for_completion()
+
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.1,
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.6,
+            },
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+        },
+    ]
+
+    evaluations = client.get_bulk_evaluations(
+        datasets=dset_name, models=model_name
+    )
+
+    assert len(evaluations) == 1
+    assert all(
+        [
+            name
+            in [
+                "dataset",
+                "model",
+                "settings",
+                "job_id",
+                "status",
+                "metrics",
+                "confusion_matrices",
+            ]
+            for evaluation in evaluations
+            for name in evaluation.keys()
+        ]
+    )
+
+    assert len(evaluations[0]["metrics"])
+    assert evaluations[0]["metrics"] == expected_metrics
+
+    # test incorrect names
+    with pytest.raises(Exception):
+        client.get_bulk_evaluations(datasets="wrong_dataset_name")
+
+    with pytest.raises(Exception):
+        client.get_bulk_evaluations(datasets="wrong_model_name")
+
+    # test with multiple models
+    second_model = Model.create(client, "second_model")
+    for pd in pred_dets:
+        second_model.add_prediction(pd)
+    second_model.finalize_inferences(dataset)
+
+    eval_job = second_model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        label_key="k1",
+        timeout=30,
+    )
+    eval_job.wait_for_completion()
+
+    second_model_evaluations = client.get_bulk_evaluations(
+        models="second_model"
+    )
+
+    assert len(second_model_evaluations) == 1
+    assert all(
+        [
+            name
+            in [
+                "dataset",
+                "model",
+                "settings",
+                "job_id",
+                "status",
+                "metrics",
+                "confusion_matrices",
+            ]
+            for evaluation in second_model_evaluations
+            for name in evaluation.keys()
+        ]
+    )
+    assert second_model_evaluations[0]["metrics"] == expected_metrics
+
+    both_evaluations = client.get_bulk_evaluations(datasets=["test_dataset"])
+
+    # should contain two different entries, one for each model
+    assert len(both_evaluations) == 2
+    assert all(
+        [
+            evaluation["model"] in ["second_model", model_name]
+            for evaluation in both_evaluations
+        ]
+    )
+    assert both_evaluations[0]["metrics"] == expected_metrics
+
+    # should be equivalent since there are only two models attributed to this dataset
+    both_evaluations_from_model_names = client.get_bulk_evaluations(
+        models=["second_model", "test_model"]
+    )
+    assert both_evaluations == both_evaluations_from_model_names
 
 
 def test_evaluate_image_clf(
@@ -1638,16 +1881,14 @@ def test_evaluate_image_clf(
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_classification(dataset=dataset)
+    eval_job = model.evaluate_classification(dataset=dataset, timeout=30)
 
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
     assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
 
-    # sleep to give the backend time to compute
-    time.sleep(1)
     assert eval_job.status == JobStatus.DONE
 
-    metrics = eval_job.metrics
+    metrics = eval_job.metrics["metrics"]
 
     expected_metrics = [
         {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
@@ -1680,7 +1921,7 @@ def test_evaluate_image_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.confusion_matrices
+    confusion_matrices = eval_job.metrics["confusion_matrices"]
     assert confusion_matrices == [
         {
             "label_key": "k4",
@@ -1708,7 +1949,7 @@ def test_evaluate_segmentation(
     dataset.finalize()
     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_segmentation(dataset)
+    eval_job = model.evaluate_segmentation(dataset, timeout=30)
     assert eval_job.missing_pred_labels == [
         {"key": "k3", "value": "v3", "score": None}
     ]
@@ -1716,8 +1957,7 @@ def test_evaluate_segmentation(
         {"key": "k1", "value": "v1", "score": None}
     ]
 
-    time.sleep(1)
-    metrics = eval_job.metrics
+    metrics = eval_job.metrics["metrics"]
 
     assert len(metrics) == 3
     assert set(
@@ -1934,7 +2174,7 @@ def test_evaluate_tabular_clf(
     # test
     model = Model.create(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset)
+        model.evaluate_classification(dataset=dataset, timeout=30)
     assert "has not been finalized" in str(exc_info)
 
     dataset.finalize()
@@ -1960,21 +2200,19 @@ def test_evaluate_tabular_clf(
 
     # test
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset)
+        model.evaluate_classification(dataset=dataset, timeout=30)
     assert "has not been finalized" in str(exc_info)
 
     model.finalize_inferences(dataset)
 
     # evaluate
-    eval_job = model.evaluate_classification(dataset=dataset)
+    eval_job = model.evaluate_classification(dataset=dataset, timeout=30)
     assert eval_job.ignored_pred_keys == []
     assert eval_job.missing_pred_keys == []
 
-    # sleep to give the backend time to compute
-    time.sleep(1)
     assert eval_job.status == JobStatus.DONE
 
-    metrics = eval_job.metrics
+    metrics = eval_job.metrics["metrics"]
 
     expected_metrics = [
         {
@@ -2034,7 +2272,7 @@ def test_evaluate_tabular_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.confusion_matrices
+    confusion_matrices = eval_job.metrics["confusion_matrices"]
 
     expected_confusion_matrix = {
         "label_key": "class",
@@ -2046,6 +2284,34 @@ def test_evaluate_tabular_clf(
             {"prediction": "2", "groundtruth": "1", "count": 1},
         ],
     }
+
+    # validate that we can fetch the confusion matrices through get_bulk_evaluations()
+    bulk_evals = client.get_bulk_evaluations(datasets=dset_name)
+
+    assert len(bulk_evals) == 1
+    assert all(
+        [
+            name
+            in [
+                "dataset",
+                "model",
+                "settings",
+                "job_id",
+                "status",
+                "metrics",
+                "confusion_matrices",
+            ]
+            for evaluation in bulk_evals
+            for name in evaluation.keys()
+        ]
+    )
+
+    for metric in bulk_evals[0]["metrics"]:
+        assert metric in expected_metrics
+
+    assert len(bulk_evals[0]["confusion_matrices"][0]) == len(
+        expected_confusion_matrix
+    )
 
     # validate return schema
     assert len(confusion_matrices) == 1
@@ -2067,7 +2333,7 @@ def test_evaluate_tabular_clf(
     df = model.get_metric_dataframes()
 
     assert isinstance(model.id, int)
-    assert model.name == "test_model"
+    assert model.name == model_name
     assert len(model.metadata) == 0
 
     assert len(labels) == 3
@@ -2079,12 +2345,14 @@ def test_evaluate_tabular_clf(
     eval_settings = asdict(eval_jobs[0].settings)
     eval_settings.pop("id")
     assert eval_settings == {
-        "model": "test_model",
+        "model": model_name,
         "dataset": "test_dataset",
-        "parameters": None,
+        "settings": {
+            "task_type": TaskType.CLASSIFICATION.value,
+        },
     }
 
-    metrics_from_eval_settings_id = eval_jobs[0].metrics
+    metrics_from_eval_settings_id = eval_jobs[0].metrics["metrics"]
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
     for m in metrics_from_eval_settings_id:
         assert m in expected_metrics
@@ -2092,7 +2360,7 @@ def test_evaluate_tabular_clf(
         assert m in metrics_from_eval_settings_id
 
     # check confusion matrix
-    confusion_matrices = eval_jobs[0].confusion_matrices
+    confusion_matrices = eval_jobs[0].metrics["confusion_matrices"]
 
     # validate return schema
     assert len(confusion_matrices) == 1
@@ -2342,9 +2610,8 @@ def test_get_dataset_status(client: Client, db: Session, gt_dets1: list):
 #     model.finalize_inferences(dataset)
 
 #     eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
-#     time.sleep(2)
 
-#     metrics = eval_job.metrics
+#     metrics = eval_job['metrics']
 
 #     for m in metrics:
 #         assert m["group"] in [

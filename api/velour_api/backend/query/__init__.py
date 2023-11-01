@@ -5,23 +5,27 @@ from .dataset import (
     get_datasets,
     get_datums,
 )
-from .groundtruth import create_groundtruth, get_groundtruth, get_groundtruths
+from .groundtruth import create_groundtruth, get_groundtruth
 from .label import (
     get_disjoint_keys,
     get_disjoint_labels,
+    get_groundtruth_label_keys,
+    get_groundtruth_labels,
     get_joint_keys,
     get_joint_labels,
+    get_label_keys,
     get_labels,
+    get_prediction_label_keys,
+    get_prediction_labels,
 )
 from .metrics import (
-    get_confusion_matrices_from_evaluation_id,
-    get_evaluation_settings_from_id,
-    get_metrics_from_evaluation_id,
-    get_model_evaluation_settings,
+    get_evaluation_job_from_id,
+    get_metrics_from_evaluation_ids,
+    get_model_evaluation_jobs,
     get_model_metrics,
 )
 from .model import create_model, delete_model, get_model, get_models
-from .prediction import create_prediction, get_prediction, get_predictions
+from .prediction import create_prediction, get_prediction
 
 __all__ = [
     "create_dataset",
@@ -35,18 +39,21 @@ __all__ = [
     "delete_model",
     "create_groundtruth",
     "get_groundtruth",
-    "get_groundtruths",
     "create_prediction",
     "get_prediction",
-    "get_predictions",
     "get_labels",
+    "get_groundtruth_labels",
+    "get_prediction_labels",
+    "get_label_keys",
+    "get_groundtruth_label_keys",
+    "get_prediction_label_keys",
     "get_joint_labels",
     "get_disjoint_labels",
     "get_joint_keys",
     "get_disjoint_keys",
-    "get_metrics_from_evaluation_id",
-    "get_confusion_matrices_from_evaluation_id",
+    "get_metrics_from_evaluation_ids",
     "get_evaluation_settings_from_id",
     "get_model_metrics",
-    "get_model_evaluation_settings",
+    "get_evaluation_job_from_id",
+    "get_model_evaluation_jobs",
 ]
