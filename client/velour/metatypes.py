@@ -3,7 +3,8 @@ from typing import List
 
 import PIL.Image
 
-from velour import schemas
+from velour.coretypes import Datum
+from velour.schemas.core import Metadatum
 
 
 @dataclass
@@ -12,7 +13,7 @@ class ImageMetadata:
     height: int
     width: int
     dataset: str = field(default="")
-    metadata: List[schemas.Metadatum] = field(default_factory=list)
+    metadata: List[Metadatum] = field(default_factory=list)
 
     def __post_init__(self):
         if not isinstance(self.dataset, str):
@@ -25,7 +26,7 @@ class ImageMetadata:
             raise TypeError("ImageMetadata height must be a int.")
 
     @staticmethod
-    def valid(datum: schemas.Datum) -> bool:
+    def valid(datum: Datum) -> bool:
         metadata = {
             metadatum.key: metadatum.value for metadatum in datum.metadata
         }
@@ -36,7 +37,7 @@ class ImageMetadata:
         return True
 
     @classmethod
-    def from_datum(cls, datum: schemas.Datum):
+    def from_datum(cls, datum: Datum):
         if not cls.valid(datum):
             raise TypeError("Datum does not conform to image type.")
 
@@ -60,13 +61,13 @@ class ImageMetadata:
             width=int(width),
         )
 
-    def to_datum(self) -> schemas.Datum:
-        return schemas.Datum(
+    def to_datum(self) -> Datum:
+        return Datum(
             dataset=self.dataset,
             uid=self.uid,
             metadata=[
-                schemas.Metadatum(key="height", value=self.height),
-                schemas.Metadatum(key="width", value=self.width),
+                Metadatum(key="height", value=self.height),
+                Metadatum(key="width", value=self.width),
                 *self.metadata,
             ],
         )
@@ -89,7 +90,7 @@ class VideoFrameMetadata:
             raise TypeError("Video frame number must be a int.")
 
     @staticmethod
-    def valid(datum: schemas.Datum) -> bool:
+    def valid(datum: Datum) -> bool:
         metadata = {
             metadatum.key: metadatum.value for metadatum in datum.metadata
         }
@@ -102,7 +103,7 @@ class VideoFrameMetadata:
         return True
 
     @classmethod
-    def from_datum(cls, datum: schemas.Datum):
+    def from_datum(cls, datum: Datum):
         if not cls.valid(datum):
             raise TypeError("Datum does not conform to video frame type.")
 
@@ -117,21 +118,19 @@ class VideoFrameMetadata:
                 height=int(metadata.pop("height")),
                 width=int(metadata.pop("width")),
                 metadata=[
-                    schemas.Metadatum(key=key, value=metadata[key])
-                    for key in metadata
+                    Metadatum(key=key, value=metadata[key]) for key in metadata
                 ],
             ),
             frame=int(metadata.pop("frame")),
         )
 
-    def to_datum(self) -> schemas.Datum:
-        return schemas.Datum(
+    def to_datum(self) -> Datum:
+        return Datum(
             dataset=self.image.dataset,
             uid=self.image.uid,
             metadata=[
-                schemas.Metadatum(key="height", value=self.image.height),
-                schemas.Metadatum(key="width", value=self.image.width),
-                schemas.Metadatum(key="frame", value=self.frame)
-                * self.metadata,
+                Metadatum(key="height", value=self.image.height),
+                Metadatum(key="width", value=self.image.width),
+                Metadatum(key="frame", value=self.frame) * self.metadata,
             ],
         )

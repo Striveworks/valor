@@ -4,22 +4,16 @@ import os
 import time
 import warnings
 from dataclasses import asdict
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import urljoin
 
 import requests
 
 from velour import enums, schemas
-from velour.enums import AnnotationType, JobStatus, State, TaskType
-from velour.filters import (
-    JSON,
-    BinaryExpression,
-    DeclarativeMapper,
-    Geometry,
-    Metadata,
-    _BaseLabel,
-    create_filter,
-)
+from velour.coretypes import Annotation, Datum, GroundTruth, Prediction
+from velour.datatypes import ImageMetadata
+from velour.enums import JobStatus, State, TaskType
+from velour.filters import BinaryExpression, DeclarativeMapper, create_filter
 
 
 class ClientException(Exception):
@@ -345,21 +339,37 @@ class Evaluation:
 class Dataset:
     id = DeclarativeMapper("dataset.id", int)
     name = DeclarativeMapper("dataset.name", str)
-    metadata = Metadata("dataset.metadata")
+    metadata = DeclarativeMapper("dataset.metadata", Union[int, float, str])
 
     def __init__(
         self,
         client: Client,
-        info: schemas.Dataset,
+        name: str,
+        metadata: List[schemas.Metadatum] = None,
+        id: Union[int, None] = None,
     ):
         self.client = client
-        self.info = info
+        self.name = name
+        self._metadata = metadata if metadata is not None else []
+        self.id = id
 
-        # unpack important values
-        self.id = info.id
-        self.name = info.name
+        if not isinstance(self.name, str):
+            raise TypeError("name should be of type `str`")
+        if not isinstance(self.id, int) and self.id is not None:
+            raise TypeError("id should be of type `int`")
+        if not isinstance(self.metadata, list):
+            raise TypeError("metadata should be of type `list`")
+        for i in range(len(self.metadata)):
+            if isinstance(self.metadata[i], dict):
+                self.metadata[i] = schemas.Metadatum(**self.metadata[i])
+            if not isinstance(self.metadata[i], schemas.Metadatum):
+                raise TypeError(
+                    "elements of metadata should be of type `velour.schemas.Metadatum`"
+                )
+
+        # unpack metadata in dict
         self.metadata = {
-            metadatum.key: metadatum.value for metadatum in info.metadata
+            metadatum.key: metadatum.value for metadatum in self._metadata
         }
 
     @classmethod
@@ -370,7 +380,7 @@ class Dataset:
         **kwargs,
     ):
         # Create the dataset on server side first to get ID info
-        ds = schemas.Dataset(
+        ds = Dataset(
             name=name,
             metadata=[],
         )
@@ -400,7 +410,7 @@ class Dataset:
             )
             for metadatum in resp["metadata"]
         ]
-        info = schemas.Dataset(
+        info = Dataset(
             name=resp["name"],
             id=resp["id"],
             metadata=metadata,
@@ -417,10 +427,10 @@ class Dataset:
 
     def add_groundtruth(
         self,
-        groundtruth: schemas.GroundTruth,
+        groundtruth: "GroundTruth",
     ):
         try:
-            assert isinstance(groundtruth, schemas.GroundTruth)
+            assert isinstance(groundtruth, GroundTruth)
         except AssertionError:
             raise TypeError(f"Invalid type `{type(groundtruth)}`")
 
@@ -436,11 +446,11 @@ class Dataset:
             json=asdict(groundtruth),
         )
 
-    def get_groundtruth(self, uid: str) -> schemas.GroundTruth:
+    def get_groundtruth(self, uid: str) -> "GroundTruth":
         resp = self.client._requests_get_rel_host(
             f"groundtruths/dataset/{self.info.name}/datum/{uid}"
         ).json()
-        return schemas.GroundTruth(**resp)
+        return GroundTruth(**resp)
 
     def get_labels(
         self,
@@ -456,21 +466,21 @@ class Dataset:
 
     def get_datums(
         self,
-    ) -> List[schemas.Datum]:
+    ) -> List["Datum"]:
         """Returns a list of datums."""
         datums = self.client._requests_get_rel_host(
             f"data/dataset/{self.name}"
         ).json()
-        return [schemas.Datum(**datum) for datum in datums]
+        return [Datum(**datum) for datum in datums]
 
     def get_images(
         self,
-    ) -> List[schemas.ImageMetadata]:
+    ) -> List[ImageMetadata]:
         """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
         return [
-            schemas.ImageMetadata.from_datum(datum)
+            ImageMetadata.from_datum(datum)
             for datum in self.get_datums()
-            if schemas.ImageMetadata.valid(datum)
+            if ImageMetadata.valid(datum)
         ]
 
     def get_evaluations(
@@ -507,21 +517,37 @@ class Dataset:
 class Model:
     id = DeclarativeMapper("model.id", int)
     name = DeclarativeMapper("model.name", str)
-    metadata = Metadata("model.metadata")
+    metadata = DeclarativeMapper("model.metadata", Union[int, float, str])
 
     def __init__(
         self,
         client: Client,
-        info: schemas.Model,
+        name: str,
+        metadata: List[schemas.Metadatum] = None,
+        id: Union[int, None] = None,
     ):
         self.client = client
-        self.info = info
+        self.name = name
+        self._metadata = metadata if metadata is not None else []
+        self.id = id
 
-        # Unpack important values
-        self.id = info.id
-        self.name = info.name
+        if not isinstance(self.name, str):
+            raise TypeError("name should be of type `str`")
+        if not isinstance(self.id, int) and self.id is not None:
+            raise TypeError("id should be of type `int`")
+        if not isinstance(self.metadata, list):
+            raise TypeError("metadata should be of type `list`")
+        for i in range(len(self.metadata)):
+            if isinstance(self.metadata[i], dict):
+                self.metadata[i] = schemas.Metadatum(**self.metadata[i])
+            if not isinstance(self.metadata[i], schemas.Metadatum):
+                raise TypeError(
+                    "elements should be of type `velour.schemas.Metadatum`"
+                )
+
+        # Unpack metadata into dict
         self.metadata = {
-            metadatum.key: metadatum.value for metadatum in info.metadata
+            metadatum.key: metadatum.value for metadatum in self._metadata
         }
 
     @classmethod
@@ -532,7 +558,7 @@ class Model:
         **kwargs,
     ):
         # Create the dataset on server side first to get ID info
-        md = schemas.Model(
+        md = Model(
             name=name,
             metadata=[],
         )
@@ -562,7 +588,7 @@ class Model:
             )
             for metadatum in resp["metadata"]
         ]
-        info = schemas.Model(
+        info = Model(
             name=resp["name"],
             id=resp["id"],
             metadata=metadata,
@@ -593,7 +619,7 @@ class Model:
         self.info.metadata.append(metadatum)
         self.__metadata__[metadatum.key] = metadatum
 
-    def add_prediction(self, prediction: schemas.Prediction):
+    def add_prediction(self, prediction: "Prediction"):
         try:
             assert isinstance(prediction, schemas.Prediction)
         except AssertionError:
@@ -613,7 +639,7 @@ class Model:
             json=asdict(prediction),
         )
 
-    def get_prediction(self, datum: schemas.Datum) -> schemas.Prediction:
+    def get_prediction(self, datum: "Datum") -> "Prediction":
         resp = self.client._requests_get_rel_host(
             f"predictions/model/{self.info.name}/dataset/{datum.dataset}/datum/{datum.uid}",
         ).json()
@@ -811,37 +837,14 @@ class Model:
         ]
 
 
-class Datum:
-    id = DeclarativeMapper("datum.id", int)
-    uid = DeclarativeMapper("datum.uid", str)
-    metadata = Metadata("datum.metadata")
+print(Annotation.task_type)
+# >>> <velour.filters.DeclarativeMapper object at 0x7fe775c6ec50>
+print(Annotation(TaskType.CLASSIFICATION).task_type)
+# >>> TaskType.CLASSIFICATION
 
 
-class Annotation:
-    task_type = DeclarativeMapper("annotation.task_type", TaskType)
-    annotation_type = DeclarativeMapper(
-        "annotation.annotation_type", AnnotationType
-    )
-    box = Geometry("box")
-    polygon = Geometry("polygon")
-    multipolygon = Geometry("multipolygon")
-    raster = Geometry("raster")
-    json = JSON("annotation.json")
-    metadata = Metadata("annotation.metadata")
+print()
 
-    @classmethod
-    def create_bounding_box(
-        cls, xmin, xmax, ymin, ymax
-    ) -> schemas.BoundingBox:
-        return schemas.BoundingBox.from_extrema(
-            xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax
-        )
+print(Model.id["class"] >= 1)
 
-
-class Prediction:
-    score = DeclarativeMapper("prediction.score", Union[int, float])
-
-
-class Label:
-    key = DeclarativeMapper("label.key", str)
-    label = _BaseLabel()
+print(create_filter([Model.id["class"] == 1]))

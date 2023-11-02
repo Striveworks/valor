@@ -4,7 +4,7 @@ from typing import Union
 
 from velour import schemas
 from velour.enums import AnnotationType
-from velour.schemas import (
+from velour.schemas.filters import (
     AnnotationFilter,
     DatasetFilter,
     DatumFilter,
@@ -32,6 +32,13 @@ class DeclarativeMapper:
         self.name = name
         self.key = key
         self.object_type = object_type
+
+    def __getitem__(self, key: str):
+        return DeclarativeMapper(
+            name=self.name,
+            object_type=self.object_type,
+            key=key,
+        )
 
     def __eq__(self, __value: object) -> BinaryExpression:
         if not isinstance(__value, self.object_type):
@@ -124,40 +131,10 @@ class DeclarativeMapper:
         return [self == value for value in __values]
 
 
-class Metadata:
-    def __init__(self, name: str):
-        self.name = name
-
-    def __getitem__(self, key: str):
-        if not isinstance(key, str):
-            raise TypeError("Metadata key must be of type `str`")
-        return DeclarativeMapper(name=self.name, object_type=object, key=key)
-
-
 class Geometry:
     def __init__(self, annotation_type: AnnotationType):
         self.area = DeclarativeMapper(
             "annotation.area", Union[int, float], key=annotation_type
-        )
-
-
-class JSON:
-    def __init__(self, name: str):
-        self.name = name
-        self.key = DeclarativeMapper(name + ".key", str)
-
-    def __getitem__(self, key: str):
-        if not isinstance(key, str):
-            raise TypeError("JSON key must be of type `str`")
-        return DeclarativeMapper(name=self.name, key=key, object_type=object)
-
-
-class _BaseLabel:
-    def __getitem__(self, key: str):
-        if not isinstance(key, str):
-            raise TypeError("Label key must be of type `str`")
-        return DeclarativeMapper(
-            name="label.value", key=key, object_type=object
         )
 
 
