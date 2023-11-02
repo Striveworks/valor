@@ -4,7 +4,14 @@ from typing import Dict, List, Tuple, Union
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from velour import enums, schemas
+from velour import (
+    Annotation,
+    GroundTruth,
+    ImageMetadata,
+    Prediction,
+    enums,
+    schemas,
+)
 
 # https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
 COLOR_MAP = [
@@ -49,7 +56,7 @@ def _polygons_to_binary_mask(
 
 
 def combined_segmentation_mask(
-    annotated_datums: List[Union[schemas.GroundTruth, schemas.Prediction]],
+    annotated_datums: List[Union[GroundTruth, Prediction]],
     label_key: str,
     task_type: Union[enums.TaskType, None] = None,
 ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
@@ -115,7 +122,7 @@ def combined_segmentation_mask(
         task_types = [task_type]
 
     # unpack raster annotations
-    annotations: List[Union[schemas.Annotation, schemas.ScoredAnnotation]] = []
+    annotations: List[Annotation] = []
     for annotated_datum in annotated_datums:
         for annotation in annotated_datum.annotations:
             if annotation.task_type in task_types:
@@ -137,7 +144,7 @@ def combined_segmentation_mask(
     }
     seg_colors = [label_value_to_color[v] for v in label_values]
 
-    image = schemas.ImageMetadata.from_datum(annotated_datums[0].datum)
+    image = ImageMetadata.from_datum(annotated_datums[0].datum)
     img_w, img_h = image.width, image.height
 
     combined_mask = np.zeros((img_h, img_w, 3), dtype=np.uint8)
@@ -164,7 +171,7 @@ def combined_segmentation_mask(
 
 
 def draw_detections_on_image(
-    detections: List[Union[schemas.GroundTruth, schemas.Prediction]],
+    detections: List[Union[GroundTruth, Prediction]],
     img: Image.Image,
 ) -> Image.Image:
     """Draws detections (bounding boxes and labels) on an image"""
@@ -180,7 +187,7 @@ def draw_detections_on_image(
 
 
 def _draw_detection_on_image(
-    detection: schemas.Annotation, img: Image.Image, inplace: bool
+    detection: Annotation, img: Image.Image, inplace: bool
 ) -> Image.Image:
     text = ", ".join(
         [f"{label.key}:{label.value}" for label in detection.labels]

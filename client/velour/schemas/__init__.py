@@ -1,14 +1,3 @@
-from .core import (
-    Annotation,
-    Dataset,
-    Datum,
-    GroundTruth,
-    Label,
-    Metadatum,
-    Model,
-    Prediction,
-)
-from .datatypes import ImageMetadata, VideoFrameMetadata
 from .evaluation import DetectionParameters, EvaluationJob, EvaluationSettings
 from .filters import (
     AnnotationFilter,
@@ -34,26 +23,23 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .metadata import GeoJSON
+from .label import Label
+from .metadata import (
+    GeoJSON,
+    deserialize_metadata,
+    serialize_metadata,
+    validate_metadata,
+)
 
 __all__ = [
+    "Label",
     "Box",
     "BasicPolygon",
     "Point",
-    "Dataset",
-    "Model",
-    "Datum",
-    "ImageMetadata",
-    "VideoFrameMetadata",
-    "Label",
-    "Annotation",
-    "GroundTruth",
-    "Prediction",
     "BoundingBox",
     "Polygon",
     "MultiPolygon",
     "Raster",
-    "Metadatum",
     "GeoJSON",
     "EvaluationJob",
     "EvaluationSettings",
@@ -71,4 +57,7 @@ __all__ = [
     "LabelFilter",
     "PredictionFilter",
     "Filter",
+    "validate_metadata",
+    "serialize_metadata",
+    "deserialize_metadata",
 ]

@@ -8,15 +8,10 @@ import numpy as np
 import PIL.Image
 from tqdm import tqdm
 
-from velour import enums
+from velour import Annotation, GroundTruth, Label, enums
 from velour.client import Dataset
-from velour.schemas import (
-    Annotation,
-    GroundTruth,
-    ImageMetadata,
-    Label,
-    Raster,
-)
+from velour.metatypes import ImageMetadata
+from velour.schemas import Raster
 
 
 def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:
@@ -119,10 +114,17 @@ def _get_segs_groundtruth_for_single_image(
 
     # create datum
     image_id = ann_dict["image_id"]
+
+    height = image_id_to_height[image_id]
+    width = image_id_to_width[image_id]
+
+    assert isinstance(height, int)
+    assert isinstance(width, int)
+
     img = ImageMetadata(
         uid=str(image_id),
-        height=image_id_to_height[image_id],
-        width=image_id_to_width[image_id],
+        height=height,
+        width=width,
     ).to_datum()
 
     # create initial list of annotations

@@ -10,7 +10,14 @@ from urllib.parse import urljoin
 import requests
 
 from velour import enums, schemas
+from velour.coretypes import Datum, GroundTruth, Prediction
 from velour.enums import AnnotationType, JobStatus, State
+from velour.metatypes import ImageMetadata
+from velour.schemas import (
+    deserialize_metadata,
+    serialize_metadata,
+    validate_metadata,
+)
 
 
 class ClientException(Exception):
@@ -299,7 +306,7 @@ class Evaluation:
     @property
     def parameters(
         self,
-    ) -> List[schemas.Metadatum]:
+    ) -> dict:
         return self._settings.parameters
 
     @property
@@ -334,94 +341,65 @@ class Evaluation:
 
 
 class Dataset:
-    def __init__(
-        self,
-        client: Client,
-        info: schemas.Dataset,
-    ):
-        self.client = client
-        self.info = info
-        self._metadata = {
-            metadatum.key: metadatum.value for metadatum in info.metadata
-        }
-
-    @property
-    def id(
-        self,
-    ):
-        return self.info.id
-
-    @property
-    def name(
-        self,
-    ):
-        return self.info.name
-
-    @property
-    def metadata(
-        self,
-    ) -> Dict[str, Any]:
-        return self._metadata
+    def __init__(self):
+        self.client: Client = None
+        self.id: int = None
+        self.name: str = None
+        self.metadata: dict = None
 
     @classmethod
     def create(
         cls,
         client: Client,
         name: str,
-        **kwargs,
+        metadata: Dict[str, Union[int, float, str, schemas.GeoJSON]] = None,
+        id: Union[int, None] = None,
     ):
-        # Create the dataset on server side first to get ID info
-        ds = schemas.Dataset(
-            name=name,
-            metadata=[],
-        )
-        for key in kwargs:
-            ds.metadata.append(
-                schemas.Metadatum(
-                    key=key,
-                    value=kwargs[key],
-                )
-            )
-        resp = client._requests_post_rel_host("datasets", json=asdict(ds))
-
-        # @TODO: Handle this response
-        if resp:
-            pass
-
-        # Retrive newly created dataset with its ID
-        return cls.get(client, name)
+        # create dataset
+        dataset = cls()
+        dataset.client = client
+        dataset.name = name
+        dataset.metadata = metadata
+        dataset.id = id
+        dataset._validate()
+        # attempt to create, this will raise an error if the dataset already exists
+        client._requests_post_rel_host("datasets", json=dataset.dict())
+        return dataset
 
     @classmethod
     def get(cls, client: Client, name: str):
+        # attempt to get, this will raise an error if the dataset does not exists
         resp = client._requests_get_rel_host(f"datasets/{name}").json()
-        metadata = [
-            schemas.Metadatum(
-                key=metadatum["key"],
-                value=metadatum["value"],
-            )
-            for metadatum in resp["metadata"]
-        ]
-        info = schemas.Dataset(
-            name=resp["name"],
-            id=resp["id"],
-            metadata=metadata,
-        )
-        return cls(
-            client=client,
-            info=info,
-        )
+        # create dataset
+        dataset = cls()
+        dataset.client = client
+        dataset.name = resp["name"]
+        dataset.metadata = deserialize_metadata(resp["metadata"])
+        dataset.id = resp["id"]
+        dataset._validate()
+        return dataset
 
-    def add_metadatum(self, metadatum: schemas.Metadatum):
-        # @TODO: Add endpoint to allow adding custom metadatums
-        self.info.metadata.append(metadatum)
-        self.__metadata__[metadatum.key] = metadatum
+    def _validate(self):
+        # validation
+        if not isinstance(self.name, str):
+            raise TypeError("`name` should be of type `str`")
+        if not isinstance(self.id, int) and self.id is not None:
+            raise TypeError("`id` should be of type `int`")
+        self.metadata = validate_metadata(self.metadata)
+
+    def dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "metadata": serialize_metadata(self.metadata),
+        }
 
     def add_groundtruth(
         self,
-        groundtruth: schemas.GroundTruth,
+        groundtruth: GroundTruth,
     ):
         try:
-            assert isinstance(groundtruth, schemas.GroundTruth)
+            assert isinstance(groundtruth, GroundTruth)
         except AssertionError:
             raise TypeError(f"Invalid type `{type(groundtruth)}`")
 
@@ -431,17 +409,17 @@ class Dataset:
             )
             return
 
-        groundtruth.datum.dataset = self.info.name
+        groundtruth.datum.dataset = self.name
         self.client._requests_post_rel_host(
             "groundtruths",
-            json=asdict(groundtruth),
+            json=groundtruth.dict(),
         )
 
-    def get_groundtruth(self, uid: str) -> schemas.GroundTruth:
+    def get_groundtruth(self, uid: str) -> GroundTruth:
         resp = self.client._requests_get_rel_host(
-            f"groundtruths/dataset/{self.info.name}/datum/{uid}"
+            f"groundtruths/dataset/{self.name}/datum/{uid}"
         ).json()
-        return schemas.GroundTruth(**resp)
+        return GroundTruth(**resp)
 
     def get_labels(
         self,
@@ -457,21 +435,21 @@ class Dataset:
 
     def get_datums(
         self,
-    ) -> List[schemas.Datum]:
+    ) -> List[Datum]:
         """Returns a list of datums."""
         datums = self.client._requests_get_rel_host(
             f"data/dataset/{self.name}"
         ).json()
-        return [schemas.Datum(**datum) for datum in datums]
+        return [Datum(**datum) for datum in datums]
 
     def get_images(
         self,
-    ) -> List[schemas.ImageMetadata]:
+    ) -> List[ImageMetadata]:
         """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
         return [
-            schemas.ImageMetadata.from_datum(datum)
+            ImageMetadata.from_datum(datum)
             for datum in self.get_datums()
-            if schemas.ImageMetadata.valid(datum)
+            if ImageMetadata.valid(datum)
         ]
 
     def get_evaluations(
@@ -506,110 +484,65 @@ class Dataset:
 
 
 class Model:
-    def __init__(
-        self,
-        client: Client,
-        info: schemas.Model,
-    ):
-        self.client = client
-        self.info = info
-        self._metadata = {
-            metadatum.key: metadatum.value for metadatum in info.metadata
-        }
-
-    @property
-    def id(
-        self,
-    ):
-        return self.info.id
-
-    @property
-    def name(
-        self,
-    ):
-        return self.info.name
-
-    @property
-    def metadata(
-        self,
-    ) -> Dict[str, Any]:
-        return self._metadata
+    def __init__(self):
+        self.client: Client = None
+        self.id: int = None
+        self.name: str = ""
+        self.metadata: dict = None
 
     @classmethod
     def create(
         cls,
         client: Client,
         name: str,
-        **kwargs,
+        metadata: Dict[str, Union[int, float, str, schemas.GeoJSON]] = None,
+        id: Union[int, None] = None,
     ):
-        # Create the dataset on server side first to get ID info
-        md = schemas.Model(
-            name=name,
-            metadata=[],
-        )
-        for key in kwargs:
-            md.metadata.append(
-                schemas.Metadatum(
-                    key=key,
-                    value=kwargs[key],
-                )
-            )
-        resp = client._requests_post_rel_host("models", json=asdict(md))
-
-        # @TODO: Handle this response
-        if resp:
-            pass
-
-        # Retrive newly created dataset with its ID
-        return cls.get(client, name)
+        # create model
+        model = cls()
+        model.client = client
+        model.name = name
+        model.metadata = metadata
+        model.id = id
+        model._validate()
+        # attempt to create, this will raise an error if the model already exists
+        client._requests_post_rel_host("models", json=model.dict())
+        return model
 
     @classmethod
     def get(cls, client: Client, name: str):
+        # attempt to get, this will raise an error if the model does not exists
         resp = client._requests_get_rel_host(f"models/{name}").json()
-        metadata = [
-            schemas.Metadatum(
-                key=metadatum["key"],
-                value=metadatum["value"],
-            )
-            for metadatum in resp["metadata"]
-        ]
-        info = schemas.Model(
-            name=resp["name"],
-            id=resp["id"],
-            metadata=metadata,
-        )
-        return cls(
-            client=client,
-            info=info,
-        )
+        # create model
+        model = cls()
+        model.client = client
+        model.name = resp["name"]
+        model.metadata = deserialize_metadata(resp["metadata"])
+        model.id = resp["id"]
+        model._validate()
+        return model
 
-    def get_evaluation_status(
-        self,
-        job_id: int,
-    ) -> State:
-        resp = self.client._requests_get_rel_host(
-            f"evaluations/{job_id}"
-        ).json()
+    def _validate(self):
+        # validation
+        if not isinstance(self.name, str):
+            raise TypeError("`name` should be of type `str`")
+        if not isinstance(self.id, int) and self.id is not None:
+            raise TypeError("`id` should be of type `int`")
+        self.metadata = validate_metadata(self.metadata)
 
-        return resp
+    def dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "metadata": serialize_metadata(self.metadata),
+        }
 
-    def delete(
-        self,
-    ):
-        self.client._requests_delete_rel_host(f"models/{self.name}").json()
-        del self
-
-    def add_metadatum(self, metadatum: schemas.Metadatum):
-        # @TODO: Add endpoint to allow adding custom metadatums
-        self.info.metadata.append(metadatum)
-        self.__metadata__[metadatum.key] = metadatum
-
-    def add_prediction(self, prediction: schemas.Prediction):
+    def add_prediction(self, prediction: Prediction):
         try:
-            assert isinstance(prediction, schemas.Prediction)
+            assert isinstance(prediction, Prediction)
         except AssertionError:
             raise TypeError(
-                f"Expected `velour.schemas.Prediction`, got `{type(prediction)}`"
+                f"Expected `velour.Prediction`, got `{type(prediction)}`"
             )
 
         if len(prediction.annotations) == 0:
@@ -618,17 +551,11 @@ class Model:
             )
             return
 
-        prediction.model = self.info.name
+        prediction.model = self.name
         return self.client._requests_post_rel_host(
             "predictions",
-            json=asdict(prediction),
+            json=prediction.dict(),
         )
-
-    def get_prediction(self, datum: schemas.Datum) -> schemas.Prediction:
-        resp = self.client._requests_get_rel_host(
-            f"predictions/model/{self.info.name}/dataset/{datum.dataset}/datum/{datum.uid}",
-        ).json()
-        return schemas.Prediction(**resp)
 
     def finalize_inferences(self, dataset: "Dataset") -> None:
         return self.client._requests_put_rel_host(
@@ -793,6 +720,30 @@ class Model:
 
         return evaluation_job
 
+    def delete(
+        self,
+    ):
+        self.client._requests_delete_rel_host(f"models/{self.name}").json()
+        del self
+
+    def get_prediction(self, datum: Datum) -> Prediction:
+        resp = self.client._requests_get_rel_host(
+            f"predictions/model/{self.name}/dataset/{datum.dataset}/datum/{datum.uid}",
+        ).json()
+        return Prediction(**resp)
+
+    def get_labels(
+        self,
+    ) -> List[schemas.Label]:
+        labels = self.client._requests_get_rel_host(
+            f"labels/model/{self.name}"
+        ).json()
+
+        return [
+            schemas.Label(key=label["key"], value=label["value"])
+            for label in labels
+        ]
+
     def get_evaluations(
         self,
     ) -> List[Evaluation]:
@@ -840,14 +791,12 @@ class Model:
 
         return ret
 
-    def get_labels(
+    # TODO Endpoint is independent of model, should be moved to Client?
+    def get_evaluation_status(
         self,
-    ) -> List[schemas.Label]:
-        labels = self.client._requests_get_rel_host(
-            f"labels/model/{self.name}"
+        job_id: int,
+    ) -> State:
+        resp = self.client._requests_get_rel_host(
+            f"evaluations/{job_id}"
         ).json()
-
-        return [
-            schemas.Label(key=label["key"], value=label["value"])
-            for label in labels
-        ]
+        return resp

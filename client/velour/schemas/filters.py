@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List, Union
 
-from velour import schemas
 from velour.enums import AnnotationType, TaskType
+from velour.schemas.core import Label
 
 
 @dataclass
@@ -99,7 +99,7 @@ class AnnotationFilter:
 @dataclass
 class LabelFilter:
     ids: List[int] = field(default_factory=list)
-    labels: List[schemas.Label] = field(default_factory=list)
+    labels: List[Label] = field(default_factory=list)
     keys: List[str] = field(default_factory=list)
 
 

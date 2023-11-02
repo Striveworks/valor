@@ -9,3 +9,23 @@ try:
     __version__ = importlib_metadata.version("velour")
 except importlib_metadata.PackageNotFoundError:
     __version__ = ""
+
+from .client import Dataset, Evaluation, Model
+from .coretypes import Annotation, Datum, GroundTruth, Prediction
+from .metatypes import ImageMetadata, VideoFrameMetadata
+from .schemas import Label
+
+__all__ = [
+    "Client",
+    "ClientException",
+    "Evaluation",
+    "Dataset",
+    "Model",
+    "Datum",
+    "Annotation",
+    "GroundTruth",
+    "Prediction",
+    "Label",
+    "ImageMetadata",
+    "VideoFrameMetadata",
+]
