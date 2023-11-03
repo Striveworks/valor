@@ -1,3 +1,4 @@
+import collections
 import json
 import math
 import os
@@ -147,6 +148,79 @@ class Client:
 
         evals = self._requests_get_rel_host(endpoint).json()
         return evals
+
+    def get_ranked_evaluations(
+        self,
+        dataset_name: str,
+        metric: str,
+        parameters: dict = None,
+        metric_filters: dict = None,
+        rank_from_highest_value_to_lowest_value: bool = True,
+    ):
+        """
+        Returns all metrics associated with a particular dataset, ranked according to user inputs
+
+        Parameters
+        ----------
+        dataset_name
+            The dataset name for which to fetch metrics for.
+        metric
+            The metric to use when ranking evaluations (e.g., "mAP")
+        parameters
+            The metric parameters to filter on when computing the ranking (e.g., {'iou':.5})
+        metric_filters
+            The metric filter conditions to use when computing the ranking (e.g., {'max_area':9000})
+        rank_from_highest_value_to_lowest_value
+            A boolean to indicate whether the metric values should be ranked from highest to lowest
+        """
+        if not parameters:
+            parameters = {}
+
+        if not metric_filters:
+            metric_filters = {}
+
+        evaluations = self.get_bulk_evaluations(datasets=dataset_name)
+
+        # rank based on the highest metric value that meets the metric, parameter, and filter conditions
+        model_max_values = collections.defaultdict(float)
+        for evaluation in evaluations:
+            filter_ = json.loads(evaluation["filter"])
+            if not metric_filters or all(
+                [
+                    filter_[key] == value
+                    for key, value in metric_filters.items()
+                ]
+            ):
+                for evaluation_metric in evaluation["metrics"]:
+                    if evaluation_metric["type"] == metric and (
+                        not parameters
+                        or (parameters == evaluation_metric["parameters"])
+                    ):
+                        model_max_values[evaluation["model"]] = max(
+                            evaluation_metric["value"],
+                            model_max_values[evaluation["model"]],
+                        )
+
+        rankings = {
+            key: rank
+            for rank, key in enumerate(
+                sorted(
+                    model_max_values,
+                    key=model_max_values.get,
+                    reverse=rank_from_highest_value_to_lowest_value,
+                ),
+                1,
+            )
+        }
+
+        # sort and return evaluations according to thsi ranking
+        for evaluation in evaluations:
+            evaluation["model_rank"] = rankings[evaluation["model"]]
+
+        evaluations = sorted(
+            evaluations, key=lambda evaluation: rankings[evaluation["model"]]
+        )
+        return evaluations
 
     def get_datasets(
         self,
