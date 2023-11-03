@@ -45,6 +45,7 @@ class Dataset(BaseModel):
     id: int | None = None
     name: str
     metadata: dict[str, float | str] = Field(default_factory=dict)
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
     @classmethod
@@ -60,6 +61,7 @@ class Model(BaseModel):
     id: int | None = None
     name: str
     metadata: dict[str, float | str] = Field(default_factory=dict)
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
     @classmethod
@@ -75,6 +77,7 @@ class Datum(BaseModel):
     uid: str
     dataset: str
     metadata: dict[str, float | str] = Field(default_factory=dict)
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("uid")
     @classmethod
@@ -120,7 +123,7 @@ class Annotation(BaseModel):
     raster: Raster | None = None
     jsonb: dict[str, str] | None = None
 
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     @field_validator("labels")
     @classmethod
@@ -151,6 +154,7 @@ def _check_semantic_segmentations_single_label(
 class GroundTruth(BaseModel):
     datum: Datum
     annotations: list[Annotation]
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("annotations")
     @classmethod
@@ -176,6 +180,7 @@ class Prediction(BaseModel):
     model: str
     datum: Datum
     annotations: list[Annotation]
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("model")
     @classmethod
