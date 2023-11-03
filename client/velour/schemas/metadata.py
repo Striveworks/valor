@@ -35,11 +35,11 @@ def validate_metadata(metadata):
     for key, value in metadata.items():
         if not isinstance(key, str):
             raise SchemaTypeError("metadatum key", str, key)
-        if (
-            not isinstance(value, int)
-            or not isinstance(value, float)
-            or not isinstance(value, str)
-            or not isinstance(value, GeoJSON)
+        if not (
+            isinstance(value, int)
+            or isinstance(value, float)
+            or isinstance(value, str)
+            or isinstance(value, GeoJSON)
         ):
             raise SchemaTypeError(
                 "metadatum value", Union[float, int, str, GeoJSON], value
