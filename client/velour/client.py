@@ -184,7 +184,7 @@ class Client:
         # rank based on the highest metric value that meets the metric, parameter, and filter conditions
         model_max_values = collections.defaultdict(float)
         for evaluation in evaluations:
-            filter_ = json.loads(evaluation["filter"])
+            filter_ = evaluation["settings"]["filters"]
             if not metric_filters or all(
                 [
                     filter_[key] == value
