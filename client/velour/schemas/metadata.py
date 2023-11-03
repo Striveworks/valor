@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Dict, Union
 
 
@@ -12,8 +12,14 @@ class GeoJSON:
         pass
 
 
+@dataclass
+class _BaseMetadatum:
+    key: str
+    value: Union[float, int, str, GeoJSON]
+
+
 def _validate_href(value: str):
-    if not isinstance(v, str):
+    if not isinstance(value, str):
         raise TypeError("`href` is something other than 'str'")
     if not (value.startswith("http://") or value.startswith("https://")):
         raise ValueError("`href` must start with http:// or https://")
@@ -23,11 +29,13 @@ def serialize_metadata(metadata: dict) -> list:
     if not metadata:
         return []
     return [
-        {
-            "key": key,
-            "value": metadata[key],
-        }
-        for key in metadata
+        asdict(
+            _BaseMetadatum(
+                key=key,
+                value=value,
+            )
+        )
+        for key, value in metadata.items()
     ]
 
 

@@ -1,9 +1,14 @@
-import math
 from dataclasses import asdict
-from typing import Dict, List, Set, Tuple, Union
+from typing import Dict, List, Union
 
 from velour import schemas
-from velour.enums import AnnotationType, TaskType
+from velour.enums import TaskType
+from velour.schemas.core import (
+    _BaseAnnotation,
+    _BaseDatum,
+    _BaseGroundTruth,
+    _BasePrediction,
+)
 from velour.schemas.metadata import serialize_metadata, validate_metadata
 
 
@@ -27,11 +32,15 @@ class Datum:
         self.metadata = validate_metadata(self.metadata)
 
     def dict(self):
-        return {
-            "uid": self.uid,
-            "dataset": self.dataset,
-            "metadata": serialize_metadata(self.metadata),
-        }
+        return asdict(
+            _BaseDatum(
+                **{
+                    "uid": self.uid,
+                    "dataset": self.dataset,
+                    "metadata": serialize_metadata(self.metadata),
+                }
+            )
+        )
 
 
 class Annotation:
@@ -106,20 +115,20 @@ class Annotation:
         self.metadata = validate_metadata(self.metadata)
 
     def dict(self) -> dict:
-        return {
-            "task_type": self.task_type.value,
-            "labels": [asdict(label) for label in self.labels],
-            "metadata": serialize_metadata(self.metadata),
-            "bounding_box": asdict(self.bounding_box)
-            if self.bounding_box
-            else None,
-            "polygon": asdict(self.polygon) if self.polygon else None,
-            "multipolygon": asdict(self.multipolygon)
-            if self.multipolygon
-            else None,
-            "raster": asdict(self.raster) if self.raster else None,
-            "jsonb": self.jsonb,
-        }
+        return asdict(
+            _BaseAnnotation(
+                **{
+                    "task_type": self.task_type.value,
+                    "labels": self.labels,
+                    "metadata": serialize_metadata(self.metadata),
+                    "bounding_box": self.bounding_box,
+                    "polygon": self.polygon,
+                    "multipolygon": self.multipolygon,
+                    "raster": self.raster,
+                    "jsonb": self.jsonb,
+                }
+            )
+        )
 
 
 class GroundTruth:
@@ -152,12 +161,16 @@ class GroundTruth:
                 )
 
     def dict(self) -> dict:
-        return {
-            "datum": self.datum.dict(),
-            "annotations": [
-                annotation.dict() for annotation in self.annotations
-            ],
-        }
+        return asdict(
+            _BaseGroundTruth(
+                **{
+                    "datum": self.datum.dict(),
+                    "annotations": [
+                        annotation.dict() for annotation in self.annotations
+                    ],
+                }
+            )
+        )
 
 
 class Prediction:
@@ -220,10 +233,14 @@ class Prediction:
                         )
 
     def dict(self) -> dict:
-        return {
-            "datum": self.datum.dict(),
-            "model": self.model,
-            "annotations": [
-                annotation.dict() for annotation in self.annotations
-            ],
-        }
+        return asdict(
+            _BasePrediction(
+                **{
+                    "datum": self.datum.dict(),
+                    "model": self.model,
+                    "annotations": [
+                        annotation.dict() for annotation in self.annotations
+                    ],
+                }
+            )
+        )

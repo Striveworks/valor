@@ -1,8 +1,7 @@
-from typing import Dict, List, Union
+from typing import Dict, Union
 
 import PIL.Image
 
-from velour import schemas
 from velour.coretypes import Datum
 from velour.schemas import validate_metadata
 
@@ -43,7 +42,7 @@ class ImageMetadata:
     def from_datum(cls, datum: Datum):
         if not cls.valid(datum):
             raise TypeError("Datum does not conform to image type.")
-        metadata = datum.metadata
+        metadata = datum.metadata.copy()
         return cls(
             dataset=datum.dataset,
             uid=datum.uid,
@@ -63,7 +62,7 @@ class ImageMetadata:
 
     def to_datum(self) -> Datum:
         if self.metadata:
-            metadata = self.metadata
+            metadata = self.metadata.copy()
         else:
             metadata = {}
         metadata["height"] = self.height
