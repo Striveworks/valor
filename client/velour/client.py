@@ -13,6 +13,33 @@ from velour import enums, schemas
 from velour.enums import AnnotationType, JobStatus, State
 
 
+def _is_subset_of_dict(target_values: any, nested_dict: dict) -> bool:
+    for key, value in target_values.items():
+        if key not in nested_dict:
+            return False
+        if isinstance(value, dict):
+            if not _is_subset_of_dict(value, nested_dict[key]):
+                return False
+        elif value != nested_dict[key]:
+            return False
+    return True
+
+
+def _dict_is_subset_of_other_dict(
+    target_values: any, nested_dict: dict
+) -> bool:
+    """Check if a target nested_dict exists in any part of an arbitrarily large nested nested_dict"""
+    if isinstance(nested_dict, dict):
+        if _is_subset_of_dict(target_values, nested_dict):
+            return True
+        for value in nested_dict.values():
+            if _dict_is_subset_of_other_dict(
+                target_values=target_values, nested_dict=value
+            ):
+                return True
+    return False
+
+
 class ClientException(Exception):
     pass
 
