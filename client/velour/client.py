@@ -15,6 +15,7 @@ from velour.enums import AnnotationType, JobStatus, State
 
 
 def _is_subset_of_dict(target_values: any, nested_dict: dict) -> bool:
+    """Helper function that's called recursively to see if a dict exists within a nested dict"""
     for key, value in target_values.items():
         if key not in nested_dict:
             return False
