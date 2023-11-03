@@ -1,6 +1,8 @@
 from dataclasses import asdict, dataclass
 from typing import Dict, Union
 
+from velour.exceptions import SchemaTypeError
+
 
 # TODO - Move this somewhere more appropriate
 @dataclass
@@ -20,7 +22,7 @@ class _BaseMetadatum:
 
 def _validate_href(value: str):
     if not isinstance(value, str):
-        raise TypeError("`href` is something other than 'str'")
+        raise SchemaTypeError("href", str, value)
     if not (value.startswith("http://") or value.startswith("https://")):
         raise ValueError("`href` must start with http:// or https://")
 
@@ -53,27 +55,19 @@ def deserialize_metadata(metadata: list) -> dict:
     }
 
 
-def validate_metadata(metadata: Dict[str, Union[int, float, str, GeoJSON]]):
-    if metadata is None:
-        return {}
-    if isinstance(metadata, list):
-        metadata = deserialize_metadata(metadata)
+def validate_metadata(metadata):
     if not isinstance(metadata, dict):
-        raise TypeError(
-            f"Expected `metadata` to be of type `dict[str, int | float | str | GeoJSON]`, received {metadata}"
+        raise SchemaTypeError(
+            "metadata", Dict[str, Union[float, int, str, GeoJSON]], metadata
         )
-    for key in metadata:
+    for key, value in metadata.items():
         if not isinstance(key, str):
-            raise TypeError(
-                f"Expected metadata key to be of type `str`, got {type(key)}"
-            )
-        if not isinstance(metadata[key], Union[int, float, str, GeoJSON]):
-            raise TypeError(
-                f"Expected metadata value to be of type int, float, str or GeoJSON, received {metadata[key]}"
+            raise SchemaTypeError("metadatum key", str, key)
+        if not isinstance(value, Union[float, int, str, GeoJSON]):
+            raise SchemaTypeError(
+                "metadatum value", Union[float, int, str, GeoJSON], value
             )
 
-    # validate specific keys
-    if "href" in metadata:
-        _validate_href(metadata["href"])
-
-    return metadata
+        # Handle special key-values
+        if key == "href":
+            _validate_href(value)

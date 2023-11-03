@@ -2,12 +2,10 @@ import numpy as np
 import PIL.Image
 import pytest
 
+from velour import Annotation, GroundTruth, ImageMetadata
 from velour.enums import TaskType
 from velour.schemas import (
-    Annotation,
     BasicPolygon,
-    GroundTruth,
-    ImageMetadata,
     Label,
     MultiPolygon,
     Point,

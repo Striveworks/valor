@@ -17,7 +17,7 @@ class ImageMetadata:
     ):
         self.uid = uid
         self.dataset = dataset
-        self.metadata = validate_metadata(metadata)
+        self.metadata = validate_metadata(metadata if metadata else {})
         self.height = height
         self.width = width
 
