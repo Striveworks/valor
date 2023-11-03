@@ -5,11 +5,7 @@ from velour.enums import TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.label import Label
-from velour.schemas.metadata import (
-    GeoJSON,
-    serialize_metadata,
-    validate_metadata,
-)
+from velour.schemas.metadata import GeoJSON, validate_metadata
 
 
 class Datum:
@@ -35,7 +31,7 @@ class Datum:
         return {
             "dataset": self.dataset,
             "uid": self.uid,
-            "metadata": serialize_metadata(self.metadata),
+            "metadata": self.metadata,
         }
 
     def __eq__(self, other):
@@ -113,7 +109,7 @@ class Annotation:
         return {
             "task_type": self.task_type.value,
             "labels": [asdict(label) for label in self.labels],
-            "metadata": serialize_metadata(self.metadata),
+            "metadata": self.metadata,
             "bounding_box": asdict(self.bounding_box)
             if self.bounding_box
             else None,
