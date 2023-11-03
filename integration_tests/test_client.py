@@ -1979,8 +1979,47 @@ def test_get_ranked_evaluations(
     )
     eval_job.wait_for_completion()
 
+    # test incorrect parameters
+    with pytest.raises(ValueError):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name, metric="mAP"
+        )
+
+    # test wrong metric name
+    with pytest.raises(ValueError):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name, metric="fake_metric_name"
+        )
+
+    # test bad parameter and filter
+    with pytest.raises(ValueError):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name,
+            metric="mAP",
+            parameters={"iou": 0.5},
+        )
+
+    # test incorrect filters
+    with pytest.raises(ValueError):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name,
+            metric="mAP",
+            parameters={"iou": 0.6},
+            metric_filters={"fake": "filter"},
+        )
+
+    with pytest.raises(ValueError):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name,
+            metric="mAP",
+            parameters={"iou": 0.6},
+            metric_filters={"labels": "fake"},
+        )
+
     ranked_evaluations = client.get_ranked_evaluations(
-        dataset_name=dset_name, metric="mAP"
+        dataset_name=dset_name,
+        metric="mAP",
+        parameters={"iou": 0.6},
     )
 
     assert len(ranked_evaluations) == 2
@@ -1989,6 +2028,15 @@ def test_get_ranked_evaluations(
 
     assert ranked_evaluations[1]["model_rank"] == 2
     assert ranked_evaluations[1]["model"] == "second_model"
+
+    second_ranked_evaluations = client.get_ranked_evaluations(
+        dataset_name=dset_name,
+        metric="mAP",
+        parameters={"iou": 0.6},
+        metric_filters={"labels": {"keys": ["k1"]}},
+    )
+
+    assert second_ranked_evaluations == ranked_evaluations
 
 
 def test_evaluate_image_clf(
