@@ -23,8 +23,9 @@ from .geometry import (
     Polygon,
     Raster,
 )
+from .geospatial import GeoJSON
 from .label import Label
-from .metadata import GeoJSON, validate_metadata
+from .metadata import validate_metadata
 
 __all__ = [
     "Label",

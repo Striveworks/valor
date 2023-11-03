@@ -4,8 +4,9 @@ from typing import Dict, List, Union
 from velour.enums import TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
+from velour.schemas.geospatial import GeoJSON
 from velour.schemas.label import Label
-from velour.schemas.metadata import GeoJSON, validate_metadata
+from velour.schemas.metadata import validate_metadata
 
 
 class Datum:

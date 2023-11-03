@@ -1,23 +1,7 @@
-from dataclasses import dataclass
 from typing import Dict, Union
 
 from velour.exceptions import SchemaTypeError
-
-
-# TODO - Move this somewhere more appropriate
-@dataclass
-class GeoJSON:
-    type: str
-    coordinates: dict
-
-    def validate(self):
-        pass
-
-
-@dataclass
-class _BaseMetadatum:
-    key: str
-    value: Union[float, int, str, GeoJSON]
+from velour.schemas.geospatial import GeoJSON
 
 
 def _validate_href(value: str):
