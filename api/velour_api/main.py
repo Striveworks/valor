@@ -603,7 +603,6 @@ def get_bulk_evaluations(
         return crud.get_bulk_evaluations(
             db=db, dataset_names=dataset_names, model_names=model_names
         )
-
     except (
         exceptions.DatasetDoesNotExistError,
         exceptions.ModelDoesNotExistError,
