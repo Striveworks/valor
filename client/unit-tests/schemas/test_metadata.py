@@ -2,12 +2,7 @@ import pytest
 
 from velour import schemas
 from velour.exceptions import SchemaTypeError
-from velour.schemas.metadata import (
-    _validate_href,
-    deserialize_metadata,
-    serialize_metadata,
-    validate_metadata,
-)
+from velour.schemas.metadata import _validate_href, validate_metadata
 
 
 def test__validate_href():
@@ -20,33 +15,6 @@ def test__validate_href():
     with pytest.raises(SchemaTypeError) as e:
         _validate_href(1)
     assert "`href` should be of type" in str(e)
-
-
-def test_serialize_metadata(metadata):
-    assert metadata == {
-        "a": 1234,
-        "b": 1.234,
-        "c": "1234",
-    }  # "d": GeoJSON
-    sequence = serialize_metadata(metadata)
-    assert {"key": "a", "value": 1234} in sequence
-    assert {"key": "b", "value": 1.234} in sequence
-    assert {"key": "c", "value": "1234"} in sequence
-    # assert {"key": "d", "value": GeoJSON} in sequence
-
-
-def test_deserialize_metadata(metadata):
-    assert metadata == {
-        "a": 1234,
-        "b": 1.234,
-        "c": "1234",
-    }  # "d": GeoJSON
-    sequence = serialize_metadata(metadata)
-    assert {"key": "a", "value": 1234} in sequence
-    assert {"key": "b", "value": 1.234} in sequence
-    assert {"key": "c", "value": "1234"} in sequence
-    # assert {"key": "d", "value": GeoJSON} in sequence
-    assert metadata == deserialize_metadata(sequence)
 
 
 def test_validate_metadata(metadata):

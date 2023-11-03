@@ -13,7 +13,7 @@ def create_model(
     # Create model
     row = models.Model(
         name=model.name,
-        meta=core.deserialize_meta(model.metadata),
+        meta=model.metadata,
     )
     try:
         db.add(row)
@@ -32,7 +32,7 @@ def get_model(
     return schemas.Model(
         id=model.id,
         name=model.name,
-        metadata=core.serialize_meta(model.meta),
+        metadata=model.meta,
     )
 
 

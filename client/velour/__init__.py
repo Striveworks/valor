@@ -16,8 +16,6 @@ from .metatypes import ImageMetadata, VideoFrameMetadata
 from .schemas import Label
 
 __all__ = [
-    "Client",
-    "ClientException",
     "Evaluation",
     "Dataset",
     "Model",

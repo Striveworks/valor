@@ -4,7 +4,7 @@ import os
 import time
 import warnings
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
@@ -13,11 +13,7 @@ from velour import enums, schemas
 from velour.coretypes import Datum, GroundTruth, Prediction
 from velour.enums import AnnotationType, JobStatus, State
 from velour.metatypes import ImageMetadata
-from velour.schemas import (
-    deserialize_metadata,
-    serialize_metadata,
-    validate_metadata,
-)
+from velour.schemas.metadata import validate_metadata
 
 
 class ClientException(Exception):
@@ -355,26 +351,22 @@ class Dataset:
         metadata: Dict[str, Union[int, float, str, schemas.GeoJSON]] = None,
         id: Union[int, None] = None,
     ):
-        # create dataset
         dataset = cls()
         dataset.client = client
         dataset.name = name
         dataset.metadata = metadata
         dataset.id = id
         dataset._validate()
-        # attempt to create, this will raise an error if the dataset already exists
         client._requests_post_rel_host("datasets", json=dataset.dict())
-        return dataset
+        return cls.get(client, name)
 
     @classmethod
     def get(cls, client: Client, name: str):
-        # attempt to get, this will raise an error if the dataset does not exists
         resp = client._requests_get_rel_host(f"datasets/{name}").json()
-        # create dataset
         dataset = cls()
         dataset.client = client
         dataset.name = resp["name"]
-        dataset.metadata = deserialize_metadata(resp["metadata"])
+        dataset.metadata = resp["metadata"]
         dataset.id = resp["id"]
         dataset._validate()
         return dataset
@@ -385,14 +377,21 @@ class Dataset:
             raise TypeError("`name` should be of type `str`")
         if not isinstance(self.id, int) and self.id is not None:
             raise TypeError("`id` should be of type `int`")
-        self.metadata = validate_metadata(self.metadata)
+        if not self.metadata:
+            self.metadata = {}
+        validate_metadata(self.metadata)
 
     def dict(self) -> dict:
         return {
             "id": self.id,
             "name": self.name,
-            "metadata": serialize_metadata(self.metadata),
+            "metadata": self.metadata,
         }
+
+    def __eq__(self, other):
+        if not isinstance(other, Dataset):
+            raise TypeError(f"Expected type `{type(Dataset)}`, got `{other}`")
+        return self.dict() == other.dict()
 
     def add_groundtruth(
         self,
@@ -498,26 +497,22 @@ class Model:
         metadata: Dict[str, Union[int, float, str, schemas.GeoJSON]] = None,
         id: Union[int, None] = None,
     ):
-        # create model
         model = cls()
         model.client = client
         model.name = name
         model.metadata = metadata
         model.id = id
         model._validate()
-        # attempt to create, this will raise an error if the model already exists
         client._requests_post_rel_host("models", json=model.dict())
-        return model
+        return cls.get(client, name)
 
     @classmethod
     def get(cls, client: Client, name: str):
-        # attempt to get, this will raise an error if the model does not exists
         resp = client._requests_get_rel_host(f"models/{name}").json()
-        # create model
         model = cls()
         model.client = client
         model.name = resp["name"]
-        model.metadata = deserialize_metadata(resp["metadata"])
+        model.metadata = resp["metadata"]
         model.id = resp["id"]
         model._validate()
         return model
@@ -528,14 +523,21 @@ class Model:
             raise TypeError("`name` should be of type `str`")
         if not isinstance(self.id, int) and self.id is not None:
             raise TypeError("`id` should be of type `int`")
-        self.metadata = validate_metadata(self.metadata)
+        if not self.metadata:
+            self.metadata = {}
+        validate_metadata(self.metadata)
 
     def dict(self) -> dict:
         return {
             "id": self.id,
             "name": self.name,
-            "metadata": serialize_metadata(self.metadata),
+            "metadata": self.metadata,
         }
+
+    def __eq__(self, other):
+        if not isinstance(other, Model):
+            raise TypeError(f"Expected type `{type(Model)}`, got `{other}`")
+        return self.dict() == other.dict()
 
     def add_prediction(self, prediction: Prediction):
         try:

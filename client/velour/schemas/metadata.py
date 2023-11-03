@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Dict, Union
 
 from velour.exceptions import SchemaTypeError
@@ -25,34 +25,6 @@ def _validate_href(value: str):
         raise SchemaTypeError("href", str, value)
     if not (value.startswith("http://") or value.startswith("https://")):
         raise ValueError("`href` must start with http:// or https://")
-
-
-def serialize_metadata(metadata: dict) -> list:
-    if not metadata:
-        return []
-    return [
-        asdict(
-            _BaseMetadatum(
-                key=key,
-                value=value,
-            )
-        )
-        for key, value in metadata.items()
-    ]
-
-
-def deserialize_metadata(metadata: list) -> dict:
-    if not metadata:
-        return {}
-    return {
-        element["key"]: element["value"]
-        for element in metadata
-        if (
-            isinstance(element, dict)
-            and "key" in element
-            and "value" in element
-        )
-    }
 
 
 def validate_metadata(metadata):

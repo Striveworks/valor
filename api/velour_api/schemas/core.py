@@ -19,7 +19,6 @@ from velour_api.schemas.geometry import (
     Raster,
 )
 from velour_api.schemas.label import Label
-from velour_api.schemas.metadata import Metadatum
 
 
 def _format_name(name: str):
@@ -45,7 +44,7 @@ def _format_uid(uid: str):
 class Dataset(BaseModel):
     id: int | None = None
     name: str
-    metadata: list[Metadatum] = Field(default_factory=list)
+    metadata: dict[str, float | str] = Field(default_factory=dict)
 
     @field_validator("name")
     @classmethod
@@ -60,7 +59,7 @@ class Dataset(BaseModel):
 class Model(BaseModel):
     id: int | None = None
     name: str
-    metadata: list[Metadatum] = Field(default_factory=list)
+    metadata: dict[str, float | str] = Field(default_factory=dict)
 
     @field_validator("name")
     @classmethod
@@ -75,7 +74,7 @@ class Model(BaseModel):
 class Datum(BaseModel):
     uid: str
     dataset: str
-    metadata: list[Metadatum] = Field(default_factory=list)
+    metadata: dict[str, float | str] = Field(default_factory=dict)
 
     @field_validator("uid")
     @classmethod
@@ -112,7 +111,7 @@ class Datum(BaseModel):
 class Annotation(BaseModel):
     task_type: TaskType
     labels: list[Label]
-    metadata: list[Metadatum] = Field(default_factory=list)
+    metadata: dict[str, float | str] = Field(default_factory=dict)
 
     # Geometric types
     bounding_box: BoundingBox | None = None
@@ -254,20 +253,15 @@ class Prediction(BaseModel):
         return v
 
 
-def _validate_rasters(d: GroundTruth | Prediction):
+def _validate_rasters(annotated_datum: GroundTruth | Prediction):
     def _mask_bytes_to_pil(mask_bytes):
         with io.BytesIO(mask_bytes) as f:
             return PIL.Image.open(f)
 
-    for annotation in d.annotations:
+    for annotation in annotated_datum.annotations:
         if annotation.raster is not None:
             # unpack datum metadata
-            metadata = {
-                metadatum.key: metadatum.value
-                for metadatum in filter(
-                    lambda x: x.key in ["height", "width"], d.datum.metadata
-                )
-            }
+            metadata = annotated_datum.datum.metadata
             if "height" not in metadata or "width" not in metadata:
                 raise RuntimeError(
                     "Attempted raster validation but image dimensions are missing."
@@ -282,4 +276,4 @@ def _validate_rasters(d: GroundTruth | Prediction):
                 raise ValueError(
                     f"Expected raster and image to have the same size, but got size {mask_size} for the mask and {image_size} for image."
                 )
-    return d
+    return annotated_datum

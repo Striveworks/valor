@@ -4,20 +4,19 @@ from typing import Tuple
 import numpy as np
 from tqdm import tqdm
 
-from velour import enums
-from velour.client import Client
-from velour.client import Dataset as VelourDataset
-from velour.client import Model as VelourModel
-from velour.schemas import (
+from velour import (
     Annotation,
-    BoundingBox,
     Dataset,
     GroundTruth,
     ImageMetadata,
     Label,
     Prediction,
-    Raster,
+    enums,
 )
+from velour.client import Client
+from velour.client import Dataset as VelourDataset
+from velour.client import Model as VelourModel
+from velour.schemas import BoundingBox, Raster
 
 
 def _sample_without_replacement(array: list, n: int) -> list:
@@ -274,7 +273,7 @@ def generate_prediction_data(
     datums = dataset.get_datums()
 
     for datum in datums:
-        height, width = (datum.metadata[0].value, datum.metadata[1].value)
+        height, width = (datum.metadata["height"], datum.metadata["width"])
 
         for _ in range(n_predictions):
             prediction = _generate_prediction(

@@ -24,12 +24,7 @@ from .geometry import (
     Raster,
 )
 from .label import Label
-from .metadata import (
-    GeoJSON,
-    deserialize_metadata,
-    serialize_metadata,
-    validate_metadata,
-)
+from .metadata import GeoJSON, validate_metadata
 
 __all__ = [
     "Label",
@@ -58,6 +53,4 @@ __all__ = [
     "PredictionFilter",
     "Filter",
     "validate_metadata",
-    "serialize_metadata",
-    "deserialize_metadata",
 ]

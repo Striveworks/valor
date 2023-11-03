@@ -38,6 +38,11 @@ class Datum:
             "metadata": serialize_metadata(self.metadata),
         }
 
+    def __eq__(self, other):
+        if not isinstance(other, Datum):
+            raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
+        return self.dict() == other.dict()
+
 
 class Annotation:
     def __init__(
@@ -120,6 +125,13 @@ class Annotation:
             "jsonb": self.jsonb,
         }
 
+    def __eq__(self, other):
+        if not isinstance(other, Annotation):
+            raise TypeError(
+                f"Expected type `{type(Annotation)}`, got `{other}`"
+            )
+        return self.dict() == other.dict()
+
 
 class GroundTruth:
     def __init__(
@@ -158,6 +170,13 @@ class GroundTruth:
                 annotation.dict() for annotation in self.annotations
             ],
         }
+
+    def __eq__(self, other):
+        if not isinstance(other, GroundTruth):
+            raise TypeError(
+                f"Expected type `{type(GroundTruth)}`, got `{other}`"
+            )
+        return self.dict() == other.dict()
 
 
 class Prediction:
@@ -199,15 +218,15 @@ class Prediction:
         # TaskType-specific validations
         for annotation in self.annotations:
             if annotation.task_type in [
+                TaskType.CLASSIFICATION,
                 TaskType.DETECTION,
-                TaskType.SEGMENTATION,
             ]:
                 for label in annotation.labels:
                     if label.score is None:
                         raise ValueError(
                             f"For task type `{annotation.task_type}` prediction labels must have scores, but got `None`"
                         )
-            elif annotation.task_type == TaskType.CLASSIFICATION:
+            if annotation.task_type == TaskType.CLASSIFICATION:
                 label_keys_to_sum = {}
                 for scored_label in annotation.labels:
                     label_key = scored_label.key
@@ -230,3 +249,10 @@ class Prediction:
                 annotation.dict() for annotation in self.annotations
             ],
         }
+
+    def __eq__(self, other):
+        if not isinstance(other, Prediction):
+            raise TypeError(
+                f"Expected type `{type(Prediction)}`, got `{other}`"
+            )
+        return self.dict() == other.dict()

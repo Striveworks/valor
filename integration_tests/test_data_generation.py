@@ -7,13 +7,13 @@ import pytest
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
+from velour import ImageMetadata
 from velour.client import Client
 from velour.data_generation import (
     generate_prediction_data,
     generate_segmentation_data,
 )
 from velour.enums import AnnotationType, JobStatus, TaskType
-from velour.schemas import ImageMetadata
 from velour_api.backend import jobs, models
 
 dset_name = "test_dataset"
