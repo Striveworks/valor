@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Union
 
 from velour.enums import AnnotationType, TaskType
-from velour.schemas.core import Label
+from velour.schemas.label import Label
 
 
 @dataclass
