@@ -95,8 +95,7 @@ def poly_with_hole() -> schemas.Polygon:
 def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -104,7 +103,7 @@ def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
                     ],
-                    metadata=[],
+                    metadata={},
                     bounding_box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
                             points=[
@@ -117,12 +116,11 @@ def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
                             ]
                         )
                     ),
-                    boundary=[],
                 ),
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
                     labels=[schemas.Label(key="k2", value="v2")],
-                    metadata=[],
+                    metadata={},
                     bounding_box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
                             points=[
@@ -146,7 +144,7 @@ def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
             model=model_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -193,13 +191,12 @@ def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
 def gt_instance_segs_create(
     poly_with_hole: schemas.BasicPolygon,
     poly_without_hole: schemas.BasicPolygon,
-    img1: schemas.ImageMetadata,
-    img2: schemas.ImageMetadata,
+    img1: schemas.Datum,
+    img2: schemas.Datum,
 ) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -209,8 +206,7 @@ def gt_instance_segs_create(
             ],
         ),
         schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -237,14 +233,14 @@ def gt_instance_segs_create(
 @pytest.fixture
 def pred_instance_segs_create(
     img1_pred_mask_bytes1: bytes,
-    img1: schemas.ImageMetadata,
+    img1: schemas.Datum,
 ) -> list[schemas.Prediction]:
     b64_mask1 = b64encode(img1_pred_mask_bytes1).decode()
 
     return [
         schemas.Prediction(
             model=model_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -293,13 +289,12 @@ def pred_instance_segs_create(
 
 @pytest.fixture
 def gt_clfs_create(
-    img1: schemas.ImageMetadata,
-    img2: schemas.ImageMetadata,
+    img1: schemas.Datum,
+    img2: schemas.Datum,
 ) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -311,8 +306,7 @@ def gt_clfs_create(
             ],
         ),
         schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -325,12 +319,12 @@ def gt_clfs_create(
 
 @pytest.fixture
 def pred_clfs_create(
-    img1: schemas.ImageMetadata, img2: schemas.ImageMetadata
+    img1: schemas.Datum, img2: schemas.Datum
 ) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
             model=model_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -344,7 +338,7 @@ def pred_clfs_create(
         ),
         schemas.Prediction(
             model=model_name,
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -585,8 +579,7 @@ def test_create_detections_as_bbox_or_poly(db: Session, img1: schemas.Datum):
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[det1, det2],
         ),
     )
@@ -837,7 +830,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 def test_segmentation_area_no_hole(
     db: Session,
     poly_without_hole: schemas.Polygon,
-    img1: schemas.ImageMetadata,
+    img1: schemas.Datum,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -847,7 +840,7 @@ def test_segmentation_area_no_hole(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -876,7 +869,7 @@ def test_segmentation_area_with_hole(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.SEGMENTATION,
@@ -899,7 +892,7 @@ def test_segmentation_area_multi_polygon(
     db: Session,
     poly_with_hole: schemas.Polygon,
     poly_without_hole: schemas.Polygon,
-    img1: schemas.ImageMetadata,
+    img1: schemas.Datum,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -909,8 +902,7 @@ def test_segmentation_area_multi_polygon(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -945,12 +937,14 @@ def test_gt_seg_as_mask_or_polys(db: Session):
     mask[ymin:ymax, xmin:xmax] = True
     mask_b64 = b64encode(np_to_bytes(mask)).decode()
 
-    img = schemas.ImageMetadata(
+    img = schemas.Datum(
         dataset=dset_name,
         uid="uid",
-        height=h,
-        width=w,
-    ).to_datum()
+        metadata={
+            "height": h,
+            "width": w,
+        },
+    )
 
     poly = schemas.BasicPolygon(
         points=[

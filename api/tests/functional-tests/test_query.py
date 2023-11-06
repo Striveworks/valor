@@ -97,8 +97,8 @@ def instance_seg_gt_anns2(
 
 def test_label(
     db: Session,
-    img1: schemas.ImageMetadata,
-    img2: schemas.ImageMetadata,
+    img1: schemas.Datum,
+    img2: schemas.Datum,
     semantic_seg_gt_anns1: schemas.Annotation,
     semantic_seg_gt_anns2: schemas.Annotation,
     semantic_seg_pred_anns1: schemas.Annotation,
@@ -110,8 +110,8 @@ def test_label(
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
     crud.create_model(db=db, model=schemas.Model(name=model_name))
 
-    datum1 = img1.to_datum()
-    datum2 = img2.to_datum()
+    datum1 = img1
+    datum2 = img2
 
     gts = [
         schemas.GroundTruth(

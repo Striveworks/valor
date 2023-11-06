@@ -14,7 +14,7 @@ def create_dataset(
     try:
         row = models.Dataset(
             name=dataset.name,
-            meta=core.deserialize_meta(dataset.metadata),
+            meta=dataset.metadata,
         )
         db.add(row)
         db.commit()
@@ -33,7 +33,7 @@ def get_dataset(
     return schemas.Dataset(
         id=dataset.id,
         name=dataset.name,
-        metadata=core.serialize_meta(dataset.meta),
+        metadata=dataset.meta,
     )
 
 
@@ -61,7 +61,7 @@ def get_datums(
                     )
                 ),
                 uid=datum.uid,
-                metadata=core.serialize_meta(datum.meta),
+                metadata=datum.meta,
             )
             for datum in db.query(q).all()
         }

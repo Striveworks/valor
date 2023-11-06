@@ -12,17 +12,11 @@ from velour_api.schemas.core import _format_name, _format_uid
 
 
 @pytest.fixture
-def metadata() -> list[schemas.Metadatum]:
-    return [
-        schemas.Metadatum(
-            key="m1",
-            value="v1",
-        ),
-        schemas.Metadatum(
-            key="m2",
-            value=0.1,
-        ),
-    ]
+def metadata() -> dict[float, str]:
+    return {
+        "m1": "v1",
+        "m2": 0.1,
+    }
 
 
 @pytest.fixture
@@ -241,7 +235,7 @@ def test_core_Dataset(metadata):
     schemas.Dataset(name="dataset1")
     schemas.Dataset(
         name="dataset1",
-        metadata=[],
+        metadata={},
     )
     schemas.Dataset(
         name="dataset1",
@@ -265,12 +259,12 @@ def test_core_Dataset(metadata):
     with pytest.raises(ValidationError):
         schemas.Dataset(
             name="123",
-            metadata=metadata[0],
+            metadata={123: 12434},
         )
     with pytest.raises(ValidationError):
         schemas.Dataset(
             name="123",
-            metadata=[metadata[0], "123"],
+            metadata=[{123: 12434}, "123"],
         )
 
     # test property `id`
@@ -278,7 +272,7 @@ def test_core_Dataset(metadata):
         schemas.Dataset(
             id="value",
             name="123",
-            metadata=[metadata[0], "123"],
+            metadata=[{123: 12434}, "123"],
         )
 
 
@@ -287,7 +281,7 @@ def test_core_Model(metadata):
     schemas.Model(name="model1")
     schemas.Model(
         name="model1",
-        metadata=[],
+        metadata={},
     )
     schemas.Model(
         name="model1",
@@ -311,12 +305,12 @@ def test_core_Model(metadata):
     with pytest.raises(ValidationError):
         schemas.Model(
             name="123",
-            metadata=metadata[0],
+            metadata={123: 123},
         )
     with pytest.raises(ValidationError):
         schemas.Model(
             name="123",
-            metadata=[metadata[0], "123"],
+            metadata=[{123: 12434}, "123"],
         )
 
     # test property `id`
@@ -324,7 +318,7 @@ def test_core_Model(metadata):
         schemas.Model(
             id="value",
             name="123",
-            metadata=[metadata[0], "123"],
+            metadata=[{123: 12434}, "123"],
         )
 
 
@@ -357,13 +351,7 @@ def test_core_Datum(metadata):
         schemas.Datum(
             uid="123",
             dataset="name",
-            metadata=metadata[0],
-        )
-    with pytest.raises(ValidationError):
-        schemas.Datum(
-            uid="123",
-            dataset="name",
-            metadata=[metadata[0], "123"],
+            metadata={123: 123},
         )
 
 
@@ -378,12 +366,12 @@ def test_core_annotation_without_scores(
     schemas.Annotation(
         task_type=enums.TaskType.DETECTION,
         labels=labels,
-        metadata=[],
+        metadata={},
     )
     schemas.Annotation(
         task_type=enums.TaskType.SEGMENTATION,
         labels=labels,
-        metadata=[],
+        metadata={},
         bounding_box=bbox,
         polygon=polygon,
         raster=raster,
@@ -428,13 +416,7 @@ def test_core_annotation_without_scores(
         schemas.Annotation(
             task_type=enums.TaskType.CLASSIFICATION.value,
             labels=labels,
-            metadata=metadata[0],
-        )
-    with pytest.raises(ValidationError):
-        schemas.Annotation(
-            task_type=enums.TaskType.CLASSIFICATION.value,
-            labels=labels,
-            metadata=[metadata[0], "123"],
+            metadata={123: 123},
         )
 
     # test geometric properties
@@ -472,12 +454,12 @@ def test_core_annotation_with_scores(
         task_type=enums.TaskType.CLASSIFICATION, labels=scored_labels
     )
     schemas.Annotation(
-        task_type=enums.TaskType.DETECTION, labels=scored_labels, metadata=[]
+        task_type=enums.TaskType.DETECTION, labels=scored_labels, metadata={}
     )
     schemas.Annotation(
         task_type=enums.TaskType.SEGMENTATION,
         labels=scored_labels,
-        metadata=[],
+        metadata={},
         bounding_box=bbox,
         polygon=polygon,
         raster=raster,
@@ -514,13 +496,13 @@ def test_core_annotation_with_scores(
         schemas.Annotation(
             task_type=enums.TaskType.CLASSIFICATION.value,
             labels=scored_labels,
-            metadata=metadata[0],
+            metadata=123,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
             task_type=enums.TaskType.CLASSIFICATION.value,
             labels=scored_labels,
-            metadata=[metadata[0], "123"],
+            metadata={123: "123"},
         )
 
     # test geometric properties

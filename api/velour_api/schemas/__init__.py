@@ -8,7 +8,6 @@ from .core import (
     Model,
     Prediction,
 )
-from .datatypes import ImageMetadata, VideoFrameMetadata
 from .filters import (
     AnnotationFilter,
     DatasetFilter,
@@ -62,8 +61,6 @@ from .stateflow import Stateflow
 
 __all__ = [
     "User",
-    "ImageMetadata",
-    "VideoFrameMetadata",
     "Annotation",
     "Dataset",
     "Datum",
