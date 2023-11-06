@@ -190,6 +190,7 @@ class Stateflow(BaseModel):
         # iterating over a changing dict
         models = list(self.datasets[dataset_name].models)
         for model_name in models:
+
             self.remove_inference(dataset_name, model_name)
         # delete dataset
         del self.datasets[dataset_name]

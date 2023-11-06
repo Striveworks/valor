@@ -29,12 +29,12 @@ def generate_mot_data(num_frames: int):
     create_img = lambda frame: schemas.Datum(  # noqa: E731
         uid="test",
         dataset="name",
-        metadata=[
-            schemas.Metadatum(key="type", value="image"),
-            schemas.Metadatum(key="height", value=500),
-            schemas.Metadatum(key="width", value=500),
-            schemas.Metadatum(key="frame", value=frame),
-        ],
+        metadata={
+            "type": "image",
+            "height": 500,
+            "width": 500,
+            "frame": frame,
+        },
     )
     create_label_lambda = lambda obj_id: schemas.Label(  # noqa: E731
         key=OBJECT_ID_LABEL_KEY, value=obj_id
@@ -76,7 +76,6 @@ def generate_mot_data(num_frames: int):
         labels3 = [create_label_lambda("object 3")]
 
         gts = schemas.GroundTruth(
-            dataset="test",
             datum=image,
             annotations=[
                 schemas.Annotation(

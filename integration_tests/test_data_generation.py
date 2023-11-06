@@ -13,7 +13,7 @@ from velour.data_generation import (
     generate_segmentation_data,
 )
 from velour.enums import AnnotationType, JobStatus, TaskType
-from velour.schemas import ImageMetadata
+from velour.metatypes import ImageMetadata
 from velour_api.backend import jobs, models
 
 dset_name = "test_dataset"

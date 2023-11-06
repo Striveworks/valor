@@ -63,22 +63,26 @@ def random_mask_bytes(size: tuple[int, int]) -> bytes:
 
 
 @pytest.fixture
-def img1() -> schemas.ImageMetadata:
-    return schemas.ImageMetadata(
+def img1() -> schemas.Datum:
+    return schemas.Datum(
         dataset="test_dataset",
         uid="uid1",
-        height=img1_size[0],
-        width=img1_size[1],
+        metadata={
+            "height": img1_size[0],
+            "width": img1_size[1],
+        },
     )
 
 
 @pytest.fixture
-def img2() -> schemas.ImageMetadata:
-    return schemas.ImageMetadata(
+def img2() -> schemas.Datum:
+    return schemas.Datum(
         dataset="test_dataset",
         uid="uid2",
-        height=img2_size[0],
-        width=img2_size[1],
+        metadata={
+            "height": img2_size[0],
+            "width": img2_size[1],
+        },
     )
 
 
@@ -138,12 +142,14 @@ def dset(db: Session) -> models.Dataset:
 @pytest.fixture
 def images() -> list[schemas.Datum]:
     return [
-        schemas.ImageMetadata(
+        schemas.Datum(
             dataset="test_dataset",
             uid=f"{i}",
-            height=1000,
-            width=2000,
-        ).to_datum()
+            metadata={
+                "height": 1000,
+                "width": 2000,
+            },
+        )
         for i in range(4)
     ]
 
@@ -151,7 +157,7 @@ def images() -> list[schemas.Datum]:
 # groundtruths to use for testing AP
 @pytest.fixture
 def groundtruths(
-    db: Session, images: list[schemas.ImageMetadata]
+    db: Session, images: list[schemas.Datum]
 ) -> list[list[models.GroundTruth]]:
     """Creates a dataset called "test_dataset" with some groundtruth
     detections. These detections are taken from a torchmetrics unit test (see test_metrics.py)
@@ -161,11 +167,7 @@ def groundtruths(
         db=db,
         dataset=schemas.Dataset(
             name=dataset_name,
-            metadata=[
-                schemas.Metadatum(
-                    key="type", value=enums.DataType.IMAGE.value
-                ),
-            ],
+            metadata={"type": enums.DataType.IMAGE.value},
         ),
     )
 
@@ -262,11 +264,7 @@ def predictions(
         db=db,
         model=schemas.Model(
             name=model_name,
-            metadata=[
-                schemas.Metadatum(
-                    key="type", value=enums.DataType.IMAGE.value
-                ),
-            ],
+            metadata={"type": enums.DataType.IMAGE.value},
         ),
     )
 
@@ -368,14 +366,14 @@ def pred_semantic_segs_img1_create(
     img1_pred_mask_bytes1: bytes,
     img1_pred_mask_bytes2: bytes,
     img1_pred_mask_bytes3: bytes,
-    img1: schemas.ImageMetadata,
+    img1: schemas.Datum,
 ) -> schemas.Prediction:
     b64_mask1 = b64encode(img1_pred_mask_bytes1).decode()
     b64_mask2 = b64encode(img1_pred_mask_bytes2).decode()
     b64_mask3 = b64encode(img1_pred_mask_bytes3).decode()
     return schemas.Prediction(
         model=model_name,
-        datum=img1.to_datum(),
+        datum=img1,
         annotations=[
             schemas.Annotation(
                 task_type=enums.TaskType.SEGMENTATION,
@@ -400,13 +398,13 @@ def pred_semantic_segs_img1_create(
 def pred_semantic_segs_img2_create(
     img2_pred_mask_bytes1: bytes,
     img2_pred_mask_bytes2: bytes,
-    img2: schemas.ImageMetadata,
+    img2: schemas.Datum,
 ) -> schemas.Prediction:
     b64_mask1 = b64encode(img2_pred_mask_bytes1).decode()
     b64_mask2 = b64encode(img2_pred_mask_bytes2).decode()
     return schemas.Prediction(
         model=model_name,
-        datum=img2.to_datum(),
+        datum=img2,
         annotations=[
             schemas.Annotation(
                 task_type=enums.TaskType.SEGMENTATION,
@@ -428,8 +426,8 @@ def gt_semantic_segs_create(
     img1_gt_mask_bytes2: bytes,
     img1_gt_mask_bytes3: bytes,
     img2_gt_mask_bytes1: bytes,
-    img1: schemas.ImageMetadata,
-    img2: schemas.ImageMetadata,
+    img1: schemas.Datum,
+    img2: schemas.Datum,
 ) -> list[schemas.GroundTruth]:
     b64_mask1 = b64encode(img1_gt_mask_bytes1).decode()
     b64_mask2 = b64encode(img1_gt_mask_bytes2).decode()
@@ -438,8 +436,7 @@ def gt_semantic_segs_create(
 
     return [
         schemas.GroundTruth(
-            dataset_name=dset_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.SEGMENTATION,
@@ -459,8 +456,7 @@ def gt_semantic_segs_create(
             ],
         ),
         schemas.GroundTruth(
-            dataset_name=dset_name,
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.SEGMENTATION,
