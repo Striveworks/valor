@@ -3,14 +3,14 @@ from typing import List
 import numpy as np
 import pytest
 
-from velour import schemas
+from velour import Label, schemas
 
 
 @pytest.fixture
-def labels() -> List[schemas.Label]:
+def labels() -> List[Label]:
     return [
-        schemas.Label(key="k1", value="v1"),
-        schemas.Label(key="k2", value="v2"),
+        Label(key="k1", value="v1"),
+        Label(key="k2", value="v2"),
     ]
 
 

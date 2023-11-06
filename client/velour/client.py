@@ -10,7 +10,7 @@ from urllib.parse import urljoin
 import requests
 
 from velour import enums, schemas
-from velour.coretypes import Datum, GroundTruth, Prediction
+from velour.coretypes import Datum, GroundTruth, Label, Prediction
 from velour.enums import JobStatus, State
 from velour.filters import BinaryExpression, DeclarativeMapper, create_filter
 from velour.metatypes import ImageMetadata
@@ -164,7 +164,7 @@ class Client:
 
     def get_labels(
         self,
-    ) -> List[schemas.Label]:
+    ) -> List[Label]:
         return self._requests_get_rel_host("labels").json()
 
     def delete_dataset(self, name: str, timeout: int = 0) -> None:
@@ -427,14 +427,13 @@ class Dataset:
 
     def get_labels(
         self,
-    ) -> List[schemas.Label]:
+    ) -> List[Label]:
         labels = self.client._requests_get_rel_host(
             f"labels/dataset/{self.name}"
         ).json()
 
         return [
-            schemas.Label(key=label["key"], value=label["value"])
-            for label in labels
+            Label(key=label["key"], value=label["value"]) for label in labels
         ]
 
     def get_datums(
@@ -659,7 +658,33 @@ class Model:
         # list of label dicts. convert label dicts to Label objects
 
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
-            resp[k] = [schemas.Label(**la) for la in resp[k]]
+            resp[k] = [Label(**la) for la in resp[k]]
+
+        evaluation_job = Evaluation(
+            client=self.client,
+            dataset=dataset.name,
+            model=self.name,
+            **resp,
+        )
+
+        # blocking behavior
+        if timeout:
+            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
+
+        return evaluation_job
+
+    def evaluate_segmentation(
+        self, dataset: Dataset, timeout: Optional[int] = None
+    ) -> Evaluation:
+        evaluation = schemas.EvaluationJob(
+            model=self.name,
+            dataset=dataset.name,
+        )
+
+        resp = self.client._requests_post_rel_host(
+            "evaluations/semantic-segmentation-metrics",
+            json=asdict(evaluation),
+        ).json()
 
         evaluation_job = Evaluation(
             client=self.client,
@@ -688,14 +713,13 @@ class Model:
 
     def get_labels(
         self,
-    ) -> List[schemas.Label]:
+    ) -> List[Label]:
         labels = self.client._requests_get_rel_host(
             f"labels/model/{self.name}"
         ).json()
 
         return [
-            schemas.Label(key=label["key"], value=label["value"])
-            for label in labels
+            Label(key=label["key"], value=label["value"]) for label in labels
         ]
 
     def get_evaluations(

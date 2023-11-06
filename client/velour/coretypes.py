@@ -58,6 +58,13 @@ class Label:
     def __hash__(self) -> int:
         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
 
+    def dict(self) -> dict:
+        return {
+            "key": self.key,
+            "value": self.value,
+            "score": self.score,
+        }
+
 
 class Datum:
     id = DeclarativeMapper("datum.id", int)
@@ -174,7 +181,7 @@ class Annotation:
     def dict(self) -> dict:
         return {
             "task_type": self.task_type.value,
-            "labels": [asdict(label) for label in self.labels],
+            "labels": [label.dict() for label in self.labels],
             "metadata": self.metadata,
             "bounding_box": asdict(self.bounding_box)
             if self.bounding_box

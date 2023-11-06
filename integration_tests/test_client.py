@@ -21,16 +21,23 @@ from geoalchemy2.functions import (
 from sqlalchemy import and_, create_engine, func, select, text
 from sqlalchemy.orm import Session
 
-from velour import Annotation, Dataset, Datum, GroundTruth, Model, Prediction
+from velour import (
+    Annotation,
+    Dataset,
+    Datum,
+    GroundTruth,
+    Label,
+    Model,
+    Prediction,
+)
 from velour.client import Client, ClientException
 from velour.data_generation import _generate_mask
-from velour.enums import DataType, JobStatus, TaskType
+from velour.enums import AnnotationType, DataType, JobStatus, TaskType
 from velour.metatypes import ImageMetadata
 from velour.schemas import (
     BasicPolygon,
     BoundingBox,
     GeoJSON,
-    Label,
     MultiPolygon,
     Point,
     Polygon,
@@ -1441,7 +1448,10 @@ def test_evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
+        filters=[
+            Label.key == "k1",
+            Annotation.annotation_type == AnnotationType.BOX,
+        ],
         timeout=30,
     )
 
@@ -1534,9 +1544,12 @@ def test_evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
-        min_area=10,
-        max_area=2000,
+        filters=[
+            Label.key == "k1",
+            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.box.area >= 10,
+            Annotation.box.area <= 2000,
+        ],
         timeout=30,
     )
     settings = asdict(eval_job_bounded_area_10_2000.settings)
@@ -1555,9 +1568,14 @@ def test_evaluate_detection(
                             "annotation_type": "box",
                             "area": [
                                 {"operator": ">=", "value": 10.0},
+                            ],
+                        },
+                        {
+                            "annotation_type": "box",
+                            "area": [
                                 {"operator": "<=", "value": 2000.0},
                             ],
-                        }
+                        },
                     ],
                     "json_": [],
                     "metadata": [],
@@ -1580,8 +1598,11 @@ def test_evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
-        min_area=1200,
+        filters=[
+            Label.key == "k1",
+            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.box.area >= 1200,
+        ],
         timeout=30,
     )
     settings = asdict(eval_job_min_area_1200.settings)
@@ -1623,8 +1644,11 @@ def test_evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
-        max_area=1200,
+        filters=[
+            Label.key == "k1",
+            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.box.area <= 1200,
+        ],
         timeout=30,
     )
     settings = asdict(eval_job_max_area_1200.settings)
@@ -1665,9 +1689,12 @@ def test_evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
-        min_area=1200,
-        max_area=1800,
+        filters=[
+            Label.key == "k1",
+            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.box.area >= 1200,
+            Annotation.box.area <= 1800,
+        ],
         timeout=30,
     )
     settings = asdict(eval_job_bounded_area_1200_1800.settings)
@@ -1686,9 +1713,14 @@ def test_evaluate_detection(
                             "annotation_type": "box",
                             "area": [
                                 {"operator": ">=", "value": 1200.0},
+                            ],
+                        },
+                        {
+                            "annotation_type": "box",
+                            "area": [
                                 {"operator": "<=", "value": 1800.0},
                             ],
-                        }
+                        },
                     ],
                     "json_": [],
                     "metadata": [],
@@ -1735,7 +1767,10 @@ def test_get_bulk_evaluations(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
+        filters=[
+            Label.key == "k1",
+            Annotation.annotation_type == AnnotationType.BOX,
+        ],
         timeout=30,
     )
     eval_job.wait_for_completion()
@@ -1822,7 +1857,10 @@ def test_get_bulk_evaluations(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
+        filters=[
+            Label.key == "k1",
+            Annotation.annotation_type == AnnotationType.BOX,
+        ],
         timeout=30,
     )
     eval_job.wait_for_completion()
