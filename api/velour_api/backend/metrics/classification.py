@@ -333,6 +333,7 @@ def compute_clf_metrics(
     db: Session,
     dataset_name: str,
     model_name: str,
+    job_request: schemas.EvaluationJob,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
     list[
@@ -344,6 +345,21 @@ def compute_clf_metrics(
         | schemas.F1Metric
     ],
 ]:
+    # update settings
+    job_request.settings.filters.datasets = schemas.DatasetFilter(names=[job_request.dataset])
+    job_request.settings.filters.annotations.task_types = [TaskType.]
+
+    groundtruth_labels = schemas.Filter(
+        datasets=schemas.DatasetFilter(names=[job_request.dataset]),
+        annotations=schemas.AnnotationFilter(
+            task_types=[TaskType.CLASSIFICATION],
+        )
+    )
+    # prediction_labels = schemas.Filter(
+    #     datasets=sc
+    # )
+
+
     ds_labels = {
         schemas.Label(key=label[0], value=label[1])
         for label in (
