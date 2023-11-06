@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Union
 
-from velour import schemas
 from velour.enums import AnnotationType
 from velour.schemas.filters import (
     AnnotationFilter,
@@ -357,7 +356,11 @@ def create_filter(expressions: list[BinaryExpression]) -> Filter:
                 filter_request.labels.keys.append(expr.value)
             elif "label" in expr.name:
                 filter_request.labels.labels.append(
-                    schemas.Label(key=expr.key, value=expr.value)
+                    {
+                        "key": expr.key,
+                        "value": expr.value,
+                        "score": None,
+                    }
                 )
 
     return filter_request
