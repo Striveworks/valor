@@ -2029,6 +2029,7 @@ def test_get_ranked_evaluations(
     assert ranked_evaluations[1]["ranking"] == 2
     assert ranked_evaluations[1]["model"] == "second_model"
 
+    # TODO this isn't working because there's no good way to compare the dict to the LabelFilter object on the backend
     second_ranked_evaluations = client.get_ranked_evaluations(
         dataset_name=dset_name,
         metric="mAP",
