@@ -2148,7 +2148,10 @@ def test_get_ranked_evaluations(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
+        filters=[
+            Label.key == "k1",
+            Annotation.annotation_type == AnnotationType.BOX,
+        ],
         timeout=30,
     )
     eval_job.wait_for_completion()
@@ -2163,7 +2166,10 @@ def test_get_ranked_evaluations(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
+        filters=[
+            Label.key == "k1",
+            Annotation.annotation_type == AnnotationType.BOX,
+        ],
         timeout=30,
     )
     eval_job.wait_for_completion()
@@ -2178,9 +2184,12 @@ def test_get_ranked_evaluations(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
+        filters=[
+            Label.key == "k1",
+            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.box.area <= 30 * 300,
+        ],
         timeout=30,
-        max_area=30 * 300,
     )
     eval_job.wait_for_completion()
 
