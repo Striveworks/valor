@@ -110,7 +110,7 @@ def get_ranked_evaluations(
     parameters: dict = None,
     label_keys: list = None,
     rank_from_highest_value_to_lowest_value: bool = True,
-):
+) -> list[schemas.Evaluation]:
     """
     Returns all metrics associated with a particular dataset, ranked according to user inputs
 
