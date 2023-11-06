@@ -1,21 +1,27 @@
-from dataclasses import dataclass, field
-from typing import List
+from typing import Dict, Union
 
 import PIL.Image
 
 from velour.coretypes import Datum
-from velour.schemas.core import Metadatum
+from velour.exceptions import SchemaTypeError
+from velour.schemas import validate_metadata
 
 
-@dataclass
 class ImageMetadata:
-    uid: str
-    height: int
-    width: int
-    dataset: str = field(default="")
-    metadata: List[Metadatum] = field(default_factory=list)
+    def __init__(
+        self,
+        uid: str,
+        height: int,
+        width: int,
+        dataset: str = "",
+        metadata: Dict[str, Union[int, float, str]] = None,
+    ):
+        self.uid = uid
+        self.dataset = dataset
+        self.metadata = validate_metadata(metadata if metadata else {})
+        self.height = height
+        self.width = width
 
-    def __post_init__(self):
         if not isinstance(self.dataset, str):
             raise TypeError("ImageMetadata dataset name must be a string.")
         if not isinstance(self.uid, str):
@@ -27,23 +33,15 @@ class ImageMetadata:
 
     @staticmethod
     def valid(datum: Datum) -> bool:
-        metadata = {
-            metadatum.key: metadatum.value for metadatum in datum.metadata
-        }
-        if "height" not in metadata:
-            return False
-        if "width" not in metadata:
-            return False
-        return True
+        return {"height", "width"}.issubset(datum.metadata)
 
     @classmethod
     def from_datum(cls, datum: Datum):
         if not cls.valid(datum):
-            raise TypeError("Datum does not conform to image type.")
-
-        metadata = {
-            metadatum.key: metadatum.value for metadatum in datum.metadata
-        }
+            raise ValueError(
+                f"`datum` does not contain height and/or width in metadata `{datum.metadata}`"
+            )
+        metadata = datum.metadata.copy()
         return cls(
             dataset=datum.dataset,
             uid=datum.uid,
@@ -62,75 +60,51 @@ class ImageMetadata:
         )
 
     def to_datum(self) -> Datum:
+        if self.metadata:
+            metadata = self.metadata.copy()
+        else:
+            metadata = {}
+        metadata["height"] = self.height
+        metadata["width"] = self.width
         return Datum(
             dataset=self.dataset,
             uid=self.uid,
-            metadata=[
-                Metadatum(key="height", value=self.height),
-                Metadatum(key="width", value=self.width),
-                *self.metadata,
-            ],
+            metadata=metadata,
         )
 
 
-@dataclass
 class VideoFrameMetadata:
-    image: ImageMetadata
-    frame: int
+    def __init__(
+        self,
+        image: ImageMetadata,
+        frame: int,
+    ):
+        self.image = image
+        self.frame = frame
 
-    def __post_init__(self):
-        # validate image
-        if isinstance(self.image, dict):
-            self.image = ImageMetadata(**self.image)
         if not isinstance(self.image, ImageMetadata):
-            raise TypeError("Video frame must contain valid image.")
-
-        # validate frame
+            raise SchemaTypeError("image", ImageMetadata, self.image)
         if not isinstance(self.frame, int):
-            raise TypeError("Video frame number must be a int.")
+            raise SchemaTypeError("frame", int, self.frame)
 
     @staticmethod
     def valid(datum: Datum) -> bool:
-        metadata = {
-            metadatum.key: metadatum.value for metadatum in datum.metadata
-        }
-        if "height" not in metadata:
-            return False
-        if "width" not in metadata:
-            return False
-        if "frame" not in metadata:
-            return False
-        return True
+        return {"height", "width", "frame"}.issubset(datum.metadata)
 
     @classmethod
     def from_datum(cls, datum: Datum):
         if not cls.valid(datum):
-            raise TypeError("Datum does not conform to video frame type.")
-
-        # Extract metadata
-        metadata = {
-            metadatum.key: metadatum.value for metadatum in datum.metadata
-        }
+            raise ValueError(
+                f"`datum` does not contain height, width and/or frame in metadata `{datum.metadata}`"
+            )
+        image = ImageMetadata.from_datum(datum)
+        frame = image.metadata.pop("frame")
         return cls(
-            image=ImageMetadata(
-                dataset=datum.dataset,
-                uid=datum.uid,
-                height=int(metadata.pop("height")),
-                width=int(metadata.pop("width")),
-                metadata=[
-                    Metadatum(key=key, value=metadata[key]) for key in metadata
-                ],
-            ),
-            frame=int(metadata.pop("frame")),
+            image=image,
+            frame=frame,
         )
 
     def to_datum(self) -> Datum:
-        return Datum(
-            dataset=self.image.dataset,
-            uid=self.image.uid,
-            metadata=[
-                Metadatum(key="height", value=self.image.height),
-                Metadatum(key="width", value=self.image.width),
-                Metadatum(key="frame", value=self.frame) * self.metadata,
-            ],
-        )
+        datum = self.image.to_datum()
+        datum.metadata["frame"] = self.frame
+        return datum

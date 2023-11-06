@@ -7,6 +7,14 @@ from velour import schemas
 
 
 @pytest.fixture
+def labels() -> List[schemas.Label]:
+    return [
+        schemas.Label(key="k1", value="v1"),
+        schemas.Label(key="k2", value="v2"),
+    ]
+
+
+@pytest.fixture
 def box_points() -> List[schemas.Point]:
     return [
         schemas.Point(x=0, y=0),
@@ -51,8 +59,9 @@ def raster(raster_raw_mask) -> schemas.Raster:
 
 
 @pytest.fixture
-def metadatum() -> schemas.Metadatum:
-    return schemas.Metadatum(
-        key="test",
-        value=1234,
-    )
+def metadata() -> dict:
+    return {
+        "a": 1234,
+        "b": 1.234,
+        "c": "1234",
+    }  # "d": GeoJSON

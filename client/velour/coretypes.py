@@ -1,45 +1,26 @@
+import math
 from dataclasses import asdict
-from typing import Dict, Set, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
-from velour import schemas
 from velour.enums import AnnotationType, TaskType
+from velour.exceptions import SchemaTypeError
 from velour.filters import DeclarativeMapper, Geometry
-from velour.schemas import GeoJSON
+from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
+from velour.schemas.geospatial import GeoJSON
+from velour.schemas.metadata import validate_metadata
 
-
-def _validate_labels(labels: Dict[str, Set[Tuple[str, Union[float, None]]]]):
-    if not isinstance(labels, dict):
-        raise TypeError(f"Expected `labels` to be of type `Dict[str, Tuple[str, Union[float, None]]]`, got {type(metadata)}")
-    for key in labels:
-        if not isinstance(key, str):
-            raise TypeError(f"Expected label key to be of type `str`, got {type(key)}")
-        if not isinstance(labels[key], set):
-            raise TypeError(f"Expected metadata value to be of type int, float, str or GeoJSON, got {type(metadata[key])}")
-
-
-def _validate_metadata(metadata: Dict[str, Union[int, float, str, GeoJSON]]):
-    if not isinstance(metadata, dict):
-        raise TypeError(f"Expected `metadata` to be of type `dict[str, int | float | str | GeoJSON]`, got {type(metadata)}")
-    for key in metadata:
-        if not isinstance(key, str):
-            raise TypeError(f"Expected metadata key to be of type `str`, got {type(key)}")
-        if not isinstance(metadata[key], Union[int, float, str, GeoJSON]):
-            raise TypeError(f"Expected metadata value to be of type int, float, str or GeoJSON, got {type(metadata[key])}")
 
 class Label:
     key = DeclarativeMapper("label.key", str)
     label = DeclarativeMapper("label.label", str)
 
-    def __init__(
-        self,
-        key: str,
-        value: str,
-        score: Union[float, None] = None,
-    ):
+    def __init__(self, key: str, value: str, score: Union[float, None] = None):
         self.key = key
         self.value = value
         self.score = score
+        self._validate()
 
+    def _validate(self):
         if not isinstance(self.key, str):
             raise TypeError("key should be of type `str`")
         if not isinstance(self.value, str):
@@ -49,23 +30,8 @@ class Label:
         if not isinstance(self.score, (float, type(None))):
             raise TypeError("score should be of type `float`")
 
-    # def serialize(self) ->
-
     def tuple(self) -> Tuple[str, str, Union[float, None]]:
         return (self.key, self.value, self.score)
-
-    def from_tuple(self, label: Tuple[str, str, Union[float, None]]):
-        if len(label) != 3:
-            raise ValueError
-        elif (
-            isinstance(label[0], str)
-            and isinstance(label[1], str)
-            and isinstance(label[1], Union[float, None])
-        ):
-            raise ValueError
-        self.key = label[0]
-        self.value = label[1]
-        self.score = label[2]
 
     def __eq__(self, other):
         if (
@@ -101,27 +67,32 @@ class Datum:
     def __init__(
         self,
         uid: str,
-        metadata: Dict[str, Union[int, float, str]] = None,
+        metadata: Dict[str, Union[int, float, str, GeoJSON]] = None,
         dataset: str = "",
     ):
-        if not isinstance(dataset, str):
-            raise TypeError("`dataset` should be of type `str`")
-        if not isinstance(uid, str):
-            raise TypeError("`uid` should be of type `str`")
-
-        metadata = metadata if metadata is not None else {}
-        _validate_metadata(metadata)
-
         self.uid = uid
-        self.metadata = metadata
+        self.metadata = metadata if metadata else {}
         self.dataset = dataset
+        self._validate()
 
-    def dict(self):
+    def _validate(self):
+        if not isinstance(self.dataset, str):
+            raise SchemaTypeError("dataset", str, self.dataset)
+        if not isinstance(self.uid, str):
+            raise SchemaTypeError("uid", str, self.uid)
+        validate_metadata(self.metadata)
+
+    def dict(self) -> dict:
         return {
-            "uid": self.uid,
             "dataset": self.dataset,
+            "uid": self.uid,
             "metadata": self.metadata,
         }
+
+    def __eq__(self, other):
+        if not isinstance(other, Datum):
+            raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
+        return self.dict() == other.dict()
 
 
 class Annotation:
@@ -139,116 +110,136 @@ class Annotation:
     def __init__(
         self,
         task_type: TaskType,
-        labels: List[schemas.Label] = None,
-        metadata: List[schemas.Metadatum] = None,
-        bounding_box: schemas.BoundingBox = None,
-        polygon: schemas.Polygon = None,
-        multipolygon: schemas.MultiPolygon = None,
-        raster: schemas.Raster = None,
+        labels: List[Label],
+        metadata: Dict[str, Union[int, float, str]] = None,
+        bounding_box: BoundingBox = None,
+        polygon: Polygon = None,
+        multipolygon: MultiPolygon = None,
+        raster: Raster = None,
         jsonb: Dict = None,
     ):
         self.task_type = task_type
-        self.labels = labels if labels is not None else []
-        self.metadata = metadata if metadata is not None else []
+        self.labels = labels
+        self.metadata = metadata if metadata else {}
         self.bounding_box = bounding_box
         self.polygon = polygon
         self.multipolygon = multipolygon
         self.raster = raster
         self.jsonb = jsonb
+        self._validate()
 
+    def _validate(self):
         # task_type
         if not isinstance(self.task_type, TaskType):
             self.task_type = TaskType(self.task_type)
 
         # labels
         if not isinstance(self.labels, list):
-            raise TypeError("labels should be of type `list`")
-        for i in range(len(self.labels)):
-            if isinstance(self.labels[i], dict):
-                self.labels[i] = Label(**self.labels[i])
-            if not isinstance(self.labels[i], Label):
-                raise TypeError(
-                    "elements of labels should be of type `velour.schemas.Label`"
-                )
+            raise SchemaTypeError("labels", List[Label], self.labels)
+        for idx, label in enumerate(self.labels):
+            if isinstance(self.labels[idx], dict):
+                self.labels[idx] = Label(**label)
+            if not isinstance(self.labels[idx], Label):
+                raise SchemaTypeError("label", Label, self.labels[idx])
 
         # annotation data
         if self.bounding_box:
             if isinstance(self.bounding_box, dict):
-                self.bounding_box = schemas.BoundingBox(**self.bounding_box)
-            if not isinstance(self.bounding_box, schemas.BoundingBox):
-                raise TypeError(
-                    "bounding_box should be of type `velour.schemas.BoundingBox` or None"
+                self.bounding_box = BoundingBox(**self.bounding_box)
+            if not isinstance(self.bounding_box, BoundingBox):
+                raise SchemaTypeError(
+                    "bounding_box", BoundingBox, self.bounding_box
                 )
         if self.polygon:
             if isinstance(self.polygon, dict):
-                self.polygon = schemas.Polygon(**self.polygon)
-            if not isinstance(self.polygon, schemas.Polygon):
-                raise TypeError(
-                    "polygon should be of type `velour.schemas.Polygon` or None"
-                )
+                self.polygon = Polygon(**self.polygon)
+            if not isinstance(self.polygon, Polygon):
+                raise SchemaTypeError("polygon", Polygon, self.polygon)
         if self.multipolygon:
             if isinstance(self.multipolygon, dict):
-                self.multipolygon = schemas.MultiPolygon(**self.multipolygon)
-            if not isinstance(self.multipolygon, schemas.MultiPolygon):
-                raise TypeError(
-                    "multipolygon should be of type `velour.schemas.MultiPolygon` or None"
+                self.multipolygon = MultiPolygon(**self.multipolygon)
+            if not isinstance(self.multipolygon, MultiPolygon):
+                raise SchemaTypeError(
+                    "multipolygon", MultiPolygon, self.multipolygon
                 )
         if self.raster:
             if isinstance(self.raster, dict):
-                self.raster = schemas.Raster(**self.raster)
-            if not isinstance(self.raster, schemas.Raster):
-                raise TypeError(
-                    "raster should be of type `velour.schemas.Raster` or None"
-                )
+                self.raster = Raster(**self.raster)
+            if not isinstance(self.raster, Raster):
+                raise SchemaTypeError("raster", Raster, self.raster)
 
         # metadata
-        if not isinstance(self.metadata, list):
-            raise TypeError("metadata should be of type `list`")
-        for i in range(len(self.metadata)):
-            if isinstance(self.metadata[i], dict):
-                self.metadata[i] = schemas.Metadatum(**self.metadata[i])
-            if not isinstance(self.metadata[i], schemas.Metadatum):
-                raise TypeError(
-                    "elements of metadata should be of type `velour.schemas.Metadatum`"
-                )
+        validate_metadata(self.metadata)
+
+    def dict(self) -> dict:
+        return {
+            "task_type": self.task_type.value,
+            "labels": [asdict(label) for label in self.labels],
+            "metadata": self.metadata,
+            "bounding_box": asdict(self.bounding_box)
+            if self.bounding_box
+            else None,
+            "polygon": asdict(self.polygon) if self.polygon else None,
+            "multipolygon": asdict(self.multipolygon)
+            if self.multipolygon
+            else None,
+            "raster": asdict(self.raster) if self.raster else None,
+            "jsonb": self.jsonb,
+        }
+
+    def __eq__(self, other):
+        if not isinstance(other, Annotation):
+            raise TypeError(
+                f"Expected type `{type(Annotation)}`, got `{other}`"
+            )
+        return self.dict() == other.dict()
 
 
 class GroundTruth:
     def __init__(
         self,
         datum: Datum,
-        annotations: List[Annotation] = None,
+        annotations: List[Annotation],
     ):
         self.datum = datum
-        self.annotations = annotations if annotations is not None else []
+        self.annotations = annotations
+        self._validate()
 
+    def _validate(self):
         # validate datum
         if isinstance(self.datum, dict):
             self.datum = Datum(**self.datum)
         if not isinstance(self.datum, Datum):
-            raise TypeError(
-                f"datum should be of type `velour.Datum`, not {type(self.datum)}."
-            )
+            raise SchemaTypeError("datum", Datum, self.datum)
 
         # validate annotations
         if not isinstance(self.annotations, list):
-            raise TypeError("annotations should be of type `list`")
-        for i in range(len(self.annotations)):
-            if isinstance(self.annotations[i], dict):
-                self.annotations[i] = Annotation(**self.annotations[i])
-            if not isinstance(self.annotations[i], Annotation):
-                raise TypeError(
-                    "elements of annotations should be of type `velour.schemas.Annotation`"
+            raise SchemaTypeError(
+                "annotations", List[Annotation], self.annotations
+            )
+        for idx, annotation in enumerate(self.annotations):
+            if isinstance(self.annotations[idx], dict):
+                self.annotations[idx] = Annotation(**annotation)
+            if not isinstance(self.annotations[idx], Annotation):
+                raise SchemaTypeError(
+                    "annotation", Annotation, self.annotations[idx]
                 )
 
-    @classmethod
-    def from_dict(cls, groundtruth):
+    def dict(self) -> dict:
+        return {
+            "datum": self.datum.dict(),
+            "annotations": [
+                annotation.dict() for annotation in self.annotations
+            ],
+        }
 
+    def __eq__(self, other):
+        if not isinstance(other, GroundTruth):
+            raise TypeError(
+                f"Expected type `{type(GroundTruth)}`, got `{other}`"
+            )
+        return self.dict() == other.dict()
 
-    def to_dict(self):
-        return asdict(
-
-        )
 
 class Prediction:
     score = DeclarativeMapper("prediction.score", Union[int, float])
@@ -259,33 +250,36 @@ class Prediction:
         annotations: List[Annotation] = None,
         model: str = "",
     ):
-        self.score = None # mask the static class variable
-
         self.datum = datum
-        self.annotations = annotations if annotations is not None else []
+        self.annotations = annotations
         self.model = model
+        self._validate()
 
+    def _validate(self):
         # validate datum
         if isinstance(self.datum, dict):
             self.datum = Datum(**self.datum)
         if not isinstance(self.datum, Datum):
-            raise TypeError("datum should be of type `velour.Datum`")
+            raise SchemaTypeError("datum", Datum, self.datum)
 
         # validate annotations
         if not isinstance(self.annotations, list):
-            raise TypeError("annotations should be of type `list`")
-        for i in range(len(self.annotations)):
-            if isinstance(self.annotations[i], dict):
-                self.annotations[i] = Annotation(**self.annotations[i])
-            if not isinstance(self.annotations[i], Annotation):
-                raise TypeError(
-                    "elements of annotations should be of type `velour.schemas.Annotation`."
+            raise SchemaTypeError(
+                "annotations", List[Annotation], self.annotations
+            )
+        for idx, annotation in enumerate(self.annotations):
+            if isinstance(self.annotations[idx], dict):
+                self.annotations[idx] = Annotation(**annotation)
+            if not isinstance(self.annotations[idx], Annotation):
+                raise SchemaTypeError(
+                    "annotation", Annotation, self.annotations[idx]
                 )
 
         # validate model
         if not isinstance(self.model, str):
-            raise TypeError("model should be of type `str`")
+            raise SchemaTypeError("model", str, self.model)
 
+        # TaskType-specific validations
         for annotation in self.annotations:
             if annotation.task_type in [
                 TaskType.CLASSIFICATION,
@@ -294,10 +288,8 @@ class Prediction:
                 for label in annotation.labels:
                     if label.score is None:
                         raise ValueError(
-                            f"For task type {annotation.task_type} prediction labels must have scores, but got None."
+                            f"For task type `{annotation.task_type}` prediction labels must have scores, but got `None`"
                         )
-
-        for annotation in self.annotations:
             if annotation.task_type == TaskType.CLASSIFICATION:
                 label_keys_to_sum = {}
                 for scored_label in annotation.labels:
@@ -313,8 +305,18 @@ class Prediction:
                             f" for label key {k} got scores summing to {total_score}."
                         )
 
-    def to_dict(self):
-        pass
+    def dict(self) -> dict:
+        return {
+            "datum": self.datum.dict(),
+            "model": self.model,
+            "annotations": [
+                annotation.dict() for annotation in self.annotations
+            ],
+        }
 
-    def from_dict(self):
-        pass
+    def __eq__(self, other):
+        if not isinstance(other, Prediction):
+            raise TypeError(
+                f"Expected type `{type(Prediction)}`, got `{other}`"
+            )
+        return self.dict() == other.dict()

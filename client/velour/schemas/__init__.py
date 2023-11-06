@@ -1,4 +1,3 @@
-from .core import Label, Metadatum
 from .evaluation import DetectionParameters, EvaluationJob, EvaluationSettings
 from .geometry import (
     BasicPolygon,
@@ -9,22 +8,33 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .metadata import GeoJSON
+from .geospatial import GeoJSON
+from .metadata import validate_metadata
 
 __all__ = [
-    "Label",
     "Box",
     "BasicPolygon",
     "Point",
-    "ImageMetadata",
-    "VideoFrameMetadata",
     "BoundingBox",
     "Polygon",
     "MultiPolygon",
     "Raster",
-    "Metadatum",
     "GeoJSON",
     "EvaluationJob",
     "EvaluationSettings",
     "DetectionParameters",
+    "StringFilter",
+    "NumericFilter",
+    "GeospatialFilter",
+    "GeometricAnnotationFilter",
+    "JSONAnnotationFilter",
+    "KeyValueFilter",
+    "DatasetFilter",
+    "ModelFilter",
+    "DatumFilter",
+    "AnnotationFilter",
+    "LabelFilter",
+    "PredictionFilter",
+    "Filter",
+    "validate_metadata",
 ]
