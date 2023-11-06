@@ -2,9 +2,10 @@ import copy
 
 import pytest
 
-from velour import Label, enums
+from velour import enums
 from velour.coretypes import Annotation, Datum, GroundTruth, Prediction
 from velour.exceptions import SchemaTypeError
+from velour.schemas import Label
 
 
 def test_datum():

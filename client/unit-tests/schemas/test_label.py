@@ -1,6 +1,6 @@
 import pytest
 
-from velour import Label
+from velour.schemas import Label
 
 
 def test_label():
