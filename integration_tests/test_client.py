@@ -211,6 +211,11 @@ def rect3():
 
 
 @pytest.fixture
+def rect4():
+    return BoundingBox.from_extrema(xmin=1, ymin=10, xmax=10, ymax=20)
+
+
+@pytest.fixture
 def gt_dets1(
     rect1: BoundingBox,
     rect2: BoundingBox,
@@ -538,6 +543,39 @@ def pred_dets(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=rect2,
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def pred_dets2(
+    rect3: BoundingBox,
+    rect4: BoundingBox,
+    img1: ImageMetadata,
+    img2: ImageMetadata,
+) -> list[Prediction]:
+    return [
+        Prediction(
+            model=model_name,
+            datum=img1.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k1", value="v1", score=0.7)],
+                    bounding_box=rect3,
+                )
+            ],
+        ),
+        Prediction(
+            model=model_name,
+            datum=img2.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k2", value="v2", score=0.98)],
+                    bounding_box=rect4,
                 )
             ],
         ),
@@ -1528,8 +1566,7 @@ def test_evaluate_detection(
     ).all()
     assert sorted(areas) == [1100.0, 1500.0]
 
-    # sanity check this should give us the same thing excpet min_area and max_area
-    # are not None
+    # sanity check this should give us the same thing except min_area and max_area are not none
     eval_job_bounded_area_10_2000 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
@@ -1716,6 +1753,7 @@ def test_get_bulk_evaluations(
     client: Client,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
+    pred_dets2: list[Prediction],
     db: Session,
 ):
     dataset_ = dset_name
@@ -1780,6 +1818,34 @@ def test_get_bulk_evaluations(
         },
     ]
 
+    second_model_expected_metrics = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {"type": "mAP", "parameters": {"iou": 0.1}, "value": 0.0},
+        {"type": "mAP", "parameters": {"iou": 0.6}, "value": 0.0},
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+        },
+    ]
+
     evaluations = client.get_bulk_evaluations(
         datasets=dset_name, models=model_name
     )
@@ -1814,7 +1880,7 @@ def test_get_bulk_evaluations(
 
     # test with multiple models
     second_model = Model.create(client, "second_model")
-    for pd in pred_dets:
+    for pd in pred_dets2:
         second_model.add_prediction(pd)
     second_model.finalize_inferences(dataset)
 
@@ -1848,7 +1914,9 @@ def test_get_bulk_evaluations(
             for name in evaluation.keys()
         ]
     )
-    assert second_model_evaluations[0]["metrics"] == expected_metrics
+    assert (
+        second_model_evaluations[0]["metrics"] == second_model_expected_metrics
+    )
 
     both_evaluations = client.get_bulk_evaluations(datasets=["test_dataset"])
 
@@ -1861,12 +1929,136 @@ def test_get_bulk_evaluations(
         ]
     )
     assert both_evaluations[0]["metrics"] == expected_metrics
+    assert both_evaluations[1]["metrics"] == second_model_expected_metrics
 
     # should be equivalent since there are only two models attributed to this dataset
     both_evaluations_from_model_names = client.get_bulk_evaluations(
         models=["second_model", "test_model"]
     )
     assert both_evaluations == both_evaluations_from_model_names
+
+
+def test_get_ranked_evaluations(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    pred_dets2: list[Prediction],
+    db: Session,
+):
+    dataset_ = dset_name
+    model_ = model_name
+
+    dataset = Dataset.create(client, dataset_)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    # first model
+    model = Model.create(client, model_)
+    for pd in pred_dets:
+        model.add_prediction(pd)
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        label_key="k1",
+        timeout=30,
+    )
+    eval_job.wait_for_completion()
+
+    # second model
+    second_model = Model.create(client, "second_model")
+    for pd in pred_dets2:
+        second_model.add_prediction(pd)
+    second_model.finalize_inferences(dataset)
+
+    eval_job = second_model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        label_key="k1",
+        timeout=30,
+    )
+    eval_job.wait_for_completion()
+
+    # third model: the same as the second model, but we'd expect it to not have any metrics because of the max_area argument
+    third_model = Model.create(client, "third_model")
+    for pd in pred_dets2:
+        third_model.add_prediction(pd)
+    third_model.finalize_inferences(dataset)
+
+    eval_job = third_model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        label_key="k1",
+        timeout=30,
+        max_area=30 * 300,
+    )
+    eval_job.wait_for_completion()
+
+    # test incorrect parameters
+    with pytest.raises(ClientException):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name, metric="mAP"
+        )
+
+    # test wrong metric name
+    with pytest.raises(ClientException):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name, metric="fake_metric_name"
+        )
+
+    # test bad parameters
+    with pytest.raises(ClientException):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name,
+            metric="mAP",
+            parameters={"iou": 0.5},
+        )
+
+    with pytest.raises(ClientException):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name,
+            metric="mAP",
+            parameters={"iou": [0.1, 0.6]},
+        )
+
+    # test incorrect filters
+    with pytest.raises(ClientException):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name,
+            metric="mAP",
+            parameters={"iou": 0.6},
+            label_keys=["aosidjf"],
+        )
+
+    ranked_evaluations = client.get_ranked_evaluations(
+        dataset_name=dset_name,
+        metric="mAP",
+        parameters={"iou": 0.6},
+    )
+
+    assert len(ranked_evaluations) == 3
+    assert ranked_evaluations[0]["ranking"] == 1
+    assert ranked_evaluations[0]["model"] == "test_model"
+
+    assert ranked_evaluations[1]["ranking"] == 2
+    assert ranked_evaluations[1]["model"] == "second_model"
+
+    assert ranked_evaluations[2]["ranking"] == "not_ranked"
+    assert ranked_evaluations[2]["model"] == "third_model"
+
+    second_ranked_evaluations = client.get_ranked_evaluations(
+        dataset_name=dset_name,
+        metric="mAP",
+        parameters={"iou": 0.6},
+        label_keys=["k1"],
+    )
+
+    assert second_ranked_evaluations == ranked_evaluations
 
 
 def test_evaluate_image_clf(
