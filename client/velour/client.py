@@ -1,4 +1,3 @@
-import collections
 import json
 import math
 import os
@@ -12,34 +11,6 @@ import requests
 
 from velour import enums, schemas
 from velour.enums import AnnotationType, JobStatus, State
-
-
-def _is_subset_of_dict(target_values: any, nested_dict: dict) -> bool:
-    """Helper function that's called recursively to see if a dict exists within a nested dict"""
-    for key, value in target_values.items():
-        if key not in nested_dict:
-            return False
-        if isinstance(value, dict):
-            if not _is_subset_of_dict(value, nested_dict[key]):
-                return False
-        elif value != nested_dict[key]:
-            return False
-    return True
-
-
-def _dict_is_subset_of_other_dict(
-    target_values: any, nested_dict: dict
-) -> bool:
-    """Check if a target nested_dict exists in any part of an arbitrarily large nested nested_dict"""
-    if isinstance(nested_dict, dict):
-        if _is_subset_of_dict(target_values, nested_dict):
-            return True
-        for value in nested_dict.values():
-            if _dict_is_subset_of_other_dict(
-                target_values=target_values, nested_dict=value
-            ):
-                return True
-    return False
 
 
 class ClientException(Exception):
@@ -202,102 +173,9 @@ class Client:
             A boolean to indicate whether the metric values should be ranked from highest to lowest
         """
 
-        metric_to_input_requirements = {
-            # evaluate_classification
-            "Precision": ["label"],
-            "F1": ["label"],
-            "Recall": ["label"],
-            "ROCAUC": ["label"],
-            "Accuracy": ["label"],
-            # evaluate_detection
-            "AP": ["iou", "label"],
-            "APAveragedOverIOUs": ["label"],
-            "mAP": ["iou"],
-            "mAPAveragedOverIOUs": [],
-            # evaluate_segmentation
-            "IOUMetric": ["label"],
-            "IOUMetricAveraged": [],
-        }
-
-        if metric not in metric_to_input_requirements.keys():
-            raise ValueError(
-                f"Metric should be one of {metric_to_input_requirements.keys()}"
-            )
-
-        requirements_for_selection = metric_to_input_requirements[metric]
-
-        if (parameters and not isinstance(parameters, dict)) or (
-            metric_filters and not isinstance(metric_filters, dict)
-        ):
-            raise ValueError(
-                "Inputted parameters and metric_filters objects should be dictionaries"
-            )
-
-        if (not parameters and requirements_for_selection) or not all(
-            [key in parameters.keys() for key in requirements_for_selection]
-        ):
-            raise ValueError(
-                f"Ranking evaluations on {metric} requires the following inputs in the parameters argument: {requirements_for_selection}"
-            )
-
-        if not parameters:
-            parameters = {}
-
-        if not metric_filters:
-            metric_filters = {}
-
-        evaluations = self.get_bulk_evaluations(datasets=dataset_name)
-
-        model_max_values = collections.defaultdict(float)
-        for evaluation in evaluations:
-            filter_ = evaluation["settings"]["filters"]
-
-            if not metric_filters or _dict_is_subset_of_other_dict(
-                metric_filters, filter_
-            ):
-                for evaluation_metric in evaluation["metrics"]:
-                    if evaluation_metric["type"] == metric and (
-                        not parameters
-                        or _dict_is_subset_of_other_dict(
-                            target_values=parameters,
-                            nested_dict=evaluation_metric["parameters"],
-                        )
-                    ):
-                        model_max_values[evaluation["model"]] = max(
-                            evaluation_metric["value"],
-                            model_max_values[evaluation["model"]],
-                        )
-
-        rankings = {
-            key: rank
-            for rank, key in enumerate(
-                sorted(
-                    model_max_values,
-                    key=model_max_values.get,
-                    reverse=rank_from_highest_value_to_lowest_value,
-                ),
-                1,
-            )
-        }
-
-        if not rankings:
-            arg_summary = {
-                "metric": metric,
-                "metric_filter": metric_filters,
-                "parameters": parameters,
-            }
-            raise ValueError(
-                f"Didn't find any evaluations to rank on using {arg_summary}"
-            )
-
-        # sort and return evaluations according to this ranking
-        for evaluation in evaluations:
-            evaluation["model_rank"] = rankings[evaluation["model"]]
-
-        evaluations = sorted(
-            evaluations, key=lambda evaluation: rankings[evaluation["model"]]
-        )
-        return evaluations
+        endpoint = f"ranked-evaluations?dataset_name={dataset_name}&metric={metric}&parameters={json.dumps(parameters)}&metric_filters={json.dumps(metric_filters)}&rank_from_highest_value_to_lowest_value={rank_from_highest_value_to_lowest_value}"
+        ranked_evals = self._requests_get_rel_host(endpoint).json()
+        return ranked_evals
 
     def get_datasets(
         self,

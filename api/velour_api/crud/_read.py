@@ -1,9 +1,38 @@
+import collections
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
 from velour_api import backend, enums, schemas
 from velour_api.backend import jobs
+
+
+def _is_subset_of_dict(target_values: any, nested_dict: dict) -> bool:
+    """Helper function that's called recursively to see if a dict exists within a nested dict"""
+    for key, value in target_values.items():
+        if key not in nested_dict:
+            return False
+        if isinstance(value, dict):
+            if not _is_subset_of_dict(value, nested_dict[key]):
+                return False
+        elif value != nested_dict[key]:
+            return False
+    return True
+
+
+def _dict_is_subset_of_other_dict(
+    target_values: any, nested_dict: dict
+) -> bool:
+    """Check if a target nested_dict exists in any part of an arbitrarily large nested nested_dict"""
+    if isinstance(nested_dict, dict):
+        if _is_subset_of_dict(target_values, nested_dict):
+            return True
+        for value in nested_dict.values():
+            if _dict_is_subset_of_other_dict(
+                target_values=target_values, nested_dict=value
+            ):
+                return True
+    return False
 
 
 def get_evaluation_status(job_id: int) -> enums.JobStatus:
@@ -71,6 +100,131 @@ def get_bulk_evaluations(
         db=db, evaluation_ids=job_set
     )
     return output
+
+
+def get_ranked_evaluations(
+    db: Session,
+    dataset_name: str,
+    metric: str,
+    parameters: dict = None,
+    metric_filters: dict = None,
+    rank_from_highest_value_to_lowest_value: bool = True,
+):
+    """
+    Returns all metrics associated with a particular dataset, ranked according to user inputs
+
+    Parameters
+    ----------
+    dataset_name
+        The dataset name for which to fetch metrics for.
+    metric
+        The metric to use when ranking evaluations (e.g., "mAP")
+    parameters
+        The metric parameters to filter on when computing the ranking (e.g., {'iou':.5}). Will raise a ValueError if the user supplies a metric which requires more granular parameters.
+    metric_filters
+        The metric filter conditions to use when computing the ranking (e.g., {'max_area':9000})
+    rank_from_highest_value_to_lowest_value
+        A boolean to indicate whether the metric values should be ranked from highest to lowest
+    """
+
+    metric_to_input_requirements = {
+        # evaluate_classification
+        "Precision": ["label"],
+        "F1": ["label"],
+        "Recall": ["label"],
+        "ROCAUC": ["label"],
+        "Accuracy": ["label"],
+        # evaluate_detection
+        "AP": ["iou", "label"],
+        "APAveragedOverIOUs": ["label"],
+        "mAP": ["iou"],
+        "mAPAveragedOverIOUs": [],
+        # evaluate_segmentation
+        "IOUMetric": ["label"],
+        "IOUMetricAveraged": [],
+    }
+
+    if metric not in metric_to_input_requirements.keys():
+        raise ValueError(
+            f"Metric should be one of {metric_to_input_requirements.keys()}"
+        )
+
+    requirements_for_selection = metric_to_input_requirements[metric]
+
+    if (parameters and not isinstance(parameters, dict)) or (
+        metric_filters and not isinstance(metric_filters, dict)
+    ):
+        raise ValueError(
+            "Inputted parameters and metric_filters objects should be dictionaries"
+        )
+
+    if (not parameters and requirements_for_selection) or not all(
+        [key in parameters.keys() for key in requirements_for_selection]
+    ):
+        raise ValueError(
+            f"Ranking evaluations on {metric} requires the following inputs in the parameters argument: {requirements_for_selection}"
+        )
+
+    if not parameters:
+        parameters = {}
+
+    if not metric_filters:
+        metric_filters = {}
+
+    evaluations = get_bulk_evaluations(
+        dataset_names=[dataset_name], db=db, model_names=[]
+    )
+
+    model_max_values = collections.defaultdict(float)
+    for evaluation in evaluations:
+        filter_ = evaluation.settings.filters
+
+        if not metric_filters or _dict_is_subset_of_other_dict(
+            metric_filters, filter_
+        ):
+            for evaluation_metric in evaluation.metrics:
+                if evaluation_metric.type == metric and (
+                    not parameters
+                    or _dict_is_subset_of_other_dict(
+                        target_values=parameters,
+                        nested_dict=evaluation_metric.parameters,
+                    )
+                ):
+                    model_max_values[evaluation.model] = max(
+                        evaluation_metric.value,
+                        model_max_values[evaluation.model],
+                    )
+
+    rankings = {
+        key: rank
+        for rank, key in enumerate(
+            sorted(
+                model_max_values,
+                key=model_max_values.get,
+                reverse=rank_from_highest_value_to_lowest_value,
+            ),
+            1,
+        )
+    }
+
+    if not rankings:
+        arg_summary = {
+            "metric": metric,
+            "metric_filter": metric_filters,
+            "parameters": parameters,
+        }
+        raise ValueError(
+            f"Didn't find any evaluations to rank on using {arg_summary}"
+        )
+
+    # sort and return evaluations according to this ranking
+    for evaluation in evaluations:
+        evaluation.model_rank = rankings[evaluation.model]
+
+    evaluations = sorted(
+        evaluations, key=lambda evaluation: rankings[evaluation.model]
+    )
+    return evaluations
 
 
 """ Labels """
