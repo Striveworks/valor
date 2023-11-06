@@ -69,7 +69,7 @@ def test_post_groundtruth(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "dataset": "dataset1",
-            "metadata": [],
+            "metadata": {},
         },
         "annotations": [
             {
@@ -77,7 +77,7 @@ def test_post_groundtruth(client: TestClient):
                     {"key": "k1", "value": "v1"},
                 ],
                 "task_type": TaskType.CLASSIFICATION.value,
-                "metadata": [],
+                "metadata": {},
             }
         ],
     }
@@ -96,10 +96,10 @@ def test_post_groundtruth_classification(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "dataset": "dataset1",
-            "metadata": [
-                {"key": "meta1", "value": 0.4},
-                {"key": "meta1", "value": "v1"},
-            ],
+            "metadata": {
+                "meta1": 0.4,
+                "meta2": "v1",
+            },
         },
         "annotations": [
             {
@@ -108,10 +108,10 @@ def test_post_groundtruth_classification(client: TestClient):
                     {"key": "k1", "value": "v2"},
                 ],
                 "task_type": TaskType.CLASSIFICATION.value,
-                "metadata": [
-                    {"key": "meta1", "value": 0.4},
-                    {"key": "meta1", "value": "v1"},
-                ],
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
             },
             {
                 "labels": [
@@ -119,10 +119,10 @@ def test_post_groundtruth_classification(client: TestClient):
                     {"key": "k2", "value": "v2"},
                 ],
                 "task_type": TaskType.CLASSIFICATION.value,
-                "metadata": [
-                    {"key": "meta2", "value": 0.4},
-                    {"key": "meta2", "value": "v1"},
-                ],
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
             },
         ],
     }
@@ -140,10 +140,10 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "dataset": "dataset1",
-            "metadata": [
-                {"key": "meta1", "value": 0.4},
-                {"key": "meta1", "value": "v1"},
-            ],
+            "metadata": {
+                "meta1": 0.4,
+                "meta2": "v1",
+            },
         },
         "annotations": [
             {
@@ -152,10 +152,10 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
                     {"key": "k1", "value": "v2"},
                 ],
                 "task_type": TaskType.DETECTION.value,
-                "metadata": [
-                    {"key": "meta1", "value": 0.4},
-                    {"key": "meta1", "value": "v1"},
-                ],
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
                 "bounding_box": {
                     "polygon": {
                         "points": [
@@ -182,10 +182,10 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "dataset": "dataset1",
-            "metadata": [
-                {"key": "meta1", "value": 0.4},
-                {"key": "meta1", "value": "v1"},
-            ],
+            "metadata": {
+                "meta1": 0.4,
+                "meta2": "v1",
+            },
         },
         "annotations": [
             {
@@ -194,10 +194,10 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
                     {"key": "k1", "value": "v2"},
                 ],
                 "task_type": TaskType.DETECTION.value,
-                "metadata": [
-                    {"key": "meta1", "value": 0.4},
-                    {"key": "meta1", "value": "v1"},
-                ],
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
                 "polygon": {
                     "boundary": {
                         "points": [
@@ -243,10 +243,10 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "dataset": "dataset1",
-            "metadata": [
-                {"key": "height", "value": 20},
-                {"key": "width", "value": 20},
-            ],
+            "metadata": {
+                "height": 20,
+                "width": 20,
+            },
         },
         "annotations": [
             {
@@ -255,10 +255,10 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                     {"key": "k1", "value": "v2"},
                 ],
                 "task_type": TaskType.DETECTION.value,
-                "metadata": [
-                    {"key": "meta1", "value": 0.4},
-                    {"key": "meta1", "value": "v1"},
-                ],
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
                 },
@@ -269,10 +269,10 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
                     {"key": "k1", "value": "v2"},
                 ],
                 "task_type": TaskType.SEGMENTATION.value,
-                "metadata": [
-                    {"key": "meta1", "value": 0.4},
-                    {"key": "meta1", "value": "v1"},
-                ],
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
                 },
@@ -296,7 +296,7 @@ def test_post_prediction(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "dataset": "dataset1",
-            "metadata": [],
+            "metadata": {},
         },
         "annotations": [
             {
@@ -305,7 +305,7 @@ def test_post_prediction(client: TestClient):
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
                 "task_type": TaskType.CLASSIFICATION.value,
-                "metadata": [],
+                "metadata": {},
             }
         ],
     }
@@ -333,10 +333,10 @@ def test_post_prediction_classification(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "dataset": "dataset1",
-            "metadata": [
-                {"key": "meta1", "value": 0.4},
-                {"key": "meta1", "value": "v1"},
-            ],
+            "metadata": {
+                "meta1": 0.4,
+                "meta2": "v1",
+            },
         },
         "annotations": [
             {
@@ -345,10 +345,10 @@ def test_post_prediction_classification(client: TestClient):
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
                 "task_type": TaskType.CLASSIFICATION.value,
-                "metadata": [
-                    {"key": "meta1", "value": 0.4},
-                    {"key": "meta1", "value": "v1"},
-                ],
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
             },
             {
                 "labels": [
@@ -356,10 +356,10 @@ def test_post_prediction_classification(client: TestClient):
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
                 "task_type": TaskType.CLASSIFICATION.value,
-                "metadata": [
-                    {"key": "meta2", "value": 0.4},
-                    {"key": "meta2", "value": "v1"},
-                ],
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
             },
         ],
     }
@@ -377,10 +377,10 @@ def test_post_prediction_bbox_detection(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "dataset": "dataset1",
-            "metadata": [
-                {"key": "meta1", "value": 0.4},
-                {"key": "meta1", "value": "v1"},
-            ],
+            "metadata": {
+                "meta1": 0.4,
+                "meta2": "v1",
+            },
         },
         "annotations": [
             {
@@ -389,10 +389,10 @@ def test_post_prediction_bbox_detection(client: TestClient):
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
                 "task_type": TaskType.DETECTION.value,
-                "metadata": [
-                    {"key": "meta1", "value": 0.4},
-                    {"key": "meta1", "value": "v1"},
-                ],
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
                 "bounding_box": {
                     "polygon": {
                         "points": [
@@ -421,10 +421,10 @@ def test_post_prediction_polygon_detection(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "dataset": "dataset1",
-            "metadata": [
-                {"key": "meta1", "value": 0.4},
-                {"key": "meta1", "value": "v1"},
-            ],
+            "metadata": {
+                "meta1": 0.4,
+                "meta2": "v1",
+            },
         },
         "annotations": [
             {
@@ -433,10 +433,10 @@ def test_post_prediction_polygon_detection(client: TestClient):
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
                 "task_type": TaskType.DETECTION.value,
-                "metadata": [
-                    {"key": "meta1", "value": 0.4},
-                    {"key": "meta1", "value": "v1"},
-                ],
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
                 "polygon": {
                     "boundary": {
                         "points": [
@@ -488,10 +488,10 @@ def test_post_prediction_raster_segmentation(client: TestClient):
         "datum": {
             "uid": "file_uid",
             "dataset": "dataset1",
-            "metadata": [
-                {"key": "height", "value": 20},
-                {"key": "width", "value": 20},
-            ],
+            "metadata": {
+                "height": 20,
+                "width": 20,
+            },
         },
         "annotations": [
             {
@@ -500,10 +500,10 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                     {"key": "k1", "value": "v2", "score": 0.1},
                 ],
                 "task_type": TaskType.DETECTION.value,
-                "metadata": [
-                    {"key": "meta1", "value": 0.4},
-                    {"key": "meta1", "value": "v1"},
-                ],
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
                 },
@@ -514,10 +514,10 @@ def test_post_prediction_raster_segmentation(client: TestClient):
                     {"key": "k1", "value": "v2"},
                 ],
                 "task_type": TaskType.SEGMENTATION.value,
-                "metadata": [
-                    {"key": "meta1", "value": 0.4},
-                    {"key": "meta1", "value": "v1"},
-                ],
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
                 "raster": {
                     "mask": "iVBORw0KGgoAAAANSUhEUgAAABQAAAAUAQAAAACl8iCgAAAAF0lEQVR4nGP4f4CBiYGBIGZgsP9AjDoAuysDE0GVDN8AAAAASUVORK5CYII=",
                 },
@@ -539,10 +539,10 @@ def test_post_datasets(client: TestClient):
     example_json = {
         "id": 1,
         "name": "dataset1",
-        "metadata": [
-            {"key": "meta1", "value": 0.4},
-            {"key": "meta1", "value": "v1"},
-        ],
+        "metadata": {
+            "meta1": 0.4,
+            "meta2": "v1",
+        },
     }
     _test_post_endpoints(
         client=client,
@@ -568,10 +568,10 @@ def test_post_models(client: TestClient):
     example_json = {
         "id": 1,
         "name": "model1",
-        "metadata": [
-            {"key": "meta1", "value": 0.4},
-            {"key": "meta1", "value": "v1"},
-        ],
+        "metadata": {
+            "meta1": 0.4,
+            "meta2": "v1",
+        },
     }
     _test_post_endpoints(
         client=client,
@@ -607,7 +607,7 @@ def test_get_datasets(crud, client: TestClient):
 @patch("velour_api.main.crud")
 def test_get_dataset_by_name(crud, client: TestClient):
     crud.get_dataset.return_value = schemas.Dataset(
-        id=1, name="name", metadata=[]
+        id=1, name="name", metadata={}
     )
     resp = client.get("/datasets/name")
     assert resp.status_code == 200
@@ -629,7 +629,7 @@ def test_get_dataset_by_name(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_model_by_name(crud, client: TestClient):
-    crud.get_model.return_value = schemas.Model(id=1, name="name", metadata=[])
+    crud.get_model.return_value = schemas.Model(id=1, name="name", metadata={})
     resp = client.get("/models/modelname")
     assert resp.status_code == 200
     crud.get_model.assert_called_once()
