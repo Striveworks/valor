@@ -3,6 +3,7 @@ from typing import Dict, Union
 import PIL.Image
 
 from velour.coretypes import Datum
+from velour.exceptions import SchemaTypeError
 from velour.schemas import validate_metadata
 
 
@@ -32,16 +33,14 @@ class ImageMetadata:
 
     @staticmethod
     def valid(datum: Datum) -> bool:
-        if "height" not in datum.metadata:
-            return False
-        if "width" not in datum.metadata:
-            return False
-        return True
+        return {"height", "width"}.issubset(datum.metadata)
 
     @classmethod
     def from_datum(cls, datum: Datum):
         if not cls.valid(datum):
-            raise TypeError("Datum does not conform to image type.")
+            raise ValueError(
+                f"`datum` does not contain height and/or width in metadata `{datum.metadata}`"
+            )
         metadata = datum.metadata.copy()
         return cls(
             dataset=datum.dataset,
@@ -75,58 +74,37 @@ class ImageMetadata:
 
 
 class VideoFrameMetadata:
-    pass
+    def __init__(
+        self,
+        image: ImageMetadata,
+        frame: int,
+    ):
+        self.image = image
+        self.frame = frame
 
+        if not isinstance(self.image, ImageMetadata):
+            raise SchemaTypeError("image", ImageMetadata, self.image)
+        if not isinstance(self.frame, int):
+            raise SchemaTypeError("frame", int, self.frame)
 
-# @dataclass
-# class VideoFrameMetadata:
-#     image: ImageMetadata
-#     frame: int
+    @staticmethod
+    def valid(datum: Datum) -> bool:
+        return {"height", "width", "frame"}.issubset(datum.metadata)
 
-#     def __post_init__(self):
-#         # validate image
-#         if isinstance(self.image, dict):
-#             self.image = ImageMetadata(**self.image)
-#         if not isinstance(self.image, ImageMetadata):
-#             raise TypeError("Video frame must contain valid image.")
+    @classmethod
+    def from_datum(cls, datum: Datum):
+        if not cls.valid(datum):
+            raise ValueError(
+                f"`datum` does not contain height, width and/or frame in metadata `{datum.metadata}`"
+            )
+        image = ImageMetadata.from_datum(datum)
+        frame = image.metadata.pop("frame")
+        return cls(
+            image=image,
+            frame=frame,
+        )
 
-#         # validate frame
-#         if not isinstance(self.frame, int):
-#             raise TypeError("Video frame number must be a int.")
-
-#     @staticmethod
-#     def valid(datum: Datum) -> bool:
-#         if "height" not in datum.metadata:
-#             return False
-#         if "width" not in datum.metadata:
-#             return False
-#         if "frame" not in datum.metadata:
-#             return False
-#         return True
-
-#     @classmethod
-#     def from_datum(cls, datum: Datum):
-#         if not cls.valid(datum):
-#             raise TypeError("Datum does not conform to video frame type.")
-#         metadata = datum.metadata.copy()
-#         return cls(
-#             image=ImageMetadata(
-#                 dataset=datum.dataset,
-#                 uid=datum.uid,
-#                 height=int(metadata.pop("height")),
-#                 width=int(metadata.pop("width")),
-#                 metadata=metadata,
-#             ),
-#             frame=int(metadata.pop("frame")),
-#         )
-
-#     def to_datum(self) -> Datum:
-#         metadata = self.image.metadata.copy()
-#         metadata["height"] = self.image.height
-#         metadata["width"] = self.image.width
-#         metadata["frame"] = self.frame
-#         return Datum(
-#             dataset=self.image.dataset,
-#             uid=self.image.uid,
-#             metadata=metadata,
-#         )
+    def to_datum(self) -> Datum:
+        datum = self.image.to_datum()
+        datum.metadata["frame"] = self.frame
+        return datum
