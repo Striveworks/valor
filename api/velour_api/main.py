@@ -611,7 +611,6 @@ def get_bulk_evaluations(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# TODO return type?
 @app.get(
     "/ranked-evaluations/",
     dependencies=[Depends(token_auth_scheme)],
@@ -621,7 +620,7 @@ def get_bulk_evaluations(
 def get_ranked_evaluations(
     request: Request,
     db: Session = Depends(get_db),
-):
+) -> list[schemas.Evaluation]:
     """
     Returns all metrics associated with a particular dataset, ranked according to user inputs
 
