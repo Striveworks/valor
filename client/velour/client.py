@@ -158,7 +158,7 @@ class Client:
         parameters: dict = None,
         label_keys: dict = None,
         rank_from_highest_value_to_lowest_value: bool = True,
-    ) -> list[dict]:
+    ) -> List[dict]:
         """
         Returns all metrics associated with a particular dataset, ranked according to user inputs
 
