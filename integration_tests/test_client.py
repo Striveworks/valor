@@ -1979,42 +1979,42 @@ def test_get_ranked_evaluations(
     )
     eval_job.wait_for_completion()
 
-    # # test incorrect parameters
-    # with pytest.raises(ClientException):
-    #     ranked_evaluations = client.get_ranked_evaluations(
-    #         dataset_name=dset_name, metric="mAP"
-    #     )
+    # test incorrect parameters
+    with pytest.raises(ClientException):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name, metric="mAP"
+        )
 
-    # # test wrong metric name
-    # with pytest.raises(ClientException):
-    #     ranked_evaluations = client.get_ranked_evaluations(
-    #         dataset_name=dset_name, metric="fake_metric_name"
-    #     )
+    # test wrong metric name
+    with pytest.raises(ClientException):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name, metric="fake_metric_name"
+        )
 
-    # # test bad parameter and filter
-    # with pytest.raises(ClientException):
-    #     ranked_evaluations = client.get_ranked_evaluations(
-    #         dataset_name=dset_name,
-    #         metric="mAP",
-    #         parameters={"iou": 0.5},
-    #     )
+    # test bad parameter and filter
+    with pytest.raises(ClientException):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name,
+            metric="mAP",
+            parameters={"iou": 0.5},
+        )
 
-    # # test incorrect filters
-    # with pytest.raises(ClientException):
-    #     ranked_evaluations = client.get_ranked_evaluations(
-    #         dataset_name=dset_name,
-    #         metric="mAP",
-    #         parameters={"iou": 0.6},
-    #         metric_filters={"fake": "filter"},
-    #     )
+    # test incorrect filters
+    with pytest.raises(ClientException):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name,
+            metric="mAP",
+            parameters={"iou": 0.6},
+            metric_filters={"fake": "filter"},
+        )
 
-    # with pytest.raises(ClientException):
-    #     ranked_evaluations = client.get_ranked_evaluations(
-    #         dataset_name=dset_name,
-    #         metric="mAP",
-    #         parameters={"iou": 0.6},
-    #         metric_filters={"labels": "fake"},
-    #     )
+    with pytest.raises(ClientException):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name,
+            metric="mAP",
+            parameters={"iou": 0.6},
+            metric_filters={"labels": "fake"},
+        )
 
     ranked_evaluations = client.get_ranked_evaluations(
         dataset_name=dset_name,
@@ -2023,10 +2023,10 @@ def test_get_ranked_evaluations(
     )
 
     assert len(ranked_evaluations) == 2
-    assert ranked_evaluations[0]["model_rank"] == 1
+    assert ranked_evaluations[0]["ranking"] == 1
     assert ranked_evaluations[0]["model"] == "test_model"
 
-    assert ranked_evaluations[1]["model_rank"] == 2
+    assert ranked_evaluations[1]["ranking"] == 2
     assert ranked_evaluations[1]["model"] == "second_model"
 
     second_ranked_evaluations = client.get_ranked_evaluations(

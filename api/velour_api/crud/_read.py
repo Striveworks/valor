@@ -219,7 +219,7 @@ def get_ranked_evaluations(
 
     # sort and return evaluations according to this ranking
     for evaluation in evaluations:
-        evaluation.model_rank = rankings[evaluation.model]
+        evaluation.ranking = rankings[evaluation.model]
 
     evaluations = sorted(
         evaluations, key=lambda evaluation: rankings[evaluation.model]
