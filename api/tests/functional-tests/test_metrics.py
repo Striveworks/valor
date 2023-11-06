@@ -51,12 +51,12 @@ def classification_test_data(db: Session):
         schemas.Datum(
             dataset=dataset_name,
             uid=f"uid{i}",
-            metadata=[
-                schemas.Metadatum(key="height", value=128),
-                schemas.Metadatum(key="width", value=256),
-                schemas.Metadatum(key="md1", value=f"md1-val{int(i == 4)}"),
-                schemas.Metadatum(key="md2", value=f"md1-val{i % 3}"),
-            ],
+            metadata={
+                "height": 128,
+                "width": 256,
+                "md1": f"md1-val{int(i == 4)}",
+                "md2": f"md1-val{i % 3}",
+            },
         )
         for i in range(6)
     ]
@@ -102,9 +102,7 @@ def classification_test_data(db: Session):
         db=db,
         dataset=schemas.Dataset(
             name=dataset_name,
-            metadata=[
-                schemas.Metadatum(key="type", value=enums.DataType.IMAGE.value)
-            ],
+            metadata={"type": enums.DataType.IMAGE.value},
         ),
     )
     for gt in gts:
@@ -112,7 +110,10 @@ def classification_test_data(db: Session):
     crud.finalize(db=db, dataset_name=dataset_name)
 
     crud.create_model(
-        db=db, model=schemas.Model(name=model_name, type=enums.DataType.IMAGE)
+        db=db,
+        model=schemas.Model(
+            name=model_name, metadata={"type": enums.DataType.IMAGE}
+        ),
     )
     for pd in preds:
         crud.create_prediction(db=db, prediction=pd)

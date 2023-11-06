@@ -17,42 +17,42 @@ datum_uid4 = "uid4"
 
 @pytest.fixture
 def metadata_1() -> list[schemas.Metadatum]:
-    return [
-        schemas.Metadatum(key="some_numeric_attribute", value=0.4),
-        schemas.Metadatum(key="some_str_attribute", value="abc"),
-        schemas.Metadatum(key="height", value=10),
-        schemas.Metadatum(key="width", value=10),
-    ]
+    return {
+        "some_numeric_attribute": 0.4,
+        "some_str_attribute": "abc",
+        "height": 10,
+        "width": 10,
+    }
 
 
 @pytest.fixture
 def metadata_2() -> list[schemas.Metadatum]:
-    return [
-        schemas.Metadatum(key="some_numeric_attribute", value=0.6),
-        schemas.Metadatum(key="some_str_attribute", value="abc"),
-        schemas.Metadatum(key="height", value=10),
-        schemas.Metadatum(key="width", value=10),
-    ]
+    return {
+        "some_numeric_attribute": 0.6,
+        "some_str_attribute": "abc",
+        "height": 10,
+        "width": 10,
+    }
 
 
 @pytest.fixture
 def metadata_3() -> list[schemas.Metadatum]:
-    return [
-        schemas.Metadatum(key="some_numeric_attribute", value=0.4),
-        schemas.Metadatum(key="some_str_attribute", value="xyz"),
-        schemas.Metadatum(key="height", value=10),
-        schemas.Metadatum(key="width", value=10),
-    ]
+    return {
+        "some_numeric_attribute": 0.4,
+        "some_str_attribute": "xyz",
+        "height": 10,
+        "width": 10,
+    }
 
 
 @pytest.fixture
 def metadata_4() -> list[schemas.Metadatum]:
-    return [
-        schemas.Metadatum(key="some_numeric_attribute", value=0.6),
-        schemas.Metadatum(key="some_str_attribute", value="xyz"),
-        schemas.Metadatum(key="height", value=10),
-        schemas.Metadatum(key="width", value=10),
-    ]
+    return {
+        "some_numeric_attribute": 0.6,
+        "some_str_attribute": "xyz",
+        "height": 10,
+        "width": 10,
+    }
 
 
 @pytest.fixture
