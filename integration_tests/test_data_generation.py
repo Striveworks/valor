@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
+from velour import Annotation, Label
 from velour.client import Client
 from velour.data_generation import (
     generate_prediction_data,
@@ -147,10 +148,12 @@ def test_generate_prediction_data(client: Client):
 
     eval_job = model.evaluate_detection(
         dataset=dataset,
-        annotation_type=AnnotationType.BOX,
         iou_thresholds_to_compute=[0, 1],
         iou_thresholds_to_keep=[0, 1],
-        label_key="k1",
+        filters=[
+            Label.key == "k1",
+            Annotation.annotation_type == AnnotationType.BOX,
+        ],
         timeout=30,
     )
 
