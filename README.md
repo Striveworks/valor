@@ -14,7 +14,7 @@ As a first step, be sure your machine has Docker installed. [Click here](https:/
 
 To ensure formatting consistency, we use [pre-commit](https://pre-commit.com/) to manage git hooks. To install pre-commit, run:
 
-```shell
+```bash
 pip install pre-commit
 pre-commit install
 ```
@@ -28,6 +28,7 @@ Run the following in bash (note: may not work in zsh):
 python -m pip install -e client/.[test]
 
 ```
+
 
 ### 4. Run the API, postgis, and redis services
 

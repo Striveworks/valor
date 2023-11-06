@@ -152,6 +152,35 @@ class Client:
         evals = self._requests_get_rel_host(endpoint).json()
         return evals
 
+    def get_ranked_evaluations(
+        self,
+        dataset_name: str,
+        metric: str,
+        parameters: dict = None,
+        label_keys: dict = None,
+        rank_from_highest_value_to_lowest_value: bool = True,
+    ) -> List[dict]:
+        """
+        Returns all metrics associated with a particular dataset, ranked according to user inputs
+
+        Parameters
+        ----------
+        dataset_name
+            The dataset name for which to fetch metrics for.
+        metric
+            The metric to use when ranking evaluations (e.g., "mAP")
+        parameters
+            The metric parameters to filter on when computing the ranking (e.g., {'iou':.5}). Will raise a ValueError if the user supplies a metric which requires more granular parameters.
+        label_keys
+            The list of label keys to filter on (e.g., ['key1'])
+        rank_from_highest_value_to_lowest_value
+            A boolean to indicate whether the metric values should be ranked from highest to lowest
+        """
+
+        endpoint = f"ranked-evaluations?dataset_name={dataset_name}&metric={metric}&parameters={json.dumps(parameters)}&label_keys={json.dumps(label_keys)}&rank_from_highest_value_to_lowest_value={rank_from_highest_value_to_lowest_value}"
+        ranked_evals = self._requests_get_rel_host(endpoint).json()
+        return ranked_evals
+
     def get_datasets(
         self,
     ) -> List[dict]:
