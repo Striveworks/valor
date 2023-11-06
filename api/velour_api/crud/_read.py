@@ -1,6 +1,5 @@
 import collections
 import math
-from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -66,8 +65,8 @@ def get_evaluation_jobs_for_model(model_name: str):
 
 def get_bulk_evaluations(
     db: Session,
-    dataset_names: Optional[List[str]],
-    model_names: Optional[List[str]],
+    dataset_names: list[str] | None,
+    model_names: list[str] | None,
 ) -> list[schemas.Evaluation]:
     """
     Returns all metrics associated with user-supplied dataset and model names
