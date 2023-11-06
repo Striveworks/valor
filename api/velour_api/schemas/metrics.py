@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from uuid import uuid4
 
 import numpy as np
@@ -302,6 +302,7 @@ class Evaluation(BaseModel):
     status: str
     metrics: List[Metric]
     confusion_matrices: list[ConfusionMatrixResponse]
+    model_rank: Optional[int] = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
