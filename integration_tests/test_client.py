@@ -1979,6 +1979,22 @@ def test_get_ranked_evaluations(
     )
     eval_job.wait_for_completion()
 
+    # third model: the same as the second model, but we'd expect it to not have any metrics because of the max_area argument
+    third_model = Model.create(client, "third_model")
+    for pd in pred_dets2:
+        third_model.add_prediction(pd)
+    third_model.finalize_inferences(dataset)
+
+    eval_job = third_model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        label_key="k1",
+        timeout=30,
+        max_area=30 * 300,
+    )
+    eval_job.wait_for_completion()
+
     # test incorrect parameters
     with pytest.raises(ClientException):
         ranked_evaluations = client.get_ranked_evaluations(
@@ -2005,15 +2021,7 @@ def test_get_ranked_evaluations(
             dataset_name=dset_name,
             metric="mAP",
             parameters={"iou": 0.6},
-            metric_filters={"fake": "filter"},
-        )
-
-    with pytest.raises(ClientException):
-        ranked_evaluations = client.get_ranked_evaluations(
-            dataset_name=dset_name,
-            metric="mAP",
-            parameters={"iou": 0.6},
-            metric_filters={"labels": "fake"},
+            label_keys=["aosidjf"],
         )
 
     ranked_evaluations = client.get_ranked_evaluations(
@@ -2022,19 +2030,21 @@ def test_get_ranked_evaluations(
         parameters={"iou": 0.6},
     )
 
-    assert len(ranked_evaluations) == 2
+    assert len(ranked_evaluations) == 3
     assert ranked_evaluations[0]["ranking"] == 1
     assert ranked_evaluations[0]["model"] == "test_model"
 
     assert ranked_evaluations[1]["ranking"] == 2
     assert ranked_evaluations[1]["model"] == "second_model"
 
-    # TODO this isn't working because there's no good way to compare the dict to the LabelFilter object on the backend
+    assert ranked_evaluations[2]["ranking"] == "not_ranked"
+    assert ranked_evaluations[2]["model"] == "third_model"
+
     second_ranked_evaluations = client.get_ranked_evaluations(
         dataset_name=dset_name,
         metric="mAP",
         parameters={"iou": 0.6},
-        metric_filters={"labels": {"keys": ["k1"]}},
+        label_keys=["k1"],
     )
 
     assert second_ranked_evaluations == ranked_evaluations

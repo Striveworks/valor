@@ -153,7 +153,7 @@ class Client:
         dataset_name: str,
         metric: str,
         parameters: dict = None,
-        metric_filters: dict = None,
+        label_keys: dict = None,
         rank_from_highest_value_to_lowest_value: bool = True,
     ):
         """
@@ -167,13 +167,13 @@ class Client:
             The metric to use when ranking evaluations (e.g., "mAP")
         parameters
             The metric parameters to filter on when computing the ranking (e.g., {'iou':.5}). Will raise a ValueError if the user supplies a metric which requires more granular parameters.
-        metric_filters
-            The metric filter conditions to use when computing the ranking (e.g., {'max_area':9000})
+        label_keys
+            The list of label keys to filter on (e.g., ['key1'])
         rank_from_highest_value_to_lowest_value
             A boolean to indicate whether the metric values should be ranked from highest to lowest
         """
 
-        endpoint = f"ranked-evaluations?dataset_name={dataset_name}&metric={metric}&parameters={json.dumps(parameters)}&metric_filters={json.dumps(metric_filters)}&rank_from_highest_value_to_lowest_value={rank_from_highest_value_to_lowest_value}"
+        endpoint = f"ranked-evaluations?dataset_name={dataset_name}&metric={metric}&parameters={json.dumps(parameters)}&label_keys={json.dumps(label_keys)}&rank_from_highest_value_to_lowest_value={rank_from_highest_value_to_lowest_value}"
         ranked_evals = self._requests_get_rel_host(endpoint).json()
         return ranked_evals
 

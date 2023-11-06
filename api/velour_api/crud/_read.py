@@ -1,4 +1,5 @@
 import collections
+import math
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -107,7 +108,7 @@ def get_ranked_evaluations(
     dataset_name: str,
     metric: str,
     parameters: dict = None,
-    metric_filters: dict = None,
+    label_keys: list = None,
     rank_from_highest_value_to_lowest_value: bool = True,
 ):
     """
@@ -121,26 +122,26 @@ def get_ranked_evaluations(
         The metric to use when ranking evaluations (e.g., "mAP")
     parameters
         The metric parameters to filter on when computing the ranking (e.g., {'iou':.5}). Will raise a ValueError if the user supplies a metric which requires more granular parameters.
-    metric_filters
-        The metric filter conditions to use when computing the ranking (e.g., {'max_area':9000})
+    label_keys
+        The list of label keys to filter on (e.g., ['key1'])
     rank_from_highest_value_to_lowest_value
         A boolean to indicate whether the metric values should be ranked from highest to lowest
     """
 
     metric_to_input_requirements = {
         # evaluate_classification
-        "Precision": ["label"],
-        "F1": ["label"],
-        "Recall": ["label"],
-        "ROCAUC": ["label"],
-        "Accuracy": ["label"],
+        "Precision": ["label_keys"],
+        "F1": ["label_keys"],
+        "Recall": ["label_keys"],
+        "ROCAUC": ["label_keys"],
+        "Accuracy": ["label_keys"],
         # evaluate_detection
-        "AP": ["iou", "label"],
-        "APAveragedOverIOUs": ["label"],
+        "AP": ["iou", "label_keys"],
+        "APAveragedOverIOUs": ["label_keys"],
         "mAP": ["iou"],
         "mAPAveragedOverIOUs": [],
         # evaluate_segmentation
-        "IOUMetric": ["label"],
+        "IOUMetric": ["label_keys"],
         "IOUMetricAveraged": [],
     }
 
@@ -152,24 +153,31 @@ def get_ranked_evaluations(
     requirements_for_selection = metric_to_input_requirements[metric]
 
     if (parameters and not isinstance(parameters, dict)) or (
-        metric_filters and not isinstance(metric_filters, dict)
+        label_keys and not isinstance(label_keys, list)
     ):
         raise ValueError(
-            "Inputted parameters and metric_filters objects should be dictionaries"
+            "Inputted parameters should be of type dict, while label_keys should be of type list"
         )
 
-    if (not parameters and requirements_for_selection) or not all(
-        [key in parameters.keys() for key in requirements_for_selection]
-    ):
+    if not label_keys and label_keys in requirements_for_selection:
         raise ValueError(
-            f"Ranking evaluations on {metric} requires the following inputs in the parameters argument: {requirements_for_selection}"
+            f"label_keys argument is required for metric {metric}."
         )
+
+    if ("iou" in requirements_for_selection) and (
+        not parameters or "iou" not in parameters
+    ):
+        raise ValueError("IOU key is missing from parameter dictionary")
 
     if not parameters:
         parameters = {}
 
-    if not metric_filters:
-        metric_filters = {}
+    if not label_keys:
+        label_keys = []
+
+    user_label_filter = schemas.LabelFilter(
+        keys=label_keys,
+    )
 
     evaluations = get_bulk_evaluations(
         dataset_names=[dataset_name], db=db, model_names=[]
@@ -177,10 +185,9 @@ def get_ranked_evaluations(
 
     model_max_values = collections.defaultdict(float)
     for evaluation in evaluations:
-        filter_ = evaluation.settings.filters
-
-        if not metric_filters or _dict_is_subset_of_other_dict(
-            metric_filters, filter_
+        if (
+            not label_keys
+            or evaluation.settings.filters.labels == user_label_filter
         ):
             for evaluation_metric in evaluation.metrics:
                 if evaluation_metric.type == metric and (
@@ -210,7 +217,7 @@ def get_ranked_evaluations(
     if not rankings:
         arg_summary = {
             "metric": metric,
-            "metric_filter": metric_filters,
+            "label_keys": label_keys,
             "parameters": parameters,
         }
         raise ValueError(
@@ -219,10 +226,11 @@ def get_ranked_evaluations(
 
     # sort and return evaluations according to this ranking
     for evaluation in evaluations:
-        evaluation.ranking = rankings[evaluation.model]
+        evaluation.ranking = rankings.get(evaluation.model, "not_ranked")
 
     evaluations = sorted(
-        evaluations, key=lambda evaluation: rankings[evaluation.model]
+        evaluations,
+        key=lambda evaluation: rankings.get(evaluation.model, math.inf),
     )
     return evaluations
 
