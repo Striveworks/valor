@@ -7,7 +7,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend import core, models
+from velour_api.backend import core, models, query
 from velour_api.backend.metrics.core import (
     create_metric_mappings,
     get_or_create_row,
@@ -101,8 +101,8 @@ def compute_detection_metrics(
     dataset: models.Dataset,
     model: models.Model,
     settings: schemas.EvaluationSettings,
-    gt_type: enums.AnnotationType,
-    pd_type: enums.AnnotationType,
+    groundtruth_type: enums.AnnotationType,
+    prediction_type: enums.AnnotationType,
 ) -> list[
     schemas.APMetric
     | schemas.APMetricAveragedOverIOUs
@@ -131,8 +131,8 @@ def compute_detection_metrics(
         db,
         dataset=dataset,
         model=model,
-        dataset_source_type=gt_type,
-        model_source_type=pd_type,
+        dataset_source_type=groundtruth_type,
+        model_source_type=prediction_type,
         evaluation_target_type=target_type,
     )
 
@@ -397,9 +397,13 @@ def _get_annotation_type_for_computation(
     annotation_filter: schemas.AnnotationFilter | None = None,
 ) -> AnnotationType:
     # get dominant type
-    gt_type = core.get_annotation_type(db, dataset, None)
-    pd_type = core.get_annotation_type(db, dataset, model)
-    gct = gt_type if gt_type < pd_type else pd_type
+    groundtruth_type = core.get_annotation_type(db, dataset, None)
+    prediction_type = core.get_annotation_type(db, dataset, model)
+    gct = (
+        groundtruth_type
+        if groundtruth_type < prediction_type
+        else prediction_type
+    )
     if annotation_filter.annotation_types:
         if gct not in annotation_filter.annotation_types:
             sorted_types = sorted(
@@ -409,11 +413,11 @@ def _get_annotation_type_for_computation(
             )
             for annotation_type in sorted_types:
                 if gct <= annotation_type:
-                    return annotation_type, gt_type, pd_type
+                    return annotation_type, groundtruth_type, prediction_type
             raise RuntimeError(
-                f"Annotation type filter is too restrictive. Attempted filter `{gct}` over `{gt_type, pd_type}`."
+                f"Annotation type filter is too restrictive. Attempted filter `{gct}` over `{groundtruth_type, prediction_type}`."
             )
-    return gct, gt_type, pd_type
+    return gct, groundtruth_type, prediction_type
 
 
 def create_detection_evaluation(
@@ -441,18 +445,28 @@ def create_detection_evaluation(
         )
 
     # annotation types
-    gct, gt_type, pd_type = _get_annotation_type_for_computation(
+    (
+        gct,
+        groundtruth_type,
+        prediction_type,
+    ) = _get_annotation_type_for_computation(
         db, dataset, model, job_request.settings.filters.annotations
     )
 
-    # update settings
+    # preupdate settings
     job_request.settings.task_type = enums.TaskType.DETECTION
+    job_request.settings.filters.models = None
+    job_request.settings.filters.datasets = [job_request.dataset]
+    job_request.settings.filters.annotations.task_types = [
+        enums.TaskType.DETECTION
+    ]
     job_request.settings.filters.annotations.annotation_types = [gct]
     # This overrides user selection.
     job_request.settings.filters.annotations.allow_conversion = (
-        gt_type == pd_type
+        groundtruth_type == prediction_type
     )
 
+    # create evaluation settings row
     es = get_or_create_row(
         db,
         models.Evaluation,
@@ -463,7 +477,25 @@ def create_detection_evaluation(
         },
     )
 
-    return es.id, gt_type, pd_type
+    # create groundtruth label filter
+    groundtruth_label_filter = job_request.settings.filters.model_copy()
+    groundtruth_label_filter.annotations.annotation_types = [groundtruth_type]
+
+    # create prediction label filter
+    prediction_label_filter = job_request.settings.filters.model_copy()
+    prediction_label_filter.annotations.annotation_types = [prediction_type]
+
+    # get disjoint label sets
+    groundtruth_labels = query.get_groundtruth_labels(
+        db, groundtruth_label_filter
+    )
+    prediction_labels = query.get_prediction_labels(
+        db, prediction_label_filter
+    )
+    groundtruth_unique = list(groundtruth_labels - prediction_labels)
+    prediction_unique = list(prediction_labels - groundtruth_labels)
+
+    return es.id, groundtruth_unique, prediction_unique
 
 
 def create_detection_metrics(
@@ -477,16 +509,16 @@ def create_detection_metrics(
 
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)
-    gt_type = core.get_annotation_type(db, dataset, None)
-    pd_type = core.get_annotation_type(db, dataset, model)
+    groundtruth_type = core.get_annotation_type(db, dataset, None)
+    prediction_type = core.get_annotation_type(db, dataset, model)
 
     metrics = compute_detection_metrics(
         db=db,
         dataset=dataset,
         model=model,
         settings=job_request.settings,
-        gt_type=gt_type,
-        pd_type=pd_type,
+        groundtruth_type=groundtruth_type,
+        prediction_type=prediction_type,
     )
 
     metric_mappings = create_metric_mappings(

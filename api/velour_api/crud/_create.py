@@ -143,19 +143,9 @@ def create_detection_evaluation(
     # create evaluation setting
     (
         job_id,
-        groundtruth_type,
-        prediction_type,
+        missing_pred_labels,
+        ignored_pred_labels,
     ) = backend.create_detection_evaluation(db, job_request)
-
-    # get disjoint label sets
-    missing_pred_labels, ignored_pred_labels = get_disjoint_labels(
-        db=db,
-        dataset_name=job_request.dataset,
-        model_name=job_request.model,
-        task_types=[enums.TaskType.DETECTION],
-        groundtruth_type=groundtruth_type,
-        prediction_type=prediction_type,
-    )
 
     # create response
     return schemas.CreateAPMetricsResponse(
