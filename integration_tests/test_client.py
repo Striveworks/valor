@@ -21,23 +21,16 @@ from geoalchemy2.functions import (
 from sqlalchemy import and_, create_engine, func, select, text
 from sqlalchemy.orm import Session
 
-from velour import (
-    Annotation,
-    Dataset,
-    Datum,
-    GroundTruth,
-    ImageMetadata,
-    Label,
-    Model,
-    Prediction,
-)
+from velour import Annotation, Dataset, Datum, GroundTruth, Model, Prediction
 from velour.client import Client, ClientException
 from velour.data_generation import _generate_mask
 from velour.enums import DataType, JobStatus, TaskType
+from velour.metatypes import ImageMetadata
 from velour.schemas import (
     BasicPolygon,
     BoundingBox,
     GeoJSON,
+    Label,
     MultiPolygon,
     Point,
     Polygon,

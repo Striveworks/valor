@@ -4,19 +4,10 @@ from typing import Tuple
 import numpy as np
 from tqdm import tqdm
 
-from velour import (
-    Annotation,
-    Dataset,
-    GroundTruth,
-    ImageMetadata,
-    Label,
-    Prediction,
-    enums,
-)
+from velour import Annotation, Dataset, GroundTruth, Model, Prediction, enums
 from velour.client import Client
-from velour.client import Dataset as VelourDataset
-from velour.client import Model as VelourModel
-from velour.schemas import BoundingBox, Raster
+from velour.metatypes import ImageMetadata
+from velour.schemas import BoundingBox, Label, Raster
 
 
 def _sample_without_replacement(array: list, n: int) -> list:
@@ -209,7 +200,7 @@ def generate_segmentation_data(
     n_images: int = 10,
     n_annotations: int = 10,
     n_labels: int = 2,
-) -> VelourDataset:
+) -> Dataset:
     """
     Generate a synthetic velour dataset given a set of input images
 
@@ -226,7 +217,7 @@ def generate_segmentation_data(
     n_labels
         The number of labels per annotation you'd like your dataset to contain
     """
-    dataset = VelourDataset.create(client, dataset_name)
+    dataset = Dataset.create(client, dataset_name)
 
     unique_image_ids = list(range(n_images))
     for _ in tqdm(range(n_images)):
@@ -268,7 +259,7 @@ def generate_prediction_data(
     n_labels
         The number of labels per annotation you'd like your dataset to contain
     """
-    model = VelourModel.create(client, model_name)
+    model = Model.create(client, model_name)
 
     datums = dataset.get_datums()
 

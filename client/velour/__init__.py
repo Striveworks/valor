@@ -12,8 +12,6 @@ except importlib_metadata.PackageNotFoundError:
 
 from .client import Dataset, Evaluation, Model
 from .coretypes import Annotation, Datum, GroundTruth, Prediction
-from .metatypes import ImageMetadata, VideoFrameMetadata
-from .schemas import Label
 
 __all__ = [
     "Evaluation",
@@ -23,7 +21,4 @@ __all__ = [
     "Annotation",
     "GroundTruth",
     "Prediction",
-    "Label",
-    "ImageMetadata",
-    "VideoFrameMetadata",
 ]

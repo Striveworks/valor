@@ -4,7 +4,8 @@ import numpy
 import PIL
 from PIL.Image import Resampling
 
-from velour import Annotation, ImageMetadata, Prediction, enums
+from velour import Annotation, Prediction, enums
+from velour.metatypes import ImageMetadata
 from velour.schemas import BoundingBox, Label, Raster
 
 

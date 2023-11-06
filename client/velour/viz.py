@@ -4,14 +4,8 @@ from typing import Dict, List, Tuple, Union
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from velour import (
-    Annotation,
-    GroundTruth,
-    ImageMetadata,
-    Prediction,
-    enums,
-    schemas,
-)
+from velour import Annotation, GroundTruth, Prediction, enums, schemas
+from velour.metatypes import ImageMetadata
 
 # https://sashat.me/2017/01/11/list-of-20-simple-distinct-colors/
 COLOR_MAP = [
