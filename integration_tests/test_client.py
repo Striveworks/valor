@@ -2007,12 +2007,19 @@ def test_get_ranked_evaluations(
             dataset_name=dset_name, metric="fake_metric_name"
         )
 
-    # test bad parameter and filter
+    # test bad parameters
     with pytest.raises(ClientException):
         ranked_evaluations = client.get_ranked_evaluations(
             dataset_name=dset_name,
             metric="mAP",
             parameters={"iou": 0.5},
+        )
+
+    with pytest.raises(ClientException):
+        ranked_evaluations = client.get_ranked_evaluations(
+            dataset_name=dset_name,
+            metric="mAP",
+            parameters={"iou": [0.1, 0.6]},
         )
 
     # test incorrect filters

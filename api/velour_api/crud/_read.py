@@ -183,7 +183,7 @@ def get_ranked_evaluations(
         dataset_names=[dataset_name], db=db, model_names=[]
     )
 
-    model_max_values = collections.defaultdict(float)
+    model_values = collections.defaultdict(float)
     for evaluation in evaluations:
         if (
             not label_keys
@@ -197,17 +197,22 @@ def get_ranked_evaluations(
                         nested_dict=evaluation_metric.parameters,
                     )
                 ):
-                    model_max_values[evaluation.model] = max(
-                        evaluation_metric.value,
-                        model_max_values[evaluation.model],
-                    )
+                    # we should only find one metric per model
+                    if evaluation.model in model_values:
+                        raise ValueError(
+                            "Found multiple metrics per model with the specified label_keys and parameters"
+                        )
+                    else:
+                        model_values[
+                            evaluation.model
+                        ] = evaluation_metric.value
 
     rankings = {
         key: rank
         for rank, key in enumerate(
             sorted(
-                model_max_values,
-                key=model_max_values.get,
+                model_values,
+                key=model_values.get,
                 reverse=rank_from_highest_value_to_lowest_value,
             ),
             1,
