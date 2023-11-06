@@ -1,8 +1,8 @@
 from typing import Tuple
 
-from velour import enums
+from velour import Annotation, Datum, Prediction, enums
 from velour.client import Client, ClientException, Model
-from velour.schemas import Annotation, BoundingBox, Datum, Label, Prediction
+from velour.schemas import BoundingBox, Label
 
 
 def _parse_chariot_predict_image_classification(
@@ -123,10 +123,12 @@ def create_model_from_chariot(
     return Model.create(
         client=client,
         name=model.id,
-        integration="chariot",
-        title=model.name,
-        description=model._meta.summary,
-        project_id=model.project_id,
+        metadata={
+            "integration": "chariot",
+            "title": model.name,
+            "description": model._meta.summary,
+            "project_id": model.project_id,
+        },
     )
 
 

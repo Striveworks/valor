@@ -5,19 +5,9 @@ import tempfile
 import requests
 from tqdm import tqdm
 
-from velour import enums
+from velour import Annotation, Datum, GroundTruth, enums
 from velour.client import Client, ClientException, Dataset
-from velour.schemas import (
-    Annotation,
-    BasicPolygon,
-    BoundingBox,
-    Datum,
-    GroundTruth,
-    Label,
-    Metadatum,
-    Point,
-    Polygon,
-)
+from velour.schemas import BasicPolygon, BoundingBox, Label, Point, Polygon
 
 
 def _retrieve_dataset_version(
@@ -195,7 +185,9 @@ def _parse_groundtruth_from_evaluation_manifest(
     return GroundTruth(
         datum=Datum(
             uid=manifest_datum["datum_id"],
-            metadata=[Metadatum(key="path", value=manifest_datum["path"])],
+            metadata={
+                "path": manifest_datum["path"],
+            },
         ),
         annotations=[
             _parse_annotation(dataset_version, annotation)

@@ -11,7 +11,8 @@ from velour.integrations.chariot.models import (
     _parse_chariot_predict_image_classification,
     _parse_chariot_predict_proba_image_classification,
 )
-from velour.schemas import BoundingBox, ImageMetadata, Point
+from velour.metatypes import ImageMetadata
+from velour.schemas import BoundingBox, Point
 
 chariot_integration = pytest.importorskip("velour.integrations.chariot")
 

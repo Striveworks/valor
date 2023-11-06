@@ -4,7 +4,7 @@ that is no auth
 import io
 import json
 from dataclasses import asdict
-from typing import Any
+from typing import Any, Dict, Union
 
 import numpy as np
 import pandas
@@ -21,22 +21,19 @@ from geoalchemy2.functions import (
 from sqlalchemy import and_, create_engine, func, select, text
 from sqlalchemy.orm import Session
 
-from velour.client import Client, ClientException, Dataset, Model
+from velour import Annotation, Dataset, Datum, GroundTruth, Model, Prediction
+from velour.client import Client, ClientException
 from velour.data_generation import _generate_mask
 from velour.enums import DataType, JobStatus, TaskType
+from velour.metatypes import ImageMetadata
 from velour.schemas import (
-    Annotation,
     BasicPolygon,
     BoundingBox,
-    Datum,
-    GroundTruth,
-    ImageMetadata,
+    GeoJSON,
     Label,
-    Metadatum,
     MultiPolygon,
     Point,
     Polygon,
-    Prediction,
     Raster,
 )
 from velour_api import exceptions
@@ -105,18 +102,11 @@ def random_mask(img: ImageMetadata) -> np.ndarray:
 @pytest.fixture
 def metadata():
     """Some sample metadata of different types"""
-    return [
-        # Metadatum(
-        #     key="metadatum name1",
-        #     value=GeoJSON(
-        #         type="Point",
-        #         coordinates=[-48.23456, 20.12345],
-        #     )
-        # ),
-        Metadatum(key="metadatum1", value="temporary"),
-        Metadatum(key="metadatum2", value="a string"),
-        Metadatum(key="metadatum3", value=0.45),
-    ]
+    return {
+        "metadatum1": "temporary",  # GEOJSON
+        "metadatum2": "a string",
+        "metadatum3": 0.45,
+    }
 
 
 @pytest.fixture
@@ -860,7 +850,14 @@ def test_create_image_dataset_with_href_and_description(
 ):
     href = "http://a.com/b"
     description = "a description"
-    Dataset.create(client, dset_name, href=href, description=description)
+    Dataset.create(
+        client,
+        dset_name,
+        metadata={
+            "href": href,
+            "description": description,
+        },
+    )
 
     dataset_id = db.scalar(
         select(models.Dataset.id).where(models.Dataset.name == dset_name)
@@ -879,7 +876,14 @@ def test_create_image_dataset_with_href_and_description(
 def test_create_model_with_href_and_description(client: Client, db: Session):
     href = "http://a.com/b"
     description = "a description"
-    Model.create(client, model_name, href=href, description=description)
+    Model.create(
+        client,
+        model_name,
+        metadata={
+            "href": href,
+            "description": description,
+        },
+    )
 
     model_id = db.scalar(
         select(models.Model.id).where(models.Model.name == model_name)
@@ -1973,19 +1977,23 @@ def test_evaluate_segmentation(
 def test_create_tabular_dataset_and_add_groundtruth(
     client: Client,
     db: Session,
-    metadata: list[Metadatum],
+    metadata: Dict[str, Union[float, int, str, GeoJSON]],
 ):
     dataset = Dataset.create(client, name=dset_name)
     assert isinstance(dataset, Dataset)
 
-    md1, md2, md3 = metadata
+    md1 = {"metadatum1": metadata["metadatum1"]}
+    md23 = {
+        "metadatum2": metadata["metadatum2"],
+        "metadatum3": metadata["metadatum3"],
+    }
 
     gts = [
         GroundTruth(
             datum=Datum(
                 dataset=dset_name,
                 uid="uid1",
-                metadata=[md1],
+                metadata=md1,
             ),
             annotations=[
                 Annotation(
@@ -2001,7 +2009,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
             datum=Datum(
                 dataset=dset_name,
                 uid="uid2",
-                metadata=[md2, md3],
+                metadata=md23,
             ),
             annotations=[
                 Annotation(
@@ -2463,7 +2471,9 @@ def test_get_dataset(
 
     # check get
     fetched_dataset = Dataset.get(client, dset_name)
-    assert fetched_dataset.info == dataset.info
+    assert fetched_dataset.id == dataset.id
+    assert fetched_dataset.name == dataset.name
+    assert fetched_dataset.metadata == dataset.metadata
 
     client.delete_dataset(dset_name, timeout=30)
 
