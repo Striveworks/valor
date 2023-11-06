@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Union
+from typing import List, Union
 
 from velour.enums import AnnotationType
 from velour.schemas.filters import (
@@ -119,7 +119,7 @@ class DeclarativeMapper:
             operator=">=",
         )
 
-    def in_(self, __values: list[object]) -> list[BinaryExpression]:
+    def in_(self, __values: List[object]) -> List[BinaryExpression]:
         if not isinstance(__values, list):
             raise TypeError("`in_` takes a list as input.")
         for value in __values:
@@ -137,7 +137,7 @@ class Geometry:
         )
 
 
-def create_filter(expressions: list[BinaryExpression]) -> Filter:
+def create_filter(expressions: List[BinaryExpression]) -> Filter:
     """
     Parses a list of `BinaryExpression` to create a `schemas.Filter` object.
     """
