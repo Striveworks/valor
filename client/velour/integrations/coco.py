@@ -8,10 +8,10 @@ import numpy as np
 import PIL.Image
 from tqdm import tqdm
 
-from velour import Annotation, GroundTruth, enums
+from velour import Annotation, GroundTruth, Label, enums
 from velour.client import Dataset
 from velour.metatypes import ImageMetadata
-from velour.schemas import Label, Raster
+from velour.schemas import Raster
 
 
 def coco_rle_to_mask(coco_rle_seg_dict: Dict[str, Any]) -> np.ndarray:

@@ -5,9 +5,9 @@ import tempfile
 import requests
 from tqdm import tqdm
 
-from velour import Annotation, Datum, GroundTruth, enums
+from velour import Annotation, Datum, GroundTruth, Label, enums
 from velour.client import Client, ClientException, Dataset
-from velour.schemas import BasicPolygon, BoundingBox, Label, Point, Polygon
+from velour.schemas import BasicPolygon, BoundingBox, Point, Polygon
 
 
 def _retrieve_dataset_version(

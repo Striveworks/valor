@@ -1,8 +1,8 @@
 import PIL.Image
 
+from velour.coretypes import Label
 from velour.enums import TaskType
 from velour.integrations.coco import _merge_annotations, coco_rle_to_mask
-from velour.schemas import Label
 
 
 def test__merge_annotations():
