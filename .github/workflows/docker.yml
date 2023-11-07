@@ -11,6 +11,7 @@ on:
 permissions:
   id-token: write
   contents: read
+  packages: write
 
 jobs:
   build-and-publish-docker:
@@ -20,7 +21,9 @@ jobs:
         working-directory: ./api
     env:
       IMAGE_NAME: ghcr.io/striveworks/velour/velour-service
+      ECR_IMAGE_NAME: 724664234782.dkr.ecr.us-east-1.amazonaws.com/library/velour/velour-service
       IMAGE_NAME_WITH_COMMIT_HASH: $IMAGE_NAME:${{ github.sha }}
+      ECR_IMAGE_NAME_WITH_COMMIT_HASH: $ECR_IMAGE_NAME:${{ github.sha }}
     steps:
       - uses: actions/checkout@v3
       - uses: aws-actions/configure-aws-credentials@v1
@@ -44,3 +47,16 @@ jobs:
           TAG=$(git describe --tags --abbrev=0)
           docker tag $IMAGE_NAME $IMAGE_NAME:$TAG
           docker push $IMAGE_NAME:$TAG
+      - name: push to ecr
+        run: |
+          #docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+          docker push $ECR_IMAGE_NAME
+          ECR_IMAGE_NAME_WITH_COMMIT_HASH=$IMAGE_NAME:${{ github.sha }}
+          docker tag $ECR_IMAGE_NAME $ECR_IMAGE_NAME_WITH_COMMIT_HASH
+          docker push $ECR_IMAGE_NAME_WITH_COMMIT_HASH
+      - name: push git tag to ecr
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG=$(git describe --tags --abbrev=0)
+          docker tag $ECR_IMAGE_NAME $ECR_IMAGE_NAME:$TAG
+          docker push $ECR_IMAGE_NAME:$TAG
