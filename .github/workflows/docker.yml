@@ -8,14 +8,6 @@ on:
         required: false
         type: string
 
-  push:
-    paths:
-      - api/**
-      - .github/workflows/docker.yml
-    branches: [main]
-    tags:
-      - "v*"
-
 jobs:
   build-and-publish-docker:
     runs-on: ubuntu-latest
