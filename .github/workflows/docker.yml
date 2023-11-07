@@ -1,12 +1,13 @@
 name: Builds and publishes a docker image for the backend service
 
 on:
-  workflow_dispatch:
-    inputs:
-      dummy:
-        description: "Dummy input"
-        required: false
-        type: string
+  push:
+    paths:
+      - api/**
+      - .github/workflows/docker.yml
+    branches: [main]
+    tags:
+      - "v*"
 
 permissions:
   id-token: write
