@@ -1,6 +1,13 @@
 name: Builds and publishes a docker image for the backend service
 
 on:
+  workflow_dispatch:
+    inputs:
+      dummy:
+        description: "Dummy input"
+        required: false
+        type: string
+
   push:
     paths:
       - api/**
@@ -22,8 +29,8 @@ jobs:
       - uses: actions/checkout@v3
       - uses: aws-actions/configure-aws-credentials@v1
         with:
-          role-to-assume: 
-          aws-region: ${{ secrets.AWS_ROLE_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          aws-region: ${{ secrets.AWS_ECR_REGION }}
       - name: build
         run: |
           docker build . -t $IMAGE_NAME
