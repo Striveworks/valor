@@ -47,9 +47,10 @@ jobs:
           TAG=$(git describe --tags --abbrev=0)
           docker tag $IMAGE_NAME $IMAGE_NAME:$TAG
           docker push $IMAGE_NAME:$TAG
+      - uses: aws-actions/amazon-ecr-login@v1
+        id: login-ecr
       - name: push to ecr
         run: |
-          #docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
           docker push $ECR_IMAGE_NAME
           ECR_IMAGE_NAME_WITH_COMMIT_HASH=$IMAGE_NAME:${{ github.sha }}
           docker tag $ECR_IMAGE_NAME $ECR_IMAGE_NAME_WITH_COMMIT_HASH
