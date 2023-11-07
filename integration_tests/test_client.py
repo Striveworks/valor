@@ -1488,7 +1488,7 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.type == AnnotationType.BOX,
         ],
         timeout=30,
     )
@@ -1583,9 +1583,9 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-            Annotation.box.area >= 10,
-            Annotation.box.area <= 2000,
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 10,
+            Annotation.geometric_area <= 2000,
         ],
         timeout=30,
     )
@@ -1637,8 +1637,8 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-            Annotation.box.area >= 1200,
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 1200,
         ],
         timeout=30,
     )
@@ -1683,8 +1683,8 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-            Annotation.box.area <= 1200,
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area <= 1200,
         ],
         timeout=30,
     )
@@ -1728,9 +1728,9 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-            Annotation.box.area >= 1200,
-            Annotation.box.area <= 1800,
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 1200,
+            Annotation.geometric_area <= 1800,
         ],
         timeout=30,
     )
@@ -1843,8 +1843,8 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-            Annotation.box.area >= 1200,
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 1200,
         ],
         timeout=30,
     )
@@ -1954,7 +1954,7 @@ def test_get_bulk_evaluations(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.type == AnnotationType.BOX,
         ],
         timeout=30,
     )
@@ -2072,7 +2072,7 @@ def test_get_bulk_evaluations(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.type == AnnotationType.BOX,
         ],
         timeout=30,
     )
@@ -2150,7 +2150,7 @@ def test_get_ranked_evaluations(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.type == AnnotationType.BOX,
         ],
         timeout=30,
     )
@@ -2168,7 +2168,7 @@ def test_get_ranked_evaluations(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.type == AnnotationType.BOX,
         ],
         timeout=30,
     )
@@ -2186,8 +2186,8 @@ def test_get_ranked_evaluations(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-            Annotation.box.area <= 30 * 300,
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area <= 30 * 300.0,
         ],
         timeout=30,
     )

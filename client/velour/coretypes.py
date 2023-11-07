@@ -104,7 +104,7 @@ class Datum:
 
 
 class Annotation:
-    task_type = DeclarativeMapper("task_types", TaskType)
+    task = DeclarativeMapper("task_types", TaskType)
     type = DeclarativeMapper("annotation_types", AnnotationType)
     geometric_area = DeclarativeMapper("annotation_geometric_area", float)
     metadata = DeclarativeMapper("annotation_metadata", Union[int, float, str])

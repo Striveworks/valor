@@ -51,6 +51,16 @@ class DeclarativeMapper:
         self.key = key
         self.object_type = object_type
 
+    def _validate(self, value, exclude=None, name: str = None):
+        # if isinstance(value, str):
+        #     raise TypeError("f`{name}` does not support type `str`")
+        if self.object_type == float and isinstance(value, int):
+            return  # edge case
+        if not isinstance(value, self.object_type):
+            raise ValueError(
+                f"`{self.name}` should be of type `{self.object_type}`"
+            )
+
     def __getitem__(self, key: str):
         return DeclarativeMapper(
             name=self.name,
@@ -59,10 +69,9 @@ class DeclarativeMapper:
         )
 
     def __eq__(self, __value: object) -> BinaryExpression:
-        if not isinstance(__value, self.object_type):
-            raise ValueError(
-                f"`{self.name}` should be of type `{self.object_type}`"
-            )
+        self._validate(
+            __value,
+        )
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -71,10 +80,7 @@ class DeclarativeMapper:
         )
 
     def __ne__(self, __value: object) -> BinaryExpression:
-        if not isinstance(__value, self.object_type):
-            raise ValueError(
-                f"`{self.name}` should be of type `{self.object_type}`"
-            )
+        self._validate(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -83,12 +89,8 @@ class DeclarativeMapper:
         )
 
     def __lt__(self, __value: object) -> BinaryExpression:
-        if isinstance(__value, str):
-            raise TypeError("`__lt__` does not support type `str`")
-        if not isinstance(__value, self.object_type):
-            raise ValueError(
-                f"`{self.name}` should be of type `{self.object_type}`"
-            )
+
+        self._validate(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -99,10 +101,7 @@ class DeclarativeMapper:
     def __gt__(self, __value: object) -> BinaryExpression:
         if isinstance(__value, str):
             raise TypeError("`__gt__` does not support type `str`")
-        if not isinstance(__value, self.object_type):
-            raise ValueError(
-                f"`{self.name}` should be of type `{self.object_type}`"
-            )
+        self._validate(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -113,10 +112,7 @@ class DeclarativeMapper:
     def __le__(self, __value: object) -> BinaryExpression:
         if isinstance(__value, str):
             raise TypeError("`__le__` does not support type `str`")
-        if not isinstance(__value, self.object_type):
-            raise ValueError(
-                f"`{self.name}` should be of type `{self.object_type}`"
-            )
+        self._validate(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -127,10 +123,7 @@ class DeclarativeMapper:
     def __ge__(self, __value: object) -> BinaryExpression:
         if isinstance(__value, str):
             raise TypeError("`__ge__` does not support type `str`")
-        if not isinstance(__value, self.object_type):
-            raise ValueError(
-                f"`{self.name}` should be of type `{self.object_type}`"
-            )
+        self._validate(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -305,7 +298,7 @@ class Filter:
             ]
         if "label_keys" in expression_dict:
             filter_request.label_keys = [
-                expr.value for expre in expression_dict["label_keys"]
+                expr.value for expr in expression_dict["label_keys"]
             ]
 
         return filter_request
