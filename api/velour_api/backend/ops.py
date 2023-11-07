@@ -5,7 +5,7 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression
 
-from velour_api import enums, schemas
+from velour_api import enums
 from velour_api.backend import models
 from velour_api.schemas import Filter, NumericFilter, StringFilter
 

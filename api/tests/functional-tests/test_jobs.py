@@ -371,10 +371,8 @@ def test_stateflow_model(db: Session):
                         iou_thresholds_to_keep=[0.2],
                     ),
                     filters=schemas.Filter(
-                        annotations=schemas.AnnotationFilter(
-                            annotation_types=[enums.AnnotationType.BOX]
-                        ),
-                        labels=schemas.LabelFilter(keys=["class"]),
+                        annotation_types=[enums.AnnotationType.BOX],
+                        label_keys=["class"],
                     ),
                 ),
             ),
