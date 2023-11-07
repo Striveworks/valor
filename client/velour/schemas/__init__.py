@@ -1,19 +1,4 @@
 from .evaluation import DetectionParameters, EvaluationJob, EvaluationSettings
-from .filters import (
-    AnnotationFilter,
-    DatasetFilter,
-    DatumFilter,
-    Filter,
-    GeometricAnnotationFilter,
-    GeospatialFilter,
-    JSONAnnotationFilter,
-    KeyValueFilter,
-    LabelFilter,
-    ModelFilter,
-    NumericFilter,
-    PredictionFilter,
-    StringFilter,
-)
 from .geometry import (
     BasicPolygon,
     BoundingBox,
@@ -24,11 +9,9 @@ from .geometry import (
     Raster,
 )
 from .geospatial import GeoJSON
-from .label import Label
 from .metadata import validate_metadata
 
 __all__ = [
-    "Label",
     "Box",
     "BasicPolygon",
     "Point",

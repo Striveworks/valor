@@ -1,8 +1,8 @@
 from typing import Tuple
 
-from velour import Annotation, Datum, Prediction, enums
+from velour import Annotation, Datum, Label, Prediction, enums
 from velour.client import Client, ClientException, Model
-from velour.schemas import BoundingBox, Label
+from velour.schemas import BoundingBox
 
 
 def _parse_chariot_predict_image_classification(

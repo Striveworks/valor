@@ -4,10 +4,18 @@ from typing import Tuple
 import numpy as np
 from tqdm import tqdm
 
-from velour import Annotation, Dataset, GroundTruth, Model, Prediction, enums
+from velour import (
+    Annotation,
+    Dataset,
+    GroundTruth,
+    Label,
+    Model,
+    Prediction,
+    enums,
+)
 from velour.client import Client
 from velour.metatypes import ImageMetadata
-from velour.schemas import BoundingBox, Label, Raster
+from velour.schemas import BoundingBox, Raster
 
 
 def _sample_without_replacement(array: list, n: int) -> list:
