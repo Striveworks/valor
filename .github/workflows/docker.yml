@@ -20,6 +20,10 @@ jobs:
       IMAGE_NAME_WITH_COMMIT_HASH: $IMAGE_NAME:${{ github.sha }}
     steps:
       - uses: actions/checkout@v3
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: 
+          aws-region: ${{ secrets.AWS_ROLE_REGION }}
       - name: build
         run: |
           docker build . -t $IMAGE_NAME
