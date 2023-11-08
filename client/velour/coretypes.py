@@ -69,6 +69,7 @@ class Datum:
     id = DeclarativeMapper("datum.id", int)
     uid = DeclarativeMapper("datum.uid", str)
     metadata = DeclarativeMapper("datum.metadata", Union[int, float, str])
+    # TODO
     geo_metadata = DeclarativeMapper(
         "datum.metadata", Union[int, float, str]
     )  # is this right? what does this do?
@@ -77,7 +78,7 @@ class Datum:
         self,
         uid: str,
         metadata: Dict[str, Union[int, float, str]] = None,
-        geo_metadata: dict[str, list[list[float]]] | None = None,
+        geo_metadata: dict[str, list[list[list[float]]]] | None = None,
         dataset: str = "",
     ):
         self.uid = uid

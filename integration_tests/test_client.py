@@ -173,6 +173,8 @@ def test_geo_datums(
 
     assert dets1.datum.geo_metadata == expected_coords[0]
 
+    # TODO add geo filter tests
+
 
 @pytest.fixture
 def img2() -> ImageMetadata:
