@@ -44,9 +44,14 @@ def create_datum(
     db: Session,
     datum: schemas.Datum,
 ) -> models.Datum:
-
     # retrieve dataset
     dataset = get_dataset(db, datum.dataset)
+
+    shape = (
+        schemas.GeoJSON.from_dict(data=datum.geo_metadata).shape().wkt()
+        if datum.geo_metadata
+        else None
+    )
 
     # create datum
     try:
@@ -54,6 +59,7 @@ def create_datum(
             uid=datum.uid,
             dataset_id=dataset.id,
             meta=datum.metadata,
+            geo=shape,
         )
         db.add(row)
         db.commit()

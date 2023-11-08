@@ -52,8 +52,16 @@ def get_datums(
 ) -> list[schemas.Datum]:
     """Get datums, optional filter."""
     q = ops.Query(models.Datum).filter(filters).any()
-    return list(
-        {
+    datums = db.query(q).all()
+
+    output = []
+
+    for datum in datums:
+        geojson = (
+            schemas.GeoJSON.from_wkt(datum.geo).to_dict() if datum.geo else {}
+        )
+
+        output.append(
             schemas.Datum(
                 dataset=db.scalar(
                     select(models.Dataset.name).where(
@@ -62,10 +70,10 @@ def get_datums(
                 ),
                 uid=datum.uid,
                 metadata=datum.meta,
+                geo_metadata=geojson,
             )
-            for datum in db.query(q).all()
-        }
-    )
+        )
+    return output
 
 
 def delete_dataset(

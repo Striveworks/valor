@@ -44,11 +44,17 @@ def get_groundtruth(
     # retrieve from table
     dataset = core.get_dataset(db, name=dataset_name)
     datum = core.get_datum(db, dataset_id=dataset.id, uid=datum_uid)
+
+    geojson = (
+        schemas.GeoJSON.from_wkt(datum.geo).to_dict() if datum.geo else {}
+    )
+
     return schemas.GroundTruth(
         datum=schemas.Datum(
             uid=datum.uid,
             dataset=dataset_name,
             metadata=datum.meta,
+            geo_metadata=geojson,
         ),
         annotations=core.get_annotations(db, datum),
     )

@@ -64,4 +64,4 @@ def metadata() -> dict:
         "a": 1234,
         "b": 1.234,
         "c": "1234",
-    }  # "d": GeoJSON
+    }

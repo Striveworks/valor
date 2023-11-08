@@ -77,6 +77,7 @@ class Datum(BaseModel):
     uid: str
     dataset: str
     metadata: dict[str, float | str] = Field(default_factory=dict)
+    geo_metadata: dict[str, tuple | str] = Field(default_factory=dict)
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("uid")
@@ -102,10 +103,16 @@ class Datum(BaseModel):
             not hasattr(other, "uid")
             or not hasattr(other, "dataset")
             or not hasattr(other, "metadata")
+            or not hasattr(other, "geo_metadata")
         ):
             return False
 
-        return self.uid == other.uid and self.dataset == other.dataset
+        return (
+            self.uid == other.uid
+            and self.dataset == other.dataset
+            and self.geo_metadata == other.geo_metadata
+            and self.metadata == other.geo_metadata
+        )
 
     def __hash__(self) -> int:
         return hash(f"uid:{self.uid},dataset:{self.dataset}")

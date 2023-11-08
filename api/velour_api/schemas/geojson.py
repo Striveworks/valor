@@ -1,5 +1,4 @@
-import json
-
+from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, field_validator
 
 from velour_api.schemas.geometry import (
@@ -32,6 +31,9 @@ class GeoJSONPoint(BaseModel):
             y=self.coordinates[1],
         )
 
+    def to_dict(self):
+        raise NotImplementedError()
+
 
 class GeoJSONPolygon(BaseModel):
     type: str
@@ -56,6 +58,9 @@ class GeoJSONPolygon(BaseModel):
             boundary=polygons[0],
             holes=polygons[1:] if len(polygons) > 1 else None,
         )
+
+    def to_dict(self) -> Polygon:
+        return {"type": "Polygon", "coordinates": self.coordinates}
 
 
 class GeoJSONMultiPolygon(BaseModel):
@@ -87,14 +92,16 @@ class GeoJSONMultiPolygon(BaseModel):
             raise ValueError("Incorrect geometry type.")
         return MultiPolygon(polygons=multipolygons)
 
+    def to_dict(self):
+        raise NotImplementedError()
+
 
 # GeoJSON Standard
 class GeoJSON(BaseModel):
     geometry: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon
 
     @classmethod
-    def from_json(cls, geojson: str):
-        data = json.loads(geojson)
+    def from_dict(cls, data: dict):
         if "type" not in data:
             raise ValueError("missing geojson type")
         if "coordinates" not in data:
@@ -107,7 +114,35 @@ class GeoJSON(BaseModel):
         elif data["type"] == "MultiPolygon":
             return cls(geometry=GeoJSONMultiPolygon(**data))
         else:
-            raise ValueError("Unsupported json.")
+            raise ValueError("Unsupported type.")
+
+    @classmethod
+    def from_wkt(cls, wkt: str):
+        wkt_str = to_shape(wkt).wkt
+
+        if "point" in wkt_str.lower():
+            # TODO might be incorrect
+            start_index = 7
+            geometry = "Point"
+        elif "polygon" in wkt_str.lower():
+            start_index = 10
+            geometry = "Polygon"
+        elif "multipolygon" in wkt_str.lower():
+            start_index = 13
+            geometry = "MultiPolygon"
+        else:
+            raise ValueError("Unsupported type.")
+
+        wkt_split = wkt_str[start_index:-2].split(",")
+
+        coordinates = [
+            [
+                tuple(map(float, coord_str.strip().split()))
+                for coord_str in wkt_split
+            ]
+        ]
+
+        return cls.from_dict({"type": geometry, "coordinates": coordinates})
 
     def shape(self):
         if isinstance(self.geometry, GeoJSONPoint):
@@ -116,5 +151,15 @@ class GeoJSON(BaseModel):
             return self.geometry.polygon()
         elif isinstance(self.geometry, GeoJSONMultiPolygon):
             return self.geometry.multipolygon()
+        else:
+            raise ValueError
+
+    def to_dict(self):
+        if isinstance(self.geometry, GeoJSONPoint):
+            return self.geometry.to_dict()
+        elif isinstance(self.geometry, GeoJSONPolygon):
+            return self.geometry.to_dict()
+        elif isinstance(self.geometry, GeoJSONMultiPolygon):
+            return self.geometry.to_dict()
         else:
             raise ValueError

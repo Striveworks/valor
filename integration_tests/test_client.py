@@ -37,7 +37,6 @@ from velour.metatypes import ImageMetadata
 from velour.schemas import (
     BasicPolygon,
     BoundingBox,
-    GeoJSON,
     MultiPolygon,
     Point,
     Polygon,
@@ -123,7 +122,56 @@ def client():
 
 @pytest.fixture
 def img1() -> ImageMetadata:
-    return ImageMetadata(dataset=dset_name, uid="uid1", height=900, width=300)
+    coordinates = [
+        [
+            [125.2750725, 38.760525],
+            [125.3902365, 38.775069],
+            [125.5054005, 38.789613],
+            [125.5051935, 38.71402425],
+            [125.5049865, 38.6384355],
+            [125.3902005, 38.6244225],
+            [125.2754145, 38.6104095],
+            [125.2752435, 38.68546725],
+            [125.2750725, 38.760525],
+        ]
+    ]
+
+    geo_dict = {"type": "Polygon", "coordinates": coordinates}
+
+    return ImageMetadata(
+        dataset=dset_name,
+        uid="uid1",
+        height=900,
+        width=300,
+        geo_metadata=geo_dict,
+    )
+
+
+def test_geo_datums(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    pred_dets2: list[Prediction],
+    db: Session,
+):
+    dataset_ = dset_name
+
+    dataset = Dataset.create(client, dataset_)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    expected_coords = [gt.datum.geo_metadata for gt in gt_dets1]
+
+    returned_datum1 = dataset.get_datums()[0].geo_metadata
+    returned_datum2 = dataset.get_datums()[1].geo_metadata
+
+    assert expected_coords[0] == returned_datum1
+    assert expected_coords[1] == returned_datum2
+
+    dets1 = dataset.get_groundtruth("uid1")
+
+    assert dets1.datum.geo_metadata == expected_coords[0]
 
 
 @pytest.fixture
@@ -2363,7 +2411,7 @@ def test_evaluate_segmentation(
 def test_create_tabular_dataset_and_add_groundtruth(
     client: Client,
     db: Session,
-    metadata: Dict[str, Union[float, int, str, GeoJSON]],
+    metadata: Dict[str, Union[float, int, str]],
 ):
     dataset = Dataset.create(client, name=dset_name)
     assert isinstance(dataset, Dataset)

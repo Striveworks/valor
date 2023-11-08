@@ -15,12 +15,14 @@ class ImageMetadata:
         width: int,
         dataset: str = "",
         metadata: Dict[str, Union[int, float, str]] = None,
+        geo_metadata: dict[str, list[list[float]]] | None = None,
     ):
         self.uid = uid
         self.dataset = dataset
-        self.metadata = validate_metadata(metadata if metadata else {})
         self.height = height
         self.width = width
+        self.metadata = validate_metadata(metadata if metadata else {})
+        self.geo_metadata = geo_metadata if geo_metadata else {}
 
         if not isinstance(self.dataset, str):
             raise TypeError("ImageMetadata dataset name must be a string.")
@@ -60,16 +62,16 @@ class ImageMetadata:
         )
 
     def to_datum(self) -> Datum:
-        if self.metadata:
-            metadata = self.metadata.copy()
-        else:
-            metadata = {}
+        metadata = self.metadata.copy() if self.metadata else {}
+        geo_metadata = self.geo_metadata if self.geo_metadata else {}
+
         metadata["height"] = self.height
         metadata["width"] = self.width
         return Datum(
             dataset=self.dataset,
             uid=self.uid,
             metadata=metadata,
+            geo_metadata=geo_metadata,
         )
 
 

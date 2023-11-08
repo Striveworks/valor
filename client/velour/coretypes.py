@@ -6,7 +6,6 @@ from velour.enums import AnnotationType, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.filters import DeclarativeMapper, Geometry
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
-from velour.schemas.geospatial import GeoJSON
 from velour.schemas.metadata import validate_metadata
 
 
@@ -70,15 +69,20 @@ class Datum:
     id = DeclarativeMapper("datum.id", int)
     uid = DeclarativeMapper("datum.uid", str)
     metadata = DeclarativeMapper("datum.metadata", Union[int, float, str])
+    geo_metadata = DeclarativeMapper(
+        "datum.metadata", Union[int, float, str]
+    )  # is this right? what does this do?
 
     def __init__(
         self,
         uid: str,
-        metadata: Dict[str, Union[int, float, str, GeoJSON]] = None,
+        metadata: Dict[str, Union[int, float, str]] = None,
+        geo_metadata: dict[str, list[list[float]]] | None = None,
         dataset: str = "",
     ):
         self.uid = uid
         self.metadata = metadata if metadata else {}
+        self.geo_metadata = geo_metadata if geo_metadata else {}
         self.dataset = dataset
         self._validate()
 
@@ -94,6 +98,7 @@ class Datum:
             "dataset": self.dataset,
             "uid": self.uid,
             "metadata": self.metadata,
+            "geo_metadata": self.geo_metadata,
         }
 
     def __eq__(self, other):

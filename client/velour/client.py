@@ -382,7 +382,7 @@ class Dataset:
         cls,
         client: Client,
         name: str,
-        metadata: Dict[str, Union[int, float, str, schemas.GeoJSON]] = None,
+        metadata: Dict[str, Union[int, float, str]] = None,
         id: Union[int, None] = None,
     ):
         dataset = cls()
@@ -531,7 +531,7 @@ class Model:
         cls,
         client: Client,
         name: str,
-        metadata: Dict[str, Union[int, float, str, schemas.GeoJSON]] = None,
+        metadata: Dict[str, Union[int, float, str]] = None,
         id: Union[int, None] = None,
     ):
         model = cls()
