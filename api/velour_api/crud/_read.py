@@ -106,10 +106,10 @@ def get_ranked_evaluations(
     db: Session,
     dataset_name: str,
     metric: str,
-    parameters: dict = None,
-    label_keys: list = None,
+    parameters: dict | None = None,
+    label: dict | None = None,
     rank_from_highest_value_to_lowest_value: bool = True,
-) -> list[schemas.Evaluation]:
+) -> dict[int, list[schemas.Evaluation]]:
     """
     Returns all metrics associated with a particular dataset, ranked according to user inputs
 
@@ -121,102 +121,107 @@ def get_ranked_evaluations(
         The metric to use when ranking evaluations (e.g., "mAP")
     parameters
         The metric parameters to filter on when computing the ranking (e.g., {'iou':.5}). Will raise a ValueError if the user supplies a metric which requires more granular parameters.
-    label_keys
-        The list of label keys to filter on (e.g., ['key1'])
     rank_from_highest_value_to_lowest_value
         A boolean to indicate whether the metric values should be ranked from highest to lowest
     """
 
     metric_to_input_requirements = {
         # evaluate_classification
-        "Precision": ["label_keys"],
-        "F1": ["label_keys"],
-        "Recall": ["label_keys"],
-        "ROCAUC": ["label_keys"],
-        "Accuracy": ["label_keys"],
+        "Precision": ["label"],
+        "F1": ["label"],
+        "Recall": ["label"],
+        "ROCAUC": ["label_key"],
+        "Accuracy": ["label_key"],
         # evaluate_detection
-        "AP": ["iou", "label_keys"],
-        "APAveragedOverIOUs": ["label_keys"],
+        "AP": ["iou", "label"],
+        "APAveragedOverIOUs": ["ious", "label"],
         "mAP": ["iou"],
-        "mAPAveragedOverIOUs": [],
+        "mAPAveragedOverIOUs": ["ious"],
         # evaluate_segmentation
-        "IOUMetric": ["label_keys"],
+        "IOUMetric": ["label"],
         "IOUMetricAveraged": [],
     }
 
     if metric not in metric_to_input_requirements.keys():
-        raise ValueError(
-            f"Metric should be one of {metric_to_input_requirements.keys()}"
+        raise TypeError(
+            f"Metric `{metric}` is not a valid type. Supported metrics are {metric_to_input_requirements.keys()}"
         )
 
     requirements_for_selection = metric_to_input_requirements[metric]
 
-    if (parameters and not isinstance(parameters, dict)) or (
-        label_keys and not isinstance(label_keys, list)
+    # validate parameters is a dictionary
+    if parameters and not isinstance(parameters, dict):
+        raise TypeError("`parameters` should be of type dict.")
+
+    # validate parameters
+    if not label and "label" in requirements_for_selection:
+        raise ValueError(
+            f"`label` is a required argument for sorting by metric type `{metric}`"
+        )
+    if not parameters and {"label_key", "iou", "ious"}.intersection(
+        requirements_for_selection
     ):
         raise ValueError(
-            "Inputted parameters should be of type dict, while label_keys should be of type list"
+            f"`parameters` is a required argument for sorting by metric type `{metric}`"
         )
-
-    if not label_keys and label_keys in requirements_for_selection:
-        raise ValueError(
-            f"label_keys argument is required for metric {metric}."
-        )
-
-    if ("iou" in requirements_for_selection) and (
-        not parameters or "iou" not in parameters
+    if (
+        "label_key" not in parameters
+        and "label_key" in requirements_for_selection
     ):
-        raise ValueError("IOU key is missing from parameter dictionary")
-
-    if not parameters:
-        parameters = {}
-
-    if not label_keys:
-        label_keys = []
-
-    user_label_filter = schemas.LabelFilter(
-        keys=label_keys,
-    )
+        raise ValueError(
+            f"`label_key` argument is required for metric {metric}."
+        )
+    if "iou" not in parameters and "iou" in requirements_for_selection:
+        raise ValueError(f"`iou` argument is required for metric {metric}.")
+    if "ious" not in parameters and "ious" in requirements_for_selection:
+        raise ValueError(f"`ious` argument is required for metric {metric}.")
 
     evaluations = get_bulk_evaluations(
         dataset_names=[dataset_name], db=db, model_names=[]
     )
 
-    model_values = collections.defaultdict(float)
+    evaluations_sorted_by_settings = {}
+    evaluation_settings_to_int = {}
     for evaluation in evaluations:
-        if (
-            not label_keys
-            or evaluation.settings.filters.labels == user_label_filter
-        ):
-            for evaluation_metric in evaluation.metrics:
-                if evaluation_metric.type == metric and (
-                    not parameters
-                    or _dict_is_subset_of_other_dict(
-                        target_values=parameters,
-                        nested_dict=evaluation_metric.parameters,
-                    )
-                ):
-                    # we should only find one metric per model
-                    if evaluation.model in model_values:
-                        raise ValueError(
-                            "Found multiple metrics per model with the specified label_keys and parameters"
-                        )
-                    else:
-                        model_values[
-                            evaluation.model
-                        ] = evaluation_metric.value
 
-    rankings = {
-        key: rank
-        for rank, key in enumerate(
-            sorted(
-                model_values,
-                key=model_values.get,
-                reverse=rank_from_highest_value_to_lowest_value,
-            ),
-            1,
+        # track different evaluation jobs by settings
+        settings_json = evaluation.model_dump_json()
+        if settings_json not in evaluation_settings_to_int:
+            evaluation_settings_to_int[settings_json] = len(
+                evaluation_settings_to_int
+            )
+
+        # s
+        settings_key = evaluation_settings_to_int[settings_json]
+        if settings_key not in evaluations_sorted_by_settings:
+            evaluations_sorted_by_settings[settings_key] = []
+
+        # extract metric value (if it exists)
+        value = None
+        for evaluation_metric in evaluation.metrics:
+            if evaluation_metric.type == metric:
+                if (
+                    evaluation_metric.parameters == parameters
+                    and evaluation_metric.label == label
+                ):
+                    value = evaluation_metric.value
+                    break
+
+        # only add if value exists
+        if value:
+            evaluations_sorted_by_settings[settings_key].append(
+                {
+                    "evaluation": evaluation,
+                    "value": value,
+                }
+            )
+
+    for key in evaluations_sorted_by_settings:
+        evaluations_sorted_by_settings[key] = sorted(
+            evaluations_sorted_by_settings[key],
+            key=lambda x: x["value"],
+            reverse=rank_from_highest_value_to_lowest_value,
         )
-    }
 
     if not rankings:
         arg_summary = {
