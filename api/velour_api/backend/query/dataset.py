@@ -1,3 +1,6 @@
+import json
+
+from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -58,7 +61,7 @@ def get_datums(
 
     for datum in datums:
         geo_dict = (
-            schemas.GeoJSON.from_wkt(datum.geo).to_dict() if datum.geo else {}
+            json.loads(db.scalar(ST_AsGeoJSON(datum.geo))) if datum.geo else {}
         )
 
         output.append(

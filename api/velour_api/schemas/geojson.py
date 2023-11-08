@@ -1,4 +1,3 @@
-from geoalchemy2.shape import to_shape
 from pydantic import BaseModel, field_validator
 
 from velour_api.schemas.geometry import (
@@ -115,34 +114,6 @@ class GeoJSON(BaseModel):
             return cls(geometry=GeoJSONMultiPolygon(**data))
         else:
             raise ValueError("Unsupported type.")
-
-    @classmethod
-    def from_wkt(cls, wkt: str):
-        wkt_str = to_shape(wkt).wkt
-
-        if "point" in wkt_str.lower():
-            # TODO might be incorrect
-            start_index = 7
-            geometry = "Point"
-        elif "polygon" in wkt_str.lower():
-            start_index = 10
-            geometry = "Polygon"
-        elif "multipolygon" in wkt_str.lower():
-            start_index = 13
-            geometry = "MultiPolygon"
-        else:
-            raise ValueError("Unsupported type.")
-
-        wkt_split = wkt_str[start_index:-2].split(",")
-
-        coordinates = [
-            [
-                tuple(map(float, coord_str.strip().split()))
-                for coord_str in wkt_split
-            ]
-        ]
-
-        return cls.from_dict({"type": geometry, "coordinates": coordinates})
 
     def shape(self):
         if isinstance(self.geometry, GeoJSONPoint):

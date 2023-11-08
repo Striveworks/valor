@@ -209,38 +209,6 @@ class MultiPolygon(BaseModel):
         plist = [polygon.wkt(partial=True) for polygon in self.polygons]
         return f"MULTIPOLYGON ({', '.join(plist)})"
 
-    # @TODO: Unsure if keeping this
-    # @classmethod
-    # def from_wkt(cls, wkt: str | None):
-    #     if not wkt:
-    #         return None
-    #     if re.search("^MULTIPOLYGON", wkt):
-    #         polygons = []
-    #         poly_text = re.findall("\(\((.*)\)\)", wkt)[0].split("),(")
-    #         for poly in poly_text:
-    #             points = []
-    #             for numerics in poly.strip().split(","):
-    #                 coords = numerics.strip().split(" ")
-    #                 points.append(
-    #                     Point(
-    #                         x=float(coords[0]),
-    #                         y=float(coords[1]),
-    #                     )
-    #                 )
-    #             polygons.append(BasicPolygon(points=points))
-
-    #         if len(polygons) == 1:
-    #             return cls(
-    #                 boundary=polygons[0],
-    #                 holes=None,
-    #             )
-    #         elif polygons:
-    #             return cls(
-    #                 boundary=polygons[0],
-    #                 holes=polygons[1:],
-    #             )
-    #     raise ValueError
-
 
 class BoundingBox(BaseModel):
     polygon: BasicPolygon

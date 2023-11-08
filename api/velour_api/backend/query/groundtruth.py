@@ -1,3 +1,6 @@
+import json
+
+from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -46,7 +49,7 @@ def get_groundtruth(
     datum = core.get_datum(db, dataset_id=dataset.id, uid=datum_uid)
 
     geo_dict = (
-        schemas.GeoJSON.from_wkt(datum.geo).to_dict() if datum.geo else {}
+        json.loads(db.scalar(ST_AsGeoJSON(datum.geo))) if datum.geo else {}
     )
 
     return schemas.GroundTruth(

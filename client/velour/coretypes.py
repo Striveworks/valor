@@ -69,10 +69,6 @@ class Datum:
     id = DeclarativeMapper("datum.id", int)
     uid = DeclarativeMapper("datum.uid", str)
     metadata = DeclarativeMapper("datum.metadata", Union[int, float, str])
-    # TODO
-    geo_metadata = DeclarativeMapper(
-        "datum.metadata", Union[int, float, str]
-    )  # is this right? what does this do?
 
     def __init__(
         self,
