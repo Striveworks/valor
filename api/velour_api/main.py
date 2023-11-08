@@ -617,10 +617,10 @@ def get_bulk_evaluations(
     response_model_exclude_none=True,
     tags=["Evaluations"],
 )
-def get_ranked_evaluations(
+def get_ranked_model_evaluations(
     request: Request,
     db: Session = Depends(get_db),
-) -> list[schemas.Evaluation]:
+) -> list[dict[str, int | str | schemas.EvaluationSettings]]:
     """
     Returns all metrics associated with a particular dataset, ranked according to user inputs
 
@@ -640,7 +640,7 @@ def get_ranked_evaluations(
     params = dict(request.query_params)
 
     try:
-        output = crud.get_ranked_evaluations(
+        output = crud.get_ranked_model_evaluations(
             db=db,
             dataset_name=params["dataset_name"],
             metric=params["metric"],

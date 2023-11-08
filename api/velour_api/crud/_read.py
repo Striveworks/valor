@@ -1,38 +1,7 @@
-import collections
-import math
-
 from sqlalchemy.orm import Session
 
 from velour_api import backend, enums, schemas
 from velour_api.backend import jobs
-
-
-def _is_subset_of_dict(target_values: any, nested_dict: dict) -> bool:
-    """Helper function that's called recursively to see if a dict exists within a nested dict"""
-    for key, value in target_values.items():
-        if key not in nested_dict:
-            return False
-        if isinstance(value, dict):
-            if not _is_subset_of_dict(value, nested_dict[key]):
-                return False
-        elif value != nested_dict[key]:
-            return False
-    return True
-
-
-def _dict_is_subset_of_other_dict(
-    target_values: any, nested_dict: dict
-) -> bool:
-    """Check if a target nested_dict exists in any part of an arbitrarily large nested nested_dict"""
-    if isinstance(nested_dict, dict):
-        if _is_subset_of_dict(target_values, nested_dict):
-            return True
-        for value in nested_dict.values():
-            if _dict_is_subset_of_other_dict(
-                target_values=target_values, nested_dict=value
-            ):
-                return True
-    return False
 
 
 def get_evaluation_status(job_id: int) -> enums.JobStatus:
@@ -102,14 +71,14 @@ def get_bulk_evaluations(
     return output
 
 
-def get_ranked_evaluations(
+def get_ranked_model_evaluations(
     db: Session,
     dataset_name: str,
     metric: str,
     parameters: dict | None = None,
     label: dict | None = None,
     rank_from_highest_value_to_lowest_value: bool = True,
-) -> dict[int, list[schemas.Evaluation]]:
+) -> list[dict[str, int | str | schemas.EvaluationSettings]]:
     """
     Returns all metrics associated with a particular dataset, ranked according to user inputs
 
@@ -190,11 +159,12 @@ def get_ranked_evaluations(
             evaluation_settings_to_int[settings_json] = len(
                 evaluation_settings_to_int
             )
-
-        # s
         settings_key = evaluation_settings_to_int[settings_json]
         if settings_key not in evaluations_sorted_by_settings:
-            evaluations_sorted_by_settings[settings_key] = []
+            evaluations_sorted_by_settings[settings_key] = {
+                "settings": evaluation.settings,
+                "model_values": [],
+            }
 
         # extract metric value (if it exists)
         value = None
@@ -209,39 +179,44 @@ def get_ranked_evaluations(
 
         # only add if value exists
         if value:
-            evaluations_sorted_by_settings[settings_key].append(
+            evaluations_sorted_by_settings[settings_key][
+                "model_values"
+            ].append(
                 {
-                    "evaluation": evaluation,
-                    "value": value,
+                    "model": evaluation.model,
+                    "value": evaluation_metric.value,
                 }
             )
 
-    for key in evaluations_sorted_by_settings:
-        evaluations_sorted_by_settings[key] = sorted(
-            evaluations_sorted_by_settings[key],
-            key=lambda x: x["value"],
-            reverse=rank_from_highest_value_to_lowest_value,
+    # sort by value
+    rankings = []
+    for settings_key in evaluations_sorted_by_settings:
+        ranked_models = [
+            {
+                "rank": rank,
+                "model": model_value["model"],
+            }
+            for rank, model_value in enumerate(
+                sorted(
+                    evaluations_sorted_by_settings[settings_key][
+                        "model_values"
+                    ],
+                    key=lambda x: x["value"],
+                    reverse=rank_from_highest_value_to_lowest_value,
+                ),
+                start=1,
+            )
+        ]
+        rankings.append(
+            {
+                "settings": evaluations_sorted_by_settings[settings_key][
+                    "settings"
+                ],
+                "models": ranked_models,
+            }
         )
 
-    if not rankings:
-        arg_summary = {
-            "metric": metric,
-            "label_keys": label_keys,
-            "parameters": parameters,
-        }
-        raise ValueError(
-            f"Didn't find any evaluations to rank on using {arg_summary}"
-        )
-
-    # sort and return evaluations according to this ranking
-    for evaluation in evaluations:
-        evaluation.ranking = rankings.get(evaluation.model, "not_ranked")
-
-    evaluations = sorted(
-        evaluations,
-        key=lambda evaluation: rankings.get(evaluation.model, math.inf),
-    )
-    return evaluations
+    return rankings
 
 
 """ Labels """
