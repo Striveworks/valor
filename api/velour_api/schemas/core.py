@@ -77,7 +77,9 @@ class Datum(BaseModel):
     uid: str
     dataset: str
     metadata: dict[str, float | str] = Field(default_factory=dict)
-    geo_metadata: dict[str, tuple | str] = Field(default_factory=dict)
+    geo_metadata: dict[str, list[list[list[float]]] | str] = Field(
+        default_factory=dict
+    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("uid")
