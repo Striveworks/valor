@@ -73,6 +73,9 @@ class Point(BaseModel):
             raise TypeError
         return (self.x * other.x) + (self.y * other.y)
 
+    def wkt(self, partial: bool = False) -> str:
+        return f"POINT ({self.x} {self.y})"
+
 
 class LineSegment(BaseModel):
     points: tuple[Point, Point]

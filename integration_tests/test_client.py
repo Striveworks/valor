@@ -104,12 +104,11 @@ def random_mask(img: ImageMetadata) -> np.ndarray:
     return np.random.randint(0, 2, size=(img.height, img.width), dtype=bool)
 
 
-# @TODO: Implement geospatial support
 @pytest.fixture
 def metadata():
     """Some sample metadata of different types"""
     return {
-        "metadatum1": "temporary",  # GEOJSON
+        "metadatum1": "temporary",
         "metadatum2": "a string",
         "metadatum3": 0.45,
     }
@@ -147,38 +146,19 @@ def img1() -> ImageMetadata:
     )
 
 
-def test_geo_datums(
-    client: Client,
-    gt_dets1: list[GroundTruth],
-    pred_dets: list[Prediction],
-    pred_dets2: list[Prediction],
-    db: Session,
-):
-    dataset_ = dset_name
-
-    dataset = Dataset.create(client, dataset_)
-    for gt in gt_dets1:
-        dataset.add_groundtruth(gt)
-    dataset.finalize()
-
-    expected_coords = [gt.datum.geo_metadata for gt in gt_dets1]
-
-    returned_datum1 = dataset.get_datums()[0].geo_metadata
-    returned_datum2 = dataset.get_datums()[1].geo_metadata
-
-    assert expected_coords[0] == returned_datum1
-    assert expected_coords[1] == returned_datum2
-
-    dets1 = dataset.get_groundtruth("uid1")
-
-    assert dets1.datum.geo_metadata == expected_coords[0]
-
-    # TODO add geo filter tests
-
-
 @pytest.fixture
 def img2() -> ImageMetadata:
-    return ImageMetadata(dataset=dset_name, uid="uid2", height=40, width=30)
+    coordinates = [44.1, 22.4]
+
+    geo_dict = {"type": "Point", "coordinates": coordinates}
+
+    return ImageMetadata(
+        dataset=dset_name,
+        uid="uid2",
+        height=40,
+        width=30,
+        geo_metadata=geo_dict,
+    )
 
 
 @pytest.fixture
@@ -2470,10 +2450,6 @@ def test_create_tabular_dataset_and_add_groundtruth(
     assert len(metadata_links) == 1
     assert "metadatum1" in metadata_links
     assert metadata_links["metadatum1"] == "temporary"
-    # assert json.loads(db.scalar(ST_AsGeoJSON(metadatum.geo))) == {
-    #     "type": "Point",
-    #     "coordinates": [-48.23456, 20.12345],
-    # }
 
     metadata_links = data[1].meta
     assert len(metadata_links) == 2
@@ -2912,6 +2888,33 @@ def test_get_dataset(
     assert fetched_dataset.metadata == dataset.metadata
 
     client.delete_dataset(dset_name, timeout=30)
+
+
+def test_set_and_get_geo_datums(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    pred_dets2: list[Prediction],
+    db: Session,
+):
+    dataset_ = dset_name
+
+    dataset = Dataset.create(client, dataset_)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    expected_coords = [gt.datum.geo_metadata for gt in gt_dets1]
+
+    returned_datum1 = dataset.get_datums()[0].geo_metadata
+    returned_datum2 = dataset.get_datums()[1].geo_metadata
+
+    assert expected_coords[0] == returned_datum1
+    assert expected_coords[1] == returned_datum2
+
+    dets1 = dataset.get_groundtruth("uid1")
+
+    assert dets1.datum.geo_metadata == expected_coords[0]
 
 
 def test_get_dataset_status(client: Client, db: Session, gt_dets1: list):

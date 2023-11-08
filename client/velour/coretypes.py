@@ -74,7 +74,9 @@ class Datum:
         self,
         uid: str,
         metadata: Dict[str, Union[int, float, str]] = None,
-        geo_metadata: Dict[str, List[List[List[float]]]] = None,
+        geo_metadata: Dict[
+            str, List[List[List[float]]] | List[float] | str
+        ] = None,
         dataset: str = "",
     ):
         self.uid = uid
