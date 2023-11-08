@@ -258,7 +258,7 @@ class Filter:
             filter_request.annotation_types = [
                 expr.value for expr in expression_dict["annotation_types"]
             ]
-        if "annotation_geometic_area" in expression_dict:
+        if "annotation_geometric_area" in expression_dict:
             filter_request.annotation_geometric_area = [
                 ValueFilter(
                     value=expr.value,

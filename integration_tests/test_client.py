@@ -1512,16 +1512,8 @@ def test_evaluate_detection(
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "label_keys": ["k1"],
             },
         },
     }
@@ -1596,29 +1588,18 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 10.0},
-                            ],
-                        },
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": "<=", "value": 2000.0},
-                            ],
-                        },
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 10.0,
+                    },
+                    {
+                        "operator": "<=",
+                        "value": 2000.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1649,23 +1630,14 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 1200.0},
-                            ],
-                        }
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 1200.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1695,21 +1667,14 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [{"operator": "<=", "value": 1200.0}],
-                        }
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": "<=",
+                        "value": 1200.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1741,29 +1706,18 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 1200.0},
-                            ],
-                        },
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": "<=", "value": 1800.0},
-                            ],
-                        },
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 1200.0,
+                    },
+                    {
+                        "operator": "<=",
+                        "value": 1800.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1854,29 +1808,18 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
         filters={
-            "annotations": {
-                "allow_conversion": True,
-                "annotation_types": ["box"],
-                "geo": [],
-                "geometry": [
-                    {
-                        "annotation_type": "box",
-                        "area": [
-                            {"operator": ">=", "value": 1200.0},
-                        ],
-                    },
-                    {
-                        "annotation_type": "box",
-                        "area": [
-                            {"operator": "<=", "value": 1800.0},
-                        ],
-                    },
-                ],
-                "json_": [],
-                "metadata": [],
-                "task_types": [],
-            },
-            "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            "annotation_types": ["box"],
+            "annotation_geometric_area": [
+                {
+                    "operator": ">=",
+                    "value": 1200.0,
+                },
+                {
+                    "operator": "<=",
+                    "value": 1800.0,
+                },
+            ],
+            "label_keys": ["k1"],
         },
         timeout=30,
     )
@@ -1888,29 +1831,18 @@ def test_evaluate_detection_with_json_filters(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 1200.0},
-                            ],
-                        },
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": "<=", "value": 1800.0},
-                            ],
-                        },
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 1200.0,
+                    },
+                    {
+                        "operator": "<=",
+                        "value": 1800.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
