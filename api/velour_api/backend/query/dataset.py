@@ -57,7 +57,7 @@ def get_datums(
     output = []
 
     for datum in datums:
-        geojson = (
+        geo_dict = (
             schemas.GeoJSON.from_wkt(datum.geo).to_dict() if datum.geo else {}
         )
 
@@ -70,7 +70,7 @@ def get_datums(
                 ),
                 uid=datum.uid,
                 metadata=datum.meta,
-                geo_metadata=geojson,
+                geo_metadata=geo_dict,
             )
         )
     return output

@@ -50,7 +50,7 @@ def get_prediction(
     model = core.get_model(db, name=model_name)
     dataset = core.get_dataset(db, name=dataset_name)
     datum = core.get_datum(db, dataset_id=dataset.id, uid=datum_uid)
-    geojson = (
+    geo_dict = (
         schemas.GeoJSON.from_wkt(datum.geo).to_dict() if datum.geo else {}
     )
     return schemas.Prediction(
@@ -59,7 +59,7 @@ def get_prediction(
             uid=datum.uid,
             dataset=dataset.name,
             metadata=datum.meta,
-            geo_metadata=geojson,
+            geo_metadata=geo_dict,
         ),
         annotations=core.get_annotations(db, datum=datum, model=model),
     )
