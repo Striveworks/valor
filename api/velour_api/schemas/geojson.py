@@ -31,8 +31,8 @@ class GeoJSONPoint(BaseModel):
             y=self.coordinates[1],
         )
 
-    def to_dict(self):
-        raise NotImplementedError()
+    def to_dict(self) -> dict[str | list[list[list[str]]]]:
+        return {"type": "Point", "coordinates": self.coordinates}
 
 
 class GeoJSONPolygon(BaseModel):
@@ -59,7 +59,7 @@ class GeoJSONPolygon(BaseModel):
             holes=polygons[1:] if len(polygons) > 1 else None,
         )
 
-    def to_dict(self) -> Polygon:
+    def to_dict(self) -> dict[str | list[list[list[str]]]]:
         return {"type": "Polygon", "coordinates": self.coordinates}
 
 
@@ -92,8 +92,8 @@ class GeoJSONMultiPolygon(BaseModel):
             raise ValueError("Incorrect geometry type.")
         return MultiPolygon(polygons=multipolygons)
 
-    def to_dict(self):
-        raise NotImplementedError()
+    def to_dict(self) -> dict[str | list[list[list[str]]]]:
+        return {"type": "MultiPolygon", "coordinates": self.coordinates}
 
 
 # GeoJSON Standard
