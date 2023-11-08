@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict, List, Union
 
 import PIL.Image
 
@@ -15,7 +15,7 @@ class ImageMetadata:
         width: int,
         dataset: str = "",
         metadata: Dict[str, Union[int, float, str]] = None,
-        geo_metadata: dict[str, list[list[float]]] | None = None,
+        geo_metadata: Dict[str, List[List[List[float]]]] = None,
     ):
         self.uid = uid
         self.dataset = dataset
