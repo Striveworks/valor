@@ -152,7 +152,7 @@ def test_generate_prediction_data(client: Client):
         iou_thresholds_to_keep=[0, 1],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.type == AnnotationType.BOX,
         ],
         timeout=30,
     )
