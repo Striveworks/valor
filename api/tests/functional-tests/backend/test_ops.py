@@ -520,22 +520,14 @@ def test_query_datasets(
     model_sim,
 ):
     # Q: Get names for datasets where label class=cat exists in groundtruths.
-    f = schemas.Filter(
-        labels=schemas.LabelFilter(
-            labels=[schemas.Label(key="class", value="cat")]
-        )
-    )
+    f = schemas.Filter(labels=[{"class": "cat"}])
     q = Query(models.Dataset.name).filter(f).groundtruths()
     dataset_names = db.query(q).distinct().all()
     assert len(dataset_names) == 1
     assert (dset_name,) in dataset_names
 
     # Q: Get names for datasets where label=tree exists in groundtruths
-    f = schemas.Filter(
-        labels=schemas.LabelFilter(
-            labels=[schemas.Label(key="class", value="tree")]
-        )
-    )
+    f = schemas.Filter(labels=[{"class": "tree"}])
     q = Query(models.Dataset.name).filter(f).any()
     dataset_names = db.query(q).distinct().all()
     assert len(dataset_names) == 0
@@ -547,9 +539,7 @@ def test_query_models(
 ):
     # Q: Get names for all models that operate over a dataset that meets the name equality
     f = schemas.Filter(
-        datasets=schemas.DatasetFilter(
-            names=[dset_name],
-        )
+        dataset_names=[dset_name],
     )
     q = Query(models.Model.name).filter(f).any()
     model_names = db.query(q).distinct().all()
@@ -558,11 +548,7 @@ def test_query_models(
     assert (model_name2,) in model_names
 
     # Q: Get names for models where label=cat exists in predictions
-    f = schemas.Filter(
-        labels=schemas.LabelFilter(
-            labels=[schemas.Label(key="class", value="cat")]
-        )
-    )
+    f = schemas.Filter(labels=[{"class": "cat"}])
     q = Query(models.Model.name).filter(f).any()
     model_names = db.query(q).distinct().all()
     assert len(model_names) == 2
@@ -570,17 +556,13 @@ def test_query_models(
     assert (model_name2,) in model_names
 
     # Q: Get names for models where label=tree exists in predictions
-    f = schemas.Filter(
-        labels=schemas.LabelFilter(
-            labels=[schemas.Label(key="class", value="tree")]
-        )
-    )
+    f = schemas.Filter(labels=[{"class": "tree"}])
     q = Query(models.Model.name).filter(f).any()
     model_names = db.query(q).distinct().all()
     assert len(model_names) == 0
 
     # Q: Get names for models that operate over dataset.
-    f = schemas.Filter(datasets=schemas.DatasetFilter(names=[dset_name]))
+    f = schemas.Filter(dataset_names=[dset_name])
     q = Query(models.Model.name).filter(f).any()
     model_names = db.query(q).distinct().all()
     assert len(model_names) == 2
@@ -588,24 +570,21 @@ def test_query_models(
     assert (model_name2,) in model_names
 
     # Q: Get names for models that operate over dataset that doesn't exist.
-    f = schemas.Filter(datasets=schemas.DatasetFilter(names=["invalid"]))
+    f = schemas.Filter(dataset_names=["invalid"])
     q = Query(models.Model.name).filter(f).any()
     model_names = db.query(q).distinct().all()
     assert len(model_names) == 0
 
     # Q: Get models with metadatum with `numeric` > 0.5.
     f = schemas.Filter(
-        models=schemas.ModelFilter(
-            metadata=[
-                schemas.KeyValueFilter(
-                    key="some_numeric_attribute",
-                    comparison=schemas.NumericFilter(
-                        value=0.5,
-                        operator=">",
-                    ),
-                )
+        models_metadata={
+            "some_numeric_attribute": [
+                schemas.NumericFilter(
+                    value=0.5,
+                    operator=">",
+                ),
             ]
-        )
+        }
     )
     q = Query(models.Model.name).filter(f).any()
     model_names = db.query(q).distinct().all()
@@ -614,17 +593,14 @@ def test_query_models(
 
     # Q: Get models with metadatum with `numeric` < 0.5.
     f = schemas.Filter(
-        models=schemas.ModelFilter(
-            metadata=[
-                schemas.KeyValueFilter(
-                    key="some_numeric_attribute",
-                    comparison=schemas.NumericFilter(
-                        value=0.5,
-                        operator="<",
-                    ),
-                )
+        models_metadata={
+            "some_numeric_attribute": [
+                schemas.NumericFilter(
+                    value=0.5,
+                    operator="<",
+                ),
             ]
-        )
+        }
     )
     q = Query(models.Model.name).filter(f).any()
     model_names = db.query(q).distinct().all()
@@ -636,78 +612,60 @@ def test_query_by_metadata(
     db: Session,
     model_sim,
 ):
-    # Q: Get models with metadatum with `numeric` < 0.5 and `str` == 'abc'.
+    # Q: Get datums with metadatum with `numeric` < 0.5 and `str` == 'abc'.
     f = schemas.Filter(
-        datums=schemas.DatumFilter(
-            metadata=[
-                schemas.KeyValueFilter(
-                    key="some_numeric_attribute",
-                    comparison=schemas.NumericFilter(
-                        value=0.5,
-                        operator="<",
-                    ),
+        datum_metadata={
+            "some_numeric_attribute": [
+                schemas.NumericFilter(
+                    value=0.5,
+                    operator="<",
                 ),
-                schemas.KeyValueFilter(
-                    key="some_str_attribute",
-                    comparison=schemas.StringFilter(
-                        value="abc",
-                        operator="==",
-                    ),
-                ),
-            ]
-        )
+            ],
+            "some_str_attribute": schemas.StringFilter(
+                value="abc",
+                operator="==",
+            ),
+        }
     )
     q = Query(models.Datum.uid).filter(f).any()
     datum_uids = db.query(q).distinct().all()
     assert len(datum_uids) == 1
     assert (datum_uid1,) in datum_uids
 
-    # Q: Get models with metadatum with `numeric` > 0.5 and `str` == 'abc'.
+    # Q: Get datums with metadatum with `numeric` > 0.5 and `str` == 'abc'.
     f = schemas.Filter(
-        datums=schemas.DatumFilter(
-            metadata=[
-                schemas.KeyValueFilter(
-                    key="some_numeric_attribute",
-                    comparison=schemas.NumericFilter(
-                        value=0.5,
-                        operator=">",
-                    ),
+        datum_metadata={
+            "some_numeric_attribute": [
+                schemas.NumericFilter(
+                    value=0.5,
+                    operator=">",
                 ),
-                schemas.KeyValueFilter(
-                    key="some_str_attribute",
-                    comparison=schemas.StringFilter(
-                        value="abc",
-                        operator="==",
-                    ),
-                ),
-            ]
-        )
+            ],
+            "some_str_attribute": schemas.StringFilter(
+                value="abc",
+                operator="==",
+            ),
+        }
     )
     q = Query(models.Datum.uid).filter(f).any()
     datum_uids = db.query(q).distinct().all()
     assert len(datum_uids) == 1
     assert (datum_uid2,) in datum_uids
 
-    # Q: Get models with metadatum with `numeric` < 0.5 and `str` == 'xyz'.
+    # Q: Get datums with metadatum with `numeric` < 0.5 and `str` == 'xyz'.
     f = schemas.Filter(
-        datums=schemas.DatumFilter(
-            metadata=[
-                schemas.KeyValueFilter(
-                    key="some_numeric_attribute",
-                    comparison=schemas.NumericFilter(
-                        value=0.5,
-                        operator="<",
-                    ),
+        datum_metadata={
+            "some_numeric_attribute": [
+                schemas.NumericFilter(
+                    value=0.5,
+                    operator="<",
                 ),
-                schemas.KeyValueFilter(
-                    key="some_str_attribute",
-                    comparison=schemas.StringFilter(
-                        value="xyz",
-                        operator="==",
-                    ),
-                ),
-            ]
-        )
+            ],
+            "some_str_attribute": schemas.StringFilter(
+                value="xyz",
+                operator="==",
+            ),
+        }
     )
     q = Query(models.Datum.uid).filter(f).any()
     datum_uids = db.query(q).distinct().all()
@@ -716,24 +674,18 @@ def test_query_by_metadata(
 
     # Q: Get models with metadatum with `numeric` > 0.5 and `str` == 'xyz'.
     f = schemas.Filter(
-        datums=schemas.DatumFilter(
-            metadata=[
-                schemas.KeyValueFilter(
-                    key="some_numeric_attribute",
-                    comparison=schemas.NumericFilter(
-                        value=0.5,
-                        operator=">",
-                    ),
+        datum_metadata={
+            "some_numeric_attribute": [
+                schemas.NumericFilter(
+                    value=0.5,
+                    operator=">",
                 ),
-                schemas.KeyValueFilter(
-                    key="some_str_attribute",
-                    comparison=schemas.StringFilter(
-                        value="xyz",
-                        operator="==",
-                    ),
-                ),
-            ]
-        )
+            ],
+            "some_str_attribute": schemas.StringFilter(
+                value="xyz",
+                operator="==",
+            ),
+        }
     )
     q = Query(models.Datum.uid).filter(f).any()
     datum_uids = db.query(q).distinct().all()
@@ -746,11 +698,7 @@ def test_query_datums(
     model_sim,
 ):
     # Q: Get datums with groundtruth labels of "cat"
-    f = schemas.Filter(
-        labels=schemas.LabelFilter(
-            labels=[schemas.Label(key="class", value="cat")]
-        )
-    )
+    f = schemas.Filter(labels=[{"class": "cat"}])
     q = Query(models.Datum.uid).filter(f).groundtruths()
     datum_uids = db.query(q).distinct().all()
     assert len(datum_uids) == 2
@@ -758,11 +706,7 @@ def test_query_datums(
     assert (datum_uid2,) in datum_uids
 
     # Q: Get datums with groundtruth labels of "dog"
-    f = schemas.Filter(
-        labels=schemas.LabelFilter(
-            labels=[schemas.Label(key="class", value="dog")]
-        )
-    )
+    f = schemas.Filter(labels=[{"class": "dog"}])
     q = Query(models.Datum.uid).filter(f).groundtruths()
     datum_uids = db.query(q).distinct().all()
     assert len(datum_uids) == 2
@@ -770,11 +714,7 @@ def test_query_datums(
     assert (datum_uid4,) in datum_uids
 
     # Q: Get datums with prediction labels of "cat"
-    f = schemas.Filter(
-        labels=schemas.LabelFilter(
-            labels=[schemas.Label(key="class", value="cat")]
-        )
-    )
+    f = schemas.Filter(labels=[{"class": "cat"}])
     q = Query(models.Datum.uid).filter(f).predictions()
     datum_uids = db.query(q).distinct().all()
     assert len(datum_uids) == 4
@@ -790,20 +730,14 @@ def test_complex_queries(
 ):
     # Q: Get datums that `model1` has annotations for with label `dog` and prediction score > 0.9.
     f = schemas.Filter(
-        models=schemas.ModelFilter(
-            names=[model_name1],
-        ),
-        labels=schemas.LabelFilter(
-            labels=[schemas.Label(key="class", value="dog")]
-        ),
-        predictions=schemas.PredictionFilter(
-            scores=[
-                schemas.NumericFilter(
-                    value=0.9,
-                    operator=">",
-                ),
-            ]
-        ),
+        models_names=[model_name1],
+        labels=[{"class": "dog"}],
+        prediction_scores=[
+            schemas.NumericFilter(
+                value=0.9,
+                operator=">",
+            ),
+        ],
     )
     q = Query(models.Datum.uid).filter(f).predictions()
     datum_uids = db.query(q).distinct().all()
@@ -813,23 +747,15 @@ def test_complex_queries(
 
     # Q: Get datums that `model1` has `bounding_box` annotations for with label `dog` and prediction score > 0.75.
     f = schemas.Filter(
-        models=schemas.ModelFilter(
-            names=[model_name1],
-        ),
-        labels=schemas.LabelFilter(
-            labels=[schemas.Label(key="class", value="dog")]
-        ),
-        predictions=schemas.PredictionFilter(
-            scores=[
-                schemas.NumericFilter(
-                    value=0.75,
-                    operator=">",
-                )
-            ],
-        ),
-        annotations=schemas.AnnotationFilter(
-            annotation_types=[enums.AnnotationType.BOX]
-        ),
+        models_names=[model_name1],
+        labels=[{"class": "dog"}],
+        prediction_scores=[
+            schemas.NumericFilter(
+                value=0.75,
+                operator=">",
+            )
+        ],
+        annotation_types=[enums.AnnotationType.BOX],
     )
     q = Query(models.Datum.uid).filter(f).predictions()
     datum_uids = db.query(q).distinct().all()
@@ -843,19 +769,12 @@ def test_query_by_annotation_geometry(
     model_sim,
 ):
     f = schemas.Filter(
-        annotations=schemas.AnnotationFilter(
-            geometry=[
-                schemas.GeometricAnnotationFilter(
-                    annotation_type=enums.AnnotationType.BOX,
-                    area=[
-                        schemas.NumericFilter(
-                            value=75,
-                            operator=">",
-                        ),
-                    ],
-                )
-            ]
-        )
+        annotation_geometric_area=[
+            schemas.NumericFilter(
+                value=75,
+                operator=">",
+            ),
+        ],
     )
 
     # Q: Get `bounding_box` annotations that have an area > 75.
@@ -864,7 +783,7 @@ def test_query_by_annotation_geometry(
     assert len(annotations) == 12
 
     # Q: Get `bounding_box` annotations from `model1` that have an area > 75.
-    f.models = schemas.ModelFilter(names=[model_name1])
+    f.models_names = [model_name1]
     q = Query(models.Annotation).filter(f).any()
     annotations = db.query(q).all()
     assert len(annotations) == 4
@@ -875,7 +794,7 @@ def test_multiple_tables_in_args(
     model_sim,
 ):
     f = schemas.Filter(
-        datums=schemas.DatumFilter(uids=[datum_uid1]),
+        datum_uids=[datum_uid1],
     )
 
     # Q: Get model + dataset name pairings for a datum with `uid1` using the full tables
