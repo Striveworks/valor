@@ -17,12 +17,14 @@ class GeoJSONPoint(BaseModel):
     def check_type(cls, v):
         if v != "Point":
             raise ValueError("Incorrect geometry type.")
+        return v
 
     @field_validator("coordinates")
     @classmethod
     def check_coordinates(cls, v):
         if len(v) != 2:
             raise ValueError("Incorrect number of points.")
+        return v
 
     def point(self) -> Point:
         return Point(
@@ -31,7 +33,7 @@ class GeoJSONPoint(BaseModel):
         )
 
     def to_dict(self) -> dict[str | list[list[list[str]]]]:
-        return {"type": "Point", "coordinates": self.coordinates}
+        return {"type": self.type, "coordinates": self.coordinates}
 
 
 class GeoJSONPolygon(BaseModel):
@@ -43,6 +45,7 @@ class GeoJSONPolygon(BaseModel):
     def check_type(cls, v):
         if v != "Polygon":
             raise ValueError("Incorrect geometry type.")
+        return v
 
     def polygon(self) -> Polygon:
         polygons = [
@@ -59,7 +62,7 @@ class GeoJSONPolygon(BaseModel):
         )
 
     def to_dict(self) -> dict[str | list[list[list[str]]]]:
-        return {"type": "Polygon", "coordinates": self.coordinates}
+        return {"type": self.type, "coordinates": self.coordinates}
 
 
 class GeoJSONMultiPolygon(BaseModel):
@@ -71,6 +74,8 @@ class GeoJSONMultiPolygon(BaseModel):
     def check_type(cls, v):
         if v != "MultiPolygon":
             raise ValueError("Incorrect geometry type.")
+
+        return v
 
     def multipolygon(self) -> MultiPolygon:
         multipolygons = []
@@ -91,8 +96,8 @@ class GeoJSONMultiPolygon(BaseModel):
             raise ValueError("Incorrect geometry type.")
         return MultiPolygon(polygons=multipolygons)
 
-    def to_dict(self) -> dict[str | list[list[list[str]]]]:
-        return {"type": "MultiPolygon", "coordinates": self.coordinates}
+    def to_dict(self) -> dict[str | list[list[list[list[str]]]]]:
+        return {"type": self.type, "coordinates": self.coordinates}
 
 
 # GeoJSON Standard

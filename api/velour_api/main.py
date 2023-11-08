@@ -98,8 +98,10 @@ def get_groundtruth(
             dataset_name=dataset_name,
             datum_uid=uid,
         )
-    # TODO fix
-    except Exception as e:
+    except (
+        exceptions.DatumDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -319,8 +321,10 @@ def get_datums(
                 datasets=schemas.DatasetFilter(names=[dataset_name]),
             ),
         )
-    # TODO fix
-    except Exception as e:
+    except (
+        exceptions.DatumDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
