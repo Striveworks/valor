@@ -63,7 +63,7 @@ class ImageMetadata:
 
     def to_datum(self) -> Datum:
         metadata = self.metadata.copy() if self.metadata else {}
-        geo_metadata = self.geo_metadata if self.geo_metadata else {}
+        geo_metadata = self.geo_metadata.copy() if self.geo_metadata else {}
 
         metadata["height"] = self.height
         metadata["width"] = self.width
