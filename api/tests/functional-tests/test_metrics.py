@@ -149,10 +149,8 @@ def test_compute_detection_metrics(
                 iou_thresholds_to_keep=[0.5, 0.75],
             ),
             filters=schemas.Filter(
-                annotations=schemas.AnnotationFilter(
-                    annotation_types=[enums.AnnotationType.BOX],
-                ),
-                labels=schemas.LabelFilter(keys=["class"]),
+                annotation_types=[enums.AnnotationType.BOX],
+                label_keys=["class"],
             ),
         ),
     )

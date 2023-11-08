@@ -86,19 +86,15 @@ def get_joint_labels(
     prediction_type: enums.AnnotationType,
 ) -> list[schemas.Label]:
     gt_filter = schemas.Filter(
-        datasets=schemas.DatasetFilter(names=[dataset_name]),
-        annotations=schemas.AnnotationFilter(
-            task_types=task_types,
-            annotation_types=[groundtruth_type],
-        ),
+        dataset_names=[dataset_name],
+        task_types=task_types,
+        annotation_types=[groundtruth_type],
     )
     pd_filter = schemas.Filter(
-        datasets=schemas.DatasetFilter(names=[dataset_name]),
-        models=schemas.ModelFilter(names=[model_name]),
-        annotations=schemas.AnnotationFilter(
-            task_types=task_types,
-            annotation_types=[prediction_type],
-        ),
+        dataset_names=[dataset_name],
+        models_names=[model_name],
+        task_types=task_types,
+        annotation_types=[prediction_type],
     )
     return list(
         get_groundtruth_labels(db, gt_filter).intersection(
@@ -114,17 +110,13 @@ def get_joint_keys(
     task_type: enums.TaskType,
 ) -> list[schemas.Label]:
     gt_filter = schemas.Filter(
-        datasets=schemas.DatasetFilter(names=[dataset_name]),
-        annotations=schemas.AnnotationFilter(
-            task_types=[task_type],
-        ),
+        dataset_names=[dataset_name],
+        task_types=[task_type],
     )
     pd_filter = schemas.Filter(
-        datasets=schemas.DatasetFilter(names=[dataset_name]),
-        models=schemas.ModelFilter(names=[model_name]),
-        annotations=schemas.AnnotationFilter(
-            task_types=[task_type],
-        ),
+        dataset_names=[dataset_name],
+        models_names=[model_name],
+        task_types=[task_type],
     )
     return list(
         get_groundtruth_label_keys(db, gt_filter).intersection(
@@ -145,19 +137,15 @@ def get_disjoint_labels(
 
     # create filters
     gt_filter = schemas.Filter(
-        datasets=schemas.DatasetFilter(names=[dataset_name]),
-        annotations=schemas.AnnotationFilter(
-            task_types=task_types,
-            annotation_types=[groundtruth_type],
-        ),
+        dataset_names=[dataset_name],
+        task_types=task_types,
+        annotation_types=[groundtruth_type],
     )
     pd_filter = schemas.Filter(
-        datasets=schemas.DatasetFilter(names=[dataset_name]),
-        models=schemas.ModelFilter(names=[model_name]),
-        annotations=schemas.AnnotationFilter(
-            task_types=task_types,
-            annotation_types=[prediction_type],
-        ),
+        dataset_names=[dataset_name],
+        models_names=[model_name],
+        task_types=task_types,
+        annotation_types=[prediction_type],
     )
 
     # get labels
@@ -179,17 +167,13 @@ def get_disjoint_keys(
 
     # create filters
     gt_filter = schemas.Filter(
-        datasets=schemas.DatasetFilter(names=[dataset_name]),
-        annotations=schemas.AnnotationFilter(
-            task_types=[task_type],
-        ),
+        dataset_names=[dataset_name],
+        task_types=[task_type],
     )
     pd_filter = schemas.Filter(
-        datasets=schemas.DatasetFilter(names=[dataset_name]),
-        models=schemas.ModelFilter(names=[model_name]),
-        annotations=schemas.AnnotationFilter(
-            task_types=[task_type],
-        ),
+        dataset_names=[dataset_name],
+        models_names=[model_name],
+        task_types=[task_type],
     )
 
     # get keys

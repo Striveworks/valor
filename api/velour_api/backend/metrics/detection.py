@@ -113,18 +113,19 @@ def compute_detection_metrics(
 
     # Create groundtruth filter
     gt_filter = settings.filters.model_copy()
-    gt_filter.datasets = schemas.DatasetFilter(ids=[dataset.id])
-    gt_filter.models = schemas.ModelFilter()
+    gt_filter.dataset_names = [dataset.name]
+    gt_filter.models_names = None
+    gt_filter.models_metadata = None
+    gt_filter.models_geospatial = None
+    gt_filter.prediction_scores = None
 
     # Create prediction filter
     pd_filter = settings.filters.model_copy()
-    pd_filter.datasets = schemas.DatasetFilter(ids=[dataset.id])
-    pd_filter.models = schemas.ModelFilter(ids=[model.id])
+    pd_filter.dataset_names = [dataset.name]
+    pd_filter.models_names = [model.name]
 
     # Get target annotation type
-    target_type = max(
-        settings.filters.annotations.annotation_types, key=lambda x: x
-    )
+    target_type = max(settings.filters.annotation_types, key=lambda x: x)
 
     # Convert geometries to target type (if required)
     core.convert_geometry(
@@ -264,7 +265,7 @@ def compute_detection_metrics(
     # Get the number of ground truths per label id
     number_of_ground_truths = {}
     for id in labels:
-        gt_filter.labels.ids = [id]
+        gt_filter.label_ids = [id]
         number_of_ground_truths[id] = db.query(
             Query(func.count(models.GroundTruth.id))
             .filter(gt_filter)
@@ -394,16 +395,16 @@ def _get_annotation_type_for_computation(
     db: Session,
     dataset: models.Dataset,
     model: models.Model,
-    annotation_filter: schemas.AnnotationFilter | None = None,
+    job_filter: schemas.Filter | None = None,
 ) -> AnnotationType:
     # get dominant type
     gt_type = core.get_annotation_type(db, dataset, None)
     pd_type = core.get_annotation_type(db, dataset, model)
     gct = gt_type if gt_type < pd_type else pd_type
-    if annotation_filter.annotation_types:
-        if gct not in annotation_filter.annotation_types:
+    if job_filter.annotation_types:
+        if gct not in job_filter.annotation_types:
             sorted_types = sorted(
-                annotation_filter.annotation_types,
+                job_filter.annotation_types,
                 key=lambda x: x,
                 reverse=True,
             )
@@ -442,16 +443,12 @@ def create_detection_evaluation(
 
     # annotation types
     gct, gt_type, pd_type = _get_annotation_type_for_computation(
-        db, dataset, model, job_request.settings.filters.annotations
+        db, dataset, model, job_request.settings.filters
     )
 
     # update settings
     job_request.settings.task_type = enums.TaskType.DETECTION
-    job_request.settings.filters.annotations.annotation_types = [gct]
-    # This overrides user selection.
-    job_request.settings.filters.annotations.allow_conversion = (
-        gt_type == pd_type
-    )
+    job_request.settings.filters.annotation_types = [gct]
 
     es = get_or_create_row(
         db,
