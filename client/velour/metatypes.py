@@ -16,7 +16,7 @@ class ImageMetadata:
         dataset: str = "",
         metadata: Dict[str, Union[int, float, str]] = None,
         geo_metadata: Dict[
-            str, List[List[List[float]]] | List[float] | str
+            str, Union[List[List[List[float]]], List[float], str]
         ] = None,
     ):
         self.uid = uid

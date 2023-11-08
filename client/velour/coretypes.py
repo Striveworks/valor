@@ -75,7 +75,7 @@ class Datum:
         uid: str,
         metadata: Dict[str, Union[int, float, str]] = None,
         geo_metadata: Dict[
-            str, List[List[List[float]]] | List[float] | str
+            str, Union[List[List[List[float]]], List[float], str]
         ] = None,
         dataset: str = "",
     ):
