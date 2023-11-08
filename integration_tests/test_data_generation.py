@@ -171,16 +171,8 @@ def test_generate_prediction_data(client: Client):
                 "iou_thresholds_to_keep": [0.0, 1.0],
             },
             "filters": {
-                "annotations": {
-                    "allow_conversion": False,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "label_keys": ["k1"],
             },
         },
     }
