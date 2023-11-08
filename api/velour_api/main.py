@@ -182,7 +182,7 @@ def get_labels_from_dataset(
         return crud.get_dataset_labels(
             db=db,
             filters=schemas.Filter(
-                datasets=schemas.DatasetFilter(names=[dataset_name]),
+                dataset_names=[dataset_name],
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
@@ -202,7 +202,7 @@ def get_labels_from_model(
         return crud.get_model_labels(
             db=db,
             filters=schemas.Filter(
-                models=schemas.ModelFilter(names=[model_name]),
+                models_names=[model_name],
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
@@ -318,7 +318,7 @@ def get_datums(
         return crud.get_datums(
             db=db,
             request=schemas.Filter(
-                datasets=schemas.DatasetFilter(names=[dataset_name]),
+                dataset_names=[dataset_name],
             ),
         )
     except (

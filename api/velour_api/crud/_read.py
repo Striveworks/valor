@@ -107,7 +107,7 @@ def get_ranked_evaluations(
     dataset_name: str,
     metric: str,
     parameters: dict = None,
-    label_keys: list = None,
+    label_keys: list[str] = None,
     rank_from_highest_value_to_lowest_value: bool = True,
 ) -> list[schemas.Evaluation]:
     """
@@ -174,20 +174,13 @@ def get_ranked_evaluations(
     if not label_keys:
         label_keys = []
 
-    user_label_filter = schemas.LabelFilter(
-        keys=label_keys,
-    )
-
     evaluations = get_bulk_evaluations(
         dataset_names=[dataset_name], db=db, model_names=[]
     )
 
     model_values = collections.defaultdict(float)
     for evaluation in evaluations:
-        if (
-            not label_keys
-            or evaluation.settings.filters.labels == user_label_filter
-        ):
+        if not label_keys or evaluation.settings.filters.labels == label_keys:
             for evaluation_metric in evaluation.metrics:
                 if evaluation_metric.type == metric and (
                     not parameters

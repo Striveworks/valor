@@ -12,8 +12,8 @@ import requests
 from velour import enums, schemas
 from velour.coretypes import Datum, GroundTruth, Label, Prediction
 from velour.enums import JobStatus, State
-from velour.filters import BinaryExpression, DeclarativeMapper, create_filter
 from velour.metatypes import ImageMetadata
+from velour.schemas.filters import BinaryExpression, DeclarativeMapper, Filter
 from velour.schemas.metadata import validate_metadata
 
 
@@ -367,9 +367,9 @@ class Evaluation:
 
 
 class Dataset:
-    id = DeclarativeMapper("dataset.id", int)
-    name = DeclarativeMapper("dataset.name", str)
-    metadata = DeclarativeMapper("dataset.metadata", Union[int, float, str])
+    name = DeclarativeMapper("dataset_names", str)
+    metadata = DeclarativeMapper("dataset_metadata", Union[int, float, str])
+    geospatial = DeclarativeMapper("annotation_geospatial", schemas.GeoJSON)
 
     def __init__(self):
         self.client: Client = None
@@ -516,9 +516,9 @@ class Dataset:
 
 
 class Model:
-    id = DeclarativeMapper("model.id", int)
-    name = DeclarativeMapper("model.name", str)
-    metadata = DeclarativeMapper("model.metadata", Union[int, float, str])
+    name = DeclarativeMapper("models_names", str)
+    metadata = DeclarativeMapper("models_metadata", Union[int, float, str])
+    geospatial = DeclarativeMapper("annotation_geospatial", schemas.GeoJSON)
 
     def __init__(self):
         self.client: Client = None
@@ -668,7 +668,7 @@ class Model:
         )
 
         if not isinstance(filters, dict):
-            filters = create_filter(filters)
+            filters = Filter.create(filters)
 
         evaluation = schemas.EvaluationJob(
             model=self.name,

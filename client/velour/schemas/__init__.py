@@ -1,4 +1,11 @@
 from .evaluation import DetectionParameters, EvaluationJob, EvaluationSettings
+from .filters import (
+    BinaryExpression,
+    DeclarativeMapper,
+    Filter,
+    GeospatialFilter,
+    ValueFilter,
+)
 from .geometry import (
     BasicPolygon,
     BoundingBox,
@@ -21,18 +28,10 @@ __all__ = [
     "EvaluationJob",
     "EvaluationSettings",
     "DetectionParameters",
-    "StringFilter",
-    "NumericFilter",
-    "GeospatialFilter",
-    "GeometricAnnotationFilter",
-    "JSONAnnotationFilter",
-    "KeyValueFilter",
-    "DatasetFilter",
-    "ModelFilter",
-    "DatumFilter",
-    "AnnotationFilter",
-    "LabelFilter",
-    "PredictionFilter",
+    "BinaryExpression",
+    "DeclarativeMapper",
     "Filter",
+    "ValueFilter",
+    "GeospatialFilter",
     "validate_metadata",
 ]

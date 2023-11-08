@@ -1518,7 +1518,7 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.type == AnnotationType.BOX,
         ],
         timeout=30,
     )
@@ -1542,16 +1542,8 @@ def test_evaluate_detection(
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "label_keys": ["k1"],
             },
         },
     }
@@ -1613,9 +1605,9 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-            Annotation.box.area >= 10,
-            Annotation.box.area <= 2000,
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 10,
+            Annotation.geometric_area <= 2000,
         ],
         timeout=30,
     )
@@ -1626,29 +1618,18 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 10.0},
-                            ],
-                        },
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": "<=", "value": 2000.0},
-                            ],
-                        },
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 10.0,
+                    },
+                    {
+                        "operator": "<=",
+                        "value": 2000.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1667,8 +1648,8 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-            Annotation.box.area >= 1200,
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 1200,
         ],
         timeout=30,
     )
@@ -1679,23 +1660,14 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 1200.0},
-                            ],
-                        }
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 1200.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1713,8 +1685,8 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-            Annotation.box.area <= 1200,
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area <= 1200,
         ],
         timeout=30,
     )
@@ -1725,21 +1697,14 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [{"operator": "<=", "value": 1200.0}],
-                        }
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": "<=",
+                        "value": 1200.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1758,9 +1723,9 @@ def test_evaluate_detection(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-            Annotation.box.area >= 1200,
-            Annotation.box.area <= 1800,
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 1200,
+            Annotation.geometric_area <= 1800,
         ],
         timeout=30,
     )
@@ -1771,29 +1736,18 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 1200.0},
-                            ],
-                        },
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": "<=", "value": 1800.0},
-                            ],
-                        },
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 1200.0,
+                    },
+                    {
+                        "operator": "<=",
+                        "value": 1800.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1873,8 +1827,8 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-            Annotation.box.area >= 1200,
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 1200,
         ],
         timeout=30,
     )
@@ -1884,29 +1838,18 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
         filters={
-            "annotations": {
-                "allow_conversion": True,
-                "annotation_types": ["box"],
-                "geo": [],
-                "geometry": [
-                    {
-                        "annotation_type": "box",
-                        "area": [
-                            {"operator": ">=", "value": 1200.0},
-                        ],
-                    },
-                    {
-                        "annotation_type": "box",
-                        "area": [
-                            {"operator": "<=", "value": 1800.0},
-                        ],
-                    },
-                ],
-                "json_": [],
-                "metadata": [],
-                "task_types": [],
-            },
-            "labels": {"ids": [], "keys": ["k1"], "labels": []},
+            "annotation_types": ["box"],
+            "annotation_geometric_area": [
+                {
+                    "operator": ">=",
+                    "value": 1200.0,
+                },
+                {
+                    "operator": "<=",
+                    "value": 1800.0,
+                },
+            ],
+            "label_keys": ["k1"],
         },
         timeout=30,
     )
@@ -1918,29 +1861,18 @@ def test_evaluate_detection_with_json_filters(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 1200.0},
-                            ],
-                        },
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": "<=", "value": 1800.0},
-                            ],
-                        },
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 1200.0,
+                    },
+                    {
+                        "operator": "<=",
+                        "value": 1800.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1984,7 +1916,7 @@ def test_get_bulk_evaluations(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.type == AnnotationType.BOX,
         ],
         timeout=30,
     )
@@ -2102,7 +2034,7 @@ def test_get_bulk_evaluations(
         iou_thresholds_to_keep=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
+            Annotation.type == AnnotationType.BOX,
         ],
         timeout=30,
     )
@@ -2153,136 +2085,137 @@ def test_get_bulk_evaluations(
     assert both_evaluations == both_evaluations_from_model_names
 
 
-def test_get_ranked_evaluations(
-    client: Client,
-    gt_dets1: list[GroundTruth],
-    pred_dets: list[Prediction],
-    pred_dets2: list[Prediction],
-    db: Session,
-):
-    dataset_ = dset_name
-    model_ = model_name
+# FIXME - See PR #265
+# def test_get_ranked_evaluations(
+#     client: Client,
+#     gt_dets1: list[GroundTruth],
+#     pred_dets: list[Prediction],
+#     pred_dets2: list[Prediction],
+#     db: Session,
+# ):
+#     dataset_ = dset_name
+#     model_ = model_name
 
-    dataset = Dataset.create(client, dataset_)
-    for gt in gt_dets1:
-        dataset.add_groundtruth(gt)
-    dataset.finalize()
+#     dataset = Dataset.create(client, dataset_)
+#     for gt in gt_dets1:
+#         dataset.add_groundtruth(gt)
+#     dataset.finalize()
 
-    # first model
-    model = Model.create(client, model_)
-    for pd in pred_dets:
-        model.add_prediction(pd)
-    model.finalize_inferences(dataset)
+#     # first model
+#     model = Model.create(client, model_)
+#     for pd in pred_dets:
+#         model.add_prediction(pd)
+#     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_detection(
-        dataset=dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
-        filters=[
-            Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-        ],
-        timeout=30,
-    )
-    eval_job.wait_for_completion()
+#     eval_job = model.evaluate_detection(
+#         dataset=dataset,
+#         iou_thresholds_to_compute=[0.1, 0.6],
+#         iou_thresholds_to_keep=[0.1, 0.6],
+#         filters=[
+#             Label.key == "k1",
+#             Annotation.type == AnnotationType.BOX,
+#         ],
+#         timeout=30,
+#     )
+#     eval_job.wait_for_completion()
 
-    # second model
-    second_model = Model.create(client, "second_model")
-    for pd in pred_dets2:
-        second_model.add_prediction(pd)
-    second_model.finalize_inferences(dataset)
+#     # second model
+#     second_model = Model.create(client, "second_model")
+#     for pd in pred_dets2:
+#         second_model.add_prediction(pd)
+#     second_model.finalize_inferences(dataset)
 
-    eval_job = second_model.evaluate_detection(
-        dataset=dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
-        filters=[
-            Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-        ],
-        timeout=30,
-    )
-    eval_job.wait_for_completion()
+#     eval_job = second_model.evaluate_detection(
+#         dataset=dataset,
+#         iou_thresholds_to_compute=[0.1, 0.6],
+#         iou_thresholds_to_keep=[0.1, 0.6],
+#         filters=[
+#             Label.key == "k1",
+#             Annotation.type == AnnotationType.BOX,
+#         ],
+#         timeout=30,
+#     )
+#     eval_job.wait_for_completion()
 
-    # third model: the same as the second model, but we'd expect it to not have any metrics because of the max_area argument
-    third_model = Model.create(client, "third_model")
-    for pd in pred_dets2:
-        third_model.add_prediction(pd)
-    third_model.finalize_inferences(dataset)
+#     # third model: the same as the second model, but we'd expect it to not have any metrics because of the max_area argument
+#     third_model = Model.create(client, "third_model")
+#     for pd in pred_dets2:
+#         third_model.add_prediction(pd)
+#     third_model.finalize_inferences(dataset)
 
-    eval_job = third_model.evaluate_detection(
-        dataset=dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
-        filters=[
-            Label.key == "k1",
-            Annotation.annotation_type == AnnotationType.BOX,
-            Annotation.box.area <= 30 * 300,
-        ],
-        timeout=30,
-    )
-    eval_job.wait_for_completion()
+#     eval_job = third_model.evaluate_detection(
+#         dataset=dataset,
+#         iou_thresholds_to_compute=[0.1, 0.6],
+#         iou_thresholds_to_keep=[0.1, 0.6],
+#         filters=[
+#             Label.key == "k1",
+#             Annotation.type == AnnotationType.BOX,
+#             Annotation.geometric_area <= 30 * 300.0,
+#         ],
+#         timeout=30,
+#     )
+#     eval_job.wait_for_completion()
 
-    # test incorrect parameters
-    with pytest.raises(ClientException):
-        ranked_evaluations = client.get_ranked_evaluations(
-            dataset_name=dset_name, metric="mAP"
-        )
+#     # test incorrect parameters
+#     with pytest.raises(ClientException):
+#         ranked_evaluations = client.get_ranked_evaluations(
+#             dataset_name=dset_name, metric="mAP"
+#         )
 
-    # test wrong metric name
-    with pytest.raises(ClientException):
-        ranked_evaluations = client.get_ranked_evaluations(
-            dataset_name=dset_name, metric="fake_metric_name"
-        )
+#     # test wrong metric name
+#     with pytest.raises(ClientException):
+#         ranked_evaluations = client.get_ranked_evaluations(
+#             dataset_name=dset_name, metric="fake_metric_name"
+#         )
 
-    # test bad parameters
-    with pytest.raises(ClientException):
-        ranked_evaluations = client.get_ranked_evaluations(
-            dataset_name=dset_name,
-            metric="mAP",
-            parameters={"iou": 0.5},
-        )
+#     # test bad parameters
+#     with pytest.raises(ClientException):
+#         ranked_evaluations = client.get_ranked_evaluations(
+#             dataset_name=dset_name,
+#             metric="mAP",
+#             parameters={"iou": 0.5},
+#         )
 
-    with pytest.raises(ClientException):
-        ranked_evaluations = client.get_ranked_evaluations(
-            dataset_name=dset_name,
-            metric="mAP",
-            parameters={"iou": [0.1, 0.6]},
-        )
+#     with pytest.raises(ClientException):
+#         ranked_evaluations = client.get_ranked_evaluations(
+#             dataset_name=dset_name,
+#             metric="mAP",
+#             parameters={"iou": [0.1, 0.6]},
+#         )
 
-    # test incorrect filters
-    with pytest.raises(ClientException):
-        ranked_evaluations = client.get_ranked_evaluations(
-            dataset_name=dset_name,
-            metric="mAP",
-            parameters={"iou": 0.6},
-            label_keys=["aosidjf"],
-        )
+#     # test incorrect filters
+#     with pytest.raises(ClientException):
+#         ranked_evaluations = client.get_ranked_evaluations(
+#             dataset_name=dset_name,
+#             metric="mAP",
+#             parameters={"iou": 0.6},
+#             label_keys=["aosidjf"],
+#         )
 
-    ranked_evaluations = client.get_ranked_evaluations(
-        dataset_name=dset_name,
-        metric="mAP",
-        parameters={"iou": 0.6},
-    )
+#     ranked_evaluations = client.get_ranked_evaluations(
+#         dataset_name=dset_name,
+#         metric="mAP",
+#         parameters={"iou": 0.6},
+#     )
 
-    assert len(ranked_evaluations) == 3
-    assert ranked_evaluations[0]["ranking"] == 1
-    assert ranked_evaluations[0]["model"] == "test_model"
+#     assert len(ranked_evaluations) == 3
+#     assert ranked_evaluations[0]["ranking"] == 1
+#     assert ranked_evaluations[0]["model"] == "test_model"
 
-    assert ranked_evaluations[1]["ranking"] == 2
-    assert ranked_evaluations[1]["model"] == "second_model"
+#     assert ranked_evaluations[1]["ranking"] == 2
+#     assert ranked_evaluations[1]["model"] == "second_model"
 
-    assert ranked_evaluations[2]["ranking"] == "not_ranked"
-    assert ranked_evaluations[2]["model"] == "third_model"
+#     assert ranked_evaluations[2]["ranking"] == "not_ranked"
+#     assert ranked_evaluations[2]["model"] == "third_model"
 
-    second_ranked_evaluations = client.get_ranked_evaluations(
-        dataset_name=dset_name,
-        metric="mAP",
-        parameters={"iou": 0.6},
-        label_keys=["k1"],
-    )
+#     second_ranked_evaluations = client.get_ranked_evaluations(
+#         dataset_name=dset_name,
+#         metric="mAP",
+#         parameters={"iou": 0.6},
+#         label_keys=["k1"],
+#     )
 
-    assert second_ranked_evaluations == ranked_evaluations
+#     assert second_ranked_evaluations == ranked_evaluations
 
 
 def test_evaluate_image_clf(

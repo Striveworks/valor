@@ -4,14 +4,15 @@ from typing import Dict, List, Tuple, Union
 
 from velour.enums import AnnotationType, TaskType
 from velour.exceptions import SchemaTypeError
-from velour.filters import DeclarativeMapper, Geometry
+from velour.schemas.filters import DeclarativeMapper
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import validate_metadata
 
 
 class Label:
-    key = DeclarativeMapper("label.key", str)
-    label = DeclarativeMapper("label.label", str)
+    id = DeclarativeMapper("label_ids", int)
+    key = DeclarativeMapper("label_keys", str)
+    label = DeclarativeMapper("labels", str)
 
     def __init__(self, key: str, value: str, score: Union[float, None] = None):
         self.key = key
@@ -66,9 +67,9 @@ class Label:
 
 
 class Datum:
-    id = DeclarativeMapper("datum.id", int)
-    uid = DeclarativeMapper("datum.uid", str)
-    metadata = DeclarativeMapper("datum.metadata", Union[int, float, str])
+    uid = DeclarativeMapper("datum_uids", str)
+    metadata = DeclarativeMapper("datum_metadata", Union[int, float, str])
+    geospatial = DeclarativeMapper("datum_geospatial", GeoJSON)
 
     def __init__(
         self,
@@ -107,16 +108,11 @@ class Datum:
 
 
 class Annotation:
-    task_type = DeclarativeMapper("annotation.task_type", TaskType)
-    annotation_type = DeclarativeMapper(
-        "annotation.annotation_type", AnnotationType
-    )
-    box = Geometry("box")
-    polygon = Geometry("polygon")
-    multipolygon = Geometry("multipolygon")
-    raster = Geometry("raster")
-    json = DeclarativeMapper("annotation.json", object)
-    metadata = DeclarativeMapper("annotation.metadata", Union[int, float, str])
+    task = DeclarativeMapper("task_types", TaskType)
+    type = DeclarativeMapper("annotation_types", AnnotationType)
+    geometric_area = DeclarativeMapper("annotation_geometric_area", float)
+    metadata = DeclarativeMapper("annotation_metadata", Union[int, float, str])
+    geospatial = DeclarativeMapper("annotation_geospatial", GeoJSON)
 
     def __init__(
         self,
@@ -253,7 +249,7 @@ class GroundTruth:
 
 
 class Prediction:
-    score = DeclarativeMapper("prediction.score", Union[int, float])
+    score = DeclarativeMapper("prediction_scores", Union[int, float])
 
     def __init__(
         self,
