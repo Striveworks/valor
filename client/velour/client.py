@@ -369,9 +369,6 @@ class Evaluation:
 class Dataset:
     name = DeclarativeMapper("dataset_names", str)
     metadata = DeclarativeMapper("dataset_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper(
-        "dataset_geospatial", Union[int, float, str]
-    )
 
     def __init__(self):
         self.client: Client = None
@@ -529,7 +526,6 @@ class Dataset:
 class Model:
     name = DeclarativeMapper("models_names", str)
     metadata = DeclarativeMapper("models_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper("models_geospatial", Union[int, float, str])
 
     def __init__(self):
         self.client: Client = None
