@@ -167,15 +167,18 @@ def get_ranked_model_evaluations(
             }
 
         # extract metric value (if it exists)
-        value = None
-        for evaluation_metric in evaluation.metrics:
-            if evaluation_metric.type == metric:
+        value = next(
+            [
+                evaluation_metric.value
+                for evaluation_metric in evaluation.metrics
                 if (
-                    evaluation_metric.parameters == parameters
+                    evaluation_metric.type == metric
+                    and evaluation_metric.parameters == parameters
                     and evaluation_metric.label == label
-                ):
-                    value = evaluation_metric.value
-                    break
+                )
+            ],
+            None,
+        )
 
         # only add if value exists
         if value:
@@ -184,39 +187,35 @@ def get_ranked_model_evaluations(
             ].append(
                 {
                     "model": evaluation.model,
-                    "value": evaluation_metric.value,
+                    "value": value,
                 }
             )
 
     # sort by value
-    rankings = []
-    for settings_key in evaluations_sorted_by_settings:
-        ranked_models = [
-            {
-                "rank": rank,
-                "model": model_value["model"],
-            }
-            for rank, model_value in enumerate(
-                sorted(
-                    evaluations_sorted_by_settings[settings_key][
-                        "model_values"
-                    ],
-                    key=lambda x: x["value"],
-                    reverse=rank_from_highest_value_to_lowest_value,
-                ),
-                start=1,
-            )
-        ]
-        rankings.append(
-            {
-                "settings": evaluations_sorted_by_settings[settings_key][
-                    "settings"
-                ],
-                "models": ranked_models,
-            }
-        )
-
-    return rankings
+    return [
+        {
+            "settings": evaluations_sorted_by_settings[settings_key][
+                "settings"
+            ],
+            "models": [
+                {
+                    "rank": rank,
+                    "model": model_value["model"],
+                }
+                for rank, model_value in enumerate(
+                    sorted(
+                        evaluations_sorted_by_settings[settings_key][
+                            "model_values"
+                        ],
+                        key=lambda x: x["value"],
+                        reverse=rank_from_highest_value_to_lowest_value,
+                    ),
+                    start=1,
+                )
+            ],
+        }
+        for settings_key in evaluations_sorted_by_settings
+    ]
 
 
 """ Labels """
