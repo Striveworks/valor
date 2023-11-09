@@ -32,9 +32,6 @@ class GeoJSONPoint(BaseModel):
             y=self.coordinates[1],
         )
 
-    def to_dict(self) -> dict[str | list[list[list[str]]]]:
-        return {"type": self.type, "coordinates": self.coordinates}
-
 
 class GeoJSONPolygon(BaseModel):
     type: str
@@ -60,9 +57,6 @@ class GeoJSONPolygon(BaseModel):
             boundary=polygons[0],
             holes=polygons[1:] if len(polygons) > 1 else None,
         )
-
-    def to_dict(self) -> dict[str | list[list[list[str]]]]:
-        return {"type": self.type, "coordinates": self.coordinates}
 
 
 class GeoJSONMultiPolygon(BaseModel):
@@ -96,9 +90,6 @@ class GeoJSONMultiPolygon(BaseModel):
             raise ValueError("Incorrect geometry type.")
         return MultiPolygon(polygons=multipolygons)
 
-    def to_dict(self) -> dict[str | list[list[list[list[str]]]]]:
-        return {"type": self.type, "coordinates": self.coordinates}
-
 
 # GeoJSON Standard
 class GeoJSON(BaseModel):
@@ -127,15 +118,5 @@ class GeoJSON(BaseModel):
             return self.geometry.polygon()
         elif isinstance(self.geometry, GeoJSONMultiPolygon):
             return self.geometry.multipolygon()
-        else:
-            raise ValueError
-
-    def to_dict(self):
-        if isinstance(self.geometry, GeoJSONPoint):
-            return self.geometry.to_dict()
-        elif isinstance(self.geometry, GeoJSONPolygon):
-            return self.geometry.to_dict()
-        elif isinstance(self.geometry, GeoJSONMultiPolygon):
-            return self.geometry.to_dict()
         else:
             raise ValueError
