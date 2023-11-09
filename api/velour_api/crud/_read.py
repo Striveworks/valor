@@ -71,14 +71,33 @@ def get_bulk_evaluations(
     return output
 
 
+def _validate_parameter(parameter: str, value: float | str):
+    if parameter == "label":
+        if not isinstance(value, dict):
+            raise TypeError("`label` should be of type `dict[str, str]`")
+        if len(value) != 1:
+            raise ValueError("should only include one label")
+    elif parameter == "iou":
+        if not isinstance(value, float):
+            raise TypeError("`iou` should of type `float`")
+    elif parameter == "ious":
+        if not isinstance(value, list):
+            raise TypeError("`ious` should be of type `list[float]`")
+        for iou in value:
+            if not isinstance(iou, float):
+                raise TypeError("`ious` should be of type `list[float]`")
+    elif parameter == "label_key":
+        if not isinstance(value, str):
+            raise TypeError("`label_key` should be of type `str`")
+
+
 def get_ranked_model_evaluations(
     db: Session,
     dataset_name: str,
     metric: str,
     parameters: dict | None = None,
-    label: dict | None = None,
     rank_from_highest_value_to_lowest_value: bool = True,
-) -> list[dict[str, int | str | schemas.EvaluationSettings]]:
+) -> list[dict[str, list[str, dict[int | str]] | schemas.EvaluationSettings]]:
     """
     Returns all metrics associated with a particular dataset, ranked according to user inputs
 
@@ -122,28 +141,21 @@ def get_ranked_model_evaluations(
     if parameters and not isinstance(parameters, dict):
         raise TypeError("`parameters` should be of type dict.")
 
-    # validate parameters
-    if not label and "label" in requirements_for_selection:
+    # validate parameters exist if parameters are required
+    if not parameters and requirements_for_selection:
         raise ValueError(
-            f"`label` is a required argument for sorting by metric type `{metric}`"
+            f"`parameters` dict of `{requirements_for_selection}` are required for sorting by metric type `{metric}`"
         )
-    if not parameters and {"label_key", "iou", "ious"}.intersection(
-        requirements_for_selection
-    ):
+
+    # validate parameters are defined
+    if set(parameters.keys()) != set(requirements_for_selection):
         raise ValueError(
-            f"`parameters` is a required argument for sorting by metric type `{metric}`"
+            f"`parameters` dict of `{requirements_for_selection}` are required for sorting by metric type `{metric}`"
         )
-    if (
-        "label_key" not in parameters
-        and "label_key" in requirements_for_selection
-    ):
-        raise ValueError(
-            f"`label_key` argument is required for metric {metric}."
-        )
-    if "iou" not in parameters and "iou" in requirements_for_selection:
-        raise ValueError(f"`iou` argument is required for metric {metric}.")
-    if "ious" not in parameters and "ious" in requirements_for_selection:
-        raise ValueError(f"`ious` argument is required for metric {metric}.")
+
+    # type validation
+    for key in requirements_for_selection:
+        _validate_parameter(key, parameters[key])
 
     evaluations = get_bulk_evaluations(
         dataset_names=[dataset_name], db=db, model_names=[]
@@ -154,7 +166,7 @@ def get_ranked_model_evaluations(
     for evaluation in evaluations:
 
         # track different evaluation jobs by settings
-        settings_json = evaluation.model_dump_json()
+        settings_json = evaluation.settings.model_dump_json()
         if settings_json not in evaluation_settings_to_int:
             evaluation_settings_to_int[settings_json] = len(
                 evaluation_settings_to_int
@@ -166,17 +178,23 @@ def get_ranked_model_evaluations(
                 "model_values": [],
             }
 
+        parameters_without_label = parameters.copy()
+        label = parameters_without_label.pop("label", None)
+
         # extract metric value (if it exists)
         value = next(
-            [
-                evaluation_metric.value
-                for evaluation_metric in evaluation.metrics
-                if (
-                    evaluation_metric.type == metric
-                    and evaluation_metric.parameters == parameters
-                    and evaluation_metric.label == label
-                )
-            ],
+            iter(
+                [
+                    evaluation_metric.value
+                    for evaluation_metric in evaluation.metrics
+                    if (
+                        evaluation_metric.type == metric
+                        and evaluation_metric.parameters
+                        == parameters_without_label
+                        and evaluation_metric.label == label
+                    )
+                ]
+            ),
             None,
         )
 
@@ -200,7 +218,7 @@ def get_ranked_model_evaluations(
             "models": [
                 {
                     "rank": rank,
-                    "model": model_value["model"],
+                    "name": model_value["model"],
                 }
                 for rank, model_value in enumerate(
                     sorted(

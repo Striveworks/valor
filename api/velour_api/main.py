@@ -603,10 +603,11 @@ def get_bulk_evaluations(
         return crud.get_bulk_evaluations(
             db=db, dataset_names=dataset_names, model_names=model_names
         )
+    except (ValueError,) as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except (
         exceptions.DatasetDoesNotExistError,
         exceptions.ModelDoesNotExistError,
-        ValueError,
     ) as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -620,7 +621,7 @@ def get_bulk_evaluations(
 def get_ranked_model_evaluations(
     request: Request,
     db: Session = Depends(get_db),
-) -> list[dict[str, int | str | schemas.EvaluationSettings]]:
+) -> list[dict[str, list[dict[str, int | str]] | schemas.EvaluationSettings]]:
     """
     Returns all metrics associated with a particular dataset, ranked according to user inputs
 
@@ -632,8 +633,6 @@ def get_ranked_model_evaluations(
         The metric to use when ranking evaluations (e.g., "mAP")
     parameters
         The metric parameters to filter on when computing the ranking (e.g., {'iou':.5}). Will raise a ValueError if the user supplies a metric which requires more granular parameters.
-    label_keys
-        The list of label keys to filter on (e.g., ['key1'])
     rank_from_highest_value_to_lowest_value
         A boolean to indicate whether the metric values should be ranked from highest to lowest
     """
@@ -645,16 +644,19 @@ def get_ranked_model_evaluations(
             dataset_name=params["dataset_name"],
             metric=params["metric"],
             parameters=json.loads(params["parameters"]),
-            label_keys=json.loads(params["label_keys"]),
             rank_from_highest_value_to_lowest_value=bool(
                 params["rank_from_highest_value_to_lowest_value"]
             ),
         )
         return output
     except (
+        ValueError,
+        TypeError,
+    ) as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except (
         exceptions.DatasetDoesNotExistError,
         exceptions.ModelDoesNotExistError,
-        ValueError,
     ) as e:
         raise HTTPException(status_code=404, detail=str(e))
 
