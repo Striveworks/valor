@@ -421,6 +421,8 @@ class Dataset:
             raise TypeError("`id` should be of type `int`")
         if not self.metadata:
             self.metadata = {}
+        if not self.geospatial:
+            self.geospatial = {}
         validate_metadata(self.metadata)
 
     def dict(self) -> dict:
@@ -579,6 +581,8 @@ class Model:
             raise TypeError("`id` should be of type `int`")
         if not self.metadata:
             self.metadata = {}
+        if not self.geospatial:
+            self.geospatial = {}
         validate_metadata(self.metadata)
 
     def dict(self) -> dict:
