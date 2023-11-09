@@ -113,18 +113,19 @@ def compute_detection_metrics(
 
     # Create groundtruth filter
     gt_filter = settings.filters.model_copy()
-    gt_filter.datasets = schemas.DatasetFilter(ids=[dataset.id])
-    gt_filter.models = schemas.ModelFilter()
+    gt_filter.dataset_names = [dataset.name]
+    gt_filter.models_names = None
+    gt_filter.models_metadata = None
+    gt_filter.models_geospatial = None
+    gt_filter.prediction_scores = None
 
     # Create prediction filter
     pd_filter = settings.filters.model_copy()
-    pd_filter.datasets = schemas.DatasetFilter(ids=[dataset.id])
-    pd_filter.models = schemas.ModelFilter(ids=[model.id])
+    pd_filter.dataset_names = [dataset.name]
+    pd_filter.models_names = [model.name]
 
     # Get target annotation type
-    target_type = max(
-        settings.filters.annotations.annotation_types, key=lambda x: x
-    )
+    target_type = max(settings.filters.annotation_types, key=lambda x: x)
 
     # Convert geometries to target type (if required)
     core.convert_geometry(
@@ -264,7 +265,7 @@ def compute_detection_metrics(
     # Get the number of ground truths per label id
     number_of_ground_truths = {}
     for id in labels:
-        gt_filter.labels.ids = [id]
+        gt_filter.label_ids = [id]
         number_of_ground_truths[id] = db.query(
             Query(func.count(models.GroundTruth.id))
             .filter(gt_filter)
@@ -394,7 +395,7 @@ def _get_annotation_type_for_computation(
     db: Session,
     dataset: models.Dataset,
     model: models.Model,
-    annotation_filter: schemas.AnnotationFilter | None = None,
+    job_filter: schemas.Filter | None = None,
 ) -> AnnotationType:
     # get dominant type
     groundtruth_type = core.get_annotation_type(db, dataset, None)
@@ -404,10 +405,10 @@ def _get_annotation_type_for_computation(
         if groundtruth_type < prediction_type
         else prediction_type
     )
-    if annotation_filter.annotation_types:
-        if gct not in annotation_filter.annotation_types:
+    if job_filter.annotation_types:
+        if gct not in job_filter.annotation_types:
             sorted_types = sorted(
-                annotation_filter.annotation_types,
+                job_filter.annotation_types,
                 key=lambda x: x,
                 reverse=True,
             )
@@ -450,19 +451,17 @@ def create_detection_evaluation(
         groundtruth_type,
         prediction_type,
     ) = _get_annotation_type_for_computation(
-        db, dataset, model, job_request.settings.filters.annotations
+        db, dataset, model, job_request.settings.filters
     )
 
     # preupdate settings
     job_request.settings.task_type = enums.TaskType.DETECTION
-    job_request.settings.filters.models = None
-    job_request.settings.filters.datasets = [job_request.dataset]
-    job_request.settings.filters.annotations.task_types = [
-        enums.TaskType.DETECTION
-    ]
-    job_request.settings.filters.annotations.annotation_types = [gct]
+    job_request.settings.filters.models_names = None
+    job_request.settings.filters.dataset_names = [job_request.dataset]
+    job_request.settings.filters.task_types = [enums.TaskType.DETECTION]
+    job_request.settings.filters.annotation_types = [gct]
     # This overrides user selection.
-    job_request.settings.filters.annotations.allow_conversion = (
+    job_request.settings.filters.allow_conversion = (
         groundtruth_type == prediction_type
     )
 
@@ -479,11 +478,11 @@ def create_detection_evaluation(
 
     # create groundtruth label filter
     groundtruth_label_filter = job_request.settings.filters.model_copy()
-    groundtruth_label_filter.annotations.annotation_types = [groundtruth_type]
+    groundtruth_label_filter.annotation_types = [groundtruth_type]
 
     # create prediction label filter
     prediction_label_filter = job_request.settings.filters.model_copy()
-    prediction_label_filter.annotations.annotation_types = [prediction_type]
+    prediction_label_filter.annotation_types = [prediction_type]
 
     # get disjoint label sets
     groundtruth_labels = query.get_groundtruth_labels(

@@ -1022,26 +1022,16 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         geometric_filters = []
         if min_area:
             geometric_filters.append(
-                schemas.GeometricAnnotationFilter(
-                    annotation_type=enums.AnnotationType.BOX,
-                    area=[
-                        schemas.NumericFilter(
-                            value=min_area,
-                            operator=">=",
-                        ),
-                    ],
+                schemas.NumericFilter(
+                    value=min_area,
+                    operator=">=",
                 )
             )
         if max_area:
             geometric_filters.append(
-                schemas.GeometricAnnotationFilter(
-                    annotation_type=enums.AnnotationType.BOX,
-                    area=[
-                        schemas.NumericFilter(
-                            value=max_area,
-                            operator="<=",
-                        ),
-                    ],
+                schemas.NumericFilter(
+                    value=max_area,
+                    operator="<=",
                 )
             )
 
@@ -1054,11 +1044,11 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
                     iou_thresholds_to_keep=[0.2],
                 ),
                 filters=schemas.Filter(
-                    annotations=schemas.AnnotationFilter(
-                        annotation_types=[enums.AnnotationType.BOX],
-                        geometry=geometric_filters,
-                    ),
-                    labels=schemas.LabelFilter(keys=[label_key]),
+                    annotation_types=[enums.AnnotationType.BOX],
+                    annotation_geometric_area=geometric_filters
+                    if geometric_filters
+                    else None,
+                    label_keys=[label_key],
                 ),
             ),
         )
@@ -1195,11 +1185,8 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
                 iou_thresholds_to_keep=[0.2],
             ),
             filters=schemas.Filter(
-                annotations=schemas.AnnotationFilter(
-                    annotation_types=[enums.AnnotationType.BOX],
-                    allow_conversion=True,
-                ),
-                labels=schemas.LabelFilter(keys=["class"]),
+                annotation_types=[enums.AnnotationType.BOX],
+                label_keys=["class"],
             ),
         ),
         id=1,
@@ -1214,31 +1201,18 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
                 iou_thresholds_to_keep=[0.2],
             ),
             filters=schemas.Filter(
-                annotations=schemas.AnnotationFilter(
-                    annotation_types=[enums.AnnotationType.BOX],
-                    geometry=[
-                        schemas.GeometricAnnotationFilter(
-                            annotation_type=enums.AnnotationType.BOX,
-                            area=[
-                                schemas.NumericFilter(
-                                    value=min_area,
-                                    operator=">=",
-                                ),
-                            ],
-                        ),
-                        schemas.GeometricAnnotationFilter(
-                            annotation_type=enums.AnnotationType.BOX,
-                            area=[
-                                schemas.NumericFilter(
-                                    value=max_area,
-                                    operator="<=",
-                                ),
-                            ],
-                        ),
-                    ],
-                    allow_conversion=True,
-                ),
-                labels=schemas.LabelFilter(keys=["class"]),
+                annotation_types=[enums.AnnotationType.BOX],
+                annotation_geometric_area=[
+                    schemas.NumericFilter(
+                        value=min_area,
+                        operator=">=",
+                    ),
+                    schemas.NumericFilter(
+                        value=max_area,
+                        operator="<=",
+                    ),
+                ],
+                label_keys=["class"],
             ),
         ),
         id=2,
@@ -1508,7 +1482,7 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_dataset_labels(
         db=db,
         filters=schemas.Filter(
-            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
+            dataset_names=[dataset_names[0]],
         ),
     )
     assert len(ds1) == 2
@@ -1519,13 +1493,11 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_dataset_labels(
         db=db,
         filters=schemas.Filter(
-            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
-            annotations=schemas.AnnotationFilter(
-                task_types=[
-                    enums.TaskType.CLASSIFICATION,
-                    enums.TaskType.SEGMENTATION,
-                ]
-            ),
+            dataset_names=[dataset_names[0]],
+            task_types=[
+                enums.TaskType.CLASSIFICATION,
+                enums.TaskType.SEGMENTATION,
+            ],
         ),
     )
     assert ds1 == []
@@ -1534,10 +1506,8 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_dataset_labels(
         db=db,
         filters=schemas.Filter(
-            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
-            annotations=schemas.AnnotationFilter(
-                task_types=[enums.TaskType.DETECTION]
-            ),
+            dataset_names=[dataset_names[0]],
+            task_types=[enums.TaskType.DETECTION],
         ),
     )
     assert len(ds1) == 2
@@ -1548,14 +1518,12 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_dataset_labels(
         db=db,
         filters=schemas.Filter(
-            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
-            annotations=schemas.AnnotationFilter(
-                annotation_types=[
-                    enums.AnnotationType.POLYGON,
-                    enums.AnnotationType.MULTIPOLYGON,
-                    enums.AnnotationType.RASTER,
-                ]
-            ),
+            dataset_names=[dataset_names[0]],
+            annotation_types=[
+                enums.AnnotationType.POLYGON,
+                enums.AnnotationType.MULTIPOLYGON,
+                enums.AnnotationType.RASTER,
+            ],
         ),
     )
     assert ds1 == []
@@ -1564,12 +1532,10 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_dataset_labels(
         db=db,
         filters=schemas.Filter(
-            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
-            annotations=schemas.AnnotationFilter(
-                annotation_types=[
-                    enums.AnnotationType.BOX,
-                ]
-            ),
+            dataset_names=[dataset_names[0]],
+            annotation_types=[
+                enums.AnnotationType.BOX,
+            ],
         ),
     )
     assert len(ds1) == 2
@@ -1586,7 +1552,7 @@ def test_get_labels_from_model(
     md1 = crud.get_model_labels(
         db=db,
         filters=schemas.Filter(
-            models=schemas.ModelFilter(names=[model_names[0]]),
+            models_names=[model_names[0]],
         ),
     )
     assert len(md1) == 4
@@ -1599,10 +1565,8 @@ def test_get_labels_from_model(
     md1 = crud.get_model_labels(
         db=db,
         filters=schemas.Filter(
-            models=schemas.ModelFilter(names=[model_names[0]]),
-            annotations=schemas.AnnotationFilter(
-                task_types=[enums.TaskType.CLASSIFICATION],
-            ),
+            models_names=[model_names[0]],
+            task_types=[enums.TaskType.CLASSIFICATION],
         ),
     )
     assert md1 == []
@@ -1611,10 +1575,8 @@ def test_get_labels_from_model(
     md1 = crud.get_model_labels(
         db=db,
         filters=schemas.Filter(
-            models=schemas.ModelFilter(names=[model_names[0]]),
-            annotations=schemas.AnnotationFilter(
-                annotation_types=[enums.AnnotationType.BOX],
-            ),
+            models_names=[model_names[0]],
+            annotation_types=[enums.AnnotationType.BOX],
         ),
     )
     assert len(md1) == 4

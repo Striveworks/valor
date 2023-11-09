@@ -1,15 +1,77 @@
+import math
 from dataclasses import asdict
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 
-from velour.enums import TaskType
+from velour.enums import AnnotationType, TaskType
 from velour.exceptions import SchemaTypeError
+from velour.schemas.filters import DeclarativeMapper
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.geospatial import GeoJSON
-from velour.schemas.label import Label
 from velour.schemas.metadata import validate_metadata
 
 
+class Label:
+    id = DeclarativeMapper("label_ids", int)
+    key = DeclarativeMapper("label_keys", str)
+    label = DeclarativeMapper("labels", str)
+
+    def __init__(self, key: str, value: str, score: Union[float, None] = None):
+        self.key = key
+        self.value = value
+        self.score = score
+        self._validate()
+
+    def _validate(self):
+        if not isinstance(self.key, str):
+            raise TypeError("key should be of type `str`")
+        if not isinstance(self.value, str):
+            raise TypeError("value should be of type `str`")
+        if isinstance(self.score, int):
+            self.score = float(self.score)
+        if not isinstance(self.score, (float, type(None))):
+            raise TypeError("score should be of type `float`")
+
+    def tuple(self) -> Tuple[str, str, Union[float, None]]:
+        return (self.key, self.value, self.score)
+
+    def __eq__(self, other):
+        if (
+            not hasattr(other, "key")
+            or not hasattr(other, "key")
+            or not hasattr(other, "score")
+        ):
+            return False
+
+        # if the scores aren't the same type return False
+        if (other.score is None) != (self.score is None):
+            return False
+
+        scores_equal = (other.score is None and self.score is None) or (
+            math.isclose(self.score, other.score)
+        )
+
+        return (
+            scores_equal
+            and self.key == other.key
+            and self.value == other.value
+        )
+
+    def __hash__(self) -> int:
+        return hash(f"key:{self.key},value:{self.value},score:{self.score}")
+
+    def dict(self) -> dict:
+        return {
+            "key": self.key,
+            "value": self.value,
+            "score": self.score,
+        }
+
+
 class Datum:
+    uid = DeclarativeMapper("datum_uids", str)
+    metadata = DeclarativeMapper("datum_metadata", Union[int, float, str])
+    geospatial = DeclarativeMapper("datum_geospatial", GeoJSON)
+
     def __init__(
         self,
         uid: str,
@@ -42,6 +104,12 @@ class Datum:
 
 
 class Annotation:
+    task = DeclarativeMapper("task_types", TaskType)
+    type = DeclarativeMapper("annotation_types", AnnotationType)
+    geometric_area = DeclarativeMapper("annotation_geometric_area", float)
+    metadata = DeclarativeMapper("annotation_metadata", Union[int, float, str])
+    geospatial = DeclarativeMapper("annotation_geospatial", GeoJSON)
+
     def __init__(
         self,
         task_type: TaskType,
@@ -109,7 +177,7 @@ class Annotation:
     def dict(self) -> dict:
         return {
             "task_type": self.task_type.value,
-            "labels": [asdict(label) for label in self.labels],
+            "labels": [label.dict() for label in self.labels],
             "metadata": self.metadata,
             "bounding_box": asdict(self.bounding_box)
             if self.bounding_box
@@ -177,6 +245,8 @@ class GroundTruth:
 
 
 class Prediction:
+    score = DeclarativeMapper("prediction_scores", Union[int, float])
+
     def __init__(
         self,
         datum: Datum,

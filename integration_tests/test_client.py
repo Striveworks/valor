@@ -21,16 +21,23 @@ from geoalchemy2.functions import (
 from sqlalchemy import and_, create_engine, func, select, text
 from sqlalchemy.orm import Session
 
-from velour import Annotation, Dataset, Datum, GroundTruth, Model, Prediction
+from velour import (
+    Annotation,
+    Dataset,
+    Datum,
+    GroundTruth,
+    Label,
+    Model,
+    Prediction,
+)
 from velour.client import Client, ClientException
 from velour.data_generation import _generate_mask
-from velour.enums import DataType, JobStatus, TaskType
+from velour.enums import AnnotationType, DataType, JobStatus, TaskType
 from velour.metatypes import ImageMetadata
 from velour.schemas import (
     BasicPolygon,
     BoundingBox,
     GeoJSON,
-    Label,
     MultiPolygon,
     Point,
     Polygon,
@@ -208,6 +215,11 @@ def rect2():
 @pytest.fixture
 def rect3():
     return BoundingBox.from_extrema(xmin=87, ymin=10, xmax=158, ymax=820)
+
+
+@pytest.fixture
+def rect4():
+    return BoundingBox.from_extrema(xmin=1, ymin=10, xmax=10, ymax=20)
 
 
 @pytest.fixture
@@ -538,6 +550,39 @@ def pred_dets(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k2", value="v2", score=0.98)],
                     bounding_box=rect2,
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def pred_dets2(
+    rect3: BoundingBox,
+    rect4: BoundingBox,
+    img1: ImageMetadata,
+    img2: ImageMetadata,
+) -> list[Prediction]:
+    return [
+        Prediction(
+            model=model_name,
+            datum=img1.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k1", value="v1", score=0.7)],
+                    bounding_box=rect3,
+                )
+            ],
+        ),
+        Prediction(
+            model=model_name,
+            datum=img2.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k2", value="v2", score=0.98)],
+                    bounding_box=rect4,
                 )
             ],
         ),
@@ -1441,7 +1486,10 @@ def test_evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+        ],
         timeout=30,
     )
 
@@ -1464,16 +1512,8 @@ def test_evaluate_detection(
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "label_keys": ["k1"],
             },
         },
     }
@@ -1528,15 +1568,17 @@ def test_evaluate_detection(
     ).all()
     assert sorted(areas) == [1100.0, 1500.0]
 
-    # sanity check this should give us the same thing excpet min_area and max_area
-    # are not None
+    # sanity check this should give us the same thing except min_area and max_area are not none
     eval_job_bounded_area_10_2000 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
-        min_area=10,
-        max_area=2000,
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 10,
+            Annotation.geometric_area <= 2000,
+        ],
         timeout=30,
     )
     settings = asdict(eval_job_bounded_area_10_2000.settings)
@@ -1546,24 +1588,18 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 10.0},
-                                {"operator": "<=", "value": 2000.0},
-                            ],
-                        }
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 10.0,
+                    },
+                    {
+                        "operator": "<=",
+                        "value": 2000.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1580,8 +1616,11 @@ def test_evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
-        min_area=1200,
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 1200,
+        ],
         timeout=30,
     )
     settings = asdict(eval_job_min_area_1200.settings)
@@ -1591,23 +1630,14 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 1200.0},
-                            ],
-                        }
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 1200.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1623,8 +1653,11 @@ def test_evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
-        max_area=1200,
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area <= 1200,
+        ],
         timeout=30,
     )
     settings = asdict(eval_job_max_area_1200.settings)
@@ -1634,21 +1667,14 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [{"operator": "<=", "value": 1200.0}],
-                        }
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": "<=",
+                        "value": 1200.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1665,9 +1691,12 @@ def test_evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
-        min_area=1200,
-        max_area=1800,
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 1200,
+            Annotation.geometric_area <= 1800,
+        ],
         timeout=30,
     )
     settings = asdict(eval_job_bounded_area_1200_1800.settings)
@@ -1677,24 +1706,143 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 1200.0},
-                                {"operator": "<=", "value": 1800.0},
-                            ],
-                        }
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 1200.0,
+                    },
+                    {
+                        "operator": "<=",
+                        "value": 1800.0,
+                    },
+                ],
+                "label_keys": ["k1"],
+            },
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "task_type": "object-detection",
+        },
+    }
+    assert (
+        eval_job_bounded_area_1200_1800.metrics["metrics"] != expected_metrics
+    )
+    assert (
+        eval_job_bounded_area_1200_1800.metrics["metrics"]
+        == eval_job_min_area_1200.metrics["metrics"]
+    )
+
+
+def test_evaluate_detection_with_json_filters(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    db: Session,
+):
+    dataset = Dataset.create(client, dset_name)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(client, model_name)
+    for pd in pred_dets:
+        model.add_prediction(pd)
+    model.finalize_inferences(dataset)
+
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.1,
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.6,
+            },
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+        },
+    ]
+
+    eval_job_min_area_1200 = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 1200,
+        ],
+        timeout=30,
+    )
+
+    eval_job_bounded_area_1200_1800 = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters={
+            "annotation_types": ["box"],
+            "annotation_geometric_area": [
+                {
+                    "operator": ">=",
+                    "value": 1200.0,
                 },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                {
+                    "operator": "<=",
+                    "value": 1800.0,
+                },
+            ],
+            "label_keys": ["k1"],
+        },
+        timeout=30,
+    )
+
+    settings = asdict(eval_job_bounded_area_1200_1800.settings)
+    settings.pop("id")
+    assert settings == {
+        "model": model_name,
+        "dataset": "test_dataset",
+        "settings": {
+            "filters": {
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 1200.0,
+                    },
+                    {
+                        "operator": "<=",
+                        "value": 1800.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1716,6 +1864,7 @@ def test_get_bulk_evaluations(
     client: Client,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
+    pred_dets2: list[Prediction],
     db: Session,
 ):
     dataset_ = dset_name
@@ -1735,7 +1884,10 @@ def test_get_bulk_evaluations(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+        ],
         timeout=30,
     )
     eval_job.wait_for_completion()
@@ -1780,6 +1932,34 @@ def test_get_bulk_evaluations(
         },
     ]
 
+    second_model_expected_metrics = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {"type": "mAP", "parameters": {"iou": 0.1}, "value": 0.0},
+        {"type": "mAP", "parameters": {"iou": 0.6}, "value": 0.0},
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+        },
+    ]
+
     evaluations = client.get_bulk_evaluations(
         datasets=dset_name, models=model_name
     )
@@ -1814,7 +1994,7 @@ def test_get_bulk_evaluations(
 
     # test with multiple models
     second_model = Model.create(client, "second_model")
-    for pd in pred_dets:
+    for pd in pred_dets2:
         second_model.add_prediction(pd)
     second_model.finalize_inferences(dataset)
 
@@ -1822,7 +2002,10 @@ def test_get_bulk_evaluations(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+        ],
         timeout=30,
     )
     eval_job.wait_for_completion()
@@ -1848,7 +2031,9 @@ def test_get_bulk_evaluations(
             for name in evaluation.keys()
         ]
     )
-    assert second_model_evaluations[0]["metrics"] == expected_metrics
+    assert (
+        second_model_evaluations[0]["metrics"] == second_model_expected_metrics
+    )
 
     both_evaluations = client.get_bulk_evaluations(datasets=["test_dataset"])
 
@@ -1861,12 +2046,146 @@ def test_get_bulk_evaluations(
         ]
     )
     assert both_evaluations[0]["metrics"] == expected_metrics
+    assert both_evaluations[1]["metrics"] == second_model_expected_metrics
 
     # should be equivalent since there are only two models attributed to this dataset
     both_evaluations_from_model_names = client.get_bulk_evaluations(
         models=["second_model", "test_model"]
     )
     assert both_evaluations == both_evaluations_from_model_names
+
+
+# FIXME - See PR #265
+# def test_get_ranked_evaluations(
+#     client: Client,
+#     gt_dets1: list[GroundTruth],
+#     pred_dets: list[Prediction],
+#     pred_dets2: list[Prediction],
+#     db: Session,
+# ):
+#     dataset_ = dset_name
+#     model_ = model_name
+
+#     dataset = Dataset.create(client, dataset_)
+#     for gt in gt_dets1:
+#         dataset.add_groundtruth(gt)
+#     dataset.finalize()
+
+#     # first model
+#     model = Model.create(client, model_)
+#     for pd in pred_dets:
+#         model.add_prediction(pd)
+#     model.finalize_inferences(dataset)
+
+#     eval_job = model.evaluate_detection(
+#         dataset=dataset,
+#         iou_thresholds_to_compute=[0.1, 0.6],
+#         iou_thresholds_to_keep=[0.1, 0.6],
+#         filters=[
+#             Label.key == "k1",
+#             Annotation.type == AnnotationType.BOX,
+#         ],
+#         timeout=30,
+#     )
+#     eval_job.wait_for_completion()
+
+#     # second model
+#     second_model = Model.create(client, "second_model")
+#     for pd in pred_dets2:
+#         second_model.add_prediction(pd)
+#     second_model.finalize_inferences(dataset)
+
+#     eval_job = second_model.evaluate_detection(
+#         dataset=dataset,
+#         iou_thresholds_to_compute=[0.1, 0.6],
+#         iou_thresholds_to_keep=[0.1, 0.6],
+#         filters=[
+#             Label.key == "k1",
+#             Annotation.type == AnnotationType.BOX,
+#         ],
+#         timeout=30,
+#     )
+#     eval_job.wait_for_completion()
+
+#     # third model: the same as the second model, but we'd expect it to not have any metrics because of the max_area argument
+#     third_model = Model.create(client, "third_model")
+#     for pd in pred_dets2:
+#         third_model.add_prediction(pd)
+#     third_model.finalize_inferences(dataset)
+
+#     eval_job = third_model.evaluate_detection(
+#         dataset=dataset,
+#         iou_thresholds_to_compute=[0.1, 0.6],
+#         iou_thresholds_to_keep=[0.1, 0.6],
+#         filters=[
+#             Label.key == "k1",
+#             Annotation.type == AnnotationType.BOX,
+#             Annotation.geometric_area <= 30 * 300.0,
+#         ],
+#         timeout=30,
+#     )
+#     eval_job.wait_for_completion()
+
+#     # test incorrect parameters
+#     with pytest.raises(ClientException):
+#         ranked_evaluations = client.get_ranked_evaluations(
+#             dataset_name=dset_name, metric="mAP"
+#         )
+
+#     # test wrong metric name
+#     with pytest.raises(ClientException):
+#         ranked_evaluations = client.get_ranked_evaluations(
+#             dataset_name=dset_name, metric="fake_metric_name"
+#         )
+
+#     # test bad parameters
+#     with pytest.raises(ClientException):
+#         ranked_evaluations = client.get_ranked_evaluations(
+#             dataset_name=dset_name,
+#             metric="mAP",
+#             parameters={"iou": 0.5},
+#         )
+
+#     with pytest.raises(ClientException):
+#         ranked_evaluations = client.get_ranked_evaluations(
+#             dataset_name=dset_name,
+#             metric="mAP",
+#             parameters={"iou": [0.1, 0.6]},
+#         )
+
+#     # test incorrect filters
+#     with pytest.raises(ClientException):
+#         ranked_evaluations = client.get_ranked_evaluations(
+#             dataset_name=dset_name,
+#             metric="mAP",
+#             parameters={"iou": 0.6},
+#             label_keys=["aosidjf"],
+#         )
+
+#     ranked_evaluations = client.get_ranked_evaluations(
+#         dataset_name=dset_name,
+#         metric="mAP",
+#         parameters={"iou": 0.6},
+#     )
+
+#     assert len(ranked_evaluations) == 3
+#     assert ranked_evaluations[0]["ranking"] == 1
+#     assert ranked_evaluations[0]["model"] == "test_model"
+
+#     assert ranked_evaluations[1]["ranking"] == 2
+#     assert ranked_evaluations[1]["model"] == "second_model"
+
+#     assert ranked_evaluations[2]["ranking"] == "not_ranked"
+#     assert ranked_evaluations[2]["model"] == "third_model"
+
+#     second_ranked_evaluations = client.get_ranked_evaluations(
+#         dataset_name=dset_name,
+#         metric="mAP",
+#         parameters={"iou": 0.6},
+#         label_keys=["k1"],
+#     )
+
+#     assert second_ranked_evaluations == ranked_evaluations
 
 
 def test_evaluate_image_clf(

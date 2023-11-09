@@ -8,21 +8,7 @@ from .core import (
     Model,
     Prediction,
 )
-from .filters import (
-    AnnotationFilter,
-    DatasetFilter,
-    DatumFilter,
-    Filter,
-    GeometricAnnotationFilter,
-    GeospatialFilter,
-    JSONAnnotationFilter,
-    KeyValueFilter,
-    LabelFilter,
-    ModelFilter,
-    NumericFilter,
-    PredictionFilter,
-    StringFilter,
-)
+from .filters import Filter, GeospatialFilter, NumericFilter, StringFilter
 from .geojson import GeoJSON
 from .geometry import (
     BasicPolygon,
@@ -105,14 +91,5 @@ __all__ = [
     "StringFilter",
     "NumericFilter",
     "GeospatialFilter",
-    "GeometricAnnotationFilter",
-    "JSONAnnotationFilter",
-    "KeyValueFilter",
-    "DatasetFilter",
-    "ModelFilter",
-    "DatumFilter",
-    "AnnotationFilter",
-    "LabelFilter",
-    "PredictionFilter",
     "Filter",
 ]
