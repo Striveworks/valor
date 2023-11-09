@@ -184,22 +184,16 @@ def get_annotation(
 
     # Bounding Box
     if annotation.box is not None:
-        geojson = db.scalar(ST_AsGeoJSON(annotation.box))
+        geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.box)))
         retval.bounding_box = schemas.BoundingBox(
-            polygon=schemas.GeoJSON.from_json(geojson=geojson)
-            .shape()
-            .boundary,
+            polygon=schemas.GeoJSON.from_dict(data=geojson).shape().boundary,
             box=None,
         )
 
     # Polygon
     if annotation.polygon is not None:
-        geojson = (
-            db.scalar(ST_AsGeoJSON(annotation.polygon))
-            if annotation.polygon is not None
-            else None
-        )
-        retval.polygon = schemas.GeoJSON.from_json(geojson=geojson).shape()
+        geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.polygon)))
+        retval.polygon = schemas.GeoJSON.from_dict(data=geojson).shape()
 
     # Raster
     if annotation.raster is not None:

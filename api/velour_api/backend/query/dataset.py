@@ -1,3 +1,6 @@
+import json
+
+from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -10,11 +13,15 @@ def create_dataset(
     db: Session,
     dataset: schemas.Dataset,
 ):
-    # Create dataset
+    shape = (
+        schemas.GeoJSON.from_dict(data=dataset.geospatial).shape().wkt()
+        if dataset.geospatial
+        else None
+    )
+
     try:
         row = models.Dataset(
-            name=dataset.name,
-            meta=dataset.metadata,
+            name=dataset.name, meta=dataset.metadata, geo=shape
         )
         db.add(row)
         db.commit()
@@ -30,10 +37,14 @@ def get_dataset(
 ) -> schemas.Dataset:
     # retrieve dataset
     dataset = core.get_dataset(db, name=name)
+    geo_dict = (
+        json.loads(db.scalar(ST_AsGeoJSON(dataset.geo))) if dataset.geo else {}
+    )
     return schemas.Dataset(
         id=dataset.id,
         name=dataset.name,
         metadata=dataset.meta,
+        geospatial=geo_dict,
     )
 
 
@@ -52,8 +63,16 @@ def get_datums(
 ) -> list[schemas.Datum]:
     """Get datums, optional filter."""
     q = ops.Query(models.Datum).filter(filters).any()
-    return list(
-        {
+    datums = db.query(q).all()
+
+    output = []
+
+    for datum in datums:
+        geo_dict = (
+            json.loads(db.scalar(ST_AsGeoJSON(datum.geo))) if datum.geo else {}
+        )
+
+        output.append(
             schemas.Datum(
                 dataset=db.scalar(
                     select(models.Dataset.name).where(
@@ -62,10 +81,10 @@ def get_datums(
                 ),
                 uid=datum.uid,
                 metadata=datum.meta,
+                geospatial=geo_dict,
             )
-            for datum in db.query(q).all()
-        }
-    )
+        )
+    return output
 
 
 def delete_dataset(
