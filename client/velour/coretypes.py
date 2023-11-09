@@ -69,7 +69,6 @@ class Label:
 class Datum:
     uid = DeclarativeMapper("datum_uids", str)
     metadata = DeclarativeMapper("datum_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper("datum_geospatial", Union[int, float, str])
 
     def __init__(
         self,
