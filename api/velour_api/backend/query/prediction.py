@@ -63,7 +63,7 @@ def get_prediction(
             uid=datum.uid,
             dataset=dataset.name,
             metadata=datum.meta,
-            geo_metadata=geo_dict,
+            geospatial=geo_dict,
         ),
         annotations=core.get_annotations(db, datum=datum, model=model),
     )

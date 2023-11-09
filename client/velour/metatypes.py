@@ -15,7 +15,7 @@ class ImageMetadata:
         width: int,
         dataset: str = "",
         metadata: Dict[str, Union[int, float, str]] = None,
-        geo_metadata: Dict[
+        geospatial: Dict[
             str, Union[List[List[List[float]]], List[float], str]
         ] = None,
     ):
@@ -24,7 +24,7 @@ class ImageMetadata:
         self.height = height
         self.width = width
         self.metadata = validate_metadata(metadata if metadata else {})
-        self.geo_metadata = geo_metadata if geo_metadata else {}
+        self.geospatial = geospatial if geospatial else {}
 
         if not isinstance(self.dataset, str):
             raise TypeError("ImageMetadata dataset name must be a string.")
@@ -65,7 +65,7 @@ class ImageMetadata:
 
     def to_datum(self) -> Datum:
         metadata = self.metadata.copy() if self.metadata else {}
-        geo_metadata = self.geo_metadata.copy() if self.geo_metadata else {}
+        geospatial = self.geospatial.copy() if self.geospatial else {}
 
         metadata["height"] = self.height
         metadata["width"] = self.width
@@ -73,7 +73,7 @@ class ImageMetadata:
             dataset=self.dataset,
             uid=self.uid,
             metadata=metadata,
-            geo_metadata=geo_metadata,
+            geospatial=geospatial,
         )
 
 

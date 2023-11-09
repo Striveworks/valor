@@ -142,7 +142,7 @@ def img1() -> ImageMetadata:
         uid="uid1",
         height=900,
         width=300,
-        geo_metadata=geo_dict,
+        geospatial=geo_dict,
     )
 
 
@@ -157,7 +157,7 @@ def img2() -> ImageMetadata:
         uid="uid2",
         height=40,
         width=30,
-        geo_metadata=geo_dict,
+        geospatial=geo_dict,
     )
 
 
@@ -2837,17 +2837,17 @@ def test_set_and_get_geo_datums(
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    expected_coords = [gt.datum.geo_metadata for gt in gt_dets1]
+    expected_coords = [gt.datum.geospatial for gt in gt_dets1]
 
-    returned_datum1 = dataset.get_datums()[0].geo_metadata
-    returned_datum2 = dataset.get_datums()[1].geo_metadata
+    returned_datum1 = dataset.get_datums()[0].geospatial
+    returned_datum2 = dataset.get_datums()[1].geospatial
 
     assert expected_coords[0] == returned_datum1
     assert expected_coords[1] == returned_datum2
 
     dets1 = dataset.get_groundtruth("uid1")
 
-    assert dets1.datum.geo_metadata == expected_coords[0]
+    assert dets1.datum.geospatial == expected_coords[0]
 
 
 def test_get_dataset_status(client: Client, db: Session, gt_dets1: list):

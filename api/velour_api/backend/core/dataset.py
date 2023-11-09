@@ -48,8 +48,8 @@ def create_datum(
     dataset = get_dataset(db, datum.dataset)
 
     shape = (
-        schemas.GeoJSON.from_dict(data=datum.geo_metadata).shape().wkt()
-        if datum.geo_metadata
+        schemas.GeoJSON.from_dict(data=datum.geospatial).shape().wkt()
+        if datum.geospatial
         else None
     )
 

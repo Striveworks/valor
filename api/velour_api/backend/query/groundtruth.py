@@ -57,7 +57,7 @@ def get_groundtruth(
             uid=datum.uid,
             dataset=dataset_name,
             metadata=datum.meta,
-            geo_metadata=geo_dict,
+            geospatial=geo_dict,
         ),
         annotations=core.get_annotations(db, datum),
     )

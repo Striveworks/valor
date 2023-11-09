@@ -75,14 +75,14 @@ class Datum:
         self,
         uid: str,
         metadata: Dict[str, Union[int, float, str]] = None,
-        geo_metadata: Dict[
+        geospatial: Dict[
             str, Union[List[List[List[float]]], List[float], str]
         ] = None,
         dataset: str = "",
     ):
         self.uid = uid
         self.metadata = metadata if metadata else {}
-        self.geo_metadata = geo_metadata if geo_metadata else {}
+        self.geospatial = geospatial if geospatial else {}
         self.dataset = dataset
         self._validate()
 
@@ -98,7 +98,7 @@ class Datum:
             "dataset": self.dataset,
             "uid": self.uid,
             "metadata": self.metadata,
-            "geo_metadata": self.geo_metadata,
+            "geospatial": self.geospatial,
         }
 
     def __eq__(self, other):

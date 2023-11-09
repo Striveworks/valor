@@ -73,7 +73,7 @@ def get_datums(
                 ),
                 uid=datum.uid,
                 metadata=datum.meta,
-                geo_metadata=geo_dict,
+                geospatial=geo_dict,
             )
         )
     return output
