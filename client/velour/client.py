@@ -387,7 +387,7 @@ class Dataset:
         name: str,
         metadata: Dict[str, Union[int, float, str]] = None,
         geospatial: Dict[
-            str, Union[list[list[list[float]]], list[float], str]
+            str, Union[List[List[List[float]]], List[float], str]
         ] = None,
         id: Union[int, None] = None,
     ):
@@ -545,7 +545,7 @@ class Model:
         name: str,
         metadata: Dict[str, Union[int, float, str]] = None,
         geospatial: Dict[
-            str, Union[list[list[list[float]]], list[float], str]
+            str, Union[List[List[List[float]]], List[float], str]
         ] = None,
         id: Union[int, None] = None,
     ):
