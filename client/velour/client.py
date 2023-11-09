@@ -529,9 +529,7 @@ class Dataset:
 class Model:
     name = DeclarativeMapper("models_names", str)
     metadata = DeclarativeMapper("models_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper(
-        "annotation_geospatial", Union[int, float, str]
-    )
+    geospatial = DeclarativeMapper("model_geospatial", Union[int, float, str])
 
     def __init__(self):
         self.client: Client = None
