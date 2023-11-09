@@ -69,6 +69,9 @@ class Label:
 class Datum:
     uid = DeclarativeMapper("datum_uids", str)
     metadata = DeclarativeMapper("datum_metadata", Union[int, float, str])
+    geospatial = DeclarativeMapper(
+        "datum_geospatial", Union[List[List[List[float]]], List[float], str]
+    )
 
     def __init__(
         self,
@@ -111,6 +114,10 @@ class Annotation:
     type = DeclarativeMapper("annotation_types", AnnotationType)
     geometric_area = DeclarativeMapper("annotation_geometric_area", float)
     metadata = DeclarativeMapper("annotation_metadata", Union[int, float, str])
+    geospatial = DeclarativeMapper(
+        "annotation_geospatial",
+        Union[List[List[List[float]]], List[float], str],
+    )
 
     def __init__(
         self,
