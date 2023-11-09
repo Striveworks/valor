@@ -321,7 +321,10 @@ def get_datums(
                 dataset_names=[dataset_name],
             ),
         )
-    except exceptions.DatasetDoesNotExistError as e:
+    except (
+        exceptions.DatumDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
