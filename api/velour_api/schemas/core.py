@@ -45,6 +45,9 @@ class Dataset(BaseModel):
     id: int | None = None
     name: str
     metadata: dict[str, float | str] = Field(default_factory=dict)
+    geospatial: dict[str, list[list[list[float]]] | list[float] | str] = Field(
+        default_factory=dict
+    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
@@ -61,6 +64,9 @@ class Model(BaseModel):
     id: int | None = None
     name: str
     metadata: dict[str, float | str] = Field(default_factory=dict)
+    geospatial: dict[str, list[list[list[float]]] | list[float] | str] = Field(
+        default_factory=dict
+    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")

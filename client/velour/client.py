@@ -370,7 +370,7 @@ class Dataset:
     name = DeclarativeMapper("dataset_names", str)
     metadata = DeclarativeMapper("dataset_metadata", Union[int, float, str])
     geospatial = DeclarativeMapper(
-        "annotation_geospatial", Union[int, float, str]
+        "dataset_geospatial", Union[int, float, str]
     )
 
     def __init__(self):
@@ -378,6 +378,7 @@ class Dataset:
         self.id: int = None
         self.name: str = None
         self.metadata: dict = None
+        self.geospatial: dict = None
 
     @classmethod
     def create(
@@ -385,12 +386,16 @@ class Dataset:
         client: Client,
         name: str,
         metadata: Dict[str, Union[int, float, str]] = None,
+        geospatial: Dict[
+            str, Union[list[list[list[float]]], list[float], str]
+        ] = None,
         id: Union[int, None] = None,
     ):
         dataset = cls()
         dataset.client = client
         dataset.name = name
         dataset.metadata = metadata
+        dataset.geospatial = geospatial
         dataset.id = id
         dataset._validate()
         client._requests_post_rel_host("datasets", json=dataset.dict())
@@ -403,6 +408,7 @@ class Dataset:
         dataset.client = client
         dataset.name = resp["name"]
         dataset.metadata = resp["metadata"]
+        dataset.geospatial = resp["geospatial"]
         dataset.id = resp["id"]
         dataset._validate()
         return dataset
@@ -422,6 +428,7 @@ class Dataset:
             "id": self.id,
             "name": self.name,
             "metadata": self.metadata,
+            "geospatial": self.geospatial,
         }
 
     def __eq__(self, other):
@@ -529,6 +536,7 @@ class Model:
         self.id: int = None
         self.name: str = ""
         self.metadata: dict = None
+        self.geospatial: dict = None
 
     @classmethod
     def create(
@@ -536,12 +544,16 @@ class Model:
         client: Client,
         name: str,
         metadata: Dict[str, Union[int, float, str]] = None,
+        geospatial: Dict[
+            str, Union[list[list[list[float]]], list[float], str]
+        ] = None,
         id: Union[int, None] = None,
     ):
         model = cls()
         model.client = client
         model.name = name
         model.metadata = metadata
+        model.geospatial = geospatial
         model.id = id
         model._validate()
         client._requests_post_rel_host("models", json=model.dict())
@@ -554,6 +566,7 @@ class Model:
         model.client = client
         model.name = resp["name"]
         model.metadata = resp["metadata"]
+        model.geospatial = resp["geospatial"]
         model.id = resp["id"]
         model._validate()
         return model
@@ -573,6 +586,7 @@ class Model:
             "id": self.id,
             "name": self.name,
             "metadata": self.metadata,
+            "geospatial": self.geospatial,
         }
 
     def __eq__(self, other):

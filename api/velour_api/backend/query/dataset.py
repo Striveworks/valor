@@ -13,11 +13,15 @@ def create_dataset(
     db: Session,
     dataset: schemas.Dataset,
 ):
-    # Create dataset
+    shape = (
+        schemas.GeoJSON.from_dict(data=dataset.geospatial).shape().wkt()
+        if dataset.geospatial
+        else None
+    )
+
     try:
         row = models.Dataset(
-            name=dataset.name,
-            meta=dataset.metadata,
+            name=dataset.name, meta=dataset.metadata, geo=shape
         )
         db.add(row)
         db.commit()
@@ -33,10 +37,14 @@ def get_dataset(
 ) -> schemas.Dataset:
     # retrieve dataset
     dataset = core.get_dataset(db, name=name)
+    geo_dict = (
+        json.loads(db.scalar(ST_AsGeoJSON(dataset.geo))) if dataset.geo else {}
+    )
     return schemas.Dataset(
         id=dataset.id,
         name=dataset.name,
         metadata=dataset.meta,
+        geospatial=geo_dict,
     )
 
 

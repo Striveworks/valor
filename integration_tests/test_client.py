@@ -2823,16 +2823,42 @@ def test_get_dataset(
     client.delete_dataset(dset_name, timeout=30)
 
 
-def test_set_and_get_geo_datums(
+def test_set_and_get_geospatial(
     client: Client,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
     pred_dets2: list[Prediction],
     db: Session,
 ):
-    dataset_ = dset_name
+    coordinates = [
+        [
+            [125.2750725, 38.760525],
+            [125.3902365, 38.775069],
+            [125.5054005, 38.789613],
+            [125.5051935, 38.71402425],
+            [125.5049865, 38.6384355],
+            [125.3902005, 38.6244225],
+            [125.2754145, 38.6104095],
+            [125.2752435, 38.68546725],
+            [125.2750725, 38.760525],
+        ]
+    ]
+    geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
-    dataset = Dataset.create(client, dataset_)
+    dataset = Dataset.create(
+        client=client, name=dset_name, geospatial=geo_dict
+    )
+
+    # check Dataset's geospatial coordinates
+    fetched_datasets = client.get_datasets()
+    assert fetched_datasets[0]["geospatial"] == geo_dict
+
+    # check Model's geospatial coordinates
+    Model.create(client=client, name=model_name, geospatial=geo_dict)
+    fetched_models = client.get_models()
+    assert fetched_models[0]["geospatial"] == geo_dict
+
+    # check Datums's geospatial coordinates
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
