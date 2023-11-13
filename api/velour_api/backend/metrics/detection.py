@@ -428,12 +428,8 @@ def _get_disjoint_label_sets(
 ) -> tuple(list[schemas.Label]):
 
     # get disjoint label sets
-    groundtruth_labels = query.get_groundtruth_labels(
-        db, groundtruth_filter
-    )
-    prediction_labels = query.get_prediction_labels(
-        db, prediction_filters
-    )
+    groundtruth_labels = query.get_groundtruth_labels(db, groundtruth_filter)
+    prediction_labels = query.get_prediction_labels(db, prediction_filters)
     groundtruth_unique = list(groundtruth_labels - prediction_labels)
     prediction_unique = list(prediction_labels - groundtruth_labels)
     return groundtruth_unique, prediction_unique
@@ -483,10 +479,11 @@ def create_detection_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
+            "task_type": enums.TaskType.DETECTION,
             "settings": job_request.settings.model_dump(),
         },
     )
-    
+
     # create groundtruth label filter
     groundtruth_label_filter = job_request.settings.filters.model_copy()
     groundtruth_label_filter.dataset_names = [job_request.dataset]
@@ -499,7 +496,9 @@ def create_detection_evaluation(
     prediction_label_filter.annotation_types = [prediction_type]
 
     # get disjoint sets
-    groundtruth_unique, prediction_unique = _get_disjoint_label_sets(db, groundtruth_label_filter, prediction_label_filter)
+    groundtruth_unique, prediction_unique = _get_disjoint_label_sets(
+        db, groundtruth_label_filter, prediction_label_filter
+    )
 
     return es.id, groundtruth_unique, prediction_unique
 

@@ -2572,9 +2572,7 @@ def test_evaluate_tabular_clf(
     assert eval_settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "settings": {
-            "task_type": TaskType.CLASSIFICATION.value,
-        },
+        "settings": {"filters": {"task_types": ["classification"]}},
     }
 
     metrics_from_eval_settings_id = eval_jobs[0].metrics["metrics"]

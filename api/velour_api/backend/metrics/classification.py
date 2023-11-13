@@ -5,11 +5,11 @@ from sqlalchemy.sql import and_, func, select
 
 from velour_api import schemas
 from velour_api.backend import core, models
-from velour_api.backend.ops import Query
 from velour_api.backend.metrics.core import (
     create_metric_mappings,
     get_or_create_row,
 )
+from velour_api.backend.ops import Query
 from velour_api.enums import TaskType
 
 
@@ -157,7 +157,7 @@ def roc_auc(
     db: Session,
     dataset_name: str,
     model_name: str,
-    filters: schemas.Filter,
+    label_key: str,
 ) -> float:
     """Computes the area under the ROC curve. Note that for the multi-class setting
     this does one-vs-rest AUC for each class and then averages those scores. This should give
@@ -171,8 +171,6 @@ def roc_auc(
         name of the dataset to
     label_key
         the label key to use
-    metadata
-        if not None, then filter out to just the datums that have this as a metadata
 
     Returns
     -------
@@ -331,8 +329,6 @@ def get_confusion_matrix_and_metrics_at_label_key(
 
 def compute_clf_metrics(
     db: Session,
-    dataset_name: str,
-    model_name: str,
     job_request: schemas.EvaluationJob,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
@@ -345,56 +341,44 @@ def compute_clf_metrics(
         | schemas.F1Metric
     ],
 ]:
-    # update settings
-    if not job_request.settings.filters:
-        job_request.settings.filters = schemas.Filter()
-    job_request.settings.filters.task_types = [TaskType.CLASSIFICATION]
-
+    # get dataset labels
     groundtruth_label_filter = job_request.settings.filters.model_copy()
-    groundtruth_label_filter.dataset_names=[job_request.dataset],
+    groundtruth_label_filter.dataset_names = ([job_request.dataset],)
+    dataset_labels = {
+        schemas.Label(key=label.key, value=label.value)
+        for label in db.query(
+            Query(models.Label).filter(groundtruth_label_filter).groundtruths()
+        ).all()
+    }
 
+    # get model labels
     prediction_label_filter = job_request.settings.filters.model_copy()
-    prediction_label_filter.dataset_names=[job_request.dataset]
-    prediction_label_filter.models_names=[job_request.model]
+    prediction_label_filter.dataset_names = [job_request.dataset]
+    prediction_label_filter.models_names = [job_request.model]
+    model_labels = {
+        schemas.Label(key=label.key, value=label.value)
+        for label in db.query(
+            Query(models.Label).filter(prediction_label_filter).predictions()
+        ).all()
+    }
 
-    ds_labels = {
-        schemas.Label(key=label.key, value=label.value)
-        for label in db.query(
-            Query(models.Label)
-            .filter(groundtruth_label_filter)
-            .groundtruths()
-        ).all()
-    }
-    md_labels = {
-        schemas.Label(key=label.key, value=label.value)
-        for label in db.query(
-            Query(models.Label)
-            .filter(prediction_label_filter)
-            .predictions()
-        ).all()
-    }
-    labels = list(ds_labels.union(md_labels))
+    # get union of labels + unique keys
+    labels = list(dataset_labels.union(model_labels))
     unique_label_keys = set([label.key for label in labels])
 
+    # compute metrics and confusion matrix for each label key
     confusion_matrices, metrics = [], []
-
     for label_key in unique_label_keys:
-
-        def _add_confusion_matrix_and_metrics(**extra_kwargs):
-            cm_and_metrics = get_confusion_matrix_and_metrics_at_label_key(
-                db,
-                dataset_name=dataset_name,
-                model_name=model_name,
-                label_key=label_key,
-                labels=[label for label in labels if label.key == label_key],
-                **extra_kwargs,
-            )
-
-            if cm_and_metrics is not None:
-                confusion_matrices.append(cm_and_metrics[0])
-                metrics.extend(cm_and_metrics[1])
-
-        _add_confusion_matrix_and_metrics()
+        cm_and_metrics = get_confusion_matrix_and_metrics_at_label_key(
+            db,
+            dataset_name=job_request.dataset,
+            model_name=job_request.model,
+            label_key=label_key,
+            labels=[label for label in labels if label.key == label_key],
+        )
+        if cm_and_metrics is not None:
+            confusion_matrices.append(cm_and_metrics[0])
+            metrics.extend(cm_and_metrics[1])
 
     return confusion_matrices, metrics
 
@@ -568,6 +552,17 @@ def precision_and_recall_f1_from_confusion_matrix(
     return prec, recall, f1
 
 
+def _clear_conflicting_filters(filters):
+    filters.dataset_names = None
+    filters.dataset_metadata = None
+    filters.dataset_geospatial = None
+    filters.models_names = None
+    filters.models_metadata = None
+    filters.models_geospatial = None
+    filters.prediction_scores = None
+    return filters
+
+
 def create_clf_evaluation(
     db: Session,
     job_request: schemas.EvaluationJob,
@@ -578,18 +573,24 @@ def create_clf_evaluation(
         Evaluations job id.
     """
 
+    # clear dataset / model filters
+    if not job_request.settings.filters:
+        job_request.settings.filters = schemas.Filter()
+    job_request.settings.filters = _clear_conflicting_filters(
+        job_request.settings.filters
+    )
+    job_request.settings.filters.task_types = [TaskType.CLASSIFICATION]
+
+    # create evaluation row
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)
-
-    # set task type
-    job_request.settings.task_type = TaskType.CLASSIFICATION
-
     es = get_or_create_row(
         db,
         models.Evaluation,
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
+            "task_type": TaskType.CLASSIFICATION,
             "settings": job_request.settings.model_dump(),
         },
     )
@@ -605,10 +606,9 @@ def create_clf_metrics(
     """
     Intended to run as background
     """
+
     confusion_matrices, metrics = compute_clf_metrics(
         db=db,
-        dataset_name=job_request.dataset,
-        model_name=job_request.model,
         job_request=job_request,
     )
 

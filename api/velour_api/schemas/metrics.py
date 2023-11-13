@@ -9,7 +9,7 @@ from pydantic import (
     model_validator,
 )
 
-from velour_api.enums import JobStatus, TaskType
+from velour_api.enums import JobStatus
 from velour_api.schemas.filters import Filter
 from velour_api.schemas.label import Label
 
@@ -45,7 +45,6 @@ class DetectionParameters(BaseModel):
 
 
 class EvaluationSettings(BaseModel):
-    task_type: TaskType | None = None
     parameters: DetectionParameters | None = None
     filters: Filter | None = None
 

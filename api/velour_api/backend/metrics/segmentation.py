@@ -192,6 +192,7 @@ def create_semantic_segmentation_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
+            "task_type": TaskType.SEGMENTATION,
             "settings": job_request.settings.model_dump(),
         },
     )
