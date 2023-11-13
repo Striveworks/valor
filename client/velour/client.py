@@ -340,26 +340,33 @@ class Evaluation:
 class Dataset:
     name = DeclarativeMapper("dataset_names", str)
     metadata = DeclarativeMapper("dataset_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper("annotation_geospatial", schemas.GeoJSON)
+    geospatial = DeclarativeMapper(
+        "dataset_geospatial", Union[List[List[List[float]]], List[float], str]
+    )
 
     def __init__(self):
         self.client: Client = None
         self.id: int = None
         self.name: str = None
         self.metadata: dict = None
+        self.geospatial: dict = None
 
     @classmethod
     def create(
         cls,
         client: Client,
         name: str,
-        metadata: Dict[str, Union[int, float, str, schemas.GeoJSON]] = None,
+        metadata: Dict[str, Union[int, float, str]] = None,
+        geospatial: Dict[
+            str, Union[List[List[List[float]]], List[float], str]
+        ] = None,
         id: Union[int, None] = None,
     ):
         dataset = cls()
         dataset.client = client
         dataset.name = name
         dataset.metadata = metadata
+        dataset.geospatial = geospatial
         dataset.id = id
         dataset._validate()
         client._requests_post_rel_host("datasets", json=dataset.dict())
@@ -372,6 +379,7 @@ class Dataset:
         dataset.client = client
         dataset.name = resp["name"]
         dataset.metadata = resp["metadata"]
+        dataset.geospatial = resp["geospatial"]
         dataset.id = resp["id"]
         dataset._validate()
         return dataset
@@ -384,6 +392,8 @@ class Dataset:
             raise TypeError("`id` should be of type `int`")
         if not self.metadata:
             self.metadata = {}
+        if not self.geospatial:
+            self.geospatial = {}
         validate_metadata(self.metadata)
 
     def dict(self) -> dict:
@@ -391,6 +401,7 @@ class Dataset:
             "id": self.id,
             "name": self.name,
             "metadata": self.metadata,
+            "geospatial": self.geospatial,
         }
 
     def __eq__(self, other):
@@ -489,26 +500,33 @@ class Dataset:
 class Model:
     name = DeclarativeMapper("models_names", str)
     metadata = DeclarativeMapper("models_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper("annotation_geospatial", schemas.GeoJSON)
+    geospatial = DeclarativeMapper(
+        "model_geospatial", Union[List[List[List[float]]], List[float], str]
+    )
 
     def __init__(self):
         self.client: Client = None
         self.id: int = None
         self.name: str = ""
         self.metadata: dict = None
+        self.geospatial: dict = None
 
     @classmethod
     def create(
         cls,
         client: Client,
         name: str,
-        metadata: Dict[str, Union[int, float, str, schemas.GeoJSON]] = None,
+        metadata: Dict[str, Union[int, float, str]] = None,
+        geospatial: Dict[
+            str, Union[List[List[List[float]]], List[float], str]
+        ] = None,
         id: Union[int, None] = None,
     ):
         model = cls()
         model.client = client
         model.name = name
         model.metadata = metadata
+        model.geospatial = geospatial
         model.id = id
         model._validate()
         client._requests_post_rel_host("models", json=model.dict())
@@ -521,6 +539,7 @@ class Model:
         model.client = client
         model.name = resp["name"]
         model.metadata = resp["metadata"]
+        model.geospatial = resp["geospatial"]
         model.id = resp["id"]
         model._validate()
         return model
@@ -533,6 +552,8 @@ class Model:
             raise TypeError("`id` should be of type `int`")
         if not self.metadata:
             self.metadata = {}
+        if not self.geospatial:
+            self.geospatial = {}
         validate_metadata(self.metadata)
 
     def dict(self) -> dict:
@@ -540,6 +561,7 @@ class Model:
             "id": self.id,
             "name": self.name,
             "metadata": self.metadata,
+            "geospatial": self.geospatial,
         }
 
     def __eq__(self, other):

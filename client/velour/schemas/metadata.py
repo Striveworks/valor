@@ -1,7 +1,6 @@
 from typing import Dict, Union
 
 from velour.exceptions import SchemaTypeError
-from velour.schemas.geospatial import GeoJSON
 
 
 def _validate_href(value: str):
@@ -14,7 +13,7 @@ def _validate_href(value: str):
 def validate_metadata(metadata):
     if not isinstance(metadata, dict):
         raise SchemaTypeError(
-            "metadata", Dict[str, Union[float, int, str, GeoJSON]], metadata
+            "metadata", Dict[str, Union[float, int, str]], metadata
         )
     for key, value in metadata.items():
         if not isinstance(key, str):
@@ -23,10 +22,9 @@ def validate_metadata(metadata):
             isinstance(value, int)
             or isinstance(value, float)
             or isinstance(value, str)
-            or isinstance(value, GeoJSON)
         ):
             raise SchemaTypeError(
-                "metadatum value", Union[float, int, str, GeoJSON], value
+                "metadatum value", Union[float, int, str], value
             )
 
         # Handle special key-values

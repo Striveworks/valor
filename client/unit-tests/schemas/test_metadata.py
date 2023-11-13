@@ -1,6 +1,5 @@
 import pytest
 
-from velour import schemas
 from velour.exceptions import SchemaTypeError
 from velour.schemas.metadata import _validate_href, validate_metadata
 
@@ -21,8 +20,6 @@ def test_validate_metadata(metadata):
     validate_metadata({"test": "test"})
     validate_metadata({"test": 1})
     validate_metadata({"test": 1.0})
-    # @TODO: Fix when geojson is implemented
-    validate_metadata({"test": schemas.GeoJSON(type="test", coordinates=[])})
 
     with pytest.raises(SchemaTypeError) as e:
         validate_metadata({123: 123})
@@ -48,8 +45,3 @@ def test_validate_metadata(metadata):
 
     # Check int to float conversion
     validate_metadata({"test": 1})
-
-
-def test_metadata_geojson():
-    # @TODO: Implement GeoJSON
-    schemas.GeoJSON(type="this shouldnt work", coordinates=[])
