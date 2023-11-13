@@ -71,26 +71,6 @@ def get_bulk_evaluations(
     return output
 
 
-def _validate_parameter(parameter: str, value: float | str):
-    if parameter == "label":
-        if not isinstance(value, dict):
-            raise TypeError("`label` should be of type `dict[str, str]`")
-        if len(value) != 1:
-            raise ValueError("should only include one label")
-    elif parameter == "iou":
-        if not isinstance(value, float):
-            raise TypeError("`iou` should of type `float`")
-    elif parameter == "ious":
-        if not isinstance(value, list):
-            raise TypeError("`ious` should be of type `list[float]`")
-        for iou in value:
-            if not isinstance(iou, float):
-                raise TypeError("`ious` should be of type `list[float]`")
-    elif parameter == "label_key":
-        if not isinstance(value, str):
-            raise TypeError("`label_key` should be of type `str`")
-
-
 """ Labels """
 
 
