@@ -5,6 +5,7 @@ from sqlalchemy.sql import and_, func, select
 
 from velour_api import schemas
 from velour_api.backend import core, models
+from velour_api.backend.ops import Query
 from velour_api.backend.metrics.core import (
     create_metric_mappings,
     get_or_create_row,
@@ -156,8 +157,7 @@ def roc_auc(
     db: Session,
     dataset_name: str,
     model_name: str,
-    label_key: str,
-    metadatum: list[schemas.Metadatum] = None,
+    filters: schemas.Filter,
 ) -> float:
     """Computes the area under the ROC curve. Note that for the multi-class setting
     this does one-vs-rest AUC for each class and then averages those scores. This should give
@@ -346,76 +346,32 @@ def compute_clf_metrics(
     ],
 ]:
     # update settings
-    job_request.settings.filters.datasets = schemas.DatasetFilter(names=[job_request.dataset])
-    job_request.settings.filters.annotations.task_types = [TaskType.]
+    if not job_request.settings.filters:
+        job_request.settings.filters = schemas.Filter()
+    job_request.settings.filters.task_types = [TaskType.CLASSIFICATION]
 
-    groundtruth_labels = schemas.Filter(
-        datasets=schemas.DatasetFilter(names=[job_request.dataset]),
-        annotations=schemas.AnnotationFilter(
-            task_types=[TaskType.CLASSIFICATION],
-        )
-    )
-    # prediction_labels = schemas.Filter(
-    #     datasets=sc
-    # )
+    groundtruth_label_filter = job_request.settings.filters.model_copy()
+    groundtruth_label_filter.dataset_names=[job_request.dataset],
 
+    prediction_label_filter = job_request.settings.filters.model_copy()
+    prediction_label_filter.dataset_names=[job_request.dataset]
+    prediction_label_filter.models_names=[job_request.model]
 
     ds_labels = {
-        schemas.Label(key=label[0], value=label[1])
-        for label in (
-            db.query(models.Label.key, models.Label.value)
-            .select_from(models.Label)
-            .join(
-                models.GroundTruth,
-                models.GroundTruth.label_id == models.Label.id,
-            )
-            .join(
-                models.Annotation,
-                models.Annotation.id == models.GroundTruth.annotation_id,
-            )
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
-            .where(
-                and_(
-                    models.Dataset.name == dataset_name,
-                    models.Annotation.task_type == TaskType.CLASSIFICATION,
-                    models.Annotation.model_id.is_(None),
-                )
-            )
-            .all()
-        )
+        schemas.Label(key=label.key, value=label.value)
+        for label in db.query(
+            Query(models.Label)
+            .filter(groundtruth_label_filter)
+            .groundtruths()
+        ).all()
     }
     md_labels = {
-        schemas.Label(key=label[0], value=label[1])
-        for label in (
-            db.query(models.Label.key, models.Label.value)
-            .select_from(models.Label)
-            .join(
-                models.Prediction,
-                models.Prediction.label_id == models.Label.id,
-                full=True,
-            )
-            .join(
-                models.Annotation,
-                models.Annotation.id == models.Prediction.annotation_id,
-            )
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
-            .join(
-                models.Model,
-                models.Model.id == models.Annotation.model_id,
-                full=True,
-            )
-            .where(
-                and_(
-                    models.Dataset.name == dataset_name,
-                    models.Annotation.task_type == TaskType.CLASSIFICATION,
-                    models.Annotation.model_id.isnot(None),
-                    models.Model.name == model_name,
-                )
-            )
-            .all()
-        )
+        schemas.Label(key=label.key, value=label.value)
+        for label in db.query(
+            Query(models.Label)
+            .filter(prediction_label_filter)
+            .predictions()
+        ).all()
     }
     labels = list(ds_labels.union(md_labels))
     unique_label_keys = set([label.key for label in labels])
@@ -653,6 +609,7 @@ def create_clf_metrics(
         db=db,
         dataset_name=job_request.dataset,
         model_name=job_request.model,
+        job_request=job_request,
     )
 
     confusion_matrices_mappings = create_metric_mappings(

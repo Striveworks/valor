@@ -1514,6 +1514,7 @@ def test_evaluate_detection(
             "filters": {
                 "annotation_types": ["box"],
                 "label_keys": ["k1"],
+                "task_types": [TaskType.DETECTION.value],
             },
         },
     }
@@ -1600,6 +1601,7 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
+                "task_types": [TaskType.DETECTION.value],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1638,6 +1640,7 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
+                "task_types": [TaskType.DETECTION.value],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1675,6 +1678,7 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
+                "task_types": [TaskType.DETECTION.value],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1718,6 +1722,7 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
+                "task_types": [TaskType.DETECTION.value],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],

@@ -421,6 +421,24 @@ def _get_annotation_type_for_computation(
     return gct, groundtruth_type, prediction_type
 
 
+def _get_disjoint_label_sets(
+    db: Session,
+    groundtruth_filter: schemas.Filter,
+    prediction_filters: schemas.Filter,
+) -> tuple(list[schemas.Label]):
+
+    # get disjoint label sets
+    groundtruth_labels = query.get_groundtruth_labels(
+        db, groundtruth_filter
+    )
+    prediction_labels = query.get_prediction_labels(
+        db, prediction_filters
+    )
+    groundtruth_unique = list(groundtruth_labels - prediction_labels)
+    prediction_unique = list(prediction_labels - groundtruth_labels)
+    return groundtruth_unique, prediction_unique
+
+
 def create_detection_evaluation(
     db: Session,
     job_request: schemas.EvaluationJob,
@@ -456,14 +474,7 @@ def create_detection_evaluation(
 
     # preupdate settings
     job_request.settings.task_type = enums.TaskType.DETECTION
-    job_request.settings.filters.models_names = None
-    job_request.settings.filters.dataset_names = [job_request.dataset]
     job_request.settings.filters.task_types = [enums.TaskType.DETECTION]
-    job_request.settings.filters.annotation_types = [gct]
-    # This overrides user selection.
-    job_request.settings.filters.allow_conversion = (
-        groundtruth_type == prediction_type
-    )
 
     # create evaluation settings row
     es = get_or_create_row(
@@ -475,24 +486,20 @@ def create_detection_evaluation(
             "settings": job_request.settings.model_dump(),
         },
     )
-
+    
     # create groundtruth label filter
     groundtruth_label_filter = job_request.settings.filters.model_copy()
+    groundtruth_label_filter.dataset_names = [job_request.dataset]
     groundtruth_label_filter.annotation_types = [groundtruth_type]
 
     # create prediction label filter
     prediction_label_filter = job_request.settings.filters.model_copy()
+    prediction_label_filter.dataset_names = [job_request.dataset]
+    prediction_label_filter.models_names = [model.name]
     prediction_label_filter.annotation_types = [prediction_type]
 
-    # get disjoint label sets
-    groundtruth_labels = query.get_groundtruth_labels(
-        db, groundtruth_label_filter
-    )
-    prediction_labels = query.get_prediction_labels(
-        db, prediction_label_filter
-    )
-    groundtruth_unique = list(groundtruth_labels - prediction_labels)
-    prediction_unique = list(prediction_labels - groundtruth_labels)
+    # get disjoint sets
+    groundtruth_unique, prediction_unique = _get_disjoint_label_sets(db, groundtruth_label_filter, prediction_label_filter)
 
     return es.id, groundtruth_unique, prediction_unique
 
