@@ -37,7 +37,6 @@ from velour.metatypes import ImageMetadata
 from velour.schemas import (
     BasicPolygon,
     BoundingBox,
-    GeoJSON,
     MultiPolygon,
     Point,
     Polygon,
@@ -105,12 +104,11 @@ def random_mask(img: ImageMetadata) -> np.ndarray:
     return np.random.randint(0, 2, size=(img.height, img.width), dtype=bool)
 
 
-# @TODO: Implement geospatial support
 @pytest.fixture
 def metadata():
     """Some sample metadata of different types"""
     return {
-        "metadatum1": "temporary",  # GEOJSON
+        "metadatum1": "temporary",
         "metadatum2": "a string",
         "metadatum3": 0.45,
     }
@@ -123,12 +121,44 @@ def client():
 
 @pytest.fixture
 def img1() -> ImageMetadata:
-    return ImageMetadata(dataset=dset_name, uid="uid1", height=900, width=300)
+    coordinates = [
+        [
+            [125.2750725, 38.760525],
+            [125.3902365, 38.775069],
+            [125.5054005, 38.789613],
+            [125.5051935, 38.71402425],
+            [125.5049865, 38.6384355],
+            [125.3902005, 38.6244225],
+            [125.2754145, 38.6104095],
+            [125.2752435, 38.68546725],
+            [125.2750725, 38.760525],
+        ]
+    ]
+
+    geo_dict = {"type": "Polygon", "coordinates": coordinates}
+
+    return ImageMetadata(
+        dataset=dset_name,
+        uid="uid1",
+        height=900,
+        width=300,
+        geospatial=geo_dict,
+    )
 
 
 @pytest.fixture
 def img2() -> ImageMetadata:
-    return ImageMetadata(dataset=dset_name, uid="uid2", height=40, width=30)
+    coordinates = [44.1, 22.4]
+
+    geo_dict = {"type": "Point", "coordinates": coordinates}
+
+    return ImageMetadata(
+        dataset=dset_name,
+        uid="uid2",
+        height=40,
+        width=30,
+        geospatial=geo_dict,
+    )
 
 
 @pytest.fixture
@@ -2060,139 +2090,6 @@ def test_get_bulk_evaluations(
     assert both_evaluations == both_evaluations_from_model_names
 
 
-# FIXME - See PR #265
-# def test_get_ranked_evaluations(
-#     client: Client,
-#     gt_dets1: list[GroundTruth],
-#     pred_dets: list[Prediction],
-#     pred_dets2: list[Prediction],
-#     db: Session,
-# ):
-#     dataset_ = dset_name
-#     model_ = model_name
-
-#     dataset = Dataset.create(client, dataset_)
-#     for gt in gt_dets1:
-#         dataset.add_groundtruth(gt)
-#     dataset.finalize()
-
-#     # first model
-#     model = Model.create(client, model_)
-#     for pd in pred_dets:
-#         model.add_prediction(pd)
-#     model.finalize_inferences(dataset)
-
-#     eval_job = model.evaluate_detection(
-#         dataset=dataset,
-#         iou_thresholds_to_compute=[0.1, 0.6],
-#         iou_thresholds_to_keep=[0.1, 0.6],
-#         filters=[
-#             Label.key == "k1",
-#             Annotation.type == AnnotationType.BOX,
-#         ],
-#         timeout=30,
-#     )
-#     eval_job.wait_for_completion()
-
-#     # second model
-#     second_model = Model.create(client, "second_model")
-#     for pd in pred_dets2:
-#         second_model.add_prediction(pd)
-#     second_model.finalize_inferences(dataset)
-
-#     eval_job = second_model.evaluate_detection(
-#         dataset=dataset,
-#         iou_thresholds_to_compute=[0.1, 0.6],
-#         iou_thresholds_to_keep=[0.1, 0.6],
-#         filters=[
-#             Label.key == "k1",
-#             Annotation.type == AnnotationType.BOX,
-#         ],
-#         timeout=30,
-#     )
-#     eval_job.wait_for_completion()
-
-#     # third model: the same as the second model, but we'd expect it to not have any metrics because of the max_area argument
-#     third_model = Model.create(client, "third_model")
-#     for pd in pred_dets2:
-#         third_model.add_prediction(pd)
-#     third_model.finalize_inferences(dataset)
-
-#     eval_job = third_model.evaluate_detection(
-#         dataset=dataset,
-#         iou_thresholds_to_compute=[0.1, 0.6],
-#         iou_thresholds_to_keep=[0.1, 0.6],
-#         filters=[
-#             Label.key == "k1",
-#             Annotation.type == AnnotationType.BOX,
-#             Annotation.geometric_area <= 30 * 300.0,
-#         ],
-#         timeout=30,
-#     )
-#     eval_job.wait_for_completion()
-
-#     # test incorrect parameters
-#     with pytest.raises(ClientException):
-#         ranked_evaluations = client.get_ranked_evaluations(
-#             dataset_name=dset_name, metric="mAP"
-#         )
-
-#     # test wrong metric name
-#     with pytest.raises(ClientException):
-#         ranked_evaluations = client.get_ranked_evaluations(
-#             dataset_name=dset_name, metric="fake_metric_name"
-#         )
-
-#     # test bad parameters
-#     with pytest.raises(ClientException):
-#         ranked_evaluations = client.get_ranked_evaluations(
-#             dataset_name=dset_name,
-#             metric="mAP",
-#             parameters={"iou": 0.5},
-#         )
-
-#     with pytest.raises(ClientException):
-#         ranked_evaluations = client.get_ranked_evaluations(
-#             dataset_name=dset_name,
-#             metric="mAP",
-#             parameters={"iou": [0.1, 0.6]},
-#         )
-
-#     # test incorrect filters
-#     with pytest.raises(ClientException):
-#         ranked_evaluations = client.get_ranked_evaluations(
-#             dataset_name=dset_name,
-#             metric="mAP",
-#             parameters={"iou": 0.6},
-#             label_keys=["aosidjf"],
-#         )
-
-#     ranked_evaluations = client.get_ranked_evaluations(
-#         dataset_name=dset_name,
-#         metric="mAP",
-#         parameters={"iou": 0.6},
-#     )
-
-#     assert len(ranked_evaluations) == 3
-#     assert ranked_evaluations[0]["ranking"] == 1
-#     assert ranked_evaluations[0]["model"] == "test_model"
-
-#     assert ranked_evaluations[1]["ranking"] == 2
-#     assert ranked_evaluations[1]["model"] == "second_model"
-
-#     assert ranked_evaluations[2]["ranking"] == "not_ranked"
-#     assert ranked_evaluations[2]["model"] == "third_model"
-
-#     second_ranked_evaluations = client.get_ranked_evaluations(
-#         dataset_name=dset_name,
-#         metric="mAP",
-#         parameters={"iou": 0.6},
-#         label_keys=["k1"],
-#     )
-
-#     assert second_ranked_evaluations == ranked_evaluations
-
-
 def test_evaluate_image_clf(
     client: Client,
     db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
@@ -2301,7 +2198,7 @@ def test_evaluate_segmentation(
 def test_create_tabular_dataset_and_add_groundtruth(
     client: Client,
     db: Session,
-    metadata: Dict[str, Union[float, int, str, GeoJSON]],
+    metadata: Dict[str, Union[float, int, str]],
 ):
     dataset = Dataset.create(client, name=dset_name)
     assert isinstance(dataset, Dataset)
@@ -2358,10 +2255,6 @@ def test_create_tabular_dataset_and_add_groundtruth(
     assert len(metadata_links) == 1
     assert "metadatum1" in metadata_links
     assert metadata_links["metadatum1"] == "temporary"
-    # assert json.loads(db.scalar(ST_AsGeoJSON(metadatum.geo))) == {
-    #     "type": "Point",
-    #     "coordinates": [-48.23456, 20.12345],
-    # }
 
     metadata_links = data[1].meta
     assert len(metadata_links) == 2
@@ -2800,6 +2693,59 @@ def test_get_dataset(
     assert fetched_dataset.metadata == dataset.metadata
 
     client.delete_dataset(dset_name, timeout=30)
+
+
+def test_set_and_get_geospatial(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    pred_dets2: list[Prediction],
+    db: Session,
+):
+    coordinates = [
+        [
+            [125.2750725, 38.760525],
+            [125.3902365, 38.775069],
+            [125.5054005, 38.789613],
+            [125.5051935, 38.71402425],
+            [125.5049865, 38.6384355],
+            [125.3902005, 38.6244225],
+            [125.2754145, 38.6104095],
+            [125.2752435, 38.68546725],
+            [125.2750725, 38.760525],
+        ]
+    ]
+    geo_dict = {"type": "Polygon", "coordinates": coordinates}
+
+    dataset = Dataset.create(
+        client=client, name=dset_name, geospatial=geo_dict
+    )
+
+    # check Dataset's geospatial coordinates
+    fetched_datasets = client.get_datasets()
+    assert fetched_datasets[0]["geospatial"] == geo_dict
+
+    # check Model's geospatial coordinates
+    Model.create(client=client, name=model_name, geospatial=geo_dict)
+    fetched_models = client.get_models()
+    assert fetched_models[0]["geospatial"] == geo_dict
+
+    # check Datums's geospatial coordinates
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    expected_coords = [gt.datum.geospatial for gt in gt_dets1]
+
+    returned_datum1 = dataset.get_datums()[0].geospatial
+    returned_datum2 = dataset.get_datums()[1].geospatial
+
+    assert expected_coords[0] == returned_datum1
+    assert expected_coords[1] == returned_datum2
+
+    dets1 = dataset.get_groundtruth("uid1")
+
+    assert dets1.datum.geospatial == expected_coords[0]
 
 
 def test_get_dataset_status(client: Client, db: Session, gt_dets1: list):

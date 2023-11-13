@@ -6,7 +6,6 @@ from velour.enums import AnnotationType, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.filters import DeclarativeMapper
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
-from velour.schemas.geospatial import GeoJSON
 from velour.schemas.metadata import validate_metadata
 
 
@@ -70,16 +69,22 @@ class Label:
 class Datum:
     uid = DeclarativeMapper("datum_uids", str)
     metadata = DeclarativeMapper("datum_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper("datum_geospatial", GeoJSON)
+    geospatial = DeclarativeMapper(
+        "datum_geospatial", Union[List[List[List[float]]], List[float], str]
+    )
 
     def __init__(
         self,
         uid: str,
-        metadata: Dict[str, Union[int, float, str, GeoJSON]] = None,
+        metadata: Dict[str, Union[int, float, str]] = None,
+        geospatial: Dict[
+            str, Union[List[List[List[float]]], List[float], str]
+        ] = None,
         dataset: str = "",
     ):
         self.uid = uid
         self.metadata = metadata if metadata else {}
+        self.geospatial = geospatial if geospatial else {}
         self.dataset = dataset
         self._validate()
 
@@ -95,6 +100,7 @@ class Datum:
             "dataset": self.dataset,
             "uid": self.uid,
             "metadata": self.metadata,
+            "geospatial": self.geospatial,
         }
 
     def __eq__(self, other):
@@ -108,7 +114,10 @@ class Annotation:
     type = DeclarativeMapper("annotation_types", AnnotationType)
     geometric_area = DeclarativeMapper("annotation_geometric_area", float)
     metadata = DeclarativeMapper("annotation_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper("annotation_geospatial", GeoJSON)
+    geospatial = DeclarativeMapper(
+        "annotation_geospatial",
+        Union[List[List[List[float]]], List[float], str],
+    )
 
     def __init__(
         self,

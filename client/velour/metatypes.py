@@ -1,4 +1,4 @@
-from typing import Dict, Union
+from typing import Dict, List, Union
 
 import PIL.Image
 
@@ -15,12 +15,16 @@ class ImageMetadata:
         width: int,
         dataset: str = "",
         metadata: Dict[str, Union[int, float, str]] = None,
+        geospatial: Dict[
+            str, Union[List[List[List[float]]], List[float], str]
+        ] = None,
     ):
         self.uid = uid
         self.dataset = dataset
-        self.metadata = validate_metadata(metadata if metadata else {})
         self.height = height
         self.width = width
+        self.metadata = validate_metadata(metadata if metadata else {})
+        self.geospatial = geospatial if geospatial else {}
 
         if not isinstance(self.dataset, str):
             raise TypeError("ImageMetadata dataset name must be a string.")
@@ -60,16 +64,16 @@ class ImageMetadata:
         )
 
     def to_datum(self) -> Datum:
-        if self.metadata:
-            metadata = self.metadata.copy()
-        else:
-            metadata = {}
+        metadata = self.metadata.copy() if self.metadata else {}
+        geospatial = self.geospatial.copy() if self.geospatial else {}
+
         metadata["height"] = self.height
         metadata["width"] = self.width
         return Datum(
             dataset=self.dataset,
             uid=self.uid,
             metadata=metadata,
+            geospatial=geospatial,
         )
 
 

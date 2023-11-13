@@ -15,7 +15,6 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .geospatial import GeoJSON
 from .metadata import validate_metadata
 
 __all__ = [
@@ -26,7 +25,6 @@ __all__ = [
     "Polygon",
     "MultiPolygon",
     "Raster",
-    "GeoJSON",
     "EvaluationJob",
     "EvaluationSettings",
     "DetectionParameters",

@@ -45,6 +45,9 @@ class Dataset(BaseModel):
     id: int | None = None
     name: str
     metadata: dict[str, float | str] = Field(default_factory=dict)
+    geospatial: dict[str, list[list[list[float]]] | list[float] | str] = Field(
+        default_factory=dict
+    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
@@ -61,6 +64,9 @@ class Model(BaseModel):
     id: int | None = None
     name: str
     metadata: dict[str, float | str] = Field(default_factory=dict)
+    geospatial: dict[str, list[list[list[float]]] | list[float] | str] = Field(
+        default_factory=dict
+    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
@@ -77,6 +83,9 @@ class Datum(BaseModel):
     uid: str
     dataset: str
     metadata: dict[str, float | str] = Field(default_factory=dict)
+    geospatial: dict[str, list[list[list[float]]] | list[float] | str] = Field(
+        default_factory=dict
+    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("uid")
@@ -102,10 +111,16 @@ class Datum(BaseModel):
             not hasattr(other, "uid")
             or not hasattr(other, "dataset")
             or not hasattr(other, "metadata")
+            or not hasattr(other, "geospatial")
         ):
             return False
 
-        return self.uid == other.uid and self.dataset == other.dataset
+        return (
+            self.uid == other.uid
+            and self.dataset == other.dataset
+            and self.geospatial == other.geospatial
+            and self.metadata == other.geospatial
+        )
 
     def __hash__(self) -> int:
         return hash(f"uid:{self.uid},dataset:{self.dataset}")
