@@ -35,7 +35,6 @@ from ._read import (
     get_model_metrics,
     get_models,
     get_prediction,
-    get_ranked_model_evaluations,
 )
 from ._update import finalize
 
@@ -50,7 +49,6 @@ __all__ = [
     "get_evaluation_jobs_for_model",
     "get_metrics_from_evaluation_ids",
     "get_bulk_evaluations",
-    "get_ranked_model_evaluations",
     "get_datasets",
     "get_dataset",
     "get_datums",

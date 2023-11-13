@@ -1,4 +1,3 @@
-import json
 import os
 
 from fastapi import (  # Request,; status,
@@ -6,7 +5,6 @@ from fastapi import (  # Request,; status,
     Depends,
     FastAPI,
     HTTPException,
-    Request,
 )
 
 # from fastapi.exceptions import RequestValidationError
@@ -604,55 +602,6 @@ def get_bulk_evaluations(
             db=db, dataset_names=dataset_names, model_names=model_names
         )
     except (ValueError,) as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except (
-        exceptions.DatasetDoesNotExistError,
-        exceptions.ModelDoesNotExistError,
-    ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/ranked-evaluations/",
-    dependencies=[Depends(token_auth_scheme)],
-    response_model_exclude_none=True,
-    tags=["Evaluations"],
-)
-def get_ranked_model_evaluations(
-    request: Request,
-    db: Session = Depends(get_db),
-) -> list[dict[str, list[dict[str, int | str]] | schemas.EvaluationSettings]]:
-    """
-    Returns all metrics associated with a particular dataset, ranked according to user inputs
-
-    Parameters
-    ----------
-    dataset_name
-        The dataset name for which to fetch metrics for.
-    metric
-        The metric to use when ranking evaluations (e.g., "mAP")
-    parameters
-        The metric parameters to filter on when computing the ranking (e.g., {'iou':.5}). Will raise a ValueError if the user supplies a metric which requires more granular parameters.
-    rank_from_highest_value_to_lowest_value
-        A boolean to indicate whether the metric values should be ranked from highest to lowest
-    """
-    params = dict(request.query_params)
-
-    try:
-        output = crud.get_ranked_model_evaluations(
-            db=db,
-            dataset_name=params["dataset_name"],
-            metric=params["metric"],
-            parameters=json.loads(params["parameters"]),
-            rank_from_highest_value_to_lowest_value=bool(
-                params["rank_from_highest_value_to_lowest_value"]
-            ),
-        )
-        return output
-    except (
-        ValueError,
-        TypeError,
-    ) as e:
         raise HTTPException(status_code=400, detail=str(e))
     except (
         exceptions.DatasetDoesNotExistError,
