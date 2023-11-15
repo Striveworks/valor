@@ -2874,12 +2874,10 @@ def test_set_and_get_geospatial(
     assert dets1.datum.geospatial == expected_coords[0]
 
 
-# TODO finish client-side tests
 def test_geospatial_filter(
     client: Client,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
-    pred_dets2: list[Prediction],
     db: Session,
 ):
     coordinates = [
@@ -2909,20 +2907,154 @@ def test_geospatial_filter(
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
+    # test filtering for the dataset
     eval_job = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        filters=[
-            Label.key == "k1",
-            Annotation.type == AnnotationType.BOX,
-        ],
+        filters={
+            "dataset_geospatial": [
+                {
+                    "operator": "outside",
+                    "value": {
+                        "geometry": {"type": "Point", "coordinates": [0, 0]}
+                    },
+                }
+            ],
+        },
         timeout=30,
     )
 
-    return eval_job
+    settings = asdict(eval_job.settings)
+    assert settings["settings"]["filters"]["dataset_geospatial"] == [
+        {
+            "value": {
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [0.0, 0.0],
+                }
+            },
+            "operator": "outside",
+        }
+    ]
 
-    # assert eval_job == False
+    assert len(eval_job.metrics["metrics"]) > 0
+
+    # test dataset WHERE miss
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters={
+            "dataset_geospatial": [
+                {
+                    "operator": "inside",
+                    "value": {
+                        "geometry": {"type": "Point", "coordinates": [0, 0]}
+                    },
+                }
+            ],
+        },
+        timeout=30,
+    )
+
+    settings = asdict(eval_job.settings)
+    assert settings["settings"]["filters"]["dataset_geospatial"] == [
+        {
+            "value": {
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [0.0, 0.0],
+                }
+            },
+            "operator": "inside",
+        }
+    ]
+
+    assert len(eval_job.metrics["metrics"]) == 0
+
+    # test datums
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters={
+            "datum_geospatial": [
+                {
+                    "operator": "inside",
+                    "value": {
+                        "geometry": {"type": "Point", "coordinates": [0, 0]}
+                    },
+                }
+            ],
+        },
+        timeout=30,
+    )
+
+    settings = asdict(eval_job.settings)
+    assert settings["settings"]["filters"]["datum_geospatial"] == [
+        {
+            "value": {
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [0.0, 0.0],
+                }
+            },
+            "operator": "inside",
+        }
+    ]
+
+    assert len(eval_job.metrics["metrics"]) == 0
+
+    # test models
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters={
+            "models_geospatial": [
+                {
+                    "operator": "inside",
+                    "value": {
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [
+                                [
+                                    [124.0, 37.0],
+                                    [128.0, 37.0],
+                                    [128.0, 40.0],
+                                    [124.0, 40.0],
+                                ]
+                            ],
+                        }
+                    },
+                }
+            ],
+        },
+        timeout=30,
+    )
+
+    settings = asdict(eval_job.settings)
+    assert settings["settings"]["filters"]["models_geospatial"] == [
+        {
+            "value": {
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [124.0, 37.0],
+                            [128.0, 37.0],
+                            [128.0, 40.0],
+                            [124.0, 40.0],
+                        ]
+                    ],
+                }
+            },
+            "operator": "inside",
+        }
+    ]
+
+    assert len(eval_job.metrics["metrics"]) > 0
 
 
 def test_get_dataset_status(client: Client, db: Session, gt_dets1: list):

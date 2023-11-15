@@ -27,7 +27,16 @@ class ValueFilter:
 
 @dataclass
 class GeospatialFilter:
-    operator: str = "=="
+    geodict: dict[
+        str,
+        Union[
+            List[List[List[List[Union[float, int]]]]],
+            List[List[List[Union[float, int]]]],
+            List[Union[float, int]],
+            str,
+        ],
+    ]
+    operator: str = "inside"
 
     # TODO finish client-side code
     def __post_init__(self):

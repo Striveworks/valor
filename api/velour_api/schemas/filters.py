@@ -62,7 +62,7 @@ class NumericFilter(BaseModel):
 
 class GeospatialFilter(BaseModel):
     value: GeoJSON
-    operator: str = "=="
+    operator: str = "inside"
 
     @field_validator("operator")
     @classmethod
