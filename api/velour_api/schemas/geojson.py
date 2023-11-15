@@ -10,7 +10,7 @@ from velour_api.schemas.geometry import (
 
 class GeoJSONPoint(BaseModel):
     type: str
-    coordinates: list[float]
+    coordinates: list[float | int]
 
     @field_validator("type")
     @classmethod
@@ -35,7 +35,7 @@ class GeoJSONPoint(BaseModel):
 
 class GeoJSONPolygon(BaseModel):
     type: str
-    coordinates: list[list[list[float]]]
+    coordinates: list[list[list[float | int]]]
 
     @field_validator("type")
     @classmethod
@@ -61,7 +61,7 @@ class GeoJSONPolygon(BaseModel):
 
 class GeoJSONMultiPolygon(BaseModel):
     type: str
-    coordinates: list[list[list[list[float]]]]
+    coordinates: list[list[list[list[float | int]]]]
 
     @field_validator("type")
     @classmethod

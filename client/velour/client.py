@@ -341,7 +341,13 @@ class Dataset:
     name = DeclarativeMapper("dataset_names", str)
     metadata = DeclarativeMapper("dataset_metadata", Union[int, float, str])
     geospatial = DeclarativeMapper(
-        "dataset_geospatial", Union[List[List[List[float]]], List[float], str]
+        "dataset_geospatial",
+        Union[
+            List[List[List[List[Union[float, int]]]]],
+            List[List[List[Union[float, int]]]],
+            List[Union[float, int]],
+            str,
+        ],
     )
 
     def __init__(self):
@@ -358,7 +364,13 @@ class Dataset:
         name: str,
         metadata: Dict[str, Union[int, float, str]] = None,
         geospatial: Dict[
-            str, Union[List[List[List[float]]], List[float], str]
+            str,
+            Union[
+                List[List[List[List[Union[float, int]]]]],
+                List[List[List[Union[float, int]]]],
+                List[Union[float, int]],
+                str,
+            ],
         ] = None,
         id: Union[int, None] = None,
     ):
@@ -501,7 +513,13 @@ class Model:
     name = DeclarativeMapper("models_names", str)
     metadata = DeclarativeMapper("models_metadata", Union[int, float, str])
     geospatial = DeclarativeMapper(
-        "model_geospatial", Union[List[List[List[float]]], List[float], str]
+        "model_geospatial",
+        Union[
+            List[List[List[List[Union[float, int]]]]],
+            List[List[List[Union[float, int]]]],
+            List[Union[float, int]],
+            str,
+        ],
     )
 
     def __init__(self):
@@ -518,7 +536,13 @@ class Model:
         name: str,
         metadata: Dict[str, Union[int, float, str]] = None,
         geospatial: Dict[
-            str, Union[List[List[List[float]]], List[float], str]
+            str,
+            Union[
+                List[List[List[List[Union[float, int]]]]],
+                List[List[List[Union[float, int]]]],
+                List[Union[float, int]],
+                str,
+            ],
         ] = None,
         id: Union[int, None] = None,
     ):

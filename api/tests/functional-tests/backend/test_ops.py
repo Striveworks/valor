@@ -87,38 +87,108 @@ def raster_2():
 
 
 @pytest.fixture
-def datum_1(metadata_1) -> schemas.Datum:
+def geospatial_coordinates() -> dict[str, schemas.GeoJSON]:
+    return {
+        "point": {"type": "Point", "coordinates": [125.2750725, 38.760525]},
+        "polygon1": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-10, -10],
+                    [10, -10],
+                    [10, 10],
+                    [-10, 10],
+                ]
+            ],
+        },
+        "polygon2": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [20, 20],
+                    [20, 30],
+                    [30, 30],
+                    [30, 20],
+                ]
+            ],
+        },
+        "polygon3": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [80, 80],
+                    [100, 80],
+                    [90, 120],
+                ]
+            ],
+        },
+        "multipolygon": {
+            "type": "MultiPolygon",
+            "coordinates": [
+                [
+                    [
+                        [50, 50],
+                        [70, 50],
+                        [70, 70],
+                        [50, 70],
+                    ],
+                    [
+                        [30, 30],
+                        [35, 30],
+                        [35, 35],
+                        [30, 35],
+                    ],
+                ],
+                [
+                    [
+                        [10, 10],
+                        [20, 10],
+                        [20, 20],
+                        [10, 20],
+                    ],
+                ],
+            ],
+        },
+    }
+
+
+@pytest.fixture
+def datum_1(metadata_1, geospatial_coordinates) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid1,
         dataset=dset_name,
         metadata=metadata_1,
+        geospatial=geospatial_coordinates["polygon1"],
     )
 
 
 @pytest.fixture
-def datum_2(metadata_2) -> schemas.Datum:
+def datum_2(metadata_2, geospatial_coordinates) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid2,
         dataset=dset_name,
         metadata=metadata_2,
+        geospatial=geospatial_coordinates["multipolygon"],
     )
 
 
 @pytest.fixture
-def datum_3(metadata_3) -> schemas.Datum:
+def datum_3(metadata_3, geospatial_coordinates) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid3,
         dataset=dset_name,
         metadata=metadata_3,
+        geospatial=geospatial_coordinates["polygon2"],
     )
 
 
 @pytest.fixture
-def datum_4(metadata_4) -> schemas.Datum:
+def datum_4(metadata_4, geospatial_coordinates) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid4,
         dataset=dset_name,
         metadata=metadata_4,
+        geospatial=geospatial_coordinates["polygon3"],
     )
 
 
@@ -458,12 +528,14 @@ def dataset_sim(
     groundtruth_cat_datum_2,
     groundtruth_dog_datum_3,
     groundtruth_dog_datum_4,
+    geospatial_coordinates,
 ):
     crud.create_dataset(
         db=db,
         dataset=schemas.Dataset(
             name=dset_name,
             metadata=metadata_1,
+            geospatial=geospatial_coordinates["polygon1"],
         ),
     )
     crud.create_groundtruth(db=db, groundtruth=groundtruth_cat_datum_1)
@@ -487,12 +559,14 @@ def model_sim(
     prediction_dog_datum2_model2,
     prediction_cat_datum3_model2,
     prediction_cat_datum4_model2,
+    geospatial_coordinates,
 ):
     crud.create_model(
         db=db,
         model=schemas.Model(
             name=model_name1,
             metadata=metadata_1,
+            geospatial=geospatial_coordinates["polygon1"],
         ),
     )
     crud.create_prediction(db=db, prediction=prediction_cat_datum1_model1)
@@ -847,3 +921,453 @@ def test_multiple_tables_in_args(
         model_name2,
         dset_name,
     ) in name_pairings
+
+
+def test_datum_geospatial_filters(
+    db: Session,
+    model_sim,
+    model_object=models.Datum.uid,
+    arg_name: str = "datum_geospatial",
+):
+    def _get_geospatial_names_from_filter(
+        db: Session,
+        geodict: dict[
+            str,
+            list[list[list[list[float | int]]]]
+            | list[list[list[float | int]]]
+            | list[float | int]
+            | str,
+        ],
+        operator: str,
+        model_object: models.Datum,
+        arg_name: str,
+    ):
+        f = schemas.Filter(
+            **{
+                arg_name: [
+                    schemas.GeospatialFilter(
+                        value=schemas.GeoJSON.from_dict(geodict),
+                        operator=operator,
+                    ),
+                ]
+            }
+        )
+
+        q = Query(model_object).filter(f).any()
+        names = db.query(q).distinct().all()
+        return names
+
+    # test inside filters
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-20, -20],
+                    [60, -20],
+                    [60, 60],
+                    [-20, 60],
+                ]
+            ],
+        },
+        operator="inside",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 2
+    assert ("uid1",) in names
+    assert ("uid3",) in names
+
+    # test intersections
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [60, 60],
+                    [110, 60],
+                    [110, 110],
+                    [60, 110],
+                ]
+            ],
+        },
+        operator="intersect",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 2
+    assert ("uid2",) in names
+    assert ("uid4",) in names
+
+    # test point
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Point",
+            "coordinates": [81, 80],
+        },
+        operator="intersect",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 1
+    assert ("uid4",) in names
+
+    # test multipolygon
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "MultiPolygon",
+            "coordinates": [
+                [
+                    [
+                        [-20, -20],
+                        [20, -20],
+                        [20, 20],
+                        [-20, 20],
+                    ]
+                ],
+                [
+                    [
+                        [15, 15],
+                        [15, 35],
+                        [35, 35],
+                        [35, 15],
+                    ]
+                ],
+            ],
+        },
+        operator="intersect",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 3
+    assert ("uid1",) in names
+    assert ("uid2",) in names
+    assert ("uid3",) in names
+
+    # test WHERE miss
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Point",
+            "coordinates": [-11, -11],
+        },
+        operator="intersect",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 0
+
+    # test outside
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Point",
+            "coordinates": [-11, -11],
+        },
+        operator="outside",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 4
+    assert ("uid1",) in names
+    assert ("uid2",) in names
+    assert ("uid3",) in names
+    assert ("uid4",) in names
+
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-20, -20],
+                    [60, -20],
+                    [60, 60],
+                    [-20, 60],
+                ]
+            ],
+        },
+        operator="outside",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 2
+    assert ("uid2",) in names
+    assert ("uid4",) in names
+
+
+def test_dataset_geospatial_filters(
+    db: Session,
+    model_sim,
+    model_object=models.Dataset.name,
+    arg_name: str = "dataset_geospatial",
+):
+    def _get_geospatial_names_from_filter(
+        db: Session,
+        geodict: dict[
+            str,
+            list[list[list[list[float | int]]]]
+            | list[list[list[float | int]]]
+            | list[float | int]
+            | str,
+        ],
+        operator: str,
+        model_object: models.Datum,
+        arg_name: str,
+    ):
+        f = schemas.Filter(
+            **{
+                arg_name: [
+                    schemas.GeospatialFilter(
+                        value=schemas.GeoJSON.from_dict(geodict),
+                        operator=operator,
+                    ),
+                ]
+            }
+        )
+
+        q = Query(model_object).filter(f).any()
+        names = db.query(q).distinct().all()
+        return names
+
+    # test inside filters
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-20, -20],
+                    [60, -20],
+                    [60, 60],
+                    [-20, 60],
+                ]
+            ],
+        },
+        operator="inside",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 1
+    assert ("dataset1",) in names
+
+    # test point
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Point",
+            "coordinates": [1, 1],
+        },
+        operator="intersect",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 1
+    assert ("dataset1",) in names
+
+    # test multipolygon
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "MultiPolygon",
+            "coordinates": [
+                [
+                    [
+                        [-20, -20],
+                        [20, -20],
+                        [20, 20],
+                        [-20, 20],
+                    ]
+                ],
+                [
+                    [
+                        [15, 15],
+                        [15, 35],
+                        [35, 35],
+                        [35, 15],
+                    ]
+                ],
+            ],
+        },
+        operator="intersect",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 1
+    assert ("dataset1",) in names
+
+    # test WHERE miss
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Point",
+            "coordinates": [-11, -11],
+        },
+        operator="intersect",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 0
+
+    # test outside
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Point",
+            "coordinates": [-11, -11],
+        },
+        operator="outside",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 1
+    assert ("dataset1",) in names
+
+
+def test_model_geospatial_filters(
+    db: Session,
+    model_sim,
+    model_object=models.Model.name,
+    arg_name: str = "models_geospatial",
+):
+    def _get_geospatial_names_from_filter(
+        db: Session,
+        geodict: dict[
+            str,
+            list[list[list[list[float | int]]]]
+            | list[list[list[float | int]]]
+            | list[float | int]
+            | str,
+        ],
+        operator: str,
+        model_object: models.Datum,
+        arg_name: str,
+    ):
+        f = schemas.Filter(
+            **{
+                arg_name: [
+                    schemas.GeospatialFilter(
+                        value=schemas.GeoJSON.from_dict(geodict),
+                        operator=operator,
+                    ),
+                ]
+            }
+        )
+
+        q = Query(model_object).filter(f).any()
+        names = db.query(q).distinct().all()
+        return names
+
+    # test inside filters
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-20, -20],
+                    [60, -20],
+                    [60, 60],
+                    [-20, 60],
+                ]
+            ],
+        },
+        operator="inside",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 1
+    assert ("model1",) in names
+
+    # test point
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Point",
+            "coordinates": [1, 1],
+        },
+        operator="intersect",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 1
+    assert ("model1",) in names
+
+    # test multipolygon
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "MultiPolygon",
+            "coordinates": [
+                [
+                    [
+                        [-20, -20],
+                        [20, -20],
+                        [20, 20],
+                        [-20, 20],
+                    ]
+                ],
+                [
+                    [
+                        [15, 15],
+                        [15, 35],
+                        [35, 35],
+                        [35, 15],
+                    ]
+                ],
+            ],
+        },
+        operator="intersect",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 1
+    assert ("model1",) in names
+
+    # test WHERE miss
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Point",
+            "coordinates": [-11, -11],
+        },
+        operator="intersect",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 0
+
+    # test outside
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Point",
+            "coordinates": [-11, -11],
+        },
+        operator="outside",
+        model_object=model_object,
+        arg_name=arg_name,
+    )
+
+    assert len(names) == 1
+    assert ("model1",) in names

@@ -70,7 +70,13 @@ class Datum:
     uid = DeclarativeMapper("datum_uids", str)
     metadata = DeclarativeMapper("datum_metadata", Union[int, float, str])
     geospatial = DeclarativeMapper(
-        "datum_geospatial", Union[List[List[List[float]]], List[float], str]
+        "datum_geospatial",
+        Union[
+            List[List[List[List[Union[float, int]]]]],
+            List[List[List[Union[float, int]]]],
+            List[Union[float, int]],
+            str,
+        ],
     )
 
     def __init__(
@@ -78,7 +84,13 @@ class Datum:
         uid: str,
         metadata: Dict[str, Union[int, float, str]] = None,
         geospatial: Dict[
-            str, Union[List[List[List[float]]], List[float], str]
+            str,
+            Union[
+                List[List[List[List[Union[float, int]]]]],
+                List[List[List[Union[float, int]]]],
+                List[Union[float, int]],
+                str,
+            ],
         ] = None,
         dataset: str = "",
     ):
@@ -116,7 +128,12 @@ class Annotation:
     metadata = DeclarativeMapper("annotation_metadata", Union[int, float, str])
     geospatial = DeclarativeMapper(
         "annotation_geospatial",
-        Union[List[List[List[float]]], List[float], str],
+        Union[
+            List[List[List[List[Union[float, int]]]]],
+            List[List[List[Union[float, int]]]],
+            List[Union[float, int]],
+            str,
+        ],
     )
 
     def __init__(
