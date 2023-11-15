@@ -919,8 +919,18 @@ def test_multiple_tables_in_args(
     ) in name_pairings
 
 
-# TODO types
-def _get_geospatial_names_from_filter(db, geodict, operator, model_object):
+def _get_geospatial_names_from_filter(
+    db: Session,
+    geodict: dict[
+        str,
+        list[list[list[list[float | int]]]]
+        | list[list[list[float | int]]]
+        | list[float | int]
+        | str,
+    ],
+    operator: str,
+    model_object: models.Datum | models.Model | models.Dataset,
+):
     f = schemas.Filter(
         datum_geospatial=[
             schemas.GeospatialFilter(
@@ -957,9 +967,10 @@ def _test_geospatial_filters(
         operator="inside",
         model_object=model_object,
     )
+
     assert len(names) == 2
-    assert (datum_uid1,) in names
-    assert (datum_uid3,) in names
+    assert ("uid1",) in names
+    assert ("uid3",) in names
 
     # test intersections
     names = _get_geospatial_names_from_filter(
@@ -980,8 +991,8 @@ def _test_geospatial_filters(
     )
 
     assert len(names) == 2
-    assert (datum_uid2,) in names
-    assert (datum_uid4,) in names
+    assert ("uid2",) in names
+    assert ("uid4",) in names
 
     # test point
     names = _get_geospatial_names_from_filter(
@@ -995,7 +1006,7 @@ def _test_geospatial_filters(
     )
 
     assert len(names) == 1
-    assert (datum_uid4,) in names
+    assert ("uid4",) in names
 
     # test multipolygon
     names = _get_geospatial_names_from_filter(
@@ -1026,9 +1037,9 @@ def _test_geospatial_filters(
     )
 
     assert len(names) == 3
-    assert (datum_uid1,) in names
-    assert (datum_uid2,) in names
-    assert (datum_uid3,) in names
+    assert ("uid1",) in names
+    assert ("uid2",) in names
+    assert ("uid3",) in names
 
     # test WHERE miss
     names = _get_geospatial_names_from_filter(
@@ -1055,10 +1066,10 @@ def _test_geospatial_filters(
     )
 
     assert len(names) == 4
-    assert (datum_uid1,) in names
-    assert (datum_uid2,) in names
-    assert (datum_uid3,) in names
-    assert (datum_uid4,) in names
+    assert ("uid1",) in names
+    assert ("uid2",) in names
+    assert ("uid3",) in names
+    assert ("uid4",) in names
 
     names = _get_geospatial_names_from_filter(
         db=db,
@@ -1078,8 +1089,8 @@ def _test_geospatial_filters(
     )
 
     assert len(names) == 2
-    assert (datum_uid2,) in names
-    assert (datum_uid4,) in names
+    assert ("uid2",) in names
+    assert ("uid4",) in names
 
 
 def test_datum_geospatial_filters(db: Session, model_sim):

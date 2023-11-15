@@ -747,11 +747,10 @@ class Query:
         ]
         return [and_(*expressions)]
 
-    # TODO check that these are all the correct model objects
     def _filter_by_geospatial(
         self,
         geospatial_filters: list[GeospatialFilter],
-        model_object: models.Datum | models.Annotation | models.Dataset,
+        model_object: models.Datum | models.Model | models.Dataset,
     ):
         geospatial_expressions = []
         for geospatial_filter in geospatial_filters:
@@ -761,22 +760,22 @@ class Query:
             if operator == "inside":
                 geospatial_expressions.append(
                     func.ST_Covers(
-                        # ST_GEOGFROMTEXT isn't strictly necessary here, but is intended to clarify that we're comparing two geography objects
-                        func.ST_GEOGFROMTEXT(geojson.shape().wkt()),
+                        # note that casting the WKT using ST_GEOGFROMTEXT isn't necessary here: we're implicitely comparing two geographies, not two geometries
+                        geojson.shape().wkt(),
                         model_object.geo,
                     )
                 )
             elif operator == "intersect":
                 geospatial_expressions.append(
                     model_object.geo.ST_Intersects(
-                        func.ST_GEOGFROMTEXT(geojson.shape().wkt())
+                        geojson.shape().wkt(),
                     )
                 )
             elif operator == "outside":
                 geospatial_expressions.append(
                     not_(
                         func.ST_Covers(
-                            func.ST_GEOGFROMTEXT(geojson.shape().wkt()),
+                            geojson.shape().wkt(),
                             model_object.geo,
                         )
                     )
