@@ -372,15 +372,9 @@ class Dataset:
     geospatial = DeclarativeMapper(
         "dataset_geospatial",
         Union[
-            Dict[
-                str,
-                Union[
-                    List[List[List[List[Union[float, int]]]]],
-                    List[List[List[Union[float, int]]]],
-                    List[Union[float, int]],
-                    str,
-                ],
-            ],
+            List[List[List[List[Union[float, int]]]]],
+            List[List[List[Union[float, int]]]],
+            List[Union[float, int]],
             str,
         ],
     )
