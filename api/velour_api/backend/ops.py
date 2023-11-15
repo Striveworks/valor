@@ -761,19 +761,22 @@ class Query:
             if operator == "inside":
                 geospatial_expressions.append(
                     func.ST_Covers(
-                        geojson.shape().wkt(),
+                        # ST_GEOGFROMTEXT isn't strictly necessary here, but is intended to clarify that we're comparing two geography objects
+                        func.ST_GEOGFROMTEXT(geojson.shape().wkt()),
                         model_object.geo,
                     )
                 )
             elif operator == "intersect":
                 geospatial_expressions.append(
-                    model_object.geo.ST_Intersects(geojson.shape().wkt())
+                    model_object.geo.ST_Intersects(
+                        func.ST_GEOGFROMTEXT(geojson.shape().wkt())
+                    )
                 )
             elif operator == "outside":
                 geospatial_expressions.append(
                     not_(
                         func.ST_Covers(
-                            geojson.shape().wkt(),
+                            func.ST_GEOGFROMTEXT(geojson.shape().wkt()),
                             model_object.geo,
                         )
                     )
