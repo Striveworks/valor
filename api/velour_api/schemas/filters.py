@@ -62,7 +62,7 @@ class NumericFilter(BaseModel):
 
 class GeospatialFilter(BaseModel):
     value: GeoJSON
-    operator: str = "inside"
+    operator: str = "intersect"
 
     @field_validator("operator")
     @classmethod

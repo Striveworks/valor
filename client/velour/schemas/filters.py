@@ -36,7 +36,7 @@ class GeospatialFilter:
             str,
         ],
     ]
-    operator: str = "inside"
+    operator: str = "intersect"
 
     def __post_init__(self):
         allowed_operators = ["inside", "outside", "intersect"]

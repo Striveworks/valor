@@ -529,7 +529,7 @@ class Query:
                 geospatial_filters=filters.dataset_geospatial,
                 model_object=models.Dataset,
             )
-            self._add_expressions(models.Annotation, geospatial_expressions)
+            self._add_expressions(models.Dataset, geospatial_expressions)
 
         # models
         if filters.models_names:
@@ -551,7 +551,7 @@ class Query:
                 geospatial_filters=filters.models_geospatial,
                 model_object=models.Model,
             )
-            self._add_expressions(models.Annotation, geospatial_expressions)
+            self._add_expressions(models.Model, geospatial_expressions)
 
         # datums
         if filters.datum_uids:
@@ -576,7 +576,7 @@ class Query:
                 geospatial_filters=filters.datum_geospatial,
                 model_object=models.Datum,
             )
-            self._add_expressions(models.Annotation, geospatial_expressions)
+            self._add_expressions(models.Datum, geospatial_expressions)
 
         # annotations
         if filters.task_types:
