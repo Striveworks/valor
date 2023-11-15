@@ -27,7 +27,7 @@ class ValueFilter:
 
 @dataclass
 class GeospatialFilter:
-    geodict: dict[
+    geodict: Dict[
         str,
         Union[
             List[List[List[List[Union[float, int]]]]],
