@@ -520,7 +520,12 @@ class Query:
                 ),
             )
         if filters.dataset_geospatial:
-            raise NotImplementedError
+            self._add_expressions(
+                models.Dataset,
+                self.filter_by_geospatial(
+                    filters.dataset_geospatial, models.Dataset
+                ),
+            )
 
         # models
         if filters.models_names:
@@ -538,7 +543,12 @@ class Query:
                 self.filter_by_metadata(filters.models_metadata, models.Model),
             )
         if filters.models_geospatial:
-            raise NotImplementedError
+            self._add_expressions(
+                models.Model,
+                self.filter_by_geospatial(
+                    filters.models_geospatial, models.Model
+                ),
+            )
 
         # datums
         if filters.datum_uids:
@@ -553,10 +563,34 @@ class Query:
         if filters.datum_metadata:
             self._add_expressions(
                 models.Datum,
-                self.filter_by_metadata(filters.datum_metadata, models.Datum),
+                self.filter_by_metadata(
+                    metadata=filters.datum_metadata,
+                    table=models.Datum,
+                ),
             )
         if filters.datum_geospatial:
-            raise NotImplementedError
+            geospatial_expressions = []
+            # TODO bundle this up into a function and add to other _geospatial arguments
+            for geospatial_filter in filters.datum_geospatial:
+                operator = geospatial_filter.operator
+                geojson = geospatial_filter.value
+
+                if operator == "inside":
+                    geospatial_expressions.append(
+                        func.ST_Covers(
+                            geojson.shape().wkt(),
+                            models.Datum.geo,
+                        )
+                    )
+                elif operator == "intersect":
+                    geospatial_expressions.append(
+                        models.Datum.geo.ST_Intersects(geojson.shape().wkt())
+                    )
+                # TODO implement and test outside
+                elif operator == "outside":
+                    pass
+
+            self._add_expressions(models.Annotation, geospatial_expressions)
 
         # annotations
         if filters.task_types:
@@ -637,7 +671,12 @@ class Query:
                 ),
             )
         if filters.annotation_geospatial:
-            raise NotImplementedError
+            self._add_expressions(
+                models.Annotation,
+                self.filter_by_geospatial(
+                    filters.annotation_geospatial, models.Annotation
+                ),
+            )
 
         # prediction
         if filters.prediction_scores:

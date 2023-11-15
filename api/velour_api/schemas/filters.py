@@ -67,7 +67,7 @@ class GeospatialFilter(BaseModel):
     @field_validator("operator")
     @classmethod
     def validate_comparison_operator(cls, op: str) -> str:
-        allowed_operators = [">", "<", ">=", "<=", "==", "!="]
+        allowed_operators = ["inside", "outside", "intersect"]
         if op not in allowed_operators:
             raise ValueError(
                 f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."

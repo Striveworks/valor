@@ -2826,8 +2826,6 @@ def test_get_dataset(
 def test_set_and_get_geospatial(
     client: Client,
     gt_dets1: list[GroundTruth],
-    pred_dets: list[Prediction],
-    pred_dets2: list[Prediction],
     db: Session,
 ):
     coordinates = [
@@ -2874,6 +2872,57 @@ def test_set_and_get_geospatial(
     dets1 = dataset.get_groundtruth("uid1")
 
     assert dets1.datum.geospatial == expected_coords[0]
+
+
+# TODO finish client-side tests
+def test_geospatial_filter(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    pred_dets2: list[Prediction],
+    db: Session,
+):
+    coordinates = [
+        [
+            [125.2750725, 38.760525],
+            [125.3902365, 38.775069],
+            [125.5054005, 38.789613],
+            [125.5051935, 38.71402425],
+            [125.5049865, 38.6384355],
+            [125.3902005, 38.6244225],
+            [125.2754145, 38.6104095],
+            [125.2752435, 38.68546725],
+            [125.2750725, 38.760525],
+        ]
+    ]
+    geo_dict = {"type": "Polygon", "coordinates": coordinates}
+
+    dataset = Dataset.create(
+        client=client, name=dset_name, geospatial=geo_dict
+    )
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(client=client, name=model_name, geospatial=geo_dict)
+    for pd in pred_dets:
+        model.add_prediction(pd)
+    model.finalize_inferences(dataset)
+
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+        ],
+        timeout=30,
+    )
+
+    return eval_job
+
+    # assert eval_job == False
 
 
 def test_get_dataset_status(client: Client, db: Session, gt_dets1: list):

@@ -29,8 +29,9 @@ class ValueFilter:
 class GeospatialFilter:
     operator: str = "=="
 
+    # TODO finish client-side code
     def __post_init__(self):
-        allowed_operators = [">", "<", ">=", "<=", "==", "!="]
+        allowed_operators = ["inside", "outside", "intersect"]
         if self.operator not in allowed_operators:
             raise ValueError(
                 f"Invalid comparison operator '{self.operator}'. Allowed operators are {', '.join(allowed_operators)}."
@@ -89,7 +90,6 @@ class DeclarativeMapper:
         )
 
     def __lt__(self, __value: object) -> BinaryExpression:
-
         self._validate(__value)
         return BinaryExpression(
             name=self.name,
