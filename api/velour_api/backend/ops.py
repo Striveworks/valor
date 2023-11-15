@@ -7,7 +7,12 @@ from sqlalchemy.sql.elements import BinaryExpression
 
 from velour_api import enums
 from velour_api.backend import models
-from velour_api.schemas import Filter, NumericFilter, StringFilter
+from velour_api.schemas import (
+    Filter,
+    GeospatialFilter,
+    NumericFilter,
+    StringFilter,
+)
 
 
 class Query:
@@ -569,32 +574,10 @@ class Query:
                 ),
             )
         if filters.datum_geospatial:
-            geospatial_expressions = []
-            # TODO bundle this up into a function and add to other _geospatial arguments
-            for geospatial_filter in filters.datum_geospatial:
-                operator = geospatial_filter.operator
-                geojson = geospatial_filter.value
-
-                if operator == "inside":
-                    geospatial_expressions.append(
-                        func.ST_Covers(
-                            geojson.shape().wkt(),
-                            models.Datum.geo,
-                        )
-                    )
-                elif operator == "intersect":
-                    geospatial_expressions.append(
-                        models.Datum.geo.ST_Intersects(geojson.shape().wkt())
-                    )
-                elif operator == "outside":
-                    geospatial_expressions.append(
-                        not_(
-                            func.ST_Covers(
-                                geojson.shape().wkt(),
-                                models.Datum.geo,
-                            )
-                        )
-                    )
+            geospatial_expressions = self._filter_by_geospatial(
+                geospatial_filters=filters.datum_geospatial,
+                model_object=models.Datum,
+            )
 
             self._add_expressions(models.Annotation, geospatial_expressions)
 
@@ -763,3 +746,37 @@ class Query:
             if isinstance(value, NumericFilter)
         ]
         return [and_(*expressions)]
+
+    # TODO check that these are all the correct model objects
+    def _filter_by_geospatial(
+        self,
+        geospatial_filters: list[GeospatialFilter],
+        model_object: models.Datum | models.Annotation | models.Dataset,
+    ):
+        geospatial_expressions = []
+        for geospatial_filter in geospatial_filters:
+            operator = geospatial_filter.operator
+            geojson = geospatial_filter.value
+
+            if operator == "inside":
+                geospatial_expressions.append(
+                    func.ST_Covers(
+                        geojson.shape().wkt(),
+                        model_object.geo,
+                    )
+                )
+            elif operator == "intersect":
+                geospatial_expressions.append(
+                    model_object.geo.ST_Intersects(geojson.shape().wkt())
+                )
+            elif operator == "outside":
+                geospatial_expressions.append(
+                    not_(
+                        func.ST_Covers(
+                            geojson.shape().wkt(),
+                            model_object.geo,
+                        )
+                    )
+                )
+
+        return geospatial_expressions

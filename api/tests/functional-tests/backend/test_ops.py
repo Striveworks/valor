@@ -920,7 +920,7 @@ def test_multiple_tables_in_args(
 
 
 # TODO types
-def _get_geospatial_names_from_filter(db, geodict, operator, query_object):
+def _get_geospatial_names_from_filter(db, geodict, operator, model_object):
     f = schemas.Filter(
         datum_geospatial=[
             schemas.GeospatialFilter(
@@ -930,14 +930,14 @@ def _get_geospatial_names_from_filter(db, geodict, operator, query_object):
         ],
     )
 
-    q = Query(query_object).filter(f).any()
+    q = Query(model_object).filter(f).any()
     names = db.query(q).distinct().all()
     return names
 
 
 def _test_geospatial_filters(
     db: Session,
-    query_object,
+    model_object,
     model_sim,
 ):
     # test inside filters
@@ -955,7 +955,7 @@ def _test_geospatial_filters(
             ],
         },
         operator="inside",
-        query_object=query_object,
+        model_object=model_object,
     )
     assert len(names) == 2
     assert (datum_uid1,) in names
@@ -976,7 +976,7 @@ def _test_geospatial_filters(
             ],
         },
         operator="intersect",
-        query_object=query_object,
+        model_object=model_object,
     )
 
     assert len(names) == 2
@@ -991,7 +991,7 @@ def _test_geospatial_filters(
             "coordinates": [81, 80],
         },
         operator="intersect",
-        query_object=query_object,
+        model_object=model_object,
     )
 
     assert len(names) == 1
@@ -1022,7 +1022,7 @@ def _test_geospatial_filters(
             ],
         },
         operator="intersect",
-        query_object=query_object,
+        model_object=model_object,
     )
 
     assert len(names) == 3
@@ -1038,7 +1038,7 @@ def _test_geospatial_filters(
             "coordinates": [-11, -11],
         },
         operator="intersect",
-        query_object=query_object,
+        model_object=model_object,
     )
 
     assert len(names) == 0
@@ -1051,7 +1051,7 @@ def _test_geospatial_filters(
             "coordinates": [-11, -11],
         },
         operator="outside",
-        query_object=query_object,
+        model_object=model_object,
     )
 
     assert len(names) == 4
@@ -1074,7 +1074,7 @@ def _test_geospatial_filters(
             ],
         },
         operator="outside",
-        query_object=query_object,
+        model_object=model_object,
     )
 
     assert len(names) == 2
@@ -1084,5 +1084,5 @@ def _test_geospatial_filters(
 
 def test_datum_geospatial_filters(db: Session, model_sim):
     _test_geospatial_filters(
-        db=db, query_object=models.Datum.uid, model_sim=model_sim
+        db=db, model_object=models.Datum.uid, model_sim=model_sim
     )
