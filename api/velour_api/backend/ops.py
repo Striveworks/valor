@@ -1,6 +1,6 @@
 import operator
 
-from sqlalchemy import Float, and_, func, or_, select
+from sqlalchemy import Float, and_, func, not_, or_, select
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression
@@ -586,9 +586,15 @@ class Query:
                     geospatial_expressions.append(
                         models.Datum.geo.ST_Intersects(geojson.shape().wkt())
                     )
-                # TODO implement and test outside
                 elif operator == "outside":
-                    pass
+                    geospatial_expressions.append(
+                        not_(
+                            func.ST_Covers(
+                                geojson.shape().wkt(),
+                                models.Datum.geo,
+                            )
+                        )
+                    )
 
             self._add_expressions(models.Annotation, geospatial_expressions)
 

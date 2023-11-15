@@ -983,7 +983,7 @@ def _test_geospatial_filters(
     assert (datum_uid2,) in names
     assert (datum_uid4,) in names
 
-    # check point
+    # test point
     names = _get_geospatial_names_from_filter(
         db=db,
         geodict={
@@ -997,7 +997,7 @@ def _test_geospatial_filters(
     assert len(names) == 1
     assert (datum_uid4,) in names
 
-    # check multipolygon
+    # test multipolygon
     names = _get_geospatial_names_from_filter(
         db=db,
         geodict={
@@ -1030,7 +1030,7 @@ def _test_geospatial_filters(
     assert (datum_uid2,) in names
     assert (datum_uid3,) in names
 
-    # check WHERE miss
+    # test WHERE miss
     names = _get_geospatial_names_from_filter(
         db=db,
         geodict={
@@ -1042,6 +1042,44 @@ def _test_geospatial_filters(
     )
 
     assert len(names) == 0
+
+    # test outside
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Point",
+            "coordinates": [-11, -11],
+        },
+        operator="outside",
+        query_object=query_object,
+    )
+
+    assert len(names) == 4
+    assert (datum_uid1,) in names
+    assert (datum_uid2,) in names
+    assert (datum_uid3,) in names
+    assert (datum_uid4,) in names
+
+    names = _get_geospatial_names_from_filter(
+        db=db,
+        geodict={
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-20, -20],
+                    [60, -20],
+                    [60, 60],
+                    [-20, 60],
+                ]
+            ],
+        },
+        operator="outside",
+        query_object=query_object,
+    )
+
+    assert len(names) == 2
+    assert (datum_uid2,) in names
+    assert (datum_uid4,) in names
 
 
 def test_datum_geospatial_filters(db: Session, model_sim):
