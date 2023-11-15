@@ -1324,26 +1324,6 @@ def test_GeoJSON():
         ).shape()
 
 
-# @TODO
-def test_geojson_GeoJSON():
-    pass
-
-
-# @TODO
-def test_geojson_GeoJSONPoint():
-    pass
-
-
-# @TODO
-def test_geojson_GeoJSONPolygon():
-    pass
-
-
-# @TODO
-def test_geojson_GeoJSONMultiPolygon():
-    pass
-
-
 """ velour_api.schemas.info """
 
 
