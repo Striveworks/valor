@@ -525,12 +525,12 @@ class Query:
                 ),
             )
         if filters.dataset_geospatial:
-            self._add_expressions(
-                models.Dataset,
-                self.filter_by_geospatial(
-                    filters.dataset_geospatial, models.Dataset
-                ),
+            geospatial_expressions = self._filter_by_geospatial(
+                geospatial_filters=filters.dataset_geospatial,
+                model_object=models.Dataset,
             )
+
+            self._add_expressions(models.Annotation, geospatial_expressions)
 
         # models
         if filters.models_names:
@@ -548,13 +548,12 @@ class Query:
                 self.filter_by_metadata(filters.models_metadata, models.Model),
             )
         if filters.models_geospatial:
-            self._add_expressions(
-                models.Model,
-                self.filter_by_geospatial(
-                    filters.models_geospatial, models.Model
-                ),
+            geospatial_expressions = self._filter_by_geospatial(
+                geospatial_filters=filters.models_geospatial,
+                model_object=models.Model,
             )
 
+            self._add_expressions(models.Annotation, geospatial_expressions)
         # datums
         if filters.datum_uids:
             self._add_expressions(
