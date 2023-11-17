@@ -19,3 +19,4 @@ runs
 
 .ipynb_checkpoints
 *.dat
+*.env

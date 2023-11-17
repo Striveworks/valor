@@ -1,13 +1,18 @@
 import operator
 
-from sqlalchemy import Float, and_, func, or_, select
+from sqlalchemy import Float, and_, func, not_, or_, select
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression
 
 from velour_api import enums
 from velour_api.backend import models
-from velour_api.schemas import Filter, NumericFilter, StringFilter
+from velour_api.schemas import (
+    Filter,
+    GeospatialFilter,
+    NumericFilter,
+    StringFilter,
+)
 
 
 class Query:
@@ -520,7 +525,11 @@ class Query:
                 ),
             )
         if filters.dataset_geospatial:
-            raise NotImplementedError
+            geospatial_expressions = self._filter_by_geospatial(
+                geospatial_filters=filters.dataset_geospatial,
+                model_object=models.Dataset,
+            )
+            self._add_expressions(models.Dataset, geospatial_expressions)
 
         # models
         if filters.models_names:
@@ -538,7 +547,11 @@ class Query:
                 self.filter_by_metadata(filters.models_metadata, models.Model),
             )
         if filters.models_geospatial:
-            raise NotImplementedError
+            geospatial_expressions = self._filter_by_geospatial(
+                geospatial_filters=filters.models_geospatial,
+                model_object=models.Model,
+            )
+            self._add_expressions(models.Model, geospatial_expressions)
 
         # datums
         if filters.datum_uids:
@@ -553,10 +566,17 @@ class Query:
         if filters.datum_metadata:
             self._add_expressions(
                 models.Datum,
-                self.filter_by_metadata(filters.datum_metadata, models.Datum),
+                self.filter_by_metadata(
+                    metadata=filters.datum_metadata,
+                    table=models.Datum,
+                ),
             )
         if filters.datum_geospatial:
-            raise NotImplementedError
+            geospatial_expressions = self._filter_by_geospatial(
+                geospatial_filters=filters.datum_geospatial,
+                model_object=models.Datum,
+            )
+            self._add_expressions(models.Datum, geospatial_expressions)
 
         # annotations
         if filters.task_types:
@@ -637,7 +657,12 @@ class Query:
                 ),
             )
         if filters.annotation_geospatial:
-            raise NotImplementedError
+            self._add_expressions(
+                models.Annotation,
+                self.filter_by_geospatial(
+                    filters.annotation_geospatial, models.Annotation
+                ),
+            )
 
         # prediction
         if filters.prediction_scores:
@@ -718,3 +743,39 @@ class Query:
             if isinstance(value, NumericFilter)
         ]
         return [and_(*expressions)]
+
+    def _filter_by_geospatial(
+        self,
+        geospatial_filters: list[GeospatialFilter],
+        model_object: models.Datum | models.Model | models.Dataset,
+    ):
+        geospatial_expressions = []
+        for geospatial_filter in geospatial_filters:
+            operator = geospatial_filter.operator
+            geojson = geospatial_filter.value
+
+            if operator == "inside":
+                geospatial_expressions.append(
+                    func.ST_Covers(
+                        # note that casting the WKT using ST_GEOGFROMTEXT isn't necessary here: we're implicitely comparing two geographies, not two geometries
+                        geojson.shape().wkt(),
+                        model_object.geo,
+                    )
+                )
+            elif operator == "intersect":
+                geospatial_expressions.append(
+                    model_object.geo.ST_Intersects(
+                        geojson.shape().wkt(),
+                    )
+                )
+            elif operator == "outside":
+                geospatial_expressions.append(
+                    not_(
+                        func.ST_Covers(
+                            geojson.shape().wkt(),
+                            model_object.geo,
+                        )
+                    )
+                )
+
+        return geospatial_expressions
