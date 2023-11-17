@@ -253,7 +253,7 @@ def _confusion_matrix_at_label_key(
     pFilter.models_names = [job_request.model]
     pFilter.label_keys = [label_key]
 
-    # 1. Get prediction ids that conform to pFilter
+    # 1. Get predictions that conform to pFilter
     predictions = (
         Query(models.Prediction)
         .filter(pFilter)
@@ -335,7 +335,7 @@ def _confusion_matrix_at_label_key(
     # 5. Link value to the Label.value object
     b = Bundle("cols", hard_preds_query.c.pred_label_value, models.Label.value)
 
-    # 6. Get groundtruth ids that conform to gFilter
+    # 6. Get groundtruths that conform to gFilter
     groundtruths = (
         Query(models.GroundTruth)
         .filter(gFilter)
