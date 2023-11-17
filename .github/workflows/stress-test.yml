@@ -49,7 +49,7 @@ jobs:
       - name: login to ECR
         run: aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login -u AWS --password-stdin 724664234782.dkr.ecr.us-east-1.amazonaws.com
       - name: generate .npmrc to install minervia via npm
-        run: sed -i 's/\${MINERVA_TOKEN}/${{secrets.MINERVA_PAT_TOKEN}}/g' /web/.npmrc.example && mv .npmrc.example .npmrc
+        run: sed -i 's/\${MINERVA_TOKEN}/${{secrets.MINERVA_PAT_TOKEN}}/g' web/.npmrc.example && mv .npmrc.example .npmrc
       - name: setup backend test env
         run: docker compose -p velour -f docker-compose.yml --build-arg -f docker-compose.cicd-override.yml --env-file ./api/.env.testing up --build -d
       - uses: actions/setup-python@v4
