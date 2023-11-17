@@ -13,7 +13,7 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import axios from 'axios';
 import { ChangeEvent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { usingAuth } from './auth';
+import { usingAuth } from './Auth';
 import { Wrapper } from './components/wrapper';
 import { EvaluationSetting, Metric } from './types';
 

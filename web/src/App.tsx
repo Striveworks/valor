@@ -1,35 +1,50 @@
+import { useAuth0 } from '@auth0/auth0-react';
+import { ChariotLayoutTemplate } from '@striveworks/minerva';
+import '@striveworks/minerva/style.css';
 import { Route, Routes } from 'react-router-dom';
 import './App.css';
-import { CallbackPage } from './callback-page';
-import { ListingComponent } from './components/listing-component';
+import { usingAuth } from './Auth';
+import { SideMenu } from './components/shared/SideMenu';
 import { DatasetDetailsPage } from './dataset-details-page';
-import { HomePage } from './home-page';
 import { MetricsPage } from './metrics-page';
-import { ModelDetailsPage } from './model-details-page';
-import { ProfilePage } from './profile-page';
+import { Datasets } from './pages/Datasets/Datasets';
+import { Home } from './pages/Home';
+import { Login } from './pages/Login';
+import { ModelDetails } from './pages/Models/ModelDetails';
+import { Models } from './pages/Models/Models';
+import { Profile } from './pages/Profile';
+import { Evaluations } from './pages/Evaluations/Evaluations';
 
 function App() {
-  return (
-    <Routes>
-      <Route path='/' element={<HomePage />} />
-      <Route path='/callback' element={<CallbackPage />} />
-      <Route path='/profile' element={<ProfilePage />} />
-      <Route
-        path='/models'
-        element={<ListingComponent name='models' pageTitle='Models' />}
-      />
-      <Route
-        path='/datasets'
-        element={<ListingComponent name='datasets' pageTitle='Datasets' />}
-      />
-      <Route path='/models/:name' element={<ModelDetailsPage />} />
-      <Route path='/datasets/:name' element={<DatasetDetailsPage />} />
-      <Route
-        path='/models/:name/evaluation-settings/:evalSettingsId'
-        element={<MetricsPage />}
-      />
-    </Routes>
-  );
+  const { isAuthenticated } = useAuth0();
+
+  if (isAuthenticated || !usingAuth()) {
+    return (
+      <ChariotLayoutTemplate SideBar={<SideMenu />}>
+        <Routes>
+          <Route path='/' element={<Home />} />
+          <Route path='/models'>
+            <Route index element={<Models />} />
+            <Route path=':modelName' element={<ModelDetails />} />
+            <Route
+              path=':name/evaluation-settings/:evalSettingsId'
+              element={<MetricsPage />}
+            />
+          </Route>
+          <Route path='/datasets'>
+            <Route index element={<Datasets />} />
+            <Route path=':name' element={<DatasetDetailsPage />} />
+          </Route>
+          <Route path='/evaluations'>
+            <Route index element={<Evaluations />} />
+          </Route>
+          <Route path='/profile' element={<Profile />} />
+        </Routes>
+      </ChariotLayoutTemplate>
+    );
+  }
+
+  return <Login />;
 }
 
 export default App;

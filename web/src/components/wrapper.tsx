@@ -1,16 +1,8 @@
 import { useAuth0 } from '@auth0/auth0-react';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import Box from '@mui/material/Box';
-import Divider from '@mui/material/Divider';
-import Drawer from '@mui/material/Drawer';
-import Link from '@mui/material/Link';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import Toolbar from '@mui/material/Toolbar';
 import React, { useEffect } from 'react';
 
-const drawerWidth = 240;
-
+// TODO: Find out what this component does.
 const SetTokenComponent = () => {
   const { getAccessTokenSilently } = useAuth0();
 
@@ -28,7 +20,7 @@ const SetTokenComponent = () => {
 export const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <Box sx={{ display: 'flex' }}>
     <SetTokenComponent />
-    <Drawer
+    {/* <Drawer
       sx={{
         width: drawerWidth,
         flexShrink: 0,
@@ -67,7 +59,7 @@ export const Wrapper = ({ children }: { children: React.ReactNode }) => (
           </Link>
         </ListItem>
       </List>
-    </Drawer>
+    </Drawer> */}
     <Box component='main' sx={{ flexGrow: 1, bgcolor: 'background.default', p: 3 }}>
       {children}
     </Box>

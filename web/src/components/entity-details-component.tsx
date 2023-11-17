@@ -3,7 +3,7 @@ import Typography from '@mui/material/Typography';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { usingAuth } from '../auth';
+import { usingAuth } from '../Auth';
 import { EntityResponse } from '../types';
 
 export const EntityDetailsComponent = ({ entityType }: { entityType: string }) => {
