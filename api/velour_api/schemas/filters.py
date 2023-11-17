@@ -104,6 +104,9 @@ class Filter(BaseModel):
     models_geospatial: list[GeospatialFilter] | None = None
 
     # datums
+    datum_ids: list[
+        int
+    ] | None = None  # This should be used sparingly and with small lists.
     datum_uids: list[str] | None = None
     datum_metadata: dict[str, StringFilter | list[NumericFilter]] | None = None
     datum_geospatial: list[GeospatialFilter] | None = None

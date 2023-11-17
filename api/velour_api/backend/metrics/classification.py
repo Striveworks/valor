@@ -13,7 +13,6 @@ from velour_api.backend.ops import Query
 from velour_api.enums import TaskType
 
 
-# @TODO: Implement metadata filtering using `ops.Querys`
 def binary_roc_auc(
     db: Session,
     dataset_name: str,
@@ -219,7 +218,170 @@ def roc_auc(
     return sum_roc_aucs / label_count
 
 
-def get_confusion_matrix_and_metrics_at_label_key(
+def _confusion_matrix_at_label_key(
+    db: Session,
+    job_request: schemas.EvaluationJob,
+    label_key: str,
+) -> schemas.ConfusionMatrix | None:
+    """Computes the confusion matrix at a label_key.
+
+    Parameters
+    ----------
+    dataset_name
+        name of the dataset
+    model_name
+        name of the model
+    label_key
+        the label key to compute metrics under
+
+    Returns
+    -------
+    schemas.ConfusionMatrix | None
+        returns None in the case that there are no common images in the dataset
+        that have both a groundtruth and prediction with label key `label_key`. Otherwise
+        returns the confusion matrix
+    """
+
+    # groundtruths filter
+    gFilter = job_request.settings.filters.model_copy()
+    gFilter.dataset_names = [job_request.dataset]
+    gFilter.label_keys = [label_key]
+
+    # predictions filter
+    pFilter = job_request.settings.filters.model_copy()
+    pFilter.dataset_names = [job_request.dataset]
+    pFilter.models_names = [job_request.model]
+    pFilter.label_keys = [label_key]
+
+    # 1. Get prediction ids that conform to pFilter
+    predictions = (
+        Query(models.Prediction)
+        .filter(pFilter)
+        .predictions(asSubquery=False)
+        .alias()
+    )
+
+    # 2. Get the max prediction scores by datum that conform to pFilter
+    max_scores_by_datum_id = (
+        Query(
+            func.max(models.Prediction.score).label("max_score"),
+            models.Datum.id.label("datum_id"),
+        )
+        .filter(pFilter)
+        .predictions(asSubquery=False)
+        .group_by(models.Datum.id)
+        .alias()
+    )
+
+    # 3. Remove duplicate scores per datum
+    # used for the edge case where the max confidence appears twice
+    # the result of this query is all of the hard predictions
+    min_id_query = (
+        select(func.min(predictions.c.id).label("min_id"))
+        .select_from(predictions)
+        .join(
+            models.Annotation,
+            models.Annotation.id == predictions.c.annotation_id,
+        )
+        .join(
+            models.Datum,
+            models.Annotation.datum_id == models.Datum.id,
+        )
+        .join(
+            max_scores_by_datum_id,
+            and_(
+                models.Datum.id == max_scores_by_datum_id.c.datum_id,
+                predictions.c.score == max_scores_by_datum_id.c.max_score,
+            ),
+        )
+        .join(
+            models.Label,
+            models.Label.id == predictions.c.label_id,
+        )
+        .group_by(models.Datum.id)
+        .alias()
+    )
+
+    # 4. Get labels for hard predictions, organize per datum
+    hard_preds_query = (
+        select(
+            models.Label.value.label("pred_label_value"),
+            models.Datum.id.label("datum_id"),
+        )
+        .select_from(min_id_query)
+        .join(
+            models.Prediction,
+            models.Prediction.id == min_id_query.c.min_id,
+        )
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.Prediction.annotation_id,
+        )
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(
+            max_scores_by_datum_id,
+            and_(
+                models.Prediction.score == max_scores_by_datum_id.c.max_score,
+                models.Datum.id == max_scores_by_datum_id.c.datum_id,
+            ),
+        )
+        .join(
+            models.Label,
+            models.Label.id == models.Prediction.label_id,
+        )
+        .alias()
+    )
+
+    # 5. Link value to the Label.value object
+    b = Bundle("cols", hard_preds_query.c.pred_label_value, models.Label.value)
+
+    # 6. Get groundtruth ids that conform to gFilter
+    groundtruths = (
+        Query(models.GroundTruth)
+        .filter(gFilter)
+        .groundtruths(asSubquery=False)
+        .alias()
+    )
+
+    # 6. Generate confusion matrix
+    total_query = (
+        select(b, func.count())
+        .select_from(groundtruths)
+        .join(
+            models.Annotation,
+            models.Annotation.id == groundtruths.c.annotation_id,
+        )
+        .join(
+            hard_preds_query,
+            hard_preds_query.c.datum_id == models.Annotation.datum_id,
+        )
+        .join(
+            models.Label,
+            models.Label.id == groundtruths.c.label_id,
+        )
+        .where(models.Label.key == label_key)
+        .group_by(b)
+    )
+
+    res = db.execute(total_query).all()
+
+    if len(res) == 0:
+        # this means there's no predictions and groundtruths with the label key
+        # for the same image
+        return None
+
+    return schemas.ConfusionMatrix(
+        label_key=label_key,
+        entries=[
+            schemas.ConfusionMatrixEntry(
+                prediction=r[0][0], groundtruth=r[0][1], count=r[1]
+            )
+            for r in res
+        ],
+    )
+
+
+def _get_confusion_matrix_and_metrics_at_label_key(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -267,7 +429,7 @@ def get_confusion_matrix_and_metrics_at_label_key(
                 f"Expected all elements of `labels` to have label key equal to {label_key} but got label {label}."
             )
 
-    confusion_matrix = confusion_matrix_at_label_key(
+    confusion_matrix = _confusion_matrix_at_label_key(
         db=db,
         dataset_name=dataset_name,
         model_name=model_name,
@@ -327,7 +489,7 @@ def get_confusion_matrix_and_metrics_at_label_key(
     return confusion_matrix, metrics
 
 
-def compute_clf_metrics(
+def _compute_clf_metrics(
     db: Session,
     job_request: schemas.EvaluationJob,
 ) -> tuple[
@@ -341,9 +503,16 @@ def compute_clf_metrics(
         | schemas.F1Metric
     ],
 ]:
-    # get dataset labels
+    # construct dataset filter
     groundtruth_label_filter = job_request.settings.filters.model_copy()
-    groundtruth_label_filter.dataset_names = ([job_request.dataset],)
+    groundtruth_label_filter.dataset_names = [job_request.dataset]
+
+    # construct model filter
+    prediction_label_filter = job_request.settings.filters.model_copy()
+    prediction_label_filter.dataset_names = [job_request.dataset]
+    prediction_label_filter.models_names = [job_request.model]
+
+    # retrieve dataset labels
     dataset_labels = {
         schemas.Label(key=label.key, value=label.value)
         for label in db.query(
@@ -351,10 +520,7 @@ def compute_clf_metrics(
         ).all()
     }
 
-    # get model labels
-    prediction_label_filter = job_request.settings.filters.model_copy()
-    prediction_label_filter.dataset_names = [job_request.dataset]
-    prediction_label_filter.models_names = [job_request.model]
+    # retrieve model labels
     model_labels = {
         schemas.Label(key=label.key, value=label.value)
         for label in db.query(
@@ -369,7 +535,7 @@ def compute_clf_metrics(
     # compute metrics and confusion matrix for each label key
     confusion_matrices, metrics = [], []
     for label_key in unique_label_keys:
-        cm_and_metrics = get_confusion_matrix_and_metrics_at_label_key(
+        cm_and_metrics = _get_confusion_matrix_and_metrics_at_label_key(
             db,
             dataset_name=job_request.dataset,
             model_name=job_request.model,
@@ -381,146 +547,6 @@ def compute_clf_metrics(
             metrics.extend(cm_and_metrics[1])
 
     return confusion_matrices, metrics
-
-
-def confusion_matrix_at_label_key(
-    db: Session,
-    dataset_name: str,
-    model_name: str,
-    label_key: str,
-) -> schemas.ConfusionMatrix | None:
-    """Computes the confusion matrix at a label_key.
-
-    Parameters
-    ----------
-    dataset_name
-        name of the dataset
-    model_name
-        name of the model
-    label_key
-        the label key to compute metrics under
-    metadatum_id
-        if not None, then filter out to just the datums that have this as a metadatum
-
-    Returns
-    -------
-    schemas.ConfusionMatrix | None
-        returns None in the case that there are no common images in the dataset
-        that have both a groundtruth and prediction with label key `label_key`. Otherwise
-        returns the confusion matrix
-    """
-
-    dataset = core.get_dataset(db, dataset_name)
-    model = core.get_model(db, model_name)
-
-    # this query get's the max score for each Datum for the given label key
-    q1 = (
-        select(
-            func.max(models.Prediction.score).label("max_score"),
-            models.Datum.id.label("datum_id"),
-        )
-        .select_from(models.Annotation)
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .join(
-            models.Prediction,
-            models.Prediction.annotation_id == models.Annotation.id,
-        )
-        .join(models.Label, models.Label.id == models.Prediction.label_id)
-        .where(
-            and_(
-                models.Annotation.model_id == model.id,
-                models.Datum.dataset_id == dataset.id,
-                models.Label.key == label_key,
-            )
-        )
-    )
-    q1 = q1.group_by(models.Datum.id)
-    subquery = q1.alias()
-
-    # used for the edge case where the max confidence appears twice
-    # the result of this query is all of the hard predictions
-    q2 = (
-        select(func.min(models.Prediction.id).label("min_id"))
-        .join(models.Label)
-        .join(
-            models.Annotation,
-            models.Annotation.id == models.Prediction.annotation_id,
-        )
-        .join(models.Datum, models.Annotation.datum_id == models.Datum.id)
-        .join(
-            subquery,
-            and_(
-                models.Prediction.score == subquery.c.max_score,
-                models.Datum.id == subquery.c.datum_id,
-            ),
-        )
-        .group_by(models.Datum.id)
-    )
-    min_id_query = q2.alias()
-
-    q3 = (
-        select(
-            models.Label.value.label("pred_label_value"),
-            models.Datum.id.label("datum_id"),
-        )
-        .join(models.Prediction)
-        .join(
-            models.Annotation,
-            models.Annotation.id == models.Prediction.annotation_id,
-        )
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .join(
-            subquery,
-            and_(
-                models.Prediction.score == subquery.c.max_score,
-                models.Datum.id == subquery.c.datum_id,
-            ),
-        )
-        .join(
-            min_id_query,
-            models.Prediction.id == min_id_query.c.min_id,
-        )
-    )
-    hard_preds_query = q3.alias()
-
-    b = Bundle("cols", hard_preds_query.c.pred_label_value, models.Label.value)
-
-    total_query = (
-        select(b, func.count())
-        .join(
-            models.Annotation,
-            models.Annotation.datum_id == hard_preds_query.c.datum_id,
-        )
-        .join(
-            models.GroundTruth,
-            models.GroundTruth.annotation_id == models.Annotation.id,
-        )
-        .join(
-            models.Label,
-            and_(
-                models.Label.id == models.GroundTruth.label_id,
-                models.Label.key == label_key,
-            ),
-        )
-        .group_by(b)
-    )
-
-    res = db.execute(total_query).all()
-
-    if len(res) == 0:
-        # this means there's no predictions and groundtruths with the label key
-        # for the same image
-        return None
-
-    return schemas.ConfusionMatrix(
-        label_key=label_key,
-        entries=[
-            schemas.ConfusionMatrixEntry(
-                prediction=r[0][0], groundtruth=r[0][1], count=r[1]
-            )
-            for r in res
-        ],
-    )
 
 
 def accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
@@ -552,17 +578,6 @@ def precision_and_recall_f1_from_confusion_matrix(
     return prec, recall, f1
 
 
-def _clear_conflicting_filters(filters):
-    filters.dataset_names = None
-    filters.dataset_metadata = None
-    filters.dataset_geospatial = None
-    filters.models_names = None
-    filters.models_metadata = None
-    filters.models_geospatial = None
-    filters.prediction_scores = None
-    return filters
-
-
 def create_clf_evaluation(
     db: Session,
     job_request: schemas.EvaluationJob,
@@ -572,13 +587,20 @@ def create_clf_evaluation(
     Returns
         Evaluations job id.
     """
-
-    # clear dataset / model filters
+    # configure filters object
     if not job_request.settings.filters:
         job_request.settings.filters = schemas.Filter()
-    job_request.settings.filters = _clear_conflicting_filters(
-        job_request.settings.filters
-    )
+    else:
+        # clear dataset + model filters
+        job_request.settings.filters.dataset_names = None
+        job_request.settings.filters.dataset_metadata = None
+        job_request.settings.filters.dataset_geospatial = None
+        job_request.settings.filters.models_names = None
+        job_request.settings.filters.models_metadata = None
+        job_request.settings.filters.models_geospatial = None
+        job_request.settings.filters.prediction_scores = None
+
+    # set task_type filter
     job_request.settings.filters.task_types = [TaskType.CLASSIFICATION]
 
     # create evaluation row
@@ -595,19 +617,21 @@ def create_clf_evaluation(
         },
     )
 
-    return es.id
+    # set job id
+    job_request.id = es.id
+
+    return job_request
 
 
 def create_clf_metrics(
     db: Session,
     job_request: schemas.EvaluationJob,
-    evaluation_id: int,
 ) -> int:
     """
     Intended to run as background
     """
 
-    confusion_matrices, metrics = compute_clf_metrics(
+    confusion_matrices, metrics = _compute_clf_metrics(
         db=db,
         job_request=job_request,
     )
@@ -615,7 +639,7 @@ def create_clf_metrics(
     confusion_matrices_mappings = create_metric_mappings(
         db=db,
         metrics=confusion_matrices,
-        evaluation_id=evaluation_id,
+        evaluation_id=job_request.id,
     )
 
     for mapping in confusion_matrices_mappings:
@@ -626,7 +650,7 @@ def create_clf_metrics(
         )
 
     metric_mappings = create_metric_mappings(
-        db=db, metrics=metrics, evaluation_id=evaluation_id
+        db=db, metrics=metrics, evaluation_id=job_request.id
     )
 
     for mapping in metric_mappings:
@@ -640,4 +664,4 @@ def create_clf_metrics(
             columns_to_ignore=["value"],
         )
 
-    return evaluation_id
+    return job_request.id
