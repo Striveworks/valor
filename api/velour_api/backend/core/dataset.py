@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.metadata import deserialize_meta
 
 
 def get_datum(
@@ -45,16 +44,22 @@ def create_datum(
     db: Session,
     datum: schemas.Datum,
 ) -> models.Datum:
-
     # retrieve dataset
     dataset = get_dataset(db, datum.dataset)
+
+    shape = (
+        schemas.GeoJSON.from_dict(data=datum.geospatial).shape().wkt()
+        if datum.geospatial
+        else None
+    )
 
     # create datum
     try:
         row = models.Datum(
             uid=datum.uid,
             dataset_id=dataset.id,
-            meta=deserialize_meta(datum.metadata),
+            meta=datum.metadata,
+            geo=shape,
         )
         db.add(row)
         db.commit()

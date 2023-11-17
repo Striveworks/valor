@@ -9,6 +9,11 @@ on:
     tags:
       - "v*"
 
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
 jobs:
   build-and-publish-docker:
     runs-on: ubuntu-latest
@@ -17,23 +22,44 @@ jobs:
         working-directory: ./api
     env:
       IMAGE_NAME: ghcr.io/striveworks/velour/velour-service
-      IMAGE_NAME_WITH_COMMIT_HASH: $IMAGE_NAME:${{ github.sha }}
+      IMAGE_NAME_WITH_COMMIT_HASH: ${IMAGE_NAME}:${{ github.sha }}
     steps:
       - uses: actions/checkout@v3
+      - uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE }}
+          aws-region: ${{ secrets.AWS_ECR_REGION }}
       - name: build
         run: |
-          docker build . -t $IMAGE_NAME
+          docker build . -t ${IMAGE_NAME}
       - name: push
         run: |
           docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
-          docker push $IMAGE_NAME
-          IMAGE_NAME_WITH_COMMIT_HASH=$IMAGE_NAME:${{ github.sha }}
-          docker tag $IMAGE_NAME $IMAGE_NAME_WITH_COMMIT_HASH
-          docker push $IMAGE_NAME_WITH_COMMIT_HASH
+          docker push ${IMAGE_NAME}
+          IMAGE_NAME_WITH_COMMIT_HASH=${IMAGE_NAME}:${{ github.sha }}
+          docker tag ${IMAGE_NAME} ${IMAGE_NAME_WITH_COMMIT_HASH}
+          docker push ${IMAGE_NAME_WITH_COMMIT_HASH}
       # if there's a git tag then add another tag to the image with the git tag and push it
       - name: push git tag
         if: startsWith(github.ref, 'refs/tags/')
         run: |
           TAG=$(git describe --tags --abbrev=0)
-          docker tag $IMAGE_NAME $IMAGE_NAME:$TAG
-          docker push $IMAGE_NAME:$TAG
+          docker tag ${IMAGE_NAME} ${IMAGE_NAME}:${TAG}
+          docker push ${IMAGE_NAME}:${TAG}
+      - uses: aws-actions/amazon-ecr-login@v1
+        id: login-ecr
+      - name: push to ecr
+        run: |
+          ECR_IMAGE_NAME=${{ steps.login-ecr.outputs.registry }}/library/velour/velour-service
+          docker tag ${IMAGE_NAME} ${ECR_IMAGE_NAME}
+          docker push ${ECR_IMAGE_NAME}
+          ECR_IMAGE_NAME_WITH_COMMIT_HASH=${IMAGE_NAME}:${{ github.sha }}
+          docker tag ${ECR_IMAGE_NAME} ${ECR_IMAGE_NAME_WITH_COMMIT_HASH}
+          docker push ${ECR_IMAGE_NAME_WITH_COMMIT_HASH}
+      - name: push git tag to ecr
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          ECR_IMAGE_NAME=${{ steps.login-ecr.outputs.registry }}/library/velour/velour-service
+          TAG=$(git describe --tags --abbrev=0)
+          docker tag ${IMAGE_NAME} ${ECR_IMAGE_NAME}:${TAG}
+          docker push ${ECR_IMAGE_NAME}:${TAG}

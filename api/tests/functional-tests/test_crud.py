@@ -95,8 +95,7 @@ def poly_with_hole() -> schemas.Polygon:
 def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -104,7 +103,7 @@ def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k2", value="v2"),
                     ],
-                    metadata=[],
+                    metadata={},
                     bounding_box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
                             points=[
@@ -117,12 +116,11 @@ def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
                             ]
                         )
                     ),
-                    boundary=[],
                 ),
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
                     labels=[schemas.Label(key="k2", value="v2")],
-                    metadata=[],
+                    metadata={},
                     bounding_box=schemas.BoundingBox(
                         polygon=schemas.BasicPolygon(
                             points=[
@@ -146,7 +144,7 @@ def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
             model=model_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -193,13 +191,12 @@ def pred_dets_create(img1: schemas.Datum) -> list[schemas.Prediction]:
 def gt_instance_segs_create(
     poly_with_hole: schemas.BasicPolygon,
     poly_without_hole: schemas.BasicPolygon,
-    img1: schemas.ImageMetadata,
-    img2: schemas.ImageMetadata,
+    img1: schemas.Datum,
+    img2: schemas.Datum,
 ) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -209,8 +206,7 @@ def gt_instance_segs_create(
             ],
         ),
         schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -237,14 +233,14 @@ def gt_instance_segs_create(
 @pytest.fixture
 def pred_instance_segs_create(
     img1_pred_mask_bytes1: bytes,
-    img1: schemas.ImageMetadata,
+    img1: schemas.Datum,
 ) -> list[schemas.Prediction]:
     b64_mask1 = b64encode(img1_pred_mask_bytes1).decode()
 
     return [
         schemas.Prediction(
             model=model_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -293,13 +289,12 @@ def pred_instance_segs_create(
 
 @pytest.fixture
 def gt_clfs_create(
-    img1: schemas.ImageMetadata,
-    img2: schemas.ImageMetadata,
+    img1: schemas.Datum,
+    img2: schemas.Datum,
 ) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -311,8 +306,7 @@ def gt_clfs_create(
             ],
         ),
         schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -325,12 +319,12 @@ def gt_clfs_create(
 
 @pytest.fixture
 def pred_clfs_create(
-    img1: schemas.ImageMetadata, img2: schemas.ImageMetadata
+    img1: schemas.Datum, img2: schemas.Datum
 ) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
             model=model_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -344,7 +338,7 @@ def pred_clfs_create(
         ),
         schemas.Prediction(
             model=model_name,
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -585,8 +579,7 @@ def test_create_detections_as_bbox_or_poly(db: Session, img1: schemas.Datum):
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[det1, det2],
         ),
     )
@@ -837,7 +830,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 def test_segmentation_area_no_hole(
     db: Session,
     poly_without_hole: schemas.Polygon,
-    img1: schemas.ImageMetadata,
+    img1: schemas.Datum,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -847,7 +840,7 @@ def test_segmentation_area_no_hole(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -876,7 +869,7 @@ def test_segmentation_area_with_hole(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.SEGMENTATION,
@@ -899,7 +892,7 @@ def test_segmentation_area_multi_polygon(
     db: Session,
     poly_with_hole: schemas.Polygon,
     poly_without_hole: schemas.Polygon,
-    img1: schemas.ImageMetadata,
+    img1: schemas.Datum,
 ):
     # sanity check nothing in db
     check_db_empty(db=db)
@@ -909,8 +902,7 @@ def test_segmentation_area_multi_polygon(
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -945,12 +937,14 @@ def test_gt_seg_as_mask_or_polys(db: Session):
     mask[ymin:ymax, xmin:xmax] = True
     mask_b64 = b64encode(np_to_bytes(mask)).decode()
 
-    img = schemas.ImageMetadata(
+    img = schemas.Datum(
         dataset=dset_name,
         uid="uid",
-        height=h,
-        width=w,
-    ).to_datum()
+        metadata={
+            "height": h,
+            "width": w,
+        },
+    )
 
     poly = schemas.BasicPolygon(
         points=[
@@ -1028,26 +1022,16 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         geometric_filters = []
         if min_area:
             geometric_filters.append(
-                schemas.GeometricAnnotationFilter(
-                    annotation_type=enums.AnnotationType.BOX,
-                    area=[
-                        schemas.NumericFilter(
-                            value=min_area,
-                            operator=">=",
-                        ),
-                    ],
+                schemas.NumericFilter(
+                    value=min_area,
+                    operator=">=",
                 )
             )
         if max_area:
             geometric_filters.append(
-                schemas.GeometricAnnotationFilter(
-                    annotation_type=enums.AnnotationType.BOX,
-                    area=[
-                        schemas.NumericFilter(
-                            value=max_area,
-                            operator="<=",
-                        ),
-                    ],
+                schemas.NumericFilter(
+                    value=max_area,
+                    operator="<=",
                 )
             )
 
@@ -1060,11 +1044,11 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
                     iou_thresholds_to_keep=[0.2],
                 ),
                 filters=schemas.Filter(
-                    annotations=schemas.AnnotationFilter(
-                        annotation_types=[enums.AnnotationType.BOX],
-                        geometry=geometric_filters,
-                    ),
-                    labels=schemas.LabelFilter(keys=[label_key]),
+                    annotation_types=[enums.AnnotationType.BOX],
+                    annotation_geometric_area=geometric_filters
+                    if geometric_filters
+                    else None,
+                    label_keys=[label_key],
                 ),
             ),
         )
@@ -1201,11 +1185,8 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
                 iou_thresholds_to_keep=[0.2],
             ),
             filters=schemas.Filter(
-                annotations=schemas.AnnotationFilter(
-                    annotation_types=[enums.AnnotationType.BOX],
-                    allow_conversion=True,
-                ),
-                labels=schemas.LabelFilter(keys=["class"]),
+                annotation_types=[enums.AnnotationType.BOX],
+                label_keys=["class"],
             ),
         ),
         id=1,
@@ -1220,31 +1201,18 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
                 iou_thresholds_to_keep=[0.2],
             ),
             filters=schemas.Filter(
-                annotations=schemas.AnnotationFilter(
-                    annotation_types=[enums.AnnotationType.BOX],
-                    geometry=[
-                        schemas.GeometricAnnotationFilter(
-                            annotation_type=enums.AnnotationType.BOX,
-                            area=[
-                                schemas.NumericFilter(
-                                    value=min_area,
-                                    operator=">=",
-                                ),
-                            ],
-                        ),
-                        schemas.GeometricAnnotationFilter(
-                            annotation_type=enums.AnnotationType.BOX,
-                            area=[
-                                schemas.NumericFilter(
-                                    value=max_area,
-                                    operator="<=",
-                                ),
-                            ],
-                        ),
-                    ],
-                    allow_conversion=True,
-                ),
-                labels=schemas.LabelFilter(keys=["class"]),
+                annotation_types=[enums.AnnotationType.BOX],
+                annotation_geometric_area=[
+                    schemas.NumericFilter(
+                        value=min_area,
+                        operator=">=",
+                    ),
+                    schemas.NumericFilter(
+                        value=max_area,
+                        operator="<=",
+                    ),
+                ],
+                label_keys=["class"],
             ),
         ),
         id=2,
@@ -1514,7 +1482,7 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_dataset_labels(
         db=db,
         filters=schemas.Filter(
-            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
+            dataset_names=[dataset_names[0]],
         ),
     )
     assert len(ds1) == 2
@@ -1525,13 +1493,11 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_dataset_labels(
         db=db,
         filters=schemas.Filter(
-            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
-            annotations=schemas.AnnotationFilter(
-                task_types=[
-                    enums.TaskType.CLASSIFICATION,
-                    enums.TaskType.SEGMENTATION,
-                ]
-            ),
+            dataset_names=[dataset_names[0]],
+            task_types=[
+                enums.TaskType.CLASSIFICATION,
+                enums.TaskType.SEGMENTATION,
+            ],
         ),
     )
     assert ds1 == []
@@ -1540,10 +1506,8 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_dataset_labels(
         db=db,
         filters=schemas.Filter(
-            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
-            annotations=schemas.AnnotationFilter(
-                task_types=[enums.TaskType.DETECTION]
-            ),
+            dataset_names=[dataset_names[0]],
+            task_types=[enums.TaskType.DETECTION],
         ),
     )
     assert len(ds1) == 2
@@ -1554,14 +1518,12 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_dataset_labels(
         db=db,
         filters=schemas.Filter(
-            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
-            annotations=schemas.AnnotationFilter(
-                annotation_types=[
-                    enums.AnnotationType.POLYGON,
-                    enums.AnnotationType.MULTIPOLYGON,
-                    enums.AnnotationType.RASTER,
-                ]
-            ),
+            dataset_names=[dataset_names[0]],
+            annotation_types=[
+                enums.AnnotationType.POLYGON,
+                enums.AnnotationType.MULTIPOLYGON,
+                enums.AnnotationType.RASTER,
+            ],
         ),
     )
     assert ds1 == []
@@ -1570,12 +1532,10 @@ def test_get_labels_from_dataset(
     ds1 = crud.get_dataset_labels(
         db=db,
         filters=schemas.Filter(
-            datasets=schemas.DatasetFilter(names=[dataset_names[0]]),
-            annotations=schemas.AnnotationFilter(
-                annotation_types=[
-                    enums.AnnotationType.BOX,
-                ]
-            ),
+            dataset_names=[dataset_names[0]],
+            annotation_types=[
+                enums.AnnotationType.BOX,
+            ],
         ),
     )
     assert len(ds1) == 2
@@ -1592,7 +1552,7 @@ def test_get_labels_from_model(
     md1 = crud.get_model_labels(
         db=db,
         filters=schemas.Filter(
-            models=schemas.ModelFilter(names=[model_names[0]]),
+            models_names=[model_names[0]],
         ),
     )
     assert len(md1) == 4
@@ -1605,10 +1565,8 @@ def test_get_labels_from_model(
     md1 = crud.get_model_labels(
         db=db,
         filters=schemas.Filter(
-            models=schemas.ModelFilter(names=[model_names[0]]),
-            annotations=schemas.AnnotationFilter(
-                task_types=[enums.TaskType.CLASSIFICATION],
-            ),
+            models_names=[model_names[0]],
+            task_types=[enums.TaskType.CLASSIFICATION],
         ),
     )
     assert md1 == []
@@ -1617,10 +1575,8 @@ def test_get_labels_from_model(
     md1 = crud.get_model_labels(
         db=db,
         filters=schemas.Filter(
-            models=schemas.ModelFilter(names=[model_names[0]]),
-            annotations=schemas.AnnotationFilter(
-                annotation_types=[enums.AnnotationType.BOX],
-            ),
+            models_names=[model_names[0]],
+            annotation_types=[enums.AnnotationType.BOX],
         ),
     )
     assert len(md1) == 4

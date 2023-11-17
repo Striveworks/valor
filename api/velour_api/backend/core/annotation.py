@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
 from velour_api.backend.core.label import create_labels
-from velour_api.backend.core.metadata import deserialize_meta, serialize_meta
 from velour_api.enums import AnnotationType
 
 
@@ -45,13 +44,11 @@ def _get_annotation_mapping(
         jsonb = annotation.jsonb
     # @TODO: Add more annotation types
 
-    metadata = deserialize_meta(annotation.metadata)
-
     mapping = {
         "datum_id": datum.id,
         "model_id": model.id if model else None,
         "task_type": annotation.task_type,
-        "meta": metadata,
+        "meta": annotation.metadata,
         "box": box,
         "polygon": polygon,
         "raster": raster,
@@ -178,7 +175,7 @@ def get_annotation(
     retval = schemas.Annotation(
         task_type=annotation.task_type,
         labels=labels,
-        metadata=serialize_meta(annotation.meta),
+        metadata=annotation.meta,
         bounding_box=None,
         polygon=None,
         multipolygon=None,
@@ -187,22 +184,16 @@ def get_annotation(
 
     # Bounding Box
     if annotation.box is not None:
-        geojson = db.scalar(ST_AsGeoJSON(annotation.box))
+        geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.box)))
         retval.bounding_box = schemas.BoundingBox(
-            polygon=schemas.GeoJSON.from_json(geojson=geojson)
-            .shape()
-            .boundary,
+            polygon=schemas.GeoJSON.from_dict(data=geojson).shape().boundary,
             box=None,
         )
 
     # Polygon
     if annotation.polygon is not None:
-        geojson = (
-            db.scalar(ST_AsGeoJSON(annotation.polygon))
-            if annotation.polygon is not None
-            else None
-        )
-        retval.polygon = schemas.GeoJSON.from_json(geojson=geojson).shape()
+        geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.polygon)))
+        retval.polygon = schemas.GeoJSON.from_dict(data=geojson).shape()
 
     # Raster
     if annotation.raster is not None:

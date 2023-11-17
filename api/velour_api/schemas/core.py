@@ -19,7 +19,6 @@ from velour_api.schemas.geometry import (
     Raster,
 )
 from velour_api.schemas.label import Label
-from velour_api.schemas.metadata import Metadatum
 
 
 def _format_name(name: str):
@@ -45,7 +44,15 @@ def _format_uid(uid: str):
 class Dataset(BaseModel):
     id: int | None = None
     name: str
-    metadata: list[Metadatum] = Field(default_factory=list)
+    metadata: dict[str, float | str] = Field(default_factory=dict)
+    geospatial: dict[
+        str,
+        list[list[list[list[float | int]]]]
+        | list[list[list[float | int]]]
+        | list[float | int]
+        | str,
+    ] = Field(default_factory=dict)
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
     @classmethod
@@ -60,7 +67,15 @@ class Dataset(BaseModel):
 class Model(BaseModel):
     id: int | None = None
     name: str
-    metadata: list[Metadatum] = Field(default_factory=list)
+    metadata: dict[str, float | str] = Field(default_factory=dict)
+    geospatial: dict[
+        str,
+        list[list[list[list[float | int]]]]
+        | list[list[list[float | int]]]
+        | list[float | int]
+        | str,
+    ] = Field(default_factory=dict)
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
     @classmethod
@@ -75,7 +90,15 @@ class Model(BaseModel):
 class Datum(BaseModel):
     uid: str
     dataset: str
-    metadata: list[Metadatum] = Field(default_factory=list)
+    metadata: dict[str, float | str] = Field(default_factory=dict)
+    geospatial: dict[
+        str,
+        list[list[list[list[float | int]]]]
+        | list[list[list[float | int]]]
+        | list[float | int]
+        | str,
+    ] = Field(default_factory=dict)
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("uid")
     @classmethod
@@ -100,10 +123,16 @@ class Datum(BaseModel):
             not hasattr(other, "uid")
             or not hasattr(other, "dataset")
             or not hasattr(other, "metadata")
+            or not hasattr(other, "geospatial")
         ):
             return False
 
-        return self.uid == other.uid and self.dataset == other.dataset
+        return (
+            self.uid == other.uid
+            and self.dataset == other.dataset
+            and self.geospatial == other.geospatial
+            and self.metadata == other.geospatial
+        )
 
     def __hash__(self) -> int:
         return hash(f"uid:{self.uid},dataset:{self.dataset}")
@@ -112,7 +141,7 @@ class Datum(BaseModel):
 class Annotation(BaseModel):
     task_type: TaskType
     labels: list[Label]
-    metadata: list[Metadatum] = Field(default_factory=list)
+    metadata: dict[str, float | str] = Field(default_factory=dict)
 
     # Geometric types
     bounding_box: BoundingBox | None = None
@@ -121,7 +150,7 @@ class Annotation(BaseModel):
     raster: Raster | None = None
     jsonb: dict[str, str] | None = None
 
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
     @field_validator("labels")
     @classmethod
@@ -152,6 +181,7 @@ def _check_semantic_segmentations_single_label(
 class GroundTruth(BaseModel):
     datum: Datum
     annotations: list[Annotation]
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("annotations")
     @classmethod
@@ -177,6 +207,7 @@ class Prediction(BaseModel):
     model: str
     datum: Datum
     annotations: list[Annotation]
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("model")
     @classmethod
@@ -254,20 +285,15 @@ class Prediction(BaseModel):
         return v
 
 
-def _validate_rasters(d: GroundTruth | Prediction):
+def _validate_rasters(annotated_datum: GroundTruth | Prediction):
     def _mask_bytes_to_pil(mask_bytes):
         with io.BytesIO(mask_bytes) as f:
             return PIL.Image.open(f)
 
-    for annotation in d.annotations:
+    for annotation in annotated_datum.annotations:
         if annotation.raster is not None:
             # unpack datum metadata
-            metadata = {
-                metadatum.key: metadatum.value
-                for metadatum in filter(
-                    lambda x: x.key in ["height", "width"], d.datum.metadata
-                )
-            }
+            metadata = annotated_datum.datum.metadata
             if "height" not in metadata or "width" not in metadata:
                 raise RuntimeError(
                     "Attempted raster validation but image dimensions are missing."
@@ -282,4 +308,4 @@ def _validate_rasters(d: GroundTruth | Prediction):
                 raise ValueError(
                     f"Expected raster and image to have the same size, but got size {mask_size} for the mask and {image_size} for image."
                 )
-    return d
+    return annotated_datum

@@ -1,3 +1,6 @@
+import json
+
+from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -10,12 +13,14 @@ def create_model(
     db: Session,
     model: schemas.Model,
 ):
-    # Create model
-    row = models.Model(
-        name=model.name,
-        meta=core.deserialize_meta(model.metadata),
+    shape = (
+        schemas.GeoJSON.from_dict(data=model.geospatial).shape().wkt()
+        if model.geospatial
+        else None
     )
+
     try:
+        row = models.Model(name=model.name, meta=model.metadata, geo=shape)
         db.add(row)
         db.commit()
         return row
@@ -29,10 +34,11 @@ def get_model(
     name: str,
 ) -> schemas.Model:
     model = core.get_model(db, name=name)
+    geo_dict = (
+        json.loads(db.scalar(ST_AsGeoJSON(model.geo))) if model.geo else {}
+    )
     return schemas.Model(
-        id=model.id,
-        name=model.name,
-        metadata=core.serialize_meta(model.meta),
+        id=model.id, name=model.name, metadata=model.meta, geospatial=geo_dict
     )
 
 

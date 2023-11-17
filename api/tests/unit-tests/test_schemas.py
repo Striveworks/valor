@@ -12,17 +12,11 @@ from velour_api.schemas.core import _format_name, _format_uid
 
 
 @pytest.fixture
-def metadata() -> list[schemas.Metadatum]:
-    return [
-        schemas.Metadatum(
-            key="m1",
-            value="v1",
-        ),
-        schemas.Metadatum(
-            key="m2",
-            value=0.1,
-        ),
-    ]
+def metadata() -> dict[float, str]:
+    return {
+        "m1": "v1",
+        "m2": 0.1,
+    }
 
 
 @pytest.fixture
@@ -205,11 +199,6 @@ def test_metadata_Metadatum():
         key="name",
         value=123.0,
     )
-    # @TODO: After implement geojson
-    # schemas.Metadatum(
-    #     name="name",
-    #     value=schemas.GeoJSON(),
-    # )
 
     # test property `name`
     with pytest.raises(ValidationError):
@@ -241,7 +230,7 @@ def test_core_Dataset(metadata):
     schemas.Dataset(name="dataset1")
     schemas.Dataset(
         name="dataset1",
-        metadata=[],
+        metadata={},
     )
     schemas.Dataset(
         name="dataset1",
@@ -265,12 +254,12 @@ def test_core_Dataset(metadata):
     with pytest.raises(ValidationError):
         schemas.Dataset(
             name="123",
-            metadata=metadata[0],
+            metadata={123: 12434},
         )
     with pytest.raises(ValidationError):
         schemas.Dataset(
             name="123",
-            metadata=[metadata[0], "123"],
+            metadata=[{123: 12434}, "123"],
         )
 
     # test property `id`
@@ -278,7 +267,7 @@ def test_core_Dataset(metadata):
         schemas.Dataset(
             id="value",
             name="123",
-            metadata=[metadata[0], "123"],
+            metadata=[{123: 12434}, "123"],
         )
 
 
@@ -287,7 +276,7 @@ def test_core_Model(metadata):
     schemas.Model(name="model1")
     schemas.Model(
         name="model1",
-        metadata=[],
+        metadata={},
     )
     schemas.Model(
         name="model1",
@@ -311,12 +300,12 @@ def test_core_Model(metadata):
     with pytest.raises(ValidationError):
         schemas.Model(
             name="123",
-            metadata=metadata[0],
+            metadata={123: 123},
         )
     with pytest.raises(ValidationError):
         schemas.Model(
             name="123",
-            metadata=[metadata[0], "123"],
+            metadata=[{123: 12434}, "123"],
         )
 
     # test property `id`
@@ -324,7 +313,7 @@ def test_core_Model(metadata):
         schemas.Model(
             id="value",
             name="123",
-            metadata=[metadata[0], "123"],
+            metadata=[{123: 12434}, "123"],
         )
 
 
@@ -357,13 +346,7 @@ def test_core_Datum(metadata):
         schemas.Datum(
             uid="123",
             dataset="name",
-            metadata=metadata[0],
-        )
-    with pytest.raises(ValidationError):
-        schemas.Datum(
-            uid="123",
-            dataset="name",
-            metadata=[metadata[0], "123"],
+            metadata={123: 123},
         )
 
 
@@ -378,12 +361,12 @@ def test_core_annotation_without_scores(
     schemas.Annotation(
         task_type=enums.TaskType.DETECTION,
         labels=labels,
-        metadata=[],
+        metadata={},
     )
     schemas.Annotation(
         task_type=enums.TaskType.SEGMENTATION,
         labels=labels,
-        metadata=[],
+        metadata={},
         bounding_box=bbox,
         polygon=polygon,
         raster=raster,
@@ -428,13 +411,7 @@ def test_core_annotation_without_scores(
         schemas.Annotation(
             task_type=enums.TaskType.CLASSIFICATION.value,
             labels=labels,
-            metadata=metadata[0],
-        )
-    with pytest.raises(ValidationError):
-        schemas.Annotation(
-            task_type=enums.TaskType.CLASSIFICATION.value,
-            labels=labels,
-            metadata=[metadata[0], "123"],
+            metadata={123: 123},
         )
 
     # test geometric properties
@@ -472,12 +449,12 @@ def test_core_annotation_with_scores(
         task_type=enums.TaskType.CLASSIFICATION, labels=scored_labels
     )
     schemas.Annotation(
-        task_type=enums.TaskType.DETECTION, labels=scored_labels, metadata=[]
+        task_type=enums.TaskType.DETECTION, labels=scored_labels, metadata={}
     )
     schemas.Annotation(
         task_type=enums.TaskType.SEGMENTATION,
         labels=scored_labels,
-        metadata=[],
+        metadata={},
         bounding_box=bbox,
         polygon=polygon,
         raster=raster,
@@ -514,13 +491,13 @@ def test_core_annotation_with_scores(
         schemas.Annotation(
             task_type=enums.TaskType.CLASSIFICATION.value,
             labels=scored_labels,
-            metadata=metadata[0],
+            metadata=123,
         )
     with pytest.raises(ValidationError):
         schemas.Annotation(
             task_type=enums.TaskType.CLASSIFICATION.value,
             labels=scored_labels,
-            metadata=[metadata[0], "123"],
+            metadata={123: "123"},
         )
 
     # test geometric properties
@@ -1217,24 +1194,134 @@ def test_geometry_Raster(raster):
 """ velour_api.schemas.geojson """
 
 
-# @TODO
-def test_geojson_GeoJSON():
-    pass
+def test_GeoJSON():
+    # test valid entries
+    valid_point = schemas.GeoJSON.from_dict(
+        {"type": "Point", "coordinates": [125.2750725, 38.760525]}
+    )
+    assert type(valid_point.shape()) is schemas.Point
+    assert type(valid_point.geometry.model_dump()) is dict
+    assert all(
+        [
+            key in ["type", "coordinates"]
+            for key in valid_point.geometry.model_dump().keys()
+        ]
+    )
+    assert valid_point.geometry.model_dump()["type"] == "Point"
 
+    valid_polygon = schemas.GeoJSON.from_dict(
+        {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [125.2750725, 38.760525],
+                    [125.3902365, 38.775069],
+                    [125.5054005, 38.789613],
+                    [125.5051935, 38.71402425],
+                ]
+            ],
+        }
+    )
+    assert type(valid_polygon.shape()) is schemas.Polygon
+    assert type(valid_polygon.geometry.model_dump()) is dict
+    assert all(
+        [
+            key in ["type", "coordinates"]
+            for key in valid_polygon.geometry.model_dump().keys()
+        ]
+    )
+    assert valid_polygon.geometry.model_dump()["type"] == "Polygon"
 
-# @TODO
-def test_geojson_GeoJSONPoint():
-    pass
+    valid_multi = schemas.GeoJSON.from_dict(
+        {
+            "type": "MultiPolygon",
+            "coordinates": [
+                [
+                    [
+                        [125.2750725, 38.760525],
+                        [125.3902365, 38.775069],
+                        [125.5054005, 38.789613],
+                        [125.5051935, 38.71402425],
+                    ],
+                    [
+                        [125.2750725, 38.760525],
+                        [125.3902365, 38.775069],
+                        [125.5054005, 38.789613],
+                        [125.5051935, 38.71402425],
+                    ],
+                ],
+                [
+                    [
+                        [125.2750725, 38.760525],
+                        [125.3902365, 38.775069],
+                        [125.5054005, 38.789613],
+                        [125.5051935, 38.71402425],
+                    ],
+                    [
+                        [125.2750725, 38.760525],
+                        [125.3902365, 38.775069],
+                        [125.5054005, 38.789613],
+                        [125.5051935, 38.71402425],
+                    ],
+                ],
+            ],
+        }
+    )
+    assert type(valid_multi.shape()) is schemas.MultiPolygon
+    assert type(valid_multi.geometry.model_dump()) is dict
+    assert all(
+        [
+            key in ["type", "coordinates"]
+            for key in valid_multi.geometry.model_dump().keys()
+        ]
+    )
+    assert valid_multi.geometry.model_dump()["type"] == "MultiPolygon"
 
+    # invalids
+    with pytest.raises(ValueError):
+        schemas.GeoJSON.from_dict(
+            {
+                "type": "fake_type",
+                "coordinates": [
+                    [
+                        [125.2750725, 38.760525],
+                    ]
+                ],
+            }
+        ).shape()
 
-# @TODO
-def test_geojson_GeoJSONPolygon():
-    pass
+    with pytest.raises(ValidationError):
+        schemas.GeoJSON.from_dict(
+            {
+                "type": "Polygon",
+                "coordinates": "fake_string",
+            }
+        ).shape()
 
+    with pytest.raises(ValidationError):
+        schemas.GeoJSON.from_dict(
+            {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [125.2750725, 38.760525],
+                    ]
+                ],
+            }
+        ).shape()
 
-# @TODO
-def test_geojson_GeoJSONMultiPolygon():
-    pass
+    with pytest.raises(ValidationError):
+        schemas.GeoJSON.from_dict(
+            {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [125.2750725, 38.760525],
+                        [125.3902365, 38.775069],
+                    ]
+                ],
+            }
+        ).shape()
 
 
 """ velour_api.schemas.info """

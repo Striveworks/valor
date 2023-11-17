@@ -4,13 +4,17 @@ import os
 import time
 import warnings
 from dataclasses import asdict
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import requests
 
 from velour import enums, schemas
-from velour.enums import AnnotationType, JobStatus, State
+from velour.coretypes import Datum, GroundTruth, Label, Prediction
+from velour.enums import JobStatus, State
+from velour.metatypes import ImageMetadata
+from velour.schemas.filters import BinaryExpression, DeclarativeMapper, Filter
+from velour.schemas.metadata import validate_metadata
 
 
 class ClientException(Exception):
@@ -160,7 +164,7 @@ class Client:
 
     def get_labels(
         self,
-    ) -> List[schemas.Label]:
+    ) -> List[Label]:
         return self._requests_get_rel_host("labels").json()
 
     def delete_dataset(self, name: str, timeout: int = 0) -> None:
@@ -299,7 +303,7 @@ class Evaluation:
     @property
     def parameters(
         self,
-    ) -> List[schemas.Metadatum]:
+    ) -> dict:
         return self._settings.parameters
 
     @property
@@ -334,94 +338,95 @@ class Evaluation:
 
 
 class Dataset:
-    def __init__(
-        self,
-        client: Client,
-        info: schemas.Dataset,
-    ):
-        self.client = client
-        self.info = info
-        self._metadata = {
-            metadatum.key: metadatum.value for metadatum in info.metadata
-        }
+    name = DeclarativeMapper("dataset_names", str)
+    metadata = DeclarativeMapper("dataset_metadata", Union[int, float, str])
+    geospatial = DeclarativeMapper(
+        "dataset_geospatial",
+        Union[
+            List[List[List[List[Union[float, int]]]]],
+            List[List[List[Union[float, int]]]],
+            List[Union[float, int]],
+            str,
+        ],
+    )
 
-    @property
-    def id(
-        self,
-    ):
-        return self.info.id
-
-    @property
-    def name(
-        self,
-    ):
-        return self.info.name
-
-    @property
-    def metadata(
-        self,
-    ) -> Dict[str, Any]:
-        return self._metadata
+    def __init__(self):
+        self.client: Client = None
+        self.id: int = None
+        self.name: str = None
+        self.metadata: dict = None
+        self.geospatial: dict = None
 
     @classmethod
     def create(
         cls,
         client: Client,
         name: str,
-        **kwargs,
+        metadata: Dict[str, Union[int, float, str]] = None,
+        geospatial: Dict[
+            str,
+            Union[
+                List[List[List[List[Union[float, int]]]]],
+                List[List[List[Union[float, int]]]],
+                List[Union[float, int]],
+                str,
+            ],
+        ] = None,
+        id: Union[int, None] = None,
     ):
-        # Create the dataset on server side first to get ID info
-        ds = schemas.Dataset(
-            name=name,
-            metadata=[],
-        )
-        for key in kwargs:
-            ds.metadata.append(
-                schemas.Metadatum(
-                    key=key,
-                    value=kwargs[key],
-                )
-            )
-        resp = client._requests_post_rel_host("datasets", json=asdict(ds))
-
-        # @TODO: Handle this response
-        if resp:
-            pass
-
-        # Retrive newly created dataset with its ID
+        dataset = cls()
+        dataset.client = client
+        dataset.name = name
+        dataset.metadata = metadata
+        dataset.geospatial = geospatial
+        dataset.id = id
+        dataset._validate()
+        client._requests_post_rel_host("datasets", json=dataset.dict())
         return cls.get(client, name)
 
     @classmethod
     def get(cls, client: Client, name: str):
         resp = client._requests_get_rel_host(f"datasets/{name}").json()
-        metadata = [
-            schemas.Metadatum(
-                key=metadatum["key"],
-                value=metadatum["value"],
-            )
-            for metadatum in resp["metadata"]
-        ]
-        info = schemas.Dataset(
-            name=resp["name"],
-            id=resp["id"],
-            metadata=metadata,
-        )
-        return cls(
-            client=client,
-            info=info,
-        )
+        dataset = cls()
+        dataset.client = client
+        dataset.name = resp["name"]
+        dataset.metadata = resp["metadata"]
+        dataset.geospatial = resp["geospatial"]
+        dataset.id = resp["id"]
+        dataset._validate()
+        return dataset
 
-    def add_metadatum(self, metadatum: schemas.Metadatum):
-        # @TODO: Add endpoint to allow adding custom metadatums
-        self.info.metadata.append(metadatum)
-        self.__metadata__[metadatum.key] = metadatum
+    def _validate(self):
+        # validation
+        if not isinstance(self.name, str):
+            raise TypeError("`name` should be of type `str`")
+        if not isinstance(self.id, int) and self.id is not None:
+            raise TypeError("`id` should be of type `int`")
+        if not self.metadata:
+            self.metadata = {}
+        if not self.geospatial:
+            self.geospatial = {}
+        validate_metadata(self.metadata)
+
+    def dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "metadata": self.metadata,
+            "geospatial": self.geospatial,
+        }
+
+    def __eq__(self, other):
+        if not isinstance(other, Dataset):
+            raise TypeError(f"Expected type `{type(Dataset)}`, got `{other}`")
+        return self.dict() == other.dict()
 
     def add_groundtruth(
         self,
-        groundtruth: schemas.GroundTruth,
+        groundtruth: GroundTruth,
     ):
         try:
-            assert isinstance(groundtruth, schemas.GroundTruth)
+            assert isinstance(groundtruth, GroundTruth)
         except AssertionError:
             raise TypeError(f"Invalid type `{type(groundtruth)}`")
 
@@ -431,47 +436,46 @@ class Dataset:
             )
             return
 
-        groundtruth.datum.dataset = self.info.name
+        groundtruth.datum.dataset = self.name
         self.client._requests_post_rel_host(
             "groundtruths",
-            json=asdict(groundtruth),
+            json=groundtruth.dict(),
         )
 
-    def get_groundtruth(self, uid: str) -> schemas.GroundTruth:
+    def get_groundtruth(self, uid: str) -> GroundTruth:
         resp = self.client._requests_get_rel_host(
-            f"groundtruths/dataset/{self.info.name}/datum/{uid}"
+            f"groundtruths/dataset/{self.name}/datum/{uid}"
         ).json()
-        return schemas.GroundTruth(**resp)
+        return GroundTruth(**resp)
 
     def get_labels(
         self,
-    ) -> List[schemas.Label]:
+    ) -> List[Label]:
         labels = self.client._requests_get_rel_host(
             f"labels/dataset/{self.name}"
         ).json()
 
         return [
-            schemas.Label(key=label["key"], value=label["value"])
-            for label in labels
+            Label(key=label["key"], value=label["value"]) for label in labels
         ]
 
     def get_datums(
         self,
-    ) -> List[schemas.Datum]:
+    ) -> List[Datum]:
         """Returns a list of datums."""
         datums = self.client._requests_get_rel_host(
             f"data/dataset/{self.name}"
         ).json()
-        return [schemas.Datum(**datum) for datum in datums]
+        return [Datum(**datum) for datum in datums]
 
     def get_images(
         self,
-    ) -> List[schemas.ImageMetadata]:
+    ) -> List[ImageMetadata]:
         """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
         return [
-            schemas.ImageMetadata.from_datum(datum)
+            ImageMetadata.from_datum(datum)
             for datum in self.get_datums()
-            if schemas.ImageMetadata.valid(datum)
+            if ImageMetadata.valid(datum)
         ]
 
     def get_evaluations(
@@ -506,110 +510,95 @@ class Dataset:
 
 
 class Model:
-    def __init__(
-        self,
-        client: Client,
-        info: schemas.Model,
-    ):
-        self.client = client
-        self.info = info
-        self._metadata = {
-            metadatum.key: metadatum.value for metadatum in info.metadata
-        }
+    name = DeclarativeMapper("models_names", str)
+    metadata = DeclarativeMapper("models_metadata", Union[int, float, str])
+    geospatial = DeclarativeMapper(
+        "model_geospatial",
+        Union[
+            List[List[List[List[Union[float, int]]]]],
+            List[List[List[Union[float, int]]]],
+            List[Union[float, int]],
+            str,
+        ],
+    )
 
-    @property
-    def id(
-        self,
-    ):
-        return self.info.id
-
-    @property
-    def name(
-        self,
-    ):
-        return self.info.name
-
-    @property
-    def metadata(
-        self,
-    ) -> Dict[str, Any]:
-        return self._metadata
+    def __init__(self):
+        self.client: Client = None
+        self.id: int = None
+        self.name: str = ""
+        self.metadata: dict = None
+        self.geospatial: dict = None
 
     @classmethod
     def create(
         cls,
         client: Client,
         name: str,
-        **kwargs,
+        metadata: Dict[str, Union[int, float, str]] = None,
+        geospatial: Dict[
+            str,
+            Union[
+                List[List[List[List[Union[float, int]]]]],
+                List[List[List[Union[float, int]]]],
+                List[Union[float, int]],
+                str,
+            ],
+        ] = None,
+        id: Union[int, None] = None,
     ):
-        # Create the dataset on server side first to get ID info
-        md = schemas.Model(
-            name=name,
-            metadata=[],
-        )
-        for key in kwargs:
-            md.metadata.append(
-                schemas.Metadatum(
-                    key=key,
-                    value=kwargs[key],
-                )
-            )
-        resp = client._requests_post_rel_host("models", json=asdict(md))
-
-        # @TODO: Handle this response
-        if resp:
-            pass
-
-        # Retrive newly created dataset with its ID
+        model = cls()
+        model.client = client
+        model.name = name
+        model.metadata = metadata
+        model.geospatial = geospatial
+        model.id = id
+        model._validate()
+        client._requests_post_rel_host("models", json=model.dict())
         return cls.get(client, name)
 
     @classmethod
     def get(cls, client: Client, name: str):
         resp = client._requests_get_rel_host(f"models/{name}").json()
-        metadata = [
-            schemas.Metadatum(
-                key=metadatum["key"],
-                value=metadatum["value"],
-            )
-            for metadatum in resp["metadata"]
-        ]
-        info = schemas.Model(
-            name=resp["name"],
-            id=resp["id"],
-            metadata=metadata,
-        )
-        return cls(
-            client=client,
-            info=info,
-        )
+        model = cls()
+        model.client = client
+        model.name = resp["name"]
+        model.metadata = resp["metadata"]
+        model.geospatial = resp["geospatial"]
+        model.id = resp["id"]
+        model._validate()
+        return model
 
-    def get_evaluation_status(
-        self,
-        job_id: int,
-    ) -> State:
-        resp = self.client._requests_get_rel_host(
-            f"evaluations/{job_id}"
-        ).json()
+    def _validate(self):
+        # validation
+        if not isinstance(self.name, str):
+            raise TypeError("`name` should be of type `str`")
+        if not isinstance(self.id, int) and self.id is not None:
+            raise TypeError("`id` should be of type `int`")
+        if not self.metadata:
+            self.metadata = {}
+        if not self.geospatial:
+            self.geospatial = {}
+        validate_metadata(self.metadata)
 
-        return resp
+    def dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "metadata": self.metadata,
+            "geospatial": self.geospatial,
+        }
 
-    def delete(
-        self,
-    ):
-        self.client._requests_delete_rel_host(f"models/{self.name}").json()
-        del self
+    def __eq__(self, other):
+        if not isinstance(other, Model):
+            raise TypeError(f"Expected type `{type(Model)}`, got `{other}`")
+        return self.dict() == other.dict()
 
-    def add_metadatum(self, metadatum: schemas.Metadatum):
-        # @TODO: Add endpoint to allow adding custom metadatums
-        self.info.metadata.append(metadatum)
-        self.__metadata__[metadatum.key] = metadatum
-
-    def add_prediction(self, prediction: schemas.Prediction):
+    def add_prediction(self, prediction: Prediction):
         try:
-            assert isinstance(prediction, schemas.Prediction)
+            assert isinstance(prediction, Prediction)
         except AssertionError:
             raise TypeError(
-                f"Expected `velour.schemas.Prediction`, got `{type(prediction)}`"
+                f"Expected `velour.Prediction`, got `{type(prediction)}`"
             )
 
         if len(prediction.annotations) == 0:
@@ -618,17 +607,11 @@ class Model:
             )
             return
 
-        prediction.model = self.info.name
+        prediction.model = self.name
         return self.client._requests_post_rel_host(
             "predictions",
-            json=asdict(prediction),
+            json=prediction.dict(),
         )
-
-    def get_prediction(self, datum: schemas.Datum) -> schemas.Prediction:
-        resp = self.client._requests_get_rel_host(
-            f"predictions/model/{self.info.name}/dataset/{datum.dataset}/datum/{datum.uid}",
-        ).json()
-        return schemas.Prediction(**resp)
 
     def finalize_inferences(self, dataset: "Dataset") -> None:
         return self.client._requests_put_rel_host(
@@ -678,6 +661,64 @@ class Model:
 
         return evaluation_job
 
+    def evaluate_detection(
+        self,
+        dataset: "Dataset",
+        iou_thresholds_to_compute: List[float] = None,
+        iou_thresholds_to_keep: List[float] = None,
+        filters: Union[Dict, List[BinaryExpression]] = None,
+        timeout: Optional[int] = None,
+    ) -> Evaluation:
+        """Evaluate object detections."""
+
+        # Default iou thresholds
+        if iou_thresholds_to_compute is None:
+            iou_thresholds_to_compute = [
+                round(0.5 + 0.05 * i, 2) for i in range(10)
+            ]
+        if iou_thresholds_to_keep is None:
+            iou_thresholds_to_keep = [0.5, 0.75]
+
+        parameters = schemas.DetectionParameters(
+            iou_thresholds_to_compute=iou_thresholds_to_compute,
+            iou_thresholds_to_keep=iou_thresholds_to_keep,
+        )
+
+        if not isinstance(filters, dict):
+            filters = Filter.create(filters)
+
+        evaluation = schemas.EvaluationJob(
+            model=self.name,
+            dataset=dataset.name,
+            settings=schemas.EvaluationSettings(
+                parameters=parameters,
+                filters=filters,
+            ),
+        )
+
+        resp = self.client._requests_post_rel_host(
+            "evaluations/ap-metrics", json=asdict(evaluation)
+        ).json()
+
+        # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
+        # list of label dicts. convert label dicts to Label objects
+
+        for k in ["missing_pred_labels", "ignored_pred_labels"]:
+            resp[k] = [Label(**la) for la in resp[k]]
+
+        evaluation_job = Evaluation(
+            client=self.client,
+            dataset=dataset.name,
+            model=self.name,
+            **resp,
+        )
+
+        # blocking behavior
+        if timeout:
+            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
+
+        return evaluation_job
+
     def evaluate_segmentation(
         self, dataset: Dataset, timeout: Optional[int] = None
     ) -> Evaluation:
@@ -704,94 +745,28 @@ class Model:
 
         return evaluation_job
 
-    def evaluate_detection(
+    def delete(
         self,
-        dataset: "Dataset",
-        annotation_type: AnnotationType = AnnotationType.BOX,
-        iou_thresholds_to_compute: List[float] = None,
-        iou_thresholds_to_keep: List[float] = None,
-        min_area: float = None,
-        max_area: float = None,
-        label_key: Optional[str] = None,
-        timeout: Optional[int] = None,
-    ) -> Evaluation:
-        """Evaluate object detections."""
+    ):
+        self.client._requests_delete_rel_host(f"models/{self.name}").json()
+        del self
 
-        # Default iou thresholds
-        if iou_thresholds_to_compute is None:
-            iou_thresholds_to_compute = [
-                round(0.5 + 0.05 * i, 2) for i in range(10)
-            ]
-        if iou_thresholds_to_keep is None:
-            iou_thresholds_to_keep = [0.5, 0.75]
+    def get_prediction(self, datum: Datum) -> Prediction:
+        resp = self.client._requests_get_rel_host(
+            f"predictions/model/{self.name}/dataset/{datum.dataset}/datum/{datum.uid}",
+        ).json()
+        return Prediction(**resp)
 
-        parameters = schemas.DetectionParameters(
-            iou_thresholds_to_compute=iou_thresholds_to_compute,
-            iou_thresholds_to_keep=iou_thresholds_to_keep,
-        )
-
-        geometric_area_filters = []
-        if min_area:
-            geometric_area_filters.append(
-                schemas.NumericFilter(
-                    value=min_area,
-                    operator=">=",
-                ),
-            )
-        if max_area:
-            geometric_area_filters.append(
-                schemas.NumericFilter(
-                    value=max_area,
-                    operator="<=",
-                ),
-            )
-        geometric_filters = []
-        if geometric_area_filters:
-            geometric_filters.append(
-                schemas.GeometricAnnotationFilter(
-                    annotation_type=annotation_type,
-                    area=geometric_area_filters,
-                )
-            )
-        filters = schemas.Filter(
-            annotations=schemas.AnnotationFilter(
-                annotation_types=[annotation_type],
-                geometry=geometric_filters,
-            ),
-            labels=schemas.LabelFilter(keys=[label_key]),
-        )
-
-        evaluation = schemas.EvaluationJob(
-            model=self.name,
-            dataset=dataset.name,
-            settings=schemas.EvaluationSettings(
-                parameters=parameters,
-                filters=filters,
-            ),
-        )
-
-        resp = self.client._requests_post_rel_host(
-            "evaluations/ap-metrics", json=asdict(evaluation)
+    def get_labels(
+        self,
+    ) -> List[Label]:
+        labels = self.client._requests_get_rel_host(
+            f"labels/model/{self.name}"
         ).json()
 
-        # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
-        # list of label dicts. convert label dicts to Label objects
-
-        for k in ["missing_pred_labels", "ignored_pred_labels"]:
-            resp[k] = [schemas.Label(**la) for la in resp[k]]
-
-        evaluation_job = Evaluation(
-            client=self.client,
-            dataset=dataset.name,
-            model=self.name,
-            **resp,
-        )
-
-        # blocking behavior
-        if timeout:
-            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
-
-        return evaluation_job
+        return [
+            Label(key=label["key"], value=label["value"]) for label in labels
+        ]
 
     def get_evaluations(
         self,
@@ -840,14 +815,12 @@ class Model:
 
         return ret
 
-    def get_labels(
+    # TODO Endpoint is independent of model, should be moved to Client?
+    def get_evaluation_status(
         self,
-    ) -> List[schemas.Label]:
-        labels = self.client._requests_get_rel_host(
-            f"labels/model/{self.name}"
+        job_id: int,
+    ) -> State:
+        resp = self.client._requests_get_rel_host(
+            f"evaluations/{job_id}"
         ).json()
-
-        return [
-            schemas.Label(key=label["key"], value=label["value"])
-            for label in labels
-        ]
+        return resp

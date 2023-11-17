@@ -185,8 +185,12 @@ class Stateflow(BaseModel):
     def remove_dataset(self, dataset_name: str):
         if dataset_name not in self.datasets:
             raise DatasetDoesNotExistError(dataset_name)
-        # remove inferences
-        for model_name in self.datasets[dataset_name].models:
+
+        # remove inferences, copying the list of model names to avoid
+        # iterating over a changing dict
+        models = list(self.datasets[dataset_name].models)
+        for model_name in models:
+
             self.remove_inference(dataset_name, model_name)
         # delete dataset
         del self.datasets[dataset_name]

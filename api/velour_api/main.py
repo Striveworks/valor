@@ -180,7 +180,7 @@ def get_labels_from_dataset(
         return crud.get_dataset_labels(
             db=db,
             filters=schemas.Filter(
-                datasets=schemas.DatasetFilter(names=[dataset_name]),
+                dataset_names=[dataset_name],
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
@@ -200,7 +200,7 @@ def get_labels_from_model(
         return crud.get_model_labels(
             db=db,
             filters=schemas.Filter(
-                models=schemas.ModelFilter(names=[model_name]),
+                models_names=[model_name],
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
@@ -316,10 +316,13 @@ def get_datums(
         return crud.get_datums(
             db=db,
             request=schemas.Filter(
-                datasets=schemas.DatasetFilter(names=[dataset_name]),
+                dataset_names=[dataset_name],
             ),
         )
-    except exceptions.DatasetDoesNotExistError as e:
+    except (
+        exceptions.DatumDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -601,10 +604,11 @@ def get_bulk_evaluations(
         return crud.get_bulk_evaluations(
             db=db, dataset_names=dataset_names, model_names=model_names
         )
+    except (ValueError,) as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except (
         exceptions.DatasetDoesNotExistError,
         exceptions.ModelDoesNotExistError,
-        ValueError,
     ) as e:
         raise HTTPException(status_code=404, detail=str(e))
 

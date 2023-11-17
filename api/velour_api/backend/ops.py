@@ -1,12 +1,18 @@
 import operator
 
-from sqlalchemy import Float, and_, func, or_, select
+from sqlalchemy import Float, and_, func, not_, or_, select
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression
 
-from velour_api import enums, schemas
+from velour_api import enums
 from velour_api.backend import models
+from velour_api.schemas import (
+    Filter,
+    GeospatialFilter,
+    NumericFilter,
+    StringFilter,
+)
 
 
 class Query:
@@ -492,123 +498,87 @@ class Query:
         """
         return self.any(name, _pivot=models.Prediction)
 
-    def filter(self, filters: schemas.Filter):
+    def filter(self, filters: Filter):
         """Parses `schemas.Filter`"""
         if filters is None:
             return self
-        if not isinstance(filters, schemas.Filter):
+        if not isinstance(filters, Filter):
             raise TypeError(
                 "filters should be of type `schemas.Filter` or `None`"
             )
 
-        # dataset filters
-        if filters.datasets:
-            self.filter_by_dataset(filters.datasets)
-
-        # models
-        if filters.models:
-            self.filter_by_model(filters.models)
-
-        # datums
-        if filters.datums:
-            self.filter_by_datum(filters.datums)
-
-        # annotations
-        if filters.annotations:
-            self.filter_by_annotation(filters.annotations)
-
-        # prediction
-        if filters.predictions:
-            self.filter_by_prediction(filters.predictions)
-
-        # labels
-        if filters.labels:
-            self.filter_by_label(filters.labels)
-
-        return self
-
-    def filter_by_dataset(self, filters: schemas.DatasetFilter):
-        if filters.ids:
-            self._add_expressions(
-                models.Dataset,
-                [
-                    models.Dataset.id == id
-                    for id in filters.ids
-                    if isinstance(id, int)
-                ],
-            )
-        if filters.names:
+        # datasets
+        if filters.dataset_names:
             self._add_expressions(
                 models.Dataset,
                 [
                     models.Dataset.name == name
-                    for name in filters.names
+                    for name in filters.dataset_names
                     if isinstance(name, str)
                 ],
             )
-        if filters.metadata:
+        if filters.dataset_metadata:
             self._add_expressions(
                 models.Dataset,
-                self.filter_by_metadata(filters.metadata, models.Dataset),
+                self.filter_by_metadata(
+                    filters.dataset_metadata, models.Dataset
+                ),
             )
-        return self
+        if filters.dataset_geospatial:
+            geospatial_expressions = self._filter_by_geospatial(
+                geospatial_filters=filters.dataset_geospatial,
+                model_object=models.Dataset,
+            )
+            self._add_expressions(models.Dataset, geospatial_expressions)
 
-    def filter_by_model(self, filters: schemas.ModelFilter):
-        if filters.ids:
-            self._add_expressions(
-                models.Model,
-                [
-                    models.Model.id == id
-                    for id in filters.ids
-                    if isinstance(id, int)
-                ],
-            )
-        if filters.names:
+        # models
+        if filters.models_names:
             self._add_expressions(
                 models.Model,
                 [
                     models.Model.name == name
-                    for name in filters.names
+                    for name in filters.models_names
                     if isinstance(name, str)
                 ],
             )
-        if filters.metadata:
+        if filters.models_metadata:
             self._add_expressions(
                 models.Model,
-                self.filter_by_metadata(filters.metadata, models.Model),
+                self.filter_by_metadata(filters.models_metadata, models.Model),
             )
-        return self
+        if filters.models_geospatial:
+            geospatial_expressions = self._filter_by_geospatial(
+                geospatial_filters=filters.models_geospatial,
+                model_object=models.Model,
+            )
+            self._add_expressions(models.Model, geospatial_expressions)
 
-    def filter_by_datum(self, filters: schemas.DatumFilter):
-        if filters.ids:
-            self._add_expressions(
-                models.Datum,
-                [
-                    models.Datum.id == id
-                    for id in filters.ids
-                    if isinstance(id, int)
-                ],
-            )
-        if filters.uids:
+        # datums
+        if filters.datum_uids:
             self._add_expressions(
                 models.Datum,
                 [
                     models.Datum.uid == uid
-                    for uid in filters.uids
+                    for uid in filters.datum_uids
                     if isinstance(uid, str)
                 ],
             )
-        if filters.metadata:
+        if filters.datum_metadata:
             self._add_expressions(
                 models.Datum,
-                self.filter_by_metadata(filters.metadata, models.Datum),
+                self.filter_by_metadata(
+                    metadata=filters.datum_metadata,
+                    table=models.Datum,
+                ),
             )
-        return self
+        if filters.datum_geospatial:
+            geospatial_expressions = self._filter_by_geospatial(
+                geospatial_filters=filters.datum_geospatial,
+                model_object=models.Datum,
+            )
+            self._add_expressions(models.Datum, geospatial_expressions)
 
-    def filter_by_annotation(
-        self,
-        filters: schemas.AnnotationFilter,
-    ):
+        # annotations
         if filters.task_types:
             self._add_expressions(
                 models.Annotation,
@@ -647,53 +617,69 @@ class Query:
                 if enums.AnnotationType.RASTER in filters.annotation_types:
                     expressions.append(models.Annotation.raster.isnot(None))
                 self._add_expressions(models.Annotation, expressions)
-        if filters.geometry:
-            for geometric_filter in filters.geometry:
-                match geometric_filter.annotation_type:
-                    case enums.AnnotationType.BOX:
-                        geom = models.Annotation.box
-                    case enums.AnnotationType.POLYGON:
-                        geom = models.Annotation.polygon
-                    case enums.AnnotationType.MULTIPOLYGON:
-                        geom = models.Annotation.multipolygon
-                    case enums.AnnotationType.RASTER:
-                        geom = models.Annotation.raster
-                    case _:
-                        raise RuntimeError
-                if geometric_filter.area:
-                    for area_filter in geometric_filter.area:
-                        op = self._get_numeric_op(area_filter.operator)
-                        self._add_expressions(
-                            models.Annotation,
-                            [op(func.ST_Area(geom), area_filter.value)],
-                        )
-        if filters.metadata:
+        if filters.annotation_geometric_area:
+            types = (
+                filters.annotation_types
+                if filters.annotation_types
+                else [
+                    enums.AnnotationType.BOX,
+                    enums.AnnotationType.POLYGON,
+                    enums.AnnotationType.MULTIPOLYGON,
+                    enums.AnnotationType.RASTER,
+                ]
+            )
+            for area_filter in filters.annotation_geometric_area:
+                area_expr = []
+                for atype in types:
+                    match atype:
+                        case enums.AnnotationType.BOX:
+                            geom = models.Annotation.box
+                            afunc = func.ST_Area
+                        case enums.AnnotationType.POLYGON:
+                            geom = models.Annotation.polygon
+                            afunc = func.ST_Area
+                        case enums.AnnotationType.MULTIPOLYGON:
+                            geom = models.Annotation.multipolygon
+                            afunc = func.ST_Area
+                        case enums.AnnotationType.RASTER:
+                            geom = models.Annotation.raster
+                            afunc = func.ST_Count
+                        case _:
+                            raise RuntimeError
+                    op = self._get_numeric_op(area_filter.operator)
+                    area_expr.append(op(afunc(geom), area_filter.value))
+                self._add_expressions(models.Annotation, area_expr)
+        if filters.annotation_metadata:
             self._add_expressions(
                 models.Annotation,
-                self.filter_by_metadata(filters.metadata, models.Annotation),
+                self.filter_by_metadata(
+                    filters.annotation_metadata, models.Annotation
+                ),
             )
-        return self
+        if filters.annotation_geospatial:
+            self._add_expressions(
+                models.Annotation,
+                self.filter_by_geospatial(
+                    filters.annotation_geospatial, models.Annotation
+                ),
+            )
 
-    def filter_by_prediction(self, filters: schemas.PredictionFilter):
-        if filters.scores:
-            for sfilter in filters.scores:
-                op = self._get_numeric_op(sfilter.operator)
+        # prediction
+        if filters.prediction_scores:
+            for score_filter in filters.prediction_scores:
+                op = self._get_numeric_op(score_filter.operator)
                 self._add_expressions(
                     models.Prediction,
-                    [op(models.Prediction.score, sfilter.value)],
+                    [op(models.Prediction.score, score_filter.value)],
                 )
-        return self
 
-    def filter_by_label(
-        self,
-        filters: schemas.LabelFilter,
-    ):
-        if filters.ids:
+        # labels
+        if filters.label_ids:
             self._add_expressions(
                 models.Label,
                 [
                     models.Label.id == id
-                    for id in filters.ids
+                    for id in filters.label_ids
                     if isinstance(id, int)
                 ],
             )
@@ -702,55 +688,94 @@ class Query:
                 models.Label,
                 [
                     and_(
-                        models.Label.key == label.key,
-                        models.Label.value == label.value,
+                        models.Label.key == key,
+                        models.Label.value == value,
                     )
                     for label in filters.labels
-                    if isinstance(label, schemas.Label)
+                    if isinstance(label, dict) and len(label) == 1
+                    for key, value in label.items()
                 ],
             )
-        if filters.keys:
+        if filters.label_keys:
             self._add_expressions(
                 models.Label,
                 [
                     models.Label.key == key
-                    for key in filters.keys
+                    for key in filters.label_keys
                     if isinstance(key, str)
                 ],
             )
+
         return self
 
     def _filter_by_metadatum(
         self,
-        metadatum: schemas.KeyValueFilter,
+        key: str,
+        value_filter: NumericFilter | StringFilter,
         table: DeclarativeMeta,
     ) -> BinaryExpression:
-        if not isinstance(metadatum, schemas.KeyValueFilter):
-            raise TypeError("metadatum should be of type `schemas.Metadatum`")
-
-        if isinstance(metadatum.comparison.value, str):
-            op = self._get_string_op(metadatum.comparison.operator)
-            lhs = table.meta[metadatum.key].astext
-        elif isinstance(metadatum.comparison.value, float):
-            op = self._get_numeric_op(metadatum.comparison.operator)
-            lhs = table.meta[metadatum.key].astext.cast(Float)
+        if isinstance(value_filter, NumericFilter):
+            op = self._get_numeric_op(value_filter.operator)
+            lhs = table.meta[key].astext.cast(Float)
+        elif isinstance(value_filter, StringFilter):
+            op = self._get_string_op(value_filter.operator)
+            lhs = table.meta[key].astext
         else:
             raise NotImplementedError(
-                f"metadatum value of type `{type(metadatum.comparison.value)}` is currently not supported"
+                f"metadatum value of type `{type(value_filter.value)}` is currently not supported"
             )
-
-        return op(lhs, metadatum.comparison.value)
+        return op(lhs, value_filter.value)
 
     def filter_by_metadata(
         self,
-        metadata: list[schemas.KeyValueFilter],
+        metadata: dict[str, list[NumericFilter] | StringFilter],
         table: DeclarativeMeta,
     ) -> list[BinaryExpression]:
-        return [
-            and_(
-                *[
-                    self._filter_by_metadatum(metadatum, table)
-                    for metadatum in metadata
-                ]
-            )
+        expressions = [
+            self._filter_by_metadatum(key, value, table)
+            for key, value in metadata.items()
+            if isinstance(value, StringFilter)
+        ] + [
+            self._filter_by_metadatum(key, value, table)
+            for key, vlist in metadata.items()
+            if isinstance(vlist, list)
+            for value in metadata[key]
+            if isinstance(value, NumericFilter)
         ]
+        return [and_(*expressions)]
+
+    def _filter_by_geospatial(
+        self,
+        geospatial_filters: list[GeospatialFilter],
+        model_object: models.Datum | models.Model | models.Dataset,
+    ):
+        geospatial_expressions = []
+        for geospatial_filter in geospatial_filters:
+            operator = geospatial_filter.operator
+            geojson = geospatial_filter.value
+
+            if operator == "inside":
+                geospatial_expressions.append(
+                    func.ST_Covers(
+                        # note that casting the WKT using ST_GEOGFROMTEXT isn't necessary here: we're implicitely comparing two geographies, not two geometries
+                        geojson.shape().wkt(),
+                        model_object.geo,
+                    )
+                )
+            elif operator == "intersect":
+                geospatial_expressions.append(
+                    model_object.geo.ST_Intersects(
+                        geojson.shape().wkt(),
+                    )
+                )
+            elif operator == "outside":
+                geospatial_expressions.append(
+                    not_(
+                        func.ST_Covers(
+                            geojson.shape().wkt(),
+                            model_object.geo,
+                        )
+                    )
+                )
+
+        return geospatial_expressions

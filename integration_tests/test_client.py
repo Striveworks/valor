@@ -4,7 +4,7 @@ that is no auth
 import io
 import json
 from dataclasses import asdict
-from typing import Any
+from typing import Any, Dict, Union
 
 import numpy as np
 import pandas
@@ -21,22 +21,25 @@ from geoalchemy2.functions import (
 from sqlalchemy import and_, create_engine, func, select, text
 from sqlalchemy.orm import Session
 
-from velour.client import Client, ClientException, Dataset, Model
-from velour.data_generation import _generate_mask
-from velour.enums import DataType, JobStatus, TaskType
-from velour.schemas import (
+from velour import (
     Annotation,
-    BasicPolygon,
-    BoundingBox,
+    Dataset,
     Datum,
     GroundTruth,
-    ImageMetadata,
     Label,
-    Metadatum,
+    Model,
+    Prediction,
+)
+from velour.client import Client, ClientException
+from velour.data_generation import _generate_mask
+from velour.enums import AnnotationType, DataType, JobStatus, TaskType
+from velour.metatypes import ImageMetadata
+from velour.schemas import (
+    BasicPolygon,
+    BoundingBox,
     MultiPolygon,
     Point,
     Polygon,
-    Prediction,
     Raster,
 )
 from velour_api import exceptions
@@ -101,22 +104,14 @@ def random_mask(img: ImageMetadata) -> np.ndarray:
     return np.random.randint(0, 2, size=(img.height, img.width), dtype=bool)
 
 
-# @TODO: Implement geospatial support
 @pytest.fixture
 def metadata():
     """Some sample metadata of different types"""
-    return [
-        # Metadatum(
-        #     key="metadatum name1",
-        #     value=GeoJSON(
-        #         type="Point",
-        #         coordinates=[-48.23456, 20.12345],
-        #     )
-        # ),
-        Metadatum(key="metadatum1", value="temporary"),
-        Metadatum(key="metadatum2", value="a string"),
-        Metadatum(key="metadatum3", value=0.45),
-    ]
+    return {
+        "metadatum1": "temporary",
+        "metadatum2": "a string",
+        "metadatum3": 0.45,
+    }
 
 
 @pytest.fixture
@@ -126,12 +121,44 @@ def client():
 
 @pytest.fixture
 def img1() -> ImageMetadata:
-    return ImageMetadata(dataset=dset_name, uid="uid1", height=900, width=300)
+    coordinates = [
+        [
+            [125.2750725, 38.760525],
+            [125.3902365, 38.775069],
+            [125.5054005, 38.789613],
+            [125.5051935, 38.71402425],
+            [125.5049865, 38.6384355],
+            [125.3902005, 38.6244225],
+            [125.2754145, 38.6104095],
+            [125.2752435, 38.68546725],
+            [125.2750725, 38.760525],
+        ]
+    ]
+
+    geo_dict = {"type": "Polygon", "coordinates": coordinates}
+
+    return ImageMetadata(
+        dataset=dset_name,
+        uid="uid1",
+        height=900,
+        width=300,
+        geospatial=geo_dict,
+    )
 
 
 @pytest.fixture
 def img2() -> ImageMetadata:
-    return ImageMetadata(dataset=dset_name, uid="uid2", height=40, width=30)
+    coordinates = [44.1, 22.4]
+
+    geo_dict = {"type": "Point", "coordinates": coordinates}
+
+    return ImageMetadata(
+        dataset=dset_name,
+        uid="uid2",
+        height=40,
+        width=30,
+        geospatial=geo_dict,
+    )
 
 
 @pytest.fixture
@@ -218,6 +245,11 @@ def rect2():
 @pytest.fixture
 def rect3():
     return BoundingBox.from_extrema(xmin=87, ymin=10, xmax=158, ymax=820)
+
+
+@pytest.fixture
+def rect4():
+    return BoundingBox.from_extrema(xmin=1, ymin=10, xmax=10, ymax=20)
 
 
 @pytest.fixture
@@ -555,6 +587,39 @@ def pred_dets(
 
 
 @pytest.fixture
+def pred_dets2(
+    rect3: BoundingBox,
+    rect4: BoundingBox,
+    img1: ImageMetadata,
+    img2: ImageMetadata,
+) -> list[Prediction]:
+    return [
+        Prediction(
+            model=model_name,
+            datum=img1.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k1", value="v1", score=0.7)],
+                    bounding_box=rect3,
+                )
+            ],
+        ),
+        Prediction(
+            model=model_name,
+            datum=img2.to_datum(),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k2", value="v2", score=0.98)],
+                    bounding_box=rect4,
+                )
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
 def pred_poly_dets(
     pred_dets: list[Prediction],
 ) -> list[Prediction]:
@@ -860,7 +925,14 @@ def test_create_image_dataset_with_href_and_description(
 ):
     href = "http://a.com/b"
     description = "a description"
-    Dataset.create(client, dset_name, href=href, description=description)
+    Dataset.create(
+        client,
+        dset_name,
+        metadata={
+            "href": href,
+            "description": description,
+        },
+    )
 
     dataset_id = db.scalar(
         select(models.Dataset.id).where(models.Dataset.name == dset_name)
@@ -879,7 +951,14 @@ def test_create_image_dataset_with_href_and_description(
 def test_create_model_with_href_and_description(client: Client, db: Session):
     href = "http://a.com/b"
     description = "a description"
-    Model.create(client, model_name, href=href, description=description)
+    Model.create(
+        client,
+        model_name,
+        metadata={
+            "href": href,
+            "description": description,
+        },
+    )
 
     model_id = db.scalar(
         select(models.Model.id).where(models.Model.name == model_name)
@@ -1437,7 +1516,10 @@ def test_evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+        ],
         timeout=30,
     )
 
@@ -1460,16 +1542,8 @@ def test_evaluate_detection(
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "label_keys": ["k1"],
             },
         },
     }
@@ -1524,15 +1598,17 @@ def test_evaluate_detection(
     ).all()
     assert sorted(areas) == [1100.0, 1500.0]
 
-    # sanity check this should give us the same thing excpet min_area and max_area
-    # are not None
+    # sanity check this should give us the same thing except min_area and max_area are not none
     eval_job_bounded_area_10_2000 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
-        min_area=10,
-        max_area=2000,
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 10,
+            Annotation.geometric_area <= 2000,
+        ],
         timeout=30,
     )
     settings = asdict(eval_job_bounded_area_10_2000.settings)
@@ -1542,24 +1618,18 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 10.0},
-                                {"operator": "<=", "value": 2000.0},
-                            ],
-                        }
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 10.0,
+                    },
+                    {
+                        "operator": "<=",
+                        "value": 2000.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1576,8 +1646,11 @@ def test_evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
-        min_area=1200,
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 1200,
+        ],
         timeout=30,
     )
     settings = asdict(eval_job_min_area_1200.settings)
@@ -1587,23 +1660,14 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 1200.0},
-                            ],
-                        }
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 1200.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1619,8 +1683,11 @@ def test_evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
-        max_area=1200,
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area <= 1200,
+        ],
         timeout=30,
     )
     settings = asdict(eval_job_max_area_1200.settings)
@@ -1630,21 +1697,14 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [{"operator": "<=", "value": 1200.0}],
-                        }
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
-                },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": "<=",
+                        "value": 1200.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1661,9 +1721,12 @@ def test_evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
-        min_area=1200,
-        max_area=1800,
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 1200,
+            Annotation.geometric_area <= 1800,
+        ],
         timeout=30,
     )
     settings = asdict(eval_job_bounded_area_1200_1800.settings)
@@ -1673,24 +1736,143 @@ def test_evaluate_detection(
         "dataset": "test_dataset",
         "settings": {
             "filters": {
-                "annotations": {
-                    "allow_conversion": True,
-                    "annotation_types": ["box"],
-                    "geo": [],
-                    "geometry": [
-                        {
-                            "annotation_type": "box",
-                            "area": [
-                                {"operator": ">=", "value": 1200.0},
-                                {"operator": "<=", "value": 1800.0},
-                            ],
-                        }
-                    ],
-                    "json_": [],
-                    "metadata": [],
-                    "task_types": [],
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 1200.0,
+                    },
+                    {
+                        "operator": "<=",
+                        "value": 1800.0,
+                    },
+                ],
+                "label_keys": ["k1"],
+            },
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "task_type": "object-detection",
+        },
+    }
+    assert (
+        eval_job_bounded_area_1200_1800.metrics["metrics"] != expected_metrics
+    )
+    assert (
+        eval_job_bounded_area_1200_1800.metrics["metrics"]
+        == eval_job_min_area_1200.metrics["metrics"]
+    )
+
+
+def test_evaluate_detection_with_json_filters(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    db: Session,
+):
+    dataset = Dataset.create(client, dset_name)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(client, model_name)
+    for pd in pred_dets:
+        model.add_prediction(pd)
+    model.finalize_inferences(dataset)
+
+    expected_metrics = [
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.1,
+            },
+        },
+        {
+            "type": "AP",
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+            "parameters": {
+                "iou": 0.6,
+            },
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.1},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "mAP",
+            "parameters": {"iou": 0.6},
+            "value": 0.504950495049505,
+        },
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.504950495049505,
+        },
+    ]
+
+    eval_job_min_area_1200 = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+            Annotation.geometric_area >= 1200,
+        ],
+        timeout=30,
+    )
+
+    eval_job_bounded_area_1200_1800 = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters={
+            "annotation_types": ["box"],
+            "annotation_geometric_area": [
+                {
+                    "operator": ">=",
+                    "value": 1200.0,
                 },
-                "labels": {"ids": [], "keys": ["k1"], "labels": []},
+                {
+                    "operator": "<=",
+                    "value": 1800.0,
+                },
+            ],
+            "label_keys": ["k1"],
+        },
+        timeout=30,
+    )
+
+    settings = asdict(eval_job_bounded_area_1200_1800.settings)
+    settings.pop("id")
+    assert settings == {
+        "model": model_name,
+        "dataset": "test_dataset",
+        "settings": {
+            "filters": {
+                "annotation_types": ["box"],
+                "annotation_geometric_area": [
+                    {
+                        "operator": ">=",
+                        "value": 1200.0,
+                    },
+                    {
+                        "operator": "<=",
+                        "value": 1800.0,
+                    },
+                ],
+                "label_keys": ["k1"],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1712,6 +1894,7 @@ def test_get_bulk_evaluations(
     client: Client,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
+    pred_dets2: list[Prediction],
     db: Session,
 ):
     dataset_ = dset_name
@@ -1731,7 +1914,10 @@ def test_get_bulk_evaluations(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+        ],
         timeout=30,
     )
     eval_job.wait_for_completion()
@@ -1776,6 +1962,34 @@ def test_get_bulk_evaluations(
         },
     ]
 
+    second_model_expected_metrics = [
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.1},
+            "value": 0.0,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "AP",
+            "parameters": {"iou": 0.6},
+            "value": 0.0,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {"type": "mAP", "parameters": {"iou": 0.1}, "value": 0.0},
+        {"type": "mAP", "parameters": {"iou": 0.6}, "value": 0.0},
+        {
+            "type": "APAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+            "label": {"key": "k1", "value": "v1"},
+        },
+        {
+            "type": "mAPAveragedOverIOUs",
+            "parameters": {"ious": [0.1, 0.6]},
+            "value": 0.0,
+        },
+    ]
+
     evaluations = client.get_bulk_evaluations(
         datasets=dset_name, models=model_name
     )
@@ -1810,7 +2024,7 @@ def test_get_bulk_evaluations(
 
     # test with multiple models
     second_model = Model.create(client, "second_model")
-    for pd in pred_dets:
+    for pd in pred_dets2:
         second_model.add_prediction(pd)
     second_model.finalize_inferences(dataset)
 
@@ -1818,7 +2032,10 @@ def test_get_bulk_evaluations(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        label_key="k1",
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+        ],
         timeout=30,
     )
     eval_job.wait_for_completion()
@@ -1844,7 +2061,9 @@ def test_get_bulk_evaluations(
             for name in evaluation.keys()
         ]
     )
-    assert second_model_evaluations[0]["metrics"] == expected_metrics
+    assert (
+        second_model_evaluations[0]["metrics"] == second_model_expected_metrics
+    )
 
     both_evaluations = client.get_bulk_evaluations(datasets=["test_dataset"])
 
@@ -1857,6 +2076,7 @@ def test_get_bulk_evaluations(
         ]
     )
     assert both_evaluations[0]["metrics"] == expected_metrics
+    assert both_evaluations[1]["metrics"] == second_model_expected_metrics
 
     # should be equivalent since there are only two models attributed to this dataset
     both_evaluations_from_model_names = client.get_bulk_evaluations(
@@ -1973,19 +2193,23 @@ def test_evaluate_segmentation(
 def test_create_tabular_dataset_and_add_groundtruth(
     client: Client,
     db: Session,
-    metadata: list[Metadatum],
+    metadata: Dict[str, Union[float, int, str]],
 ):
     dataset = Dataset.create(client, name=dset_name)
     assert isinstance(dataset, Dataset)
 
-    md1, md2, md3 = metadata
+    md1 = {"metadatum1": metadata["metadatum1"]}
+    md23 = {
+        "metadatum2": metadata["metadatum2"],
+        "metadatum3": metadata["metadatum3"],
+    }
 
     gts = [
         GroundTruth(
             datum=Datum(
                 dataset=dset_name,
                 uid="uid1",
-                metadata=[md1],
+                metadata=md1,
             ),
             annotations=[
                 Annotation(
@@ -2001,7 +2225,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
             datum=Datum(
                 dataset=dset_name,
                 uid="uid2",
-                metadata=[md2, md3],
+                metadata=md23,
             ),
             annotations=[
                 Annotation(
@@ -2026,10 +2250,6 @@ def test_create_tabular_dataset_and_add_groundtruth(
     assert len(metadata_links) == 1
     assert "metadatum1" in metadata_links
     assert metadata_links["metadatum1"] == "temporary"
-    # assert json.loads(db.scalar(ST_AsGeoJSON(metadatum.geo))) == {
-    #     "type": "Point",
-    #     "coordinates": [-48.23456, 20.12345],
-    # }
 
     metadata_links = data[1].meta
     assert len(metadata_links) == 2
@@ -2463,9 +2683,245 @@ def test_get_dataset(
 
     # check get
     fetched_dataset = Dataset.get(client, dset_name)
-    assert fetched_dataset.info == dataset.info
+    assert fetched_dataset.id == dataset.id
+    assert fetched_dataset.name == dataset.name
+    assert fetched_dataset.metadata == dataset.metadata
 
     client.delete_dataset(dset_name, timeout=30)
+
+
+def test_set_and_get_geospatial(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    db: Session,
+):
+    coordinates = [
+        [
+            [125.2750725, 38.760525],
+            [125.3902365, 38.775069],
+            [125.5054005, 38.789613],
+            [125.5051935, 38.71402425],
+            [125.5049865, 38.6384355],
+            [125.3902005, 38.6244225],
+            [125.2754145, 38.6104095],
+            [125.2752435, 38.68546725],
+            [125.2750725, 38.760525],
+        ]
+    ]
+    geo_dict = {"type": "Polygon", "coordinates": coordinates}
+
+    dataset = Dataset.create(
+        client=client, name=dset_name, geospatial=geo_dict
+    )
+
+    # check Dataset's geospatial coordinates
+    fetched_datasets = client.get_datasets()
+    assert fetched_datasets[0]["geospatial"] == geo_dict
+
+    # check Model's geospatial coordinates
+    Model.create(client=client, name=model_name, geospatial=geo_dict)
+    fetched_models = client.get_models()
+    assert fetched_models[0]["geospatial"] == geo_dict
+
+    # check Datums's geospatial coordinates
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    expected_coords = [gt.datum.geospatial for gt in gt_dets1]
+
+    returned_datum1 = dataset.get_datums()[0].geospatial
+    returned_datum2 = dataset.get_datums()[1].geospatial
+
+    assert expected_coords[0] == returned_datum1
+    assert expected_coords[1] == returned_datum2
+
+    dets1 = dataset.get_groundtruth("uid1")
+
+    assert dets1.datum.geospatial == expected_coords[0]
+
+
+def test_geospatial_filter(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    db: Session,
+):
+    coordinates = [
+        [
+            [125.2750725, 38.760525],
+            [125.3902365, 38.775069],
+            [125.5054005, 38.789613],
+            [125.5051935, 38.71402425],
+            [125.5049865, 38.6384355],
+            [125.3902005, 38.6244225],
+            [125.2754145, 38.6104095],
+            [125.2752435, 38.68546725],
+            [125.2750725, 38.760525],
+        ]
+    ]
+    geo_dict = {"type": "Polygon", "coordinates": coordinates}
+
+    dataset = Dataset.create(
+        client=client, name=dset_name, geospatial=geo_dict
+    )
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(client=client, name=model_name, geospatial=geo_dict)
+    for pd in pred_dets:
+        model.add_prediction(pd)
+    model.finalize_inferences(dataset)
+
+    # test filtering for the dataset
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters={
+            "dataset_geospatial": [
+                {
+                    "operator": "outside",
+                    "value": {
+                        "geometry": {"type": "Point", "coordinates": [0, 0]}
+                    },
+                }
+            ],
+        },
+        timeout=30,
+    )
+
+    settings = asdict(eval_job.settings)
+    assert settings["settings"]["filters"]["dataset_geospatial"] == [
+        {
+            "value": {
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [0.0, 0.0],
+                }
+            },
+            "operator": "outside",
+        }
+    ]
+
+    assert len(eval_job.metrics["metrics"]) > 0
+
+    # test dataset WHERE miss
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters={
+            "dataset_geospatial": [
+                {
+                    "operator": "inside",
+                    "value": {
+                        "geometry": {"type": "Point", "coordinates": [0, 0]}
+                    },
+                }
+            ],
+        },
+        timeout=30,
+    )
+
+    settings = asdict(eval_job.settings)
+    assert settings["settings"]["filters"]["dataset_geospatial"] == [
+        {
+            "value": {
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [0.0, 0.0],
+                }
+            },
+            "operator": "inside",
+        }
+    ]
+
+    assert len(eval_job.metrics["metrics"]) == 0
+
+    # test datums
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters={
+            "datum_geospatial": [
+                {
+                    "operator": "inside",
+                    "value": {
+                        "geometry": {"type": "Point", "coordinates": [0, 0]}
+                    },
+                }
+            ],
+        },
+        timeout=30,
+    )
+
+    settings = asdict(eval_job.settings)
+    assert settings["settings"]["filters"]["datum_geospatial"] == [
+        {
+            "value": {
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [0.0, 0.0],
+                }
+            },
+            "operator": "inside",
+        }
+    ]
+
+    assert len(eval_job.metrics["metrics"]) == 0
+
+    # test models
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters={
+            "models_geospatial": [
+                {
+                    "operator": "inside",
+                    "value": {
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [
+                                [
+                                    [124.0, 37.0],
+                                    [128.0, 37.0],
+                                    [128.0, 40.0],
+                                    [124.0, 40.0],
+                                ]
+                            ],
+                        }
+                    },
+                }
+            ],
+        },
+        timeout=30,
+    )
+
+    settings = asdict(eval_job.settings)
+    assert settings["settings"]["filters"]["models_geospatial"] == [
+        {
+            "value": {
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [124.0, 37.0],
+                            [128.0, 37.0],
+                            [128.0, 40.0],
+                            [124.0, 40.0],
+                        ]
+                    ],
+                }
+            },
+            "operator": "inside",
+        }
+    ]
+
+    assert len(eval_job.metrics["metrics"]) > 0
 
 
 def test_get_dataset_status(client: Client, db: Session, gt_dets1: list):

@@ -44,13 +44,12 @@ def setup_and_teardown():
 
 @pytest.fixture
 def gt_clfs_create(
-    img1: schemas.ImageMetadata,
-    img2: schemas.ImageMetadata,
+    img1: schemas.Datum,
+    img2: schemas.Datum,
 ) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -62,8 +61,7 @@ def gt_clfs_create(
             ],
         ),
         schemas.GroundTruth(
-            dataset=dset_name,
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -76,12 +74,12 @@ def gt_clfs_create(
 
 @pytest.fixture
 def pred_clfs_create(
-    img1: schemas.ImageMetadata, img2: schemas.ImageMetadata
+    img1: schemas.Datum, img2: schemas.Datum
 ) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
             model=model_name,
-            datum=img1.to_datum(),
+            datum=img1,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -95,7 +93,7 @@ def pred_clfs_create(
         ),
         schemas.Prediction(
             model=model_name,
-            datum=img2.to_datum(),
+            datum=img2,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
@@ -373,10 +371,8 @@ def test_stateflow_model(db: Session):
                         iou_thresholds_to_keep=[0.2],
                     ),
                     filters=schemas.Filter(
-                        annotations=schemas.AnnotationFilter(
-                            annotation_types=[enums.AnnotationType.BOX]
-                        ),
-                        labels=schemas.LabelFilter(keys=["class"]),
+                        annotation_types=[enums.AnnotationType.BOX],
+                        label_keys=["class"],
                     ),
                 ),
             ),
@@ -413,10 +409,8 @@ def test_stateflow_detection_evaluation(
                 iou_thresholds_to_keep=[0.2],
             ),
             filters=schemas.Filter(
-                annotations=schemas.AnnotationFilter(
-                    annotation_types=[enums.AnnotationType.BOX],
-                ),
-                labels=schemas.LabelFilter(keys=["class"]),
+                annotation_types=[enums.AnnotationType.BOX],
+                label_keys=["class"],
             ),
         ),
     )

@@ -14,7 +14,7 @@ As a first step, be sure your machine has Docker installed. [Click here](https:/
 
 To ensure formatting consistency, we use [pre-commit](https://pre-commit.com/) to manage git hooks. To install pre-commit, run:
 
-```shell
+```bash
 pip install pre-commit
 pre-commit install
 ```
@@ -28,6 +28,7 @@ Run the following in bash (note: may not work in zsh):
 python -m pip install -e client/.[test]
 
 ```
+
 
 ### 4. Run the API, postgis, and redis services
 
@@ -160,9 +161,9 @@ These are tests of the backend that require a running instance of PostGIS to be 
 pip install .[test]
 ```
 
-2. Set the environment variaables `POSTGRES_HOST` and `POSTGRES_PASSWORD` to a running PostGIS instance.
+1. Set the environment variables `POSTGRES_HOST` (e.g., `export POSTGRES_HOST=0.0.0.0`) and `POSTGRES_PASSWORD` (e.g., `export POSTGRES_PASSWORD=password`) to a running PostGIS instance.
 
-3. Run the functional tests: from the `api` directory run
+2. Run the functional tests: from the `api` directory run
 
 ```shell
 pytest -v tests/functional-tests/test_client.py

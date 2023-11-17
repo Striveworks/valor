@@ -3,7 +3,15 @@ from typing import List
 import numpy as np
 import pytest
 
-from velour import schemas
+from velour import Label, schemas
+
+
+@pytest.fixture
+def labels() -> List[Label]:
+    return [
+        Label(key="k1", value="v1"),
+        Label(key="k2", value="v2"),
+    ]
 
 
 @pytest.fixture
@@ -51,8 +59,9 @@ def raster(raster_raw_mask) -> schemas.Raster:
 
 
 @pytest.fixture
-def metadatum() -> schemas.Metadatum:
-    return schemas.Metadatum(
-        key="test",
-        value=1234,
-    )
+def metadata() -> dict:
+    return {
+        "a": 1234,
+        "b": 1.234,
+        "c": "1234",
+    }

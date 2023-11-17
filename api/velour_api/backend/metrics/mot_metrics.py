@@ -67,13 +67,14 @@ def ground_truth_det_to_mot(
     obj_id_to_int: dict,
 ) -> list[float]:
     """Helper to convert a ground truth detection into MOT format"""
-
+    if "frame" not in datum.metadata:
+        raise ValueError("Datum does not contain a video frame number.")
     for label in gt.labels:
         if label.key == OBJECT_ID_LABEL_KEY:
             break
     bbox = gt.bounding_box
     mot_det = MOTDetection(
-        frame_number=schemas.VideoFrameMetadata.fromDatum(datum).frame,
+        frame_number=datum.metadata["frame"],
         object_id=obj_id_to_int[
             label.value
         ],  # Label's value is used as object id
@@ -90,14 +91,15 @@ def pred_det_to_mot(
     object_id_label_key: str = OBJECT_ID_LABEL_KEY,
 ) -> list[float]:
     """Helper to convert a predicted detection into MOT format"""
-
+    if "frame" not in datum.metadata:
+        raise ValueError("Datum does not contain a video frame number.")
     for scored_label in pred.labels:
         if scored_label.key == object_id_label_key:
             break
 
     bbox = pred.bounding_box
     mot_det = MOTDetection(
-        frame_number=schemas.VideoFrameMetadata.fromDatum(datum).frame,
+        frame_number=datum.metadata["frame"],
         object_id=obj_id_to_int[
             scored_label.value
         ],  # Label's value is used as object id

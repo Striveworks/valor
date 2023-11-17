@@ -1,5 +1,3 @@
-import json
-
 from pydantic import BaseModel, field_validator
 
 from velour_api.schemas.geometry import (
@@ -12,19 +10,21 @@ from velour_api.schemas.geometry import (
 
 class GeoJSONPoint(BaseModel):
     type: str
-    coordinates: list[float]
+    coordinates: list[float | int]
 
     @field_validator("type")
     @classmethod
     def check_type(cls, v):
         if v != "Point":
             raise ValueError("Incorrect geometry type.")
+        return v
 
     @field_validator("coordinates")
     @classmethod
     def check_coordinates(cls, v):
         if len(v) != 2:
             raise ValueError("Incorrect number of points.")
+        return v
 
     def point(self) -> Point:
         return Point(
@@ -35,13 +35,14 @@ class GeoJSONPoint(BaseModel):
 
 class GeoJSONPolygon(BaseModel):
     type: str
-    coordinates: list[list[list[float]]]
+    coordinates: list[list[list[float | int]]]
 
     @field_validator("type")
     @classmethod
     def check_type(cls, v):
         if v != "Polygon":
             raise ValueError("Incorrect geometry type.")
+        return v
 
     def polygon(self) -> Polygon:
         polygons = [
@@ -60,13 +61,15 @@ class GeoJSONPolygon(BaseModel):
 
 class GeoJSONMultiPolygon(BaseModel):
     type: str
-    coordinates: list[list[list[list[float]]]]
+    coordinates: list[list[list[list[float | int]]]]
 
     @field_validator("type")
     @classmethod
     def check_type(cls, v):
         if v != "MultiPolygon":
             raise ValueError("Incorrect geometry type.")
+
+        return v
 
     def multipolygon(self) -> MultiPolygon:
         multipolygons = []
@@ -93,8 +96,7 @@ class GeoJSON(BaseModel):
     geometry: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon
 
     @classmethod
-    def from_json(cls, geojson: str):
-        data = json.loads(geojson)
+    def from_dict(cls, data: dict):
         if "type" not in data:
             raise ValueError("missing geojson type")
         if "coordinates" not in data:
@@ -107,7 +109,7 @@ class GeoJSON(BaseModel):
         elif data["type"] == "MultiPolygon":
             return cls(geometry=GeoJSONMultiPolygon(**data))
         else:
-            raise ValueError("Unsupported json.")
+            raise ValueError("Unsupported type.")
 
     def shape(self):
         if isinstance(self.geometry, GeoJSONPoint):
