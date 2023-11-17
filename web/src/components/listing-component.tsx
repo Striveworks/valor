@@ -2,7 +2,7 @@ import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
-import { usingAuth } from '../auth';
+import { usingAuth } from '../Auth';
 import { EntityResponse } from '../types';
 import { Wrapper } from './wrapper';
 
