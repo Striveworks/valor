@@ -1,5 +1,5 @@
 import { useAuth0 } from '@auth0/auth0-react';
-import { ChariotLayoutTemplate } from '@striveworks/minerva';
+import { LayoutTemplate } from '@striveworks/minerva';
 import '@striveworks/minerva/style.css';
 import { Route, Routes } from 'react-router-dom';
 import './App.css';
@@ -20,7 +20,7 @@ function App() {
 
   if (isAuthenticated || !usingAuth()) {
     return (
-      <ChariotLayoutTemplate SideBar={<SideMenu />}>
+      <LayoutTemplate SideBar={<SideMenu />}>
         <Routes>
           <Route path='/' element={<Home />} />
           <Route path='/models'>
@@ -40,7 +40,7 @@ function App() {
           </Route>
           <Route path='/profile' element={<Profile />} />
         </Routes>
-      </ChariotLayoutTemplate>
+      </LayoutTemplate>
     );
   }
 

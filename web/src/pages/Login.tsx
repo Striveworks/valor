@@ -1,5 +1,5 @@
 import { useAuth0 } from '@auth0/auth0-react';
-import { Button, ChariotLayoutTemplate, Page, Typography } from '@striveworks/minerva';
+import { Button, LayoutTemplate, Page, Typography } from '@striveworks/minerva';
 
 export function Login() {
   const { loginWithRedirect } = useAuth0();
@@ -13,7 +13,7 @@ export function Login() {
   };
 
   return (
-    <ChariotLayoutTemplate>
+    <LayoutTemplate>
       <Page.Main
         xcss={{
           display: 'flex',
@@ -29,6 +29,6 @@ export function Login() {
           <Button onClick={handleLogin}>Login</Button>
         </Page.Content>
       </Page.Main>
-    </ChariotLayoutTemplate>
+    </LayoutTemplate>
   );
 }

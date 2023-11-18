@@ -38,15 +38,6 @@ export function SideMenu() {
             Datasets
           </SideBar.Tab>
         </Link>
-        <Link to={'/evaluations'} style={{ textDecoration: 'none' }}>
-          <SideBar.Tab
-            iconName='vectorPolygon'
-            title='Evaluations'
-            selected={basePath === 'evaluations' ? true : false}
-          >
-            Evaluations
-          </SideBar.Tab>
-        </Link>
         {user !== undefined && (
           <Link to={'/profile'} style={{ textDecoration: 'none' }}>
             <SideBar.Tab
