@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
 from velour_api.backend.metrics.classification import (
+    _accuracy_from_cm,
     _confusion_matrix_at_label_key,
-    accuracy_from_cm,
-    roc_auc,
+    _roc_auc,
 )
 
 dataset_name = "test_dataset"
@@ -136,7 +136,7 @@ def test__confusion_matrix_at_label_key(db: Session, classification_test_data):
         assert entry in expected_entries
     for entry in expected_entries:
         assert entry in cm.entries
-    assert accuracy_from_cm(cm) == 2 / 6
+    assert _accuracy_from_cm(cm) == 2 / 6
 
     label_key = "color"
     cm = _confusion_matrix_at_label_key(db, job_request, label_key)
@@ -161,7 +161,7 @@ def test__confusion_matrix_at_label_key(db: Session, classification_test_data):
         assert entry in expected_entries
     for entry in expected_entries:
         assert entry in cm.entries
-    assert accuracy_from_cm(cm) == 3 / 6
+    assert _accuracy_from_cm(cm) == 3 / 6
 
 
 # TODO -- Convert to use json column
@@ -250,14 +250,19 @@ def test_roc_auc(db, classification_test_data):
     0.43125
     ```
     """
-    assert (
-        roc_auc(db, dataset_name, model_name, label_key="animal")
-        == 0.8009259259259259
+    job_request = schemas.EvaluationJob(
+        dataset=dataset_name,
+        model=model_name,
+        settings=schemas.EvaluationSettings(
+            filters=schemas.Filter(task_types=[enums.TaskType.CLASSIFICATION])
+        ),
     )
-    assert roc_auc(db, dataset_name, model_name, label_key="color") == 0.43125
+
+    assert _roc_auc(db, job_request, label_key="animal") == 0.8009259259259259
+    assert _roc_auc(db, job_request, label_key="color") == 0.43125
 
     with pytest.raises(RuntimeError) as exc_info:
-        roc_auc(db, dataset_name, model_name, label_key="not a key")
+        _roc_auc(db, job_request, label_key="not a key")
     assert "is not a classification label" in str(exc_info)
 
 

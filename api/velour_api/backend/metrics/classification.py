@@ -13,10 +13,9 @@ from velour_api.backend.ops import Query
 from velour_api.enums import TaskType
 
 
-def binary_roc_auc(
+def _binary_roc_auc(
     db: Session,
-    dataset_name: str,
-    model_name: str,
+    job_request: schemas.EvaluationJob,
     label: schemas.Label,
 ) -> float:
     """Computes the binary ROC AUC score of a dataset and label
@@ -37,61 +36,35 @@ def binary_roc_auc(
         the binary ROC AUC score
     """
 
-    # Retrieve sql objects
-    dataset = core.get_dataset(db, dataset_name)
-    model = core.get_model(db, model_name)
-
     # query to get the datum_ids and label values of groundtruths that have the given label key
+    gts_filter = job_request.settings.filters.model_copy()
+    gts_filter.dataset_names = [job_request.dataset]
+    gts_filter.label_keys = [label.key]
+
     gts_query = (
-        select(
+        Query(
             models.Annotation.datum_id.label("datum_id"),
             models.Label.value.label("label_value"),
         )
-        .select_from(models.Label)
-        .join(
-            models.GroundTruth, models.GroundTruth.label_id == models.Label.id
-        )
-        .join(
-            models.Annotation,
-            models.Annotation.id == models.GroundTruth.annotation_id,
-        )
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .where(
-            and_(
-                models.Datum.dataset_id == dataset.id,
-                models.Annotation.model_id.is_(None),
-                models.Annotation.task_type == TaskType.CLASSIFICATION,
-                models.Label.key == label.key,
-            ),
-        )
+        .filter(gts_filter)
+        .groundtruths("groundtruth_subquery")
     )
-    gts_query = gts_query.subquery()
 
     # get the prediction scores for the given label (key and value)
+    preds_filter = job_request.settings.filters.model_copy()
+    preds_filter.dataset_names = [job_request.dataset]
+    preds_filter.models_names = [job_request.model]
+    preds_filter.labels = [{label.key: label.value}]
+
     preds_query = (
-        select(
+        Query(
             models.Annotation.datum_id.label("datum_id"),
             models.Prediction.score.label("score"),
             models.Label.value.label("label_value"),
         )
-        .select_from(models.Label)
-        .join(models.Prediction, models.Prediction.label_id == models.Label.id)
-        .join(
-            models.Annotation,
-            models.Annotation.id == models.Prediction.annotation_id,
-        )
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .where(
-            and_(
-                models.Datum.dataset_id == dataset.id,
-                models.Annotation.model_id == model.id,
-                models.Annotation.task_type == TaskType.CLASSIFICATION,
-                models.Label.key == label.key,
-                models.Label.value == label.value,
-            ),
-        )
+        .filter(preds_filter)
+        .predictions("prediction_subquery")
     )
-    preds_query = preds_query.subquery()
 
     # number of groundtruth labels that match the given label value
     n_pos = db.scalar(
@@ -152,10 +125,9 @@ def binary_roc_auc(
 
 
 # @TODO: Implement metadata filtering by using `ops.Query`
-def roc_auc(
+def _roc_auc(
     db: Session,
-    dataset_name: str,
-    model_name: str,
+    job_request: schemas.EvaluationJob,
     label_key: str,
 ) -> float:
     """Computes the area under the ROC curve. Note that for the multi-class setting
@@ -177,39 +149,25 @@ def roc_auc(
         ROC AUC
     """
 
+    label_filter = job_request.settings.filters.model_copy()
+    label_filter.dataset_names = [job_request.dataset]
+    label_filter.label_keys = [label_key]
+
     labels = {
-        schemas.Label(key=label[0], value=label[1])
-        for label in (
-            db.query(models.Label.key, models.Label.value)
-            .join(
-                models.GroundTruth,
-                models.GroundTruth.label_id == models.Label.id,
-            )
-            .join(
-                models.Annotation,
-                models.Annotation.id == models.GroundTruth.annotation_id,
-            )
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .join(models.Dataset, models.Dataset.id == models.Dataset.id)
-            .where(
-                and_(
-                    models.Dataset.name == dataset_name,
-                    models.Annotation.model_id.is_(None),
-                    models.Label.key == label_key,
-                )
-            )
-            .all()
-        )
+        schemas.Label(key=label.key, value=label.value)
+        for label in db.query(
+            Query(models.Label).filter(label_filter).groundtruths()
+        ).all()
     }
     if len(labels) == 0:
         raise RuntimeError(
-            f"The label key '{label_key}' is not a classification label in the dataset {dataset_name}."
+            f"The label key '{label_key}' is not a classification label in the dataset {job_request.dataset}."
         )
 
     sum_roc_aucs = 0
     label_count = 0
     for label in labels:
-        bin_roc = binary_roc_auc(db, dataset_name, model_name, label)
+        bin_roc = _binary_roc_auc(db, job_request, label)
 
         if bin_roc is not None:
             sum_roc_aucs += bin_roc
@@ -381,10 +339,38 @@ def _confusion_matrix_at_label_key(
     )
 
 
+def _accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
+    return cm.matrix.trace() / cm.matrix.sum()
+
+
+def _precision_and_recall_f1_from_confusion_matrix(
+    cm: schemas.ConfusionMatrix, label_value: str
+) -> tuple[float, float, float]:
+    """Computes the precision, recall, and f1 score at a class index"""
+    cm_matrix = cm.matrix
+    if label_value not in cm.label_map:
+        return np.nan, np.nan, np.nan
+    class_index = cm.label_map[label_value]
+
+    true_positives = cm_matrix[class_index, class_index]
+    # number of times the class was predicted
+    n_preds = cm_matrix[:, class_index].sum()
+    n_gts = cm_matrix[class_index, :].sum()
+
+    prec = true_positives / n_preds if n_preds else 0
+    recall = true_positives / n_gts if n_gts else 0
+
+    f1_denom = prec + recall
+    if f1_denom == 0:
+        f1 = 0
+    else:
+        f1 = 2 * prec * recall / f1_denom
+    return prec, recall, f1
+
+
 def _get_confusion_matrix_and_metrics_at_label_key(
     db: Session,
-    dataset_name: str,
-    model_name: str,
+    job_request: schemas.EvaluationJob,
     label_key: str,
     labels: list[models.Label],
 ) -> (
@@ -431,8 +417,8 @@ def _get_confusion_matrix_and_metrics_at_label_key(
 
     confusion_matrix = _confusion_matrix_at_label_key(
         db=db,
-        dataset_name=dataset_name,
-        model_name=model_name,
+        dataset_name=job_request.dataset,
+        model_name=job_request.model,
         label_key=label_key,
     )
 
@@ -443,14 +429,13 @@ def _get_confusion_matrix_and_metrics_at_label_key(
     metrics = [
         schemas.AccuracyMetric(
             label_key=label_key,
-            value=accuracy_from_cm(confusion_matrix),
+            value=_accuracy_from_cm(confusion_matrix),
         ),
         schemas.ROCAUCMetric(
             label_key=label_key,
-            value=roc_auc(
+            value=_roc_auc(
                 db,
-                dataset_name,
-                model_name,
+                job_request,
                 label_key,
             ),
         ),
@@ -462,7 +447,7 @@ def _get_confusion_matrix_and_metrics_at_label_key(
             precision,
             recall,
             f1,
-        ) = precision_and_recall_f1_from_confusion_matrix(
+        ) = _precision_and_recall_f1_from_confusion_matrix(
             confusion_matrix, label.value
         )
 
@@ -547,35 +532,6 @@ def _compute_clf_metrics(
             metrics.extend(cm_and_metrics[1])
 
     return confusion_matrices, metrics
-
-
-def accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
-    return cm.matrix.trace() / cm.matrix.sum()
-
-
-def precision_and_recall_f1_from_confusion_matrix(
-    cm: schemas.ConfusionMatrix, label_value: str
-) -> tuple[float, float, float]:
-    """Computes the precision, recall, and f1 score at a class index"""
-    cm_matrix = cm.matrix
-    if label_value not in cm.label_map:
-        return np.nan, np.nan, np.nan
-    class_index = cm.label_map[label_value]
-
-    true_positives = cm_matrix[class_index, class_index]
-    # number of times the class was predicted
-    n_preds = cm_matrix[:, class_index].sum()
-    n_gts = cm_matrix[class_index, :].sum()
-
-    prec = true_positives / n_preds if n_preds else 0
-    recall = true_positives / n_gts if n_gts else 0
-
-    f1_denom = prec + recall
-    if f1_denom == 0:
-        f1 = 0
-    else:
-        f1 = 2 * prec * recall / f1_denom
-    return prec, recall, f1
 
 
 def create_clf_evaluation(
