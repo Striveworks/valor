@@ -26,5 +26,6 @@ class EvaluationJob:
 
     model: str
     dataset: str
+    task_type: str
     settings: EvaluationSettings = field(default_factory=EvaluationSettings)
     id: int = None

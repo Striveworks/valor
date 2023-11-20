@@ -9,7 +9,7 @@ from pydantic import (
     model_validator,
 )
 
-from velour_api.enums import JobStatus
+from velour_api.enums import JobStatus, TaskType
 from velour_api.schemas.filters import Filter
 from velour_api.schemas.label import Label
 
@@ -60,6 +60,7 @@ class EvaluationJob(BaseModel):
 
     model: str
     dataset: str
+    task_type: TaskType
     settings: EvaluationSettings = Field(default=EvaluationSettings())
     id: int | None = None
 

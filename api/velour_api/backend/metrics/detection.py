@@ -431,6 +431,12 @@ def create_detection_evaluation(
     Returns
         Evaluations settings id.
     """
+    # check matching task_type
+    if job_request.task_type != enums.TaskType.DETECTION:
+        raise TypeError(
+            "Invalid task_type, please choose an evaluation method that supports object detection"
+        )
+
     # validate parameters
     if not job_request.settings.parameters:
         job_request.settings.parameters = schemas.DetectionParameters()
@@ -454,9 +460,10 @@ def create_detection_evaluation(
             or job_request.settings.filters.models_metadata is not None
             or job_request.settings.filters.models_geospatial is not None
             or job_request.settings.filters.prediction_scores is not None
+            or job_request.settings.filters.task_types is not None
         ):
             raise ValueError(
-                "Evaluation filter objects should not include any dataset, model or prediction score filters."
+                "Evaluation filter objects should not include any dataset, model, prediction score or task type filters."
             )
 
     # load sql objects
@@ -513,12 +520,20 @@ def create_detection_metrics(
     evaluation = db.scalar(
         select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     )
+
+    # unpack job request
     job_request = schemas.EvaluationJob(
         dataset=evaluation.dataset.name,
         model=evaluation.model.name,
+        task_type=evaluation.task_type,
         settings=schemas.EvaluationSettings(**evaluation.settings),
         id=evaluation.id,
     )
+
+    # configure filters
+    if not job_request.settings.filters:
+        job_request.settings.filters = schemas.Filter()
+    job_request.settings.filters.task_types = [enums.TaskType.DETECTION]
 
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)

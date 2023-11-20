@@ -540,10 +540,14 @@ def create_clf_evaluation(
     Returns
         Evaluations job id.
     """
+    # check matching task_type
+    if job_request.task_type != TaskType.CLASSIFICATION:
+        raise TypeError(
+            "Invalid task_type, please choose an evaluation method that supports classification"
+        )
+
     # configure filters object
-    if not job_request.settings.filters:
-        job_request.settings.filters = schemas.Filter()
-    else:
+    if job_request.settings.filters:
         if (
             job_request.settings.filters.dataset_names is not None
             or job_request.settings.filters.dataset_metadata is not None
@@ -552,13 +556,11 @@ def create_clf_evaluation(
             or job_request.settings.filters.models_metadata is not None
             or job_request.settings.filters.models_geospatial is not None
             or job_request.settings.filters.prediction_scores is not None
+            or job_request.settings.filters.task_types is not None
         ):
             raise ValueError(
-                "Evaluation filter objects should not include any dataset, model or prediction score filters."
+                "Evaluation filter objects should not include any dataset, model, prediction score or task type filters."
             )
-
-    # set task_type filter
-    job_request.settings.filters.task_types = [TaskType.CLASSIFICATION]
 
     # create evaluation row
     dataset = core.get_dataset(db, job_request.dataset)
@@ -586,12 +588,20 @@ def create_clf_metrics(
     evaluation = db.scalar(
         select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     )
+
+    # unpack job request
     job_request = schemas.EvaluationJob(
         dataset=evaluation.dataset.name,
         model=evaluation.model.name,
+        task_type=evaluation.task_type,
         settings=schemas.EvaluationSettings(**evaluation.settings),
         id=evaluation.id,
     )
+
+    # configure filters
+    if not job_request.settings.filters:
+        job_request.settings.filters = schemas.Filter()
+    job_request.settings.filters.task_types = [TaskType.CLASSIFICATION]
 
     print(job_request)
 

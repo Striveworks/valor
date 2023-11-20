@@ -26,6 +26,7 @@ def _db_evaluation_job_to_pydantic_evaluation_job(
     return schemas.EvaluationJob(
         model=evaluation_job.model.name,
         dataset=evaluation_job.dataset.name,
+        task_type=evaluation_job.task_type,
         settings=evaluation_job.settings,
         id=evaluation_job.id,
     )

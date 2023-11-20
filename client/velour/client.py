@@ -642,6 +642,7 @@ class Model:
         evaluation = schemas.EvaluationJob(
             model=self.name,
             dataset=dataset.name,
+            task_type=enums.TaskType.CLASSIFICATION.value,
         )
 
         resp = self.client._requests_post_rel_host(
@@ -690,6 +691,7 @@ class Model:
         evaluation = schemas.EvaluationJob(
             model=self.name,
             dataset=dataset.name,
+            task_type=enums.TaskType.DETECTION.value,
             settings=schemas.EvaluationSettings(
                 parameters=parameters,
                 filters=filters,
@@ -725,6 +727,7 @@ class Model:
         evaluation = schemas.EvaluationJob(
             model=self.name,
             dataset=dataset.name,
+            task_type=enums.TaskType.SEGMENTATION.value,
         )
 
         resp = self.client._requests_post_rel_host(

@@ -1535,6 +1535,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
+        "task_type": "object-detection",
         "settings": {
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -1615,6 +1616,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
+        "task_type": "object-detection",
         "settings": {
             "filters": {
                 "annotation_types": ["box"],
@@ -1656,6 +1658,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
+        "task_type": "object-detection",
         "settings": {
             "filters": {
                 "annotation_types": ["box"],
@@ -1692,6 +1695,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
+        "task_type": "object-detection",
         "settings": {
             "filters": {
                 "annotation_types": ["box"],
@@ -1730,6 +1734,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
+        "task_type": "object-detection",
         "settings": {
             "filters": {
                 "annotation_types": ["box"],
@@ -1854,6 +1859,7 @@ def test_evaluate_detection_with_json_filters(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
+        "task_type": "object-detection",
         "settings": {
             "filters": {
                 "annotation_types": ["box"],
@@ -2561,7 +2567,8 @@ def test_evaluate_tabular_clf(
     assert eval_settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "settings": {"filters": {"task_types": ["classification"]}},
+        "task_type": "classification",
+        "settings": {},
     }
 
     metrics_from_eval_settings_id = eval_jobs[0].metrics["metrics"]
@@ -2790,7 +2797,7 @@ def test_geospatial_filter(
             timeout=30,
         )
     assert (
-        "should not include any dataset, model or prediction score filters"
+        "should not include any dataset, model, prediction score or task type filters"
         in str(e)
     )
 
@@ -2856,7 +2863,7 @@ def test_geospatial_filter(
             timeout=30,
         )
     assert (
-        "should not include any dataset, model or prediction score filters"
+        "should not include any dataset, model, prediction score or task type filters"
         in str(e)
     )
 

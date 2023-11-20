@@ -180,6 +180,12 @@ def compute_segmentation_metrics(
 def create_semantic_segmentation_evaluation(
     db: Session, job_request: EvaluationJob
 ) -> int:
+    # check matching task_type
+    if job_request.task_type != TaskType.SEGMENTATION:
+        raise TypeError(
+            "Invalid task_type, please choose an evaluation method that supports semantic segmentation"
+        )
+
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)
 
