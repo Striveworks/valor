@@ -416,8 +416,7 @@ def _get_confusion_matrix_and_metrics_at_label_key(
 
     confusion_matrix = _confusion_matrix_at_label_key(
         db=db,
-        dataset_name=job_request.dataset,
-        model_name=job_request.model,
+        job_request=job_request,
         label_key=label_key,
     )
 
@@ -521,8 +520,7 @@ def _compute_clf_metrics(
     for label_key in unique_label_keys:
         cm_and_metrics = _get_confusion_matrix_and_metrics_at_label_key(
             db,
-            dataset_name=job_request.dataset,
-            model_name=job_request.model,
+            job_request=job_request,
             label_key=label_key,
             labels=[label for label in labels if label.key == label_key],
         )
@@ -546,14 +544,18 @@ def create_clf_evaluation(
     if not job_request.settings.filters:
         job_request.settings.filters = schemas.Filter()
     else:
-        # clear dataset + model filters
-        job_request.settings.filters.dataset_names = None
-        job_request.settings.filters.dataset_metadata = None
-        job_request.settings.filters.dataset_geospatial = None
-        job_request.settings.filters.models_names = None
-        job_request.settings.filters.models_metadata = None
-        job_request.settings.filters.models_geospatial = None
-        job_request.settings.filters.prediction_scores = None
+        if (
+            job_request.settings.filters.dataset_names is not None
+            or job_request.settings.filters.dataset_metadata is not None
+            or job_request.settings.filters.dataset_geospatial is not None
+            or job_request.settings.filters.models_names is not None
+            or job_request.settings.filters.models_metadata is not None
+            or job_request.settings.filters.models_geospatial is not None
+            or job_request.settings.filters.prediction_scores is not None
+        ):
+            raise ValueError(
+                "Evaluation filter objects should not include any dataset, model or prediction score filters."
+            )
 
     # set task_type filter
     job_request.settings.filters.task_types = [TaskType.CLASSIFICATION]
@@ -571,20 +573,27 @@ def create_clf_evaluation(
             "settings": job_request.settings.model_dump(),
         },
     )
-
-    # set job id
-    job_request.id = es.id
-
-    return job_request
+    return es.id
 
 
 def create_clf_metrics(
     db: Session,
-    job_request: schemas.EvaluationJob,
+    evaluation_id: int,
 ) -> int:
     """
     Intended to run as background
     """
+    evaluation = db.scalar(
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
+    )
+    job_request = schemas.EvaluationJob(
+        dataset=evaluation.dataset.name,
+        model=evaluation.model.name,
+        settings=schemas.EvaluationSettings(**evaluation.settings),
+        id=evaluation.id,
+    )
+
+    print(job_request)
 
     confusion_matrices, metrics = _compute_clf_metrics(
         db=db,

@@ -101,8 +101,7 @@ def compute_detection_metrics(
     dataset: models.Dataset,
     model: models.Model,
     settings: schemas.EvaluationSettings,
-    groundtruth_type: enums.AnnotationType,
-    prediction_type: enums.AnnotationType,
+    target_type: enums.AnnotationType,
 ) -> list[
     schemas.APMetric
     | schemas.APMetricAveragedOverIOUs
@@ -123,19 +122,6 @@ def compute_detection_metrics(
     pd_filter = settings.filters.model_copy()
     pd_filter.dataset_names = [dataset.name]
     pd_filter.models_names = [model.name]
-
-    # Get target annotation type
-    target_type = max(settings.filters.annotation_types, key=lambda x: x)
-
-    # Convert geometries to target type (if required)
-    core.convert_geometry(
-        db,
-        dataset=dataset,
-        model=model,
-        dataset_source_type=groundtruth_type,
-        model_source_type=prediction_type,
-        evaluation_target_type=target_type,
-    )
 
     # Join gt, datum, annotation, label
     gt = (
@@ -425,7 +411,7 @@ def _get_disjoint_label_sets(
     db: Session,
     groundtruth_filter: schemas.Filter,
     prediction_filters: schemas.Filter,
-) -> tuple(list[schemas.Label]):
+) -> tuple:
 
     # get disjoint label sets
     groundtruth_labels = query.get_groundtruth_labels(db, groundtruth_filter)
@@ -439,49 +425,51 @@ def create_detection_evaluation(
     db: Session,
     job_request: schemas.EvaluationJob,
 ) -> int:
-    """This will always run in foreground.
+    """
+    This will always run in foreground.
 
     Returns
         Evaluations settings id.
     """
+    # validate parameters
+    if not job_request.settings.parameters:
+        job_request.settings.parameters = schemas.DetectionParameters()
+    else:
+        if not isinstance(
+            job_request.settings.parameters, schemas.DetectionParameters
+        ):
+            raise TypeError(
+                "expected evaluation settings to have parameters of type `DetectionParameters` for task type `DETECTION`"
+            )
+
+    # validate filters
+    if not job_request.settings.filters:
+        job_request.settings.filters = schemas.Filter()
+    else:
+        if (
+            job_request.settings.filters.dataset_names is not None
+            or job_request.settings.filters.dataset_metadata is not None
+            or job_request.settings.filters.dataset_geospatial is not None
+            or job_request.settings.filters.models_names is not None
+            or job_request.settings.filters.models_metadata is not None
+            or job_request.settings.filters.models_geospatial is not None
+            or job_request.settings.filters.prediction_scores is not None
+        ):
+            raise ValueError(
+                "Evaluation filter objects should not include any dataset, model or prediction score filters."
+            )
+
+    # load sql objects
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)
 
-    # default parameters
-    if not job_request.settings.parameters:
-        job_request.settings.parameters = schemas.DetectionParameters()
-
-    # validate parameters
-    if not isinstance(
-        job_request.settings.parameters, schemas.DetectionParameters
-    ):
-        raise TypeError(
-            "expected evaluation settings to have parameters of type `DetectionParameters` for task type `DETECTION`"
-        )
-
-    # annotation types
+    # determine annotation types
     (
         gct,
         groundtruth_type,
         prediction_type,
     ) = _get_annotation_type_for_computation(
         db, dataset, model, job_request.settings.filters
-    )
-
-    # preupdate settings
-    job_request.settings.task_type = enums.TaskType.DETECTION
-    job_request.settings.filters.task_types = [enums.TaskType.DETECTION]
-
-    # create evaluation settings row
-    es = get_or_create_row(
-        db,
-        models.Evaluation,
-        mapping={
-            "dataset_id": dataset.id,
-            "model_id": model.id,
-            "task_type": enums.TaskType.DETECTION,
-            "settings": job_request.settings.model_dump(),
-        },
     )
 
     # create groundtruth label filter
@@ -500,30 +488,68 @@ def create_detection_evaluation(
         db, groundtruth_label_filter, prediction_label_filter
     )
 
+    # create evaluation settings row
+    es = get_or_create_row(
+        db,
+        models.Evaluation,
+        mapping={
+            "dataset_id": dataset.id,
+            "model_id": model.id,
+            "task_type": enums.TaskType.DETECTION,
+            "settings": job_request.settings.model_dump(),
+        },
+    )
+
     return es.id, groundtruth_unique, prediction_unique
 
 
 def create_detection_metrics(
     db: Session,
-    job_request: schemas.EvaluationJob,
     evaluation_id: int,
 ):
     """
     Intended to run as background
     """
+    evaluation = db.scalar(
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
+    )
+    job_request = schemas.EvaluationJob(
+        dataset=evaluation.dataset.name,
+        model=evaluation.model.name,
+        settings=schemas.EvaluationSettings(**evaluation.settings),
+        id=evaluation.id,
+    )
 
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)
+
     groundtruth_type = core.get_annotation_type(db, dataset, None)
     prediction_type = core.get_annotation_type(db, dataset, model)
+
+    # Get user-specified annotation type
+    if job_request.settings.filters.annotation_types:
+        target_type = max(
+            job_request.settings.filters.annotation_types, key=lambda x: x
+        )
+    else:
+        target_type = min([groundtruth_type, prediction_type])
+
+    # Convert geometries to target type (if required)
+    core.convert_geometry(
+        db,
+        dataset=dataset,
+        model=model,
+        dataset_source_type=groundtruth_type,
+        model_source_type=prediction_type,
+        evaluation_target_type=target_type,
+    )
 
     metrics = compute_detection_metrics(
         db=db,
         dataset=dataset,
         model=model,
         settings=job_request.settings,
-        groundtruth_type=groundtruth_type,
-        prediction_type=prediction_type,
+        target_type=target_type,
     )
 
     metric_mappings = create_metric_mappings(

@@ -1536,7 +1536,6 @@ def test_evaluate_detection(
         "model": model_name,
         "dataset": "test_dataset",
         "settings": {
-            "task_type": TaskType.DETECTION.value,
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
@@ -1544,7 +1543,6 @@ def test_evaluate_detection(
             "filters": {
                 "annotation_types": ["box"],
                 "label_keys": ["k1"],
-                "task_types": [TaskType.DETECTION.value],
             },
         },
     }
@@ -1631,13 +1629,11 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
-                "task_types": [TaskType.DETECTION.value],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "task_type": "object-detection",
         },
     }
     assert eval_job_bounded_area_10_2000.metrics["metrics"] == expected_metrics
@@ -1670,13 +1666,11 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
-                "task_types": [TaskType.DETECTION.value],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "task_type": "object-detection",
         },
     }
     assert eval_job_min_area_1200.metrics["metrics"] != expected_metrics
@@ -1708,13 +1702,11 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
-                "task_types": [TaskType.DETECTION.value],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "task_type": "object-detection",
         },
     }
     assert eval_job_max_area_1200.metrics["metrics"] != expected_metrics
@@ -1752,13 +1744,11 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
-                "task_types": [TaskType.DETECTION.value],
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "task_type": "object-detection",
         },
     }
     assert (
@@ -1883,7 +1873,6 @@ def test_evaluate_detection_with_json_filters(
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "task_type": "object-detection",
         },
     }
     assert (
@@ -2769,79 +2758,41 @@ def test_geospatial_filter(
         client=client, name=dset_name, geospatial=geo_dict
     )
     for gt in gt_dets1:
+        gt.datum.geospatial = geo_dict
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
     model = Model.create(client=client, name=model_name, geospatial=geo_dict)
     for pd in pred_dets:
+        pd.datum.geospatial = geo_dict
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
-    # test filtering for the dataset
-    eval_job = model.evaluate_detection(
-        dataset=dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
-        filters={
-            "dataset_geospatial": [
-                {
-                    "operator": "outside",
-                    "value": {
-                        "geometry": {"type": "Point", "coordinates": [0, 0]}
-                    },
-                }
-            ],
-        },
-        timeout=30,
-    )
-
-    settings = asdict(eval_job.settings)
-    assert settings["settings"]["filters"]["dataset_geospatial"] == [
-        {
-            "value": {
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [0.0, 0.0],
-                }
+    # filtering by dataset should be disabled as dataset is called explicitly
+    with pytest.raises(ClientException) as e:
+        model.evaluate_detection(
+            dataset=dataset,
+            iou_thresholds_to_compute=[0.1, 0.6],
+            iou_thresholds_to_keep=[0.1, 0.6],
+            filters={
+                "dataset_geospatial": [
+                    {
+                        "operator": "outside",
+                        "value": {
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [0, 0],
+                            }
+                        },
+                    }
+                ],
             },
-            "operator": "outside",
-        }
-    ]
-
-    assert len(eval_job.metrics["metrics"]) > 0
-
-    # test dataset WHERE miss
-    eval_job = model.evaluate_detection(
-        dataset=dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
-        filters={
-            "dataset_geospatial": [
-                {
-                    "operator": "inside",
-                    "value": {
-                        "geometry": {"type": "Point", "coordinates": [0, 0]}
-                    },
-                }
-            ],
-        },
-        timeout=30,
+            timeout=30,
+        )
+    assert (
+        "should not include any dataset, model or prediction score filters"
+        in str(e)
     )
-
-    settings = asdict(eval_job.settings)
-    assert settings["settings"]["filters"]["dataset_geospatial"] == [
-        {
-            "value": {
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [0.0, 0.0],
-                }
-            },
-            "operator": "inside",
-        }
-    ]
-
-    assert len(eval_job.metrics["metrics"]) == 0
 
     # test datums
     eval_job = model.evaluate_detection(
@@ -2876,55 +2827,38 @@ def test_geospatial_filter(
 
     assert len(eval_job.metrics["metrics"]) == 0
 
-    # test models
-    eval_job = model.evaluate_detection(
-        dataset=dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
-        filters={
-            "models_geospatial": [
-                {
-                    "operator": "inside",
-                    "value": {
-                        "geometry": {
-                            "type": "Polygon",
-                            "coordinates": [
-                                [
-                                    [124.0, 37.0],
-                                    [128.0, 37.0],
-                                    [128.0, 40.0],
-                                    [124.0, 40.0],
-                                ]
-                            ],
-                        }
-                    },
-                }
-            ],
-        },
-        timeout=30,
-    )
-
-    settings = asdict(eval_job.settings)
-    assert settings["settings"]["filters"]["models_geospatial"] == [
-        {
-            "value": {
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [124.0, 37.0],
-                            [128.0, 37.0],
-                            [128.0, 40.0],
-                            [124.0, 40.0],
-                        ]
-                    ],
-                }
+    # filtering by model should be disabled as model is called explicitly
+    with pytest.raises(ClientException) as e:
+        model.evaluate_detection(
+            dataset=dataset,
+            iou_thresholds_to_compute=[0.1, 0.6],
+            iou_thresholds_to_keep=[0.1, 0.6],
+            filters={
+                "models_geospatial": [
+                    {
+                        "operator": "inside",
+                        "value": {
+                            "geometry": {
+                                "type": "Polygon",
+                                "coordinates": [
+                                    [
+                                        [124.0, 37.0],
+                                        [128.0, 37.0],
+                                        [128.0, 40.0],
+                                        [124.0, 40.0],
+                                    ]
+                                ],
+                            }
+                        },
+                    }
+                ],
             },
-            "operator": "inside",
-        }
-    ]
-
-    assert len(eval_job.metrics["metrics"]) > 0
+            timeout=30,
+        )
+    assert (
+        "should not include any dataset, model or prediction score filters"
+        in str(e)
+    )
 
 
 def test_get_dataset_status(client: Client, db: Session, gt_dets1: list):
