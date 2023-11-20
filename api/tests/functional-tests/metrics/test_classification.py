@@ -164,54 +164,53 @@ def test__confusion_matrix_at_label_key(db: Session, classification_test_data):
     assert _accuracy_from_cm(cm) == 3 / 6
 
 
-# TODO -- Convert to use json column
-# def _get_md1_val0_id(db):
-#     # helper function to get metadata id for "md1", "md1-val0"
-#     mds = db.scalars(select(Metadatum).where(Metadatum.key == "md1")).all()
-#     md0 = mds[0]
-#     assert md0.string_value == "md1-val0"
+def test__confusion_matrix_at_label_key_and_group(
+    db: Session, classification_test_data
+):
+    """
+    Test filtering by metadata (md1: md1-val0).
+    """
+    job_request = schemas.EvaluationJob(
+        dataset=dataset_name,
+        model=model_name,
+        settings=schemas.EvaluationSettings(
+            filters=schemas.Filter(
+                task_types=[enums.TaskType.CLASSIFICATION],
+                datum_metadata={"md1": schemas.StringFilter(value="md1-val0")},
+            )
+        ),
+    )
 
-#     return md0.id
+    cm = _confusion_matrix_at_label_key(
+        db,
+        job_request=job_request,
+        label_key="animal",
+    )
+
+    # for this metadatum and label id we have the gts
+    # ["bird", "dog", "bird", "bird", "dog"] and the preds
+    # ["bird", "cat", "cat", "dog", "cat"]
+    expected_entries = [
+        schemas.ConfusionMatrixEntry(
+            groundtruth="bird", prediction="bird", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="dog", prediction="cat", count=2
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="bird", prediction="cat", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="bird", prediction="dog", count=1
+        ),
+    ]
+
+    assert len(cm.entries) == len(expected_entries)
+    for e in expected_entries:
+        assert e in cm.entries
 
 
-# @TODO: Will add support in second PR, need to validate `ops.Query`
-# def test__confusion_matrix_at_label_key_and_group(
-#     db: Session, classification_test_data  # unused except for cleanup
-# ):
-#     metadatum_id = _get_md1_val0_id(db)
-
-#     cm = _confusion_matrix_at_label_key(
-#         db,
-#         dataset=dataset_name,
-#         model=model_name,
-#         label_key="animal",
-#         metadatum_id=metadatum_id,
-#     )
-
-#     # for this metadatum and label id we have the gts
-#     # ["bird", "dog", "bird", "bird", "dog"] and the preds
-#     # ["bird", "cat", "cat", "dog", "cat"]
-#     expected_entries = [
-#         schemas.ConfusionMatrixEntry(
-#             groundtruth="bird", prediction="bird", count=1
-#         ),
-#         schemas.ConfusionMatrixEntry(
-#             groundtruth="dog", prediction="cat", count=2
-#         ),
-#         schemas.ConfusionMatrixEntry(
-#             groundtruth="bird", prediction="cat", count=1
-#         ),
-#         schemas.ConfusionMatrixEntry(
-#             groundtruth="bird", prediction="dog", count=1
-#         ),
-#     ]
-
-#     assert len(cm.entries) == len(expected_entries)
-#     for e in expected_entries:
-#         assert e in cm.entries
-
-
-def test_roc_auc(db, classification_test_data):
+def test__roc_auc(db, classification_test_data):
     """Test ROC auc computation. This agrees with scikit-learn: the code (whose data
     comes from classification_test_data)
 
@@ -266,45 +265,50 @@ def test_roc_auc(db, classification_test_data):
     assert "is not a classification label" in str(exc_info)
 
 
-# @TODO: Will support in second PR, need to validate `ops.Query`
-# def test_roc_auc_groupby_metadata(db, classification_test_data):
-#     """Test computing ROC AUC for a given grouping. This agrees with:
+def test_roc_auc_groupby_metadata(db, classification_test_data):
+    """Test computing ROC AUC for a given grouping. This agrees with:
 
-#     Scikit-learn won't do multiclass ROC AUC when there are only two predictive classes. So we
-#     compare this to doing the following in scikit-learn: first computing binary ROC for the "dog" class via:
+    Scikit-learn won't do multiclass ROC AUC when there are only two predictive classes. So we
+    compare this to doing the following in scikit-learn: first computing binary ROC for the "dog" class via:
 
-#     ```
-#     from sklearn.metrics import roc_auc_score
+    ```
+    from sklearn.metrics import roc_auc_score
 
-#     y_true = [0, 1, 0, 0, 1]
-#     y_score = [0.2, 0.1, 0.05, 0.75, 0.4]
+    y_true = [0, 1, 0, 0, 1]
+    y_score = [0.2, 0.1, 0.05, 0.75, 0.4]
 
-#     roc_auc_score(y_true, y_score)
-#     ```
+    roc_auc_score(y_true, y_score)
+    ```
 
-#     which gives 0.5. Then we do it for the "bird" class via:
+    which gives 0.5. Then we do it for the "bird" class via:
 
-#     ```
-#     from sklearn.metrics import roc_auc_score
+    ```
+    from sklearn.metrics import roc_auc_score
 
-#     y_true = [1, 0, 1, 1, 0]
-#     y_score = [0.6, 0.0, 0.15, 0.15, 0.2]
+    y_true = [1, 0, 1, 1, 0]
+    y_score = [0.6, 0.0, 0.15, 0.15, 0.2]
 
-#     roc_auc_score(y_true, y_score)
-#     ```
+    roc_auc_score(y_true, y_score)
+    ```
 
-#     which gives 2/3. So we expect our implementation to give the average of 0.5 and 2/3
-#     """
+    which gives 2/3. So we expect our implementation to give the average of 0.5 and 2/3
+    """
+    job_request = schemas.EvaluationJob(
+        dataset=dataset_name,
+        model=model_name,
+        settings=schemas.EvaluationSettings(
+            filters=schemas.Filter(
+                task_types=[enums.TaskType.CLASSIFICATION],
+                datum_metadata={"md1": schemas.StringFilter(value="md1-val0")},
+            )
+        ),
+    )
 
-#     metadatum_id = _get_md1_val0_id(db)
-
-#     assert (
-#         roc_auc(
-#             db,
-#             dataset_name,
-#             model_name,
-#             label_key="animal",
-#             metadatum_id=metadatum_id,
-#         )
-#         == (0.5 + 2 / 3) / 2
-#     )
+    assert (
+        _roc_auc(
+            db,
+            job_request=job_request,
+            label_key="animal",
+        )
+        == (0.5 + 2 / 3) / 2
+    )

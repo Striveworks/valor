@@ -124,7 +124,6 @@ def _binary_roc_auc(
     return ret
 
 
-# @TODO: Implement metadata filtering by using `ops.Query`
 def _roc_auc(
     db: Session,
     job_request: schemas.EvaluationJob,
