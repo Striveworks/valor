@@ -1038,6 +1038,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         job_request = schemas.EvaluationJob(
             model="test_model",
             dataset="test_dataset",
+            task_type=enums.TaskType.DETECTION,
             settings=schemas.EvaluationSettings(
                 parameters=schemas.DetectionParameters(
                     iou_thresholds_to_compute=[0.2, 0.6],
@@ -1178,8 +1179,8 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
     assert model_evals[0] == schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
+        task_type=enums.TaskType.DETECTION,
         settings=schemas.EvaluationSettings(
-            task_type=enums.TaskType.DETECTION,
             parameters=schemas.DetectionParameters(
                 iou_thresholds_to_compute=[0.2, 0.6],
                 iou_thresholds_to_keep=[0.2],
@@ -1194,8 +1195,8 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
     assert model_evals[1] == schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
+        task_type=enums.TaskType.DETECTION,
         settings=schemas.EvaluationSettings(
-            task_type=enums.TaskType.DETECTION,
             parameters=schemas.DetectionParameters(
                 iou_thresholds_to_compute=[0.2, 0.6],
                 iou_thresholds_to_keep=[0.2],
@@ -1242,6 +1243,7 @@ def test_create_clf_metrics(
     job_request = schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
+        task_type=enums.TaskType.CLASSIFICATION,
     )
 
     # create clf evaluation (returns Clf Response)

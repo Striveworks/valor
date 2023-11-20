@@ -111,6 +111,7 @@ def test__confusion_matrix_at_label_key(db: Session, classification_test_data):
     job_request = schemas.EvaluationJob(
         dataset=dataset_name,
         model=model_name,
+        task_type=enums.TaskType.CLASSIFICATION,
         settings=schemas.EvaluationSettings(filters=schemas.Filter()),
     )
 
@@ -173,6 +174,7 @@ def test__confusion_matrix_at_label_key_and_group(
     job_request = schemas.EvaluationJob(
         dataset=dataset_name,
         model=model_name,
+        task_type=enums.TaskType.CLASSIFICATION,
         settings=schemas.EvaluationSettings(
             filters=schemas.Filter(
                 task_types=[enums.TaskType.CLASSIFICATION],
@@ -252,6 +254,7 @@ def test__roc_auc(db, classification_test_data):
     job_request = schemas.EvaluationJob(
         dataset=dataset_name,
         model=model_name,
+        task_type=enums.TaskType.CLASSIFICATION,
         settings=schemas.EvaluationSettings(
             filters=schemas.Filter(task_types=[enums.TaskType.CLASSIFICATION])
         ),
@@ -296,6 +299,7 @@ def test_roc_auc_groupby_metadata(db, classification_test_data):
     job_request = schemas.EvaluationJob(
         dataset=dataset_name,
         model=model_name,
+        task_type=enums.TaskType.CLASSIFICATION,
         settings=schemas.EvaluationSettings(
             filters=schemas.Filter(
                 task_types=[enums.TaskType.CLASSIFICATION],

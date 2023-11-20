@@ -365,6 +365,7 @@ def test_stateflow_model(db: Session):
             job_request=schemas.EvaluationJob(
                 model=model_name,
                 dataset=dset_name,
+                task_type=enums.TaskType.DETECTION,
                 settings=schemas.EvaluationSettings(
                     parameters=schemas.DetectionParameters(
                         iou_thresholds_to_compute=[0.2, 0.6],
@@ -403,6 +404,7 @@ def test_stateflow_detection_evaluation(
     job_request = schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
+        task_type=enums.TaskType.DETECTION,
         settings=schemas.EvaluationSettings(
             parameters=schemas.DetectionParameters(
                 iou_thresholds_to_compute=[0.2, 0.6],
@@ -485,6 +487,7 @@ def test_stateflow_clf_evaluation(
     job_request = schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
+        task_type=enums.TaskType.CLASSIFICATION,
     )
 
     # check dataset READY

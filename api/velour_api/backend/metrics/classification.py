@@ -603,8 +603,6 @@ def create_clf_metrics(
         job_request.settings.filters = schemas.Filter()
     job_request.settings.filters.task_types = [TaskType.CLASSIFICATION]
 
-    print(job_request)
-
     confusion_matrices, metrics = _compute_clf_metrics(
         db=db,
         job_request=job_request,

@@ -30,8 +30,7 @@ def test_compute_detection_metrics(
         db=db,
         dataset=get_dataset(db, "test_dataset"),
         model=get_model(db, "test_model"),
-        groundtruth_type=enums.AnnotationType.BOX,
-        prediction_type=enums.AnnotationType.BOX,
+        target_type=enums.AnnotationType.BOX,
         settings=schemas.EvaluationSettings(
             parameters=schemas.DetectionParameters(
                 iou_thresholds_to_compute=iou_thresholds,
