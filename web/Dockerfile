@@ -1,8 +1,10 @@
 FROM node:alpine
 
-WORKDIR /app
+WORKDIR /web
 
 COPY package.json .
+
+COPY .npmrc .
 
 RUN npm install
 

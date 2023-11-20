@@ -1,0 +1,3 @@
+//npm.pkg.github.com/:_authToken=${MINERVA_TOKEN}
+@striveworks:registry=https://npm.pkg.github.com
+save-prefix=""
