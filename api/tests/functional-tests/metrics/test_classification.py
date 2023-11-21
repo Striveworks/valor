@@ -12,12 +12,9 @@ from velour_api.backend.metrics.classification import (
 )
 from velour_api.backend.metrics.metrics import get_evaluations
 
-dataset_name = "test_dataset"
-model_name = "test_model"
-
 
 @pytest.fixture
-def classification_test_data(db: Session):
+def classification_test_data(db: Session, dataset_name: str, model_name: str):
     animal_gts = ["bird", "dog", "bird", "bird", "cat", "dog"]
     animal_preds = [
         {"bird": 0.6, "dog": 0.2, "cat": 0.2},
@@ -111,7 +108,10 @@ def classification_test_data(db: Session):
 
 
 def test_compute_confusion_matrix_at_label_key(
-    db: Session, classification_test_data
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    classification_test_data,
 ):
     label_key = "animal"
     job_request = schemas.EvaluationJob(
@@ -172,7 +172,10 @@ def test_compute_confusion_matrix_at_label_key(
 
 
 def test_compute_confusion_matrix_at_label_key_and_filter(
-    db: Session, classification_test_data
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    classification_test_data,
 ):
     """
     Test filtering by metadata (md1: md1-val0).
@@ -218,7 +221,12 @@ def test_compute_confusion_matrix_at_label_key_and_filter(
         assert e in cm.entries
 
 
-def test_compute_roc_auc(db, classification_test_data):
+def test_compute_roc_auc(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    classification_test_data,
+):
     """Test ROC auc computation. This agrees with scikit-learn: the code (whose data
     comes from classification_test_data)
 
@@ -277,7 +285,9 @@ def test_compute_roc_auc(db, classification_test_data):
     assert "is not a classification label" in str(exc_info)
 
 
-def test_compute_roc_auc_groupby_metadata(db, classification_test_data):
+def test_compute_roc_auc_groupby_metadata(
+    db: Session, dataset_name: str, model_name: str, classification_test_data
+):
     """Test computing ROC AUC for a given grouping. This agrees with:
 
     Scikit-learn won't do multiclass ROC AUC when there are only two predictive classes. So we
@@ -329,6 +339,8 @@ def test_compute_roc_auc_groupby_metadata(db, classification_test_data):
 
 def test_compute_classification(
     db: Session,
+    dataset_name: str,
+    model_name: str,
     classification_test_data,
 ):
     """
@@ -405,6 +417,8 @@ def test_compute_classification(
 
 def test_classification(
     db: Session,
+    dataset_name: str,
+    model_name: str,
     classification_test_data,
 ):
     # default request

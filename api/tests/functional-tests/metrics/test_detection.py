@@ -5,9 +5,6 @@ from velour_api.backend.core import get_dataset, get_model
 from velour_api.backend.metrics.detection import compute_detection_metrics
 from velour_api.backend.models import GroundTruth, Prediction
 
-dataset_name = "test_dataset"
-model_name = "test_model"
-
 
 def _round_dict(d: dict, prec: int = 3) -> None:
     """Modifies a dictionary in place by rounding every float in it

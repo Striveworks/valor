@@ -263,14 +263,15 @@ def groundtruths(
 # predictions to use for testing AP
 @pytest.fixture
 def predictions(
-    db: Session, images: list[schemas.Datum]
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    images: list[schemas.Datum],
 ) -> list[list[models.Prediction]]:
     """Creates a model called "test_model" with some predicted
     detections on the dataset "test_dataset". These predictions are taken
     from a torchmetrics unit test (see test_metrics.py)
     """
-    model_name = "test_model"
-    dataset_name = "test_dataset"
     crud.create_model(
         db=db,
         model=schemas.Model(
@@ -374,6 +375,7 @@ def predictions(
 
 @pytest.fixture
 def pred_semantic_segs_img1_create(
+    model_name,
     img1_pred_mask_bytes1: bytes,
     img1_pred_mask_bytes2: bytes,
     img1_pred_mask_bytes3: bytes,
@@ -407,6 +409,7 @@ def pred_semantic_segs_img1_create(
 
 @pytest.fixture
 def pred_semantic_segs_img2_create(
+    model_name: str,
     img2_pred_mask_bytes1: bytes,
     img2_pred_mask_bytes2: bytes,
     img2: schemas.Datum,
