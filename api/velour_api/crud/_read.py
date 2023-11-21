@@ -259,7 +259,7 @@ def get_evaluations(
     settings: list[schemas.EvaluationSettings] | None = None,
 ) -> list[schemas.Evaluation]:
     """
-    Returns all evaluations that conform to user-supplied args.
+    Returns all evaluations that conform to user-supplied constraints.
 
     Parameters
     ----------
@@ -290,42 +290,3 @@ def get_evaluations(
         )
 
     return evaluations
-
-
-# def get_bulk_evaluations(
-#     db: Session,
-#     dataset_names: list[str] | None,
-#     model_names: list[str] | None,
-# ) -> list[schemas.Evaluation]:
-#     """
-#     Returns all metrics associated with user-supplied dataset and model names
-
-#     Parameters
-#     ----------
-#     db
-#         The database session
-#     dataset_names
-#         A list of dataset names that we want to return metrics for
-#     model_names
-#         A list of model names that we want to return metrics for
-#     """
-
-#     job_set = set()
-
-#     # get all relevant job IDs from all of the specified models and datasets
-#     if dataset_names:
-#         for dataset in dataset_names:
-#             dataset_jobs = jobs.get_stateflow().get_dataset_jobs(dataset)
-#             for model, job_ids in dataset_jobs.items():
-#                 job_set.update(job_ids)
-
-#     if model_names:
-#         for model in model_names:
-#             model_jobs = jobs.get_stateflow().get_model_jobs(model)
-#             for dataset, job_ids in model_jobs.items():
-#                 job_set.update(job_ids)
-
-#     output = backend.get_metrics_from_evaluation_ids(
-#         db=db, evaluation_ids=job_set
-#     )
-#     return output
