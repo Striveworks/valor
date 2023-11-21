@@ -88,10 +88,10 @@ def test_evaluate_image_clf(
 
 def test_evaluate_tabular_clf(
     client: Session,
-    y_true: list[int],
-    tabular_preds: list[list[float]],
     dataset_name: str,
     model_name: str,
+    y_true: list[int],
+    tabular_preds: list[list[float]],
 ):
     assert len(y_true) == len(tabular_preds)
 
@@ -287,9 +287,8 @@ def test_evaluate_tabular_clf(
     assert eval_settings == {
         "model": model_name,
         "dataset": "test_dataset",
-        "settings": {
-            "task_type": TaskType.CLASSIFICATION.value,
-        },
+        "task_type": "classification",
+        "settings": {},
     }
 
     metrics_from_eval_settings_id = eval_jobs[0].metrics["metrics"]

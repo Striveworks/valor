@@ -3,14 +3,13 @@ that is no auth
 """
 from dataclasses import asdict
 
-import pytest
 from geoalchemy2.functions import ST_Area
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from velour import Annotation, Dataset, GroundTruth, Label, Model, Prediction
 from velour.client import Client
-from velour.enums import AnnotationType, JobStatus, TaskType
+from velour.enums import AnnotationType, JobStatus
 from velour_api.backend import models
 
 
@@ -55,8 +54,8 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
+        "task_type": "object-detection",
         "settings": {
-            "task_type": TaskType.DETECTION.value,
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
@@ -136,6 +135,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
+        "task_type": "object-detection",
         "settings": {
             "filters": {
                 "annotation_types": ["box"],
@@ -155,7 +155,6 @@ def test_evaluate_detection(
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "task_type": "object-detection",
         },
     }
     assert eval_job_bounded_area_10_2000.metrics["metrics"] == expected_metrics
@@ -178,6 +177,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
+        "task_type": "object-detection",
         "settings": {
             "filters": {
                 "annotation_types": ["box"],
@@ -193,7 +193,6 @@ def test_evaluate_detection(
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "task_type": "object-detection",
         },
     }
     assert eval_job_min_area_1200.metrics["metrics"] != expected_metrics
@@ -215,6 +214,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
+        "task_type": "object-detection",
         "settings": {
             "filters": {
                 "annotation_types": ["box"],
@@ -230,7 +230,6 @@ def test_evaluate_detection(
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "task_type": "object-detection",
         },
     }
     assert eval_job_max_area_1200.metrics["metrics"] != expected_metrics
@@ -254,6 +253,7 @@ def test_evaluate_detection(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
+        "task_type": "object-detection",
         "settings": {
             "filters": {
                 "annotation_types": ["box"],
@@ -273,7 +273,6 @@ def test_evaluate_detection(
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "task_type": "object-detection",
         },
     }
     assert (
@@ -380,6 +379,7 @@ def test_evaluate_detection_with_json_filters(
     assert settings == {
         "model": model_name,
         "dataset": "test_dataset",
+        "task_type": "object-detection",
         "settings": {
             "filters": {
                 "annotation_types": ["box"],
@@ -399,7 +399,6 @@ def test_evaluate_detection_with_json_filters(
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
-            "task_type": "object-detection",
         },
     }
     assert (
@@ -538,11 +537,8 @@ def test_get_bulk_evaluations(
     assert evaluations[0]["metrics"] == expected_metrics
 
     # test incorrect names
-    with pytest.raises(Exception):
-        client.get_bulk_evaluations(datasets="wrong_dataset_name")
-
-    with pytest.raises(Exception):
-        client.get_bulk_evaluations(datasets="wrong_model_name")
+    assert len(client.get_bulk_evaluations(datasets="wrong_dataset_name")) == 0
+    assert len(client.get_bulk_evaluations(models="wrong_model_name")) == 0
 
     # test with multiple models
     second_model = Model.create(client, "second_model")
@@ -604,4 +600,6 @@ def test_get_bulk_evaluations(
     both_evaluations_from_model_names = client.get_bulk_evaluations(
         models=["second_model", "test_model"]
     )
-    assert both_evaluations == both_evaluations_from_model_names
+    assert len(both_evaluations_from_model_names) == 2
+    assert both_evaluations[0] in both_evaluations_from_model_names
+    assert both_evaluations[1] in both_evaluations_from_model_names

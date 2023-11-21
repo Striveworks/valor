@@ -3,8 +3,10 @@ that is no auth
 """
 from dataclasses import asdict
 
+import pytest
+
 from velour import Dataset, GroundTruth, Model, Prediction
-from velour.client import Client
+from velour.client import Client, ClientException
 
 
 def test_set_and_get_geospatial(
@@ -61,7 +63,7 @@ def test_set_and_get_geospatial(
 
 def test_geospatial_filter(
     client: Client,
-    dataset_name: str,
+    dataset_name,
     model_name: str,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
@@ -85,79 +87,41 @@ def test_geospatial_filter(
         client=client, name=dataset_name, geospatial=geo_dict
     )
     for gt in gt_dets1:
+        gt.datum.geospatial = geo_dict
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
     model = Model.create(client=client, name=model_name, geospatial=geo_dict)
     for pd in pred_dets:
+        pd.datum.geospatial = geo_dict
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
-    # test filtering for the dataset
-    eval_job = model.evaluate_detection(
-        dataset=dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
-        filters={
-            "dataset_geospatial": [
-                {
-                    "operator": "outside",
-                    "value": {
-                        "geometry": {"type": "Point", "coordinates": [0, 0]}
-                    },
-                }
-            ],
-        },
-        timeout=30,
-    )
-
-    settings = asdict(eval_job.settings)
-    assert settings["settings"]["filters"]["dataset_geospatial"] == [
-        {
-            "value": {
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [0.0, 0.0],
-                }
+    # filtering by dataset should be disabled as dataset is called explicitly
+    with pytest.raises(ClientException) as e:
+        model.evaluate_detection(
+            dataset=dataset,
+            iou_thresholds_to_compute=[0.1, 0.6],
+            iou_thresholds_to_keep=[0.1, 0.6],
+            filters={
+                "dataset_geospatial": [
+                    {
+                        "operator": "outside",
+                        "value": {
+                            "geometry": {
+                                "type": "Point",
+                                "coordinates": [0, 0],
+                            }
+                        },
+                    }
+                ],
             },
-            "operator": "outside",
-        }
-    ]
-
-    assert len(eval_job.metrics["metrics"]) > 0
-
-    # test dataset WHERE miss
-    eval_job = model.evaluate_detection(
-        dataset=dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
-        filters={
-            "dataset_geospatial": [
-                {
-                    "operator": "inside",
-                    "value": {
-                        "geometry": {"type": "Point", "coordinates": [0, 0]}
-                    },
-                }
-            ],
-        },
-        timeout=30,
+            timeout=30,
+        )
+    assert (
+        "should not include any dataset, model, prediction score or task type filters"
+        in str(e)
     )
-
-    settings = asdict(eval_job.settings)
-    assert settings["settings"]["filters"]["dataset_geospatial"] == [
-        {
-            "value": {
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [0.0, 0.0],
-                }
-            },
-            "operator": "inside",
-        }
-    ]
-
-    assert len(eval_job.metrics["metrics"]) == 0
 
     # test datums
     eval_job = model.evaluate_detection(
@@ -192,52 +156,35 @@ def test_geospatial_filter(
 
     assert len(eval_job.metrics["metrics"]) == 0
 
-    # test models
-    eval_job = model.evaluate_detection(
-        dataset=dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
-        filters={
-            "models_geospatial": [
-                {
-                    "operator": "inside",
-                    "value": {
-                        "geometry": {
-                            "type": "Polygon",
-                            "coordinates": [
-                                [
-                                    [124.0, 37.0],
-                                    [128.0, 37.0],
-                                    [128.0, 40.0],
-                                    [124.0, 40.0],
-                                ]
-                            ],
-                        }
-                    },
-                }
-            ],
-        },
-        timeout=30,
-    )
-
-    settings = asdict(eval_job.settings)
-    assert settings["settings"]["filters"]["models_geospatial"] == [
-        {
-            "value": {
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [
-                        [
-                            [124.0, 37.0],
-                            [128.0, 37.0],
-                            [128.0, 40.0],
-                            [124.0, 40.0],
-                        ]
-                    ],
-                }
+    # filtering by model should be disabled as model is called explicitly
+    with pytest.raises(ClientException) as e:
+        model.evaluate_detection(
+            dataset=dataset,
+            iou_thresholds_to_compute=[0.1, 0.6],
+            iou_thresholds_to_keep=[0.1, 0.6],
+            filters={
+                "models_geospatial": [
+                    {
+                        "operator": "inside",
+                        "value": {
+                            "geometry": {
+                                "type": "Polygon",
+                                "coordinates": [
+                                    [
+                                        [124.0, 37.0],
+                                        [128.0, 37.0],
+                                        [128.0, 40.0],
+                                        [124.0, 40.0],
+                                    ]
+                                ],
+                            }
+                        },
+                    }
+                ],
             },
-            "operator": "inside",
-        }
-    ]
-
-    assert len(eval_job.metrics["metrics"]) > 0
+            timeout=30,
+        )
+    assert (
+        "should not include any dataset, model, prediction score or task type filters"
+        in str(e)
+    )
