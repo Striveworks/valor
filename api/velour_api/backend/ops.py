@@ -476,27 +476,37 @@ class Query:
         self,
         name: str = "generated_subquery",
         *,
-        _pivot: DeclarativeMeta | None = None,
+        pivot: DeclarativeMeta | None = None,
+        as_subquery: bool = True,
     ):
         """
         Generates a sqlalchemy subquery. Graph is chosen automatically as best fit.
         """
-        query, subquery = self._select_graph(_pivot)
+        query, subquery = self._select_graph(pivot)
         if subquery is not None:
             query = query.where(models.Datum.id.in_(subquery))
-        return query.subquery(name)
+        return query.subquery(name) if as_subquery else query
 
-    def groundtruths(self, name: str = "generated_subquery"):
+    def groundtruths(
+        self, name: str = "generated_subquery", *, as_subquery: bool = True
+    ):
         """
         Generates a sqlalchemy subquery using a groundtruths-focused graph.
         """
-        return self.any(name, _pivot=models.GroundTruth)
+        return self.any(
+            name, pivot=models.GroundTruth, as_subquery=as_subquery
+        )
 
-    def predictions(self, name: str = "generated_subquery"):
+    def predictions(
+        self,
+        name: str = "generated_subquery",
+        *,
+        as_subquery: bool = True,
+    ):
         """
         Generates a sqlalchemy subquery using a predictions-focused graph.
         """
-        return self.any(name, _pivot=models.Prediction)
+        return self.any(name, pivot=models.Prediction, as_subquery=as_subquery)
 
     def filter(self, filters: Filter):
         """Parses `schemas.Filter`"""
@@ -554,6 +564,15 @@ class Query:
             self._add_expressions(models.Model, geospatial_expressions)
 
         # datums
+        if filters.datum_ids:
+            self._add_expressions(
+                models.Datum,
+                [
+                    models.Datum.id == id
+                    for id in filters.datum_ids
+                    if isinstance(id, int)
+                ],
+            )
         if filters.datum_uids:
             self._add_expressions(
                 models.Datum,

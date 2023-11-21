@@ -558,9 +558,11 @@ def create_semantic_segmentation_metrics(
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def get_evaluation_jobs_for_dataset(dataset_name: str) -> dict[str, list[int]]:
+def get_evaluation_jobs_for_dataset(
+    dataset_name: str,
+) -> dict[str, list[int]]:
     """Returns all of the job ids for a given dataset."""
-    return crud.get_evaluation_jobs_for_dataset(dataset_name)
+    return crud.get_evaluation_ids_for_dataset(dataset_name=dataset_name)
 
 
 @app.get(
@@ -569,9 +571,11 @@ def get_evaluation_jobs_for_dataset(dataset_name: str) -> dict[str, list[int]]:
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def get_evaluation_jobs_for_model(model_name: str) -> dict[str, list[int]]:
+def get_evaluation_jobs_for_model(
+    model_name: str,
+) -> dict[str, list[int]]:
     """Returns all of the job ids for a given model."""
-    return crud.get_evaluation_jobs_for_model(model_name)
+    return crud.get_evaluation_ids_for_model(model_name=model_name)
 
 
 @app.get(
@@ -601,7 +605,7 @@ def get_bulk_evaluations(
     dataset_names = _split_query_params(datasets)
 
     try:
-        return crud.get_bulk_evaluations(
+        return crud.get_evaluations(
             db=db, dataset_names=dataset_names, model_names=model_names
         )
     except (ValueError,) as e:
@@ -638,7 +642,10 @@ def get_evaluation_job(
     db: Session = Depends(get_db),
 ) -> schemas.EvaluationJob:
     try:
-        return crud.get_evaluation_job_from_id(db=db, evaluation_id=job_id)
+        if job := crud.get_evaluation_jobs(db=db, job_ids=[job_id]):
+            return job[0]
+        else:
+            raise exceptions.JobDoesNotExistError(job_id)
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -649,7 +656,7 @@ def get_evaluation_job(
     response_model_exclude_none=True,
     tags=["Evaluations"],
 )
-def get_evaluation_metrics(
+def get_evaluation(
     job_id: int,
     db: Session = Depends(get_db),
 ) -> schemas.Evaluation:
@@ -662,9 +669,7 @@ def get_evaluation_metrics(
                 status_code=404,
                 detail=f"No metrics for job {job_id} since its status is {status}",
             )
-        output = crud.get_metrics_from_evaluation_ids(
-            db=db, evaluation_id=[job_id]
-        )
+        output = crud.get_evaluations(db=db, job_ids=[job_id])
         return output[0]
     except (
         exceptions.JobDoesNotExistError,

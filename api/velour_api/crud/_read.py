@@ -24,53 +24,6 @@ def get_backend_state(
     )
 
 
-def get_evaluation_jobs_for_dataset(dataset_name: str):
-    return jobs.get_stateflow().get_dataset_jobs(dataset_name)
-
-
-def get_evaluation_jobs_for_model(model_name: str):
-    return jobs.get_stateflow().get_model_jobs(model_name)
-
-
-def get_bulk_evaluations(
-    db: Session,
-    dataset_names: list[str] | None,
-    model_names: list[str] | None,
-) -> list[schemas.Evaluation]:
-    """
-    Returns all metrics associated with user-supplied dataset and model names
-
-    Parameters
-    ----------
-    db
-        The database session
-    dataset_names
-        A list of dataset names that we want to return metrics for
-    model_names
-        A list of model names that we want to return metrics for
-    """
-
-    job_set = set()
-
-    # get all relevant job IDs from all of the specified models and datasets
-    if dataset_names:
-        for dataset in dataset_names:
-            dataset_jobs = jobs.get_stateflow().get_dataset_jobs(dataset)
-            for model, job_ids in dataset_jobs.items():
-                job_set.update(job_ids)
-
-    if model_names:
-        for model in model_names:
-            model_jobs = jobs.get_stateflow().get_model_jobs(model)
-            for dataset, job_ids in model_jobs.items():
-                job_set.update(job_ids)
-
-    output = backend.get_metrics_from_evaluation_ids(
-        db=db, evaluation_ids=job_set
-    )
-    return output
-
-
 """ Labels """
 
 
@@ -250,25 +203,90 @@ def get_prediction(
 """ Evaluation """
 
 
-def get_metrics_from_evaluation_ids(
-    *, db: Session, evaluation_id: int
-) -> list[schemas.Evaluation]:
-    return backend.get_metrics_from_evaluation_ids(db, evaluation_id)
-
-
-def get_evaluation_job_from_id(
-    *, db: Session, evaluation_id: int
-) -> schemas.EvaluationJob:
-    return backend.get_evaluation_job_from_id(db, evaluation_id)
-
-
 def get_model_metrics(
     *, db: Session, model_name: str, evaluation_id: int
 ) -> list[schemas.Metric]:
     return backend.get_model_metrics(db, model_name, evaluation_id)
 
 
-def get_model_evaluation_settings(
-    *, db: Session, model_name: str
+def get_evaluation_ids_for_dataset(dataset_name: str) -> dict[str, list[int]]:
+    return jobs.get_stateflow().get_dataset_jobs(dataset_name)
+
+
+def get_evaluation_ids_for_model(model_name: str) -> dict[str, list[int]]:
+    return jobs.get_stateflow().get_model_jobs(model_name)
+
+
+def get_evaluation_jobs(
+    *,
+    db: Session,
+    job_ids: list[int] | None = None,
+    dataset_names: list[str] | None = None,
+    model_names: list[str] | None = None,
+    settings: list[schemas.EvaluationSettings] | None = None,
 ) -> list[schemas.EvaluationJob]:
-    return backend.get_model_evaluation_jobs(db, model_name)
+    """
+    Returns all evaluation jobs that conform to user-supplied args.
+
+    Parameters
+    ----------
+    db
+        The database session
+    job_ids
+        A list of evaluation job id constraints.
+    dataset_names
+        A list of dataset names to constrain by.
+    model_names
+        A list of model names to constrain by.
+    settings:
+        A list of `schemas.EvaluationSettings` to constrain by.
+    """
+    return backend.get_evaluation_jobs(
+        db=db,
+        job_ids=job_ids,
+        dataset_names=dataset_names,
+        model_names=model_names,
+        settings=settings,
+    )
+
+
+def get_evaluations(
+    *,
+    db: Session,
+    job_ids: list[int] | None = None,
+    dataset_names: list[str] | None = None,
+    model_names: list[str] | None = None,
+    settings: list[schemas.EvaluationSettings] | None = None,
+) -> list[schemas.Evaluation]:
+    """
+    Returns all evaluations that conform to user-supplied constraints.
+
+    Parameters
+    ----------
+    db
+        The database session
+    job_ids
+        A list of evaluation job id constraints.
+    dataset_names
+        A list of dataset names to constrain by.
+    model_names
+        A list of model names to constrain by.
+    settings:
+        A list of `schemas.EvaluationSettings` to constrain by.
+    """
+    # get evaluations that conform to input args
+    evaluations = backend.get_evaluations(
+        db=db,
+        job_ids=job_ids,
+        dataset_names=dataset_names,
+        model_names=model_names,
+        settings=settings,
+    )
+
+    # set evaluation status (redis only available in crud)
+    for evaluation in evaluations:
+        evaluation.status = jobs.get_stateflow().get_job_status(
+            job_id=evaluation.job_id,
+        )
+
+    return evaluations

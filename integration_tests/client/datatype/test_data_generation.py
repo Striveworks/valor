@@ -110,8 +110,8 @@ def test_generate_prediction_data(client: Client):
     assert settings == {
         "model": model_name,
         "dataset": dataset_name,
+        "task_type": TaskType.DETECTION.value,
         "settings": {
-            "task_type": TaskType.DETECTION.value,
             "parameters": {
                 "iou_thresholds_to_compute": [0.0, 1.0],
                 "iou_thresholds_to_keep": [0.0, 1.0],

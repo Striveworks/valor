@@ -5,18 +5,17 @@ from sqlalchemy.sql import and_, func, select
 
 from velour_api import schemas
 from velour_api.backend import core, models
-from velour_api.backend.metrics.core import (
+from velour_api.backend.metrics.metrics import (
     create_metric_mappings,
     get_or_create_row,
 )
+from velour_api.backend.ops import Query
 from velour_api.enums import TaskType
 
 
-# @TODO: Implement metadata filtering using `ops.Querys`
-def binary_roc_auc(
+def _compute_binary_roc_auc(
     db: Session,
-    dataset_name: str,
-    model_name: str,
+    job_request: schemas.EvaluationJob,
     label: schemas.Label,
 ) -> float:
     """Computes the binary ROC AUC score of a dataset and label
@@ -37,61 +36,35 @@ def binary_roc_auc(
         the binary ROC AUC score
     """
 
-    # Retrieve sql objects
-    dataset = core.get_dataset(db, dataset_name)
-    model = core.get_model(db, model_name)
-
     # query to get the datum_ids and label values of groundtruths that have the given label key
+    gts_filter = job_request.settings.filters.model_copy()
+    gts_filter.dataset_names = [job_request.dataset]
+    gts_filter.label_keys = [label.key]
+
     gts_query = (
-        select(
+        Query(
             models.Annotation.datum_id.label("datum_id"),
             models.Label.value.label("label_value"),
         )
-        .select_from(models.Label)
-        .join(
-            models.GroundTruth, models.GroundTruth.label_id == models.Label.id
-        )
-        .join(
-            models.Annotation,
-            models.Annotation.id == models.GroundTruth.annotation_id,
-        )
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .where(
-            and_(
-                models.Datum.dataset_id == dataset.id,
-                models.Annotation.model_id.is_(None),
-                models.Annotation.task_type == TaskType.CLASSIFICATION,
-                models.Label.key == label.key,
-            ),
-        )
+        .filter(gts_filter)
+        .groundtruths("groundtruth_subquery")
     )
-    gts_query = gts_query.subquery()
 
     # get the prediction scores for the given label (key and value)
+    preds_filter = job_request.settings.filters.model_copy()
+    preds_filter.dataset_names = [job_request.dataset]
+    preds_filter.models_names = [job_request.model]
+    preds_filter.labels = [{label.key: label.value}]
+
     preds_query = (
-        select(
+        Query(
             models.Annotation.datum_id.label("datum_id"),
             models.Prediction.score.label("score"),
             models.Label.value.label("label_value"),
         )
-        .select_from(models.Label)
-        .join(models.Prediction, models.Prediction.label_id == models.Label.id)
-        .join(
-            models.Annotation,
-            models.Annotation.id == models.Prediction.annotation_id,
-        )
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .where(
-            and_(
-                models.Datum.dataset_id == dataset.id,
-                models.Annotation.model_id == model.id,
-                models.Annotation.task_type == TaskType.CLASSIFICATION,
-                models.Label.key == label.key,
-                models.Label.value == label.value,
-            ),
-        )
+        .filter(preds_filter)
+        .predictions("prediction_subquery")
     )
-    preds_query = preds_query.subquery()
 
     # number of groundtruth labels that match the given label value
     n_pos = db.scalar(
@@ -151,13 +124,10 @@ def binary_roc_auc(
     return ret
 
 
-# @TODO: Implement metadata filtering by using `ops.Query`
-def roc_auc(
+def _compute_roc_auc(
     db: Session,
-    dataset_name: str,
-    model_name: str,
+    job_request: schemas.EvaluationJob,
     label_key: str,
-    metadatum: list[schemas.Metadatum] = None,
 ) -> float:
     """Computes the area under the ROC curve. Note that for the multi-class setting
     this does one-vs-rest AUC for each class and then averages those scores. This should give
@@ -171,8 +141,6 @@ def roc_auc(
         name of the dataset to
     label_key
         the label key to use
-    metadata
-        if not None, then filter out to just the datums that have this as a metadata
 
     Returns
     -------
@@ -180,39 +148,25 @@ def roc_auc(
         ROC AUC
     """
 
+    label_filter = job_request.settings.filters.model_copy()
+    label_filter.dataset_names = [job_request.dataset]
+    label_filter.label_keys = [label_key]
+
     labels = {
-        schemas.Label(key=label[0], value=label[1])
-        for label in (
-            db.query(models.Label.key, models.Label.value)
-            .join(
-                models.GroundTruth,
-                models.GroundTruth.label_id == models.Label.id,
-            )
-            .join(
-                models.Annotation,
-                models.Annotation.id == models.GroundTruth.annotation_id,
-            )
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .join(models.Dataset, models.Dataset.id == models.Dataset.id)
-            .where(
-                and_(
-                    models.Dataset.name == dataset_name,
-                    models.Annotation.model_id.is_(None),
-                    models.Label.key == label_key,
-                )
-            )
-            .all()
-        )
+        schemas.Label(key=label.key, value=label.value)
+        for label in db.query(
+            Query(models.Label).filter(label_filter).groundtruths()
+        ).all()
     }
     if len(labels) == 0:
         raise RuntimeError(
-            f"The label key '{label_key}' is not a classification label in the dataset {dataset_name}."
+            f"The label key '{label_key}' is not a classification label in the dataset {job_request.dataset}."
         )
 
     sum_roc_aucs = 0
     label_count = 0
     for label in labels:
-        bin_roc = binary_roc_auc(db, dataset_name, model_name, label)
+        bin_roc = _compute_binary_roc_auc(db, job_request, label)
 
         if bin_roc is not None:
             sum_roc_aucs += bin_roc
@@ -221,10 +175,201 @@ def roc_auc(
     return sum_roc_aucs / label_count
 
 
-def get_confusion_matrix_and_metrics_at_label_key(
+def _compute_confusion_matrix_at_label_key(
     db: Session,
-    dataset_name: str,
-    model_name: str,
+    job_request: schemas.EvaluationJob,
+    label_key: str,
+) -> schemas.ConfusionMatrix | None:
+    """Computes the confusion matrix at a label_key.
+
+    Parameters
+    ----------
+    dataset_name
+        name of the dataset
+    model_name
+        name of the model
+    label_key
+        the label key to compute metrics under
+
+    Returns
+    -------
+    schemas.ConfusionMatrix | None
+        returns None in the case that there are no common images in the dataset
+        that have both a groundtruth and prediction with label key `label_key`. Otherwise
+        returns the confusion matrix
+    """
+
+    # groundtruths filter
+    gFilter = job_request.settings.filters.model_copy()
+    gFilter.dataset_names = [job_request.dataset]
+    gFilter.label_keys = [label_key]
+
+    # predictions filter
+    pFilter = job_request.settings.filters.model_copy()
+    pFilter.dataset_names = [job_request.dataset]
+    pFilter.models_names = [job_request.model]
+    pFilter.label_keys = [label_key]
+
+    # 1. Get predictions that conform to pFilter
+    predictions = (
+        Query(models.Prediction)
+        .filter(pFilter)
+        .predictions(as_subquery=False)
+        .alias()
+    )
+
+    # 2. Get the max prediction scores by datum that conform to pFilter
+    max_scores_by_datum_id = (
+        Query(
+            func.max(models.Prediction.score).label("max_score"),
+            models.Datum.id.label("datum_id"),
+        )
+        .filter(pFilter)
+        .predictions(as_subquery=False)
+        .group_by(models.Datum.id)
+        .alias()
+    )
+
+    # 3. Remove duplicate scores per datum
+    # used for the edge case where the max confidence appears twice
+    # the result of this query is all of the hard predictions
+    min_id_query = (
+        select(func.min(predictions.c.id).label("min_id"))
+        .select_from(predictions)
+        .join(
+            models.Annotation,
+            models.Annotation.id == predictions.c.annotation_id,
+        )
+        .join(
+            models.Datum,
+            models.Annotation.datum_id == models.Datum.id,
+        )
+        .join(
+            max_scores_by_datum_id,
+            and_(
+                models.Datum.id == max_scores_by_datum_id.c.datum_id,
+                predictions.c.score == max_scores_by_datum_id.c.max_score,
+            ),
+        )
+        .join(
+            models.Label,
+            models.Label.id == predictions.c.label_id,
+        )
+        .group_by(models.Datum.id)
+        .alias()
+    )
+
+    # 4. Get labels for hard predictions, organize per datum
+    hard_preds_query = (
+        select(
+            models.Label.value.label("pred_label_value"),
+            models.Datum.id.label("datum_id"),
+        )
+        .select_from(min_id_query)
+        .join(
+            models.Prediction,
+            models.Prediction.id == min_id_query.c.min_id,
+        )
+        .join(
+            models.Annotation,
+            models.Annotation.id == models.Prediction.annotation_id,
+        )
+        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
+        .join(
+            max_scores_by_datum_id,
+            and_(
+                models.Prediction.score == max_scores_by_datum_id.c.max_score,
+                models.Datum.id == max_scores_by_datum_id.c.datum_id,
+            ),
+        )
+        .join(
+            models.Label,
+            models.Label.id == models.Prediction.label_id,
+        )
+        .alias()
+    )
+
+    # 5. Link value to the Label.value object
+    b = Bundle("cols", hard_preds_query.c.pred_label_value, models.Label.value)
+
+    # 6. Get groundtruths that conform to gFilter
+    groundtruths = (
+        Query(models.GroundTruth)
+        .filter(gFilter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
+    # 6. Generate confusion matrix
+    total_query = (
+        select(b, func.count())
+        .select_from(groundtruths)
+        .join(
+            models.Annotation,
+            models.Annotation.id == groundtruths.c.annotation_id,
+        )
+        .join(
+            hard_preds_query,
+            hard_preds_query.c.datum_id == models.Annotation.datum_id,
+        )
+        .join(
+            models.Label,
+            models.Label.id == groundtruths.c.label_id,
+        )
+        .where(models.Label.key == label_key)
+        .group_by(b)
+    )
+
+    res = db.execute(total_query).all()
+
+    if len(res) == 0:
+        # this means there's no predictions and groundtruths with the label key
+        # for the same image
+        return None
+
+    return schemas.ConfusionMatrix(
+        label_key=label_key,
+        entries=[
+            schemas.ConfusionMatrixEntry(
+                prediction=r[0][0], groundtruth=r[0][1], count=r[1]
+            )
+            for r in res
+        ],
+    )
+
+
+def _compute_accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
+    return cm.matrix.trace() / cm.matrix.sum()
+
+
+def _compute_precision_and_recall_f1_from_confusion_matrix(
+    cm: schemas.ConfusionMatrix, label_value: str
+) -> tuple[float, float, float]:
+    """Computes the precision, recall, and f1 score at a class index"""
+    cm_matrix = cm.matrix
+    if label_value not in cm.label_map:
+        return np.nan, np.nan, np.nan
+    class_index = cm.label_map[label_value]
+
+    true_positives = cm_matrix[class_index, class_index]
+    # number of times the class was predicted
+    n_preds = cm_matrix[:, class_index].sum()
+    n_gts = cm_matrix[class_index, :].sum()
+
+    prec = true_positives / n_preds if n_preds else 0
+    recall = true_positives / n_gts if n_gts else 0
+
+    f1_denom = prec + recall
+    if f1_denom == 0:
+        f1 = 0
+    else:
+        f1 = 2 * prec * recall / f1_denom
+    return prec, recall, f1
+
+
+def _compute_confusion_matrix_and_metrics_at_label_key(
+    db: Session,
+    job_request: schemas.EvaluationJob,
     label_key: str,
     labels: list[models.Label],
 ) -> (
@@ -269,10 +414,9 @@ def get_confusion_matrix_and_metrics_at_label_key(
                 f"Expected all elements of `labels` to have label key equal to {label_key} but got label {label}."
             )
 
-    confusion_matrix = confusion_matrix_at_label_key(
+    confusion_matrix = _compute_confusion_matrix_at_label_key(
         db=db,
-        dataset_name=dataset_name,
-        model_name=model_name,
+        job_request=job_request,
         label_key=label_key,
     )
 
@@ -283,14 +427,13 @@ def get_confusion_matrix_and_metrics_at_label_key(
     metrics = [
         schemas.AccuracyMetric(
             label_key=label_key,
-            value=accuracy_from_cm(confusion_matrix),
+            value=_compute_accuracy_from_cm(confusion_matrix),
         ),
         schemas.ROCAUCMetric(
             label_key=label_key,
-            value=roc_auc(
+            value=_compute_roc_auc(
                 db,
-                dataset_name,
-                model_name,
+                job_request,
                 label_key,
             ),
         ),
@@ -302,7 +445,7 @@ def get_confusion_matrix_and_metrics_at_label_key(
             precision,
             recall,
             f1,
-        ) = precision_and_recall_f1_from_confusion_matrix(
+        ) = _compute_precision_and_recall_f1_from_confusion_matrix(
             confusion_matrix, label.value
         )
 
@@ -329,10 +472,9 @@ def get_confusion_matrix_and_metrics_at_label_key(
     return confusion_matrix, metrics
 
 
-def compute_clf_metrics(
+def _compute_clf_metrics(
     db: Session,
-    dataset_name: str,
-    model_name: str,
+    job_request: schemas.EvaluationJob,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
     list[
@@ -344,256 +486,49 @@ def compute_clf_metrics(
         | schemas.F1Metric
     ],
 ]:
-    ds_labels = {
-        schemas.Label(key=label[0], value=label[1])
-        for label in (
-            db.query(models.Label.key, models.Label.value)
-            .select_from(models.Label)
-            .join(
-                models.GroundTruth,
-                models.GroundTruth.label_id == models.Label.id,
-            )
-            .join(
-                models.Annotation,
-                models.Annotation.id == models.GroundTruth.annotation_id,
-            )
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
-            .where(
-                and_(
-                    models.Dataset.name == dataset_name,
-                    models.Annotation.task_type == TaskType.CLASSIFICATION,
-                    models.Annotation.model_id.is_(None),
-                )
-            )
-            .all()
-        )
+    # construct dataset filter
+    groundtruth_label_filter = job_request.settings.filters.model_copy()
+    groundtruth_label_filter.dataset_names = [job_request.dataset]
+
+    # construct model filter
+    prediction_label_filter = job_request.settings.filters.model_copy()
+    prediction_label_filter.dataset_names = [job_request.dataset]
+    prediction_label_filter.models_names = [job_request.model]
+
+    # retrieve dataset labels
+    dataset_labels = {
+        schemas.Label(key=label.key, value=label.value)
+        for label in db.query(
+            Query(models.Label).filter(groundtruth_label_filter).groundtruths()
+        ).all()
     }
-    md_labels = {
-        schemas.Label(key=label[0], value=label[1])
-        for label in (
-            db.query(models.Label.key, models.Label.value)
-            .select_from(models.Label)
-            .join(
-                models.Prediction,
-                models.Prediction.label_id == models.Label.id,
-                full=True,
-            )
-            .join(
-                models.Annotation,
-                models.Annotation.id == models.Prediction.annotation_id,
-            )
-            .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-            .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
-            .join(
-                models.Model,
-                models.Model.id == models.Annotation.model_id,
-                full=True,
-            )
-            .where(
-                and_(
-                    models.Dataset.name == dataset_name,
-                    models.Annotation.task_type == TaskType.CLASSIFICATION,
-                    models.Annotation.model_id.isnot(None),
-                    models.Model.name == model_name,
-                )
-            )
-            .all()
-        )
+
+    # retrieve model labels
+    model_labels = {
+        schemas.Label(key=label.key, value=label.value)
+        for label in db.query(
+            Query(models.Label).filter(prediction_label_filter).predictions()
+        ).all()
     }
-    labels = list(ds_labels.union(md_labels))
+
+    # get union of labels + unique keys
+    labels = list(dataset_labels.union(model_labels))
     unique_label_keys = set([label.key for label in labels])
 
+    # compute metrics and confusion matrix for each label key
     confusion_matrices, metrics = [], []
-
     for label_key in unique_label_keys:
-
-        def _add_confusion_matrix_and_metrics(**extra_kwargs):
-            cm_and_metrics = get_confusion_matrix_and_metrics_at_label_key(
-                db,
-                dataset_name=dataset_name,
-                model_name=model_name,
-                label_key=label_key,
-                labels=[label for label in labels if label.key == label_key],
-                **extra_kwargs,
-            )
-
-            if cm_and_metrics is not None:
-                confusion_matrices.append(cm_and_metrics[0])
-                metrics.extend(cm_and_metrics[1])
-
-        _add_confusion_matrix_and_metrics()
+        cm_and_metrics = _compute_confusion_matrix_and_metrics_at_label_key(
+            db,
+            job_request=job_request,
+            label_key=label_key,
+            labels=[label for label in labels if label.key == label_key],
+        )
+        if cm_and_metrics is not None:
+            confusion_matrices.append(cm_and_metrics[0])
+            metrics.extend(cm_and_metrics[1])
 
     return confusion_matrices, metrics
-
-
-def confusion_matrix_at_label_key(
-    db: Session,
-    dataset_name: str,
-    model_name: str,
-    label_key: str,
-) -> schemas.ConfusionMatrix | None:
-    """Computes the confusion matrix at a label_key.
-
-    Parameters
-    ----------
-    dataset_name
-        name of the dataset
-    model_name
-        name of the model
-    label_key
-        the label key to compute metrics under
-    metadatum_id
-        if not None, then filter out to just the datums that have this as a metadatum
-
-    Returns
-    -------
-    schemas.ConfusionMatrix | None
-        returns None in the case that there are no common images in the dataset
-        that have both a groundtruth and prediction with label key `label_key`. Otherwise
-        returns the confusion matrix
-    """
-
-    dataset = core.get_dataset(db, dataset_name)
-    model = core.get_model(db, model_name)
-
-    # this query get's the max score for each Datum for the given label key
-    q1 = (
-        select(
-            func.max(models.Prediction.score).label("max_score"),
-            models.Datum.id.label("datum_id"),
-        )
-        .select_from(models.Annotation)
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .join(
-            models.Prediction,
-            models.Prediction.annotation_id == models.Annotation.id,
-        )
-        .join(models.Label, models.Label.id == models.Prediction.label_id)
-        .where(
-            and_(
-                models.Annotation.model_id == model.id,
-                models.Datum.dataset_id == dataset.id,
-                models.Label.key == label_key,
-            )
-        )
-    )
-    q1 = q1.group_by(models.Datum.id)
-    subquery = q1.alias()
-
-    # used for the edge case where the max confidence appears twice
-    # the result of this query is all of the hard predictions
-    q2 = (
-        select(func.min(models.Prediction.id).label("min_id"))
-        .join(models.Label)
-        .join(
-            models.Annotation,
-            models.Annotation.id == models.Prediction.annotation_id,
-        )
-        .join(models.Datum, models.Annotation.datum_id == models.Datum.id)
-        .join(
-            subquery,
-            and_(
-                models.Prediction.score == subquery.c.max_score,
-                models.Datum.id == subquery.c.datum_id,
-            ),
-        )
-        .group_by(models.Datum.id)
-    )
-    min_id_query = q2.alias()
-
-    q3 = (
-        select(
-            models.Label.value.label("pred_label_value"),
-            models.Datum.id.label("datum_id"),
-        )
-        .join(models.Prediction)
-        .join(
-            models.Annotation,
-            models.Annotation.id == models.Prediction.annotation_id,
-        )
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .join(
-            subquery,
-            and_(
-                models.Prediction.score == subquery.c.max_score,
-                models.Datum.id == subquery.c.datum_id,
-            ),
-        )
-        .join(
-            min_id_query,
-            models.Prediction.id == min_id_query.c.min_id,
-        )
-    )
-    hard_preds_query = q3.alias()
-
-    b = Bundle("cols", hard_preds_query.c.pred_label_value, models.Label.value)
-
-    total_query = (
-        select(b, func.count())
-        .join(
-            models.Annotation,
-            models.Annotation.datum_id == hard_preds_query.c.datum_id,
-        )
-        .join(
-            models.GroundTruth,
-            models.GroundTruth.annotation_id == models.Annotation.id,
-        )
-        .join(
-            models.Label,
-            and_(
-                models.Label.id == models.GroundTruth.label_id,
-                models.Label.key == label_key,
-            ),
-        )
-        .group_by(b)
-    )
-
-    res = db.execute(total_query).all()
-
-    if len(res) == 0:
-        # this means there's no predictions and groundtruths with the label key
-        # for the same image
-        return None
-
-    return schemas.ConfusionMatrix(
-        label_key=label_key,
-        entries=[
-            schemas.ConfusionMatrixEntry(
-                prediction=r[0][0], groundtruth=r[0][1], count=r[1]
-            )
-            for r in res
-        ],
-    )
-
-
-def accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
-    return cm.matrix.trace() / cm.matrix.sum()
-
-
-def precision_and_recall_f1_from_confusion_matrix(
-    cm: schemas.ConfusionMatrix, label_value: str
-) -> tuple[float, float, float]:
-    """Computes the precision, recall, and f1 score at a class index"""
-    cm_matrix = cm.matrix
-    if label_value not in cm.label_map:
-        return np.nan, np.nan, np.nan
-    class_index = cm.label_map[label_value]
-
-    true_positives = cm_matrix[class_index, class_index]
-    # number of times the class was predicted
-    n_preds = cm_matrix[:, class_index].sum()
-    n_gts = cm_matrix[class_index, :].sum()
-
-    prec = true_positives / n_preds if n_preds else 0
-    recall = true_positives / n_gts if n_gts else 0
-
-    f1_denom = prec + recall
-    if f1_denom == 0:
-        f1 = 0
-    else:
-        f1 = 2 * prec * recall / f1_denom
-    return prec, recall, f1
 
 
 def create_clf_evaluation(
@@ -605,44 +540,78 @@ def create_clf_evaluation(
     Returns
         Evaluations job id.
     """
+    # check matching task_type
+    if job_request.task_type != TaskType.CLASSIFICATION:
+        raise TypeError(
+            "Invalid task_type, please choose an evaluation method that supports classification"
+        )
 
+    # configure filters object
+    if job_request.settings.filters:
+        if (
+            job_request.settings.filters.dataset_names is not None
+            or job_request.settings.filters.dataset_metadata is not None
+            or job_request.settings.filters.dataset_geospatial is not None
+            or job_request.settings.filters.models_names is not None
+            or job_request.settings.filters.models_metadata is not None
+            or job_request.settings.filters.models_geospatial is not None
+            or job_request.settings.filters.prediction_scores is not None
+            or job_request.settings.filters.task_types is not None
+        ):
+            raise ValueError(
+                "Evaluation filter objects should not include any dataset, model, prediction score or task type filters."
+            )
+
+    # create evaluation row
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)
-
-    # set task type
-    job_request.settings.task_type = TaskType.CLASSIFICATION
-
     es = get_or_create_row(
         db,
         models.Evaluation,
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
+            "task_type": TaskType.CLASSIFICATION,
             "settings": job_request.settings.model_dump(),
         },
     )
-
     return es.id
 
 
 def create_clf_metrics(
     db: Session,
-    job_request: schemas.EvaluationJob,
     evaluation_id: int,
 ) -> int:
     """
     Intended to run as background
     """
-    confusion_matrices, metrics = compute_clf_metrics(
+    evaluation = db.scalar(
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
+    )
+
+    # unpack job request
+    job_request = schemas.EvaluationJob(
+        dataset=evaluation.dataset.name,
+        model=evaluation.model.name,
+        task_type=evaluation.task_type,
+        settings=schemas.EvaluationSettings(**evaluation.settings),
+        id=evaluation.id,
+    )
+
+    # configure filters
+    if not job_request.settings.filters:
+        job_request.settings.filters = schemas.Filter()
+    job_request.settings.filters.task_types = [TaskType.CLASSIFICATION]
+
+    confusion_matrices, metrics = _compute_clf_metrics(
         db=db,
-        dataset_name=job_request.dataset,
-        model_name=job_request.model,
+        job_request=job_request,
     )
 
     confusion_matrices_mappings = create_metric_mappings(
         db=db,
         metrics=confusion_matrices,
-        evaluation_id=evaluation_id,
+        evaluation_id=job_request.id,
     )
 
     for mapping in confusion_matrices_mappings:
@@ -653,7 +622,7 @@ def create_clf_metrics(
         )
 
     metric_mappings = create_metric_mappings(
-        db=db, metrics=metrics, evaluation_id=evaluation_id
+        db=db, metrics=metrics, evaluation_id=job_request.id
     )
 
     for mapping in metric_mappings:

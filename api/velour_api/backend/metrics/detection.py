@@ -7,8 +7,8 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend import core, models
-from velour_api.backend.metrics.core import (
+from velour_api.backend import core, models, query
+from velour_api.backend.metrics.metrics import (
     create_metric_mappings,
     get_or_create_row,
 )
@@ -101,8 +101,7 @@ def compute_detection_metrics(
     dataset: models.Dataset,
     model: models.Model,
     settings: schemas.EvaluationSettings,
-    gt_type: enums.AnnotationType,
-    pd_type: enums.AnnotationType,
+    target_type: enums.AnnotationType,
 ) -> list[
     schemas.APMetric
     | schemas.APMetricAveragedOverIOUs
@@ -123,19 +122,6 @@ def compute_detection_metrics(
     pd_filter = settings.filters.model_copy()
     pd_filter.dataset_names = [dataset.name]
     pd_filter.models_names = [model.name]
-
-    # Get target annotation type
-    target_type = max(settings.filters.annotation_types, key=lambda x: x)
-
-    # Convert geometries to target type (if required)
-    core.convert_geometry(
-        db,
-        dataset=dataset,
-        model=model,
-        dataset_source_type=gt_type,
-        model_source_type=pd_type,
-        evaluation_target_type=target_type,
-    )
 
     # Join gt, datum, annotation, label
     gt = (
@@ -398,9 +384,13 @@ def _get_annotation_type_for_computation(
     job_filter: schemas.Filter | None = None,
 ) -> AnnotationType:
     # get dominant type
-    gt_type = core.get_annotation_type(db, dataset, None)
-    pd_type = core.get_annotation_type(db, dataset, model)
-    gct = gt_type if gt_type < pd_type else pd_type
+    groundtruth_type = core.get_annotation_type(db, dataset, None)
+    prediction_type = core.get_annotation_type(db, dataset, model)
+    gct = (
+        groundtruth_type
+        if groundtruth_type < prediction_type
+        else prediction_type
+    )
     if job_filter.annotation_types:
         if gct not in job_filter.annotation_types:
             sorted_types = sorted(
@@ -410,80 +400,171 @@ def _get_annotation_type_for_computation(
             )
             for annotation_type in sorted_types:
                 if gct <= annotation_type:
-                    return annotation_type, gt_type, pd_type
+                    return annotation_type, groundtruth_type, prediction_type
             raise RuntimeError(
-                f"Annotation type filter is too restrictive. Attempted filter `{gct}` over `{gt_type, pd_type}`."
+                f"Annotation type filter is too restrictive. Attempted filter `{gct}` over `{groundtruth_type, prediction_type}`."
             )
-    return gct, gt_type, pd_type
+    return gct, groundtruth_type, prediction_type
+
+
+def _get_disjoint_label_sets(
+    db: Session,
+    groundtruth_filter: schemas.Filter,
+    prediction_filters: schemas.Filter,
+) -> tuple:
+
+    # get disjoint label sets
+    groundtruth_labels = query.get_groundtruth_labels(db, groundtruth_filter)
+    prediction_labels = query.get_prediction_labels(db, prediction_filters)
+    groundtruth_unique = list(groundtruth_labels - prediction_labels)
+    prediction_unique = list(prediction_labels - groundtruth_labels)
+    return groundtruth_unique, prediction_unique
 
 
 def create_detection_evaluation(
     db: Session,
     job_request: schemas.EvaluationJob,
 ) -> int:
-    """This will always run in foreground.
+    """
+    This will always run in foreground.
 
     Returns
         Evaluations settings id.
     """
+    # check matching task_type
+    if job_request.task_type != enums.TaskType.DETECTION:
+        raise TypeError(
+            "Invalid task_type, please choose an evaluation method that supports object detection"
+        )
+
+    # validate parameters
+    if not job_request.settings.parameters:
+        job_request.settings.parameters = schemas.DetectionParameters()
+    else:
+        if not isinstance(
+            job_request.settings.parameters, schemas.DetectionParameters
+        ):
+            raise TypeError(
+                "expected evaluation settings to have parameters of type `DetectionParameters` for task type `DETECTION`"
+            )
+
+    # validate filters
+    if not job_request.settings.filters:
+        job_request.settings.filters = schemas.Filter()
+    else:
+        if (
+            job_request.settings.filters.dataset_names is not None
+            or job_request.settings.filters.dataset_metadata is not None
+            or job_request.settings.filters.dataset_geospatial is not None
+            or job_request.settings.filters.models_names is not None
+            or job_request.settings.filters.models_metadata is not None
+            or job_request.settings.filters.models_geospatial is not None
+            or job_request.settings.filters.prediction_scores is not None
+            or job_request.settings.filters.task_types is not None
+        ):
+            raise ValueError(
+                "Evaluation filter objects should not include any dataset, model, prediction score or task type filters."
+            )
+
+    # load sql objects
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)
 
-    # default parameters
-    if not job_request.settings.parameters:
-        job_request.settings.parameters = schemas.DetectionParameters()
-
-    # validate parameters
-    if not isinstance(
-        job_request.settings.parameters, schemas.DetectionParameters
-    ):
-        raise TypeError(
-            "expected evaluation settings to have parameters of type `DetectionParameters` for task type `DETECTION`"
-        )
-
-    # annotation types
-    gct, gt_type, pd_type = _get_annotation_type_for_computation(
+    # determine annotation types
+    (
+        gct,
+        groundtruth_type,
+        prediction_type,
+    ) = _get_annotation_type_for_computation(
         db, dataset, model, job_request.settings.filters
     )
 
-    # update settings
-    job_request.settings.task_type = enums.TaskType.DETECTION
-    job_request.settings.filters.annotation_types = [gct]
+    # create groundtruth label filter
+    groundtruth_label_filter = job_request.settings.filters.model_copy()
+    groundtruth_label_filter.dataset_names = [job_request.dataset]
+    groundtruth_label_filter.annotation_types = [groundtruth_type]
 
+    # create prediction label filter
+    prediction_label_filter = job_request.settings.filters.model_copy()
+    prediction_label_filter.dataset_names = [job_request.dataset]
+    prediction_label_filter.models_names = [model.name]
+    prediction_label_filter.annotation_types = [prediction_type]
+
+    # get disjoint sets
+    groundtruth_unique, prediction_unique = _get_disjoint_label_sets(
+        db, groundtruth_label_filter, prediction_label_filter
+    )
+
+    # create evaluation settings row
     es = get_or_create_row(
         db,
         models.Evaluation,
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
+            "task_type": enums.TaskType.DETECTION,
             "settings": job_request.settings.model_dump(),
         },
     )
 
-    return es.id, gt_type, pd_type
+    return es.id, groundtruth_unique, prediction_unique
 
 
 def create_detection_metrics(
     db: Session,
-    job_request: schemas.EvaluationJob,
     evaluation_id: int,
 ):
     """
     Intended to run as background
     """
+    evaluation = db.scalar(
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
+    )
+
+    # unpack job request
+    job_request = schemas.EvaluationJob(
+        dataset=evaluation.dataset.name,
+        model=evaluation.model.name,
+        task_type=evaluation.task_type,
+        settings=schemas.EvaluationSettings(**evaluation.settings),
+        id=evaluation.id,
+    )
+
+    # configure filters
+    if not job_request.settings.filters:
+        job_request.settings.filters = schemas.Filter()
+    job_request.settings.filters.task_types = [enums.TaskType.DETECTION]
 
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)
-    gt_type = core.get_annotation_type(db, dataset, None)
-    pd_type = core.get_annotation_type(db, dataset, model)
+
+    groundtruth_type = core.get_annotation_type(db, dataset, None)
+    prediction_type = core.get_annotation_type(db, dataset, model)
+
+    # Get user-specified annotation type
+    if job_request.settings.filters.annotation_types:
+        target_type = max(
+            job_request.settings.filters.annotation_types, key=lambda x: x
+        )
+    else:
+        target_type = min([groundtruth_type, prediction_type])
+
+    # Convert geometries to target type (if required)
+    core.convert_geometry(
+        db,
+        dataset=dataset,
+        model=model,
+        dataset_source_type=groundtruth_type,
+        model_source_type=prediction_type,
+        evaluation_target_type=target_type,
+    )
 
     metrics = compute_detection_metrics(
         db=db,
         dataset=dataset,
         model=model,
         settings=job_request.settings,
-        gt_type=gt_type,
-        pd_type=pd_type,
+        target_type=target_type,
     )
 
     metric_mappings = create_metric_mappings(
