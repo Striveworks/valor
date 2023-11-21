@@ -225,8 +225,22 @@ def get_evaluation_jobs(
     model_names: list[str] | None = None,
     settings: list[schemas.EvaluationSettings] | None = None,
 ) -> list[schemas.EvaluationJob]:
-    """get evaluation jobs that conform to input args"""
+    """
+    Returns all evaluation jobs that conform to user-supplied args.
 
+    Parameters
+    ----------
+    db
+        The database session
+    job_ids
+        A list of evaluation job id constraints.
+    dataset_names
+        A list of dataset names to constrain by.
+    model_names
+        A list of model names to constrain by.
+    settings:
+        A list of `schemas.EvaluationSettings` to constrain by.
+    """
     return backend.get_evaluation_jobs(
         db=db,
         job_ids=job_ids,
@@ -244,8 +258,22 @@ def get_evaluations(
     model_names: list[str] | None = None,
     settings: list[schemas.EvaluationSettings] | None = None,
 ) -> list[schemas.Evaluation]:
-    """get evaluations that conform to input args"""
+    """
+    Returns all evaluations that conform to user-supplied args.
 
+    Parameters
+    ----------
+    db
+        The database session
+    job_ids
+        A list of evaluation job id constraints.
+    dataset_names
+        A list of dataset names to constrain by.
+    model_names
+        A list of model names to constrain by.
+    settings:
+        A list of `schemas.EvaluationSettings` to constrain by.
+    """
     # get evaluations that conform to input args
     evaluations = backend.get_evaluations(
         db=db,
