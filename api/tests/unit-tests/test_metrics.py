@@ -1,7 +1,7 @@
 from velour_api import schemas
 from velour_api.backend.metrics.classification import (
-    accuracy_from_cm,
-    precision_and_recall_f1_from_confusion_matrix,
+    _compute_accuracy_from_cm,
+    _compute_precision_and_recall_f1_from_confusion_matrix,
 )
 from velour_api.backend.metrics.detection import RankedPair, _ap
 
@@ -92,7 +92,7 @@ def test__ap():
         assert pd.label == gt.label
 
 
-def test_precision_and_recall_f1_from_confusion_matrix(
+def test__compute_precision_and_recall_f1_from_confusion_matrix(
     cm: schemas.ConfusionMatrix,
 ):
     """c.f. with
@@ -110,7 +110,7 @@ def test_precision_and_recall_f1_from_confusion_matrix(
         prec,
         recall,
         f1,
-    ) = precision_and_recall_f1_from_confusion_matrix(cm, "class0")
+    ) = _compute_precision_and_recall_f1_from_confusion_matrix(cm, "class0")
     assert prec == 1.0
     assert recall == 1 / 3
     assert f1 == 0.5
@@ -119,7 +119,7 @@ def test_precision_and_recall_f1_from_confusion_matrix(
         prec,
         recall,
         f1,
-    ) = precision_and_recall_f1_from_confusion_matrix(cm, "class1")
+    ) = _compute_precision_and_recall_f1_from_confusion_matrix(cm, "class1")
     assert prec == 0.25
     assert recall == 1.0
     assert f1 == 0.4
@@ -128,11 +128,11 @@ def test_precision_and_recall_f1_from_confusion_matrix(
         prec,
         recall,
         f1,
-    ) = precision_and_recall_f1_from_confusion_matrix(cm, "class2")
+    ) = _compute_precision_and_recall_f1_from_confusion_matrix(cm, "class2")
     assert prec == 0.0
     assert recall == 0.0
     assert f1 == 0.0
 
 
-def test_accuracy_from_cm(cm: schemas.ConfusionMatrix):
-    assert accuracy_from_cm(cm) == 1 / 3
+def test__compute_accuracy_from_cm(cm: schemas.ConfusionMatrix):
+    assert _compute_accuracy_from_cm(cm) == 1 / 3

@@ -4,7 +4,7 @@ from sqlalchemy.sql import Select, and_, func, join, select
 
 from velour_api.backend import core, models
 from velour_api.backend.core.label import get_dataset_labels_query
-from velour_api.backend.metrics.core import (
+from velour_api.backend.metrics.metrics import (
     create_metric_mappings,
     get_or_create_row,
 )
@@ -180,11 +180,14 @@ def compute_segmentation_metrics(
 def create_semantic_segmentation_evaluation(
     db: Session, job_request: EvaluationJob
 ) -> int:
+    # check matching task_type
+    if job_request.task_type != TaskType.SEGMENTATION:
+        raise TypeError(
+            "Invalid task_type, please choose an evaluation method that supports semantic segmentation"
+        )
+
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)
-
-    # set task type
-    job_request.settings.task_type = TaskType.SEGMENTATION
 
     es = get_or_create_row(
         db,
@@ -192,6 +195,7 @@ def create_semantic_segmentation_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
+            "task_type": TaskType.SEGMENTATION,
             "settings": job_request.settings.model_dump(),
         },
     )
