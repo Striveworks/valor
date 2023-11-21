@@ -103,7 +103,7 @@ jobs:
       - name: install client
         run: pip install -e ".[test]"
         working-directory: ./client
-      - run: coverage run --source="api/velour_api,client/velour" -m pytest -v integration_tests/*
+      - run: coverage run --source="api/velour_api,client/velour" -m pytest -v integration_tests/client/*
       - run: coverage report
       - name: upload coverage report as artifact
         uses: actions/upload-artifact@v3
@@ -119,7 +119,7 @@ jobs:
       - name: sleep to give backend time to spin up
         run: sleep 15
       - name: test auth
-        run: pytest -v integration_tests/test_client_auth.py
+        run: pytest -v integration_tests/auth/*
         env:
           AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
           AUTH0_AUDIENCE: ${{ vars.AUTH0_AUDIENCE }}
