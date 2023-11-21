@@ -3,15 +3,12 @@ that is no auth
 """
 from dataclasses import asdict
 
-from sqlalchemy.orm import Session
-
 from velour import Dataset, GroundTruth, Model, Prediction
 from velour.client import Client
 
 
 def test_set_and_get_geospatial(
     client: Client,
-    db: Session,
     dataset_name: str,
     model_name: str,
     gt_dets1: list[GroundTruth],
@@ -68,7 +65,6 @@ def test_geospatial_filter(
     model_name: str,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
-    db: Session,
 ):
     coordinates = [
         [

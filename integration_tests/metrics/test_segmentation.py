@@ -1,20 +1,17 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
-from sqlalchemy.orm import Session
-
 from velour import Dataset, GroundTruth, Model, Prediction
 from velour.client import Client
 
 
 def test_evaluate_segmentation(
     client: Client,
-    db: Session,
+    dataset_name: str,
+    model_name: str,
     gt_semantic_segs1: list[GroundTruth],
     gt_semantic_segs2: list[GroundTruth],
     pred_semantic_segs: list[Prediction],
-    dataset_name: str,
-    model_name: str,
 ):
     dataset = Dataset.create(client, dataset_name)
     model = Model.create(client, model_name)

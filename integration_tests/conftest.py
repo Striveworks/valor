@@ -17,6 +17,64 @@ from velour_api.backend import jobs, models
 
 
 @pytest.fixture
+def db() -> Session:
+    """This fixture makes sure there's not datasets, models, or labels in the backend
+    (raising a RuntimeError if there are). It returns a db session and as cleanup
+    clears out all datasets, models, and labels from the backend.
+    """
+    client = Client(host="http://localhost:8000")
+
+    if len(client.get_datasets()) > 0:
+        raise RuntimeError(
+            "Tests should be run on an empty velour backend but found existing datasets.",
+            [ds["name"] for ds in client.get_datasets()],
+        )
+
+    if len(client.get_models()) > 0:
+        raise RuntimeError(
+            "Tests should be run on an empty velour backend but found existing models."
+        )
+
+    if len(client.get_labels()) > 0:
+        raise RuntimeError(
+            "Tests should be run on an empty velour backend but found existing labels."
+        )
+
+    engine = create_engine("postgresql://postgres:password@localhost/postgres")
+    sess = Session(engine)
+    sess.execute(text("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';"))
+    sess.execute(text("SET postgis.enable_outdb_rasters = True;"))
+
+    yield sess
+
+    for model in client.get_models():
+        try:
+            client.delete_model(model["name"], timeout=5)
+        except exceptions.ModelDoesNotExistError:
+            continue
+
+    for dataset in client.get_datasets():
+        try:
+            client.delete_dataset(dataset["name"], timeout=5)
+        except exceptions.DatasetDoesNotExistError:
+            continue
+
+    labels = sess.scalars(select(models.Label))
+    for label in labels:
+        sess.delete(label)
+    sess.commit()
+
+    # clean redis
+    jobs.connect_to_redis()
+    jobs.r.flushdb()
+
+
+@pytest.fixture
+def client(db: Session):
+    return Client(host="http://localhost:8000")
+
+
+@pytest.fixture
 def dataset_name():
     return "test_dataset"
 
@@ -38,11 +96,6 @@ def metadata():
         "metadatum2": "a string",
         "metadatum3": 0.45,
     }
-
-
-@pytest.fixture
-def client():
-    return Client(host="http://localhost:8000")
 
 
 @pytest.fixture
@@ -105,57 +158,6 @@ def img8(dataset_name) -> ImageMetadata:
 @pytest.fixture
 def img9(dataset_name) -> ImageMetadata:
     return ImageMetadata(dataset=dataset_name, uid="uid9", height=40, width=30)
-
-
-@pytest.fixture
-def db(client: Client) -> Session:
-    """This fixture makes sure there's not datasets, models, or labels in the backend
-    (raising a RuntimeError if there are). It returns a db session and as cleanup
-    clears out all datasets, models, and labels from the backend.
-    """
-    if len(client.get_datasets()) > 0:
-        raise RuntimeError(
-            "Tests should be run on an empty velour backend but found existing datasets.",
-            [ds["name"] for ds in client.get_datasets()],
-        )
-
-    if len(client.get_models()) > 0:
-        raise RuntimeError(
-            "Tests should be run on an empty velour backend but found existing models."
-        )
-
-    if len(client.get_labels()) > 0:
-        raise RuntimeError(
-            "Tests should be run on an empty velour backend but found existing labels."
-        )
-
-    engine = create_engine("postgresql://postgres:password@localhost/postgres")
-    sess = Session(engine)
-    sess.execute(text("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';"))
-    sess.execute(text("SET postgis.enable_outdb_rasters = True;"))
-
-    yield sess
-
-    for model in client.get_models():
-        try:
-            client.delete_model(model["name"], timeout=5)
-        except exceptions.ModelDoesNotExistError:
-            continue
-
-    for dataset in client.get_datasets():
-        try:
-            client.delete_dataset(dataset["name"], timeout=5)
-        except exceptions.DatasetDoesNotExistError:
-            continue
-
-    labels = sess.scalars(select(models.Label))
-    for label in labels:
-        sess.delete(label)
-    sess.commit()
-
-    # clean redis
-    jobs.connect_to_redis()
-    jobs.r.flushdb()
 
 
 @pytest.fixture

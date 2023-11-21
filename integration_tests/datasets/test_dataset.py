@@ -16,10 +16,10 @@ from velour_api.backend import models
 
 def _test_create_image_dataset_with_gts(
     client: Client,
+    dataset_name: str,
     gts: list[Any],
     expected_labels_tuples: set[tuple[str, str]],
     expected_image_uids: list[str],
-    dataset_name: str,
 ) -> Dataset:
     """This test does the following
     - Creates a dataset
@@ -71,8 +71,8 @@ def _test_create_image_dataset_with_gts(
 
 
 def test_create_image_dataset_with_href_and_description(
-    client: Client,
     db: Session,
+    client: Client,
     dataset_name: str,
 ):
     href = "http://a.com/b"
@@ -105,7 +105,6 @@ def test_create_image_dataset_with_detections(
     dataset_name: str,
     gt_dets1: list[GroundTruth],
     gt_dets2: list[GroundTruth],
-    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     dataset = _test_create_image_dataset_with_gts(
         client=client,
@@ -187,7 +186,6 @@ def test_create_image_dataset_with_classifications(
     client: Client,
     dataset_name: str,
     gt_clfs: list[GroundTruth],
-    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
 ):
     _test_create_image_dataset_with_gts(
         client=client,
@@ -203,8 +201,8 @@ def test_create_image_dataset_with_classifications(
 
 
 def test_client_delete_dataset(
-    client: Client,
     db: Session,
+    client: Client,
     dataset_name: str,
 ):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
@@ -316,9 +314,8 @@ def test_create_tabular_dataset_and_add_groundtruth(
 
 def test_get_dataset(
     client: Client,
-    db: Session,
-    gt_semantic_segs1_mask: GroundTruth,
     dataset_name: str,
+    gt_semantic_segs1_mask: GroundTruth,
 ):
     dataset = Dataset.create(client, dataset_name)
     dataset.add_groundtruth(gt_semantic_segs1_mask)
@@ -334,9 +331,8 @@ def test_get_dataset(
 
 def test_get_dataset_status(
     client: Client,
-    db: Session,
-    gt_dets1: list,
     dataset_name: str,
+    gt_dets1: list,
 ):
     status = client.get_dataset_status(dataset_name)
     assert status == "none"

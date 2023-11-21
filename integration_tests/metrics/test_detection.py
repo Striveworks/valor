@@ -15,12 +15,12 @@ from velour_api.backend import models
 
 
 def test_evaluate_detection(
-    client: Client,
-    gt_dets1: list[GroundTruth],
-    pred_dets: list[Prediction],
     db: Session,
+    client: Client,
     dataset_name: str,
     model_name: str,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
 ):
     dataset = Dataset.create(client, dataset_name)
     for gt in gt_dets1:
@@ -287,11 +287,10 @@ def test_evaluate_detection(
 
 def test_evaluate_detection_with_json_filters(
     client: Client,
-    gt_dets1: list[GroundTruth],
-    pred_dets: list[Prediction],
-    db: Session,
     dataset_name: str,
     model_name: str,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
 ):
     dataset = Dataset.create(client, dataset_name)
     for gt in gt_dets1:
@@ -414,12 +413,11 @@ def test_evaluate_detection_with_json_filters(
 
 def test_get_bulk_evaluations(
     client: Client,
+    dataset_name: str,
+    model_name: str,
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
     pred_dets2: list[Prediction],
-    db: Session,
-    dataset_name: str,
-    model_name: str,
 ):
     dataset_ = dataset_name
     model_ = model_name

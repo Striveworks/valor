@@ -98,7 +98,10 @@ def test_create_gt_detections_as_bbox_or_poly(
 
 
 def test_create_gt_segs_as_polys_or_masks(
-    client: Client, dataset_name: str, img1: ImageMetadata, db: Session
+    db: Session,
+    client: Client,
+    dataset_name: str,
+    img1: ImageMetadata,
 ):
     """Test that we can create a dataset with groundtruth segmentations that are defined
     both my polygons and mask arrays
@@ -175,7 +178,6 @@ def test_create_gt_segs_as_polys_or_masks(
 
 def test_add_groundtruth(
     client: Client,
-    db: Session,
     dataset_name: str,
     gt_semantic_segs_error: GroundTruth,
 ):
@@ -191,7 +193,6 @@ def test_add_groundtruth(
 
 def test_get_groundtruth(
     client: Client,
-    db: Session,
     dataset_name: str,
     gt_semantic_segs1_mask: GroundTruth,
     gt_semantic_segs2_mask: GroundTruth,

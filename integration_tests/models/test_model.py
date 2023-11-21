@@ -113,8 +113,8 @@ def _test_create_model_with_preds(
 
 
 def test_create_model_with_href_and_description(
-    client: Client,
     db: Session,
+    client: Client,
     model_name: str,
 ):
     href = "http://a.com/b"
@@ -143,12 +143,12 @@ def test_create_model_with_href_and_description(
 
 
 def test_create_image_model_with_predicted_detections(
+    db: Session,
     client: Client,
     dataset_name: str,
     model_name: str,
     gt_poly_dets1: list[GroundTruth],
     pred_poly_dets: list[Prediction],
-    db: Session,
 ):
     labeled_pred_dets = _test_create_model_with_preds(
         client=client,
@@ -194,12 +194,12 @@ def test_create_image_model_with_predicted_detections(
 
 
 def test_create_model_with_predicted_segmentations(
+    db: Session,
     client: Client,
     dataset_name: str,
     model_name: str,
     gt_segs: list[GroundTruth],
     pred_instance_segs: list[Prediction],
-    db: Session,
 ):
     """Tests that we can create a predicted segmentation from a mask array"""
     _test_create_model_with_preds(
@@ -249,12 +249,12 @@ def test_create_model_with_predicted_segmentations(
 
 
 def test_create_image_model_with_predicted_classifications(
+    db: Session,
     client: Client,
     dataset_name: str,
     model_name: str,
     gt_clfs: list[GroundTruth],
     pred_clfs: list[Prediction],
-    db: Session,
 ):
     _test_create_model_with_preds(
         client=client,
@@ -278,8 +278,8 @@ def test_create_image_model_with_predicted_classifications(
 
 
 def test_client_delete_model(
-    client: Client,
     db: Session,
+    client: Client,
     model_name: str,
 ):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
@@ -290,8 +290,8 @@ def test_client_delete_model(
 
 
 def test_create_tabular_model_with_predicted_classifications(
-    client: Client,
     db: Session,
+    client: Client,
     dataset_name: str,
     model_name: str,
 ):

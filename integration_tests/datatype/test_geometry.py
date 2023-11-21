@@ -68,8 +68,8 @@ def iou(rect1: Polygon, rect2: Polygon) -> float:
 
 
 def test_boundary(
-    client: Client,
     db: Session,
+    client: Client,
     dataset_name: str,
     rect1: Polygon,
     img1: ImageMetadata,
@@ -100,8 +100,8 @@ def test_boundary(
 
 
 def test_iou(
-    client: Client,
     db: Session,
+    client: Client,
     dataset_name: str,
     model_name: str,
     rect1: Polygon,
@@ -156,7 +156,6 @@ def test_iou(
 
 def test_add_raster_and_boundary_box(
     client: Client,
-    db: Session,
     dataset_name: str,
     img1: ImageMetadata,
 ):

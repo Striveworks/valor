@@ -22,7 +22,6 @@ from velour.enums import JobStatus, TaskType
 
 def test_evaluate_image_clf(
     client: Client,
-    db: Session,  # this is unused but putting it here since the teardown of the fixture does cleanup
     gt_clfs: list[GroundTruth],
     pred_clfs: list[Prediction],
     dataset_name: str,
@@ -89,7 +88,6 @@ def test_evaluate_image_clf(
 
 def test_evaluate_tabular_clf(
     client: Session,
-    db: Session,
     y_true: list[int],
     tabular_preds: list[list[float]],
     dataset_name: str,
