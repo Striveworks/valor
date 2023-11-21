@@ -18,20 +18,21 @@ img1_size = (100, 200)
 img2_size = (80, 32)
 
 
-# get all velour table names
-classes = [
-    v
-    for v in models.__dict__.values()
-    if isinstance(v, type) and issubclass(v, Base)
-]
-tablenames = [v.__tablename__ for v in classes if hasattr(v, "__tablename__")]
-
-
 @pytest.fixture
 def db():
     """This fixture provides a db session. a `RuntimeError` is raised if
     a velour tablename already exists. At teardown, all velour tables are wiped.
     """
+    # get all velour table names
+    classes = [
+        v
+        for v in models.__dict__.values()
+        if isinstance(v, type) and issubclass(v, Base)
+    ]
+    tablenames = [
+        v.__tablename__ for v in classes if hasattr(v, "__tablename__")
+    ]
+
     db = make_session()
     inspector = inspect(db.connection())
     for tablename in tablenames:
@@ -51,6 +52,16 @@ def db():
     # clear postgres
     db.execute(text(f"DROP TABLE {', '.join(tablenames)} CASCADE;"))
     db.commit()
+
+
+@pytest.fixture
+def dataset_name() -> str:
+    return "test_dataset"
+
+
+@pytest.fixture
+def model_name() -> str:
+    return "test_model"
 
 
 def random_mask_bytes(size: tuple[int, int]) -> bytes:
