@@ -2016,11 +2016,8 @@ def test_get_bulk_evaluations(
     assert evaluations[0]["metrics"] == expected_metrics
 
     # test incorrect names
-    with pytest.raises(Exception):
-        client.get_bulk_evaluations(datasets="wrong_dataset_name")
-
-    with pytest.raises(Exception):
-        client.get_bulk_evaluations(datasets="wrong_model_name")
+    assert len(client.get_bulk_evaluations(datasets="wrong_dataset_name")) == 0
+    assert len(client.get_bulk_evaluations(models="wrong_model_name")) == 0
 
     # test with multiple models
     second_model = Model.create(client, "second_model")

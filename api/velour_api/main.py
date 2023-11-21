@@ -558,9 +558,11 @@ def create_semantic_segmentation_metrics(
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def get_evaluation_jobs_for_dataset(dataset_name: str) -> dict[str, list[int]]:
+def get_evaluation_jobs_for_dataset(
+    dataset_name: str,
+) -> dict[str, list[int]]:
     """Returns all of the job ids for a given dataset."""
-    return crud.get_evaluation_jobs_for_dataset(dataset_name)
+    return crud.get_evaluation_ids_for_dataset(dataset_name=dataset_name)
 
 
 @app.get(
@@ -569,9 +571,11 @@ def get_evaluation_jobs_for_dataset(dataset_name: str) -> dict[str, list[int]]:
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def get_evaluation_jobs_for_model(model_name: str) -> dict[str, list[int]]:
+def get_evaluation_jobs_for_model(
+    model_name: str,
+) -> dict[str, list[int]]:
     """Returns all of the job ids for a given model."""
-    return crud.get_evaluation_jobs_for_model(model_name)
+    return crud.get_evaluation_ids_for_model(model_name=model_name)
 
 
 @app.get(
@@ -638,7 +642,10 @@ def get_evaluation_job(
     db: Session = Depends(get_db),
 ) -> schemas.EvaluationJob:
     try:
-        return crud.get_evaluation_jobs(db=db, job_ids=[job_id])
+        if job := crud.get_evaluation_jobs(db=db, job_ids=[job_id]):
+            return job[0]
+        else:
+            raise exceptions.JobDoesNotExistError(job_id)
     except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

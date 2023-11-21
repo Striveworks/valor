@@ -132,14 +132,14 @@ def get_evaluation_jobs(
         select(models.Evaluation)
         .join(
             models.Dataset,
-            models.Dataset.id == models.Evaluation.model_id,
+            models.Dataset.id == models.Evaluation.dataset_id,
         )
         .join(
             models.Model,
             models.Model.id == models.Evaluation.model_id,
         )
         .where(*expressions)
-    )
+    ).all()
 
     return [
         schemas.EvaluationJob(
@@ -198,14 +198,14 @@ def get_evaluations(
         select(models.Evaluation)
         .join(
             models.Dataset,
-            models.Dataset.id == models.Evaluation.model_id,
+            models.Dataset.id == models.Evaluation.dataset_id,
         )
         .join(
             models.Model,
             models.Model.id == models.Evaluation.model_id,
         )
         .where(*expressions)
-    )
+    ).all()
 
     return [
         schemas.Evaluation(
