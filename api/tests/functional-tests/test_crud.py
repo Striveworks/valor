@@ -1038,6 +1038,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         job_request = schemas.EvaluationJob(
             model="test_model",
             dataset="test_dataset",
+            task_type=enums.TaskType.DETECTION,
             settings=schemas.EvaluationSettings(
                 parameters=schemas.DetectionParameters(
                     iou_thresholds_to_compute=[0.2, 0.6],
@@ -1070,10 +1071,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         )
 
     # verify we have no evaluations yet
-    assert (
-        len(crud.get_model_evaluation_settings(db=db, model_name=model_name))
-        == 0
-    )
+    assert len(crud.get_evaluation_jobs(db=db, model_names=[model_name])) == 0
 
     # run evaluation
     (
@@ -1083,10 +1081,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
     ) = method_to_test(label_key="class")
 
     # check we have one evaluation
-    assert (
-        len(crud.get_model_evaluation_settings(db=db, model_name=model_name))
-        == 1
-    )
+    assert len(crud.get_evaluation_jobs(db=db, model_names=[model_name])) == 1
 
     assert missing_pred_labels == []
     assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
@@ -1112,9 +1107,7 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
     assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 5
 
     # test getting metrics from evaluation settings id
-    pydantic_metrics = crud.get_metrics_from_evaluation_ids(
-        db=db, evaluation_id=[evaluation_id]
-    )
+    pydantic_metrics = crud.get_evaluations(db=db, job_ids=[evaluation_id])
     for m in pydantic_metrics[0].metrics:
         assert isinstance(m, schemas.Metric)
     assert len(pydantic_metrics[0].metrics) == len(metric_ids)
@@ -1133,10 +1126,10 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
     assert sorted(metric_ids) == sorted(metric_ids_again)
 
     # test crud.get_model_metrics
-    metrics_pydantic = crud.get_model_metrics(
+    metrics_pydantic = crud.get_evaluations(
         db=db,
-        model_name="test_model",
-        evaluation_id=evaluation_id,
+        model_names=["test_model"],
+        job_ids=[evaluation_id],
     )[0].metrics
 
     assert len(metrics_pydantic) == len(metrics)
@@ -1157,10 +1150,10 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         ignored_pred_labels,
     ) = method_to_test(label_key="class", min_area=min_area, max_area=max_area)
 
-    metrics_pydantic = crud.get_model_metrics(
+    metrics_pydantic = crud.get_evaluations(
         db=db,
-        model_name="test_model",
-        evaluation_id=evaluation_id,
+        model_names=["test_model"],
+        job_ids=[evaluation_id],
     )[0].metrics
     for m in metrics_pydantic:
         assert m.type in {
@@ -1171,15 +1164,13 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
         }
 
     # check we have the right evaluations
-    model_evals = crud.get_model_evaluation_settings(
-        db=db, model_name=model_name
-    )
+    model_evals = crud.get_evaluation_jobs(db=db, model_names=[model_name])
     assert len(model_evals) == 2
     assert model_evals[0] == schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
+        task_type=enums.TaskType.DETECTION,
         settings=schemas.EvaluationSettings(
-            task_type=enums.TaskType.DETECTION,
             parameters=schemas.DetectionParameters(
                 iou_thresholds_to_compute=[0.2, 0.6],
                 iou_thresholds_to_keep=[0.2],
@@ -1194,8 +1185,8 @@ def test_create_detection_metrics(db: Session, groundtruths, predictions):
     assert model_evals[1] == schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
+        task_type=enums.TaskType.DETECTION,
         settings=schemas.EvaluationSettings(
-            task_type=enums.TaskType.DETECTION,
             parameters=schemas.DetectionParameters(
                 iou_thresholds_to_compute=[0.2, 0.6],
                 iou_thresholds_to_keep=[0.2],
@@ -1242,6 +1233,7 @@ def test_create_clf_metrics(
     job_request = schemas.EvaluationJob(
         model=model_name,
         dataset=dset_name,
+        task_type=enums.TaskType.CLASSIFICATION,
     )
 
     # create clf evaluation (returns Clf Response)
@@ -1264,10 +1256,7 @@ def test_create_clf_metrics(
     )
 
     # check we have one evaluation
-    assert (
-        len(crud.get_model_evaluation_settings(db=db, model_name=model_name))
-        == 1
-    )
+    assert len(crud.get_evaluation_jobs(db=db, model_names=[model_name])) == 1
 
     # get all metrics
     metrics = db.scalar(
@@ -1309,9 +1298,7 @@ def test_create_clf_metrics(
     assert len(confusion_matrices) == 2
 
     # test getting metrics from evaluation settings id
-    pydantic_metrics = crud.get_metrics_from_evaluation_ids(
-        db=db, evaluation_id=[evaluation_id]
-    )
+    pydantic_metrics = crud.get_evaluations(db=db, job_ids=[evaluation_id])
     for m in pydantic_metrics[0].metrics:
         assert isinstance(m, schemas.Metric)
     assert len(pydantic_metrics[0].metrics) == len(metrics)
@@ -1339,10 +1326,7 @@ def test_create_clf_metrics(
         job_request=job_request,
         job_id=evaluation_id,
     )
-    assert (
-        len(crud.get_model_evaluation_settings(db=db, model_name=model_name))
-        == 1
-    )
+    assert len(crud.get_evaluation_jobs(db=db, model_names=[model_name])) == 1
 
     metrics = db.scalar(
         select(models.Evaluation).where(models.Evaluation.id == evaluation_id)

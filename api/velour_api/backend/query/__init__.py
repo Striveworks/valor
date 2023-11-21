@@ -18,12 +18,6 @@ from .label import (
     get_prediction_label_keys,
     get_prediction_labels,
 )
-from .metrics import (
-    get_evaluation_job_from_id,
-    get_metrics_from_evaluation_ids,
-    get_model_evaluation_jobs,
-    get_model_metrics,
-)
 from .model import create_model, delete_model, get_model, get_models
 from .prediction import create_prediction, get_prediction
 
@@ -51,9 +45,5 @@ __all__ = [
     "get_disjoint_labels",
     "get_joint_keys",
     "get_disjoint_keys",
-    "get_metrics_from_evaluation_ids",
     "get_evaluation_settings_from_id",
-    "get_model_metrics",
-    "get_evaluation_job_from_id",
-    "get_model_evaluation_jobs",
 ]

@@ -45,7 +45,6 @@ class DetectionParameters(BaseModel):
 
 
 class EvaluationSettings(BaseModel):
-    task_type: TaskType | None = None
     parameters: DetectionParameters | None = None
     filters: Filter | None = None
 
@@ -61,6 +60,7 @@ class EvaluationJob(BaseModel):
 
     model: str
     dataset: str
+    task_type: TaskType
     settings: EvaluationSettings = Field(default=EvaluationSettings())
     id: int | None = None
 

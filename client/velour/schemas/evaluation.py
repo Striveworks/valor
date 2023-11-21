@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Union
 
-from velour.enums import TaskType
 from velour.schemas.filters import Filter
 
 
@@ -14,7 +13,6 @@ class DetectionParameters:
 
 @dataclass
 class EvaluationSettings:
-    task_type: TaskType = None
     parameters: Union[DetectionParameters, None] = None
     filters: Union[Filter, None] = None
 
@@ -28,5 +26,6 @@ class EvaluationJob:
 
     model: str
     dataset: str
+    task_type: str
     settings: EvaluationSettings = field(default_factory=EvaluationSettings)
     id: int = None

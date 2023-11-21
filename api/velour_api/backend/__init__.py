@@ -5,6 +5,8 @@ from .metrics import (
     create_detection_metrics,
     create_semantic_segmentation_evaluation,
     create_semantic_segmentation_metrics,
+    get_evaluation_jobs,
+    get_evaluations,
 )
 from .ops import Query
 from .query import (
@@ -19,7 +21,6 @@ from .query import (
     get_datums,
     get_disjoint_keys,
     get_disjoint_labels,
-    get_evaluation_job_from_id,
     get_groundtruth,
     get_groundtruth_label_keys,
     get_groundtruth_labels,
@@ -27,10 +28,7 @@ from .query import (
     get_joint_labels,
     get_label_keys,
     get_labels,
-    get_metrics_from_evaluation_ids,
     get_model,
-    get_model_evaluation_jobs,
-    get_model_metrics,
     get_models,
     get_prediction,
     get_prediction_label_keys,
@@ -61,11 +59,7 @@ __all__ = [
     "get_disjoint_labels",
     "get_joint_keys",
     "get_disjoint_keys",
-    "get_metrics_from_evaluation_ids",
     "get_evaluation_settings_from_id",
-    "get_model_metrics",
-    "get_model_evaluation_jobs",
-    "get_evaluation_job_from_id",
     "get_datums",
     "create_detection_metrics",
     "create_clf_metrics",
@@ -73,4 +67,6 @@ __all__ = [
     "create_detection_evaluation",
     "create_clf_evaluation",
     "create_semantic_segmentation_evaluation",
+    "get_evaluations",
+    "get_evaluation_jobs",
 ]
