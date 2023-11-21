@@ -9,7 +9,7 @@ dataset_name = "test_dataset"
 model_name = "test_model"
 
 
-def round_dict_(d: dict, prec: int) -> None:
+def _round_dict(d: dict, prec: int = 3) -> None:
     """Modifies a dictionary in place by rounding every float in it
     to three decimal places
     """
@@ -17,7 +17,7 @@ def round_dict_(d: dict, prec: int) -> None:
         if isinstance(v, float):
             d[k] = round(v, prec)
         elif isinstance(v, dict):
-            round_dict_(v, prec)
+            _round_dict(v, prec)
 
 
 def test_compute_detection_metrics(
@@ -46,7 +46,7 @@ def test_compute_detection_metrics(
     metrics = [m.model_dump(exclude_none=True) for m in metrics]
 
     for m in metrics:
-        round_dict_(m, 3)
+        _round_dict(m, 3)
 
     # cf with torch metrics/pycocotools results listed here:
     # https://github.com/Lightning-AI/metrics/blob/107dbfd5fb158b7ae6d76281df44bd94c836bfce/tests/unittests/detection/test_map.py#L231

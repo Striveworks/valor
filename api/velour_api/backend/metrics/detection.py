@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
 from velour_api.backend import core, models, query
-from velour_api.backend.metrics.core import (
+from velour_api.backend.metrics.metrics import (
     create_metric_mappings,
     get_or_create_row,
 )

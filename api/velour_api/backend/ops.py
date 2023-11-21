@@ -477,7 +477,7 @@ class Query:
         name: str = "generated_subquery",
         *,
         pivot: DeclarativeMeta | None = None,
-        asSubquery: bool = True,
+        as_subquery: bool = True,
     ):
         """
         Generates a sqlalchemy subquery. Graph is chosen automatically as best fit.
@@ -485,26 +485,28 @@ class Query:
         query, subquery = self._select_graph(pivot)
         if subquery is not None:
             query = query.where(models.Datum.id.in_(subquery))
-        return query.subquery(name) if asSubquery else query
+        return query.subquery(name) if as_subquery else query
 
     def groundtruths(
-        self, name: str = "generated_subquery", *, asSubquery: bool = True
+        self, name: str = "generated_subquery", *, as_subquery: bool = True
     ):
         """
         Generates a sqlalchemy subquery using a groundtruths-focused graph.
         """
-        return self.any(name, pivot=models.GroundTruth, asSubquery=asSubquery)
+        return self.any(
+            name, pivot=models.GroundTruth, as_subquery=as_subquery
+        )
 
     def predictions(
         self,
         name: str = "generated_subquery",
         *,
-        asSubquery: bool = True,
+        as_subquery: bool = True,
     ):
         """
         Generates a sqlalchemy subquery using a predictions-focused graph.
         """
-        return self.any(name, pivot=models.Prediction, asSubquery=asSubquery)
+        return self.any(name, pivot=models.Prediction, as_subquery=as_subquery)
 
     def filter(self, filters: Filter):
         """Parses `schemas.Filter`"""

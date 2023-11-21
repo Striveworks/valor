@@ -3,10 +3,14 @@ from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
 from velour_api.backend.metrics.classification import (
-    _accuracy_from_cm,
-    _confusion_matrix_at_label_key,
-    _roc_auc,
+    _compute_accuracy_from_cm,
+    _compute_clf_metrics,
+    _compute_confusion_matrix_at_label_key,
+    _compute_roc_auc,
+    create_clf_evaluation,
+    create_clf_metrics,
 )
+from velour_api.backend.metrics.metrics import get_evaluations
 
 dataset_name = "test_dataset"
 model_name = "test_model"
@@ -106,7 +110,9 @@ def classification_test_data(db: Session):
         crud.create_prediction(db=db, prediction=pd)
 
 
-def test__confusion_matrix_at_label_key(db: Session, classification_test_data):
+def test_compute_confusion_matrix_at_label_key(
+    db: Session, classification_test_data
+):
     label_key = "animal"
     job_request = schemas.EvaluationJob(
         dataset=dataset_name,
@@ -115,7 +121,7 @@ def test__confusion_matrix_at_label_key(db: Session, classification_test_data):
         settings=schemas.EvaluationSettings(filters=schemas.Filter()),
     )
 
-    cm = _confusion_matrix_at_label_key(db, job_request, label_key)
+    cm = _compute_confusion_matrix_at_label_key(db, job_request, label_key)
     expected_entries = [
         schemas.ConfusionMatrixEntry(
             prediction="bird", groundtruth="bird", count=1
@@ -137,10 +143,10 @@ def test__confusion_matrix_at_label_key(db: Session, classification_test_data):
         assert entry in expected_entries
     for entry in expected_entries:
         assert entry in cm.entries
-    assert _accuracy_from_cm(cm) == 2 / 6
+    assert _compute_accuracy_from_cm(cm) == 2 / 6
 
     label_key = "color"
-    cm = _confusion_matrix_at_label_key(db, job_request, label_key)
+    cm = _compute_confusion_matrix_at_label_key(db, job_request, label_key)
     expected_entries = [
         schemas.ConfusionMatrixEntry(
             prediction="white", groundtruth="white", count=1
@@ -162,10 +168,10 @@ def test__confusion_matrix_at_label_key(db: Session, classification_test_data):
         assert entry in expected_entries
     for entry in expected_entries:
         assert entry in cm.entries
-    assert _accuracy_from_cm(cm) == 3 / 6
+    assert _compute_accuracy_from_cm(cm) == 3 / 6
 
 
-def test__confusion_matrix_at_label_key_and_group(
+def test_compute_confusion_matrix_at_label_key_and_filter(
     db: Session, classification_test_data
 ):
     """
@@ -183,7 +189,7 @@ def test__confusion_matrix_at_label_key_and_group(
         ),
     )
 
-    cm = _confusion_matrix_at_label_key(
+    cm = _compute_confusion_matrix_at_label_key(
         db,
         job_request=job_request,
         label_key="animal",
@@ -212,7 +218,7 @@ def test__confusion_matrix_at_label_key_and_group(
         assert e in cm.entries
 
 
-def test__roc_auc(db, classification_test_data):
+def test_compute_roc_auc(db, classification_test_data):
     """Test ROC auc computation. This agrees with scikit-learn: the code (whose data
     comes from classification_test_data)
 
@@ -260,15 +266,18 @@ def test__roc_auc(db, classification_test_data):
         ),
     )
 
-    assert _roc_auc(db, job_request, label_key="animal") == 0.8009259259259259
-    assert _roc_auc(db, job_request, label_key="color") == 0.43125
+    assert (
+        _compute_roc_auc(db, job_request, label_key="animal")
+        == 0.8009259259259259
+    )
+    assert _compute_roc_auc(db, job_request, label_key="color") == 0.43125
 
     with pytest.raises(RuntimeError) as exc_info:
-        _roc_auc(db, job_request, label_key="not a key")
+        _compute_roc_auc(db, job_request, label_key="not a key")
     assert "is not a classification label" in str(exc_info)
 
 
-def test_roc_auc_groupby_metadata(db, classification_test_data):
+def test_compute_roc_auc_groupby_metadata(db, classification_test_data):
     """Test computing ROC AUC for a given grouping. This agrees with:
 
     Scikit-learn won't do multiclass ROC AUC when there are only two predictive classes. So we
@@ -309,10 +318,167 @@ def test_roc_auc_groupby_metadata(db, classification_test_data):
     )
 
     assert (
-        _roc_auc(
+        _compute_roc_auc(
             db,
             job_request=job_request,
             label_key="animal",
         )
         == (0.5 + 2 / 3) / 2
     )
+
+
+def test_compute_classification(
+    db: Session,
+    classification_test_data,
+):
+    """
+    Tests the _compute_classification function.
+    """
+    job_request = schemas.EvaluationJob(
+        dataset=dataset_name,
+        model=model_name,
+        task_type=enums.TaskType.CLASSIFICATION,
+        settings=schemas.EvaluationSettings(
+            filters=schemas.Filter(
+                task_types=[enums.TaskType.CLASSIFICATION],
+            )
+        ),
+    )
+
+    confusion, metrics = _compute_clf_metrics(db, job_request)
+
+    # Make matrices accessible by label_key
+    confusion = {matrix.label_key: matrix for matrix in confusion}
+
+    # Test confusion matrix w/ label_key "animal"
+    expected_entries = [
+        schemas.ConfusionMatrixEntry(
+            groundtruth="bird", prediction="bird", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="dog", prediction="cat", count=2
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="bird", prediction="cat", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="bird", prediction="dog", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="cat", prediction="cat", count=1
+        ),
+    ]
+    assert len(confusion["animal"].entries) == len(expected_entries)
+    for e in expected_entries:
+        assert e in confusion["animal"].entries
+
+    # Test confusion matrix w/ label_key "color"
+    expected_entries = [
+        schemas.ConfusionMatrixEntry(
+            groundtruth="white", prediction="white", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="white", prediction="blue", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="red", prediction="red", count=2
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="blue", prediction="white", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="black", prediction="red", count=1
+        ),
+    ]
+    assert len(confusion["color"].entries) == len(expected_entries)
+    for e in expected_entries:
+        assert e in confusion["color"].entries
+
+    # Test metrics (only ROCAUC)
+    for metric in metrics:
+        if isinstance(metric, schemas.ROCAUCMetric):
+            if metric.label_key == "animal":
+                assert metric.value == 0.8009259259259259
+            elif metric.label_key == "color":
+                assert metric.value == 0.43125
+
+
+def test_classification(
+    db: Session,
+    classification_test_data,
+):
+    # default request
+    job_request = schemas.EvaluationJob(
+        dataset=dataset_name,
+        model=model_name,
+        task_type=enums.TaskType.CLASSIFICATION,
+        settings=schemas.EvaluationSettings(),
+    )
+
+    # creates evaluation job
+    job_id = create_clf_evaluation(db, job_request)
+
+    # computation, normally run as background task
+    _ = create_clf_metrics(db, job_id)  # returns job_ud
+
+    # get evaluations
+    evaluations = get_evaluations(db, job_ids=[job_id])
+
+    assert len(evaluations) == 1
+    metrics = evaluations[0].metrics
+    confusion = evaluations[0].confusion_matrices
+
+    # Make matrices accessible by label_key
+    confusion = {matrix.label_key: matrix for matrix in confusion}
+
+    # Test confusion matrix w/ label_key "animal"
+    expected_entries = [
+        schemas.ConfusionMatrixEntry(
+            groundtruth="bird", prediction="bird", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="dog", prediction="cat", count=2
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="bird", prediction="cat", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="bird", prediction="dog", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="cat", prediction="cat", count=1
+        ),
+    ]
+    assert len(confusion["animal"].entries) == len(expected_entries)
+    for e in expected_entries:
+        assert e in confusion["animal"].entries
+
+    # Test confusion matrix w/ label_key "color"
+    expected_entries = [
+        schemas.ConfusionMatrixEntry(
+            groundtruth="white", prediction="white", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="white", prediction="blue", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="red", prediction="red", count=2
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="blue", prediction="white", count=1
+        ),
+        schemas.ConfusionMatrixEntry(
+            groundtruth="black", prediction="red", count=1
+        ),
+    ]
+    assert len(confusion["color"].entries) == len(expected_entries)
+    for e in expected_entries:
+        assert e in confusion["color"].entries
+
+    # Test metrics (only ROCAUC)
+    for metric in metrics:
+        if isinstance(metric, schemas.ROCAUCMetric):
+            if metric.label_key == "animal":
+                assert metric.value == 0.8009259259259259
+            elif metric.label_key == "color":
+                assert metric.value == 0.43125

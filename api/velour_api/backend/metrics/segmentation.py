@@ -4,7 +4,7 @@ from sqlalchemy.sql import Select, and_, func, join, select
 
 from velour_api.backend import core, models
 from velour_api.backend.core.label import get_dataset_labels_query
-from velour_api.backend.metrics.core import (
+from velour_api.backend.metrics.metrics import (
     create_metric_mappings,
     get_or_create_row,
 )

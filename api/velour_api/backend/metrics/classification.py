@@ -5,7 +5,7 @@ from sqlalchemy.sql import and_, func, select
 
 from velour_api import schemas
 from velour_api.backend import core, models
-from velour_api.backend.metrics.core import (
+from velour_api.backend.metrics.metrics import (
     create_metric_mappings,
     get_or_create_row,
 )
@@ -13,7 +13,7 @@ from velour_api.backend.ops import Query
 from velour_api.enums import TaskType
 
 
-def _binary_roc_auc(
+def _compute_binary_roc_auc(
     db: Session,
     job_request: schemas.EvaluationJob,
     label: schemas.Label,
@@ -124,7 +124,7 @@ def _binary_roc_auc(
     return ret
 
 
-def _roc_auc(
+def _compute_roc_auc(
     db: Session,
     job_request: schemas.EvaluationJob,
     label_key: str,
@@ -166,7 +166,7 @@ def _roc_auc(
     sum_roc_aucs = 0
     label_count = 0
     for label in labels:
-        bin_roc = _binary_roc_auc(db, job_request, label)
+        bin_roc = _compute_binary_roc_auc(db, job_request, label)
 
         if bin_roc is not None:
             sum_roc_aucs += bin_roc
@@ -175,7 +175,7 @@ def _roc_auc(
     return sum_roc_aucs / label_count
 
 
-def _confusion_matrix_at_label_key(
+def _compute_confusion_matrix_at_label_key(
     db: Session,
     job_request: schemas.EvaluationJob,
     label_key: str,
@@ -214,7 +214,7 @@ def _confusion_matrix_at_label_key(
     predictions = (
         Query(models.Prediction)
         .filter(pFilter)
-        .predictions(asSubquery=False)
+        .predictions(as_subquery=False)
         .alias()
     )
 
@@ -225,7 +225,7 @@ def _confusion_matrix_at_label_key(
             models.Datum.id.label("datum_id"),
         )
         .filter(pFilter)
-        .predictions(asSubquery=False)
+        .predictions(as_subquery=False)
         .group_by(models.Datum.id)
         .alias()
     )
@@ -296,7 +296,7 @@ def _confusion_matrix_at_label_key(
     groundtruths = (
         Query(models.GroundTruth)
         .filter(gFilter)
-        .groundtruths(asSubquery=False)
+        .groundtruths(as_subquery=False)
         .alias()
     )
 
@@ -338,11 +338,11 @@ def _confusion_matrix_at_label_key(
     )
 
 
-def _accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
+def _compute_accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
     return cm.matrix.trace() / cm.matrix.sum()
 
 
-def _precision_and_recall_f1_from_confusion_matrix(
+def _compute_precision_and_recall_f1_from_confusion_matrix(
     cm: schemas.ConfusionMatrix, label_value: str
 ) -> tuple[float, float, float]:
     """Computes the precision, recall, and f1 score at a class index"""
@@ -367,7 +367,7 @@ def _precision_and_recall_f1_from_confusion_matrix(
     return prec, recall, f1
 
 
-def _get_confusion_matrix_and_metrics_at_label_key(
+def _compute_confusion_matrix_and_metrics_at_label_key(
     db: Session,
     job_request: schemas.EvaluationJob,
     label_key: str,
@@ -414,7 +414,7 @@ def _get_confusion_matrix_and_metrics_at_label_key(
                 f"Expected all elements of `labels` to have label key equal to {label_key} but got label {label}."
             )
 
-    confusion_matrix = _confusion_matrix_at_label_key(
+    confusion_matrix = _compute_confusion_matrix_at_label_key(
         db=db,
         job_request=job_request,
         label_key=label_key,
@@ -427,11 +427,11 @@ def _get_confusion_matrix_and_metrics_at_label_key(
     metrics = [
         schemas.AccuracyMetric(
             label_key=label_key,
-            value=_accuracy_from_cm(confusion_matrix),
+            value=_compute_accuracy_from_cm(confusion_matrix),
         ),
         schemas.ROCAUCMetric(
             label_key=label_key,
-            value=_roc_auc(
+            value=_compute_roc_auc(
                 db,
                 job_request,
                 label_key,
@@ -445,7 +445,7 @@ def _get_confusion_matrix_and_metrics_at_label_key(
             precision,
             recall,
             f1,
-        ) = _precision_and_recall_f1_from_confusion_matrix(
+        ) = _compute_precision_and_recall_f1_from_confusion_matrix(
             confusion_matrix, label.value
         )
 
@@ -518,7 +518,7 @@ def _compute_clf_metrics(
     # compute metrics and confusion matrix for each label key
     confusion_matrices, metrics = [], []
     for label_key in unique_label_keys:
-        cm_and_metrics = _get_confusion_matrix_and_metrics_at_label_key(
+        cm_and_metrics = _compute_confusion_matrix_and_metrics_at_label_key(
             db,
             job_request=job_request,
             label_key=label_key,
@@ -636,4 +636,4 @@ def create_clf_metrics(
             columns_to_ignore=["value"],
         )
 
-    return job_request.id
+    return evaluation_id
