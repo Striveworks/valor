@@ -580,13 +580,13 @@ def create_clf_evaluation(
 
 def create_clf_metrics(
     db: Session,
-    evaluation_id: int,
+    job_id: int,
 ) -> int:
     """
     Intended to run as background
     """
     evaluation = db.scalar(
-        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
+        select(models.Evaluation).where(models.Evaluation.id == job_id)
     )
 
     # unpack job request
@@ -636,4 +636,4 @@ def create_clf_metrics(
             columns_to_ignore=["value"],
         )
 
-    return evaluation_id
+    return job_id

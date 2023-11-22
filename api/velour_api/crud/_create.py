@@ -84,7 +84,7 @@ def compute_clf_metrics(
     """compute clf metrics"""
     backend.create_clf_metrics(
         db,
-        evaluation_id=job_id,
+        job_id=job_id,
     )
 
 
@@ -127,7 +127,7 @@ def compute_semantic_segmentation_metrics(
     backend.create_semantic_segmentation_metrics(
         db,
         job_request=job_request,
-        evaluation_id=job_id,
+        job_id=job_id,
     )
 
 
@@ -164,5 +164,5 @@ def compute_detection_metrics(
     """compute ap metrics"""
     backend.create_detection_metrics(
         db=db,
-        evaluation_id=job_id,
+        job_id=job_id,
     )
