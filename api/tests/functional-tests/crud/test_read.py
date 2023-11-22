@@ -5,7 +5,7 @@ from velour_api import crud, enums, exceptions, schemas
 
 
 @pytest.fixture
-def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
+def groundtruth_detections(img1: schemas.Datum) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
             datum=img1,
@@ -53,7 +53,7 @@ def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
 
 
 @pytest.fixture
-def pred_dets_create(
+def prediction_detections(
     model_name: str, img1: schemas.Datum
 ) -> list[schemas.Prediction]:
     return [
@@ -115,8 +115,8 @@ def model_names():
 @pytest.fixture
 def dataset_model_create(
     db: Session,
-    gt_dets_create: list[schemas.GroundTruth],
-    pred_dets_create: list[schemas.Prediction],
+    groundtruth_detections: list[schemas.GroundTruth],
+    prediction_detections: list[schemas.Prediction],
     dataset_names: list[str],
     model_names: list[str],
 ):
@@ -125,7 +125,7 @@ def dataset_model_create(
         db=db,
         dataset=schemas.Dataset(name=dataset_names[0]),
     )
-    for gt in gt_dets_create:
+    for gt in groundtruth_detections:
         gt.datum.dataset = dataset_names[0]
         crud.create_groundtruth(db=db, groundtruth=gt)
     crud.finalize(db=db, dataset_name=dataset_names[0])
@@ -134,7 +134,7 @@ def dataset_model_create(
     crud.create_model(db=db, model=schemas.Model(name=model_names[0]))
 
     # Link model1 to dataset1
-    for pd in pred_dets_create:
+    for pd in prediction_detections:
         pd.model = model_names[0]
         pd.datum.dataset = dataset_names[0]
         crud.create_prediction(db=db, prediction=pd)
@@ -206,11 +206,11 @@ def test_get_model(
 
 
 def test_get_all_labels(
-    db: Session, dataset_name: str, gt_dets_create: schemas.GroundTruth
+    db: Session, dataset_name: str, groundtruth_detections: schemas.GroundTruth
 ):
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
-    for gt in gt_dets_create:
+    for gt in groundtruth_detections:
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     labels = crud.get_all_labels(db=db)

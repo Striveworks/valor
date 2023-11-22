@@ -29,7 +29,7 @@ class ImageMetadata:
         self.dataset = dataset
         self.height = height
         self.width = width
-        self.metadata = validate_metadata(metadata if metadata else {})
+        self.metadata = metadata if metadata else {}
         self.geospatial = geospatial if geospatial else {}
 
         if not isinstance(self.dataset, str):
@@ -40,6 +40,7 @@ class ImageMetadata:
             raise TypeError("ImageMetadata height must be a int.")
         if not isinstance(self.width, int):
             raise TypeError("ImageMetadata height must be a int.")
+        validate_metadata(self.metadata)
 
     @staticmethod
     def valid(datum: Datum) -> bool:

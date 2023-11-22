@@ -13,20 +13,20 @@ from velour_api import crud, enums, exceptions, schemas
 from velour_api.backend import models
 
 
-def bytes_to_pil(b: bytes) -> Image.Image:
+def _bytes_to_pil(b: bytes) -> Image.Image:
     f = io.BytesIO(b)
     img = Image.open(f)
     return img
 
 
-def np_to_bytes(arr: np.ndarray) -> bytes:
+def _np_to_bytes(arr: np.ndarray) -> bytes:
     f = io.BytesIO()
     Image.fromarray(arr).save(f, format="PNG")
     f.seek(0)
     return f.read()
 
 
-def check_db_empty(db: Session):
+def _check_db_empty(db: Session):
     for model_cls in [
         models.Label,
         models.GroundTruth,
@@ -82,7 +82,7 @@ def poly_with_hole() -> schemas.Polygon:
 
 
 @pytest.fixture
-def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
+def groundtruth_detections(img1: schemas.Datum) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
             datum=img1,
@@ -130,7 +130,7 @@ def gt_dets_create(img1: schemas.Datum) -> list[schemas.GroundTruth]:
 
 
 @pytest.fixture
-def pred_dets_create(
+def prediction_detections(
     model_name: str, img1: schemas.Datum
 ) -> list[schemas.Prediction]:
     return [
@@ -180,7 +180,7 @@ def pred_dets_create(
 
 
 @pytest.fixture
-def gt_instance_segs_create(
+def groundtruth_instance_segmentations(
     poly_with_hole: schemas.BasicPolygon,
     poly_without_hole: schemas.BasicPolygon,
     img1: schemas.Datum,
@@ -223,7 +223,7 @@ def gt_instance_segs_create(
 
 
 @pytest.fixture
-def pred_instance_segs_create(
+def prediction_instance_segmentations(
     model_name: str,
     img1_pred_mask_bytes1: bytes,
     img1: schemas.Datum,
@@ -404,14 +404,14 @@ def test_create_and_get_models(
 def test_create_detection_ground_truth_and_delete_dataset(
     db: Session,
     dataset_name: str,
-    gt_dets_create: list[schemas.GroundTruth],
+    groundtruth_detections: list[schemas.GroundTruth],
 ):
     # sanity check nothing in db
-    check_db_empty(db=db)
+    _check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
-    for gt in gt_dets_create:
+    for gt in groundtruth_detections:
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     assert db.scalar(func.count(models.Annotation.id)) == 2
@@ -420,7 +420,7 @@ def test_create_detection_ground_truth_and_delete_dataset(
     assert db.scalar(func.count(models.Label.id)) == 2
 
     # verify we get the same dets back
-    for gt in gt_dets_create:
+    for gt in groundtruth_detections:
         new_gt = crud.get_groundtruth(
             db=db, dataset_name=gt.datum.dataset, datum_uid=gt.datum.uid
         )
@@ -450,24 +450,24 @@ def test_create_detection_prediction_and_delete_model(
     db: Session,
     dataset_name: str,
     model_name: str,
-    pred_dets_create: list[schemas.Prediction],
-    gt_dets_create: list[schemas.GroundTruth],
+    prediction_detections: list[schemas.Prediction],
+    groundtruth_detections: list[schemas.GroundTruth],
 ):
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
-        for pd in pred_dets_create:
+        for pd in prediction_detections:
             crud.create_prediction(db=db, prediction=pd)
     assert "does not exist" in str(exc_info)
 
     # create dataset, add images, and add predictions
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
-    for gt in gt_dets_create:
+    for gt in groundtruth_detections:
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     # check this gives an error since the model hasn't been created yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        for pd in pred_dets_create:
+        for pd in prediction_detections:
             crud.create_prediction(db=db, prediction=pd)
     assert "does not exist" in str(exc_info)
 
@@ -476,13 +476,13 @@ def test_create_detection_prediction_and_delete_model(
 
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        for pd in pred_dets_create:
+        for pd in prediction_detections:
             crud.create_prediction(db=db, prediction=pd)
     assert "does not exist" in str(exc_info)
 
     # create model
     crud.create_model(db=db, model=schemas.Model(name=model_name))
-    for pd in pred_dets_create:
+    for pd in prediction_detections:
         crud.create_prediction(db=db, prediction=pd)
 
     # check db has the added predictions
@@ -650,7 +650,7 @@ def _test_create_groundtruth_segmentations_and_delete_dataset(
     expected_labels: int,
 ):
     # sanity check nothing in db
-    check_db_empty(db=db)
+    _check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
@@ -683,12 +683,12 @@ def _test_create_groundtruth_segmentations_and_delete_dataset(
 def test_create_groundtruth_instance_segmentations_and_delete_dataset(
     db: Session,
     dataset_name: str,
-    gt_instance_segs_create: list[schemas.GroundTruth],
+    groundtruth_instance_segmentations: list[schemas.GroundTruth],
 ):
     _test_create_groundtruth_segmentations_and_delete_dataset(
         db,
         dataset_name=dataset_name,
-        gts=gt_instance_segs_create,
+        gts=groundtruth_instance_segmentations,
         task=enums.TaskType.DETECTION,
         expected_labels=2,
         expected_anns=4,
@@ -718,27 +718,27 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     db: Session,
     dataset_name: str,
     model_name: str,
-    pred_instance_segs_create: list[schemas.Prediction],
-    gt_instance_segs_create: list[schemas.GroundTruth],
+    prediction_instance_segmentations: list[schemas.Prediction],
+    groundtruth_instance_segmentations: list[schemas.GroundTruth],
 ):
     # create dataset, add images, and add predictions
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.StateflowError) as exc_info:
-        for pd in pred_instance_segs_create:
+        for pd in prediction_instance_segmentations:
             pd.model = model_name
             crud.create_prediction(db=db, prediction=pd)
     assert "does not support model operations" in str(exc_info)
 
     # create groundtruths
-    for gt in gt_instance_segs_create:
+    for gt in groundtruth_instance_segmentations:
         gt.datum.dataset = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
 
     # check this gives an error since the model has not been crated yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        for pd in pred_instance_segs_create:
+        for pd in prediction_instance_segmentations:
             crud.create_prediction(db=db, prediction=pd)
     assert "does not exist" in str(exc_info)
 
@@ -747,7 +747,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # check this gives an error since the model hasn't been added yet
     with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
-        for pd in pred_instance_segs_create:
+        for pd in prediction_instance_segmentations:
             crud.create_prediction(db=db, prediction=pd)
     assert "does not exist" in str(exc_info)
 
@@ -755,7 +755,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
 
     # check this gives an error since the images haven't been added yet
     with pytest.raises(exceptions.DatumDoesNotExistError) as exc_info:
-        for i, pd in enumerate(pred_instance_segs_create):
+        for i, pd in enumerate(prediction_instance_segmentations):
             temp_pd = pd.__deepcopy__()
             temp_pd.model = model_name
             temp_pd.datum.uid = f"random{i}"
@@ -763,7 +763,7 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     assert "does not exist" in str(exc_info)
 
     # create predictions
-    for pd in pred_instance_segs_create:
+    for pd in prediction_instance_segmentations:
         pd.model = model_name
         crud.create_prediction(db=db, prediction=pd)
 
@@ -789,8 +789,10 @@ def test_create_predicted_segmentations_check_area_and_delete_model(
     )
 
     for i in range(len(img.annotations)):
-        mask = bytes_to_pil(
-            b64decode(pred_instance_segs_create[0].annotations[i].raster.mask)
+        mask = _bytes_to_pil(
+            b64decode(
+                prediction_instance_segmentations[0].annotations[i].raster.mask
+            )
         )
         assert np.array(mask).sum() in raster_counts
 
@@ -808,7 +810,7 @@ def test_segmentation_area_no_hole(
     img1: schemas.Datum,
 ):
     # sanity check nothing in db
-    check_db_empty(db=db)
+    _check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
@@ -840,7 +842,7 @@ def test_segmentation_area_with_hole(
     img1: schemas.Datum,
 ):
     # sanity check nothing in db
-    check_db_empty(db=db)
+    _check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
@@ -874,7 +876,7 @@ def test_segmentation_area_multi_polygon(
     img1: schemas.Datum,
 ):
     # sanity check nothing in db
-    check_db_empty(db=db)
+    _check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
@@ -917,7 +919,7 @@ def test_gt_seg_as_mask_or_polys(
     h, w = 150, 200
     mask = np.zeros((h, w), dtype=bool)
     mask[ymin:ymax, xmin:xmax] = True
-    mask_b64 = b64encode(np_to_bytes(mask)).decode()
+    mask_b64 = b64encode(_np_to_bytes(mask)).decode()
 
     img = schemas.Datum(
         dataset=dataset_name,
@@ -960,7 +962,7 @@ def test_gt_seg_as_mask_or_polys(
         annotations=[gt1, gt2],
     )
 
-    check_db_empty(db=db)
+    _check_db_empty(db=db)
 
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
 
@@ -983,7 +985,7 @@ def test_gt_seg_as_mask_or_polys(
     assert (
         len(segs.annotations) == 2
     )  # should just be one instance segmentation
-    decoded_mask = bytes_to_pil(b64decode(segs.annotations[0].raster.mask))
+    decoded_mask = _bytes_to_pil(b64decode(segs.annotations[0].raster.mask))
     decoded_mask_arr = np.array(decoded_mask)
 
     np.testing.assert_equal(decoded_mask_arr, mask)

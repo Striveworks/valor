@@ -1,72 +1,78 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-# @TODO: Implement metadata querying + geojson
-# def test_create_images_with_metadata(
-#     client: Client, db: Session, metadata: list[Metadatum], rect1: BoundingBox
-# ):
-#     dataset = Dataset.create(client, dset_name)
+from velour import Annotation, Dataset, GroundTruth, Label
+from velour.client import Client
+from velour.enums import TaskType
+from velour.metatypes import ImageMetadata
+from velour.schemas import BoundingBox
+from velour_api.backend import models
 
-#     md1, md2, md3 = metadata
-#     img1 = ImageMetadata(uid="uid1", metadata=[md1], height=100, width=200).to_datum()
-#     img2 = ImageMetadata(uid="uid2", metadata=[md2, md3], height=100, width=200).to_datum()
 
-#     print(GroundTruth(
-#             dataset=dset_name,
-#             datum=img1.to_datum(),
-#             annotations=[
-#                 Annotation(
-#                     task_type=TaskType.DETECTION,
-#                     labels=[Label(key="k", value="v")],
-#                     bounding_box=rect1,
-#                 ),
-#             ]
-#         ))
+def test_create_images_with_metadata(
+    client: Client,
+    db: Session,
+    dataset_name: str,
+    metadata: dict,
+    rect1: BoundingBox,
+):
+    # split metadata
+    md1 = {
+        "metadatum1": metadata["metadatum1"],
+    }
+    md23 = {
+        "metadatum2": metadata["metadatum2"],
+        "metadatum3": metadata["metadatum3"],
+    }
 
-#     dataset.add_groundtruth(
-#         GroundTruth(
-#             dataset=dset_name,
-#             datum=img1.to_datum(),
-#             annotations=[
-#                 Annotation(
-#                     task_type=TaskType.DETECTION,
-#                     labels=[Label(key="k", value="v")],
-#                     bounding_box=rect1,
-#                 ),
-#             ]
-#         )
-#     )
-#     dataset.add_groundtruth(
-#         GroundTruth(
-#             dataset=dset_name,
-#             datum=img2.to_datum(),
-#             annotations=[
-#                 Annotation(
-#                     task_type=TaskType.CLASSIFICATION,
-#                     labels=[Label(key="k", value="v")],
-#                 )
-#             ]
-#         )
-#     )
+    # create via image metatypes
+    img1 = ImageMetadata(
+        uid="uid1", metadata=md1, height=100, width=200
+    ).to_datum()
+    img2 = ImageMetadata(
+        uid="uid2", metadata=md23, height=200, width=100
+    ).to_datum()
 
-#     data = db.scalars(select(models.Datum)).all()
-#     assert len(data) == 2
-#     assert set(d.uid for d in data) == {"uid1", "uid2"}
+    # create dataset
+    dataset = Dataset.create(client, dataset_name)
+    dataset.add_groundtruth(
+        GroundTruth(
+            datum=img1,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.DETECTION,
+                    labels=[Label(key="k", value="v")],
+                    bounding_box=rect1,
+                ),
+            ],
+        )
+    )
+    dataset.add_groundtruth(
+        GroundTruth(
+            datum=img2,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[Label(key="k", value="v")],
+                )
+            ],
+        )
+    )
 
-#     metadata_links = data[0].datum_metadatum_links
-#     assert len(metadata_links) == 1
-#     metadatum = metadata_links[0].metadatum
-#     assert metadata_links[0].metadatum.name == "metadatum name1"
-#     assert json.loads(db.scalar(ST_AsGeoJSON(metadatum.geo))) == {
-#         "type": "Point",
-#         "coordinates": [-48.23456, 20.12345],
-#     }
-#     metadata_links = data[1].datum_metadatum_links
-#     assert len(metadata_links) == 2
-#     metadatum1 = metadata_links[0].metadatum
-#     metadatum2 = metadata_links[1].metadatum
-#     assert metadatum1.name == "metadatum name2"
-#     assert metadatum1.string_value == "a string"
-#     assert metadatum2.name == "metadatum name3"
-#     assert metadatum2.numeric_value == 0.45
+    data = db.scalars(select(models.Datum)).all()
+    assert len(data) == 2
+    assert set(d.uid for d in data) == {"uid1", "uid2"}
+
+    assert len(data[0].meta) == 3
+    assert data[0].meta["metadatum1"] == metadata["metadatum1"]
+    assert data[0].meta["height"] == 100
+    assert data[0].meta["width"] == 200
+
+    assert len(data[1].meta) == 4
+    assert data[1].meta["metadatum2"] == metadata["metadatum2"]
+    assert data[1].meta["metadatum3"] == metadata["metadatum3"]
+    assert data[1].meta["height"] == 200
+    assert data[1].meta["width"] == 100
