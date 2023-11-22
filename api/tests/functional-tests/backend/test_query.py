@@ -11,9 +11,6 @@ from velour_api.backend.query.label import (
     get_prediction_labels,
 )
 
-dset_name = "test_dataset"
-model_name = "test_model"
-
 
 @pytest.fixture
 def semantic_seg_gt_anns1(
@@ -97,6 +94,8 @@ def instance_seg_gt_anns2(
 
 def test_label(
     db: Session,
+    dataset_name: str,
+    model_name: str,
     img1: schemas.Datum,
     img2: schemas.Datum,
     semantic_seg_gt_anns1: schemas.Annotation,
@@ -107,7 +106,7 @@ def test_label(
     instance_seg_gt_anns2: schemas.Annotation,
 ):
     """Tests the label query methods"""
-    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dset_name))
+    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
     crud.create_model(db=db, model=schemas.Model(name=model_name))
 
     datum1 = img1
@@ -155,7 +154,7 @@ def test_label(
     assert get_groundtruth_label_keys(
         db,
         schemas.Filter(
-            dataset_names=[dset_name],
+            dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
     ) == {"semsegk1", "semsegk2", "semsegk3"}
@@ -163,7 +162,7 @@ def test_label(
     assert get_groundtruth_labels(
         db,
         schemas.Filter(
-            dataset_names=[dset_name],
+            dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
             annotation_types=[enums.AnnotationType.RASTER],
         ),
@@ -176,7 +175,7 @@ def test_label(
         get_groundtruth_labels(
             db,
             schemas.Filter(
-                dataset_names=[dset_name],
+                dataset_names=[dataset_name],
                 task_types=[enums.TaskType.SEGMENTATION],
                 annotation_types=[enums.AnnotationType.POLYGON],
             ),
@@ -188,7 +187,7 @@ def test_label(
         db,
         schemas.Filter(
             models_names=[model_name],
-            dataset_names=[dset_name],
+            dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
     ) == {"semsegk1", "semsegk2", "semsegk3_pred"}
@@ -197,7 +196,7 @@ def test_label(
         db,
         schemas.Filter(
             models_names=[model_name],
-            dataset_names=[dset_name],
+            dataset_names=[dataset_name],
             annotation_types=[enums.AnnotationType.RASTER],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
@@ -212,7 +211,7 @@ def test_label(
             db,
             schemas.Filter(
                 models_names=[model_name],
-                dataset_names=[dset_name],
+                dataset_names=[dataset_name],
                 annotation_types=[enums.AnnotationType.POLYGON],
                 task_types=[enums.TaskType.SEGMENTATION],
             ),
@@ -224,7 +223,7 @@ def test_label(
         get_groundtruth_label_keys(
             db,
             schemas.Filter(
-                dataset_names=[dset_name],
+                dataset_names=[dataset_name],
                 task_types=[enums.TaskType.CLASSIFICATION],
             ),
         )
@@ -235,7 +234,7 @@ def test_label(
             db,
             schemas.Filter(
                 models_names=[model_name],
-                dataset_names=[dset_name],
+                dataset_names=[dataset_name],
                 task_types=[enums.TaskType.CLASSIFICATION],
             ),
         )
@@ -245,7 +244,7 @@ def test_label(
     assert get_groundtruth_label_keys(
         db,
         schemas.Filter(
-            dataset_names=[dset_name],
+            dataset_names=[dataset_name],
             task_types=[enums.TaskType.DETECTION],
         ),
     ) == {"inssegk1", "inssegk2", "inssegk3"}
@@ -253,7 +252,7 @@ def test_label(
     assert get_groundtruth_labels(
         db,
         schemas.Filter(
-            dataset_names=[dset_name],
+            dataset_names=[dataset_name],
             annotation_types=[enums.AnnotationType.RASTER],
             task_types=[enums.TaskType.DETECTION],
         ),
@@ -265,7 +264,7 @@ def test_label(
     assert get_groundtruth_labels(
         db,
         schemas.Filter(
-            dataset_names=[dset_name],
+            dataset_names=[dataset_name],
             annotation_types=[enums.AnnotationType.RASTER],
             task_types=[
                 enums.TaskType.DETECTION,
@@ -284,7 +283,7 @@ def test_label(
     assert get_groundtruth_label_keys(
         db,
         schemas.Filter(
-            dataset_names=[dset_name],
+            dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
     ) == {"semsegk1", "semsegk2", "semsegk3"}
@@ -293,7 +292,7 @@ def test_label(
         db,
         schemas.Filter(
             models_names=[model_name],
-            dataset_names=[dset_name],
+            dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
     ) == {"semsegk1", "semsegk2", "semsegk3_pred"}
@@ -303,7 +302,7 @@ def test_label(
             db,
             schemas.Filter(
                 models_names=[model_name],
-                dataset_names=[dset_name],
+                dataset_names=[dataset_name],
                 task_types=[enums.TaskType.DETECTION],
             ),
         )
@@ -314,7 +313,7 @@ def test_label(
         db,
         schemas.Filter(
             models_names=[model_name],
-            dataset_names=[dset_name],
+            dataset_names=[dataset_name],
             annotation_types=[enums.AnnotationType.RASTER],
             task_types=[
                 enums.TaskType.SEGMENTATION,
@@ -331,7 +330,7 @@ def test_label(
             db,
             schemas.Filter(
                 models_names=[model_name],
-                dataset_names=[dset_name],
+                dataset_names=[dataset_name],
                 annotation_types=[enums.AnnotationType.RASTER],
                 task_types=[enums.TaskType.DETECTION],
             ),

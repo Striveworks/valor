@@ -11,13 +11,6 @@ from sqlalchemy.orm import Session
 from velour_api import crud, enums, exceptions, schemas
 from velour_api.backend import database, jobs
 
-# from velour_api.enums import JobStatus
-# from velour_api.exceptions import JobDoesNotExistError
-# from velour_api.schemas import Job
-
-dset_name = "test_dataset"
-model_name = "test_model"
-
 
 @pytest.fixture
 def client() -> TestClient:
@@ -74,7 +67,9 @@ def gt_clfs_create(
 
 @pytest.fixture
 def pred_clfs_create(
-    img1: schemas.Datum, img2: schemas.Datum
+    model_name: str,
+    img1: schemas.Datum,
+    img2: schemas.Datum,
 ) -> list[schemas.Prediction]:
     return [
         schemas.Prediction(
@@ -236,29 +231,31 @@ def test_job_status():
     assert stateflow.get_job_status(0) is None
 
 
-def test_stateflow_dataset(db: Session):
+def test_stateflow_dataset(db: Session, dataset_name: str):
     # should have no record of dataset
     with pytest.raises(exceptions.DatasetDoesNotExistError) as e:
-        crud.get_backend_state(dataset_name=dset_name)
+        crud.get_backend_state(dataset_name=dataset_name)
     assert "does not exist" in str(e)
 
     # create dataset
     crud.create_dataset(
         db=db,
         dataset=schemas.Dataset(
-            name=dset_name,
+            name=dataset_name,
         ),
     )
 
     # `create_dataset` does not affect the stateflow
-    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.NONE
+    assert (
+        crud.get_backend_state(dataset_name=dataset_name) == enums.State.NONE
+    )
 
     # create a groundtruth
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
             datum=schemas.Datum(
-                dataset=dset_name,
+                dataset=dataset_name,
                 uid="uid1",
             ),
             annotations=[
@@ -271,36 +268,40 @@ def test_stateflow_dataset(db: Session):
     )
 
     # `create_groundtruth` transitions dataset state into CREATE
-    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.CREATE
+    assert (
+        crud.get_backend_state(dataset_name=dataset_name) == enums.State.CREATE
+    )
 
     # finalize dataset
-    crud.finalize(db=db, dataset_name=dset_name)
+    crud.finalize(db=db, dataset_name=dataset_name)
 
     # `finalize` transitions dataset state into READY
-    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.READY
+    assert (
+        crud.get_backend_state(dataset_name=dataset_name) == enums.State.READY
+    )
 
     # delete dataset
-    crud.delete(db=db, dataset_name=dset_name)
+    crud.delete(db=db, dataset_name=dataset_name)
 
     # after delete operation completes the record is removed
     with pytest.raises(exceptions.DatasetDoesNotExistError) as e:
-        crud.get_backend_state(dataset_name=dset_name)
+        crud.get_backend_state(dataset_name=dataset_name)
     assert "does not exist" in str(e)
 
 
-def test_stateflow_model(db: Session):
+def test_stateflow_model(db: Session, dataset_name: str, model_name: str):
     # create dataset
     crud.create_dataset(
         db=db,
         dataset=schemas.Dataset(
-            name=dset_name,
+            name=dataset_name,
         ),
     )
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
             datum=schemas.Datum(
-                dataset=dset_name,
+                dataset=dataset_name,
                 uid="uid1",
             ),
             annotations=[
@@ -311,11 +312,13 @@ def test_stateflow_model(db: Session):
             ],
         ),
     )
-    crud.finalize(db=db, dataset_name=dset_name)
+    crud.finalize(db=db, dataset_name=dataset_name)
 
     # check that no record exists for model
     with pytest.raises(exceptions.ModelInferencesDoNotExist) as e:
-        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        crud.get_backend_state(
+            dataset_name=dataset_name, model_name=model_name
+        )
     assert "do not exist" in str(e)
 
     # create model
@@ -328,7 +331,9 @@ def test_stateflow_model(db: Session):
 
     # check that no record exists for model as no predictions have been added
     with pytest.raises(exceptions.ModelInferencesDoNotExist) as e:
-        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        crud.get_backend_state(
+            dataset_name=dataset_name, model_name=model_name
+        )
     assert "do not exist" in str(e)
 
     # create predictions
@@ -337,7 +342,7 @@ def test_stateflow_model(db: Session):
         prediction=schemas.Prediction(
             model=model_name,
             datum=schemas.Datum(
-                dataset=dset_name,
+                dataset=dataset_name,
                 uid="uid1",
             ),
             annotations=[
@@ -354,7 +359,9 @@ def test_stateflow_model(db: Session):
 
     # `create_prediction` transitions model state to CREATE
     assert (
-        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        crud.get_backend_state(
+            dataset_name=dataset_name, model_name=model_name
+        )
         == enums.State.CREATE
     )
 
@@ -364,7 +371,7 @@ def test_stateflow_model(db: Session):
             db=db,
             job_request=schemas.EvaluationJob(
                 model=model_name,
-                dataset=dset_name,
+                dataset=dataset_name,
                 task_type=enums.TaskType.DETECTION,
                 settings=schemas.EvaluationSettings(
                     parameters=schemas.DetectionParameters(
@@ -381,29 +388,37 @@ def test_stateflow_model(db: Session):
     assert "has not been finalized" in str(e)
 
     # finalize model over dataset
-    crud.finalize(db=db, dataset_name=dset_name, model_name=model_name)
+    crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
     # `finalize` transitions dataset state into READY
     assert (
-        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        crud.get_backend_state(
+            dataset_name=dataset_name, model_name=model_name
+        )
         == enums.State.READY
     )
 
     # delete dataset
-    crud.delete(db=db, dataset_name=dset_name, model_name=model_name)
+    crud.delete(db=db, dataset_name=dataset_name, model_name=model_name)
 
     # after delete operation completes the record is removed
     with pytest.raises(exceptions.ModelInferencesDoNotExist) as e:
-        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        crud.get_backend_state(
+            dataset_name=dataset_name, model_name=model_name
+        )
     assert "do not exist" in str(e)
 
 
 def test_stateflow_detection_evaluation(
-    db: Session, groundtruths, predictions
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    groundtruths,
+    predictions,
 ):
     job_request = schemas.EvaluationJob(
         model=model_name,
-        dataset=dset_name,
+        dataset=dataset_name,
         task_type=enums.TaskType.DETECTION,
         settings=schemas.EvaluationSettings(
             parameters=schemas.DetectionParameters(
@@ -418,9 +433,13 @@ def test_stateflow_detection_evaluation(
     )
 
     # check ready
-    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.READY
     assert (
-        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        crud.get_backend_state(dataset_name=dataset_name) == enums.State.READY
+    )
+    assert (
+        crud.get_backend_state(
+            dataset_name=dataset_name, model_name=model_name
+        )
         == enums.State.READY
     )
 
@@ -429,21 +448,24 @@ def test_stateflow_detection_evaluation(
 
     # check in evalutation
     assert (
-        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        crud.get_backend_state(
+            dataset_name=dataset_name, model_name=model_name
+        )
         == enums.State.EVALUATE
     )
     assert (
-        crud.get_backend_state(dataset_name=dset_name) == enums.State.EVALUATE
+        crud.get_backend_state(dataset_name=dataset_name)
+        == enums.State.EVALUATE
     )
 
     # attempt to delete dataset
     with pytest.raises(exceptions.StateflowError) as e:
-        crud.delete(db=db, dataset_name=dset_name)
+        crud.delete(db=db, dataset_name=dataset_name)
     assert "evaluation is running." in str(e)
 
     # attempt to delete model
     with pytest.raises(exceptions.StateflowError) as e:
-        crud.delete(db=db, dataset_name=dset_name, model_name=model_name)
+        crud.delete(db=db, dataset_name=dataset_name, model_name=model_name)
     assert f"{enums.State.EVALUATE} to {enums.State.DELETE}" in str(e)
 
     # run computation (returns nothing on completion)
@@ -454,48 +476,58 @@ def test_stateflow_detection_evaluation(
     )
 
     # check ready
-    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.READY
     assert (
-        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        crud.get_backend_state(dataset_name=dataset_name) == enums.State.READY
+    )
+    assert (
+        crud.get_backend_state(
+            dataset_name=dataset_name, model_name=model_name
+        )
         == enums.State.READY
     )
 
 
 def test_stateflow_clf_evaluation(
     db: Session,
+    dataset_name: str,
+    model_name: str,
     gt_clfs_create: list[schemas.GroundTruth],
     pred_clfs_create: list[schemas.Prediction],
 ):
     # create dataset
     crud.create_dataset(
         db=db,
-        dataset=schemas.Dataset(name=dset_name),
+        dataset=schemas.Dataset(name=dataset_name),
     )
     for gt in gt_clfs_create:
-        gt.datum.dataset = dset_name
+        gt.datum.dataset = dataset_name
         crud.create_groundtruth(db=db, groundtruth=gt)
-    crud.finalize(db=db, dataset_name=dset_name)
+    crud.finalize(db=db, dataset_name=dataset_name)
 
     # create model
     crud.create_model(db=db, model=schemas.Model(name=model_name))
     for pd in pred_clfs_create:
         pd.model = model_name
         crud.create_prediction(db=db, prediction=pd)
-    crud.finalize(db=db, model_name=model_name, dataset_name=dset_name)
+    crud.finalize(db=db, model_name=model_name, dataset_name=dataset_name)
 
     # create clf request
     job_request = schemas.EvaluationJob(
         model=model_name,
-        dataset=dset_name,
+        dataset=dataset_name,
         task_type=enums.TaskType.CLASSIFICATION,
     )
 
     # check dataset READY
-    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.READY
+    assert (
+        crud.get_backend_state(dataset_name=dataset_name) == enums.State.READY
+    )
 
     # check inference pair READY
     assert (
-        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        crud.get_backend_state(
+            dataset_name=dataset_name, model_name=model_name
+        )
         == enums.State.READY
     )
 
@@ -507,21 +539,24 @@ def test_stateflow_clf_evaluation(
 
     # check EVALUATE
     assert (
-        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        crud.get_backend_state(
+            dataset_name=dataset_name, model_name=model_name
+        )
         == enums.State.EVALUATE
     )
     assert (
-        crud.get_backend_state(dataset_name=dset_name) == enums.State.EVALUATE
+        crud.get_backend_state(dataset_name=dataset_name)
+        == enums.State.EVALUATE
     )
 
     # attempt to delete dataset
     with pytest.raises(exceptions.StateflowError) as e:
-        crud.delete(db=db, dataset_name=dset_name)
+        crud.delete(db=db, dataset_name=dataset_name)
     assert "evaluation is running." in str(e)
 
     # attempt to delete model
     with pytest.raises(exceptions.StateflowError) as e:
-        crud.delete(db=db, dataset_name=dset_name, model_name=model_name)
+        crud.delete(db=db, dataset_name=dataset_name, model_name=model_name)
     assert f"{enums.State.EVALUATE} to {enums.State.DELETE}" in str(e)
 
     # compute clf metrics
@@ -532,8 +567,12 @@ def test_stateflow_clf_evaluation(
     )
 
     # check READY
-    assert crud.get_backend_state(dataset_name=dset_name) == enums.State.READY
     assert (
-        crud.get_backend_state(dataset_name=dset_name, model_name=model_name)
+        crud.get_backend_state(dataset_name=dataset_name) == enums.State.READY
+    )
+    assert (
+        crud.get_backend_state(
+            dataset_name=dataset_name, model_name=model_name
+        )
         == enums.State.READY
     )
