@@ -251,8 +251,7 @@ def create_semantic_segmentation_metrics(
 
     metrics = _compute_segmentation_metrics(
         db,
-        dataset_name=job_request.dataset,
-        model_name=job_request.model,
+        job_request,
     )
     metric_mappings = create_metric_mappings(db, metrics, job_id)
     for mapping in metric_mappings:
