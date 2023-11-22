@@ -321,10 +321,9 @@ def test_evaluate_tabular_clf(
     assert len(client.get_models()) == 0
 
 
-# @TODO: Need to implement metadatum querying
+# @TODO: Need to implement client-side code for metadata evaluations
 # def test_stratify_clf_metrics(
 #     client: Session,
-#     db: Session,
 #     y_true: list[int],
 #     tabular_preds: list[list[float]],
 #     dataset_name: str,
@@ -344,10 +343,10 @@ def test_evaluate_tabular_clf(
 #             Annotation(
 #                 task_type=TaskType.CLASSIFICATION,
 #                 labels=[Label(key="class", value=str(t))],
-#                 metadata=[
-#                     Metadatum(key="md1", value=f"md1-val{i % 3}"),
-#                     Metadatum(key="md2", value=f"md2-val{i % 4}"),
-#                 ]
+#                 metadata={
+#                     "md1" : f"md1-val{i % 3}",
+#                     "md2" : f"md2-val{i % 4}",
+#                 }
 #             )
 #             for i, t in enumerate(y_true)
 #         ]
@@ -363,7 +362,7 @@ def test_evaluate_tabular_clf(
 #             Annotation(
 #                 task_type=TaskType.CLASSIFICATION,
 #                 labels=[
-#                     ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
+#                     Label(key="class", value=str(i), score=pred[i])
 #                     for i in range(len(pred))
 #                 ]
 #             )
@@ -373,7 +372,7 @@ def test_evaluate_tabular_clf(
 #     model.add_prediction(pd)
 #     model.finalize_inferences(dataset)
 
-#     eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
+#     eval_job = model.evaluate_classification(dataset=dataset)
 
 #     metrics = eval_job['metrics']
 
