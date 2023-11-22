@@ -512,13 +512,13 @@ def create_detection_evaluation(
 
 def create_detection_metrics(
     db: Session,
-    evaluation_id: int,
+    job_id: int,
 ):
     """
     Intended to run as background
     """
     evaluation = db.scalar(
-        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
+        select(models.Evaluation).where(models.Evaluation.id == job_id)
     )
 
     # unpack job request
@@ -568,7 +568,7 @@ def create_detection_metrics(
     )
 
     metric_mappings = create_metric_mappings(
-        db=db, metrics=metrics, evaluation_id=evaluation_id
+        db=db, metrics=metrics, evaluation_id=job_id
     )
 
     for mapping in metric_mappings:
