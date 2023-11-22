@@ -129,7 +129,9 @@ def test_query_generators(
     assert len(data) == 0
 
 
-def _gt_tuples(gts: list[schemas.GroundTruth], label: schemas.Label):
+def _create_groundtruth_tuples(
+    gts: list[schemas.GroundTruth], label: schemas.Label
+):
     return [
         (gt.datum.uid, ann.raster.array)
         for gt in gts
@@ -138,7 +140,9 @@ def _gt_tuples(gts: list[schemas.GroundTruth], label: schemas.Label):
     ]
 
 
-def _pred_tuples(preds: list[schemas.Prediction], label: schemas.Label):
+def _create_prediction_tuples(
+    preds: list[schemas.Prediction], label: schemas.Label
+):
     return [
         (pred.datum.uid, ann.raster.array)
         for pred in preds
@@ -147,13 +151,13 @@ def _pred_tuples(preds: list[schemas.Prediction], label: schemas.Label):
     ]
 
 
-def __count_true_positives(
+def _help_count_true_positives(
     gts: list[schemas.GroundTruth],
     preds: list[schemas.Prediction],
     label: schemas.Label,
 ) -> int:
-    gts = _gt_tuples(gts, label)
-    preds = _pred_tuples(preds, label)
+    gts = _create_groundtruth_tuples(gts, label)
+    preds = _create_prediction_tuples(preds, label)
 
     datum_ids = set([gt[0] for gt in gts]).intersection(
         [pred[0] for pred in preds]
@@ -169,7 +173,7 @@ def __count_true_positives(
     return ret
 
 
-def test__count_true_positives(
+def test_count_true_positives(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -206,7 +210,7 @@ def test__count_true_positives(
             select(Label).where(and_(Label.key == k, Label.value == v))
         ).id
 
-        expected = __count_true_positives(
+        expected = _help_count_true_positives(
             gt_semantic_segs_create,
             [pred_semantic_segs_img1_create, pred_semantic_segs_img2_create],
             schemas.Label(key=k, value=v),
@@ -225,10 +229,10 @@ def test__count_true_positives(
         assert expected == tps
 
 
-def __count_groundtruths(
+def _help_count_groundtruths(
     gts: list[schemas.GroundTruth], label: schemas.Label
 ) -> int:
-    gts = _gt_tuples(gts, label)
+    gts = _create_groundtruth_tuples(gts, label)
 
     ret = 0
     for gt in gts:
@@ -237,7 +241,7 @@ def __count_groundtruths(
     return ret
 
 
-def test__count_groundtruths(
+def test_count_groundtruths(
     db: Session,
     dataset_name: str,
     gt_semantic_segs_create: list[schemas.GroundTruth],
@@ -260,7 +264,7 @@ def test__count_groundtruths(
             select(Label).where(and_(Label.key == k, Label.value == v))
         ).id
 
-        expected = __count_groundtruths(
+        expected = _help_count_groundtruths(
             gt_semantic_segs_create, schemas.Label(key=k, value=v)
         )
 
@@ -287,8 +291,10 @@ def test__count_groundtruths(
     assert "No groundtruth pixels for label" in str(exc_info)
 
 
-def _pred_count(preds: list[schemas.Prediction], label: schemas.Label) -> int:
-    preds = _pred_tuples(preds, label)
+def _help_count_predictions(
+    preds: list[schemas.Prediction], label: schemas.Label
+) -> int:
+    preds = _create_prediction_tuples(preds, label)
 
     ret = 0
     for pred in preds:
@@ -297,7 +303,7 @@ def _pred_count(preds: list[schemas.Prediction], label: schemas.Label) -> int:
     return ret
 
 
-def test_pred_count(
+def test_count_predictions(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -327,7 +333,7 @@ def test_pred_count(
             select(Label).where(and_(Label.key == k, Label.value == v))
         ).id
 
-        expected = _pred_count(
+        expected = _help_count_predictions(
             [pred_semantic_segs_img1_create, pred_semantic_segs_img2_create],
             schemas.Label(key=k, value=v),
         )
@@ -348,7 +354,7 @@ def test_pred_count(
     )
 
 
-def test__get_groundtruth_labels(
+def test_get_groundtruth_labels(
     db: Session,
     dataset_name: str,
     gt_semantic_segs_create: list[schemas.GroundTruth],
@@ -379,7 +385,7 @@ def test__get_groundtruth_labels(
     assert len(set([label.id for label in labels])) == 4
 
 
-def test__compute_segmentation_metrics(
+def test_compute_segmentation_metrics(
     db: Session,
     dataset_name: str,
     model_name: str,
