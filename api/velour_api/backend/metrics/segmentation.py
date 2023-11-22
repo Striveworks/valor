@@ -2,14 +2,13 @@ from geoalchemy2.functions import ST_Count, ST_MapAlgebra
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import Select, and_, func, join, select
 
+from velour_api import enums, schemas
 from velour_api.backend import core, models
 from velour_api.backend.core.label import get_dataset_labels_query
 from velour_api.backend.metrics.metrics import (
     create_metric_mappings,
     get_or_create_row,
 )
-from velour_api.enums import AnnotationType, TaskType
-from velour_api.schemas import Label
 from velour_api.schemas.metrics import EvaluationJob, IOUMetric, mIOUMetric
 
 
@@ -34,7 +33,7 @@ def _gt_query(dataset_name: str, label_id: int) -> Select:
                 models.Datum.id == models.Annotation.datum_id,
             ),
         )
-        .where(models.Annotation.task_type == TaskType.SEGMENTATION)
+        .where(models.Annotation.task_type == enums.TaskType.SEGMENTATION)
     )
 
 
@@ -62,7 +61,7 @@ def _pred_query(dataset_name: str, label_id: int, model_name: str) -> Select:
         )
         .where(
             and_(
-                models.Annotation.task_type == TaskType.SEGMENTATION,
+                models.Annotation.task_type == enums.TaskType.SEGMENTATION,
                 models.Model.id == models.Annotation.model_id,
             )
         )
@@ -146,8 +145,8 @@ def get_groundtruth_labels(
         for label in db.scalars(
             get_dataset_labels_query(
                 dataset_name=dataset_name,
-                annotation_type=AnnotationType.RASTER,
-                task_types=[TaskType.SEGMENTATION],
+                annotation_type=enums.AnnotationType.RASTER,
+                task_types=[enums.TaskType.SEGMENTATION],
             )
         )
     ]
@@ -166,7 +165,8 @@ def compute_segmentation_metrics(
 
         ret.append(
             IOUMetric(
-                label=Label(key=label[0], value=label[1]), value=iou_score
+                label=schemas.Label(key=label[0], value=label[1]),
+                value=iou_score,
             )
         )
 
@@ -180,11 +180,38 @@ def compute_segmentation_metrics(
 def create_semantic_segmentation_evaluation(
     db: Session, job_request: EvaluationJob
 ) -> int:
+    """
+    Create semantic segmentation evaluation job.
+    """
     # check matching task_type
-    if job_request.task_type != TaskType.SEGMENTATION:
+    if job_request.task_type != enums.TaskType.SEGMENTATION:
         raise TypeError(
             "Invalid task_type, please choose an evaluation method that supports semantic segmentation"
         )
+
+    # validate parameters
+    if job_request.settings.parameters:
+        raise ValueError(
+            "Semantic segmentation evaluations do not take parametric input."
+        )
+
+    # validate filters
+    if not job_request.settings.filters:
+        job_request.settings.filters = schemas.Filter()
+    else:
+        if (
+            job_request.settings.filters.dataset_names is not None
+            or job_request.settings.filters.dataset_metadata is not None
+            or job_request.settings.filters.dataset_geospatial is not None
+            or job_request.settings.filters.models_names is not None
+            or job_request.settings.filters.models_metadata is not None
+            or job_request.settings.filters.models_geospatial is not None
+            or job_request.settings.filters.prediction_scores is not None
+            or job_request.settings.filters.task_types is not None
+        ):
+            raise ValueError(
+                "Evaluation filter objects should not include any dataset, model, prediction score or task type filters."
+            )
 
     dataset = core.get_dataset(db, job_request.dataset)
     model = core.get_model(db, job_request.model)
@@ -195,7 +222,7 @@ def create_semantic_segmentation_evaluation(
         mapping={
             "dataset_id": dataset.id,
             "model_id": model.id,
-            "task_type": TaskType.SEGMENTATION,
+            "task_type": enums.TaskType.SEGMENTATION,
             "settings": job_request.settings.model_dump(),
         },
     )
@@ -206,14 +233,35 @@ def create_semantic_segmentation_evaluation(
 def create_semantic_segmentation_metrics(
     db: Session,
     job_request: EvaluationJob,
-    evaluation_id: int,
+    job_id: int,
 ) -> int:
+    """
+    Compute semantic segmentation evaluation.
+    """
+    evaluation = db.scalar(
+        select(models.Evaluation).where(models.Evaluation.id == job_id)
+    )
+
+    # unpack job request
+    job_request = schemas.EvaluationJob(
+        dataset=evaluation.dataset.name,
+        model=evaluation.model.name,
+        task_type=evaluation.task_type,
+        settings=schemas.EvaluationSettings(**evaluation.settings),
+        id=evaluation.id,
+    )
+
+    # configure filters
+    if not job_request.settings.filters:
+        job_request.settings.filters = schemas.Filter()
+    job_request.settings.filters.task_types = [enums.TaskType.SEGMENTATION]
+
     metrics = compute_segmentation_metrics(
         db,
         dataset_name=job_request.dataset,
         model_name=job_request.model,
     )
-    metric_mappings = create_metric_mappings(db, metrics, evaluation_id)
+    metric_mappings = create_metric_mappings(db, metrics, job_id)
     for mapping in metric_mappings:
         # ignore value since the other columns are unique identifiers
         # and have empirically noticed value can slightly change due to floating
@@ -225,4 +273,4 @@ def create_semantic_segmentation_metrics(
             columns_to_ignore=["value"],
         )
 
-    return evaluation_id
+    return job_id
