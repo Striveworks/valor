@@ -19,7 +19,7 @@ def _generate_groundtruth_query(groundtruth_filter: schemas.Filter) -> Select:
             models.Annotation.datum_id.label("datum_id"),
         )
         .filter(groundtruth_filter)
-        .groundtruths()
+        .groundtruths("gt")
     )
 
 
@@ -30,7 +30,7 @@ def _generate_prediction_query(prediction_filter: schemas.Filter) -> Select:
             models.Annotation.datum_id.label("datum_id"),
         )
         .filter(prediction_filter)
-        .predictions()
+        .predictions("pd")
     )
 
 
@@ -117,6 +117,7 @@ def _get_groundtruth_labels(
         Query(models.Label)
         .filter(groundtruth_filter)
         .groundtruths(as_subquery=False)
+        .distinct()
     ).all()
 
 

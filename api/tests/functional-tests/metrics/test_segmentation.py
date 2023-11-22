@@ -69,7 +69,7 @@ def test_query_generators(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
-        label_ids=[],
+        label_ids=None,
     )
 
     prediction_filter = schemas.Filter(
@@ -77,7 +77,7 @@ def test_query_generators(
         models_names=[model_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
-        label_ids=[],
+        label_ids=None,
     )
 
     for label_key, label_value, expected_number in [
@@ -190,7 +190,7 @@ def test__count_true_positives(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
-        label_ids=[],
+        label_ids=None,
     )
 
     prediction_filter = schemas.Filter(
@@ -198,7 +198,7 @@ def test__count_true_positives(
         models_names=[model_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
-        label_ids=[],
+        label_ids=None,
     )
 
     for k, v in [("k1", "v1"), ("k2", "v2")]:
@@ -213,6 +213,7 @@ def test__count_true_positives(
         )
 
         groundtruth_filter.label_ids = [label_id]
+        prediction_filter.label_ids = [label_id]
         tps = _count_true_positives(
             db=db,
             groundtruth_subquery=_generate_groundtruth_query(
@@ -247,6 +248,13 @@ def test__count_groundtruths(
         gt_semantic_segs_create=gt_semantic_segs_create,
     )
 
+    groundtruth_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        task_types=[enums.TaskType.SEGMENTATION],
+        annotation_types=[enums.AnnotationType.RASTER],
+        label_ids=None,
+    )
+
     for k, v in [("k1", "v1"), ("k1", "v2"), ("k3", "v3"), ("k2", "v2")]:
         label_id = db.scalar(
             select(Label).where(and_(Label.key == k, Label.value == v))
@@ -256,15 +264,25 @@ def test__count_groundtruths(
             gt_semantic_segs_create, schemas.Label(key=k, value=v)
         )
 
+        groundtruth_filter.label_ids = [label_id]
         assert (
             _count_groundtruths(
-                db=db, dataset_name=dataset_name, label_id=label_id
+                db,
+                _generate_groundtruth_query(groundtruth_filter),
+                dataset_name,
+                label_id,
             )
             == expected
         )
 
+    groundtruth_filter.label_ids = [1000000]
     with pytest.raises(RuntimeError) as exc_info:
-        _count_groundtruths(db=db, dataset_name=dataset_name, label_id=1000000)
+        _count_groundtruths(
+            db,
+            _generate_groundtruth_query(groundtruth_filter),
+            dataset_name,
+            1000000,
+        )
 
     assert "No groundtruth pixels for label" in str(exc_info)
 
@@ -301,7 +319,7 @@ def test_pred_count(
         models_names=[model_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
-        label_ids=[],
+        label_ids=None,
     )
 
     for k, v in [("k1", "v1"), ("k1", "v2"), ("k2", "v3"), ("k2", "v2")]:
@@ -340,18 +358,25 @@ def test__get_groundtruth_labels(
         dataset_name=dataset_name,
         gt_semantic_segs_create=gt_semantic_segs_create,
     )
-    labels = _get_groundtruth_labels(db, dataset_name)
+
+    groundtruth_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        task_types=[enums.TaskType.SEGMENTATION],
+        annotation_types=[enums.AnnotationType.RASTER],
+    )
+
+    labels = _get_groundtruth_labels(db, groundtruth_filter)
 
     assert len(labels) == 4
 
-    assert set([label[:2] for label in labels]) == {
+    assert set([(label.key, label.value) for label in labels]) == {
         ("k1", "v1"),
         ("k1", "v2"),
         ("k2", "v2"),
         ("k3", "v3"),
     }
 
-    assert len(set([label[-1] for label in labels])) == 4
+    assert len(set([label.id for label in labels])) == 4
 
 
 def test__compute_segmentation_metrics(
