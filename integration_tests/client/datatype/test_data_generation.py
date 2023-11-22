@@ -3,9 +3,6 @@ from base64 import b64decode
 from dataclasses import asdict
 
 import PIL
-import pytest
-from sqlalchemy import create_engine, select, text
-from sqlalchemy.orm import Session
 
 from velour import Annotation, Label
 from velour.client import Client
@@ -15,9 +12,6 @@ from velour.data_generation import (
 )
 from velour.enums import AnnotationType, JobStatus, TaskType
 from velour.metatypes import ImageMetadata
-from velour_api.backend import jobs, models
-
-dset_name = "test_dataset"
 
 
 def _mask_bytes_to_pil(mask_bytes):
@@ -25,57 +19,9 @@ def _mask_bytes_to_pil(mask_bytes):
         return PIL.Image.open(f)
 
 
-@pytest.fixture
-def client():
-    """This fixture makes sure there's not datasets, models, or labels in the backend
-    (raising a RuntimeError if there are). It returns a db session and as cleanup
-    clears out all datasets, models, and labels from the backend.
-    """
-
-    client = Client(host="http://localhost:8000")
-
-    if len(client.get_datasets()) > 0:
-        raise RuntimeError(
-            "Tests should be run on an empty velour backend but found existing datasets.",
-            [ds["name"] for ds in client.get_datasets()],
-        )
-
-    if len(client.get_models()) > 0:
-        raise RuntimeError(
-            "Tests should be run on an empty velour backend but found existing models."
-        )
-
-    if len(client.get_labels()) > 0:
-        raise RuntimeError(
-            "Tests should be run on an empty velour backend but found existing labels."
-        )
-
-    engine = create_engine("postgresql://postgres:password@localhost/postgres")
-    sess = Session(engine)
-    sess.execute(text("SET postgis.gdal_enabled_drivers = 'ENABLE_ALL';"))
-    sess.execute(text("SET postgis.enable_outdb_rasters = True;"))
-
-    yield client
-
-    for model in client.get_models():
-        client.delete_model(model["name"], timeout=30)
-
-    for dataset in client.get_datasets():
-        client.delete_dataset(dataset["name"], timeout=5)
-
-    labels = sess.scalars(select(models.Label))
-    for label in labels:
-        sess.delete(label)
-
-    sess.commit()
-
-    # clean redis
-    jobs.connect_to_redis()
-    jobs.r.flushdb()
-
-
 def test_generate_segmentation_data(
     client: Client,
+    dataset_name: str,
     n_images: int = 10,
     n_annotations: int = 2,
     n_labels: int = 2,
@@ -84,7 +30,7 @@ def test_generate_segmentation_data(
 
     dataset = generate_segmentation_data(
         client=client,
-        dataset_name=dset_name,
+        dataset_name=dataset_name,
         n_images=n_images,
         n_annotations=n_annotations,
         n_labels=n_labels,
@@ -124,12 +70,12 @@ def test_generate_prediction_data(client: Client):
     n_images = 2
     n_annotations = 2
     n_labels = 2
-    dset_name = "dset"
+    dataset_name = "dset"
     model_name = "model"
 
     dataset = generate_segmentation_data(
         client=client,
-        dataset_name=dset_name,
+        dataset_name=dataset_name,
         n_images=n_images,
         n_annotations=n_annotations,
         n_labels=n_labels,
@@ -163,7 +109,7 @@ def test_generate_prediction_data(client: Client):
     settings.pop("id")
     assert settings == {
         "model": model_name,
-        "dataset": dset_name,
+        "dataset": dataset_name,
         "task_type": TaskType.DETECTION.value,
         "settings": {
             "parameters": {

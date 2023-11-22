@@ -1,14 +1,9 @@
 # NOTE: These tests aren't run automatically on each commit. They are intended to be manually kicked-off using the [GitHub UI](https://leonardomontini.dev/github-action-manual-trigger/)
-
-import pytest
-from test_data_generation import test_generate_segmentation_data
+from integration_tests.datatype.test_data_generation import (
+    test_generate_segmentation_data,
+)
 
 from velour.client import Client
-
-
-@pytest.fixture
-def client():
-    return Client(host="http://localhost:8000")
 
 
 def test_large_dataset_upload(client: Client):

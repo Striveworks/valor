@@ -14,12 +14,11 @@ from velour_api.backend.metrics.segmentation import (
 )
 from velour_api.backend.models import Label
 
-dataset_name = "test_dataset"
-model_name = "test_model"
-
 
 def _create_gt_data(
-    db: Session, gt_semantic_segs_create: list[schemas.GroundTruth]
+    db: Session,
+    dataset_name: str,
+    gt_semantic_segs_create: list[schemas.GroundTruth],
 ):
     crud.create_dataset(
         db=db,
@@ -31,11 +30,17 @@ def _create_gt_data(
 
 def _create_data(
     db: Session,
+    dataset_name: str,
+    model_name: str,
     gt_semantic_segs_create: list[schemas.GroundTruth],
     pred_semantic_segs_img1_create: schemas.Prediction,
     pred_semantic_segs_img2_create: schemas.Prediction,
 ):
-    _create_gt_data(db=db, gt_semantic_segs_create=gt_semantic_segs_create)
+    _create_gt_data(
+        db=db,
+        dataset_name=dataset_name,
+        gt_semantic_segs_create=gt_semantic_segs_create,
+    )
 
     crud.create_model(db=db, model=schemas.Model(name=model_name))
 
@@ -45,12 +50,16 @@ def _create_data(
 
 def test__gt_query_and_pred_query(
     db: Session,
+    dataset_name: str,
+    model_name: str,
     gt_semantic_segs_create: list[schemas.GroundTruth],
     pred_semantic_segs_img1_create: schemas.Prediction,
     pred_semantic_segs_img2_create: schemas.Prediction,
 ):
     _create_data(
         db=db,
+        dataset_name=dataset_name,
+        model_name=model_name,
         gt_semantic_segs_create=gt_semantic_segs_create,
         pred_semantic_segs_img1_create=pred_semantic_segs_img1_create,
         pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
@@ -143,12 +152,16 @@ def _tp_count(
 
 def test_tp_count(
     db: Session,
+    dataset_name: str,
+    model_name: str,
     gt_semantic_segs_create: list[schemas.GroundTruth],
     pred_semantic_segs_img1_create: schemas.Prediction,
     pred_semantic_segs_img2_create: schemas.Prediction,
 ):
     _create_data(
         db=db,
+        dataset_name=dataset_name,
+        model_name=model_name,
         gt_semantic_segs_create=gt_semantic_segs_create,
         pred_semantic_segs_img1_create=pred_semantic_segs_img1_create,
         pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
@@ -186,9 +199,15 @@ def _gt_count(gts: list[schemas.GroundTruth], label: schemas.Label) -> int:
 
 
 def test_gt_count(
-    db: Session, gt_semantic_segs_create: list[schemas.GroundTruth]
+    db: Session,
+    dataset_name: str,
+    gt_semantic_segs_create: list[schemas.GroundTruth],
 ):
-    _create_gt_data(db=db, gt_semantic_segs_create=gt_semantic_segs_create)
+    _create_gt_data(
+        db=db,
+        dataset_name=dataset_name,
+        gt_semantic_segs_create=gt_semantic_segs_create,
+    )
 
     for k, v in [("k1", "v1"), ("k1", "v2"), ("k3", "v3"), ("k2", "v2")]:
         label_id = db.scalar(
@@ -222,12 +241,16 @@ def _pred_count(preds: list[schemas.Prediction], label: schemas.Label) -> int:
 
 def test_pred_count(
     db: Session,
+    dataset_name: str,
+    model_name: str,
     gt_semantic_segs_create: list[schemas.GroundTruth],
     pred_semantic_segs_img1_create: schemas.Prediction,
     pred_semantic_segs_img2_create: schemas.Prediction,
 ):
     _create_data(
         db=db,
+        dataset_name=dataset_name,
+        model_name=model_name,
         gt_semantic_segs_create=gt_semantic_segs_create,
         pred_semantic_segs_img1_create=pred_semantic_segs_img1_create,
         pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
@@ -265,9 +288,15 @@ def test_pred_count(
 
 
 def test_get_groundtruth_labels(
-    db: Session, gt_semantic_segs_create: list[schemas.GroundTruth]
+    db: Session,
+    dataset_name: str,
+    gt_semantic_segs_create: list[schemas.GroundTruth],
 ):
-    _create_gt_data(db=db, gt_semantic_segs_create=gt_semantic_segs_create)
+    _create_gt_data(
+        db=db,
+        dataset_name=dataset_name,
+        gt_semantic_segs_create=gt_semantic_segs_create,
+    )
     labels = get_groundtruth_labels(db, dataset_name)
 
     assert len(labels) == 4
@@ -284,12 +313,16 @@ def test_get_groundtruth_labels(
 
 def test_compute_segmentation_metrics(
     db: Session,
+    dataset_name: str,
+    model_name: str,
     gt_semantic_segs_create: list[schemas.GroundTruth],
     pred_semantic_segs_img1_create: schemas.Prediction,
     pred_semantic_segs_img2_create: schemas.Prediction,
 ):
     _create_data(
         db=db,
+        dataset_name=dataset_name,
+        model_name=model_name,
         gt_semantic_segs_create=gt_semantic_segs_create,
         pred_semantic_segs_img1_create=pred_semantic_segs_img1_create,
         pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
