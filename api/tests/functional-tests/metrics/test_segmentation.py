@@ -406,13 +406,14 @@ def test_compute_segmentation_metrics(
         dataset=dataset_name,
         model=model_name,
         task_type=enums.TaskType.SEGMENTATION,
-        settings=schemas.EvaluationSettings(filters=schemas.Filter()),
+        settings=schemas.EvaluationSettings(
+            filters=schemas.Filter(
+                dataset_names=[dataset_name],
+                task_types=[enums.TaskType.SEGMENTATION],
+                annotation_types=[enums.AnnotationType.RASTER],
+            )
+        ),
     )
-    job_request.settings.filters.task_types = [enums.TaskType.SEGMENTATION]
-    job_request.settings.filters.dataset_names = [job_request.dataset]
-    job_request.settings.filters.annotation_types = [
-        enums.AnnotationType.RASTER
-    ]
 
     metrics = _compute_segmentation_metrics(db, job_request)
     # should have five metrics (one IOU for each of the four labels, and one mIOU)
