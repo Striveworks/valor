@@ -2,15 +2,15 @@ import pytest
 from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, schemas
+from velour_api import crud, enums, schemas
 from velour_api.backend.metrics.segmentation import (
-    _gt_query,
-    _pred_query,
-    compute_segmentation_metrics,
-    get_groundtruth_labels,
-    gt_count,
-    pred_count,
-    tp_count,
+    _compute_segmentation_metrics,
+    _count_groundtruths,
+    _count_predictions,
+    _count_true_positives,
+    _generate_groundtruth_query,
+    _generate_prediction_query,
+    _get_groundtruth_labels,
 )
 from velour_api.backend.models import Label
 
@@ -48,7 +48,7 @@ def _create_data(
     crud.create_prediction(db=db, prediction=pred_semantic_segs_img2_create)
 
 
-def test__gt_query_and_pred_query(
+def test_query_generators(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -65,6 +65,21 @@ def test__gt_query_and_pred_query(
         pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
     )
 
+    groundtruth_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        task_types=[enums.TaskType.SEGMENTATION],
+        annotation_types=[enums.AnnotationType.RASTER],
+        label_ids=[],
+    )
+
+    prediction_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        models_names=[model_name],
+        task_types=[enums.TaskType.SEGMENTATION],
+        annotation_types=[enums.AnnotationType.RASTER],
+        label_ids=[],
+    )
+
     for label_key, label_value, expected_number in [
         ("k1", "v1", 2),
         ("k1", "v2", 1),
@@ -79,12 +94,14 @@ def test__gt_query_and_pred_query(
 
         assert label_id is not None
 
-        q = _gt_query(dataset_name, label_id=label_id)
-        data = db.execute(q).all()
+        groundtruth_filter.label_ids = [label_id]
+        q = _generate_groundtruth_query(groundtruth_filter)
+        data = db.query(q).all()
         assert len(data) == expected_number
 
-    q = _gt_query(dataset_name, label_id=10000000)
-    data = db.execute(q).all()
+    groundtruth_filter.label_ids = [10000000]
+    q = _generate_groundtruth_query(groundtruth_filter)
+    data = db.query(q).all()
     assert len(data) == 0
 
     for label_key, label_value, expected_number in [
@@ -101,12 +118,14 @@ def test__gt_query_and_pred_query(
 
         assert label_id is not None
 
-        q = _pred_query(dataset_name, model_name=model_name, label_id=label_id)
-        data = db.execute(q).all()
+        prediction_filter.label_ids = [label_id]
+        q = _generate_prediction_query(prediction_filter)
+        data = db.query(q).all()
         assert len(data) == expected_number
 
-    q = _pred_query(dataset_name, model_name=model_name, label_id=10000000)
-    data = db.execute(q).all()
+    prediction_filter.label_ids = [10000000]
+    q = _generate_prediction_query(prediction_filter)
+    data = db.query(q).all()
     assert len(data) == 0
 
 
@@ -128,7 +147,7 @@ def _pred_tuples(preds: list[schemas.Prediction], label: schemas.Label):
     ]
 
 
-def _tp_count(
+def __count_true_positives(
     gts: list[schemas.GroundTruth],
     preds: list[schemas.Prediction],
     label: schemas.Label,
@@ -150,7 +169,7 @@ def _tp_count(
     return ret
 
 
-def test_tp_count(
+def test__count_true_positives(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -167,28 +186,47 @@ def test_tp_count(
         pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
     )
 
+    groundtruth_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        task_types=[enums.TaskType.SEGMENTATION],
+        annotation_types=[enums.AnnotationType.RASTER],
+        label_ids=[],
+    )
+
+    prediction_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        models_names=[model_name],
+        task_types=[enums.TaskType.SEGMENTATION],
+        annotation_types=[enums.AnnotationType.RASTER],
+        label_ids=[],
+    )
+
     for k, v in [("k1", "v1"), ("k2", "v2")]:
         label_id = db.scalar(
             select(Label).where(and_(Label.key == k, Label.value == v))
         ).id
 
-        expected = _tp_count(
+        expected = __count_true_positives(
             gt_semantic_segs_create,
             [pred_semantic_segs_img1_create, pred_semantic_segs_img2_create],
             schemas.Label(key=k, value=v),
         )
 
-        tps = tp_count(
+        groundtruth_filter.label_ids = [label_id]
+        tps = _count_true_positives(
             db=db,
-            dataset_name=dataset_name,
-            model_name=model_name,
-            label_id=label_id,
+            groundtruth_subquery=_generate_groundtruth_query(
+                groundtruth_filter
+            ),
+            prediction_subquery=_generate_prediction_query(prediction_filter),
         )
 
         assert expected == tps
 
 
-def _gt_count(gts: list[schemas.GroundTruth], label: schemas.Label) -> int:
+def __count_groundtruths(
+    gts: list[schemas.GroundTruth], label: schemas.Label
+) -> int:
     gts = _gt_tuples(gts, label)
 
     ret = 0
@@ -198,7 +236,7 @@ def _gt_count(gts: list[schemas.GroundTruth], label: schemas.Label) -> int:
     return ret
 
 
-def test_gt_count(
+def test__count_groundtruths(
     db: Session,
     dataset_name: str,
     gt_semantic_segs_create: list[schemas.GroundTruth],
@@ -214,17 +252,19 @@ def test_gt_count(
             select(Label).where(and_(Label.key == k, Label.value == v))
         ).id
 
-        expected = _gt_count(
+        expected = __count_groundtruths(
             gt_semantic_segs_create, schemas.Label(key=k, value=v)
         )
 
         assert (
-            gt_count(db=db, dataset_name=dataset_name, label_id=label_id)
+            _count_groundtruths(
+                db=db, dataset_name=dataset_name, label_id=label_id
+            )
             == expected
         )
 
     with pytest.raises(RuntimeError) as exc_info:
-        gt_count(db=db, dataset_name=dataset_name, label_id=1000000)
+        _count_groundtruths(db=db, dataset_name=dataset_name, label_id=1000000)
 
     assert "No groundtruth pixels for label" in str(exc_info)
 
@@ -256,6 +296,14 @@ def test_pred_count(
         pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
     )
 
+    prediction_filter = schemas.Filter(
+        dataset_names=[dataset_name],
+        models_names=[model_name],
+        task_types=[enums.TaskType.SEGMENTATION],
+        annotation_types=[enums.AnnotationType.RASTER],
+        label_ids=[],
+    )
+
     for k, v in [("k1", "v1"), ("k1", "v2"), ("k2", "v3"), ("k2", "v2")]:
         label_id = db.scalar(
             select(Label).where(and_(Label.key == k, Label.value == v))
@@ -266,28 +314,23 @@ def test_pred_count(
             schemas.Label(key=k, value=v),
         )
 
+        prediction_filter.label_ids = [label_id]
         assert (
-            pred_count(
-                db=db,
-                model_name=model_name,
-                dataset_name=dataset_name,
-                label_id=label_id,
+            _count_predictions(
+                db,
+                _generate_prediction_query(prediction_filter),
             )
             == expected
         )
 
+    prediction_filter.label_ids = [1000000]
     assert (
-        pred_count(
-            db=db,
-            dataset_name=dataset_name,
-            model_name=model_name,
-            label_id=1000000,
-        )
+        _count_predictions(db, _generate_prediction_query(prediction_filter))
         == 0
     )
 
 
-def test_get_groundtruth_labels(
+def test__get_groundtruth_labels(
     db: Session,
     dataset_name: str,
     gt_semantic_segs_create: list[schemas.GroundTruth],
@@ -297,7 +340,7 @@ def test_get_groundtruth_labels(
         dataset_name=dataset_name,
         gt_semantic_segs_create=gt_semantic_segs_create,
     )
-    labels = get_groundtruth_labels(db, dataset_name)
+    labels = _get_groundtruth_labels(db, dataset_name)
 
     assert len(labels) == 4
 
@@ -311,7 +354,7 @@ def test_get_groundtruth_labels(
     assert len(set([label[-1] for label in labels])) == 4
 
 
-def test_compute_segmentation_metrics(
+def test__compute_segmentation_metrics(
     db: Session,
     dataset_name: str,
     model_name: str,
@@ -328,7 +371,19 @@ def test_compute_segmentation_metrics(
         pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
     )
 
-    metrics = compute_segmentation_metrics(db, dataset_name, model_name)
+    job_request = schemas.EvaluationJob(
+        dataset=dataset_name,
+        model=model_name,
+        task_type=enums.TaskType.SEGMENTATION,
+        settings=schemas.EvaluationSettings(filters=schemas.Filter()),
+    )
+    job_request.settings.filters.task_types = [enums.TaskType.SEGMENTATION]
+    job_request.settings.filters.dataset_names = [job_request.dataset]
+    job_request.settings.filters.annotation_types = [
+        enums.AnnotationType.RASTER
+    ]
+
+    metrics = _compute_segmentation_metrics(db, job_request)
     # should have five metrics (one IOU for each of the four labels, and one mIOU)
     assert len(metrics) == 5
     for metric in metrics[:-1]:
