@@ -15,6 +15,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from velour_api import auth, crud, enums, exceptions, logger, schemas
+from velour_api.api_utils import _split_query_params
 from velour_api.backend import database
 from velour_api.settings import auth_settings
 
@@ -43,16 +44,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-def _split_query_params(param_string: str | None) -> list[str] | None:
-    """Split GET query parameters and return a list when possible."""
-    if not param_string:
-        return None
-    elif "," in param_string:
-        return param_string.split(",")
-    else:
-        return [param_string]
 
 
 """ GROUNDTRUTHS """

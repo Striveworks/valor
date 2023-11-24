@@ -5,9 +5,9 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from velour_api import exceptions, schemas
+from velour_api.api_utils import _split_query_params
 from velour_api.backend import database
 from velour_api.enums import JobStatus, TaskType
-from velour_api.main import _split_query_params
 
 
 @pytest.fixture
