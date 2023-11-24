@@ -203,7 +203,7 @@ def get_labels_from_model(
                 models_names=[model_name],
             ),
         )
-    except exceptions.DatasetDoesNotExistError as e:
+    except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -391,17 +391,6 @@ app.get(
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
 )
-
-
-def get_inference_status(
-    model_name: str, dataset_name: str, db: Session = Depends(get_db)
-) -> enums.State:
-    try:
-        return crud.get_backend_state(
-            dataset_name=dataset_name, model_name=model_name
-        )
-    except exceptions.ModelDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.put(
