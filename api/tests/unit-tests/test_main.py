@@ -4,9 +4,10 @@ import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from velour_api import exceptions, main, schemas
+from velour_api import exceptions, schemas
 from velour_api.backend import database
 from velour_api.enums import JobStatus, TaskType
+from velour_api.main import _split_query_params
 
 
 @pytest.fixture
@@ -23,13 +24,13 @@ def client() -> TestClient:
 def test__split_query_params():
     """Test helper function for splitting GET params into a list"""
     param_string = None
-    assert main._split_query_params(param_string) is None
+    assert _split_query_params(param_string) is None
 
     param_string = "model"
-    assert main._split_query_params(param_string) == ["model"]
+    assert _split_query_params(param_string) == ["model"]
 
     param_string = "model1,model2"
-    assert main._split_query_params(param_string) == ["model1", "model2"]
+    assert _split_query_params(param_string) == ["model1", "model2"]
 
 
 def test_protected_routes(client: TestClient):
