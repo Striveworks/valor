@@ -619,16 +619,20 @@ class Model:
         ).json()
 
     def evaluate_classification(
-        self, dataset: Dataset, timeout: Optional[int] = None
+        self,
+        dataset: Dataset,
+        filters: Union[Dict, List[BinaryExpression]] = None,
+        timeout: Optional[int] = None,
     ) -> Evaluation:
-        """Start a classification evaluation job
+        """
+        Start a classification evaluation job.
 
         Parameters
         ----------
         dataset
-            The dataset to evaluate against
-        group_by
-            Optional name of metadatum to group the results by
+            The dataset to evaluate against.
+        filters
+            Optional set of filters to constrain evaluation by.
         timeout
             The number of seconds to wait for the job to finish. Used to ensure deterministic behavior when testing.
 
@@ -639,10 +643,17 @@ class Model:
             and get the metrics of it upon completion
         """
 
+        # If list[BinaryExpression], convert to filter object
+        if not isinstance(filters, dict) and filters is not None:
+            filters = Filter.create(filters)
+
         evaluation = schemas.EvaluationJob(
             model=self.name,
             dataset=dataset.name,
             task_type=enums.TaskType.CLASSIFICATION.value,
+            settings=schemas.EvaluationSettings(
+                filters=filters,
+            ),
         )
 
         resp = self.client._requests_post_rel_host(
@@ -670,7 +681,28 @@ class Model:
         filters: Union[Dict, List[BinaryExpression]] = None,
         timeout: Optional[int] = None,
     ) -> Evaluation:
-        """Evaluate object detections."""
+        """
+        Start a object-detection evaluation job.
+
+        Parameters
+        ----------
+        dataset
+            The dataset to evaluate against.
+        iou_threshold_to_compute
+            Thresholds to compute mAP against.
+        iou_thresholds_to_keep
+            Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
+        filters
+            Optional set of filters to constrain evaluation by.
+        timeout
+            The number of seconds to wait for the job to finish. Used to ensure deterministic behavior when testing.
+
+        Returns
+        -------
+        Evaluation
+            a job object that can be used to track the status of the job
+            and get the metrics of it upon completion
+        """
 
         # Default iou thresholds
         if iou_thresholds_to_compute is None:
@@ -685,7 +717,7 @@ class Model:
             iou_thresholds_to_keep=iou_thresholds_to_keep,
         )
 
-        if not isinstance(filters, dict):
+        if not isinstance(filters, dict) and filters is not None:
             filters = Filter.create(filters)
 
         evaluation = schemas.EvaluationJob(
@@ -722,19 +754,49 @@ class Model:
         return evaluation_job
 
     def evaluate_segmentation(
-        self, dataset: Dataset, timeout: Optional[int] = None
+        self,
+        dataset: Dataset,
+        filters: Union[Dict, List[BinaryExpression]] = None,
+        timeout: Optional[int] = None,
     ) -> Evaluation:
+        """
+        Start a semantic-segmentation evaluation job.
+
+        Parameters
+        ----------
+        dataset
+            The dataset to evaluate against.
+        filters
+            Optional set of filters to constrain evaluation by.
+        timeout
+            The number of seconds to wait for the job to finish. Used to ensure deterministic behavior when testing.
+
+        Returns
+        -------
+        Evaluation
+            a job object that can be used to track the status of the job
+            and get the metrics of it upon completion
+        """
+
+        # if list[BinaryExpression], convert to filter object
+        if not isinstance(filters, dict) and filters is not None:
+            filters = Filter.create(filters)
+
+        # create evaluation job
         evaluation = schemas.EvaluationJob(
             model=self.name,
             dataset=dataset.name,
             task_type=enums.TaskType.SEGMENTATION.value,
+            settings=schemas.EvaluationSettings(
+                filters=filters,
+            ),
         )
-
         resp = self.client._requests_post_rel_host(
             "evaluations/semantic-segmentation-metrics",
             json=asdict(evaluation),
         ).json()
 
+        # create client-side evaluation handler
         evaluation_job = Evaluation(
             client=self.client,
             dataset=dataset.name,
