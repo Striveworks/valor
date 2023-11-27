@@ -15,6 +15,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from velour_api import auth, crud, enums, exceptions, logger, schemas
+from velour_api.api_utils import _split_query_params
 from velour_api.backend import database
 from velour_api.settings import auth_settings
 
@@ -43,16 +44,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-
-def _split_query_params(param_string: str | None) -> list[str] | None:
-    """Split GET query parameters and return a list when possible."""
-    if not param_string:
-        return None
-    elif "," in param_string:
-        return param_string.split(",")
-    else:
-        return [param_string]
 
 
 """ GROUNDTRUTHS """
@@ -203,7 +194,7 @@ def get_labels_from_model(
                 models_names=[model_name],
             ),
         )
-    except exceptions.DatasetDoesNotExistError as e:
+    except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -382,24 +373,6 @@ def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
 def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     try:
         return crud.get_model(db=db, model_name=model_name)
-    except exceptions.ModelDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-app.get(
-    "/models/{model_name}/dataset/{dataset_name}/status",
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Models"],
-)
-
-
-def get_inference_status(
-    model_name: str, dataset_name: str, db: Session = Depends(get_db)
-) -> enums.State:
-    try:
-        return crud.get_backend_state(
-            dataset_name=dataset_name, model_name=model_name
-        )
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
