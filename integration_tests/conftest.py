@@ -84,7 +84,7 @@ def model_name():
     return "test_model"
 
 
-# Metadata
+"""Metadata"""
 
 
 @pytest.fixture
@@ -97,7 +97,7 @@ def metadata():
     }
 
 
-# Images
+"""Images"""
 
 
 @pytest.fixture
@@ -162,7 +162,7 @@ def img9(dataset_name) -> ImageMetadata:
     return ImageMetadata(dataset=dataset_name, uid="uid9", height=40, width=30)
 
 
-# Geometries
+"""Geometrys"""
 
 
 @pytest.fixture
@@ -185,7 +185,7 @@ def rect4():
     return BoundingBox.from_extrema(xmin=1, ymin=10, xmax=10, ymax=20)
 
 
-# Groundtruths
+"""Groundtruths"""
 
 
 @pytest.fixture
@@ -495,7 +495,7 @@ def gt_clfs_tabular() -> list[int]:
     return [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
 
 
-# Predictions
+"""Predictions"""
 
 
 @pytest.fixture
