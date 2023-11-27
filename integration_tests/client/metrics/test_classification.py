@@ -90,10 +90,10 @@ def test_evaluate_tabular_clf(
     client: Session,
     dataset_name: str,
     model_name: str,
-    y_true: list[int],
-    tabular_preds: list[list[float]],
+    gt_clfs_tabular: list[int],
+    pred_clfs_tabular: list[list[float]],
 ):
-    assert len(y_true) == len(tabular_preds)
+    assert len(gt_clfs_tabular) == len(pred_clfs_tabular)
 
     dataset = Dataset.create(client, name=dataset_name)
     gts = [
@@ -106,7 +106,7 @@ def test_evaluate_tabular_clf(
                 )
             ],
         )
-        for i, t in enumerate(y_true)
+        for i, t in enumerate(gt_clfs_tabular)
     ]
     for gt in gts:
         dataset.add_groundtruth(gt)
@@ -133,7 +133,7 @@ def test_evaluate_tabular_clf(
                 )
             ],
         )
-        for i, pred in enumerate(tabular_preds)
+        for i, pred in enumerate(pred_clfs_tabular)
     ]
     for pd in pds:
         model.add_prediction(pd)
@@ -321,147 +321,133 @@ def test_evaluate_tabular_clf(
     assert len(client.get_models()) == 0
 
 
-# @TODO: Need to implement client-side code for metadata evaluations
-# def test_stratify_clf_metrics(
-#     client: Session,
-#     y_true: list[int],
-#     tabular_preds: list[list[float]],
-#     dataset_name: str,
-#     model_name: str,
-# ):
+def test_stratify_clf_metrics(
+    client: Session,
+    gt_clfs_tabular: list[int],
+    pred_clfs_tabular: list[list[float]],
+    dataset_name: str,
+    model_name: str,
+):
+    assert len(gt_clfs_tabular) == len(pred_clfs_tabular)
 
-#     tabular_datum = Datum(
-#         uid="uid"
-#     )
+    # create data and two-different defining groups of cohorts
+    dataset = Dataset.create(client, name=dataset_name)
+    for i, label_value in enumerate(gt_clfs_tabular):
+        gt = GroundTruth(
+            datum=Datum(
+                uid=f"uid{i}",
+                dataset=dataset_name,
+                metadata={
+                    "md1": f"md1-val{i % 3}",
+                    "md2": f"md2-val{i % 4}",
+                },
+            ),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[Label(key="class", value=str(label_value))],
+                )
+            ],
+        )
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
 
-#     dataset = Dataset.create(client, name=dataset_name)
-#     # create data and two-different defining groups of cohorts
-#     gt_with_metadata = GroundTruth(
-#         dataset=dataset_name,
-#         datum=tabular_datum,
-#         annotations=[
-#             Annotation(
-#                 task_type=TaskType.CLASSIFICATION,
-#                 labels=[Label(key="class", value=str(t))],
-#                 metadata={
-#                     "md1" : f"md1-val{i % 3}",
-#                     "md2" : f"md2-val{i % 4}",
-#                 }
-#             )
-#             for i, t in enumerate(y_true)
-#         ]
-#     )
-#     dataset.add_groundtruth(gt_with_metadata)
-#     dataset.finalize()
+    model = Model.create(client, name=model_name)
+    for i, pred in enumerate(pred_clfs_tabular):
+        pd = Prediction(
+            model=model_name,
+            datum=Datum(
+                uid=f"uid{i}",
+                dataset=dataset_name,
+                metadata={
+                    "md1": f"md1-val{i % 3}",
+                    "md2": f"md2-val{i % 4}",
+                },
+            ),
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[
+                        Label(key="class", value=str(pidx), score=pred[pidx])
+                        for pidx in range(len(pred))
+                    ],
+                )
+            ],
+        )
+        model.add_prediction(pd)
+    model.finalize_inferences(dataset)
 
-#     model = Model.create(client, name=model_name)
-#     pd = Prediction(
-#         model=model_name,
-#         datum=tabular_datum,
-#         annotations=[
-#             Annotation(
-#                 task_type=TaskType.CLASSIFICATION,
-#                 labels=[
-#                     Label(key="class", value=str(i), score=pred[i])
-#                     for i in range(len(pred))
-#                 ]
-#             )
-#             for pred in tabular_preds
-#         ]
-#     )
-#     model.add_prediction(pd)
-#     model.finalize_inferences(dataset)
+    eval_job_val2 = model.evaluate_classification(
+        dataset=dataset,
+        filters=[
+            Datum.metadata["md1"] == "md1-val2",
+        ],
+        timeout=30,
+    )
+    val2_metrics = eval_job_val2.metrics["metrics"]
 
-#     eval_job = model.evaluate_classification(dataset=dataset)
+    # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
+    # (hard preds [1, 0, 0])
+    expected_metrics = [
+        {
+            "type": "Accuracy",
+            "parameters": {"label_key": "class"},
+            "value": 0.3333333333333333,
+        },
+        {
+            "type": "ROCAUC",
+            "parameters": {"label_key": "class"},
+            "value": 0.8333333333333334,
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "label": {"key": "class", "value": "1"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+        },
+        {
+            "type": "Recall",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+        },
+        {
+            "type": "F1",
+            "value": 0.0,
+            "label": {"key": "class", "value": "2"},
+        },
+        {
+            "type": "Precision",
+            "value": 0.5,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "type": "Recall",
+            "value": 1.0,
+            "label": {"key": "class", "value": "0"},
+        },
+        {
+            "type": "F1",
+            "value": 0.6666666666666666,
+            "label": {"key": "class", "value": "0"},
+        },
+    ]
 
-#     metrics = eval_job['metrics']
-
-#     for m in metrics:
-#         assert m["group"] in [
-#             {"name": "md1", "value": "md1-val0"},
-#             {"name": "md1", "value": "md1-val1"},
-#             {"name": "md1", "value": "md1-val2"},
-#         ]
-
-#     val2_metrics = [
-#         m
-#         for m in metrics
-#         if m["group"] == {"name": "md1", "value": "md1-val2"}
-#     ]
-
-#     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
-#     # (hard preds [1, 0, 0])
-#     expected_metrics = [
-#         {
-#             "type": "Accuracy",
-#             "parameters": {"label_key": "class"},
-#             "value": 0.3333333333333333,
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "ROCAUC",
-#             "parameters": {"label_key": "class"},
-#             "value": 0.8333333333333334,
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "Precision",
-#             "value": 0.0,
-#             "label": {"key": "class", "value": "1"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "Recall",
-#             "value": 0.0,
-#             "label": {"key": "class", "value": "1"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "F1",
-#             "value": 0.0,
-#             "label": {"key": "class", "value": "1"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "Precision",
-#             "value": -1,
-#             "label": {"key": "class", "value": "2"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "Recall",
-#             "value": 0.0,
-#             "label": {"key": "class", "value": "2"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "F1",
-#             "value": -1,
-#             "label": {"key": "class", "value": "2"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "Precision",
-#             "value": 0.5,
-#             "label": {"key": "class", "value": "0"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "Recall",
-#             "value": 1.0,
-#             "label": {"key": "class", "value": "0"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "F1",
-#             "value": 0.6666666666666666,
-#             "label": {"key": "class", "value": "0"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#     ]
-
-#     assert len(val2_metrics) == len(expected_metrics)
-#     for m in val2_metrics:
-#         assert m in expected_metrics
-#     for m in expected_metrics:
-#         assert m in val2_metrics
+    assert len(val2_metrics) == len(expected_metrics)
+    for m in val2_metrics:
+        assert m in expected_metrics
+    for m in expected_metrics:
+        assert m in val2_metrics

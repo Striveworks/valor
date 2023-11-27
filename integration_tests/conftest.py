@@ -84,8 +84,7 @@ def model_name():
     return "test_model"
 
 
-def random_mask(img: ImageMetadata) -> np.ndarray:
-    return np.random.randint(0, 2, size=(img.height, img.width), dtype=bool)
+"""Metadata"""
 
 
 @pytest.fixture
@@ -96,6 +95,9 @@ def metadata():
         "metadatum2": "a string",
         "metadatum3": 0.45,
     }
+
+
+"""Images"""
 
 
 @pytest.fixture
@@ -160,6 +162,9 @@ def img9(dataset_name) -> ImageMetadata:
     return ImageMetadata(dataset=dataset_name, uid="uid9", height=40, width=30)
 
 
+"""Geometrys"""
+
+
 @pytest.fixture
 def rect1():
     return BoundingBox.from_extrema(xmin=10, ymin=10, xmax=60, ymax=40)
@@ -178,6 +183,9 @@ def rect3():
 @pytest.fixture
 def rect4():
     return BoundingBox.from_extrema(xmin=1, ymin=10, xmax=10, ymax=20)
+
+
+"""Groundtruths"""
 
 
 @pytest.fixture
@@ -482,6 +490,15 @@ def gt_clfs(
 
 
 @pytest.fixture
+def gt_clfs_tabular() -> list[int]:
+    """groundtruth for a tabular classification task"""
+    return [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
+
+
+"""Predictions"""
+
+
+@pytest.fixture
 def pred_dets(
     model_name: str,
     rect1: BoundingBox,
@@ -573,14 +590,18 @@ def pred_poly_dets(
     ]
 
 
+def _random_mask(img: ImageMetadata) -> np.ndarray:
+    return np.random.randint(0, 2, size=(img.height, img.width), dtype=bool)
+
+
 @pytest.fixture
 def pred_instance_segs(
     model_name: str,
     img1: ImageMetadata,
     img2: ImageMetadata,
 ) -> list[Prediction]:
-    mask_1 = random_mask(img1)
-    mask_2 = random_mask(img2)
+    mask_1 = _random_mask(img1)
+    mask_2 = _random_mask(img2)
     return [
         Prediction(
             model=model_name,
@@ -613,8 +634,8 @@ def pred_semantic_segs(
     img1: ImageMetadata,
     img2: ImageMetadata,
 ) -> list[Prediction]:
-    mask_1 = random_mask(img1)
-    mask_2 = random_mask(img2)
+    mask_1 = _random_mask(img1)
+    mask_2 = _random_mask(img2)
     return [
         Prediction(
             model=model_name,
@@ -677,13 +698,7 @@ def pred_clfs(
 
 
 @pytest.fixture
-def y_true() -> list[int]:
-    """groundtruth for a tabular classification task"""
-    return [1, 1, 2, 0, 0, 0, 1, 1, 1, 1]
-
-
-@pytest.fixture
-def tabular_preds() -> list[list[float]]:
+def pred_clfs_tabular() -> list[list[float]]:
     """predictions for a tabular classification task"""
     return [
         [0.37, 0.35, 0.28],
