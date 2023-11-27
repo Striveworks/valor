@@ -5,8 +5,9 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from velour_api import exceptions, schemas
+from velour_api.api_utils import _split_query_params
 from velour_api.backend import database
-from velour_api.enums import TaskType
+from velour_api.enums import JobStatus, TaskType
 
 
 @pytest.fixture
@@ -18,6 +19,18 @@ def client() -> TestClient:
     main.get_db = MagicMock()
 
     return TestClient(main.app)
+
+
+def test__split_query_params():
+    """Test helper function for splitting GET params into a list"""
+    param_string = None
+    assert _split_query_params(param_string) is None
+
+    param_string = "model"
+    assert _split_query_params(param_string) == ["model"]
+
+    param_string = "model1,model2"
+    assert _split_query_params(param_string) == ["model1", "model2"]
 
 
 def test_protected_routes(client: TestClient):
@@ -61,6 +74,50 @@ def _test_post_endpoints(
         assert resp.status_code == 405
 
 
+@patch("velour_api.main.crud")
+def _test_post_evaluation_endpoint(
+    crud,
+    client: TestClient,
+    endpoint: str,
+    crud_method_name: str,
+    example_json: dict,
+    metric_response: schemas.CreateAPMetricsResponse
+    | schemas.CreateClfMetricsResponse
+    | schemas.CreateSemanticSegmentationMetricsResponse,
+):
+    """Helper function to test our metric endpoints by patching fastapi's BackgroundTasks"""
+    crud_method = getattr(crud, crud_method_name)
+    crud_method.return_value = metric_response
+
+    resp = client.post(endpoint, json=example_json)
+    assert resp.status_code == 202
+    crud_method.assert_called_once()
+
+    resp = client.post(endpoint, json={})
+    assert resp.status_code == 422
+
+    with patch(
+        "fastapi.BackgroundTasks.add_task",
+        side_effect=ValueError(),
+    ):
+        resp = client.post(endpoint, json=example_json)
+        assert resp.status_code == 400
+
+    with patch(
+        "fastapi.BackgroundTasks.add_task",
+        side_effect=exceptions.DatasetNotFinalizedError(""),
+    ):
+        resp = client.post(endpoint, json=example_json)
+        assert resp.status_code == 405
+
+    with patch(
+        "fastapi.BackgroundTasks.add_task",
+        side_effect=exceptions.StateflowError(""),
+    ):
+        resp = client.post(endpoint, json=example_json)
+        assert resp.status_code == 409
+
+
 """ POST /groundtruths """
 
 
@@ -89,6 +146,14 @@ def test_post_groundtruth(client: TestClient):
     ):
         resp = client.post("/groundtruths", json=example_json)
         assert resp.status_code == 409
+
+    # check that we get an error if the dataset doesn't exist
+    with patch(
+        "velour_api.main.crud.create_groundtruth",
+        side_effect=exceptions.DatasetDoesNotExistError("fake_dsetname"),
+    ):
+        resp = client.post("/groundtruths", json=example_json)
+        assert resp.status_code == 404
 
 
 def test_post_groundtruth_classification(client: TestClient):
@@ -287,6 +352,58 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
     )
 
 
+""" GET /groundtruths/dataset/{dataset_name}/datum/{uid} """
+
+
+@patch("velour_api.main.crud")
+def test_get_groundtruth(crud, client: TestClient):
+    crud.get_groundtruth.return_value = {
+        "datum": {
+            "uid": "file_uid",
+            "dataset": "dataset1",
+            "metadata": {
+                "meta1": 0.4,
+                "meta2": "v1",
+            },
+        },
+        "annotations": [
+            {
+                "labels": [
+                    {"key": "k1", "value": "v1", "score": 0.1},
+                    {"key": "k1", "value": "v2", "score": 0.1},
+                ],
+                "task_type": TaskType.DETECTION.value,
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
+                "bounding_box": {
+                    "polygon": {
+                        "points": [
+                            {"x": 0, "y": 0},
+                            {"x": 0, "y": 1},
+                            {"x": 1, "y": 1},
+                            {"x": 1, "y": 0},
+                        ]
+                    }
+                },
+            },
+        ],
+    }
+
+    resp = client.get("/groundtruths/dataset/dsetname/datum/1")
+    assert resp.status_code == 200
+    crud.get_groundtruth.assert_called_once()
+
+    with patch(
+        "velour_api.main.crud.get_groundtruth",
+        side_effect=exceptions.DatasetDoesNotExistError("dsetname"),
+    ):
+        resp = client.get("/groundtruths/dataset/dsetname/datum/1")
+
+        assert resp.status_code == 404
+
+
 """ POST /predictions """
 
 
@@ -325,6 +442,14 @@ def test_post_prediction(client: TestClient):
     ):
         resp = client.post("/predictions", json=example_json)
         assert resp.status_code == 404
+
+    # check we get a code (409) if the dataset hasn't been finalized
+    with patch(
+        "velour_api.main.crud.create_prediction",
+        side_effect=exceptions.DatasetNotFinalizedError("dataset1"),
+    ):
+        resp = client.post("/predictions", json=example_json)
+        assert resp.status_code == 409
 
 
 def test_post_prediction_classification(client: TestClient):
@@ -532,6 +657,60 @@ def test_post_prediction_raster_segmentation(client: TestClient):
     )
 
 
+""" GET /predictions/model/{model_name}/dataset/{dataset_name}/datum/{uid}"""
+
+
+@patch("velour_api.main.crud")
+def test_get_prediction(crud, client: TestClient):
+    crud.get_prediction.return_value = {
+        "model": "model1",
+        "datum": {
+            "uid": "file_uid",
+            "dataset": "dataset1",
+            "metadata": {
+                "meta1": 0.4,
+                "meta2": "v1",
+            },
+        },
+        "annotations": [
+            {
+                "labels": [
+                    {"key": "k1", "value": "v1", "score": 0.1},
+                    {"key": "k1", "value": "v2", "score": 0.1},
+                ],
+                "task_type": TaskType.DETECTION.value,
+                "metadata": {
+                    "meta1": 0.4,
+                    "meta2": "v1",
+                },
+                "bounding_box": {
+                    "polygon": {
+                        "points": [
+                            {"x": 0, "y": 0},
+                            {"x": 0, "y": 1},
+                            {"x": 1, "y": 1},
+                            {"x": 1, "y": 0},
+                        ]
+                    }
+                },
+            },
+        ],
+    }
+
+    resp = client.get("/predictions/model/model_name/dataset/dsetname/datum/1")
+    assert resp.status_code == 200
+    crud.get_prediction.assert_called_once()
+
+    with patch(
+        "velour_api.main.crud.get_prediction",
+        side_effect=exceptions.DatasetDoesNotExistError("dsetname"),
+    ):
+        resp = client.get(
+            "/predictions/model/model_name/dataset/dsetname/datum/1"
+        )
+        assert resp.status_code == 404
+
+
 """ POST /datasets  """
 
 
@@ -558,35 +737,6 @@ def test_post_datasets(client: TestClient):
         side_effect=exceptions.DatasetAlreadyExistsError(""),
     ):
         resp = client.post("/datasets", json=example_json)
-        assert resp.status_code == 409
-
-
-""" POST /models """
-
-
-def test_post_models(client: TestClient):
-    example_json = {
-        "id": 1,
-        "name": "model1",
-        "metadata": {
-            "meta1": 0.4,
-            "meta2": "v1",
-        },
-    }
-    _test_post_endpoints(
-        client=client,
-        endpoint="/models",
-        crud_method_name="create_model",
-        example_json=example_json,
-        expected_status_code=201,
-        endpoint_only_has_post=False,
-    )
-
-    with patch(
-        "velour_api.main.crud.create_model",
-        side_effect=exceptions.ModelAlreadyExistsError(""),
-    ):
-        resp = client.post("/models", json=example_json)
         assert resp.status_code == 409
 
 
@@ -624,6 +774,116 @@ def test_get_dataset_by_name(crud, client: TestClient):
     assert resp.status_code == 405
 
 
+""" GET /datasets/{dataset_name}/status"""
+
+
+@patch("velour_api.main.crud")
+def test_get_dataset_status(crud, client: TestClient):
+    crud.get_backend_state.return_value = "ready"
+    resp = client.get("/datasets/dsetname/status")
+    assert resp.status_code == 200
+    crud.get_backend_state.assert_called_once()
+
+    with patch(
+        "velour_api.main.crud.get_backend_state",
+        side_effect=exceptions.DatasetDoesNotExistError(""),
+    ):
+        resp = client.get("/datasets/dsetname/status")
+        assert resp.status_code == 404
+
+
+""" PUT /datasets/{dataset_name}/finalize """
+
+
+@patch("velour_api.main.crud")
+def test_finalize_datasets(crud, client: TestClient):
+    resp = client.put("/datasets/dsetname/finalize")
+    assert resp.status_code == 200
+    crud.finalize.assert_called_once()
+
+    with patch(
+        "velour_api.main.crud.finalize",
+        side_effect=exceptions.DatasetDoesNotExistError(""),
+    ):
+        resp = client.put("datasets/dsetname/finalize")
+        assert resp.status_code == 404
+
+    with patch(
+        "velour_api.main.crud.finalize",
+        side_effect=exceptions.DatasetIsEmptyError(""),
+    ):
+        resp = client.put("datasets/dsetname/finalize")
+        assert resp.status_code == 400
+
+    resp = client.get("/datasets/dsetname/finalize")
+    assert resp.status_code == 405
+
+
+""" DELETE /datasets/{dataset_name} """
+
+
+@patch("velour_api.main.crud")
+def test_delete_dataset(crud, client: TestClient):
+    crud.delete.return_value = None
+    resp = client.delete("/datasets/dsetname")
+    assert resp.status_code == 200
+    crud.delete.assert_called_once()
+
+    with patch(
+        "fastapi.BackgroundTasks.add_task",
+        side_effect=exceptions.DatasetDoesNotExistError(""),
+    ):
+        resp = client.delete("/datasets/dsetname")
+        assert resp.status_code == 404
+
+    with patch(
+        "fastapi.BackgroundTasks.add_task",
+        side_effect=exceptions.StateflowError(""),
+    ):
+        resp = client.delete("/datasets/dsetname")
+        assert resp.status_code == 409
+
+
+""" POST /models """
+
+
+def test_post_models(client: TestClient):
+    example_json = {
+        "id": 1,
+        "name": "model1",
+        "metadata": {
+            "meta1": 0.4,
+            "meta2": "v1",
+        },
+    }
+    _test_post_endpoints(
+        client=client,
+        endpoint="/models",
+        crud_method_name="create_model",
+        example_json=example_json,
+        expected_status_code=201,
+        endpoint_only_has_post=False,
+    )
+
+    with patch(
+        "velour_api.main.crud.create_model",
+        side_effect=exceptions.ModelAlreadyExistsError(""),
+    ):
+        resp = client.post("/models", json=example_json)
+        assert resp.status_code == 409
+
+
+""" GET /models"""
+
+
+@patch("velour_api.main.crud")
+def test_get_models(crud, client: TestClient):
+    crud.get_models.return_value = []
+    resp = client.get("/models")
+    assert resp.status_code == 200
+    crud.get_models.assert_called_once()
+
+
 """ GET /models/{model_name}"""
 
 
@@ -645,12 +905,12 @@ def test_get_model_by_name(crud, client: TestClient):
     assert resp.status_code == 405
 
 
-""" PUT /datasets/{dataset_name}/finalize """
+""" PUT /models/{model_name}/finalize/datasets/{dataset_name}/finalize """
 
 
 @patch("velour_api.main.crud")
-def test_finalize_datasets(crud, client: TestClient):
-    resp = client.put("/datasets/dsetname/finalize")
+def test_finalize_inferences(crud, client: TestClient):
+    resp = client.put("/models/modelname/datasets/dsetname/finalize")
     assert resp.status_code == 200
     crud.finalize.assert_called_once()
 
@@ -658,12 +918,256 @@ def test_finalize_datasets(crud, client: TestClient):
         "velour_api.main.crud.finalize",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
-        resp = client.put("datasets/dsetname/finalize")
+        resp = client.put("/models/modelname/datasets/dsetname/finalize")
         assert resp.status_code == 404
 
-    # @FIXME Not sure why this is failing
-    # resp = client.get("/datasets/dsetname/finalize")
-    # assert resp.status_code == 405
+    with patch(
+        "velour_api.main.crud.finalize",
+        side_effect=exceptions.DatasetIsEmptyError(""),
+    ):
+        resp = client.put("/models/modelname/datasets/dsetname/finalize")
+        assert resp.status_code == 400
+
+    resp = client.get("/models/modelname/datasets/dsetname/finalize")
+    assert resp.status_code == 405
+
+
+""" DELETE /models/{model_name} """
+
+
+@patch("velour_api.main.crud")
+def test_delete_model(crud, client: TestClient):
+    crud.delete.return_value = None
+    resp = client.delete("/models/modelname")
+    assert resp.status_code == 200
+    crud.delete.assert_called_once()
+
+    with patch(
+        "velour_api.main.crud.delete",
+        side_effect=exceptions.ModelDoesNotExistError(""),
+    ):
+        resp = client.delete("/models/modelname")
+        assert resp.status_code == 404
+
+    with patch(
+        "velour_api.main.crud.delete",
+        side_effect=exceptions.StateflowError(""),
+    ):
+        resp = client.delete("/models/modelname")
+        assert resp.status_code == 409
+
+
+""" POST /evaluations/ap-metrics """
+
+
+def test_post_detection_metrics(client: TestClient):
+    metric_response = schemas.CreateAPMetricsResponse(
+        missing_pred_labels=[], ignored_pred_labels=[], job_id=1
+    )
+
+    example_json = {
+        "model": "modelname",
+        "dataset": "dsetname",
+        "task_type": TaskType.DETECTION.value,
+        "settings": {},
+    }
+
+    _test_post_evaluation_endpoint(
+        client=client,
+        crud_method_name="create_detection_evaluation",
+        endpoint="/evaluations/ap-metrics",
+        metric_response=metric_response,
+        example_json=example_json,
+    )
+
+
+""" POST /evaluations/clf-metrics """
+
+
+def test_post_clf_metrics(client: TestClient):
+    metric_response = schemas.CreateClfMetricsResponse(
+        missing_pred_keys=[], ignored_pred_keys=[], job_id=1
+    )
+
+    example_json = {
+        "model": "modelname",
+        "dataset": "dsetname",
+        "task_type": TaskType.CLASSIFICATION.value,
+        "settings": {},
+    }
+
+    _test_post_evaluation_endpoint(
+        client=client,
+        crud_method_name="create_clf_evaluation",
+        endpoint="/evaluations/clf-metrics",
+        metric_response=metric_response,
+        example_json=example_json,
+    )
+
+
+""" POST /evaluations/semantic-segmentation-metrics """
+
+
+def test_post_semenatic_segmentation_metrics(client: TestClient):
+    metric_response = schemas.CreateSemanticSegmentationMetricsResponse(
+        missing_pred_labels=[], ignored_pred_labels=[], job_id=1
+    )
+
+    example_json = {
+        "model": "modelname",
+        "dataset": "dsetname",
+        "task_type": TaskType.SEGMENTATION.value,
+        "settings": {},
+    }
+
+    _test_post_evaluation_endpoint(
+        client=client,
+        crud_method_name="create_semantic_segmentation_evaluation",
+        endpoint="/evaluations/semantic-segmentation-metrics",
+        metric_response=metric_response,
+        example_json=example_json,
+    )
+
+
+""" GET /evaluations"""
+
+
+@patch("velour_api.main.crud")
+def test_get_bulk_evaluations(crud, client: TestClient):
+    crud.get_evaluations.return_value = []
+
+    resp = client.get(
+        "/evaluations?models=model1,model2&datasets=dataset1,dataset2"
+    )
+    assert resp.status_code == 200
+    crud.get_evaluations.assert_called_once()
+
+    with patch(
+        "velour_api.main.crud.get_evaluations",
+        side_effect=ValueError(),
+    ):
+        resp = client.get(
+            "/evaluations?models=model1,model2&datasets=dataset1,dataset2"
+        )
+        assert resp.status_code == 400
+
+    with patch(
+        "velour_api.main.crud.get_evaluations",
+        side_effect=exceptions.DatasetDoesNotExistError("dataset1"),
+    ):
+        resp = client.get(
+            "/evaluations?models=model1,model2&datasets=dataset1,dataset2"
+        )
+        assert resp.status_code == 404
+
+
+""" GET /evaluations/datasets/{dataset_name}"""
+
+
+@patch("velour_api.main.crud")
+def test_get_evaluation_jobs_for_dataset(crud, client: TestClient):
+    crud.get_evaluation_ids_for_dataset.return_value = {
+        "model1": [1, 2, 3],
+        "model2": [4, 5, 6],
+    }
+
+    resp = client.get("/evaluations/datasets/dsetname")
+    assert resp.status_code == 200
+    crud.get_evaluation_ids_for_dataset.assert_called_once()
+
+
+""" GET /evaluations/models/{model_name}"""
+
+
+@patch("velour_api.main.crud")
+def test_get_evaluation_jobs_for_model(crud, client: TestClient):
+    crud.get_evaluation_ids_for_model.return_value = {
+        "dataset1": [1, 2, 3],
+        "dataset2": [4, 5, 6],
+    }
+
+    resp = client.get("/evaluations/models/model_name")
+    assert resp.status_code == 200
+    crud.get_evaluation_ids_for_model.assert_called_once()
+
+
+""" GET /evaluations/{job_id}"""
+
+
+@patch("velour_api.main.crud")
+def test_get_evaluation_status(crud, client: TestClient):
+    crud.get_evaluation_status.return_value = "done"
+
+    resp = client.get("/evaluations/1")
+    assert resp.status_code == 200
+    crud.get_evaluation_status.assert_called_once()
+
+    with patch(
+        "velour_api.main.crud.get_evaluation_status",
+        side_effect=exceptions.JobDoesNotExistError("1"),
+    ):
+        resp = client.get("/evaluations/1")
+        assert resp.status_code == 404
+
+
+""" GET /evaluations/{job_id}/settings"""
+
+
+@patch("velour_api.main.crud")
+def test_get_evaluation_job(crud, client: TestClient):
+    crud.get_evaluation_jobs.return_value = [
+        {
+            "model": "modelname",
+            "dataset": "dsetname",
+            "task_type": TaskType.DETECTION.value,
+            "settings": {},
+        }
+    ]
+
+    resp = client.get("/evaluations/1/settings")
+    assert resp.status_code == 200
+    crud.get_evaluation_jobs.assert_called_once()
+
+    with patch(
+        "velour_api.main.crud.get_evaluation_jobs",
+        side_effect=exceptions.JobDoesNotExistError("1"),
+    ):
+        resp = client.get("/evaluations/1/settings")
+        assert resp.status_code == 404
+
+
+""" GET /evaluations/{job_id}/metrics"""
+
+
+@patch("velour_api.main.crud")
+def test_get_evaluation_metrics(crud, client: TestClient):
+    crud.get_evaluation_status.return_value = JobStatus.DONE
+    crud.get_evaluations.return_value = [
+        {
+            "model": "modelname",
+            "dataset": "dsetname",
+            "settings": {},
+            "job_id": 1,
+            "status": "done",
+            "metrics": [],
+            "confusion_matrices": [],
+        }
+    ]
+
+    resp = client.get("/evaluations/1/metrics")
+    assert resp.status_code == 200
+    crud.get_evaluations.assert_called_once()
+
+    with patch(
+        "velour_api.main.crud.get_evaluations",
+        side_effect=exceptions.JobDoesNotExistError("1"),
+    ):
+        resp = client.get("/evaluations/1/metrics")
+        assert resp.status_code == 404
+
+    crud.get_evaluation_status.return_value = JobStatus.PROCESSING
+    resp = client.get("/evaluations/1/metrics")
+    assert resp.status_code == 404
 
 
 """ GET /labels/dataset/{dataset_name}"""
@@ -685,6 +1189,24 @@ def test_get_dataset_labels(crud, client: TestClient):
 
     resp = client.post("/labels/dataset/dsetname")
     assert resp.status_code == 405
+
+
+""" GET /labels/model/{model_name}"""
+
+
+@patch("velour_api.main.crud")
+def test_get_model_labels(crud, client: TestClient):
+    crud.get_labels_from_model.return_value = []
+    resp = client.get("/labels/model/modelname")
+    assert resp.status_code == 200
+    crud.get_model_labels.assert_called_once()
+
+    with patch(
+        "velour_api.main.crud.get_model_labels",
+        side_effect=exceptions.ModelDoesNotExistError(""),
+    ):
+        resp = client.get("/labels/model/modelname")
+        assert resp.status_code == 404
 
 
 """ GET /data/dataset/{dataset_name} """
@@ -727,39 +1249,6 @@ def test_get_dataset_datum(crud, client: TestClient):
 
     resp = client.post("/data/dataset/dsetname/uid/uid")
     assert resp.status_code == 405
-
-
-""" DELETE /datasets/{dataset_name} """
-
-
-@patch("velour_api.main.crud")
-def test_delete_dataset(crud, client: TestClient):
-    crud.delete.return_value = None
-    resp = client.delete("/datasets/dsetname")
-    assert resp.status_code == 200
-    crud.delete.assert_called_once()
-
-
-""" GET /models """
-
-
-@patch("velour_api.main.crud")
-def test_get_models(crud, client: TestClient):
-    crud.get_models.return_value = []
-    resp = client.get("/models")
-    assert resp.status_code == 200
-    crud.get_models.assert_called_once()
-
-
-""" DELETE /models/{model_nam,e} """
-
-
-@patch("velour_api.main.crud")
-def test_delete_model(crud, client: TestClient):
-    crud.delete.return_value = None
-    resp = client.delete("/models/modelname")
-    assert resp.status_code == 200
-    crud.delete.assert_called_once()
 
 
 """ GET /labels """
