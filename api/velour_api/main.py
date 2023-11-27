@@ -377,13 +377,6 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-app.get(
-    "/models/{model_name}/dataset/{dataset_name}/status",
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Models"],
-)
-
-
 @app.put(
     "/models/{model_name}/datasets/{dataset_name}/finalize",
     status_code=200,
