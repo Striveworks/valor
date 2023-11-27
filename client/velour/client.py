@@ -624,7 +624,8 @@ class Model:
         filters: Union[Dict, List[BinaryExpression]] = None,
         timeout: Optional[int] = None,
     ) -> Evaluation:
-        """Start a classification evaluation job.
+        """
+        Start a classification evaluation job.
 
         Parameters
         ----------
@@ -680,7 +681,8 @@ class Model:
         filters: Union[Dict, List[BinaryExpression]] = None,
         timeout: Optional[int] = None,
     ) -> Evaluation:
-        """Start a object-detection evaluation job.
+        """
+        Start a object-detection evaluation job.
 
         Parameters
         ----------
@@ -757,7 +759,8 @@ class Model:
         filters: Union[Dict, List[BinaryExpression]] = None,
         timeout: Optional[int] = None,
     ) -> Evaluation:
-        """Start a semantic-segmentation evaluation job.
+        """
+        Start a semantic-segmentation evaluation job.
 
         Parameters
         ----------
