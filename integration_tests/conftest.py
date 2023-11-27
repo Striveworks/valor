@@ -88,7 +88,7 @@ def model_name():
 
 
 @pytest.fixture
-def metadata1():
+def metadata():
     """Some sample metadata of different types"""
     return {
         "metadatum1": "temporary",
