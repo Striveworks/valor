@@ -1,5 +1,6 @@
 import json
 import os
+import time
 
 import redis
 
@@ -18,31 +19,50 @@ REDIS_SSL = bool(os.getenv("REDIS_SSL"))
 r: redis.Redis = None
 
 
+def retry_connection(f):
+    TIMEOUT = 30
+
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        while True:
+            try:
+                return f(*args, **kwargs)
+            except Exception as e:
+                if time.time() - start_time >= TIMEOUT:
+                    logger.debug(
+                        f"REDIS_HOST: {REDIS_HOST}, REDIS_PORT: {REDIS_PORT}, REDIS_DB: {REDIS_DB}, "
+                        f"REDIS_PASSWORD: {'null' if REDIS_PASSWORD is None else 'not null'}, "
+                        f"REDIS_USERNAME: {REDIS_USERNAME}, REDIS_SSL: {REDIS_SSL}"
+                    )
+                    raise RuntimeError(
+                        f"Method {f.__name__} failed to connect to database within {TIMEOUT} seconds, with error: {str(e)}"
+                    )
+            time.sleep(2)
+
+    return wrapper
+
+
+@retry_connection
 def connect_to_redis():
     global r
-
     if r is not None:
         return
-    try:
-        r = redis.Redis(
-            REDIS_HOST,
-            db=REDIS_DB,
-            port=REDIS_PORT,
-            password=REDIS_PASSWORD,
-            username=REDIS_USERNAME,
-            ssl=REDIS_SSL,
-        )
-        r.ping()
-        logger.info(
-            f"succesfully connected to redis instance at {REDIS_HOST}:{REDIS_PORT}"
-        )
-    except Exception as e:
-        logger.debug(
-            f"REDIS_HOST: {REDIS_HOST}, REDIS_PORT: {REDIS_PORT}, REDIS_DB: {REDIS_DB}, "
-            f"REDIS_PASSWORD: {'null' if REDIS_PASSWORD is None else 'not null'}, "
-            f"REDIS_USERNAME: {REDIS_USERNAME}, REDIS_SSL: {REDIS_SSL}"
-        )
-        raise e
+
+    connection = redis.Redis(
+        REDIS_HOST,
+        db=REDIS_DB,
+        port=REDIS_PORT,
+        password=REDIS_PASSWORD,
+        username=REDIS_USERNAME,
+        ssl=REDIS_SSL,
+    )
+    connection.ping()  # this should fail if redis does not exist
+    logger.info(
+        f"succesfully connected to redis instance at {REDIS_HOST}:{REDIS_PORT}"
+    )
+
+    # Only set if connected
+    r = connection
 
 
 def needs_redis(fn):
