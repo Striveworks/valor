@@ -777,6 +777,9 @@ def test_client():
 
 
 def test__requests_wrapper(client: Client):
+    datasets = client._requests_wrapper("get", "datasets")
+    assert len(datasets.json()) == 0
+
     with pytest.raises(ValueError):
         client._requests_wrapper("get", "/datasets/fake_dataset/status")
 
@@ -1523,6 +1526,23 @@ def test_evaluate_detection(
         timeout=30,
     )
 
+    assert eval_job.id
+    assert eval_job.task_type == "object-detection"
+    assert eval_job.status.value == "done"
+    assert all(
+        [
+            key in eval_job.metrics
+            for key in [
+                "dataset",
+                "model",
+                "settings",
+                "job_id",
+                "status",
+                "metrics",
+                "confusion_matrices",
+            ]
+        ]
+    )
     assert eval_job.ignored_pred_labels == []
     assert eval_job.missing_pred_labels == []
     assert isinstance(eval_job._id, int)
@@ -1531,6 +1551,7 @@ def test_evaluate_detection(
     assert eval_job.status == JobStatus.DONE
 
     settings = asdict(eval_job.settings)
+
     settings.pop("id")
     assert settings == {
         "model": model_name,
@@ -1989,6 +2010,10 @@ def test_get_bulk_evaluations(
             "value": 0.0,
         },
     ]
+
+    # test error when we don't pass either a model or dataset
+    with pytest.raises(ValueError):
+        client.get_bulk_evaluations()
 
     evaluations = client.get_bulk_evaluations(
         datasets=dset_name, models=model_name
@@ -2604,6 +2629,9 @@ def test_add_groundtruth(
     gt_semantic_segs_error: GroundTruth,
 ):
     dataset = Dataset.create(client, dset_name)
+
+    with pytest.raises(TypeError):
+        dataset.add_groundtruth("not_a_gt")
 
     with pytest.raises(ClientException) as exc_info:
         dataset.add_groundtruth(gt_semantic_segs_error)

@@ -1,3 +1,4 @@
+# 434-437, 484-487, 508-509, 574, 576, 592-594, 599-600, 605-608, 677, 681, 758-761, 796-797, 826-829
 import json
 import math
 import os
@@ -178,23 +179,18 @@ class Client:
         timeout
             The number of seconds to wait in order to confirm that the dataset was deleted
         """
-        try:
-            self._requests_delete_rel_host(f"datasets/{name}")
+        self._requests_delete_rel_host(f"datasets/{name}")
 
-            if timeout:
-                for _ in range(timeout):
-                    if self.get_dataset_status(name) == State.NONE:
-                        break
-                    else:
-                        time.sleep(1)
+        if timeout:
+            for _ in range(timeout):
+                if self.get_dataset_status(name) == State.NONE:
+                    break
                 else:
-                    raise TimeoutError(
-                        "Dataset wasn't deleted within timeout interval"
-                    )
-
-        except ClientException as e:
-            if "does not exist" not in str(e):
-                raise e
+                    time.sleep(1)
+            else:
+                raise TimeoutError(
+                    "Dataset wasn't deleted within timeout interval"
+                )
 
     def delete_model(self, name: str, timeout: int = 0) -> None:
         """
@@ -207,23 +203,23 @@ class Client:
         timeout
             The number of seconds to wait in order to confirm that the model was deleted
         """
-        try:
-            self._requests_delete_rel_host(f"models/{name}")
+        # try:
+        self._requests_delete_rel_host(f"models/{name}")
 
-            if timeout:
-                for _ in range(timeout):
-                    if self.get_dataset_status(name) == State.NONE:
-                        break
-                    else:
-                        time.sleep(1)
+        if timeout:
+            for _ in range(timeout):
+                if self.get_dataset_status(name) == State.NONE:
+                    break
                 else:
-                    raise TimeoutError(
-                        "Model wasn't deleted within timeout interval"
-                    )
+                    time.sleep(1)
+            else:
+                raise TimeoutError(
+                    "Model wasn't deleted within timeout interval"
+                )
 
-        except ClientException as e:
-            if "does not exist" not in str(e):
-                raise e
+        # except ClientException as e:
+        #     if "does not exist" not in str(e):
+        #         raise e
 
     def get_dataset_status(
         self,
@@ -283,28 +279,10 @@ class Evaluation:
         return JobStatus(resp)
 
     @property
-    def type(
-        self,
-    ) -> enums.TaskType:
-        return self._settings.type
-
-    @property
     def task_type(
         self,
     ) -> enums.TaskType:
         return self._settings.task_type
-
-    @property
-    def annotation_type(
-        self,
-    ) -> enums.TaskType:
-        return self._settings.annotation_type
-
-    @property
-    def parameters(
-        self,
-    ) -> dict:
-        return self._settings.parameters
 
     @property
     def metrics(
@@ -425,9 +403,7 @@ class Dataset:
         self,
         groundtruth: GroundTruth,
     ):
-        try:
-            assert isinstance(groundtruth, GroundTruth)
-        except AssertionError:
+        if not isinstance(groundtruth, GroundTruth):
             raise TypeError(f"Invalid type `{type(groundtruth)}`")
 
         if len(groundtruth.annotations) == 0:
