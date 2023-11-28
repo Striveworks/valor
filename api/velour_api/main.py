@@ -21,7 +21,10 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(root_path=os.getenv("API_ROOT_PATH", ""), lifespan=lifespan)
+app = FastAPI(
+    root_path=os.getenv("API_ROOT_PATH", ""),
+    lifespan=lifespan,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost", "http://localhost:3000"],
