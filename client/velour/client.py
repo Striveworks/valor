@@ -1,4 +1,4 @@
-# 434-437, 484-487, 508-509, 574, 576, 592-594, 599-600, 605-608, 677, 681, 758-761, 796-797, 826-829
+# 575-576, 581-584, 653, 657, 734-737, 772-773, 802-805
 import json
 import math
 import os
@@ -545,7 +545,6 @@ class Model:
         return model
 
     def _validate(self):
-        # validation
         if not isinstance(self.name, str):
             raise TypeError("`name` should be of type `str`")
         if not isinstance(self.id, int) and self.id is not None:
@@ -570,9 +569,7 @@ class Model:
         return self.dict() == other.dict()
 
     def add_prediction(self, prediction: Prediction):
-        try:
-            assert isinstance(prediction, Prediction)
-        except AssertionError:
+        if not isinstance(prediction, Prediction):
             raise TypeError(
                 f"Expected `velour.Prediction`, got `{type(prediction)}`"
             )

@@ -2627,16 +2627,56 @@ def test_add_groundtruth(
     client: Client,
     db: Session,
     gt_semantic_segs_error: GroundTruth,
+    img1: ImageMetadata,
 ):
     dataset = Dataset.create(client, dset_name)
 
     with pytest.raises(TypeError):
         dataset.add_groundtruth("not_a_gt")
 
+    with pytest.warns(UserWarning):
+        dataset.add_groundtruth(
+            GroundTruth(
+                datum=img1.to_datum(),
+                annotations=[],
+            )
+        )
+
     with pytest.raises(ClientException) as exc_info:
         dataset.add_groundtruth(gt_semantic_segs_error)
 
     assert "raster and image to have" in str(exc_info)
+
+    client.delete_dataset(dset_name, timeout=30)
+
+
+def test_add_prediction(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    img1: ImageMetadata,
+    db: Session,
+):
+    dataset = Dataset.create(client, dset_name)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(client, model_name)
+
+    # test error cases
+    with pytest.raises(TypeError):
+        model.add_prediction("not_a_pred")
+
+    with pytest.warns(UserWarning):
+        model.add_prediction(
+            Prediction(model=model_name, datum=img1.to_datum(), annotations=[])
+        )
+
+    for pd in pred_dets:
+        model.add_prediction(pd)
+
+    model.finalize_inferences(dataset)
 
     client.delete_dataset(dset_name, timeout=30)
 
@@ -2697,7 +2737,7 @@ def test_add_raster_and_boundary_box(
     client.delete_dataset(dset_name, timeout=30)
 
 
-def test_get_dataset(
+def test_get_and_delete_dataset(
     client: Client,
     db: Session,
     gt_semantic_segs1_mask: GroundTruth,
@@ -2711,7 +2751,8 @@ def test_get_dataset(
     assert fetched_dataset.name == dataset.name
     assert fetched_dataset.metadata == dataset.metadata
 
-    client.delete_dataset(dset_name, timeout=30)
+    # test deleting the dataset without using the client object
+    dataset.delete()
 
 
 def test_set_and_get_geospatial(
