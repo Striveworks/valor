@@ -951,6 +951,22 @@ def test_create_image_dataset_with_href_and_description(
     }
 
 
+def test_validate_dataset(client: Client, db: Session):
+    with pytest.raises(TypeError):
+        Dataset.create(client, name=123)
+
+    with pytest.raises(TypeError):
+        Dataset.create(client, name=model_name, id="not an int")
+
+
+def test_validate_model(client: Client, db: Session):
+    with pytest.raises(TypeError):
+        Model.create(client, name=123)
+
+    with pytest.raises(TypeError):
+        Model.create(client, name=model_name, id="not an int")
+
+
 def test_create_model_with_href_and_description(client: Client, db: Session):
     href = "http://a.com/b"
     description = "a description"
@@ -1515,6 +1531,22 @@ def test_evaluate_detection(
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
+    # test default iou arguments
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+        ],
+        timeout=30,
+    )
+    assert eval_job._settings.settings["parameters"][
+        "iou_thresholds_to_compute"
+    ] == [i / 100 for i in range(50, 100, 5)]
+    assert eval_job._settings.settings["parameters"][
+        "iou_thresholds_to_keep"
+    ] == [0.5, 0.75]
+
     eval_job = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
@@ -1543,6 +1575,7 @@ def test_evaluate_detection(
             ]
         ]
     )
+    assert client.get_evaluation_status(eval_job.id) == eval_job.status.value
     assert eval_job.ignored_pred_labels == []
     assert eval_job.missing_pred_labels == []
     assert isinstance(eval_job._id, int)
@@ -2678,6 +2711,12 @@ def test_add_prediction(
 
     model.finalize_inferences(dataset)
 
+    # test get predictions
+    assert (
+        model.get_prediction(img1.to_datum()).annotations
+        == pred_dets[0].annotations
+    )
+
     client.delete_dataset(dset_name, timeout=30)
 
 
@@ -2752,7 +2791,10 @@ def test_get_and_delete_dataset(
     assert fetched_dataset.metadata == dataset.metadata
 
     # test deleting the dataset without using the client object
+    assert client.get_dataset_status(dset_name) == "create"
+
     dataset.delete()
+    assert client.get_dataset_status(dset_name) == "delete"
 
 
 def test_set_and_get_geospatial(
@@ -2953,218 +2995,3 @@ def test_get_dataset_status(client: Client, db: Session, gt_dets1: list):
 
     status = client.get_dataset_status(dset_name)
     assert status == "none"
-
-
-# @TODO: Implement metadata querying + geojson
-# def test_create_images_with_metadata(
-#     client: Client, db: Session, metadata: list[Metadatum], rect1: BoundingBox
-# ):
-#     dataset = Dataset.create(client, dset_name)
-
-#     md1, md2, md3 = metadata
-#     img1 = ImageMetadata(uid="uid1", metadata=[md1], height=100, width=200).to_datum()
-#     img2 = ImageMetadata(uid="uid2", metadata=[md2, md3], height=100, width=200).to_datum()
-
-#     print(GroundTruth(
-#             dataset=dset_name,
-#             datum=img1.to_datum(),
-#             annotations=[
-#                 Annotation(
-#                     task_type=TaskType.DETECTION,
-#                     labels=[Label(key="k", value="v")],
-#                     bounding_box=rect1,
-#                 ),
-#             ]
-#         ))
-
-#     dataset.add_groundtruth(
-#         GroundTruth(
-#             dataset=dset_name,
-#             datum=img1.to_datum(),
-#             annotations=[
-#                 Annotation(
-#                     task_type=TaskType.DETECTION,
-#                     labels=[Label(key="k", value="v")],
-#                     bounding_box=rect1,
-#                 ),
-#             ]
-#         )
-#     )
-#     dataset.add_groundtruth(
-#         GroundTruth(
-#             dataset=dset_name,
-#             datum=img2.to_datum(),
-#             annotations=[
-#                 Annotation(
-#                     task_type=TaskType.CLASSIFICATION,
-#                     labels=[Label(key="k", value="v")],
-#                 )
-#             ]
-#         )
-#     )
-
-#     data = db.scalars(select(models.Datum)).all()
-#     assert len(data) == 2
-#     assert set(d.uid for d in data) == {"uid1", "uid2"}
-
-#     metadata_links = data[0].datum_metadatum_links
-#     assert len(metadata_links) == 1
-#     metadatum = metadata_links[0].metadatum
-#     assert metadata_links[0].metadatum.name == "metadatum name1"
-#     assert json.loads(db.scalar(ST_AsGeoJSON(metadatum.geo))) == {
-#         "type": "Point",
-#         "coordinates": [-48.23456, 20.12345],
-#     }
-#     metadata_links = data[1].datum_metadatum_links
-#     assert len(metadata_links) == 2
-#     metadatum1 = metadata_links[0].metadatum
-#     metadatum2 = metadata_links[1].metadatum
-#     assert metadatum1.name == "metadatum name2"
-#     assert metadatum1.string_value == "a string"
-#     assert metadatum2.name == "metadatum name3"
-#     assert metadatum2.numeric_value == 0.45
-
-
-# @TODO: Need to implement metadatum querying
-# def test_stratify_clf_metrics(
-#     client: Session,
-#     db: Session,
-#     y_true: list[int],
-#     tabular_preds: list[list[float]],
-# ):
-
-#     tabular_datum = Datum(
-#         uid="uid"
-#     )
-
-#     dataset = Dataset.create(client, name=dset_name)
-#     # create data and two-different defining groups of cohorts
-#     gt_with_metadata = GroundTruth(
-#         dataset=dset_name,
-#         datum=tabular_datum,
-#         annotations=[
-#             Annotation(
-#                 task_type=TaskType.CLASSIFICATION,
-#                 labels=[Label(key="class", value=str(t))],
-#                 metadata=[
-#                     Metadatum(key="md1", value=f"md1-val{i % 3}"),
-#                     Metadatum(key="md2", value=f"md2-val{i % 4}"),
-#                 ]
-#             )
-#             for i, t in enumerate(y_true)
-#         ]
-#     )
-#     dataset.add_groundtruth(gt_with_metadata)
-#     dataset.finalize()
-
-#     model = Model.create(client, name=model_name)
-#     pd = Prediction(
-#         model=model_name,
-#         datum=tabular_datum,
-#         annotations=[
-#             Annotation(
-#                 task_type=TaskType.CLASSIFICATION,
-#                 labels=[
-#                     ScoredLabel(Label(key="class", value=str(i)), score=pred[i])
-#                     for i in range(len(pred))
-#                 ]
-#             )
-#             for pred in tabular_preds
-#         ]
-#     )
-#     model.add_prediction(pd)
-#     model.finalize_inferences(dataset)
-
-#     eval_job = model.evaluate_classification(dataset=dataset, group_by="md1")
-
-#     metrics = eval_job['metrics']
-
-#     for m in metrics:
-#         assert m["group"] in [
-#             {"name": "md1", "value": "md1-val0"},
-#             {"name": "md1", "value": "md1-val1"},
-#             {"name": "md1", "value": "md1-val2"},
-#         ]
-
-#     val2_metrics = [
-#         m
-#         for m in metrics
-#         if m["group"] == {"name": "md1", "value": "md1-val2"}
-#     ]
-
-#     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
-#     # (hard preds [1, 0, 0])
-#     expected_metrics = [
-#         {
-#             "type": "Accuracy",
-#             "parameters": {"label_key": "class"},
-#             "value": 0.3333333333333333,
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "ROCAUC",
-#             "parameters": {"label_key": "class"},
-#             "value": 0.8333333333333334,
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "Precision",
-#             "value": 0.0,
-#             "label": {"key": "class", "value": "1"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "Recall",
-#             "value": 0.0,
-#             "label": {"key": "class", "value": "1"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "F1",
-#             "value": 0.0,
-#             "label": {"key": "class", "value": "1"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "Precision",
-#             "value": -1,
-#             "label": {"key": "class", "value": "2"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "Recall",
-#             "value": 0.0,
-#             "label": {"key": "class", "value": "2"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "F1",
-#             "value": -1,
-#             "label": {"key": "class", "value": "2"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "Precision",
-#             "value": 0.5,
-#             "label": {"key": "class", "value": "0"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "Recall",
-#             "value": 1.0,
-#             "label": {"key": "class", "value": "0"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#         {
-#             "type": "F1",
-#             "value": 0.6666666666666666,
-#             "label": {"key": "class", "value": "0"},
-#             "group": {"name": "md1", "value": "md1-val2"},
-#         },
-#     ]
-
-#     assert len(val2_metrics) == len(expected_metrics)
-#     for m in val2_metrics:
-#         assert m in expected_metrics
-#     for m in expected_metrics:
-#         assert m in val2_metrics

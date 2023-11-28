@@ -1,4 +1,3 @@
-# 575-576, 581-584, 653, 657, 734-737, 772-773, 802-805
 import json
 import math
 import os
@@ -203,7 +202,6 @@ class Client:
         timeout
             The number of seconds to wait in order to confirm that the model was deleted
         """
-        # try:
         self._requests_delete_rel_host(f"models/{name}")
 
         if timeout:
@@ -217,10 +215,6 @@ class Client:
                     "Model wasn't deleted within timeout interval"
                 )
 
-        # except ClientException as e:
-        #     if "does not exist" not in str(e):
-        #         raise e
-
     def get_dataset_status(
         self,
         dataset_name: str,
@@ -232,6 +226,13 @@ class Client:
         except Exception:
             resp = State.NONE
 
+        return resp
+
+    def get_evaluation_status(
+        self,
+        job_id: int,
+    ) -> State:
+        resp = self._requests_get_rel_host(f"evaluations/{job_id}").json()
         return resp
 
 
@@ -790,13 +791,3 @@ class Model:
             ret.append({"settings": evaluation.settings, "df": df})
 
         return ret
-
-    # TODO Endpoint is independent of model, should be moved to Client?
-    def get_evaluation_status(
-        self,
-        job_id: int,
-    ) -> State:
-        resp = self.client._requests_get_rel_host(
-            f"evaluations/{job_id}"
-        ).json()
-        return resp
