@@ -1,15 +1,14 @@
-# Backend
+# Setting up the Backend
 
-The backend consists of three components
+Velour provides multiple ways of setting up the backend API.
 
-1. A `velour` REST API service.
-2. A PostgreSQL instance with the PostGIS extention.
-3. A redis instance
+## Helm Chart
 
-
-## Helm (Recommended)
-
-A helm chart is available that sets up
+```shell
+helm repo add velour https://striveworks.github.io/velour-charts/
+helm install velour velour/velour
+# Velour should now be avaiable at velour.namespace.svc.local
+```
 
 ## Docker
 

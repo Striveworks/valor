@@ -37,44 +37,36 @@ Install the client module.
 pip install client/[test]
 ```
 
-Install the api module.
+
+
+# API Development
+
+Velour offers multiple methods of deploying the backend. If you do not require the ability to debug the API, please skip this section and follow the instructions in `Setting up the Backend`.
+
+<details>
+<summary>Deploy for development.</summary>
+
+1. Install dependencies.
 
 ```bash
+# install the api module.
 pip install api/[test]
 ```
 
-# Deployment
-
-Velour offers two methods of deployment.
-
-## Helm
+2. Launch the containers.
 
 ```bash
-helm repo add velour https://striveworks.github.io/velour-charts/
-helm install velour velour/velour
-```
-
-## Docker
-
-```shell
-make dev-env
-```
-
-## Debugging
-
-> **Note:** This method uses Docker.
-
-
-```bash
-# Launch PostgreSQL in background.
+# launch PostgreSQL in background.
 make start-postgis
 
-# Launch Redis in background.
+# launch Redis in background.
 make start-redis
 
-# Launch Server
+# launch the Server.
 make start-server
 ```
+
+</details>
 
 # (Optional) Setup pgAdmin to debug postgis
 

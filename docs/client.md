@@ -39,6 +39,64 @@ client = Client(HOST_URL)
 
 In the case that the host uses authentication, then the argument `access_token` should also be passed to `Client`.
 
+# Schemas
+
+## BoundingBox
+
+<details>
+<summary>Show attributes.</summary>
+
+| attribute | type | description |
+| - | - | - |
+| id | `int` |  |
+| name | `str` |  |
+| metadata | `dict[str, Union[float, str]]`|  |
+| geospatial | `dict` | GeoJSON format. |
+
+</details>
+
+## Polygon
+
+<details>
+<summary>Show attributes.</summary>
+
+| attribute | type | description |
+| - | - | - |
+| id | `int` |  |
+| name | `str` |  |
+| metadata | `dict[str, Union[float, str]]`|  |
+| geospatial | `dict` | GeoJSON format. |
+
+</details>
+
+## MultiPolygon
+
+<details>
+<summary>Show attributes.</summary>
+
+| attribute | type | description |
+| - | - | - |
+| id | `int` |  |
+| name | `str` |  |
+| metadata | `dict[str, Union[float, str]]`|  |
+| geospatial | `dict` | GeoJSON format. |
+
+</details>
+
+## Raster
+
+<details>
+<summary>Show attributes.</summary>
+
+| attribute | type | description |
+| - | - | - |
+| id | `int` |  |
+| name | `str` |  |
+| metadata | `dict[str, Union[float, str]]`|  |
+| geospatial | `dict` | GeoJSON format. |
+
+</details>
+
 # CoreTypes
 
 ## Dataset
@@ -151,6 +209,11 @@ dataset = client.create_dataset(DATASET_NAME) # DATASET_NAME a string.
 
 # MetaTypes
 
+Velour uses a robust metadata system that supports client-side types with no need for any work on the backend to provide support. In the velour Python client these are referred to as metatypes. A metatype is a mapping of a complex data type into a velour Datum type.
+
+An example of such a metatype is ImageMetadata which encodes image height and width into Datum’s metadata attribute.
+
+
 ## ImageMetadata
 
 An image consists of specifying the following information:
@@ -188,7 +251,6 @@ img = Image(uid="abc123", height=128, width=256)
 | frame | `int` | Video frame number. |
 
 </details>
-
 
 # Creating a Dataset
 
@@ -229,7 +291,25 @@ This will post the annotations to the backend velour service.
 
 `velour` has the notion of a model that stores inferences of a machine learning model; `velour` does not need access to the model itself to evaluate, it just needs the predictions to be sent to it.
 
-## Evaluation job
+## Evaluation
+
+Supported Tasks:
+- Classification
+    - F1
+    - AUCROC
+    - Accuracy
+    - Precision
+    - Recall
+- Object Detection
+    - AP
+    - mAP
+    - AP Averaged Over IOU's
+    - mAP Averaged Over IOU's
+- Semantic Segmentation
+    - IOU
+    - mIOU
+
+
 
 An evaluation job sends a request to the backend to evaluate a model against a dataset. This will result in the computation of a host of metrics.
 

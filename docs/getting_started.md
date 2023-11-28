@@ -1,14 +1,10 @@
-# Local QuickStart
+# Getting Started
 
 ## Setting up the Backend
 
 ### Helm
 
-```shell
-helm repo add velour https://striveworks.github.io/velour-charts/
-helm install velour velour/velour
-# Velour should now be avaiable at velour.namespace.svc.local
-```
+
 
 ### Docker
 
