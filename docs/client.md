@@ -1,4 +1,4 @@
-# Working with the Python client
+# Python Client
 
 Here we cover the basic concepts involved in interacting with the `velour` service via the Python client.
 
@@ -39,6 +39,8 @@ client = Client(HOST_URL)
 
 In the case that the host uses authentication, then the argument `access_token` should also be passed to `Client`.
 
+# CoreTypes
+
 ## Dataset
 
 `velour` stores metadata and annotations associated to a machine learning dataset. For example, in the case of a computer vision dataset, `velour` needs unique identifiers for images, height and width of images, and annotations (such as image classifications, bounding boxes, segmentation masks, etc.) but the underlying images themselves are not stored or needed by velour.
@@ -50,6 +52,8 @@ dataset = client.create_dataset(DATASET_NAME) # DATASET_NAME a string.
 ```
 
 `dataset` is then a `velour.Dataset` object and can be used to add groundtruth labels.
+
+# MetaTypes
 
 ### Image
 
