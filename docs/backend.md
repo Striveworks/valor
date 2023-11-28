@@ -9,6 +9,8 @@ The backend consists of three components
 
 ## Helm (Recommended)
 
+A helm chart is available that sets up
+
 ## Docker
 
 An image for the backend REST API service is hosted on GitHub's Container registry at `ghcr.io/striveworks/velour/velour-service`. Until the velour repo becomes public, you will need to authenticate to pull the image. To do this, you need to create a personal access token here https://github.com/settings/tokens that has read access to GitHub packages. Then run

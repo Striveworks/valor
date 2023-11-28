@@ -43,6 +43,18 @@ In the case that the host uses authentication, then the argument `access_token` 
 
 ## Dataset
 
+<details>
+<summary>Show attributes.</summary>
+
+| attribute | type | description |
+| - | - | - |
+| id | `int` |  |
+| name | `str` |  |
+| metadata | `dict[str, Union[float, str]]`|  |
+| geospatial | `dict` | GeoJSON format. |
+
+</details>
+
 `velour` stores metadata and annotations associated to a machine learning dataset. For example, in the case of a computer vision dataset, `velour` needs unique identifiers for images, height and width of images, and annotations (such as image classifications, bounding boxes, segmentation masks, etc.) but the underlying images themselves are not stored or needed by velour.
 
 The process of creating a new dataset to be used in velour is to first create an empty dataset via
@@ -53,18 +65,107 @@ dataset = client.create_dataset(DATASET_NAME) # DATASET_NAME a string.
 
 `dataset` is then a `velour.Dataset` object and can be used to add groundtruth labels.
 
+## Model
+
+<details>
+<summary>Show attributes.</summary>
+
+| attribute | type | description |
+| - | - | - |
+| id | `int` |  |
+| name | `str` |  |
+| metadata | `dict[str, Union[float, str]]`|  |
+| geospatial | `dict` | GeoJSON format. |
+
+</details>
+
+## Datum
+
+<details>
+<summary>Show attributes.</summary>
+
+| attribute | type | description |
+| - | - | - |
+| uid | `str` |  |
+| dataset | `str` |  |
+| metadata | `dict[str, Union[float, str]]`|  |
+| geospatial | `dict` | GeoJSON format. |
+
+</details>
+
+**Annotation**
+
+<details>
+<summary>Show attributes.</summary>
+
+| attribute | type | description |
+| - | - | - |
+| task_type | `enums.TaskType` |
+| labels | `list[Label]` | |
+| metadata | `dict[str, Union[float, str]]`||
+| bounding_box | `schemas.BoundingBox` ||
+| polygon | `schemas.Polygon` ||
+| multipolygon | `schemas.MultiPolygon` ||
+| raster | `schemas.Raster` ||
+| jsonb | todo ||
+
+</details>
+
+ **GroundTruth**
+
+<details>
+<summary>Show attributes.</summary>
+
+| attribute | type | description |
+| - | - | - |
+| datum | `Datum` | |
+| annotations | `list[Annotation]` | |
+
+</details>
+
+## Prediction
+
+<details>
+<summary>Show attributes.</summary>
+
+| attribute | type | description |
+| - | - | - |
+| model | `str` |
+| datum | `Datum` | |
+| annotations | `list[Annotation]` | |
+
+</details>
+
+## Label
+
+<details>
+<summary>Show attributes.</summary>
+
+| attribute | type | description |
+| - | - | - |
+| key | `str` | |
+| value | `int` | |
+| score | `Optional[float]` | 0-1 |
+
+</details>
+
 # MetaTypes
 
-### Image
+## ImageMetadata
 
 An image consists of specifying the following information:
 
-| name             | type    | description                                                                                                                                                                                         |
-| ---------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| uid              | string  | A unique identifier for the image. This is up to the enduser but some typical options are a filename/path in object store or a dataset specific image id (such as the image id in the COCO dataset) |
-| height           | integer | The height of the image. This is necessary for certain operations in the backend, such as converting a polygon contour to a mask                                                                    |
-| width            | integer | The width of the image. This is necessary for certain operations in the backend, such as converting a polygon contour to a mask                                                                     |
-| frame (optional) | integer | The frame number in the case that the image is a frame of a video                                                                                                                                   |
+<details>
+<summary>Show attributes.</summary>
+
+| name | type | description |
+| - | - | - |
+| uid | string | A unique identifier for the image. This is up to the enduser but some typical options are a filename/path in object store or a dataset specific image id (such as the image id in the COCO dataset) |
+| height | integer | The height of the image. This is necessary for certain operations in the backend, such as converting a polygon contour to a mask                                                                    |
+| width | integer | The width of the image. This is necessary for certain operations in the backend, such as converting a polygon contour to a mask                                                                     |
+| frame (optional) | integer | The frame number in the case that the image is a frame of a video |
+
+</details>
 
 For example:
 
@@ -74,11 +175,30 @@ from velour.data_types import Image
 img = Image(uid="abc123", height=128, width=256)
 ```
 
-Note: this creates an image object but is not yet uploaded to the backend service.
+> **Note:** This creates an image object but is not yet uploaded to the backend service.
+
+## VideoFrameMetadata
+
+<details>
+<summary>Show attributes.</summary>
+
+| name | type | description |
+| - | - | - |
+| image | `ImageMetadata` | Image corresponding to video frame. |
+| frame | `int` | Video frame number. |
+
+</details>
+
+
+# Creating a Dataset
 
 ### Adding annotations
 
 Data structures and methods are provided for adding annotations to an image and then adding the image metadata and annotations to the backend service. We now go over the different types of supported annotations
+
+# Creating a Model
+
+# Running an Evaluation
 
 #### Image classification
 

@@ -1,4 +1,4 @@
-# Getting Started
+# Local QuickStart
 
 ## Setting up the Backend
 
