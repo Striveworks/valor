@@ -39,12 +39,12 @@ client = Client(HOST_URL)
 
 In the case that the host uses authentication, then the argument `access_token` should also be passed to `Client`.
 
+<br>
+
 # Schemas
 
-## BoundingBox
-
 <details>
-<summary>Show attributes.</summary>
+<summary>BoundingBox</summary>
 
 | attribute | type | description |
 | - | - | - |
@@ -55,10 +55,8 @@ In the case that the host uses authentication, then the argument `access_token` 
 
 </details>
 
-## Polygon
-
 <details>
-<summary>Show attributes.</summary>
+<summary>Polygon</summary>
 
 | attribute | type | description |
 | - | - | - |
@@ -69,10 +67,8 @@ In the case that the host uses authentication, then the argument `access_token` 
 
 </details>
 
-## MultiPolygon
-
 <details>
-<summary>Show attributes.</summary>
+<summary>MultiPolygon</summary>
 
 | attribute | type | description |
 | - | - | - |
@@ -83,10 +79,8 @@ In the case that the host uses authentication, then the argument `access_token` 
 
 </details>
 
-## Raster
-
 <details>
-<summary>Show attributes.</summary>
+<summary>Raster</summary>
 
 | attribute | type | description |
 | - | - | - |
@@ -96,13 +90,15 @@ In the case that the host uses authentication, then the argument `access_token` 
 | geospatial | `dict` | GeoJSON format. |
 
 </details>
+
+<br>
 
 # CoreTypes
 
-## Dataset
+The Velour python client supports a small set of object types that facilitate the creation of a unlimited set of user-defined types. These “atomic” types construct and transport the underlying annotation, label and score as well as any associated metadata.
 
 <details>
-<summary>Show attributes.</summary>
+<summary>Dataset</summary>
 
 | attribute | type | description |
 | - | - | - |
@@ -110,8 +106,6 @@ In the case that the host uses authentication, then the argument `access_token` 
 | name | `str` |  |
 | metadata | `dict[str, Union[float, str]]`|  |
 | geospatial | `dict` | GeoJSON format. |
-
-</details>
 
 `velour` stores metadata and annotations associated to a machine learning dataset. For example, in the case of a computer vision dataset, `velour` needs unique identifiers for images, height and width of images, and annotations (such as image classifications, bounding boxes, segmentation masks, etc.) but the underlying images themselves are not stored or needed by velour.
 
@@ -123,10 +117,10 @@ dataset = client.create_dataset(DATASET_NAME) # DATASET_NAME a string.
 
 `dataset` is then a `velour.Dataset` object and can be used to add groundtruth labels.
 
-## Model
+</details>
 
 <details>
-<summary>Show attributes.</summary>
+<summary>Model</summary>
 
 | attribute | type | description |
 | - | - | - |
@@ -137,10 +131,8 @@ dataset = client.create_dataset(DATASET_NAME) # DATASET_NAME a string.
 
 </details>
 
-## Datum
-
 <details>
-<summary>Show attributes.</summary>
+<summary>Datum</summary>
 
 | attribute | type | description |
 | - | - | - |
@@ -151,10 +143,8 @@ dataset = client.create_dataset(DATASET_NAME) # DATASET_NAME a string.
 
 </details>
 
-**Annotation**
-
 <details>
-<summary>Show attributes.</summary>
+<summary>Annotation</summary>
 
 | attribute | type | description |
 | - | - | - |
@@ -167,24 +157,48 @@ dataset = client.create_dataset(DATASET_NAME) # DATASET_NAME a string.
 | raster | `schemas.Raster` ||
 | jsonb | todo ||
 
+```py
+# create groundtruth annotation
+groundtruth_annotation = Annotation(
+    task_type = TaskType.CLASSIFICATION,
+    labels = [
+        schemas.Label(key="class", value="dog"),
+        schemas.Label(key="category", value="animal"),
+    ]
+)
+
+# create prediction annotation
+groundtruth_annotation = Annotation(
+    task_type = TaskType.CLASSIFICATION,
+    labels = [
+        schemas.Label(key="class", value="dog"),
+        schemas.Label(key="category", value="animal"),
+    ]
+)
+```
+
 </details>
 
- **GroundTruth**
-
 <details>
-<summary>Show attributes.</summary>
+<summary>GroundTruth</summary>
 
 | attribute | type | description |
 | - | - | - |
 | datum | `Datum` | |
 | annotations | `list[Annotation]` | |
 
+```py
+# create groundtruth
+groundtruth = GroundTruth(
+    datum=datum,
+    annotations=[groundtruth_annotations],
+)
+```
+
 </details>
 
-## Prediction
-
 <details>
-<summary>Show attributes.</summary>
+<summary>Prediction</summary>
 
 | attribute | type | description |
 | - | - | - |
@@ -194,10 +208,8 @@ dataset = client.create_dataset(DATASET_NAME) # DATASET_NAME a string.
 
 </details>
 
-## Label
-
 <details>
-<summary>Show attributes.</summary>
+<summary>Label</summary>
 
 | attribute | type | description |
 | - | - | - |
@@ -207,28 +219,25 @@ dataset = client.create_dataset(DATASET_NAME) # DATASET_NAME a string.
 
 </details>
 
+<br>
+
 # MetaTypes
 
 Velour uses a robust metadata system that supports client-side types with no need for any work on the backend to provide support. In the velour Python client these are referred to as metatypes. A metatype is a mapping of a complex data type into a velour Datum type.
 
 An example of such a metatype is ImageMetadata which encodes image height and width into Datum’s metadata attribute.
 
-
-## ImageMetadata
+<details>
+<summary>ImageMetadata</summary>
 
 An image consists of specifying the following information:
-
-<details>
-<summary>Show attributes.</summary>
 
 | name | type | description |
 | - | - | - |
 | uid | string | A unique identifier for the image. This is up to the enduser but some typical options are a filename/path in object store or a dataset specific image id (such as the image id in the COCO dataset) |
-| height | integer | The height of the image. This is necessary for certain operations in the backend, such as converting a polygon contour to a mask                                                                    |
-| width | integer | The width of the image. This is necessary for certain operations in the backend, such as converting a polygon contour to a mask                                                                     |
+| height | integer | The height of the image. This is necessary for certain operations in the backend, such as converting a polygon contour to a mask |
+| width | integer | The width of the image. This is necessary for certain operations in the backend, such as converting a polygon contour to a mask |
 | frame (optional) | integer | The frame number in the case that the image is a frame of a video |
-
-</details>
 
 For example:
 
@@ -240,10 +249,10 @@ img = Image(uid="abc123", height=128, width=256)
 
 > **Note:** This creates an image object but is not yet uploaded to the backend service.
 
-## VideoFrameMetadata
+</details>
 
 <details>
-<summary>Show attributes.</summary>
+<summary>VideoFrameMetadata</summary>
 
 | name | type | description |
 | - | - | - |
@@ -252,13 +261,19 @@ img = Image(uid="abc123", height=128, width=256)
 
 </details>
 
+<br>
+
 # Creating a Dataset
 
 ### Adding annotations
 
 Data structures and methods are provided for adding annotations to an image and then adding the image metadata and annotations to the backend service. We now go over the different types of supported annotations
 
+<br>
+
 # Creating a Model
+
+<br>
 
 # Running an Evaluation
 

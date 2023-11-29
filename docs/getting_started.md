@@ -1,18 +1,10 @@
 # Getting Started
 
-## Setting up the Backend
-
-### Helm
-
-### Docker
-
-```shell
-make dev-env
-```
-
 ## Python Client
 
 ### Installation
+
+The client is hosted on PyPI and can be installed via
 
 ```shell
 pip install velour-client
