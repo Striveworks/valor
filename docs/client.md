@@ -227,14 +227,59 @@ groundtruth = GroundTruth(
 <summary>Geometry</summary>
 
 > <details>
+> <summary>Point</summary>
+>
+> | attribute | type | description |
+> | - | - | - |
+> | x | `float` |  |
+> | y | `float` |  |
+>
+> | method | args | type |
+> | - | - | - |
+> | resize |  | `Point` |
+> |  | og_img_h | `int` |
+> |  | og_img_w | `int` |
+> |  | new_img_h | `int` |
+> |  | new_img_w | `int` |
+>
+> </details>
+
+> <details>
+> <summary>Box</summary>
+>
+> | attribute | type | description |
+> | - | - | - |
+> | min | `Point` |  |
+> | max | `Point` |  |
+>
+> </details>
+
+> <details>
+> <summary>BasicPolygon</summary>
+>
+> | attribute | type | description |
+> | - | - | - |
+> | points | `list[Point]` |  |
+>
+> | method | args | type |
+> | - | - | - |
+> | xy_list |  | `list[Point]` |
+> | tuple_list |  | `int` |
+> | xmin |  | `Point` |
+> | xmax |  | `Point` |
+> | ymin |  | `Point` |
+> | ymax |  | `Point` |
+> | from_box | | `BasicPolygon` |
+> |  | box | `Box` |
+>
+> </details>
+
+> <details>
 > <summary>BoundingBox</summary>
 >
 > | attribute | type | description |
 > | - | - | - |
-> | id | `int` |  |
-> | name | `str` |  |
-> | metadata | `dict[str, Union[float, str]]`|  |
-> | geospatial | `dict` | GeoJSON format. |
+> | polygon | `BasicPolygon` |  |
 >
 > </details>
 
@@ -243,10 +288,8 @@ groundtruth = GroundTruth(
 >
 > | attribute | type | description |
 > | - | - | - |
-> | id | `int` |  |
-> | name | `str` |  |
-> | metadata | `dict[str, Union[float, str]]`|  |
-> | geospatial | `dict` | GeoJSON format. |
+> | boundary | `BasicPolygon` |  |
+> | holes | `list[BasicPolygon]` |  |
 >
 > </details>
 
@@ -255,10 +298,7 @@ groundtruth = GroundTruth(
 >
 > | attribute | type | description |
 > | - | - | - |
-> | id | `int` |  |
-> | name | `str` |  |
-> | metadata | `dict[str, Union[float, str]]`|  |
-> | geospatial | `dict` | GeoJSON format. |
+> | polygons | `list[Polygon]` |  |
 >
 > </details>
 
@@ -267,10 +307,7 @@ groundtruth = GroundTruth(
 >
 > | attribute | type | description |
 > | - | - | - |
-> | id | `int` |  |
-> | name | `str` |  |
-> | metadata | `dict[str, Union[float, str]]`|  |
-> | geospatial | `dict` | GeoJSON format. |
+> | mask | `str` |  |
 >
 > </details>
 
