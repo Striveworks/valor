@@ -183,6 +183,7 @@ def test_add_groundtruth(
 ):
     dataset = Dataset.create(client, dataset_name)
 
+    # make sure we get an error when passing a non-groundtruth object to add_groundtruth
     with pytest.raises(TypeError):
         dataset.add_groundtruth("not_a_gt")
 

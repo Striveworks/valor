@@ -411,10 +411,11 @@ def test_add_prediction(
 
     model = Model.create(client, model_name)
 
-    # test error cases
+    # make sure we get an error when passing a non-Prediction object to add_prediction
     with pytest.raises(TypeError):
         model.add_prediction("not_a_pred")
 
+    # make sure we get a warning when adding a prediction without annotations
     with pytest.warns(UserWarning):
         model.add_prediction(
             Prediction(model=model_name, datum=img1.to_datum(), annotations=[])
