@@ -1,28 +1,30 @@
 import os
+from contextlib import asynccontextmanager
 
-from fastapi import (  # Request,; status,
-    BackgroundTasks,
-    Depends,
-    FastAPI,
-    HTTPException,
-)
-
-# from fastapi.exceptions import RequestValidationError
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
-# from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from velour_api import auth, crud, enums, exceptions, logger, schemas
 from velour_api.api_utils import _split_query_params
-from velour_api.backend import database
+from velour_api.backend import database, jobs
 from velour_api.settings import auth_settings
 
 token_auth_scheme = auth.OptionalHTTPBearer()
 
 
-app = FastAPI(root_path=os.getenv("API_ROOT_PATH", ""))
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    database.create_db()
+    jobs.connect_to_redis()
+    yield
+
+
+app = FastAPI(
+    root_path=os.getenv("API_ROOT_PATH", ""),
+    lifespan=lifespan,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost", "http://localhost:3000"],
@@ -31,7 +33,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-database.create_db()
 
 logger.info(
     f"API started {'WITHOUT' if auth_settings.no_auth else 'WITH'} authentication"

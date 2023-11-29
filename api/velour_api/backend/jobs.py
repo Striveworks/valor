@@ -1,5 +1,7 @@
 import json
 import os
+import time
+from functools import wraps
 
 import redis
 
@@ -13,36 +15,56 @@ REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 REDIS_USERNAME = os.getenv("REDIS_USERNAME")
 REDIS_SSL = bool(os.getenv("REDIS_SSL"))
 
-
 # global connection to redis
 r: redis.Redis = None
 
 
+def retry_connection(timeout: int):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            while True:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    if time.time() - start_time >= timeout:
+                        logger.debug(
+                            f"REDIS_HOST: {REDIS_HOST}, REDIS_PORT: {REDIS_PORT}, REDIS_DB: {REDIS_DB}, "
+                            f"REDIS_PASSWORD: {'null' if REDIS_PASSWORD is None else 'not null'}, "
+                            f"REDIS_USERNAME: {REDIS_USERNAME}, REDIS_SSL: {REDIS_SSL}"
+                        )
+                        raise RuntimeError(
+                            f"Method {func.__name__} failed to connect to database within {timeout} seconds, with error: {str(e)}"
+                        )
+                time.sleep(2)
+
+        return wrapper
+
+    return decorator
+
+
+@retry_connection(30)
 def connect_to_redis():
     global r
-
     if r is not None:
         return
-    try:
-        r = redis.Redis(
-            REDIS_HOST,
-            db=REDIS_DB,
-            port=REDIS_PORT,
-            password=REDIS_PASSWORD,
-            username=REDIS_USERNAME,
-            ssl=REDIS_SSL,
-        )
-        r.ping()
-        logger.info(
-            f"succesfully connected to redis instance at {REDIS_HOST}:{REDIS_PORT}"
-        )
-    except Exception as e:
-        logger.debug(
-            f"REDIS_HOST: {REDIS_HOST}, REDIS_PORT: {REDIS_PORT}, REDIS_DB: {REDIS_DB}, "
-            f"REDIS_PASSWORD: {'null' if REDIS_PASSWORD is None else 'not null'}, "
-            f"REDIS_USERNAME: {REDIS_USERNAME}, REDIS_SSL: {REDIS_SSL}"
-        )
-        raise e
+
+    connection = redis.Redis(
+        REDIS_HOST,
+        db=REDIS_DB,
+        port=REDIS_PORT,
+        password=REDIS_PASSWORD,
+        username=REDIS_USERNAME,
+        ssl=REDIS_SSL,
+    )
+    connection.ping()  # this should fail if redis does not exist
+    logger.info(
+        f"succesfully connected to redis instance at {REDIS_HOST}:{REDIS_PORT}"
+    )
+
+    # Only set if connected
+    r = connection
 
 
 def needs_redis(fn):
