@@ -432,3 +432,11 @@ def test_add_prediction(
     )
 
     client.delete_dataset(dataset_name, timeout=30)
+
+
+def test_validate_model(client: Client, model_name: str):
+    with pytest.raises(TypeError):
+        Model.create(client, name=123)
+
+    with pytest.raises(TypeError):
+        Model.create(client, name=model_name, id="not an int")

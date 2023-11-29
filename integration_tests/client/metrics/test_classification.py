@@ -39,6 +39,23 @@ def test_evaluate_image_clf(
 
     eval_job = model.evaluate_classification(dataset=dataset, timeout=30)
 
+    assert eval_job.id
+    assert eval_job.task_type == "classification"
+    assert eval_job.status.value == "done"
+    assert all(
+        [
+            key in eval_job.metrics
+            for key in [
+                "dataset",
+                "model",
+                "settings",
+                "job_id",
+                "status",
+                "metrics",
+                "confusion_matrices",
+            ]
+        ]
+    )
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
     assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
 

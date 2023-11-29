@@ -232,8 +232,7 @@ class Client:
         self,
         job_id: int,
     ) -> State:
-        resp = self._requests_get_rel_host(f"evaluations/{job_id}").json()
-        return resp
+        return self._requests_get_rel_host(f"evaluations/{job_id}").json()
 
 
 class Evaluation:
@@ -293,16 +292,6 @@ class Evaluation:
             return []
         return self._client._requests_get_rel_host(
             f"evaluations/{self._id}/metrics"
-        ).json()
-
-    @property
-    def confusion_matrices(
-        self,
-    ) -> List[dict]:
-        if self.status != JobStatus.DONE:
-            return []
-        return self._client._requests_get_rel_host(
-            f"evaluations/{self._id}/confusion-matrices"
         ).json()
 
     def wait_for_completion(self, *, interval=1.0, timeout=None):
@@ -394,11 +383,6 @@ class Dataset:
             "metadata": self.metadata,
             "geospatial": self.geospatial,
         }
-
-    def __eq__(self, other):
-        if not isinstance(other, Dataset):
-            raise TypeError(f"Expected type `{type(Dataset)}`, got `{other}`")
-        return self.dict() == other.dict()
 
     def add_groundtruth(
         self,
@@ -563,11 +547,6 @@ class Model:
             "metadata": self.metadata,
             "geospatial": self.geospatial,
         }
-
-    def __eq__(self, other):
-        if not isinstance(other, Model):
-            raise TypeError(f"Expected type `{type(Model)}`, got `{other}`")
-        return self.dict() == other.dict()
 
     def add_prediction(self, prediction: Prediction):
         if not isinstance(prediction, Prediction):
