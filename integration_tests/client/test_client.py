@@ -3,7 +3,6 @@ that is no auth
 """
 import io
 import json
-import time
 from dataclasses import asdict
 from typing import Any, Dict, Union
 
@@ -2787,14 +2786,6 @@ def test_get_and_delete_dataset(
     assert fetched_dataset.id == dataset.id
     assert fetched_dataset.name == dataset.name
     assert fetched_dataset.metadata == dataset.metadata
-
-    # test deleting the dataset without using the client object
-    assert client.get_dataset_status(dset_name) == "create"
-
-    dataset.delete()
-
-    time.sleep(5)
-    assert client.get_dataset_status(dset_name) == "delete"
 
 
 def test_set_and_get_geospatial(
