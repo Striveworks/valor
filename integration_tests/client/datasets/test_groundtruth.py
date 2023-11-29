@@ -187,6 +187,7 @@ def test_add_groundtruth(
     with pytest.raises(TypeError):
         dataset.add_groundtruth("not_a_gt")
 
+    # make sure we get a warning when passing a groundtruth without annotations
     with pytest.warns(UserWarning):
         dataset.add_groundtruth(
             GroundTruth(
