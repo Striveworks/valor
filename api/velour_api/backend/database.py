@@ -1,5 +1,6 @@
 import os
 import time
+from functools import wraps
 
 import psycopg2
 from sqlalchemy import create_engine
@@ -16,8 +17,6 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_DB = os.getenv("POSTGRES_DB", "postgres")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", 5432)
 
-TIMEOUT = 30
-
 SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USERNAME}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
 logger.debug(
@@ -29,27 +28,26 @@ engine = create_engine(SQLALCHEMY_DATABASE_URL)
 make_session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def retry_connection(f):
+def retry_connection(timeout: int = 30):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            while True:
+                try:
+                    return f(*args, **kwargs)
+                except (
+                    psycopg2.OperationalError,
+                    OperationalError,
+                    ProgrammingError,
+                ) as e:
+                    if time.time() - start_time >= timeout:
+                        raise RuntimeError(
+                            f"Method {f.__name__} failed to connect to database within {timeout} seconds, with error: {str(e)}"
+                        )
+                time.sleep(2)
 
-    global TIMEOUT
-
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        while True:
-            try:
-                return f(*args, **kwargs)
-            except (
-                psycopg2.OperationalError,
-                OperationalError,
-                ProgrammingError,
-            ) as e:
-                if time.time() - start_time >= TIMEOUT:
-                    raise RuntimeError(
-                        f"Method {f.__name__} failed to connect to database within {TIMEOUT} seconds, with error: {str(e)}"
-                    )
-            time.sleep(2)
-
-    return wrapper
+        return wrapper
 
 
 @retry_connection

@@ -1,6 +1,7 @@
 import json
 import os
 import time
+from functools import wraps
 
 import redis
 
@@ -14,33 +15,31 @@ REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 REDIS_USERNAME = os.getenv("REDIS_USERNAME")
 REDIS_SSL = bool(os.getenv("REDIS_SSL"))
 
-TIMEOUT = 30
-
 # global connection to redis
 r: redis.Redis = None
 
 
-def retry_connection(f):
-    global TIMEOUT
+def retry_connection(timeout: int = 30):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            while True:
+                try:
+                    return f(*args, **kwargs)
+                except Exception as e:
+                    if time.time() - start_time >= timeout:
+                        logger.debug(
+                            f"REDIS_HOST: {REDIS_HOST}, REDIS_PORT: {REDIS_PORT}, REDIS_DB: {REDIS_DB}, "
+                            f"REDIS_PASSWORD: {'null' if REDIS_PASSWORD is None else 'not null'}, "
+                            f"REDIS_USERNAME: {REDIS_USERNAME}, REDIS_SSL: {REDIS_SSL}"
+                        )
+                        raise RuntimeError(
+                            f"Method {f.__name__} failed to connect to database within {timeout} seconds, with error: {str(e)}"
+                        )
+                time.sleep(2)
 
-    def wrapper(*args, **kwargs):
-        start_time = time.time()
-        while True:
-            try:
-                return f(*args, **kwargs)
-            except Exception as e:
-                if time.time() - start_time >= TIMEOUT:
-                    logger.debug(
-                        f"REDIS_HOST: {REDIS_HOST}, REDIS_PORT: {REDIS_PORT}, REDIS_DB: {REDIS_DB}, "
-                        f"REDIS_PASSWORD: {'null' if REDIS_PASSWORD is None else 'not null'}, "
-                        f"REDIS_USERNAME: {REDIS_USERNAME}, REDIS_SSL: {REDIS_SSL}"
-                    )
-                    raise RuntimeError(
-                        f"Method {f.__name__} failed to connect to database within {TIMEOUT} seconds, with error: {str(e)}"
-                    )
-            time.sleep(2)
-
-    return wrapper
+        return wrapper
 
 
 @retry_connection
