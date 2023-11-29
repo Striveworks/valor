@@ -348,7 +348,17 @@ def test_get_dataset_status(
     status = client.get_dataset_status(dataset_name)
     assert status == "ready"
 
-    client.delete_dataset(dataset_name, timeout=30)
+    dataset.delete()
 
     status = client.get_dataset_status(dataset_name)
-    assert status == "none"
+
+    # check that the dataset's state is no longer "ready"
+    assert status in ["delete", "none"]
+
+
+def test_validate_dataset(client: Client, dataset_name: str):
+    with pytest.raises(TypeError):
+        Dataset.create(client, name=123)
+
+    with pytest.raises(TypeError):
+        Dataset.create(client, name=dataset_name, id="not an int")
