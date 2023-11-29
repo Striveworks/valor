@@ -19,14 +19,14 @@ REDIS_SSL = bool(os.getenv("REDIS_SSL"))
 r: redis.Redis = None
 
 
-def retry_connection(timeout: int = 30):
-    def decorator(f):
-        @wraps(f)
+def retry_connection(timeout: int):
+    def decorator(func):
+        @wraps(func)
         def wrapper(*args, **kwargs):
             start_time = time.time()
             while True:
                 try:
-                    return f(*args, **kwargs)
+                    return func(*args, **kwargs)
                 except Exception as e:
                     if time.time() - start_time >= timeout:
                         logger.debug(
@@ -35,14 +35,16 @@ def retry_connection(timeout: int = 30):
                             f"REDIS_USERNAME: {REDIS_USERNAME}, REDIS_SSL: {REDIS_SSL}"
                         )
                         raise RuntimeError(
-                            f"Method {f.__name__} failed to connect to database within {timeout} seconds, with error: {str(e)}"
+                            f"Method {func.__name__} failed to connect to database within {timeout} seconds, with error: {str(e)}"
                         )
                 time.sleep(2)
 
         return wrapper
 
+    return decorator
 
-@retry_connection
+
+@retry_connection(30)
 def connect_to_redis():
     global r
     if r is not None:

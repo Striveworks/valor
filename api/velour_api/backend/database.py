@@ -28,14 +28,14 @@ engine = create_engine(SQLALCHEMY_DATABASE_URL)
 make_session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def retry_connection(timeout: int = 30):
-    def decorator(f):
-        @wraps(f)
+def retry_connection(timeout: int):
+    def decorator(func):
+        @wraps(func)
         def wrapper(*args, **kwargs):
             start_time = time.time()
             while True:
                 try:
-                    return f(*args, **kwargs)
+                    return func(*args, **kwargs)
                 except (
                     psycopg2.OperationalError,
                     OperationalError,
@@ -43,14 +43,16 @@ def retry_connection(timeout: int = 30):
                 ) as e:
                     if time.time() - start_time >= timeout:
                         raise RuntimeError(
-                            f"Method {f.__name__} failed to connect to database within {timeout} seconds, with error: {str(e)}"
+                            f"Method {func.__name__} failed to connect to database within {timeout} seconds, with error: {str(e)}"
                         )
                 time.sleep(2)
 
         return wrapper
 
+    return decorator
 
-@retry_connection
+
+@retry_connection(30)
 def make_session() -> Session:
     """Creates a session and enables the gdal drivers (needed for raster support)"""
     db = sessionmaker(autocommit=False, autoflush=False, bind=engine)()
@@ -62,7 +64,7 @@ def make_session() -> Session:
 Base = declarative_base()
 
 
-@retry_connection
+@retry_connection(30)
 def create_db():
     db = make_session()
     # create postgis and raster extensions if they don't exist
