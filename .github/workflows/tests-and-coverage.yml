@@ -103,7 +103,7 @@ jobs:
       - name: install client
         run: pip install -e ".[test]"
         working-directory: ./client
-      - run: coverage run --source="api/velour_api,client/velour" -m pytest -vs integration_tests/test_client.py integration_tests/client/*
+      - run: coverage run --source="api/velour_api,client/velour" -m pytest -v integration_tests/client/*
       - run: coverage report
       - name: upload coverage report as artifact
         uses: actions/upload-artifact@v3
