@@ -4,8 +4,6 @@
 
 ### Helm
 
-
-
 ### Docker
 
 ```shell
@@ -36,7 +34,6 @@ The `velour.Client` class gives an object that is used to communicate with the `
 ```py
 client = Client(HOST_URL)
 ```
-
 
 The `Dataset` object uses a staticmethod for creation.
 

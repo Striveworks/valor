@@ -37,8 +37,6 @@ Install the client module.
 pip install client/[test]
 ```
 
-
-
 # API Development
 
 Velour offers multiple methods of deploying the backend. If you do not require the ability to debug the API, please skip this section and follow the instructions in `Setting up the Backend`.
