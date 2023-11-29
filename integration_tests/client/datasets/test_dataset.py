@@ -352,7 +352,7 @@ def test_get_dataset_status(
     dataset.delete()
 
     status = client.get_dataset_status(dataset_name)
-    time.sleep(5)
+    time.sleep(30)
     assert status == "none"
 
 
