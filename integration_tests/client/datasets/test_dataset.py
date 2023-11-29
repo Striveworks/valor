@@ -326,8 +326,6 @@ def test_get_dataset(
     assert fetched_dataset.name == dataset.name
     assert fetched_dataset.metadata == dataset.metadata
 
-    client.delete_dataset(dataset_name, timeout=30)
-
 
 def test_get_dataset_status(
     client: Client,
@@ -352,3 +350,11 @@ def test_get_dataset_status(
 
     status = client.get_dataset_status(dataset_name)
     assert status == "none"
+
+
+def test_validate_dataset(client: Client, model_name: str):
+    with pytest.raises(TypeError):
+        Dataset.create(client, name=123)
+
+    with pytest.raises(TypeError):
+        Dataset.create(client, name=model_name, id="not an int")

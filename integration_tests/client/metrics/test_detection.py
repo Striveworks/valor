@@ -3,6 +3,7 @@ that is no auth
 """
 from dataclasses import asdict
 
+import pytest
 from geoalchemy2.functions import ST_Area
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -510,6 +511,10 @@ def test_get_bulk_evaluations(
             "value": 0.0,
         },
     ]
+
+    # test error when we don't pass either a model or dataset
+    with pytest.raises(ValueError):
+        client.get_bulk_evaluations()
 
     evaluations = client.get_bulk_evaluations(
         datasets=dataset_name, models=model_name

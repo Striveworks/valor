@@ -183,6 +183,19 @@ def test_add_groundtruth(
 ):
     dataset = Dataset.create(client, dataset_name)
 
+    with pytest.raises(TypeError):
+        dataset.add_groundtruth("not_a_gt")
+
+    with pytest.warns(UserWarning):
+        dataset.add_groundtruth(
+            GroundTruth(
+                datum=ImageMetadata(
+                    dataset=dataset_name, uid="uid", height=200, width=150
+                ).to_datum(),
+                annotations=[],
+            )
+        )
+
     with pytest.raises(ClientException) as exc_info:
         dataset.add_groundtruth(gt_semantic_segs_error)
 

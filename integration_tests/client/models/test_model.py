@@ -23,6 +23,7 @@ from velour import (
 )
 from velour.client import Client, ClientException
 from velour.enums import DataType, TaskType
+from velour.metatypes import ImageMetadata
 from velour.schemas import Point
 from velour_api.backend import models
 
@@ -369,3 +370,65 @@ def test_create_tabular_model_with_predicted_classifications(
         expected_scores={0.6, 0.4, 1.0, 0.1, 0.9},
         db=db,
     )
+
+
+def test_add_prediction(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    img1: ImageMetadata,
+    model_name: str,
+    dataset_name: str,
+    db: Session,
+):
+    img1 = ImageMetadata(
+        dataset=dataset_name,
+        uid="uid1",
+        height=900,
+        width=300,
+        geospatial={
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [125.2750725, 38.760525],
+                    [125.3902365, 38.775069],
+                    [125.5054005, 38.789613],
+                    [125.5051935, 38.71402425],
+                    [125.5049865, 38.6384355],
+                    [125.3902005, 38.6244225],
+                    [125.2754145, 38.6104095],
+                    [125.2752435, 38.68546725],
+                    [125.2750725, 38.760525],
+                ]
+            ],
+        },
+    )
+
+    dataset = Dataset.create(client, dataset_name)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model.create(client, model_name)
+
+    # test error cases
+    with pytest.raises(TypeError):
+        model.add_prediction("not_a_pred")
+
+    with pytest.warns(UserWarning):
+        model.add_prediction(
+            Prediction(model=model_name, datum=img1.to_datum(), annotations=[])
+        )
+
+    for pd in pred_dets:
+        model.add_prediction(pd)
+
+    model.finalize_inferences(dataset)
+
+    # test get predictions
+    assert (
+        model.get_prediction(img1.to_datum()).annotations
+        == pred_dets[0].annotations
+    )
+
+    client.delete_dataset(dataset_name, timeout=30)
