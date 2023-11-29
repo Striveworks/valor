@@ -349,7 +349,7 @@ def test_get_dataset_status(
     dataset.delete()
 
     status = client.get_dataset_status(dataset_name)
-    assert status == "none"
+    assert status == "delete"
 
 
 def test_validate_dataset(client: Client, dataset_name: str):
