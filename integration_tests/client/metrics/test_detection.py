@@ -3,6 +3,7 @@ that is no auth
 """
 from dataclasses import asdict
 
+import pytest
 from geoalchemy2.functions import ST_Area
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -41,13 +42,32 @@ def test_evaluate_detection(
         ],
         timeout=30,
     )
-
+    assert eval_job.id
+    assert eval_job.task_type == "object-detection"
+    assert eval_job.status.value == "done"
+    assert all(
+        [
+            key in eval_job.metrics
+            for key in [
+                "dataset",
+                "model",
+                "settings",
+                "job_id",
+                "status",
+                "metrics",
+                "confusion_matrices",
+            ]
+        ]
+    )
     assert eval_job.ignored_pred_labels == []
     assert eval_job.missing_pred_labels == []
     assert isinstance(eval_job._id, int)
 
     eval_job.wait_for_completion()
     assert eval_job.status == JobStatus.DONE
+
+    # test get_evaluation_status
+    assert client.get_evaluation_status(eval_job.id) == eval_job.status.value
 
     settings = asdict(eval_job.settings)
     settings.pop("id")
@@ -283,6 +303,10 @@ def test_evaluate_detection(
         == eval_job_min_area_1200.metrics["metrics"]
     )
 
+    # test accessing these evaluations via the dataset
+    all_evals = dataset.get_evaluations()
+    assert len(all_evals) == 5
+
 
 def test_evaluate_detection_with_json_filters(
     client: Client,
@@ -300,6 +324,22 @@ def test_evaluate_detection_with_json_filters(
     for pd in pred_dets:
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
+
+    # test default iou arguments
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+        ],
+        timeout=30,
+    )
+    assert eval_job._settings.settings["parameters"][
+        "iou_thresholds_to_compute"
+    ] == [i / 100 for i in range(50, 100, 5)]
+    assert eval_job._settings.settings["parameters"][
+        "iou_thresholds_to_keep"
+    ] == [0.5, 0.75]
 
     expected_metrics = [
         {
@@ -510,6 +550,10 @@ def test_get_bulk_evaluations(
             "value": 0.0,
         },
     ]
+
+    # test error when we don't pass either a model or dataset
+    with pytest.raises(ValueError):
+        client.get_bulk_evaluations()
 
     evaluations = client.get_bulk_evaluations(
         datasets=dataset_name, models=model_name

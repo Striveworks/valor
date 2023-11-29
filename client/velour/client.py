@@ -178,23 +178,18 @@ class Client:
         timeout
             The number of seconds to wait in order to confirm that the dataset was deleted
         """
-        try:
-            self._requests_delete_rel_host(f"datasets/{name}")
+        self._requests_delete_rel_host(f"datasets/{name}")
 
-            if timeout:
-                for _ in range(timeout):
-                    if self.get_dataset_status(name) == State.NONE:
-                        break
-                    else:
-                        time.sleep(1)
+        if timeout:
+            for _ in range(timeout):
+                if self.get_dataset_status(name) == State.NONE:
+                    break
                 else:
-                    raise TimeoutError(
-                        "Dataset wasn't deleted within timeout interval"
-                    )
-
-        except ClientException as e:
-            if "does not exist" not in str(e):
-                raise e
+                    time.sleep(1)
+            else:
+                raise TimeoutError(
+                    "Dataset wasn't deleted within timeout interval"
+                )
 
     def delete_model(self, name: str, timeout: int = 0) -> None:
         """
@@ -207,23 +202,18 @@ class Client:
         timeout
             The number of seconds to wait in order to confirm that the model was deleted
         """
-        try:
-            self._requests_delete_rel_host(f"models/{name}")
+        self._requests_delete_rel_host(f"models/{name}")
 
-            if timeout:
-                for _ in range(timeout):
-                    if self.get_dataset_status(name) == State.NONE:
-                        break
-                    else:
-                        time.sleep(1)
+        if timeout:
+            for _ in range(timeout):
+                if self.get_dataset_status(name) == State.NONE:
+                    break
                 else:
-                    raise TimeoutError(
-                        "Model wasn't deleted within timeout interval"
-                    )
-
-        except ClientException as e:
-            if "does not exist" not in str(e):
-                raise e
+                    time.sleep(1)
+            else:
+                raise TimeoutError(
+                    "Model wasn't deleted within timeout interval"
+                )
 
     def get_dataset_status(
         self,
@@ -237,6 +227,12 @@ class Client:
             resp = State.NONE
 
         return resp
+
+    def get_evaluation_status(
+        self,
+        job_id: int,
+    ) -> State:
+        return self._requests_get_rel_host(f"evaluations/{job_id}").json()
 
 
 class Evaluation:
@@ -283,28 +279,10 @@ class Evaluation:
         return JobStatus(resp)
 
     @property
-    def type(
-        self,
-    ) -> enums.TaskType:
-        return self._settings.type
-
-    @property
     def task_type(
         self,
     ) -> enums.TaskType:
         return self._settings.task_type
-
-    @property
-    def annotation_type(
-        self,
-    ) -> enums.TaskType:
-        return self._settings.annotation_type
-
-    @property
-    def parameters(
-        self,
-    ) -> dict:
-        return self._settings.parameters
 
     @property
     def metrics(
@@ -314,16 +292,6 @@ class Evaluation:
             return []
         return self._client._requests_get_rel_host(
             f"evaluations/{self._id}/metrics"
-        ).json()
-
-    @property
-    def confusion_matrices(
-        self,
-    ) -> List[dict]:
-        if self.status != JobStatus.DONE:
-            return []
-        return self._client._requests_get_rel_host(
-            f"evaluations/{self._id}/confusion-matrices"
         ).json()
 
     def wait_for_completion(self, *, interval=1.0, timeout=None):
@@ -416,18 +384,11 @@ class Dataset:
             "geospatial": self.geospatial,
         }
 
-    def __eq__(self, other):
-        if not isinstance(other, Dataset):
-            raise TypeError(f"Expected type `{type(Dataset)}`, got `{other}`")
-        return self.dict() == other.dict()
-
     def add_groundtruth(
         self,
         groundtruth: GroundTruth,
     ):
-        try:
-            assert isinstance(groundtruth, GroundTruth)
-        except AssertionError:
+        if not isinstance(groundtruth, GroundTruth):
             raise TypeError(f"Invalid type `{type(groundtruth)}`")
 
         if len(groundtruth.annotations) == 0:
@@ -569,7 +530,6 @@ class Model:
         return model
 
     def _validate(self):
-        # validation
         if not isinstance(self.name, str):
             raise TypeError("`name` should be of type `str`")
         if not isinstance(self.id, int) and self.id is not None:
@@ -588,15 +548,8 @@ class Model:
             "geospatial": self.geospatial,
         }
 
-    def __eq__(self, other):
-        if not isinstance(other, Model):
-            raise TypeError(f"Expected type `{type(Model)}`, got `{other}`")
-        return self.dict() == other.dict()
-
     def add_prediction(self, prediction: Prediction):
-        try:
-            assert isinstance(prediction, Prediction)
-        except AssertionError:
+        if not isinstance(prediction, Prediction):
             raise TypeError(
                 f"Expected `velour.Prediction`, got `{type(prediction)}`"
             )
@@ -879,13 +832,3 @@ class Model:
             ret.append({"settings": evaluation.settings, "df": df})
 
         return ret
-
-    # TODO Endpoint is independent of model, should be moved to Client?
-    def get_evaluation_status(
-        self,
-        job_id: int,
-    ) -> State:
-        resp = self.client._requests_get_rel_host(
-            f"evaluations/{job_id}"
-        ).json()
-        return resp
