@@ -16,6 +16,8 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 POSTGRES_DB = os.getenv("POSTGRES_DB", "postgres")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", 5432)
 
+TIMEOUT = 30
+
 SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USERNAME}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
 logger.debug(
@@ -28,7 +30,8 @@ make_session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def retry_connection(f):
-    TIMEOUT = 30
+
+    global TIMEOUT
 
     def wrapper(*args, **kwargs):
         start_time = time.time()

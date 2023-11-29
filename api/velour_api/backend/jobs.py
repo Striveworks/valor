@@ -14,13 +14,14 @@ REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 REDIS_USERNAME = os.getenv("REDIS_USERNAME")
 REDIS_SSL = bool(os.getenv("REDIS_SSL"))
 
+TIMEOUT = 30
 
 # global connection to redis
 r: redis.Redis = None
 
 
 def retry_connection(f):
-    TIMEOUT = 30
+    global TIMEOUT
 
     def wrapper(*args, **kwargs):
         start_time = time.time()
