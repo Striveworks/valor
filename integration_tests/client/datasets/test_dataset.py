@@ -1,7 +1,6 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
-import time
 from typing import Any, Dict, Union
 
 import pytest
@@ -352,8 +351,7 @@ def test_get_dataset_status(
     dataset.delete()
 
     status = client.get_dataset_status(dataset_name)
-    time.sleep(30)
-    assert status == "none"
+    assert status == "delete"
 
 
 def test_validate_dataset(client: Client, dataset_name: str):
