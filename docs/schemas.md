@@ -1,22 +1,23 @@
 # Schemas
 
-## `Point`
+# Geometry
 
-**Description:**
+<details>
+<summary><strong>Point</strong></summary>
+
 Briefly describe the purpose and functionality of the class.
 
-### Attributes
+## Attributes
 
 | name | type | description |
 | - | - | - |
 | `x` | float |  |
 | `y` | float |  |
 
-### Methods
+## Methods
 
-#### `__init__`
+### `__init__`
 
-**Description:**
 Initialize the class instance.
 
 **Parameters:**
@@ -40,7 +41,7 @@ None.
 my_instance = MyClass(param1=value1, param2=value2)
 ```
 
-#### `resize`
+### `resize`
 
 **Description:**
 Initialize the class instance.
@@ -62,3 +63,30 @@ None.
 # Creating an instance of MyClass
 my_instance = MyClass(param1=value1, param2=value2)
 ```
+
+</details>
+
+<details>
+<summary><strong>Box</strong></summary>
+</details>
+
+<details>
+<summary><strong>BasicPolygon</strong></summary>
+</details>
+
+<details>
+<summary><strong>Polygon</strong></summary>
+</details>
+
+<details>
+<summary><strong>BoundingBox</strong></summary>
+</details>
+
+<details>
+<summary><strong>MultiPolygon</strong></summary>
+</details>
+
+<details>
+<summary><strong>Raster</strong></summary>
+</details>
+
