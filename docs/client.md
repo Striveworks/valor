@@ -41,58 +41,6 @@ In the case that the host uses authentication, then the argument `access_token` 
 
 <br>
 
-# Schemas
-
-<details>
-<summary>BoundingBox</summary>
-
-| attribute | type | description |
-| - | - | - |
-| id | `int` |  |
-| name | `str` |  |
-| metadata | `dict[str, Union[float, str]]`|  |
-| geospatial | `dict` | GeoJSON format. |
-
-</details>
-
-<details>
-<summary>Polygon</summary>
-
-| attribute | type | description |
-| - | - | - |
-| id | `int` |  |
-| name | `str` |  |
-| metadata | `dict[str, Union[float, str]]`|  |
-| geospatial | `dict` | GeoJSON format. |
-
-</details>
-
-<details>
-<summary>MultiPolygon</summary>
-
-| attribute | type | description |
-| - | - | - |
-| id | `int` |  |
-| name | `str` |  |
-| metadata | `dict[str, Union[float, str]]`|  |
-| geospatial | `dict` | GeoJSON format. |
-
-</details>
-
-<details>
-<summary>Raster</summary>
-
-| attribute | type | description |
-| - | - | - |
-| id | `int` |  |
-| name | `str` |  |
-| metadata | `dict[str, Union[float, str]]`|  |
-| geospatial | `dict` | GeoJSON format. |
-
-</details>
-
-<br>
-
 # CoreTypes
 
 The Velour python client supports a small set of object types that facilitate the creation of a unlimited set of user-defined types. These “atomic” types construct and transport the underlying annotation, label and score as well as any associated metadata.
@@ -156,6 +104,7 @@ dataset = client.create_dataset(DATASET_NAME) # DATASET_NAME a string.
 | multipolygon | `schemas.MultiPolygon` ||
 | raster | `schemas.Raster` ||
 | jsonb | todo ||
+
 
 ```py
 # create groundtruth annotation
@@ -221,6 +170,114 @@ groundtruth = GroundTruth(
 
 <br>
 
+# Schemas
+
+<details>
+<summary>Filtering</summary>
+
+> <details>
+> <summary>ValueFilter</summary>
+>
+> | attribute | type | description |
+> | - | - | - |
+> | value | `Union[int, float, str]` |  |
+> | operator | `str` |  Valid string operators: `{"==","!="}`. Numeric operators can draw from the set `{">","<",">=","<=","==","!="}`. |
+>
+> </details>
+
+> <details>
+> <summary>GeospatialFilter</summary>
+>
+> | attribute | type | description |
+> | - | - | - |
+> | geodict | `dict` | GeoJSON |
+> | operator | `str` |  Valid operators: `{"inside", "outside", "intersect"}` |
+>
+> </details>
+
+> <details>
+> <summary>Filter</summary>
+>
+> | attribute | type | description |
+> | - | - | - |
+> | dataset_names | `list[str]` |  |
+> | dataset_metadata | `list[schemas.ValueFilter]` |  |
+> | dataset_geospatial | `list[schemas.GeospatialFilter]`|  |
+> | models_names | `list[str]` |  |
+> | models_metadata | `list[schemas.ValueFilter]` |  |
+> | models_geospatial | `list[schemas.GeospatialFilter]`|  |
+> | datum_uids | `list[str]` |  |
+> | datum_metadata | `list[schemas.ValueFilter]` |  |
+> | datum_geospatial | `list[schemas.GeospatialFilter]`|  |
+> | task_types | `list[enums.TaskType]`|  |
+> | annotation_types | `list[enums.AnnotationType]`|  |
+> | annotation_geometric_area | `list[schemas.ValueFilter]`|  |
+> | annotation_metadata | `list[schemas.ValueFilter]` |  |
+> | annotation_geospatial | `list[schemas.GeospatialFilter]`|  |
+> | prediction_scores | `list[schemas.ValueFilter]`|  |
+> | labels | `list[dict[str,str]]`|  |
+> | label_ids | `list[int]`|  |
+> | label_keys | `list[str]`|  |
+>
+> </details>
+
+</details>
+
+<details>
+<summary>Geometry</summary>
+
+> <details>
+> <summary>BoundingBox</summary>
+>
+> | attribute | type | description |
+> | - | - | - |
+> | id | `int` |  |
+> | name | `str` |  |
+> | metadata | `dict[str, Union[float, str]]`|  |
+> | geospatial | `dict` | GeoJSON format. |
+>
+> </details>
+
+> <details>
+> <summary>Polygon</summary >
+>
+> | attribute | type | description |
+> | - | - | - |
+> | id | `int` |  |
+> | name | `str` |  |
+> | metadata | `dict[str, Union[float, str]]`|  |
+> | geospatial | `dict` | GeoJSON format. |
+>
+> </details>
+
+> <details>
+> <summary>MultiPolygon</summary>
+>
+> | attribute | type | description |
+> | - | - | - |
+> | id | `int` |  |
+> | name | `str` |  |
+> | metadata | `dict[str, Union[float, str]]`|  |
+> | geospatial | `dict` | GeoJSON format. |
+>
+> </details>
+
+> <details>
+> <summary>Raster</summary>
+>
+> | attribute | type | description |
+> | - | - | - |
+> | id | `int` |  |
+> | name | `str` |  |
+> | metadata | `dict[str, Union[float, str]]`|  |
+> | geospatial | `dict` | GeoJSON format. |
+>
+> </details>
+
+</details>
+
+<br>
+
 # MetaTypes
 
 Velour uses a robust metadata system that supports client-side types with no need for any work on the backend to provide support. In the velour Python client these are referred to as metatypes. A metatype is a mapping of a complex data type into a velour Datum type.
@@ -234,10 +291,10 @@ An image consists of specifying the following information:
 
 | name | type | description |
 | - | - | - |
-| uid | string | A unique identifier for the image. This is up to the enduser but some typical options are a filename/path in object store or a dataset specific image id (such as the image id in the COCO dataset) |
-| height | integer | The height of the image. This is necessary for certain operations in the backend, such as converting a polygon contour to a mask |
-| width | integer | The width of the image. This is necessary for certain operations in the backend, such as converting a polygon contour to a mask |
-| frame (optional) | integer | The frame number in the case that the image is a frame of a video |
+| uid | `str` | A unique identifier for the image. This is up to the enduser but some typical options are a filename/path in object store or a dataset specific image id (such as the image id in the COCO dataset) |
+| height | `int` | The height of the image. This is necessary for certain operations in the backend, such as converting a polygon contour to a mask |
+| width | `int` | The width of the image. This is necessary for certain operations in the backend, such as converting a polygon contour to a mask |
+| frame (optional) | `int` | The frame number in the case that the image is a frame of a video |
 
 For example:
 
