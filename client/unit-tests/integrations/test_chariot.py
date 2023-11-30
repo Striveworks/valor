@@ -5,6 +5,7 @@ import pytest
 from velour import enums
 from velour.integrations.chariot.datasets import (
     _parse_groundtruth_from_evaluation_manifest,
+    _retrieve_dataset_version,
 )
 from velour.integrations.chariot.models import (
     _parse_chariot_detect_image_object_detection,
@@ -130,6 +131,82 @@ def img_seg_manifest():
 """ Dataset """
 
 
+class MockNestedObject:
+    def __init__(self, **response):
+        for k, v in response.items():
+            if isinstance(v, dict):
+                self.__dict__[k] = MockNestedObject(**v)
+            elif isinstance(v, list):
+                self.__dict__[k] = [MockNestedObject(**item) for item in v]
+            else:
+                self.__dict__[k] = v
+
+
+def test__retrieve_dataset_version():
+    # mirrors a Dataset object from chariot
+    dataset = MockNestedObject(
+        **{
+            "id": "2NvxvPEtp9OBJwtQyGOiTrepoYZ",
+            "project_id": "2FisBl1MgB7slir8zvf3uJ8BZOk",
+            "versions": [
+                {
+                    "id": "id1",
+                },
+                {
+                    "id": "id2",
+                },
+            ],
+        }
+    )
+
+    bad_dataset = MockNestedObject(
+        **{
+            "id": "2NvxvPEtp9OBJwtQyGOiTrepoYZ",
+            "project_id": "2FisBl1MgB7slir8zvf3uJ8BZOk",
+            "versions": [],
+        }
+    )
+
+    assert _retrieve_dataset_version(dataset, None).__dict__ == {
+        "id": "id2",
+    }
+
+    assert _retrieve_dataset_version(dataset, "id1").__dict__ == {
+        "id": "id1",
+    }
+    assert _retrieve_dataset_version(dataset, "id2").__dict__ == {
+        "id": "id2",
+    }
+
+    # throw error when user asks for a version that doesn't exist
+    with pytest.raises(ValueError):
+        _retrieve_dataset_version(dataset, "id3")
+
+    # throw error if the dataset version doesn't have any versions
+    with pytest.raises(ValueError):
+        _retrieve_dataset_version(bad_dataset, None)
+
+
+def test__retrieve_dataset_manifest():
+    # TODO
+    pass
+
+
+def test_create_dataset_from_chariot():
+    # TODO
+    pass
+
+
+def test_get_chariot_dataset_integration():
+    # TODO
+    pass
+
+
+def create_dataset_from_chariot_evaluation_manifest():
+    # TODO
+    pass
+
+
 def _test_img_clf_manifest(groundtruths):
     assert len(groundtruths) == 2
 
@@ -226,6 +303,11 @@ def _test_img_seg_manifest(groundtruths):
         Point(70.9, 50.2),
         Point(75.9, 28.4),
     ]
+
+
+def test__parse_annotation():
+    # TODO test unsuppported types
+    pass
 
 
 def test__parse_groundtruth(
@@ -329,6 +411,11 @@ def obj_det_prediction():
             "detection_scores": ["0.99", "0.97"],
         }
     ]
+
+
+def test_get_groundtruth_parser_from_chariot():
+    # TODO
+    pass
 
 
 def test__parse_chariot_predict_image_classification(
