@@ -593,9 +593,16 @@ def test_query_datasets(
     db: Session,
     model_sim,
 ):
+    # Check that passing a non-InstrumentedAttribute returns None
+    q = Query("not_a_valid_attribute")
+    assert len(q._selected) == 0
+
     # Q: Get names for datasets where label class=cat exists in groundtruths.
     f = schemas.Filter(labels=[{"class": "cat"}])
-    q = Query(models.Dataset.name).filter(f).groundtruths()
+    query_obj = Query(models.Dataset.name)
+    assert len(query_obj._selected) == 1
+
+    q = query_obj.filter(f).groundtruths()
     dataset_names = db.query(q).distinct().all()
     assert len(dataset_names) == 1
     assert (dset_name,) in dataset_names
