@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 import PIL.Image
 import pytest
 from pydantic import ValidationError
-
+import numpy as np
 from velour_api import schemas
 
 
@@ -44,9 +44,15 @@ def test_geometry_Point():
     assert p1 == p2
     assert not p1 == p3
 
+    with pytest.raises(TypeError):
+        assert p1 == "not_a_point"
+
     # test member fn `__neq__`
     assert not p1 != p2
     assert p1 != p3
+
+    with pytest.raises(TypeError):
+        assert p1 != "not_a_point"
 
     # test member fn `__neg__`
     assert p1 == -p3
@@ -54,21 +60,36 @@ def test_geometry_Point():
     # test member fn `__add__`
     assert p1 + p3 == schemas.geometry.Point(x=0, y=0)
 
+    with pytest.raises(TypeError):
+        p1 + "not_a_point"
+
     # test member fn `__sub__`
     assert p1 - p2 == schemas.geometry.Point(x=0, y=0)
+
+    with pytest.raises(TypeError):
+        p1 - "not_a_point"
 
     # test member fn `__iadd__`
     p4 = p3
     p4 += p1
     assert p4 == schemas.geometry.Point(x=0, y=0)
 
+    with pytest.raises(TypeError):
+        p1 += "not_a_point"
+
     # test member fn `__isub__`
     p4 = p3
     p4 -= p3
     assert p4 == schemas.geometry.Point(x=0, y=0)
 
+    with pytest.raises(TypeError):
+        p1 -= "not_a_point"
+
     # test member fn `dot`
     assert p1.dot(p2) == (3.14**2) * 2
+
+    with pytest.raises(TypeError):
+        p1.dot("not_a_point")
 
 
 def test_geometry_LineSegment(box_points):
@@ -114,10 +135,16 @@ def test_geometry_LineSegment(box_points):
     assert l1.parallel(l3)
     assert l3.parallel(l1)
 
+    with pytest.raises(TypeError):
+        l1.parallel("not_a_line")
+
     # test member fn `perpendicular`
     assert l2.perpendicular(l3)
     assert l3.perpendicular(l2)
     assert not l1.perpendicular(l3)
+
+    with pytest.raises(TypeError):
+        l1.perpendicular("not_a_line")
 
 
 # @TODO
@@ -280,7 +307,6 @@ def test_geometry_MultiPolygon(
     )
 
 
-# @TODO
 def test_geometry_BoundingBox(
     component_polygon_box,
     component_polygon_rotated_box,
@@ -318,17 +344,23 @@ def test_geometry_BoundingBox(
         == component_polygon_box
     )
 
-    # test member fn `left` @TODO
+    # test member fn `left`
+    assert bbox1.left == -5 == bbox1.polygon.left
 
-    # test member fn `right` @TODO
+    # test member fn `right`
+    assert bbox1.right == 5 == bbox1.polygon.right
 
-    # test member fn `top` @TODO
+    # test member fn `top`
+    assert bbox1.top == 5 == bbox1.polygon.top
 
-    # test member fn `bottom` @TODO
+    # test member fn `bottom`
+    assert bbox1.bottom == -5 == bbox1.polygon.bottom
 
-    # test member fn `width` @TODO
+    # test member fn `width`
+    assert bbox1.width == 10 == bbox1.polygon.width
 
-    # test member fn `height` @TODO
+    # test member fn `height`
+    assert bbox1.height == 10 == bbox1.polygon.height
 
     # test member fn `is_rectangular`
     assert bbox1.is_rectangular()
@@ -389,3 +421,11 @@ def test_geometry_Raster(raster):
             mask=base64_mask,  # Check we get an error if the format is not PNG
         )
     assert "Expected image format PNG but got" in str(exc_info)
+
+    # test how from_numpy handles non-2D arrays
+    with pytest.raises(ValueError):
+        schemas.Raster.from_numpy(mask=np.array([False]))
+
+    # test how from_numpy handles non-boolean arrays
+    with pytest.raises(ValueError):
+        schemas.Raster.from_numpy(mask=np.array([[1, 1]]))
