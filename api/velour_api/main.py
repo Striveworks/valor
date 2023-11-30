@@ -553,7 +553,7 @@ def get_evaluation_jobs_for_model(
 
 
 @app.get(
-    "/evaluations/",
+    "/evaluations",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
     tags=["Evaluations"],
