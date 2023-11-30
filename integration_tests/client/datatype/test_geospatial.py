@@ -154,7 +154,7 @@ def test_geospatial_filter(
         }
     ]
 
-    assert len(eval_job.metrics["metrics"]) == 0
+    assert len(eval_job.results.metrics) == 0
 
     # filtering by model should be disabled as model is called explicitly
     with pytest.raises(ClientException) as e:

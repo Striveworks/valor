@@ -42,26 +42,12 @@ def test_evaluate_image_clf(
     assert eval_job.id
     assert eval_job.task_type == "classification"
     assert eval_job.status.value == "done"
-    assert all(
-        [
-            key in eval_job.metrics
-            for key in [
-                "dataset",
-                "model",
-                "settings",
-                "job_id",
-                "status",
-                "metrics",
-                "confusion_matrices",
-            ]
-        ]
-    )
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
     assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
 
     assert eval_job.status == JobStatus.DONE
 
-    metrics = eval_job.metrics["metrics"]
+    metrics = eval_job.results.metrics
 
     expected_metrics = [
         {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
@@ -94,7 +80,7 @@ def test_evaluate_image_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.metrics["confusion_matrices"]
+    confusion_matrices = eval_job.results.confusion_matrices
     assert confusion_matrices == [
         {
             "label_key": "k4",
@@ -169,7 +155,7 @@ def test_evaluate_tabular_clf(
 
     assert eval_job.status == JobStatus.DONE
 
-    metrics = eval_job.metrics["metrics"]
+    metrics = eval_job.results.metrics
 
     expected_metrics = [
         {
@@ -229,7 +215,7 @@ def test_evaluate_tabular_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.metrics["confusion_matrices"]
+    confusion_matrices = eval_job.results.confusion_matrices
 
     expected_confusion_matrix = {
         "label_key": "class",
@@ -308,7 +294,7 @@ def test_evaluate_tabular_clf(
         "settings": {},
     }
 
-    metrics_from_eval_settings_id = eval_jobs[0].metrics["metrics"]
+    metrics_from_eval_settings_id = eval_jobs[0].results.metrics
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
     for m in metrics_from_eval_settings_id:
         assert m in expected_metrics
@@ -316,7 +302,7 @@ def test_evaluate_tabular_clf(
         assert m in metrics_from_eval_settings_id
 
     # check confusion matrix
-    confusion_matrices = eval_jobs[0].metrics["confusion_matrices"]
+    confusion_matrices = eval_jobs[0].results.confusion_matrices
 
     # validate return schema
     assert len(confusion_matrices) == 1
@@ -401,7 +387,7 @@ def test_stratify_clf_metrics(
         ],
         timeout=30,
     )
-    val2_metrics = eval_job_val2.metrics["metrics"]
+    val2_metrics = eval_job_val2.results.metrics
 
     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
     # (hard preds [1, 0, 0])

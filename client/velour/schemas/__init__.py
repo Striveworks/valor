@@ -1,4 +1,4 @@
-from .evaluation import DetectionParameters, EvaluationJob, EvaluationSettings
+from .evaluation import DetectionParameters, EvaluationJob, EvaluationSettings, EvaluationResult
 from .filters import (
     BinaryExpression,
     DeclarativeMapper,
@@ -27,6 +27,7 @@ __all__ = [
     "Raster",
     "EvaluationJob",
     "EvaluationSettings",
+    "EvaluationResult",
     "DetectionParameters",
     "BinaryExpression",
     "DeclarativeMapper",

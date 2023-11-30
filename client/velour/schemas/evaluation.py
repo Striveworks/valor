@@ -29,3 +29,15 @@ class EvaluationJob:
     task_type: str
     settings: EvaluationSettings = field(default_factory=EvaluationSettings)
     id: int = None
+
+
+@dataclass
+class EvaluationResult:
+    dataset: str
+    model: str
+    settings: EvaluationSettings
+    job_id: int
+    status: str
+    metrics: list[dict]
+    confusion_matrices: list[dict]
+

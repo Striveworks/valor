@@ -232,7 +232,7 @@ class Client:
         self,
         job_id: int,
     ) -> State:
-        return self._requests_get_rel_host(f"evaluations/{job_id}").json()
+        return self._requests_get_rel_host(f"evaluations/{job_id}/status").json()
 
 
 class Evaluation:
@@ -274,7 +274,7 @@ class Evaluation:
         self,
     ) -> str:
         resp = self._client._requests_get_rel_host(
-            f"evaluations/{self._id}"
+            f"evaluations/{self._id}/status"
         ).json()
         return JobStatus(resp)
 
@@ -285,14 +285,14 @@ class Evaluation:
         return self._settings.task_type
 
     @property
-    def metrics(
+    def results(
         self,
-    ) -> List[dict]:
-        if self.status != JobStatus.DONE:
-            return []
-        return self._client._requests_get_rel_host(
-            f"evaluations/{self._id}/metrics"
+    ) -> schemas.EvaluationResult:
+        result = self._client._requests_get_rel_host(
+            f"evaluations/{self._id}"
         ).json()
+        return schemas.EvaluationResult(**result)
+
 
     def wait_for_completion(self, *, interval=1.0, timeout=None):
         if timeout:
@@ -443,7 +443,7 @@ class Dataset:
         self,
     ) -> List[Evaluation]:
         model_evaluations = self.client._requests_get_rel_host(
-            f"evaluations/datasets/{self.name}"
+            f"evaluations/dataset/{self.name}"
         ).json()
         return [
             Evaluation(
@@ -610,7 +610,7 @@ class Model:
         )
 
         resp = self.client._requests_post_rel_host(
-            "evaluations/clf-metrics", json=asdict(evaluation)
+            "evaluations", json=asdict(evaluation)
         ).json()
 
         evaluation_job = Evaluation(
@@ -684,7 +684,7 @@ class Model:
         )
 
         resp = self.client._requests_post_rel_host(
-            "evaluations/ap-metrics", json=asdict(evaluation)
+            "evaluations", json=asdict(evaluation)
         ).json()
 
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
@@ -745,7 +745,7 @@ class Model:
             ),
         )
         resp = self.client._requests_post_rel_host(
-            "evaluations/semantic-segmentation-metrics",
+            "evaluations",
             json=asdict(evaluation),
         ).json()
 
@@ -790,7 +790,7 @@ class Model:
         self,
     ) -> List[Evaluation]:
         dataset_evaluations = self.client._requests_get_rel_host(
-            f"evaluations/models/{self.name}"
+            f"evaluations/model/{self.name}"
         ).json()
         return [
             Evaluation(
@@ -817,7 +817,7 @@ class Model:
         for evaluation in self.get_evaluations():
             metrics = [
                 {**metric, "dataset": evaluation.dataset}
-                for metric in evaluation.metrics["metrics"]
+                for metric in evaluation.results.metrics
             ]
             df = pd.DataFrame(metrics)
             for k in ["label", "parameters"]:
