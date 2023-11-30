@@ -38,6 +38,6 @@ class EvaluationResult:
     settings: EvaluationSettings
     job_id: int
     status: str
-    metrics: list[dict]
-    confusion_matrices: list[dict]
+    metrics: List[dict]
+    confusion_matrices: List[dict]
 
