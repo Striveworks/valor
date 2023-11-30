@@ -12,7 +12,7 @@ from velour.schemas import BasicPolygon, BoundingBox, Point, Polygon
 
 def _retrieve_dataset_version(
     dataset,
-    dataset_version_id: str,
+    dataset_version_id: str | None = None,
 ):
     if len(dataset.versions) < 1:
         raise ValueError("Chariot dataset has no existing versions.")
