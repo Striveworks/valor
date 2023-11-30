@@ -232,7 +232,9 @@ class Client:
         self,
         job_id: int,
     ) -> State:
-        return self._requests_get_rel_host(f"evaluations/{job_id}/status").json()
+        return self._requests_get_rel_host(
+            f"evaluations/{job_id}/status"
+        ).json()
 
 
 class Evaluation:
@@ -292,7 +294,6 @@ class Evaluation:
             f"evaluations/{self._id}"
         ).json()
         return schemas.EvaluationResult(**result)
-
 
     def wait_for_completion(self, *, interval=1.0, timeout=None):
         if timeout:

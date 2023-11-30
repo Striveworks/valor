@@ -281,9 +281,7 @@ def test_evaluate_detection(
             },
         },
     }
-    assert (
-        eval_job_bounded_area_1200_1800.results.metrics != expected_metrics
-    )
+    assert eval_job_bounded_area_1200_1800.results.metrics != expected_metrics
     assert (
         eval_job_bounded_area_1200_1800.results.metrics
         == eval_job_min_area_1200.results.metrics
@@ -427,9 +425,7 @@ def test_evaluate_detection_with_json_filters(
             },
         },
     }
-    assert (
-        eval_job_bounded_area_1200_1800.results.metrics != expected_metrics
-    )
+    assert eval_job_bounded_area_1200_1800.results.metrics != expected_metrics
     assert (
         eval_job_bounded_area_1200_1800.results.metrics
         == eval_job_min_area_1200.results.metrics

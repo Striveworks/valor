@@ -1,4 +1,9 @@
-from .evaluation import DetectionParameters, EvaluationJob, EvaluationSettings, EvaluationResult
+from .evaluation import (
+    DetectionParameters,
+    EvaluationJob,
+    EvaluationResult,
+    EvaluationSettings,
+)
 from .filters import (
     BinaryExpression,
     DeclarativeMapper,

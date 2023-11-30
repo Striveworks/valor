@@ -40,4 +40,3 @@ class EvaluationResult:
     status: str
     metrics: List[dict]
     confusion_matrices: List[dict]
-

@@ -11,7 +11,7 @@ export type EvaluationSettings = {
     status: string
     metrics: any
     confusionMatrices: any
-    
+
 }
 
 export type EvaluationSettingsParams = {

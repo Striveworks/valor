@@ -445,7 +445,9 @@ def create_evaluation(
                 job_id=resp.job_id,
             )
         elif job_request.task_type == enums.TaskType.DETECTION:
-            resp = crud.create_detection_evaluation(db=db, job_request=job_request)
+            resp = crud.create_detection_evaluation(
+                db=db, job_request=job_request
+            )
             background_tasks.add_task(
                 crud.compute_detection_metrics,
                 db=db,
@@ -463,7 +465,9 @@ def create_evaluation(
                 job_id=resp.job_id,
             )
         else:
-            raise ValueError(f"Evaluation method for task type `{str(job_request.task_type)}` does not exist.")
+            raise ValueError(
+                f"Evaluation method for task type `{str(job_request.task_type)}` does not exist."
+            )
         return resp
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
