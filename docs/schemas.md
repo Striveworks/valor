@@ -1,6 +1,6 @@
 # Schemas
 
-# Geometry
+## Geometry
 
 <details>
 <summary><strong>Point</strong></summary>
