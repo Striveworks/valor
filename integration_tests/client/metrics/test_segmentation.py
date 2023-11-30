@@ -33,7 +33,7 @@ def test_evaluate_segmentation(
         {"key": "k1", "value": "v1", "score": None}
     ]
 
-    metrics = eval_job.metrics["metrics"]
+    metrics = eval_job.results.metrics
 
     assert len(metrics) == 3
     assert set(
@@ -84,7 +84,7 @@ def test_evaluate_segmentation_with_filter(
         {"key": "k1", "value": "v1", "score": None}
     ]
 
-    metrics = eval_job.metrics["metrics"]
+    metrics = eval_job.results.metrics
 
     assert len(metrics) == 2
     assert set(

@@ -2,26 +2,26 @@ import pytest
 from pydantic import ValidationError
 
 from velour_api import enums, schemas
-from velour_api.schemas.core import _format_name, _format_uid
+from velour_api.schemas.core import _validate_name_format, _validate_uid_format
 
 
-def test__format_name():
-    assert _format_name("dataset1") == "dataset1"
-    assert _format_name("dataset-1") == "dataset-1"
-    assert _format_name("dataset_1") == "dataset_1"
+def test__validate_name_format():
+    assert _validate_name_format("dataset1") == "dataset1"
+    assert _validate_name_format("dataset-1") == "dataset-1"
+    assert _validate_name_format("dataset_1") == "dataset_1"
     with pytest.raises(ValueError) as e:
-        _format_name("data!@#$%^&*()'set_1")
+        _validate_name_format("data!@#$%^&*()'set_1")
     assert "illegal characters" in str(e)
 
 
 def test__format_uid():
-    assert _format_uid("uid1") == "uid1"
-    assert _format_uid("uid-1") == "uid-1"
-    assert _format_uid("uid_1") == "uid_1"
-    assert _format_uid("uid1.png") == "uid1.png"
-    assert _format_uid("folder/uid1.png") == "folder/uid1.png"
+    assert _validate_uid_format("uid1") == "uid1"
+    assert _validate_uid_format("uid-1") == "uid-1"
+    assert _validate_uid_format("uid_1") == "uid_1"
+    assert _validate_uid_format("uid1.png") == "uid1.png"
+    assert _validate_uid_format("folder/uid1.png") == "folder/uid1.png"
     with pytest.raises(ValueError) as e:
-        _format_uid("uid!@#$%^&*()'_1")
+        _validate_uid_format("uid!@#$%^&*()'_1")
     assert "illegal characters" in str(e)
 
 
@@ -86,6 +86,8 @@ def test_dataset(metadata):
         )
     with pytest.raises(ValidationError):
         schemas.Dataset(name="dataset@")
+    with pytest.raises(ValidationError):
+        schemas.Dataset(name=None)
 
     # test property `metadata`
     with pytest.raises(ValidationError):
@@ -132,6 +134,8 @@ def test_model(metadata):
         )
     with pytest.raises(ValidationError):
         schemas.Dataset(name="model@")
+    with pytest.raises(ValidationError):
+        schemas.Dataset(name=None)
 
     # test property `metadata`
     with pytest.raises(ValidationError):
@@ -156,7 +160,7 @@ def test_model(metadata):
 
 def test_datum(metadata):
     # valid
-    schemas.Datum(
+    valid_datum = schemas.Datum(
         uid="123",
         dataset="name",
     )
@@ -177,6 +181,22 @@ def test_datum(metadata):
             uid=123,
             dataset="name",
         )
+    with pytest.raises(ValidationError):
+        schemas.Datum(
+            uid=None,
+            dataset="name",
+        )
+
+    # test property `dataset`
+    with pytest.raises(ValidationError):
+        schemas.Datum(
+            uid="123",
+            dataset="name@",
+        )
+        schemas.Datum(
+            uid="123",
+            dataset=None,
+        )
 
     # test property `metadata`
     with pytest.raises(ValidationError):
@@ -185,6 +205,19 @@ def test_datum(metadata):
             dataset="name",
             metadata={123: 123},
         )
+
+    # test comparator
+    other_datum = schemas.Datum(
+        uid="123",
+        dataset="name",
+    )
+
+    assert valid_datum == other_datum
+
+    other_datum = schemas.Datum(
+        uid="123", dataset="name", metadata={"fake": "metadata"}
+    )
+    assert valid_datum == other_datum
 
 
 def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):

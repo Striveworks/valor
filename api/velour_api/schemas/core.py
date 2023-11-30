@@ -21,7 +21,7 @@ from velour_api.schemas.geometry import (
 from velour_api.schemas.label import Label
 
 
-def _format_name(name: str):
+def _validate_name_format(name: str):
     allowed_special = ["-", "_"]
     pattern = re.compile(f"^[a-zA-Z0-9{''.join(allowed_special)}]+$")
     if not pattern.match(name):
@@ -31,7 +31,7 @@ def _format_name(name: str):
     return name
 
 
-def _format_uid(uid: str):
+def _validate_uid_format(uid: str):
     allowed_special = ["-", "_", "/", "."]
     pattern = re.compile(f"^[a-zA-Z0-9{''.join(allowed_special)}]+$")
     if not pattern.match(uid):
@@ -57,10 +57,10 @@ class Dataset(BaseModel):
     @field_validator("name")
     @classmethod
     def check_name_valid(cls, v):
-        if v != _format_name(v):
-            raise ValueError("name includes illegal characters.")
         if not v:
             raise ValueError("invalid string")
+
+        _validate_name_format(v)
         return v
 
 
@@ -80,10 +80,10 @@ class Model(BaseModel):
     @field_validator("name")
     @classmethod
     def check_name_valid(cls, v):
-        if v != _format_name(v):
-            raise ValueError("name includes illegal characters.")
         if not v:
             raise ValueError("invalid string")
+
+        _validate_name_format(v)
         return v
 
 
@@ -102,20 +102,20 @@ class Datum(BaseModel):
 
     @field_validator("uid")
     @classmethod
-    def format_uid(cls, v):
-        if v != _format_uid(v):
-            raise ValueError("uid includes illegal characters.")
+    def check_uid_valid(cls, v):
         if not v:
             raise ValueError("invalid string")
+
+        _validate_uid_format(v)
         return v
 
     @field_validator("dataset")
     @classmethod
     def check_name_valid(cls, v):
-        if v != _format_name(v):
-            raise ValueError("name includes illegal characters.")
         if not v:
             raise ValueError("invalid string")
+
+        _validate_name_format(v)
         return v
 
     def __eq__(self, other):
@@ -133,9 +133,6 @@ class Datum(BaseModel):
             and self.geospatial == other.geospatial
             and self.metadata == other.geospatial
         )
-
-    def __hash__(self) -> int:
-        return hash(f"uid:{self.uid},dataset:{self.dataset}")
 
 
 class Annotation(BaseModel):
@@ -212,10 +209,9 @@ class Prediction(BaseModel):
     @field_validator("model")
     @classmethod
     def check_name_valid(cls, v):
-        if v != _format_name(v):
-            raise ValueError("name includes illegal characters.")
         if not v:
             raise ValueError("invalid string")
+        _validate_name_format(v)
         return v
 
     @field_validator("annotations")

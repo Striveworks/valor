@@ -301,7 +301,6 @@ class Evaluation(BaseModel):
     status: str
     metrics: list[Metric]
     confusion_matrices: list[ConfusionMatrixResponse]
-    ranking: int | None = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")

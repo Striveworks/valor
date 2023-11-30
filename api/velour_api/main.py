@@ -1,28 +1,30 @@
 import os
+from contextlib import asynccontextmanager
 
-from fastapi import (  # Request,; status,
-    BackgroundTasks,
-    Depends,
-    FastAPI,
-    HTTPException,
-)
-
-# from fastapi.exceptions import RequestValidationError
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
-# from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from velour_api import auth, crud, enums, exceptions, logger, schemas
 from velour_api.api_utils import _split_query_params
-from velour_api.backend import database
+from velour_api.backend import database, jobs
 from velour_api.settings import auth_settings
 
 token_auth_scheme = auth.OptionalHTTPBearer()
 
 
-app = FastAPI(root_path=os.getenv("API_ROOT_PATH", ""))
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    database.create_db()
+    jobs.connect_to_redis()
+    yield
+
+
+app = FastAPI(
+    root_path=os.getenv("API_ROOT_PATH", ""),
+    lifespan=lifespan,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost", "http://localhost:3000"],
@@ -31,7 +33,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-database.create_db()
 
 logger.info(
     f"API started {'WITHOUT' if auth_settings.no_auth else 'WITH'} authentication"
@@ -422,97 +423,51 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
 
 
 @app.post(
-    "/evaluations/ap-metrics",
+    "/evaluations",
     status_code=202,
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def create_detection_metrics(
+def create_evaluation(
     job_request: schemas.EvaluationJob,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-) -> schemas.CreateAPMetricsResponse:
+) -> schemas.CreateClfMetricsResponse | schemas.CreateAPMetricsResponse | schemas.CreateSemanticSegmentationMetricsResponse:
     try:
         # create evaluation
-        resp = crud.create_detection_evaluation(db=db, job_request=job_request)
         # add metric computation to background tasks
-        background_tasks.add_task(
-            crud.compute_detection_metrics,
-            db=db,
-            job_request=job_request,
-            job_id=resp.job_id,
-        )
-        # return AP Response
-        return resp
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except (
-        exceptions.DatasetNotFinalizedError,
-        exceptions.ModelNotFinalizedError,
-    ) as e:
-        raise HTTPException(status_code=405, detail=str(e))
-    except (exceptions.StateflowError,) as e:
-        raise HTTPException(status_code=409, detail=str(e))
-
-
-@app.post(
-    "/evaluations/clf-metrics",
-    status_code=202,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Evaluations"],
-)
-def create_clf_metrics(
-    job_request: schemas.EvaluationJob,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-) -> schemas.CreateClfMetricsResponse:
-    try:
-        # create evaluation
-        resp = crud.create_clf_evaluation(db=db, job_request=job_request)
-        # add metric computation to background tasks
-        background_tasks.add_task(
-            crud.compute_clf_metrics,
-            db=db,
-            job_request=job_request,
-            job_id=resp.job_id,
-        )
-        # return Clf Response
-        return resp
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except (
-        exceptions.DatasetNotFinalizedError,
-        exceptions.ModelNotFinalizedError,
-    ) as e:
-        raise HTTPException(status_code=405, detail=str(e))
-    except exceptions.StateflowError as e:
-        raise HTTPException(status_code=409, detail=str(e))
-
-
-@app.post(
-    "/evaluations/semantic-segmentation-metrics",
-    status_code=202,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Evaluations"],
-)
-def create_semantic_segmentation_metrics(
-    job_request: schemas.EvaluationJob,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-) -> schemas.CreateSemanticSegmentationMetricsResponse:
-    try:
-        # create evaluation
-        resp = crud.create_semantic_segmentation_evaluation(
-            db=db, job_request=job_request
-        )
-
-        # add metric computation to background tasks
-        background_tasks.add_task(
-            crud.compute_semantic_segmentation_metrics,
-            db=db,
-            job_request=job_request,
-            job_id=resp.job_id,
-        )
+        if job_request.task_type == enums.TaskType.CLASSIFICATION:
+            resp = crud.create_clf_evaluation(db=db, job_request=job_request)
+            background_tasks.add_task(
+                crud.compute_clf_metrics,
+                db=db,
+                job_request=job_request,
+                job_id=resp.job_id,
+            )
+        elif job_request.task_type == enums.TaskType.DETECTION:
+            resp = crud.create_detection_evaluation(
+                db=db, job_request=job_request
+            )
+            background_tasks.add_task(
+                crud.compute_detection_metrics,
+                db=db,
+                job_request=job_request,
+                job_id=resp.job_id,
+            )
+        elif job_request.task_type == enums.TaskType.SEGMENTATION:
+            resp = crud.create_semantic_segmentation_evaluation(
+                db=db, job_request=job_request
+            )
+            background_tasks.add_task(
+                crud.compute_semantic_segmentation_metrics,
+                db=db,
+                job_request=job_request,
+                job_id=resp.job_id,
+            )
+        else:
+            raise ValueError(
+                f"Evaluation method for task type `{str(job_request.task_type)}` does not exist."
+            )
         return resp
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -526,33 +481,7 @@ def create_semantic_segmentation_metrics(
 
 
 @app.get(
-    "/evaluations/datasets/{dataset_name}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Evaluations"],
-)
-def get_evaluation_jobs_for_dataset(
-    dataset_name: str,
-) -> dict[str, list[int]]:
-    """Returns all of the job ids for a given dataset."""
-    return crud.get_evaluation_ids_for_dataset(dataset_name=dataset_name)
-
-
-@app.get(
-    "/evaluations/models/{model_name}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Evaluations"],
-)
-def get_evaluation_jobs_for_model(
-    model_name: str,
-) -> dict[str, list[int]]:
-    """Returns all of the job ids for a given model."""
-    return crud.get_evaluation_ids_for_model(model_name=model_name)
-
-
-@app.get(
-    "/evaluations/",
+    "/evaluations",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
     tags=["Evaluations"],
@@ -591,7 +520,65 @@ def get_bulk_evaluations(
 
 
 @app.get(
+    "/evaluations/dataset/{dataset_name}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Evaluations"],
+)
+def get_evaluation_jobs_for_dataset(
+    dataset_name: str,
+) -> dict[str, list[int]]:
+    """Returns all of the job ids for a given dataset."""
+    return crud.get_evaluation_ids_for_dataset(dataset_name=dataset_name)
+
+
+@app.get(
+    "/evaluations/model/{model_name}",
+    status_code=200,
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Evaluations"],
+)
+def get_evaluation_jobs_for_model(
+    model_name: str,
+) -> dict[str, list[int]]:
+    """Returns all of the job ids for a given model."""
+    return crud.get_evaluation_ids_for_model(model_name=model_name)
+
+
+@app.get(
     "/evaluations/{job_id}",
+    dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
+    tags=["Evaluations"],
+)
+def get_evaluation(
+    job_id: int,
+    db: Session = Depends(get_db),
+) -> schemas.Evaluation:
+    try:
+        status = crud.get_evaluation_status(
+            job_id=job_id,
+        )
+        if status != enums.JobStatus.DONE:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No metrics for job {job_id} since its status is {status}",
+            )
+        output = crud.get_evaluations(db=db, job_ids=[job_id])
+        return output[0]
+    except (
+        exceptions.JobDoesNotExistError,
+        AttributeError,
+    ) as e:
+        if "'NoneType' object has no attribute 'metrics'" in str(e):
+            raise HTTPException(
+                status_code=404, detail="Evaluation ID does not exist."
+            )
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@app.get(
+    "/evaluations/{job_id}/status",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
@@ -620,38 +607,6 @@ def get_evaluation_job(
         else:
             raise exceptions.JobDoesNotExistError(job_id)
     except exceptions.JobDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/evaluations/{job_id}/metrics",
-    dependencies=[Depends(token_auth_scheme)],
-    response_model_exclude_none=True,
-    tags=["Evaluations"],
-)
-def get_evaluation(
-    job_id: int,
-    db: Session = Depends(get_db),
-) -> schemas.Evaluation:
-    try:
-        status = crud.get_evaluation_status(
-            job_id=job_id,
-        )
-        if status != enums.JobStatus.DONE:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No metrics for job {job_id} since its status is {status}",
-            )
-        output = crud.get_evaluations(db=db, job_ids=[job_id])
-        return output[0]
-    except (
-        exceptions.JobDoesNotExistError,
-        AttributeError,
-    ) as e:
-        if "'NoneType' object has no attribute 'metrics'" in str(e):
-            raise HTTPException(
-                status_code=404, detail="Evaluation ID does not exist."
-            )
         raise HTTPException(status_code=404, detail=str(e))
 
 

@@ -657,7 +657,7 @@ def test_post_prediction_raster_segmentation(client: TestClient):
     )
 
 
-""" GET /predictions/model/{model_name}/dataset/{dataset_name}/datum/{uid}"""
+""" GET /predictions/model/{model_name}/dataset/{dataset_name}/datum/{uid} """
 
 
 @patch("velour_api.main.crud")
@@ -751,7 +751,7 @@ def test_get_datasets(crud, client: TestClient):
     crud.get_datasets.assert_called_once()
 
 
-""" GET /datasets/{dataset_name}"""
+""" GET /datasets/{dataset_name} """
 
 
 @patch("velour_api.main.crud")
@@ -884,7 +884,7 @@ def test_get_models(crud, client: TestClient):
     crud.get_models.assert_called_once()
 
 
-""" GET /models/{model_name}"""
+""" GET /models/{model_name} """
 
 
 @patch("velour_api.main.crud")
@@ -975,7 +975,7 @@ def test_post_detection_metrics(client: TestClient):
     _test_post_evaluation_endpoint(
         client=client,
         crud_method_name="create_detection_evaluation",
-        endpoint="/evaluations/ap-metrics",
+        endpoint="/evaluations",
         metric_response=metric_response,
         example_json=example_json,
     )
@@ -999,7 +999,7 @@ def test_post_clf_metrics(client: TestClient):
     _test_post_evaluation_endpoint(
         client=client,
         crud_method_name="create_clf_evaluation",
-        endpoint="/evaluations/clf-metrics",
+        endpoint="/evaluations",
         metric_response=metric_response,
         example_json=example_json,
     )
@@ -1023,7 +1023,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
     _test_post_evaluation_endpoint(
         client=client,
         crud_method_name="create_semantic_segmentation_evaluation",
-        endpoint="/evaluations/semantic-segmentation-metrics",
+        endpoint="/evaluations",
         metric_response=metric_response,
         example_json=example_json,
     )
@@ -1061,7 +1061,7 @@ def test_get_bulk_evaluations(crud, client: TestClient):
         assert resp.status_code == 404
 
 
-""" GET /evaluations/datasets/{dataset_name}"""
+""" GET /evaluations/dataset/{dataset_name} """
 
 
 @patch("velour_api.main.crud")
@@ -1071,12 +1071,12 @@ def test_get_evaluation_jobs_for_dataset(crud, client: TestClient):
         "model2": [4, 5, 6],
     }
 
-    resp = client.get("/evaluations/datasets/dsetname")
+    resp = client.get("/evaluations/dataset/dsetname")
     assert resp.status_code == 200
     crud.get_evaluation_ids_for_dataset.assert_called_once()
 
 
-""" GET /evaluations/models/{model_name}"""
+""" GET /evaluations/model/{model_name} """
 
 
 @patch("velour_api.main.crud")
@@ -1086,19 +1086,53 @@ def test_get_evaluation_jobs_for_model(crud, client: TestClient):
         "dataset2": [4, 5, 6],
     }
 
-    resp = client.get("/evaluations/models/model_name")
+    resp = client.get("/evaluations/model/model_name")
     assert resp.status_code == 200
     crud.get_evaluation_ids_for_model.assert_called_once()
 
 
-""" GET /evaluations/{job_id}"""
+""" GET /evaluations/{job_id} """
+
+
+@patch("velour_api.main.crud")
+def test_get_evaluations(crud, client: TestClient):
+    crud.get_evaluation_status.return_value = JobStatus.DONE
+    crud.get_evaluations.return_value = [
+        {
+            "model": "modelname",
+            "dataset": "dsetname",
+            "settings": {},
+            "job_id": 1,
+            "status": "done",
+            "metrics": [],
+            "confusion_matrices": [],
+        }
+    ]
+
+    resp = client.get("/evaluations/1")
+    assert resp.status_code == 200
+    crud.get_evaluations.assert_called_once()
+
+    with patch(
+        "velour_api.main.crud.get_evaluations",
+        side_effect=exceptions.JobDoesNotExistError("1"),
+    ):
+        resp = client.get("/evaluations/1")
+        assert resp.status_code == 404
+
+    crud.get_evaluation_status.return_value = JobStatus.PROCESSING
+    resp = client.get("/evaluations/1")
+    assert resp.status_code == 404
+
+
+""" GET /evaluations/{job_id}/status """
 
 
 @patch("velour_api.main.crud")
 def test_get_evaluation_status(crud, client: TestClient):
     crud.get_evaluation_status.return_value = "done"
 
-    resp = client.get("/evaluations/1")
+    resp = client.get("/evaluations/1/status")
     assert resp.status_code == 200
     crud.get_evaluation_status.assert_called_once()
 
@@ -1106,7 +1140,7 @@ def test_get_evaluation_status(crud, client: TestClient):
         "velour_api.main.crud.get_evaluation_status",
         side_effect=exceptions.JobDoesNotExistError("1"),
     ):
-        resp = client.get("/evaluations/1")
+        resp = client.get("/evaluations/1/status")
         assert resp.status_code == 404
 
 
@@ -1136,41 +1170,7 @@ def test_get_evaluation_job(crud, client: TestClient):
         assert resp.status_code == 404
 
 
-""" GET /evaluations/{job_id}/metrics"""
-
-
-@patch("velour_api.main.crud")
-def test_get_evaluation_metrics(crud, client: TestClient):
-    crud.get_evaluation_status.return_value = JobStatus.DONE
-    crud.get_evaluations.return_value = [
-        {
-            "model": "modelname",
-            "dataset": "dsetname",
-            "settings": {},
-            "job_id": 1,
-            "status": "done",
-            "metrics": [],
-            "confusion_matrices": [],
-        }
-    ]
-
-    resp = client.get("/evaluations/1/metrics")
-    assert resp.status_code == 200
-    crud.get_evaluations.assert_called_once()
-
-    with patch(
-        "velour_api.main.crud.get_evaluations",
-        side_effect=exceptions.JobDoesNotExistError("1"),
-    ):
-        resp = client.get("/evaluations/1/metrics")
-        assert resp.status_code == 404
-
-    crud.get_evaluation_status.return_value = JobStatus.PROCESSING
-    resp = client.get("/evaluations/1/metrics")
-    assert resp.status_code == 404
-
-
-""" GET /labels/dataset/{dataset_name}"""
+""" GET /labels/dataset/{dataset_name} """
 
 
 @patch("velour_api.main.crud")
@@ -1191,7 +1191,7 @@ def test_get_dataset_labels(crud, client: TestClient):
     assert resp.status_code == 405
 
 
-""" GET /labels/model/{model_name}"""
+""" GET /labels/model/{model_name} """
 
 
 @patch("velour_api.main.crud")
