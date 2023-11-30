@@ -1,63 +1,42 @@
 # Schemas
 
-## Geometry
+# Geometry
 
 <details>
 <summary><strong>Point</strong></summary>
+
+## Description
 
 Briefly describe the purpose and functionality of the class.
 
 ## Attributes
 
-| name | type | description |
-| - | - | - |
-| `x` | float |  |
-| `y` | float |  |
+>| name | type | description |
+>| - | - | - |
+>| x | `float` |  |
+>| y | `float` |  |
 
 ## Methods
 
-### `__init__`
+><details>
+><summary><b>resize</b></summary>
+>
+>**Description**\
+>Initialize the class instance.
+>
+>**Parameters**
+>| name | type | description |
+>| - | - | - |
+>| og_img_h | `int` |  |
+>| og_img_w | `int` |  |
+>| new_img_h | `int` |  |
+>| new_img_w | `int` |  |
+>
+>**Returns**\
+>None.
+></details>
 
-Initialize the class instance.
-
-**Parameters:**
-- `self` (*MyClass*): The instance of the class.
-- `param1` (*type*): Description of the first parameter.
-- `param2` (*type*): Description of the second parameter.
-- ...
-
-| name | type | description |
-| - | - | - |
-| `x` | float |  |
-| `y` | float |  |
-
-**Returns:**
-None.
-
-**Example Usage:**
-
-```python
-# Creating an instance of MyClass
-my_instance = MyClass(param1=value1, param2=value2)
-```
-
-### `resize`
-
-**Description:**
-Initialize the class instance.
-
-**Parameters:**
-| name | type | description |
-| - | - | - |
-| og_img_h | `int` |  |
-| og_img_w | `int` |  |
-| new_img_h | `int` |  |
-| new_img_w | `int` |  |
-
-**Returns:**
-None.
-
-**Example Usage:**
+## Usage
 
 ```python
 # Creating an instance of MyClass
@@ -68,10 +47,69 @@ my_instance = MyClass(param1=value1, param2=value2)
 
 <details>
 <summary><strong>Box</strong></summary>
+
+## Description
+
+Briefly describe the purpose and functionality of the class.
+
+## Attributes
+
+>| name | type | description |
+>| - | - | - |
+>| min | `Point` |  |
+>| max | `Point` |  |
+>
+
+## Usage
+
+```python
+# Creating an instance of MyClass
+my_instance = MyClass(param1=value1, param2=value2)
+```
 </details>
 
 <details>
 <summary><strong>BasicPolygon</strong></summary>
+
+## Description
+
+Briefly describe the purpose and functionality of the class.
+
+## Attributes
+
+>| name | type | description |
+>| - | - | - |
+>| points | `List[Point]` |  |
+
+## Methods
+
+><details>
+><summary><b>xy_list</b></summary>
+>
+>**Description**\
+>Initialize the class instance.
+>
+>**Returns**\
+>`List[Point]`
+></details>
+
+><details>
+><summary><b>tuple_list</b></summary>
+>
+>**Description:**\
+>Initialize the class instance.
+>
+>**Returns:**\
+>`List[Tuple[float,float]]`
+></details>
+
+## Usage
+
+```python
+# Creating an instance of MyClass
+my_instance = MyClass(param1=value1, param2=value2)
+```
+
 </details>
 
 <details>
