@@ -167,7 +167,7 @@ def test__retrieve_dataset_version():
         }
     )
 
-    assert _retrieve_dataset_version(dataset).__dict__ == {
+    assert _retrieve_dataset_version(dataset, None).__dict__ == {
         "id": "id2",
     }
 
@@ -184,10 +184,10 @@ def test__retrieve_dataset_version():
 
     # throw error if the dataset version doesn't have any versions
     with pytest.raises(ValueError):
-        _retrieve_dataset_version(bad_dataset)
+        _retrieve_dataset_version(bad_dataset, None)
 
 
-def test__retrieve_dataset_manifest(monkeypatch):
+def test__retrieve_dataset_manifest():
     # TODO
     pass
 
