@@ -2,7 +2,7 @@ import numpy
 import pytest
 
 from velour import Annotation, Prediction
-from velour.integrations.yolo import (
+from integration_utils.yolo import (
     _convert_yolo_segmentation,
     parse_yolo_image_classification,
     parse_yolo_image_segmentation,
