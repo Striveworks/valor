@@ -14,15 +14,11 @@ class Point(BaseModel):
     @field_validator("x")
     @classmethod
     def has_x(cls, v):
-        if not isinstance(v, float):
-            raise ValueError
         return v
 
     @field_validator("y")
     @classmethod
     def has_y(cls, v):
-        if not isinstance(v, float):
-            raise ValueError
         return v
 
     def __str__(self) -> str:
