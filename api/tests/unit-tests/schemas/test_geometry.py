@@ -44,6 +44,7 @@ def test_geometry_Point():
     assert p1 == p2
     assert not p1 == p3
 
+    # check that we get an
     with pytest.raises(TypeError):
         assert p1 == "not_a_point"
 
@@ -147,7 +148,6 @@ def test_geometry_LineSegment(box_points):
         l1.perpendicular("not_a_line")
 
 
-# @TODO
 def test_geometry_BasicPolygon(box_points):
     # valid
     poly = schemas.geometry.BasicPolygon(
