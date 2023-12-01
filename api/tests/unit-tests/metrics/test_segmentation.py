@@ -1,27 +1,16 @@
-from velour_api import enums
+from velour_api import enums, schemas
 import velour_api.backend.metrics.segmentation as segmentation
 import pytest
 
 
-class MockNestedObject:
-    def __init__(self, **response):
-        for k, v in response.items():
-            if isinstance(v, dict):
-                self.__dict__[k] = MockNestedObject(**v)
-            elif isinstance(v, list):
-                self.__dict__[k] = [MockNestedObject(**item) for item in v]
-            else:
-                self.__dict__[k] = v
-
-
 def test_create_semantic_segmentation_evaluation():
     # check wrong task type
-    mock_job_request = MockNestedObject(
+    mock_job_request = schemas.EvaluationJob(
         **{
             "model": "model1",
             "dataset": "dataset1",
             "task_type": enums.TaskType.CLASSIFICATION,
-            "settings": None,
+            "settings": {"parameters": None, "filters": None},
         }
     )
 
@@ -30,13 +19,18 @@ def test_create_semantic_segmentation_evaluation():
             db=None, job_request=mock_job_request
         )
 
-    # check what happens if we pass parameters
-    mock_job_request = MockNestedObject(
+    # check passing parametric inputs into a semantic segmentation
+    mock_job_request = schemas.EvaluationJob(
         **{
             "model": "model1",
             "dataset": "dataset1",
             "task_type": enums.TaskType.SEGMENTATION,
-            "settings": {"parameters": "fake_parms"},
+            "settings": schemas.EvaluationSettings(
+                parameters=schemas.DetectionParameters(
+                    iou_thresholds_to_compute=[0.2, 0.6],
+                    iou_thresholds_to_keep=[0.2],
+                ),
+            ),
         }
     )
 
@@ -45,16 +39,18 @@ def test_create_semantic_segmentation_evaluation():
             db=None, job_request=mock_job_request
         )
 
-    # check invalid filter type
-    mock_job_request = MockNestedObject(
+    # check invalid filter type for semantic segmentation tasks
+    mock_job_request = schemas.EvaluationJob(
         **{
             "model": "model1",
             "dataset": "dataset1",
             "task_type": enums.TaskType.SEGMENTATION,
-            "settings": {
-                "parameters": None,
-                "filters": {"dataset_names": "fake_dataset_name"},
-            },
+            "settings": schemas.EvaluationSettings(
+                filters=schemas.Filter(
+                    annotation_types=[enums.AnnotationType.BOX],
+                    label_keys=["class"],
+                ),
+            ),
         }
     )
 
