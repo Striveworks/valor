@@ -30,4 +30,4 @@ runs
 *.env
 
 *.jsonl
-.jpeg
+*.jpeg
