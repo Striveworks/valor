@@ -439,13 +439,6 @@ def create_detection_evaluation(
     # validate parameters
     if not job_request.settings.parameters:
         job_request.settings.parameters = schemas.DetectionParameters()
-    # else:
-    #     if not isinstance(
-    #         job_request.settings.parameters, schemas.DetectionParameters
-    #     ):
-    #         raise TypeError(
-    #             "expected evaluation settings to have parameters of type `DetectionParameters` for task type `DETECTION`"
-    #         )
 
     # validate filters
     if not job_request.settings.filters:
