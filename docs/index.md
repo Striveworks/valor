@@ -1,4 +1,4 @@
-# Velour documentation
+# Overview
 
 _velour_ is an evaluation store that facilitates the computation, discoverability, and shareability of metrics for meachine learning models.
 

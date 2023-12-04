@@ -2,6 +2,14 @@ site_name: velour
 repo_url: https://github.com/striveworks/velour
 theme:
   name: material
+  features:
+    - navigation.expand
+nav:
+  - Overview: "index.md"
+  - Getting Started: "getting_started.md"
+  - User Guide: "user_guide.md"
+  - API References: references
+  - Contributing: "development.md"
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
@@ -10,3 +18,9 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
+plugins:
+  - search
+  - mkdocstrings
+  - include_dir_to_nav:
+      sort_file: true
+      sort_directory: true
