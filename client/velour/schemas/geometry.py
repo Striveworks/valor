@@ -130,8 +130,7 @@ class BasicPolygon:
     Attributes
     ----------
     points : List[Point], optional
-        List of `Point` objects representing the vertices of the polygon.
-        Defaults to an empty list.
+        List of `Point` objects representing the vertices of the polygon. Defaults to an empty list.
 
     Raises
     ------

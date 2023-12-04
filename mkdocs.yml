@@ -4,12 +4,15 @@ theme:
   name: material
   features:
     - navigation.expand
+  palette:
+    scheme: slate
+    primary: deep purple
 nav:
   - Overview: "index.md"
   - Getting Started: "getting_started.md"
-  - User Guide: "user_guide.md"
+  - Technical Guide: "user_guide.md"
   - API References: references
-  - Contributing: "development.md"
+  - Development: "development.md"
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
@@ -20,7 +23,11 @@ markdown_extensions:
   - pymdownx.superfences
 plugins:
   - search
-  - mkdocstrings
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
   - include_dir_to_nav:
       sort_file: true
       sort_directory: true

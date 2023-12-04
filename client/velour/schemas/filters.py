@@ -7,6 +7,24 @@ from velour.enums import AnnotationType, TaskType
 
 @dataclass
 class ValueFilter:
+    """
+    Used to filter on string or numeric values that meet some user-defined condition.
+
+    Attributes
+    ----------
+    value : Union[int, float, str]
+        The value to compare the specific field against.
+    operator : str
+        The operator to use for comparison. Should be one of `[">", "<", ">=", "<=", "==", "!="]` if the value is an int or float, otherwise should be one of `["==", "!="]`.
+
+    Raises
+    ------
+    TypeError
+        If `value` isn't of the correct type.
+    ValueError
+        If the `operator` doesn't match one of the allowed patterns.
+    """
+
     value: Union[int, float, str]
     operator: str = "=="
 
@@ -27,6 +45,25 @@ class ValueFilter:
 
 @dataclass
 class GeospatialFilter:
+    """
+    Used to filter on geospatial coordinates.
+
+    Parameters
+    ----------
+    geodict : Dict[str, Union[List[List[List[List[Union[float, int]]]]], List[List[List[Union[float, int]]]], List[Union[float, int]], str]]
+        A dictionary containing a Point, Polygon, or MultiPolygon. Mirrors `shapely's` `GeoJSON` format.
+    operator : str
+        The operator to use for comparison. Should be one of `intersect`, `inside`, or `outside`.
+
+    Attributes
+    ----------
+    geodict : Dict[str, Union[List[List[List[List[Union[float, int]]]]], List[List[List[Union[float, int]]]], List[Union[float, int]], str]]
+        A dictionary containing a Point, Polygon, or MultiPolygon. Mirrors `shapely's` `GeoJSON` format.
+    operator : str
+        The operator to use for comparison. Should be one of `intersect`, `inside`, or `outside`.
+
+    """
+
     geodict: Dict[
         str,
         Union[
@@ -152,6 +189,57 @@ class DeclarativeMapper:
 
 @dataclass
 class Filter:
+    """
+    Used to filter Evaluations according to specific, user-defined criteria.
+
+    Attributes
+    ----------
+    dataset_names: List[str]
+        A list of `Dataset` names to filter on.
+    dataset_metadata: Dict[str, List[ValueFilter]]
+        A dictionary of `Dataset` metadata to filter on.
+    dataset_geospatial: List[GeospatialFilter].
+        A list of `Dataset` geospatial filters to filter on.
+    models_names: List[str]
+        A list of `Model` names to filter on.
+    models_metadata: Dict[str, List[ValueFilter]]
+        A dictionary of `Model` metadata to filter on.
+    models_geospatial: List[GeospatialFilter]
+        A list of `Model` geospatial filters to filter on.
+    datum_uids: List[str]
+        A list of `Datum` UIDs to filter on.
+    datum_metadata: Dict[str, List[ValueFilter]] = None
+        A dictionary of `Datum` metadata to filter on.
+    datum_geospatial: List[GeospatialFilter]
+        A list of `Datum` geospatial filters to filter on.
+    task_types: List[TaskType]
+        A list of task types to filter on.
+    annotation_types: List[AnnotationType]
+        A list of `Annotation` types to filter on.
+    annotation_geometric_area: List[ValueFilter]
+        A list of `ValueFilters` which are used to filter `Evaluations` according to the `Annotation`'s geometric area.
+    annotation_metadata: Dict[str, List[ValueFilter]]
+        A dictionary of `Annotation` metadata to filter on.
+    annotation_geospatial: List[GeospatialFilter]
+        A list of `Annotation` geospatial filters to filter on.
+    prediction_scores: List[ValueFilter]
+        A list of `ValueFilters` which are used to filter `Evaluations` according to the `Model`'s prediction scores.
+    labels: List[Dict[str, str]]
+        A dictionary of `Labels' to filter on.
+    label_ids: List[int]
+        A list of `Label` IDs to filter on.
+    label_keys: List[str] = None
+        A list of `Label` keys to filter on.
+
+
+    Raises
+    ------
+    TypeError
+        If `value` isn't of the correct type.
+    ValueError
+        If the `operator` doesn't match one of the allowed patterns.
+    """
+
     # datasets
     dataset_names: List[str] = None
     dataset_metadata: Dict[str, List[ValueFilter]] = None
@@ -186,6 +274,16 @@ class Filter:
     def create(cls, expressions: List[BinaryExpression]) -> "Filter":
         """
         Parses a list of `BinaryExpression` to create a `schemas.Filter` object.
+
+        Parameters
+        ----------
+        expressions: List[BinaryExpression]
+            A list of `BinaryExpressions' to parse into a `Filter` object.
+
+        Raises
+        ------
+        NotImplementedError
+            If the user passes the `dataset_geospatial`, `model_geospatial`, `datum_geospatial`, or `annotation_geospatial` arguments into this method.
         """
 
         # expand nested expressions
