@@ -22,17 +22,18 @@ class ClientException(Exception):
 
 
 class Client:
-    """Client for interacting with the velour backend"""
+    """
+    Client for interacting with the velour backend.
+
+    Parameters
+    ----------
+    host : str
+        The host to connect to. Should start with "http://" or "https://".
+    access_token : str
+        The access token for the host (if the host requires authentication).
+    """
 
     def __init__(self, host: str, access_token: str = None):
-        """
-        Parameters
-        ----------
-        host
-            the host to connect to. Should start with "http://" or "https://"
-        access_token
-            the access token if the host requires authentication
-        """
         if not (host.startswith("http://") or host.startswith("https://")):
             raise ValueError(
                 f"host must stat with 'http://' or 'https://' but got {host}"
@@ -52,7 +53,8 @@ class Client:
     def _get_users_email(
         self,
     ) -> Union[str, None]:
-        """Gets the users e-mail address (in the case when auth is enabled)
+        """
+        Gets the users e-mail address (in the case when auth is enabled)
         or returns None in the case of a no-auth backend.
         """
         resp = self._requests_get_rel_host("user").json()
@@ -61,6 +63,9 @@ class Client:
     def _requests_wrapper(
         self, method_name: str, endpoint: str, *args, **kwargs
     ):
+        """
+        Wrapper for handling API requests.
+        """
         assert method_name in ["get", "post", "put", "delete"]
 
         if endpoint[0] == "/":
@@ -85,21 +90,33 @@ class Client:
         return resp
 
     def _requests_post_rel_host(self, endpoint: str, *args, **kwargs):
+        """
+        Helper for handling POST requests.
+        """
         return self._requests_wrapper(
             method_name="post", endpoint=endpoint, *args, **kwargs
         )
 
     def _requests_get_rel_host(self, endpoint: str, *args, **kwargs):
+        """
+        Helper for handling GET requests.
+        """
         return self._requests_wrapper(
             method_name="get", endpoint=endpoint, *args, **kwargs
         )
 
     def _requests_put_rel_host(self, endpoint: str, *args, **kwargs):
+        """
+        Helper for handling PUT requests.
+        """
         return self._requests_wrapper(
             method_name="put", endpoint=endpoint, *args, **kwargs
         )
 
     def _requests_delete_rel_host(self, endpoint: str, *args, **kwargs):
+        """
+        Helper for handling DELETE requests.
+        """
         return self._requests_wrapper(
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
@@ -110,14 +127,20 @@ class Client:
         datasets: Union[str, List[str], None] = None,
     ) -> List[dict]:
         """
-        Returns all metrics associated with user-supplied dataset and model names
+        Returns all metrics associated with user-supplied dataset and/or model names.
 
         Parameters
         ----------
-        models
+        models : Union[str, List[str], None]
             A list of dataset names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
-        datasets
+        datasets : Union[str, List[str], None]
             A list of model names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
+
+        Returns
+        -------
+        List[dict]
+            List of dictionaries describing the returned evaluations.
+
         """
 
         if not (models or datasets):
@@ -155,16 +178,40 @@ class Client:
     def get_datasets(
         self,
     ) -> List[dict]:
+        """
+        Get all of the datasets associated with `Client`.
+
+        Returns
+        ------
+        List[dict]
+            A list of dictionaries describing all the datasets attributed to the `Client` object.
+        """
         return self._requests_get_rel_host("datasets").json()
 
     def get_models(
         self,
     ) -> List[dict]:
+        """
+        Get all of the models associated with `Client`.
+
+        Returns
+        ------
+        List[dict]
+            A list of dictionaries describing all the models attributed to the `Client` object.
+        """
         return self._requests_get_rel_host("models").json()
 
     def get_labels(
         self,
     ) -> List[Label]:
+        """
+        Get all of the labels associated with `Client`.
+
+        Returns
+        ------
+        List[Label]
+            A list of `Label` objects attributed to `Client`.
+        """
         return self._requests_get_rel_host("labels").json()
 
     def delete_dataset(self, name: str, timeout: int = 0) -> None:
@@ -173,10 +220,10 @@ class Client:
 
         Parameters
         ----------
-        name
-            The name of the dataset to be deleted
-        timeout
-            The number of seconds to wait in order to confirm that the dataset was deleted
+        name : str
+            The name of the dataset to be deleted.
+        timeout : int
+            The number of seconds to wait in order to confirm that the dataset was deleted.
         """
         self._requests_delete_rel_host(f"datasets/{name}")
 
@@ -197,10 +244,10 @@ class Client:
 
         Parameters
         ----------
-        name
-            The name of the model to be deleted
-        timeout
-            The number of seconds to wait in order to confirm that the model was deleted
+        name : str
+            The name of the model to be deleted.
+        timeout : int
+            The number of seconds to wait in order to confirm that the model was deleted.
         """
         self._requests_delete_rel_host(f"models/{name}")
 
@@ -219,6 +266,19 @@ class Client:
         self,
         dataset_name: str,
     ) -> State:
+        """
+        Get the state of a given dataset.
+
+        Parameters
+        ----------
+        dataset_name : str
+            The name of the dataset we want to fetch the state of.
+
+        Returns
+        ------
+        State
+            The state of the `Dataset`.
+        """
         try:
             resp = self._requests_get_rel_host(
                 f"datasets/{dataset_name}/status"
@@ -232,12 +292,40 @@ class Client:
         self,
         job_id: int,
     ) -> State:
+        """
+        Get the state of a given job ID.
+
+        Parameters
+        ----------
+        job_id : int
+            The job id of the evaluation that we want to fetch the state of.
+
+        Returns
+        ------
+        State
+            The state of the `Evaluation`.
+        """
         return self._requests_get_rel_host(
             f"evaluations/{job_id}/status"
         ).json()
 
 
 class Evaluation:
+    """
+    An object for storing the returned results of a model evaluation (where groundtruths are compared with predictions to measure performance).
+
+    Parameters
+    ----------
+    client : Client
+        The `Client` object associated with your session.
+    job_id : int
+        The ID of your evaluation job.
+    dataset : str
+        The name of your dataset.
+    model : str
+        The name of your model.
+    """
+
     def __init__(
         self,
         client: Client,
@@ -263,18 +351,42 @@ class Evaluation:
     def id(
         self,
     ) -> int:
+        """
+        The ID of your evaluation job.
+
+        Returns
+        ----------
+        int:
+            The evaluation id.
+        """
         return self._id
 
     @property
     def settings(
         self,
     ) -> schemas.EvaluationJob:
+        """
+        The settings associated with your evaluation job.
+
+        Returns
+        ----------
+        schemas.EvaluationJob
+            An `EvaluationJob` object describing the evaluation's configuration.
+        """
         return self._settings
 
     @property
     def status(
         self,
     ) -> str:
+        """
+        The status of your evaluation job.
+
+        Returns
+        ----------
+        str
+            A status (e.g., "done").
+        """
         resp = self._client._requests_get_rel_host(
             f"evaluations/{self._id}/status"
         ).json()
@@ -284,18 +396,52 @@ class Evaluation:
     def task_type(
         self,
     ) -> enums.TaskType:
+        """
+        The task type of your evaluation job.
+
+        Returns
+        ----------
+        enums.TaskType
+            The task type associated with your `Evaluation` object.
+        """
         return self._settings.task_type
 
     @property
     def results(
         self,
     ) -> schemas.EvaluationResult:
+        """
+        The results of your evaluation job.
+
+        Returns
+        ----------
+        schemas.EvaluationResult
+            The results from your evaluation.
+        """
         result = self._client._requests_get_rel_host(
             f"evaluations/{self._id}"
         ).json()
         return schemas.EvaluationResult(**result)
 
-    def wait_for_completion(self, *, interval=1.0, timeout=None):
+    def wait_for_completion(
+        self, *, interval: float = 1.0, timeout: int = None
+    ):
+        """
+        Runs timeout logic to check when an evaluation is completed.
+
+        Parameters
+        ----------
+        interval : float
+            The number of seconds to waits between retries
+        timeout : int
+            The total number of seconds to wait for the job to finish.
+
+
+        Raises
+        ----------
+        TimeoutError
+            If the job's status doesn't change to DONE or FAILED before the timeout expires
+        """
         if timeout:
             timeout_counter = int(math.ceil(timeout / interval))
         while self.status not in [JobStatus.DONE, JobStatus.FAILED]:
