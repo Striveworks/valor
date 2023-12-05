@@ -59,6 +59,23 @@ def get_db():
 def create_groundtruths(
     gt: schemas.GroundTruth, db: Session = Depends(get_db)
 ):
+    """
+    Create a groundtruth in the database.
+
+    Parameters
+    ----------
+    gt : schemas.GroundTruth
+        The groundtruth to add to the database.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset or datum doesn't exist.
+    HTTPException (409)
+        If the dataset has been finalized, or if the datum already exists.
+    """
     try:
         crud.create_groundtruth(db=db, groundtruth=gt)
     except (
@@ -82,6 +99,28 @@ def create_groundtruths(
 def get_groundtruth(
     dataset_name: str, uid: str, db: Session = Depends(get_db)
 ) -> schemas.GroundTruth | None:
+    """
+    Fetch a groundtruth from the database.
+
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset to fetch the groundtruth from.
+    uid : str
+        The UID of the groundtruth.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    schemas.GroundTruth
+        Thee groundtruth requested by the user.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset or datum does not exist.
+    """
     try:
         return crud.get_groundtruth(
             db=db,
@@ -108,6 +147,23 @@ def create_predictions(
     pd: schemas.Prediction,
     db: Session = Depends(get_db),
 ):
+    """
+    Create a prediction in the database.
+
+    Parameters
+    ----------
+    pd : schemas.Prediction
+        The prediction to add to the database.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset, model, or datum doesn't exist.
+    HTTPException (409)
+        If the model has been finalized, or if the dataset has not been finalized.
+    """
     try:
         crud.create_prediction(db=db, prediction=pd)
     except (
@@ -132,6 +188,30 @@ def create_predictions(
 def get_prediction(
     model_name: str, dataset_name: str, uid: str, db: Session = Depends(get_db)
 ) -> schemas.Prediction | None:
+    """
+    Fetch a prediction from the database.
+
+    Parameters
+    ----------
+    model_name : str
+        The name of the model associated with the prediction.
+    dataset_name : str
+        The name of the dataset associated with the prediction.
+    uid : str
+        The UID associated with the prediction.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    schemas.Prediction
+        The requested prediction.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset or datum doesn't exist.
+    """
     try:
         return crud.get_prediction(
             db=db,
@@ -156,6 +236,19 @@ def get_prediction(
     tags=["Labels"],
 )
 def get_all_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
+    """
+    Fetch all labels in the database.
+
+    Parameters
+    ----------
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    List[schemas.Label]
+        A list of all labels in the database.
+    """
     return crud.get_all_labels(db=db)
 
 
@@ -168,6 +261,26 @@ def get_all_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
 def get_labels_from_dataset(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
+    """
+    Fetch all labels for a particular dataset from the database.
+
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    List[schemas.Label]
+        A list of all labels associated with the dataset in the database.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset doesn't exist.
+    """
     try:
         return crud.get_dataset_labels(
             db=db,
@@ -188,6 +301,26 @@ def get_labels_from_dataset(
 def get_labels_from_model(
     model_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Label]:
+    """
+    Fetch all labels for a particular model from the database.
+
+    Parameters
+    ----------
+    model_name : str
+        The name of the model.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    List[schemas.Label]
+        A list of all labels associated with the model in the database.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the model doesn't exist.
+    """
     try:
         return crud.get_model_labels(
             db=db,
@@ -209,6 +342,21 @@ def get_labels_from_model(
     tags=["Datasets"],
 )
 def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
+    """
+    Create a dataset in the database.
+
+    Parameters
+    ----------
+    dataset : schemas.Dataset
+        The dataset to add to the database.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Raises
+    ------
+    HTTPException (409)
+        If the dataset already exists.
+    """
     try:
         crud.create_dataset(db=db, dataset=dataset)
     except (exceptions.DatasetAlreadyExistsError,) as e:
@@ -222,6 +370,19 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     tags=["Datasets"],
 )
 def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
+    """
+    Fetch all datasets from the database.
+
+    Parameters
+    ----------
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    List[schemas.Dataset]
+        A list of all datasets stored in the database.
+    """
     return crud.get_datasets(db=db)
 
 
@@ -233,6 +394,26 @@ def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
 def get_dataset(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> schemas.Dataset:
+    """
+    Fetch a particular dataset from the database.
+
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    schemas.Dataset
+        The requested dataset.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset doesn't exist.
+    """
     try:
         return crud.get_dataset(db=db, dataset_name=dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
@@ -247,6 +428,26 @@ def get_dataset(
 def get_dataset_status(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> enums.State:
+    """
+    Fetch the status of a dataset.
+
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    enums.State
+        The requested state.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset doesn't exist.
+    """
     try:
         resp = crud.get_backend_state(dataset_name=dataset_name)
         return resp
@@ -261,6 +462,24 @@ def get_dataset_status(
     tags=["Datasets"],
 )
 def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
+    """
+    Finalizes a dataset for evaluation.
+
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Raises
+    ------
+    HTTPException (409)
+        If the dataset is empty.
+    HTTPException (404)
+        If the dataset doesn't exist.
+
+    """
     try:
         crud.finalize(db=db, dataset_name=dataset_name)
     except exceptions.DatasetIsEmptyError as e:
@@ -279,6 +498,25 @@ def delete_dataset(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
+    """
+    Delete a dataset from the database.
+
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset.
+    background_tasks: BackgroundTasks
+        A FastAPI `BackgroundTasks` object to process the deletion asyncronously. This parameter is a FastAPI dependency and shouldn't be submitted by the user.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset doesn't exist.
+    HTTPException (409)
+        If the dataset isn't in the correct state to be deleted.
+    """
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
         background_tasks.add_task(
@@ -304,6 +542,26 @@ def delete_dataset(
 def get_datums(
     dataset_name: str, db: Session = Depends(get_db)
 ) -> list[schemas.Datum]:
+    """
+    Fetch all datums for a particular dataset.
+
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    List[schemas.Datum]
+        A list of datums.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset or datum doesn't exist.
+    """
     try:
         return crud.get_datums(
             db=db,
@@ -327,6 +585,28 @@ def get_datums(
 def get_datum(
     dataset_name: str, uid: str, db: Session = Depends(get_db)
 ) -> schemas.Datum | None:
+    """
+    Fetch a particular datum.
+
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset.
+    uid : str
+        The UID of the datum.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    schemas.Datum
+        The requested datum.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset or datum doesn't exist.
+    """
     try:
         return crud.get_datum(
             db=db,
@@ -350,8 +630,30 @@ def get_datum(
     tags=["Models"],
 )
 def create_model(model: schemas.Model, db: Session = Depends(get_db)):
+    """
+    Create a model in the database.
+
+    Parameters
+    ----------
+    model : schemas.Model
+        The model to add to the database.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset or datum doesn't exist.
+    HTTPException (409)
+        If the dataset has been finalized, or if the datum already exists.
+    """
     try:
         crud.create_model(db=db, model=model)
+    except (
+        exceptions.DatumDoesNotExistError,
+        exceptions.DatasetDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except (exceptions.ModelAlreadyExistsError,) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -363,6 +665,19 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     tags=["Models"],
 )
 def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
+    """
+    Fetch all models in the database.
+
+    Parameters
+    ----------
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    List[schemas.Model]
+        A list of models.
+    """
     return crud.get_models(db=db)
 
 
@@ -372,6 +687,26 @@ def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
     tags=["Models"],
 )
 def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
+    """
+    Fetch a particular model.
+
+    Parameters
+    ----------
+    model_name : str
+        The name of the model.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    schemas.Model
+        The requested model.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the model datum doesn't exist.
+    """
     try:
         return crud.get_model(db=db, model_name=model_name)
     except exceptions.ModelDoesNotExistError as e:
@@ -387,6 +722,26 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 def finalize_inferences(
     dataset_name: str, model_name: str, db: Session = Depends(get_db)
 ):
+    """
+    Finalize a model prior to evaluation.
+
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset.
+    model_name : str
+        The name of the model.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+
+    Raises
+    ------
+    HTTPException (400)
+        If the dataset or model are empty.
+    HTTPException (404)
+        If the dataset or model do not exist.
+    """
     try:
         crud.finalize(
             db=db,
@@ -411,6 +766,23 @@ def finalize_inferences(
     tags=["Models"],
 )
 def delete_model(model_name: str, db: Session = Depends(get_db)):
+    """
+    Delete a model from the database.
+
+    Parameters
+    ----------
+    model_name : str
+        The name of the model.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the model doesn't exist.
+    HTTPException (409)
+        If the model isn't in the correct state to be deleted.
+    """
     try:
         crud.delete(db=db, model_name=model_name)
     except exceptions.ModelDoesNotExistError as e:
@@ -432,7 +804,37 @@ def create_evaluation(
     job_request: schemas.EvaluationJob,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-) -> schemas.CreateClfMetricsResponse | schemas.CreateAPMetricsResponse | schemas.CreateSemanticSegmentationMetricsResponse:
+) -> (
+    schemas.CreateClfMetricsResponse
+    | schemas.CreateAPMetricsResponse
+    | schemas.CreateSemanticSegmentationMetricsResponse
+):
+    """
+    Create a new evaluation.
+
+    Parameters
+    ----------
+    job_request: schemas.EvaluationJob
+        The job request for the evaluation.
+    background_tasks: BackgroundTasks
+        A FastAPI `BackgroundTasks` object to process the creation asyncronously. This parameter is a FastAPI dependency and shouldn't be submitted by the user.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    schemas.CreateClfMetricsResponse | schemas.CreateAPMetricsResponse | schemas.CreateSemanticSegmentationMetricsResponse
+        An evaluation response object.
+
+    Raises
+    ------
+    HTTPException (400)
+        If the task type of the evaluation job doesn't exist, or if another ValueError is thrown.
+    HTTPException (405)
+        If the dataset or model hasn't been finalized.
+    HTTPException (409)
+        If there is a state exception when creating the evaluation.
+    """
     try:
         # create evaluation
         # add metric computation to background tasks
@@ -492,16 +894,30 @@ def get_bulk_evaluations(
     db: Session = Depends(get_db),
 ) -> list[schemas.Evaluation]:
     """
-    Returns all metrics associated with user-supplied dataset and model names. Users
+    Fetch all metrics associated with user-supplied dataset and model names. Users
     may query using model names, dataset names, or both. All metrics for all specified
     models and datasets will be returned in a list of Evaluations.
 
     Parameters
     ----------
-    datasets
+    datasets : str
         An optional set of dataset names to return metrics for
-    models
+    models : str
         An optional set of model names to return metrics for
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    List[schemas.Evaluation]
+        A list of evaluations.
+
+    Raises
+    ------
+    HTTPException (400)
+        If a ValueError is thrown.
+    HTTPException (404)
+        If the dataset or model doesn't exist.
     """
     model_names = _split_query_params(models)
     dataset_names = _split_query_params(datasets)
@@ -528,7 +944,19 @@ def get_bulk_evaluations(
 def get_evaluation_jobs_for_dataset(
     dataset_name: str,
 ) -> dict[str, list[int]]:
-    """Returns all of the job ids for a given dataset."""
+    """
+    Fetch all evaluation job IDs for a particular dataset.
+
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset.
+
+    Returns
+    -------
+    dict
+        A dictionary of evaluation jobs for the dataset.
+    """
     return crud.get_evaluation_ids_for_dataset(dataset_name=dataset_name)
 
 
@@ -541,7 +969,19 @@ def get_evaluation_jobs_for_dataset(
 def get_evaluation_jobs_for_model(
     model_name: str,
 ) -> dict[str, list[int]]:
-    """Returns all of the job ids for a given model."""
+    """
+    Fetch all evaluation job IDs for a particular model.
+
+    Parameters
+    ----------
+    model_name : str
+        The name of the model.
+
+    Returns
+    -------
+    dict
+        A dictionary of evaluation jobs for the model.
+    """
     return crud.get_evaluation_ids_for_model(model_name=model_name)
 
 
@@ -555,6 +995,27 @@ def get_evaluation(
     job_id: int,
     db: Session = Depends(get_db),
 ) -> schemas.Evaluation:
+    """
+    Fetch a particular evaluation by its job ID.
+
+    Parameters
+    ----------
+    job_id : int
+        The job ID to fetch the evaluation for.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    schemas.Evaluation
+        The requested evaluation.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the job doesn't have the correct state.
+        If the job ID does not exist
+    """
     try:
         status = crud.get_evaluation_status(
             job_id=job_id,
@@ -583,6 +1044,24 @@ def get_evaluation(
     tags=["Evaluations"],
 )
 def get_evaluation_status(job_id: int) -> enums.JobStatus:
+    """
+    Get the status of an evaluation.
+
+    Parameters
+    ----------
+    job_id: int
+        The job ID to fetch the status of.
+
+    Returns
+    -------
+    enums.JobStatus
+        The status of the job.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the job doesn't exist.
+    """
     try:
         return crud.get_evaluation_status(
             job_id=job_id,
@@ -601,6 +1080,26 @@ def get_evaluation_job(
     job_id: int,
     db: Session = Depends(get_db),
 ) -> schemas.EvaluationJob:
+    """
+    Fetch an evaluation job.
+
+    Parameters
+    ----------
+    job_id : int
+        The job ID to fetch the evaluation for.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    schemas.EvaluationJob
+        The requested EvaluationJob.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the job doesn't exist.
+    """
     try:
         if job := crud.get_evaluation_jobs(db=db, job_ids=[job_id]):
             return job[0]
@@ -620,5 +1119,18 @@ def get_evaluation_job(
 def user(
     token: HTTPAuthorizationCredentials | None = Depends(token_auth_scheme),
 ) -> schemas.User:
+    """
+    Verify a user.
+
+    Parameters
+    ----------
+    token: HTTPAuthorizationCredentials
+        The auth token for the user.
+
+    Returns
+    -------
+    schemas.User
+        A response object containing information about the user.
+    """
     token_payload = auth.verify_token(token)
     return schemas.User(email=token_payload.get("email"))
