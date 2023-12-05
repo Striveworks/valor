@@ -3,11 +3,11 @@ from dataclasses import dataclass
 import pytest
 
 from velour import enums
-from velour.integrations.chariot.datasets import (
+from integration_utils.chariot.datasets import (
     _parse_groundtruth_from_evaluation_manifest,
     _retrieve_dataset_version,
 )
-from velour.integrations.chariot.models import (
+from integration_utils.chariot.models import (
     _parse_chariot_detect_image_object_detection,
     _parse_chariot_predict_image_classification,
     _parse_chariot_predict_proba_image_classification,
@@ -15,7 +15,7 @@ from velour.integrations.chariot.models import (
 from velour.metatypes import ImageMetadata
 from velour.schemas import BoundingBox, Point
 
-chariot_integration = pytest.importorskip("velour.integrations.chariot")
+chariot_integration = pytest.importorskip("integration_utils.chariot")
 
 
 @pytest.fixture

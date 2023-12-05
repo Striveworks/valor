@@ -412,7 +412,6 @@ def _get_disjoint_label_sets(
     groundtruth_filter: schemas.Filter,
     prediction_filters: schemas.Filter,
 ) -> tuple:
-
     # get disjoint label sets
     groundtruth_labels = query.get_groundtruth_labels(db, groundtruth_filter)
     prediction_labels = query.get_prediction_labels(db, prediction_filters)
@@ -440,13 +439,6 @@ def create_detection_evaluation(
     # validate parameters
     if not job_request.settings.parameters:
         job_request.settings.parameters = schemas.DetectionParameters()
-    else:
-        if not isinstance(
-            job_request.settings.parameters, schemas.DetectionParameters
-        ):
-            raise TypeError(
-                "expected evaluation settings to have parameters of type `DetectionParameters` for task type `DETECTION`"
-            )
 
     # validate filters
     if not job_request.settings.filters:
