@@ -10,6 +10,24 @@ from velour.schemas.metadata import validate_metadata
 
 
 class Label:
+    """
+    An object for labeling datasets, models, and annotations.
+
+    Parameters
+    ----------
+    key : str
+        A key for the `Label`.
+    value : str
+        A value for the `Label`.
+    score : float
+        The score associated with the `Label` (where applicable).
+
+    Attributes
+    ----------
+    id : int
+        A unique ID for the `Label`.
+    """
+
     id = DeclarativeMapper("label_ids", int)
     key = DeclarativeMapper("label_keys", str)
     label = DeclarativeMapper("labels", str)
@@ -21,6 +39,9 @@ class Label:
         self._validate()
 
     def _validate(self):
+        """
+        Validate the inputs of the `Label`.
+        """
         if not isinstance(self.key, str):
             raise TypeError("key should be of type `str`")
         if not isinstance(self.value, str):
@@ -31,9 +52,30 @@ class Label:
             raise TypeError("score should be of type `float`")
 
     def tuple(self) -> Tuple[str, str, Union[float, None]]:
+        """
+        Defines how the `Label` is turned into a tuple.
+
+        Returns
+        ----------
+        tuple
+            A tuple of the `Label's` arguments.
+        """
         return (self.key, self.value, self.score)
 
     def __eq__(self, other):
+        """
+        Defines how `Labels` are compared to one another
+
+        Parameters
+        ----------
+        other : any
+            The object to compare with the `Label`.
+
+        Returns
+        ----------
+        boolean
+            A boolean describing whether the two objects are equal.
+        """
         if (
             not hasattr(other, "key")
             or not hasattr(other, "key")
@@ -59,6 +101,14 @@ class Label:
         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
 
     def dict(self) -> dict:
+        """
+        Defines how a `Label` is transformed into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `Label's` attributes.
+        """
         return {
             "key": self.key,
             "value": self.value,
@@ -67,6 +117,21 @@ class Label:
 
 
 class Datum:
+    """
+    A class used to store datum about `GroundTruths` and `Predictions`.
+
+    Parameters
+    ----------
+    uid : str
+        The UID of the `Datum`.
+    metadata : dict
+        A dictionary of metadata that describes the `Datum`.
+    geospatial :  dict
+        A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
+    dataset : str
+        The name of the dataset to associate the `Datum` with.
+    """
+
     uid = DeclarativeMapper("datum_uids", str)
     metadata = DeclarativeMapper("datum_metadata", Union[int, float, str])
     geospatial = DeclarativeMapper(
@@ -101,6 +166,9 @@ class Datum:
         self._validate()
 
     def _validate(self):
+        """
+        Validates the parameters used to create a `Datum` object.
+        """
         if not isinstance(self.dataset, str):
             raise SchemaTypeError("dataset", str, self.dataset)
         if not isinstance(self.uid, str):
@@ -108,6 +176,14 @@ class Datum:
         validate_metadata(self.metadata)
 
     def dict(self) -> dict:
+        """
+        Defines how a `Datum` object is transformed into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `Datum's` attributes.
+        """
         return {
             "dataset": self.dataset,
             "uid": self.uid,
@@ -116,12 +192,53 @@ class Datum:
         }
 
     def __eq__(self, other):
+        """
+        Defines how `Datums` are compared to one another
+
+        Parameters
+        ----------
+        other : any
+            The object to compare with the `Datum`.
+
+        Returns
+        ----------
+        boolean
+            A boolean describing whether the two objects are equal.
+        """
         if not isinstance(other, Datum):
             raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
         return self.dict() == other.dict()
 
 
 class Annotation:
+    """
+    A class used to annotate `GroundTruths` and `Predictions`.
+
+    Parameters
+    ----------
+    task_type: TaskType
+        The task type associated with the `Annotation`.
+    labels: List[Label]
+        A list of labels to use for the `Annotation`.
+    metadata: Dict[str, Union[int, float, str]]
+        A dictionary of metadata that describes the `Annotation`.
+    bounding_box: BoundingBox
+        A bounding box to assign to the `Annotation`.
+    polygon: Polygon
+        A polygon to assign to the `Annotation`.
+    multipolygon: MultiPolygon
+        A multipolygon to assign to the `Annotation`.
+    raster: Raster
+        A raster to assign to the `Annotation`.
+    jsonb: Dict
+        A jsonb to assign to the `Annotation`.
+
+    Attributes
+    ----------
+    geometric_area : float
+        The area of the annotation.
+    """
+
     task = DeclarativeMapper("task_types", TaskType)
     type = DeclarativeMapper("annotation_types", AnnotationType)
     geometric_area = DeclarativeMapper("annotation_geometric_area", float)
@@ -158,6 +275,10 @@ class Annotation:
         self._validate()
 
     def _validate(self):
+        """
+        Validates the parameters used to create a `Annotation` object.
+        """
+
         # task_type
         if not isinstance(self.task_type, TaskType):
             self.task_type = TaskType(self.task_type)
@@ -201,6 +322,14 @@ class Annotation:
         validate_metadata(self.metadata)
 
     def dict(self) -> dict:
+        """
+        Defines how a `Annotation` object is transformed into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `Annotation's` attributes.
+        """
         return {
             "task_type": self.task_type.value,
             "labels": [label.dict() for label in self.labels],
@@ -217,6 +346,19 @@ class Annotation:
         }
 
     def __eq__(self, other):
+        """
+        Defines how `Annotations` are compared to one another
+
+        Parameters
+        ----------
+        other : any
+            The object to compare with the `Annotation`.
+
+        Returns
+        ----------
+        boolean
+            A boolean describing whether the two objects are equal.
+        """
         if not isinstance(other, Annotation):
             raise TypeError(
                 f"Expected type `{type(Annotation)}`, got `{other}`"
@@ -225,6 +367,17 @@ class Annotation:
 
 
 class GroundTruth:
+    """
+    An object describing a groundtruth (e.g., a human-drawn bounding box on an image).
+
+    Parameters
+    ----------
+    datum : Datum
+        The `Datum` associated with the `GroundTruth`.
+    annotations : List[Annotation]
+        The list of `Annotations` associated with the `GroundTruth`.
+    """
+
     def __init__(
         self,
         datum: Datum,
@@ -235,6 +388,9 @@ class GroundTruth:
         self._validate()
 
     def _validate(self):
+        """
+        Validate the inputs of the `GroundTruth`.
+        """
         # validate datum
         if isinstance(self.datum, dict):
             self.datum = Datum(**self.datum)
@@ -255,6 +411,14 @@ class GroundTruth:
                 )
 
     def dict(self) -> dict:
+        """
+        Defines how a `GroundTruth` is transformed into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `GroundTruth's` attributes.
+        """
         return {
             "datum": self.datum.dict(),
             "annotations": [
@@ -263,6 +427,19 @@ class GroundTruth:
         }
 
     def __eq__(self, other):
+        """
+        Defines how `GroundTruths` are compared to one another
+
+        Parameters
+        ----------
+        other : any
+            The object to compare with the `GroundTruth`.
+
+        Returns
+        ----------
+        boolean
+            A boolean describing whether the two objects are equal.
+        """
         if not isinstance(other, GroundTruth):
             raise TypeError(
                 f"Expected type `{type(GroundTruth)}`, got `{other}`"
@@ -271,6 +448,24 @@ class GroundTruth:
 
 
 class Prediction:
+    """
+    An object describing a prediction (e.g., a machine-drawn bounding box on an image).
+
+    Parameters
+    ----------
+    datum : Datum
+        The `Datum` associated with the `Prediction`.
+    annotations : List[Annotation]
+        The list of `Annotations` associated with the `Prediction`.
+    model : str
+        The name of the model that produced the `Prediction`.
+
+    Attributes
+    ----------
+    score : Union[float, int]
+        The score assigned to the `Prediction`.
+    """
+
     score = DeclarativeMapper("prediction_scores", Union[int, float])
 
     def __init__(
@@ -285,6 +480,9 @@ class Prediction:
         self._validate()
 
     def _validate(self):
+        """
+        Validate the inputs of the `Prediction`.
+        """
         # validate datum
         if isinstance(self.datum, dict):
             self.datum = Datum(**self.datum)
@@ -335,6 +533,14 @@ class Prediction:
                         )
 
     def dict(self) -> dict:
+        """
+        Defines how a `Prediction` is transformed into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `Prediction's` attributes.
+        """
         return {
             "datum": self.datum.dict(),
             "model": self.model,
@@ -344,6 +550,19 @@ class Prediction:
         }
 
     def __eq__(self, other):
+        """
+        Defines how `Predictions` are compared to one another
+
+        Parameters
+        ----------
+        other : any
+            The object to compare with the `Prediction`.
+
+        Returns
+        ----------
+        boolean
+            A boolean describing whether the two objects are equal.
+        """
         if not isinstance(other, Prediction):
             raise TypeError(
                 f"Expected type `{type(Prediction)}`, got `{other}`"

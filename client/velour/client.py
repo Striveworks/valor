@@ -25,7 +25,7 @@ class Client:
     """
     Client for interacting with the velour backend.
 
-    Attributes
+    Parameters
     ----------
     host : str
         The host to connect to. Should start with "http://" or "https://".
@@ -132,9 +132,9 @@ class Client:
         Parameters
         ----------
         models : Union[str, List[str], None]
-            A list of dataset names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
-        datasets : Union[str, List[str], None]
             A list of model names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
+        datasets : Union[str, List[str], None]
+            A list of dataset names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
 
         Returns
         -------
@@ -216,7 +216,7 @@ class Client:
 
     def delete_dataset(self, name: str, timeout: int = 0) -> None:
         """
-        Delete a dataset using FastAPI's BackgroundProcess
+        Delete a dataset using FastAPI's `BackgroundProcess`.
 
         Parameters
         ----------
@@ -240,7 +240,7 @@ class Client:
 
     def delete_model(self, name: str, timeout: int = 0) -> None:
         """
-        Delete a model using FastAPI's BackgroundProcess
+        Delete a model using FastAPI's `BackgroundProcess`.
 
         Parameters
         ----------
@@ -314,7 +314,7 @@ class Evaluation:
     """
     An object for storing the returned results of a model evaluation (where groundtruths are compared with predictions to measure performance).
 
-    Attributes
+    Parameters
     ----------
     client : Client
         The `Client` object associated with the session.
@@ -432,7 +432,7 @@ class Evaluation:
         Parameters
         ----------
         interval : float
-            The number of seconds to waits between retries
+            The number of seconds to waits between retries.
         timeout : int
             The total number of seconds to wait for the job to finish.
 
@@ -456,7 +456,7 @@ class Dataset:
     """
     A class describing a given dataset.
 
-    Attributes
+    Parameters
     ----------
     client : Client
         The `Client` object associated with the session.
@@ -524,7 +524,7 @@ class Dataset:
         Returns
         ----------
         Dataset
-           The newly-created `Dataset`.
+            The newly-created `Dataset`.
         """
         dataset = cls()
         dataset.client = client
@@ -604,8 +604,8 @@ class Dataset:
 
         Parameters
         ----------
-        groundtruth : Groundtruth
-            The `Groundtruth` object to add to the `Dataset`.
+        groundtruth : GroundTruth
+            The `GroundTruth` object to add to the `Dataset`.
         """
         if not isinstance(groundtruth, GroundTruth):
             raise TypeError(f"Invalid type `{type(groundtruth)}`")
@@ -629,13 +629,13 @@ class Dataset:
         Parameters
         ----------
         uid : str
-            The UID of the groundtruth to fetch.
+            The UID of the 'GroundTruth' to fetch.
 
 
         Returns
         ----------
-        Groundtruth
-            The requested `Groundtruth`.
+        GroundTruth
+            The requested `GroundTruth`.
         """
         resp = self.client._requests_get_rel_host(
             f"groundtruths/dataset/{self.name}/datum/{uid}"
@@ -723,7 +723,7 @@ class Dataset:
         self,
     ):
         """
-        Finalize the `Dataset` object such that new groundtruths cannot be added to it.
+        Finalize the `Dataset` object such that new `GroundTruths` cannot be added to it.
         """
         return self.client._requests_put_rel_host(
             f"datasets/{self.name}/finalize"
@@ -743,7 +743,7 @@ class Model:
     """
     A class describing a model that was trained on a particular dataset.
 
-    Attributes
+    Parameters
     ----------
     client : Client
         The `Client` object associated with the session.
@@ -911,7 +911,7 @@ class Model:
 
     def finalize_inferences(self, dataset: "Dataset") -> None:
         """
-        Finalize the `Model` object such that new predictions cannot be added to it.
+        Finalize the `Model` object such that new `Predictions` cannot be added to it.
         """
         return self.client._requests_put_rel_host(
             f"models/{self.name}/datasets/{dataset.name}/finalize"
@@ -986,7 +986,7 @@ class Model:
         ----------
         dataset : Dataset
             The dataset to evaluate against.
-        iou_threshold_to_compute : List[float]
+        iou_thresholds_to_compute : List[float]
             Thresholds to compute mAP against.
         iou_thresholds_to_keep : List[float]
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
@@ -1122,7 +1122,7 @@ class Model:
         Parameters
         ----------
         datum : Datum
-            The `Datum` of the predictino you want to return
+            The `Datum` of the prediction to return.
 
         Returns
         ----------
@@ -1182,12 +1182,12 @@ class Model:
         self,
     ) -> dict:
         """
-        Get all metrics associated with a Model and return them in a `spd.DataFrame`.
+        Get all metrics associated with a Model and return them in a `pd.DataFrame`.
 
         Returns
         ----------
         dict
-            A dictionary of the `Model's` metrics and settings.
+            A dictionary of the `Model's` metrics and settings, with the metrics being displayed in a `pd.DataFrame`.
         """
         try:
             import pandas as pd
