@@ -10,7 +10,7 @@ try:
 except importlib_metadata.PackageNotFoundError:
     __version__ = ""
 
-from .client import Dataset, Evaluation, Model
+from .client import Dataset, Evaluation, Model, Client, ClientException
 from .coretypes import Annotation, Datum, GroundTruth, Label, Prediction
 
 __all__ = [
