@@ -25,7 +25,7 @@ class Client:
     """
     Client for interacting with the velour backend.
 
-    Parameters
+    Attributes
     ----------
     host : str
         The host to connect to. Should start with "http://" or "https://".
@@ -314,16 +314,16 @@ class Evaluation:
     """
     An object for storing the returned results of a model evaluation (where groundtruths are compared with predictions to measure performance).
 
-    Parameters
+    Attributes
     ----------
     client : Client
-        The `Client` object associated with your session.
+        The `Client` object associated with the session.
     job_id : int
-        The ID of your evaluation job.
+        The ID of the evaluation job.
     dataset : str
-        The name of your dataset.
+        The name of the dataset.
     model : str
-        The name of your model.
+        The name of the model.
     """
 
     def __init__(
@@ -352,7 +352,7 @@ class Evaluation:
         self,
     ) -> int:
         """
-        The ID of your evaluation job.
+        The ID of the evaluation job.
 
         Returns
         ----------
@@ -366,7 +366,7 @@ class Evaluation:
         self,
     ) -> schemas.EvaluationJob:
         """
-        The settings associated with your evaluation job.
+        The settings associated with the evaluation job.
 
         Returns
         ----------
@@ -380,7 +380,7 @@ class Evaluation:
         self,
     ) -> str:
         """
-        The status of your evaluation job.
+        The status of the evaluation job.
 
         Returns
         ----------
@@ -397,12 +397,12 @@ class Evaluation:
         self,
     ) -> enums.TaskType:
         """
-        The task type of your evaluation job.
+        The task type of the evaluation job.
 
         Returns
         ----------
         enums.TaskType
-            The task type associated with your `Evaluation` object.
+            The task type associated with the `Evaluation` object.
         """
         return self._settings.task_type
 
@@ -411,12 +411,12 @@ class Evaluation:
         self,
     ) -> schemas.EvaluationResult:
         """
-        The results of your evaluation job.
+        The results of the evaluation job.
 
         Returns
         ----------
         schemas.EvaluationResult
-            The results from your evaluation.
+            The results from the evaluation.
         """
         result = self._client._requests_get_rel_host(
             f"evaluations/{self._id}"
@@ -453,6 +453,23 @@ class Evaluation:
 
 
 class Dataset:
+    """
+    A class describing a given dataset.
+
+    Attributes
+    ----------
+    client : Client
+        The `Client` object associated with the session.
+    id : int
+        The ID of the dataset.
+    name : str
+        The name of the dataset.
+    metadata : dict
+        A dictionary of metadata that describes the dataset.
+    geospatial :  dict
+        A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
+    """
+
     name = DeclarativeMapper("dataset_names", str)
     metadata = DeclarativeMapper("dataset_metadata", Union[int, float, str])
     geospatial = DeclarativeMapper(
@@ -489,6 +506,26 @@ class Dataset:
         ] = None,
         id: Union[int, None] = None,
     ):
+        """
+        Create a new `Dataset` object.
+
+        Parameters
+        ----------
+        client : Client
+            The `Client` object associated with the session.
+        name : str
+            The name of the dataset.
+        metadata : dict
+            A dictionary of metadata that describes the dataset.
+        geospatial :  dict
+            A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
+
+
+        Returns
+        ----------
+        Dataset
+           The newly-created `Dataset`.
+        """
         dataset = cls()
         dataset.client = client
         dataset.name = name
@@ -501,6 +538,22 @@ class Dataset:
 
     @classmethod
     def get(cls, client: Client, name: str):
+        """
+        Fetches a given dataset from the backend.
+
+        Parameters
+        ----------
+        client : Client
+            The `Client` object associated with the session.
+        name : str
+            The name of the dataset.
+
+
+        Returns
+        ----------
+        Dataset
+            The requested `Dataset`.
+        """
         resp = client._requests_get_rel_host(f"datasets/{name}").json()
         dataset = cls()
         dataset.client = client
@@ -512,6 +565,9 @@ class Dataset:
         return dataset
 
     def _validate(self):
+        """
+        Validates the arguments used to create a `Dataset` object.
+        """
         # validation
         if not isinstance(self.name, str):
             raise TypeError("`name` should be of type `str`")
@@ -524,6 +580,14 @@ class Dataset:
         validate_metadata(self.metadata)
 
     def dict(self) -> dict:
+        """
+        Defines how a `Dataset` object is transformed into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `Dataset's` attributes.
+        """
         return {
             "id": self.id,
             "name": self.name,
@@ -535,6 +599,14 @@ class Dataset:
         self,
         groundtruth: GroundTruth,
     ):
+        """
+        Add a groundtruth to a given dataset.
+
+        Parameters
+        ----------
+        groundtruth : Groundtruth
+            The `Groundtruth` object to add to the `Dataset`.
+        """
         if not isinstance(groundtruth, GroundTruth):
             raise TypeError(f"Invalid type `{type(groundtruth)}`")
 
@@ -551,6 +623,20 @@ class Dataset:
         )
 
     def get_groundtruth(self, uid: str) -> GroundTruth:
+        """
+        Fetches a given groundtruth from the backend.
+
+        Parameters
+        ----------
+        uid : str
+            The UID of the groundtruth to fetch.
+
+
+        Returns
+        ----------
+        Groundtruth
+            The requested `Groundtruth`.
+        """
         resp = self.client._requests_get_rel_host(
             f"groundtruths/dataset/{self.name}/datum/{uid}"
         ).json()
@@ -559,6 +645,14 @@ class Dataset:
     def get_labels(
         self,
     ) -> List[Label]:
+        """
+        Get all labels associated with a given dataset.
+
+        Returns
+        ----------
+        List[Label]
+            A list of `Labels` associated with the dataset.
+        """
         labels = self.client._requests_get_rel_host(
             f"labels/dataset/{self.name}"
         ).json()
@@ -570,7 +664,14 @@ class Dataset:
     def get_datums(
         self,
     ) -> List[Datum]:
-        """Returns a list of datums."""
+        """
+        Get all datums associated with a given dataset.
+
+        Returns
+        ----------
+        List[Datum]
+            A list of `Datums` associated with the dataset.
+        """
         datums = self.client._requests_get_rel_host(
             f"data/dataset/{self.name}"
         ).json()
@@ -579,7 +680,14 @@ class Dataset:
     def get_images(
         self,
     ) -> List[ImageMetadata]:
-        """Returns a list of Image Metadata if it exists, otherwise raises Dataset contains no images."""
+        """
+        Get all image metadata associated with a given dataset.
+
+        Returns
+        ----------
+        List[ImageMetadata]
+            A list of `ImageMetadata` associated with the dataset.
+        """
         return [
             ImageMetadata.from_datum(datum)
             for datum in self.get_datums()
@@ -589,6 +697,14 @@ class Dataset:
     def get_evaluations(
         self,
     ) -> List[Evaluation]:
+        """
+        Get all evaluations associated with a given dataset.
+
+        Returns
+        ----------
+        List[Evaluation]
+            A list of `Evaluations` associated with the dataset.
+        """
         model_evaluations = self.client._requests_get_rel_host(
             f"evaluations/dataset/{self.name}"
         ).json()
@@ -606,6 +722,9 @@ class Dataset:
     def finalize(
         self,
     ):
+        """
+        Finalize the `Dataset` object such that new groundtruths cannot be added to it.
+        """
         return self.client._requests_put_rel_host(
             f"datasets/{self.name}/finalize"
         )
@@ -613,11 +732,31 @@ class Dataset:
     def delete(
         self,
     ):
+        """
+        Delete the `Dataset` object from the backend.
+        """
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
         del self
 
 
 class Model:
+    """
+    A class describing a model that was trained on a particular dataset.
+
+    Attributes
+    ----------
+    client : Client
+        The `Client` object associated with the session.
+    id : int
+        The ID of the model.
+    name : str
+        The name of the model.
+    metadata : dict
+        A dictionary of metadata that describes the model.
+    geospatial :  dict
+        A GeoJSON-style dictionary describing the geospatial coordinates of the model.
+    """
+
     name = DeclarativeMapper("models_names", str)
     metadata = DeclarativeMapper("models_metadata", Union[int, float, str])
     geospatial = DeclarativeMapper(
@@ -654,6 +793,28 @@ class Model:
         ] = None,
         id: Union[int, None] = None,
     ):
+        """
+        Create a new Model
+
+        Attributes
+        ----------
+        client : Client
+            The `Client` object associated with the session.
+        name : str
+            The name of the model.
+        metadata : dict
+            A dictionary of metadata that describes the model.
+        geospatial :  dict
+            A GeoJSON-style dictionary describing the geospatial coordinates of the model.
+        id : int
+            The ID of the model.
+
+
+        Returns
+        ----------
+        Model
+            The newly-created `Model` object.
+        """
         model = cls()
         model.client = client
         model.name = name
@@ -666,6 +827,22 @@ class Model:
 
     @classmethod
     def get(cls, client: Client, name: str):
+        """
+        Fetches a given model from the backend.
+
+        Parameters
+        ----------
+        client : Client
+            The `Client` object associated with the session.
+        name : str
+            The name of the model.
+
+
+        Returns
+        ----------
+        Model
+            The requested `Model`.
+        """
         resp = client._requests_get_rel_host(f"models/{name}").json()
         model = cls()
         model.client = client
@@ -677,6 +854,9 @@ class Model:
         return model
 
     def _validate(self):
+        """
+        Validates the arguments used to create a `Model` object.
+        """
         if not isinstance(self.name, str):
             raise TypeError("`name` should be of type `str`")
         if not isinstance(self.id, int) and self.id is not None:
@@ -688,6 +868,14 @@ class Model:
         validate_metadata(self.metadata)
 
     def dict(self) -> dict:
+        """
+        Defines how a `Model` object is transformed into a dictionary.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `Model's` attributes.
+        """
         return {
             "id": self.id,
             "name": self.name,
@@ -696,6 +884,14 @@ class Model:
         }
 
     def add_prediction(self, prediction: Prediction):
+        """
+        Add a prediction to a given model.
+
+        Parameters
+        ----------
+        prediction : Prediction
+            The `Prediction` object to add to the `Model`.
+        """
         if not isinstance(prediction, Prediction):
             raise TypeError(
                 f"Expected `velour.Prediction`, got `{type(prediction)}`"
@@ -714,6 +910,9 @@ class Model:
         )
 
     def finalize_inferences(self, dataset: "Dataset") -> None:
+        """
+        Finalize the `Model` object such that new predictions cannot be added to it.
+        """
         return self.client._requests_put_rel_host(
             f"models/{self.name}/datasets/{dataset.name}/finalize"
         ).json()
@@ -729,18 +928,17 @@ class Model:
 
         Parameters
         ----------
-        dataset
+        dataset : Dataset
             The dataset to evaluate against.
-        filters
+        filters : Union[Dict, List[BinaryExpression]]
             Optional set of filters to constrain evaluation by.
-        timeout
+        timeout : int
             The number of seconds to wait for the job to finish. Used to ensure deterministic behavior when testing.
 
         Returns
         -------
         Evaluation
-            a job object that can be used to track the status of the job
-            and get the metrics of it upon completion
+            A job object that can be used to track the status of the job and get the metrics of it upon completion.
         """
 
         # If list[BinaryExpression], convert to filter object
@@ -786,22 +984,21 @@ class Model:
 
         Parameters
         ----------
-        dataset
+        dataset : Dataset
             The dataset to evaluate against.
-        iou_threshold_to_compute
+        iou_threshold_to_compute : List[float]
             Thresholds to compute mAP against.
-        iou_thresholds_to_keep
+        iou_thresholds_to_keep : List[float]
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
-        filters
+        filters : Union[Dict, List[BinaryExpression]]
             Optional set of filters to constrain evaluation by.
-        timeout
+        timeout : int
             The number of seconds to wait for the job to finish. Used to ensure deterministic behavior when testing.
 
         Returns
         -------
         Evaluation
-            a job object that can be used to track the status of the job
-            and get the metrics of it upon completion
+            A job object that can be used to track the status of the job and get the metrics of it upon completion.
         """
 
         # Default iou thresholds
@@ -864,18 +1061,17 @@ class Model:
 
         Parameters
         ----------
-        dataset
+        dataset : Dataset
             The dataset to evaluate against.
-        filters
+        filters : Union[Dict, List[BinaryExpression]]
             Optional set of filters to constrain evaluation by.
-        timeout
+        timeout : int
             The number of seconds to wait for the job to finish. Used to ensure deterministic behavior when testing.
 
         Returns
         -------
         Evaluation
-            a job object that can be used to track the status of the job
-            and get the metrics of it upon completion
+            a job object that can be used to track the status of the job and get the metrics of it upon completion
         """
 
         # if list[BinaryExpression], convert to filter object
@@ -913,10 +1109,26 @@ class Model:
     def delete(
         self,
     ):
+        """
+        Delete the `Model` object from the backend.
+        """
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
         del self
 
     def get_prediction(self, datum: Datum) -> Prediction:
+        """
+        Fetch a particular prediction.
+
+        Parameters
+        ----------
+        datum : Datum
+            The `Datum` of the predictino you want to return
+
+        Returns
+        ----------
+        Prediction
+            The requested `Prediction`.
+        """
         resp = self.client._requests_get_rel_host(
             f"predictions/model/{self.name}/dataset/{datum.dataset}/datum/{datum.uid}",
         ).json()
@@ -925,6 +1137,14 @@ class Model:
     def get_labels(
         self,
     ) -> List[Label]:
+        """
+        Get all labels associated with a given model.
+
+        Returns
+        ----------
+        List[Label]
+            A list of `Labels` associated with the model.
+        """
         labels = self.client._requests_get_rel_host(
             f"labels/model/{self.name}"
         ).json()
@@ -936,6 +1156,14 @@ class Model:
     def get_evaluations(
         self,
     ) -> List[Evaluation]:
+        """
+        Get all evaluations associated with a given model.
+
+        Returns
+        ----------
+        List[Evaluation]
+            A list of `Evaluations` associated with the model.
+        """
         dataset_evaluations = self.client._requests_get_rel_host(
             f"evaluations/model/{self.name}"
         ).json()
@@ -952,7 +1180,15 @@ class Model:
 
     def get_metric_dataframes(
         self,
-    ):
+    ) -> dict:
+        """
+        Get all metrics associated with a Model and return them in a `spd.DataFrame`.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `Model's` metrics and settings.
+        """
         try:
             import pandas as pd
         except ModuleNotFoundError:
