@@ -475,7 +475,7 @@ def create_evaluation(
         exceptions.DatasetNotFinalizedError,
         exceptions.ModelNotFinalizedError,
     ) as e:
-        raise HTTPException(status_code=405, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     except exceptions.StateflowError as e:
         raise HTTPException(status_code=409, detail=str(e))
 

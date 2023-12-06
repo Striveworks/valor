@@ -108,7 +108,7 @@ def _test_post_evaluation_endpoint(
         side_effect=exceptions.DatasetNotFinalizedError(""),
     ):
         resp = client.post(endpoint, json=example_json)
-        assert resp.status_code == 405
+        assert resp.status_code == 400
 
     with patch(
         "fastapi.BackgroundTasks.add_task",
