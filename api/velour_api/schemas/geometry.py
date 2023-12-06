@@ -301,7 +301,7 @@ class LineSegment(BaseModel):
         other : LineSegment
             The other line to compare against.
 
-         Returns
+        Returns
         ----------
         bool
             Whether the lines are perpendicular.

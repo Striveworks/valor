@@ -7,7 +7,7 @@ class Label(BaseModel):
     """
     An object for labeling datasets, models, and annotations.
 
-    Parameters
+    Attributes
     ----------
     key : str
         A key for the `Label`.

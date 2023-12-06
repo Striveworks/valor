@@ -388,7 +388,7 @@ class ConfusionMatrix(_BaseConfusionMatrix):
     """
     Describes a cconfusion matrix.
 
-    Parameters
+    Attributes
     ----------
     label_ley : str
         A label for the matrix.
