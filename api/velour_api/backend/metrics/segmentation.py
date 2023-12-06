@@ -4,7 +4,7 @@ from sqlalchemy.sql import Select, func, join, select
 
 from velour_api import enums, schemas
 from velour_api.backend import core, models
-from velour_api.backend.metrics.metrics import (
+from velour_api.backend.metrics.metric_utils import (
     create_metric_mappings,
     get_or_create_row,
 )
@@ -138,7 +138,6 @@ def _compute_segmentation_metrics(
 
     ret = []
     for label in labels:
-
         # set filter
         groundtruth_filter.label_ids = [label.id]
         prediction_filter.label_ids = [label.id]

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
 from velour_api.backend import core, models, query
-from velour_api.backend.metrics.metrics import (
+from velour_api.backend.metrics.metric_utils import (
     create_metric_mappings,
     get_or_create_row,
 )
@@ -30,7 +30,8 @@ def _ap(
     labels: Dict[int, schemas.Label],
     iou_thresholds: list[float],
 ) -> list[schemas.APMetric]:
-    """Computes the average precision. Return is a dict with keys
+    """
+    Computes the average precision. Return is a dict with keys
     `f"IoU={iou_thres}"` for each `iou_thres` in `iou_thresholds` as well as
     `f"IoU={min(iou_thresholds)}:{max(iou_thresholds)}"` which is the average
     of the scores across all of the IoU thresholds.
@@ -78,7 +79,7 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
         return 0
 
     data = list(zip(precisions, recalls))
-    data.sort(key=lambda l: l[1])
+    data.sort(key=lambda x: x[1])
     # negative is because we want a max heap
     prec_heap = [[-precision, i] for i, (precision, _) in enumerate(data)]
     prec_heap.sort()
@@ -108,8 +109,29 @@ def compute_detection_metrics(
     | schemas.mAPMetric
     | schemas.mAPMetricAveragedOverIOUs
 ]:
-    """Computes average precision metrics."""
+    """
+    Compute detection metrics.
 
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    dataset: models.Dataset
+        The dataset to compute metrics for.
+    model: models.Model
+        The model to compute metrics for.
+    settings: schemas.EvaluationSettings
+        The settings for the evaluation.
+    target_type: enums.AnnotationType
+        The annotation type to compute metrics for.
+
+
+    Returns
+    ----------
+    List[schemas.APMetric | schemas.APMetricAveragedOverIOUs | schemas.mAPMetric | schemas.mAPMetricAveragedOverIOUs]
+        A list of average precision metrics.
+
+    """
     # Create groundtruth filter
     gt_filter = settings.filters.model_copy()
     gt_filter.dataset_names = [dataset.name]
@@ -267,14 +289,16 @@ def compute_detection_metrics(
     )
 
     # now extend to the averaged AP metrics and mAP metric
-    mean_detection_metrics = compute_mean_detection_metrics_from_aps(
+    mean_detection_metrics = _compute_mean_detection_metrics_from_aps(
         detection_metrics
     )
     detection_metrics_ave_over_ious = (
-        compute_detection_metrics_ave_over_ious_from_aps(detection_metrics)
+        _compute_detection_metrics_averaged_over_ious_from_aps(
+            detection_metrics
+        )
     )
     mean_detection_metrics_ave_over_ious = (
-        compute_mean_detection_metrics_from_aps(
+        _compute_mean_detection_metrics_from_aps(
             detection_metrics_ave_over_ious
         )
     )
@@ -299,9 +323,10 @@ def compute_detection_metrics(
     )
 
 
-def compute_detection_metrics_ave_over_ious_from_aps(
+def _compute_detection_metrics_averaged_over_ious_from_aps(
     ap_scores: list[schemas.APMetric],
 ) -> list[schemas.APMetricAveragedOverIOUs]:
+    """Average AP metrics over IOU thresholds using a list of AP metrics."""
     label_tuple_to_values = {}
     label_tuple_to_ious = {}
     for ap_score in ap_scores:
@@ -326,28 +351,25 @@ def compute_detection_metrics_ave_over_ious_from_aps(
     return ret
 
 
-def compute_mean_detection_metrics_from_aps(
+def _average_ignore_minus_one(a):
+    """Average a list of metrics, ignoring values of -1"""
+    num, denom = 0.0, 0.0
+    div0_flag = True
+    for x in a:
+        if x != -1:
+            div0_flag = False
+            num += x
+            denom += 1
+    return -1 if div0_flag else num / denom
+
+
+def _compute_mean_detection_metrics_from_aps(
     ap_scores: list[schemas.APMetric | schemas.APMetricAveragedOverIOUs],
 ) -> list[schemas.mAPMetric]:
-    """
-    Parameters
-    ----------
-    ap_scores
-        list of AP scores.
-    """
+    """Calculate the mean of a list of AP metrics."""
 
     if len(ap_scores) == 0:
         return []
-
-    def _ave_ignore_minus_one(a):
-        num, denom = 0.0, 0.0
-        div0_flag = True
-        for x in a:
-            if x != -1:
-                div0_flag = False
-                num += x
-                denom += 1
-        return -1 if div0_flag else num / denom
 
     # dictionary for mapping an iou threshold to set of APs
     vals: dict[float | set[float], list] = {}
@@ -366,10 +388,10 @@ def compute_mean_detection_metrics_from_aps(
 
     # get mAP metrics at the individual IOUs
     mean_detection_metrics = [
-        schemas.mAPMetric(iou=iou, value=_ave_ignore_minus_one(vals[iou]))
+        schemas.mAPMetric(iou=iou, value=_average_ignore_minus_one(vals[iou]))
         if isinstance(iou, float)
         else schemas.mAPMetricAveragedOverIOUs(
-            ious=iou, value=_ave_ignore_minus_one(vals[iou]), labels=labels
+            ious=iou, value=_average_ignore_minus_one(vals[iou]), labels=labels
         )
         for iou in vals.keys()
     ]
@@ -377,12 +399,13 @@ def compute_mean_detection_metrics_from_aps(
     return mean_detection_metrics
 
 
-def _get_annotation_type_for_computation(
+def _get_annotation_types_for_computation(
     db: Session,
     dataset: models.Dataset,
     model: models.Model,
     job_filter: schemas.Filter | None = None,
 ) -> AnnotationType:
+    """Fetch the groundtruth and prediction annotation types for a given dataset / model combination."""
     # get dominant type
     groundtruth_type = core.get_annotation_type(db, dataset, None)
     prediction_type = core.get_annotation_type(db, dataset, model)
@@ -404,7 +427,7 @@ def _get_annotation_type_for_computation(
             raise RuntimeError(
                 f"Annotation type filter is too restrictive. Attempted filter `{gct}` over `{groundtruth_type, prediction_type}`."
             )
-    return gct, groundtruth_type, prediction_type
+    return groundtruth_type, prediction_type
 
 
 def _get_disjoint_label_sets(
@@ -412,8 +435,7 @@ def _get_disjoint_label_sets(
     groundtruth_filter: schemas.Filter,
     prediction_filters: schemas.Filter,
 ) -> tuple:
-
-    # get disjoint label sets
+    """Return a tuple containing the unique labels associated with the groundtruths and predictions stored in a database."""
     groundtruth_labels = query.get_groundtruth_labels(db, groundtruth_filter)
     prediction_labels = query.get_prediction_labels(db, prediction_filters)
     groundtruth_unique = list(groundtruth_labels - prediction_labels)
@@ -424,12 +446,21 @@ def _get_disjoint_label_sets(
 def create_detection_evaluation(
     db: Session,
     job_request: schemas.EvaluationJob,
-) -> int:
+) -> tuple:
     """
-    This will always run in foreground.
+    Create a detection evaluation job.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_request : schemas.EvaluationJob
+        The job request to create an evaluation for.
 
     Returns
-        Evaluations settings id.
+    ----------
+    Tuple
+        A tuple containing the evaluation settings id, the unique groundtruths, and unique predictions.
     """
     # check matching task_type
     if job_request.task_type != enums.TaskType.DETECTION:
@@ -472,10 +503,9 @@ def create_detection_evaluation(
 
     # determine annotation types
     (
-        gct,
         groundtruth_type,
         prediction_type,
-    ) = _get_annotation_type_for_computation(
+    ) = _get_annotation_types_for_computation(
         db, dataset, model, job_request.settings.filters
     )
 
@@ -515,7 +545,14 @@ def create_detection_metrics(
     job_id: int,
 ):
     """
-    Intended to run as background
+    Create detection metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_id : int
+        The job ID to create metrics for.
     """
     evaluation = db.scalar(
         select(models.Evaluation).where(models.Evaluation.id == job_id)

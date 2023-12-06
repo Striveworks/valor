@@ -11,6 +11,24 @@ def get_datum(
     dataset_id: int,
     uid: str,
 ) -> models.Datum:
+    """
+    Fetch a datum from the database.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    dataset_id : int
+        The ID of the dataset.
+    uid : str
+        The UID of the datum.
+
+    Returns
+    ----------
+    models.Datum
+        The requested datum.
+
+    """
     datum = (
         db.query(models.Datum)
         .where(
@@ -30,6 +48,23 @@ def get_dataset(
     db: Session,
     name: str,
 ) -> models.Dataset:
+    """
+    Fetch a dataset from the database.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session you want to query against.
+    name : str
+        The name of the dataset.
+
+    Returns
+    ----------
+    models.Dataset
+        The requested dataset.
+
+    """
+
     dataset = (
         db.query(models.Dataset)
         .where(models.Dataset.name == name)
@@ -44,6 +79,22 @@ def create_datum(
     db: Session,
     datum: schemas.Datum,
 ) -> models.Datum:
+    """
+    Create a datum in the database.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session you want to query against.
+    datum : schemas.Datum
+        The datum to add to the database.
+
+    Returns
+    ----------
+    models.Datum
+        The datum.
+
+    """
     # retrieve dataset
     dataset = get_dataset(db, datum.dataset)
 

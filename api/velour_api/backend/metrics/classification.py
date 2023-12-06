@@ -5,7 +5,7 @@ from sqlalchemy.sql import and_, func, select
 
 from velour_api import schemas
 from velour_api.backend import core, models
-from velour_api.backend.metrics.metrics import (
+from velour_api.backend.metrics.metric_utils import (
     create_metric_mappings,
     get_or_create_row,
 )
@@ -18,22 +18,22 @@ def _compute_binary_roc_auc(
     job_request: schemas.EvaluationJob,
     label: schemas.Label,
 ) -> float:
-    """Computes the binary ROC AUC score of a dataset and label
+    """
+    Computes the binary ROC AUC score of a dataset and label.
 
     Parameters
     ----------
-    dataset_name
-        name of the dataset
-    model_name
-        name of the model
-    label
-        the label that represents the positive class. all other labels with
-        the same key as `label` will represent the negative class
+    db : Session
+        The database Session to query against.
+    job_request : schemas.EvaluationJob
+        The job request to compute the score for.
+    label : schemas.Label
+        The label to compute the score for.
 
     Returns
     -------
     float
-        the binary ROC AUC score
+        The binary ROC AUC score.
     """
 
     # query to get the datum_ids and label values of groundtruths that have the given label key
@@ -129,23 +129,24 @@ def _compute_roc_auc(
     job_request: schemas.EvaluationJob,
     label_key: str,
 ) -> float:
-    """Computes the area under the ROC curve. Note that for the multi-class setting
+    """
+    Computes the area under the ROC curve. Note that for the multi-class setting
     this does one-vs-rest AUC for each class and then averages those scores. This should give
     the same thing as `sklearn.metrics.roc_auc_score` with `multi_class="ovr"`.
 
     Parameters
     ----------
-    db
-        database session
-    dataset_name
-        name of the dataset to
-    label_key
-        the label key to use
+    db : Session
+        The database Session to query against.
+    job_request : schemas.EvaluationJob
+        The job request to compute the score for.
+    label_key : str
+        The label key to compute the score for.
 
     Returns
     -------
     float
-        ROC AUC
+        The ROC AUC.
     """
 
     label_filter = job_request.settings.filters.model_copy()
@@ -180,23 +181,24 @@ def _compute_confusion_matrix_at_label_key(
     job_request: schemas.EvaluationJob,
     label_key: str,
 ) -> schemas.ConfusionMatrix | None:
-    """Computes the confusion matrix at a label_key.
+    """
+    Computes the confusion matrix at a label_key.
 
     Parameters
     ----------
-    dataset_name
-        name of the dataset
-    model_name
-        name of the model
-    label_key
-        the label key to compute metrics under
+    db : Session
+        The database Session to query against.
+    job_request : schemas.EvaluationJob
+        The job request to compute the matrix for.
+    label_key : str
+        The label key to compute the matrix for.
 
     Returns
     -------
     schemas.ConfusionMatrix | None
-        returns None in the case that there are no common images in the dataset
+        Returns None in the case that there are no common images in the dataset
         that have both a groundtruth and prediction with label key `label_key`. Otherwise
-        returns the confusion matrix
+        returns the confusion matrix.
     """
 
     # groundtruths filter
@@ -339,13 +341,40 @@ def _compute_confusion_matrix_at_label_key(
 
 
 def _compute_accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
+    """
+    Computes the accuracy score from a confusion matrix.
+
+    Parameters
+    ----------
+    cm : schemas.ConfusionMatrix
+        The confusion matrix to use.
+
+    Returns
+    ----------
+    float
+        The resultant accuracy score.
+    """
     return cm.matrix.trace() / cm.matrix.sum()
 
 
 def _compute_precision_and_recall_f1_from_confusion_matrix(
     cm: schemas.ConfusionMatrix, label_value: str
 ) -> tuple[float, float, float]:
-    """Computes the precision, recall, and f1 score at a class index"""
+    """
+    Computes the precision, recall, and f1 score at a class index
+
+    Parameters
+    ----------
+    cm : schemas.ConfusionMatrix
+        The confusion matrix to use.
+    label_key : str
+        The label key to compute scores for.
+
+    Returns
+    ----------
+    Tuple[float, float, float]
+        A tuple containing the precision, recall, and F1 score.
+    """
     cm_matrix = cm.matrix
     if label_value not in cm.label_map:
         return np.nan, np.nan, np.nan
@@ -385,27 +414,28 @@ def _compute_confusion_matrix_and_metrics_at_label_key(
     ]
     | None
 ):
-    """Computes the confusion matrix and all metrics for a given label key
+    """
+    Computes the confusion matrix and all metrics for a given label key.
 
     Parameters
     ----------
-    dataset_name
-        name of the dataset
-    model_name
-        name of the model
-    label_key
-        the label key to compute metrics under
+    db : Session
+        The database Session to query against.
+    job_request : schemas.EvaluationJob
+        The job request to compute the matrix for.
+    label_key : str
+        The label key to compute the matrix for.
     labels
-        all of the labels in both the groundtruths and predictions that have key
-        equal to `label_key`
+        All of the labels in both the groundtruths and predictions that have key
+        equal to `label_key`.
 
     Returns
     -------
     tuple[schemas.ConfusionMatrix, list[schemas.AccuracyMetric | schemas.ROCAUCMetric | schemas.PrecisionMetric
                                         | schemas.RecallMetric | schemas.F1Metric]] | None
-        returns None if there are no predictions and groundtruths with the given label
+        Returns None if there are no predictions and groundtruths with the given label
         key for the same datum. Otherwise returns a tuple, with the first element the confusion
-        matrix and the second a list of all metrics (accuracy, ROC AUC, precisions, recalls, and f1s)
+        matrix and the second a list of all metrics (accuracy, ROC AUC, precisions, recalls, and f1s).
     """
 
     for label in labels:
@@ -486,6 +516,21 @@ def _compute_clf_metrics(
         | schemas.F1Metric
     ],
 ]:
+    """
+    Compute classification metrics.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_request : schemas.EvaluationJob
+        The job request to compute metrics for.
+
+    Returns
+    ----------
+    Tuple[List[schemas.ConfusionMatrix], List[schemas.ConfusionMatrix | schemas.AccuracyMetric | schemas.ROCAUCMetric| schemas.PrecisionMetric | schemas.RecallMetric | schemas.F1Metric]]
+        A tuple of confusion matrices and metrics.
+    """
     # construct dataset filter
     groundtruth_label_filter = job_request.settings.filters.model_copy()
     groundtruth_label_filter.dataset_names = [job_request.dataset]
@@ -535,10 +580,20 @@ def create_clf_evaluation(
     db: Session,
     job_request: schemas.EvaluationJob,
 ) -> int:
-    """This will always run in foreground.
+    """
+    Create a classification evaluation job.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_request : schemas.EvaluationJob
+        The job request to create an evaluation for.
 
     Returns
-        Evaluations job id.
+    ----------
+    int
+        The evaluation job id.
     """
     # check matching task_type
     if job_request.task_type != TaskType.CLASSIFICATION:
@@ -583,7 +638,19 @@ def create_clf_metrics(
     job_id: int,
 ) -> int:
     """
-    Intended to run as background
+    Create classification metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_id : int
+        The job ID to create metrics for.
+
+    Returns
+    ----------
+    int
+        The evaluation job id.
     """
     evaluation = db.scalar(
         select(models.Evaluation).where(models.Evaluation.id == job_id)

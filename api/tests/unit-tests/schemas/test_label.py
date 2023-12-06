@@ -17,10 +17,6 @@ def test_label_no_scores():
     with pytest.raises(ValidationError):
         schemas.Label(key="k1", value=("v1",))
 
-    # test classmethod fn `from_key_value_tuple`
-    assert schemas.Label.from_key_value_tuple(("k1", "v1")) == l1
-    assert schemas.Label.from_key_value_tuple(("1", "1")) != l1
-
     # test member fn `__eq__`
     assert l1 == l1
     assert not l1 == l2

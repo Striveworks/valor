@@ -1,5 +1,5 @@
 from velour_api import enums, schemas
-from velour_api.backend.metrics.mot_metrics import (
+from velour_api.backend.metrics.multi-object_tracking import (
     MOT_METRICS_NAMES,
     OBJECT_ID_LABEL_KEY,
     compute_mot_metrics,

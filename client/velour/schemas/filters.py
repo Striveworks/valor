@@ -48,13 +48,6 @@ class GeospatialFilter:
     """
     Used to filter on geospatial coordinates.
 
-    Parameters
-    ----------
-    geodict : Dict[str, Union[List[List[List[List[Union[float, int]]]]], List[List[List[Union[float, int]]]], List[Union[float, int]], str]]
-        A dictionary containing a Point, Polygon, or MultiPolygon. Mirrors `shapely's` `GeoJSON` format.
-    operator : str
-        The operator to use for comparison. Should be one of `intersect`, `inside`, or `outside`.
-
     Attributes
     ----------
     geodict : Dict[str, Union[List[List[List[List[Union[float, int]]]]], List[List[List[Union[float, int]]]], List[Union[float, int]], str]]

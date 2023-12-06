@@ -68,7 +68,7 @@ class Label:
 
         Parameters
         ----------
-        other : any
+        other : Label
             The object to compare with the `Label`.
 
         Returns
@@ -98,6 +98,14 @@ class Label:
         )
 
     def __hash__(self) -> int:
+        """
+        Defines how a `Label` is hashed.
+
+        Returns
+        ----------
+        int
+            The hashed 'Label`.
+        """
         return hash(f"key:{self.key},value:{self.value},score:{self.score}")
 
     def dict(self) -> dict:
@@ -197,7 +205,7 @@ class Datum:
 
         Parameters
         ----------
-        other : any
+        other : Datum
             The object to compare with the `Datum`.
 
         Returns
@@ -351,7 +359,7 @@ class Annotation:
 
         Parameters
         ----------
-        other : any
+        other : Annotation
             The object to compare with the `Annotation`.
 
         Returns
@@ -432,7 +440,7 @@ class GroundTruth:
 
         Parameters
         ----------
-        other : any
+        other : GroundTruth
             The object to compare with the `GroundTruth`.
 
         Returns
@@ -555,7 +563,7 @@ class Prediction:
 
         Parameters
         ----------
-        other : any
+        other : Prediction
             The object to compare with the `Prediction`.
 
         Returns
