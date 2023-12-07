@@ -16,6 +16,11 @@ def create_dataset(*, db: Session, dataset: schemas.Dataset):
         The database Session to query against.
     dataset : schemas.Dataset
         The dataset to create.
+
+    Raises
+    ----------
+    DatasetAlreadyExistsError
+        If the dataset name already exists.
     """
     backend.create_dataset(db, dataset)
 
@@ -31,6 +36,11 @@ def create_model(*, db: Session, model: schemas.Model):
         The database Session to query against.
     model : schemas.Model
         The model to create.
+
+    Raises
+    ----------
+    ModelAlreadyExistsError
+        If the model name already exists.
     """
     backend.create_model(db, model)
 

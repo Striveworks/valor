@@ -255,7 +255,6 @@ def get_disjoint_keys(
 """ Datum """
 
 
-# TODO
 def get_datums(
     *,
     db: Session,
@@ -499,7 +498,7 @@ def get_evaluation_jobs(
     ----------
     db : Session
         The database Session to query against.
-    job_ids | list[int]
+    job_ids : list[int]
         A list of evaluation job id constraints.
     dataset_names | list[str]
         A list of dataset names to constrain by.
