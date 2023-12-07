@@ -120,6 +120,7 @@ def compute_clf_metrics(
     *,
     db: Session,
     job_id: int,
+    job_request: schemas.EvaluationJob,
 ):
     """
     Compute classification metrics.
@@ -130,6 +131,8 @@ def compute_clf_metrics(
         The database Session to query against.
     job_id: int
         The job id.
+    job_request: schemas.EvaluationJob
+        The evaluation job.
     """
     backend.create_clf_metrics(
         db,
