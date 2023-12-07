@@ -765,7 +765,11 @@ def finalize_inferences(
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
 )
-def delete_model(model_name: str, db: Session = Depends(get_db)):
+def delete_model(
+    model_name: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     """
     Delete a model from the database.
 
@@ -783,8 +787,13 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
     HTTPException (409)
         If the model isn't in the correct state to be deleted.
     """
+    logger.debug(f"request to delete model {model_name}")
     try:
-        crud.delete(db=db, model_name=model_name)
+        background_tasks.add_task(
+            crud.delete,
+            db=db,
+            model_name=model_name,
+        )
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except exceptions.StateflowError as e:
