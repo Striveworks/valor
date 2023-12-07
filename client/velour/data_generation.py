@@ -210,20 +210,20 @@ def generate_segmentation_data(
     n_labels: int = 2,
 ) -> Dataset:
     """
-    Generate a synthetic velour dataset given a set of input images
+    Generate a synthetic velour dataset given a set of input images.
 
     Parameters
     ----------
-    client
-        The Client object used to access your velour instance
-    dataset_name
-        The name of the dataset you want to generate in velour
-    n_images
-        The number of images you'd like your dataset to contain
-    n_annotations
-        The number of annotations per image you'd like your dataset to contain
-    n_labels
-        The number of labels per annotation you'd like your dataset to contain
+    client : Session
+        The Client object used to access your velour instance.
+    dataset_name : str
+        The name of the dataset you want to generate in velour.
+    n_images : int
+        The number of images you'd like your dataset to contain.
+    n_annotations : int
+        The number of annotations per image you'd like your dataset to contain.
+    n_labels : int
+        The number of labels per annotation you'd like your dataset to contain.
     """
     dataset = Dataset.create(client, dataset_name)
 
@@ -252,20 +252,22 @@ def generate_prediction_data(
     n_labels: int = 2,
 ):
     """
-    Generate an arbitrary number of predictions for a previously-generated dataset
+    Generate an arbitrary number of predictions for a previously-generated dataset.
 
     Parameters
     ----------
-    client
-        The Client object used to access your velour instance
-    dataset
-        The dataset object to create predictions for
-    n_predictions
-        The number of images you'd like your dataset to contain
-    n_annotations
-        The number of annotations per prediction you'd like your dataset to contain
-    n_labels
-        The number of labels per annotation you'd like your dataset to contain
+    client : Session
+        The Client object used to access your velour instance.
+    dataset : Dataset
+        The dataset object to create predictions for.
+    model_name : str
+        The name of your model.
+    n_predictions : int
+        The number of images you'd like your dataset to contain.
+    n_annotations : int
+        The number of annotations per prediction you'd like your dataset to contain.
+    n_labels : int
+        The number of labels per annotation you'd like your dataset to contain.
     """
     model = Model.create(client, model_name)
 

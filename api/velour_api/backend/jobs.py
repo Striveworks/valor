@@ -20,6 +20,20 @@ r: redis.Redis = None
 
 
 def retry_connection(timeout: int):
+    """
+    Decorator to help retry a connection.
+
+    Parameters
+    ----------
+    timeout : int
+        The number of seconds to wait before throwing an exception.
+
+    RuntimeError
+    ------
+    HTTPException (404)
+        If the the job doesn't succeed before the timeout parameter.
+    """
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -46,6 +60,10 @@ def retry_connection(timeout: int):
 
 @retry_connection(30)
 def connect_to_redis():
+    """
+    Connect to the redis service.
+    """
+
     global r
     if r is not None:
         return

@@ -25,8 +25,19 @@ MOT_METRICS_NAMES = [
 
 
 class MOTDetection:
-    """Class to convert detection data into MOT format.
-    See https://arxiv.org/abs/1603.00831
+    """
+    Class to convert detection data into multi-object tracking (MOT) format. See https://arxiv.org/abs/1603.00831
+
+    Parameters
+    ----------
+    frame_number: int
+        The frame number for a video frame.
+    object_id: str
+        The id of the object
+    bbox: schemas.BoundingBox
+        A bounding box for the frame.
+    confidence: float
+        The confidence level for the bounding box.
     """
 
     def __init__(
@@ -45,8 +56,15 @@ class MOTDetection:
             confidence <= 1 and confidence >= 0
         ), "Confidence must be in [0,1]"
 
-    def to_list(self):
-        """Convert to a list as expected by MOT metrics calculators."""
+    def to_list(self) -> list[int | float]:
+        """
+        Convert the MOT object to a list as expected by MOT metrics calculators.
+
+        Returns
+        ----------
+        List[int | float]
+            A list of MOT attributes.
+        """
         return [
             self.frame_number,
             self.object_id,
@@ -61,7 +79,7 @@ class MOTDetection:
         ]
 
 
-def ground_truth_det_to_mot(
+def _ground_truth_det_to_mot(
     datum: schemas.Datum,
     gt: schemas.Annotation,
     obj_id_to_int: dict,
@@ -84,7 +102,7 @@ def ground_truth_det_to_mot(
     return np.array(mot_det.to_list())
 
 
-def pred_det_to_mot(
+def _pred_det_to_mot(
     datum: schemas.Datum,
     pred: schemas.Annotation,
     obj_id_to_int: dict,
@@ -112,9 +130,21 @@ def pred_det_to_mot(
 def compute_mot_metrics(
     predictions: list[schemas.Prediction],
     groundtruths: list[schemas.GroundTruth],
-):
-    """Compute the MOT metrics given predictions and ground truths.
-    See https://arxiv.org/abs/1603.00831 for details on MOT.
+) -> dict:
+    """
+    Compute the multi-object tracking (MOT) metrics given predictions and groundtruths. See https://arxiv.org/abs/1603.00831 for details on MOT.
+
+    Parameters
+    ----------
+    predictions: list[schemas.Prediction]
+        A list of predictions.
+    groundtruths: list[schemas.GroundTruth]
+        A list of groundtruths.
+
+    Returns
+    ----------
+    dict
+        A dictionary of MOT metrics.
     """
 
     # Build obj_id_to_int map
@@ -136,7 +166,7 @@ def compute_mot_metrics(
     for annotated_datum in groundtruths:
         gt_mots.extend(
             [
-                ground_truth_det_to_mot(
+                _ground_truth_det_to_mot(
                     annotated_datum.datum, gt, obj_id_to_int
                 )
                 for gt in annotated_datum.annotations
@@ -147,7 +177,7 @@ def compute_mot_metrics(
     for annotated_datum in predictions:
         pd_mots.extend(
             [
-                pred_det_to_mot(annotated_datum.datum, pred, obj_id_to_int)
+                _pred_det_to_mot(annotated_datum.datum, pred, obj_id_to_int)
                 for pred in annotated_datum.annotations
             ]
         )

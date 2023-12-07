@@ -67,9 +67,9 @@ def test_generate_segmentation_data(
 def test_generate_prediction_data(client: Client):
     """Check that our generated predictions correctly matches our input parameters"""
 
-    n_images = 2
-    n_annotations = 2
-    n_labels = 2
+    n_images = 10
+    n_annotations = 10
+    n_labels = 10
     dataset_name = "dset"
     model_name = "model"
 
@@ -88,8 +88,8 @@ def test_generate_prediction_data(client: Client):
         client=client,
         dataset=dataset,
         model_name=model_name,
-        n_annotations=2,
-        n_labels=2,
+        n_annotations=5,
+        n_labels=5,
     )
 
     eval_job = model.evaluate_detection(

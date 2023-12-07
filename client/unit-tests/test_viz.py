@@ -8,7 +8,7 @@ from velour.metatypes import ImageMetadata
 from velour.schemas import BasicPolygon, MultiPolygon, Point, Polygon, Raster
 from velour.viz import (
     _polygons_to_binary_mask,
-    combined_segmentation_mask,
+    create_combined_segmentation_mask,
     draw_detections_on_image,
 )
 
@@ -65,9 +65,9 @@ def test__polygons_to_binary_mask(poly1):
     assert mask.sum() == area_poly1 + area_poly2
 
 
-def test_combined_segmentation_mask(poly1: Polygon):
+def test_create_combined_segmentation_mask(poly1: Polygon):
     with pytest.raises(ValueError) as exc_info:
-        combined_segmentation_mask(
+        create_combined_segmentation_mask(
             [],
             label_key="",
             task_type=TaskType.DETECTION,
@@ -111,7 +111,7 @@ def test_combined_segmentation_mask(poly1: Polygon):
 
     # check get an error since "k3" isn't a label key in seg2
     with pytest.raises(RuntimeError) as exc_info:
-        combined_segmentation_mask(
+        create_combined_segmentation_mask(
             [gts[1]],
             label_key="k3",
             task_type=TaskType.SEGMENTATION,
@@ -119,7 +119,7 @@ def test_combined_segmentation_mask(poly1: Polygon):
     assert "doesn't have a label" in str(exc_info)
 
     # should have one distinct (non-black) color
-    combined_mask, _ = combined_segmentation_mask(
+    combined_mask, _ = create_combined_segmentation_mask(
         gts,
         label_key="k1",
         task_type=TaskType.SEGMENTATION,
@@ -130,14 +130,14 @@ def test_combined_segmentation_mask(poly1: Polygon):
     assert unique_rgb.shape == (2, 3)
 
     # should have two distinct (non-black) color
-    combined_mask, _ = combined_segmentation_mask(gts, label_key="k2")
+    combined_mask, _ = create_combined_segmentation_mask(gts, label_key="k2")
     combined_mask = np.array(combined_mask)
     # check that we get two unique RGB values (black and one color for label value "v1")
     unique_rgb = np.unique(combined_mask.reshape(-1, 3), axis=0)
     assert unique_rgb.shape == (3, 3)
 
     with pytest.raises(RuntimeError) as exc_info:
-        combined_segmentation_mask(
+        create_combined_segmentation_mask(
             gts
             + [
                 GroundTruth(

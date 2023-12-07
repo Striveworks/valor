@@ -14,7 +14,7 @@ else:
 
 class OptionalHTTPBearer(HTTPBearer):
     """Wraps HTTPBearer to allow no-auth (e.g. for testing).
-    See https://github.com/tiangolo/fastapi/discussions/8445
+    See https://github.com/tiangolo/fastapi/discussions/8445.
     """
 
     async def __call__(self, request: Request):
@@ -26,23 +26,25 @@ class OptionalHTTPBearer(HTTPBearer):
 
 
 def verify_token(token: HTTPAuthorizationCredentials | None) -> dict:
-    """Verifies a token. See https://auth0.com/blog/build-and-secure-fastapi-server-with-auth0/
+    """
+    Verifies a token. See https://auth0.com/blog/build-and-secure-fastapi-server-with-auth0/.
 
     Parameters
     ----------
-    token
-        the bearer token or None. If this is None and we're in a no auth setting, then
-        an empty dictionary is returned
+    token : HTTPAuthorizationCredentials
+        The bearer token or None. If this is None and we're in a no auth setting, then
+        an empty dictionary is returned.
 
     Returns
     -------
-    the data contained in the token
+    dict
+        The data contained in the token.
 
     Raises
     ------
     HTTPException
-        raies an HTTPException with status code 401 if there's any error in verifying
-        or decoding the token
+        Raises an HTTPException with status code 401 if there's any error in verifying
+        or decoding the token.
     """
     if auth_settings.no_auth:
         if token is not None:

@@ -8,6 +8,25 @@ from velour.schemas import validate_metadata
 
 
 class ImageMetadata:
+    """
+    A class describing the metadata for a particular image.
+
+    Parameters
+    ----------
+    uid : str
+        The UID of the image.
+    height : int
+        The height of the image.
+    width : int
+        The width of the image.
+    dataset : str
+        The name of the dataset associated with the image.
+    metadata : dict
+        A dictionary of metadata that describes the image.
+    geospatial :  dict
+        A GeoJSON-style dictionary describing the geospatial coordinates of the image.
+    """
+
     def __init__(
         self,
         uid: str,
@@ -44,10 +63,26 @@ class ImageMetadata:
 
     @staticmethod
     def valid(datum: Datum) -> bool:
+        """
+        Asserts wehether the `Datum's` height and width is a valid subset of the image's height and width.
+
+        Parameters
+        ----------
+        datum : Datum
+            The `Datum` to check validity for.
+        """
         return {"height", "width"}.issubset(datum.metadata)
 
     @classmethod
     def from_datum(cls, datum: Datum):
+        """
+        Creates an `ImageMetadata` object from a `Datum`.
+
+        Parameters
+        ----------
+        datum : Datum
+            The `Datum` to extract metadata from.
+        """
         if not cls.valid(datum):
             raise ValueError(
                 f"`datum` does not contain height and/or width in metadata `{datum.metadata}`"
@@ -63,6 +98,16 @@ class ImageMetadata:
 
     @classmethod
     def from_pil(cls, uid: str, image: PIL.Image.Image):
+        """
+        Creates an `ImageMetadata` object from an image.
+
+        Parameters
+        ----------
+        uid : str
+            The UID of the image.
+        image : PIL.Image.Image
+            The image to create metadata for.
+        """
         width, height = image.size
         return cls(
             uid=uid,
@@ -71,6 +116,9 @@ class ImageMetadata:
         )
 
     def to_datum(self) -> Datum:
+        """
+        Converts an `ImageMetadata` object into a `Datum`.
+        """
         metadata = self.metadata.copy() if self.metadata else {}
         geospatial = self.geospatial.copy() if self.geospatial else {}
 
@@ -85,6 +133,17 @@ class ImageMetadata:
 
 
 class VideoFrameMetadata:
+    """
+    A class describing the metadata for the frame of a video.
+
+    Parameters
+    ----------
+    image : ImageMetadata
+        Metadata describing the frame of the video.
+    frame: int
+        The number of seconds into the video that the frame was taken.
+    """
+
     def __init__(
         self,
         image: ImageMetadata,
@@ -100,10 +159,26 @@ class VideoFrameMetadata:
 
     @staticmethod
     def valid(datum: Datum) -> bool:
+        """
+        Asserts wehether the `Datum's` height and width is a valid subset of the image's height and width.
+
+        Parameters
+        ----------
+        datum : Datum
+            The `Datum` to check validity for.
+        """
         return {"height", "width", "frame"}.issubset(datum.metadata)
 
     @classmethod
     def from_datum(cls, datum: Datum):
+        """
+        Creates an `VideoFrameMetadata` object from a `Datum`.
+
+        Parameters
+        ----------
+        datum : Datum
+            The `Datum` to extract metadata from.
+        """
         if not cls.valid(datum):
             raise ValueError(
                 f"`datum` does not contain height, width and/or frame in metadata `{datum.metadata}`"
@@ -116,6 +191,9 @@ class VideoFrameMetadata:
         )
 
     def to_datum(self) -> Datum:
+        """
+        Converts an `VideoFrameMetadata` object into a `Datum`.
+        """
         datum = self.image.to_datum()
         datum.metadata["frame"] = self.frame
         return datum

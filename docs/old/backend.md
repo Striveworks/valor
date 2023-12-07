@@ -1,16 +1,16 @@
-# Deploying the backend
+# Setting up the Backend
 
-## Components
+Velour provides multiple ways of setting up the backend API.
 
-The backend consists of three components
+## Helm Chart
 
-1. A `velour` REST API service.
-2. A PostgreSQL instance with the PostGIS extention.
-3. A redis instance
+```shell
+helm repo add velour https://striveworks.github.io/velour-charts/
+helm install velour velour/velour
+# Velour should now be avaiable at velour.namespace.svc.local
+```
 
 ## Docker
-
-## velour REST API Docker Image
 
 An image for the backend REST API service is hosted on GitHub's Container registry at `ghcr.io/striveworks/velour/velour-service`. Until the velour repo becomes public, you will need to authenticate to pull the image. To do this, you need to create a personal access token here https://github.com/settings/tokens that has read access to GitHub packages. Then run
 
