@@ -319,7 +319,7 @@ def test_evaluate_tabular_clf(
     for entry in expected_confusion_matrix["entries"]:
         assert entry in confusion_matrix["entries"]
 
-    model.delete()
+    client.delete_model(model.name, timeout=30)
 
     assert len(client.get_models()) == 0
 
