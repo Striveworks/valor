@@ -259,7 +259,7 @@ class Client:
                     Model.get(self, name)
                 except ClientException as e:
                     if "does not exist" in str(e):
-                        return    
+                        return
             else:
                 raise TimeoutError(
                     "Dataset wasn't deleted within timeout interval"

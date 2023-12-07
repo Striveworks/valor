@@ -943,14 +943,14 @@ def test_delete_model(crud, client: TestClient):
     crud.delete.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.delete",
+        "fastapi.BackgroundTasks.add_task",
         side_effect=exceptions.ModelDoesNotExistError(""),
     ):
         resp = client.delete("/models/modelname")
         assert resp.status_code == 404
 
     with patch(
-        "velour_api.main.crud.delete",
+        "fastapi.BackgroundTasks.add_task",
         side_effect=exceptions.StateflowError(""),
     ):
         resp = client.delete("/models/modelname")
