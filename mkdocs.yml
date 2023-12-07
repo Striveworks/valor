@@ -10,9 +10,9 @@ theme:
 nav:
   - Overview: "index.md"
   - Getting Started: "getting_started.md"
-  - Technical Guide: "user_guide.md"
+  - Technical Concepts: "technical_concepts.md"
+  - Contributing & Development: "contributing.md"
   - References: references
-  - Development: "development.md"
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true

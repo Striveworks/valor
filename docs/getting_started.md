@@ -1,6 +1,6 @@
 # Getting Started
 
-Velour is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. For an overview of what Velour is and why it's important, please see [our user guide](user_guide.md).
+Velour is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. For an overview of what Velour is and why it's important, [please our overview here](index.md).
 
 On this page, we'll describe how to get up and running with Velour.
 
