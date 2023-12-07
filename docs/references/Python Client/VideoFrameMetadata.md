@@ -1,4 +1,4 @@
-::: velour.metatypes.ImageMetadata
+::: velour.metatypes.VideoFrameMetadata
     handler: python
     options:
         show_root_heading: false
