@@ -232,7 +232,7 @@ def get_joint_keys(
         The name of a dataset.
     model_name: str
         The name of a model.
-    task_types: list[enums.TaskType]
+    task_type: enums.TaskType
         The task types to filter on.
 
     Returns
@@ -327,8 +327,8 @@ def get_disjoint_keys(
         The name of a dataset.
     model_name: str
         The name of a model.
-    task_types: list[enums.TaskType]
-        The task types to filter on.
+    task_type: task_type: enums.TaskType
+        The task type to filter on.
 
     Returns
     ----------
