@@ -13,6 +13,7 @@ from velour_api.schemas.metrics import EvaluationJob, IOUMetric, mIOUMetric
 
 
 def _generate_groundtruth_query(groundtruth_filter: schemas.Filter) -> Select:
+    """Generate a sqlalchemy query to fetch a groundtruth."""
     return (
         Query(
             models.Annotation.raster.label("raster"),
@@ -24,6 +25,8 @@ def _generate_groundtruth_query(groundtruth_filter: schemas.Filter) -> Select:
 
 
 def _generate_prediction_query(prediction_filter: schemas.Filter) -> Select:
+    """Generate a sqlalchemy query to fetch a prediction."""
+
     return (
         Query(
             models.Annotation.raster.label("raster"),
@@ -113,6 +116,7 @@ def _compute_iou(
 def _get_groundtruth_labels(
     db: Session, groundtruth_filter: schemas.Filter
 ) -> list[models.Label]:
+    """Fetch groundtruth labels from the database."""
     return db.scalars(
         Query(models.Label)
         .filter(groundtruth_filter)
@@ -125,7 +129,8 @@ def _compute_segmentation_metrics(
     db: Session,
     job_request: schemas.EvaluationJob,
 ) -> list[IOUMetric | mIOUMetric]:
-    """Computes the _compute_IOU metrics. The return is one `IOUMetric` for each label in groundtruth
+    """
+    Computes the _compute_IOU metrics. The return is one `IOUMetric` for each label in groundtruth
     and one `mIOUMetric` for the mean _compute_IOU over all labels.
     """
 
@@ -168,7 +173,27 @@ def create_semantic_segmentation_evaluation(
     db: Session, job_request: EvaluationJob
 ) -> int:
     """
-    Create semantic segmentation evaluation job.
+    Create a semantic segmentation evaluation job.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_request : schemas.EvaluationJob
+        The job request to create an evaluation for.
+
+    Returns
+    ----------
+    int
+        The evaluation id.
+
+    Raises
+    ----------
+    TypeError
+        If the job's task type is incorrect.
+        If the settings passed to the job are for another type of evaluation.
+    ValueError
+        If the evaluation contains an inappropriate filter.
     """
     # check matching task_type
     if job_request.task_type != enums.TaskType.SEGMENTATION:
@@ -224,7 +249,16 @@ def create_semantic_segmentation_metrics(
     job_id: int,
 ) -> int:
     """
-    Compute semantic segmentation evaluation.
+    Create semantic segmentation metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_request : EvaluationJob
+        The evaluation job.
+    job_id : int
+        The job ID to create metrics for.
     """
     evaluation = db.scalar(
         select(models.Evaluation).where(models.Evaluation.id == job_id)

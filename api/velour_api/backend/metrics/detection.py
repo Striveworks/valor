@@ -461,6 +461,15 @@ def create_detection_evaluation(
     ----------
     Tuple
         A tuple containing the evaluation settings id, the unique groundtruths, and unique predictions.
+
+    Raises
+    ----------
+    TypeError
+        If the job's task type is incorrect.
+        If the settings passed to the job are for another type of evaluation.
+    ValueError
+        If the evaluation contains an inappropriate filter.
+
     """
     # check matching task_type
     if job_request.task_type != enums.TaskType.DETECTION:

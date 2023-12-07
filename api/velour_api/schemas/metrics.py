@@ -94,7 +94,7 @@ class EvaluationJob(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class CreateAPMetricsResponse(BaseModel):
+class CreateDetectionMetricsResponse(BaseModel):
     """
     The response from a job that creates AP metrics.
 

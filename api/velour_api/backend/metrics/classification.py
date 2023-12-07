@@ -594,6 +594,13 @@ def create_clf_evaluation(
     ----------
     int
         The evaluation job id.
+
+    Raises
+    ----------
+    TypeError
+        If the job's task type is incorrect.
+    ValueError
+        If the evaluation contains an inappropriate filter.
     """
     # check matching task_type
     if job_request.task_type != TaskType.CLASSIFICATION:

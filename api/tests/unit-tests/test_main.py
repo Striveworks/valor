@@ -81,7 +81,7 @@ def _test_post_evaluation_endpoint(
     endpoint: str,
     crud_method_name: str,
     example_json: dict,
-    metric_response: schemas.CreateAPMetricsResponse
+    metric_response: schemas.CreateDetectionMetricsResponse
     | schemas.CreateClfMetricsResponse
     | schemas.CreateSemanticSegmentationMetricsResponse,
 ):
@@ -961,7 +961,7 @@ def test_delete_model(crud, client: TestClient):
 
 
 def test_post_detection_metrics(client: TestClient):
-    metric_response = schemas.CreateAPMetricsResponse(
+    metric_response = schemas.CreateDetectionMetricsResponse(
         missing_pred_labels=[], ignored_pred_labels=[], job_id=1
     )
 

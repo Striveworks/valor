@@ -32,7 +32,21 @@ def get_labels(
     db: Session,
     filters: schemas.Filter | None = None,
 ) -> set[schemas.Label]:
-    """Returns a list of unique labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type)."""
+    """
+    Returns a set of unique labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type).
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    filters : schemas.Filter
+        An optional filter to apply.
+
+    Returns
+    ----------
+    set[schemas.Label]
+        A set of labels.
+    """
     stmt = ops.Query(models.Label).filter(filters).any()
     return _get_labels(db, stmt)
 
@@ -41,6 +55,21 @@ def get_groundtruth_labels(
     db: Session,
     filters: schemas.Filter | None,
 ) -> set[schemas.Label]:
+    """
+    Returns a set of unique groundtruth labels.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    filters : schemas.Filter
+        An optional filter to apply.
+
+    Returns
+    ----------
+    set[schemas.Label]
+        A set of labels.
+    """
     stmt = ops.Query(models.Label).filter(filters).groundtruths()
     return _get_labels(db, stmt)
 
@@ -49,6 +78,21 @@ def get_prediction_labels(
     db: Session,
     filters: schemas.Filter | None,
 ) -> set[schemas.Label]:
+    """
+    Returns a set of unique prediction labels.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    filters : schemas.Filter
+        An optional filter to apply.
+
+    Returns
+    ----------
+    set[schemas.Label]
+        A set of labels.
+    """
     stmt = ops.Query(models.Label).filter(filters).predictions()
     return _get_labels(db, stmt)
 
@@ -57,6 +101,21 @@ def get_label_keys(
     db: Session,
     filters: schemas.Filter | None = None,
 ) -> set[schemas.Label]:
+    """
+    Returns all unique label keys.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    filters : schemas.Filter
+        An optional filter to apply.
+
+    Returns
+    ----------
+    set[schemas.Label]
+        A set of labels.
+    """
     stmt = ops.Query(models.Label).filter(filters).any()
     return _get_label_keys(db, stmt)
 
@@ -65,6 +124,21 @@ def get_groundtruth_label_keys(
     db: Session,
     filters: schemas.Filter | None,
 ) -> set[schemas.Label]:
+    """
+    Returns all unique groundtruth label keys.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    filters : schemas.Filter
+        An optional filter to apply.
+
+    Returns
+    ----------
+    set[schemas.Label]
+        A set of labels.
+    """
     stmt = ops.Query(models.Label).filter(filters).groundtruths()
     return _get_label_keys(db, stmt)
 
@@ -73,6 +147,21 @@ def get_prediction_label_keys(
     db: Session,
     filters: schemas.Filter | None,
 ) -> set[schemas.Label]:
+    """
+    Returns all unique prediction label keys.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    filters : schemas.Filter
+        An optional filter to apply.
+
+    Returns
+    ----------
+    set[schemas.Label]
+        A set of labels.
+    """
     stmt = ops.Query(models.Label).filter(filters).predictions()
     return _get_label_keys(db, stmt)
 
@@ -85,6 +174,29 @@ def get_joint_labels(
     groundtruth_type: enums.AnnotationType,
     prediction_type: enums.AnnotationType,
 ) -> list[schemas.Label]:
+    """
+    Returns all unique labels that are shared between both predictions and groundtruths.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    dataset_name: str
+        The name of a dataset.
+    model_name: str
+        The name of a model.
+    task_types: list[enums.TaskType]
+        The task types to filter on.
+    groundtruth_type: enums.AnnotationType
+        The groundtruth type to filter on.
+    prediction_type: enums.AnnotationType
+        The prediction type to filter on
+
+    Returns
+    ----------
+    list[schemas.Label]
+        A list of labels.
+    """
     gt_filter = schemas.Filter(
         dataset_names=[dataset_name],
         task_types=task_types,
@@ -109,6 +221,25 @@ def get_joint_keys(
     model_name: str,
     task_type: enums.TaskType,
 ) -> list[schemas.Label]:
+    """
+    Returns all unique label keys that are shared between both predictions and groundtruths.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    dataset_name: str
+        The name of a dataset.
+    model_name: str
+        The name of a model.
+    task_types: list[enums.TaskType]
+        The task types to filter on.
+
+    Returns
+    ----------
+    set[schemas.Label]
+        A list of labels.
+    """
     gt_filter = schemas.Filter(
         dataset_names=[dataset_name],
         task_types=[task_type],
@@ -132,8 +263,30 @@ def get_disjoint_labels(
     task_types: list[enums.TaskType],
     groundtruth_type: enums.AnnotationType,
     prediction_type: enums.AnnotationType,
-) -> dict[str, list[schemas.Label]]:
-    """Returns tuple with elements (dataset, model) which contain lists of Labels."""
+) -> tuple[list[schemas.Label], list[schemas.Label]]:
+    """
+    Returns all unique labels that are not shared between both predictions and groundtruths.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    dataset_name: str
+        The name of a dataset.
+    model_name: str
+        The name of a model.
+    task_types: list[enums.TaskType]
+        The task types to filter on.
+    groundtruth_type: enums.AnnotationType
+        The groundtruth type to filter on.
+    prediction_type: enums.AnnotationType
+        The prediction type to filter on
+
+    Returns
+    ----------
+    Tuple[list[schemas.Label], list[schemas.Label]]
+        A tuple of disjoint labels, where the first element is those labels which are present in groundtruths but absent in predictions.
+    """
 
     # create filters
     gt_filter = schemas.Filter(
@@ -162,9 +315,26 @@ def get_disjoint_labels(
 
 def get_disjoint_keys(
     db: Session, dataset_name: str, model_name: str, task_type: enums.TaskType
-) -> dict[str, list[schemas.Label]]:
-    """Returns tuple with elements (dataset, model) which contain lists of Labels."""
+) -> tuple[list[schemas.Label], list[schemas.Label]]:
+    """
+    Returns all unique label keys that are not shared between both predictions and groundtruths.
 
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    dataset_name: str
+        The name of a dataset.
+    model_name: str
+        The name of a model.
+    task_types: list[enums.TaskType]
+        The task types to filter on.
+
+    Returns
+    ----------
+    Tuple[list[schemas.Label], list[schemas.Label]]
+        A tuple of disjoint label key, where the first element is those labels which are present in groundtruths but absent in predictions.
+    """
     # create filters
     gt_filter = schemas.Filter(
         dataset_names=[dataset_name],

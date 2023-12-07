@@ -806,7 +806,7 @@ def create_evaluation(
     db: Session = Depends(get_db),
 ) -> (
     schemas.CreateClfMetricsResponse
-    | schemas.CreateAPMetricsResponse
+    | schemas.CreateDetectionMetricsResponse
     | schemas.CreateSemanticSegmentationMetricsResponse
 ):
     """
@@ -823,7 +823,7 @@ def create_evaluation(
 
     Returns
     -------
-    schemas.CreateClfMetricsResponse | schemas.CreateAPMetricsResponse | schemas.CreateSemanticSegmentationMetricsResponse
+    schemas.CreateClfMetricsResponse | schemas.CreateDetectionMetricsResponse | schemas.CreateSemanticSegmentationMetricsResponse
         An evaluation response object.
 
     Raises
