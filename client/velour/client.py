@@ -242,24 +242,27 @@ class Client:
         """
         Delete a model using FastAPI's `BackgroundProcess`.
 
+        Future backend improvements will allow the tracking of status via a job id.
+
         Parameters
         ----------
         name : str
             The name of the model to be deleted.
-        timeout : int
-            The number of seconds to wait in order to confirm that the model was deleted.
         """
         self._requests_delete_rel_host(f"models/{name}")
 
+        # TODO: Fix this when jobs are fully implemented.
         if timeout:
             for _ in range(timeout):
-                if self.get_model_status(name) == State.NONE:
-                    break
-                else:
-                    time.sleep(1)
+                time.sleep(1)
+                try:
+                    Model.get(self, name)
+                except ClientException as e:
+                    if "does not exist" in str(e):
+                        return    
             else:
                 raise TimeoutError(
-                    "Model wasn't deleted within timeout interval"
+                    "Dataset wasn't deleted within timeout interval"
                 )
 
     def get_dataset_status(
@@ -282,32 +285,6 @@ class Client:
         try:
             resp = self._requests_get_rel_host(
                 f"datasets/{dataset_name}/status"
-            ).json()
-        except Exception:
-            resp = State.NONE
-
-        return resp
-    
-    def get_model_status(
-        self,
-        model_name: str,
-    ) -> State:
-        """
-        Get the state of a given model.
-
-        Parameters
-        ----------
-        model_name : str
-            The name of the model we want to fetch the state of.
-
-        Returns
-        ------
-        State
-            The state of the `Model`.
-        """
-        try:
-            resp = self._requests_get_rel_host(
-                f"models/{model_name}/status"
             ).json()
         except Exception:
             resp = State.NONE
