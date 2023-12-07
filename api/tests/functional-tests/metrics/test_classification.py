@@ -10,7 +10,7 @@ from velour_api.backend.metrics.classification import (
     create_clf_evaluation,
     create_clf_metrics,
 )
-from api.velour_api.backend.metrics.metric_utils import get_evaluations
+from velour_api.backend.metrics.metric_utils import get_evaluations
 
 
 @pytest.fixture
