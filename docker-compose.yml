@@ -23,11 +23,3 @@ services:
       - "6379:6379"
     environment:
       ALLOW_EMPTY_PASSWORD: "yes"
-  web:
-    build: ./web
-    ports:
-      - "3000:3000"
-    environment:
-      VITE_BACKEND_URL: http://localhost:8000
-    volumes:
-      - ./web:/web

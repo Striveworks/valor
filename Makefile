@@ -4,6 +4,9 @@ test-env:
 dev-env:
 	docker compose -p velour -f docker-compose.yml -f docker-compose.dev.yml --env-file ./api/.env.testing up --build
 
+start-env:
+	docker compose -p velour -f docker-compose.yml up
+
 stop-env:
 	docker compose -p velour down
 
