@@ -2,11 +2,12 @@ import json
 import os
 import time
 from functools import wraps
+from pydantic import BaseModel
 
 import redis
 
-from velour_api import logger
-from velour_api.schemas import Stateflow
+from velour_api import logger, schemas
+from velour_api.enums import JobStatus
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
@@ -94,18 +95,59 @@ def needs_redis(fn):
     return wrapper
 
 
-""" Stateflow """
+class Job(BaseModel):
+    uuid: str
+    status: JobStatus = JobStatus.PENDING
+    msg: str = ""
+    children: set[str] = {}
+
+    @classmethod
+    @needs_redis
+    def get(
+        cls, 
+        uuid: str = None,
+    ):
+        json_str = r.get(uuid)
+        if json_str is None or not isinstance(json_str, bytes):
+            job = cls(uuid=uuid)
+            r.set(uuid, job.model_dump_json(exclude={'uuid'}))
+            return job
+        job = json.loads(json_str)
+        job["uuid"] = uuid
+        return cls(**job)
+    
+    @classmethod
+    @needs_redis
+    def retrieve(
+        cls, 
+        dataset_name: str = None,
+        model_name: str = None,
+        evaluation_id: int = None,
+    ):
+        uuid = generate_uuid(dataset_name, model_name, evaluation_id)
+        return cls.get(uuid)
+
+    @needs_redis
+    def set(self):
+        r.set(self.uuid, self.model_dump_json(exclude={'uuid'}))
+    
+    def set_status(self, status: JobStatus, msg: str = ""):
+        if status not in self.status.next():
+            raise ValueError(f"{status} not in {self.status.next()}")
+        self.status = status
+        self.msg = msg
+        self.set()
+
+    def register_child(self, uuid: int):
+        self.children.add(uuid)
+        self.set()
 
 
-@needs_redis
-def get_stateflow() -> Stateflow:
-    json_str = r.get("stateflow")
-    if json_str is None or not isinstance(json_str, bytes):
-        return Stateflow()
-    info = json.loads(json_str)
-    return Stateflow(**info)
-
-
-@needs_redis
-def set_stateflow(stateflow: Stateflow):
-    r.set("stateflow", stateflow.model_dump_json())
+def generate_uuid(
+    dataset_name: str = None,
+    model_name: str = None,
+    evaluation_id: int = None,
+) -> int:
+    if not (dataset_name or model_name or evaluation_id):
+        raise ValueError
+    return (f"{dataset_name}+{model_name}+{evaluation_id}")

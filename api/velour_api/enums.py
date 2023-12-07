@@ -72,6 +72,7 @@ class TaskType(str, Enum):
 
 
 class JobStatus(Enum):
+    NONE = "none"
     PENDING = "pending"
     PROCESSING = "processing"
     FAILED = "failed"
@@ -83,9 +84,9 @@ class JobStatus(Enum):
         elif self == self.PROCESSING:
             return {self.PROCESSING, self.DONE, self.FAILED}
         elif self == self.FAILED:
-            return {self.FAILED, self.PENDING}
+            return {self.FAILED, self.PENDING, self.PROCESSING}
         elif self == self.DONE:
-            return {self.DONE}
+            return {self.DONE, self.PENDING, self.PROCESSING}
         else:
             raise ValueError
 

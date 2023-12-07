@@ -78,7 +78,6 @@ __all__ = [
     "APMetricAveragedOverIOUs",
     "CreateClfMetricsResponse",
     "CreateSemanticSegmentationMetricsResponse",
-    "Job",
     "GeoJSON",
     "mAPMetric",
     "mAPMetricAveragedOverIOUs",
