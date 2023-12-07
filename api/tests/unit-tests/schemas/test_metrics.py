@@ -9,7 +9,7 @@ def test_metrics_APRequest():
 
 
 # @TODO
-def test_metrics_CreateAPMetricsResponse():
+def test_metrics_CreateDetectionMetricsResponse():
     pass
 
 

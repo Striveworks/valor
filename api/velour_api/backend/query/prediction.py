@@ -12,6 +12,16 @@ def create_prediction(
     db: Session,
     prediction: schemas.Prediction,
 ):
+    """
+    Creates a prediction.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    prediction : schemas.Prediction
+        The prediction to create.
+    """
     # retrieve existing table entries
     model = core.get_model(db, name=prediction.model)
     dataset = core.get_dataset(db, name=prediction.datum.dataset)
@@ -49,7 +59,25 @@ def get_prediction(
     dataset_name: str,
     datum_uid: str,
 ) -> schemas.Prediction:
-    """Returns prediction schema."""
+    """
+    Fetch a prediction.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    model_name : str
+        The name of the model.
+    dataset_name : str
+        The name of the dataset.
+    datum_uid: str
+        The UID of the datum to fetch.
+
+    Returns
+    ----------
+    schemas.Prediction
+        The requested prediction.
+    """
     model = core.get_model(db, name=model_name)
     dataset = core.get_dataset(db, name=dataset_name)
     datum = core.get_datum(db, dataset_id=dataset.id, uid=datum_uid)

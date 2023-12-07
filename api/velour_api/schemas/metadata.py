@@ -1,8 +1,26 @@
 from pydantic import BaseModel
 
 
-# @TODO placeholder
 class DateTime(BaseModel):
+    """
+    An object describing a date and time.
+
+    Attributes
+    ----------
+    timestamp : int
+        The timestamp in UNIX format.
+    timestamp_local : int
+        The local timestamp in UNIX format.
+    date : int
+        The date in UNIX format.
+    time : int
+        The time in UNIX format.
+    time_local : int
+        The local time in UNIX format.
+    interval : int
+        The interval between moments in time.
+    """
+
     timestamp: int
     timestamp_local: int
     date: int
@@ -12,17 +30,16 @@ class DateTime(BaseModel):
 
 
 class Metadatum(BaseModel):
+    """
+    An object describing metadata that can be attached to other objects.
+
+    Attributes
+    ----------
+    key : str
+        The metadata key.
+    value : float | str | DateTime
+        The metadata value.
+    """
+
     key: str
     value: float | str | DateTime
-
-    @property
-    def string_value(self) -> str | None:
-        if isinstance(self.value, str):
-            return self.value
-        return None
-
-    @property
-    def numeric_value(self) -> float | None:
-        if isinstance(self.value, float):
-            return self.value
-        return None
