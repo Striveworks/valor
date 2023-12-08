@@ -4,7 +4,7 @@ import warnings
 from dataclasses import asdict
 from typing import Dict, List, Optional, Tuple, Union
 
-from velour.client import Client, Job
+from velour.client import Client, ClientException, Job
 from velour.enums import AnnotationType, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import (
@@ -866,20 +866,22 @@ class Evaluation(Job):
         if not isinstance(self.evaluation_id):
             raise ValueError("Missing evaluation id.")
 
-    @property
-    def job_request(self) -> EvaluationJob:
+    def get_result(self) -> EvaluationResult:
         """
-        The job request that created this evaluation.
+        Fetch the first `EvaluationResult` for our `job_id`.
 
         Returns
         ----------
-        schemas.EvaluationJob
-            An `EvaluationJob` object describing the evaluation's configuration.
+        schemas.EvaluationResult
+            The result of the evaluation job
         """
-        resp = self.client._requests_get_rel_host(
-            f"evaluations/{self.evaluation_id}/settings"
-        ).json()
-        return EvaluationJob(**resp)
+        response = self.client.get_bulk_evaluations(
+            job_ids=[self.evaluation_id]
+        )
+        if not response:
+            raise ClientException("Not Found")
+        return response[0]
+
 
     @property
     def settings(self) -> EvaluationSettings:
@@ -891,7 +893,7 @@ class Evaluation(Job):
         schemas.EvaluationSettings
             An `EvaluationSettings` object describing the evaluation's configuration.
         """
-        return self.job_request.settings
+        return self.get_result().settings
 
     @property
     def task_type(self) -> TaskType:
@@ -903,7 +905,7 @@ class Evaluation(Job):
         enums.TaskType
             The task type associated with the `Evaluation` object.
         """
-        return self.job_request.task_type
+        return self.get_result().task_type
 
     @property
     def results(self) -> EvaluationResult:
@@ -915,10 +917,7 @@ class Evaluation(Job):
         schemas.EvaluationResult
             The results from the evaluation.
         """
-        result = self.client._requests_get_rel_host(
-            f"evaluations/{self.evaluation_id}"
-        ).json()
-        return EvaluationResult(**result)
+        return self.get_result()
 
 
 class Model:

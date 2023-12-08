@@ -89,7 +89,7 @@ def test_evaluate_image_clf(
 
 
 def test_evaluate_tabular_clf(
-    client: Session,
+    client: Client,
     dataset_name: str,
     model_name: str,
     gt_clfs_tabular: list[int],
@@ -264,13 +264,14 @@ def test_evaluate_tabular_clf(
     assert isinstance(df[0]["df"], pandas.DataFrame)
 
     # check evaluation
-    results = model.get_evaluations()
-    assert len(results) == 1
-    assert results[0].dataset == dataset_name
-    assert results[0].model == model_name
-    assert results[0].settings == {}
+    eval_jobs = model.get_evaluations()
+    assert len(eval_jobs) == 1
+    assert eval_jobs[0].model == model_name
+    assert eval_jobs[0].dataset == "test_dataset"
+    assert eval_jobs[0].task_type == "classification"
+    assert eval_jobs[0].settings == {}
 
-    metrics_from_eval_settings_id = results[0].metrics
+    metrics_from_eval_settings_id = eval_jobs[0].metrics
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
     for m in metrics_from_eval_settings_id:
         assert m in expected_metrics
@@ -278,7 +279,7 @@ def test_evaluate_tabular_clf(
         assert m in metrics_from_eval_settings_id
 
     # check confusion matrix
-    confusion_matrices = results[0].confusion_matrices
+    confusion_matrices = eval_jobs[0].confusion_matrices
 
     # validate return schema
     assert len(confusion_matrices) == 1

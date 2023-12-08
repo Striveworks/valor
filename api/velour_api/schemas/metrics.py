@@ -681,9 +681,10 @@ class Evaluation(BaseModel):
     model: str
     settings: EvaluationSettings
     job_id: int
-    status: str
+    status: JobStatus
     metrics: list[Metric]
     confusion_matrices: list[ConfusionMatrixResponse]
+    task_type: str
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")

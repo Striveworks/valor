@@ -2,11 +2,10 @@ import math
 import os
 import time
 from typing import List, Union
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlencode
 
 import requests
 
-from velour import schemas
 from velour.enums import JobStatus
 from velour.schemas.evaluation import EvaluationResult
 
@@ -245,47 +244,10 @@ class Client:
                     "Model wasn't deleted within timeout interval"
                 )
 
-    def get_evaluation_status(
-        self,
-        evaluation_id: int,
-    ) -> JobStatus:
-        """
-        Get the state of a given job ID.
-
-        Parameters
-        ----------
-        evaluation_id : int
-            The job id of the evaluation that we want to fetch the state of.
-
-        Returns
-        ------
-        JobStatus
-            The state of the `Evaluation`.
-        """
-        resp = self._requests_get_rel_host(
-            f"evaluations/{evaluation_id}/status"
-        ).json()
-        return JobStatus(resp)
-
-    def get_evaluation(
-        self,
-        evaluation_id: int,
-    ) -> EvaluationResult:
-        """
-        The results of an evaluation job.
-
-        Returns
-        ----------
-        schemas.EvaluationResult
-            The results from the evaluation.
-        """
-        result = self._requests_get_rel_host(
-            f"evaluations/{evaluation_id}"
-        ).json()
-        return schemas.EvaluationResult(**result)
-
     def get_bulk_evaluations(
         self,
+        *,
+        job_ids: Union[int, List[int], None] = None,
         models: Union[str, List[str], None] = None,
         datasets: Union[str, List[str], None] = None,
     ) -> List[EvaluationResult]:
@@ -294,6 +256,8 @@ class Client:
 
         Parameters
         ----------
+        job_ids : Union[int, List[int], None]
+            A list of job ids to return metrics for.  If the user passes a single value, it will automatically be converted to a list for convenience.
         models : Union[str, List[str], None]
             A list of model names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
         datasets : Union[str, List[str], None]
@@ -306,37 +270,28 @@ class Client:
 
         """
 
-        if not (models or datasets):
+        if not (job_ids or models or datasets):
             raise ValueError(
-                "Please provide atleast one model name or dataset name"
+                "Please provide at least one job_id, model name, or dataset name"
             )
 
-        if models:
-            # let users just pass one name as a string
-            if isinstance(models, str):
-                models = [models]
-            model_params = ",".join(models)
-        else:
-            model_params = None
+        def build_query_param(param_name, element, typ):
+            if not element:
+                return {}
+            if isinstance(element, typ):
+                element = [element]
+            return {param_name: ','.join(map(str, element))}
 
-        if datasets:
-            if isinstance(datasets, str):
-                datasets = [datasets]
-            dataset_params = ",".join(datasets)
-        else:
-            dataset_params = None
+        params = {
+            **build_query_param("job_ids", job_ids, int),
+            **build_query_param("models", models, str),
+            **build_query_param("datasets", datasets, str),
+        }
 
-        if model_params and dataset_params:
-            endpoint = (
-                f"evaluations?models={model_params}&datasets={dataset_params}"
-            )
-        elif model_params:
-            endpoint = f"evaluations?models={model_params}"
-        else:
-            endpoint = f"evaluations?datasets={dataset_params}"
+        query_str = urlencode(params)
+        endpoint = f"evaluations?{query_str}"
 
         evals = self._requests_get_rel_host(endpoint).json()
-        print(evals)
         return [EvaluationResult(**eval) for eval in evals]
 
 
@@ -356,7 +311,7 @@ class Job:
         self.evaluation_id = evaluation_id
 
         if evaluation_id:
-            self.url = f"evaluations/{evaluation_id}/status"
+            self.url = None # uses client.get_bulk_evaluations
         elif dataset_name and not model_name:
             self.url = f"datasets/{dataset_name}/status"
         elif model_name and not dataset_name:
@@ -374,6 +329,13 @@ class Job:
 
     @property
     def status(self) -> JobStatus:
+        if self.url is None:
+            response = self.client.get_bulk_evaluations(
+                job_ids=[self.evaluation_id]
+            )
+            if not response:
+                raise ClientException("Not Found")
+            return JobStatus(response[0].status)
         resp = self.client._requests_get_rel_host(self.url).json()
         return JobStatus(resp)
 
@@ -383,7 +345,9 @@ class Job:
         """
         if self.status == JobStatus.DONE:
             if self.evaluation_id:
-                return self.client.get_evaluation(self.evaluation_id)
+                return self.client.get_bulk_evaluations(
+                    job_ids=[self.evaluation_id]
+                )
             else:
                 return None
 

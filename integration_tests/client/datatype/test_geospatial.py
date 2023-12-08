@@ -141,8 +141,8 @@ def test_geospatial_filter(
         timeout=30,
     )
 
-    settings = asdict(eval_job.settings)
-    assert settings["filters"]["datum_geospatial"] == [
+    result = asdict(eval_job.results)
+    assert result["settings"]["filters"]["datum_geospatial"] == [
         {
             "value": {
                 "geometry": {

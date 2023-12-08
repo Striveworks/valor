@@ -86,6 +86,8 @@ class EvaluationResult:
         The name of the `Dataset` invoked during the evaluation.
     model : str
         The name of the `Model` invoked during the evaluation.
+    task_type : str
+        The task type of the evaluation.
     settings : EvaluationSettings
         The `EvaluationSettings` object used to configurate the `EvaluationJob`.
     job_id : int
@@ -100,6 +102,7 @@ class EvaluationResult:
 
     dataset: str
     model: str
+    task_type: str
     settings: EvaluationSettings
     job_id: int
     status: str

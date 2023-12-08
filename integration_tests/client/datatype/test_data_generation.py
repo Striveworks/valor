@@ -104,9 +104,11 @@ def test_generate_prediction_data(client: Client):
 
     assert eval_job.status == JobStatus.DONE
 
-    job_request = asdict(eval_job.job_request)
-    job_request.pop("id")
-    assert job_request == {
+    eval_results = asdict(eval_job.results)
+    eval_metrics = eval_results.pop("metrics")
+    for key in ["job_id", "confusion_matrices", "status"]:
+        eval_results.pop(key)
+    assert eval_results == {
         "model": model_name,
         "dataset": dataset_name,
         "task_type": TaskType.DETECTION.value,
@@ -118,23 +120,7 @@ def test_generate_prediction_data(client: Client):
             "filters": {
                 "annotation_types": ["box"],
                 "label_keys": ["k1"],
-                "annotation_geometric_area": None,
-                "annotation_geospatial": None,
-                "annotation_metadata": None,
-                "dataset_geospatial": None,
-                "dataset_metadata": None,
-                "dataset_names": None,
-                "datum_geospatial": None,
-                "datum_metadata": None,
-                "datum_uids": None,
-                "label_ids": None,
-                "labels": None,
-                "models_geospatial": None,
-                "models_metadata": None,
-                "models_names": None,
-                "prediction_scores": None,
-                "task_types": None,
             },
         },
     }
-    assert len(eval_job.results.metrics) > 0
+    assert len(eval_metrics) > 0
