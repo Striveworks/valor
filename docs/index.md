@@ -13,7 +13,7 @@ These docs are organized as follows:
 - **[Contributing & Development](getting_started.md)**: Explains how you can build on and contribute to Velour.
 - **[References](references/API/Endpoints.md)**: Shares reference documentation for our API and Python client.
 
-# Overview of Velour
+# Overview
 
 In this section, we'll explore what Velour is, why it's important, and provide a high-level description of how it works. This overview is available in a quick 5-minute video below:
 
@@ -32,7 +32,7 @@ Finally, our users wanted to understand **"How can I use my prior evaluations to
 
 With these three use cases in mind, we set out to build a centralized evaluation store that we later named Velour.
 
-# Why Velour
+# Enter Velour
 
 Velour is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. Our ultimate goal with Velour is to help data scientists and engineers pick the right ML model for their specific needs. To that end, we built Velour with three design principles in mind:
 
@@ -62,3 +62,7 @@ Finally, once all of our previous pipeline runs and evaluations are stored in Ve
 
 
 <img src="static/example_2.png" alt="A satellite image of forest fires.">
+
+# Next Steps
+
+To get started with Velour, we'd recommend reviewing our [sample notebooks](#TODO) or reading our [Getting Started docs](getting_started.md).
