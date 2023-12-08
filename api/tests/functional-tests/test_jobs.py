@@ -9,7 +9,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, exceptions, schemas
-from velour_api.backend import database, jobs
+from velour_api.backend import database
+from velour_api.crud import jobs
 
 
 @pytest.fixture

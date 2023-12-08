@@ -12,6 +12,7 @@ from ._create import (
 )
 from ._delete import delete
 from ._read import (
+    get_job_status,
     get_all_labels,
     get_dataset,
     get_dataset_labels,
@@ -36,6 +37,7 @@ __all__ = [
     "create_model",
     "create_groundtruth",
     "create_prediction",
+    "get_job_status",
     "get_datasets",
     "get_dataset",
     "get_datums",

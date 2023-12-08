@@ -450,7 +450,7 @@ def get_dataset_status(
         If the dataset doesn't exist.
     """
     try:
-        resp = crud.get_backend_state(dataset_name=dataset_name)
+        resp = crud.get_job_status(dataset_name=dataset_name)
         return resp
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -527,7 +527,10 @@ def delete_dataset(
         )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except exceptions.JobStateError as e:
+    except (
+        exceptions.JobStateError,
+        exceptions.DatasetNotFinalizedError,
+    ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -714,6 +717,42 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
         raise HTTPException(status_code=404, detail=str(e))
 
 
+# TODO - add the ability to find status of model wrt a dataset
+@app.get(
+    "/models/{model_name}/status",
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Models"],
+)
+def get_model_status(
+    model_name: str, db: Session = Depends(get_db)
+) -> enums.State:
+    """
+    Fetch the status of a model.
+
+    Parameters
+    ----------
+    model_name : str
+        The name of the model.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    enums.State
+        The requested state.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the model doesn't exist.
+    """
+    try:
+        return crud.get_job_status(model_name=model_name)
+    except exceptions.ModelDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+
 @app.put(
     "/models/{model_name}/datasets/{dataset_name}/finalize",
     status_code=200,
@@ -761,12 +800,17 @@ def finalize_inferences(
         raise HTTPException(status_code=404, detail=str(e))
 
 
+# TODO - add the ability to delete just predictions for a single dataset
 @app.delete(
     "/models/{model_name}",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
 )
-def delete_model(model_name: str, db: Session = Depends(get_db)):
+def delete_model(
+    model_name: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     """
     Delete a model from the database.
 
@@ -785,10 +829,17 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
         If the model isn't in the correct state to be deleted.
     """
     try:
-        crud.delete(db=db, model_name=model_name)
+        background_tasks.add_task(
+            crud.delete,
+            db=db,
+            model_name=model_name,
+        )
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except exceptions.JobStateError as e:
+    except (
+        exceptions.JobStateError,
+        exceptions.ModelNotFinalizedError,
+    ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
