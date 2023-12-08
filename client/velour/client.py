@@ -11,7 +11,7 @@ import requests
 
 from velour import enums, schemas
 from velour.coretypes import Datum, GroundTruth, Label, Prediction
-from velour.enums import JobStatus, State
+from velour.enums import JobStatus
 from velour.metatypes import ImageMetadata
 from velour.schemas.filters import BinaryExpression, DeclarativeMapper, Filter
 from velour.schemas.metadata import validate_metadata
@@ -229,7 +229,7 @@ class Client:
 
         if timeout:
             for _ in range(timeout):
-                if self.get_dataset_status(name) == State.NONE:
+                if self.get_dataset_status(name) == JobStatus.NONE:
                     break
                 else:
                     time.sleep(1)
@@ -253,7 +253,7 @@ class Client:
 
         if timeout:
             for _ in range(timeout):
-                if self.get_dataset_status(name) == State.NONE:
+                if self.get_dataset_status(name) == JobStatus.NONE:
                     break
                 else:
                     time.sleep(1)
@@ -265,7 +265,7 @@ class Client:
     def get_dataset_status(
         self,
         dataset_name: str,
-    ) -> State:
+    ) -> JobStatus:
         """
         Get the state of a given dataset.
 
@@ -276,7 +276,7 @@ class Client:
 
         Returns
         ------
-        State
+        JobStatus
             The state of the `Dataset`.
         """
         try:
@@ -284,14 +284,39 @@ class Client:
                 f"datasets/{dataset_name}/status"
             ).json()
         except Exception:
-            resp = State.NONE
+            return JobStatus.NONE
+        return resp
+    
+    def get_model_status(
+        self,
+        model_name: str,
+    ) -> JobStatus:
+        """
+        Get the state of a given model.
+
+        Parameters
+        ----------
+        model_name : str
+            The name of the model we want to fetch the state of.
+
+        Returns
+        ------
+        JobStatus
+            The state of the `Model`.
+        """
+        try:
+            resp = self._requests_get_rel_host(
+                f"models/{model_name}/status"
+            ).json()
+        except Exception:
+            return JobStatus.NONE
 
         return resp
 
     def get_evaluation_status(
         self,
         job_id: int,
-    ) -> State:
+    ) -> JobStatus:
         """
         Get the state of a given job ID.
 
@@ -302,7 +327,7 @@ class Client:
 
         Returns
         ------
-        State
+        JobStatus
             The state of the `Evaluation`.
         """
         return self._requests_get_rel_host(

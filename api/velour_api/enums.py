@@ -94,25 +94,3 @@ class JobStatus(Enum):
             return {self.DELETING, self.NONE}
         else:
             raise ValueError
-
-
-class State(str, Enum):
-    NONE = "none"
-    CREATE = "create"
-    READY = "ready"
-    EVALUATE = "evaluate"
-    DELETE = "delete"
-
-    def next(self):
-        if self == self.NONE:
-            return {self.CREATE, self.DELETE}
-        elif self == self.CREATE:
-            return {self.CREATE, self.READY, self.DELETE}
-        elif self == self.READY:
-            return {self.READY, self.EVALUATE, self.DELETE}
-        elif self == self.EVALUATE:
-            return {self.EVALUATE, self.READY}
-        elif self == self.DELETE:
-            return {self.DELETE}
-        else:
-            raise ValueError

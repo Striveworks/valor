@@ -779,13 +779,13 @@ def test_get_dataset_by_name(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_dataset_status(crud, client: TestClient):
-    crud.get_backend_state.return_value = "ready"
+    crud.get_job_status.return_value = JobStatus.DONE.value
     resp = client.get("/datasets/dsetname/status")
     assert resp.status_code == 200
-    crud.get_backend_state.assert_called_once()
+    crud.get_job_status.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_backend_state",
+        "velour_api.main.crud.get_job_status",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("/datasets/dsetname/status")
@@ -936,6 +936,28 @@ def test_finalize_inferences(crud, client: TestClient):
 
 
 @patch("velour_api.main.crud")
+def test_delete_dataset(crud, client: TestClient):
+    crud.delete.return_value = None
+    resp = client.delete("/datasets/dsetname")
+    assert resp.status_code == 200
+    crud.delete.assert_called_once()
+
+    with patch(
+        "fastapi.BackgroundTasks.add_task",
+        side_effect=exceptions.DatasetDoesNotExistError(""),
+    ):
+        resp = client.delete("/datasets/dsetname")
+        assert resp.status_code == 404
+
+    with patch(
+        "fastapi.BackgroundTasks.add_task",
+        side_effect=exceptions.JobStateError(""),
+    ):
+        resp = client.delete("/datasets/dsetname")
+        assert resp.status_code == 409
+
+
+@patch("velour_api.main.crud")
 def test_delete_model(crud, client: TestClient):
     crud.delete.return_value = None
     resp = client.delete("/models/modelname")
@@ -943,14 +965,14 @@ def test_delete_model(crud, client: TestClient):
     crud.delete.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.delete",
+        "fastapi.BackgroundTasks.add_task",
         side_effect=exceptions.ModelDoesNotExistError(""),
     ):
         resp = client.delete("/models/modelname")
         assert resp.status_code == 404
 
     with patch(
-        "velour_api.main.crud.delete",
+        "fastapi.BackgroundTasks.add_task",
         side_effect=exceptions.JobStateError(""),
     ):
         resp = client.delete("/models/modelname")

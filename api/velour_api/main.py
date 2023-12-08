@@ -428,7 +428,7 @@ def get_dataset(
 )
 def get_dataset_status(
     dataset_name: str, db: Session = Depends(get_db)
-) -> enums.State:
+) -> enums.JobStatus:
     """
     Fetch the status of a dataset.
 
@@ -441,7 +441,7 @@ def get_dataset_status(
 
     Returns
     -------
-    enums.State
+    enums.JobStatus
         The requested state.
 
     Raises
@@ -725,7 +725,7 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 )
 def get_model_status(
     model_name: str, db: Session = Depends(get_db)
-) -> enums.State:
+) -> enums.JobStatus:
     """
     Fetch the status of a model.
 
@@ -738,7 +738,7 @@ def get_model_status(
 
     Returns
     -------
-    enums.State
+    enums.JobStatus
         The requested state.
 
     Raises
@@ -750,7 +750,6 @@ def get_model_status(
         return crud.get_job_status(model_name=model_name)
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-
 
 
 @app.put(
