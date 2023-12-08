@@ -65,4 +65,4 @@ Finally, once all of our previous pipeline runs and evaluations are stored in Ve
 
 # Next Steps
 
-To get started with Velour, we'd recommend reviewing our [sample notebooks](#TODO) or reading our [Getting Started docs](getting_started.md).
+To get started with Velour, we'd recommend reviewing our [sample notebooks](#TODO) or reading our [Getting Started docs](getting_started.md). For more detailed explainations of Velour's technical underpinnings, see our [technical concepts guide](technical_concepts.md).

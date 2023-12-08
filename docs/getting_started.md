@@ -179,3 +179,8 @@ For more examples, please see our [sample notebooks](https://github.com/Strivewo
 
 ### 4b. Using API endpoints
 You can also leverage Velour's API without using the Python client. [Click here](references/API/Endpoints.md) to read up on all of our API endpoints.
+
+
+# Next Steps
+
+For more examples, we'd recommend reviewing our [sample notebooks on GitHub](#TODO). For more detailed explainations of Velour's technical underpinnings, see our [technical concepts guide](technical_concepts.md).
