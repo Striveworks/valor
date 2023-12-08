@@ -75,18 +75,23 @@ class JobStatus(Enum):
     NONE = "none"
     PENDING = "pending"
     PROCESSING = "processing"
+    DELETING = "deleting"
     FAILED = "failed"
     DONE = "done"
 
     def next(self):
-        if self == self.PENDING:
+        if self == self.NONE:
+            return {self.NONE}
+        elif self == self.PENDING:
             return {self.PENDING, self.PROCESSING}
         elif self == self.PROCESSING:
             return {self.PROCESSING, self.DONE, self.FAILED}
         elif self == self.FAILED:
             return {self.FAILED, self.PENDING, self.PROCESSING}
         elif self == self.DONE:
-            return {self.DONE, self.PENDING, self.PROCESSING}
+            return {self.DONE, self.PENDING, self.PROCESSING, self.DELETING}
+        elif self == self.DELETING:
+            return {self.DELETING, self.NONE}
         else:
             raise ValueError
 

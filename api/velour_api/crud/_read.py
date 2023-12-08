@@ -1,55 +1,35 @@
 from sqlalchemy.orm import Session
 
 from velour_api import backend, enums, schemas
-from velour_api.backend import jobs
+from velour_api.crud import stateflow
 
 
-def get_evaluation_status(job_id: int) -> enums.JobStatus:
+def get_job_status(
+    *,
+    dataset_name: str = None,
+    model_name: str = None,
+    evaluation_id: int = None,
+) -> enums.JobStatus:
     """
-    Fetch an evaluation status.
+    Fetch job status.
+
+    Input must match one of the following sets: {dataset_name}, {model_name}, {dataset_name, model_name} or {dataset_name, model_name, evaluation_id}.
 
     Parameters
     ----------
-    job_id : int
-        The job id.
+    dataset_name : Optional[str]
+        Dataset name.
+    model_name : Optional[str]
+        Model name.
+    evaluation_id : Optional[int]
+        Evaluation id.
 
     Returns
     ----------
     enums.JobStatus
         The requested evaluation status.
     """
-    return jobs.get_stateflow().get_job_status(
-        job_id=job_id,
-    )
-
-
-def get_backend_state(
-    *, dataset_name: str, model_name: str | None = None
-) -> enums.State:
-    """
-    Fetch the state of a dataset or model.
-
-    Parameters
-    ----------
-    dataset_name : str
-        The name of the dataset.
-    model_name : str
-        The name of the model.
-
-    Returns
-    ----------
-    enums.State
-        The requested state.
-    """
-    stateflow = jobs.get_stateflow()
-    if dataset_name and model_name:
-        return stateflow.get_inference_status(
-            dataset_name=dataset_name,
-            model_name=model_name,
-        )
-    return stateflow.get_dataset_status(
-        dataset_name=dataset_name,
-    )
+    return stateflow.get_status(dataset_name, model_name, evaluation_id)
 
 
 """ Labels """
@@ -449,40 +429,6 @@ def get_model_metrics(
     return backend.get_model_metrics(db, model_name, evaluation_id)
 
 
-def get_evaluation_ids_for_dataset(dataset_name: str) -> dict[str, list[int]]:
-    """
-    Fetch all evaluation IDs for a given dataset.
-
-    Parameters
-    ----------
-    dataset_name : str
-        The name of the dataset.
-
-    Returns
-    ----------
-    Dict[str, List[int]]
-        A dictionary of jobs.
-    """
-    return jobs.get_stateflow().get_dataset_jobs(dataset_name)
-
-
-def get_evaluation_ids_for_model(model_name: str) -> dict[str, list[int]]:
-    """
-    Fetch all evaluation IDs for a given model.
-
-    Parameters
-    ----------
-    model_name : str
-        The name of the model.
-
-    Returns
-    ----------
-    Dict[str, List[int]]
-        A dictionary of jobs.
-    """
-    return jobs.get_stateflow().get_model_jobs(model_name)
-
-
 def get_evaluation_jobs(
     *,
     db: Session,
@@ -561,8 +507,10 @@ def get_evaluations(
 
     # set evaluation status (redis only available in crud)
     for evaluation in evaluations:
-        evaluation.status = jobs.get_stateflow().get_job_status(
-            job_id=evaluation.job_id,
+        evaluation.status = stateflow.get_status(
+            dataset_name=evaluation.dataset,
+            model_name=evaluation.model,
+            evaluation_id=evaluation.job_id,
         )
 
     return evaluations

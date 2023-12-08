@@ -13,17 +13,13 @@ from ._create import (
 from ._delete import delete
 from ._read import (
     get_all_labels,
-    get_backend_state,
     get_dataset,
     get_dataset_labels,
     get_datasets,
     get_datums,
     get_disjoint_keys,
     get_disjoint_labels,
-    get_evaluation_ids_for_dataset,
-    get_evaluation_ids_for_model,
     get_evaluation_jobs,
-    get_evaluation_status,
     get_evaluations,
     get_groundtruth,
     get_joint_labels,
@@ -40,8 +36,6 @@ __all__ = [
     "create_model",
     "create_groundtruth",
     "create_prediction",
-    "get_evaluation_status",
-    "get_backend_state",
     "get_datasets",
     "get_dataset",
     "get_datums",
@@ -67,6 +61,4 @@ __all__ = [
     "finalize",
     "get_evaluations",
     "get_evaluation_jobs",
-    "get_evaluation_ids_for_dataset",
-    "get_evaluation_ids_for_model",
 ]

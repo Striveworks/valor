@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 
 from velour_api import auth, crud, enums, exceptions, logger, schemas
 from velour_api.api_utils import _split_query_params
-from velour_api.backend import database, jobs
+from velour_api.backend import database
+from velour_api.crud import jobs
 from velour_api.settings import auth_settings
 
 token_auth_scheme = auth.OptionalHTTPBearer()
@@ -526,7 +527,7 @@ def delete_dataset(
         )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except exceptions.StateflowError as e:
+    except exceptions.JobStateError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -787,7 +788,7 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
         crud.delete(db=db, model_name=model_name)
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except exceptions.StateflowError as e:
+    except exceptions.JobStateError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -878,7 +879,7 @@ def create_evaluation(
         exceptions.ModelNotFinalizedError,
     ) as e:
         raise HTTPException(status_code=405, detail=str(e))
-    except exceptions.StateflowError as e:
+    except exceptions.JobStateError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 

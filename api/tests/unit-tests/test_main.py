@@ -112,7 +112,7 @@ def _test_post_evaluation_endpoint(
 
     with patch(
         "fastapi.BackgroundTasks.add_task",
-        side_effect=exceptions.StateflowError(""),
+        side_effect=exceptions.JobStateError(""),
     ):
         resp = client.post(endpoint, json=example_json)
         assert resp.status_code == 409
@@ -838,7 +838,7 @@ def test_delete_dataset(crud, client: TestClient):
 
     with patch(
         "fastapi.BackgroundTasks.add_task",
-        side_effect=exceptions.StateflowError(""),
+        side_effect=exceptions.JobStateError(""),
     ):
         resp = client.delete("/datasets/dsetname")
         assert resp.status_code == 409
@@ -951,7 +951,7 @@ def test_delete_model(crud, client: TestClient):
 
     with patch(
         "velour_api.main.crud.delete",
-        side_effect=exceptions.StateflowError(""),
+        side_effect=exceptions.JobStateError(""),
     ):
         resp = client.delete("/models/modelname")
         assert resp.status_code == 409

@@ -311,13 +311,13 @@ class GroundTruth(BaseModel):
     annotations: list[Annotation]
     model_config = ConfigDict(extra="forbid")
 
-    @field_validator("annotations")
-    @classmethod
-    def _check_annotations_not_empty(cls, v: list[Annotation]):
-        """Validate that annotations aren't empty."""
-        if not v:
-            raise ValueError("annotations is empty")
-        return v
+    # @field_validator("annotations")
+    # @classmethod
+    # def _check_annotations_not_empty(cls, v: list[Annotation]):
+    #     """Validate that annotations aren't empty."""
+    #     if not v:
+    #         raise ValueError("annotations is empty")
+    #     return v
 
     @field_validator("annotations")
     @classmethod
@@ -372,14 +372,14 @@ class Prediction(BaseModel):
         _validate_name_format(v)
         return v
 
-    @field_validator("annotations")
-    @classmethod
-    def _check_annotations(cls, v):
-        """Validate that annotations aren't empty."""
+    # @field_validator("annotations")
+    # @classmethod
+    # def _check_annotations(cls, v):
+    #     """Validate that annotations aren't empty."""
 
-        if not v:
-            raise ValueError("annotations is empty")
-        return v
+    #     if not v:
+    #         raise ValueError("annotations is empty")
+    #     return v
 
     @model_validator(mode="after")
     @classmethod

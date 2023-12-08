@@ -26,6 +26,7 @@ def _create_gt_data(
     )
     for gt in gt_semantic_segs_create:
         crud.create_groundtruth(db=db, groundtruth=gt)
+    crud.finalize(db=db, dataset_name=dataset_name)
 
 
 def _create_data(

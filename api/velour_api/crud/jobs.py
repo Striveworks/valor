@@ -2,12 +2,13 @@ import json
 import os
 import time
 from functools import wraps
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 import redis
 
 from velour_api import logger, schemas
 from velour_api.enums import JobStatus
+from velour_api.exceptions import JobStateError
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
@@ -99,14 +100,17 @@ class Job(BaseModel):
     uuid: str
     status: JobStatus = JobStatus.PENDING
     msg: str = ""
-    children: set[str] = {}
+    children: set[str] = Field(default_factory=set)
 
     @classmethod
     @needs_redis
     def get(
         cls, 
-        uuid: str = None,
+        uuid: str,
     ):
+        """
+        Create or get Job with matching UUID.
+        """
         json_str = r.get(uuid)
         if json_str is None or not isinstance(json_str, bytes):
             job = cls(uuid=uuid)
@@ -116,38 +120,75 @@ class Job(BaseModel):
         job["uuid"] = uuid
         return cls(**job)
     
-    @classmethod
-    @needs_redis
-    def retrieve(
-        cls, 
-        dataset_name: str = None,
-        model_name: str = None,
-        evaluation_id: int = None,
-    ):
-        uuid = generate_uuid(dataset_name, model_name, evaluation_id)
-        return cls.get(uuid)
-
     @needs_redis
     def set(self):
+        """
+        Set redis to match Job object.
+        """
         r.set(self.uuid, self.model_dump_json(exclude={'uuid'}))
     
     def set_status(self, status: JobStatus, msg: str = ""):
+        """
+        Set job status.
+        """
         if status not in self.status.next():
-            raise ValueError(f"{status} not in {self.status.next()}")
+            raise JobStateError(self.uuid, f"{status} not in {self.status.next()}")
         self.status = status
         self.msg = msg
         self.set()
 
     def register_child(self, uuid: int):
+        """
+        Register a child Job.
+        """
         self.children.add(uuid)
         self.set()
 
+    @needs_redis
+    def delete(self):
+        """Delete job from redis."""
+        for child_uuid in self.children:
+            if self.get_status(uuid=child_uuid) not in [JobStatus.NONE, JobStatus.DONE]:
+                raise JobStateError(self.uuid, f"Job blocked by child task with uuid `{child_uuid}` and status `{Job.get_status(uuid=child_uuid).value}`")
+        for child_uuid in self.children:
+            self.get(child_uuid).delete()
+        r.delete(self.uuid)
+        del self
 
-def generate_uuid(
-    dataset_name: str = None,
-    model_name: str = None,
-    evaluation_id: int = None,
-) -> int:
-    if not (dataset_name or model_name or evaluation_id):
-        raise ValueError
-    return (f"{dataset_name}+{model_name}+{evaluation_id}")
+    @staticmethod
+    @needs_redis
+    def get_status(uuid: str) -> JobStatus:
+        """Fetch job status from redis."""
+        json_str = r.get(uuid)
+        if json_str is None or not isinstance(json_str, bytes):
+            return JobStatus.NONE
+        job = json.loads(json_str)
+        return JobStatus(job["status"])
+
+    @staticmethod
+    def generate_uuid(
+        dataset_name: str = None,
+        model_name: str = None,
+        evaluation_id: int = None,
+    ) -> str:
+        """
+        Generate a UUID from a combination of the input args.
+
+        Input must match one of the following sets: {dataset_name}, {model_name}, {dataset_name, model_name} or {dataset_name, model_name, evaluation_id}.
+
+        Parameters
+        ----------
+        dataset_name : Optional[str]
+            Dataset name.
+        datum_uid: Optional[str]
+            Datum uid.
+        model_name : Optional[str]
+            Model name.
+        evaluation_id : Optional[int]
+            Evaluation id.
+
+        Returns
+        ----------
+        int
+        """
+        return (f"{dataset_name}+{model_name}+{evaluation_id}")  
