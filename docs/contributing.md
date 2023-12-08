@@ -1,3 +1,5 @@
+# Contributing & Development
+
 ### 2. Setup pre-commit
 
 To ensure formatting consistency, we use [pre-commit](https://pre-commit.com/) to manage git hooks. To install pre-commit, run:

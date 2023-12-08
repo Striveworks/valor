@@ -4,8 +4,6 @@ Velour is a centralized evaluation store which makes it easy to measure, explore
 
 On this page, we'll describe how to get up and running with Velour.
 
-## Installation
-
 ## 1. Install Docker
 
 As a first step, be sure your machine has Docker installed. [Click here](https://docs.docker.com/engine/install/) for basic installation instructions.
@@ -74,7 +72,7 @@ First, we define our `Dataset` object using `Dataset.create()`.
 dataset = Dataset.create(client, "my_dog_dataset")
 ```
 
-Next, we add one or more `Groundtruths` to our `Dataset`. These objects help Velour understand "What is the correct classification for this particular image?".
+Next, we add one or more `GroundTruths` to our `Dataset`. These objects help Velour understand "What is the correct classification for this particular image?".
 
 ```py
 

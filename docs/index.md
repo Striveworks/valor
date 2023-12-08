@@ -52,11 +52,11 @@ Say that you're interested in using computer vision models to detect forest fire
 
 To answer this question, we'll start by passing-in three pieces of information from each of our prior modeling runs:
 
-- **Groundtruths**: First, we'll pass-in human-annotated bounding boxes to tell Velour exactly where forest fires can be found across all of the satellite images used in prior runs.
+- **GroundTruths**: First, we'll pass-in human-annotated bounding boxes to tell Velour exactly where forest fires can be found across all of the satellite images used in prior runs.
 - **Predictions**: Next, we'll send machine-generated predictions for each image (also in the form of bounding boxes) so that Velour can evaluate how well each model did at predicting forest fires.
 - **Labels**: Finally, we'll pass metadata to Velour describing each of our various images (e.g., the time of day the photo was taken, the geospatial coordinates of the forest in the photo, etc.). We'll use this metadata later on in order to identify the right model for our new use case.
 
-Once we pass in these three components, Velour will compare all of our `Groundtruths` and `Predictions` in order to calculate various valuation metrics (i.e., mean average precision, or mAP). These evaluation metrics, `Labels`, `Groundtruths`, and `Predictions` will all be stored in postgres, with postgis support for fast geospatial lookups and geometric comparisons.
+Once we pass in these three components, Velour will compare all of our `GroundTruths` and `Predictions` in order to calculate various valuation metrics (i.e., mean average precision, or mAP). These evaluation metrics, `Labels`, `GroundTruths`, and `Predictions` will all be stored in postgres, with postgis support for fast geospatial lookups and geometric comparisons.
 
 Finally, once all of our previous pipeline runs and evaluations are stored in Velour, we can use Velour’s API to specify our exact filter criteria and get back its model rankings. In this case, we can ask Velour to find us the best model for detecting forest fires at night in a 50 mile radius around (42.36, -71.03), sorted by mAP. Velour will then filter all of our stored evaluation metrics, rank each model with evaluations that meet our criteria, and send back all relevant evaluation metrics to help us determine which model to use for our new modeling pipeline.
 

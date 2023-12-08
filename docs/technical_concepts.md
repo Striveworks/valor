@@ -1,34 +1,118 @@
 
-## How it works
-The core of _velour_ is a backend REST API service. user's will typically interact with this service via a python client. there is also a lightweight web interface. At a high-level, the typical workflow involves posting groundtruth annotations (class labels, bounding boxes, segmentation masks, etc.) and model predictions to the service. Velour, on the backend, then handles the computation of metrics, stores them centrally, and allows them to be queried. Velour does _not_ store raw data (such as underlying images) or facilitate model inference. It only stores groundtruth annotations and the predictions outputted from a model.
+# Technical Concepts
 
-Some highlights:
+On this page, we'll describe many of the technical concepts underpinning Velour.
 
-- The service handles the computation of metrics. This help makes them trustworthy and auditable, and is also useful when metric computations can be computationally expensive (e.g. for object detection).
-- Metrics are centralized and queryable. In particular, the service facilicates comparing performance of multiple models against multiple datasets.
-- Since inferences and groundtruths are stored, additional metrics can be computed without having to redo model inferences. For example, maybe you run default AP metric settings for object detection but later decide you want to know AP at lower IOU thresholds.
+## High-Level Workflow
 
+The typical Velour workflow involves POSTing groundtruth annotations (e.g., class labels, bounding boxes, segmentation masks, etc.) and model predictions to our API service. The service leverages these groundtruths and predictions to compute evaluation metrics and stores them centrally in Postgres. Users can also attach metadata to their `Datasets`, `Models`, `GroundTruths`, and `Annotations`; this metadata makes it easy to query for specific subsets of evaluations at a later date. Once an evaluation is stored in Velour, users can query those evaluations from Postgres via `GET` requests to the Velour API.
 
-# API
+Note that Velour does _not_ store raw data (such as underlying images) or facilitate model inference. Only the following items are stored in Postgres:
 
-The backend consists of three components
-
-1. A `velour` REST API service.
-2. A PostgreSQL instance with the PostGIS extention.
-3. A redis instance
-
-FastAPI generates API documentation which can be found at:
-
-`http://<url>:<port>/docs#/`
+- GroundTruth annotations
+- Predictions outputted from a model
+- Metadata from any of Velour's various classes
+- Evaluation metrics computed by Velour
+- The state of user-supplied datasets, models, and evaluation jobs
 
 
-# Authentication
+## Supported Task Types
 
-The API can be run without authentication (by default) or with authentication provided by [auth0](https://auth0.com/). A small react app (code at `web/`)
+As of December 2023, Velour supports the following types of supervised learning tasks:
 
-## Backend
+- Image classification (including multi-label classification)
+- Object detection
+- Segmentation (including both instance and semantic segmentation)
 
-To enable authentication for the backend either set the environment variables `AUTH_DOMAIN`, `AUTH_AUDIENCE`, and `AUTH_ALGORITHMS` or put them in a file named `.env.auth` in the `api` directory. An example of such a file is
+We expect the Velour framework to extend well to other types of supervised learning tasks, and plan to expand our supported task types in future releases.
+
+
+## Components
+
+We can think of Velour in terms of four orthogonal components:
+
+### API
+
+The core of Velour is a backend REST API service. Users can call the API's endpoints directly (e.g., `POST /datasets`), or they can use our Python client to handle the handle the API calls from their Python scripts.  All of Velour's state is stored in Postgres and/or Redis; the API itself is completely stateless.
+
+Note that, after you start the API service, you'll be able to view FastAPI's automatically generated API documentation at `https://<your host>/docs`.
+
+### Redis
+
+Redis is an open source, in-memory data store commonly used for caching. We use Redis to cache state and speed-up our evaluation calculations.
+
+### PostgreSQL
+
+PostgreSQL (a.k.a., Postgres or psql) is an open-source relational database management system. We use Postgres store all of Velour's various objects and states.
+
+One of the most important reasons we chose Postgres was because of its PostGIS extension, which adds support for storing, indexing and querying geographic data. PostGIS enables Velour to quickly filter prior evaluations using geographic coordinates, which is a critically important feature for any computer vision tasks involving satellite data.
+
+### Python Client
+
+Finally, we created a client to make it easier for our users to play with Velour from their Python environment. All of Velour's heavy lifting is done by our API: our Python client is basically just a wrapper to make it easier to call our endpoints.
+
+## Classes
+
+The Velour API and Client both make use of six core classes. [Click here](/references/API/Schemas/Core/) for technical references on each of these API classes.
+
+### `Dataset`
+
+The highest-level class is a `Dataset`, which stores metadata and annotations associated with a particular set of data. Note that `Dataset` is an abstraction: you can have multiple `Datasets` which reference the exact same input data, which is useful if you need to update or version your data over time.
+
+`Datasets` require a name at instantation, and can optionally take in various types of metadata that you want to associate with your data.
+
+### `Model`
+
+`Models` describe a particular instantition of a machine learning model. We use the `Model` object to delineate between different models runs, or between the same model run over time. Note that `Models` aren't children of `Datasets`; you can have one `Model` contain predictions for multiple `Datasets`.
+
+
+`Models` require a name at instantation, and can optionally take in various types of metadata that you want to associate with your model.
+
+
+### `GroundTruth`
+
+A `GroundTruth` object clarifies what the correct prediction should be for a given piece of data (e.g., an image). For an object detection task, for example, the `GroundTruth` would store a human-drawn bounding box that, when overlayed over an object, would correctly enclose the object that we're trying to predict.
+
+`GroundTruths` take `Datums` and `Annotations` as arguments.
+
+### `Prediction`
+
+A `Prediction` object describes the output of a machine learning model. For an object detection task, for example, the `Prediction` would describe a machine-generated bounding box enclosing the area where a computer vision model believes a certain class of object can be found.
+
+`Predictions` take one `Datum` and a list of `Annotations` as arguments.
+
+
+### `Datum`
+
+`Datums` are used to store metadata about your `GroundTruths` or `Predictions`. This metadata can include user-supplied metadata (e.g., JSONs filled with config details) or geospatial coordinates (via the `geospatial` argument).
+
+A `Datum` requires a universal ID (UID) and dataset name at instantiation, along with any `metadata` or `geospatial` dictionaries that you want to associate with your `GroundTruth` or `Prediction`.
+`Datums` provide the vital link between `GroundTruths` / `Predictions` and `Datasets`, and are useful when filtering your evaluations on specific conditions.
+
+
+### `Annotation`
+
+`Annotations` attach to both `GroundTruths` and `Predictions`, enabling users to add textual annotations to these objects. If a `GroundTruth` depicts a bounding box around a cat, for example, the `Annotation` would be passed into the `GroundTruth` to clarify the correct label for the `GroundTruth` (e.g., `class=cat`) and any other labels the user wants to specify for that bounding box (e.g., `breed=tabby`).
+
+`Annotations` require the user to specify their task type, labels, and metadata at instantition. Users can also pass-in various output representations tailored to their specific task, such as bounding boxes, segmentations, or image rasters.
+
+
+
+
+
+Each case has the notion of a label, which is a key/value pair. This is used (instead of forcing labels to be strings) to support things such as
+
+- multi-label classification. e.g. a dataset of cropped vehicles that have make, model, and year labels
+- additional attributes, such as COCO's `isCrowd` attribute.
+
+#TODO graph diagram?
+
+## Authentication
+
+The API can be run without authentication (by default), or with authentication provided by [auth0](https://auth0.com/). To enable authentication, you can either:
+
+- Set the environment variables `AUTH_DOMAIN`, `AUTH_AUDIENCE`, and `AUTH_ALGORITHMS` manually (e.g., `export AUTH_DOMAIN=<your domain>`)
+- Set these env variables in a file named `.env.auth`, and place that file in the `api` directory. An example of such a file would look like:
 
 ```
 AUTH0_DOMAIN="velour.us.auth0.com"
@@ -36,437 +120,13 @@ AUTH0_AUDIENCE="https://velour.striveworks.us/"
 AUTH0_ALGORITHMS="RS256"
 ```
 
+You can use the tests in `integration_tests/test_client_auth.py` to check whether your authenticator is running correctly.
 
-## Testing auth
+## Deployment Settings
 
-All tests mentioned above run without authentication except for `integration_tests/test_client_auth.py`. Running this test requires setting the envionment variables `AUTH0_DOMAIN`, `AUTH0_AUDIENCE`, `AUTH0_CLIENT_ID`, and `AUTH0_CLIENT_SECRET` accordingly.
+When deploying behind a proxy or with external routing, the environment variable `API_ROOT_PATH` environmental variable should be used to set the `root_path` arguement to `fastapi.FastAPI` (see https://fastapi.tiangolo.com/advanced/behind-a-proxy/#setting-the-root_path-in-the-fastapi-app).
 
-# Deployment settings
 
-For deploying behind a proxy or with external routing, the environment variable `API_ROOT_PATH` can be set in the backend, which sets the `root_path` arguement to `fastapi.FastAPI` (see https://fastapi.tiangolo.com/advanced/behind-a-proxy/#setting-the-root_path-in-the-fastapi-app)
-
-# Schemas
-
-# Geometry
-
-<details>
-<summary><strong>Point</strong></summary>
-
-## Description
-
-Briefly describe the purpose and functionality of the class.
-
-## Attributes
-
->| name | type | description |
->| - | - | - |
->| x | `float` |  |
->| y | `float` |  |
-
-## Methods
-
-><details>
-><summary><b>resize</b></summary>
->
->**Description**\
->Initialize the class instance.
->
->**Parameters**
->| name | type | description |
->| - | - | - |
->| og_img_h | `int` |  |
->| og_img_w | `int` |  |
->| new_img_h | `int` |  |
->| new_img_w | `int` |  |
->
->**Returns**\
->None.
-></details>
-
-## Usage
-
-```python
-# Creating an instance of MyClass
-my_instance = MyClass(param1=value1, param2=value2)
-```
-
-</details>
-
-<details>
-<summary><strong>Box</strong></summary>
-
-## Description
-
-Briefly describe the purpose and functionality of the class.
-
-## Attributes
-
->| name | type | description |
->| - | - | - |
->| min | `Point` |  |
->| max | `Point` |  |
->
-
-## Usage
-
-```python
-# Creating an instance of MyClass
-my_instance = MyClass(param1=value1, param2=value2)
-```
-</details>
-
-<details>
-<summary><strong>BasicPolygon</strong></summary>
-
-## Description
-
-Briefly describe the purpose and functionality of the class.
-
-## Attributes
-
->| name | type | description |
->| - | - | - |
->| points | `List[Point]` |  |
-
-## Methods
-
-><details>
-><summary><b>xy_list</b></summary>
->
->**Description**\
->Initialize the class instance.
->
->**Returns**\
->`List[Point]`
-></details>
-
-><details>
-><summary><b>tuple_list</b></summary>
->
->**Description:**\
->Initialize the class instance.
->
->**Returns:**\
->`List[Tuple[float,float]]`
-></details>
-
-## Usage
-
-```python
-# Creating an instance of MyClass
-my_instance = MyClass(param1=value1, param2=value2)
-```
-
-</details>
-
-<details>
-<summary><strong>Polygon</strong></summary>
-</details>
-
-<details>
-<summary><strong>BoundingBox</strong></summary>
-</details>
-
-<details>
-<summary><strong>MultiPolygon</strong></summary>
-</details>
-
-<details>
-<summary><strong>Raster</strong></summary>
-</details>
-
-
-
-
-## Supported tasks
-
-Currently `velour` supports the following groundtruth label types:
-
-- image classifications
-- object detections
-- instance segmentations
-- semantic segmentations
-- tabular data classifications
-
-Each case has the notion of a label, which is a key/value pair. This is used (instead of forcing labels to be strings) to support things such as
-
-- multi-label classification. e.g. a dataset of cropped vehicles that have make, model, and year labels
-- additional attributes, such as COCO's `isCrowd` attribute.
-
-
-# CoreTypes
-
-The Velour python client supports a small set of object types that facilitate the creation of a unlimited set of user-defined types. These “atomic” types construct and transport the underlying annotation, label and score as well as any associated metadata.
-
-<details>
-<summary>Dataset</summary>
-
-| attribute | type | description |
-| - | - | - |
-| id | `int` |  |
-| name | `str` |  |
-| metadata | `dict[str, Union[float, str]]`|  |
-| geospatial | `dict` | GeoJSON format. |
-
-`velour` stores metadata and annotations associated to a machine learning dataset. For example, in the case of a computer vision dataset, `velour` needs unique identifiers for images, height and width of images, and annotations (such as image classifications, bounding boxes, segmentation masks, etc.) but the underlying images themselves are not stored or needed by velour.
-
-The process of creating a new dataset to be used in velour is to first create an empty dataset via
-
-```py
-dataset = client.create_dataset(DATASET_NAME) # DATASET_NAME a string.
-```
-
-`dataset` is then a `velour.Dataset` object and can be used to add groundtruth labels.
-
-</details>
-
-<details>
-<summary>Model</summary>
-
-| attribute | type | description |
-| - | - | - |
-| id | `int` |  |
-| name | `str` |  |
-| metadata | `dict[str, Union[float, str]]`|  |
-| geospatial | `dict` | GeoJSON format. |
-
-</details>
-
-<details>
-<summary>Datum</summary>
-
-| attribute | type | description |
-| - | - | - |
-| uid | `str` |  |
-| dataset | `str` |  |
-| metadata | `dict[str, Union[float, str]]`|  |
-| geospatial | `dict` | GeoJSON format. |
-
-</details>
-
-<details>
-<summary>Annotation</summary>
-
-| attribute | type | description |
-| - | - | - |
-| task_type | `enums.TaskType` |
-| labels | `list[Label]` | |
-| metadata | `dict[str, Union[float, str]]`||
-| bounding_box | `schemas.BoundingBox` ||
-| polygon | `schemas.Polygon` ||
-| multipolygon | `schemas.MultiPolygon` ||
-| raster | `schemas.Raster` ||
-| jsonb | todo ||
-
-
-```py
-# create groundtruth annotation
-groundtruth_annotation = Annotation(
-    task_type = TaskType.CLASSIFICATION,
-    labels = [
-        schemas.Label(key="class", value="dog"),
-        schemas.Label(key="category", value="animal"),
-    ]
-)
-
-# create prediction annotation
-groundtruth_annotation = Annotation(
-    task_type = TaskType.CLASSIFICATION,
-    labels = [
-        schemas.Label(key="class", value="dog"),
-        schemas.Label(key="category", value="animal"),
-    ]
-)
-```
-
-</details>
-
-<details>
-<summary>GroundTruth</summary>
-
-| attribute | type | description |
-| - | - | - |
-| datum | `Datum` | |
-| annotations | `list[Annotation]` | |
-
-```py
-# create groundtruth
-groundtruth = GroundTruth(
-    datum=datum,
-    annotations=[groundtruth_annotations],
-)
-```
-
-</details>
-
-<details>
-<summary>Prediction</summary>
-
-| attribute | type | description |
-| - | - | - |
-| model | `str` |
-| datum | `Datum` | |
-| annotations | `list[Annotation]` | |
-
-</details>
-
-<details>
-<summary>Label</summary>
-
-| attribute | type | description |
-| - | - | - |
-| key | `str` | |
-| value | `int` | |
-| score | `Optional[float]` | 0-1 |
-
-</details>
-
-<br>
-
-# Schemas
-
-<details>
-<summary>Filtering</summary>
-
-> <details>
-> <summary>ValueFilter</summary>
->
-> | attribute | type | description |
-> | - | - | - |
-> | value | `Union[int, float, str]` |  |
-> | operator | `str` |  Valid string operators: `{"==","!="}`. Numeric operators can draw from the set `{">","<",">=","<=","==","!="}`. |
->
-> </details>
-
-> <details>
-> <summary>GeospatialFilter</summary>
->
-> | attribute | type | description |
-> | - | - | - |
-> | geodict | `dict` | GeoJSON |
-> | operator | `str` |  Valid operators: `{"inside", "outside", "intersect"}` |
->
-> </details>
-
-> <details>
-> <summary>Filter</summary>
->
-> | attribute | type | description |
-> | - | - | - |
-> | dataset_names | `list[str]` |  |
-> | dataset_metadata | `list[schemas.ValueFilter]` |  |
-> | dataset_geospatial | `list[schemas.GeospatialFilter]`|  |
-> | models_names | `list[str]` |  |
-> | models_metadata | `list[schemas.ValueFilter]` |  |
-> | models_geospatial | `list[schemas.GeospatialFilter]`|  |
-> | datum_uids | `list[str]` |  |
-> | datum_metadata | `list[schemas.ValueFilter]` |  |
-> | datum_geospatial | `list[schemas.GeospatialFilter]`|  |
-> | task_types | `list[enums.TaskType]`|  |
-> | annotation_types | `list[enums.AnnotationType]`|  |
-> | annotation_geometric_area | `list[schemas.ValueFilter]`|  |
-> | annotation_metadata | `list[schemas.ValueFilter]` |  |
-> | annotation_geospatial | `list[schemas.GeospatialFilter]`|  |
-> | prediction_scores | `list[schemas.ValueFilter]`|  |
-> | labels | `list[dict[str,str]]`|  |
-> | label_ids | `list[int]`|  |
-> | label_keys | `list[str]`|  |
->
-> </details>
-
-</details>
-
-<details>
-<summary>Geometry</summary>
-
-> <details>
-> <summary>Point</summary>
->
-> | attribute | type | description |
-> | - | - | - |
-> | x | `float` |  |
-> | y | `float` |  |
->
-> | method | args | type |
-> | - | - | - |
-> | resize |  | `Point` |
-> |  | og_img_h | `int` |
-> |  | og_img_w | `int` |
-> |  | new_img_h | `int` |
-> |  | new_img_w | `int` |
->
-> </details>
-
-> <details>
-> <summary>Box</summary>
->
-> | attribute | type | description |
-> | - | - | - |
-> | min | `Point` |  |
-> | max | `Point` |  |
->
-> </details>
-
-> <details>
-> <summary>BasicPolygon</summary>
->
-> | attribute | type | description |
-> | - | - | - |
-> | points | `list[Point]` |  |
->
-> | method | args | type |
-> | - | - | - |
-> | xy_list |  | `list[Point]` |
-> | tuple_list |  | `int` |
-> | xmin |  | `Point` |
-> | xmax |  | `Point` |
-> | ymin |  | `Point` |
-> | ymax |  | `Point` |
-> | from_box | | `BasicPolygon` |
-> |  | box | `Box` |
->
-> </details>
-
-> <details>
-> <summary>BoundingBox</summary>
->
-> | attribute | type | description |
-> | - | - | - |
-> | polygon | `BasicPolygon` |  |
->
-> </details>
-
-> <details>
-> <summary>Polygon</summary >
->
-> | attribute | type | description |
-> | - | - | - |
-> | boundary | `BasicPolygon` |  |
-> | holes | `list[BasicPolygon]` |  |
->
-> </details>
-
-> <details>
-> <summary>MultiPolygon</summary>
->
-> | attribute | type | description |
-> | - | - | - |
-> | polygons | `list[Polygon]` |  |
->
-> </details>
-
-> <details>
-> <summary>Raster</summary>
->
-> | attribute | type | description |
-> | - | - | - |
-> | mask | `str` |  |
->
-> </details>
-
-</details>
-
-<br>
 
 # MetaTypes
 
@@ -551,7 +211,7 @@ This will post the annotations to the backend velour service.
 
 ## Model
 
-`velour` has the notion of a model that stores inferences of a machine learning model; `velour` does not need access to the model itself to evaluate, it just needs the predictions to be sent to it.
+Velour has the notion of a model that stores inferences of a machine learning model; Velour does not need access to the model itself to evaluate, it just needs the predictions to be sent to it.
 
 ## Evaluation
 
