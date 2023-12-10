@@ -1,6 +1,6 @@
 # Getting Started
 
-Velour is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. For an overview of what Velour is and why it's important, [please our overview here](index.md).
+Velour is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. For an overview of what Velour is and why it's important, please refer to our [high-level overview](index.md).
 
 On this page, we'll describe how to get up and running with Velour.
 
@@ -19,14 +19,27 @@ cd velour
 ```
 
 
-## 3. Start the container
+## 3. Start services
 
 Start by setting the environment variable `POSTGRES_PASSWORD` to your liking, then start Docker and build the container:
 
 ```shell
-export POSTGRES_PASSWORD="my-password"
+export POSTGRES_PASSWORD="my_password"
 docker compose up
 ```
+
+Alternatively, you may want to run the API service locally when debugging or developing Velour. To start the service in your Terminal, you can run:
+
+```shell
+pip install api # Install the API in your python environment
+
+export POSTGRES_PASSWORD=password
+export POSTGRES_HOST=localhost
+make start-postgis # Start the postgis service in Docker
+make start-redis # Start the redis service in Docker
+make start-server # Start the API service locally
+```
+
 
 ## 4. Use Velour
 
