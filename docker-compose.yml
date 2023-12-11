@@ -25,9 +25,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
       test: pg_isready -h ${POSTGRES_HOST}
-      interval: 2s
-      timeout: 1s
-      retries: 5
+      interval: 10s
+      timeout: 30s
+      retries: 10
     restart: always
   redis:
     image: "public.ecr.aws/bitnami/redis:7.0"
