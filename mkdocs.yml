@@ -12,7 +12,8 @@ nav:
   - Getting Started: "getting_started.md"
   - Technical Concepts: "technical_concepts.md"
   - Contributing & Development: "contributing.md"
-  - References: references
+  - Endpoints: "endpoints.md"
+  - API & Python Client References: references
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
