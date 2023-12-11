@@ -92,9 +92,9 @@ def _validate_children(job: Job):
     Validate the children of a Job (if they exist).
     """
     def _recursive_child_search(job: Job):
-        # Check status of child jobs
         for uuid in job.children:
             status = get_status_from_uuid(uuid=uuid)
+            # throw exception if child is not in a stable state
             if status not in [JobStatus.NONE, JobStatus.DONE, JobStatus.FAILED]:
                 raise JobStateError(job.uuid, f"Job blocked by child task with uuid `{uuid}` and status `{get_status_from_uuid(uuid=uuid).value}`")
             elif status == JobStatus.DONE:
@@ -118,9 +118,12 @@ def _validate_transition(
     inference_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name)
     evaluation_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name, evaluation_id=evaluation_id)
 
-    # validate state transition
     current_status = job.status
+
+    # catch all errors from illegal transitions
     if transitions.start not in current_status.next():
+
+        # attempt to create after finalization.
         if transitions.start == JobStatus.CREATING and current_status == JobStatus.DONE:
             if dataset_name and not (model_name or evaluation_id):
                 raise DatasetFinalizedError(dataset_name)
@@ -130,11 +133,15 @@ def _validate_transition(
                 raise ModelFinalizedError(dataset_name=dataset_name, model_name=model_name)
             elif model_name and dataset_name and evaluation_id:
                 raise JobStateError(id=job.uuid, msg=f"Evaluation {evaluation_id} already exists.")
-    if transitions.start == JobStatus.PROCESSING:
-        if get_status_from_uuid(dataset_uuid) == JobStatus.CREATING:
-            raise DatasetNotFinalizedError(name=dataset_name)
-        elif get_status_from_uuid(inference_uuid) == JobStatus.CREATING:
-            raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
+        
+        raise JobStateError(job.uuid, f"Requested transition from {current_status} to {transitions.start} is illegal.")
+            
+    # catch parents 
+    # if evaluation_id and transitions.start == JobStatus.PROCESSING:
+    #     if get_status_from_uuid(dataset_uuid) == JobStatus.CREATING:
+    #         raise DatasetNotFinalizedError(name=dataset_name)
+    #     elif get_status_from_uuid(inference_uuid) == JobStatus.CREATING:
+    #         raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
         
 
 def get_job(

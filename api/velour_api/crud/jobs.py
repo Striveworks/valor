@@ -216,11 +216,3 @@ def get_status_from_names(
     else:
         uuid = generate_uuid(dataset_name, model_name, evaluation_id)
     return get_status_from_uuid(uuid)
-
-
-
-j = Job(uuid="ds+md+123", status=JobStatus.CREATING)
-j.set()
-j.set_status(JobStatus.DONE)
-print(Job.get_uuid(evaluation_id=123))
-
