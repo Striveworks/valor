@@ -96,9 +96,9 @@ def evaluation_func_with_id(job_request: schemas.EvaluationJob, job_id: int):
 
 def _test_decorator(uuid: str, fn: callable, kwargs: dict):
     assert Job.get_status(uuid) == JobStatus.NONE
-    stateflow.initialize(fn)(**kwargs)
-    assert Job.get_status(uuid) == JobStatus.PROCESSING
-    stateflow.run(fn)(**kwargs)
+    stateflow.create(fn)(**kwargs)
+    assert Job.get_status(uuid) == JobStatus.CREATING
+    stateflow.finalize(fn)(**kwargs)
     assert Job.get_status(uuid) == JobStatus.DONE
     stateflow.delete(fn)(**kwargs)
     assert Job.get_status(uuid) == JobStatus.NONE
@@ -117,12 +117,13 @@ def test_decorator_model(db, model):
 
 
 def test_decorator_inference(db, dataset, model, prediction, job_request):
-    stateflow.run(dataset_func)(dataset=dataset)
-    stateflow.run(model_func)(model=model)
+    stateflow.finalize(dataset_func)(dataset=dataset)
+    stateflow.finalize(model_func)(model=model)
 
     uuid = Job.generate_uuid(dataset_name=dataset.name, model_name=model.name)
     _test_decorator(uuid, dataset_and_model_name_func, {"dataset_name": dataset.name, "model_name": model.name})
     _test_decorator(uuid, prediction_func, {"prediction": prediction})
+    job_request.id = None
     _test_decorator(uuid, evaluation_func, {"job_request": job_request})
 
     stateflow.delete(dataset_func)(dataset=dataset)
@@ -130,9 +131,9 @@ def test_decorator_inference(db, dataset, model, prediction, job_request):
 
 
 def test_decorator_evaluation(db, dataset, model, job_request):
-    stateflow.run(dataset_func)(dataset=dataset)
-    stateflow.run(model_func)(model=model)
-    stateflow.run(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
+    stateflow.finalize(dataset_func)(dataset=dataset)
+    stateflow.finalize(model_func)(model=model)
+    stateflow.finalize(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
     
     job_request.id = 1234
     uuid = Job.generate_uuid(job_request.dataset, job_request.model, job_request.id)
@@ -146,10 +147,10 @@ def test_decorator_evaluation(db, dataset, model, job_request):
 def test_order_of_operations(db, dataset, model, job_request, groundtruth, prediction):
 
     # dataset -> model -> inference -> evaluation
-    stateflow.run(dataset_func(dataset=dataset))
-    stateflow.run(model_func(model=model))
-    stateflow.run(prediction_func(prediction=prediction))
-    stateflow.run(evaluation_func_with_id(job_request=job_request, job_id=1234))
+    stateflow.finalize(dataset_func(dataset=dataset))
+    stateflow.finalize(model_func(model=model))
+    stateflow.finalize(prediction_func(prediction=prediction))
+    stateflow.finalize(evaluation_func_with_id(job_request=job_request, job_id=1234))
 
     stateflow.delete(evaluation_func_with_id(job_request=job_request, job_id=1234))
     stateflow.delete(prediction_func(prediction=prediction))
@@ -157,10 +158,10 @@ def test_order_of_operations(db, dataset, model, job_request, groundtruth, predi
     stateflow.delete(model_func(model=model))
     
     # model -> dataset -> inference -> evaluation
-    stateflow.run(model_func(model=model))
-    stateflow.run(dataset_func(dataset=dataset))
-    stateflow.run(prediction_func(prediction=prediction))
-    stateflow.run(evaluation_func_with_id(job_request=job_request, job_id=1234))
+    stateflow.finalize(model_func(model=model))
+    stateflow.finalize(dataset_func(dataset=dataset))
+    stateflow.finalize(prediction_func(prediction=prediction))
+    stateflow.finalize(evaluation_func_with_id(job_request=job_request, job_id=1234))
 
     stateflow.delete(evaluation_func_with_id(job_request=job_request, job_id=1234))
     stateflow.delete(prediction_func(prediction=prediction))
@@ -168,34 +169,34 @@ def test_order_of_operations(db, dataset, model, job_request, groundtruth, predi
     stateflow.delete(dataset_func(dataset=dataset))
 
     # dataset -> inference
-    stateflow.run(dataset_func)(dataset=dataset)
+    stateflow.finalize(dataset_func)(dataset=dataset)
     with pytest.raises(ModelDoesNotExistError):
-        stateflow.run(prediction_func)(prediction=prediction)
+        stateflow.finalize(prediction_func)(prediction=prediction)
     stateflow.delete(dataset_func)(dataset=dataset)
 
     # model -> inference
-    stateflow.run(model_func)(model=model)
+    stateflow.finalize(model_func)(model=model)
     with pytest.raises(DatasetDoesNotExistError):
-        stateflow.run(prediction_func)(prediction=prediction)
+        stateflow.finalize(prediction_func)(prediction=prediction)
     stateflow.delete(model_func)(model=model)
 
     # dataset -> evaluation
-    stateflow.run(dataset_func)(dataset=dataset)
+    stateflow.finalize(dataset_func)(dataset=dataset)
     with pytest.raises(ModelDoesNotExistError):
-        stateflow.run(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
+        stateflow.finalize(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
     stateflow.delete(dataset_func)(dataset=dataset)
 
     # model -> evaluation
-    stateflow.run(model_func)(model=model)
+    stateflow.finalize(model_func)(model=model)
     with pytest.raises(DatasetNotFinalizedError):
-        stateflow.run(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
+        stateflow.finalize(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
     stateflow.delete(model_func)(model=model)
 
     # dataset -> model -> evaluation
-    stateflow.run(dataset_func)(dataset=dataset)
-    stateflow.run(model_func)(model=model)
+    stateflow.finalize(dataset_func)(dataset=dataset)
+    stateflow.finalize(model_func)(model=model)
     with pytest.raises(ModelNotFinalizedError):
-        stateflow.run(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
+        stateflow.finalize(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
     stateflow.delete(model_func)(model=model)
     stateflow.delete(dataset_func)(dataset=dataset)
 
@@ -204,10 +205,10 @@ def test_deletion(db, dataset, model, prediction, job_request):
 
     def _create_entries():
         # dataset -> model -> inference -> evaluation
-        stateflow.run(dataset_func)(dataset=dataset)
-        stateflow.run(model_func)(model=model)
-        stateflow.run(prediction_func)(prediction=prediction)
-        stateflow.run(evaluation_func_with_id)(job_request=job_request, job_id=1234)
+        stateflow.finalize(dataset_func)(dataset=dataset)
+        stateflow.finalize(model_func)(model=model)
+        stateflow.finalize(prediction_func)(prediction=prediction)
+        stateflow.finalize(evaluation_func_with_id)(job_request=job_request, job_id=1234)
 
     # evaluation -> inference -> model -> dataset
     _create_entries()
@@ -224,47 +225,37 @@ def test_deletion(db, dataset, model, prediction, job_request):
     stateflow.delete(model_func)(model=model)
 
 
-def test_initializer(db, dataset, model, job_request):
+def test_creater(db, dataset, model, job_request):
     
     # create dataset
-    stateflow.initialize(dataset_func)(dataset=dataset)
+    stateflow.create(dataset_func)(dataset=dataset)
     with pytest.raises(ModelDoesNotExistError):
-        stateflow.initialize(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
+        stateflow.create(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
     
     # create model
-    stateflow.initialize(model_func)(model=model)
+    stateflow.create(model_func)(model=model)
     with pytest.raises(ModelDoesNotExistError):
-        stateflow.initialize(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
+        stateflow.create(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
     
     # finalize dataset
-    stateflow.run(dataset_func)(dataset=dataset)
+    stateflow.finalize(dataset_func)(dataset=dataset)
     with pytest.raises(ModelDoesNotExistError):
-        stateflow.initialize(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
+        stateflow.create(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
 
     # finalize model
-    stateflow.run(model_func)(model=model)
+    stateflow.finalize(model_func)(model=model)
 
     # create inference predictions
-    stateflow.initialize(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
+    stateflow.create(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
     with pytest.raises(ModelNotFinalizedError):
-        stateflow.initialize(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
+        stateflow.create(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
 
     # finalize model predictions
-    stateflow.run(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
-    stateflow.initialize(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
-
-    # attempt to delete while evaluation is running 
-    with pytest.raises(JobStateError):
-        stateflow.delete(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
-    with pytest.raises(JobStateError):
-        stateflow.delete(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
-    with pytest.raises(JobStateError):
-        stateflow.delete(dataset_func)(dataset=dataset)
-    with pytest.raises(JobStateError):
-        stateflow.delete(model_func)(model=model)
+    stateflow.finalize(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
+    stateflow.create(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
 
     # finish evaluations
-    stateflow.run(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
+    stateflow.finalize(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
 
     # delete all
     stateflow.delete(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
@@ -276,7 +267,7 @@ def test_initializer(db, dataset, model, job_request):
 def test_get_job(db, dataset, model, job_request):
     
     # create dataset
-    stateflow.initialize(dataset_func)(dataset=dataset)
+    stateflow.create(dataset_func)(dataset=dataset)
     get_job(dataset_name=dataset.name)
     with pytest.raises(ModelDoesNotExistError):
         get_job(dataset_name=dataset.name, model_name=model.name)
@@ -284,7 +275,7 @@ def test_get_job(db, dataset, model, job_request):
         get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
 
     # create model
-    stateflow.initialize(model_func)(model=model)
+    stateflow.create(model_func)(model=model)
     get_job(dataset_name=dataset.name)
     get_job(model_name=model.name)
     with pytest.raises(ModelDoesNotExistError):
@@ -293,7 +284,7 @@ def test_get_job(db, dataset, model, job_request):
         get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
 
     # create model 
-    stateflow.run(model_func)(model=model)
+    stateflow.finalize(model_func)(model=model)
     get_job(dataset_name=dataset.name)
     get_job(model_name=model.name)
     get_job(dataset_name=dataset.name, model_name=model.name)
@@ -301,7 +292,7 @@ def test_get_job(db, dataset, model, job_request):
         get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
     
     # finalize dataset
-    stateflow.run(dataset_func)(dataset=dataset)
+    stateflow.finalize(dataset_func)(dataset=dataset)
     get_job(dataset_name=dataset.name)
     get_job(dataset_name=dataset.name, model_name=model.name)
     with pytest.raises(JobStateError):
@@ -310,7 +301,7 @@ def test_get_job(db, dataset, model, job_request):
         get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
 
     # create model predictions
-    stateflow.initialize(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
+    stateflow.create(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
     get_job(dataset_name=dataset.name, model_name=model.name)
     get_job(dataset_name=dataset.name)
     with pytest.raises(JobStateError):
@@ -319,13 +310,13 @@ def test_get_job(db, dataset, model, job_request):
         get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
 
     # finalize model predictions
-    stateflow.run(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
+    stateflow.finalize(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
     get_job(dataset_name=dataset.name)  
     get_job(model_name=model.name)
     get_job(dataset_name=dataset.name, model_name=model.name)
     get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
 
-    stateflow.initialize(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
+    stateflow.create(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
     get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
     with pytest.raises(JobStateError):
         get_job(dataset_name=dataset.name)
@@ -335,7 +326,7 @@ def test_get_job(db, dataset, model, job_request):
         get_job(dataset_name=dataset.name, model_name=model.name)
 
     # finish evaluations
-    stateflow.run(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
+    stateflow.finalize(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
     get_job(dataset_name=dataset.name)  
     get_job(model_name=model.name)
     get_job(dataset_name=dataset.name, model_name=model.name)

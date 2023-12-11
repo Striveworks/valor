@@ -4,7 +4,7 @@ from velour_api.crud import stateflow
 
 
 # TODO - Raise exception if empty.
-@stateflow.run
+@stateflow.finalize
 def finalize(*, db: Session, dataset_name: str, model_name: str = None):
     """
     Finalizes dataset and dataset/model pairings.

@@ -1,30 +1,44 @@
+import re
 from functools import wraps
+from pydantic import BaseModel
 
 from velour_api import logger, schemas
+from velour_api.crud import jobs
 from velour_api.crud.jobs import Job
 from velour_api.enums import JobStatus
 from velour_api.exceptions import (
     JobStateError, 
     DatasetDoesNotExistError,
     DatasetNotFinalizedError,
+    DatasetFinalizedError,
     ModelDoesNotExistError,
+    ModelAlreadyExistsError,
     ModelNotFinalizedError, 
+    ModelFinalizedError,
 )
 
 
-def get_job(
+class StateTransition(BaseModel):
+    start: JobStatus = JobStatus.PROCESSING
+    success: JobStatus = JobStatus.DONE
+    failure: JobStatus = JobStatus.FAILED   
+
+
+def _validate_parents(
     dataset_name: str = None,
     model_name: str = None,
     evaluation_id: int = None,
 ):
-    job = None
+    """
+    Safely retrieves a job from Redis.
+    """
 
     dataset_uuid = Job.generate_uuid(dataset_name=dataset_name)
     model_uuid = Job.generate_uuid(model_name=model_name)
     inference_uuid = Job.generate_uuid(dataset_name=dataset_name, model_name=model_name)
     evaluation_uuid = Job.generate_uuid(dataset_name=dataset_name, model_name=model_name, evaluation_id=evaluation_id)
     
-    # initialize and check parent states
+    # validate parents
     if evaluation_id and dataset_name and model_name:
         if Job.get_status(dataset_uuid) != JobStatus.DONE:
             raise DatasetNotFinalizedError(name=dataset_name)
@@ -36,7 +50,7 @@ def get_job(
         Job.get(inference_uuid).register_child(job.uuid)
         Job.get(dataset_uuid).register_child(job.uuid)
     elif dataset_name and model_name:
-        if Job.get_status(dataset_uuid) not in [JobStatus.PROCESSING, JobStatus.DONE]:
+        if Job.get_status(dataset_uuid) not in [JobStatus.CREATING, JobStatus.PROCESSING, JobStatus.DONE]:
             raise DatasetDoesNotExistError(name=dataset_name)
         elif Job.get_status(model_uuid) != JobStatus.DONE:
             raise ModelDoesNotExistError(name=model_name)
@@ -49,32 +63,89 @@ def get_job(
     else:
         raise ValueError(f"Received invalid input.")
     
+    return job
+
+
+def _validate_children(job: Job):
+    # validate children
     def _recursive_child_search(job: Job):
         # Check status of child jobs
         for uuid in job.children:
             status = Job.get_status(uuid=uuid)
-            if status not in [JobStatus.NONE, JobStatus.DONE]:
+            if status not in [JobStatus.NONE, JobStatus.DONE, JobStatus.FAILED]:
                 raise JobStateError(job.uuid, f"Job blocked by child task with uuid `{uuid}` and status `{Job.get_status(uuid=uuid).value}`")
             elif status == JobStatus.DONE:
                 _recursive_child_search(Job.get(uuid))
     _recursive_child_search(job)
-    
+
+
+def get_job(
+    dataset_name: str = None,
+    model_name: str = None,
+    evaluation_id: int = None,
+) -> Job:
+    job = _validate_parents(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        evaluation_id=evaluation_id,
+    )
+    _validate_children(job)
     return job
+    
+
+def _validate_transition(
+    job: Job,
+    transitions: StateTransition,
+    dataset_name: str = None,
+    model_name: str = None,
+    evaluation_id: int = None,
+):
+    
+    dataset_uuid = Job.generate_uuid(dataset_name=dataset_name)
+    model_uuid = Job.generate_uuid(model_name=model_name)
+    inference_uuid = Job.generate_uuid(dataset_name=dataset_name, model_name=model_name)
+    evaluation_uuid = Job.generate_uuid(dataset_name=dataset_name, model_name=model_name, evaluation_id=evaluation_id)
+
+    # validate state transition
+    current_status = job.status
+    if transitions.start not in current_status.next():
+        if transitions.start == JobStatus.CREATING and current_status == JobStatus.DONE:
+            if dataset_name and not (model_name or evaluation_id):
+                raise DatasetFinalizedError(dataset_name)
+            elif model_name and not (dataset_name or evaluation_id):
+                raise ModelAlreadyExistsError(model_name)
+            elif model_name and dataset_name and not evaluation_id:
+                raise ModelFinalizedError(dataset_name=dataset_name, model_name=model_name)
+            elif model_name and dataset_name and evaluation_id:
+                raise JobStateError(id=job.uuid, msg=f"Evaluation {evaluation_id} already exists.")
+    if transitions.start == JobStatus.PROCESSING:
+        if Job.get_status(dataset_uuid) == JobStatus.CREATING:
+            raise DatasetNotFinalizedError(name=dataset_name)
+        elif Job.get_status(inference_uuid) == JobStatus.CREATING:
+            raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
 
 
+@jobs.needs_redis
 def get_status(        
     dataset_name: str = None,
     model_name: str = None,
     evaluation_id: int = None,
 ) -> JobStatus:
-    uuid = Job.generate_uuid(dataset_name, model_name, evaluation_id)
+    if evaluation_id and not (dataset_name or model_name):
+        try:
+            uuid = jobs.r.keys(pattern=f"*+*+{evaluation_id}")[0]
+        except Exception:
+            return JobStatus.NONE
+    else:
+        uuid = Job.generate_uuid(dataset_name, model_name, evaluation_id)
     return Job.get_status(uuid)
 
 
 def custom(
-    on_start: callable = lambda job, msg="" : job.set_status(JobStatus.PROCESSING, msg),
-    on_success: callable = lambda job, msg="" : job.set_status(JobStatus.DONE, msg),
-    on_failure: callable = lambda job, msg="" : job.set_status(JobStatus.FAILED, msg),
+    transitions: StateTransition = StateTransition(),
+    on_start: callable = lambda job, transitions, msg="" : job.set_status(transitions.start, msg),
+    on_success: callable = lambda job, transitions, msg="" : job.set_status(transitions.success, msg),
+    on_failure: callable = lambda job, transitions, msg="" : job.set_status(transitions.failure, msg),
 ):
     def decorator(fn: callable) -> callable:
         @wraps(fn)
@@ -95,9 +166,10 @@ def custom(
                 model_name = kwargs["prediction"].model
             elif "job_request" in kwargs:
                 dataset_name = kwargs["job_request"].dataset
-                model_name = kwargs["job_request"].model                
+                model_name = kwargs["job_request"].model
+                evaluation_id = kwargs["job_request"].id
                 if "job_id" in kwargs:
-                    evaluation_id = kwargs["job_request"].id
+                    evaluation_id = kwargs["job_id"]
             elif "dataset_name" in kwargs and "model_name" in kwargs:
                 dataset_name = kwargs["dataset_name"]
                 model_name = kwargs["model_name"]
@@ -108,27 +180,58 @@ def custom(
             else:
                 raise ValueError("did not receive right values")
 
-            job = get_job(dataset_name, model_name, evaluation_id)
-            on_start(job)
+            job = _validate_parents(
+                dataset_name=dataset_name,
+                model_name=model_name,
+                evaluation_id=evaluation_id,
+            )
+
+            if transitions.start != JobStatus.DELETING:
+                _validate_children(job)
+
+            _validate_transition(
+                job=job,
+                transitions=transitions,
+                dataset_name=dataset_name,
+                model_name=model_name,
+                evaluation_id=evaluation_id
+            )
+
+            on_start(job, transitions)
             try:
                 result = fn(*args, **kwargs)
             except Exception as e:
-                on_failure(job, str(e))
+                on_failure(job, transitions, str(e))
                 raise e
-            on_success(job)
+            on_success(job, transitions)
             return result
         return wrapper
     return decorator
 
 
 # stateflow decorators
-initialize = custom(
-    on_start=lambda job, msg="" : job.set_status(JobStatus.PROCESSING, msg),
-    on_success=lambda job, msg="" : job.set_status(JobStatus.PROCESSING, msg),
+create = custom(
+    transitions=StateTransition(
+        start=JobStatus.CREATING,
+        success=JobStatus.CREATING,
+    ),
 )
-run = custom()
+finalize = custom(
+    transitions=StateTransition(
+        start=JobStatus.CREATING,
+        success=JobStatus.DONE,
+    ),
+)
+evaluate = custom(
+    transitions=StateTransition(
+        start=JobStatus.PROCESSING,
+        success=JobStatus.DONE,
+    ),
+)
 delete = custom(
-    on_start=lambda job, msg="" : job.set_status(JobStatus.DELETING),
-    on_success=lambda job, msg="" : job.delete(),
+    transitions=StateTransition(
+        start=JobStatus.DELETING,
+    ),
+    on_success=lambda job, transitions, msg="" : job.delete(),
 )
 

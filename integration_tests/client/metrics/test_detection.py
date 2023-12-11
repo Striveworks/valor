@@ -42,35 +42,50 @@ def test_evaluate_detection(
         ],
         timeout=30,
     )
-    assert eval_job.id
+    assert isinstance(eval_job.evaluation_id, int)
     assert eval_job.task_type == "object-detection"
     assert eval_job.status.value == "done"
     assert eval_job.ignored_pred_labels == []
     assert eval_job.missing_pred_labels == []
-    assert isinstance(eval_job._id, int)
 
     eval_job.wait_for_completion()
     assert eval_job.status == JobStatus.DONE
 
     # test get_evaluation_status
-    assert client.get_evaluation_status(eval_job.id) == eval_job.status.value
+    assert client.get_evaluation_status(eval_job.evaluation_id) == eval_job.status
 
-    settings = asdict(eval_job.settings)
+    settings = asdict(eval_job.job_request)
     settings.pop("id")
     assert settings == {
-        "model": model_name,
-        "dataset": "test_dataset",
-        "task_type": "object-detection",
-        "settings": {
-            "parameters": {
-                "iou_thresholds_to_compute": [0.1, 0.6],
-                "iou_thresholds_to_keep": [0.1, 0.6],
-            },
-            "filters": {
-                "annotation_types": ["box"],
-                "label_keys": ["k1"],
-            },
-        },
+        'model': 'test_model', 
+        'dataset': 'test_dataset', 
+        'task_type': 'object-detection', 
+        'settings': {
+            'parameters': {
+                'iou_thresholds_to_compute': [0.1, 0.6], 
+                'iou_thresholds_to_keep': [0.1, 0.6]
+            }, 
+            'filters': {
+                'dataset_names': None, 
+                'dataset_metadata': None, 
+                'dataset_geospatial': None, 
+                'models_names': None, 
+                'models_metadata': None, 
+                'models_geospatial': None, 
+                'datum_uids': None, 
+                'datum_metadata': None, 
+                'datum_geospatial': None, 
+                'task_types': None, 
+                'annotation_types': ['box'], 
+                'annotation_geometric_area': None, 
+                'annotation_metadata': None, 
+                'annotation_geospatial': None, 
+                'prediction_scores': None, 
+                'labels': None, 
+                'label_ids': None, 
+                'label_keys': ['k1']
+            }
+        }
     }
 
     expected_metrics = [
@@ -136,9 +151,9 @@ def test_evaluate_detection(
         ],
         timeout=30,
     )
-    settings = asdict(eval_job_bounded_area_10_2000.settings)
-    settings.pop("id")
-    assert settings == {
+    job_request = asdict(eval_job_bounded_area_10_2000.job_request)
+    job_request.pop("id")
+    assert job_request == {
         "model": model_name,
         "dataset": "test_dataset",
         "task_type": "object-detection",
@@ -156,6 +171,21 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
+                'annotation_geospatial': None,
+                'annotation_metadata': None,
+                'dataset_geospatial': None,
+                'dataset_metadata': None,
+                'dataset_names': None,
+                'datum_geospatial': None,
+                'datum_metadata': None,
+                'datum_uids': None,
+                'label_ids': None,
+                'labels': None,
+                'models_geospatial': None,
+                'models_metadata': None,
+                'models_names': None,
+                'prediction_scores': None,
+                'task_types': None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -178,9 +208,9 @@ def test_evaluate_detection(
         ],
         timeout=30,
     )
-    settings = asdict(eval_job_min_area_1200.settings)
-    settings.pop("id")
-    assert settings == {
+    job_request = asdict(eval_job_min_area_1200.job_request)
+    job_request.pop("id")
+    assert job_request == {
         "model": model_name,
         "dataset": "test_dataset",
         "task_type": "object-detection",
@@ -194,6 +224,21 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
+                'annotation_geospatial': None,
+                'annotation_metadata': None,
+                'dataset_geospatial': None,
+                'dataset_metadata': None,
+                'dataset_names': None,
+                'datum_geospatial': None,
+                'datum_metadata': None,
+                'datum_uids': None,
+                'label_ids': None,
+                'labels': None,
+                'models_geospatial': None,
+                'models_metadata': None,
+                'models_names': None,
+                'prediction_scores': None,
+                'task_types': None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -215,9 +260,9 @@ def test_evaluate_detection(
         ],
         timeout=30,
     )
-    settings = asdict(eval_job_max_area_1200.settings)
-    settings.pop("id")
-    assert settings == {
+    job_request = asdict(eval_job_max_area_1200.job_request)
+    job_request.pop("id")
+    assert job_request == {
         "model": model_name,
         "dataset": "test_dataset",
         "task_type": "object-detection",
@@ -231,6 +276,21 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
+                'annotation_geospatial': None,
+                'annotation_metadata': None,
+                'dataset_geospatial': None,
+                'dataset_metadata': None,
+                'dataset_names': None,
+                'datum_geospatial': None,
+                'datum_metadata': None,
+                'datum_uids': None,
+                'label_ids': None,
+                'labels': None,
+                'models_geospatial': None,
+                'models_metadata': None,
+                'models_names': None,
+                'prediction_scores': None,
+                'task_types': None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -254,9 +314,9 @@ def test_evaluate_detection(
         ],
         timeout=30,
     )
-    settings = asdict(eval_job_bounded_area_1200_1800.settings)
-    settings.pop("id")
-    assert settings == {
+    job_request = asdict(eval_job_bounded_area_1200_1800.job_request)
+    job_request.pop("id")
+    assert job_request == {
         "model": model_name,
         "dataset": "test_dataset",
         "task_type": "object-detection",
@@ -274,6 +334,21 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
+                'annotation_geospatial': None,
+                'annotation_metadata': None,
+                'dataset_geospatial': None,
+                'dataset_metadata': None,
+                'dataset_names': None,
+                'datum_geospatial': None,
+                'datum_metadata': None,
+                'datum_uids': None,
+                'label_ids': None,
+                'labels': None,
+                'models_geospatial': None,
+                'models_metadata': None,
+                'models_names': None,
+                'prediction_scores': None,
+                'task_types': None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -318,12 +393,8 @@ def test_evaluate_detection_with_json_filters(
         ],
         timeout=30,
     )
-    assert eval_job._settings.settings["parameters"][
-        "iou_thresholds_to_compute"
-    ] == [i / 100 for i in range(50, 100, 5)]
-    assert eval_job._settings.settings["parameters"][
-        "iou_thresholds_to_keep"
-    ] == [0.5, 0.75]
+    assert eval_job.settings.parameters.iou_thresholds_to_compute == [i / 100 for i in range(50, 100, 5)]
+    assert eval_job.settings.parameters.iou_thresholds_to_keep == [0.5, 0.75]
 
     expected_metrics = [
         {
@@ -398,9 +469,9 @@ def test_evaluate_detection_with_json_filters(
         timeout=30,
     )
 
-    settings = asdict(eval_job_bounded_area_1200_1800.settings)
-    settings.pop("id")
-    assert settings == {
+    job_request = asdict(eval_job_bounded_area_1200_1800.job_request)
+    job_request.pop("id")
+    assert job_request == {
         "model": model_name,
         "dataset": "test_dataset",
         "task_type": "object-detection",
@@ -418,6 +489,21 @@ def test_evaluate_detection_with_json_filters(
                     },
                 ],
                 "label_keys": ["k1"],
+                'annotation_geospatial': None,
+                'annotation_metadata': None,
+                'dataset_geospatial': None,
+                'dataset_metadata': None,
+                'dataset_names': None,
+                'datum_geospatial': None,
+                'datum_metadata': None,
+                'datum_uids': None,
+                'label_ids': None,
+                'labels': None,
+                'models_geospatial': None,
+                'models_metadata': None,
+                'models_names': None,
+                'prediction_scores': None,
+                'task_types': None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -425,6 +511,7 @@ def test_evaluate_detection_with_json_filters(
             },
         },
     }
+    
     assert eval_job_bounded_area_1200_1800.results.metrics != expected_metrics
     assert (
         eval_job_bounded_area_1200_1800.results.metrics
@@ -542,25 +629,8 @@ def test_get_bulk_evaluations(
     )
 
     assert len(evaluations) == 1
-    assert all(
-        [
-            name
-            in [
-                "dataset",
-                "model",
-                "settings",
-                "job_id",
-                "status",
-                "metrics",
-                "confusion_matrices",
-            ]
-            for evaluation in evaluations
-            for name in evaluation.keys()
-        ]
-    )
-
-    assert len(evaluations[0]["metrics"])
-    assert evaluations[0]["metrics"] == expected_metrics
+    assert len(evaluations[0].metrics)
+    assert evaluations[0].metrics == expected_metrics
 
     # test incorrect names
     assert len(client.get_bulk_evaluations(datasets="wrong_dataset_name")) == 0
@@ -589,24 +659,8 @@ def test_get_bulk_evaluations(
     )
 
     assert len(second_model_evaluations) == 1
-    assert all(
-        [
-            name
-            in [
-                "dataset",
-                "model",
-                "settings",
-                "job_id",
-                "status",
-                "metrics",
-                "confusion_matrices",
-            ]
-            for evaluation in second_model_evaluations
-            for name in evaluation.keys()
-        ]
-    )
     assert (
-        second_model_evaluations[0]["metrics"] == second_model_expected_metrics
+        second_model_evaluations[0].metrics == second_model_expected_metrics
     )
 
     both_evaluations = client.get_bulk_evaluations(datasets=["test_dataset"])
@@ -615,12 +669,12 @@ def test_get_bulk_evaluations(
     assert len(both_evaluations) == 2
     assert all(
         [
-            evaluation["model"] in ["second_model", model_name]
+            evaluation.model in ["second_model", model_name]
             for evaluation in both_evaluations
         ]
     )
-    assert both_evaluations[0]["metrics"] == expected_metrics
-    assert both_evaluations[1]["metrics"] == second_model_expected_metrics
+    assert both_evaluations[0].metrics == expected_metrics
+    assert both_evaluations[1].metrics == second_model_expected_metrics
 
     # should be equivalent since there are only two models attributed to this dataset
     both_evaluations_from_model_names = client.get_bulk_evaluations(

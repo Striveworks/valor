@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from velour import Annotation, Dataset, Datum, GroundTruth, Label
 from velour.client import Client, ClientException
-from velour.enums import TaskType
+from velour.enums import TaskType, JobStatus
 from velour.metatypes import ImageMetadata
 from velour_api.backend import models
 
@@ -334,26 +334,25 @@ def test_get_dataset_status(
     dataset_name: str,
     gt_dets1: list,
 ):
-    status = client.get_dataset_status(dataset_name)
-    assert status == "none"
+    assert client.get_dataset_status(dataset_name) == JobStatus.NONE
 
     dataset = Dataset.create(client, dataset_name)
 
-    assert client.get_dataset_status(dataset_name) == "none"
+    assert client.get_dataset_status(dataset_name) == JobStatus.CREATING
 
     gt = gt_dets1[0]
 
     dataset.add_groundtruth(gt)
     dataset.finalize()
     status = client.get_dataset_status(dataset_name)
-    assert status == "ready"
+    assert status == JobStatus.DONE
 
     dataset.delete()
 
     status = client.get_dataset_status(dataset_name)
 
     # check that the dataset's state is no longer "ready"
-    assert status in ["delete", "none"]
+    assert status in [JobStatus.DELETING, JobStatus.NONE]
 
 
 def test_validate_dataset(client: Client, dataset_name: str):

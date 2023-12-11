@@ -15,6 +15,7 @@ from velour.enums import JobStatus
 from velour.metatypes import ImageMetadata
 from velour.schemas.filters import BinaryExpression, DeclarativeMapper, Filter
 from velour.schemas.metadata import validate_metadata
+from velour.schemas.evaluation import EvaluationResult
 
 
 class ClientException(Exception):
@@ -121,60 +122,6 @@ class Client:
             method_name="delete", endpoint=endpoint, *args, **kwargs
         )
 
-    def get_bulk_evaluations(
-        self,
-        models: Union[str, List[str], None] = None,
-        datasets: Union[str, List[str], None] = None,
-    ) -> List[dict]:
-        """
-        Returns all metrics associated with user-supplied dataset and/or model names.
-
-        Parameters
-        ----------
-        models : Union[str, List[str], None]
-            A list of model names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
-        datasets : Union[str, List[str], None]
-            A list of dataset names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
-
-        Returns
-        -------
-        List[dict]
-            List of dictionaries describing the returned evaluations.
-
-        """
-
-        if not (models or datasets):
-            raise ValueError(
-                "Please provide atleast one model name or dataset name"
-            )
-
-        if models:
-            # let users just pass one name as a string
-            if isinstance(models, str):
-                models = [models]
-            model_params = ",".join(models)
-        else:
-            model_params = None
-
-        if datasets:
-            if isinstance(datasets, str):
-                datasets = [datasets]
-            dataset_params = ",".join(datasets)
-        else:
-            dataset_params = None
-
-        if model_params and dataset_params:
-            endpoint = (
-                f"evaluations?models={model_params}&datasets={dataset_params}"
-            )
-        elif model_params:
-            endpoint = f"evaluations?models={model_params}"
-        else:
-            endpoint = f"evaluations?datasets={dataset_params}"
-
-        evals = self._requests_get_rel_host(endpoint).json()
-        return evals
-
     def get_datasets(
         self,
     ) -> List[dict]:
@@ -226,7 +173,6 @@ class Client:
             The number of seconds to wait in order to confirm that the dataset was deleted.
         """
         self._requests_delete_rel_host(f"datasets/{name}")
-
         if timeout:
             for _ in range(timeout):
                 if self.get_dataset_status(name) == JobStatus.NONE:
@@ -279,16 +225,14 @@ class Client:
         JobStatus
             The state of the `Dataset`.
         """
-        try:
-            resp = self._requests_get_rel_host(
-                f"datasets/{dataset_name}/status"
-            ).json()
-        except Exception:
-            return JobStatus.NONE
-        return resp
+        resp = self._requests_get_rel_host(
+            f"datasets/{dataset_name}/status"
+        ).json()
+        return JobStatus(resp)
     
     def get_model_status(
         self,
+        dataset_name: str,
         model_name: str,
     ) -> JobStatus:
         """
@@ -304,25 +248,21 @@ class Client:
         JobStatus
             The state of the `Model`.
         """
-        try:
-            resp = self._requests_get_rel_host(
-                f"models/{model_name}/status"
-            ).json()
-        except Exception:
-            return JobStatus.NONE
-
-        return resp
+        resp = self._requests_get_rel_host(
+            f"models/{model_name}/dataset/{dataset_name}/status"
+        ).json()
+        return JobStatus(resp)
 
     def get_evaluation_status(
         self,
-        job_id: int,
+        evaluation_id: int,
     ) -> JobStatus:
         """
         Get the state of a given job ID.
 
         Parameters
         ----------
-        job_id : int
+        evaluation_id : int
             The job id of the evaluation that we want to fetch the state of.
 
         Returns
@@ -330,136 +270,146 @@ class Client:
         JobStatus
             The state of the `Evaluation`.
         """
-        return self._requests_get_rel_host(
-            f"evaluations/{job_id}/status"
-        ).json()
-
-
-class Evaluation:
-    """
-    An object for storing the returned results of a model evaluation (where groundtruths are compared with predictions to measure performance).
-
-    Parameters
-    ----------
-    client : Client
-        The `Client` object associated with the session.
-    job_id : int
-        The ID of the evaluation job.
-    dataset : str
-        The name of the dataset.
-    model : str
-        The name of the model.
-    """
-
-    def __init__(
-        self,
-        client: Client,
-        job_id: int,
-        dataset: str,
-        model: str,
-        **kwargs,
-    ):
-        self._id: int = job_id
-        self._client: Client = client
-        self.dataset = dataset
-        self.model = model
-
-        settings = self._client._requests_get_rel_host(
-            f"evaluations/{self._id}/settings"
-        ).json()
-        self._settings = schemas.EvaluationJob(**settings)
-
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
-    @property
-    def id(
-        self,
-    ) -> int:
-        """
-        The ID of the evaluation job.
-
-        Returns
-        ----------
-        int:
-            The evaluation id.
-        """
-        return self._id
-
-    @property
-    def settings(
-        self,
-    ) -> schemas.EvaluationJob:
-        """
-        The settings associated with the evaluation job.
-
-        Returns
-        ----------
-        schemas.EvaluationJob
-            An `EvaluationJob` object describing the evaluation's configuration.
-        """
-        return self._settings
-
-    @property
-    def status(
-        self,
-    ) -> str:
-        """
-        The status of the evaluation job.
-
-        Returns
-        ----------
-        str
-            A status (e.g., "done").
-        """
-        resp = self._client._requests_get_rel_host(
-            f"evaluations/{self._id}/status"
+        resp = self._requests_get_rel_host(
+            f"evaluations/{evaluation_id}/status"
         ).json()
         return JobStatus(resp)
 
-    @property
-    def task_type(
+    def get_evaluation(
         self,
-    ) -> enums.TaskType:
+        evaluation_id: int,
+    ) -> EvaluationResult:
         """
-        The task type of the evaluation job.
-
-        Returns
-        ----------
-        enums.TaskType
-            The task type associated with the `Evaluation` object.
-        """
-        return self._settings.task_type
-
-    @property
-    def results(
-        self,
-    ) -> schemas.EvaluationResult:
-        """
-        The results of the evaluation job.
+        The results of an evaluation job.
 
         Returns
         ----------
         schemas.EvaluationResult
             The results from the evaluation.
         """
-        result = self._client._requests_get_rel_host(
-            f"evaluations/{self._id}"
+        result = self._requests_get_rel_host(
+            f"evaluations/{evaluation_id}"
         ).json()
         return schemas.EvaluationResult(**result)
-
-    def wait_for_completion(
-        self, *, interval: float = 1.0, timeout: int = None
-    ):
+        
+    def get_bulk_evaluations(
+        self,
+        models: Union[str, List[str], None] = None,
+        datasets: Union[str, List[str], None] = None,
+    ) -> List[EvaluationResult]:
         """
-        Runs timeout logic to check when an evaluation is completed.
+        Returns all metrics associated with user-supplied dataset and/or model names.
 
         Parameters
         ----------
-        interval : float
-            The number of seconds to waits between retries.
+        models : Union[str, List[str], None]
+            A list of model names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
+        datasets : Union[str, List[str], None]
+            A list of dataset names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
+
+        Returns
+        -------
+        List[dict]
+            List of dictionaries describing the returned evaluations.
+
+        """
+
+        if not (models or datasets):
+            raise ValueError(
+                "Please provide atleast one model name or dataset name"
+            )
+
+        if models:
+            # let users just pass one name as a string
+            if isinstance(models, str):
+                models = [models]
+            model_params = ",".join(models)
+        else:
+            model_params = None
+
+        if datasets:
+            if isinstance(datasets, str):
+                datasets = [datasets]
+            dataset_params = ",".join(datasets)
+        else:
+            dataset_params = None
+
+        if model_params and dataset_params:
+            endpoint = (
+                f"evaluations?models={model_params}&datasets={dataset_params}"
+            )
+        elif model_params:
+            endpoint = f"evaluations?models={model_params}"
+        else:
+            endpoint = f"evaluations?datasets={dataset_params}"
+
+        evals = self._requests_get_rel_host(endpoint).json()
+        print(evals)
+        return [
+            EvaluationResult(**eval)
+            for eval in evals
+        ]
+
+
+class Job:
+    def __init__(
+        self,
+        client: Client,
+        *,
+        dataset_name: str = None,
+        model_name: str = None,
+        evaluation_id: int = None,
+        **kwargs,
+    ):
+        self.client = client
+        self.dataset_name = dataset_name
+        self.model_name = model_name
+        self.evaluation_id = evaluation_id
+
+        if evaluation_id:
+            self.url = f"evaluations/{evaluation_id}/status"
+        elif dataset_name and not model_name:
+            self.url = f"datasets/{dataset_name}/status"
+        elif model_name and not dataset_name:
+            self.url = f"models/{model_name}/status"
+        elif model_name and dataset_name:
+            self.url = f"models/{model_name}/dataset/{dataset_name}/status"
+        else:
+            raise ValueError
+        
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+    @property
+    def status(self) -> JobStatus:
+        resp = self.client._requests_get_rel_host(self.url).json()
+        return JobStatus(resp)
+    
+    def results(self):
+        """
+        Certain types of jobs have a return type.
+        """
+        if self.status == JobStatus.DONE:
+            if self.evaluation_id:
+                return self.client.get_evaluation(self.evaluation_id)
+            else:
+                return None
+
+    def wait_for_completion(
+        self, 
+        *, 
+        timeout: int = None,
+        interval: float = 1.0, 
+    ):
+        """
+        Runs timeout logic to check when an job is completed.
+
+        Parameters
+        ----------
         timeout : int
             The total number of seconds to wait for the job to finish.
+        interval : float
+            The polling interval.
 
 
         Raises
@@ -475,6 +425,70 @@ class Evaluation:
                 timeout_counter -= 1
                 if timeout_counter < 0:
                     raise TimeoutError
+                
+
+class Evaluation(Job):
+    """
+    Wraps `velour.client.Job` to provide evaluation-specifc members.
+    """
+
+    def __post_init__(self):
+        if not isinstance(self.evaluation_id):
+            raise ValueError("Missing evaluation id.")     
+
+    @property
+    def job_request(self) -> schemas.EvaluationJob:
+        """
+        The job request that created this evaluation.
+
+        Returns
+        ----------
+        schemas.EvaluationJob
+            An `EvaluationJob` object describing the evaluation's configuration.
+        """
+        resp = self.client._requests_get_rel_host(
+            f"evaluations/{self.evaluation_id}/settings"
+        ).json()
+        return schemas.EvaluationJob(**resp)
+    
+    @property
+    def settings(self) -> schemas.EvaluationSettings:
+        """
+        The settings associated with the evaluation job.
+
+        Returns
+        ----------
+        schemas.EvaluationSettings
+            An `EvaluationSettings` object describing the evaluation's configuration.
+        """
+        return self.job_request.settings
+    
+    @property
+    def task_type(self) -> enums.TaskType:
+        """
+        The task type of the evaluation job.
+
+        Returns
+        ----------
+        enums.TaskType
+            The task type associated with the `Evaluation` object.
+        """
+        return self.job_request.task_type
+    
+    @property
+    def results(self) -> schemas.EvaluationResult:
+        """
+        The results of the evaluation job.
+
+        Returns
+        ----------
+        schemas.EvaluationResult
+            The results from the evaluation.
+        """
+        result = self.client._requests_get_rel_host(
+            f"evaluations/{self.evaluation_id}"
+        ).json()
+        return schemas.EvaluationResult(**result)
 
 
 class Dataset:
@@ -721,7 +735,7 @@ class Dataset:
 
     def get_evaluations(
         self,
-    ) -> List[Evaluation]:
+    ) -> List[EvaluationResult]:
         """
         Get all evaluations associated with a given dataset.
 
@@ -730,19 +744,7 @@ class Dataset:
         List[Evaluation]
             A list of `Evaluations` associated with the dataset.
         """
-        model_evaluations = self.client._requests_get_rel_host(
-            f"evaluations/dataset/{self.name}"
-        ).json()
-        return [
-            Evaluation(
-                client=self.client,
-                dataset=self.name,
-                model=model_name,
-                job_id=job_id,
-            )
-            for model_name in model_evaluations
-            for job_id in model_evaluations[model_name]
-        ]
+        return self.client.get_bulk_evaluations(datasets=self.name)
 
     def finalize(
         self,
@@ -760,8 +762,10 @@ class Dataset:
         """
         Delete the `Dataset` object from the backend.
         """
+        job = Job(self.client, dataset_name=self.name)
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
         del self
+        return job
 
 
 class Model:
@@ -983,10 +987,12 @@ class Model:
             "evaluations", json=asdict(evaluation)
         ).json()
 
+        evaluation_id = resp.pop("job_id")
         evaluation_job = Evaluation(
             client=self.client,
-            dataset=dataset.name,
-            model=self.name,
+            dataset_name=dataset.name,
+            model_name=self.name,
+            evaluation_id=evaluation_id,
             **resp,
         )
 
@@ -1062,10 +1068,12 @@ class Model:
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
             resp[k] = [Label(**la) for la in resp[k]]
 
+        evaluation_id = resp.pop("job_id")
         evaluation_job = Evaluation(
             client=self.client,
-            dataset=dataset.name,
-            model=self.name,
+            dataset_name=dataset.name,
+            model_name=self.name,
+            evaluation_id=evaluation_id,
             **resp,
         )
 
@@ -1118,10 +1126,12 @@ class Model:
         ).json()
 
         # create client-side evaluation handler
+        evaluation_id = resp.pop("job_id")
         evaluation_job = Evaluation(
             client=self.client,
-            dataset=dataset.name,
-            model=self.name,
+            dataset_name=dataset.name,
+            model_name=self.name,
+            evaluation_id=evaluation_id,
             **resp,
         )
 
@@ -1137,8 +1147,10 @@ class Model:
         """
         Delete the `Model` object from the backend.
         """
+        job = Job(self.client, model_name=self.name)
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
         del self
+        return job
 
     def get_prediction(self, datum: Datum) -> Prediction:
         """
@@ -1180,7 +1192,7 @@ class Model:
 
     def get_evaluations(
         self,
-    ) -> List[Evaluation]:
+    ) -> List[EvaluationResult]:
         """
         Get all evaluations associated with a given model.
 
@@ -1189,19 +1201,7 @@ class Model:
         List[Evaluation]
             A list of `Evaluations` associated with the model.
         """
-        dataset_evaluations = self.client._requests_get_rel_host(
-            f"evaluations/model/{self.name}"
-        ).json()
-        return [
-            Evaluation(
-                client=self.client,
-                dataset=dataset_name,
-                model=self.name,
-                job_id=job_id,
-            )
-            for dataset_name in dataset_evaluations
-            for job_id in dataset_evaluations[dataset_name]
-        ]
+        return self.client.get_bulk_evaluations(models=self.name)
 
     def get_metric_dataframes(
         self,
@@ -1225,7 +1225,7 @@ class Model:
         for evaluation in self.get_evaluations():
             metrics = [
                 {**metric, "dataset": evaluation.dataset}
-                for metric in evaluation.results.metrics
+                for metric in evaluation.metrics
             ]
             df = pd.DataFrame(metrics)
             for k in ["label", "parameters"]:

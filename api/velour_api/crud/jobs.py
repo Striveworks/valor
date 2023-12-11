@@ -92,7 +92,6 @@ def needs_redis(fn):
         if r is None:
             connect_to_redis()
         return fn(*args, **kwargs)
-
     return wrapper
 
 
@@ -132,7 +131,7 @@ class Job(BaseModel):
         Set job status.
         """
         if status not in self.status.next():
-            raise JobStateError(self.uuid, f"{status} not in {self.status.next()}")
+            raise JobStateError(self.uuid, f"{status} not in {self.status} next set: {self.status.next()}")
         self.status = status
         self.msg = msg
         self.set()

@@ -3,6 +3,7 @@ that is no auth
 """
 from dataclasses import asdict
 
+import time
 import pandas
 import pytest
 from sqlalchemy.orm import Session
@@ -39,8 +40,7 @@ def test_evaluate_image_clf(
 
     eval_job = model.evaluate_classification(dataset=dataset, timeout=30)
 
-    assert eval_job.id
-    assert eval_job.task_type == "classification"
+    assert eval_job.evaluation_id
     assert eval_job.status.value == "done"
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
     assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
@@ -232,27 +232,9 @@ def test_evaluate_tabular_clf(
     bulk_evals = client.get_bulk_evaluations(datasets=dataset_name)
 
     assert len(bulk_evals) == 1
-    assert all(
-        [
-            name
-            in [
-                "dataset",
-                "model",
-                "settings",
-                "job_id",
-                "status",
-                "metrics",
-                "confusion_matrices",
-            ]
-            for evaluation in bulk_evals
-            for name in evaluation.keys()
-        ]
-    )
-
-    for metric in bulk_evals[0]["metrics"]:
+    for metric in bulk_evals[0].metrics:
         assert metric in expected_metrics
-
-    assert len(bulk_evals[0]["confusion_matrices"][0]) == len(
+    assert len(bulk_evals[0].confusion_matrices[0]) == len(
         expected_confusion_matrix
     )
 
@@ -283,18 +265,13 @@ def test_evaluate_tabular_clf(
     assert isinstance(df[0]["df"], pandas.DataFrame)
 
     # check evaluation
-    eval_jobs = model.get_evaluations()
-    assert len(eval_jobs) == 1
-    eval_settings = asdict(eval_jobs[0].settings)
-    eval_settings.pop("id")
-    assert eval_settings == {
-        "model": model_name,
-        "dataset": "test_dataset",
-        "task_type": "classification",
-        "settings": {},
-    }
+    results = model.get_evaluations()
+    assert len(results) == 1
+    assert results[0].dataset == dataset_name
+    assert results[0].model == model_name
+    assert results[0].settings == {}
 
-    metrics_from_eval_settings_id = eval_jobs[0].results.metrics
+    metrics_from_eval_settings_id = results[0].metrics
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
     for m in metrics_from_eval_settings_id:
         assert m in expected_metrics
@@ -302,7 +279,7 @@ def test_evaluate_tabular_clf(
         assert m in metrics_from_eval_settings_id
 
     # check confusion matrix
-    confusion_matrices = eval_jobs[0].results.confusion_matrices
+    confusion_matrices = results[0].confusion_matrices
 
     # validate return schema
     assert len(confusion_matrices) == 1
@@ -319,7 +296,9 @@ def test_evaluate_tabular_clf(
     for entry in expected_confusion_matrix["entries"]:
         assert entry in confusion_matrix["entries"]
 
-    model.delete()
+    job = model.delete()
+    while job.status != JobStatus.NONE:
+        time.sleep(0.5)
 
     assert len(client.get_models()) == 0
 

@@ -5,7 +5,7 @@ from velour_api.crud import stateflow
 from velour_api.crud._read import get_disjoint_keys, get_disjoint_labels
 
 
-@stateflow.initialize
+@stateflow.create
 def create_dataset(*, db: Session, dataset: schemas.Dataset):
     """
     Creates a dataset.
@@ -25,7 +25,7 @@ def create_dataset(*, db: Session, dataset: schemas.Dataset):
     backend.create_dataset(db, dataset)
 
 
-@stateflow.run
+@stateflow.finalize
 def create_model(*, db: Session, model: schemas.Model):
     """
     Creates a model.
@@ -45,7 +45,7 @@ def create_model(*, db: Session, model: schemas.Model):
     backend.create_model(db, model)
 
 
-@stateflow.initialize
+@stateflow.create
 def create_groundtruth(
     *,
     db: Session,
@@ -64,7 +64,7 @@ def create_groundtruth(
     backend.create_groundtruth(db, groundtruth=groundtruth)
 
 
-@stateflow.initialize
+@stateflow.create
 def create_prediction(
     *,
     db: Session,
@@ -83,7 +83,7 @@ def create_prediction(
     backend.create_prediction(db, prediction=prediction)
 
 
-@stateflow.run
+@stateflow.evaluate
 def create_clf_evaluation(
     *,
     db: Session,
@@ -125,7 +125,7 @@ def create_clf_evaluation(
     )
 
 
-@stateflow.run
+@stateflow.evaluate
 def compute_clf_metrics(
     *,
     db: Session,
@@ -150,7 +150,7 @@ def compute_clf_metrics(
     )
 
 
-@stateflow.run
+@stateflow.evaluate
 def create_semantic_segmentation_evaluation(
     *,
     db: Session,
@@ -194,7 +194,7 @@ def create_semantic_segmentation_evaluation(
     )
 
 
-@stateflow.run
+@stateflow.evaluate
 def compute_semantic_segmentation_metrics(
     *,
     db: Session,
@@ -220,7 +220,7 @@ def compute_semantic_segmentation_metrics(
     )
 
 
-@stateflow.run
+@stateflow.evaluate
 def create_detection_evaluation(
     *,
     db: Session,
@@ -258,7 +258,7 @@ def create_detection_evaluation(
     )
 
 
-@stateflow.run
+@stateflow.evaluate
 def compute_detection_metrics(
     *,
     db: Session,

@@ -38,6 +38,12 @@ class EvaluationSettings:
     parameters: Union[DetectionParameters, None] = None
     filters: Union[Filter, None] = None
 
+    def __post_init__(self):
+        if isinstance(self.parameters, dict):
+            self.parameters = DetectionParameters(**self.parameters)
+        if isinstance(self.filters, dict):
+            self.filters = Filter(**self.filters)
+
 
 @dataclass
 class EvaluationJob:
@@ -63,6 +69,10 @@ class EvaluationJob:
     task_type: str
     settings: EvaluationSettings = field(default_factory=EvaluationSettings)
     id: int = None
+
+    def __post_init__(self):
+        if isinstance(self.settings, dict):
+            self.settings = EvaluationSettings(**self.settings)
 
 
 @dataclass
@@ -94,4 +104,4 @@ class EvaluationResult:
     job_id: int
     status: str
     metrics: List[dict]
-    confusion_matrices: List[dict]
+    confusion_matrices: List[dict] = field(default_factory=list)

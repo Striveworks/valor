@@ -89,7 +89,7 @@ def create_groundtruths(
         exceptions.DatumAlreadyExistsError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
-
+    
 
 @app.get(
     "/groundtruths/dataset/{dataset_name}/datum/{uid}",
@@ -360,7 +360,7 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     """
     try:
         crud.create_dataset(db=db, dataset=dataset)
-    except (exceptions.DatasetAlreadyExistsError,) as e:
+    except exceptions.DatasetAlreadyExistsError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -881,6 +881,8 @@ def create_evaluation(
     ------
     HTTPException (400)
         If the task type of the evaluation job doesn't exist, or if another ValueError is thrown.
+    HTTPException (404)
+        If the dataset or model does not exist.
     HTTPException (405)
         If the dataset or model hasn't been finalized.
     HTTPException (409)
@@ -924,6 +926,11 @@ def create_evaluation(
         return resp
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except (
+        exceptions.DatasetDoesNotExistError,
+        exceptions.ModelDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except (
         exceptions.DatasetNotFinalizedError,
         exceptions.ModelNotFinalizedError,
@@ -987,56 +994,6 @@ def get_bulk_evaluations(
 
 
 @app.get(
-    "/evaluations/dataset/{dataset_name}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Evaluations"],
-)
-def get_evaluation_jobs_for_dataset(
-    dataset_name: str,
-) -> dict[str, list[int]]:
-    """
-    Fetch all evaluation job IDs for a particular dataset.
-
-    Parameters
-    ----------
-    dataset_name : str
-        The name of the dataset.
-
-    Returns
-    -------
-    dict
-        A dictionary of evaluation jobs for the dataset.
-    """
-    return crud.get_evaluation_ids_for_dataset(dataset_name=dataset_name)
-
-
-@app.get(
-    "/evaluations/model/{model_name}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Evaluations"],
-)
-def get_evaluation_jobs_for_model(
-    model_name: str,
-) -> dict[str, list[int]]:
-    """
-    Fetch all evaluation job IDs for a particular model.
-
-    Parameters
-    ----------
-    model_name : str
-        The name of the model.
-
-    Returns
-    -------
-    dict
-        A dictionary of evaluation jobs for the model.
-    """
-    return crud.get_evaluation_ids_for_model(model_name=model_name)
-
-
-@app.get(
     "/evaluations/{job_id}",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
@@ -1068,8 +1025,8 @@ def get_evaluation(
         If the job ID does not exist
     """
     try:
-        status = crud.get_evaluation_status(
-            job_id=job_id,
+        status = crud.get_job_status(
+            evaluation_id=job_id,
         )
         if status != enums.JobStatus.DONE:
             raise HTTPException(
@@ -1113,12 +1070,9 @@ def get_evaluation_status(job_id: int) -> enums.JobStatus:
     HTTPException (404)
         If the job doesn't exist.
     """
-    try:
-        return crud.get_evaluation_status(
-            job_id=job_id,
-        )
-    except exceptions.JobDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    return crud.get_job_status(
+        evaluation_id=job_id,
+    )
 
 
 @app.get(
