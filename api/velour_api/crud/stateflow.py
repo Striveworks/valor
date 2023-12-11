@@ -4,7 +4,12 @@ from pydantic import BaseModel
 
 from velour_api import logger, schemas
 from velour_api.crud import jobs
-from velour_api.crud.jobs import Job
+from velour_api.crud.jobs import (
+    get_status_from_uuid,
+    get_status_from_names,
+    generate_uuid,
+    Job,
+)
 from velour_api.enums import JobStatus
 from velour_api.exceptions import (
     JobStateError, 
@@ -21,7 +26,7 @@ from velour_api.exceptions import (
 class StateTransition(BaseModel):
     start: JobStatus = JobStatus.PROCESSING
     success: JobStatus = JobStatus.DONE
-    failure: JobStatus = JobStatus.FAILED   
+    failure: JobStatus = JobStatus.FAILED
 
 
 def _validate_parents(
@@ -33,26 +38,26 @@ def _validate_parents(
     Safely retrieves a job from Redis.
     """
 
-    dataset_uuid = Job.generate_uuid(dataset_name=dataset_name)
-    model_uuid = Job.generate_uuid(model_name=model_name)
-    inference_uuid = Job.generate_uuid(dataset_name=dataset_name, model_name=model_name)
-    evaluation_uuid = Job.generate_uuid(dataset_name=dataset_name, model_name=model_name, evaluation_id=evaluation_id)
+    dataset_uuid = generate_uuid(dataset_name=dataset_name)
+    model_uuid = generate_uuid(model_name=model_name)
+    inference_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name)
+    evaluation_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name, evaluation_id=evaluation_id)
     
     # validate parents
     if evaluation_id and dataset_name and model_name:
-        if Job.get_status(dataset_uuid) != JobStatus.DONE:
+        if get_status_from_uuid(dataset_uuid) != JobStatus.DONE:
             raise DatasetNotFinalizedError(name=dataset_name)
-        elif Job.get_status(model_uuid) != JobStatus.DONE:
+        elif get_status_from_uuid(model_uuid) != JobStatus.DONE:
             raise ModelDoesNotExistError(name=model_name)
-        elif Job.get_status(inference_uuid) != JobStatus.DONE:
+        elif get_status_from_uuid(inference_uuid) != JobStatus.DONE:
             raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
         job = Job.get(evaluation_uuid)
         Job.get(inference_uuid).register_child(job.uuid)
         Job.get(dataset_uuid).register_child(job.uuid)
     elif dataset_name and model_name:
-        if Job.get_status(dataset_uuid) not in [JobStatus.CREATING, JobStatus.PROCESSING, JobStatus.DONE]:
+        if get_status_from_uuid(dataset_uuid) not in [JobStatus.CREATING, JobStatus.PROCESSING, JobStatus.DONE]:
             raise DatasetDoesNotExistError(name=dataset_name)
-        elif Job.get_status(model_uuid) != JobStatus.DONE:
+        elif get_status_from_uuid(model_uuid) != JobStatus.DONE:
             raise ModelDoesNotExistError(name=model_name)
         job = Job.get(inference_uuid)
         Job.get(model_uuid).register_child(job.uuid)    
@@ -71,26 +76,12 @@ def _validate_children(job: Job):
     def _recursive_child_search(job: Job):
         # Check status of child jobs
         for uuid in job.children:
-            status = Job.get_status(uuid=uuid)
+            status = get_status_from_uuid(uuid=uuid)
             if status not in [JobStatus.NONE, JobStatus.DONE, JobStatus.FAILED]:
-                raise JobStateError(job.uuid, f"Job blocked by child task with uuid `{uuid}` and status `{Job.get_status(uuid=uuid).value}`")
+                raise JobStateError(job.uuid, f"Job blocked by child task with uuid `{uuid}` and status `{get_status_from_uuid(uuid=uuid).value}`")
             elif status == JobStatus.DONE:
                 _recursive_child_search(Job.get(uuid))
     _recursive_child_search(job)
-
-
-def get_job(
-    dataset_name: str = None,
-    model_name: str = None,
-    evaluation_id: int = None,
-) -> Job:
-    job = _validate_parents(
-        dataset_name=dataset_name,
-        model_name=model_name,
-        evaluation_id=evaluation_id,
-    )
-    _validate_children(job)
-    return job
     
 
 def _validate_transition(
@@ -101,10 +92,10 @@ def _validate_transition(
     evaluation_id: int = None,
 ):
     
-    dataset_uuid = Job.generate_uuid(dataset_name=dataset_name)
-    model_uuid = Job.generate_uuid(model_name=model_name)
-    inference_uuid = Job.generate_uuid(dataset_name=dataset_name, model_name=model_name)
-    evaluation_uuid = Job.generate_uuid(dataset_name=dataset_name, model_name=model_name, evaluation_id=evaluation_id)
+    dataset_uuid = generate_uuid(dataset_name=dataset_name)
+    model_uuid = generate_uuid(model_name=model_name)
+    inference_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name)
+    evaluation_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name, evaluation_id=evaluation_id)
 
     # validate state transition
     current_status = job.status
@@ -119,26 +110,36 @@ def _validate_transition(
             elif model_name and dataset_name and evaluation_id:
                 raise JobStateError(id=job.uuid, msg=f"Evaluation {evaluation_id} already exists.")
     if transitions.start == JobStatus.PROCESSING:
-        if Job.get_status(dataset_uuid) == JobStatus.CREATING:
+        if get_status_from_uuid(dataset_uuid) == JobStatus.CREATING:
             raise DatasetNotFinalizedError(name=dataset_name)
-        elif Job.get_status(inference_uuid) == JobStatus.CREATING:
+        elif get_status_from_uuid(inference_uuid) == JobStatus.CREATING:
             raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
+        
+
+def get_job(
+    dataset_name: str = None,
+    model_name: str = None,
+    evaluation_id: int = None,
+) -> Job:
+    job = _validate_parents(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        evaluation_id=evaluation_id,
+    )
+    _validate_children(job)
+    return job
 
 
-@jobs.needs_redis
-def get_status(        
+def get_status(
     dataset_name: str = None,
     model_name: str = None,
     evaluation_id: int = None,
 ) -> JobStatus:
-    if evaluation_id and not (dataset_name or model_name):
-        try:
-            uuid = jobs.r.keys(pattern=f"*+*+{evaluation_id}")[0]
-        except Exception:
-            return JobStatus.NONE
-    else:
-        uuid = Job.generate_uuid(dataset_name, model_name, evaluation_id)
-    return Job.get_status(uuid)
+    return get_status_from_names(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        evaluation_id=evaluation_id,
+    )
 
 
 def custom(

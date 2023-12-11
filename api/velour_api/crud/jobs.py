@@ -120,7 +120,7 @@ class Job(BaseModel):
         return cls(**job)
     
     @needs_redis
-    def set(self):
+    def sync(self):
         """
         Set redis to match Job object.
         """
@@ -134,14 +134,23 @@ class Job(BaseModel):
             raise JobStateError(self.uuid, f"{status} not in {self.status} next set: {self.status.next()}")
         self.status = status
         self.msg = msg
-        self.set()
+        self.sync()
+
+    @needs_redis
+    def get_status(self) -> JobStatus:
+        """Fetch job status from redis."""
+        json_str = r.get(self.uuid)
+        if json_str is None or not isinstance(json_str, bytes):
+            return JobStatus.NONE
+        job = json.loads(json_str)
+        return JobStatus(job["status"])
 
     def register_child(self, uuid: int):
         """
         Register a child Job.
         """
         self.children.add(uuid)
-        self.set()
+        self.sync()
 
     @needs_redis
     def delete(self):
@@ -154,40 +163,64 @@ class Job(BaseModel):
         r.delete(self.uuid)
         del self
 
-    @staticmethod
-    @needs_redis
-    def get_status(uuid: str) -> JobStatus:
-        """Fetch job status from redis."""
-        json_str = r.get(uuid)
-        if json_str is None or not isinstance(json_str, bytes):
+
+def generate_uuid(
+    dataset_name: str = None,
+    model_name: str = None,
+    evaluation_id: int = None,
+) -> str:
+    """
+    Generate a UUID from a combination of the input args.
+
+    Input must match one of the following sets: {dataset_name}, {model_name}, {dataset_name, model_name} or {dataset_name, model_name, evaluation_id}.
+
+    Parameters
+    ----------
+    dataset_name : Optional[str]
+        Dataset name.
+    datum_uid: Optional[str]
+        Datum uid.
+    model_name : Optional[str]
+        Model name.
+    evaluation_id : Optional[int]
+        Evaluation id.
+
+    Returns
+    ----------
+    int
+    """
+    return (f"{dataset_name}+{model_name}+{evaluation_id}")
+
+
+@needs_redis
+def get_status_from_uuid(uuid: str):
+    """Fetch job status from redis."""
+    json_str = r.get(uuid)
+    if json_str is None or not isinstance(json_str, bytes):
+        return JobStatus.NONE
+    job = json.loads(json_str)
+    return JobStatus(job["status"])
+
+    
+@needs_redis
+def get_status_from_names(
+    dataset_name: str = None,
+    model_name: str = None,
+    evaluation_id: int = None,
+):
+    if evaluation_id and not (dataset_name or model_name):
+        uuids = r.keys(pattern=f"*+*+{evaluation_id}")
+        if not uuids:
             return JobStatus.NONE
-        job = json.loads(json_str)
-        return JobStatus(job["status"])
+        uuid = uuids[0].decode("utf-8")
+    else:
+        uuid = generate_uuid(dataset_name, model_name, evaluation_id)
+    return get_status_from_uuid(uuid)
 
-    @staticmethod
-    def generate_uuid(
-        dataset_name: str = None,
-        model_name: str = None,
-        evaluation_id: int = None,
-    ) -> str:
-        """
-        Generate a UUID from a combination of the input args.
 
-        Input must match one of the following sets: {dataset_name}, {model_name}, {dataset_name, model_name} or {dataset_name, model_name, evaluation_id}.
 
-        Parameters
-        ----------
-        dataset_name : Optional[str]
-            Dataset name.
-        datum_uid: Optional[str]
-            Datum uid.
-        model_name : Optional[str]
-            Model name.
-        evaluation_id : Optional[int]
-            Evaluation id.
+j = Job(uuid="ds+md+123", status=JobStatus.CREATING)
+j.set()
+j.set_status(JobStatus.DONE)
+print(Job.get_uuid(evaluation_id=123))
 
-        Returns
-        ----------
-        int
-        """
-        return (f"{dataset_name}+{model_name}+{evaluation_id}")  
