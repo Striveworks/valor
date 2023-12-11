@@ -12,7 +12,7 @@ For more information, please see our user docs:
 
 - **[Overview](https://striveworks.github.io/velour/)**: Provides an overview of what Velour is, why it's important, and how it works.
 - **[Getting Started](https://striveworks.github.io/velour/getting_started)**: Details everything you need to get up-and-running with Velour.
+- **[Endpoints](endpoints.md)**: Documents Velour's various API endpoints.
 - **[Technical Concepts](https://striveworks.github.io/velour/technical_concepts)**: Describes the technical concepts that underpin Velour.
 - **[Contributing & Development](https://striveworks.github.io/velour/contributing)**: Explains how you can contribute to Velour.
-- **[Endpoints](endpoints.md)**: Explores the Velour API's endpoints.
 - **[API & Python Client References](https://striveworks.github.io/velour/references/API/Endpoints)**: Shares reference documentation for our API and Python client.

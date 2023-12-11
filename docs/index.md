@@ -9,9 +9,9 @@ These docs are organized as follows:
 
 - **[Overview](index.md)** (this page): Provides an overview of what Velour is, why it's important, and how it works.
 - **[Getting Started](getting_started.md)**: Details everything you need to get up-and-running with Velour.
+- **[Endpoints](endpoints.md)**: Documents Velour's various API endpoints.
 - **[Technical Concepts](technical_concepts.md)**: Describes the technical concepts that underpin Velour.
 - **[Contributing & Development](getting_started.md)**: Explains how you can build on and contribute to Velour.
-- **[Endpoints](endpoints.md)**: Explores the Velour API's endpoints.
 - **[API & Python Client References](https://striveworks.github.io/velour/references/API/Endpoints)**: Shares reference documentation for our API and Python client.
 
 # Overview
