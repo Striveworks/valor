@@ -1332,38 +1332,6 @@ def test_create_clf_metrics(
     assert len(confusion_matrices) == 2
 
 
-# @NOTE: This should now be handled by `velour_api.schemas.Raster`
-# def test__raster_to_png_b64(db: Session):
-
-
-# @NOTE: This is now handled by `velour_api.backend.metrics.detections`
-# def test__instance_segmentations_in_dataset_statement(
-
-
-# @NOTE: Moved to `velour_api.backend.metrics.detections`
-# def test___model_instance_segmentation_preds_statement(
-
-
-# @NOTE: Moved to `velour_api.backend.metrics.detections`
-# def test___object_detections_in_dataset_statement(db: Session, groundtruths):
-
-
-# @NOTE: Moved to `velour_api.backend.metrics.detections`
-# def test__model_object_detection_preds_statement(
-
-
-# @NOTE: Moved to `velour_api.backend.metrics.detections`
-# def test__filter_instance_segmentations_by_area(db: Session):
-
-
-# @NOTE: Moved to `velour_api.backend.metrics.detections`
-# def test__filter_object_detections_by_area(db: Session):
-
-
-# @NOTE: Moved to `velour_api.backend.metrics.detections`
-# def test__filter_instance_segmentations_by_area_using_mask(db: Session):
-
-
 def test_finalize_empty_dataset(
     db: Session,
     dataset_name: str,
@@ -1389,7 +1357,3 @@ def test_finalize_empty_model(
     with pytest.raises(exceptions.ModelInferencesDoNotExist) as e:
         crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
     assert "do not exist" in str(e)
-
-
-# @NOTE: `velour_api.backend.io`
-# @TODO: Implement a test that checks the existince and linking of metatata

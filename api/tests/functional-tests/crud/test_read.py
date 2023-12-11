@@ -180,31 +180,6 @@ def test_get_model(
     assert model.name == model_name
 
 
-# @NOTE: Sub-functionality of `crud.get_info`
-# @TODO: Implement `crud.get_info`
-# def test_get_dataset_info(
-
-# @NOTE: Sub-functionality of `crud.get_info`
-# @TODO: Implement `crud.get_info`
-# def test_get_model_info(
-
-# @NOTE: Sub-functionality of `crud.get_info`
-# @TODO: Implement `crud.get_info`
-# def test__get_associated_models(
-
-# @NOTE: Sub-functionality of `crud.get_info`
-# @TODO: Implement `crud.get_info`
-# def test__get_associated_datasets(
-
-# @NOTE: Sub-functionality of `crud.get_info`
-# @TODO: Implement `crud.get_info`
-# def test_get_label_distribution_from_dataset(
-
-# @NOTE: Sub-functionality of `crud.get_info`
-# @TODO: Implement `crud.get_info`
-# def test_get_label_distribution_from_model(
-
-
 def test_get_all_labels(
     db: Session, dataset_name: str, groundtruth_detections: schemas.GroundTruth
 ):
@@ -356,8 +331,3 @@ def test_get_joint_labels(
             schemas.Label(key="k2", value="v2"),
         ]
     )
-
-
-# @NOTE: `velour_api.backend.io`
-# @TODO: Need to implement metadata querys
-# def test_get_string_metadata_ids(db: Session):

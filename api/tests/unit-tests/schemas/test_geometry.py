@@ -2,10 +2,11 @@ import os
 from base64 import b64encode
 from tempfile import TemporaryDirectory
 
+import numpy as np
 import PIL.Image
 import pytest
 from pydantic import ValidationError
-import numpy as np
+
 from velour_api import schemas
 
 
@@ -175,17 +176,23 @@ def test_geometry_BasicPolygon(box_points):
             ]
         )
 
-    # test member fn `left` @TODO
+    # test member fn `left`
+    assert poly.left == -5
 
-    # test member fn `right` @TODO
+    # test member fn `right`
+    assert poly.right == 5
 
-    # test member fn `top` @TODO
+    # test member fn `top`
+    assert poly.top == 5
 
-    # test member fn `bottom` @TODO
+    # test member fn `bottom`
+    assert poly.bottom == -5
 
-    # test member fn `width` @TODO
+    # test member fn `width`
+    assert poly.width == 10
 
-    # test member fn `height` @TODO
+    # test member fn `height`
+    assert poly.height == 10
 
     # test member fn `segments`
     plist = box_points + [box_points[0]]
