@@ -940,6 +940,10 @@ def get_bulk_evaluations(
     may query using model names, dataset names, or both. All metrics for all specified
     models and datasets will be returned in a list of Evaluations.
 
+    This endpoint can handle multiple dataset and model names. For example, you can use
+    `/evaluations?models=first_model,second_model&datasets=test_dataset` to get all evaluations
+    related to `test_dataset` and either `first_model` or `second_model`.
+
     GET Endpoint: `/evaluations`
 
     Parameters
