@@ -1,4 +1,4 @@
-# Contributing & Development
+# Contributing to Velour
 
 We welcome all contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas aimed at improving Velour. This doc describes the high-level process for how to contribute to this repo. If you have any questions or comments on this process, please feel free to reach out to us on [Slack](#TODO).
 
