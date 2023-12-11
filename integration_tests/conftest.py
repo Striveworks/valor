@@ -13,7 +13,8 @@ from velour.enums import TaskType, JobStatus
 from velour.metatypes import ImageMetadata
 from velour.schemas import BoundingBox, MultiPolygon, Polygon, Raster
 from velour_api import exceptions
-from velour_api.backend import jobs, models
+from velour_api.backend import models
+from velour_api.crud import jobs
 
 
 @pytest.fixture
