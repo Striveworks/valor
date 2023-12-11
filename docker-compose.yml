@@ -16,7 +16,7 @@ services:
         condition: service_healthy
       redis:
           condition: service_started
-
+      restart: unless-stopped
   db:
     image: "postgis/postgis"
     ports:
@@ -25,9 +25,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
       test: pg_isready -h ${POSTGRES_HOST}
-      interval: 60s
-      timeout: 10s
-      retries: 10
+      interval: 2s
+      timeout: 1s
+      retries: 5
+    restart: always
   redis:
     image: "public.ecr.aws/bitnami/redis:7.0"
     ports:
