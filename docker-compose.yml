@@ -24,10 +24,10 @@ services:
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
-      test: curl -f http://localhost:5432
-      interval: 300s
-      timeout: 60s
-      retries: 5
+      test: pg_isready -h ${POSTGRES_HOST}
+      interval: 60s
+      timeout: 10s
+      retries: 10
   redis:
     image: "public.ecr.aws/bitnami/redis:7.0"
     ports:
