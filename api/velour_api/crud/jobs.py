@@ -95,6 +95,60 @@ def needs_redis(fn):
     return wrapper
 
 
+def generate_uuid(
+    dataset_name: str = None,
+    model_name: str = None,
+    evaluation_id: int = None,
+) -> str:
+    """
+    Generate a UUID from a combination of the input args.
+
+    Input must match one of the following sets: {dataset_name}, {model_name}, {dataset_name, model_name} or {dataset_name, model_name, evaluation_id}.
+
+    Parameters
+    ----------
+    dataset_name : Optional[str]
+        Dataset name.
+    datum_uid: Optional[str]
+        Datum uid.
+    model_name : Optional[str]
+        Model name.
+    evaluation_id : Optional[int]
+        Evaluation id.
+
+    Returns
+    ----------
+    int
+    """
+    return (f"{dataset_name}+{model_name}+{evaluation_id}")
+
+
+@needs_redis
+def get_status_from_uuid(uuid: str):
+    """Fetch job status from redis."""
+    json_str = r.get(uuid)
+    if json_str is None or not isinstance(json_str, bytes):
+        return JobStatus.NONE
+    job = json.loads(json_str)
+    return JobStatus(job["status"])
+
+    
+@needs_redis
+def get_status_from_names(
+    dataset_name: str = None,
+    model_name: str = None,
+    evaluation_id: int = None,
+):
+    if evaluation_id and not (dataset_name or model_name):
+        uuids = r.keys(pattern=f"*+*+{evaluation_id}")
+        if not uuids:
+            return JobStatus.NONE
+        uuid = uuids[0].decode("utf-8")
+    else:
+        uuid = generate_uuid(dataset_name, model_name, evaluation_id)
+    return get_status_from_uuid(uuid)
+
+
 class Job(BaseModel):
     uuid: str
     status: JobStatus = JobStatus.PENDING
@@ -156,63 +210,9 @@ class Job(BaseModel):
     def delete(self):
         """Delete job from redis."""
         for child_uuid in self.children:
-            if self.get_status(uuid=child_uuid) not in [JobStatus.NONE, JobStatus.DONE]:
-                raise JobStateError(self.uuid, f"Job blocked by child task with uuid `{child_uuid}` and status `{Job.get_status(uuid=child_uuid).value}`")
+            if get_status_from_uuid(uuid=child_uuid) not in [JobStatus.NONE, JobStatus.DONE]:
+                raise JobStateError(self.uuid, f"Job blocked by child task with uuid `{child_uuid}` and status `{get_status_from_uuid(uuid=child_uuid).value}`")
         for child_uuid in self.children:
             self.get(child_uuid).delete()
         r.delete(self.uuid)
         del self
-
-
-def generate_uuid(
-    dataset_name: str = None,
-    model_name: str = None,
-    evaluation_id: int = None,
-) -> str:
-    """
-    Generate a UUID from a combination of the input args.
-
-    Input must match one of the following sets: {dataset_name}, {model_name}, {dataset_name, model_name} or {dataset_name, model_name, evaluation_id}.
-
-    Parameters
-    ----------
-    dataset_name : Optional[str]
-        Dataset name.
-    datum_uid: Optional[str]
-        Datum uid.
-    model_name : Optional[str]
-        Model name.
-    evaluation_id : Optional[int]
-        Evaluation id.
-
-    Returns
-    ----------
-    int
-    """
-    return (f"{dataset_name}+{model_name}+{evaluation_id}")
-
-
-@needs_redis
-def get_status_from_uuid(uuid: str):
-    """Fetch job status from redis."""
-    json_str = r.get(uuid)
-    if json_str is None or not isinstance(json_str, bytes):
-        return JobStatus.NONE
-    job = json.loads(json_str)
-    return JobStatus(job["status"])
-
-    
-@needs_redis
-def get_status_from_names(
-    dataset_name: str = None,
-    model_name: str = None,
-    evaluation_id: int = None,
-):
-    if evaluation_id and not (dataset_name or model_name):
-        uuids = r.keys(pattern=f"*+*+{evaluation_id}")
-        if not uuids:
-            return JobStatus.NONE
-        uuid = uuids[0].decode("utf-8")
-    else:
-        uuid = generate_uuid(dataset_name, model_name, evaluation_id)
-    return get_status_from_uuid(uuid)
