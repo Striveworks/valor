@@ -26,6 +26,43 @@ def _state_transition_error(
     dataset_name: str,
     model_name: str | None = None,
 ):
+    """
+    Raise an error when transitioning an object's state.
+
+    Parameters
+    ----------
+    before : State
+        The previous state.
+    after: State
+        The state we're transitioning to.
+    dataset_name: str
+        The name of the dataset.
+    model_name: str
+        The name of the model.
+
+    Raises
+    ----------
+    DatasetAlreadyExistsError
+        If the dataset already exists, and the after state is NONE.
+    ModelAlreadyExistsError
+        If the model already exists, and the after state is NONE.
+    DatasetIsEmptyError
+        If the dataset is empty, the before state was NONE, and the after state wasn't CREATE.
+    ModelIsEmptyError
+        If the model is empty, the before state was NONE, and the after state wasn't CREATE.
+    DatasetNotFinalizedError
+        If the dataset wasn't finalized, the before state was CREATE, and the after state was EVALUATE.
+    ModelNotFinalizedError
+        If the model wasn't finalized, the before state was CREATE, and the after state was EVALUATE.
+    DatasetFinalizedError
+        If the dataset was finalized, the before state was not NONE, and the after state was CREATE.
+    ModelFinalizedError
+        If the model was finalized, the before state was not NONE, and the after state was CREATE.
+    StateflowError
+        If the before state was DELETE.
+        If this function is called for any other reason not defined above.
+    """
+
     # attempt to duplicate
     if after == State.NONE:
         if not model_name:
@@ -75,10 +112,38 @@ def _state_transition_error(
 
 
 class InferenceState(BaseModel):
+    """
+    Stores the state of an inference.
+
+    Attributes
+    ----------
+    status : Status
+        The status of the inference.
+    jobs: Dict[int, JobStatus]
+        The jobs associated with the inference.
+    """
+
     status: State = State.NONE
     jobs: dict[int, JobStatus] = Field(default_factory=dict)
 
     def set_job_status(self, job_id: int, status: JobStatus):
+        """
+        Sets the status of a job.
+
+        Parameters
+        ----------
+        job_id : int
+            The id of the job.
+        status : JobStatus
+            The status of the job.
+
+        Raises
+        ----------
+        JobDoesNotExistError
+            If the job doesn't exist.
+        JobStateError
+            If the state undergoes an invalid transition.
+        """
         if job_id not in self.jobs:
             if status != JobStatus.PENDING:
                 raise JobDoesNotExistError(job_id)
@@ -91,11 +156,32 @@ class InferenceState(BaseModel):
         self.jobs[job_id] = status
 
     def get_job_status(self, job_id: int) -> JobStatus | None:
+        """
+        Gets the status of a job.
+
+        Parameters
+        ----------
+        job_id : int
+            The id of the job.
+
+        Returns
+        ----------
+        JobStatus
+            The status of the job.
+        """
         if job_id not in self.jobs:
             return None
         return self.jobs[job_id]
 
     def remove_job(self, job_id: int):
+        """
+        Removes an inference job.
+
+        Parameters
+        ----------
+        job_id : int
+            The id of the job.
+        """
         if job_id not in self.jobs:
             raise JobDoesNotExistError(job_id)
         elif self.jobs[job_id] not in [
@@ -109,11 +195,23 @@ class InferenceState(BaseModel):
 
 
 class DatasetState(BaseModel):
+    """
+    Stores the state of a Dataset.
+
+    Attributes
+    ----------
+    status : Status
+        The status of the dataset.
+    models: Dict[int, InferenceState]
+        The inferences associated with the dataset.
+    """
+
     status: State = State.NONE
     models: dict[str, InferenceState] = Field(default_factory=dict)
 
     @property
     def evaluating(self) -> bool:
+        """Sets the state to EVALUATE"""
         for model_name in self.models:
             if self.models[model_name].status == State.EVALUATE:
                 return True
@@ -122,6 +220,23 @@ class DatasetState(BaseModel):
     def set_inference_status(
         self, dataset_name: str, model_name: str, status: State
     ):
+        """
+        Sets the status of an inference.
+
+        Parameters
+        ----------
+        dataset_name: str
+            The name of the dataset.
+        model_name: str
+            The name of the model.
+        status : JobStatus
+            The status of the inference.
+
+        Raises
+        ----------
+        ModelInferencesDoNotExist
+            If the model doesn't exist.
+        """
         if model_name not in self.models:
             if status != State.CREATE:
                 raise ModelInferencesDoNotExist(
@@ -137,7 +252,29 @@ class DatasetState(BaseModel):
             )
         self.models[model_name].status = status
 
-    def get_inference_status(self, dataset_name: str, model_name: str):
+    def get_inference_status(
+        self, dataset_name: str, model_name: str
+    ) -> State:
+        """
+        Gets the status of an inference.
+
+        Parameters
+        ----------
+        dataset_name: str
+            The name of the dataset.
+        model_name: str
+            The name of the model.
+
+        Returns
+        ----------
+        State
+            The status of the inference.
+
+        Raises
+        ----------
+        ModelInferencesDoNotExist
+            If the model doesn't exist.
+        """
         if model_name not in self.models:
             raise ModelInferencesDoNotExist(
                 dataset_name=dataset_name, model_name=model_name
@@ -145,6 +282,21 @@ class DatasetState(BaseModel):
         return self.models[model_name].status
 
     def remove_inference(self, dataset_name: str, model_name: str):
+        """
+        Removes an inference.
+
+        Parameters
+        ----------
+        dataset_name: str
+            The name of the dataset.
+        model_name: str
+            The name of the model.
+
+        Raises
+        ----------
+        ModelInferencesDoNotExist
+            If the model doesn't exist.
+        """
         if model_name not in self.models:
             raise ModelInferencesDoNotExist(
                 dataset_name=dataset_name, model_name=model_name
@@ -153,12 +305,38 @@ class DatasetState(BaseModel):
 
 
 class Stateflow(BaseModel):
+    """
+    Stores the state of the broader velour system.
+
+    Attributes
+    ----------
+    datasets: Dict[str, DatasetState]
+        The datasets available in velour.
+    key_to_values: Dict[int, list[str]]
+        A dictionary of stored states.
+    """
+
     datasets: dict[str, DatasetState] = Field(default_factory=dict)
     key_to_values: dict[int, list[str]] = Field(default_factory=dict)
 
     """ DATASET """
 
     def set_dataset_status(self, dataset_name: str, status: State):
+        """
+        Sets the status of a dataset.
+
+        Parameters
+        ----------
+        dataset_name: str
+            The name of the dataset.
+        status : State
+            The status of the dataset.
+
+        Raises
+        ----------
+        DatasetDoesNotExistError
+            If the dataset doesn't exist.
+        """
         if dataset_name not in self.datasets:
             if status not in [State.NONE, State.CREATE]:
                 raise DatasetDoesNotExistError(dataset_name)
@@ -178,19 +356,48 @@ class Stateflow(BaseModel):
         self.datasets[dataset_name].status = status
 
     def get_dataset_status(self, dataset_name: str) -> State:
+        """
+        Gets the status of a dataset.
+
+        Parameters
+        ----------
+        dataset_name: str
+            The name of the dataset.
+
+
+        Returns
+        ----------
+        State
+            The state of the dataset.
+
+        Raises
+        ----------
+        DatasetDoesNotExistError
+            If the dataset doesn't exist.
+        """
         if dataset_name not in self.datasets:
             raise DatasetDoesNotExistError(dataset_name)
         return self.datasets[dataset_name].status
 
     def remove_dataset(self, dataset_name: str):
+        """
+        Remove a dataset.
+
+        Parameters
+        ----------
+        dataset_name: str
+            The name of the dataset.
+
+        Raises
+        ----------
+        DatasetDoesNotExistError
+            If the dataset doesn't exist.
+        """
         if dataset_name not in self.datasets:
             raise DatasetDoesNotExistError(dataset_name)
 
-        # remove inferences, copying the list of model names to avoid
-        # iterating over a changing dict
         models = list(self.datasets[dataset_name].models)
         for model_name in models:
-
             self.remove_inference(dataset_name, model_name)
         # delete dataset
         del self.datasets[dataset_name]
@@ -198,6 +405,16 @@ class Stateflow(BaseModel):
     """ MODEL """
 
     def set_model_status(self, model_name: str, status: State):
+        """
+        Sets the status of a model.
+
+        Parameters
+        ----------
+        model_name: str
+            The name of the model.
+        status : State
+            The status of the model.
+        """
         for dataset_name in self.datasets:
             if model_name in self.datasets[dataset_name].models:
                 self.datasets[dataset_name].set_inference_status(
@@ -205,6 +422,14 @@ class Stateflow(BaseModel):
                 )
 
     def remove_model(self, model_name: str):
+        """
+        Remove a model.
+
+        Parameters
+        ----------
+        model_name: str
+            The name of the model.
+        """
         for dataset_name, dataset in self.datasets.items():
             if model_name in dataset.models:
                 # purge key_to_values
@@ -218,6 +443,27 @@ class Stateflow(BaseModel):
     def get_inference_status(
         self, dataset_name: str, model_name: str
     ) -> State:
+        """
+        Gets the status of an inference.
+
+        Parameters
+        ----------
+        dataset_name: str
+            The name of the dataset.
+        model_name: str
+            The name of the model.
+
+
+        Returns
+        ----------
+        State
+            The state of the inference.
+
+        Raises
+        ----------
+        DatasetDoesNotExistError
+            If the dataset doesn't exist.
+        """
         if dataset_name not in self.datasets:
             raise DatasetDoesNotExistError(dataset_name)
         return self.datasets[dataset_name].get_inference_status(
@@ -227,6 +473,23 @@ class Stateflow(BaseModel):
     def set_inference_status(
         self, dataset_name: str, model_name: str, status: State
     ):
+        """
+        Sets the status of an inference.
+
+        Parameters
+        ----------
+        dataset_name: str
+            The name of the dataset.
+        model_name: str
+            The name of the model.
+        status : State
+            The status of the inference.
+
+        Raises
+        ----------
+        DatasetDoesNotExistError
+            If the dataset doesn't exist.
+        """
         if dataset_name not in self.datasets:
             raise DatasetDoesNotExistError(dataset_name)
 
@@ -259,6 +522,22 @@ class Stateflow(BaseModel):
             )
 
     def remove_inference(self, dataset_name: str, model_name: str):
+        """
+        Remove an inference.
+
+        Parameters
+        ----------
+        dataset_name: str
+            The name of the dataset.
+        model_name: str
+            The name of the model.
+
+
+        Raises
+        ----------
+        DatasetDoesNotExistError
+            If the dataset doesn't exist.
+        """
         if dataset_name not in self.datasets:
             raise DatasetDoesNotExistError(dataset_name)
         # purge key_to_values
@@ -276,6 +555,27 @@ class Stateflow(BaseModel):
         job_id: int,
         status: JobStatus,
     ):
+        """
+        Sets the status of a job.
+
+        Parameters
+        ----------
+        dataset_name: str
+            The name of the dataset.
+        model_name: str
+            The name of the model.
+        job_id: int
+            The id of the job.
+        status : State
+            The status of the job.
+
+        Raises
+        ----------
+        DatasetDoesNotExistError
+            If the dataset doesn't exist.
+        ModelDoesNotExistError
+            If the model doesn't exist.
+        """
         if dataset_name not in self.datasets:
             raise DatasetDoesNotExistError(dataset_name)
         elif model_name not in self.datasets[dataset_name].models:
@@ -290,6 +590,19 @@ class Stateflow(BaseModel):
         self,
         job_id: int,
     ) -> JobStatus | None:
+        """
+        Gets the status of an job.
+
+        Parameters
+        ----------
+        job_id: int
+            The id of the job.
+
+        Returns
+        ----------
+        JobStatus
+            The state of the job.
+        """
         if job_id not in self.key_to_values:
             return None
         dataset_name, model_name = self.key_to_values[job_id]
@@ -305,6 +618,25 @@ class Stateflow(BaseModel):
         model_name: str,
         job_id: int,
     ):
+        """
+        Remove a job.
+
+        Parameters
+        ----------
+        dataset_name: str
+            The name of the dataset.
+        model_name: str
+            The name of the model.
+        job_id: int
+            The id of the job.
+
+        Raises
+        ----------
+        DatasetDoesNotExistError
+            If the dataset doesn't exist.
+        ModelDoesNotExistError
+            If the model doesn't exist.
+        """
         if dataset_name not in self.datasets:
             raise DatasetDoesNotExistError(dataset_name)
         elif model_name not in self.datasets[dataset_name].models:
@@ -315,6 +647,24 @@ class Stateflow(BaseModel):
         self,
         dataset_name: str,
     ) -> dict[str, list[int]]:
+        """
+        Gets all jobs associated with a dataset.
+
+        Parameters
+        ----------
+        dataset_name: str
+            The name of the dataset.
+
+        Returns
+        ----------
+        Dict[str, List[int]]
+            A dictionary of jobs.
+
+        Raises
+        ----------
+        DatasetDoesNotExistError
+            If the dataset doesn't exist.
+        """
         if dataset_name not in self.datasets:
             raise DatasetDoesNotExistError(dataset_name)
         return {
@@ -331,6 +681,19 @@ class Stateflow(BaseModel):
         self,
         model_name: str,
     ) -> dict[str, list[int]]:
+        """
+        Gets all jobs associated with a model.
+
+        Parameters
+        ----------
+        model_name: str
+            The name of the model.
+
+        Returns
+        ----------
+        Dict[str, List[int]]
+            A dictionary of jobs.
+        """
         return {
             dataset_name: [
                 job_id

@@ -12,6 +12,16 @@ def create_groundtruth(
     db: Session,
     groundtruth: schemas.GroundTruth,
 ):
+    """
+    Creates a groundtruth.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    groundtruth: schemas.GroundTruth
+        The groundtruth to create.
+    """
     # create datum
     datum = core.create_datum(db, groundtruth.datum)
 
@@ -43,7 +53,25 @@ def get_groundtruth(
     db: Session,
     dataset_name: str,
     datum_uid: str,
-):
+) -> schemas.GroundTruth:
+    """
+    Fetch a groundtruth.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    dataset_name : str
+        The name of the dataset.
+    datum_uid: str
+        The UID of the datum to fetch.
+
+
+    Returns
+    ----------
+    schemas.GroundTruth
+        The requested groundtruth.
+    """
     # retrieve from table
     dataset = core.get_dataset(db, name=dataset_name)
     datum = core.get_datum(db, dataset_id=dataset.id, uid=datum_uid)

@@ -1,5 +1,3 @@
-from time import perf_counter
-
 from velour_api import logger, schemas
 from velour_api.backend.jobs import get_stateflow, set_stateflow
 from velour_api.enums import JobStatus, State
@@ -89,6 +87,20 @@ def _remove_backend_state(
 
 
 def create(fn: callable) -> callable:
+    """
+    Set the state of a dataset and/or model object to State.CREATE.
+
+    Parameters
+    ----------
+    fn : callable
+        An input function to wrap around. Sets the state of any datasets or models mentioned in the function's kwargs.
+
+    Raises
+    ------
+    RuntimeError
+        If input args aren't explicitly defined.
+    """
+
     def wrapper(*args, **kwargs):
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 2:
@@ -131,6 +143,20 @@ def create(fn: callable) -> callable:
 
 
 def finalize(fn: callable) -> callable:
+    """
+    Set the state of a dataset and/or model object to State.Finalize.
+
+    Parameters
+    ----------
+    fn : callable
+        An input function to wrap around. Sets the state of any datasets or models mentioned in the function's kwargs.
+
+    Raises
+    ------
+    RuntimeError
+        If input args aren't explicitly defined.
+    """
+
     def wrapper(*args, **kwargs):
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 3:
@@ -157,6 +183,20 @@ def finalize(fn: callable) -> callable:
 
 
 def evaluate(fn: callable) -> callable:
+    """
+    Set the state of a dataset and/or model object to State.EVALUATE.
+
+    Parameters
+    ----------
+    fn : callable
+        An input function to wrap around. Sets the state of any datasets or models mentioned in the function's kwargs.
+
+    Raises
+    ------
+    RuntimeError
+        If input args aren't explicitly defined.
+    """
+
     def wrapper(*args, **kwargs):
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 2:
@@ -200,6 +240,24 @@ def evaluate(fn: callable) -> callable:
 
 
 def computation(fn: callable) -> callable:
+    """
+    Update the state of an EvaluationJob.
+
+    Parameters
+    ----------
+    fn : callable
+        An input function to wrap around.
+
+    Raises
+    ------
+    RuntimeError
+        If input args aren't explicitly defined.
+    ValueError
+        If the job request is defined, but isn't the right type.
+        If the job request isn't defined.
+        If the job is missing an ID.
+    """
+
     def wrapper(*args, **kwargs):
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 2:
@@ -281,6 +339,20 @@ def computation(fn: callable) -> callable:
 
 
 def delete(fn: callable) -> callable:
+    """
+    Set the state of a dataset and/or model object to State.DELETE.
+
+    Parameters
+    ----------
+    fn : callable
+        An input function to wrap around. Sets the state of any datasets or models mentioned in the function's kwargs.
+
+    Raises
+    ------
+    RuntimeError
+        If input args aren't explicitly defined.
+    """
+
     def wrapper(*args, **kwargs):
         # input args should be explicitly defined
         if len(args) != 0 and len(kwargs) != 3:
@@ -309,19 +381,6 @@ def delete(fn: callable) -> callable:
                 dataset_name=dataset_name, model_name=model_name
             )
 
-        return result
-
-    return wrapper
-
-
-def debug_timer(fn: callable) -> callable:
-    def wrapper(*args, **kwargs):
-        logger.debug(f"starting method {fn}")
-        start = perf_counter()
-        result = fn(*args, **kwargs)
-        logger.debug(
-            f"method {fn} finished in {perf_counter() - start} seconds"
-        )
         return result
 
     return wrapper

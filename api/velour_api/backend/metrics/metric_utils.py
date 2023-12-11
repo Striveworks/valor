@@ -11,11 +11,24 @@ def get_or_create_row(
     mapping: dict,
     columns_to_ignore: list[str] = None,
 ) -> any:
-    """Tries to get the row defined by mapping. If that exists then
-    its mapped object is returned. Otherwise a row is created by `mapping` and the newly created
-    object is returned. `columns_to_ignore` specifies any columns to ignore in forming the where
-    expression. this can be used for numerical columns that might slightly differ but are essentially the same
-    (and where the other columns serve as unique identifiers)
+    """
+    Tries to get the row defined by mapping. If that exists then its mapped object is returned. Otherwise a row is created by `mapping` and the newly created object is returned.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    model_class : type
+        The type of model.
+    mapping : dict
+        The mapping to use when creating the row.
+    columns_to_ignore : List[str]
+        Specifies any columns to ignore in forming the WHERE expression. This can be used for numerical columns that might slightly differ but are essentially the same.
+
+    Returns
+    ----------
+    any
+        A model class object.
     """
     columns_to_ignore = columns_to_ignore or []
 
@@ -50,7 +63,23 @@ def create_metric_mappings(
     ],
     evaluation_id: int,
 ) -> list[dict]:
+    """
+    Create metric mappings from a list of metrics.
 
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    metrics : List
+        A list of metrics to create mappings for.
+    evaluation_id : int
+        The id of the evaluation job.
+
+    Returns
+    ----------
+    List[Dict]
+        A list of metric mappings.
+    """
     labels = set(
         [
             (metric.label.key, metric.label.value)
@@ -80,7 +109,8 @@ def create_metric_mappings(
     return ret
 
 
-def _db_metric_to_pydantic_metric(db, metric: models.Metric) -> schemas.Metric:
+def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
+    """Apply schemas.Metric to a metric from the database"""
     label = (
         schemas.Label(key=metric.label.key, value=metric.label.value)
         if metric.label
@@ -104,6 +134,23 @@ def get_evaluation_jobs(
 ) -> list[schemas.EvaluationJob]:
     """
     Get evaluation jobs that conform to input arguments.
+
+    Parameters
+    ----------
+    job_ids: list[int] | None
+        A list of job ids to get evaluation jobs for.
+    dataset_names: list[str] | None
+        A list of dataset names to get evaluation jobs for.
+    model_names: list[str] | None
+        A list of model names to get evaluation jobs for.
+    settings: list[schemas.EvaluationSettings] | None
+        A list of evaluation settings to get evaluation jobs for.
+
+
+    Returns
+    ----------
+    List[schemas.EvaluationJob]
+        A list of evaluation jobs.
     """
 
     # argument expressions
@@ -170,6 +217,23 @@ def get_evaluations(
 ) -> list[schemas.Evaluation]:
     """
     Get evaluations that conform to input arguments.
+
+    Parameters
+    ----------
+    job_ids: list[int] | None
+        A list of job ids to get evaluations for.
+    dataset_names: list[str] | None
+        A list of dataset names to get evaluations for.
+    model_names: list[str] | None
+        A list of model names to get evaluations for.
+    settings: list[schemas.EvaluationSettings] | None
+        A list of evaluation settings to get evaluations for.
+
+
+    Returns
+    ----------
+    List[schemas.Evaluation]
+        A list of evaluations.
     """
 
     # argument expressions
@@ -223,7 +287,7 @@ def get_evaluations(
             job_id=evaluation.id,
             status="unknown",  # unknown to backend
             metrics=[
-                _db_metric_to_pydantic_metric(db, metric)
+                _db_metric_to_pydantic_metric(metric)
                 for metric in evaluation.metrics
             ],
             confusion_matrices=[

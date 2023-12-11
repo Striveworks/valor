@@ -17,7 +17,6 @@ from ._read import (
     get_dataset,
     get_dataset_labels,
     get_datasets,
-    get_datum,
     get_datums,
     get_disjoint_keys,
     get_disjoint_labels,

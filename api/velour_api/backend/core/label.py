@@ -11,14 +11,19 @@ def create_labels(
     labels: list[schemas.Label],
 ) -> list[models.Label]:
     """
-    Add a list of labels to postgis. Automatically handles cases where the label already exists in the database.
+    Add a list of labels to postgis. Handles cases where the label already exists in the database.
 
     Parameters
     -------
-    db
+    db : Session
         The database session to query against.
-    labels
-        A list of labels that you want to add to postgis.
+    labels : list[schemas.Label]
+        A list of labels to add to postgis.
+
+    Returns
+    -------
+    List[models.Label]
+        A list of labels.
     """
     replace_val = "to_be_replaced"
 
@@ -88,6 +93,21 @@ def get_label(
     db: Session,
     label: schemas.Label,
 ) -> models.Label | None:
+    """
+    Fetch a label from the database.
+
+    Parameters
+    -------
+    db : Session
+        The database session to query against.
+    label : schemas.Label
+        The label to fetch.
+
+    Returns
+    -------
+    models.Label
+        The requested label.
+    """
     return (
         db.query(models.Label)
         .where(
@@ -103,7 +123,22 @@ def get_label(
 def get_labels(
     db: Session,
     annotation: models.Annotation,
-):
+) -> list[models.Annotation]:
+    """
+    Fetch labels associated with an annotation from the database.
+
+    Parameters
+    -------
+    db : Session
+        The database session to query against.
+    annotation : models.Annotation
+        The annotation to fetch labels for.
+
+    Returns
+    -------
+    List[models.Annotation]
+        The requested list of labels.
+    """
     labels = (
         db.query(models.Label.key, models.Label.value)
         .select_from(models.GroundTruth)
@@ -146,6 +181,23 @@ def get_dataset_labels_query(
     annotation_type: enums.AnnotationType,
     task_types: list[enums.TaskType],
 ) -> Select:
+    """
+    Create a query to fetch labels associated with a dataset from the database.
+
+    Parameters
+    -------
+    dataset_name : str
+        The dataset to fetch labels for.
+    annotation_type : enums.AnnotationType
+        The annotation type of the model.
+    task_types : listp[enums.TaskType]
+        The task types to filter on.
+
+    Returns
+    -------
+    Select
+        A sqlalchemy query.
+    """
     annotation_type_expr = (
         [models.annotation_type_to_geometry[annotation_type].is_not(None)]
         if annotation_type is not enums.AnnotationType.NONE

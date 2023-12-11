@@ -49,34 +49,38 @@ def _polygons_to_binary_mask(
     return np.array(mask)
 
 
-def combined_segmentation_mask(
+def create_combined_segmentation_mask(
     annotated_datums: List[Union[GroundTruth, Prediction]],
     label_key: str,
     task_type: Union[enums.TaskType, None] = None,
 ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
-    """Creates a combined segmentation mask from a list of segmentations
+    """
+    Creates a combined segmentation mask from a list of segmentations.
 
-    annotated_datums
-        list of segmentations. these all must have the same `image` attribute. this
-        must be non-empty
-    label_key
-        the label key to use.
+    Parameters
+    -------
+    annotated_datums : List[Union[GroundTruth, Prediction]]
+        A list of segmentations. These all must have the same `image` attribute.
+    label_key : str
+        The label key to use.
+    task_type : enums.TaskType
+        The associated task type.
 
 
     Returns
     -------
     tuple
-        the first element of the tuple is the combined mask, as an RGB PIL image. the second
+        The first element of the tuple is the combined mask, as an RGB PIL image. The second
         element is a color legend: it's a dict with keys the unique values of the labels and the
         values of the dict are PIL image swatches of the color corresponding to the label value.
 
     Raises
     ------
     RuntimeError
-        if all segmentations don't belong to the same image, or there is a
-        segmentation that doesn't have `label_key` as the key of one of its labels
+        If all segmentations don't belong to the same image, or there is a
+        segmentation that doesn't have `label_key` as the key of one of its labels.
     ValueError
-        if segs is empty
+        If there aren't any segmentations.
     """
 
     if len(annotated_datums) == 0:
@@ -168,7 +172,22 @@ def draw_detections_on_image(
     detections: List[Union[GroundTruth, Prediction]],
     img: Image.Image,
 ) -> Image.Image:
-    """Draws detections (bounding boxes and labels) on an image"""
+    """
+    Draws detections (bounding boxes and labels) on an image.
+
+    Parameters
+    -------
+    detections : List[Union[GroundTruth, Prediction]]
+        A list of `GroundTruths` or `Predictions` to draw on the image.
+    img : Image.Image
+        The image to draw the detections on.
+
+
+    Returns
+    -------
+    img : Image.Image
+        An image with the detections drawn on.
+    """
 
     annotations = []
     for datum in detections:
@@ -183,6 +202,7 @@ def draw_detections_on_image(
 def _draw_detection_on_image(
     detection: Annotation, img: Image.Image, inplace: bool
 ) -> Image.Image:
+    """Draw a detection on an image."""
     text = ", ".join(
         [f"{label.key}:{label.value}" for label in detection.labels]
     )
@@ -212,6 +232,7 @@ def _draw_bounding_polygon_on_image(
     text: str = None,
     font_size: int = 24,
 ) -> Image.Image:
+    """Draw a bounding polygon on an image."""
     img = img if inplace else img.copy()
     img_draw = ImageDraw.Draw(img)
 
@@ -238,6 +259,7 @@ def _write_text(
     draw: ImageDraw.Draw,
     color: str,
 ):
+    """Write text on an image."""
     try:
         font = ImageFont.truetype("arial.ttf", font_size)
     except IOError:
