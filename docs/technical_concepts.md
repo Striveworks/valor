@@ -117,8 +117,8 @@ The API can be run without authentication (by default), or with authentication p
 - Set these env variables in a file named `.env.auth`, and place that file in the `api` directory. An example of such a file would look like:
 
 ```
-AUTH0_DOMAIN="velour.us.auth0.com"
-AUTH0_AUDIENCE="https://velour.striveworks.us/"
+AUTH0_DOMAIN="your_domain.auth0.com"
+AUTH0_AUDIENCE="https://your_domain.com/"
 AUTH0_ALGORITHMS="RS256"
 ```
 
