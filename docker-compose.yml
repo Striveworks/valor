@@ -25,8 +25,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
       test: curl -f http://localhost:5432
-      interval: 5s
-      timeout: 2s
+      interval: 300s
+      timeout: 60s
       retries: 5
   redis:
     image: "public.ecr.aws/bitnami/redis:7.0"
