@@ -4,7 +4,12 @@ import pytest
 
 from velour_api import schemas, enums
 from velour_api.crud import jobs
-from velour_api.crud.jobs import Job
+from velour_api.crud.jobs import (
+    Job,
+    generate_uuid,
+    get_status_from_names,
+    get_status_from_uuid,
+)
 from velour_api.crud.stateflow import get_job
 from velour_api.crud import stateflow
 from velour_api.enums import JobStatus
@@ -95,23 +100,23 @@ def evaluation_func_with_id(job_request: schemas.EvaluationJob, job_id: int):
 
 
 def _test_decorator(uuid: str, fn: callable, kwargs: dict):
-    assert Job.get_status(uuid) == JobStatus.NONE
+    assert get_status_from_uuid(uuid) == JobStatus.NONE
     stateflow.create(fn)(**kwargs)
-    assert Job.get_status(uuid) == JobStatus.CREATING
+    assert get_status_from_uuid(uuid) == JobStatus.CREATING
     stateflow.finalize(fn)(**kwargs)
-    assert Job.get_status(uuid) == JobStatus.DONE
+    assert get_status_from_uuid(uuid) == JobStatus.DONE
     stateflow.delete(fn)(**kwargs)
-    assert Job.get_status(uuid) == JobStatus.NONE
+    assert get_status_from_uuid(uuid) == JobStatus.NONE
 
 
 def test_decorator_dataset(db, dataset, groundtruth):
-    uuid = Job.generate_uuid(dataset_name=dataset.name)
+    uuid = generate_uuid(dataset_name=dataset.name)
     _test_decorator(uuid, dataset_name_func, {"dataset_name": dataset.name})
     _test_decorator(uuid, groundtruth_func, {"groundtruth": groundtruth})
 
 
 def test_decorator_model(db, model):
-    uuid = Job.generate_uuid(model_name=model.name)
+    uuid = generate_uuid(model_name=model.name)
     _test_decorator(uuid, model_func, {"model": model})
     _test_decorator(uuid, model_name_func, {"model_name": model.name})
 
@@ -120,7 +125,7 @@ def test_decorator_inference(db, dataset, model, prediction, job_request):
     stateflow.finalize(dataset_func)(dataset=dataset)
     stateflow.finalize(model_func)(model=model)
 
-    uuid = Job.generate_uuid(dataset_name=dataset.name, model_name=model.name)
+    uuid = generate_uuid(dataset_name=dataset.name, model_name=model.name)
     _test_decorator(uuid, dataset_and_model_name_func, {"dataset_name": dataset.name, "model_name": model.name})
     _test_decorator(uuid, prediction_func, {"prediction": prediction})
     job_request.id = None
@@ -136,7 +141,7 @@ def test_decorator_evaluation(db, dataset, model, job_request):
     stateflow.finalize(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
     
     job_request.id = 1234
-    uuid = Job.generate_uuid(job_request.dataset, job_request.model, job_request.id)
+    uuid = generate_uuid(job_request.dataset, job_request.model, job_request.id)
     _test_decorator(uuid, evaluation_func_with_id, {"job_request": job_request, "job_id": job_request.id})
 
     stateflow.delete(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)

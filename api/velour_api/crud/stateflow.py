@@ -35,7 +35,7 @@ def _validate_parents(
     evaluation_id: int = None,
 ):
     """
-    Safely retrieves a job from Redis.
+    Safely retrieves or creates a Redis job through parental checks.
     """
 
     dataset_uuid = generate_uuid(dataset_name=dataset_name)
@@ -43,24 +43,40 @@ def _validate_parents(
     inference_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name)
     evaluation_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name, evaluation_id=evaluation_id)
     
-    # validate parents
+    # validate parents of evaluations (groundtruths + predictions)
     if evaluation_id and dataset_name and model_name:
+        
+        # dataset and groundtruths are still being created.
         if get_status_from_uuid(dataset_uuid) != JobStatus.DONE:
             raise DatasetNotFinalizedError(name=dataset_name)
+        
+        # model is still being created.
         elif get_status_from_uuid(model_uuid) != JobStatus.DONE:
             raise ModelDoesNotExistError(name=model_name)
+        
+        # model predictions are still being created.
         elif get_status_from_uuid(inference_uuid) != JobStatus.DONE:
             raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
+        
         job = Job.get(evaluation_uuid)
         Job.get(inference_uuid).register_child(job.uuid)
         Job.get(dataset_uuid).register_child(job.uuid)
+
+    # validate parents of predictions (dataset + model)
     elif dataset_name and model_name:
-        if get_status_from_uuid(dataset_uuid) not in [JobStatus.CREATING, JobStatus.PROCESSING, JobStatus.DONE]:
+
+        # dataset is not finalized or being created.
+        if get_status_from_uuid(dataset_uuid) not in [JobStatus.CREATING, JobStatus.DONE]:
             raise DatasetDoesNotExistError(name=dataset_name)
+        
+        # model has not been created.
         elif get_status_from_uuid(model_uuid) != JobStatus.DONE:
             raise ModelDoesNotExistError(name=model_name)
+        
         job = Job.get(inference_uuid)
         Job.get(model_uuid).register_child(job.uuid)    
+
+    # no parent nodes
     elif dataset_name:
         job = Job.get(dataset_uuid)
     elif model_name:
@@ -72,7 +88,9 @@ def _validate_parents(
 
 
 def _validate_children(job: Job):
-    # validate children
+    """
+    Validate the children of a Job (if they exist).
+    """
     def _recursive_child_search(job: Job):
         # Check status of child jobs
         for uuid in job.children:
@@ -91,6 +109,9 @@ def _validate_transition(
     model_name: str = None,
     evaluation_id: int = None,
 ):
+    """
+    Validate edge-cases that require knowledge of the next transistion.
+    """
     
     dataset_uuid = generate_uuid(dataset_name=dataset_name)
     model_uuid = generate_uuid(model_name=model_name)
@@ -121,6 +142,9 @@ def get_job(
     model_name: str = None,
     evaluation_id: int = None,
 ) -> Job:
+    """
+    Safely get or create a Job.
+    """
     job = _validate_parents(
         dataset_name=dataset_name,
         model_name=model_name,
@@ -135,6 +159,9 @@ def get_status(
     model_name: str = None,
     evaluation_id: int = None,
 ) -> JobStatus:
+    """
+    Get status of a Job.
+    """
     return get_status_from_names(
         dataset_name=dataset_name,
         model_name=model_name,
@@ -142,12 +169,15 @@ def get_status(
     )
 
 
-def custom(
+def generate_stateflow_decorator(
     transitions: StateTransition = StateTransition(),
     on_start: callable = lambda job, transitions, msg="" : job.set_status(transitions.start, msg),
     on_success: callable = lambda job, transitions, msg="" : job.set_status(transitions.success, msg),
     on_failure: callable = lambda job, transitions, msg="" : job.set_status(transitions.failure, msg),
 ):
+    """
+    Decorator generator function.
+    """
     def decorator(fn: callable) -> callable:
         @wraps(fn)
         def wrapper(*args, **kwargs):
@@ -211,25 +241,25 @@ def custom(
 
 
 # stateflow decorators
-create = custom(
+create = generate_stateflow_decorator(
     transitions=StateTransition(
         start=JobStatus.CREATING,
         success=JobStatus.CREATING,
     ),
 )
-finalize = custom(
+finalize = generate_stateflow_decorator(
     transitions=StateTransition(
         start=JobStatus.CREATING,
         success=JobStatus.DONE,
     ),
 )
-evaluate = custom(
+evaluate = generate_stateflow_decorator(
     transitions=StateTransition(
         start=JobStatus.PROCESSING,
         success=JobStatus.DONE,
     ),
 )
-delete = custom(
+delete = generate_stateflow_decorator(
     transitions=StateTransition(
         start=JobStatus.DELETING,
     ),
