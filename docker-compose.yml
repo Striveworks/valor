@@ -12,23 +12,14 @@ services:
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
       AUTH0_ALGORITHMS: ${AUTH0_ALGORITHMS}
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-          condition: service_started
-      restart: unless-stopped
+      - 'db'
+      - 'redis'
   db:
     image: "postgis/postgis"
     ports:
       - "5432:5432"
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    healthcheck:
-      test: pg_isready -h ${POSTGRES_HOST}
-      interval: 10s
-      timeout: 30s
-      retries: 10
-    restart: always
   redis:
     image: "public.ecr.aws/bitnami/redis:7.0"
     ports:
