@@ -18,9 +18,9 @@ Note that Velour does _not_ store raw data (such as underlying images) or facili
 
 ## Supported Task Types
 
-As of January 2024, Velour supports the following types of computer vision tasks and associated metrics:
+As of January 2024, Velour supports the following types of supervised learning tasks and associated metrics:
 
-- Image classification (including multi-label classification)
+- Classification (including multi-label classification)
     - F1
     - AUCROC
     - Accuracy

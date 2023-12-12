@@ -175,7 +175,7 @@ Now that both our `Dataset` and `Model` are finalized, we can evaluate how well 
 evaluation = model.evaluate_classification(
     dataset=dataset,
     filters=[
-        Label.value = "dog" # with this filter, we're asking Velour to only evaluate how well our model predicted dogs in each image
+        Label.value == "dog" # with this filter, we're asking Velour to only evaluate how well our model predicted dogs in each image
     ]
     timeout=30, # use this argument to wait up to thirty seconds for the evaluation to complete
 )
