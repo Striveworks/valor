@@ -1387,7 +1387,7 @@ def test_finalize_empty_dataset(
     model_name: str,
 ):
     crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
-    # TODO - implement in crud/_update.py  
+    # TODO - implement in crud/_update.py
     # with pytest.raises(exceptions.DatasetIsEmptyError) as e:
     #     crud.finalize(db=db, dataset_name=dataset_name)
     # assert "contains no groundtruths" in str(e)

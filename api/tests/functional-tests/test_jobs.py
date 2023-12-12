@@ -7,7 +7,6 @@ from unittest.mock import MagicMock  # , patch
 import pytest
 from fastapi.testclient import TestClient
 
-from velour_api.enums import JobStatus
 from velour_api.backend import database
 from velour_api.crud import jobs
 from velour_api.crud.jobs import (
@@ -16,6 +15,7 @@ from velour_api.crud.jobs import (
     get_status_from_names,
     get_status_from_uuid,
 )
+from velour_api.enums import JobStatus
 
 
 @pytest.fixture
@@ -60,7 +60,9 @@ def create_job(uuid: str) -> Job:
     job.delete()
 
 
-def test_get_status_from_names(dataset_name: str, model_name: str, evaluation_id: str, create_job: Job):
+def test_get_status_from_names(
+    dataset_name: str, model_name: str, evaluation_id: str, create_job: Job
+):
     assert get_status_from_names(
         dataset_name=dataset_name,
         model_name=model_name,
@@ -70,4 +72,3 @@ def test_get_status_from_names(dataset_name: str, model_name: str, evaluation_id
 
 def test_get_status_from_uuid(uuid, create_job: Job):
     assert get_status_from_uuid(uuid)
-

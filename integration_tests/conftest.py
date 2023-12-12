@@ -6,10 +6,10 @@ import pytest
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.orm import Session
 
-from velour import Annotation, GroundTruth, Label, Prediction, Dataset, Model
+from velour import Annotation, GroundTruth, Label, Prediction
 from velour.client import Client
 from velour.data_generation import _generate_mask
-from velour.enums import TaskType, JobStatus
+from velour.enums import TaskType
 from velour.metatypes import ImageMetadata
 from velour.schemas import BoundingBox, MultiPolygon, Polygon, Raster
 from velour_api import exceptions

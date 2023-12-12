@@ -8,9 +8,9 @@ from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
-from velour_api.crud import jobs
 from velour_api.backend import models
 from velour_api.backend.database import Base, create_db, make_session
+from velour_api.crud import jobs
 
 np.random.seed(29)
 dset_name = "test_dataset"

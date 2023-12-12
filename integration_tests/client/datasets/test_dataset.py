@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from velour import Annotation, Dataset, Datum, GroundTruth, Label
 from velour.client import Client, ClientException
-from velour.enums import TaskType, JobStatus
+from velour.enums import JobStatus, TaskType
 from velour.metatypes import ImageMetadata
 from velour_api.backend import models
 

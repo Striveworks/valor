@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 
 from velour_api import backend, enums, schemas
-from velour_api.crud import stateflow
 from velour_api.crud.jobs import get_status_from_names
 
 

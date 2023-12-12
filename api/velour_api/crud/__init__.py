@@ -12,7 +12,6 @@ from ._create import (
 )
 from ._delete import delete
 from ._read import (
-    get_job_status,
     get_all_labels,
     get_dataset,
     get_dataset_labels,
@@ -23,6 +22,7 @@ from ._read import (
     get_evaluation_jobs,
     get_evaluations,
     get_groundtruth,
+    get_job_status,
     get_joint_labels,
     get_model,
     get_model_labels,

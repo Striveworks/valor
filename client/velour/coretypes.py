@@ -1,20 +1,21 @@
-import math
 import json
+import math
 import warnings
 from dataclasses import asdict
-from typing import Dict, List, Tuple, Union, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 from velour.client import Client, Job
 from velour.enums import AnnotationType, TaskType
 from velour.exceptions import SchemaTypeError
-from velour.schemas.filters import (
-    BinaryExpression,
-    DeclarativeMapper,
-    Filter,
+from velour.schemas.evaluation import (
+    DetectionParameters,
+    EvaluationJob,
+    EvaluationResult,
+    EvaluationSettings,
 )
+from velour.schemas.filters import BinaryExpression, DeclarativeMapper, Filter
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import validate_metadata
-from velour.schemas.evaluation import EvaluationJob, EvaluationResult, EvaluationSettings, DetectionParameters
 
 
 class Label:
@@ -854,7 +855,7 @@ class Dataset:
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
         del self
         return job
-    
+
 
 class Evaluation(Job):
     """
@@ -863,7 +864,7 @@ class Evaluation(Job):
 
     def __post_init__(self):
         if not isinstance(self.evaluation_id):
-            raise ValueError("Missing evaluation id.")     
+            raise ValueError("Missing evaluation id.")
 
     @property
     def job_request(self) -> EvaluationJob:
@@ -879,7 +880,7 @@ class Evaluation(Job):
             f"evaluations/{self.evaluation_id}/settings"
         ).json()
         return EvaluationJob(**resp)
-    
+
     @property
     def settings(self) -> EvaluationSettings:
         """
@@ -891,7 +892,7 @@ class Evaluation(Job):
             An `EvaluationSettings` object describing the evaluation's configuration.
         """
         return self.job_request.settings
-    
+
     @property
     def task_type(self) -> TaskType:
         """
@@ -903,7 +904,7 @@ class Evaluation(Job):
             The task type associated with the `Evaluation` object.
         """
         return self.job_request.task_type
-    
+
     @property
     def results(self) -> EvaluationResult:
         """

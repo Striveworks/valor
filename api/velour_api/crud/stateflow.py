@@ -1,22 +1,18 @@
-import re
 from functools import wraps
+
 from pydantic import BaseModel
 
-from velour_api.crud.jobs import (
-    get_status_from_uuid,
-    generate_uuid,
-    Job,
-)
+from velour_api.crud.jobs import Job, generate_uuid, get_status_from_uuid
 from velour_api.enums import JobStatus
 from velour_api.exceptions import (
-    JobStateError, 
     DatasetDoesNotExistError,
-    DatasetNotFinalizedError,
     DatasetFinalizedError,
-    ModelDoesNotExistError,
+    DatasetNotFinalizedError,
+    JobStateError,
     ModelAlreadyExistsError,
-    ModelNotFinalizedError, 
+    ModelDoesNotExistError,
     ModelFinalizedError,
+    ModelNotFinalizedError,
 )
 
 
@@ -48,8 +44,14 @@ class JobValidator:
         )
         self.dataset_uuid = generate_uuid(dataset_name=dataset_name)
         self.model_uuid = generate_uuid(model_name=model_name)
-        self.prediction_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name)
-        self.evaluation_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name, evaluation_id=evaluation_id)
+        self.prediction_uuid = generate_uuid(
+            dataset_name=dataset_name, model_name=model_name
+        )
+        self.evaluation_uuid = generate_uuid(
+            dataset_name=dataset_name,
+            model_name=model_name,
+            evaluation_id=evaluation_id,
+        )
 
         # create or get job
         self.job = Job.get(self.uuid)
@@ -65,10 +67,7 @@ def _validate_transition(validator: JobValidator):
     dataset_name = validator.dataset_name
     model_name = validator.model_name
     evaluation_id = validator.evaluation_id
-    dataset_uuid =  validator.dataset_uuid
-    model_uuid = validator.model_uuid
-    prediction_uuid = validator.prediction_uuid
-    evaluation_uuid = validator.evaluation_uuid
+    dataset_uuid = validator.dataset_uuid
 
     current_status = job.status
 
@@ -76,23 +75,39 @@ def _validate_transition(validator: JobValidator):
     if transitions.start not in current_status.next():
 
         # attempt to create after finalization.
-        if transitions.start == JobStatus.CREATING and current_status == JobStatus.DONE:
+        if (
+            transitions.start == JobStatus.CREATING
+            and current_status == JobStatus.DONE
+        ):
             if dataset_name and not (model_name or evaluation_id):
                 raise DatasetFinalizedError(dataset_name)
             elif model_name and not (dataset_name or evaluation_id):
                 raise ModelAlreadyExistsError(model_name)
             elif model_name and dataset_name and not evaluation_id:
-                raise ModelFinalizedError(dataset_name=dataset_name, model_name=model_name)
+                raise ModelFinalizedError(
+                    dataset_name=dataset_name, model_name=model_name
+                )
             elif model_name and dataset_name and evaluation_id:
-                raise JobStateError(id=job.uuid, msg=f"Evaluation {evaluation_id} already exists.")
-            
+                raise JobStateError(
+                    id=job.uuid,
+                    msg=f"Evaluation {evaluation_id} already exists.",
+                )
+
         # attempt to process before finalization
-        if transitions.start == JobStatus.PROCESSING and current_status == JobStatus.CREATING:
+        if (
+            transitions.start == JobStatus.PROCESSING
+            and current_status == JobStatus.CREATING
+        ):
             if model_name and dataset_name and not evaluation_id:
-                raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
-        
-        raise JobStateError(job.uuid, f"Requested transition from {current_status} to {transitions.start} is illegal.")
-            
+                raise ModelNotFinalizedError(
+                    dataset_name=dataset_name, model_name=model_name
+                )
+
+        raise JobStateError(
+            job.uuid,
+            f"Requested transition from {current_status} to {transitions.start} is illegal.",
+        )
+
     # catch un-finalized parents, this cannot be done before as predictions and evaluation use the same node.
     if transitions.start == JobStatus.PROCESSING:
         if get_status_from_uuid(dataset_uuid) == JobStatus.CREATING:
@@ -105,45 +120,48 @@ def _validate_parents(validator: JobValidator):
     """
 
     job = validator.job
-    transitions = validator.transitions
     dataset_name = validator.dataset_name
     model_name = validator.model_name
     evaluation_id = validator.evaluation_id
-    dataset_uuid =  validator.dataset_uuid
+    dataset_uuid = validator.dataset_uuid
     model_uuid = validator.model_uuid
     prediction_uuid = validator.prediction_uuid
-    evaluation_uuid = validator.evaluation_uuid
-    
+
     # validate parents of evaluations (dataset/groundtruths + predictions)
     if evaluation_id and dataset_name and model_name:
-        
+
         # dataset and groundtruths are still being created.
         if get_status_from_uuid(dataset_uuid) != JobStatus.DONE:
             raise DatasetNotFinalizedError(name=dataset_name)
-        
+
         # model is still being created.
         elif get_status_from_uuid(model_uuid) != JobStatus.DONE:
             raise ModelDoesNotExistError(name=model_name)
-        
+
         # predictions are still being created.
         elif get_status_from_uuid(prediction_uuid) != JobStatus.DONE:
-            raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
-        
+            raise ModelNotFinalizedError(
+                dataset_name=dataset_name, model_name=model_name
+            )
+
         # register job as child of parents
         Job.get(prediction_uuid).register_child(job.uuid)
         Job.get(dataset_uuid).register_child(job.uuid)
 
     # validate parents of predictions (dataset + model)
     elif dataset_name and model_name:
-        
+
         # dataset is not finalized or being created.
-        if get_status_from_uuid(dataset_uuid) not in [JobStatus.CREATING, JobStatus.DONE]:
+        if get_status_from_uuid(dataset_uuid) not in [
+            JobStatus.CREATING,
+            JobStatus.DONE,
+        ]:
             raise DatasetDoesNotExistError(name=dataset_name)
 
         # model has not been created.
         elif get_status_from_uuid(model_uuid) != JobStatus.DONE:
             raise ModelDoesNotExistError(name=model_name)
-        
+
         # register job as child of parents
         Job.get(model_uuid).register_child(job.uuid)
 
@@ -153,7 +171,7 @@ def _validate_parents(validator: JobValidator):
     elif model_name:
         pass
     else:
-        raise ValueError(f"Received invalid input.")
+        raise ValueError("Received invalid input.")
 
 
 def _validate_children(validator: JobValidator):
@@ -167,15 +185,23 @@ def _validate_children(validator: JobValidator):
     # edge case
     if transitions.start == JobStatus.DELETING:
         return
-    
+
     def _recursive_child_search(job: Job):
         for uuid in job.children:
             status = get_status_from_uuid(uuid=uuid)
             # throw exception if child is not in a stable state
-            if status not in [JobStatus.NONE, JobStatus.DONE, JobStatus.FAILED]:
-                raise JobStateError(job.uuid, f"Job blocked by child task with uuid `{uuid}` and status `{get_status_from_uuid(uuid=uuid).value}`")
+            if status not in [
+                JobStatus.NONE,
+                JobStatus.DONE,
+                JobStatus.FAILED,
+            ]:
+                raise JobStateError(
+                    job.uuid,
+                    f"Job blocked by child task with uuid `{uuid}` and status `{get_status_from_uuid(uuid=uuid).value}`",
+                )
             elif status == JobStatus.DONE:
                 _recursive_child_search(Job.get(uuid))
+
     _recursive_child_search(job)
 
 
@@ -212,19 +238,28 @@ def _parse_kwargs(kwargs: dict) -> tuple:
 
 def generate_stateflow_decorator(
     transitions: StateTransition = StateTransition(),
-    on_start: callable = lambda job, transitions, msg="" : job.set_status(transitions.start, msg),
-    on_success: callable = lambda job, transitions, msg="" : job.set_status(transitions.success, msg),
-    on_failure: callable = lambda job, transitions, msg="" : job.set_status(transitions.failure, msg),
+    on_start: callable = lambda job, transitions, msg="": job.set_status(
+        transitions.start, msg
+    ),
+    on_success: callable = lambda job, transitions, msg="": job.set_status(
+        transitions.success, msg
+    ),
+    on_failure: callable = lambda job, transitions, msg="": job.set_status(
+        transitions.failure, msg
+    ),
 ):
     """
     Decorator generator function.
     """
+
     def decorator(fn: callable) -> callable:
         @wraps(fn)
         def wrapper(*args, **kwargs):
             if len(args) > 0:
-                raise ValueError("Stateflow decorator can only recognize explicit arguments (kwargs).")
-            
+                raise ValueError(
+                    "Stateflow decorator can only recognize explicit arguments (kwargs)."
+                )
+
             dataset_name, model_name, evaluation_id = _parse_kwargs(kwargs)
 
             # validate job state
@@ -249,7 +284,9 @@ def generate_stateflow_decorator(
             on_success(job, transitions)
 
             return result
+
         return wrapper
+
     return decorator
 
 
@@ -276,6 +313,5 @@ delete = generate_stateflow_decorator(
     transitions=StateTransition(
         start=JobStatus.DELETING,
     ),
-    on_success=lambda job, transitions, msg="" : job.delete(),
+    on_success=lambda job, transitions, msg="": job.delete(),
 )
-

@@ -2,11 +2,11 @@ import json
 import os
 import time
 from functools import wraps
-from pydantic import BaseModel, Field
 
 import redis
+from pydantic import BaseModel, Field
 
-from velour_api import logger, schemas
+from velour_api import logger
 from velour_api.enums import JobStatus
 from velour_api.exceptions import JobStateError
 
@@ -92,6 +92,7 @@ def needs_redis(fn):
         if r is None:
             connect_to_redis()
         return fn(*args, **kwargs)
+
     return wrapper
 
 
@@ -120,7 +121,7 @@ def generate_uuid(
     ----------
     int
     """
-    return (f"{dataset_name}+{model_name}+{evaluation_id}")
+    return f"{dataset_name}+{model_name}+{evaluation_id}"
 
 
 @needs_redis
@@ -132,7 +133,7 @@ def get_status_from_uuid(uuid: str):
     job = json.loads(json_str)
     return JobStatus(job["status"])
 
-    
+
 @needs_redis
 def get_status_from_names(
     dataset_name: str = None,
@@ -159,7 +160,7 @@ class Job(BaseModel):
     @classmethod
     @needs_redis
     def get(
-        cls, 
+        cls,
         uuid: str,
     ):
         """
@@ -168,25 +169,28 @@ class Job(BaseModel):
         json_str = r.get(uuid)
         if json_str is None or not isinstance(json_str, bytes):
             job = cls(uuid=uuid)
-            r.set(uuid, job.model_dump_json(exclude={'uuid'}))
+            r.set(uuid, job.model_dump_json(exclude={"uuid"}))
             return job
         job = json.loads(json_str)
         job["uuid"] = uuid
         return cls(**job)
-    
+
     @needs_redis
     def sync(self):
         """
         Set redis to match Job object.
         """
-        r.set(self.uuid, self.model_dump_json(exclude={'uuid'}))
-    
+        r.set(self.uuid, self.model_dump_json(exclude={"uuid"}))
+
     def set_status(self, status: JobStatus, msg: str = ""):
         """
         Set job status.
         """
         if status not in self.status.next():
-            raise JobStateError(self.uuid, f"{status} not in {self.status} next set: {self.status.next()}")
+            raise JobStateError(
+                self.uuid,
+                f"{status} not in {self.status} next set: {self.status.next()}",
+            )
         self.status = status
         self.msg = msg
         self.sync()

@@ -1,9 +1,10 @@
 import math
 import os
 import time
-import requests
 from typing import List, Union
 from urllib.parse import urljoin
+
+import requests
 
 from velour import schemas
 from velour.enums import JobStatus
@@ -282,7 +283,7 @@ class Client:
             f"evaluations/{evaluation_id}"
         ).json()
         return schemas.EvaluationResult(**result)
-        
+
     def get_bulk_evaluations(
         self,
         models: Union[str, List[str], None] = None,
@@ -336,10 +337,7 @@ class Client:
 
         evals = self._requests_get_rel_host(endpoint).json()
         print(evals)
-        return [
-            EvaluationResult(**eval)
-            for eval in evals
-        ]
+        return [EvaluationResult(**eval) for eval in evals]
 
 
 class Job:
@@ -365,10 +363,12 @@ class Job:
             self.url = f"models/{model_name}/status"
         elif model_name and dataset_name:
             # self.url = f"models/{model_name}/dataset/{dataset_name}/status"
-            raise NotImplementedError("The status endpoint of dataset-model pairings has not been implemented yet.")
+            raise NotImplementedError(
+                "The status endpoint of dataset-model pairings has not been implemented yet."
+            )
         else:
             raise ValueError
-        
+
         for k, v in kwargs.items():
             setattr(self, k, v)
 
@@ -376,7 +376,7 @@ class Job:
     def status(self) -> JobStatus:
         resp = self.client._requests_get_rel_host(self.url).json()
         return JobStatus(resp)
-    
+
     def results(self):
         """
         Certain types of jobs have a return type.
@@ -388,10 +388,10 @@ class Job:
                 return None
 
     def wait_for_completion(
-        self, 
-        *, 
+        self,
+        *,
         timeout: int = None,
-        interval: float = 1.0, 
+        interval: float = 1.0,
     ):
         """
         Runs timeout logic to check when an job is completed.

@@ -89,7 +89,7 @@ def create_groundtruths(
         exceptions.DatumAlreadyExistsError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
-    
+
 
 @app.get(
     "/groundtruths/dataset/{dataset_name}/datum/{uid}",
@@ -808,7 +808,7 @@ def finalize_inferences(
 def delete_model(
     model_name: str,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Delete a model from the database.

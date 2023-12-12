@@ -1,9 +1,8 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
-from dataclasses import asdict
-
 import time
+
 import pandas
 import pytest
 from sqlalchemy.orm import Session

@@ -52,40 +52,42 @@ def test_evaluate_detection(
     assert eval_job.status == JobStatus.DONE
 
     # test get_evaluation_status
-    assert client.get_evaluation_status(eval_job.evaluation_id) == eval_job.status
+    assert (
+        client.get_evaluation_status(eval_job.evaluation_id) == eval_job.status
+    )
 
     settings = asdict(eval_job.job_request)
     settings.pop("id")
     assert settings == {
-        'model': 'test_model', 
-        'dataset': 'test_dataset', 
-        'task_type': 'object-detection', 
-        'settings': {
-            'parameters': {
-                'iou_thresholds_to_compute': [0.1, 0.6], 
-                'iou_thresholds_to_keep': [0.1, 0.6]
-            }, 
-            'filters': {
-                'dataset_names': None, 
-                'dataset_metadata': None, 
-                'dataset_geospatial': None, 
-                'models_names': None, 
-                'models_metadata': None, 
-                'models_geospatial': None, 
-                'datum_uids': None, 
-                'datum_metadata': None, 
-                'datum_geospatial': None, 
-                'task_types': None, 
-                'annotation_types': ['box'], 
-                'annotation_geometric_area': None, 
-                'annotation_metadata': None, 
-                'annotation_geospatial': None, 
-                'prediction_scores': None, 
-                'labels': None, 
-                'label_ids': None, 
-                'label_keys': ['k1']
-            }
-        }
+        "model": "test_model",
+        "dataset": "test_dataset",
+        "task_type": "object-detection",
+        "settings": {
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "filters": {
+                "dataset_names": None,
+                "dataset_metadata": None,
+                "dataset_geospatial": None,
+                "models_names": None,
+                "models_metadata": None,
+                "models_geospatial": None,
+                "datum_uids": None,
+                "datum_metadata": None,
+                "datum_geospatial": None,
+                "task_types": None,
+                "annotation_types": ["box"],
+                "annotation_geometric_area": None,
+                "annotation_metadata": None,
+                "annotation_geospatial": None,
+                "prediction_scores": None,
+                "labels": None,
+                "label_ids": None,
+                "label_keys": ["k1"],
+            },
+        },
     }
 
     expected_metrics = [
@@ -171,21 +173,21 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
-                'annotation_geospatial': None,
-                'annotation_metadata': None,
-                'dataset_geospatial': None,
-                'dataset_metadata': None,
-                'dataset_names': None,
-                'datum_geospatial': None,
-                'datum_metadata': None,
-                'datum_uids': None,
-                'label_ids': None,
-                'labels': None,
-                'models_geospatial': None,
-                'models_metadata': None,
-                'models_names': None,
-                'prediction_scores': None,
-                'task_types': None,
+                "annotation_geospatial": None,
+                "annotation_metadata": None,
+                "dataset_geospatial": None,
+                "dataset_metadata": None,
+                "dataset_names": None,
+                "datum_geospatial": None,
+                "datum_metadata": None,
+                "datum_uids": None,
+                "label_ids": None,
+                "labels": None,
+                "models_geospatial": None,
+                "models_metadata": None,
+                "models_names": None,
+                "prediction_scores": None,
+                "task_types": None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -224,21 +226,21 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
-                'annotation_geospatial': None,
-                'annotation_metadata': None,
-                'dataset_geospatial': None,
-                'dataset_metadata': None,
-                'dataset_names': None,
-                'datum_geospatial': None,
-                'datum_metadata': None,
-                'datum_uids': None,
-                'label_ids': None,
-                'labels': None,
-                'models_geospatial': None,
-                'models_metadata': None,
-                'models_names': None,
-                'prediction_scores': None,
-                'task_types': None,
+                "annotation_geospatial": None,
+                "annotation_metadata": None,
+                "dataset_geospatial": None,
+                "dataset_metadata": None,
+                "dataset_names": None,
+                "datum_geospatial": None,
+                "datum_metadata": None,
+                "datum_uids": None,
+                "label_ids": None,
+                "labels": None,
+                "models_geospatial": None,
+                "models_metadata": None,
+                "models_names": None,
+                "prediction_scores": None,
+                "task_types": None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -276,21 +278,21 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
-                'annotation_geospatial': None,
-                'annotation_metadata': None,
-                'dataset_geospatial': None,
-                'dataset_metadata': None,
-                'dataset_names': None,
-                'datum_geospatial': None,
-                'datum_metadata': None,
-                'datum_uids': None,
-                'label_ids': None,
-                'labels': None,
-                'models_geospatial': None,
-                'models_metadata': None,
-                'models_names': None,
-                'prediction_scores': None,
-                'task_types': None,
+                "annotation_geospatial": None,
+                "annotation_metadata": None,
+                "dataset_geospatial": None,
+                "dataset_metadata": None,
+                "dataset_names": None,
+                "datum_geospatial": None,
+                "datum_metadata": None,
+                "datum_uids": None,
+                "label_ids": None,
+                "labels": None,
+                "models_geospatial": None,
+                "models_metadata": None,
+                "models_names": None,
+                "prediction_scores": None,
+                "task_types": None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -334,21 +336,21 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
-                'annotation_geospatial': None,
-                'annotation_metadata': None,
-                'dataset_geospatial': None,
-                'dataset_metadata': None,
-                'dataset_names': None,
-                'datum_geospatial': None,
-                'datum_metadata': None,
-                'datum_uids': None,
-                'label_ids': None,
-                'labels': None,
-                'models_geospatial': None,
-                'models_metadata': None,
-                'models_names': None,
-                'prediction_scores': None,
-                'task_types': None,
+                "annotation_geospatial": None,
+                "annotation_metadata": None,
+                "dataset_geospatial": None,
+                "dataset_metadata": None,
+                "dataset_names": None,
+                "datum_geospatial": None,
+                "datum_metadata": None,
+                "datum_uids": None,
+                "label_ids": None,
+                "labels": None,
+                "models_geospatial": None,
+                "models_metadata": None,
+                "models_names": None,
+                "prediction_scores": None,
+                "task_types": None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -393,7 +395,9 @@ def test_evaluate_detection_with_json_filters(
         ],
         timeout=30,
     )
-    assert eval_job.settings.parameters.iou_thresholds_to_compute == [i / 100 for i in range(50, 100, 5)]
+    assert eval_job.settings.parameters.iou_thresholds_to_compute == [
+        i / 100 for i in range(50, 100, 5)
+    ]
     assert eval_job.settings.parameters.iou_thresholds_to_keep == [0.5, 0.75]
 
     expected_metrics = [
@@ -489,21 +493,21 @@ def test_evaluate_detection_with_json_filters(
                     },
                 ],
                 "label_keys": ["k1"],
-                'annotation_geospatial': None,
-                'annotation_metadata': None,
-                'dataset_geospatial': None,
-                'dataset_metadata': None,
-                'dataset_names': None,
-                'datum_geospatial': None,
-                'datum_metadata': None,
-                'datum_uids': None,
-                'label_ids': None,
-                'labels': None,
-                'models_geospatial': None,
-                'models_metadata': None,
-                'models_names': None,
-                'prediction_scores': None,
-                'task_types': None,
+                "annotation_geospatial": None,
+                "annotation_metadata": None,
+                "dataset_geospatial": None,
+                "dataset_metadata": None,
+                "dataset_names": None,
+                "datum_geospatial": None,
+                "datum_metadata": None,
+                "datum_uids": None,
+                "label_ids": None,
+                "labels": None,
+                "models_geospatial": None,
+                "models_metadata": None,
+                "models_names": None,
+                "prediction_scores": None,
+                "task_types": None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
@@ -511,7 +515,7 @@ def test_evaluate_detection_with_json_filters(
             },
         },
     }
-    
+
     assert eval_job_bounded_area_1200_1800.results.metrics != expected_metrics
     assert (
         eval_job_bounded_area_1200_1800.results.metrics
@@ -659,9 +663,7 @@ def test_get_bulk_evaluations(
     )
 
     assert len(second_model_evaluations) == 1
-    assert (
-        second_model_evaluations[0].metrics == second_model_expected_metrics
-    )
+    assert second_model_evaluations[0].metrics == second_model_expected_metrics
 
     both_evaluations = client.get_bulk_evaluations(datasets=["test_dataset"])
 
