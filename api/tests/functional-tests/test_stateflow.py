@@ -226,7 +226,7 @@ def test_deletion(db, dataset, model, prediction, job_request):
     stateflow.delete(model_func)(model=model)
 
 
-def test_creater(db, dataset, model, job_request):
+def test_creation(db, dataset, model, job_request):
     
     # create dataset
     stateflow.create(dataset_func)(dataset=dataset)

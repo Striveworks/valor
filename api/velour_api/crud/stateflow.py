@@ -2,11 +2,8 @@ import re
 from functools import wraps
 from pydantic import BaseModel
 
-from velour_api import logger, schemas
-from velour_api.crud import jobs
 from velour_api.crud.jobs import (
     get_status_from_uuid,
-    get_status_from_names,
     generate_uuid,
     Job,
 )
@@ -182,6 +179,37 @@ def _validate_children(validator: JobValidator):
     _recursive_child_search(job)
 
 
+def _parse_kwargs(kwargs: dict) -> tuple:
+    dataset_name = None
+    model_name = None
+    evaluation_id = None
+    if "dataset" in kwargs:
+        dataset_name = kwargs["dataset"].name
+    elif "model" in kwargs:
+        model_name = kwargs["model"].name
+    elif "groundtruth" in kwargs:
+        dataset_name = kwargs["groundtruth"].datum.dataset
+    elif "prediction" in kwargs:
+        dataset_name = kwargs["prediction"].datum.dataset
+        model_name = kwargs["prediction"].model
+    elif "job_request" in kwargs:
+        dataset_name = kwargs["job_request"].dataset
+        model_name = kwargs["job_request"].model
+        evaluation_id = kwargs["job_request"].id
+        if "job_id" in kwargs:
+            evaluation_id = kwargs["job_id"]
+    elif "dataset_name" in kwargs and "model_name" in kwargs:
+        dataset_name = kwargs["dataset_name"]
+        model_name = kwargs["model_name"]
+    elif "dataset_name" in kwargs:
+        dataset_name = kwargs["dataset_name"]
+    elif "model_name" in kwargs:
+        model_name = kwargs["model_name"]
+    else:
+        raise ValueError("did not receive right values")
+    return (dataset_name, model_name, evaluation_id)
+
+
 def generate_stateflow_decorator(
     transitions: StateTransition = StateTransition(),
     on_start: callable = lambda job, transitions, msg="" : job.set_status(transitions.start, msg),
@@ -195,34 +223,9 @@ def generate_stateflow_decorator(
         @wraps(fn)
         def wrapper(*args, **kwargs):
             if len(args) > 0:
-                raise ValueError("Positional args not supported.")
-            dataset_name = None
-            model_name = None
-            evaluation_id = None
-            if "dataset" in kwargs:
-                dataset_name = kwargs["dataset"].name
-            elif "model" in kwargs:
-                model_name = kwargs["model"].name
-            elif "groundtruth" in kwargs:
-                dataset_name = kwargs["groundtruth"].datum.dataset
-            elif "prediction" in kwargs:
-                dataset_name = kwargs["prediction"].datum.dataset
-                model_name = kwargs["prediction"].model
-            elif "job_request" in kwargs:
-                dataset_name = kwargs["job_request"].dataset
-                model_name = kwargs["job_request"].model
-                evaluation_id = kwargs["job_request"].id
-                if "job_id" in kwargs:
-                    evaluation_id = kwargs["job_id"]
-            elif "dataset_name" in kwargs and "model_name" in kwargs:
-                dataset_name = kwargs["dataset_name"]
-                model_name = kwargs["model_name"]
-            elif "dataset_name" in kwargs:
-                dataset_name = kwargs["dataset_name"]
-            elif "model_name" in kwargs:
-                model_name = kwargs["model_name"]
-            else:
-                raise ValueError("did not receive right values")
+                raise ValueError("Stateflow decorator can only recognize explicit arguments (kwargs).")
+            
+            dataset_name, model_name, evaluation_id = _parse_kwargs(kwargs)
 
             validator = JobValidator(
                 dataset_name=dataset_name,
