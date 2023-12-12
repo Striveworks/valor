@@ -32,6 +32,31 @@ For questions or comments on this process, please reach out to us at any time on
 
 # Development Tips & Tricks
 
+## Deploying the Backend for Development
+
+### Docker Compose
+
+The fastest way to test the API and Python client is via Docker Compose. Start by setting the environment variable `POSTGRES_PASSWORD` to your liking, then start Docker and build the container:
+
+```shell
+export POSTGRES_PASSWORD="my_password"
+docker compose up
+```
+
+### Makefile (requires Docker)
+
+Alternatively, you may want to run the API service from a terminal to enable faster debugging. To start the service, you can run:
+
+```shell
+pip install api # Install the API in your python environment
+
+export POSTGRES_PASSWORD=password
+export POSTGRES_HOST=localhost
+make start-postgis # Start the postgis service in Docker
+make start-redis # Start the redis service in Docker
+make start-server # Start the API service locally
+```
+
 ## Setting-Up Your Environment
 
 Creating a Velour-specific Python environment at the start of development can help you avoid dependency and versioning issues later on. To start, we'd recommend activating a new Python environment:
