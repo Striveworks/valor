@@ -21,12 +21,18 @@ cd velour
 
 ## 3. Start services
 
-Start by setting the environment variable `POSTGRES_PASSWORD` to your liking, then start Docker and build the container:
+There are four ways to start the Velour API service.
+
+### a. Docker Compose
+
+The fastest way to test the API and Python client is via Docker Compose. Start by setting the environment variable `POSTGRES_PASSWORD` to your liking, then start Docker and build the container:
 
 ```shell
 export POSTGRES_PASSWORD="my_password"
 docker compose up
 ```
+
+### b. Running the Server Locally
 
 Alternatively, you may want to run the API service locally when debugging or developing Velour. To start the service in your Terminal, you can run:
 
@@ -39,6 +45,20 @@ make start-postgis # Start the postgis service in Docker
 make start-redis # Start the redis service in Docker
 make start-server # Start the API service locally
 ```
+
+### c. Helm Chart
+
+When deploying Velour on k8s via Helm, you can use our pre-built chart using the following commands:
+
+```shell
+helm repo add velour https://striveworks.github.io/velour-charts/
+helm install velour velour/velour
+# Velour should now be avaiable at velour.namespace.svc.local
+```
+
+### d. Pre-Built Docker Container
+
+Finally, you can download the Velour image from GitHub's Container registry at `ghcr.io/striveworks/velour/velour-service`.
 
 
 ## 4. Use Velour
