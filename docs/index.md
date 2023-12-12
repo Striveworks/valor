@@ -25,7 +25,7 @@ Your browser does not support the video tag.
 
 # Use Cases for a Containterized Evaluation Store
 
-As we've worked with dozens of data scientists and engineers on their MLOps pipelines, we identified three important questions that an effective evaluation store could help them answer. First, they wanted to understand **"Of the various models I tested for a given dataset, which one performs best?"**. This is a very common and important use case, and one that is often solved in a local Jupyter notebook. Jupyter works well for this use case up until the point where a user needs to compare a new model evaluation with a very old evaluation, in which case they'll often experience traceability issues that lead to apples-to-oranges comparisons.
+As we've worked with dozens of data scientists and engineers on their MLOps pipelines, we identified three important questions that an effective evaluation store could help them answer. First, they wanted to understand **"Of the various models I tested for a given dataset, which one performs best?"**. This is a very common and important use case, and one that is often solved on a model-to-model basis in a local Jupyter notebook. This focus on bespoke implementations limits traceability and makes it difficult to create apples-to-apples comparisons between new model runs and prior model runs.
 
 Second, our users wanted to understand **"How does the performance of a particular model vary across datasets?"**. We found that many practitioners use the same computer vision model (e.g., YOLOv8) for a variety of supervised learning tasks, and they needed a way to identify patterns where that particular model didn't meet expectations.
 
