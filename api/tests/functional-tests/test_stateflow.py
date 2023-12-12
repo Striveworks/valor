@@ -5,12 +5,9 @@ import pytest
 from velour_api import schemas, enums
 from velour_api.crud import jobs
 from velour_api.crud.jobs import (
-    Job,
     generate_uuid,
-    get_status_from_names,
     get_status_from_uuid,
 )
-from velour_api.crud.stateflow import get_job
 from velour_api.crud import stateflow
 from velour_api.enums import JobStatus
 from velour_api.exceptions import (
@@ -18,7 +15,6 @@ from velour_api.exceptions import (
     DatasetNotFinalizedError,
     ModelNotFinalizedError,
     ModelDoesNotExistError,
-    JobStateError,
 )
 
 @pytest.fixture(autouse=True)
@@ -261,81 +257,6 @@ def test_creater(db, dataset, model, job_request):
 
     # finish evaluations
     stateflow.finalize(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
-
-    # delete all
-    stateflow.delete(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
-    stateflow.delete(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
-    stateflow.delete(dataset_func)(dataset=dataset)
-    stateflow.delete(model_func)(model=model)
-
-
-def test_get_job(db, dataset, model, job_request):
-    
-    # create dataset
-    stateflow.create(dataset_func)(dataset=dataset)
-    get_job(dataset_name=dataset.name)
-    with pytest.raises(ModelDoesNotExistError):
-        get_job(dataset_name=dataset.name, model_name=model.name)
-    with pytest.raises(DatasetNotFinalizedError):
-        get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
-
-    # create model
-    stateflow.create(model_func)(model=model)
-    get_job(dataset_name=dataset.name)
-    get_job(model_name=model.name)
-    with pytest.raises(ModelDoesNotExistError):
-        get_job(dataset_name=dataset.name, model_name=model.name)
-    with pytest.raises(DatasetNotFinalizedError):
-        get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
-
-    # create model 
-    stateflow.finalize(model_func)(model=model)
-    get_job(dataset_name=dataset.name)
-    get_job(model_name=model.name)
-    get_job(dataset_name=dataset.name, model_name=model.name)
-    with pytest.raises(DatasetNotFinalizedError):
-        get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
-    
-    # finalize dataset
-    stateflow.finalize(dataset_func)(dataset=dataset)
-    get_job(dataset_name=dataset.name)
-    get_job(dataset_name=dataset.name, model_name=model.name)
-    with pytest.raises(JobStateError):
-        get_job(model_name=model.name)
-    with pytest.raises(ModelNotFinalizedError):
-        get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
-
-    # create model predictions
-    stateflow.create(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
-    get_job(dataset_name=dataset.name, model_name=model.name)
-    get_job(dataset_name=dataset.name)
-    with pytest.raises(JobStateError):
-        get_job(model_name=model.name)
-    with pytest.raises(ModelNotFinalizedError):
-        get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
-
-    # finalize model predictions
-    stateflow.finalize(dataset_and_model_name_func)(dataset_name=dataset.name, model_name=model.name)
-    get_job(dataset_name=dataset.name)  
-    get_job(model_name=model.name)
-    get_job(dataset_name=dataset.name, model_name=model.name)
-    get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
-
-    stateflow.create(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
-    get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
-    with pytest.raises(JobStateError):
-        get_job(dataset_name=dataset.name)
-    with pytest.raises(JobStateError):
-        get_job(model_name=model.name)
-    with pytest.raises(JobStateError):
-        get_job(dataset_name=dataset.name, model_name=model.name)
-
-    # finish evaluations
-    stateflow.finalize(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)
-    get_job(dataset_name=dataset.name)  
-    get_job(model_name=model.name)
-    get_job(dataset_name=dataset.name, model_name=model.name)
-    get_job(dataset_name=dataset.name, model_name=model.name, evaluation_id=job_request.id)
 
     # delete all
     stateflow.delete(evaluation_func_with_id)(job_request=job_request, job_id=job_request.id)

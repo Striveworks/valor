@@ -6,11 +6,16 @@ from unittest.mock import MagicMock  # , patch
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
 
-from velour_api import crud, enums, exceptions, schemas
+from velour_api.enums import JobStatus
 from velour_api.backend import database
 from velour_api.crud import jobs
+from velour_api.crud.jobs import (
+    Job,
+    generate_uuid,
+    get_status_from_names,
+    get_status_from_uuid,
+)
 
 
 @pytest.fixture
@@ -35,4 +40,34 @@ def db():
     yield
     jobs.r.flushdb()
 
+
+@pytest.fixture
+def evaluation_id() -> int:
+    return 123
+
+
+@pytest.fixture
+def uuid(dataset_name: str, model_name: str, evaluation_id: int) -> str:
+    return generate_uuid(dataset_name, model_name, evaluation_id)
+
+
+@pytest.fixture
+def create_job(uuid: str) -> Job:
+    job = Job.get(uuid)
+    job.status = JobStatus.PROCESSING
+    job.sync()
+    yield job
+    job.delete()
+
+
+def test_get_status_from_names(dataset_name: str, model_name: str, evaluation_id: str, create_job: Job):
+    assert get_status_from_names(
+        dataset_name=dataset_name,
+        model_name=model_name,
+        evaluation_id=evaluation_id,
+    )
+
+
+def test_get_status_from_uuid(uuid, create_job: Job):
+    assert get_status_from_uuid(uuid)
 
