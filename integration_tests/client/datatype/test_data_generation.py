@@ -36,12 +36,12 @@ def test_generate_segmentation_data(
         n_labels=n_labels,
     )
 
-    sample_images = dataset.get_images()
+    sample_images = dataset.get_datums()
     assert (
         len(sample_images) == n_images
     ), "Number of images doesn't match the test input"
 
-    for image in dataset.get_images():
+    for image in dataset.get_datums():
         uid = image.uid
         sample_gt = dataset.get_groundtruth(uid)
 
@@ -81,7 +81,6 @@ def test_generate_prediction_data(client: Client):
         n_labels=n_labels,
     )
 
-    assert len(dataset.get_images()) == n_images
     assert len(dataset.get_datums()) == n_images
 
     model = generate_prediction_data(

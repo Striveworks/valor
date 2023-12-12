@@ -48,7 +48,7 @@ def _test_create_image_dataset_with_gts(
     for gt in gts:
         dataset.add_groundtruth(gt)
     # check that the dataset has two images
-    images = dataset.get_images()
+    images = dataset.get_datums()
     assert len(images) == len(expected_image_uids)
     assert set([image.uid for image in images]) == expected_image_uids
 
