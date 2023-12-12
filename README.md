@@ -5,7 +5,7 @@
 
 Velour is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. Velour empowers data scientists and engineers to evaluate the performance of their machine learning pipelines and use those evaluations to make better modeling decisions in the future.
 
-Velour is maintained by Striveworks, a cutting-edge MLOps studio based out of Austin, Texas. We'd love to learn more about your interest in Velour and answer any questions you may have; please don't hesitate to reach out to us on [Slack](#TODO) or [GitHub](https://github.com/striveworks/velour).
+Velour is maintained by Striveworks, a cutting-edge MLOps company based out of Austin, Texas. We'd love to learn more about your interest in Velour and answer any questions you may have; please don't hesitate to reach out to us on [Slack](#TODO) or [GitHub](https://github.com/striveworks/velour).
 
 
 For more information, please see our user docs:
