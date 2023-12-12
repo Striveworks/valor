@@ -1,6 +1,6 @@
 # Contributing to Velour
 
-We welcome all contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas aimed at improving Velour. This doc describes the high-level process for how to contribute to this repo. If you have any questions or comments on this process, please feel free to reach out to us on [Slack](#TODO).
+We welcome all contributions, bug reports, bug fixes, documentation improvements, enhancements, and ideas aimed at improving Velour. This doc describes the high-level process for how to contribute to this repo. If you have any questions or comments on this process, please feel free to reach out to us on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email).
 
 ## On GitHub
 
@@ -23,11 +23,11 @@ Generally, the high-level workflow for contributing to this repo includes:
      2. Add tests where necessary.
      3. Run `pre-commit install` on your local repo before your last commit to ensure your changes follow our formatting guidelines.
      4. Double-check that your code passes all of the tests that are automated via GitHub Actions.
-     5. Ping us on [Slack](#TODO) to ensure timely review.
+     5. Ping us on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email) to ensure timely review.
 4. Working with repo maintainers to review and improve your PR before it is merged into the official repo.
 
 
-For questions or comments on this process, please reach out to us at any time on [Slack](#TODO).
+For questions or comments on this process, please reach out to us at any time on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email).
 
 
 # Development Tips & Tricks

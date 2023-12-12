@@ -2,7 +2,7 @@
 
 Velour is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. Velour empowers data scientists and engineers to evaluate the performance of their machine learning pipelines and use those evaluations to make better modeling decisions in the future.
 
-Velour is maintained by Striveworks, a cutting-edge MLOps company based out of Austin, Texas. We'd love to learn more about your interest in Velour and answer any questions you may have; please don't hesitate to reach out to us on [Slack](#TODO) or [GitHub](https://github.com/striveworks/velour).
+Velour is maintained by Striveworks, a cutting-edge MLOps company based out of Austin, Texas. We'd love to learn more about your interest in Velour and answer any questions you may have; please don't hesitate to reach out to us on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email) or [GitHub](https://github.com/striveworks/velour).
 
 
 These docs are organized as follows:
@@ -18,12 +18,10 @@ These docs are organized as follows:
 
 In this section, we'll explore what Velour is, why it's important, and provide a high-level description of how it works. This overview is also available in the following five-minute video:
 
-<video controls>
-  <source src="static/Velour_Video_Demo.mp4" type="video/mp4">
-Your browser does not support the video tag.
-</video>
 
-# Use Cases for a Containterized Evaluation Store
+<iframe width="560" height="315" src="https://www.youtube.com/embed/SbJtZ9osFkg?si=P4SLqdspuTJ0sXbb" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
+# Use Cases for a Containerized Evaluation Store
 
 As we've worked with dozens of data scientists and engineers on their MLOps pipelines, we identified three important questions that an effective evaluation store could help them answer. First, they wanted to understand **"Of the various models I tested for a given dataset, which one performs best?"**. This is a very common and important use case, and one that is often solved on a model-to-model basis in a local Jupyter notebook. This focus on bespoke implementations limits traceability and makes it difficult to create apples-to-apples comparisons between new model runs and prior model runs.
 
