@@ -31,3 +31,5 @@ runs
 
 *.jsonl
 *.jpeg
+
+.idea
