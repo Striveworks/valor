@@ -227,6 +227,7 @@ def generate_stateflow_decorator(
             
             dataset_name, model_name, evaluation_id = _parse_kwargs(kwargs)
 
+            # validate job state
             validator = JobValidator(
                 dataset_name=dataset_name,
                 model_name=model_name,
@@ -236,9 +237,9 @@ def generate_stateflow_decorator(
             _validate_transition(validator)
             _validate_parents(validator)
             _validate_children(validator)
-
             job = validator.job
 
+            # wrapped function execution
             on_start(job, transitions)
             try:
                 result = fn(*args, **kwargs)
@@ -246,6 +247,7 @@ def generate_stateflow_decorator(
                 on_failure(job, transitions, str(e))
                 raise e
             on_success(job, transitions)
+
             return result
         return wrapper
     return decorator
