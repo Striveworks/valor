@@ -139,6 +139,7 @@ def get_status_from_names(
     model_name: str = None,
     evaluation_id: int = None,
 ):
+    """Construct uuid and then fetch job status from redis."""
     if evaluation_id and not (dataset_name or model_name):
         uuids = r.keys(pattern=f"*+*+{evaluation_id}")
         if not uuids:

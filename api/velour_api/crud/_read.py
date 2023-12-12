@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import backend, enums, schemas
 from velour_api.crud import stateflow
+from velour_api.crud.jobs import get_status_from_names
 
 
 def get_job_status(
@@ -29,7 +30,7 @@ def get_job_status(
     enums.JobStatus
         The requested evaluation status.
     """
-    return stateflow.get_status(dataset_name, model_name, evaluation_id)
+    return get_status_from_names(dataset_name, model_name, evaluation_id)
 
 
 """ Labels """
@@ -507,7 +508,7 @@ def get_evaluations(
 
     # set evaluation status (redis only available in crud)
     for evaluation in evaluations:
-        evaluation.status = stateflow.get_status(
+        evaluation.status = get_status_from_names(
             dataset_name=evaluation.dataset,
             model_name=evaluation.model,
             evaluation_id=evaluation.job_id,

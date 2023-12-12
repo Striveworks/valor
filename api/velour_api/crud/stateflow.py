@@ -182,21 +182,6 @@ def _validate_children(validator: JobValidator):
     _recursive_child_search(job)
 
 
-def get_status(
-    dataset_name: str = None,
-    model_name: str = None,
-    evaluation_id: int = None,
-) -> JobStatus:
-    """
-    Get status of a Job.
-    """
-    return get_status_from_names(
-        dataset_name=dataset_name,
-        model_name=model_name,
-        evaluation_id=evaluation_id,
-    )
-
-
 def generate_stateflow_decorator(
     transitions: StateTransition = StateTransition(),
     on_start: callable = lambda job, transitions, msg="" : job.set_status(transitions.start, msg),
