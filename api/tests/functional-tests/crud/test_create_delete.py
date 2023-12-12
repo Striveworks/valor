@@ -495,7 +495,7 @@ def test_create_detection_prediction_and_delete_model(
     assert db.scalar(func.count(models.Prediction.id)) == 6
     assert db.scalar(func.count(models.Label.id)) == 4
 
-    # finalize to free
+    # finalize
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
     # delete model and check all detections from it are gone
@@ -1347,60 +1347,3 @@ def test_create_clf_metrics(
         )
     ).all()
     assert len(confusion_matrices) == 2
-
-
-# @NOTE: This should now be handled by `velour_api.schemas.Raster`
-# def test__raster_to_png_b64(db: Session):
-
-
-# @NOTE: This is now handled by `velour_api.backend.metrics.detections`
-# def test__instance_segmentations_in_dataset_statement(
-
-
-# @NOTE: Moved to `velour_api.backend.metrics.detections`
-# def test___model_instance_segmentation_preds_statement(
-
-
-# @NOTE: Moved to `velour_api.backend.metrics.detections`
-# def test___object_detections_in_dataset_statement(db: Session, groundtruths):
-
-
-# @NOTE: Moved to `velour_api.backend.metrics.detections`
-# def test__model_object_detection_preds_statement(
-
-
-# @NOTE: Moved to `velour_api.backend.metrics.detections`
-# def test__filter_instance_segmentations_by_area(db: Session):
-
-
-# @NOTE: Moved to `velour_api.backend.metrics.detections`
-# def test__filter_object_detections_by_area(db: Session):
-
-
-# @NOTE: Moved to `velour_api.backend.metrics.detections`
-# def test__filter_instance_segmentations_by_area_using_mask(db: Session):
-
-
-def test_finalize_empty_dataset(
-    db: Session,
-    dataset_name: str,
-    model_name: str,
-):
-    crud.create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
-    # TODO - implement in crud/_update.py
-    # with pytest.raises(exceptions.DatasetIsEmptyError) as e:
-    #     crud.finalize(db=db, dataset_name=dataset_name)
-    # assert "contains no groundtruths" in str(e)
-
-
-def test_finalize_empty_model(
-    db: Session,
-    dataset_name: str,
-    model_name: str,
-    groundtruths,
-):
-    crud.create_model(db=db, model=schemas.Model(name=model_name))
-    # TODO - implement in crud/_update.py
-    # with pytest.raises(exceptions.ModelInferencesDoNotExist) as e:
-    #     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
-    # assert "do not exist" in str(e)

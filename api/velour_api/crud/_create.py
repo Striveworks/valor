@@ -25,7 +25,7 @@ def create_dataset(*, db: Session, dataset: schemas.Dataset):
     backend.create_dataset(db, dataset)
 
 
-@stateflow.finalize
+@stateflow.create
 def create_model(*, db: Session, model: schemas.Model):
     """
     Creates a model.

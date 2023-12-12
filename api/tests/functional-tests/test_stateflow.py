@@ -272,20 +272,14 @@ def test_creation(db, dataset, model, job_request):
 
     # create model
     stateflow.create(model_func)(model=model)
-    with pytest.raises(ModelDoesNotExistError):
-        stateflow.create(dataset_and_model_name_func)(
-            dataset_name=dataset.name, model_name=model.name
-        )
+
+    # predictions are linked to model creation
+    stateflow.create(dataset_and_model_name_func)(
+        dataset_name=dataset.name, model_name=model.name
+    )
 
     # finalize dataset
     stateflow.finalize(dataset_func)(dataset=dataset)
-    with pytest.raises(ModelDoesNotExistError):
-        stateflow.create(dataset_and_model_name_func)(
-            dataset_name=dataset.name, model_name=model.name
-        )
-
-    # finalize model
-    stateflow.finalize(model_func)(model=model)
 
     # create inference predictions
     stateflow.create(dataset_and_model_name_func)(

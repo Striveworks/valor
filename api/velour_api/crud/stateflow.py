@@ -1,3 +1,4 @@
+from enum import Enum
 from functools import wraps
 
 from pydantic import BaseModel
@@ -16,25 +17,30 @@ from velour_api.exceptions import (
 )
 
 
-class StateTransition(BaseModel):
-    start: JobStatus = JobStatus.PROCESSING
-    success: JobStatus = JobStatus.DONE
-    failure: JobStatus = JobStatus.FAILED
+class StateflowNode(Enum):
+    DATASET = "dataset"
+    MODEL = "model"
+    PREDICTION = "prediction"
+    EVALUATION = "evaluation"
 
 
-class JobValidator:
+class StateflowJob:
     def __init__(
         self,
         dataset_name: str,
         model_name: str,
         evaluation_id: int,
-        transitions: StateTransition,
+        start: JobStatus,
+        success: JobStatus,
+        failure: JobStatus,
     ):
         # store input args
         self.dataset_name = dataset_name
         self.model_name = model_name
         self.evaluation_id = evaluation_id
-        self.transitions = transitions
+        self.start = start
+        self.success = success
+        self.failure = failure
 
         # generate uuids
         self.uuid = generate_uuid(
@@ -56,38 +62,56 @@ class JobValidator:
         # create or get job
         self.job = Job.get(self.uuid)
 
+        # get node
+        if dataset_name and model_name and evaluation_id:
+            self.node = StateflowNode.EVALUATION
+        elif dataset_name and model_name and not evaluation_id:
+            self.node = StateflowNode.PREDICTION
+        elif dataset_name and not (model_name or evaluation_id):
+            self.node = StateflowNode.DATASET
+        elif model_name and not (dataset_name or evaluation_id):
+            self.node = StateflowNode.MODEL
+        else:
+            raise ValueError
+        
+    def set_status(self, status: JobStatus, msg: str = ""):
+        """
+        Wraps `Job.set_status`.
+        """
+        self.job.set_status(status, msg)
 
-def _validate_transition(validator: JobValidator):
+
+def _validate_transition(state: StateflowJob):
     """
     Validate edge-cases that require knowledge of the next transistion.
     """
 
-    job = validator.job
-    transitions = validator.transitions
-    dataset_name = validator.dataset_name
-    model_name = validator.model_name
-    evaluation_id = validator.evaluation_id
-    dataset_uuid = validator.dataset_uuid
+    job = state.job
+    node = state.node
+    dataset_name = state.dataset_name
+    model_name = state.model_name
+    evaluation_id = state.evaluation_id
+    dataset_uuid = state.dataset_uuid
 
     current_status = job.status
 
     # catch all errors from illegal transitions
-    if transitions.start not in current_status.next():
+    if state.start not in current_status.next():
 
         # attempt to create after finalization.
         if (
-            transitions.start == JobStatus.CREATING
+            state.start == JobStatus.CREATING
             and current_status == JobStatus.DONE
         ):
-            if dataset_name and not (model_name or evaluation_id):
+            if node == StateflowNode.DATASET:
                 raise DatasetFinalizedError(dataset_name)
-            elif model_name and not (dataset_name or evaluation_id):
+            elif node == StateflowNode.MODEL:
                 raise ModelAlreadyExistsError(model_name)
-            elif model_name and dataset_name and not evaluation_id:
+            elif node == StateflowNode.PREDICTION:
                 raise ModelFinalizedError(
                     dataset_name=dataset_name, model_name=model_name
                 )
-            elif model_name and dataset_name and evaluation_id:
+            elif node == StateflowNode.EVALUATION:
                 raise JobStateError(
                     id=job.uuid,
                     msg=f"Evaluation {evaluation_id} already exists.",
@@ -95,48 +119,53 @@ def _validate_transition(validator: JobValidator):
 
         # attempt to process before finalization
         if (
-            transitions.start == JobStatus.PROCESSING
+            state.start == JobStatus.PROCESSING
             and current_status == JobStatus.CREATING
         ):
-            if model_name and dataset_name and not evaluation_id:
+            if node == StateflowNode.PREDICTION:
                 raise ModelNotFinalizedError(
                     dataset_name=dataset_name, model_name=model_name
                 )
 
         raise JobStateError(
             job.uuid,
-            f"Requested transition from {current_status} to {transitions.start} is illegal.",
+            f"Requested transition from {current_status} to {state.start} is illegal.",
         )
 
     # catch un-finalized parents, this cannot be done before as predictions and evaluation use the same node.
-    if transitions.start == JobStatus.PROCESSING:
+    if state.start == JobStatus.PROCESSING:
         if get_status_from_uuid(dataset_uuid) == JobStatus.CREATING:
             raise DatasetNotFinalizedError(name=dataset_name)
 
 
-def _validate_parents(validator: JobValidator):
+def _validate_parents(state: StateflowJob):
     """
     Validate that parent jobs are finished.
     """
 
-    job = validator.job
-    dataset_name = validator.dataset_name
-    model_name = validator.model_name
-    evaluation_id = validator.evaluation_id
-    dataset_uuid = validator.dataset_uuid
-    model_uuid = validator.model_uuid
-    prediction_uuid = validator.prediction_uuid
+    job = state.job
+    node = state.node
+    dataset_name = state.dataset_name
+    model_name = state.model_name
+    evaluation_id = state.evaluation_id
+    dataset_uuid = state.dataset_uuid
+    model_uuid = state.model_uuid
+    prediction_uuid = state.prediction_uuid
 
     # validate parents of evaluations (dataset/groundtruths + predictions)
-    if evaluation_id and dataset_name and model_name:
+    if node == StateflowNode.EVALUATION:
 
         # dataset and groundtruths are still being created.
         if get_status_from_uuid(dataset_uuid) != JobStatus.DONE:
             raise DatasetNotFinalizedError(name=dataset_name)
+        
+        # model does not exist.
+        elif get_status_from_uuid(model_uuid) == JobStatus.NONE:
+            raise ModelDoesNotExistError(name=model_name)
 
         # model is still being created.
-        elif get_status_from_uuid(model_uuid) != JobStatus.DONE:
-            raise ModelDoesNotExistError(name=model_name)
+        elif get_status_from_uuid(model_uuid) == JobStatus.CREATING:
+            raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
 
         # predictions are still being created.
         elif get_status_from_uuid(prediction_uuid) != JobStatus.DONE:
@@ -149,9 +178,9 @@ def _validate_parents(validator: JobValidator):
         Job.get(dataset_uuid).register_child(job.uuid)
 
     # validate parents of predictions (dataset + model)
-    elif dataset_name and model_name:
+    elif node == StateflowNode.PREDICTION:
 
-        # dataset is not finalized or being created.
+        # dataset has not been created.
         if get_status_from_uuid(dataset_uuid) not in [
             JobStatus.CREATING,
             JobStatus.DONE,
@@ -159,31 +188,33 @@ def _validate_parents(validator: JobValidator):
             raise DatasetDoesNotExistError(name=dataset_name)
 
         # model has not been created.
-        elif get_status_from_uuid(model_uuid) != JobStatus.DONE:
+        elif get_status_from_uuid(model_uuid) not in [
+            JobStatus.DONE,
+            JobStatus.CREATING,
+        ]:
             raise ModelDoesNotExistError(name=model_name)
 
         # register job as child of parents
         Job.get(model_uuid).register_child(job.uuid)
 
     # no parent nodes
-    elif dataset_name:
+    elif node == StateflowNode.DATASET:
         pass
-    elif model_name:
+    elif node == StateflowNode.MODEL:
         pass
     else:
         raise ValueError("Received invalid input.")
 
 
-def _validate_children(validator: JobValidator):
+def _validate_children(state: StateflowJob):
     """
     Validate the children of a job are finished (if they exist).
     """
 
-    job = validator.job
-    transitions = validator.transitions
+    job = state.job
 
     # edge case
-    if transitions.start == JobStatus.DELETING:
+    if state.start == JobStatus.DELETING:
         return
 
     def _recursive_child_search(job: Job):
@@ -237,15 +268,17 @@ def _parse_kwargs(kwargs: dict) -> tuple:
 
 
 def generate_stateflow_decorator(
-    transitions: StateTransition = StateTransition(),
-    on_start: callable = lambda job, transitions, msg="": job.set_status(
-        transitions.start, msg
+    start: JobStatus = JobStatus.PROCESSING,
+    success: JobStatus = JobStatus.DONE,
+    failure: JobStatus = JobStatus.FAILED,
+    on_start: callable = lambda state, msg="": state.set_status(
+        state.start, msg
     ),
-    on_success: callable = lambda job, transitions, msg="": job.set_status(
-        transitions.success, msg
+    on_success: callable = lambda state, msg="": state.set_status(
+        state.success, msg
     ),
-    on_failure: callable = lambda job, transitions, msg="": job.set_status(
-        transitions.failure, msg
+    on_failure: callable = lambda state, msg="": state.set_status(
+        state.failure, msg
     ),
 ):
     """
@@ -263,25 +296,26 @@ def generate_stateflow_decorator(
             dataset_name, model_name, evaluation_id = _parse_kwargs(kwargs)
 
             # validate job state
-            validator = JobValidator(
+            state = StateflowJob(
                 dataset_name=dataset_name,
                 model_name=model_name,
                 evaluation_id=evaluation_id,
-                transitions=transitions,
+                start=start,
+                success=success,
+                failure=failure,
             )
-            _validate_transition(validator)
-            _validate_parents(validator)
-            _validate_children(validator)
-            job = validator.job
+            _validate_transition(state)
+            _validate_parents(state)
+            _validate_children(state)
 
             # wrapped function execution
-            on_start(job, transitions)
+            on_start(state)
             try:
                 result = fn(*args, **kwargs)
             except Exception as e:
-                on_failure(job, transitions, str(e))
+                on_failure(state, str(e))
                 raise e
-            on_success(job, transitions)
+            on_success(state)
 
             return result
 
@@ -290,28 +324,32 @@ def generate_stateflow_decorator(
     return decorator
 
 
+def _finalize_success(state: StateflowJob, msg: str = ""):
+    """
+    Since model and predictions are handled seperately this helper function is necessary to ensure
+    that a finalization call over a prediction set will also finalize the model itself.
+    """
+    if state.node == StateflowNode.PREDICTION:
+        if get_status_from_uuid(state.model_uuid) == JobStatus.CREATING:
+            Job.get(state.model_uuid).set_status(state.success)
+    state.set_status(state.success)
+
+
 # stateflow decorator definitions
 create = generate_stateflow_decorator(
-    transitions=StateTransition(
-        start=JobStatus.CREATING,
-        success=JobStatus.CREATING,
-    ),
+    start=JobStatus.CREATING,
+    success=JobStatus.CREATING,
 )
 finalize = generate_stateflow_decorator(
-    transitions=StateTransition(
-        start=JobStatus.CREATING,
-        success=JobStatus.DONE,
-    ),
+    start=JobStatus.CREATING,
+    success=JobStatus.DONE,
+    on_success=_finalize_success,
 )
 evaluate = generate_stateflow_decorator(
-    transitions=StateTransition(
-        start=JobStatus.PROCESSING,
-        success=JobStatus.DONE,
-    ),
+    start=JobStatus.PROCESSING,
+    success=JobStatus.DONE,
 )
 delete = generate_stateflow_decorator(
-    transitions=StateTransition(
-        start=JobStatus.DELETING,
-    ),
-    on_success=lambda job, transitions, msg="": job.delete(),
+    start=JobStatus.DELETING,
+    on_success=lambda state, msg="": state.job.delete(),
 )
