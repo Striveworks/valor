@@ -179,6 +179,42 @@ class DeclarativeMapper:
                 )
         return [self == value for value in __values]
 
+    def intersect(self, __value: dict) -> BinaryExpression:
+        # TODO add validators that the only thing that can call this operator is the geojson
+        # TODO add client-side tests
+        # TODO remove not-implemented errors
+        self._validate(
+            __value,
+        )
+        return BinaryExpression(
+            name=self.name,
+            key=self.key,
+            value=__value,
+            operator="intersect",
+        )
+
+    def inside(self, __value: object) -> BinaryExpression:
+        self._validate(
+            __value,
+        )
+        return BinaryExpression(
+            name=self.name,
+            key=self.key,
+            value=__value,
+            operator="inside",
+        )
+
+    def outside(self, __value: object) -> BinaryExpression:
+        self._validate(
+            __value,
+        )
+        return BinaryExpression(
+            name=self.name,
+            key=self.key,
+            value=__value,
+            operator="outside",
+        )
+
 
 @dataclass
 class Filter:
