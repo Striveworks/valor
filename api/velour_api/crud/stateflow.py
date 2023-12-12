@@ -29,94 +29,49 @@ class StateTransition(BaseModel):
     failure: JobStatus = JobStatus.FAILED
 
 
-def _validate_parents(
-    dataset_name: str = None,
-    model_name: str = None,
-    evaluation_id: int = None,
-):
-    """
-    Safely retrieves or creates a Redis job through parental checks.
-    """
+class JobValidator:
+    def __init__(
+        self,
+        dataset_name: str,
+        model_name: str,
+        evaluation_id: int,
+        transitions: StateTransition,
+    ):
+        # store input args
+        self.dataset_name = dataset_name
+        self.model_name = model_name
+        self.evaluation_id = evaluation_id
+        self.transitions = transitions
 
-    dataset_uuid = generate_uuid(dataset_name=dataset_name)
-    model_uuid = generate_uuid(model_name=model_name)
-    inference_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name)
-    evaluation_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name, evaluation_id=evaluation_id)
-    
-    # validate parents of evaluations (groundtruths + predictions)
-    if evaluation_id and dataset_name and model_name:
-        
-        # dataset and groundtruths are still being created.
-        if get_status_from_uuid(dataset_uuid) != JobStatus.DONE:
-            raise DatasetNotFinalizedError(name=dataset_name)
-        
-        # model is still being created.
-        elif get_status_from_uuid(model_uuid) != JobStatus.DONE:
-            raise ModelDoesNotExistError(name=model_name)
-        
-        # model predictions are still being created.
-        elif get_status_from_uuid(inference_uuid) != JobStatus.DONE:
-            raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
-        
-        job = Job.get(evaluation_uuid)
-        Job.get(inference_uuid).register_child(job.uuid)
-        Job.get(dataset_uuid).register_child(job.uuid)
+        # generate uuids
+        self.uuid = generate_uuid(
+            dataset_name=dataset_name,
+            model_name=model_name,
+            evaluation_id=evaluation_id,
+        )
+        self.dataset_uuid = generate_uuid(dataset_name=dataset_name)
+        self.model_uuid = generate_uuid(model_name=model_name)
+        self.prediction_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name)
+        self.evaluation_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name, evaluation_id=evaluation_id)
 
-    # validate parents of predictions (dataset + model)
-    elif dataset_name and model_name:
-
-        # dataset is not finalized or being created.
-        if get_status_from_uuid(dataset_uuid) not in [JobStatus.CREATING, JobStatus.DONE]:
-            raise DatasetDoesNotExistError(name=dataset_name)
-        
-        # model has not been created.
-        elif get_status_from_uuid(model_uuid) != JobStatus.DONE:
-            raise ModelDoesNotExistError(name=model_name)
-        
-        job = Job.get(inference_uuid)
-        Job.get(model_uuid).register_child(job.uuid)    
-
-    # no parent nodes
-    elif dataset_name:
-        job = Job.get(dataset_uuid)
-    elif model_name:
-        job = Job.get(model_uuid)
-    else:
-        raise ValueError(f"Received invalid input.")
-    
-    return job
+        # create or get job
+        self.job = Job.get(self.uuid)
 
 
-def _validate_children(job: Job):
-    """
-    Validate the children of a Job (if they exist).
-    """
-    def _recursive_child_search(job: Job):
-        for uuid in job.children:
-            status = get_status_from_uuid(uuid=uuid)
-            # throw exception if child is not in a stable state
-            if status not in [JobStatus.NONE, JobStatus.DONE, JobStatus.FAILED]:
-                raise JobStateError(job.uuid, f"Job blocked by child task with uuid `{uuid}` and status `{get_status_from_uuid(uuid=uuid).value}`")
-            elif status == JobStatus.DONE:
-                _recursive_child_search(Job.get(uuid))
-    _recursive_child_search(job)
-    
-
-def _validate_transition(
-    job: Job,
-    transitions: StateTransition,
-    dataset_name: str = None,
-    model_name: str = None,
-    evaluation_id: int = None,
-):
+def _validate_transition(validator: JobValidator):
     """
     Validate edge-cases that require knowledge of the next transistion.
     """
-    
-    dataset_uuid = generate_uuid(dataset_name=dataset_name)
-    model_uuid = generate_uuid(model_name=model_name)
-    inference_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name)
-    evaluation_uuid = generate_uuid(dataset_name=dataset_name, model_name=model_name, evaluation_id=evaluation_id)
+
+    job = validator.job
+    transitions = validator.transitions
+    dataset_name = validator.dataset_name
+    model_name = validator.model_name
+    evaluation_id = validator.evaluation_id
+    dataset_uuid =  validator.dataset_uuid
+    model_uuid = validator.model_uuid
+    prediction_uuid = validator.prediction_uuid
+    evaluation_uuid = validator.evaluation_uuid
 
     current_status = job.status
 
@@ -133,32 +88,98 @@ def _validate_transition(
                 raise ModelFinalizedError(dataset_name=dataset_name, model_name=model_name)
             elif model_name and dataset_name and evaluation_id:
                 raise JobStateError(id=job.uuid, msg=f"Evaluation {evaluation_id} already exists.")
+            
+        # attempt to process before finalization
+        if transitions.start == JobStatus.PROCESSING and current_status == JobStatus.CREATING:
+            if model_name and dataset_name and not evaluation_id:
+                raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
         
         raise JobStateError(job.uuid, f"Requested transition from {current_status} to {transitions.start} is illegal.")
             
-    # catch parents 
-    # if evaluation_id and transitions.start == JobStatus.PROCESSING:
-    #     if get_status_from_uuid(dataset_uuid) == JobStatus.CREATING:
-    #         raise DatasetNotFinalizedError(name=dataset_name)
-    #     elif get_status_from_uuid(inference_uuid) == JobStatus.CREATING:
-    #         raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
-        
+    # catch un-finalized parents, this cannot be done before as predictions and evaluation use the same node.
+    if transitions.start == JobStatus.PROCESSING:
+        if get_status_from_uuid(dataset_uuid) == JobStatus.CREATING:
+            raise DatasetNotFinalizedError(name=dataset_name)
 
-def get_job(
-    dataset_name: str = None,
-    model_name: str = None,
-    evaluation_id: int = None,
-) -> Job:
+
+def _validate_parents(validator: JobValidator):
     """
-    Safely get or create a Job.
+    Validate that parent jobs are finished.
     """
-    job = _validate_parents(
-        dataset_name=dataset_name,
-        model_name=model_name,
-        evaluation_id=evaluation_id,
-    )
-    _validate_children(job)
-    return job
+
+    job = validator.job
+    transitions = validator.transitions
+    dataset_name = validator.dataset_name
+    model_name = validator.model_name
+    evaluation_id = validator.evaluation_id
+    dataset_uuid =  validator.dataset_uuid
+    model_uuid = validator.model_uuid
+    prediction_uuid = validator.prediction_uuid
+    evaluation_uuid = validator.evaluation_uuid
+    
+    # validate parents of evaluations (dataset/groundtruths + predictions)
+    if evaluation_id and dataset_name and model_name:
+        
+        # dataset and groundtruths are still being created.
+        if get_status_from_uuid(dataset_uuid) != JobStatus.DONE:
+            raise DatasetNotFinalizedError(name=dataset_name)
+        
+        # model is still being created.
+        elif get_status_from_uuid(model_uuid) != JobStatus.DONE:
+            raise ModelDoesNotExistError(name=model_name)
+        
+        # predictions are still being created.
+        elif get_status_from_uuid(prediction_uuid) != JobStatus.DONE:
+            raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
+        
+        # register job as child of parents
+        Job.get(prediction_uuid).register_child(job.uuid)
+        Job.get(dataset_uuid).register_child(job.uuid)
+
+    # validate parents of predictions (dataset + model)
+    elif dataset_name and model_name:
+        
+        # dataset is not finalized or being created.
+        if get_status_from_uuid(dataset_uuid) not in [JobStatus.CREATING, JobStatus.DONE]:
+            raise DatasetDoesNotExistError(name=dataset_name)
+
+        # model has not been created.
+        elif get_status_from_uuid(model_uuid) != JobStatus.DONE:
+            raise ModelDoesNotExistError(name=model_name)
+        
+        # register job as child of parents
+        Job.get(model_uuid).register_child(job.uuid)
+
+    # no parent nodes
+    elif dataset_name:
+        pass
+    elif model_name:
+        pass
+    else:
+        raise ValueError(f"Received invalid input.")
+
+
+def _validate_children(validator: JobValidator):
+    """
+    Validate the children of a job are finished (if they exist).
+    """
+
+    job = validator.job
+    transitions = validator.transitions
+
+    # edge case
+    if transitions.start == JobStatus.DELETING:
+        return
+    
+    def _recursive_child_search(job: Job):
+        for uuid in job.children:
+            status = get_status_from_uuid(uuid=uuid)
+            # throw exception if child is not in a stable state
+            if status not in [JobStatus.NONE, JobStatus.DONE, JobStatus.FAILED]:
+                raise JobStateError(job.uuid, f"Job blocked by child task with uuid `{uuid}` and status `{get_status_from_uuid(uuid=uuid).value}`")
+            elif status == JobStatus.DONE:
+                _recursive_child_search(Job.get(uuid))
+    _recursive_child_search(job)
 
 
 def get_status(
@@ -218,22 +239,17 @@ def generate_stateflow_decorator(
             else:
                 raise ValueError("did not receive right values")
 
-            job = _validate_parents(
+            validator = JobValidator(
                 dataset_name=dataset_name,
                 model_name=model_name,
                 evaluation_id=evaluation_id,
-            )
-
-            if transitions.start != JobStatus.DELETING:
-                _validate_children(job)
-
-            _validate_transition(
-                job=job,
                 transitions=transitions,
-                dataset_name=dataset_name,
-                model_name=model_name,
-                evaluation_id=evaluation_id
             )
+            _validate_transition(validator)
+            _validate_parents(validator)
+            _validate_children(validator)
+
+            job = validator.job
 
             on_start(job, transitions)
             try:
@@ -247,7 +263,7 @@ def generate_stateflow_decorator(
     return decorator
 
 
-# stateflow decorators
+# stateflow decorator definitions
 create = generate_stateflow_decorator(
     transitions=StateTransition(
         start=JobStatus.CREATING,

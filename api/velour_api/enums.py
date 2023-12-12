@@ -86,13 +86,13 @@ class JobStatus(Enum):
         elif self == self.PENDING:
             return {self.PENDING, self.CREATING, self.PROCESSING}
         elif self == self.CREATING:
-            return {self.CREATING, self.PROCESSING, self.DONE, self.FAILED, self.DELETING}
+            return {self.CREATING, self.DONE, self.FAILED, self.DELETING}
         elif self == self.PROCESSING:
             return {self.PROCESSING, self.DONE, self.FAILED, self.DELETING}
         elif self == self.FAILED:
-            return {self.FAILED, self.PENDING, self.CREATING, self.PROCESSING, self.DELETING}
+            return {self.FAILED, self.CREATING, self.PROCESSING, self.DELETING}
         elif self == self.DONE:
-            return {self.DONE, self.PENDING, self.PROCESSING, self.DELETING}
+            return {self.DONE, self.PROCESSING, self.DELETING}
         elif self == self.DELETING:
             return {self.DELETING, self.NONE}
         else:

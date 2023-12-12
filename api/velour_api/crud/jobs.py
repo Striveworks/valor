@@ -210,9 +210,6 @@ class Job(BaseModel):
     def delete(self):
         """Delete job from redis."""
         for child_uuid in self.children:
-            if get_status_from_uuid(uuid=child_uuid) not in [JobStatus.NONE, JobStatus.DONE]:
-                raise JobStateError(self.uuid, f"Job blocked by child task with uuid `{child_uuid}` and status `{get_status_from_uuid(uuid=child_uuid).value}`")
-        for child_uuid in self.children:
             self.get(child_uuid).delete()
         r.delete(self.uuid)
         del self
