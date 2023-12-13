@@ -361,15 +361,6 @@ class Prediction(BaseModel):
         _validate_name_format(v)
         return v
 
-    # @field_validator("annotations")
-    # @classmethod
-    # def _check_annotations(cls, v):
-    #     """Validate that annotations aren't empty."""
-
-    #     if not v:
-    #         raise ValueError("annotations is empty")
-    #     return v
-
     @model_validator(mode="after")
     @classmethod
     def _validate_annotation_rasters(cls, values):
