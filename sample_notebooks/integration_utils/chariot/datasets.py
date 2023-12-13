@@ -170,7 +170,7 @@ def _parse_annotation(dataset_version, annotation: dict):
         )
 
     return Annotation(
-        task_type=task_types[-1],  # @TODO Make this better.
+        task_type=task_types[-1],
         labels=labels,
         bounding_box=bounding_box,
         polygon=polygon,

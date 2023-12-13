@@ -97,10 +97,23 @@ def convert_raster_to_polygon(dataset_id: int, model_id: int | None = None):
         A SQL query to complete the conversion.
     """
 
-    # @TODO: should this be purely an boundary around the raster,
-    # multipolygon handles holes and odd regions better.
+    model_id = f" = {model_id}" if model_id else " IS NULL"
 
-    raise NotImplementedError
+    return f"""
+    UPDATE annotation
+    SET polygon = subquery.raster_polygon
+    FROM (
+        SELECT ann.id as id, ST_MakeValid((ST_DumpAsPolygons(raster)).geom) as raster_polygon
+        FROM annotation AS ann
+        JOIN datum ON datum.id = ann.datum_id
+        WHERE
+        ann.polygon IS NULL
+        AND ann.raster IS NOT NULL
+        AND datum.dataset_id = {dataset_id}
+        AND ann.model_id {model_id}
+    ) as subquery
+    WHERE annotation.id = subquery.id
+    """
 
 
 def convert_raster_to_multipolygon(
