@@ -5,8 +5,24 @@ from velour_api.backend import models
 from velour_api.enums import AnnotationType
 
 
-def convert_polygon_to_box(dataset_id: int, model_id: int | None = None):
-    """Converts annotation column 'polygon' into column 'box'."""
+def convert_polygon_to_box(
+    dataset_id: int, model_id: int | None = None
+) -> str:
+    """
+    Converts annotation column 'polygon' into column 'box'.
+
+    Parameters
+    ----------
+    dataset_id : int
+        the id of the dataset.
+    model_id : int
+        the id of the model.
+
+    Returns
+    ----------
+    str
+        A SQL query to complete the conversion.
+    """
 
     model_id = f" = {model_id}" if model_id else " IS NULL"
 
@@ -25,7 +41,21 @@ def convert_polygon_to_box(dataset_id: int, model_id: int | None = None):
 
 
 def convert_raster_to_box(dataset_id: int, model_id: int | None = None):
-    """Converts annotation column 'raster' into column 'box'."""
+    """
+    Converts annotation column 'raster' into column 'box'.
+
+    Parameters
+    ----------
+    dataset_id : int
+        the id of the dataset.
+    model_id : int
+        the id of the model.
+
+    Returns
+    ----------
+    str
+        A SQL query to complete the conversion.
+    """
 
     model_id = f" = {model_id}" if model_id else " IS NULL"
 
@@ -51,7 +81,21 @@ def convert_raster_to_box(dataset_id: int, model_id: int | None = None):
 
 
 def convert_raster_to_polygon(dataset_id: int, model_id: int | None = None):
-    """Converts annotation column 'raster' into column 'polygon'."""
+    """
+    Converts annotation column 'raster' into column 'polygon'.
+
+    Parameters
+    ----------
+    dataset_id : int
+        the id of the dataset.
+    model_id : int
+        the id of the model.
+
+    Returns
+    ----------
+    str
+        A SQL query to complete the conversion.
+    """
 
     # @TODO: should this be purely an boundary around the raster,
     # multipolygon handles holes and odd regions better.
@@ -62,7 +106,21 @@ def convert_raster_to_polygon(dataset_id: int, model_id: int | None = None):
 def convert_raster_to_multipolygon(
     dataset_id: int, model_id: int | None = None
 ):
-    """Converts annotation column 'raster' into column 'multipolygon'."""
+    """
+    Converts annotation column 'raster' into column 'multipolygon'.
+
+    Parameters
+    ----------
+    dataset_id : int
+        the id of the dataset.
+    model_id : int
+        the id of the model.
+
+    Returns
+    ----------
+    str
+        A SQL query to complete the conversion.
+    """
 
     model_id = f" = {model_id}" if model_id else " IS NULL"
 
@@ -96,6 +154,25 @@ def convert_geometry(
     model_source_type: AnnotationType,
     evaluation_target_type: AnnotationType,
 ):
+    """
+    Converts geometry into some target type
+
+    Parameters
+    ----------
+    db : Session
+        The database Session you want to query against.
+    dataset : models.Dataset
+        The dataset of the geometry.
+    model : models.Model
+        The model of the geometry.
+    dataset_source_type: AnnotationType
+        The annotation type associated with the dataset.
+    model_source_type: AnnotationType
+        The annotation type associated with the model.
+    evaluation_target_type: AnnotationType
+        The annotation type we wish to convert to.
+    """
+
     # Check typing
     valid_types = [
         AnnotationType.BOX,
@@ -108,7 +185,7 @@ def convert_geometry(
         )
     if dataset_source_type not in valid_types:
         raise RuntimeError(
-            f"Groundtruth type `{evaluation_target_type}` not in valid set `{valid_types}`"
+            f"GroundTruth type `{evaluation_target_type}` not in valid set `{valid_types}`"
         )
     if model_source_type not in valid_types:
         raise RuntimeError(

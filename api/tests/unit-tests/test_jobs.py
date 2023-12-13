@@ -1,9 +1,7 @@
-from unittest.mock import MagicMock
-
 import pytest
 
-from velour_api.backend import jobs
-from velour_api.schemas.stateflow import Stateflow
+from velour_api.crud import jobs
+from velour_api.crud.jobs import generate_uuid
 
 
 @pytest.fixture(autouse=True)
@@ -12,28 +10,48 @@ def teardown():
     jobs.r = None
 
 
-def test_get_stateflow():
-    """Checks that multiple calls of `get_stateflow` only
-    connects to redis once
-    """
-    jobs.redis.Redis = MagicMock()
-
-    assert jobs.redis.Redis.call_count == 0
-    jobs.get_stateflow()
-    assert jobs.redis.Redis.call_count == 1
-    jobs.get_stateflow()
-    assert jobs.redis.Redis.call_count == 1
+@pytest.fixture
+def dataset_name() -> str:
+    return "dataset1"
 
 
-def test_set_stateflow():
-    """Checks that multiple calls of `set_stateflow` only
-    connects to redis once
-    """
-    jobs.redis.Redis = MagicMock()
-    jobs.json = MagicMock()
+@pytest.fixture
+def model_name() -> str:
+    return "model1"
 
-    assert jobs.redis.Redis.call_count == 0
-    jobs.set_stateflow(Stateflow())
-    assert jobs.redis.Redis.call_count == 1
-    jobs.set_stateflow(Stateflow())
-    assert jobs.redis.Redis.call_count == 1
+
+@pytest.fixture
+def evaluation_id() -> int:
+    return 1234
+
+
+def test_generate_uuid(dataset_name, model_name, evaluation_id):
+    assert (
+        generate_uuid(dataset_name=dataset_name) == f"{dataset_name}+None+None"
+    )
+    assert generate_uuid(model_name=model_name) == f"None+{model_name}+None"
+    assert (
+        generate_uuid(dataset_name=dataset_name, model_name=model_name)
+        == f"{dataset_name}+{model_name}+None"
+    )
+    assert (
+        generate_uuid(
+            dataset_name=dataset_name,
+            model_name=model_name,
+            evaluation_id=evaluation_id,
+        )
+        == f"{dataset_name}+{model_name}+{evaluation_id}"
+    )
+
+    assert (
+        generate_uuid(evaluation_id=evaluation_id)
+        == f"None+None+{evaluation_id}"
+    )
+    assert (
+        generate_uuid(dataset_name=dataset_name, evaluation_id=evaluation_id)
+        == f"{dataset_name}+None+{evaluation_id}"
+    )
+    assert (
+        generate_uuid(model_name=model_name, evaluation_id=evaluation_id)
+        == f"None+{model_name}+{evaluation_id}"
+    )

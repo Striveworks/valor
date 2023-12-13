@@ -36,12 +36,12 @@ def test_generate_segmentation_data(
         n_labels=n_labels,
     )
 
-    sample_images = dataset.get_images()
+    sample_images = dataset.get_datums()
     assert (
         len(sample_images) == n_images
     ), "Number of images doesn't match the test input"
 
-    for image in dataset.get_images():
+    for image in dataset.get_datums():
         uid = image.uid
         sample_gt = dataset.get_groundtruth(uid)
 
@@ -67,9 +67,9 @@ def test_generate_segmentation_data(
 def test_generate_prediction_data(client: Client):
     """Check that our generated predictions correctly matches our input parameters"""
 
-    n_images = 2
-    n_annotations = 2
-    n_labels = 2
+    n_images = 10
+    n_annotations = 10
+    n_labels = 10
     dataset_name = "dset"
     model_name = "model"
 
@@ -81,15 +81,14 @@ def test_generate_prediction_data(client: Client):
         n_labels=n_labels,
     )
 
-    assert len(dataset.get_images()) == n_images
     assert len(dataset.get_datums()) == n_images
 
     model = generate_prediction_data(
         client=client,
         dataset=dataset,
         model_name=model_name,
-        n_annotations=2,
-        n_labels=2,
+        n_annotations=5,
+        n_labels=5,
     )
 
     eval_job = model.evaluate_detection(
@@ -105,9 +104,9 @@ def test_generate_prediction_data(client: Client):
 
     assert eval_job.status == JobStatus.DONE
 
-    settings = asdict(eval_job.settings)
-    settings.pop("id")
-    assert settings == {
+    job_request = asdict(eval_job.job_request)
+    job_request.pop("id")
+    assert job_request == {
         "model": model_name,
         "dataset": dataset_name,
         "task_type": TaskType.DETECTION.value,
@@ -119,6 +118,22 @@ def test_generate_prediction_data(client: Client):
             "filters": {
                 "annotation_types": ["box"],
                 "label_keys": ["k1"],
+                "annotation_geometric_area": None,
+                "annotation_geospatial": None,
+                "annotation_metadata": None,
+                "dataset_geospatial": None,
+                "dataset_metadata": None,
+                "dataset_names": None,
+                "datum_geospatial": None,
+                "datum_metadata": None,
+                "datum_uids": None,
+                "label_ids": None,
+                "labels": None,
+                "models_geospatial": None,
+                "models_metadata": None,
+                "models_names": None,
+                "prediction_scores": None,
+                "task_types": None,
             },
         },
     }

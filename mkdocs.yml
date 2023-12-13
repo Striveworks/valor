@@ -2,6 +2,18 @@ site_name: velour
 repo_url: https://github.com/striveworks/velour
 theme:
   name: material
+  features:
+    - navigation.expand
+  palette:
+    scheme: slate
+    primary: deep purple
+nav:
+  - Overview: "index.md"
+  - Getting Started: "getting_started.md"
+  - Endpoints: "endpoints.md"
+  - Technical Concepts: "technical_concepts.md"
+  - Contributing & Development: "contributing.md"
+  - References: references
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
@@ -10,3 +22,13 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.snippets
   - pymdownx.superfences
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+  - include_dir_to_nav:
+      sort_file: true
+      sort_directory: true

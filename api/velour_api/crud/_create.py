@@ -1,30 +1,46 @@
 from sqlalchemy.orm import Session
 
 from velour_api import backend, enums, schemas
-from velour_api.backend import stateflow
+from velour_api.crud import stateflow
 from velour_api.crud._read import get_disjoint_keys, get_disjoint_labels
 
 
 @stateflow.create
 def create_dataset(*, db: Session, dataset: schemas.Dataset):
-    """Creates a dataset
+    """
+    Creates a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    dataset : schemas.Dataset
+        The dataset to create.
 
     Raises
-    ------
+    ----------
     DatasetAlreadyExistsError
-        if the dataset name already exists
+        If the dataset name already exists.
     """
     backend.create_dataset(db, dataset)
 
 
 @stateflow.create
 def create_model(*, db: Session, model: schemas.Model):
-    """Creates a model
+    """
+    Creates a model.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    model : schemas.Model
+        The model to create.
 
     Raises
-    ------
+    ----------
     ModelAlreadyExistsError
-        if the model uid already exists
+        If the model name already exists.
     """
     backend.create_model(db, model)
 
@@ -35,6 +51,16 @@ def create_groundtruth(
     db: Session,
     groundtruth: schemas.GroundTruth,
 ):
+    """
+    Creates a groundtruth.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    groundtruth: schemas.GroundTruth
+        The groundtruth to create.
+    """
     backend.create_groundtruth(db, groundtruth=groundtruth)
 
 
@@ -44,6 +70,16 @@ def create_prediction(
     db: Session,
     prediction: schemas.Prediction,
 ):
+    """
+    Creates a prediction.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    prediction: schemas.Prediction
+        The prediction to create.
+    """
     backend.create_prediction(db, prediction=prediction)
 
 
@@ -53,7 +89,22 @@ def create_clf_evaluation(
     db: Session,
     job_request: schemas.EvaluationJob,
 ) -> schemas.CreateClfMetricsResponse:
-    """create clf evaluation"""
+    """
+    Creates a classification evaluation.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_request: schemas.EvaluationJob
+        The evaluation job.
+
+
+    Returns
+    ----------
+    schemas.CreateClfMetricsResponse
+        A classification metric response.
+    """
 
     # get disjoint label sets
     missing_pred_keys, ignored_pred_keys = get_disjoint_keys(
@@ -74,14 +125,25 @@ def create_clf_evaluation(
     )
 
 
-@stateflow.computation
+@stateflow.evaluate
 def compute_clf_metrics(
     *,
     db: Session,
-    job_request: schemas.EvaluationJob,
     job_id: int,
+    job_request: schemas.EvaluationJob,
 ):
-    """compute clf metrics"""
+    """
+    Compute classification metrics.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_id: int
+        The job id.
+    job_request: schemas.EvaluationJob
+        The evaluation job.
+    """
     backend.create_clf_metrics(
         db,
         job_id=job_id,
@@ -94,7 +156,22 @@ def create_semantic_segmentation_evaluation(
     db: Session,
     job_request: schemas.EvaluationJob,
 ) -> schemas.CreateSemanticSegmentationMetricsResponse:
-    """create a semantic segmentation evaluation"""
+    """
+    Creates a semantic segmentation evaluation.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_request: schemas.EvaluationJob
+        The evaluation job.
+
+
+    Returns
+    ----------
+    schemas.CreateSemanticSegmentationMetricsResponse
+        A semantic segmentation metric response.
+    """
 
     # get disjoint label sets
     missing_pred_labels, ignored_pred_labels = get_disjoint_labels(
@@ -117,13 +194,25 @@ def create_semantic_segmentation_evaluation(
     )
 
 
-@stateflow.computation
+@stateflow.evaluate
 def compute_semantic_segmentation_metrics(
     *,
     db: Session,
     job_request: schemas.EvaluationJob,
     job_id: int,
 ):
+    """
+    Compute semantic segmentation metrics.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_request: schemas.EvaluationJob
+        The evaluation job object.
+    job_id: int
+        The job id.
+    """
     backend.create_semantic_segmentation_metrics(
         db,
         job_request=job_request,
@@ -136,8 +225,23 @@ def create_detection_evaluation(
     *,
     db: Session,
     job_request: schemas.EvaluationJob,
-) -> schemas.CreateAPMetricsResponse:
-    """create ap evaluation"""
+) -> schemas.CreateDetectionMetricsResponse:
+    """
+    Creates a detection evaluation.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_request: schemas.EvaluationJob
+        The evaluation job.
+
+
+    Returns
+    ----------
+    schemas.CreateDetectionMetricsResponse
+        A detection metric response.
+    """
 
     # create evaluation setting
     (
@@ -147,21 +251,32 @@ def create_detection_evaluation(
     ) = backend.create_detection_evaluation(db, job_request)
 
     # create response
-    return schemas.CreateAPMetricsResponse(
+    return schemas.CreateDetectionMetricsResponse(
         missing_pred_labels=missing_pred_labels,
         ignored_pred_labels=ignored_pred_labels,
         job_id=job_id,
     )
 
 
-@stateflow.computation
+@stateflow.evaluate
 def compute_detection_metrics(
     *,
     db: Session,
     job_request: schemas.EvaluationJob,
     job_id: int,
 ):
-    """compute ap metrics"""
+    """
+    Compute detection metrics.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_request: schemas.EvaluationJob
+        The evaluation job object.
+    job_id: int
+        The job id.
+    """
     backend.create_detection_metrics(
         db=db,
         job_id=job_id,

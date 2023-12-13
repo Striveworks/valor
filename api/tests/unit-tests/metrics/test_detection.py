@@ -1,12 +1,13 @@
-from velour_api import schemas, enums
+import pytest
+
+from velour_api import enums, schemas
 from velour_api.backend.metrics.detection import (
     RankedPair,
     _ap,
     _calculate_101_pt_interp,
-    compute_mean_detection_metrics_from_aps,
+    _compute_mean_detection_metrics_from_aps,
     create_detection_evaluation,
 )
-import pytest
 
 
 def truncate_float(x: float) -> str:
@@ -18,9 +19,9 @@ def test__calculate_101_pt_interp():
     assert _calculate_101_pt_interp([], []) == 0
 
 
-def test_compute_mean_detection_metrics_from_aps():
+def test__compute_mean_detection_metrics_from_aps():
     # make sure we get back 0 if we don't pass any precisions
-    assert compute_mean_detection_metrics_from_aps([]) == list()
+    assert _compute_mean_detection_metrics_from_aps([]) == list()
 
 
 def test_create_detection_evaluation():

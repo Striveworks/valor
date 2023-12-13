@@ -15,8 +15,21 @@ from velour_api.backend.core.label import create_labels
 from velour_api.enums import AnnotationType
 
 
-# @TODO: Might introduce multipolygon type to annotations, convert to raster at evaluation time.
 def _wkt_multipolygon_to_raster(wkt: str):
+    """
+    Convert a multipolygon to a raster using postgis.
+
+    Parameters
+    ----------
+    wkt : str
+        A postgis multipolygon object in well-known text format.
+
+
+    Returns
+    ----------
+    Query
+        A scalar subquery from postgis.
+    """
     return select(
         text(f"ST_AsRaster(ST_GeomFromText('{wkt}'), {1.0}, {1.0})")
     ).scalar_subquery()
@@ -26,7 +39,25 @@ def _get_annotation_mapping(
     annotation: schemas.Annotation,
     datum: models.Datum,
     model: models.Model = None,
-) -> models.Annotation:
+) -> dict:
+    """
+    Convert an individual annotation's attributes into a dictionary for upload to postgis.
+
+    Parameters
+    ----------
+    annotation : schemas.Annotation
+        The annotation tom ap.
+    datum : models.Datum
+        The datum associated with the annotation.
+    model : models.Model
+        The model associated with the annotation
+
+    Returns
+    ----------
+    dict
+        A dictionary of annotation attributes.
+
+    """
     box = None
     polygon = None
     raster = None
@@ -69,14 +100,19 @@ def create_annotations_and_labels(
 
     Parameters
     ----------
-    db
+    db : Session
         The database Session you want to query against.
-    annotations
-        The list of annotations you want to create.
-    datum
-        The datum you want to create the annotations for.
-    model
-        The model you want to query against (optional).
+    annotations : List[schemas.Annotation]
+        The list of annotations to create.
+    datum : models.Datum
+        The datum associated with the annotation.
+    model : models.Model
+        The model associated with the annotation.
+
+    Returns
+    ----------
+    List[models.annotation]
+        The model associated with the annotation.
     """
     annotation_list = []
     label_list = []
@@ -103,6 +139,7 @@ def create_annotations_and_labels(
 def _get_bounding_box_of_raster(
     db: Session, raster: RasterElement
 ) -> tuple[int, int, int, int]:
+    """Get the enveloping bounding box of a raster"""
     env = json.loads(db.scalar(ST_AsGeoJSON(ST_Envelope(raster))))
     assert len(env["coordinates"]) == 1
     xs = [pt[0] for pt in env["coordinates"][0]]
@@ -115,6 +152,7 @@ def _get_bounding_box_of_raster(
 def _raster_to_png_b64(
     db: Session, raster: RasterElement, height: float, width: float
 ) -> str:
+    """COnvert a raster to a png"""
     enveloping_box = _get_bounding_box_of_raster(db, raster)
     raster = Image.open(io.BytesIO(db.scalar(ST_AsPNG((raster))).tobytes()))
 
@@ -138,6 +176,23 @@ def _raster_to_png_b64(
 def get_annotation(
     db: Session, annotation: models.Annotation, datum: models.Datum = None
 ) -> schemas.Annotation:
+    """
+    Fetch an annotation from the database.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session you want to query against.
+    annotation : models.Annotation
+        The annotation you want to fetch.
+    datum : models.Datum
+        The datum associated with the annotation.
+
+    Returns
+    ----------
+    schemas.Annotation
+        The requested annotation.
+    """
     # Retrieve all labels associated with annotation
     groundtruth_labels = [
         schemas.Label(key=label[0], value=label[1])
@@ -221,15 +276,21 @@ def get_annotations(
     model: models.Model | None = None,
 ) -> list[schemas.Annotation]:
     """
-    Query postgis to get all annotations for a particular datum
+    Query postgis to get all annotations for a particular datum.
+
     Parameters
     -------
-    db
+    db : Session
         The database session to query against.
-    datum
+    datum : models.Datum
         The datum you want to fetch annotations for.
-    model
+    model : models.Model
         The model you want to query against (optional).
+
+    Returns
+    ----------
+    List[schemas.Annotation]
+        A list of annotations.
     """
     model_expr = (
         models.Annotation.model_id.is_(None)
@@ -257,6 +318,23 @@ def get_annotation_type(
     dataset: models.Dataset,
     model: models.Model | None = None,
 ) -> AnnotationType:
+    """
+    Fetch an annotation type from postgis.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session you want to query against.
+    dataset : models.Dataset
+        The dataset associated with the annotation.
+    model : models.Model
+        The model associated with the annotation.
+
+    Returns
+    ----------
+    AnnotationType
+        The type of the annotation.
+    """
     model_expr = (
         models.Annotation.model_id == model.id
         if model

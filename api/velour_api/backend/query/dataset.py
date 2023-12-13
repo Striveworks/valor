@@ -13,6 +13,16 @@ def create_dataset(
     db: Session,
     dataset: schemas.Dataset,
 ):
+    """
+    Creates a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    dataset : schemas.Dataset
+        The dataset to create.
+    """
     shape = (
         schemas.GeoJSON.from_dict(data=dataset.geospatial).shape().wkt()
         if dataset.geospatial
@@ -35,7 +45,21 @@ def get_dataset(
     db: Session,
     name: str,
 ) -> schemas.Dataset:
-    # retrieve dataset
+    """
+    Fetch a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    name : str
+        The name of the dataset.
+
+    Returns
+    ----------
+    schemas.Dataset
+        The requested dataset.
+    """
     dataset = core.get_dataset(db, name=name)
     geo_dict = (
         json.loads(db.scalar(ST_AsGeoJSON(dataset.geo))) if dataset.geo else {}
@@ -51,6 +75,19 @@ def get_dataset(
 def get_datasets(
     db: Session,
 ) -> list[schemas.Dataset]:
+    """
+    Fetch all datasets.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+
+    Returns
+    ----------
+    List[schemas.Dataset]
+        A list of all datasets.
+    """
     return [
         get_dataset(db, name)
         for name in db.scalars(select(models.Dataset.name)).all()
@@ -61,7 +98,21 @@ def get_datums(
     db: Session,
     filters: schemas.Filter | None = None,
 ) -> list[schemas.Datum]:
-    """Get datums, optional filter."""
+    """
+    Fetch all datums.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    filters : schemas.Filter
+        An optional filter to apply.
+
+    Returns
+    ----------
+    List[schemas.Datum]
+        A list of all datums.
+    """
     q = ops.Query(models.Datum).filter(filters).any()
     datums = db.query(q).all()
 
@@ -91,6 +142,16 @@ def delete_dataset(
     db: Session,
     name: str,
 ):
+    """
+    Delete a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    name : str
+        The name of the dataset.
+    """
     dataset = core.get_dataset(db, name=name)
     try:
         db.delete(dataset)

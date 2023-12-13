@@ -2,10 +2,11 @@ import os
 from base64 import b64encode
 from tempfile import TemporaryDirectory
 
+import numpy as np
 import PIL.Image
 import pytest
 from pydantic import ValidationError
-import numpy as np
+
 from velour_api import schemas
 
 

@@ -13,7 +13,8 @@ from velour.enums import TaskType
 from velour.metatypes import ImageMetadata
 from velour.schemas import BoundingBox, MultiPolygon, Polygon, Raster
 from velour_api import exceptions
-from velour_api.backend import jobs, models
+from velour_api.backend import models
+from velour_api.crud import jobs
 
 
 @pytest.fixture
@@ -185,7 +186,7 @@ def rect4():
     return BoundingBox.from_extrema(xmin=1, ymin=10, xmax=10, ymax=20)
 
 
-"""Groundtruths"""
+"""GroundTruths"""
 
 
 @pytest.fixture
