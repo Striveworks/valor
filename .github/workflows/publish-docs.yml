@@ -20,5 +20,6 @@ jobs:
           python-version: "3.10"
       - run: pip install --upgrade pip
       - run: pip install "api/.[test]"
+      - run: pip install "client/.[test]"
       - run: pip install mkdocs-material mkdocstrings mkdocs-include-dir-to-nav mkdocstrings-python
       - run: mkdocs gh-deploy
