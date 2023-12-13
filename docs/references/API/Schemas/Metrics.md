@@ -14,5 +14,3 @@
         group_by_category: true
         heading_level: 2
         members_order: alphabetical
-
-

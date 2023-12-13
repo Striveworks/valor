@@ -1,6 +1,7 @@
-from velour_api import enums, schemas
-import velour_api.backend.metrics.segmentation as segmentation
 import pytest
+
+import velour_api.backend.metrics.segmentation as segmentation
+from velour_api import enums, schemas
 
 
 def test_create_semantic_segmentation_evaluation():
