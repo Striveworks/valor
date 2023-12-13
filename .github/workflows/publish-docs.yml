@@ -2,10 +2,11 @@ name: Builds and publishes docs to GitHub pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix_publish_docs]
     paths:
       - docs/**
       - .github/workflows/publish-docs.yml
+    workflow_dispatch:
 
 jobs:
   build-and-publish-docs:
