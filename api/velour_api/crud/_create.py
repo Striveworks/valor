@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from velour_api import backend, enums, schemas
-from velour_api.backend import stateflow
+from velour_api.crud import stateflow
 from velour_api.crud._read import get_disjoint_keys, get_disjoint_labels
 
 
@@ -125,7 +125,7 @@ def create_clf_evaluation(
     )
 
 
-@stateflow.computation
+@stateflow.evaluate
 def compute_clf_metrics(
     *,
     db: Session,
@@ -194,7 +194,7 @@ def create_semantic_segmentation_evaluation(
     )
 
 
-@stateflow.computation
+@stateflow.evaluate
 def compute_semantic_segmentation_metrics(
     *,
     db: Session,
@@ -258,7 +258,7 @@ def create_detection_evaluation(
     )
 
 
-@stateflow.computation
+@stateflow.evaluate
 def compute_detection_metrics(
     *,
     db: Session,

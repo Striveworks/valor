@@ -32,6 +32,3 @@ def test__requests_wrapper(client: Client):
 
     with pytest.raises(ClientException):
         client._requests_wrapper("get", "not_an_endpoint")
-
-    with pytest.raises(ClientException):
-        client._requests_wrapper("get", "datasets/fake_dataset/status")

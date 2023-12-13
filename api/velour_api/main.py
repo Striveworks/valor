@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 
 from velour_api import auth, crud, enums, exceptions, logger, schemas
 from velour_api.api_utils import _split_query_params
-from velour_api.backend import database, jobs
+from velour_api.backend import database
+from velour_api.crud import jobs
 from velour_api.settings import auth_settings
 
 token_auth_scheme = auth.OptionalHTTPBearer()
@@ -375,7 +376,7 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     """
     try:
         crud.create_dataset(db=db, dataset=dataset)
-    except (exceptions.DatasetAlreadyExistsError,) as e:
+    except exceptions.DatasetAlreadyExistsError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -447,7 +448,7 @@ def get_dataset(
 )
 def get_dataset_status(
     dataset_name: str, db: Session = Depends(get_db)
-) -> enums.State:
+) -> enums.JobStatus:
     """
     Fetch the status of a dataset.
 
@@ -462,7 +463,7 @@ def get_dataset_status(
 
     Returns
     -------
-    enums.State
+    enums.JobStatus
         The requested state.
 
     Raises
@@ -471,7 +472,7 @@ def get_dataset_status(
         If the dataset doesn't exist.
     """
     try:
-        resp = crud.get_backend_state(dataset_name=dataset_name)
+        resp = crud.get_job_status(dataset_name=dataset_name)
         return resp
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -552,7 +553,10 @@ def delete_dataset(
         )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except exceptions.StateflowError as e:
+    except (
+        exceptions.JobStateError,
+        exceptions.DatasetNotFinalizedError,
+    ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -749,6 +753,41 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
         raise HTTPException(status_code=404, detail=str(e))
 
 
+# TODO - add the ability to find status of model wrt a dataset
+@app.get(
+    "/models/{model_name}/status",
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Models"],
+)
+def get_model_status(
+    model_name: str, db: Session = Depends(get_db)
+) -> enums.JobStatus:
+    """
+    Fetch the status of a model.
+
+    Parameters
+    ----------
+    model_name : str
+        The name of the model.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    enums.JobStatus
+        The requested state.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the model doesn't exist.
+    """
+    try:
+        return crud.get_job_status(model_name=model_name)
+    except exceptions.ModelDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @app.put(
     "/models/{model_name}/datasets/{dataset_name}/finalize",
     status_code=200,
@@ -798,12 +837,17 @@ def finalize_inferences(
         raise HTTPException(status_code=404, detail=str(e))
 
 
+# TODO - add the ability to delete just predictions for a single dataset
 @app.delete(
     "/models/{model_name}",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
 )
-def delete_model(model_name: str, db: Session = Depends(get_db)):
+def delete_model(
+    model_name: str,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
     """
     Delete a model from the database.
 
@@ -824,10 +868,17 @@ def delete_model(model_name: str, db: Session = Depends(get_db)):
         If the model isn't in the correct state to be deleted.
     """
     try:
-        crud.delete(db=db, model_name=model_name)
+        background_tasks.add_task(
+            crud.delete,
+            db=db,
+            model_name=model_name,
+        )
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
-    except exceptions.StateflowError as e:
+    except (
+        exceptions.JobStateError,
+        exceptions.ModelNotFinalizedError,
+    ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -872,6 +923,8 @@ def create_evaluation(
     ------
     HTTPException (400)
         If the task type of the evaluation job doesn't exist, or if another ValueError is thrown.
+    HTTPException (404)
+        If the dataset or model does not exist.
     HTTPException (405)
         If the dataset or model hasn't been finalized.
     HTTPException (409)
@@ -916,11 +969,16 @@ def create_evaluation(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except (
+        exceptions.DatasetDoesNotExistError,
+        exceptions.ModelDoesNotExistError,
+    ) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except (
         exceptions.DatasetNotFinalizedError,
         exceptions.ModelNotFinalizedError,
     ) as e:
         raise HTTPException(status_code=405, detail=str(e))
-    except exceptions.StateflowError as e:
+    except exceptions.JobStateError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -984,60 +1042,6 @@ def get_bulk_evaluations(
 
 
 @app.get(
-    "/evaluations/dataset/{dataset_name}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Evaluations"],
-)
-def get_evaluation_jobs_for_dataset(
-    dataset_name: str,
-) -> dict[str, list[int]]:
-    """
-    Fetch all evaluation job IDs for a particular dataset.
-
-    GET Endpoint: `/evaluations/dataset/{dataset_name}`
-
-    Parameters
-    ----------
-    dataset_name : str
-        The name of the dataset.
-
-    Returns
-    -------
-    dict
-        A dictionary of evaluation jobs for the dataset.
-    """
-    return crud.get_evaluation_ids_for_dataset(dataset_name=dataset_name)
-
-
-@app.get(
-    "/evaluations/model/{model_name}",
-    status_code=200,
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Evaluations"],
-)
-def get_evaluation_jobs_for_model(
-    model_name: str,
-) -> dict[str, list[int]]:
-    """
-    Fetch all evaluation job IDs for a particular model.
-
-    GET Endpoint: `/evaluations/model/{model_name}`
-
-    Parameters
-    ----------
-    model_name : str
-        The name of the model.
-
-    Returns
-    -------
-    dict
-        A dictionary of evaluation jobs for the model.
-    """
-    return crud.get_evaluation_ids_for_model(model_name=model_name)
-
-
-@app.get(
     "/evaluations/{job_id}",
     dependencies=[Depends(token_auth_scheme)],
     response_model_exclude_none=True,
@@ -1071,8 +1075,8 @@ def get_evaluation(
         If the job ID does not exist
     """
     try:
-        status = crud.get_evaluation_status(
-            job_id=job_id,
+        status = crud.get_job_status(
+            evaluation_id=job_id,
         )
         if status != enums.JobStatus.DONE:
             raise HTTPException(
@@ -1118,12 +1122,9 @@ def get_evaluation_status(job_id: int) -> enums.JobStatus:
     HTTPException (404)
         If the job doesn't exist.
     """
-    try:
-        return crud.get_evaluation_status(
-            job_id=job_id,
-        )
-    except exceptions.JobDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    return crud.get_job_status(
+        evaluation_id=job_id,
+    )
 
 
 @app.get(
