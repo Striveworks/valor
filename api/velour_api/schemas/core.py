@@ -47,17 +47,16 @@ class Dataset(BaseModel):
     """
     A class describing a given dataset.
 
-    Attribute
+    Attributes
     ----------
     id : int
         The ID of the dataset.
     name : str
         The name of the dataset.
-    metadata : dict
+    metadata :  dict
         A dictionary of metadata that describes the dataset.
-    geospatial :  dict
+    geospatial : dict
         A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
-
 
     Raises
     ----------
@@ -92,18 +91,18 @@ class Model(BaseModel):
     """
     A class describing a model that was trained on a particular dataset.
 
-    Attribute
+    Attributes
     ----------
     id : int
         The ID of the model.
     name : str
         The name of the model.
-    metadata : dict
+    metadata :  dict
         A dictionary of metadata that describes the model.
-    geospatial :  dict
-        A GeoJSON-style dictionary describing the geospatial coordinates of the model.
+    geospatial : dict
+        A GeoJSON-style dictionary describing the geospatial metadata of the model.
 
-        Raises
+    Raises
     ----------
     ValueError
         If the name is invalid.

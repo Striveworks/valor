@@ -456,7 +456,7 @@ class Dataset:
     """
     A class describing a given dataset.
 
-    Attribute
+    Attributes
     ----------
     client : Client
         The `Client` object associated with the session.
@@ -743,7 +743,7 @@ class Model:
     """
     A class describing a model that was trained on a particular dataset.
 
-    Attribute
+    Attributes
     ----------
     client : Client
         The `Client` object associated with the session.
