@@ -1,4 +1,4 @@
-::: velour.client.Client
+::: velour.Client
     handler: python
     options:
         show_root_heading: false
