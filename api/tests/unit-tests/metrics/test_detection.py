@@ -1,4 +1,6 @@
-from velour_api import schemas, enums
+import pytest
+
+from velour_api import enums, schemas
 from velour_api.backend.metrics.detection import (
     RankedPair,
     _ap,
@@ -6,7 +8,6 @@ from velour_api.backend.metrics.detection import (
     _compute_mean_detection_metrics_from_aps,
     create_detection_evaluation,
 )
-import pytest
 
 
 def truncate_float(x: float) -> str:

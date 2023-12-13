@@ -72,41 +72,31 @@ class TaskType(str, Enum):
 
 
 class JobStatus(Enum):
+    NONE = "none"
     PENDING = "pending"
+    CREATING = "creating"
     PROCESSING = "processing"
+    DELETING = "deleting"
     FAILED = "failed"
     DONE = "done"
 
     def next(self):
-        if self == self.PENDING:
-            return {self.PENDING, self.PROCESSING}
-        elif self == self.PROCESSING:
-            return {self.PROCESSING, self.DONE, self.FAILED}
-        elif self == self.FAILED:
-            return {self.FAILED, self.PENDING}
-        elif self == self.DONE:
-            return {self.DONE}
-        else:
-            raise ValueError
-
-
-class State(str, Enum):
-    NONE = "none"
-    CREATE = "create"
-    READY = "ready"
-    EVALUATE = "evaluate"
-    DELETE = "delete"
-
-    def next(self):
+        """
+        Returns the set of valid next state transitions based on the current state.
+        """
         if self == self.NONE:
-            return {self.CREATE, self.DELETE}
-        elif self == self.CREATE:
-            return {self.CREATE, self.READY, self.DELETE}
-        elif self == self.READY:
-            return {self.READY, self.EVALUATE, self.DELETE}
-        elif self == self.EVALUATE:
-            return {self.EVALUATE, self.READY}
-        elif self == self.DELETE:
-            return {self.DELETE}
+            return {self.NONE}
+        elif self == self.PENDING:
+            return {self.PENDING, self.CREATING, self.PROCESSING}
+        elif self == self.CREATING:
+            return {self.CREATING, self.DONE, self.FAILED, self.DELETING}
+        elif self == self.PROCESSING:
+            return {self.PROCESSING, self.DONE, self.FAILED, self.DELETING}
+        elif self == self.FAILED:
+            return {self.FAILED, self.CREATING, self.PROCESSING, self.DELETING}
+        elif self == self.DONE:
+            return {self.DONE, self.PROCESSING, self.DELETING}
+        elif self == self.DELETING:
+            return {self.DELETING, self.NONE}
         else:
             raise ValueError

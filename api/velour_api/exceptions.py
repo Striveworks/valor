@@ -242,21 +242,7 @@ class AnnotationAlreadyExistsError(Exception):
     pass
 
 
-""" Jobs & Stateflow"""
-
-
-class StateflowError(Exception):
-    """
-    Raises an exception if the user tries to take an action that violates the correct state order.
-
-    Parameters
-    -------
-    msg : str
-        The message of the stateflow error.
-    """
-
-    def __init__(self, msg: str):
-        return super().__init__(msg)
+""" Jobs """
 
 
 class JobDoesNotExistError(Exception):
@@ -285,5 +271,5 @@ class JobStateError(Exception):
         The message of the stateflow error.
     """
 
-    def __init__(self, id: int, msg: str = "none"):
+    def __init__(self, id: str, msg: str = ""):
         return super().__init__(f"state error with job id: `{id}`, msg: {msg}")
