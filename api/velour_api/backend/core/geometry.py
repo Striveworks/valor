@@ -185,7 +185,7 @@ def convert_geometry(
         )
     if dataset_source_type not in valid_types:
         raise RuntimeError(
-            f"Groundtruth type `{evaluation_target_type}` not in valid set `{valid_types}`"
+            f"GroundTruth type `{evaluation_target_type}` not in valid set `{valid_types}`"
         )
     if model_source_type not in valid_types:
         raise RuntimeError(
