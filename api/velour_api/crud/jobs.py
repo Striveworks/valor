@@ -30,7 +30,7 @@ def retry_connection(timeout: int):
     timeout : int
         The number of seconds to wait before throwing an exception.
 
-    RuntimeError
+    Raises
     ------
     HTTPException (404)
         If the the job doesn't succeed before the timeout parameter.
@@ -88,6 +88,9 @@ def connect_to_redis():
 
 
 def needs_redis(fn):
+    """
+    Decorator to ensure that Redis is connected before wrapped function is executed.
+    """
     def wrapper(*args, **kwargs):
         if r is None:
             connect_to_redis()
@@ -102,31 +105,50 @@ def generate_uuid(
     evaluation_id: int = None,
 ) -> str:
     """
-    Generate a UUID from a combination of the input args.
+    Generate a UUID based on a combination of input arguments.
 
-    Input must match one of the following sets: {dataset_name}, {model_name}, {dataset_name, model_name} or {dataset_name, model_name, evaluation_id}.
+    The UUID is created from the provided parameters and must conform 
+    to one of the following sets to properly generate a UUID.
+
+    - Dataset Job: {dataset_name}
+    - Model Job: {model_name}
+    - Model Prediction Job: {dataset_name, model_name}
+    - Evaluation Job: {dataset_name, model_name, evaluation_id}
 
     Parameters
     ----------
-    dataset_name : Optional[str]
-        Dataset name.
-    datum_uid: Optional[str]
-        Datum uid.
-    model_name : Optional[str]
-        Model name.
-    evaluation_id : Optional[int]
-        Evaluation id.
+    dataset_name : str, optional
+        Name of the dataset.
+    model_name : str, optional
+        Name of the model.
+    evaluation_id : int, optional
+        Unique identifier for the evaluation.
 
     Returns
-    ----------
-    int
+    -------
+    str
+        A unique job identifier generated from the input parameters.
     """
     return f"{dataset_name}+{model_name}+{evaluation_id}"
 
 
 @needs_redis
-def get_status_from_uuid(uuid: str):
-    """Fetch job status from redis."""
+def get_status_from_uuid(uuid: str) -> JobStatus:
+    """
+    Fetch a job using its UUID and return its status.
+
+    If no matching Job exists, JobStatus.NONE is returned.
+
+    Parameters
+    ----------
+    uuid : str
+        Job UUID.
+
+    Returns
+    -------
+    velour.enums.JobStatus
+        The status of the fetched job, or JobStatus.NONE if no matching job is found.
+    """
     json_str = r.get(uuid)
     if json_str is None or not isinstance(json_str, bytes):
         return JobStatus.NONE
@@ -139,8 +161,33 @@ def get_status_from_names(
     dataset_name: str = None,
     model_name: str = None,
     evaluation_id: int = None,
-):
-    """Construct uuid and then fetch job status from redis."""
+) -> JobStatus:
+    """
+    Fetch a job and return its status based on the provided input.
+
+    The input must conform to one of the following sets to properly fetch a job:
+
+    - Dataset Job: {dataset_name}
+    - Model Job: {model_name}
+    - Model Prediction Job: {dataset_name, model_name}
+    - Evaluation Job: {evaluation_id} or {dataset_name, model_name, evaluation_id}
+
+    If no matching Job exists, JobStatus.NONE is returned.
+
+    Parameters
+    ----------
+    dataset_name : str, optional
+        Name of the dataset.
+    model_name : str, optional
+        Name of the model.
+    evaluation_id : int, optional
+        Unique identifier for the evaluation.
+
+    Returns
+    -------
+    velour.enums.JobStatus
+        The status of the fetched job, or JobStatus.NONE if no matching job is found.
+    """
     if evaluation_id and not (dataset_name or model_name):
         uuids = r.keys(pattern=f"*+*+{evaluation_id}")
         if not uuids:
@@ -152,6 +199,25 @@ def get_status_from_names(
 
 
 class Job(BaseModel):
+    """
+    Job is a database abstraction layer.
+
+    This class serves as an object wrapper for interacting with job-related data,
+    utilizing Redis as the default database. However, it can be easily adapted
+    to support other databases.
+
+    Attributes
+    ----------
+    uuid : str
+        A unique identifier for the job.
+    status : velour_api.enums.JobStatus, default=JobStatus.PENDING
+        The status of the job.
+    msg : str, default=""
+        Additional information or messages related to the job.
+    children : set[str], default=Field(default_factory=set)
+        A set containing identifiers of child jobs associated with this job.
+    """
+
     uuid: str
     status: JobStatus = JobStatus.PENDING
     msg: str = ""
@@ -164,7 +230,17 @@ class Job(BaseModel):
         uuid: str,
     ):
         """
-        Create or get Job with matching UUID.
+        Create or fetch a Job with the specified UUID from Redis.
+
+        Parameters
+        ----------
+        uuid : str
+            The UUID of the Job to be retrieved or created.
+
+        Returns
+        -------
+        Job
+            A Job object with the specified UUID.
         """
         json_str = r.get(uuid)
         if json_str is None or not isinstance(json_str, bytes):
@@ -178,13 +254,26 @@ class Job(BaseModel):
     @needs_redis
     def sync(self):
         """
-        Set redis to match Job object.
+        Synchronize the Job object with Redis.
         """
         r.set(self.uuid, self.model_dump_json(exclude={"uuid"}))
 
     def set_status(self, status: JobStatus, msg: str = ""):
         """
-        Set job status.
+        Set the job status with an optional message.
+
+        Parameters
+        ----------
+        status : velour_api.enums.JobStatus
+            The new job status.
+        msg : str, default=""
+            An optional message to include with the new status.
+
+        Raises
+        ------
+        JobStateError
+            If the specified status is not in the allowed next states based on
+            the current job status.
         """
         if status not in self.status.next():
             raise JobStateError(
@@ -197,23 +286,33 @@ class Job(BaseModel):
 
     @needs_redis
     def get_status(self) -> JobStatus:
-        """Fetch job status from redis."""
-        json_str = r.get(self.uuid)
-        if json_str is None or not isinstance(json_str, bytes):
-            return JobStatus.NONE
-        job = json.loads(json_str)
-        return JobStatus(job["status"])
-
-    def register_child(self, uuid: int):
         """
-        Register a child Job.
+        Retrieve the status of the job from Redis.
+
+        Returns
+        -------
+        velour.enums.JobStatus
+            The current status of the job.
+        """
+        return get_status_from_uuid(self.uuid)
+
+    def register_child(self, uuid: str):
+        """
+        Register a child Job by adding its UUID to the set of children.
+
+        Parameters
+        ----------
+        uuid : str
+            The UUID of the child Job to be registered.
         """
         self.children.add(uuid)
         self.sync()
 
     @needs_redis
     def delete(self):
-        """Delete job from redis."""
+        """
+        Delete the job and any associated child jobs from Redis.
+        """
         for child_uuid in self.children:
             self.get(child_uuid).delete()
         r.delete(self.uuid)

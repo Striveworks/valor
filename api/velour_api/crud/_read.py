@@ -13,16 +13,21 @@ def get_job_status(
     """
     Fetch job status.
 
-    Input must match one of the following sets: {dataset_name}, {model_name}, {dataset_name, model_name} or {dataset_name, model_name, evaluation_id}.
+    The input must conform to one of the following sets to properly fetch a job:
+
+    - Dataset Job: {dataset_name}
+    - Model Job: {model_name}
+    - Model Prediction Job: {dataset_name, model_name}
+    - Evaluation Job: {evaluation_id} or {dataset_name, model_name, evaluation_id}
 
     Parameters
     ----------
-    dataset_name : Optional[str]
-        Dataset name.
-    model_name : Optional[str]
-        Model name.
-    evaluation_id : Optional[int]
-        Evaluation id.
+    dataset_name : str, optional
+        Name of a dataset.
+    model_name : str, optional
+        Name of a model.
+    evaluation_id : int, optional
+        Unique identifer of an Evaluation.
 
     Returns
     ----------
