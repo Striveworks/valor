@@ -1,4 +1,4 @@
-::: velour_api.schemas.Stateflow
+::: velour_api.crud.jobs
     handler: python
     options:
         show_root_heading: false
