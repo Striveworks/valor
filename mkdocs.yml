@@ -13,7 +13,7 @@ nav:
   - Endpoints: "endpoints.md"
   - Technical Concepts: "technical_concepts.md"
   - Contributing & Development: "contributing.md"
-  - API & Python Client References: references
+  - References: references
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
