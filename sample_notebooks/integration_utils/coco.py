@@ -8,8 +8,7 @@ import numpy as np
 import PIL.Image
 from tqdm import tqdm
 
-from velour import Annotation, GroundTruth, Label, enums
-from velour.client import Dataset
+from velour import Annotation, GroundTruth, Label, enums, Dataset
 from velour.metatypes import ImageMetadata
 from velour.schemas import Raster
 

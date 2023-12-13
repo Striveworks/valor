@@ -59,6 +59,9 @@ class Label:
             self.score = float(self.score)
         if not isinstance(self.score, (float, type(None))):
             raise TypeError("score should be of type `float`")
+        
+    def __str__(self):
+        return f"Label(key={self.key}, value={self.value}, score={self.score})"
 
     def tuple(self) -> Tuple[str, str, Union[float, None]]:
         """
@@ -201,6 +204,9 @@ class Datum:
         if not isinstance(self.uid, str):
             raise SchemaTypeError("uid", str, self.uid)
         validate_metadata(self.metadata)
+
+    def __str__(self):
+        return f"Datum(uid={self.uid}, dataset={self.dataset}, metadata={self.metadata}, geospatial={self.geospatial})"
 
     def dict(self) -> dict:
         """
@@ -634,6 +640,9 @@ class Dataset:
         self.metadata: dict = None
         self.geospatial: dict = None
 
+    def __str__(self) -> str:
+        return f"Dataset(name={self.name}, metadata={self.metadata}, geospatial={self.geospatial})"
+
     @classmethod
     def create(
         cls,
@@ -957,6 +966,9 @@ class Model:
         self.name: str = ""
         self.metadata: dict = None
         self.geospatial: dict = None
+
+    def __str__(self) -> str:
+        return f"Model(name={self.name}, metadata={self.metadata}, geospatial={self.geospatial})"
 
     @classmethod
     def create(
