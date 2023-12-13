@@ -132,4 +132,3 @@ When deploying behind a proxy or with external routing, the environment variable
 ## Release Process
 
 A release is made by publishing a tag of the form `vX.Y.Z` (e.g. `v0.1.0`). This will trigger a GitHub action that will build and publish the python client to [PyPI](https://pypi.org/project/velour-client/). These releases should be created using the [GitHub UI](https://github.com/Striveworks/velour/releases).
-
