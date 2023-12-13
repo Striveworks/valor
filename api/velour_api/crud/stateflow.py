@@ -25,6 +25,74 @@ class StateflowNode(Enum):
 
 
 class StateflowJob:
+    """
+    Stateflow helper object for managing job statuses.
+
+    This object is designed to assist in managing the workflow of jobs and their statuses
+    within the stateflow architecture. It interacts with the `Job` class and provides
+    methods for setting and updating job statuses based on predefined states.
+
+    The input must include one of the following sets to properly fetch a job:
+
+    - Dataset Job: {dataset_name}
+    - Model Job: {model_name}
+    - Model Prediction Job: {dataset_name, model_name}
+    - Evaluation Job: {evaluation_id} or {dataset_name, model_name, evaluation_id}
+
+    Parameters
+    ----------
+    dataset_name : str or None
+        Name of the dataset.
+    model_name : str or None
+        Name of the model.
+    evaluation_id : int or None
+        Unique identifier for the evaluation.
+    start : JobStatus
+        Initial status of the job.
+    success : JobStatus
+        Status to be set on successful completion.
+    failure : JobStatus
+        Status to be set on failure.
+
+    Attributes
+    ----------
+    dataset_name : str
+        Name of the dataset.
+    model_name : str
+        Name of the model.
+    evaluation_id : int
+        Unique identifier for the evaluation.
+    start : JobStatus
+        Status to be set before execution.
+    success : JobStatus
+        Status to be set after a successful execution.
+    failure : JobStatus
+        Status to be set after a failed execution.
+    uuid : str
+        UUID for the StateflowJob.
+    dataset_uuid : str
+        UUID for the dataset-related job.
+    model_uuid : str
+        UUID for the model-related job.
+    prediction_uuid : str
+        UUID for the prediction-related job.
+    evaluation_uuid : str
+        UUID for the evaluation-related job.
+    job : Job
+        Job instance associated with the StateflowJob.
+    node : StateflowNode
+        Node type representing the context of the StateflowJob.
+
+    Raises
+    ------
+    ValueError
+        If the input parameters do not match any valid StateflowNode.
+
+    Methods
+    -------
+    set_status(status: JobStatus, msg: str = "")
+        Wraps `Job.set_status` to set the status of the associated job.
+    """
     def __init__(
         self,
         dataset_name: str,
@@ -72,11 +140,11 @@ class StateflowJob:
         elif model_name and not (dataset_name or evaluation_id):
             self.node = StateflowNode.MODEL
         else:
-            raise ValueError
+            raise ValueError("")
         
     def set_status(self, status: JobStatus, msg: str = ""):
         """
-        Wraps `Job.set_status`.
+        Wraps `Job.set_status` to set the status of the associated job.
         """
         self.job.set_status(status, msg)
 
@@ -189,8 +257,8 @@ def _validate_parents(state: StateflowJob):
 
         # model has not been created.
         elif get_status_from_uuid(model_uuid) not in [
-            JobStatus.DONE,
             JobStatus.CREATING,
+            JobStatus.DONE,
         ]:
             raise ModelDoesNotExistError(name=model_name)
 
@@ -237,6 +305,9 @@ def _validate_children(state: StateflowJob):
 
 
 def _parse_kwargs(kwargs: dict) -> tuple:
+    """
+    Parses kwargs into {dataset_name, model_name, evaluation_id}.
+    """
     dataset_name = None
     model_name = None
     evaluation_id = None
@@ -282,7 +353,38 @@ def generate_stateflow_decorator(
     ),
 ):
     """
-    Decorator generator function.
+    Decorator generator function for creating Stateflow decorators.
+
+    This function generates decorators for specific states in the Stateflow.
+    The generated decorators can be used to wrap functions or methods, allowing for
+    easy management of job statuses based on predefined states.
+
+    Parameters
+    ----------
+    start : JobStatus, default=JobStatus.PROCESSING
+        Initial status of the job.
+    success : JobStatus, default=JobStatus.DONE
+        Status to be set on successful completion.
+    failure : JobStatus, default=JobStatus.FAILED
+        Status to be set on failure.
+    on_start : callable, optional
+        Function to be executed when transitioning to the start state.
+    on_success : callable, optional
+        Function to be executed when transitioning to the success state.
+    on_failure : callable, optional
+        Function to be executed when transitioning to the failure state.
+
+    Returns
+    -------
+    Callable
+        A decorator that can be used to wrap functions or methods and manage job
+        statuses based on predefined states.
+
+    Notes
+    -----
+    The `on_start`, `on_success`, and `on_failure` functions are executed when
+    transitioning to the corresponding states and can be customized based on
+    specific requirements.
     """
 
     def decorator(fn: callable) -> callable:
@@ -339,10 +441,12 @@ def _finalize_success(state: StateflowJob, msg: str = ""):
 create = generate_stateflow_decorator(
     start=JobStatus.CREATING,
     success=JobStatus.CREATING,
+    failure=JobStatus.CREATING,
 )
 finalize = generate_stateflow_decorator(
     start=JobStatus.CREATING,
     success=JobStatus.DONE,
+    failure=JobStatus.CREATING,
     on_success=_finalize_success,
 )
 evaluate = generate_stateflow_decorator(
