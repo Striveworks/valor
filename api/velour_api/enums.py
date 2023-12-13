@@ -81,6 +81,9 @@ class JobStatus(Enum):
     DONE = "done"
 
     def next(self):
+        """
+        Returns the set of valid next state transitions based on the current state.
+        """
         if self == self.NONE:
             return {self.NONE}
         elif self == self.PENDING:
