@@ -1,8 +1,6 @@
 from enum import Enum
 from functools import wraps
 
-from pydantic import BaseModel
-
 from velour_api.crud.jobs import Job, generate_uuid, get_status_from_uuid
 from velour_api.enums import JobStatus
 from velour_api.exceptions import (
@@ -93,6 +91,7 @@ class StateflowJob:
     set_status(status: JobStatus, msg: str = "")
         Wraps `Job.set_status` to set the status of the associated job.
     """
+
     def __init__(
         self,
         dataset_name: str,
@@ -141,7 +140,7 @@ class StateflowJob:
             self.node = StateflowNode.MODEL
         else:
             raise ValueError("")
-        
+
     def set_status(self, status: JobStatus, msg: str = ""):
         """
         Wraps `Job.set_status` to set the status of the associated job.
@@ -215,7 +214,6 @@ def _validate_parents(state: StateflowJob):
     node = state.node
     dataset_name = state.dataset_name
     model_name = state.model_name
-    evaluation_id = state.evaluation_id
     dataset_uuid = state.dataset_uuid
     model_uuid = state.model_uuid
     prediction_uuid = state.prediction_uuid
@@ -226,14 +224,16 @@ def _validate_parents(state: StateflowJob):
         # dataset and groundtruths are still being created.
         if get_status_from_uuid(dataset_uuid) != JobStatus.DONE:
             raise DatasetNotFinalizedError(name=dataset_name)
-        
+
         # model does not exist.
         elif get_status_from_uuid(model_uuid) == JobStatus.NONE:
             raise ModelDoesNotExistError(name=model_name)
 
         # model is still being created.
         elif get_status_from_uuid(model_uuid) == JobStatus.CREATING:
-            raise ModelNotFinalizedError(dataset_name=dataset_name, model_name=model_name)
+            raise ModelNotFinalizedError(
+                dataset_name=dataset_name, model_name=model_name
+            )
 
         # predictions are still being created.
         elif get_status_from_uuid(prediction_uuid) != JobStatus.DONE:

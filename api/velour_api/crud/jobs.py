@@ -91,6 +91,7 @@ def needs_redis(fn):
     """
     Decorator to ensure that Redis is connected before wrapped function is executed.
     """
+
     def wrapper(*args, **kwargs):
         if r is None:
             connect_to_redis()
@@ -107,7 +108,7 @@ def generate_uuid(
     """
     Generate a UUID based on a combination of input arguments.
 
-    The UUID is created from the provided parameters and must conform 
+    The UUID is created from the provided parameters and must conform
     to one of the following sets to properly generate a UUID.
 
     - Dataset Job: {dataset_name}
