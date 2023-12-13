@@ -63,6 +63,8 @@ def create_groundtruths(
     """
     Create a groundtruth in the database.
 
+    POST Endpoint: `/groundtruths`
+
     Parameters
     ----------
     gt : schemas.GroundTruth
@@ -102,6 +104,8 @@ def get_groundtruth(
 ) -> schemas.GroundTruth | None:
     """
     Fetch a groundtruth from the database.
+
+    GET Endpoint: `/groundtruths/dataset/{dataset_name}/datum/{uid}`
 
     Parameters
     ----------
@@ -151,6 +155,8 @@ def create_predictions(
     """
     Create a prediction in the database.
 
+    POST Endpoint: `/predictions`
+
     Parameters
     ----------
     pd : schemas.Prediction
@@ -191,6 +197,8 @@ def get_prediction(
 ) -> schemas.Prediction | None:
     """
     Fetch a prediction from the database.
+
+    GET Endpoint: `/predictions/model/{model_name}/dataset/{dataset_name}/datum/{uid}`
 
     Parameters
     ----------
@@ -240,6 +248,8 @@ def get_all_labels(db: Session = Depends(get_db)) -> list[schemas.Label]:
     """
     Fetch all labels in the database.
 
+    GET Endpoint: `/labels`
+
     Parameters
     ----------
     db : Session
@@ -264,6 +274,8 @@ def get_labels_from_dataset(
 ) -> list[schemas.Label]:
     """
     Fetch all labels for a particular dataset from the database.
+
+    GET Endpoint: `/labels/dataset/{dataset_name}`
 
     Parameters
     ----------
@@ -304,6 +316,8 @@ def get_labels_from_model(
 ) -> list[schemas.Label]:
     """
     Fetch all labels for a particular model from the database.
+
+    GET Endpoint: `/labels/model/{model_name}`
 
     Parameters
     ----------
@@ -346,6 +360,8 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     """
     Create a dataset in the database.
 
+    POST Endpoint: `/datasets`
+
     Parameters
     ----------
     dataset : schemas.Dataset
@@ -374,6 +390,8 @@ def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
     """
     Fetch all datasets from the database.
 
+    GET Endpoint: `/datasets`
+
     Parameters
     ----------
     db : Session
@@ -397,6 +415,8 @@ def get_dataset(
 ) -> schemas.Dataset:
     """
     Fetch a particular dataset from the database.
+
+    GET Endpoint: `/datasets/{dataset_name}`
 
     Parameters
     ----------
@@ -432,6 +452,8 @@ def get_dataset_status(
     """
     Fetch the status of a dataset.
 
+    GET Endpoint: `/datasets/{dataset_name}/status`
+
     Parameters
     ----------
     dataset_name : str
@@ -465,6 +487,8 @@ def get_dataset_status(
 def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     """
     Finalizes a dataset for evaluation.
+
+    PUT Endpoint: `/datasets/{dataset_name}/finalize`
 
     Parameters
     ----------
@@ -501,6 +525,8 @@ def delete_dataset(
 ):
     """
     Delete a dataset from the database.
+
+    DELETE Endpoint: `/datasets/{dataset_name}`
 
     Parameters
     ----------
@@ -549,6 +575,8 @@ def get_datums(
     """
     Fetch all datums for a particular dataset.
 
+    GET Endpoint: `/data/dataset/{dataset_name}`
+
     Parameters
     ----------
     dataset_name : str
@@ -591,6 +619,8 @@ def get_datum(
 ) -> schemas.Datum | None:
     """
     Fetch a particular datum.
+
+    GET Endpoint: `/data/dataset/{dataset_name}/uid/{uid}`
 
     Parameters
     ----------
@@ -637,6 +667,8 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
     """
     Create a model in the database.
 
+    POST Endpoint: `/models`
+
     Parameters
     ----------
     model : schemas.Model
@@ -672,6 +704,8 @@ def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
     """
     Fetch all models in the database.
 
+    GET Endpoint: `/models`
+
     Parameters
     ----------
     db : Session
@@ -693,6 +727,8 @@ def get_models(db: Session = Depends(get_db)) -> list[schemas.Model]:
 def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     """
     Fetch a particular model.
+
+    GET Endpoint: `/models/{model_name}`
 
     Parameters
     ----------
@@ -764,6 +800,8 @@ def finalize_inferences(
     """
     Finalize a model prior to evaluation.
 
+    PUT Endpoint: `/models/{model_name}/datasets/{dataset_name}/finalize`
+
     Parameters
     ----------
     dataset_name : str
@@ -812,6 +850,8 @@ def delete_model(
 ):
     """
     Delete a model from the database.
+
+    DELETE Endpoint: `/models/{model_name}`
 
     Parameters
     ----------
@@ -862,6 +902,8 @@ def create_evaluation(
 ):
     """
     Create a new evaluation.
+
+    POST Endpoint: `/evaluations`
 
     Parameters
     ----------
@@ -956,6 +998,12 @@ def get_bulk_evaluations(
     may query using model names, dataset names, or both. All metrics for all specified
     models and datasets will be returned in a list of Evaluations.
 
+    This endpoint can handle multiple dataset and model names. For example, you can use
+    `/evaluations?models=first_model,second_model&datasets=test_dataset` to get all evaluations
+    related to `test_dataset` and either `first_model` or `second_model`.
+
+    GET Endpoint: `/evaluations`
+
     Parameters
     ----------
     datasets : str
@@ -1006,6 +1054,8 @@ def get_evaluation(
     """
     Fetch a particular evaluation by its job ID.
 
+    GET Endpoint: `/evaluations/{job_id}`
+
     Parameters
     ----------
     job_id : int
@@ -1055,6 +1105,8 @@ def get_evaluation_status(job_id: int) -> enums.JobStatus:
     """
     Get the status of an evaluation.
 
+    GET Endpoint: `/evaluations/{job_id}/status`
+
     Parameters
     ----------
     job_id: int
@@ -1087,6 +1139,8 @@ def get_evaluation_job(
 ) -> schemas.EvaluationJob:
     """
     Fetch an evaluation job.
+
+    GET Endpoint: `/evaluations/{job_id}/settings`
 
     Parameters
     ----------
@@ -1126,6 +1180,8 @@ def user(
 ) -> schemas.User:
     """
     Verify a user.
+
+    GET Endpoint: `/user`
 
     Parameters
     ----------

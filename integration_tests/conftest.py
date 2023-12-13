@@ -186,7 +186,7 @@ def rect4():
     return BoundingBox.from_extrema(xmin=1, ymin=10, xmax=10, ymax=20)
 
 
-"""Groundtruths"""
+"""GroundTruths"""
 
 
 @pytest.fixture
