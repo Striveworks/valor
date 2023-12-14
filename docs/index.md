@@ -13,7 +13,7 @@ These docs are organized as follows:
 - **[Endpoints](endpoints.md)**: Documents Velour's various API endpoints.
 - **[Technical Concepts](technical_concepts.md)**: Describes the technical concepts that underpin Velour.
 - **[Contributing & Development](getting_started.md)**: Explains how you can build on and contribute to Velour.
-- **[Client References](Client%20References/client.md)**: Shares reference documentation for our API and Python client.
+- **[Python Client API](client_api/client.md)**: Shares reference documentation for our Python client.
 
 # Overview
 
