@@ -116,7 +116,6 @@ def test_geospatial_filter(
                     }
                 ],
             },
-            timeout=30,
         )
     assert (
         "should not include any dataset, model, prediction score or task type filters"
@@ -124,7 +123,7 @@ def test_geospatial_filter(
     )
 
     # test datums
-    eval_job = model.evaluate_detection(
+    eval_results = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
@@ -138,10 +137,9 @@ def test_geospatial_filter(
                 }
             ],
         },
-        timeout=30,
-    )
+    ).wait_for_completion(timeout=30)
 
-    result = asdict(eval_job.results)
+    result = asdict(eval_results)
     assert result["settings"]["filters"]["datum_geospatial"] == [
         {
             "value": {
@@ -154,7 +152,7 @@ def test_geospatial_filter(
         }
     ]
 
-    assert len(eval_job.results.metrics) == 0
+    assert len(eval_results.metrics) == 0
 
     # filtering by model should be disabled as model is called explicitly
     with pytest.raises(ClientException) as e:
@@ -182,7 +180,6 @@ def test_geospatial_filter(
                     }
                 ],
             },
-            timeout=30,
         )
     assert (
         "should not include any dataset, model, prediction score or task type filters"

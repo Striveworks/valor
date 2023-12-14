@@ -1,13 +1,58 @@
-import math
 import os
 import time
-from typing import List, Union
+from typing import List, Union, Callable, Optional, TypeVar
 from urllib.parse import urljoin, urlencode
 
 import requests
 
 from velour.enums import JobStatus
 from velour.schemas.evaluation import EvaluationResult
+
+T = TypeVar("T")
+
+def wait_for_predicate(
+    update_func: Callable[[], T],
+    pred: Callable[[T], bool],
+    timeout: Optional[int],
+    interval: float = 1.0,
+) -> T:
+    """Waits for a condition to become true.
+
+    Repeatedly calls `update_func` to retrieve a new value and checks if the
+    condition `pred` is satisfied.  If `pred` is not satisfied within `timeout`
+    seconds, raises a TimeoutError.  Polls every `interval` seconds.
+
+    Parameters
+    ----------
+    update_func:
+        A callable that returns a value of type T.
+    pred:
+        A predicate callable that takes an argument of type T and returns a boolean.
+    timeout:
+        The maximum number of seconds to wait for the condition to become
+        true. If None, waits indefinitely.
+    interval:
+        The time in seconds between consecutive calls to `update_func`.
+
+    Returns
+    ------
+    T
+        The final value for which `pred` returned True.
+
+    Raises
+    ----------
+    TimeoutError
+        If the condition is not met within `timeout` seconds.
+
+    """
+    t_start = time.time()
+    state = update_func()
+    while not pred(state):
+        time.sleep(interval)
+        if timeout and time.time() - t_start > timeout:
+            raise TimeoutError
+        state = update_func()
+    return state
 
 
 class ClientException(Exception):
@@ -302,17 +347,13 @@ class Job:
         *,
         dataset_name: str = None,
         model_name: str = None,
-        evaluation_id: int = None,
         **kwargs,
     ):
         self.client = client
         self.dataset_name = dataset_name
         self.model_name = model_name
-        self.evaluation_id = evaluation_id
 
-        if evaluation_id:
-            self.url = None # uses client.get_bulk_evaluations
-        elif dataset_name and not model_name:
+        if dataset_name and not model_name:
             self.url = f"datasets/{dataset_name}/status"
         elif model_name and not dataset_name:
             self.url = f"models/{model_name}/status"
@@ -327,29 +368,9 @@ class Job:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-    @property
-    def status(self) -> JobStatus:
-        if self.url is None:
-            response = self.client.get_bulk_evaluations(
-                job_ids=[self.evaluation_id]
-            )
-            if not response:
-                raise ClientException("Not Found")
-            return JobStatus(response[0].status)
+    def get_status(self) -> JobStatus:
         resp = self.client._requests_get_rel_host(self.url).json()
         return JobStatus(resp)
-
-    def results(self):
-        """
-        Certain types of jobs have a return type.
-        """
-        if self.status == JobStatus.DONE:
-            if self.evaluation_id:
-                return self.client.get_bulk_evaluations(
-                    job_ids=[self.evaluation_id]
-                )
-            else:
-                return None
 
     def wait_for_completion(
         self,
@@ -373,11 +394,9 @@ class Job:
         TimeoutError
             If the job's status doesn't change to DONE or FAILED before the timeout expires
         """
-        if timeout:
-            timeout_counter = int(math.ceil(timeout / interval))
-        while self.status not in [JobStatus.DONE, JobStatus.FAILED]:
-            time.sleep(interval)
-            if timeout:
-                timeout_counter -= 1
-                if timeout_counter < 0:
-                    raise TimeoutError
+        wait_for_predicate(
+            lambda: self.get_status(),
+            lambda status: status in [JobStatus.DONE, JobStatus.FAILED],
+            timeout,
+            interval,
+        )

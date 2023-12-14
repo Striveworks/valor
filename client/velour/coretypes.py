@@ -1,11 +1,12 @@
 import json
 import math
+import time
 import warnings
 from dataclasses import asdict
 from typing import Dict, List, Optional, Tuple, Union
 
-from velour.client import Client, ClientException, Job
-from velour.enums import AnnotationType, TaskType
+from velour.client import Client, ClientException, Job, wait_for_predicate
+from velour.enums import AnnotationType, TaskType, JobStatus
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import (
     DetectionParameters,
@@ -857,14 +858,17 @@ class Dataset:
         return job
 
 
-class Evaluation(Job):
+class Evaluation:
     """
     Wraps `velour.client.Job` to provide evaluation-specifc members.
     """
 
-    def __post_init__(self):
-        if not isinstance(self.evaluation_id):
-            raise ValueError("Missing evaluation id.")
+    def __init__(self, client: Client, evaluation_id: int, **kwargs):
+        self.client = client
+        self.evaluation_id = evaluation_id
+
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     def get_result(self) -> EvaluationResult:
         """
@@ -882,42 +886,18 @@ class Evaluation(Job):
             raise ClientException("Not Found")
         return response[0]
 
-
-    @property
-    def settings(self) -> EvaluationSettings:
-        """
-        The settings associated with the evaluation job.
-
-        Returns
-        ----------
-        schemas.EvaluationSettings
-            An `EvaluationSettings` object describing the evaluation's configuration.
-        """
-        return self.get_result().settings
-
-    @property
-    def task_type(self) -> TaskType:
-        """
-        The task type of the evaluation job.
-
-        Returns
-        ----------
-        enums.TaskType
-            The task type associated with the `Evaluation` object.
-        """
-        return self.get_result().task_type
-
-    @property
-    def results(self) -> EvaluationResult:
-        """
-        The results of the evaluation job.
-
-        Returns
-        ----------
-        schemas.EvaluationResult
-            The results from the evaluation.
-        """
-        return self.get_result()
+    def wait_for_completion(
+        self,
+        *,
+        timeout: int = None,
+        interval: float = 1.0,
+    ) -> EvaluationResult:
+        return wait_for_predicate(
+            lambda: self.get_result(),
+            lambda result: result.status in [JobStatus.DONE, JobStatus.FAILED],
+            timeout,
+            interval,
+        )
 
 
 class Model:
@@ -1102,7 +1082,6 @@ class Model:
         self,
         dataset: Dataset,
         filters: Union[Dict, List[BinaryExpression]] = None,
-        timeout: Optional[int] = None,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -1148,10 +1127,6 @@ class Model:
             **resp,
         )
 
-        # blocking behavior
-        if timeout:
-            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
-
         return evaluation_job
 
     def evaluate_detection(
@@ -1160,7 +1135,6 @@ class Model:
         iou_thresholds_to_compute: List[float] = None,
         iou_thresholds_to_keep: List[float] = None,
         filters: Union[Dict, List[BinaryExpression]] = None,
-        timeout: Optional[int] = None,
     ) -> Evaluation:
         """
         Start a object-detection evaluation job.
@@ -1223,15 +1197,9 @@ class Model:
         evaluation_id = resp.pop("job_id")
         evaluation_job = Evaluation(
             client=self.client,
-            dataset_name=dataset.name,
-            model_name=self.name,
             evaluation_id=evaluation_id,
             **resp,
         )
-
-        # blocking behavior
-        if timeout:
-            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
 
         return evaluation_job
 
@@ -1239,7 +1207,6 @@ class Model:
         self,
         dataset: Dataset,
         filters: Union[Dict, List[BinaryExpression]] = None,
-        timeout: Optional[int] = None,
     ) -> Evaluation:
         """
         Start a semantic-segmentation evaluation job.
@@ -1281,15 +1248,9 @@ class Model:
         evaluation_id = resp.pop("job_id")
         evaluation_job = Evaluation(
             client=self.client,
-            dataset_name=dataset.name,
-            model_name=self.name,
             evaluation_id=evaluation_id,
             **resp,
         )
-
-        # blocking behavior
-        if timeout:
-            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
 
         return evaluation_job
 
