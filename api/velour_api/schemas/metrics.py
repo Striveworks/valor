@@ -39,11 +39,12 @@ class DetectionParameters(BaseModel):
     @classmethod
     def _check_ious(cls, values):
         """Validate the IOU thresholds."""
-        for iou in values.iou_thresholds_to_keep:
-            if iou not in values.iou_thresholds_to_compute:
-                raise ValueError(
-                    "`iou_thresholds_to_keep` must be contained in `iou_thresholds_to_compute`"
-                )
+        if values.iou_thresholds_to_keep and values.iou_thresholds_to_compute:
+            for iou in values.iou_thresholds_to_keep:
+                if iou not in values.iou_thresholds_to_compute:
+                    raise ValueError(
+                        "`iou_thresholds_to_keep` must be contained in `iou_thresholds_to_compute`"
+                    )
         return values
 
 
