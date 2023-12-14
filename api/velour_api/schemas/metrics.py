@@ -385,11 +385,11 @@ class _BaseConfusionMatrix(BaseModel):
 
 class ConfusionMatrix(_BaseConfusionMatrix):
     """
-    Describes a cconfusion matrix.
+    Describes a confusion matrix.
 
     Attributes
     ----------
-    label_ley : str
+    label_key : str
         A label for the matrix.
     entries : List[ConfusionMatrixEntry]
         A list of entries for the matrix.
@@ -505,8 +505,8 @@ class _PrecisionRecallF1Base(BaseModel):
     @field_validator("value")
     @classmethod
     def _replace_nan_with_neg_1(cls, v):
-        """Convert null values to -1.s"""
-        if np.isnan(v):
+        """Convert null values to -1."""
+        if v is None:
             return -1
         return v
 
