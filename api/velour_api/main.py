@@ -48,6 +48,31 @@ def get_db():
         db.close()
 
 
+def create_background_task_with_precheck(
+    *_,
+    handler: BackgroundTasks,
+    task: callable,
+    **kwargs,
+):
+    """
+    Runs precheck validation on the stateflow decorator before creating a background task.
+
+    Parameters
+    ----------
+    handler : BackgroundTasks
+        The background task handler to add the task to.
+    task : Callable
+        The callable task function to be executed.
+    **kwargs
+        Additional keyword arguments to be passed to the task.
+    """
+    task(precheck=True, **kwargs)
+    handler.add_task(
+        task,
+        **kwargs,
+    )
+
+
 """ GROUNDTRUTHS """
 
 
@@ -546,8 +571,9 @@ def delete_dataset(
     """
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
-        background_tasks.add_task(
-            crud.delete,
+        create_background_task_with_precheck(
+            handler=background_tasks,
+            task=crud.delete,
             db=db,
             dataset_name=dataset_name,
         )
@@ -866,8 +892,9 @@ def delete_model(
         If the model isn't in the correct state to be deleted.
     """
     try:
-        background_tasks.add_task(
-            crud.delete,
+        create_background_task_with_precheck(
+            handler=background_tasks,
+            task=crud.delete,
             db=db,
             model_name=model_name,
         )
@@ -933,8 +960,9 @@ def create_evaluation(
         # add metric computation to background tasks
         if job_request.task_type == enums.TaskType.CLASSIFICATION:
             resp = crud.create_clf_evaluation(db=db, job_request=job_request)
-            background_tasks.add_task(
-                crud.compute_clf_metrics,
+            create_background_task_with_precheck(
+                handler=background_tasks,
+                task=crud.compute_clf_metrics,
                 db=db,
                 job_request=job_request,
                 job_id=resp.job_id,
@@ -943,8 +971,9 @@ def create_evaluation(
             resp = crud.create_detection_evaluation(
                 db=db, job_request=job_request
             )
-            background_tasks.add_task(
-                crud.compute_detection_metrics,
+            create_background_task_with_precheck(
+                handler=background_tasks,
+                task=crud.compute_detection_metrics,
                 db=db,
                 job_request=job_request,
                 job_id=resp.job_id,
@@ -953,8 +982,9 @@ def create_evaluation(
             resp = crud.create_semantic_segmentation_evaluation(
                 db=db, job_request=job_request
             )
-            background_tasks.add_task(
-                crud.compute_semantic_segmentation_metrics,
+            create_background_task_with_precheck(
+                handler=background_tasks,
+                task=crud.compute_semantic_segmentation_metrics,
                 db=db,
                 job_request=job_request,
                 job_id=resp.job_id,

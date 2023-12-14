@@ -7,6 +7,7 @@ from velour_api.exceptions import (
     DatasetDoesNotExistError,
     DatasetFinalizedError,
     DatasetNotFinalizedError,
+    DatasetAlreadyExistsError,
     JobStateError,
     ModelAlreadyExistsError,
     ModelDoesNotExistError,
@@ -186,13 +187,33 @@ def _validate_transition(state: StateflowJob):
 
         # attempt to process before finalization
         if (
-            state.start == JobStatus.PROCESSING
-            and current_status == JobStatus.CREATING
+            current_status == JobStatus.CREATING
+            and state.start == JobStatus.PROCESSING
         ):
             if node == StateflowNode.PREDICTION:
                 raise ModelNotFinalizedError(
                     dataset_name=dataset_name, model_name=model_name
                 )
+            
+        # attempt to create while deleting
+        if (
+            current_status == JobStatus.DELETING
+            and state.start == JobStatus.CREATING
+        ):
+            if node == StateflowNode.DATASET:
+                raise DatasetAlreadyExistsError(name=state.dataset_name)
+            elif node == StateflowNode.MODEL:
+                raise ModelAlreadyExistsError(name=state.model_name)
+            
+        # attempt to delete when does not exist
+        if (
+            current_status == JobStatus.PENDING
+            and state.start == JobStatus.DELETING
+        ):
+            if node == StateflowNode.DATASET:
+                raise DatasetDoesNotExistError(name=state.dataset_name)
+            elif node == StateflowNode.MODEL:
+                raise ModelDoesNotExistError(name=state.model_name)
 
         raise JobStateError(
             job.uuid,
@@ -389,7 +410,7 @@ def generate_stateflow_decorator(
 
     def decorator(fn: callable) -> callable:
         @wraps(fn)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, precheck: bool = False, **kwargs):
             if len(args) > 0:
                 raise ValueError(
                     "Stateflow decorator can only recognize explicit arguments (kwargs)."
@@ -409,6 +430,12 @@ def generate_stateflow_decorator(
             _validate_transition(state)
             _validate_parents(state)
             _validate_children(state)
+
+            # If precheck is defined as True then return.
+            # This exists for background tasks that just need 
+            # to run the validation step.
+            if precheck:
+                return
 
             # wrapped function execution
             on_start(state)
