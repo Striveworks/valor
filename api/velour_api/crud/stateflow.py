@@ -7,6 +7,7 @@ from velour_api.exceptions import (
     DatasetDoesNotExistError,
     DatasetFinalizedError,
     DatasetNotFinalizedError,
+    DatasetAlreadyExistsError,
     JobStateError,
     ModelAlreadyExistsError,
     ModelDoesNotExistError,
@@ -186,13 +187,33 @@ def _validate_transition(state: StateflowJob):
 
         # attempt to process before finalization
         if (
-            state.start == JobStatus.PROCESSING
-            and current_status == JobStatus.CREATING
+            current_status == JobStatus.CREATING
+            and state.start == JobStatus.PROCESSING
         ):
             if node == StateflowNode.PREDICTION:
                 raise ModelNotFinalizedError(
                     dataset_name=dataset_name, model_name=model_name
                 )
+            
+        # attempt to create while deleting
+        if (
+            current_status == JobStatus.DELETING
+            and state.start == JobStatus.CREATING
+        ):
+            if node == StateflowNode.DATASET:
+                raise DatasetAlreadyExistsError(name=state.dataset_name)
+            elif node == StateflowNode.MODEL:
+                raise ModelAlreadyExistsError(name=state.model_name)
+            
+        # attempt to delete when does not exist
+        if (
+            current_status == JobStatus.PENDING
+            and state.start == JobStatus.DELETING
+        ):
+            if node == StateflowNode.DATASET:
+                raise DatasetDoesNotExistError(name=state.dataset_name)
+            elif node == StateflowNode.MODEL:
+                raise ModelDoesNotExistError(name=state.model_name)
 
         raise JobStateError(
             job.uuid,
