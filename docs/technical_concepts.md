@@ -65,7 +65,7 @@ Finally, we created a client to make it easier for our users to play with Velour
 
 ## Classes
 
-The Velour API and Python client both make use of six core classes. [Click here](references/API/Schemas/Core.md) for technical references on each of these classes in our API reference docs.
+The Velour API and Python client both make use of six core classes:
 
 ### `Dataset`
 
