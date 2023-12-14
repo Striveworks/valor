@@ -49,13 +49,22 @@ def get_db():
 
 
 def create_background_task_with_precheck(
+    *_,
     handler: BackgroundTasks,
     task: callable,
-    *_,
     **kwargs,
 ):
     """
-    Runs precheck validation on stateflow decorator before creating background task.
+    Runs precheck validation on the stateflow decorator before creating a background task.
+
+    Parameters
+    ----------
+    handler : BackgroundTasks
+        The background task handler to add the task to.
+    task : Callable
+        The callable task function to be executed.
+    **kwargs
+        Additional keyword arguments to be passed to the task.
     """
     task(precheck=True, **kwargs)
     handler.add_task(
