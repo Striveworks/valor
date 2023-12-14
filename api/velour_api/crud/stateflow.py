@@ -410,7 +410,7 @@ def generate_stateflow_decorator(
 
     def decorator(fn: callable) -> callable:
         @wraps(fn)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args, precheck: bool = False, **kwargs):
             if len(args) > 0:
                 raise ValueError(
                     "Stateflow decorator can only recognize explicit arguments (kwargs)."
@@ -430,6 +430,12 @@ def generate_stateflow_decorator(
             _validate_transition(state)
             _validate_parents(state)
             _validate_children(state)
+
+            # If precheck is defined as True then return.
+            # This exists for background tasks that just need 
+            # to run the validation step.
+            if precheck:
+                return
 
             # wrapped function execution
             on_start(state)

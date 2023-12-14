@@ -1,6 +1,6 @@
 # Introduction
 
-Velour is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. Velour empowers data scientists and engineers to evaluate the performance of their machine learning pipelines and use those evaluations to make better modeling decisions in the future.
+Velour is a centralized evaluation store which makes it easy to measure, explore, and rank model performance. Velour empowers data scientists and engineers to evaluate the performance of their machine learning pipelines and use those evaluations to make better modeling decisions in the future. [Click here](#TODO add after notebooks are finished) to skip this textual introduction and dive right into our sample notebook.
 
 Velour is maintained by Striveworks, a cutting-edge MLOps company based out of Austin, Texas. We'd love to learn more about your interest in Velour and answer any questions you may have; please don't hesitate to reach out to us on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email) or [GitHub](https://github.com/striveworks/velour).
 
@@ -8,11 +8,12 @@ Velour is maintained by Striveworks, a cutting-edge MLOps company based out of A
 These docs are organized as follows:
 
 - **[Overview](index.md)** (this page): Provides an overview of what Velour is, why it's important, and how it works.
+- **[Sample Notebook](#TODO update this link when notebook is complete)**: Illustrates how to evaluate model performance using Velour in a descriptive Jupyter notebook.
 - **[Getting Started](getting_started.md)**: Details everything you need to get up-and-running with Velour.
 - **[Endpoints](endpoints.md)**: Documents Velour's various API endpoints.
 - **[Technical Concepts](technical_concepts.md)**: Describes the technical concepts that underpin Velour.
 - **[Contributing & Development](getting_started.md)**: Explains how you can build on and contribute to Velour.
-- **[References](references/Python%20Client/client.md)**: Shares reference documentation for our API and Python client.
+- **[Python Client API](client_api/client.md)**: Shares reference documentation for our Python client.
 
 # Overview
 
