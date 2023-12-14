@@ -270,6 +270,63 @@ class Annotation:
     ----------
     geometric_area : float
         The area of the annotation.
+
+    Examples
+    --------
+
+    Classification
+    >>> Annotation(
+    ...     task_type=TaskType.CLASSIFICATION,
+    ...     labels=[
+    ...         Label(key="class", value="dog"),
+    ...         Label(key="category", value="animal"),
+    ...     ]
+    ... )
+
+    Object-Detection BoundingBox
+    >>> annotation = Annotation(
+    ...     task_type=TaskType.DETECTION,
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     bounding_box=box2,
+    ... )
+
+    Object-Detection Polygon
+    >>> annotation = Annotation(
+    ...     task_type=TaskType.DETECTION,
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     polygon=polygon1,
+    ... )
+
+    Object-Detection Mulitpolygon
+    >>> annotation = Annotation(
+    ...     task_type=TaskType.DETECTION,
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     multipolygon=multipolygon,
+    ... )
+
+    Object-Detection Raster
+    >>> annotation = Annotation(
+    ...     task_type=TaskType.DETECTION,
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     raster=raster1,
+    ... )
+
+    Semantic-Segmentation Raster
+    >>> annotation = Annotation(
+    ...     task_type=TaskType.SEGMENTATION,
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     raster=raster1,
+    ... )
+
+    Defining all supported annotation-types for a given task_type is allowed!
+    >>> Annotation(
+    ...     task_type=TaskType.DETECTION,
+    ...     labels=[Label(key="k1", value="v1")],
+    ...     bounding_box=box1,
+    ...     polygon=polygon1,
+    ...     multipolygon=multipolygon,
+    ...     raster=raster1,
+    ... )
     """
 
     task = DeclarativeMapper("task_types", TaskType)
