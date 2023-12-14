@@ -23,6 +23,6 @@ jobs:
       - name: install client
         run: pip install "client/.[test]"
       - name: install mkdocs and plug-ins
-        run: pip install mkdocs-material mkdocstrings mkdocs-include-dir-to-nav mkdocstrings-python
+        run: pip install mkdocs-material mkdocstrings mkdocs-include-dir-to-nav mkdocstrings-python mkdocs-swagger-ui-tag
       - name: deploy docs to gh
         run: mkdocs gh-deploy

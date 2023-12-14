@@ -1,4 +1,4 @@
-site_name: velour
+site_name: Velour
 repo_url: https://github.com/striveworks/velour
 theme:
   name: material
@@ -33,3 +33,6 @@ plugins:
   - include_dir_to_nav:
       sort_file: true
       sort_directory: true
+  - swagger-ui-tag:
+      syntaxHighlightTheme: monokai
+      tryItOutEnabled: False
