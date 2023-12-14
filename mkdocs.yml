@@ -9,11 +9,12 @@ theme:
     primary: deep purple
 nav:
   - Overview: "index.md"
+  - Sample Notebook: "https://google.com" #TODO update this link when notebook is complete
   - Getting Started: "getting_started.md"
   - Endpoints: "endpoints.md"
   - Technical Concepts: "technical_concepts.md"
   - Contributing & Development: "contributing.md"
-  - References: references
+  - References: "Client References"
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
