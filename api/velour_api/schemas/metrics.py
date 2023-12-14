@@ -139,10 +139,10 @@ class CreateClfMetricsResponse(BaseModel):
 
     Attributes
     ----------
-    missing_pred_labels: list[Label]
-        A list of missing prediction labels.
-    ignored_pred_labels: list[Label]
-        A list of ignored preiction labels.
+    missing_pred_keys: list[str]
+        A list of missing prediction keys.
+    ignored_pred_keys: list[str]
+        A list of ignored preiction keys.
     job_id: int
         The job ID.
     """

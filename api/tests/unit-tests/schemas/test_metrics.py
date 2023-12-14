@@ -70,34 +70,303 @@ def test_metrics_EvaluationSettings():
         schemas.EvaluationSettings(filters="random_string")
 
 
-# @TODO
-def test_metrics_APRequest():
-    pass
+def test_metrics_EvaluationJob():
+    schemas.EvaluationJob(
+        model="test_model",
+        dataset="test_dataset",
+        task_type=enums.TaskType.DETECTION,
+        settings=schemas.EvaluationSettings(
+            parameters=schemas.DetectionParameters(
+                iou_thresholds_to_compute=[0.2, 0.6],
+                iou_thresholds_to_keep=[0.2],
+            ),
+            filters=schemas.Filter(
+                annotation_types=[enums.AnnotationType.BOX],
+                label_keys=["k1"],
+            ),
+        ),
+    )
+
+    # test model argument errors
+    with pytest.raises(ValidationError):
+        schemas.EvaluationJob(
+            model=123,
+            dataset="test_dataset",
+            task_type=enums.TaskType.DETECTION,
+            settings=schemas.EvaluationSettings(
+                parameters=schemas.DetectionParameters(
+                    iou_thresholds_to_compute=[0.2, 0.6],
+                    iou_thresholds_to_keep=[0.2],
+                ),
+                filters=schemas.Filter(
+                    annotation_types=[enums.AnnotationType.BOX],
+                    label_keys=["k1"],
+                ),
+            ),
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.EvaluationJob(
+            model=None,
+            dataset="test_dataset",
+            task_type=enums.TaskType.DETECTION,
+            settings=schemas.EvaluationSettings(
+                parameters=schemas.DetectionParameters(
+                    iou_thresholds_to_compute=[0.2, 0.6],
+                    iou_thresholds_to_keep=[0.2],
+                ),
+                filters=schemas.Filter(
+                    annotation_types=[enums.AnnotationType.BOX],
+                    label_keys=["k1"],
+                ),
+            ),
+        )
+
+        # test dataset errors
+        with pytest.raises(ValidationError):
+            schemas.EvaluationJob(
+                model="model",
+                dataset=None,
+                task_type=enums.TaskType.DETECTION,
+                settings=schemas.EvaluationSettings(
+                    parameters=schemas.DetectionParameters(
+                        iou_thresholds_to_compute=[0.2, 0.6],
+                        iou_thresholds_to_keep=[0.2],
+                    ),
+                    filters=schemas.Filter(
+                        annotation_types=[enums.AnnotationType.BOX],
+                        label_keys=["k1"],
+                    ),
+                ),
+            )
+
+        with pytest.raises(ValidationError):
+            schemas.EvaluationJob(
+                model="model",
+                dataset=123,
+                task_type=enums.TaskType.DETECTION,
+                settings=schemas.EvaluationSettings(
+                    parameters=schemas.DetectionParameters(
+                        iou_thresholds_to_compute=[0.2, 0.6],
+                        iou_thresholds_to_keep=[0.2],
+                    ),
+                    filters=schemas.Filter(
+                        annotation_types=[enums.AnnotationType.BOX],
+                        label_keys=["k1"],
+                    ),
+                ),
+            )
+
+        # test task type and settings errors
+        with pytest.raises(ValidationError):
+            schemas.EvaluationJob(
+                model="model",
+                dataset="dataset",
+                task_type="not a task type",
+                settings=schemas.EvaluationSettings(
+                    parameters=schemas.DetectionParameters(
+                        iou_thresholds_to_compute=[0.2, 0.6],
+                        iou_thresholds_to_keep=[0.2],
+                    ),
+                    filters=schemas.Filter(
+                        annotation_types=[enums.AnnotationType.BOX],
+                        label_keys=["k1"],
+                    ),
+                ),
+            )
+
+        with pytest.raises(ValidationError):
+            schemas.EvaluationJob(
+                model="model",
+                dataset="dataset",
+                task_type=None,
+                settings=schemas.EvaluationSettings(
+                    parameters=schemas.DetectionParameters(
+                        iou_thresholds_to_compute=[0.2, 0.6],
+                        iou_thresholds_to_keep=[0.2],
+                    ),
+                    filters=schemas.Filter(
+                        annotation_types=[enums.AnnotationType.BOX],
+                        label_keys=["k1"],
+                    ),
+                ),
+            )
+
+        with pytest.raises(ValidationError):
+            schemas.EvaluationJob(
+                model="model",
+                dataset="dataset",
+                task_type=enums.TaskType.DETECTION,
+                settings=123,
+            )
+
+        with pytest.raises(ValidationError):
+            schemas.EvaluationJob(
+                model="model",
+                dataset="dataset",
+                task_type=enums.TaskType.DETECTION,
+                settings=None,
+            )
 
 
-# @TODO
 def test_metrics_CreateDetectionMetricsResponse():
-    pass
+    schemas.CreateDetectionMetricsResponse(
+        missing_pred_labels=[], ignored_pred_labels=[], job_id=1
+    )
+
+    schemas.CreateDetectionMetricsResponse(
+        missing_pred_labels=[schemas.Label(key="k1", value="v1")],
+        ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
+        job_id=123,
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.CreateDetectionMetricsResponse(
+            missing_pred_labels=None,
+            ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
+            job_id=123,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.CreateDetectionMetricsResponse(
+            missing_pred_labels=schemas.Label(key="k1", value="v1"),
+            ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
+            job_id=123,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.CreateDetectionMetricsResponse(
+            missing_pred_labels=[schemas.Label(key="k1", value="v1")],
+            ignored_pred_labels=None,
+            job_id=123,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.CreateDetectionMetricsResponse(
+            missing_pred_labels=[schemas.Label(key="k1", value="v1")],
+            ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
+            job_id="not a job id",
+        )
 
 
-# @TODO
+def test_metrics_CreateSemanticSegmentationMetricsResponse():
+    schemas.CreateDetectionMetricsResponse(
+        missing_pred_labels=[], ignored_pred_labels=[], job_id=1
+    )
+
+    schemas.CreateSemanticSegmentationMetricsResponse(
+        missing_pred_labels=[schemas.Label(key="k1", value="v1")],
+        ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
+        job_id=123,
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.CreateSemanticSegmentationMetricsResponse(
+            missing_pred_labels=None,
+            ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
+            job_id=123,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.CreateSemanticSegmentationMetricsResponse(
+            missing_pred_labels=schemas.Label(key="k1", value="v1"),
+            ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
+            job_id=123,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.CreateSemanticSegmentationMetricsResponse(
+            missing_pred_labels=[schemas.Label(key="k1", value="v1")],
+            ignored_pred_labels=None,
+            job_id=123,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.CreateSemanticSegmentationMetricsResponse(
+            missing_pred_labels=[schemas.Label(key="k1", value="v1")],
+            ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
+            job_id="not a job id",
+        )
+
+
 def test_metrics_CreateClfMetricsResponse():
-    pass
+    schemas.CreateClfMetricsResponse(
+        missing_pred_keys=["k1", "k2"],
+        ignored_pred_keys=["k1", "k2"],
+        job_id=123,
+    )
+
+    schemas.CreateClfMetricsResponse(
+        missing_pred_keys=[],
+        ignored_pred_keys=[],
+        job_id=123,
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.CreateClfMetricsResponse(
+            missing_pred_keys=None,
+            ignored_pred_keys=["k1", "k2"],
+            job_id=123,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.CreateClfMetricsResponse(
+            missing_pred_keys="k1",
+            ignored_pred_keys=["k1", "k2"],
+            job_id=123,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.CreateClfMetricsResponse(
+            missing_pred_keys=["k1", "k2"],
+            ignored_pred_keys=None,
+            job_id=123,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.CreateClfMetricsResponse(
+            missing_pred_keys=["k1", "k2"],
+            ignored_pred_keys=["k1", "k2"],
+            job_id="not a job id",
+        )
 
 
-# @TODO
 def test_metrics_Job():
-    pass
+    schemas.metrics.Job(
+        uid="uid",
+        status=enums.JobStatus.PENDING,
+    )
+
+    with pytest.raises(ValidationError):
+        schemas.metrics.Job(
+            uid=123,
+            status=enums.JobStatus.PENDING,
+        )
+
+    with pytest.raises(ValidationError):
+        schemas.metrics.Job(
+            uid="uid",
+            status="not a status",
+        )
 
 
-# @TODO
-def test_metrics_ClfMetricsRequest():
-    pass
-
-
-# @TODO
 def test_metrics_Metric():
-    pass
+    schemas.Metric(
+        type="detection",
+        parameters={},
+        value=0.2,
+        label=schemas.Label(key="k1", value="v1"),
+    )
+
+    schemas.Metric(type="detection")
+
+    with pytest.raises(ValidationError):
+        schemas.Metric(
+            type="detection",
+            parameters=123,
+            value=0.2,
+            label=schemas.Label(key="k1", value="v1"),
+        )
 
 
 # @TODO
