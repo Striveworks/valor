@@ -2,7 +2,7 @@ name: Builds and publishes docs to GitHub pages
 
 on:
   push:
-    branches: [main, incorporate_doc_feedback]
+    branches: [main]
     paths:
       - docs/**
       - .github/workflows/publish-docs.yml
@@ -25,6 +25,6 @@ jobs:
       - name: install mkdocs and plug-ins
         run: pip install mkdocs-material mkdocstrings mkdocs-include-dir-to-nav mkdocstrings-python mkdocs-swagger-ui-tag
       - name: generate new swagger docs
-        run: python docs/static/generate_swagger_docs.py
+        run: python docs/scripts/generate_swagger_docs.py
       - name: deploy docs to gh
         run: mkdocs gh-deploy
