@@ -1,6 +1,7 @@
 !*.ipynb
 
-coco
 *.pt
 *.png
 *.jpg
+
+coco
