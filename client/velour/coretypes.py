@@ -862,7 +862,7 @@ class Evaluation(Job):
     """
 
     def __post_init__(self):
-        if not isinstance(self.evaluation_id):
+        if not isinstance(self.evaluation_id, int):
             raise ValueError("Missing evaluation id.")
 
     @property
