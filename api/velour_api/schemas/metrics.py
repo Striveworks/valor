@@ -506,7 +506,7 @@ class _PrecisionRecallF1Base(BaseModel):
     @classmethod
     def _replace_nan_with_neg_1(cls, v):
         """Convert null values to -1."""
-        if v is None:
+        if v is None or np.isnan(v):
             return -1
         return v
 
