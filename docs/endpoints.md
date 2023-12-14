@@ -1,3 +1,3 @@
 # Endpoints
 
-<swagger-ui src="static/swagger.json"/>
+<swagger-ui src="static/openapi.json"/>
