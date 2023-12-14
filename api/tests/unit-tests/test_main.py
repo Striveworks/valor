@@ -827,14 +827,15 @@ def test_delete_dataset(crud, client: TestClient):
     crud.delete.return_value = None
     resp = client.delete("/datasets/dsetname")
     assert resp.status_code == 200
-    crud.delete.assert_called_once()
-
+    assert crud.delete.call_count == 2
+    
     with patch(
         "fastapi.BackgroundTasks.add_task",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.delete("/datasets/dsetname")
         assert resp.status_code == 404
+        assert crud.delete.call_count == 3
 
     with patch(
         "fastapi.BackgroundTasks.add_task",
@@ -842,6 +843,7 @@ def test_delete_dataset(crud, client: TestClient):
     ):
         resp = client.delete("/datasets/dsetname")
         assert resp.status_code == 409
+        assert crud.delete.call_count == 4
 
 
 """ POST /models """
@@ -940,7 +942,7 @@ def test_delete_model(crud, client: TestClient):
     crud.delete.return_value = None
     resp = client.delete("/models/modelname")
     assert resp.status_code == 200
-    crud.delete.assert_called_once()
+    assert crud.delete.call_count == 2
 
     with patch(
         "fastapi.BackgroundTasks.add_task",
@@ -948,6 +950,7 @@ def test_delete_model(crud, client: TestClient):
     ):
         resp = client.delete("/models/modelname")
         assert resp.status_code == 404
+        assert crud.delete.call_count == 3
 
     with patch(
         "fastapi.BackgroundTasks.add_task",
@@ -955,6 +958,7 @@ def test_delete_model(crud, client: TestClient):
     ):
         resp = client.delete("/models/modelname")
         assert resp.status_code == 409
+        assert crud.delete.call_count == 4
 
 
 """ POST /evaluations/ap-metrics """

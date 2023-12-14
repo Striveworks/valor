@@ -15,8 +15,6 @@ build
 .DS_Store
 site/*
 *.ipynb
-!coco-panoptic.ipynb
-!tabular.ipynb
 
 node_modules
 
