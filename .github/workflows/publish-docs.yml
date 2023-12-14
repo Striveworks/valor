@@ -2,7 +2,7 @@ name: Builds and publishes docs to GitHub pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, incorporate_doc_feedback]
     paths:
       - docs/**
       - .github/workflows/publish-docs.yml

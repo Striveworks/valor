@@ -36,3 +36,4 @@ plugins:
   - swagger-ui-tag:
       syntaxHighlightTheme: monokai
       tryItOutEnabled: False
+      supportedSubmitMethods: []
