@@ -1,4 +1,0 @@
-services:
-  web:
-    volumes:
-      - ./api/velour_api:/src/velour_api

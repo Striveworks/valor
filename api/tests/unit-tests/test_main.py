@@ -112,7 +112,7 @@ def _test_post_evaluation_endpoint(
 
     with patch(
         "fastapi.BackgroundTasks.add_task",
-        side_effect=exceptions.StateflowError(""),
+        side_effect=exceptions.JobStateError(""),
     ):
         resp = client.post(endpoint, json=example_json)
         assert resp.status_code == 409
@@ -779,13 +779,13 @@ def test_get_dataset_by_name(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_dataset_status(crud, client: TestClient):
-    crud.get_backend_state.return_value = "ready"
+    crud.get_job_status.return_value = JobStatus.DONE.value
     resp = client.get("/datasets/dsetname/status")
     assert resp.status_code == 200
-    crud.get_backend_state.assert_called_once()
+    crud.get_job_status.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_backend_state",
+        "velour_api.main.crud.get_job_status",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("/datasets/dsetname/status")
@@ -827,21 +827,23 @@ def test_delete_dataset(crud, client: TestClient):
     crud.delete.return_value = None
     resp = client.delete("/datasets/dsetname")
     assert resp.status_code == 200
-    crud.delete.assert_called_once()
-
+    assert crud.delete.call_count == 2
+    
     with patch(
         "fastapi.BackgroundTasks.add_task",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.delete("/datasets/dsetname")
         assert resp.status_code == 404
+        assert crud.delete.call_count == 3
 
     with patch(
         "fastapi.BackgroundTasks.add_task",
-        side_effect=exceptions.StateflowError(""),
+        side_effect=exceptions.JobStateError(""),
     ):
         resp = client.delete("/datasets/dsetname")
         assert resp.status_code == 409
+        assert crud.delete.call_count == 4
 
 
 """ POST /models """
@@ -940,21 +942,23 @@ def test_delete_model(crud, client: TestClient):
     crud.delete.return_value = None
     resp = client.delete("/models/modelname")
     assert resp.status_code == 200
-    crud.delete.assert_called_once()
+    assert crud.delete.call_count == 2
 
     with patch(
-        "velour_api.main.crud.delete",
+        "fastapi.BackgroundTasks.add_task",
         side_effect=exceptions.ModelDoesNotExistError(""),
     ):
         resp = client.delete("/models/modelname")
         assert resp.status_code == 404
+        assert crud.delete.call_count == 3
 
     with patch(
-        "velour_api.main.crud.delete",
-        side_effect=exceptions.StateflowError(""),
+        "fastapi.BackgroundTasks.add_task",
+        side_effect=exceptions.JobStateError(""),
     ):
         resp = client.delete("/models/modelname")
         assert resp.status_code == 409
+        assert crud.delete.call_count == 4
 
 
 """ POST /evaluations/ap-metrics """
@@ -1061,42 +1065,12 @@ def test_get_bulk_evaluations(crud, client: TestClient):
         assert resp.status_code == 404
 
 
-""" GET /evaluations/dataset/{dataset_name} """
-
-
-@patch("velour_api.main.crud")
-def test_get_evaluation_jobs_for_dataset(crud, client: TestClient):
-    crud.get_evaluation_ids_for_dataset.return_value = {
-        "model1": [1, 2, 3],
-        "model2": [4, 5, 6],
-    }
-
-    resp = client.get("/evaluations/dataset/dsetname")
-    assert resp.status_code == 200
-    crud.get_evaluation_ids_for_dataset.assert_called_once()
-
-
-""" GET /evaluations/model/{model_name} """
-
-
-@patch("velour_api.main.crud")
-def test_get_evaluation_jobs_for_model(crud, client: TestClient):
-    crud.get_evaluation_ids_for_model.return_value = {
-        "dataset1": [1, 2, 3],
-        "dataset2": [4, 5, 6],
-    }
-
-    resp = client.get("/evaluations/model/model_name")
-    assert resp.status_code == 200
-    crud.get_evaluation_ids_for_model.assert_called_once()
-
-
 """ GET /evaluations/{job_id} """
 
 
 @patch("velour_api.main.crud")
 def test_get_evaluations(crud, client: TestClient):
-    crud.get_evaluation_status.return_value = JobStatus.DONE
+    crud.get_job_status.return_value = JobStatus.DONE
     crud.get_evaluations.return_value = [
         {
             "model": "modelname",
@@ -1120,7 +1094,7 @@ def test_get_evaluations(crud, client: TestClient):
         resp = client.get("/evaluations/1")
         assert resp.status_code == 404
 
-    crud.get_evaluation_status.return_value = JobStatus.PROCESSING
+    crud.get_job_status.return_value = JobStatus.PROCESSING
     resp = client.get("/evaluations/1")
     assert resp.status_code == 404
 
@@ -1130,18 +1104,11 @@ def test_get_evaluations(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_evaluation_status(crud, client: TestClient):
-    crud.get_evaluation_status.return_value = "done"
+    crud.get_job_status.return_value = "done"
 
     resp = client.get("/evaluations/1/status")
     assert resp.status_code == 200
-    crud.get_evaluation_status.assert_called_once()
-
-    with patch(
-        "velour_api.main.crud.get_evaluation_status",
-        side_effect=exceptions.JobDoesNotExistError("1"),
-    ):
-        resp = client.get("/evaluations/1/status")
-        assert resp.status_code == 404
+    crud.get_job_status.assert_called_once()
 
 
 """ GET /evaluations/{job_id}/settings"""

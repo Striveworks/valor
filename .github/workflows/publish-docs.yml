@@ -6,6 +6,7 @@ on:
     paths:
       - docs/**
       - .github/workflows/publish-docs.yml
+    workflow_dispatch:
 
 jobs:
   build-and-publish-docs:
@@ -16,6 +17,14 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v4
         with:
-          python-version: "3.8"
-      - run: pip install mkdocs-material mkdocstrings mkdocs-include-dir-to-nav
-      - run: mkdocs gh-deploy
+          python-version: "3.10"
+      - name: install api
+        run: pip install "api/.[test]"
+      - name: install client
+        run: pip install "client/.[test]"
+      - name: install mkdocs and plug-ins
+        run: pip install mkdocs-material mkdocstrings mkdocs-include-dir-to-nav mkdocstrings-python mkdocs-swagger-ui-tag
+      - name: generate new swagger docs
+        run: python docs/scripts/generate_swagger_docs.py
+      - name: deploy docs to gh
+        run: mkdocs gh-deploy

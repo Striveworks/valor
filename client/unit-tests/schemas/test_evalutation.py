@@ -8,7 +8,7 @@ def test_evaluation_evaluation_job():
         "task_type": "object-detection",
         "settings": {
             "filters": {
-                "annotations": [enums.AnnotationType.BOX],
+                "annotation_types": [enums.AnnotationType.BOX],
             }
         },
         "id": None,

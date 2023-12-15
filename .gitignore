@@ -15,11 +15,7 @@ build
 .DS_Store
 site/*
 *.ipynb
-!coco-panoptic.ipynb
-!tabular.ipynb
 
-web/.env
-web/.npmrc
 node_modules
 
 .npmrc

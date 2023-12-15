@@ -26,8 +26,8 @@ from .metrics import (
     ConfusionMatrix,
     ConfusionMatrixEntry,
     ConfusionMatrixResponse,
-    CreateDetectionMetricsResponse,
     CreateClfMetricsResponse,
+    CreateDetectionMetricsResponse,
     CreateSemanticSegmentationMetricsResponse,
     DetectionParameters,
     Evaluation,
@@ -43,7 +43,6 @@ from .metrics import (
     mAPMetricAveragedOverIOUs,
     mIOUMetric,
 )
-from .stateflow import Stateflow
 
 __all__ = [
     "User",
@@ -78,12 +77,10 @@ __all__ = [
     "APMetricAveragedOverIOUs",
     "CreateClfMetricsResponse",
     "CreateSemanticSegmentationMetricsResponse",
-    "Job",
     "GeoJSON",
     "mAPMetric",
     "mAPMetricAveragedOverIOUs",
     "ConfusionMatrixEntry",
-    "Stateflow",
     "EvaluationSettings",
     "EvaluationJob",
     "Evaluation",

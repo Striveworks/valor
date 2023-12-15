@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from velour_api import backend
-from velour_api.backend import stateflow
+from velour_api.crud import stateflow
 
 
 @stateflow.delete

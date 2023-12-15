@@ -1,4 +1,4 @@
-site_name: velour
+site_name: Velour
 repo_url: https://github.com/striveworks/velour
 theme:
   name: material
@@ -9,10 +9,12 @@ theme:
     primary: deep purple
 nav:
   - Overview: "index.md"
+  - Sample Notebook: "https://google.com" #TODO update this link when notebook is complete
   - Getting Started: "getting_started.md"
-  - Technical Guide: "user_guide.md"
-  - References: references
-  - Development: "development.md"
+  - Endpoints: "endpoints.md"
+  - Technical Concepts: "technical_concepts.md"
+  - Contributing & Development: "contributing.md"
+  - Python Client API: "client_api"
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
@@ -31,3 +33,7 @@ plugins:
   - include_dir_to_nav:
       sort_file: true
       sort_directory: true
+  - swagger-ui-tag:
+      syntaxHighlightTheme: monokai
+      tryItOutEnabled: False
+      supportedSubmitMethods: []

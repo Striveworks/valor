@@ -18,11 +18,10 @@ def test_evaluate_segmentation(
 
     for gt in gt_semantic_segs1 + gt_semantic_segs2:
         dataset.add_groundtruth(gt)
+    dataset.finalize()
 
     for pred in pred_semantic_segs:
         model.add_prediction(pred)
-
-    dataset.finalize()
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_segmentation(dataset, timeout=30)
@@ -64,10 +63,12 @@ def test_evaluate_segmentation_with_filter(
         gt.datum.metadata["color"] = "blue"
         dataset.add_groundtruth(gt)
 
+    dataset.finalize()
+
     for pred in pred_semantic_segs:
         model.add_prediction(pred)
 
-    dataset.finalize()
+    # dataset.finalize()
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_segmentation(
