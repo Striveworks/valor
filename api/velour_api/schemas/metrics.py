@@ -27,7 +27,7 @@ class DetectionParameters(BaseModel):
     """
 
     # thresholds to iterate over (mutable defaults are ok for pydantic models)
-    iou_thresholds_to_compute: list[float] | None = [
+    iou_thresholds_to_compute: list[float] = [
         round(0.5 + 0.05 * i, 2) for i in range(10)
     ]
     iou_thresholds_to_keep: list[float] | None = [0.5, 0.75]
@@ -39,7 +39,7 @@ class DetectionParameters(BaseModel):
     @classmethod
     def _check_ious(cls, values):
         """Validate the IOU thresholds."""
-        if values.iou_thresholds_to_keep and values.iou_thresholds_to_compute:
+        if values.iou_thresholds_to_keep:
             for iou in values.iou_thresholds_to_keep:
                 if iou not in values.iou_thresholds_to_compute:
                     raise ValueError(

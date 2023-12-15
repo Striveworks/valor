@@ -103,14 +103,19 @@ def convert_raster_to_polygon(dataset_id: int, model_id: int | None = None):
     UPDATE annotation
     SET polygon = subquery.raster_polygon
     FROM (
-        SELECT ann.id as id, ST_MakeValid((ST_DumpAsPolygons(raster)).geom) as raster_polygon
-        FROM annotation AS ann
-        JOIN datum ON datum.id = ann.datum_id
-        WHERE
-        ann.polygon IS NULL
-        AND ann.raster IS NOT NULL
-        AND datum.dataset_id = {dataset_id}
-        AND ann.model_id {model_id}
+        SELECT id, ST_ConvexHull(ST_Collect(geom)) as raster_polygon
+        FROM (
+            SELECT ann.id as id, ST_MakeValid((ST_DumpAsPolygons(raster)).geom) as geom
+            FROM annotation ann
+            JOIN datum ON datum.id = ann.datum_id
+            WHERE
+            ann.id = annotation.id
+            AND ann.multipolygon IS NULL
+            AND ann.raster IS NOT NULL
+            AND datum.dataset_id = {dataset_id}
+            AND ann.model_id {model_id}
+        ) AS conversion
+        GROUP BY id
     ) as subquery
     WHERE annotation.id = subquery.id
     """

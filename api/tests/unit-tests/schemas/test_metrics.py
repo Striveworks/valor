@@ -17,10 +17,11 @@ def test_metrics_DetectionParameters():
         iou_thresholds_to_keep=[],
     )
 
-    schemas.DetectionParameters(
-        iou_thresholds_to_compute=None,
-        iou_thresholds_to_keep=[0.2],
-    )
+    with pytest.raises(ValidationError):
+        schemas.DetectionParameters(
+            iou_thresholds_to_compute=None,
+            iou_thresholds_to_keep=[0.2],
+        )
 
     with pytest.raises(ValidationError):
         schemas.DetectionParameters(
