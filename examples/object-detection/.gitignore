@@ -1,7 +1,1 @@
-!*.ipynb
-
-*.pt
-*.png
-*.jpg
-
-coco
+coco/
