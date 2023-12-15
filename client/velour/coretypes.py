@@ -1,9 +1,8 @@
 import json
 import math
-import time
 import warnings
 from dataclasses import asdict
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 from velour.client import Client, ClientException, Job, wait_for_predicate
 from velour.enums import AnnotationType, TaskType, JobStatus
