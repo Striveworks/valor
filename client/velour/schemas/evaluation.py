@@ -105,3 +105,7 @@ class EvaluationResult:
     status: str
     metrics: List[dict]
     confusion_matrices: List[dict] = field(default_factory=list)
+
+    def __post_init__(self):
+        if isinstance(self.settings, dict):
+            self.settings = EvaluationSettings(**self.settings)

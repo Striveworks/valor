@@ -5,7 +5,7 @@ from dataclasses import asdict
 from typing import Dict, List, Optional, Tuple, Union
 
 from velour.client import Client, Job
-from velour.enums import AnnotationType, TaskType
+from velour.enums import AnnotationType, TaskType, JobStatus
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import (
     DetectionParameters,
@@ -61,7 +61,7 @@ class Label:
             raise TypeError("score should be of type `float`")
         
     def __str__(self):
-        return f"Label(key={self.key}, value={self.value}, score={self.score})"
+        return str(self.dict())
 
     def tuple(self) -> Tuple[str, str, Union[float, None]]:
         """
@@ -206,7 +206,7 @@ class Datum:
         validate_metadata(self.metadata)
 
     def __str__(self):
-        return f"Datum(uid={self.uid}, dataset={self.dataset}, metadata={self.metadata}, geospatial={self.geospatial})"
+        return str(self.dict())
 
     def dict(self) -> dict:
         """
@@ -411,6 +411,9 @@ class Annotation:
         # metadata
         validate_metadata(self.metadata)
 
+    def __str__(self):
+        return str(self.dict())
+
     def dict(self) -> dict:
         """
         Defines how a `Annotation` object is transformed into a dictionary.
@@ -499,6 +502,9 @@ class GroundTruth:
                 raise SchemaTypeError(
                     "annotation", Annotation, self.annotations[idx]
                 )
+
+    def __str__(self):
+        return str(self.dict())
 
     def dict(self) -> dict:
         """
@@ -622,6 +628,9 @@ class Prediction:
                             f" for label key {k} got scores summing to {total_score}."
                         )
 
+    def __str__(self):
+        return str(self.dict())
+
     def dict(self) -> dict:
         """
         Defines how a `Prediction` is transformed into a dictionary.
@@ -690,19 +699,8 @@ class Dataset:
         ],
     )
 
-    def __init__(self):
-        self.client: Client = None
-        self.id: int = None
-        self.name: str = None
-        self.metadata: dict = None
-        self.geospatial: dict = None
-
-    def __str__(self) -> str:
-        return f"Dataset(name={self.name}, metadata={self.metadata}, geospatial={self.geospatial})"
-
-    @classmethod
-    def create(
-        cls,
+    def __init__(
+        self,
         client: Client,
         name: str,
         metadata: Dict[str, Union[int, float, str]] = None,
@@ -716,9 +714,10 @@ class Dataset:
             ],
         ] = None,
         id: Union[int, None] = None,
+        reset: bool = False,
     ):
         """
-        Create a new `Dataset` object.
+        Create or get a `Dataset` object.
 
         Parameters
         ----------
@@ -728,52 +727,33 @@ class Dataset:
             The name of the dataset.
         metadata : dict
             A dictionary of metadata that describes the dataset.
-        geospatial :  dict
+        geospatial : dict
             A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
-
+        id : int, optional
+            SQL index for model.
+        reset : bool, default=False
+            Force a reset of the Dataset.
 
         Returns
         ----------
         Dataset
             The newly-created `Dataset`.
         """
-        dataset = cls()
-        dataset.client = client
-        dataset.name = name
-        dataset.metadata = metadata
-        dataset.geospatial = geospatial
-        dataset.id = id
-        dataset._validate()
-        client._requests_post_rel_host("datasets", json=dataset.dict())
-        return cls.get(client, name)
+        self.name = name
+        self.metadata = metadata
+        self.geospatial = geospatial
+        self.id = id
+        self._validate()
 
-    @classmethod
-    def get(cls, client: Client, name: str):
-        """
-        Fetches a given dataset from the backend.
+        if reset and client.get_dataset_status(name) != JobStatus.NONE:
+            client.delete_dataset(name, timeout=30)
 
-        Parameters
-        ----------
-        client : Client
-            The `Client` object associated with the session.
-        name : str
-            The name of the dataset.
-
-
-        Returns
-        ----------
-        Dataset
-            The requested `Dataset`.
-        """
-        resp = client._requests_get_rel_host(f"datasets/{name}").json()
-        dataset = cls()
-        dataset.client = client
-        dataset.name = resp["name"]
-        dataset.metadata = resp["metadata"]
-        dataset.geospatial = resp["geospatial"]
-        dataset.id = resp["id"]
-        dataset._validate()
-        return dataset
+        if client.get_dataset_status(name) == JobStatus.NONE:
+            client.create_dataset(self.dict())
+        
+        for k, v in client.get_dataset(name).items():
+            setattr(self, k, v)
+        self.client = client
 
     def _validate(self):
         """
@@ -789,6 +769,9 @@ class Dataset:
         if not self.geospatial:
             self.geospatial = {}
         validate_metadata(self.metadata)
+
+    def __str__(self):
+        return str(self.dict())
 
     def dict(self) -> dict:
         """
@@ -823,9 +806,8 @@ class Dataset:
 
         if len(groundtruth.annotations) == 0:
             warnings.warn(
-                f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations. Skipping..."
+                f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
             )
-            return
 
         groundtruth.datum.dataset = self.name
         self.client._requests_post_rel_host(
@@ -883,9 +865,7 @@ class Dataset:
         List[Datum]
             A list of `Datums` associated with the dataset.
         """
-        datums = self.client._requests_get_rel_host(
-            f"data/dataset/{self.name}"
-        ).json()
+        datums = self.client.get_datums(self.name)
         return [Datum(**datum) for datum in datums]
 
     def get_evaluations(
@@ -1017,19 +997,8 @@ class Model:
         ],
     )
 
-    def __init__(self):
-        self.client: Client = None
-        self.id: int = None
-        self.name: str = ""
-        self.metadata: dict = None
-        self.geospatial: dict = None
-
-    def __str__(self) -> str:
-        return f"Model(name={self.name}, metadata={self.metadata}, geospatial={self.geospatial})"
-
-    @classmethod
-    def create(
-        cls,
+    def __init__(
+        self,
         client: Client,
         name: str,
         metadata: Dict[str, Union[int, float, str]] = None,
@@ -1043,43 +1012,10 @@ class Model:
             ],
         ] = None,
         id: Union[int, None] = None,
+        reset: bool = False,
     ):
         """
-        Create a new Model
-
-        Attributes
-        ----------
-        client : Client
-            The `Client` object associated with the session.
-        name : str
-            The name of the model.
-        metadata : dict
-            A dictionary of metadata that describes the model.
-        geospatial :  dict
-            A GeoJSON-style dictionary describing the geospatial coordinates of the model.
-        id : int
-            The ID of the model.
-
-
-        Returns
-        ----------
-        Model
-            The newly-created `Model` object.
-        """
-        model = cls()
-        model.client = client
-        model.name = name
-        model.metadata = metadata
-        model.geospatial = geospatial
-        model.id = id
-        model._validate()
-        client._requests_post_rel_host("models", json=model.dict())
-        return cls.get(client, name)
-
-    @classmethod
-    def get(cls, client: Client, name: str):
-        """
-        Fetches a given model from the backend.
+        Create or get a `Model` object.
 
         Parameters
         ----------
@@ -1087,22 +1023,35 @@ class Model:
             The `Client` object associated with the session.
         name : str
             The name of the model.
-
+        metadata : dict
+            A dictionary of metadata that describes the model.
+        geospatial : dict
+            A GeoJSON-style dictionary describing the geospatial coordinates of the model.
+        id : int, optional
+            SQL index for model.
+        reset : bool, default=False
+            Force a reset of the Model.
 
         Returns
         ----------
         Model
-            The requested `Model`.
+            The newly-created `Model`.
         """
-        resp = client._requests_get_rel_host(f"models/{name}").json()
-        model = cls()
-        model.client = client
-        model.name = resp["name"]
-        model.metadata = resp["metadata"]
-        model.geospatial = resp["geospatial"]
-        model.id = resp["id"]
-        model._validate()
-        return model
+        self.name = name
+        self.metadata = metadata
+        self.geospatial = geospatial
+        self.id = id
+        self._validate()
+
+        if reset and client.get_model_status(name) != JobStatus.NONE:
+            client.delete_model(name, timeout=30)
+
+        if client.get_model_status(name) == JobStatus.NONE:
+            client.create_model(self.dict())
+        
+        for k, v in client.get_model(name).items():
+            setattr(self, k, v)
+        self.client = client
 
     def _validate(self):
         """
@@ -1117,6 +1066,9 @@ class Model:
         if not self.geospatial:
             self.geospatial = {}
         validate_metadata(self.metadata)
+
+    def __str__(self):
+        return str(self.dict())
 
     def dict(self) -> dict:
         """
@@ -1150,9 +1102,8 @@ class Model:
 
         if len(prediction.annotations) == 0:
             warnings.warn(
-                f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations. Skipping..."
+                f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
             )
-            return
 
         prediction.model = self.name
         return self.client._requests_post_rel_host(

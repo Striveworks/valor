@@ -128,6 +128,18 @@ class Client:
         """
         return self._requests_get_rel_host("labels").json()
 
+    def create_dataset(
+        self,
+        dataset: dict,
+    ):
+        self._requests_post_rel_host("datasets", json=dataset)
+
+    def get_dataset(
+        self,
+        name: str,
+    ) -> dict:
+        return self._requests_get_rel_host(f"datasets/{name}").json()
+
     def get_datasets(
         self,
     ) -> List[dict]:
@@ -140,6 +152,14 @@ class Client:
             A list of dictionaries describing all the datasets attributed to the `Client` object.
         """
         return self._requests_get_rel_host("datasets").json()
+
+    def get_datums(
+        self,
+        dataset_name: str,
+    ) -> List[dict]:
+        return self._requests_get_rel_host(
+            f"data/dataset/{dataset_name}"
+        ).json()
 
     def get_dataset_status(
         self,
@@ -186,6 +206,18 @@ class Client:
                     "Dataset wasn't deleted within timeout interval"
                 )
 
+    def create_model(
+        self,
+        model: dict,
+    ):
+        self._requests_post_rel_host("models", json=model)
+
+    def get_model(
+        self,
+        name: str,
+    ) -> dict:
+        return self._requests_get_rel_host(f"models/{name}").json()
+    
     def get_models(
         self,
     ) -> List[dict]:

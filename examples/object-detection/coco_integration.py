@@ -69,7 +69,7 @@ def load(
         _download_and_unzip(coco_url, destination)
         _unzip(annotations_zipfile)
     else:
-        print(f"coco already exists at `{destination}`!")
+        print(f"coco already exists at {destination}!")
 
     with open(str(annotations_zipfile.with_suffix(".json"))) as f:
         panoptic_val2017 = json.load(f)
@@ -124,7 +124,7 @@ def _create_masks(filename: str) -> np.ndarray:
     return mask[:, :, 0] + 256 * mask[:, :, 1] + (256**2) * mask[:, :, 2]
 
 
-def _create_annotations_of_instance_segmentations(
+def _create_annotations_from_instance_segmentations(
     image: dict,
     category_id_to_labels_and_task: Dict[int, Union[TaskType, Dict[str, str]]],
     mask_ids,
@@ -146,7 +146,7 @@ def _create_annotations_of_instance_segmentations(
     ]
 
 
-def _create_annotations_of_semantic_segmentations(
+def _create_annotations_from_semantic_segmentations(
     image: dict,
     category_id_to_labels_and_task: Dict[int, Union[TaskType, Dict[str, str]]],
     mask_ids,
@@ -206,14 +206,14 @@ def _create_groundtruths_from_coco_panoptic(
         mask_ids = _create_masks(masks_path / image["file_name"])
         
         # create instance segmentations
-        objdet_annotations = _create_annotations_of_instance_segmentations(
+        objdet_annotations = _create_annotations_from_instance_segmentations(
             image,
             category_id_to_labels_and_task,
             mask_ids,
         )
 
         # create semantic segmentations
-        semseg_annotations = _create_annotations_of_semantic_segmentations(
+        semseg_annotations = _create_annotations_from_semantic_segmentations(
             image,
             category_id_to_labels_and_task,
             mask_ids,
