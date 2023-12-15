@@ -779,7 +779,6 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# TODO - add the ability to find status of model wrt a dataset
 @app.get(
     "/models/{model_name}/status",
     dependencies=[Depends(token_auth_scheme)],
@@ -863,7 +862,6 @@ def finalize_inferences(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# TODO - add the ability to delete just predictions for a single dataset
 @app.delete(
     "/models/{model_name}",
     dependencies=[Depends(token_auth_scheme)],

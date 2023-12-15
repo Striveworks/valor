@@ -5,7 +5,7 @@ from dataclasses import asdict
 
 import pytest
 
-from velour import Dataset, GroundTruth, Model, Prediction
+from velour import Dataset, Datum, GroundTruth, Model, Prediction
 from velour.client import Client, ClientException
 
 
@@ -122,21 +122,34 @@ def test_geospatial_filter(
         in str(e)
     )
 
+    # passing in an incorrectly-formatted geojson dict should return a ValueError
+    with pytest.raises(ValueError) as e:
+        model.evaluate_detection(
+            dataset=dataset,
+            iou_thresholds_to_compute=[0.1, 0.6],
+            iou_thresholds_to_keep=[0.1, 0.6],
+            filters=[
+                Datum.geospatial.inside({"incorrectly_formatted_dict": {}})
+            ],
+            timeout=30,
+        )
+    assert "should be a GeoJSON-style dictionary" in str(e)
+
     # test datums
     eval_results = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
-        filters={
-            "datum_geospatial": [
+        filters=[
+            Datum.geospatial.inside(
                 {
-                    "operator": "inside",
-                    "value": {
-                        "geometry": {"type": "Point", "coordinates": [0, 0]}
-                    },
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [0.0, 0.0],
+                    }
                 }
-            ],
-        },
+            )
+        ],
     ).wait_for_completion(timeout=30)
 
     result = asdict(eval_results)

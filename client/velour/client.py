@@ -359,7 +359,6 @@ class Job:
         elif model_name and not dataset_name:
             self.url = f"models/{model_name}/status"
         elif model_name and dataset_name:
-            # self.url = f"models/{model_name}/dataset/{dataset_name}/status"
             raise NotImplementedError(
                 "The status endpoint of dataset-model pairings has not been implemented yet."
             )

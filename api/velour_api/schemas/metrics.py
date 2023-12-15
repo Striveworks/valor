@@ -27,7 +27,7 @@ class DetectionParameters(BaseModel):
     """
 
     # thresholds to iterate over (mutable defaults are ok for pydantic models)
-    iou_thresholds_to_compute: list[float] | None = [
+    iou_thresholds_to_compute: list[float] = [
         round(0.5 + 0.05 * i, 2) for i in range(10)
     ]
     iou_thresholds_to_keep: list[float] | None = [0.5, 0.75]
@@ -39,11 +39,12 @@ class DetectionParameters(BaseModel):
     @classmethod
     def _check_ious(cls, values):
         """Validate the IOU thresholds."""
-        for iou in values.iou_thresholds_to_keep:
-            if iou not in values.iou_thresholds_to_compute:
-                raise ValueError(
-                    "`iou_thresholds_to_keep` must be contained in `iou_thresholds_to_compute`"
-                )
+        if values.iou_thresholds_to_keep:
+            for iou in values.iou_thresholds_to_keep:
+                if iou not in values.iou_thresholds_to_compute:
+                    raise ValueError(
+                        "`iou_thresholds_to_keep` must be contained in `iou_thresholds_to_compute`"
+                    )
         return values
 
 
@@ -138,10 +139,10 @@ class CreateClfMetricsResponse(BaseModel):
 
     Attributes
     ----------
-    missing_pred_labels: list[Label]
-        A list of missing prediction labels.
-    ignored_pred_labels: list[Label]
-        A list of ignored preiction labels.
+    missing_pred_keys: list[str]
+        A list of missing prediction keys.
+    ignored_pred_keys: list[str]
+        A list of ignored preiction keys.
     job_id: int
         The job ID.
     """
@@ -363,8 +364,6 @@ class ConfusionMatrixEntry(BaseModel):
     prediction: str
     groundtruth: str
     count: int
-    # TODO[pydantic]: The following keys were removed: `allow_mutation`.
-    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-config for more information.
     model_config = ConfigDict(frozen=True)
 
 
@@ -386,11 +385,11 @@ class _BaseConfusionMatrix(BaseModel):
 
 class ConfusionMatrix(_BaseConfusionMatrix):
     """
-    Describes a cconfusion matrix.
+    Describes a confusion matrix.
 
     Attributes
     ----------
-    label_ley : str
+    label_key : str
         A label for the matrix.
     entries : List[ConfusionMatrixEntry]
         A list of entries for the matrix.
@@ -506,8 +505,8 @@ class _PrecisionRecallF1Base(BaseModel):
     @field_validator("value")
     @classmethod
     def _replace_nan_with_neg_1(cls, v):
-        """Convert null values to -1.s"""
-        if np.isnan(v):
+        """Convert null values to -1."""
+        if v is None or np.isnan(v):
             return -1
         return v
 

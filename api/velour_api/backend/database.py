@@ -25,7 +25,6 @@ logger.debug(
 )
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
-make_session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def retry_connection(timeout: int):

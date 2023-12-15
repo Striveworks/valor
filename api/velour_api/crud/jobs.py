@@ -317,4 +317,3 @@ class Job(BaseModel):
         for child_uuid in self.children:
             self.get(child_uuid).delete()
         r.delete(self.uuid)
-        del self

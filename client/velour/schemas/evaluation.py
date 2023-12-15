@@ -5,7 +5,6 @@ from velour.enums import JobStatus, TaskType
 from velour.schemas.filters import Filter
 
 
-# TODO are we missing SegmentationParameters and ClassificationParameters? or are these just not necessary to implement?
 @dataclass
 class DetectionParameters:
     """
