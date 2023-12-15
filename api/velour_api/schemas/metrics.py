@@ -684,7 +684,7 @@ class Evaluation(BaseModel):
     status: JobStatus
     metrics: list[Metric]
     confusion_matrices: list[ConfusionMatrixResponse]
-    task_type: str
+    task_type: TaskType
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")

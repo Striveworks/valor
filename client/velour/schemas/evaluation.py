@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Union
 
+from velour.enums import JobStatus, TaskType
 from velour.schemas.filters import Filter
 
 
@@ -86,7 +87,7 @@ class EvaluationResult:
         The name of the `Dataset` invoked during the evaluation.
     model : str
         The name of the `Model` invoked during the evaluation.
-    task_type : str
+    task_type : TaskType
         The task type of the evaluation.
     settings : EvaluationSettings
         The `EvaluationSettings` object used to configurate the `EvaluationJob`.
@@ -102,9 +103,9 @@ class EvaluationResult:
 
     dataset: str
     model: str
-    task_type: str
+    task_type: TaskType
     settings: EvaluationSettings
     job_id: int
-    status: str
+    status: JobStatus
     metrics: List[dict]
     confusion_matrices: List[dict] = field(default_factory=list)
