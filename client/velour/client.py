@@ -321,6 +321,7 @@ class Client:
             )
 
         def build_query_param(param_name, element, typ):
+            """Parse `element` to a list of `typ`, return a dict that can be urlencoded."""
             if not element:
                 return {}
             if isinstance(element, typ):

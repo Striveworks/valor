@@ -878,6 +878,11 @@ class Evaluation:
         ----------
         schemas.EvaluationResult
             The result of the evaluation job
+
+        Raises
+        ----------
+        ClientException
+            If an Evaluation with the given `job_id` is not found.
         """
         response = self.client.get_bulk_evaluations(
             job_ids=[self.evaluation_id]
