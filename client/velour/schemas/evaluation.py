@@ -56,7 +56,7 @@ class EvaluationJob:
         The name of the `Model` invoked during the evaluation.
     dataset : str
         The name of the `Dataset` invoked during the evaluation.
-    task_type : str
+    task_type : TaskType
         The task type of the evaluation.
     settings : EvaluationSettings
         The `EvaluationSettings` object used to configurate the `EvaluationJob`.
@@ -66,7 +66,7 @@ class EvaluationJob:
 
     model: str
     dataset: str
-    task_type: str
+    task_type: TaskType
     settings: EvaluationSettings = field(default_factory=EvaluationSettings)
     id: int = None
 
@@ -92,7 +92,7 @@ class EvaluationResult:
         The `EvaluationSettings` object used to configurate the `EvaluationJob`.
     job_id : int
         The id of the job.
-    status : str
+    status : JobStatus
         The status of the `EvaluationJob`.
     metrics : List[dict]
         A list of metric dictionaries returned by the job.
