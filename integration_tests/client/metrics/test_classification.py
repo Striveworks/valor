@@ -18,6 +18,7 @@ from velour import (
 )
 from velour.client import Client, ClientException
 from velour.enums import JobStatus, TaskType
+from velour.schemas.evaluation import EvaluationSettings
 
 
 def test_evaluate_image_clf(
@@ -270,7 +271,7 @@ def test_evaluate_tabular_clf(
     assert eval_jobs[0].model == model_name
     assert eval_jobs[0].dataset == "test_dataset"
     assert eval_jobs[0].task_type == "classification"
-    assert eval_jobs[0].settings == {}
+    assert eval_jobs[0].settings == EvaluationSettings()
 
     metrics_from_eval_settings_id = eval_jobs[0].metrics
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)

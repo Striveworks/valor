@@ -10,9 +10,12 @@ from sqlalchemy.orm import Session
 
 from velour import Annotation, Dataset, GroundTruth, Label, Model, Prediction
 from velour.client import Client
-from velour.enums import AnnotationType, JobStatus
+from velour.enums import AnnotationType, JobStatus, TaskType
+from velour.schemas.filters import Filter
 from velour_api.backend import models
 
+
+default_filter_properties = asdict(Filter())
 
 def test_evaluate_detection(
     db: Session,
@@ -92,20 +95,21 @@ def test_evaluate_detection(
     assert result == {
         "model": model_name,
         "dataset": "test_dataset",
-        "task_type": "object-detection",
+        "task_type": TaskType.DETECTION,
         "settings": {
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
             "filters": {
+                **default_filter_properties,
                 "annotation_types": ["box"],
                 "label_keys": ["k1"],
             },
         },
         "metrics": expected_metrics,
         "confusion_matrices": [],
-        "status": "done",
+        "status": JobStatus.DONE,
         "job_id": eval_job.evaluation_id,
     }
 
@@ -134,9 +138,10 @@ def test_evaluate_detection(
     assert result == {
         "model": model_name,
         "dataset": "test_dataset",
-        "task_type": "object-detection",
+        "task_type": TaskType.DETECTION,
         "settings": {
             "filters": {
+                **default_filter_properties,
                 "annotation_types": ["box"],
                 "annotation_geometric_area": [
                     {
@@ -157,7 +162,7 @@ def test_evaluate_detection(
         },
         "metrics": expected_metrics,
         "confusion_matrices": [],
-        "status": "done",
+        "status": JobStatus.DONE,
         "job_id": eval_job_bounded_area_10_2000.evaluation_id,
     }
 
@@ -178,9 +183,10 @@ def test_evaluate_detection(
     assert result == {
         "model": model_name,
         "dataset": "test_dataset",
-        "task_type": "object-detection",
+        "task_type": TaskType.DETECTION,
         "settings": {
             "filters": {
+                **default_filter_properties,
                 "annotation_types": ["box"],
                 "annotation_geometric_area": [
                     {
@@ -197,7 +203,7 @@ def test_evaluate_detection(
         },
         # check metrics below
         "confusion_matrices": [],
-        "status": "done",
+        "status": JobStatus.DONE,
         "job_id": eval_job_min_area_1200.evaluation_id,
     }
     assert min_area_1200_metrics != expected_metrics
@@ -218,9 +224,10 @@ def test_evaluate_detection(
     assert result == {
         "model": model_name,
         "dataset": "test_dataset",
-        "task_type": "object-detection",
+        "task_type": TaskType.DETECTION,
         "settings": {
             "filters": {
+                **default_filter_properties,
                 "annotation_types": ["box"],
                 "annotation_geometric_area": [
                     {
@@ -237,7 +244,7 @@ def test_evaluate_detection(
         },
         # check metrics below
         "confusion_matrices": [],
-        "status": "done",
+        "status": JobStatus.DONE,
         "job_id": eval_job_max_area_1200.evaluation_id,
     }
     assert max_area_1200_metrics != expected_metrics
@@ -260,9 +267,10 @@ def test_evaluate_detection(
     assert result == {
         "model": model_name,
         "dataset": "test_dataset",
-        "task_type": "object-detection",
+        "task_type": TaskType.DETECTION,
         "settings": {
             "filters": {
+                **default_filter_properties,
                 "annotation_types": ["box"],
                 "annotation_geometric_area": [
                     {
@@ -283,7 +291,7 @@ def test_evaluate_detection(
         },
         # check metrics below
         "confusion_matrices": [],
-        "status": "done",
+        "status": JobStatus.DONE,
         "job_id": eval_job_bounded_area_1200_1800.evaluation_id,
     }
     assert bounded_area_metrics != expected_metrics
@@ -319,12 +327,10 @@ def test_evaluate_detection_with_json_filters(
             Annotation.type == AnnotationType.BOX,
         ],
     ).wait_for_completion(timeout=30)
-    assert eval_results.settings["parameters"][
-        "iou_thresholds_to_compute"
-    ] == [i / 100 for i in range(50, 100, 5)]
-    assert eval_results.settings["parameters"][
-        "iou_thresholds_to_keep"
-    ] == [0.5, 0.75]
+    assert eval_results.settings.parameters.iou_thresholds_to_compute == [
+        i / 100 for i in range(50, 100, 5)
+    ]
+    assert eval_results.settings.parameters.iou_thresholds_to_keep == [0.5, 0.75]
 
     expected_metrics = [
         {
@@ -383,6 +389,7 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
         filters={
+            **default_filter_properties,
             "annotation_types": ["box"],
             "annotation_geometric_area": [
                 {
@@ -403,9 +410,10 @@ def test_evaluate_detection_with_json_filters(
     assert result == {
         "model": model_name,
         "dataset": "test_dataset",
-        "task_type": "object-detection",
+        "task_type": TaskType.DETECTION,
         "settings": {
             "filters": {
+                **default_filter_properties,
                 "annotation_types": ["box"],
                 "annotation_geometric_area": [
                     {
@@ -426,7 +434,7 @@ def test_evaluate_detection_with_json_filters(
         },
         # check metrics below
         "confusion_matrices": [],
-        "status": "done",
+        "status": JobStatus.DONE,
         "job_id": eval_job_bounded_area_1200_1800.evaluation_id,
     }
     assert bounded_area_metrics != expected_metrics

@@ -12,6 +12,7 @@ from velour.data_generation import (
 )
 from velour.enums import AnnotationType, JobStatus, TaskType
 from velour.metatypes import ImageMetadata
+from velour.schemas.filters import Filter
 
 
 def _mask_bytes_to_pil(mask_bytes):
@@ -117,6 +118,7 @@ def test_generate_prediction_data(client: Client):
                 "iou_thresholds_to_keep": [0.0, 1.0],
             },
             "filters": {
+                **asdict(Filter()), # default filter properties with overrides below
                 "annotation_types": ["box"],
                 "label_keys": ["k1"],
             },

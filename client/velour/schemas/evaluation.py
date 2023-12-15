@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Union
+from typing import List, Union, Optional
 
 from velour.enums import JobStatus, TaskType
 from velour.schemas.filters import Filter
@@ -68,11 +68,13 @@ class EvaluationJob:
     dataset: str
     task_type: TaskType
     settings: EvaluationSettings = field(default_factory=EvaluationSettings)
-    id: int = None
+    id: Optional[int] = None
 
     def __post_init__(self):
         if isinstance(self.settings, dict):
             self.settings = EvaluationSettings(**self.settings)
+        if isinstance(self.task_type, str):
+            self.task_type = TaskType(self.task_type)
 
 
 @dataclass
@@ -108,3 +110,11 @@ class EvaluationResult:
     status: JobStatus
     metrics: List[dict]
     confusion_matrices: List[dict] = field(default_factory=list)
+
+    def __post_init__(self):
+        if isinstance(self.settings, dict):
+            self.settings = EvaluationSettings(**self.settings)
+        if isinstance(self.task_type, str):
+            self.task_type = TaskType(self.task_type)
+        if isinstance(self.status, str):
+            self.status = JobStatus(self.status)
