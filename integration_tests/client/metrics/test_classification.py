@@ -40,7 +40,6 @@ def test_evaluate_image_clf(
     eval_job = model.evaluate_classification(dataset=dataset)
 
     assert eval_job.evaluation_id
-    # assert eval_job.status.value == "done"
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
     assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
 
