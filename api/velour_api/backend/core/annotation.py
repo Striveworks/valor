@@ -73,7 +73,6 @@ def _get_annotation_mapping(
         raster = annotation.raster.mask_bytes
     if isinstance(annotation.jsonb, dict):
         jsonb = annotation.jsonb
-    # @TODO: Add more annotation types
 
     mapping = {
         "datum_id": datum.id,
@@ -135,7 +134,6 @@ def create_annotations_and_labels(
     return (annotation_list, label_list)
 
 
-# @TODO: Clean up??
 def _get_bounding_box_of_raster(
     db: Session, raster: RasterElement
 ) -> tuple[int, int, int, int]:
@@ -148,7 +146,6 @@ def _get_bounding_box_of_raster(
     return min(xs), min(ys), max(xs), max(ys)
 
 
-# @TODO: Clean up??
 def _raster_to_png_b64(
     db: Session, raster: RasterElement, height: float, width: float
 ) -> str:

@@ -899,7 +899,6 @@ class Dataset:
         """
         job = Job(self.client, dataset_name=self.name)
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
-        del self
         return job
 
 
@@ -909,7 +908,7 @@ class Evaluation(Job):
     """
 
     def __post_init__(self):
-        if not isinstance(self.evaluation_id):
+        if not isinstance(self.evaluation_id, int):
             raise ValueError("Missing evaluation id.")
 
     @property
@@ -1322,7 +1321,6 @@ class Model:
         """
         job = Job(self.client, model_name=self.name)
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
-        del self
         return job
 
     def get_prediction(self, datum: Datum) -> Prediction:

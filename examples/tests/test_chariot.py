@@ -187,26 +187,6 @@ def test__retrieve_dataset_version():
         _retrieve_dataset_version(bad_dataset, None)
 
 
-def test__retrieve_dataset_manifest():
-    # TODO
-    pass
-
-
-def test_create_dataset_from_chariot():
-    # TODO
-    pass
-
-
-def test_get_chariot_dataset_integration():
-    # TODO
-    pass
-
-
-def create_dataset_from_chariot_evaluation_manifest():
-    # TODO
-    pass
-
-
 def _test_img_clf_manifest(groundtruths):
     assert len(groundtruths) == 2
 
@@ -303,11 +283,6 @@ def _test_img_seg_manifest(groundtruths):
         Point(70.9, 50.2),
         Point(75.9, 28.4),
     ]
-
-
-def test__parse_annotation():
-    # TODO test unsuppported types
-    pass
 
 
 def test__parse_groundtruth(
@@ -411,11 +386,6 @@ def obj_det_prediction():
             "detection_scores": ["0.99", "0.97"],
         }
     ]
-
-
-def test_get_groundtruth_parser_from_chariot():
-    # TODO
-    pass
 
 
 def test__parse_chariot_predict_image_classification(

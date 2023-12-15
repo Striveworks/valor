@@ -57,7 +57,7 @@ class GeospatialFilter:
 
     """
 
-    geodict: Dict[
+    value: Dict[
         str,
         Union[
             List[List[List[List[Union[float, int]]]]],
@@ -90,14 +90,23 @@ class DeclarativeMapper:
         self.key = key
         self.object_type = object_type
 
-    def _validate(self, value, exclude=None, name: str = None):
-        # if isinstance(value, str):
-        #     raise TypeError("f`{name}` does not support type `str`")
+    def _validate_operator(self, value):
         if self.object_type == float and isinstance(value, int):
             return  # edge case
         if not isinstance(value, self.object_type):
             raise ValueError(
                 f"`{self.name}` should be of type `{self.object_type}`"
+            )
+
+    def _validate_geospatial_operator(self, value):
+        if (
+            not isinstance(value, dict)
+            or not value.get("geometry")
+            or not value["geometry"].get("type")
+            or not value["geometry"].get("coordinates")
+        ):
+            raise ValueError(
+                "Geospatial filters should be a GeoJSON-style dictionary containing the keys `type` and `coordinates`."
             )
 
     def __getitem__(self, key: str):
@@ -108,7 +117,7 @@ class DeclarativeMapper:
         )
 
     def __eq__(self, __value: object) -> BinaryExpression:
-        self._validate(
+        self._validate_operator(
             __value,
         )
         return BinaryExpression(
@@ -119,7 +128,7 @@ class DeclarativeMapper:
         )
 
     def __ne__(self, __value: object) -> BinaryExpression:
-        self._validate(__value)
+        self._validate_operator(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -128,7 +137,7 @@ class DeclarativeMapper:
         )
 
     def __lt__(self, __value: object) -> BinaryExpression:
-        self._validate(__value)
+        self._validate_operator(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -139,7 +148,7 @@ class DeclarativeMapper:
     def __gt__(self, __value: object) -> BinaryExpression:
         if isinstance(__value, str):
             raise TypeError("`__gt__` does not support type `str`")
-        self._validate(__value)
+        self._validate_operator(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -150,7 +159,7 @@ class DeclarativeMapper:
     def __le__(self, __value: object) -> BinaryExpression:
         if isinstance(__value, str):
             raise TypeError("`__le__` does not support type `str`")
-        self._validate(__value)
+        self._validate_operator(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -161,7 +170,7 @@ class DeclarativeMapper:
     def __ge__(self, __value: object) -> BinaryExpression:
         if isinstance(__value, str):
             raise TypeError("`__ge__` does not support type `str`")
-        self._validate(__value)
+        self._validate_operator(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -178,6 +187,39 @@ class DeclarativeMapper:
                     f"All elements must be of type `{self.object_type}`, got '{type(value)}'"
                 )
         return [self == value for value in __values]
+
+    def intersect(self, __value: dict) -> BinaryExpression:
+        self._validate_geospatial_operator(
+            __value,
+        )
+        return BinaryExpression(
+            name=self.name,
+            key=self.key,
+            value=__value,
+            operator="intersect",
+        )
+
+    def inside(self, __value: object) -> BinaryExpression:
+        self._validate_geospatial_operator(
+            __value,
+        )
+        return BinaryExpression(
+            name=self.name,
+            key=self.key,
+            value=__value,
+            operator="inside",
+        )
+
+    def outside(self, __value: object) -> BinaryExpression:
+        self._validate_geospatial_operator(
+            __value,
+        )
+        return BinaryExpression(
+            name=self.name,
+            key=self.key,
+            value=__value,
+            operator="outside",
+        )
 
 
 @dataclass
@@ -272,11 +314,6 @@ class Filter:
         ----------
         expressions: List[BinaryExpression]
             A list of `BinaryExpressions' to parse into a `Filter` object.
-
-        Raises
-        ------
-        NotImplementedError
-            If the user passes the `dataset_geospatial`, `model_geospatial`, `datum_geospatial`, or `annotation_geospatial` arguments into this method.
         """
 
         # expand nested expressions
@@ -314,8 +351,13 @@ class Filter:
                 for expr in expression_dict["dataset_metadata"]
             }
         if "dataset_geospatial" in expression_dict:
-            raise NotImplementedError
-
+            filter_request.dataset_geospatial = [
+                GeospatialFilter(
+                    value=expr.value,
+                    operator=expr.operator,
+                )
+                for expr in expression_dict["dataset_geospatial"]
+            ]
         # models
         if "models_names" in expression_dict:
             filter_request.models_names = [
@@ -330,8 +372,13 @@ class Filter:
                 for expr in expression_dict["models_metadata"]
             }
         if "model_geospatial" in expression_dict:
-            raise NotImplementedError
-
+            filter_request.model_geospatial = [
+                GeospatialFilter(
+                    value=expr.value,
+                    operator=expr.operator,
+                )
+                for expr in expression_dict["model_geospatial"]
+            ]
         # datums
         if "datum_uids" in expression_dict:
             filter_request.datum_uids = [
@@ -346,7 +393,13 @@ class Filter:
                 for expr in expression_dict["datum_metadata"]
             }
         if "datum_geospatial" in expression_dict:
-            raise NotImplementedError
+            filter_request.datum_geospatial = [
+                GeospatialFilter(
+                    value=expr.value,
+                    operator=expr.operator,
+                )
+                for expr in expression_dict["datum_geospatial"]
+            ]
 
         # annotations
         if "task_types" in expression_dict:
@@ -374,8 +427,13 @@ class Filter:
                 for expr in expression_dict["annotation_metadata"]
             }
         if "annotation_geospatial" in expression_dict:
-            raise NotImplementedError
-
+            filter_request.annotation_geospatial = [
+                GeospatialFilter(
+                    value=expr.value,
+                    operator=expr.operator,
+                )
+                for expr in expression_dict["annotation_geospatial"]
+            ]
         # predictions
         if "prediction_scores" in expression_dict:
             filter_request.prediction_scores = [
