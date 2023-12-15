@@ -274,39 +274,6 @@ def _profile_func(
     return kwargs | timeit_output | output | {"exception": exception}
 
 
-# TODO add type to container when available: https://github.com/docker/docker-py/issues/2796
-def _get_container_stats(container, indicator: str = "") -> dict:
-    stats = container.stats(stream=False)
-
-    # cpu_perc calculation from https://stackoverflow.com/questions/30271942/get-docker-container-cpu-usage-as-percentage
-    cpu_delta = (
-        stats["cpu_stats"]["cpu_usage"]["total_usage"]
-        - stats["precpu_stats"]["cpu_usage"]["total_usage"]
-    )
-    system_delta = (
-        stats["cpu_stats"]["system_cpu_usage"]
-        - stats["precpu_stats"]["system_cpu_usage"]
-    )
-    return {
-        f"{indicator}memory_usage": stats["memory_stats"]["usage"],
-        f"{indicator}memory_limit": stats["memory_stats"]["limit"],
-        f"{indicator}cpu_usage": stats["cpu_stats"]["cpu_usage"][
-            "total_usage"
-        ],
-        f"{indicator}cpu_usage_kernel": stats["cpu_stats"]["cpu_usage"][
-            "usage_in_kernelmode"
-        ],
-        f"{indicator}cpu_usage_user": stats["cpu_stats"]["cpu_usage"][
-            "usage_in_usermode"
-        ],
-        f"{indicator}cpu_usage_system": stats["cpu_stats"]["system_cpu_usage"],
-        f"{indicator}cpu_throttled_time": stats["cpu_stats"][
-            "throttling_data"
-        ]["throttled_time"],
-        f"{indicator}cpu_usage_perc": cpu_delta / system_delta,
-    }
-
-
 def _get_docker_cpu_memory_stats() -> pd.DataFrame:
     tsv = os.popen(
         'docker stats --no-stream --format "table {{.Container}}     {{.CPUPerc}}     {{.MemPerc}}"'

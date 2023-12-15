@@ -359,7 +359,7 @@ class BasicPolygon(BaseModel):
             # Remove duplicate of start point
             if v[0] == v[-1]:
                 v = v[:-1]
-            # @TODO (maybe) implement self-intersection check?
+
         return v
 
     @property

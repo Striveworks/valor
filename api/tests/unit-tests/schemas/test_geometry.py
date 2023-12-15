@@ -150,12 +150,10 @@ def test_geometry_LineSegment(box_points):
 
 
 def test_geometry_BasicPolygon(box_points):
-    # valid
     poly = schemas.geometry.BasicPolygon(
         points=box_points,
     )
 
-    # test property `points`
     with pytest.raises(ValidationError):
         schemas.geometry.BasicPolygon(points=box_points[0])
     with pytest.raises(ValidationError):
@@ -176,32 +174,24 @@ def test_geometry_BasicPolygon(box_points):
             ]
         )
 
-    # test member fn `left` @TODO
+    assert poly.left == -5
+    assert poly.right == 5
+    assert poly.top == 5
+    assert poly.bottom == -5
+    assert poly.width == 10
+    assert poly.height == 10
 
-    # test member fn `right` @TODO
-
-    # test member fn `top` @TODO
-
-    # test member fn `bottom` @TODO
-
-    # test member fn `width` @TODO
-
-    # test member fn `height` @TODO
-
-    # test member fn `segments`
     plist = box_points + [box_points[0]]
     assert poly.segments == [
         schemas.geometry.LineSegment(points=(plist[i], plist[i + 1]))
         for i in range(len(plist) - 1)
     ]
 
-    # test member fn `__str__`
     assert (
         str(poly)
         == "((-5.0,-5.0),(5.0,-5.0),(5.0,5.0),(-5.0,5.0),(-5.0,-5.0))"
     )
 
-    # test member fn `wkt`
     assert (
         poly.wkt()
         == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
@@ -283,11 +273,9 @@ def test_geometry_MultiPolygon(
         boundary=component_polygon_skewed_box, holes=[component_polygon_box]
     )
 
-    # valid
     mp1 = schemas.MultiPolygon(polygons=[p1])
     mp2 = schemas.MultiPolygon(polygons=[p1, p2])
 
-    # test property `polygons`
     with pytest.raises(ValidationError):  # type checking
         schemas.MultiPolygon(polygons=component_polygon_box)
     with pytest.raises(ValidationError):
@@ -297,7 +285,6 @@ def test_geometry_MultiPolygon(
     with pytest.raises(ValidationError):
         schemas.MultiPolygon(polygons=[p1, component_polygon_box])
 
-    # test member fn `wkt`
     assert (
         mp1.wkt()
         == "MULTIPOLYGON (((0.0 7.0710678118654755, 7.0710678118654755 0.0, 0.0 -7.0710678118654755, -7.0710678118654755 0.0, 0.0 7.0710678118654755)))"
@@ -313,14 +300,12 @@ def test_geometry_BoundingBox(
     component_polygon_rotated_box,
     component_polygon_skewed_box,
 ):
-    # valid
     bbox1 = schemas.BoundingBox(
         polygon=component_polygon_box,
     )
     bbox2 = schemas.BoundingBox(polygon=component_polygon_rotated_box)
     bbox3 = schemas.BoundingBox(polygon=component_polygon_skewed_box)
 
-    # test property `polygon`
     with pytest.raises(ValidationError):  # type checking
         schemas.BoundingBox(polygon=1234)
     with pytest.raises(ValidationError):
@@ -334,7 +319,6 @@ def test_geometry_BoundingBox(
         )
         schemas.BoundingBox(polygon=box_plus_one)  # check for 4 unique points
 
-    # test classmethod `from_extrema`
     assert (
         schemas.BoundingBox.from_extrema(
             xmin=component_polygon_box.left,
@@ -345,40 +329,25 @@ def test_geometry_BoundingBox(
         == component_polygon_box
     )
 
-    # test member fn `left`
     assert bbox1.left == -5 == bbox1.polygon.left
-
-    # test member fn `right`
     assert bbox1.right == 5 == bbox1.polygon.right
-
-    # test member fn `top`
     assert bbox1.top == 5 == bbox1.polygon.top
-
-    # test member fn `bottom`
     assert bbox1.bottom == -5 == bbox1.polygon.bottom
-
-    # test member fn `width`
     assert bbox1.width == 10 == bbox1.polygon.width
-
-    # test member fn `height`
     assert bbox1.height == 10 == bbox1.polygon.height
 
-    # test member fn `is_rectangular`
     assert bbox1.is_rectangular()
     assert bbox2.is_rectangular()
     assert not bbox3.is_rectangular()
 
-    # test member fn `is_rotated`
     assert not bbox1.is_rotated()
     assert bbox2.is_rotated()
     assert not bbox3.is_rotated()
 
-    # test member fn `is_skewed`
     assert not bbox1.is_skewed()
     assert not bbox2.is_skewed()
     assert bbox3.is_skewed()
 
-    # test member fn `wkt`
     assert (
         bbox1.wkt()
         == "POLYGON ((-5.0 -5.0, 5.0 -5.0, 5.0 5.0, -5.0 5.0, -5.0 -5.0))"
