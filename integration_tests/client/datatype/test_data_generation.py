@@ -99,16 +99,15 @@ def test_generate_prediction_data(client: Client):
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
         ],
-        timeout=30,
     )
+    eval_results = eval_job.wait_for_completion(timeout=3)
+    assert eval_results.status == JobStatus.DONE
 
-    assert eval_job.status == JobStatus.DONE
-
-    eval_results = asdict(eval_job.results)
-    eval_metrics = eval_results.pop("metrics")
+    eval_dict = asdict(eval_results)
+    eval_metrics = eval_dict.pop("metrics")
     for key in ["job_id", "confusion_matrices", "status"]:
-        eval_results.pop(key)
-    assert eval_results == {
+        eval_dict.pop(key)
+    assert eval_dict == {
         "model": model_name,
         "dataset": dataset_name,
         "task_type": TaskType.DETECTION.value,

@@ -80,18 +80,15 @@ def test_evaluate_detection(
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
         ],
-        timeout=30,
     )
     assert isinstance(eval_job.evaluation_id, int)
-    assert eval_job.task_type == "object-detection"
-    assert eval_job.status.value == "done"
     assert eval_job.ignored_pred_labels == []
     assert eval_job.missing_pred_labels == []
 
-    eval_job.wait_for_completion()
-    assert eval_job.status == JobStatus.DONE
+    eval_results = eval_job.wait_for_completion()
+    assert eval_results.status == JobStatus.DONE
 
-    result = asdict(eval_job.results)
+    result = asdict(eval_results)
     assert result == {
         "model": model_name,
         "dataset": "test_dataset",
@@ -131,10 +128,9 @@ def test_evaluate_detection(
             Annotation.geometric_area >= 10,
             Annotation.geometric_area <= 2000,
         ],
-        timeout=30,
     )
 
-    result = asdict(eval_job_bounded_area_10_2000.results)
+    result = asdict(eval_job_bounded_area_10_2000.wait_for_completion(timeout=30))
     assert result == {
         "model": model_name,
         "dataset": "test_dataset",
@@ -176,9 +172,8 @@ def test_evaluate_detection(
             Annotation.type == AnnotationType.BOX,
             Annotation.geometric_area >= 1200,
         ],
-        timeout=30,
     )
-    result = asdict(eval_job_min_area_1200.results)
+    result = asdict(eval_job_min_area_1200.wait_for_completion(timeout=30))
     min_area_1200_metrics = result.pop("metrics")
     assert result == {
         "model": model_name,
@@ -217,9 +212,8 @@ def test_evaluate_detection(
             Annotation.type == AnnotationType.BOX,
             Annotation.geometric_area <= 1200,
         ],
-        timeout=30,
     )
-    result = asdict(eval_job_max_area_1200.results)
+    result = asdict(eval_job_max_area_1200.wait_for_completion(timeout=30))
     max_area_1200_metrics = result.pop("metrics")
     assert result == {
         "model": model_name,
@@ -260,9 +254,8 @@ def test_evaluate_detection(
             Annotation.geometric_area >= 1200,
             Annotation.geometric_area <= 1800,
         ],
-        timeout=30,
     )
-    result = asdict(eval_job_bounded_area_1200_1800.results)
+    result = asdict(eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30))
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "model": model_name,
@@ -319,18 +312,17 @@ def test_evaluate_detection_with_json_filters(
     model.finalize_inferences(dataset)
 
     # test default iou arguments
-    eval_job = model.evaluate_detection(
+    eval_results = model.evaluate_detection(
         dataset=dataset,
         filters=[
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
         ],
-        timeout=30,
-    )
-    assert eval_job.results.settings["parameters"][
+    ).wait_for_completion(timeout=30)
+    assert eval_results.settings["parameters"][
         "iou_thresholds_to_compute"
     ] == [i / 100 for i in range(50, 100, 5)]
-    assert eval_job.results.settings["parameters"][
+    assert eval_results.settings["parameters"][
         "iou_thresholds_to_keep"
     ] == [0.5, 0.75]
 
@@ -374,7 +366,7 @@ def test_evaluate_detection_with_json_filters(
         },
     ]
 
-    eval_job_min_area_1200 = model.evaluate_detection(
+    eval_results_min_area_1200 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
@@ -383,9 +375,8 @@ def test_evaluate_detection_with_json_filters(
             Annotation.type == AnnotationType.BOX,
             Annotation.geometric_area >= 1200,
         ],
-        timeout=30,
-    )
-    min_area_1200_metrics = eval_job_min_area_1200.results.metrics
+    ).wait_for_completion(timeout=30)
+    min_area_1200_metrics = eval_results_min_area_1200.metrics
 
     eval_job_bounded_area_1200_1800 = model.evaluate_detection(
         dataset=dataset,
@@ -405,10 +396,9 @@ def test_evaluate_detection_with_json_filters(
             ],
             "label_keys": ["k1"],
         },
-        timeout=30,
     )
 
-    result = asdict(eval_job_bounded_area_1200_1800.results)
+    result = asdict(eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30))
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "model": model_name,
@@ -472,9 +462,8 @@ def test_get_bulk_evaluations(
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
         ],
-        timeout=30,
     )
-    eval_job.wait_for_completion()
+    eval_job.wait_for_completion(timeout=30)
 
     expected_metrics = [
         {
@@ -574,9 +563,8 @@ def test_get_bulk_evaluations(
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
         ],
-        timeout=30,
     )
-    eval_job.wait_for_completion()
+    eval_job.wait_for_completion(timeout=30)
 
     second_model_evaluations = client.get_bulk_evaluations(
         models="second_model"

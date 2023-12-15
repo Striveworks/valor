@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class JobStatus(Enum):
+class JobStatus(str, Enum):
     NONE = "none"
     PENDING = "pending"
     CREATING = "creating"
