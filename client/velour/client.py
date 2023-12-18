@@ -320,7 +320,7 @@ class Client:
                 "Please provide at least one job_id, model name, or dataset name"
             )
 
-        def build_query_param(param_name, element, typ):
+        def _build_query_param(param_name, element, typ):
             """Parse `element` to a list of `typ`, return a dict that can be urlencoded."""
             if not element:
                 return {}
@@ -329,9 +329,9 @@ class Client:
             return {param_name: ','.join(map(str, element))}
 
         params = {
-            **build_query_param("job_ids", job_ids, int),
-            **build_query_param("models", models, str),
-            **build_query_param("datasets", datasets, str),
+            **_build_query_param("job_ids", job_ids, int),
+            **_build_query_param("models", models, str),
+            **_build_query_param("datasets", datasets, str),
         }
 
         query_str = urlencode(params)
