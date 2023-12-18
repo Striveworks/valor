@@ -950,7 +950,6 @@ class Evaluation(Job):
         """
         return self.job_request.task_type
 
-    @property
     def results(self) -> EvaluationResult:
         """
         The results of the evaluation job.
