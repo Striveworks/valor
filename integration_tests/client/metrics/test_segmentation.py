@@ -13,8 +13,8 @@ def test_evaluate_segmentation(
     gt_semantic_segs2: list[GroundTruth],
     pred_semantic_segs: list[Prediction],
 ):
-    dataset = Dataset.create(client, dataset_name)
-    model = Model.create(client, model_name)
+    dataset = Dataset(client, dataset_name)
+    model = Model(client, model_name)
 
     for gt in gt_semantic_segs1 + gt_semantic_segs2:
         dataset.add_groundtruth(gt)
@@ -32,7 +32,7 @@ def test_evaluate_segmentation(
         {"key": "k1", "value": "v1", "score": None}
     ]
 
-    metrics = eval_job.results.metrics
+    metrics = eval_job.results().metrics
 
     assert len(metrics) == 3
     assert set(
@@ -53,8 +53,8 @@ def test_evaluate_segmentation_with_filter(
     gt_semantic_segs2: list[GroundTruth],
     pred_semantic_segs: list[Prediction],
 ):
-    dataset = Dataset.create(client, dataset_name)
-    model = Model.create(client, model_name)
+    dataset = Dataset(client, dataset_name)
+    model = Model(client, model_name)
 
     for gt in gt_semantic_segs1:
         gt.datum.metadata["color"] = "red"
@@ -85,7 +85,7 @@ def test_evaluate_segmentation_with_filter(
         {"key": "k1", "value": "v1", "score": None}
     ]
 
-    metrics = eval_job.results.metrics
+    metrics = eval_job.results().metrics
 
     assert len(metrics) == 2
     assert set(

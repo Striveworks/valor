@@ -27,12 +27,12 @@ def test_evaluate_image_clf(
     dataset_name: str,
     model_name: str,
 ):
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     for gt in gt_clfs:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, model_name)
+    model = Model(client, model_name)
     for pd in pred_clfs:
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
@@ -46,7 +46,7 @@ def test_evaluate_image_clf(
 
     assert eval_job.status == JobStatus.DONE
 
-    metrics = eval_job.results.metrics
+    metrics = eval_job.results().metrics
 
     expected_metrics = [
         {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
@@ -79,7 +79,7 @@ def test_evaluate_image_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.results.confusion_matrices
+    confusion_matrices = eval_job.results().confusion_matrices
     assert confusion_matrices == [
         {
             "label_key": "k4",
@@ -97,7 +97,7 @@ def test_evaluate_tabular_clf(
 ):
     assert len(gt_clfs_tabular) == len(pred_clfs_tabular)
 
-    dataset = Dataset.create(client, name=dataset_name)
+    dataset = Dataset(client, name=dataset_name)
     gts = [
         GroundTruth(
             datum=Datum(dataset=dataset_name, uid=f"uid{i}"),
@@ -114,7 +114,7 @@ def test_evaluate_tabular_clf(
         dataset.add_groundtruth(gt)
 
     # test
-    model = Model.create(client, name=model_name)
+    model = Model(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
         model.evaluate_classification(dataset=dataset, timeout=30)
     assert "has not been finalized" in str(exc_info)
@@ -154,7 +154,7 @@ def test_evaluate_tabular_clf(
 
     assert eval_job.status == JobStatus.DONE
 
-    metrics = eval_job.results.metrics
+    metrics = eval_job.results().metrics
 
     expected_metrics = [
         {
@@ -214,7 +214,7 @@ def test_evaluate_tabular_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.results.confusion_matrices
+    confusion_matrices = eval_job.results().confusion_matrices
 
     expected_confusion_matrix = {
         "label_key": "class",
@@ -312,7 +312,7 @@ def test_stratify_clf_metrics(
     assert len(gt_clfs_tabular) == len(pred_clfs_tabular)
 
     # create data and two-different defining groups of cohorts
-    dataset = Dataset.create(client, name=dataset_name)
+    dataset = Dataset(client, name=dataset_name)
     for i, label_value in enumerate(gt_clfs_tabular):
         gt = GroundTruth(
             datum=Datum(
@@ -333,7 +333,7 @@ def test_stratify_clf_metrics(
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, name=model_name)
+    model = Model(client, name=model_name)
     for i, pred in enumerate(pred_clfs_tabular):
         pd = Prediction(
             model=model_name,
@@ -365,7 +365,7 @@ def test_stratify_clf_metrics(
         ],
         timeout=30,
     )
-    val2_metrics = eval_job_val2.results.metrics
+    val2_metrics = eval_job_val2.results().metrics
 
     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
     # (hard preds [1, 0, 0])

@@ -22,12 +22,12 @@ def test_evaluate_detection(
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
 ):
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, model_name)
+    model = Model(client, model_name)
     for pd in pred_dets:
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
@@ -130,7 +130,7 @@ def test_evaluate_detection(
         },
     ]
 
-    assert eval_job.results.metrics == expected_metrics
+    assert eval_job.results().metrics == expected_metrics
 
     # now test if we set min_area and/or max_area
     areas = db.scalars(
@@ -195,7 +195,7 @@ def test_evaluate_detection(
             },
         },
     }
-    assert eval_job_bounded_area_10_2000.results.metrics == expected_metrics
+    assert eval_job_bounded_area_10_2000.results().metrics == expected_metrics
 
     # now check we get different things by setting the thresholds accordingly
     # min area threshold should divide the set of annotations
@@ -248,7 +248,7 @@ def test_evaluate_detection(
             },
         },
     }
-    assert eval_job_min_area_1200.results.metrics != expected_metrics
+    assert eval_job_min_area_1200.results().metrics != expected_metrics
 
     # check for difference with max area now dividing the set of annotations
     eval_job_max_area_1200 = model.evaluate_detection(
@@ -300,7 +300,7 @@ def test_evaluate_detection(
             },
         },
     }
-    assert eval_job_max_area_1200.results.metrics != expected_metrics
+    assert eval_job_max_area_1200.results().metrics != expected_metrics
 
     # should perform the same as the first min area evaluation
     # except now has an upper bound
@@ -358,10 +358,10 @@ def test_evaluate_detection(
             },
         },
     }
-    assert eval_job_bounded_area_1200_1800.results.metrics != expected_metrics
+    assert eval_job_bounded_area_1200_1800.results().metrics != expected_metrics
     assert (
-        eval_job_bounded_area_1200_1800.results.metrics
-        == eval_job_min_area_1200.results.metrics
+        eval_job_bounded_area_1200_1800.results().metrics
+        == eval_job_min_area_1200.results().metrics
     )
 
     # test accessing these evaluations via the dataset
@@ -376,12 +376,12 @@ def test_evaluate_detection_with_json_filters(
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
 ):
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, model_name)
+    model = Model(client, model_name)
     for pd in pred_dets:
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
@@ -516,10 +516,10 @@ def test_evaluate_detection_with_json_filters(
         },
     }
 
-    assert eval_job_bounded_area_1200_1800.results.metrics != expected_metrics
+    assert eval_job_bounded_area_1200_1800.results().metrics != expected_metrics
     assert (
-        eval_job_bounded_area_1200_1800.results.metrics
-        == eval_job_min_area_1200.results.metrics
+        eval_job_bounded_area_1200_1800.results().metrics
+        == eval_job_min_area_1200.results().metrics
     )
 
 
@@ -534,12 +534,12 @@ def test_get_bulk_evaluations(
     dataset_ = dataset_name
     model_ = model_name
 
-    dataset = Dataset.create(client, dataset_)
+    dataset = Dataset(client, dataset_)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, model_)
+    model = Model(client, model_)
     for pd in pred_dets:
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
@@ -641,7 +641,7 @@ def test_get_bulk_evaluations(
     assert len(client.get_bulk_evaluations(models="wrong_model_name")) == 0
 
     # test with multiple models
-    second_model = Model.create(client, "second_model")
+    second_model = Model(client, "second_model")
     for pd in pred_dets2:
         second_model.add_prediction(pd)
     second_model.finalize_inferences(dataset)

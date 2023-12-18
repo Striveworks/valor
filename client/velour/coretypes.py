@@ -815,7 +815,7 @@ class Dataset:
             json=groundtruth.dict(),
         )
 
-    def get_groundtruth(self, datum: Datum) -> GroundTruth:
+    def get_groundtruth(self, datum: Union[Datum, str]) -> GroundTruth:
         """
         Fetches a given groundtruth from the backend.
 
@@ -830,8 +830,9 @@ class Dataset:
         GroundTruth
             The requested `GroundTruth`.
         """
+        uid = datum.uid if isinstance(datum, Datum) else datum
         resp = self.client._requests_get_rel_host(
-            f"groundtruths/dataset/{self.name}/datum/{datum.uid}"
+            f"groundtruths/dataset/{self.name}/datum/{uid}"
         ).json()
         return GroundTruth(**resp)
 
