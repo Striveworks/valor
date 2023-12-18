@@ -1112,9 +1112,6 @@ def get_evaluation(
                 detail=f"No metrics for job {job_id} since its status is {status}",
             )
         output = crud.get_evaluations(db=db, job_ids=[job_id])
-        for o in output:
-            print(o.model_dump_json())
-        print("done")
         return output[0]
     except (
         exceptions.JobDoesNotExistError,
