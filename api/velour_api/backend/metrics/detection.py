@@ -265,9 +265,10 @@ def compute_detection_metrics(
     # Get groundtruth labels
     labels = {
         label.id: schemas.Label(key=label.key, value=label.value)
-        for label in db.query(
-            Query(models.Label).filter(gt_filter).groundtruths()
-        ).all()
+        for label in db.scalars(
+            select(models.Label)
+            .where(models.Label.id.in_(ranking.keys()))
+        )
     }
 
     # Get the number of ground truths per label id
