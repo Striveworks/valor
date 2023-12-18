@@ -206,7 +206,7 @@ class APMetric(BaseModel):
     """
 
     iou: float
-    value: float | None
+    value: float
     label: Label
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
@@ -248,7 +248,7 @@ class APMetricAveragedOverIOUs(BaseModel):
     """
 
     ious: set[float]
-    value: float | None
+    value: float
     label: Label
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
@@ -288,7 +288,7 @@ class mAPMetric(BaseModel):
     """
 
     iou: float
-    value: float | None
+    value: float
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -324,7 +324,7 @@ class mAPMetricAveragedOverIOUs(BaseModel):
     """
 
     ious: set[float]
-    value: float | None
+    value: float
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -464,7 +464,7 @@ class AccuracyMetric(BaseModel):
     """
 
     label_key: str
-    value: float | None
+    value: float
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -562,7 +562,7 @@ class ROCAUCMetric(BaseModel):
     """
 
     label_key: str
-    value: float | None
+    value: float
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """
@@ -578,7 +578,7 @@ class ROCAUCMetric(BaseModel):
         A mapping dictionary.
         """
         return {
-            "value": self.value,
+            "value": self.value if not np.isnan(self.value) else -1,
             "type": "ROCAUC",
             "parameters": {"label_key": self.label_key},
             "evaluation_id": evaluation_id,
@@ -597,7 +597,7 @@ class IOUMetric(BaseModel):
         A label for the metric.
     """
 
-    value: float | None
+    value: float
     label: Label
 
     def db_mapping(self, label_id: int, evaluation_id: int) -> dict:
@@ -631,7 +631,7 @@ class mIOUMetric(BaseModel):
         The metric value.
     """
 
-    value: float | None
+    value: float
 
     def db_mapping(self, evaluation_id: int) -> dict:
         """

@@ -1102,7 +1102,6 @@ def get_evaluation(
         If the job doesn't have the correct state.
         If the job ID does not exist
     """
-    print("??????")
     try:
         status = crud.get_job_status(
             evaluation_id=job_id,
@@ -1112,10 +1111,10 @@ def get_evaluation(
                 status_code=404,
                 detail=f"No metrics for job {job_id} since its status is {status}",
             )
-        print("inside")
         output = crud.get_evaluations(db=db, job_ids=[job_id])
         for o in output:
             print(o.model_dump_json())
+        print("done")
         return output[0]
     except (
         exceptions.JobDoesNotExistError,
