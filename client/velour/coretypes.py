@@ -187,20 +187,20 @@ class Datum:
                 str,
             ],
         ] = None,
-        dataset: str = "",
+        dataset: Union["Dataset", str] = "",
     ):
         self.uid = uid
         self.metadata = metadata if metadata else {}
         self.geospatial = geospatial if geospatial else {}
-        self.dataset = dataset
+        self.dataset_name = dataset.name if isinstance(dataset, Dataset) else dataset
         self._validate()
 
     def _validate(self):
         """
         Validates the parameters used to create a `Datum` object.
         """
-        if not isinstance(self.dataset, str):
-            raise SchemaTypeError("dataset", str, self.dataset)
+        if not isinstance(self.dataset_name, str):
+            raise SchemaTypeError("dataset_name", str, self.dataset_name)
         if not isinstance(self.uid, str):
             raise SchemaTypeError("uid", str, self.uid)
         validate_metadata(self.metadata)
@@ -218,7 +218,7 @@ class Datum:
             A dictionary of the `Datum's` attributes.
         """
         return {
-            "dataset": self.dataset,
+            "dataset": self.dataset_name,
             "uid": self.uid,
             "metadata": self.metadata,
             "geospatial": self.geospatial,
@@ -568,11 +568,11 @@ class Prediction:
         self,
         datum: Datum,
         annotations: List[Annotation] = None,
-        model: str = "",
+        model: Union["Model", str] = "",
     ):
         self.datum = datum
         self.annotations = annotations
-        self.model = model
+        self.model_name = model.name if isinstance(model, Model) else model
         self._validate()
 
     def _validate(self):
@@ -599,8 +599,8 @@ class Prediction:
                 )
 
         # validate model
-        if not isinstance(self.model, str):
-            raise SchemaTypeError("model", str, self.model)
+        if not isinstance(self.model_name, str):
+            raise SchemaTypeError("model_name", str, self.model_name)
 
         # TaskType-specific validations
         for annotation in self.annotations:
@@ -642,7 +642,7 @@ class Prediction:
         """
         return {
             "datum": self.datum.dict(),
-            "model": self.model,
+            "model": self.model_name,
             "annotations": [
                 annotation.dict() for annotation in self.annotations
             ],
@@ -809,20 +809,20 @@ class Dataset:
                 f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
             )
 
-        groundtruth.datum.dataset = self.name
+        groundtruth.datum.dataset_name = self.name
         self.client._requests_post_rel_host(
             "groundtruths",
             json=groundtruth.dict(),
         )
 
-    def get_groundtruth(self, uid: str) -> GroundTruth:
+    def get_groundtruth(self, datum: Datum) -> GroundTruth:
         """
         Fetches a given groundtruth from the backend.
 
         Parameters
         ----------
-        uid : str
-            The UID of the 'GroundTruth' to fetch.
+        datum : Datum
+            The Datum of the 'GroundTruth' to fetch.
 
 
         Returns
@@ -831,7 +831,7 @@ class Dataset:
             The requested `GroundTruth`.
         """
         resp = self.client._requests_get_rel_host(
-            f"groundtruths/dataset/{self.name}/datum/{uid}"
+            f"groundtruths/dataset/{self.name}/datum/{datum.uid}"
         ).json()
         return GroundTruth(**resp)
 
@@ -1104,7 +1104,7 @@ class Model:
                 f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
             )
 
-        prediction.model = self.name
+        prediction.model_name = self.name
         return self.client._requests_post_rel_host(
             "predictions",
             json=prediction.dict(),
@@ -1329,8 +1329,8 @@ class Model:
 
         Parameters
         ----------
-        datum : Datum
-            The `Datum` of the prediction to return.
+        datum : Union[Datum, str]
+            The `Datum` or datum UID of the prediction to return.
 
         Returns
         ----------
@@ -1338,7 +1338,7 @@ class Model:
             The requested `Prediction`.
         """
         resp = self.client._requests_get_rel_host(
-            f"predictions/model/{self.name}/dataset/{datum.dataset}/datum/{datum.uid}",
+            f"predictions/model/{self.name}/dataset/{datum.dataset_name}/datum/{datum.uid}",
         ).json()
         return Prediction(**resp)
 
