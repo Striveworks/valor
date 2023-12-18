@@ -50,7 +50,6 @@ def _ap(
                     cnt_tp += 1
                 else:
                     cnt_fp += 1
-
                 cnt_fn = number_of_ground_truths[label_id] - cnt_tp
 
                 precisions.append(
@@ -145,24 +144,6 @@ def compute_detection_metrics(
     pd_filter = settings.filters.model_copy()
     pd_filter.dataset_names = [dataset.name]
     pd_filter.models_names = [model.name]
-
-    # Get groundtruth labels
-    labels = {
-        label.id: schemas.Label(key=label.key, value=label.value)
-        for label in db.query(
-            Query(models.Label).filter(gt_filter).groundtruths()
-        ).all()
-    }
-
-    # Get the number of ground truths per label id
-    number_of_ground_truths = {}
-    for id in labels:
-        gt_filter.label_ids = [id]
-        number_of_ground_truths[id] = db.query(
-            Query(func.count(models.GroundTruth.id))
-            .filter(gt_filter)
-            .groundtruths()
-        ).scalar()
 
     # Join gt, datum, annotation, label
     gt = (
@@ -280,6 +261,24 @@ def compute_detection_metrics(
                     iou=iou,
                 )
             )
+
+    # Get groundtruth labels
+    labels = {
+        label.id: schemas.Label(key=label.key, value=label.value)
+        for label in db.query(
+            Query(models.Label).filter(gt_filter).groundtruths()
+        ).all()
+    }
+
+    # Get the number of ground truths per label id
+    number_of_ground_truths = {}
+    for id in labels:
+        gt_filter.label_ids = [id]
+        number_of_ground_truths[id] = db.query(
+            Query(func.count(models.GroundTruth.id))
+            .filter(gt_filter)
+            .groundtruths()
+        ).scalar()
 
     # Compute AP
     detection_metrics = _ap(
