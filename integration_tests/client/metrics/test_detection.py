@@ -553,6 +553,10 @@ def test_get_bulk_evaluations(
     assert len(evaluations[0].metrics)
     assert evaluations[0].metrics == expected_metrics
 
+    evaluations_by_job_id = client.get_bulk_evaluations(job_ids=eval_job.job_id)
+    assert len(evaluations_by_job_id) == 1
+    assert evaluations_by_job_id[0] == evaluations[0]
+
     # test incorrect names
     assert len(client.get_bulk_evaluations(datasets="wrong_dataset_name")) == 0
     assert len(client.get_bulk_evaluations(models="wrong_model_name")) == 0
@@ -563,7 +567,7 @@ def test_get_bulk_evaluations(
         second_model.add_prediction(pd)
     second_model.finalize_inferences(dataset)
 
-    eval_job = second_model.evaluate_detection(
+    eval_job2 = second_model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
@@ -572,7 +576,7 @@ def test_get_bulk_evaluations(
             Annotation.type == AnnotationType.BOX,
         ],
     )
-    eval_job.wait_for_completion(timeout=30)
+    eval_job2.wait_for_completion(timeout=30)
 
     second_model_evaluations = client.get_bulk_evaluations(
         models="second_model"
@@ -601,3 +605,11 @@ def test_get_bulk_evaluations(
     assert len(both_evaluations_from_model_names) == 2
     assert both_evaluations[0] in both_evaluations_from_model_names
     assert both_evaluations[1] in both_evaluations_from_model_names
+
+    # should also be equivalent
+    both_evaluations_from_job_ids = client.get_bulk_evaluations(
+        job_ids=[eval_job.job_id, eval_job2.job_id]
+    )
+    assert len(both_evaluations_from_job_ids) == 2
+    assert both_evaluations[0] in both_evaluations_from_job_ids
+    assert both_evaluations[1] in both_evaluations_from_job_ids

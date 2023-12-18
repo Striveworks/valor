@@ -868,6 +868,10 @@ class Evaluation:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    @property
+    def job_id(self):
+        return self.evaluation_id
+
     def get_result(self) -> EvaluationResult:
         """
         Fetch the first `EvaluationResult` for our `job_id`.
