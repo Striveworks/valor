@@ -294,7 +294,6 @@ def _compute_confusion_matrix_at_label_key(
         .join(
             groundtruths,
             groundtruths.c.datum_id == hard_preds_query.c.datum_id,
-            full=True,
         )
         .join(
             models.Label,

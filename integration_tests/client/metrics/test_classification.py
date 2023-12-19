@@ -38,13 +38,12 @@ def test_evaluate_image_clf(
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_classification(dataset=dataset, timeout=30)
+    eval_job.wait_for_completion()
 
     assert eval_job.evaluation_id
-    assert eval_job.status.value == "done"
+    assert eval_job.status == JobStatus.DONE
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
     assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
-
-    assert eval_job.status == JobStatus.DONE
 
     metrics = eval_job.results().metrics
 
