@@ -68,7 +68,7 @@ class Client:
         self.host = host
         self.access_token = os.getenv("VELOUR_ACCESS_TOKEN", access_token)
 
-        # check the connection by hitting the users endpoint
+        # check the connection by getting the api version number
         api_version = self._get_api_version_number()
 
         _validate_version(
