@@ -6,6 +6,7 @@ from typing import List, Union
 from urllib.parse import urljoin
 
 import requests
+from packaging import version
 
 from velour import __version__ as client_version
 from velour import schemas
@@ -21,7 +22,7 @@ def _validate_version(client_version: str, api_version: str):
             f"The Velour client version ({client_version}) is {state} than the Velour API version {api_version}"
             f"\t==========================================================================================\n"
             f"\t== Running with a mismatched client != API version may have unexpected results.\n"
-            f"\t== Please install \033[1;velour-client=={client_version}\033[0;31m to avoid aberrant behavior.\n"
+            f"\t== Please update your client to \033[1;{api_version}\033[0;31m to avoid aberrant behavior.\n"
             f"\t==========================================================================================\n"
             f"\033[0m"
         )
@@ -34,7 +35,7 @@ def _validate_version(client_version: str, api_version: str):
         logging.debug(
             f"The Velour API version {api_version} matches client version {client_version}."
         )
-    elif api_version < client_version:
+    elif version.parse(api_version) < version.parse(client_version):
         logging.warning(_msg("newer"))
     else:
         logging.warning(_msg("older"))

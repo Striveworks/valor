@@ -74,6 +74,17 @@ def test_version_mismatch_warning(caplog):
 
     caplog.clear()
 
+    # test that semantic versioning works correctly
+    # client_version > api_version when comparing strings, but
+    # client_version < api_version when comparing semantic versions
+    _validate_version(client_version="1.12.2", api_version="1.101.12")
+
+    assert all(
+        record.levelname == "WARNING" and "older" in record.message
+        for record in caplog.records
+    )
+    caplog.clear()
+
 
 def test__requests_wrapper(client: Client):
     with pytest.raises(ValueError):
