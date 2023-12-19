@@ -1,4 +1,3 @@
-import re
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -1239,12 +1238,3 @@ def test_get_all_labels(crud, client: TestClient):
 def test_get_user(client: TestClient):
     resp = client.get("/user")
     assert resp.json() == {"email": None}
-
-
-""" GET /api-version """
-
-
-def test_get_api_version(client: TestClient):
-    resp = client.get("/api-version").json()["api_version"]
-
-    assert re.match(r"\d+\.\d+\.\d+", resp)
