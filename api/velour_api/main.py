@@ -1229,24 +1229,17 @@ def get_user(
 @app.get(
     "/api-version",
     tags=["Info"],
+    dependencies=[Depends(token_auth_scheme)],
 )
-def get_api_version(
-    token: HTTPAuthorizationCredentials | None = Depends(token_auth_scheme),
-) -> schemas.APIVersion:
+def get_api_version() -> schemas.APIVersion:
     """
-    Verify a user and return their API version.
+    Return the API's version.
 
     GET Endpoint: `/api-version`
-
-    Parameters
-    ----------
-    token: HTTPAuthorizationCredentials
-        The auth token for the user.
 
     Returns
     -------
     schemas.APIVersion
         A response object containing the API's version number.
     """
-    auth.verify_token(token)
     return schemas.APIVersion(api_version=api_version)

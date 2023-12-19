@@ -1,4 +1,4 @@
-from .auth import APIVersion, User
+from .auth import User
 from .core import (
     Annotation,
     Dataset,
@@ -18,6 +18,7 @@ from .geometry import (
     Polygon,
     Raster,
 )
+from .info import APIVersion
 from .metadata import DateTime, Metadatum
 from .metrics import (
     AccuracyMetric,
