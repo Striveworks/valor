@@ -1228,7 +1228,7 @@ def get_user(
 
 @app.get(
     "/api-version",
-    tags=["Authentication"],
+    tags=["Info"],
 )
 def get_api_version(
     token: HTTPAuthorizationCredentials | None = Depends(token_auth_scheme),
