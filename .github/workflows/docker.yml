@@ -21,7 +21,7 @@ jobs:
       run:
         working-directory: ./api
     env:
-      IMAGE_NAME: ghcr.io/striveworks/velour/velour-service-test
+      IMAGE_NAME: ghcr.io/striveworks/velour/velour-service
       IMAGE_NAME_WITH_COMMIT_HASH: ${IMAGE_NAME}:${{ github.sha }}
     steps:
       - uses: actions/checkout@v3
