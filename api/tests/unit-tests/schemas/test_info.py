@@ -4,7 +4,7 @@ from pydantic import ValidationError
 from velour_api import schemas
 
 
-def test_auth_APIVersion():
+def test_info_APIVersion():
     # valid
     schemas.APIVersion(api_version="1.1.1")
 
