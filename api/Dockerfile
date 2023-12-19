@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-ARG VERSION
+ARG VERSION="0.0.0-dev"
 
 RUN apt-get update
 RUN apt-get install build-essential libpq-dev -y
