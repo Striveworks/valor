@@ -16,7 +16,7 @@ class User(BaseModel):
 
 class APIVersion(BaseModel):
     """
-    Defines an API version string, which is sent back to the user after their authentication is confirmed.
+    Defines an API version string which is sent back to the user after their authentication is confirmed.
 
     Attributes
     ----------
