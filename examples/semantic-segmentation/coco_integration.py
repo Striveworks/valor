@@ -25,48 +25,52 @@ from velour.enums import TaskType, JobStatus
 from velour.metatypes import ImageMetadata
 
 
-def download_coco_panoptic(
-    destination: str = "./coco",
+def _download_and_unzip(url, output_folder):
+    # Make a GET request to the URL
+    response = requests(url, stream=True)
+
+    # Check if the request was successful (status code 200)
+    if response.status_code == 200:
+        # Get the total file size (if available)
+        total_size = int(response.headers('content-length', 0))
+
+        # Create a temporary file to save the downloaded content
+        with tempfile.TemporaryFile() as temp_file:
+            # Initialize tqdm with the total file size
+            with tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024, desc="Downloading") as pbar:
+                # Iterate over the response content and update progress
+                for chunk in response.iter_content(chunk_size=1024):
+                    if chunk:
+                        temp_file.write(chunk)
+                        pbar.update(1024)
+
+            # Once the file is downloaded, extract it
+            with zipfile.ZipFile(temp_file, 'r') as zip_ref:
+                total_files = len(zip_ref.infolist())
+                with tqdm(total=total_files, unit='file', desc="Extracting") as extraction_pbar:
+                    for file_info in zip_ref.infolist():
+                        zip_ref.extract(file_info, output_folder)
+                        extraction_pbar.update(1)
+
+
+def _unzip(filepath: Path):
+    folder = str(filepath.parent.absolute())
+    filepath = str(filepath.absolute())
+    with zipfile.ZipFile(filepath, 'r') as zip_ref:
+        zip_ref.extractall(folder)
+
+
+def _load(
+    destination: str,
     coco_url: str = "http://images.cocodataset.org/annotations/panoptic_annotations_trainval2017.zip",
     annotations_zipfile: Path = Path("./coco/annotations/panoptic_val2017.zip"),
-) -> dict:
+):
     """
-    Download and return COCO panoptic dataset.
+    Download and unzip COCO panoptic dataset.
     """
-
     if not os.path.exists(destination):
-
-        # Make a GET request to the URL
-        response = requests.get(coco_url, stream=True)
-
-        # Check if the request was successful (status code 200)
-        if response.status_code == 200:
-            # Get the total file size (if available)
-            total_size = int(response.headers.get('content-length', 0))
-
-            # Create a temporary file to save the downloaded content
-            with tempfile.TemporaryFile() as temp_file:
-                # Initialize tqdm with the total file size
-                with tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024, desc="Downloading") as pbar:
-                    # Iterate over the response content and update progress
-                    for chunk in response.iter_content(chunk_size=1024):
-                        if chunk:
-                            temp_file.write(chunk)
-                            pbar.update(1024)
-
-                # Once the file is downloaded, extract it
-                with zipfile.ZipFile(temp_file, 'r') as zip_ref:
-                    total_files = len(zip_ref.infolist())
-                    with tqdm(total=total_files, unit='file', desc="Extracting") as extraction_pbar:
-                        for file_info in zip_ref.infolist():
-                            zip_ref.extract(file_info, destination)
-                            extraction_pbar.update(1)
-        
-        # unzip the validation set
-        folder = str(annotations_zipfile.parent.absolute())
-        filepath = str(annotations_zipfile.absolute())
-        with zipfile.ZipFile(filepath, 'r') as zip_ref:
-            zip_ref.extractall(folder)
+        _download_and_unzip(coco_url, destination)
+        _unzip(annotations_zipfile)
     else:
         print(f"coco already exists at {destination}!")
 
@@ -74,15 +78,6 @@ def download_coco_panoptic(
         panoptic_val2017 = json.load(f)
 
     return panoptic_val2017
-
-
-def download_image(datum: Datum) -> PIL.Image:
-    """
-    Download image using Datum.
-    """
-    url = datum.metadata["coco_url"]
-    img_data = BytesIO(requests.get(url).content)
-    return PIL.Image.open(img_data)
 
 
 def _parse_image_to_datum(image: dict) -> Datum:
@@ -275,7 +270,7 @@ def create_dataset_from_coco_panoptic(
     """
 
     # download and unzip coco dataset
-    data = download_coco_panoptic(
+    data = _load(
         destination=destination,
         coco_url=coco_url,
         annotations_zipfile=annotations_zipfile,
@@ -315,3 +310,10 @@ def create_dataset_from_coco_panoptic(
     return dataset
 
 
+def download_image(datum: Datum) -> PIL.Image:
+    """
+    Download image using Datum.
+    """
+    url = datum.metadata["coco_url"]
+    img_data = BytesIO(requests.get(url).content)
+    return PIL.Image.open(img_data)
