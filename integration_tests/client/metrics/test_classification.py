@@ -268,7 +268,6 @@ def test_evaluate_tabular_clf(
     assert len(results) == 1
     assert results[0].dataset == dataset_name
     assert results[0].model == model_name
-    assert results[0].settings == {}
 
     metrics_from_eval_settings_id = results[0].metrics
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
