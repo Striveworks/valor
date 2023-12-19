@@ -5,7 +5,7 @@ on:
     paths:
       - api/**
       - .github/workflows/docker.yml
-    branches: [main]
+    # branches: [main]
     tags:
       - "v*"
 
@@ -21,7 +21,7 @@ jobs:
       run:
         working-directory: ./api
     env:
-      IMAGE_NAME: ghcr.io/striveworks/velour/velour-service
+      IMAGE_NAME: ghcr.io/striveworks/velour/velour-service-test
       IMAGE_NAME_WITH_COMMIT_HASH: ${IMAGE_NAME}:${{ github.sha }}
     steps:
       - uses: actions/checkout@v3
@@ -31,7 +31,8 @@ jobs:
           aws-region: ${{ secrets.AWS_ECR_REGION }}
       - name: build
         run: |
-          docker build . -t ${IMAGE_NAME}
+          pip3 install setuptools_scm
+          docker build --build-arg VERSION=$(python -m setuptools_scm) . -t ${IMAGE_NAME}
       - name: push
         run: |
           docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
