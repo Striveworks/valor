@@ -6,8 +6,8 @@ on:
       - api/**
       - .github/workflows/docker.yml
     # branches: [main]
-    tags:
-      - "v*"
+    # tags:
+    #   - "v*"
 
 permissions:
   id-token: write
