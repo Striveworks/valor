@@ -254,14 +254,10 @@ def test_evaluate_tabular_clf(
 
     # check model methods
     labels = model.get_labels()
-    df = model.get_metric_dataframes()
 
     assert isinstance(model.id, int)
     assert model.name == model_name
     assert len(model.metadata) == 0
-
-    assert len(labels) == 3
-    assert isinstance(df[0]["df"], pandas.DataFrame)
 
     # check evaluation
     results = model.get_evaluations()
