@@ -7,10 +7,8 @@ import requests
 import numpy as np
 from tqdm import tqdm
 from io import BytesIO
-from copy import deepcopy
-from pathlib import Path, PosixPath
-from typing import Any, Dict, List, Tuple, Union
-from collections import defaultdict
+from pathlib import Path
+from typing import Dict, List, Union
 
 from velour import (
     Client,
@@ -132,28 +130,6 @@ def _create_masks(filename: str) -> np.ndarray:
     return mask[:, :, 0] + 256 * mask[:, :, 1] + (256**2) * mask[:, :, 2]
 
 
-def _create_annotations_from_instance_segmentations(
-    image: dict,
-    category_id_to_labels_and_task: Dict[int, Union[TaskType, Dict[str, str]]],
-    mask_ids,
-) -> List[Annotation]:
-    return [
-        Annotation(
-            task_type=TaskType.DETECTION,
-            labels=[
-                Label(key="supercategory", value=str(category_id_to_labels_and_task[segmentation["category_id"]]["labels"]["supercategory"])),
-                Label(key="name", value=str(category_id_to_labels_and_task[segmentation["category_id"]]["labels"]["name"])),
-                Label(key="iscrowd", value=str(segmentation["iscrowd"])),
-            ],
-            raster=Raster.from_numpy(
-                mask_ids == segmentation["id"]
-            ),
-        )
-        for segmentation in image["segments_info"]
-        if category_id_to_labels_and_task[segmentation["category_id"]]["task_type"] == TaskType.DETECTION
-    ]
-
-
 def _create_annotations_from_semantic_segmentations(
     image: dict,
     category_id_to_labels_and_task: Dict[int, Union[TaskType, Dict[str, str]]],
@@ -212,16 +188,9 @@ def _create_groundtruths_from_coco_panoptic(
 
         # exract masks from annotations
         mask_ids = _create_masks(masks_path / image["file_name"])
-        
-        # create instance segmentations
-        objdet_annotations = _create_annotations_from_instance_segmentations(
-            image,
-            category_id_to_labels_and_task,
-            mask_ids,
-        )
 
         # create semantic segmentations
-        semseg_annotations = _create_annotations_from_semantic_segmentations(
+        annotations = _create_annotations_from_semantic_segmentations(
             image,
             category_id_to_labels_and_task,
             mask_ids,
@@ -231,9 +200,7 @@ def _create_groundtruths_from_coco_panoptic(
         groundtruths.append(
             GroundTruth(
                 datum=image_id_to_datum[image["image_id"]],
-                annotations=(
-                    objdet_annotations + semseg_annotations
-                ),
+                annotations=annotations,
             )
         )
 
@@ -242,7 +209,7 @@ def _create_groundtruths_from_coco_panoptic(
 
 def create_dataset_from_coco_panoptic(
     client: Client,
-    name: str = "coco2017-panoptic",
+    name: str = "coco2017-panoptic-semseg",
     destination: str = "./coco",
     coco_url: str = "http://images.cocodataset.org/annotations/panoptic_annotations_trainval2017.zip",
     annotations_zipfile: Path = Path("./coco/annotations/panoptic_val2017.zip"),

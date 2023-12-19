@@ -1,15 +1,11 @@
-from typing import Union
-
 import numpy
-import PIL
-from PIL.Image import Resampling
 
 from velour import Datum, Annotation, Label, Prediction, enums
 from velour.metatypes import ImageMetadata
-from velour.schemas import BoundingBox, Raster
+from velour.schemas import BoundingBox
 
 
-def parse_yolo_object_detection(
+def parse_object_detection(
     result, 
     datum: Datum, 
     label_key: str = "class"
