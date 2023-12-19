@@ -212,6 +212,17 @@ def _compute_confusion_matrix_at_label_key(
     pFilter.models_names = [job_request.model]
     pFilter.label_keys = [label_key]
 
+    # 0. Get groundtruths that conform to gFilter
+    groundtruths = (
+        Query(
+            models.GroundTruth, 
+            models.Annotation.datum_id.label("datum_id"),
+        )
+        .filter(gFilter)
+        .groundtruths(as_subquery=False)
+        .alias()
+    )
+
     # 1. Get predictions that conform to pFilter
     predictions = (
         Query(models.Prediction)
@@ -220,15 +231,14 @@ def _compute_confusion_matrix_at_label_key(
         .alias()
     )
 
-    # 2. Get the max prediction scores by datum that conform to pFilter
+    # 2. Get the max prediction scores by datum
     max_scores_by_datum_id = (
-        Query(
-            func.max(models.Prediction.score).label("max_score"),
-            models.Datum.id.label("datum_id"),
+        select(
+            func.max(predictions.c.score).label("max_score"),
+            models.Annotation.datum_id.label("datum_id"),
         )
-        .filter(pFilter)
-        .predictions(as_subquery=False)
-        .group_by(models.Datum.id)
+        .join(models.Annotation, models.Annotation.id == predictions.c.annotation_id)
+        .group_by(models.Annotation.datum_id)
         .alias()
     )
 
@@ -236,28 +246,23 @@ def _compute_confusion_matrix_at_label_key(
     # used for the edge case where the max confidence appears twice
     # the result of this query is all of the hard predictions
     min_id_query = (
-        select(func.min(predictions.c.id).label("min_id"))
+        select(
+            func.min(predictions.c.id).label("min_id"),
+            models.Annotation.datum_id.label("datum_id"),
+        )
         .select_from(predictions)
         .join(
             models.Annotation,
             models.Annotation.id == predictions.c.annotation_id,
         )
         .join(
-            models.Datum,
-            models.Annotation.datum_id == models.Datum.id,
-        )
-        .join(
             max_scores_by_datum_id,
             and_(
-                models.Datum.id == max_scores_by_datum_id.c.datum_id,
+                models.Annotation.datum_id == max_scores_by_datum_id.c.datum_id,
                 predictions.c.score == max_scores_by_datum_id.c.max_score,
             ),
         )
-        .join(
-            models.Label,
-            models.Label.id == predictions.c.label_id,
-        )
-        .group_by(models.Datum.id)
+        .group_by(models.Annotation.datum_id)
         .alias()
     )
 
@@ -265,24 +270,12 @@ def _compute_confusion_matrix_at_label_key(
     hard_preds_query = (
         select(
             models.Label.value.label("pred_label_value"),
-            models.Datum.id.label("datum_id"),
+            min_id_query.c.datum_id.label("datum_id"),
         )
         .select_from(min_id_query)
         .join(
             models.Prediction,
             models.Prediction.id == min_id_query.c.min_id,
-        )
-        .join(
-            models.Annotation,
-            models.Annotation.id == models.Prediction.annotation_id,
-        )
-        .join(models.Datum, models.Datum.id == models.Annotation.datum_id)
-        .join(
-            max_scores_by_datum_id,
-            and_(
-                models.Prediction.score == max_scores_by_datum_id.c.max_score,
-                models.Datum.id == max_scores_by_datum_id.c.datum_id,
-            ),
         )
         .join(
             models.Label,
@@ -294,31 +287,19 @@ def _compute_confusion_matrix_at_label_key(
     # 5. Link value to the Label.value object
     b = Bundle("cols", hard_preds_query.c.pred_label_value, models.Label.value)
 
-    # 6. Get groundtruths that conform to gFilter
-    groundtruths = (
-        Query(models.GroundTruth)
-        .filter(gFilter)
-        .groundtruths(as_subquery=False)
-        .alias()
-    )
-
     # 6. Generate confusion matrix
     total_query = (
         select(b, func.count())
-        .select_from(groundtruths)
+        .select_from(hard_preds_query)
         .join(
-            models.Annotation,
-            models.Annotation.id == groundtruths.c.annotation_id,
-        )
-        .join(
-            hard_preds_query,
-            hard_preds_query.c.datum_id == models.Annotation.datum_id,
+            groundtruths,
+            groundtruths.c.datum_id == hard_preds_query.c.datum_id,
+            full=True,
         )
         .join(
             models.Label,
             models.Label.id == groundtruths.c.label_id,
         )
-        .where(models.Label.key == label_key)
         .group_by(b)
     )
 
