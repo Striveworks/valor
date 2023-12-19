@@ -828,7 +828,7 @@ def test_delete_dataset(crud, client: TestClient):
     resp = client.delete("/datasets/dsetname")
     assert resp.status_code == 200
     assert crud.delete.call_count == 2
-    
+
     with patch(
         "fastapi.BackgroundTasks.add_task",
         side_effect=exceptions.DatasetDoesNotExistError(""),
@@ -1235,6 +1235,6 @@ def test_get_all_labels(crud, client: TestClient):
 """ GET /user """
 
 
-def test_user(client: TestClient):
+def test_get_user(client: TestClient):
     resp = client.get("/user")
     assert resp.json() == {"email": None}

@@ -18,6 +18,7 @@ from .geometry import (
     Polygon,
     Raster,
 )
+from .info import APIVersion
 from .metadata import DateTime, Metadatum
 from .metrics import (
     AccuracyMetric,
@@ -45,6 +46,7 @@ from .metrics import (
 )
 
 __all__ = [
+    "APIVersion",
     "User",
     "Annotation",
     "Dataset",
