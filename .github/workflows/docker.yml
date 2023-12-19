@@ -31,7 +31,8 @@ jobs:
           aws-region: ${{ secrets.AWS_ECR_REGION }}
       - name: build
         run: |
-          docker build . -t ${IMAGE_NAME}
+          pip3 install setuptools_scm
+          docker build --build-arg VERSION=$(python -m setuptools_scm) . -t ${IMAGE_NAME}
       - name: push
         run: |
           docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
