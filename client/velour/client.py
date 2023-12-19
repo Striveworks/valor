@@ -1,10 +1,10 @@
+import logging
 import math
 import os
 import time
 from typing import List, Union
 from urllib.parse import urljoin
 
-import log
 import requests
 
 from velour import __version__ as client_version
@@ -13,7 +13,7 @@ from velour.enums import JobStatus
 from velour.schemas.evaluation import EvaluationResult
 
 
-def _validate_version(api_version: str):
+def _validate_version(client_version: str, api_version: str):
     """Log and/or warn users if the Velour Python client version differs from the API version."""
 
     def _msg(state):
@@ -21,21 +21,23 @@ def _validate_version(api_version: str):
             f"The Velour client version ({client_version}) is {state} than the Velour API version {api_version}"
             f"\t==========================================================================================\n"
             f"\t== Running with a mismatched client != API version may have unexpected results.\n"
-            f"\t== Please install \033[1;velour-client=={api_version}\033[0;31m to avoid aberrant behavior.\n"
+            f"\t== Please install \033[1;velour-client=={client_version}\033[0;31m to avoid aberrant behavior.\n"
             f"\t==========================================================================================\n"
             f"\033[0m"
         )
 
     if not api_version:
-        log.warning("Velour returned no version")
+        logging.warning("The Velour API didn't return a version number.")
+    elif not client_version:
+        logging.warning("The Velour client isn't versioned.")
     elif api_version == client_version:
-        log.debug(
-            f"Velour API version {api_version} matches client version {client_version}."
+        logging.debug(
+            f"The Velour API version {api_version} matches client version {client_version}."
         )
     elif api_version < client_version:
-        log.error(_msg("newer"))
+        logging.warning(_msg("newer"))
     else:
-        log.error(_msg("older"))
+        logging.warning(_msg("older"))
 
 
 class ClientException(Exception):
@@ -68,7 +70,9 @@ class Client:
         # check the connection by hitting the users endpoint
         api_version = self._get_api_version_number()
 
-        _validate_version(api_version=api_version)
+        _validate_version(
+            client_version=client_version, api_version=api_version
+        )
 
         success_str = f"Successfully connected to host at {self.host}"
         print(success_str)
