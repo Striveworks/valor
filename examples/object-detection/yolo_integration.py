@@ -4,26 +4,28 @@ import numpy
 import PIL
 from PIL.Image import Resampling
 
-from velour import Annotation, Label, Prediction, enums
+from velour import Datum, Annotation, Label, Prediction, enums
 from velour.metatypes import ImageMetadata
 from velour.schemas import BoundingBox, Raster
 
 
 def parse_yolo_image_classification(
     result,
-    image: ImageMetadata,
+    datum: Datum,
     label_key: str = "class",
 ) -> Prediction:
     """Parses Ultralytic's result for an image classification task."""
 
     # Extract data
+    result = result[0]
     probabilities = result.probs
     labels = result.names
 
     # validate dimensions
-    if image.height != result.orig_shape[0]:
+    image_metadata = ImageMetadata.from_datum(datum)
+    if image_metadata.height != result.orig_shape[0]:
         raise RuntimeError
-    if image.width != result.orig_shape[1]:
+    if image_metadata.width != result.orig_shape[1]:
         raise RuntimeError
 
     # Create scored label list
@@ -34,7 +36,7 @@ def parse_yolo_image_classification(
 
     # create prediction
     return Prediction(
-        datum=image.to_datum(),
+        datum=datum,
         annotations=[
             Annotation(task_type=enums.TaskType.CLASSIFICATION, labels=labels)
         ],
@@ -42,19 +44,24 @@ def parse_yolo_image_classification(
 
 
 def parse_yolo_object_detection(
-    result, image: ImageMetadata, label_key: str = "class"
+    result, 
+    datum: Datum, 
+    label_key: str = "class"
 ) -> Prediction:
     """Parses Ultralytic's result for an object detection task."""
 
     # Extract data
+    result = result[0]
     probabilities = [conf.item() for conf in result.boxes.conf]
     labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
     bboxes = [numpy.asarray(box.cpu()) for box in result.boxes.xyxy]
 
+
     # validate dimensions
-    if image.height != result.orig_shape[0]:
+    image_metadata = ImageMetadata.from_datum(datum)
+    if image_metadata.height != result.orig_shape[0]:
         raise RuntimeError
-    if image.width != result.orig_shape[1]:
+    if image_metadata.width != result.orig_shape[1]:
         raise RuntimeError
 
     # Create scored label list
@@ -75,7 +82,7 @@ def parse_yolo_object_detection(
     ]
 
     return Prediction(
-        datum=image.to_datum(),
+        datum=datum,
         annotations=[
             Annotation(
                 task_type=enums.TaskType.DETECTION,
@@ -104,11 +111,13 @@ def _convert_yolo_segmentation(
 
 def parse_yolo_image_segmentation(
     result,
-    image: ImageMetadata,
+    datum: Datum,
     label_key: str = "class",
     resample: Resampling = Resampling.BILINEAR,
 ) -> Union[Prediction, None]:
     """Parses Ultralytic's result for an image segmentation task."""
+
+    result = result[0]
 
     if result.masks.data is None:
         return None
@@ -119,9 +128,10 @@ def parse_yolo_image_segmentation(
     masks = [mask for mask in result.masks.data]
 
     # validate dimensions
-    if image.height != result.orig_shape[0]:
+    image_metadata = ImageMetadata.from_datum(datum)
+    if image_metadata.height != result.orig_shape[0]:
         raise RuntimeError
-    if image.width != result.orig_shape[1]:
+    if image_metadata.width != result.orig_shape[1]:
         raise RuntimeError
 
     # Create scored label list
@@ -133,14 +143,14 @@ def parse_yolo_image_segmentation(
     # Extract masks
     masks = [
         _convert_yolo_segmentation(
-            raw, height=image.height, width=image.width, resample=resample
+            raw, height=image_metadata.height, width=image_metadata.width, resample=resample
         )
         for raw in result.masks.data
     ]
 
     # create prediction
     return Prediction(
-        datum=image.to_datum(),
+        datum=datum,
         annotations=[
             Annotation(
                 task_type=enums.TaskType.DETECTION,

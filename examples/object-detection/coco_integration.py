@@ -27,12 +27,12 @@ from velour.metatypes import ImageMetadata
 
 def _download_and_unzip(url, output_folder):
     # Make a GET request to the URL
-    response = requests.get(url, stream=True)
+    response = requests(url, stream=True)
 
     # Check if the request was successful (status code 200)
     if response.status_code == 200:
         # Get the total file size (if available)
-        total_size = int(response.headers.get('content-length', 0))
+        total_size = int(response.headers('content-length', 0))
 
         # Create a temporary file to save the downloaded content
         with tempfile.TemporaryFile() as temp_file:
@@ -60,11 +60,14 @@ def _unzip(filepath: Path):
         zip_ref.extractall(folder)
 
 
-def load(
+def _load(
     destination: str,
     coco_url: str = "http://images.cocodataset.org/annotations/panoptic_annotations_trainval2017.zip",
     annotations_zipfile: Path = Path("./coco/annotations/panoptic_val2017.zip"),
 ):
+    """
+    Download and unzip COCO panoptic dataset.
+    """
     if not os.path.exists(destination):
         _download_and_unzip(coco_url, destination)
         _unzip(annotations_zipfile)
@@ -234,18 +237,55 @@ def _create_groundtruths_from_coco_panoptic(
 
 def create_dataset_from_coco_panoptic(
     client: Client,
-    data: dict,
     name: str = "coco2017-panoptic",
+    destination: str = "./coco",
+    coco_url: str = "http://images.cocodataset.org/annotations/panoptic_annotations_trainval2017.zip",
+    annotations_zipfile: Path = Path("./coco/annotations/panoptic_val2017.zip"),
     masks_path: Path = Path("./coco/annotations/panoptic_val2017/"),
+    limit: int = 0,
     reset: bool = False,
 ) -> Dataset:
+    """
+    Creates Dataset and associated GroundTruths.
+
+    Parameters
+    ----------
+    client : Client
+        Velour client object.
+    name : str
+        Desired dataset name.
+    destination : str
+        Desired output path for dataset annotations.
+    coco_url : str
+        URL to the COCO dataset.
+    annotations_zipfile : Path
+        Local path to annotations zipfile.
+    masks_path : Path
+        Local path to unzipped annotations.
+    limit : int, default=0
+        Limits the number of datums. Default to 0 for no action.
+    reset : bool, default=False
+        Reset the Velour dataset before attempting creation.
+
+    """
+
+    # download and unzip coco dataset
+    data = _load(
+        destination=destination,
+        coco_url=coco_url,
+        annotations_zipfile=annotations_zipfile,
+    )
+
+    # slice if limited
+    if limit > 0:
+        data["annotations"] = data["annotations"][:limit]
 
     # if reset, delete the dataset if it exists
     if reset and client.get_dataset_status(name) != JobStatus.NONE:
         client.delete_dataset(name, timeout=5)
 
     if client.get_dataset_status(name) != JobStatus.NONE:
-        dataset = Dataset.get(client, name)
+        dataset = Dataset(client, name)
     else:
         # create groundtruths
         gts = _create_groundtruths_from_coco_panoptic(
@@ -258,7 +298,7 @@ def create_dataset_from_coco_panoptic(
         metadata["licenses"] = str(data["licenses"])
 
         # create dataset
-        dataset = Dataset.create(
+        dataset = Dataset(
             client,
             name,
             metadata=metadata,
@@ -268,3 +308,12 @@ def create_dataset_from_coco_panoptic(
         dataset.finalize()
         
     return dataset
+
+
+def download_image(datum: Datum) -> PIL.Image:
+    """
+    Download image using Datum.
+    """
+    url = datum.metadata["coco_url"]
+    img_data = BytesIO(requests.get(url).content)
+    return PIL.Image.open(img_data)

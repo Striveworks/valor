@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass, field
 from typing import List, Union
 
@@ -108,3 +109,36 @@ class EvaluationResult:
     def __post_init__(self):
         if isinstance(self.settings, dict):
             self.settings = EvaluationSettings(**self.settings)
+
+    @property
+    def dataframe(self):
+        """
+        Get all metrics associated with a Model and return them in a `pd.DataFrame`.
+
+        Returns
+        ----------
+        pd.DataFrame
+            Evaluation metrics being displayed in a `pd.DataFrame`.
+        """
+        try:
+            import pandas as pd
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError(
+                "Must have pandas installed to use `get_metric_dataframes`."
+            )
+        
+        metrics = [
+            {**metric, "dataset": self.dataset}
+            for metric in self.metrics
+        ]
+        df = pd.DataFrame(metrics)
+        for k in ["label", "parameters"]:
+            df[k] = df[k].fillna("n/a")
+        df["parameters"] = df["parameters"].apply(json.dumps)
+        df["label"] = df["label"].apply(
+            lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
+        )
+        df = df.pivot(
+            index=["type", "parameters", "label"], columns=["dataset"]
+        )
+        return df
