@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
+from velour_api import __version__ as api_version
 from velour_api import auth, crud, enums, exceptions, logger, schemas
 from velour_api.api_utils import _split_query_params
 from velour_api.backend import database
@@ -1203,11 +1204,11 @@ def get_evaluation_job(
     "/user",
     tags=["Authentication"],
 )
-def user(
+def get_user(
     token: HTTPAuthorizationCredentials | None = Depends(token_auth_scheme),
 ) -> schemas.User:
     """
-    Verify a user.
+    Verify a user and return their email address.
 
     GET Endpoint: `/user`
 
@@ -1223,3 +1224,29 @@ def user(
     """
     token_payload = auth.verify_token(token)
     return schemas.User(email=token_payload.get("email"))
+
+
+@app.get(
+    "/api-version",
+    tags=["Authentication"],
+)
+def get_api_version(
+    token: HTTPAuthorizationCredentials | None = Depends(token_auth_scheme),
+) -> schemas.APIVersion:
+    """
+    Verify a user and return their API version.
+
+    GET Endpoint: `/api-version`
+
+    Parameters
+    ----------
+    token: HTTPAuthorizationCredentials
+        The auth token for the user.
+
+    Returns
+    -------
+    schemas.APIVersion
+        A response object containing the API's version number.
+    """
+    auth.verify_token(token)
+    return schemas.APIVersion(api_version=api_version)

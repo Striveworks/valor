@@ -1,4 +1,4 @@
-from .auth import User
+from .auth import APIVersion, User
 from .core import (
     Annotation,
     Dataset,
@@ -45,6 +45,7 @@ from .metrics import (
 )
 
 __all__ = [
+    "APIVersion",
     "User",
     "Annotation",
     "Dataset",

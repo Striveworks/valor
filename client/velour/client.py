@@ -4,11 +4,38 @@ import time
 from typing import List, Union
 from urllib.parse import urljoin
 
+import log
 import requests
 
+from velour import __version__ as client_version
 from velour import schemas
 from velour.enums import JobStatus
 from velour.schemas.evaluation import EvaluationResult
+
+
+def _validate_version(api_version: str):
+    """Log and/or warn users if the Velour Python client version differs from the API version."""
+
+    def _msg(state):
+        return (
+            f"The Velour client version ({client_version}) is {state} than the Velour API version {api_version}"
+            f"\t==========================================================================================\n"
+            f"\t== Running with a mismatched client != API version may have unexpected results.\n"
+            f"\t== Please install \033[1;velour-client=={api_version}\033[0;31m to avoid aberrant behavior.\n"
+            f"\t==========================================================================================\n"
+            f"\033[0m"
+        )
+
+    if not api_version:
+        log.warning("Velour returned no version")
+    elif api_version == client_version:
+        log.debug(
+            f"Velour API version {api_version} matches client version {client_version}."
+        )
+    elif api_version < client_version:
+        log.error(_msg("newer"))
+    else:
+        log.error(_msg("older"))
 
 
 class ClientException(Exception):
@@ -39,9 +66,11 @@ class Client:
         self.access_token = os.getenv("VELOUR_ACCESS_TOKEN", access_token)
 
         # check the connection by hitting the users endpoint
-        email = self._get_users_email()
-        success_str = f"Succesfully connected to {self.host}"
-        success_str += f" with user {email}." if email else "."
+        api_version = self._get_api_version_number()
+
+        _validate_version(api_version=api_version)
+
+        success_str = f"Successfully connected to host at {self.host}"
         print(success_str)
 
     def _get_users_email(
@@ -53,6 +82,15 @@ class Client:
         """
         resp = self._requests_get_rel_host("user").json()
         return resp["email"]
+
+    def _get_api_version_number(
+        self,
+    ) -> Union[str, None]:
+        """
+        Gets the version number of the API.
+        """
+        resp = self._requests_get_rel_host("api-version").json()
+        return resp["api_version"]
 
     def _requests_wrapper(
         self, method_name: str, endpoint: str, *args, **kwargs
