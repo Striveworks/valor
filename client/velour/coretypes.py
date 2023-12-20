@@ -714,7 +714,7 @@ class Dataset:
             ],
         ] = None,
         id: Union[int, None] = None,
-        reset: bool = False,
+        delete_if_exists: bool = False,
     ):
         """
         Create or get a `Dataset` object.
@@ -731,8 +731,8 @@ class Dataset:
             A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
         id : int, optional
             SQL index for model.
-        reset : bool, default=False
-            Force a reset of the Dataset.
+        delete_if_exists : bool, default=False
+            Deletes any existing dataset with the same name.
 
         Returns
         ----------
@@ -1011,7 +1011,7 @@ class Model:
             ],
         ] = None,
         id: Union[int, None] = None,
-        reset: bool = False,
+        delete_if_exists: bool = False,
     ):
         """
         Create or get a `Model` object.
@@ -1028,8 +1028,8 @@ class Model:
             A GeoJSON-style dictionary describing the geospatial coordinates of the model.
         id : int, optional
             SQL index for model.
-        reset : bool, default=False
-            Force a reset of the Model.
+        delete_if_exists : bool, default=False
+            Deletes any existing model with the same name.
 
         Returns
         ----------
