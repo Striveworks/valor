@@ -24,7 +24,7 @@ from velour.metatypes import ImageMetadata
 
 
 def download_coco_panoptic(
-    destination: str = "./coco",
+    destination: str = "../coco",
     coco_url: str = "http://images.cocodataset.org/annotations/panoptic_annotations_trainval2017.zip",
     annotations_zipfile: Path = Path("./coco/annotations/panoptic_val2017.zip"),
 ) -> dict:
