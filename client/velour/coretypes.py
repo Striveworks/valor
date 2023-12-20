@@ -1,11 +1,10 @@
-import json
 import math
 import warnings
 from dataclasses import asdict
 from typing import Dict, List, Optional, Tuple, Union
 
 from velour.client import Client, Job
-from velour.enums import AnnotationType, TaskType, JobStatus
+from velour.enums import AnnotationType, JobStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import (
     DetectionParameters,
@@ -59,7 +58,7 @@ class Label:
             self.score = float(self.score)
         if not isinstance(self.score, (float, type(None))):
             raise TypeError("score should be of type `float`")
-        
+
     def __str__(self):
         return str(self.dict())
 
@@ -192,7 +191,9 @@ class Datum:
         self.uid = uid
         self.metadata = metadata if metadata else {}
         self.geospatial = geospatial if geospatial else {}
-        self.dataset_name = dataset.name if isinstance(dataset, Dataset) else dataset
+        self.dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
         self._validate()
 
     def _validate(self):
@@ -745,12 +746,15 @@ class Dataset:
         self.id = id
         self._validate()
 
-        if reset and client.get_dataset_status(name) != JobStatus.NONE:
+        if (
+            delete_if_exists
+            and client.get_dataset_status(name) != JobStatus.NONE
+        ):
             client.delete_dataset(name, timeout=30)
 
         if client.get_dataset_status(name) == JobStatus.NONE:
             client.create_dataset(self.dict())
-        
+
         for k, v in client.get_dataset(name).items():
             setattr(self, k, v)
         self.client = client
@@ -1042,12 +1046,15 @@ class Model:
         self.id = id
         self._validate()
 
-        if reset and client.get_model_status(name) != JobStatus.NONE:
+        if (
+            delete_if_exists
+            and client.get_model_status(name) != JobStatus.NONE
+        ):
             client.delete_model(name, timeout=30)
 
         if client.get_model_status(name) == JobStatus.NONE:
             client.create_model(self.dict())
-        
+
         for k, v in client.get_model(name).items():
             setattr(self, k, v)
         self.client = client
