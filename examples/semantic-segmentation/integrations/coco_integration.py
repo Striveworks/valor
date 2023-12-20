@@ -22,17 +22,18 @@ from velour.schemas import Raster
 from velour.enums import TaskType, JobStatus
 from velour.metatypes import ImageMetadata
 
-
 def download_coco_panoptic(
-    destination: str = "../coco",
+    destination: Path = Path("./coco"),
     coco_url: str = "http://images.cocodataset.org/annotations/panoptic_annotations_trainval2017.zip",
-    annotations_zipfile: Path = Path("./coco/annotations/panoptic_val2017.zip"),
 ) -> dict:
     """
     Download and return COCO panoptic dataset.
     """
 
-    if not os.path.exists(destination):
+    # append the location of the annotations within the destination folder
+    annotations_zipfile = destination / Path("annotations/panoptic_val2017.zip")
+
+    if not os.path.exists(str(destination)):
 
         # Make a GET request to the URL
         response = requests.get(coco_url, stream=True)
@@ -57,7 +58,7 @@ def download_coco_panoptic(
                     total_files = len(zip_ref.infolist())
                     with tqdm(total=total_files, unit='file', desc="Extracting") as extraction_pbar:
                         for file_info in zip_ref.infolist():
-                            zip_ref.extract(file_info, destination)
+                            zip_ref.extract(file_info, str(destination))
                             extraction_pbar.update(1)
         
         # unzip the validation set
@@ -130,7 +131,51 @@ def _create_masks(filename: str) -> np.ndarray:
     return mask[:, :, 0] + 256 * mask[:, :, 1] + (256**2) * mask[:, :, 2]
 
 
-def _create_annotations_from_semantic_segmentations(
+def create_annotations_from_instance_segmentations(
+    image: dict,
+    category_id_to_labels_and_task: Dict[int, Union[TaskType, Dict[str, str]]],
+    mask_ids,
+) -> List[Annotation]:
+    return [
+        Annotation(
+            task_type=TaskType.DETECTION,
+            labels=[
+                Label(key="supercategory", value=str(category_id_to_labels_and_task[segmentation["category_id"]]["labels"]["supercategory"])),
+                Label(key="name", value=str(category_id_to_labels_and_task[segmentation["category_id"]]["labels"]["name"])),
+                Label(key="iscrowd", value=str(segmentation["iscrowd"])),
+            ],
+            raster=Raster.from_numpy(
+                mask_ids == segmentation["id"]
+            ),
+        )
+        for segmentation in image["segments_info"]
+        if category_id_to_labels_and_task[segmentation["category_id"]]["task_type"] == TaskType.DETECTION
+    ]
+
+
+def create_annotations_from_instance_segmentations(
+    image: dict,
+    category_id_to_labels_and_task: Dict[int, Union[TaskType, Dict[str, str]]],
+    mask_ids,
+) -> List[Annotation]:
+    return [
+        Annotation(
+            task_type=TaskType.DETECTION,
+            labels=[
+                Label(key="supercategory", value=str(category_id_to_labels_and_task[segmentation["category_id"]]["labels"]["supercategory"])),
+                Label(key="name", value=str(category_id_to_labels_and_task[segmentation["category_id"]]["labels"]["name"])),
+                Label(key="iscrowd", value=str(segmentation["iscrowd"])),
+            ],
+            raster=Raster.from_numpy(
+                mask_ids == segmentation["id"]
+            ),
+        )
+        for segmentation in image["segments_info"]
+        if category_id_to_labels_and_task[segmentation["category_id"]]["task_type"] == TaskType.DETECTION
+    ]
+
+
+def create_annotations_from_semantic_segmentations(
     image: dict,
     category_id_to_labels_and_task: Dict[int, Union[TaskType, Dict[str, str]]],
     mask_ids,
@@ -154,14 +199,13 @@ def _create_annotations_from_semantic_segmentations(
                 else:
                     semantic_masks[key][value] = np.logical_or(semantic_masks[key][value], (mask_ids == segmentation["id"]))                
 
+
     # create annotations for semantic segmentation
     return [
         Annotation(
             task_type=TaskType.SEGMENTATION,
             labels=[Label(key=key, value=str(value))],
-            raster=Raster.from_numpy(
-                mask_ids == segmentation["id"]
-            ),
+            raster=Raster.from_numpy(semantic_masks[key][value]),
         )
         for key in semantic_masks
         for value in semantic_masks[key]
@@ -188,9 +232,16 @@ def _create_groundtruths_from_coco_panoptic(
 
         # exract masks from annotations
         mask_ids = _create_masks(masks_path / image["file_name"])
+        
+        # create instance segmentations
+        instance_annotations = create_annotations_from_instance_segmentations(
+            image,
+            category_id_to_labels_and_task,
+            mask_ids,
+        )
 
         # create semantic segmentations
-        annotations = _create_annotations_from_semantic_segmentations(
+        semantic_annotations = create_annotations_from_semantic_segmentations(
             image,
             category_id_to_labels_and_task,
             mask_ids,
@@ -200,7 +251,7 @@ def _create_groundtruths_from_coco_panoptic(
         groundtruths.append(
             GroundTruth(
                 datum=image_id_to_datum[image["image_id"]],
-                annotations=annotations,
+                annotations=instance_annotations+semantic_annotations,
             )
         )
 
@@ -212,8 +263,6 @@ def create_dataset_from_coco_panoptic(
     name: str = "coco2017-panoptic-semseg",
     destination: str = "./coco",
     coco_url: str = "http://images.cocodataset.org/annotations/panoptic_annotations_trainval2017.zip",
-    annotations_zipfile: Path = Path("./coco/annotations/panoptic_val2017.zip"),
-    masks_path: Path = Path("./coco/annotations/panoptic_val2017/"),
     limit: int = 0,
     reset: bool = False,
 ) -> Dataset:
@@ -245,8 +294,10 @@ def create_dataset_from_coco_panoptic(
     data = download_coco_panoptic(
         destination=destination,
         coco_url=coco_url,
-        annotations_zipfile=annotations_zipfile,
     )
+
+    # path of mask locations
+    masks_path = destination / Path("annotations/panoptic_val2017/")
 
     # slice if limited
     if limit > 0:
