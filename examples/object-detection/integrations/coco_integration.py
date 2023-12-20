@@ -1,26 +1,21 @@
-import os
-import zipfile
-import tempfile
 import json
-import PIL.Image
-import requests
-import numpy as np
-from tqdm import tqdm
+import os
+import tempfile
+import zipfile
 from io import BytesIO
 from pathlib import Path
 from typing import Dict, List, Union
 
-from velour import (
-    Client,
-    Dataset,
-    Datum,
-    Annotation,
-    GroundTruth,
-    Label,
-)
-from velour.schemas import Raster
-from velour.enums import TaskType, JobStatus
+import numpy as np
+import PIL.Image
+import requests
+from tqdm import tqdm
+
+from velour import Annotation, Client, Dataset, Datum, GroundTruth, Label
+from velour.enums import JobStatus, TaskType
 from velour.metatypes import ImageMetadata
+from velour.schemas import Raster
+
 
 def download_coco_panoptic(
     destination: Path = Path("./coco"),
@@ -31,22 +26,29 @@ def download_coco_panoptic(
     """
 
     # append the location of the annotations within the destination folder
-    annotations_zipfile = destination / Path("annotations/panoptic_val2017.zip")
+    annotations_zipfile = destination / Path(
+        "annotations/panoptic_val2017.zip"
+    )
 
     if not os.path.exists(str(destination)):
-
         # Make a GET request to the URL
         response = requests.get(coco_url, stream=True)
 
         # Check if the request was successful (status code 200)
         if response.status_code == 200:
             # Get the total file size (if available)
-            total_size = int(response.headers.get('content-length', 0))
+            total_size = int(response.headers.get("content-length", 0))
 
             # Create a temporary file to save the downloaded content
             with tempfile.TemporaryFile() as temp_file:
                 # Initialize tqdm with the total file size
-                with tqdm(total=total_size, unit='B', unit_scale=True, unit_divisor=1024, desc="Downloading") as pbar:
+                with tqdm(
+                    total=total_size,
+                    unit="B",
+                    unit_scale=True,
+                    unit_divisor=1024,
+                    desc="Downloading",
+                ) as pbar:
                     # Iterate over the response content and update progress
                     for chunk in response.iter_content(chunk_size=1024):
                         if chunk:
@@ -54,17 +56,19 @@ def download_coco_panoptic(
                             pbar.update(1024)
 
                 # Once the file is downloaded, extract it
-                with zipfile.ZipFile(temp_file, 'r') as zip_ref:
+                with zipfile.ZipFile(temp_file, "r") as zip_ref:
                     total_files = len(zip_ref.infolist())
-                    with tqdm(total=total_files, unit='file', desc="Extracting") as extraction_pbar:
+                    with tqdm(
+                        total=total_files, unit="file", desc="Extracting"
+                    ) as extraction_pbar:
                         for file_info in zip_ref.infolist():
                             zip_ref.extract(file_info, str(destination))
                             extraction_pbar.update(1)
-        
+
         # unzip the validation set
         folder = str(annotations_zipfile.parent.absolute())
         filepath = str(annotations_zipfile.absolute())
-        with zipfile.ZipFile(filepath, 'r') as zip_ref:
+        with zipfile.ZipFile(filepath, "r") as zip_ref:
             zip_ref.extractall(folder)
     else:
         print(f"coco already exists at {destination}!")
@@ -101,12 +105,14 @@ def _parse_image_to_datum(image: dict) -> Datum:
     return image_metadata.to_datum()
 
 
-def _parse_categories(categories: list) -> Dict[int, Union[TaskType, Dict[str, str]]]:
+def _parse_categories(
+    categories: list,
+) -> Dict[int, Union[TaskType, Dict[str, str]]]:
     """
     Parse COCO categories into `velour.enums.TaskType` and `velour.Label`
     """
     return {
-        category["id"] : {
+        category["id"]: {
             "task_type": (
                 TaskType.DETECTION
                 if category["isthing"]
@@ -115,7 +121,7 @@ def _parse_categories(categories: list) -> Dict[int, Union[TaskType, Dict[str, s
             "labels": {
                 "supercategory": category["supercategory"],
                 "name": category["name"],
-            }
+            },
         }
         for category in categories
     }
@@ -125,9 +131,7 @@ def _create_masks(filename: str) -> np.ndarray:
     """
     Convert the colors in the mask to ids.
     """
-    mask = np.array(
-        PIL.Image.open(filename)
-    ).astype(int)
+    mask = np.array(PIL.Image.open(filename)).astype(int)
     return mask[:, :, 0] + 256 * mask[:, :, 1] + (256**2) * mask[:, :, 2]
 
 
@@ -140,38 +144,31 @@ def create_annotations_from_instance_segmentations(
         Annotation(
             task_type=TaskType.DETECTION,
             labels=[
-                Label(key="supercategory", value=str(category_id_to_labels_and_task[segmentation["category_id"]]["labels"]["supercategory"])),
-                Label(key="name", value=str(category_id_to_labels_and_task[segmentation["category_id"]]["labels"]["name"])),
+                Label(
+                    key="supercategory",
+                    value=str(
+                        category_id_to_labels_and_task[
+                            segmentation["category_id"]
+                        ]["labels"]["supercategory"]
+                    ),
+                ),
+                Label(
+                    key="name",
+                    value=str(
+                        category_id_to_labels_and_task[
+                            segmentation["category_id"]
+                        ]["labels"]["name"]
+                    ),
+                ),
                 Label(key="iscrowd", value=str(segmentation["iscrowd"])),
             ],
-            raster=Raster.from_numpy(
-                mask_ids == segmentation["id"]
-            ),
+            raster=Raster.from_numpy(mask_ids == segmentation["id"]),
         )
         for segmentation in image["segments_info"]
-        if category_id_to_labels_and_task[segmentation["category_id"]]["task_type"] == TaskType.DETECTION
-    ]
-
-
-def create_annotations_from_instance_segmentations(
-    image: dict,
-    category_id_to_labels_and_task: Dict[int, Union[TaskType, Dict[str, str]]],
-    mask_ids,
-) -> List[Annotation]:
-    return [
-        Annotation(
-            task_type=TaskType.DETECTION,
-            labels=[
-                Label(key="supercategory", value=str(category_id_to_labels_and_task[segmentation["category_id"]]["labels"]["supercategory"])),
-                Label(key="name", value=str(category_id_to_labels_and_task[segmentation["category_id"]]["labels"]["name"])),
-                Label(key="iscrowd", value=str(segmentation["iscrowd"])),
-            ],
-            raster=Raster.from_numpy(
-                mask_ids == segmentation["id"]
-            ),
-        )
-        for segmentation in image["segments_info"]
-        if category_id_to_labels_and_task[segmentation["category_id"]]["task_type"] == TaskType.DETECTION
+        if category_id_to_labels_and_task[segmentation["category_id"]][
+            "task_type"
+        ]
+        == TaskType.DETECTION
     ]
 
 
@@ -188,17 +185,32 @@ def create_annotations_from_semantic_segmentations(
     }
     for segmentation in image["segments_info"]:
         category_id = segmentation["category_id"]
-        if category_id_to_labels_and_task[category_id]["task_type"] == TaskType.SEGMENTATION:
+        if (
+            category_id_to_labels_and_task[category_id]["task_type"]
+            == TaskType.SEGMENTATION
+        ):
             for key, value in [
-                ("supercategory", category_id_to_labels_and_task[category_id]["labels"]["supercategory"]),
-                ("name", category_id_to_labels_and_task[category_id]["labels"]["name"]),
+                (
+                    "supercategory",
+                    category_id_to_labels_and_task[category_id]["labels"][
+                        "supercategory"
+                    ],
+                ),
+                (
+                    "name",
+                    category_id_to_labels_and_task[category_id]["labels"][
+                        "name"
+                    ],
+                ),
                 ("iscrowd", segmentation["iscrowd"]),
             ]:
                 if value not in semantic_masks[key]:
-                    semantic_masks[key][value] = (mask_ids == segmentation["id"])
+                    semantic_masks[key][value] = mask_ids == segmentation["id"]
                 else:
-                    semantic_masks[key][value] = np.logical_or(semantic_masks[key][value], (mask_ids == segmentation["id"]))                
-
+                    semantic_masks[key][value] = np.logical_or(
+                        semantic_masks[key][value],
+                        (mask_ids == segmentation["id"]),
+                    )
 
     # create annotations for semantic segmentation
     return [
@@ -216,23 +228,20 @@ def _create_groundtruths_from_coco_panoptic(
     data: dict,
     masks_path: Path,
 ) -> List[GroundTruth]:
-
     # extract task_type and labels from categories
     category_id_to_labels_and_task = _parse_categories(data["categories"])
 
     # create datums
     image_id_to_datum = {
-        image["id"] : _parse_image_to_datum(image)
-        for image in data["images"]
+        image["id"]: _parse_image_to_datum(image) for image in data["images"]
     }
 
     # create groundtruths
     groundtruths = []
     for image in tqdm(data["annotations"]):
-
         # exract masks from annotations
         mask_ids = _create_masks(masks_path / image["file_name"])
-        
+
         # create instance segmentations
         instance_annotations = create_annotations_from_instance_segmentations(
             image,
@@ -251,7 +260,7 @@ def _create_groundtruths_from_coco_panoptic(
         groundtruths.append(
             GroundTruth(
                 datum=image_id_to_datum[image["image_id"]],
-                annotations=instance_annotations+semantic_annotations,
+                annotations=instance_annotations + semantic_annotations,
             )
         )
 
@@ -329,5 +338,5 @@ def create_dataset_from_coco_panoptic(
         for gt in gts:
             dataset.add_groundtruth(gt)
         dataset.finalize()
-        
+
     return dataset
