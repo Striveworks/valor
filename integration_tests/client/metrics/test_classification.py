@@ -18,6 +18,7 @@ from velour import (
 )
 from velour.client import Client, ClientException
 from velour.enums import JobStatus, TaskType
+from velour.schemas.evaluation import EvaluationSettings
 
 
 def test_evaluate_image_clf(
@@ -37,16 +38,16 @@ def test_evaluate_image_clf(
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_classification(dataset=dataset, timeout=30)
+    eval_job = model.evaluate_classification(dataset=dataset)
 
     assert eval_job.evaluation_id
-    assert eval_job.status.value == "done"
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
     assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
 
-    assert eval_job.status == JobStatus.DONE
+    eval_results = eval_job.wait_for_completion(timeout=30)
+    assert eval_results.status == JobStatus.DONE
 
-    metrics = eval_job.results.metrics
+    metrics = eval_results.metrics
 
     expected_metrics = [
         {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
@@ -79,7 +80,7 @@ def test_evaluate_image_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.results.confusion_matrices
+    confusion_matrices = eval_results.confusion_matrices
     assert confusion_matrices == [
         {
             "label_key": "k4",
@@ -89,7 +90,7 @@ def test_evaluate_image_clf(
 
 
 def test_evaluate_tabular_clf(
-    client: Session,
+    client: Client,
     dataset_name: str,
     model_name: str,
     gt_clfs_tabular: list[int],
@@ -116,7 +117,7 @@ def test_evaluate_tabular_clf(
     # test
     model = Model.create(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset, timeout=30)
+        model.evaluate_classification(dataset=dataset).wait_for_completion(timeout=30)
     assert "has not been finalized" in str(exc_info)
 
     dataset.finalize()
@@ -142,19 +143,20 @@ def test_evaluate_tabular_clf(
 
     # test
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset, timeout=30)
+        model.evaluate_classification(dataset=dataset).wait_for_completion(timeout=30)
     assert "has not been finalized" in str(exc_info)
 
     model.finalize_inferences(dataset)
 
     # evaluate
-    eval_job = model.evaluate_classification(dataset=dataset, timeout=30)
+    eval_job = model.evaluate_classification(dataset=dataset)
     assert eval_job.ignored_pred_keys == []
     assert eval_job.missing_pred_keys == []
 
-    assert eval_job.status == JobStatus.DONE
+    eval_results = eval_job.wait_for_completion(timeout=30)
+    assert eval_results.status == JobStatus.DONE
 
-    metrics = eval_job.results.metrics
+    metrics = eval_results.metrics
 
     expected_metrics = [
         {
@@ -214,7 +216,7 @@ def test_evaluate_tabular_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.results.confusion_matrices
+    confusion_matrices = eval_results.confusion_matrices
 
     expected_confusion_matrix = {
         "label_key": "class",
@@ -264,13 +266,14 @@ def test_evaluate_tabular_clf(
     assert isinstance(df[0]["df"], pandas.DataFrame)
 
     # check evaluation
-    results = model.get_evaluations()
-    assert len(results) == 1
-    assert results[0].dataset == dataset_name
-    assert results[0].model == model_name
-    assert results[0].settings == {}
+    eval_jobs = model.get_evaluations()
+    assert len(eval_jobs) == 1
+    assert eval_jobs[0].model == model_name
+    assert eval_jobs[0].dataset == "test_dataset"
+    assert eval_jobs[0].task_type == "classification"
+    assert eval_jobs[0].settings == EvaluationSettings()
 
-    metrics_from_eval_settings_id = results[0].metrics
+    metrics_from_eval_settings_id = eval_jobs[0].metrics
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
     for m in metrics_from_eval_settings_id:
         assert m in expected_metrics
@@ -278,7 +281,7 @@ def test_evaluate_tabular_clf(
         assert m in metrics_from_eval_settings_id
 
     # check confusion matrix
-    confusion_matrices = results[0].confusion_matrices
+    confusion_matrices = eval_jobs[0].confusion_matrices
 
     # validate return schema
     assert len(confusion_matrices) == 1
@@ -296,7 +299,7 @@ def test_evaluate_tabular_clf(
         assert entry in confusion_matrix["entries"]
 
     job = model.delete()
-    while job.status != JobStatus.NONE:
+    while job.get_status() != JobStatus.NONE:
         time.sleep(0.5)
 
     assert len(client.get_models()) == 0
@@ -358,14 +361,13 @@ def test_stratify_clf_metrics(
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
-    eval_job_val2 = model.evaluate_classification(
+    eval_results_val2 = model.evaluate_classification(
         dataset=dataset,
         filters=[
             Datum.metadata["md1"] == "md1-val2",
         ],
-        timeout=30,
-    )
-    val2_metrics = eval_job_val2.results.metrics
+    ).wait_for_completion(timeout=30)
+    val2_metrics = eval_results_val2.metrics
 
     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
     # (hard preds [1, 0, 0])

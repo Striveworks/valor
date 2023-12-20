@@ -1078,7 +1078,7 @@ def test_create_detection_metrics(
         )
 
     # verify we have no evaluations yet
-    assert len(crud.get_evaluation_jobs(db=db, model_names=[model_name])) == 0
+    assert len(crud.get_evaluations(db=db, model_names=[model_name])) == 0
 
     # run evaluation
     (
@@ -1088,7 +1088,7 @@ def test_create_detection_metrics(
     ) = method_to_test(label_key="class")
 
     # check we have one evaluation
-    assert len(crud.get_evaluation_jobs(db=db, model_names=[model_name])) == 1
+    assert len(crud.get_evaluations(db=db, model_names=[model_name])) == 1
 
     assert missing_pred_labels == []
     assert ignored_pred_labels == [schemas.Label(key="class", value="3")]
@@ -1171,9 +1171,12 @@ def test_create_detection_metrics(
         }
 
     # check we have the right evaluations
-    model_evals = crud.get_evaluation_jobs(db=db, model_names=[model_name])
+    model_evals = crud.get_evaluations(db=db, model_names=[model_name])
     assert len(model_evals) == 2
-    assert model_evals[0] == schemas.EvaluationJob(
+    # Don't examine metrics
+    model_evals[0].metrics = []
+    model_evals[1].metrics = []
+    assert model_evals[0] == schemas.Evaluation(
         model=model_name,
         dataset=dataset_name,
         task_type=enums.TaskType.DETECTION,
@@ -1187,9 +1190,12 @@ def test_create_detection_metrics(
                 label_keys=["class"],
             ),
         ),
-        id=1,
+        job_id=1,
+        status=enums.JobStatus.DONE,
+        metrics=[],
+        confusion_matrices=[],
     )
-    assert model_evals[1] == schemas.EvaluationJob(
+    assert model_evals[1] == schemas.Evaluation(
         model=model_name,
         dataset=dataset_name,
         task_type=enums.TaskType.DETECTION,
@@ -1213,7 +1219,10 @@ def test_create_detection_metrics(
                 label_keys=["class"],
             ),
         ),
-        id=2,
+        job_id=2,
+        status=enums.JobStatus.DONE,
+        metrics=[],
+        confusion_matrices=[],
     )
 
 
@@ -1265,7 +1274,7 @@ def test_create_clf_metrics(
     )
 
     # check we have one evaluation
-    assert len(crud.get_evaluation_jobs(db=db, model_names=[model_name])) == 1
+    assert len(crud.get_evaluations(db=db, model_names=[model_name])) == 1
 
     # get all metrics
     metrics = db.scalar(
@@ -1335,7 +1344,7 @@ def test_create_clf_metrics(
         job_request=job_request,
         job_id=evaluation_id,
     )
-    assert len(crud.get_evaluation_jobs(db=db, model_names=[model_name])) == 1
+    assert len(crud.get_evaluations(db=db, model_names=[model_name])) == 1
 
     metrics = db.scalar(
         select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
