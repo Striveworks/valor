@@ -453,7 +453,7 @@ def generate_stateflow_decorator(
     return decorator
 
 
-def _finalize_success(state: StateflowJob, msg: str = ""):
+def _finalize_success(state: StateflowJob):
     """
     Since model and predictions are handled seperately this helper function is necessary to ensure
     that a finalization call over a prediction set will also finalize the model itself.
