@@ -12,6 +12,7 @@ from velour.data_generation import (
 )
 from velour.enums import AnnotationType, JobStatus, TaskType
 from velour.metatypes import ImageMetadata
+from velour.schemas.filters import Filter
 
 
 def _mask_bytes_to_pil(mask_bytes):
@@ -99,14 +100,15 @@ def test_generate_prediction_data(client: Client):
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
         ],
-        timeout=30,
     )
+    eval_results = eval_job.wait_for_completion(timeout=3)
+    assert eval_results.status == JobStatus.DONE
 
-    assert eval_job.status == JobStatus.DONE
-
-    job_request = asdict(eval_job.job_request)
-    job_request.pop("id")
-    assert job_request == {
+    eval_dict = asdict(eval_results)
+    eval_metrics = eval_dict.pop("metrics")
+    for key in ["job_id", "confusion_matrices", "status"]:
+        eval_dict.pop(key)
+    assert eval_dict == {
         "model": model_name,
         "dataset": dataset_name,
         "task_type": TaskType.DETECTION.value,
@@ -116,25 +118,10 @@ def test_generate_prediction_data(client: Client):
                 "iou_thresholds_to_keep": [0.0, 1.0],
             },
             "filters": {
+                **asdict(Filter()), # default filter properties with overrides below
                 "annotation_types": ["box"],
                 "label_keys": ["k1"],
-                "annotation_geometric_area": None,
-                "annotation_geospatial": None,
-                "annotation_metadata": None,
-                "dataset_geospatial": None,
-                "dataset_metadata": None,
-                "dataset_names": None,
-                "datum_geospatial": None,
-                "datum_metadata": None,
-                "datum_uids": None,
-                "label_ids": None,
-                "labels": None,
-                "models_geospatial": None,
-                "models_metadata": None,
-                "models_names": None,
-                "prediction_scores": None,
-                "task_types": None,
             },
         },
     }
-    assert len(eval_job.results.metrics) > 0
+    assert len(eval_metrics) > 0

@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
-from typing import List, Union
+from typing import List, Union, Optional
 
+from velour.enums import JobStatus, TaskType
 from velour.schemas.filters import Filter
 
 
@@ -55,7 +56,7 @@ class EvaluationJob:
         The name of the `Model` invoked during the evaluation.
     dataset : str
         The name of the `Dataset` invoked during the evaluation.
-    task_type : str
+    task_type : TaskType
         The task type of the evaluation.
     settings : EvaluationSettings
         The `EvaluationSettings` object used to configurate the `EvaluationJob`.
@@ -65,13 +66,15 @@ class EvaluationJob:
 
     model: str
     dataset: str
-    task_type: str
+    task_type: TaskType
     settings: EvaluationSettings = field(default_factory=EvaluationSettings)
-    id: int = None
+    id: Optional[int] = None
 
     def __post_init__(self):
         if isinstance(self.settings, dict):
             self.settings = EvaluationSettings(**self.settings)
+        if isinstance(self.task_type, str):
+            self.task_type = TaskType(self.task_type)
 
 
 @dataclass
@@ -85,11 +88,13 @@ class EvaluationResult:
         The name of the `Dataset` invoked during the evaluation.
     model : str
         The name of the `Model` invoked during the evaluation.
+    task_type : TaskType
+        The task type of the evaluation.
     settings : EvaluationSettings
         The `EvaluationSettings` object used to configurate the `EvaluationJob`.
     job_id : int
         The id of the job.
-    status : str
+    status : JobStatus
         The status of the `EvaluationJob`.
     metrics : List[dict]
         A list of metric dictionaries returned by the job.
@@ -99,8 +104,17 @@ class EvaluationResult:
 
     dataset: str
     model: str
+    task_type: TaskType
     settings: EvaluationSettings
     job_id: int
-    status: str
+    status: JobStatus
     metrics: List[dict]
     confusion_matrices: List[dict] = field(default_factory=list)
+
+    def __post_init__(self):
+        if isinstance(self.settings, dict):
+            self.settings = EvaluationSettings(**self.settings)
+        if isinstance(self.task_type, str):
+            self.task_type = TaskType(self.task_type)
+        if isinstance(self.status, str):
+            self.status = JobStatus(self.status)

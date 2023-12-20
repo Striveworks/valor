@@ -727,6 +727,7 @@ def test_Evaluation():
     schemas.Evaluation(
         dataset="dataset",
         model="model",
+        task_type=enums.TaskType.CLASSIFICATION,
         settings=schemas.EvaluationSettings(),
         job_id=1,
         status="done",
@@ -738,6 +739,7 @@ def test_Evaluation():
         schemas.Evaluation(
             dataset=123,
             model="model",
+            task_type=enums.TaskType.CLASSIFICATION,
             settings=schemas.EvaluationSettings(),
             job_id=1,
             status="done",
@@ -749,6 +751,7 @@ def test_Evaluation():
         schemas.Evaluation(
             dataset="dataset",
             model=None,
+            task_type=enums.TaskType.CLASSIFICATION,
             settings=schemas.EvaluationSettings(),
             job_id=1,
             status="done",
@@ -760,6 +763,7 @@ def test_Evaluation():
         schemas.Evaluation(
             dataset="dataset",
             model="model",
+            task_type=enums.TaskType.CLASSIFICATION,
             settings=123,
             job_id=1,
             status="done",
@@ -771,6 +775,7 @@ def test_Evaluation():
         schemas.Evaluation(
             dataset="dataset",
             model="model",
+            task_type=enums.TaskType.CLASSIFICATION,
             settings=schemas.EvaluationSettings(),
             job_id="not a job id",
             status="done",
@@ -782,6 +787,7 @@ def test_Evaluation():
         schemas.Evaluation(
             dataset="dataset",
             model="model",
+            task_type=enums.TaskType.CLASSIFICATION,
             settings=schemas.EvaluationSettings(),
             job_id=1,
             status=123,
@@ -793,6 +799,7 @@ def test_Evaluation():
         schemas.Evaluation(
             dataset="dataset",
             model="model",
+            task_type=enums.TaskType.CLASSIFICATION,
             settings=schemas.EvaluationSettings(),
             job_id=1,
             status="done",
@@ -804,6 +811,7 @@ def test_Evaluation():
         schemas.Evaluation(
             dataset="dataset",
             model="model",
+            task_type=enums.TaskType.CLASSIFICATION,
             settings=schemas.EvaluationSettings(),
             job_id=1,
             status="done",
