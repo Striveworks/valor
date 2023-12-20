@@ -1,6 +1,6 @@
 import json
 from dataclasses import dataclass, field
-from typing import List, Union
+from typing import List, Tuple, Union
 
 from velour.schemas.filters import Filter
 
@@ -110,8 +110,10 @@ class EvaluationResult:
         if isinstance(self.settings, dict):
             self.settings = EvaluationSettings(**self.settings)
 
-    @property
-    def dataframe(self):
+    def to_dataframe(
+        self,
+        stratify_by: Tuple[str, str] = None,
+    ):
         """
         Get all metrics associated with a Model and return them in a `pd.DataFrame`.
 
@@ -127,8 +129,15 @@ class EvaluationResult:
                 "Must have pandas installed to use `get_metric_dataframes`."
             )
         
+        if not stratify_by:
+            column_type = "dataset"
+            column_name = self.dataset
+        else:
+            column_type = stratify_by[0]
+            column_name = stratify_by[1]
+        
         metrics = [
-            {**metric, "dataset": self.dataset}
+            {**metric, column_type: column_name}
             for metric in self.metrics
         ]
         df = pd.DataFrame(metrics)
@@ -139,6 +148,6 @@ class EvaluationResult:
             lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
         )
         df = df.pivot(
-            index=["type", "parameters", "label"], columns=["dataset"]
+            index=["type", "parameters", "label"], columns=[column_type]
         )
         return df

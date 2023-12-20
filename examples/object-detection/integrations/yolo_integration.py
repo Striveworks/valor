@@ -1,11 +1,17 @@
+from typing import Union
+
 import numpy
+import PIL
+from PIL.Image import Resampling
 
 from velour import Datum, Annotation, Label, Prediction, enums
 from velour.metatypes import ImageMetadata
-from velour.schemas import BoundingBox
+from velour.schemas import BoundingBox, Raster
+
+from typing import Union
 
 
-def parse_object_detection(
+def parse_detection_into_bounding_box(
     result, 
     datum: Datum, 
     label_key: str = "class"
@@ -54,3 +60,72 @@ def parse_object_detection(
             for bbox, scored_label in list(zip(bboxes, labels))
         ],
     )
+
+
+def _convert_yolo_segmentation(
+    raw,
+    height: int,
+    width: int,
+    resample: Resampling = Resampling.BILINEAR,
+):
+    """Resizes the raw binary mask provided by the YOLO inference to the original image size."""
+    mask = numpy.asarray(raw.cpu())
+    mask[mask == 1.0] = 255
+    img = PIL.Image.fromarray(numpy.uint8(mask))
+    img = img.resize((width, height), resample=resample)
+    mask = numpy.array(img, dtype=numpy.uint8) >= 128
+    return mask
+
+
+def parse_detection_into_raster(
+    result,
+    datum: Datum,
+    label_key: str = "class",
+    resample: Resampling = Resampling.BILINEAR,
+) -> Union[Prediction, None]:
+    """Parses Ultralytic's result for an image segmentation task."""
+
+    result = result[0]
+
+    if result.masks.data is None:
+        return None
+
+    # Extract data
+    probabilities = [conf.item() for conf in result.boxes.conf]
+    labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
+    masks = [mask for mask in result.masks.data]
+
+    # validate dimensions
+    image_metadata = ImageMetadata.from_datum(datum)
+    if image_metadata.height != result.orig_shape[0]:
+        raise RuntimeError
+    if image_metadata.width != result.orig_shape[1]:
+        raise RuntimeError
+
+    # Create scored label list
+    labels = [
+        Label(key=label_key, value=label, score=probability)
+        for label, probability in list(zip(labels, probabilities))
+    ]
+
+    # Extract masks
+    masks = [
+        _convert_yolo_segmentation(
+            raw, height=image_metadata.height, width=image_metadata.width, resample=resample
+        )
+        for raw in result.masks.data
+    ]
+
+    # create prediction
+    return Prediction(
+        datum=datum,
+        annotations=[
+            Annotation(
+                task_type=enums.TaskType.DETECTION,
+                labels=[scored_label],
+                raster=Raster.from_numpy(mask),
+            )
+            for mask, scored_label in list(zip(masks, labels))
+        ],
+    )
+

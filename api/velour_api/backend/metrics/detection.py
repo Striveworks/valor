@@ -202,7 +202,7 @@ def compute_detection_metrics(
         gunion_gt = gfunc.ST_Count(joint.c.gt_geom)
         gunion_pd = gfunc.ST_Count(joint.c.pd_geom)
         gunion = gunion_gt + gunion_pd - gintersection
-        iou_computation = gfunc.ST_Area(gintersection) / gfunc.ST_Area(gunion)
+        iou_computation = gintersection / gunion
     else:
         gintersection = gfunc.ST_Intersection(joint.c.gt_geom, joint.c.pd_geom)
         gunion = gfunc.ST_Union(joint.c.gt_geom, joint.c.pd_geom)
@@ -410,23 +410,23 @@ def _get_annotation_types_for_computation(
     # get dominant type
     groundtruth_type = core.get_annotation_type(db, dataset, None)
     prediction_type = core.get_annotation_type(db, dataset, model)
-    gct = (
+    greatest_common_type = (
         groundtruth_type
         if groundtruth_type < prediction_type
         else prediction_type
     )
     if job_filter.annotation_types:
-        if gct not in job_filter.annotation_types:
+        if greatest_common_type not in job_filter.annotation_types:
             sorted_types = sorted(
                 job_filter.annotation_types,
                 key=lambda x: x,
                 reverse=True,
             )
             for annotation_type in sorted_types:
-                if gct <= annotation_type:
-                    return annotation_type, groundtruth_type, prediction_type
+                if greatest_common_type >= annotation_type:
+                    return annotation_type, annotation_type
             raise RuntimeError(
-                f"Annotation type filter is too restrictive. Attempted filter `{gct}` over `{groundtruth_type, prediction_type}`."
+                f"Annotation type filter is too restrictive. Attempted filter `{greatest_common_type}` over `{groundtruth_type, prediction_type}`."
             )
     return groundtruth_type, prediction_type
 

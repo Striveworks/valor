@@ -264,7 +264,7 @@ def create_dataset_from_coco_panoptic(
     destination: str = "./coco",
     coco_url: str = "http://images.cocodataset.org/annotations/panoptic_annotations_trainval2017.zip",
     limit: int = 0,
-    reset: bool = False,
+    delete_if_exists: bool = False,
 ) -> Dataset:
     """
     Creates Dataset and associated GroundTruths.
@@ -285,7 +285,7 @@ def create_dataset_from_coco_panoptic(
         Local path to unzipped annotations.
     limit : int, default=0
         Limits the number of datums. Default to 0 for no action.
-    reset : bool, default=False
+    delete_if_exists : bool, default=False
         Reset the Velour dataset before attempting creation.
 
     """
@@ -304,7 +304,7 @@ def create_dataset_from_coco_panoptic(
         data["annotations"] = data["annotations"][:limit]
 
     # if reset, delete the dataset if it exists
-    if reset and client.get_dataset_status(name) != JobStatus.NONE:
+    if delete_if_exists and client.get_dataset_status(name) != JobStatus.NONE:
         client.delete_dataset(name, timeout=5)
 
     if client.get_dataset_status(name) != JobStatus.NONE:
@@ -331,5 +331,3 @@ def create_dataset_from_coco_panoptic(
         dataset.finalize()
         
     return dataset
-
-
