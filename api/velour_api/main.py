@@ -1,6 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 
+import sqlalchemy
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
@@ -1131,3 +1132,45 @@ def get_api_version() -> schemas.APIVersion:
         A response object containing the API's version number.
     """
     return schemas.APIVersion(api_version=api_version)
+
+
+""" STATUS """
+
+@app.get(
+    "/health",
+    tags=["Status"],
+)
+def health():
+    """
+    Return 200 if the service is up.
+
+    GET Endpoint: `/health`
+
+    Returns
+    -------
+    schemas.Health
+        A response indicating that the service is up and running.
+    """
+    return schemas.Health(status="ok")
+
+
+@app.get(
+    "/ready",
+    tags=["Status"],
+)
+def ready(db: Session = Depends(get_db)):
+    """
+    Return 200 if the service is up and connected to the database.
+
+    GET Endpoint: `/ready`
+
+    Returns
+    -------
+    schemas.Readiness
+        A response indicating that the service is up and connected to the database.
+    """
+    try:
+        db.execute(sqlalchemy.text("select 1"))
+        return schemas.Readiness(status="ok")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
