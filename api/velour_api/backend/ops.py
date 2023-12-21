@@ -702,19 +702,6 @@ class Query:
                     if isinstance(id, int)
                 ],
             )
-        if filters.labels:
-            self._add_expressions(
-                models.Label,
-                [
-                    and_(
-                        models.Label.key == key,
-                        models.Label.value == value,
-                    )
-                    for label in filters.labels
-                    if isinstance(label, dict) and len(label) == 1
-                    for key, value in label.items()
-                ],
-            )
         if filters.label_keys:
             self._add_expressions(
                 models.Label,
@@ -722,6 +709,15 @@ class Query:
                     models.Label.key == key
                     for key in filters.label_keys
                     if isinstance(key, str)
+                ],
+            )
+        if filters.label_values:
+            self._add_expressions(
+                models.Label,
+                [
+                    models.Label.value == value
+                    for value in filters.label_values
+                    if isinstance(value, str)
                 ],
             )
 

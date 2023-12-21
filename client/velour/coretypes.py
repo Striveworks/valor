@@ -5,7 +5,7 @@ from dataclasses import asdict
 from typing import Dict, List, Tuple, Union
 
 from velour.client import Client, ClientException, Job, wait_for_predicate
-from velour.enums import AnnotationType, TaskType, JobStatus
+from velour.enums import AnnotationType, JobStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import (
     DetectionParameters,
@@ -39,7 +39,7 @@ class Label:
 
     id = DeclarativeMapper("label_ids", int)
     key = DeclarativeMapper("label_keys", str)
-    label = DeclarativeMapper("labels", str)
+    value = DeclarativeMapper("label_values", str)
 
     def __init__(self, key: str, value: str, score: Union[float, None] = None):
         self.key = key

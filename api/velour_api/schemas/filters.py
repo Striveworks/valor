@@ -249,12 +249,12 @@ class Filter(BaseModel):
         A list of `Annotation` geospatial filters to filter on.
     prediction_scores: List[ValueFilter]
         A list of `ValueFilters` which are used to filter `Evaluations` according to the `Model`'s prediction scores.
-    labels: List[Dict[str, str]]
-        A dictionary of `Labels' to filter on.
     label_ids: List[int]
         A list of `Label` IDs to filter on.
-    label_keys: List[str] = None
+    label_keys: List[str]
         A list of `Label` keys to filter on.
+    label_values: List[str]
+        A list of `Label` values to filter on.
     """
 
     # datasets
@@ -292,9 +292,9 @@ class Filter(BaseModel):
     prediction_scores: list[NumericFilter] | None = None
 
     # labels
-    labels: list[dict[str, str]] | None = None
     label_ids: list[int] | None = None
     label_keys: list[str] | None = None
+    label_values: list[str] | None = None
 
     # pydantic settings
     model_config = ConfigDict(extra="forbid")

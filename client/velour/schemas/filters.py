@@ -259,12 +259,12 @@ class Filter:
         A list of `Annotation` geospatial filters to filter on.
     prediction_scores: List[ValueFilter]
         A list of `ValueFilters` which are used to filter `Evaluations` according to the `Model`'s prediction scores.
-    labels: List[Dict[str, str]]
-        A dictionary of `Labels' to filter on.
     label_ids: List[int]
         A list of `Label` IDs to filter on.
-    label_keys: List[str] = None
+    label_keys: List[str]
         A list of `Label` keys to filter on.
+    label_values: List[str]
+        A list of `Label` values to filter on.
 
 
     Raises
@@ -301,9 +301,9 @@ class Filter:
     prediction_scores: List[ValueFilter] = None
 
     # labels
-    labels: List[Dict[str, str]] = None
     label_ids: List[int] = None
     label_keys: List[str] = None
+    label_values: List[str] = None
 
     @classmethod
     def create(cls, expressions: List[BinaryExpression]) -> "Filter":
@@ -449,13 +449,13 @@ class Filter:
             filter_request.label_ids = [
                 expr.value for expr in expression_dict["label_ids"]
             ]
-        if "labels" in expression_dict:
-            filter_request.labels = [
-                {expr.key: expr.value} for expr in expression_dict["labels"]
-            ]
         if "label_keys" in expression_dict:
             filter_request.label_keys = [
                 expr.value for expr in expression_dict["label_keys"]
+            ]
+        if "label_values" in expression_dict:
+            filter_request.label_values = [
+                expr.value for expr in expression_dict["label_values"]
             ]
 
         return filter_request
