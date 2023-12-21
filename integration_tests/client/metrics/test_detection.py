@@ -75,9 +75,6 @@ def test_evaluate_detection(
         },
     ]
 
-<<<<<<< HEAD
-    assert eval_job.results().metrics == expected_metrics
-=======
     eval_job = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
@@ -161,7 +158,6 @@ def test_evaluate_detection(
         eval_job_no_metrics.wait_for_completion(timeout=30)
     )
     assert len(no_metric_result["metrics"]) == 0
->>>>>>> main
 
     # now test if we set min_area and/or max_area
     areas = db.scalars(
@@ -217,10 +213,6 @@ def test_evaluate_detection(
         "status": JobStatus.DONE,
         "job_id": eval_job_bounded_area_10_2000.evaluation_id,
     }
-<<<<<<< HEAD
-    assert eval_job_bounded_area_10_2000.results().metrics == expected_metrics
-=======
->>>>>>> main
 
     # now check we get different things by setting the thresholds accordingly
     # min area threshold should divide the set of annotations
@@ -262,11 +254,7 @@ def test_evaluate_detection(
         "status": JobStatus.DONE,
         "job_id": eval_job_min_area_1200.evaluation_id,
     }
-<<<<<<< HEAD
-    assert eval_job_min_area_1200.results().metrics != expected_metrics
-=======
     assert min_area_1200_metrics != expected_metrics
->>>>>>> main
 
     # check for difference with max area now dividing the set of annotations
     eval_job_max_area_1200 = model.evaluate_detection(
@@ -307,11 +295,7 @@ def test_evaluate_detection(
         "status": JobStatus.DONE,
         "job_id": eval_job_max_area_1200.evaluation_id,
     }
-<<<<<<< HEAD
-    assert eval_job_max_area_1200.results().metrics != expected_metrics
-=======
     assert max_area_1200_metrics != expected_metrics
->>>>>>> main
 
     # should perform the same as the first min area evaluation
     # except now has an upper bound
@@ -360,16 +344,8 @@ def test_evaluate_detection(
         "status": JobStatus.DONE,
         "job_id": eval_job_bounded_area_1200_1800.evaluation_id,
     }
-<<<<<<< HEAD
-    assert eval_job_bounded_area_1200_1800.results().metrics != expected_metrics
-    assert (
-        eval_job_bounded_area_1200_1800.results().metrics
-        == eval_job_min_area_1200.results().metrics
-    )
-=======
     assert bounded_area_metrics != expected_metrics
     assert bounded_area_metrics == min_area_1200_metrics
->>>>>>> main
 
     # test accessing these evaluations via the dataset
     all_evals = dataset.get_evaluations()

@@ -78,6 +78,8 @@ def test_evaluate_segmentation_with_filter(
             Datum.metadata["color"] == "red",
         ],
     )
+    eval_job.wait_for_completion(timeout=30)
+
     assert eval_job.missing_pred_labels == [
         {"key": "k3", "value": "v3", "score": None}
     ]
@@ -85,12 +87,7 @@ def test_evaluate_segmentation_with_filter(
         {"key": "k1", "value": "v1", "score": None}
     ]
 
-<<<<<<< HEAD
-    metrics = eval_job.results().metrics
-=======
-    eval_results = eval_job.wait_for_completion(timeout=30)
-    metrics = eval_results.metrics
->>>>>>> main
+    metrics = eval_job.get_result().metrics
 
     assert len(metrics) == 2
     assert set(

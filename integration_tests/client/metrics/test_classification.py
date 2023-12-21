@@ -80,11 +80,7 @@ def test_evaluate_image_clf(
     for m in expected_metrics:
         assert m in metrics
 
-<<<<<<< HEAD
-    confusion_matrices = eval_job.results().confusion_matrices
-=======
-    confusion_matrices = eval_results.confusion_matrices
->>>>>>> main
+    confusion_matrices = eval_job.get_result().confusion_matrices
     assert confusion_matrices == [
         {
             "label_key": "k4",
@@ -160,11 +156,7 @@ def test_evaluate_tabular_clf(
     eval_results = eval_job.wait_for_completion(timeout=30)
     assert eval_results.status == JobStatus.DONE
 
-<<<<<<< HEAD
-    metrics = eval_job.results().metrics
-=======
-    metrics = eval_results.metrics
->>>>>>> main
+    metrics = eval_job.get_result().metrics
 
     expected_metrics = [
         {
@@ -224,11 +216,7 @@ def test_evaluate_tabular_clf(
     for m in expected_metrics:
         assert m in metrics
 
-<<<<<<< HEAD
-    confusion_matrices = eval_job.results().confusion_matrices
-=======
-    confusion_matrices = eval_results.confusion_matrices
->>>>>>> main
+    confusion_matrices = eval_job.get_result().confusion_matrices
 
     expected_confusion_matrix = {
         "label_key": "class",
@@ -274,21 +262,12 @@ def test_evaluate_tabular_clf(
     assert len(model.metadata) == 0
 
     # check evaluation
-<<<<<<< HEAD
     results = model.get_evaluations()
     assert len(results) == 1
     assert results[0].dataset == dataset_name
     assert results[0].model == model_name
-=======
-    eval_jobs = model.get_evaluations()
-    assert len(eval_jobs) == 1
-    assert eval_jobs[0].model == model_name
-    assert eval_jobs[0].dataset == "test_dataset"
-    assert eval_jobs[0].task_type == "classification"
-    assert eval_jobs[0].settings == EvaluationSettings()
->>>>>>> main
 
-    metrics_from_eval_settings_id = eval_jobs[0].metrics
+    metrics_from_eval_settings_id = results[0].metrics
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
     for m in metrics_from_eval_settings_id:
         assert m in expected_metrics
@@ -296,7 +275,7 @@ def test_evaluate_tabular_clf(
         assert m in metrics_from_eval_settings_id
 
     # check confusion matrix
-    confusion_matrices = eval_jobs[0].confusion_matrices
+    confusion_matrices = results[0].confusion_matrices
 
     # validate return schema
     assert len(confusion_matrices) == 1
@@ -381,14 +360,9 @@ def test_stratify_clf_metrics(
         filters=[
             Datum.metadata["md1"] == "md1-val2",
         ],
-<<<<<<< HEAD
-        timeout=30,
     )
-    val2_metrics = eval_job_val2.results().metrics
-=======
-    ).wait_for_completion(timeout=30)
-    val2_metrics = eval_results_val2.metrics
->>>>>>> main
+    eval_results_val2.wait_for_completion(timeout=30)
+    val2_metrics = eval_results_val2.get_result().metrics
 
     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
     # (hard preds [1, 0, 0])

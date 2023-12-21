@@ -656,16 +656,8 @@ class Dataset:
         A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
     """
 
-    def __init__(self):
-        self.client: Client = None
-        self.id: int = None
-        self.name: str = None
-        self.metadata: dict = None
-        self.geospatial: dict = None
-
-    @classmethod
-    def create(
-        cls,
+    def __init__(
+        self,
         client: Client,
         name: str,
         metadata: Dict[str, Union[int, float, str]] = None,
@@ -889,7 +881,7 @@ class Evaluation:
 
     def get_result(self) -> EvaluationResult:
         """
-        Fetch the first `EvaluationResult` for our `job_id`.
+        Fetch the `EvaluationResult` for our `job_id`.
 
         Returns
         ----------
@@ -940,16 +932,8 @@ class Model:
         A GeoJSON-style dictionary describing the geospatial coordinates of the model.
     """
 
-    def __init__(self):
-        self.client: Client = None
-        self.id: int = None
-        self.name: str = ""
-        self.metadata: dict = None
-        self.geospatial: dict = None
-
-    @classmethod
-    def create(
-        cls,
+    def __init__(
+        self,
         client: Client,
         name: str,
         metadata: Dict[str, Union[int, float, str]] = None,
