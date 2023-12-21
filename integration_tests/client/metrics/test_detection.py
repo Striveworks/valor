@@ -10,8 +10,11 @@ from sqlalchemy.orm import Session
 
 from velour import Annotation, Dataset, GroundTruth, Label, Model, Prediction
 from velour.client import Client
-from velour.enums import AnnotationType, JobStatus
+from velour.enums import AnnotationType, JobStatus, TaskType
+from velour.schemas.filters import Filter
 from velour_api.backend import models
+
+default_filter_properties = asdict(Filter())
 
 
 def test_evaluate_detection(
@@ -32,64 +35,6 @@ def test_evaluate_detection(
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_detection(
-        dataset=dataset,
-        iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
-        filters=[
-            Label.key == "k1",
-            Annotation.type == AnnotationType.BOX,
-        ],
-        timeout=30,
-    )
-    assert isinstance(eval_job.evaluation_id, int)
-    assert eval_job.task_type == "object-detection"
-    assert eval_job.status.value == "done"
-    assert eval_job.ignored_pred_labels == []
-    assert eval_job.missing_pred_labels == []
-
-    eval_job.wait_for_completion()
-    assert eval_job.status == JobStatus.DONE
-
-    # test get_evaluation_status
-    assert (
-        client.get_evaluation_status(eval_job.evaluation_id) == eval_job.status
-    )
-
-    settings = asdict(eval_job.job_request)
-    settings.pop("id")
-    assert settings == {
-        "model": "test_model",
-        "dataset": "test_dataset",
-        "task_type": "object-detection",
-        "settings": {
-            "parameters": {
-                "iou_thresholds_to_compute": [0.1, 0.6],
-                "iou_thresholds_to_keep": [0.1, 0.6],
-            },
-            "filters": {
-                "dataset_names": None,
-                "dataset_metadata": None,
-                "dataset_geospatial": None,
-                "models_names": None,
-                "models_metadata": None,
-                "models_geospatial": None,
-                "datum_uids": None,
-                "datum_metadata": None,
-                "datum_geospatial": None,
-                "task_types": None,
-                "annotation_types": ["box"],
-                "annotation_geometric_area": None,
-                "annotation_metadata": None,
-                "annotation_geospatial": None,
-                "prediction_scores": None,
-                "labels": None,
-                "label_ids": None,
-                "label_keys": ["k1"],
-            },
-        },
-    }
-
     expected_metrics = [
         {
             "type": "AP",
@@ -130,7 +75,93 @@ def test_evaluate_detection(
         },
     ]
 
+<<<<<<< HEAD
     assert eval_job.results().metrics == expected_metrics
+=======
+    eval_job = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters=[
+            Label.key == "k1",
+            Annotation.type == AnnotationType.BOX,
+        ],
+    )
+    assert isinstance(eval_job.evaluation_id, int)
+    assert eval_job.ignored_pred_labels == []
+    assert eval_job.missing_pred_labels == []
+
+    eval_results = eval_job.wait_for_completion()
+    assert eval_results.status == JobStatus.DONE
+
+    result = asdict(eval_results)
+    assert result == {
+        "model": model_name,
+        "dataset": "test_dataset",
+        "task_type": TaskType.DETECTION,
+        "settings": {
+            "parameters": {
+                "iou_thresholds_to_compute": [0.1, 0.6],
+                "iou_thresholds_to_keep": [0.1, 0.6],
+            },
+            "filters": {
+                **default_filter_properties,
+                "annotation_types": ["box"],
+                "label_keys": ["k1"],
+            },
+        },
+        "metrics": expected_metrics,
+        "confusion_matrices": [],
+        "status": JobStatus.DONE,
+        "job_id": eval_job.evaluation_id,
+    }
+
+    # test evaluating a job using a `Label.labels` filter
+    eval_job_value_filter_using_in_ = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters=[
+            Label.label.in_([Label(key="k1", value="v1")]),
+            Annotation.type == AnnotationType.BOX,
+        ],
+    )
+    value_filter_result = asdict(
+        eval_job_value_filter_using_in_.wait_for_completion(timeout=30)
+    )
+    assert value_filter_result["metrics"] == result["metrics"]
+
+    # same as the above, but not using the in_ operator
+    eval_job_value_filter = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters=[
+            Label.label == Label(key="k1", value="v1"),
+            Annotation.type == AnnotationType.BOX,
+        ],
+    )
+    value_filter_result = asdict(
+        eval_job_value_filter.wait_for_completion(timeout=30)
+    )
+    assert value_filter_result["metrics"] == result["metrics"]
+
+    # assert that this evaluation returns no metrics as there aren't any
+    # Labels with key=k1 and value=v2
+    eval_job_no_metrics = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters=[
+            Label.label.in_([Label(key="k1", value="v2")]),
+            Annotation.type == AnnotationType.BOX,
+        ],
+    )
+    no_metric_result = asdict(
+        eval_job_no_metrics.wait_for_completion(timeout=30)
+    )
+    assert len(no_metric_result["metrics"]) == 0
+>>>>>>> main
 
     # now test if we set min_area and/or max_area
     areas = db.scalars(
@@ -151,16 +182,18 @@ def test_evaluate_detection(
             Annotation.geometric_area >= 10,
             Annotation.geometric_area <= 2000,
         ],
-        timeout=30,
     )
-    job_request = asdict(eval_job_bounded_area_10_2000.job_request)
-    job_request.pop("id")
-    assert job_request == {
+
+    result = asdict(
+        eval_job_bounded_area_10_2000.wait_for_completion(timeout=30)
+    )
+    assert result == {
         "model": model_name,
         "dataset": "test_dataset",
-        "task_type": "object-detection",
+        "task_type": TaskType.DETECTION,
         "settings": {
             "filters": {
+                **default_filter_properties,
                 "annotation_types": ["box"],
                 "annotation_geometric_area": [
                     {
@@ -173,29 +206,21 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
-                "annotation_geospatial": None,
-                "annotation_metadata": None,
-                "dataset_geospatial": None,
-                "dataset_metadata": None,
-                "dataset_names": None,
-                "datum_geospatial": None,
-                "datum_metadata": None,
-                "datum_uids": None,
-                "label_ids": None,
-                "labels": None,
-                "models_geospatial": None,
-                "models_metadata": None,
-                "models_names": None,
-                "prediction_scores": None,
-                "task_types": None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
         },
+        "metrics": expected_metrics,
+        "confusion_matrices": [],
+        "status": JobStatus.DONE,
+        "job_id": eval_job_bounded_area_10_2000.evaluation_id,
     }
+<<<<<<< HEAD
     assert eval_job_bounded_area_10_2000.results().metrics == expected_metrics
+=======
+>>>>>>> main
 
     # now check we get different things by setting the thresholds accordingly
     # min area threshold should divide the set of annotations
@@ -208,16 +233,16 @@ def test_evaluate_detection(
             Annotation.type == AnnotationType.BOX,
             Annotation.geometric_area >= 1200,
         ],
-        timeout=30,
     )
-    job_request = asdict(eval_job_min_area_1200.job_request)
-    job_request.pop("id")
-    assert job_request == {
+    result = asdict(eval_job_min_area_1200.wait_for_completion(timeout=30))
+    min_area_1200_metrics = result.pop("metrics")
+    assert result == {
         "model": model_name,
         "dataset": "test_dataset",
-        "task_type": "object-detection",
+        "task_type": TaskType.DETECTION,
         "settings": {
             "filters": {
+                **default_filter_properties,
                 "annotation_types": ["box"],
                 "annotation_geometric_area": [
                     {
@@ -226,29 +251,22 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
-                "annotation_geospatial": None,
-                "annotation_metadata": None,
-                "dataset_geospatial": None,
-                "dataset_metadata": None,
-                "dataset_names": None,
-                "datum_geospatial": None,
-                "datum_metadata": None,
-                "datum_uids": None,
-                "label_ids": None,
-                "labels": None,
-                "models_geospatial": None,
-                "models_metadata": None,
-                "models_names": None,
-                "prediction_scores": None,
-                "task_types": None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
         },
+        # check metrics below
+        "confusion_matrices": [],
+        "status": JobStatus.DONE,
+        "job_id": eval_job_min_area_1200.evaluation_id,
     }
+<<<<<<< HEAD
     assert eval_job_min_area_1200.results().metrics != expected_metrics
+=======
+    assert min_area_1200_metrics != expected_metrics
+>>>>>>> main
 
     # check for difference with max area now dividing the set of annotations
     eval_job_max_area_1200 = model.evaluate_detection(
@@ -260,16 +278,16 @@ def test_evaluate_detection(
             Annotation.type == AnnotationType.BOX,
             Annotation.geometric_area <= 1200,
         ],
-        timeout=30,
     )
-    job_request = asdict(eval_job_max_area_1200.job_request)
-    job_request.pop("id")
-    assert job_request == {
+    result = asdict(eval_job_max_area_1200.wait_for_completion(timeout=30))
+    max_area_1200_metrics = result.pop("metrics")
+    assert result == {
         "model": model_name,
         "dataset": "test_dataset",
-        "task_type": "object-detection",
+        "task_type": TaskType.DETECTION,
         "settings": {
             "filters": {
+                **default_filter_properties,
                 "annotation_types": ["box"],
                 "annotation_geometric_area": [
                     {
@@ -278,29 +296,22 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
-                "annotation_geospatial": None,
-                "annotation_metadata": None,
-                "dataset_geospatial": None,
-                "dataset_metadata": None,
-                "dataset_names": None,
-                "datum_geospatial": None,
-                "datum_metadata": None,
-                "datum_uids": None,
-                "label_ids": None,
-                "labels": None,
-                "models_geospatial": None,
-                "models_metadata": None,
-                "models_names": None,
-                "prediction_scores": None,
-                "task_types": None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
         },
+        # check metrics below
+        "confusion_matrices": [],
+        "status": JobStatus.DONE,
+        "job_id": eval_job_max_area_1200.evaluation_id,
     }
+<<<<<<< HEAD
     assert eval_job_max_area_1200.results().metrics != expected_metrics
+=======
+    assert max_area_1200_metrics != expected_metrics
+>>>>>>> main
 
     # should perform the same as the first min area evaluation
     # except now has an upper bound
@@ -314,16 +325,18 @@ def test_evaluate_detection(
             Annotation.geometric_area >= 1200,
             Annotation.geometric_area <= 1800,
         ],
-        timeout=30,
     )
-    job_request = asdict(eval_job_bounded_area_1200_1800.job_request)
-    job_request.pop("id")
-    assert job_request == {
+    result = asdict(
+        eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30)
+    )
+    bounded_area_metrics = result.pop("metrics")
+    assert result == {
         "model": model_name,
         "dataset": "test_dataset",
-        "task_type": "object-detection",
+        "task_type": TaskType.DETECTION,
         "settings": {
             "filters": {
+                **default_filter_properties,
                 "annotation_types": ["box"],
                 "annotation_geometric_area": [
                     {
@@ -336,37 +349,31 @@ def test_evaluate_detection(
                     },
                 ],
                 "label_keys": ["k1"],
-                "annotation_geospatial": None,
-                "annotation_metadata": None,
-                "dataset_geospatial": None,
-                "dataset_metadata": None,
-                "dataset_names": None,
-                "datum_geospatial": None,
-                "datum_metadata": None,
-                "datum_uids": None,
-                "label_ids": None,
-                "labels": None,
-                "models_geospatial": None,
-                "models_metadata": None,
-                "models_names": None,
-                "prediction_scores": None,
-                "task_types": None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
         },
+        # check metrics below
+        "confusion_matrices": [],
+        "status": JobStatus.DONE,
+        "job_id": eval_job_bounded_area_1200_1800.evaluation_id,
     }
+<<<<<<< HEAD
     assert eval_job_bounded_area_1200_1800.results().metrics != expected_metrics
     assert (
         eval_job_bounded_area_1200_1800.results().metrics
         == eval_job_min_area_1200.results().metrics
     )
+=======
+    assert bounded_area_metrics != expected_metrics
+    assert bounded_area_metrics == min_area_1200_metrics
+>>>>>>> main
 
     # test accessing these evaluations via the dataset
     all_evals = dataset.get_evaluations()
-    assert len(all_evals) == 5
+    assert len(all_evals) == 7
 
 
 def test_evaluate_detection_with_json_filters(
@@ -387,18 +394,20 @@ def test_evaluate_detection_with_json_filters(
     model.finalize_inferences(dataset)
 
     # test default iou arguments
-    eval_job = model.evaluate_detection(
+    eval_results = model.evaluate_detection(
         dataset=dataset,
         filters=[
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
         ],
-        timeout=30,
-    )
-    assert eval_job.settings.parameters.iou_thresholds_to_compute == [
+    ).wait_for_completion(timeout=30)
+    assert eval_results.settings.parameters.iou_thresholds_to_compute == [
         i / 100 for i in range(50, 100, 5)
     ]
-    assert eval_job.settings.parameters.iou_thresholds_to_keep == [0.5, 0.75]
+    assert eval_results.settings.parameters.iou_thresholds_to_keep == [
+        0.5,
+        0.75,
+    ]
 
     expected_metrics = [
         {
@@ -440,7 +449,7 @@ def test_evaluate_detection_with_json_filters(
         },
     ]
 
-    eval_job_min_area_1200 = model.evaluate_detection(
+    eval_results_min_area_1200 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
@@ -449,14 +458,15 @@ def test_evaluate_detection_with_json_filters(
             Annotation.type == AnnotationType.BOX,
             Annotation.geometric_area >= 1200,
         ],
-        timeout=30,
-    )
+    ).wait_for_completion(timeout=30)
+    min_area_1200_metrics = eval_results_min_area_1200.metrics
 
     eval_job_bounded_area_1200_1800 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
         filters={
+            **default_filter_properties,
             "annotation_types": ["box"],
             "annotation_geometric_area": [
                 {
@@ -470,17 +480,19 @@ def test_evaluate_detection_with_json_filters(
             ],
             "label_keys": ["k1"],
         },
-        timeout=30,
     )
 
-    job_request = asdict(eval_job_bounded_area_1200_1800.job_request)
-    job_request.pop("id")
-    assert job_request == {
+    result = asdict(
+        eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30)
+    )
+    bounded_area_metrics = result.pop("metrics")
+    assert result == {
         "model": model_name,
         "dataset": "test_dataset",
-        "task_type": "object-detection",
+        "task_type": TaskType.DETECTION,
         "settings": {
             "filters": {
+                **default_filter_properties,
                 "annotation_types": ["box"],
                 "annotation_geometric_area": [
                     {
@@ -493,34 +505,19 @@ def test_evaluate_detection_with_json_filters(
                     },
                 ],
                 "label_keys": ["k1"],
-                "annotation_geospatial": None,
-                "annotation_metadata": None,
-                "dataset_geospatial": None,
-                "dataset_metadata": None,
-                "dataset_names": None,
-                "datum_geospatial": None,
-                "datum_metadata": None,
-                "datum_uids": None,
-                "label_ids": None,
-                "labels": None,
-                "models_geospatial": None,
-                "models_metadata": None,
-                "models_names": None,
-                "prediction_scores": None,
-                "task_types": None,
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
                 "iou_thresholds_to_keep": [0.1, 0.6],
             },
         },
+        # check metrics below
+        "confusion_matrices": [],
+        "status": JobStatus.DONE,
+        "job_id": eval_job_bounded_area_1200_1800.evaluation_id,
     }
-
-    assert eval_job_bounded_area_1200_1800.results().metrics != expected_metrics
-    assert (
-        eval_job_bounded_area_1200_1800.results().metrics
-        == eval_job_min_area_1200.results().metrics
-    )
+    assert bounded_area_metrics != expected_metrics
+    assert bounded_area_metrics == min_area_1200_metrics
 
 
 def test_get_bulk_evaluations(
@@ -552,9 +549,8 @@ def test_get_bulk_evaluations(
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
         ],
-        timeout=30,
     )
-    eval_job.wait_for_completion()
+    eval_job.wait_for_completion(timeout=30)
 
     expected_metrics = [
         {
@@ -636,6 +632,12 @@ def test_get_bulk_evaluations(
     assert len(evaluations[0].metrics)
     assert evaluations[0].metrics == expected_metrics
 
+    evaluations_by_job_id = client.get_bulk_evaluations(
+        job_ids=eval_job.job_id
+    )
+    assert len(evaluations_by_job_id) == 1
+    assert evaluations_by_job_id[0] == evaluations[0]
+
     # test incorrect names
     assert len(client.get_bulk_evaluations(datasets="wrong_dataset_name")) == 0
     assert len(client.get_bulk_evaluations(models="wrong_model_name")) == 0
@@ -646,7 +648,7 @@ def test_get_bulk_evaluations(
         second_model.add_prediction(pd)
     second_model.finalize_inferences(dataset)
 
-    eval_job = second_model.evaluate_detection(
+    eval_job2 = second_model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
@@ -654,9 +656,8 @@ def test_get_bulk_evaluations(
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
         ],
-        timeout=30,
     )
-    eval_job.wait_for_completion()
+    eval_job2.wait_for_completion(timeout=30)
 
     second_model_evaluations = client.get_bulk_evaluations(
         models="second_model"
@@ -685,3 +686,11 @@ def test_get_bulk_evaluations(
     assert len(both_evaluations_from_model_names) == 2
     assert both_evaluations[0] in both_evaluations_from_model_names
     assert both_evaluations[1] in both_evaluations_from_model_names
+
+    # should also be equivalent
+    both_evaluations_from_job_ids = client.get_bulk_evaluations(
+        job_ids=[eval_job.job_id, eval_job2.job_id]
+    )
+    assert len(both_evaluations_from_job_ids) == 2
+    assert both_evaluations[0] in both_evaluations_from_job_ids
+    assert both_evaluations[1] in both_evaluations_from_job_ids

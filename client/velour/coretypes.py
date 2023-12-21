@@ -1,9 +1,9 @@
 import math
 import warnings
 from dataclasses import asdict
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
-from velour.client import Client, Job
+from velour.client import Client, ClientException, Job, wait_for_predicate
 from velour.enums import AnnotationType, JobStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import (
@@ -35,10 +35,6 @@ class Label:
     id : int
         A unique ID for the `Label`.
     """
-
-    id = DeclarativeMapper("label_ids", int)
-    key = DeclarativeMapper("label_keys", str)
-    label = DeclarativeMapper("labels", str)
 
     def __init__(self, key: str, value: str, score: Union[float, None] = None):
         self.key = key
@@ -160,18 +156,6 @@ class Datum:
     dataset : str
         The name of the dataset to associate the `Datum` with.
     """
-
-    uid = DeclarativeMapper("datum_uids", str)
-    metadata = DeclarativeMapper("datum_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper(
-        "datum_geospatial",
-        Union[
-            List[List[List[List[Union[float, int]]]]],
-            List[List[List[Union[float, int]]]],
-            List[Union[float, int]],
-            str,
-        ],
-    )
 
     def __init__(
         self,
@@ -329,20 +313,6 @@ class Annotation:
     ...     raster=raster1,
     ... )
     """
-
-    task = DeclarativeMapper("task_types", TaskType)
-    type = DeclarativeMapper("annotation_types", AnnotationType)
-    geometric_area = DeclarativeMapper("annotation_geometric_area", float)
-    metadata = DeclarativeMapper("annotation_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper(
-        "annotation_geospatial",
-        Union[
-            List[List[List[List[Union[float, int]]]]],
-            List[List[List[Union[float, int]]]],
-            List[Union[float, int]],
-            str,
-        ],
-    )
 
     def __init__(
         self,
@@ -563,8 +533,6 @@ class Prediction:
         The score assigned to the `Prediction`.
     """
 
-    score = DeclarativeMapper("prediction_scores", Union[int, float])
-
     def __init__(
         self,
         datum: Datum,
@@ -688,20 +656,16 @@ class Dataset:
         A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
     """
 
-    name = DeclarativeMapper("dataset_names", str)
-    metadata = DeclarativeMapper("dataset_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper(
-        "dataset_geospatial",
-        Union[
-            List[List[List[List[Union[float, int]]]]],
-            List[List[List[Union[float, int]]]],
-            List[Union[float, int]],
-            str,
-        ],
-    )
+    def __init__(self):
+        self.client: Client = None
+        self.id: int = None
+        self.name: str = None
+        self.metadata: dict = None
+        self.geospatial: dict = None
 
-    def __init__(
-        self,
+    @classmethod
+    def create(
+        cls,
         client: Client,
         name: str,
         metadata: Dict[str, Union[int, float, str]] = None,
@@ -907,67 +871,55 @@ class Dataset:
         return job
 
 
-class Evaluation(Job):
+class Evaluation:
     """
     Wraps `velour.client.Job` to provide evaluation-specifc members.
     """
 
-    def __post_init__(self):
-        if not isinstance(self.evaluation_id, int):
-            raise ValueError("Missing evaluation id.")
+    def __init__(self, client: Client, evaluation_id: int, **kwargs):
+        self.client = client
+        self.evaluation_id = evaluation_id
+
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
     @property
-    def job_request(self) -> EvaluationJob:
-        """
-        The job request that created this evaluation.
+    def job_id(self):
+        return self.evaluation_id
 
-        Returns
-        ----------
-        schemas.EvaluationJob
-            An `EvaluationJob` object describing the evaluation's configuration.
+    def get_result(self) -> EvaluationResult:
         """
-        resp = self.client._requests_get_rel_host(
-            f"evaluations/{self.evaluation_id}/settings"
-        ).json()
-        return EvaluationJob(**resp)
-
-    @property
-    def settings(self) -> EvaluationSettings:
-        """
-        The settings associated with the evaluation job.
-
-        Returns
-        ----------
-        schemas.EvaluationSettings
-            An `EvaluationSettings` object describing the evaluation's configuration.
-        """
-        return self.job_request.settings
-
-    @property
-    def task_type(self) -> TaskType:
-        """
-        The task type of the evaluation job.
-
-        Returns
-        ----------
-        enums.TaskType
-            The task type associated with the `Evaluation` object.
-        """
-        return self.job_request.task_type
-
-    def results(self) -> EvaluationResult:
-        """
-        The results of the evaluation job.
+        Fetch the first `EvaluationResult` for our `job_id`.
 
         Returns
         ----------
         schemas.EvaluationResult
-            The results from the evaluation.
+            The result of the evaluation job
+
+        Raises
+        ----------
+        ClientException
+            If an Evaluation with the given `job_id` is not found.
         """
-        result = self.client._requests_get_rel_host(
-            f"evaluations/{self.evaluation_id}"
-        ).json()
-        return EvaluationResult(**result)
+        response = self.client.get_bulk_evaluations(
+            job_ids=[self.evaluation_id]
+        )
+        if not response:
+            raise ClientException("Not Found")
+        return response[0]
+
+    def wait_for_completion(
+        self,
+        *,
+        timeout: int = None,
+        interval: float = 1.0,
+    ) -> EvaluationResult:
+        return wait_for_predicate(
+            lambda: self.get_result(),
+            lambda result: result.status in [JobStatus.DONE, JobStatus.FAILED],
+            timeout,
+            interval,
+        )
 
 
 class Model:
@@ -988,20 +940,16 @@ class Model:
         A GeoJSON-style dictionary describing the geospatial coordinates of the model.
     """
 
-    name = DeclarativeMapper("models_names", str)
-    metadata = DeclarativeMapper("models_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper(
-        "model_geospatial",
-        Union[
-            List[List[List[List[Union[float, int]]]]],
-            List[List[List[Union[float, int]]]],
-            List[Union[float, int]],
-            str,
-        ],
-    )
+    def __init__(self):
+        self.client: Client = None
+        self.id: int = None
+        self.name: str = ""
+        self.metadata: dict = None
+        self.geospatial: dict = None
 
-    def __init__(
-        self,
+    @classmethod
+    def create(
+        cls,
         client: Client,
         name: str,
         metadata: Dict[str, Union[int, float, str]] = None,
@@ -1129,7 +1077,6 @@ class Model:
         self,
         dataset: Dataset,
         filters: Union[Dict, List[BinaryExpression]] = None,
-        timeout: Optional[int] = None,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -1175,10 +1122,6 @@ class Model:
             **resp,
         )
 
-        # blocking behavior
-        if timeout:
-            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
-
         return evaluation_job
 
     def evaluate_detection(
@@ -1187,7 +1130,6 @@ class Model:
         iou_thresholds_to_compute: List[float] = None,
         iou_thresholds_to_keep: List[float] = None,
         filters: Union[Dict, List[BinaryExpression]] = None,
-        timeout: Optional[int] = None,
     ) -> Evaluation:
         """
         Start a object-detection evaluation job.
@@ -1250,15 +1192,9 @@ class Model:
         evaluation_id = resp.pop("job_id")
         evaluation_job = Evaluation(
             client=self.client,
-            dataset_name=dataset.name,
-            model_name=self.name,
             evaluation_id=evaluation_id,
             **resp,
         )
-
-        # blocking behavior
-        if timeout:
-            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
 
         return evaluation_job
 
@@ -1266,7 +1202,6 @@ class Model:
         self,
         dataset: Dataset,
         filters: Union[Dict, List[BinaryExpression]] = None,
-        timeout: Optional[int] = None,
     ) -> Evaluation:
         """
         Start a semantic-segmentation evaluation job.
@@ -1308,15 +1243,9 @@ class Model:
         evaluation_id = resp.pop("job_id")
         evaluation_job = Evaluation(
             client=self.client,
-            dataset_name=dataset.name,
-            model_name=self.name,
             evaluation_id=evaluation_id,
             **resp,
         )
-
-        # blocking behavior
-        if timeout:
-            evaluation_job.wait_for_completion(interval=1.0, timeout=timeout)
 
         return evaluation_job
 
@@ -1380,3 +1309,110 @@ class Model:
             A list of `Evaluations` associated with the model.
         """
         return self.client.get_bulk_evaluations(models=self.name)
+
+    def get_metric_dataframes(
+        self,
+    ) -> dict:
+        """
+        Get all metrics associated with a Model and return them in a `pd.DataFrame`.
+
+        Returns
+        ----------
+        dict
+            A dictionary of the `Model's` metrics and settings, with the metrics being displayed in a `pd.DataFrame`.
+        """
+        try:
+            import pandas as pd
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError(
+                "Must have pandas installed to use `get_metric_dataframes`."
+            )
+
+        ret = []
+        for evaluation in self.get_evaluations():
+            metrics = [
+                {**metric, "dataset": evaluation.dataset}
+                for metric in evaluation.metrics
+            ]
+            df = pd.DataFrame(metrics)
+            for k in ["label", "parameters"]:
+                df[k] = df[k].fillna("n/a")
+            df["parameters"] = df["parameters"].apply(json.dumps)
+            df["label"] = df["label"].apply(
+                lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
+            )
+            df = df.pivot(
+                index=["type", "parameters", "label"], columns=["dataset"]
+            )
+            ret.append({"settings": evaluation.settings, "df": df})
+
+        return ret
+
+
+# Assign all DeclarativeMappers such that these coretypes can be used as filters.
+# Label
+Label.id = DeclarativeMapper("label_ids", int)
+Label.key = DeclarativeMapper("label_keys", str)
+Label.label = DeclarativeMapper("labels", Label)
+
+# Datum
+Datum.uid = DeclarativeMapper("datum_uids", str)
+Datum.metadata = DeclarativeMapper("datum_metadata", Union[int, float, str])
+Datum.geospatial = DeclarativeMapper(
+    "datum_geospatial",
+    Union[
+        List[List[List[List[Union[float, int]]]]],
+        List[List[List[Union[float, int]]]],
+        List[Union[float, int]],
+        str,
+    ],
+)
+
+# Prediction
+Prediction.score = DeclarativeMapper("prediction_scores", Union[int, float])
+
+# Dataset
+Dataset.name = DeclarativeMapper("dataset_names", str)
+Dataset.metadata = DeclarativeMapper(
+    "dataset_metadata", Union[int, float, str]
+)
+Dataset.geospatial = DeclarativeMapper(
+    "dataset_geospatial",
+    Union[
+        List[List[List[List[Union[float, int]]]]],
+        List[List[List[Union[float, int]]]],
+        List[Union[float, int]],
+        str,
+    ],
+)
+
+# Model
+Annotation.task = DeclarativeMapper("task_types", TaskType)
+Annotation.type = DeclarativeMapper("annotation_types", AnnotationType)
+Annotation.geometric_area = DeclarativeMapper(
+    "annotation_geometric_area", float
+)
+Annotation.metadata = DeclarativeMapper(
+    "annotation_metadata", Union[int, float, str]
+)
+Annotation.geospatial = DeclarativeMapper(
+    "annotation_geospatial",
+    Union[
+        List[List[List[List[Union[float, int]]]]],
+        List[List[List[Union[float, int]]]],
+        List[Union[float, int]],
+        str,
+    ],
+)
+
+Model.name = DeclarativeMapper("models_names", str)
+Model.metadata = DeclarativeMapper("models_metadata", Union[int, float, str])
+Model.geospatial = DeclarativeMapper(
+    "model_geospatial",
+    Union[
+        List[List[List[List[Union[float, int]]]]],
+        List[List[List[Union[float, int]]]],
+        List[Union[float, int]],
+        str,
+    ],
+)

@@ -1,9 +1,8 @@
 import logging
-import math
 import os
 import time
-from typing import List, Union
-from urllib.parse import urljoin
+from typing import List, Union, Callable, Optional, TypeVar
+from urllib.parse import urljoin, urlencode
 
 import requests
 from packaging import version
@@ -12,6 +11,52 @@ from velour import __version__ as client_version
 from velour import schemas
 from velour.enums import JobStatus
 from velour.schemas.evaluation import EvaluationResult
+
+T = TypeVar("T")
+
+def wait_for_predicate(
+    update_func: Callable[[], T],
+    pred: Callable[[T], bool],
+    timeout: Optional[int],
+    interval: float = 1.0,
+) -> T:
+    """Waits for a condition to become true.
+
+    Repeatedly calls `update_func` to retrieve a new value and checks if the
+    condition `pred` is satisfied.  If `pred` is not satisfied within `timeout`
+    seconds, raises a TimeoutError.  Polls every `interval` seconds.
+
+    Parameters
+    ----------
+    update_func:
+        A callable that returns a value of type T.
+    pred:
+        A predicate callable that takes an argument of type T and returns a boolean.
+    timeout:
+        The maximum number of seconds to wait for the condition to become
+        true. If None, waits indefinitely.
+    interval:
+        The time in seconds between consecutive calls to `update_func`.
+
+    Returns
+    ------
+    T
+        The final value for which `pred` returned True.
+
+    Raises
+    ----------
+    TimeoutError
+        If the condition is not met within `timeout` seconds.
+
+    """
+    t_start = time.time()
+    state = update_func()
+    while not pred(state):
+        time.sleep(interval)
+        if timeout and time.time() - t_start > timeout:
+            raise TimeoutError
+        state = update_func()
+    return state
 
 
 def _validate_version(client_version: str, api_version: str):
@@ -320,47 +365,10 @@ class Client:
                     "Model wasn't deleted within timeout interval"
                 )
 
-    def get_evaluation_status(
-        self,
-        evaluation_id: int,
-    ) -> JobStatus:
-        """
-        Get the state of a given job ID.
-
-        Parameters
-        ----------
-        evaluation_id : int
-            The job id of the evaluation that we want to fetch the state of.
-
-        Returns
-        ------
-        JobStatus
-            The state of the `Evaluation`.
-        """
-        resp = self._requests_get_rel_host(
-            f"evaluations/{evaluation_id}/status"
-        ).json()
-        return JobStatus(resp)
-
-    def get_evaluation(
-        self,
-        evaluation_id: int,
-    ) -> EvaluationResult:
-        """
-        The results of an evaluation job.
-
-        Returns
-        ----------
-        schemas.EvaluationResult
-            The results from the evaluation.
-        """
-        result = self._requests_get_rel_host(
-            f"evaluations/{evaluation_id}"
-        ).json()
-        return schemas.EvaluationResult(**result)
-
     def get_bulk_evaluations(
         self,
+        *,
+        job_ids: Union[int, List[int], None] = None,
         models: Union[str, List[str], None] = None,
         datasets: Union[str, List[str], None] = None,
     ) -> List[EvaluationResult]:
@@ -369,6 +377,8 @@ class Client:
 
         Parameters
         ----------
+        job_ids : Union[int, List[int], None]
+            A list of job ids to return metrics for.  If the user passes a single value, it will automatically be converted to a list for convenience.
         models : Union[str, List[str], None]
             A list of model names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
         datasets : Union[str, List[str], None]
@@ -381,37 +391,29 @@ class Client:
 
         """
 
-        if not (models or datasets):
+        if not (job_ids or models or datasets):
             raise ValueError(
-                "Please provide atleast one model name or dataset name"
+                "Please provide at least one job_id, model name, or dataset name"
             )
 
-        if models:
-            # let users just pass one name as a string
-            if isinstance(models, str):
-                models = [models]
-            model_params = ",".join(models)
-        else:
-            model_params = None
+        def _build_query_param(param_name, element, typ):
+            """Parse `element` to a list of `typ`, return a dict that can be urlencoded."""
+            if not element:
+                return {}
+            if isinstance(element, typ):
+                element = [element]
+            return {param_name: ','.join(map(str, element))}
 
-        if datasets:
-            if isinstance(datasets, str):
-                datasets = [datasets]
-            dataset_params = ",".join(datasets)
-        else:
-            dataset_params = None
+        params = {
+            **_build_query_param("job_ids", job_ids, int),
+            **_build_query_param("models", models, str),
+            **_build_query_param("datasets", datasets, str),
+        }
 
-        if model_params and dataset_params:
-            endpoint = (
-                f"evaluations?models={model_params}&datasets={dataset_params}"
-            )
-        elif model_params:
-            endpoint = f"evaluations?models={model_params}"
-        else:
-            endpoint = f"evaluations?datasets={dataset_params}"
+        query_str = urlencode(params)
+        endpoint = f"evaluations?{query_str}"
 
         evals = self._requests_get_rel_host(endpoint).json()
-        print(evals)
         return [EvaluationResult(**eval) for eval in evals]
 
 
@@ -422,17 +424,13 @@ class Job:
         *,
         dataset_name: str = None,
         model_name: str = None,
-        evaluation_id: int = None,
         **kwargs,
     ):
         self.client = client
         self.dataset_name = dataset_name
         self.model_name = model_name
-        self.evaluation_id = evaluation_id
 
-        if evaluation_id:
-            self.url = f"evaluations/{evaluation_id}/status"
-        elif dataset_name and not model_name:
+        if dataset_name and not model_name:
             self.url = f"datasets/{dataset_name}/status"
         elif model_name and not dataset_name:
             self.url = f"models/{model_name}/status"
@@ -446,20 +444,9 @@ class Job:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-    @property
-    def status(self) -> JobStatus:
+    def get_status(self) -> JobStatus:
         resp = self.client._requests_get_rel_host(self.url).json()
         return JobStatus(resp)
-
-    def results(self):
-        """
-        Certain types of jobs have a return type.
-        """
-        if self.status == JobStatus.DONE:
-            if self.evaluation_id:
-                return self.client.get_evaluation(self.evaluation_id)
-            else:
-                return None
 
     def wait_for_completion(
         self,
@@ -483,11 +470,9 @@ class Job:
         TimeoutError
             If the job's status doesn't change to DONE or FAILED before the timeout expires
         """
-        if timeout:
-            timeout_counter = int(math.ceil(timeout / interval))
-        while self.status not in [JobStatus.DONE, JobStatus.FAILED]:
-            time.sleep(interval)
-            if timeout:
-                timeout_counter -= 1
-                if timeout_counter < 0:
-                    raise TimeoutError
+        wait_for_predicate(
+            lambda: self.get_status(),
+            lambda status: status in [JobStatus.DONE, JobStatus.FAILED],
+            timeout,
+            interval,
+        )
