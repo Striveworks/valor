@@ -91,22 +91,22 @@ class DeclarativeMapper:
         self.object_type = object_type
 
     def _validate_operator(self, value):
+        """Validate that the inputs to ac operator filter are of the correct type."""
         if self.object_type == float and isinstance(value, int):
             return  # edge case
         if not isinstance(value, self.object_type):
             raise ValueError(
                 f"`{self.name}` should be of type `{self.object_type}`"
             )
-        
-    def _validate_numeric_operator(self, value, opstring: str):
-        if (
-            not isinstance(value, float)
-            and not isinstance(value, int)
-        ):
-            raise TypeError(f"`__gt__` does not support type {type(value)}")
+
+    def _validate_numeric_operator(self, value: any, opstring: str):
+        """Validate the inputs to a numeric operator filter."""
+        if not isinstance(value, float) and not isinstance(value, int):
+            raise TypeError(f"{opstring} does not support type {type(value)}")
         self._validate_operator(value)
 
     def _validate_geospatial_operator(self, value):
+        """Validate the inputs to a geospatial operator filter."""
         if (
             not isinstance(value, dict)
             or not value.get("geometry")
@@ -172,7 +172,7 @@ class DeclarativeMapper:
         )
 
     def __ge__(self, __value: object) -> BinaryExpression:
-        self._validate_numeric_operator(__value)
+        self._validate_numeric_operator(__value, "__ge__")
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -256,8 +256,8 @@ class Filter:
         A list of `Annotation` geospatial filters to filter on.
     prediction_scores: List[ValueFilter]
         A list of `ValueFilters` which are used to filter `Evaluations` according to the `Model`'s prediction scores.
-    labels: List[Dict[str, str]]
-        A dictionary of `Labels' to filter on.
+    labels: List[Label]
+        A list of `Labels' to filter on.
     label_ids: List[int]
         A list of `Label` IDs to filter on.
     label_keys: List[str] = None
@@ -448,7 +448,7 @@ class Filter:
             ]
         if "labels" in expression_dict:
             filter_request.labels = [
-                {expr.value.key: expr.value.value} 
+                {expr.value.key: expr.value.value}
                 for expr in expression_dict["labels"]
             ]
         if "label_keys" in expression_dict:

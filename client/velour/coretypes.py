@@ -5,7 +5,7 @@ from dataclasses import asdict
 from typing import Dict, List, Tuple, Union
 
 from velour.client import Client, ClientException, Job, wait_for_predicate
-from velour.enums import AnnotationType, TaskType, JobStatus
+from velour.enums import AnnotationType, JobStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import (
     DetectionParameters,
@@ -1305,8 +1305,7 @@ class Model:
         return ret
 
 
-# Assign all declarative mappers.
-
+# Assign all DeclarativeMappers such that these coretypes can be used as filters.
 # Label
 Label.id = DeclarativeMapper("label_ids", int)
 Label.key = DeclarativeMapper("label_keys", str)
@@ -1330,7 +1329,9 @@ Prediction.score = DeclarativeMapper("prediction_scores", Union[int, float])
 
 # Dataset
 Dataset.name = DeclarativeMapper("dataset_names", str)
-Dataset.metadata = DeclarativeMapper("dataset_metadata", Union[int, float, str])
+Dataset.metadata = DeclarativeMapper(
+    "dataset_metadata", Union[int, float, str]
+)
 Dataset.geospatial = DeclarativeMapper(
     "dataset_geospatial",
     Union[
@@ -1344,8 +1345,12 @@ Dataset.geospatial = DeclarativeMapper(
 # Model
 Annotation.task = DeclarativeMapper("task_types", TaskType)
 Annotation.type = DeclarativeMapper("annotation_types", AnnotationType)
-Annotation.geometric_area = DeclarativeMapper("annotation_geometric_area", float)
-Annotation.metadata = DeclarativeMapper("annotation_metadata", Union[int, float, str])
+Annotation.geometric_area = DeclarativeMapper(
+    "annotation_geometric_area", float
+)
+Annotation.metadata = DeclarativeMapper(
+    "annotation_metadata", Union[int, float, str]
+)
 Annotation.geospatial = DeclarativeMapper(
     "annotation_geospatial",
     Union[
