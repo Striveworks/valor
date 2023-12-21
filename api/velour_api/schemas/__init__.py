@@ -51,7 +51,6 @@ __all__ = [
     "Annotation",
     "Dataset",
     "Datum",
-    "AnnotatedDatum",
     "Model",
     "GroundTruth",
     "Prediction",
