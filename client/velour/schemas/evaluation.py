@@ -1,10 +1,6 @@
 import json
 from dataclasses import dataclass, field
-<<<<<<< HEAD
-from typing import List, Tuple, Union
-=======
-from typing import List, Union, Optional
->>>>>>> main
+from typing import List, Tuple, Union, Optional
 
 from velour.enums import JobStatus, TaskType
 from velour.schemas.filters import Filter
