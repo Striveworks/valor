@@ -598,7 +598,7 @@ def test_query_datasets(
     assert len(q._selected) == 0
 
     # Q: Get names for datasets where label class=cat exists in groundtruths.
-    f = schemas.Filter(labels=[{"class": "cat"}])
+    f = schemas.Filter(label_keys=["class"], label_values=["cat"])
     query_obj = Query(models.Dataset.name)
     assert len(query_obj._selected) == 1
 
@@ -608,7 +608,7 @@ def test_query_datasets(
     assert (dset_name,) in dataset_names
 
     # Q: Get names for datasets where label=tree exists in groundtruths
-    f = schemas.Filter(labels=[{"class": "tree"}])
+    f = schemas.Filter(label_keys=["class"], label_values=["tree"])
     q = Query(models.Dataset.name).filter(f).any()
     dataset_names = db.query(q).distinct().all()
     assert len(dataset_names) == 0
@@ -629,7 +629,7 @@ def test_query_models(
     assert (model_name2,) in model_names
 
     # Q: Get names for models where label=cat exists in predictions
-    f = schemas.Filter(labels=[{"class": "cat"}])
+    f = schemas.Filter(label_keys=["class"], label_values=["cat"])
     q = Query(models.Model.name).filter(f).any()
     model_names = db.query(q).distinct().all()
     assert len(model_names) == 2
@@ -637,7 +637,7 @@ def test_query_models(
     assert (model_name2,) in model_names
 
     # Q: Get names for models where label=tree exists in predictions
-    f = schemas.Filter(labels=[{"class": "tree"}])
+    f = schemas.Filter(label_values=["tree"])
     q = Query(models.Model.name).filter(f).any()
     model_names = db.query(q).distinct().all()
     assert len(model_names) == 0
@@ -779,7 +779,7 @@ def test_query_datums(
     model_sim,
 ):
     # Q: Get datums with groundtruth labels of "cat"
-    f = schemas.Filter(labels=[{"class": "cat"}])
+    f = schemas.Filter(label_values=["cat"])
     q = Query(models.Datum.uid).filter(f).groundtruths()
     datum_uids = db.query(q).distinct().all()
     assert len(datum_uids) == 2
@@ -787,7 +787,7 @@ def test_query_datums(
     assert (datum_uid2,) in datum_uids
 
     # Q: Get datums with groundtruth labels of "dog"
-    f = schemas.Filter(labels=[{"class": "dog"}])
+    f = schemas.Filter(label_keys=["class"], label_values=["dog"])
     q = Query(models.Datum.uid).filter(f).groundtruths()
     datum_uids = db.query(q).distinct().all()
     assert len(datum_uids) == 2
@@ -795,7 +795,7 @@ def test_query_datums(
     assert (datum_uid4,) in datum_uids
 
     # Q: Get datums with prediction labels of "cat"
-    f = schemas.Filter(labels=[{"class": "cat"}])
+    f = schemas.Filter(label_keys=["class"], label_values=["cat"])
     q = Query(models.Datum.uid).filter(f).predictions()
     datum_uids = db.query(q).distinct().all()
     assert len(datum_uids) == 4
@@ -812,7 +812,8 @@ def test_complex_queries(
     # Q: Get datums that `model1` has annotations for with label `dog` and prediction score > 0.9.
     f = schemas.Filter(
         models_names=[model_name1],
-        labels=[{"class": "dog"}],
+        label_keys=["class"],
+        label_values=["dog"],
         prediction_scores=[
             schemas.NumericFilter(
                 value=0.9,
@@ -829,7 +830,8 @@ def test_complex_queries(
     # Q: Get datums that `model1` has `bounding_box` annotations for with label `dog` and prediction score > 0.75.
     f = schemas.Filter(
         models_names=[model_name1],
-        labels=[{"class": "dog"}],
+        label_keys=["class"],
+        label_values=["dog"],
         prediction_scores=[
             schemas.NumericFilter(
                 value=0.75,
