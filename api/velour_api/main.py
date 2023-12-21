@@ -37,7 +37,9 @@ app.add_middleware(
 
 
 logger.info(
-    f"API started {'WITHOUT' if auth_settings.no_auth else 'WITH'} authentication"
+    "API server %s started %s authentication",
+    api_version,
+    "WITHOUT" if auth_settings.no_auth else "WITH",
 )
 
 
