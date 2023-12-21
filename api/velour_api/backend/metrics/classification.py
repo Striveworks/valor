@@ -54,7 +54,8 @@ def _compute_binary_roc_auc(
     preds_filter = job_request.settings.filters.model_copy()
     preds_filter.dataset_names = [job_request.dataset]
     preds_filter.models_names = [job_request.model]
-    preds_filter.labels = [{label.key: label.value}]
+    preds_filter.label_keys = [label.key]
+    preds_filter.label_values = [label.value]
 
     preds_query = (
         Query(
