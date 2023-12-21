@@ -5,7 +5,7 @@ from dataclasses import asdict
 from typing import Dict, List, Tuple, Union
 
 from velour.client import Client, ClientException, Job, wait_for_predicate
-from velour.enums import AnnotationType, TaskType, JobStatus
+from velour.enums import AnnotationType, JobStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import (
     DetectionParameters,
@@ -36,10 +36,6 @@ class Label:
     id : int
         A unique ID for the `Label`.
     """
-
-    id = DeclarativeMapper("label_ids", int)
-    key = DeclarativeMapper("label_keys", str)
-    label = DeclarativeMapper("labels", str)
 
     def __init__(self, key: str, value: str, score: Union[float, None] = None):
         self.key = key
@@ -159,18 +155,6 @@ class Datum:
         The name of the dataset to associate the `Datum` with.
     """
 
-    uid = DeclarativeMapper("datum_uids", str)
-    metadata = DeclarativeMapper("datum_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper(
-        "datum_geospatial",
-        Union[
-            List[List[List[List[Union[float, int]]]]],
-            List[List[List[Union[float, int]]]],
-            List[Union[float, int]],
-            str,
-        ],
-    )
-
     def __init__(
         self,
         uid: str,
@@ -265,20 +249,6 @@ class Annotation:
     geometric_area : float
         The area of the annotation.
     """
-
-    task = DeclarativeMapper("task_types", TaskType)
-    type = DeclarativeMapper("annotation_types", AnnotationType)
-    geometric_area = DeclarativeMapper("annotation_geometric_area", float)
-    metadata = DeclarativeMapper("annotation_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper(
-        "annotation_geospatial",
-        Union[
-            List[List[List[List[Union[float, int]]]]],
-            List[List[List[Union[float, int]]]],
-            List[Union[float, int]],
-            str,
-        ],
-    )
 
     def __init__(
         self,
@@ -493,8 +463,6 @@ class Prediction:
         The score assigned to the `Prediction`.
     """
 
-    score = DeclarativeMapper("prediction_scores", Union[int, float])
-
     def __init__(
         self,
         datum: Datum,
@@ -614,18 +582,6 @@ class Dataset:
     geospatial :  dict
         A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
     """
-
-    name = DeclarativeMapper("dataset_names", str)
-    metadata = DeclarativeMapper("dataset_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper(
-        "dataset_geospatial",
-        Union[
-            List[List[List[List[Union[float, int]]]]],
-            List[List[List[Union[float, int]]]],
-            List[Union[float, int]],
-            str,
-        ],
-    )
 
     def __init__(self):
         self.client: Client = None
@@ -924,18 +880,6 @@ class Model:
     geospatial :  dict
         A GeoJSON-style dictionary describing the geospatial coordinates of the model.
     """
-
-    name = DeclarativeMapper("models_names", str)
-    metadata = DeclarativeMapper("models_metadata", Union[int, float, str])
-    geospatial = DeclarativeMapper(
-        "model_geospatial",
-        Union[
-            List[List[List[List[Union[float, int]]]]],
-            List[List[List[Union[float, int]]]],
-            List[Union[float, int]],
-            str,
-        ],
-    )
 
     def __init__(self):
         self.client: Client = None
@@ -1359,3 +1303,72 @@ class Model:
             ret.append({"settings": evaluation.settings, "df": df})
 
         return ret
+
+
+# Assign all DeclarativeMappers such that these coretypes can be used as filters.
+# Label
+Label.id = DeclarativeMapper("label_ids", int)
+Label.key = DeclarativeMapper("label_keys", str)
+Label.label = DeclarativeMapper("labels", Label)
+
+# Datum
+Datum.uid = DeclarativeMapper("datum_uids", str)
+Datum.metadata = DeclarativeMapper("datum_metadata", Union[int, float, str])
+Datum.geospatial = DeclarativeMapper(
+    "datum_geospatial",
+    Union[
+        List[List[List[List[Union[float, int]]]]],
+        List[List[List[Union[float, int]]]],
+        List[Union[float, int]],
+        str,
+    ],
+)
+
+# Prediction
+Prediction.score = DeclarativeMapper("prediction_scores", Union[int, float])
+
+# Dataset
+Dataset.name = DeclarativeMapper("dataset_names", str)
+Dataset.metadata = DeclarativeMapper(
+    "dataset_metadata", Union[int, float, str]
+)
+Dataset.geospatial = DeclarativeMapper(
+    "dataset_geospatial",
+    Union[
+        List[List[List[List[Union[float, int]]]]],
+        List[List[List[Union[float, int]]]],
+        List[Union[float, int]],
+        str,
+    ],
+)
+
+# Model
+Annotation.task = DeclarativeMapper("task_types", TaskType)
+Annotation.type = DeclarativeMapper("annotation_types", AnnotationType)
+Annotation.geometric_area = DeclarativeMapper(
+    "annotation_geometric_area", float
+)
+Annotation.metadata = DeclarativeMapper(
+    "annotation_metadata", Union[int, float, str]
+)
+Annotation.geospatial = DeclarativeMapper(
+    "annotation_geospatial",
+    Union[
+        List[List[List[List[Union[float, int]]]]],
+        List[List[List[Union[float, int]]]],
+        List[Union[float, int]],
+        str,
+    ],
+)
+
+Model.name = DeclarativeMapper("models_names", str)
+Model.metadata = DeclarativeMapper("models_metadata", Union[int, float, str])
+Model.geospatial = DeclarativeMapper(
+    "model_geospatial",
+    Union[
+        List[List[List[List[Union[float, int]]]]],
+        List[List[List[Union[float, int]]]],
+        List[Union[float, int]],
+        str,
+    ],
+)
