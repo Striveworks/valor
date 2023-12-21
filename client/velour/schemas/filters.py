@@ -97,6 +97,14 @@ class DeclarativeMapper:
             raise ValueError(
                 f"`{self.name}` should be of type `{self.object_type}`"
             )
+        
+    def _validate_numeric_operator(self, value, opstring: str):
+        if (
+            not isinstance(value, float)
+            and not isinstance(value, int)
+        ):
+            raise TypeError(f"`__gt__` does not support type {type(value)}")
+        self._validate_operator(value)
 
     def _validate_geospatial_operator(self, value):
         if (
@@ -137,7 +145,7 @@ class DeclarativeMapper:
         )
 
     def __lt__(self, __value: object) -> BinaryExpression:
-        self._validate_operator(__value)
+        self._validate_numeric_operator(__value, "__lt__")
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -146,9 +154,7 @@ class DeclarativeMapper:
         )
 
     def __gt__(self, __value: object) -> BinaryExpression:
-        if isinstance(__value, str):
-            raise TypeError("`__gt__` does not support type `str`")
-        self._validate_operator(__value)
+        self._validate_numeric_operator(__value, "__gt__")
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -157,9 +163,7 @@ class DeclarativeMapper:
         )
 
     def __le__(self, __value: object) -> BinaryExpression:
-        if isinstance(__value, str):
-            raise TypeError("`__le__` does not support type `str`")
-        self._validate_operator(__value)
+        self._validate_numeric_operator(__value, "__le__")
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -168,9 +172,7 @@ class DeclarativeMapper:
         )
 
     def __ge__(self, __value: object) -> BinaryExpression:
-        if isinstance(__value, str):
-            raise TypeError("`__ge__` does not support type `str`")
-        self._validate_operator(__value)
+        self._validate_numeric_operator(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -181,11 +183,6 @@ class DeclarativeMapper:
     def in_(self, __values: List[object]) -> List[BinaryExpression]:
         if not isinstance(__values, list):
             raise TypeError("`in_` takes a list as input.")
-        for value in __values:
-            if not isinstance(value, self.object_type):
-                raise TypeError(
-                    f"All elements must be of type `{self.object_type}`, got '{type(value)}'"
-                )
         return [self == value for value in __values]
 
     def intersect(self, __value: dict) -> BinaryExpression:
@@ -451,7 +448,8 @@ class Filter:
             ]
         if "labels" in expression_dict:
             filter_request.labels = [
-                {expr.key: expr.value} for expr in expression_dict["labels"]
+                {expr.value.key: expr.value.value} 
+                for expr in expression_dict["labels"]
             ]
         if "label_keys" in expression_dict:
             filter_request.label_keys = [
