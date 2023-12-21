@@ -145,6 +145,22 @@ def test_evaluate_detection(
     )
     assert value_filter_result["metrics"] == result["metrics"]
 
+    # assert that this evaluation returns no metrics as there aren't any
+    # Labels with key=k1 and value=v2
+    eval_job_no_metrics = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters=[
+            Label.value == "v2",
+            Label.key == "k1",
+        ],
+    )
+    no_metric_result = asdict(
+        eval_job_no_metrics.wait_for_completion(timeout=30)
+    )
+    assert len(no_metric_result["metrics"]) == 0
+
     # now test if we set min_area and/or max_area
     areas = db.scalars(
         select(ST_Area(models.Annotation.box)).where(
@@ -335,7 +351,7 @@ def test_evaluate_detection(
 
     # test accessing these evaluations via the dataset
     all_evals = dataset.get_evaluations()
-    assert len(all_evals) == 6
+    assert len(all_evals) == 7
 
 
 def test_evaluate_detection_with_json_filters(
