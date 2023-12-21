@@ -131,6 +131,12 @@ class EvaluationResult:
         ----------
         pd.DataFrame
             Evaluation metrics being displayed in a `pd.DataFrame`.
+
+        Raises
+        ------
+        ModuleNotFoundError
+            This function requires the use of `pandas.DataFrame`.
+
         """
         try:
             import pandas as pd
