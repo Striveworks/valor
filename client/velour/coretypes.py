@@ -1,4 +1,5 @@
 import math
+import json
 import warnings
 from dataclasses import asdict
 from typing import Dict, List, Tuple, Union
@@ -1071,8 +1072,6 @@ class Model:
             The dataset to evaluate against.
         filters : Union[Dict, List[BinaryExpression]]
             Optional set of filters to constrain evaluation by.
-        timeout : int
-            The number of seconds to wait for the job to finish. Used to ensure deterministic behavior when testing.
 
         Returns
         -------
@@ -1128,8 +1127,6 @@ class Model:
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
         filters : Union[Dict, List[BinaryExpression]]
             Optional set of filters to constrain evaluation by.
-        timeout : int
-            The number of seconds to wait for the job to finish. Used to ensure deterministic behavior when testing.
 
         Returns
         -------
@@ -1196,8 +1193,6 @@ class Model:
             The dataset to evaluate against.
         filters : Union[Dict, List[BinaryExpression]]
             Optional set of filters to constrain evaluation by.
-        timeout : int
-            The number of seconds to wait for the job to finish. Used to ensure deterministic behavior when testing.
 
         Returns
         -------

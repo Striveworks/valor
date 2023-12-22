@@ -16,4 +16,4 @@ For more information, please see our user docs:
 - **[Endpoints](https://striveworks.github.io/velour/endpoints/)**: Documents Velour's various API endpoints.
 - **[Technical Concepts](https://striveworks.github.io/velour/technical_concepts)**: Describes the technical concepts that underpin Velour.
 - **[Contributing & Development](https://striveworks.github.io/velour/contributing)**: Explains how you can contribute to Velour.
-- **[Python Client API](https://striveworks.github.io/velour/client_api/client/)**: Shares reference documentation for our Python client.
+- **[Python Client API](https://striveworks.github.io/velour/client_api/Client/)**: Shares reference documentation for our Python client.
