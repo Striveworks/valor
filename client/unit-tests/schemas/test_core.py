@@ -239,7 +239,7 @@ def test_prediction():
             annotations=pds,
             model=1234,
         )
-    assert "`model` should be of type" in str(e)
+    assert "`model_name` should be of type" in str(e)
 
     with pytest.raises(ValueError) as e:
         Prediction(

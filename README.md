@@ -11,9 +11,9 @@ Velour is maintained by Striveworks, a cutting-edge MLOps company based out of A
 For more information, please see our user docs:
 
 - **[Overview](https://striveworks.github.io/velour/)**: Provides an overview of what Velour is, why it's important, and how it works.
-- **[Sample Notebook](#TODO update this link when notebook is complete)**: Illustrates how to evaluate model performance using Velour in a descriptive Jupyter notebook.
+- **[Sample Notebook](https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb)**: Illustrates how to evaluate model performance using Velour in a descriptive Jupyter notebook.
 - **[Getting Started](https://striveworks.github.io/velour/getting_started)**: Details everything you need to get up-and-running with Velour.
 - **[Endpoints](https://striveworks.github.io/velour/endpoints/)**: Documents Velour's various API endpoints.
 - **[Technical Concepts](https://striveworks.github.io/velour/technical_concepts)**: Describes the technical concepts that underpin Velour.
 - **[Contributing & Development](https://striveworks.github.io/velour/contributing)**: Explains how you can contribute to Velour.
-- **[Python Client API](https://striveworks.github.io/velour/client_api/client/)**: Shares reference documentation for our Python client.
+- **[Python Client API](https://striveworks.github.io/velour/client_api/Client/)**: Shares reference documentation for our Python client.

@@ -1,5 +1,5 @@
 import PIL.Image
-from integration_utils.coco import _merge_annotations, coco_rle_to_mask
+from integrations.coco import _merge_annotations, coco_rle_to_mask
 
 from velour.coretypes import Label
 from velour.enums import TaskType

@@ -28,3 +28,6 @@ runs
 
 *.jsonl
 *.jpeg
+*.pt
+*.png
+*.jpg

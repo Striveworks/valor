@@ -126,4 +126,4 @@ def test_generate_prediction_data(client: Client):
             },
         },
     }
-    assert len(eval_metrics) > 0
+    assert len(eval_job.get_result().metrics) > 0

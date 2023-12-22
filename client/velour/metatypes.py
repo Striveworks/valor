@@ -2,7 +2,7 @@ from typing import Dict, List, Union
 
 import PIL.Image
 
-from velour.coretypes import Datum
+from velour.coretypes import Datum, Dataset
 from velour.exceptions import SchemaTypeError
 from velour.schemas import validate_metadata
 
@@ -32,7 +32,7 @@ class ImageMetadata:
         uid: str,
         height: int,
         width: int,
-        dataset: str = "",
+        dataset: Union[Dataset, str] = "",
         metadata: Dict[str, Union[int, float, str]] = None,
         geospatial: Dict[
             str,
@@ -45,13 +45,13 @@ class ImageMetadata:
         ] = None,
     ):
         self.uid = uid
-        self.dataset = dataset
+        self.dataset_name = dataset.name if isinstance(dataset, Dataset) else dataset
         self.height = height
         self.width = width
         self.metadata = metadata if metadata else {}
         self.geospatial = geospatial if geospatial else {}
 
-        if not isinstance(self.dataset, str):
+        if not isinstance(self.dataset_name, str):
             raise TypeError("ImageMetadata dataset name must be a string.")
         if not isinstance(self.uid, str):
             raise TypeError("ImageMetadata uid must be a string.")
@@ -89,7 +89,7 @@ class ImageMetadata:
             )
         metadata = datum.metadata.copy()
         return cls(
-            dataset=datum.dataset,
+            dataset=datum.dataset_name,
             uid=datum.uid,
             height=int(metadata.pop("height")),
             width=int(metadata.pop("width")),
@@ -125,7 +125,7 @@ class ImageMetadata:
         metadata["height"] = self.height
         metadata["width"] = self.width
         return Datum(
-            dataset=self.dataset,
+            dataset=self.dataset_name,
             uid=self.uid,
             metadata=metadata,
             geospatial=geospatial,

@@ -573,7 +573,7 @@ def pred_poly_dets(
 ) -> list[Prediction]:
     return [
         Prediction(
-            model=det.model,
+            model=det.model_name,
             datum=det.datum,
             annotations=[
                 Annotation(
