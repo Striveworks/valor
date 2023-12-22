@@ -453,15 +453,15 @@ def generate_stateflow_decorator(
     return decorator
 
 
-def _finalize_success(state: StateflowJob):
+def _finalize_success(state: StateflowJob, msg: str = ""):
     """
     Since model and predictions are handled seperately this helper function is necessary to ensure
     that a finalization call over a prediction set will also finalize the model itself.
     """
     if state.node == StateflowNode.PREDICTION:
         if get_status_from_uuid(state.model_uuid) == JobStatus.CREATING:
-            Job.get(state.model_uuid).set_status(state.success)
-    state.set_status(state.success)
+            Job.get(state.model_uuid).set_status(state.success, msg)
+    state.set_status(state.success, msg)
 
 
 # stateflow decorator definitions
