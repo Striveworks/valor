@@ -47,7 +47,7 @@ There's two ways to access Velour: by leveraging our Python client, or by callin
 
 ### 4a. Using the Python client
 
-Let's walk-through a hypothetical example where we're trying to classify dogs and cats in a series of images. Note that all of the code below is pseudo-code for clarity; please see our ["Getting Started"](#TODO) notebook for a working example.
+Let's walk-through a hypothetical example where we're trying to classify dogs and cats in a series of images. Note that all of the code below is pseudo-code for clarity; please see our ["Getting Started"](https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb) notebook for a working example.
 
 #### Install the client
 
@@ -62,8 +62,22 @@ pip install velour-client
 Import dependencies directly from the client module using:
 
 ```py
-from velour import Dataset, Model, Datum, Annotation, GroundTruth, Prediction, Label
-from velour.client import Client
+from velour import (
+    Client,
+    Dataset,
+    Model,
+    Datum,
+    Annotation,
+    GroundTruth,
+    Prediction,
+    Label,
+)
+from velour.schemas import (
+    BoundingBox,
+    Polygon,
+    BasicPolygon,
+    Point,
+)
 from velour.enums import TaskType
 ```
 
@@ -72,7 +86,7 @@ from velour.enums import TaskType
 The `velour.Client` class gives an object that is used to communicate with the `velour` backend.
 
 ```py
-client = Client(HOST_URL)
+client = Client("http://0.0.0.0:8000")
 ```
 
 In the event that the host uses authentication, the argument `access_token` should also be passed to `Client`.
@@ -82,7 +96,16 @@ In the event that the host uses authentication, the argument `access_token` shou
 First, we define our `Dataset` object using `Dataset.create()`.
 
 ```py
-dataset = Dataset.create(client, "my_dog_dataset")
+dataset = Dataset(
+    client=client,
+    name="myDataset",
+    metadata={        # optional, metadata can take `str`, `int`, `float` value types.
+        "some_string": "hello_world",
+        "some_number": 1234,
+        "a_different_number": 1.234,
+    },
+    geospatial=None,  # optional, define a GeoJSON
+)
 ```
 
 Next, we add one or more `GroundTruths` to our `Dataset`. These objects help Velour understand "What is the correct classification for this particular image?".
@@ -90,38 +113,40 @@ Next, we add one or more `GroundTruths` to our `Dataset`. These objects help Vel
 ```py
 
 # create a groundtruth for a set of images that we know all depict a dog
+dog_images = [
+    {"path": "a/b/c/img3.png", "annotations": [{"class_label": "dog", "bbox": {"xmin": 16, "ymin": 130, "xmax": 70, "ymax": 150}}, {"class_label": "person", "bbox": {"xmin": 89, "ymin": 10, "xmax": 97, "ymax": 110}}]},
+    {"path": "a/b/c/img4.png", "annotations": [{"class_label": "cat", "bbox": {"xmin": 500, "ymin": 220, "xmax": 530, "ymax": 260}}]},
+    {"path": "a/b/c/img5.png", "annotations": []}
+]
+
 for image in dog_images:
 
     # each image will have its own Datum. this object will help us connect groundtruths and predictions when it's time for evaluation
     image.datum = Datum(
-            uid=image.name # a unique ID for each image
-            metadata=[ # the metadata we want to use to describe our image
-                schemas.MetaDatum(
-                    name="type",
-                    value="image",
-                ),
-                schemas.MetaDatum(
-                    name="height",
-                    value=image.height,
-                ),
-                schemas.MetaDatum(
-                    name="width",
-                    value=image.width,
-                ),
-            ],
+        uid=image.name # a unique ID for each image
+        metadata={
+            "path": element["path"]
+        }
     )
 
-    groundtruth = GroundTruth(
-        datum=datum,
-        annotations=[ # a list of annotations to add to the image
-            Annotation(
-                task_type = TaskType.CLASSIFICATION,
-                labels = [
-                    schemas.Label(key="class", value="dog"),
-                    schemas.Label(key="category", value="animal"),
-                ]
+    annotations = [
+        Annotation(
+            task_type=TaskType.DETECTION,
+            labels=[Label(key="class_label", value=annotation["class_label"])],
+            bounding_box=BoundingBox.from_extrema(
+                xmin=annotation["bbox"]["xmin"],
+                xmax=annotation["bbox"]["xmax"],
+                ymin=annotation["bbox"]["ymin"],
+                ymax=annotation["bbox"]["ymax"],
             )
-        ],
+        )
+        for annotation in element["annotations"]
+        if len(annotation) > 0
+    ]
+
+    groundtruth = GroundTruth(
+        datum=image.datum,
+        annotations=annotations,
     )
 
     # add it to your dataset
@@ -131,39 +156,80 @@ for image in dog_images:
 dataset.finalize()
 ```
 
-#### Pass your prediction into Velour
+#### Pass your predictions into Velour
 
 Now that we've passed several images of dogs into Velour, we need to pass in model predictions before we can evaluate whether those predictions were correct or not. To accomplish this task, we start by defining our `Model`:
 
 ```py
 # create model
-model = Model.create(client, "my_model")
+model = Model(
+    client=client,
+    name="myModel",
+    metadata={
+        "foo": "bar",
+        "some_number": 4321,
+    },
+    geospatial=None,
+)
 ```
 
 Next, we tell Velour what our model predicted for each image by attaching `Predictions` to our `Model`:
 
 ```py
+# populate a dictionary mapping Datum UIDs to datums for all of the datums in our dataset
+datums_by_uid = {
+    datum.uid: datum
+    for datum in dataset.get_datums()
+}
 
-# pass a prediction for each image into Velour
-for image in dog_images:
-    prediction = Prediction(
-        model=model.name,
-        datum=image.datum, # note that we use the same datums we created before
-        annoations=[
-            Annotation(
-                task_type = TaskType.CLASSIFICATION,
-                labels = [
-                    schemas.Label(key="class", value="dog", score=image.dog_score),
-                    schemas.Label(key="class", value="cat", score=image.cat_score,
-                    schemas.Label(key="category", value="animal", score=image.animal_score),
-                    schemas.Label(key="category", value="vehicle", score=image.vehicle_score),
-                ]
+def create_prediction_from_object_detection_dict(element: dict, datums_by_uid:dict) -> Prediction:
+
+    # get datum from dataset using filename
+    uid=Path(element["path"]).stem
+    datum = datums_by_uid[uid]
+
+    # create Annotations
+    annotations = [
+        Annotation(
+            task_type=TaskType.DETECTION,
+            labels=[
+                Label(key="class_label", value=label["class_label"], score=label["score"])
+                for label in annotation["labels"]
+            ],
+            bounding_box=BoundingBox.from_extrema(
+                xmin=annotation["bbox"]["xmin"],
+                xmax=annotation["bbox"]["xmax"],
+                ymin=annotation["bbox"]["ymin"],
+                ymax=annotation["bbox"]["ymax"],
             )
-        ],
+        )
+        for annotation in element["annotations"]
+        if len(annotation) > 0
+    ]
+
+    # create and return Prediction
+    return Prediction(
+        datum=datum,
+        annotations=annotations,
     )
 
-# prepare model for evaluation over dataset
-model.finalize(dataset)
+object_detections = [
+    {"path": "a/b/c/img3.png", "annotations": [
+        {"labels": [{"class_label": "dog", "score": 0.8}, {"class_label": "cat", "score": 0.1}, {"class_label": "person", "score": 0.1}], "bbox": {"xmin": 16, "ymin": 130, "xmax": 70, "ymax": 150}},
+        {"labels": [{"class_label": "dog", "score": 0.05}, {"class_label": "cat", "score": 0.05}, {"class_label": "person", "score": 0.9}], "bbox": {"xmin": 89, "ymin": 10, "xmax": 97, "ymax": 110}}
+    ]},
+    {"path": "a/b/c/img4.png", "annotations": [
+        {"labels": [{"class_label": "dog", "score": 0.8}, {"class_label": "cat", "score": 0.1}, {"class_label": "person", "score": 0.1}], "bbox": {"xmin": 500, "ymin": 220, "xmax": 530, "ymax": 260}}
+    ]},
+    {"path": "a/b/c/img5.png", "annotations": []}
+]
+
+for element in object_detections:
+    # create prediction
+    prediction = create_prediction_from_object_detection_dict(element, datums_by_uid=datums_by_uid)
+
+    # add prediction to model
+    model.add_prediction(prediction)
 ```
 
 #### Run your evaluation and print metrics
@@ -177,8 +243,7 @@ evaluation = model.evaluate_classification(
     filters=[
         Label.key == "animal" # with this filter, we're asking Velour to only evaluate how well our model predicted animals in each image
     ]
-    timeout=30, # use this argument to wait up to thirty seconds for the evaluation to complete
-)
+).wait_for_completion() # wait for the job to finish
 
 # print our classification metrics
 print(evaluation.metrics)
@@ -193,4 +258,4 @@ You can also leverage Velour's API without using the Python client. [Click here]
 
 # Next Steps
 
-For more examples, we'd recommend reviewing our [sample notebooks on GitHub](#TODO). For more detailed explainations of Velour's technical underpinnings, see our [technical concepts guide](technical_concepts.md).
+For more examples, we'd recommend reviewing our [sample notebooks on GitHub](https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb). For more detailed explainations of Velour's technical underpinnings, see our [technical concepts guide](technical_concepts.md).
