@@ -112,20 +112,24 @@ Next, we add one or more `GroundTruths` to our `Dataset`. These objects help Vel
 
 ```py
 
-# create a groundtruth for a set of images that we know all depict a dog
-dog_images = [
+# We start with an example of what 3rd party annotations could look like.
+# img3.png contains a bounding box annotation with label "dog".
+# img4.png contains a bounding box annotation with label "cat"
+# img5.png contains no annotations
+groundtruth_annotations = [
     {"path": "a/b/c/img3.png", "annotations": [{"class_label": "dog", "bbox": {"xmin": 16, "ymin": 130, "xmax": 70, "ymax": 150}}, {"class_label": "person", "bbox": {"xmin": 89, "ymin": 10, "xmax": 97, "ymax": 110}}]},
     {"path": "a/b/c/img4.png", "annotations": [{"class_label": "cat", "bbox": {"xmin": 500, "ymin": 220, "xmax": 530, "ymax": 260}}]},
     {"path": "a/b/c/img5.png", "annotations": []}
 ]
 
-for image in dog_images:
+for image in groundtruth_annotations:
 
-    # each image will have its own Datum. this object will help us connect groundtruths and predictions when it's time for evaluation
-    image.datum = Datum(
-        uid=image.name # a unique ID for each image
+    # Each image is represented by a Velour Datum. 
+    # The datum object is used to connect groundtruths and predictions when it's time for evaluation.
+    datum = Datum(
+        uid=Path(image["path"]).stem, # strip the filename for use as Datum uid.
         metadata={
-            "path": element["path"]
+            "path": image["path"],  # store the path in metadata
         }
     )
 
@@ -140,12 +144,12 @@ for image in dog_images:
                 ymax=annotation["bbox"]["ymax"],
             )
         )
-        for annotation in element["annotations"]
+        for annotation in image["annotations"]
         if len(annotation) > 0
     ]
 
     groundtruth = GroundTruth(
-        datum=image.datum,
+        datum=datum,
         annotations=annotations,
     )
 
@@ -241,7 +245,7 @@ Now that both our `Dataset` and `Model` are finalized, we can evaluate how well 
 evaluation = model.evaluate_classification(
     dataset=dataset,
     filters=[
-        Label.key == "animal" # with this filter, we're asking Velour to only evaluate how well our model predicted animals in each image
+        Label.key == "class_label" # with this filter, we're asking Velour to only evaluate how well our model predicted animals in each image
     ]
 ).wait_for_completion() # wait for the job to finish
 
