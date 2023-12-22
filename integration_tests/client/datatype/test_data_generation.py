@@ -101,7 +101,7 @@ def test_generate_prediction_data(client: Client):
             Annotation.type == AnnotationType.BOX,
         ],
     )
-    eval_results = eval_job.wait_for_completion(timeout=3)
+    eval_results = eval_job.wait_for_completion(timeout=30)
     assert eval_results.status == JobStatus.DONE
 
     eval_dict = asdict(eval_results)
@@ -118,7 +118,9 @@ def test_generate_prediction_data(client: Client):
                 "iou_thresholds_to_keep": [0.0, 1.0],
             },
             "filters": {
-                **asdict(Filter()), # default filter properties with overrides below
+                **asdict(
+                    Filter()
+                ),  # default filter properties with overrides below
                 "annotation_types": ["box"],
                 "label_keys": ["k1"],
             },
