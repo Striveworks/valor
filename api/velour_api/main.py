@@ -1,6 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 
+import sqlalchemy
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
@@ -37,7 +38,9 @@ app.add_middleware(
 
 
 logger.info(
-    f"API started {'WITHOUT' if auth_settings.no_auth else 'WITH'} authentication"
+    "API server %s started %s authentication",
+    api_version,
+    "WITHOUT" if auth_settings.no_auth else "WITH",
 )
 
 
@@ -1020,6 +1023,7 @@ def create_evaluation(
 def get_bulk_evaluations(
     datasets: str = None,
     models: str = None,
+    job_ids: str = None,
     db: Session = Depends(get_db),
 ) -> list[schemas.Evaluation]:
     """
@@ -1039,6 +1043,8 @@ def get_bulk_evaluations(
         An optional set of dataset names to return metrics for
     models : str
         An optional set of model names to return metrics for
+    job_ids : str
+        An optional set of job_ids to return metrics for
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -1056,10 +1062,22 @@ def get_bulk_evaluations(
     """
     model_names = _split_query_params(models)
     dataset_names = _split_query_params(datasets)
+    job_ids_str = _split_query_params(job_ids)
+
+    if job_ids_str:
+        try:
+            job_ids_ints = [int(id) for id in job_ids_str]
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    else:
+        job_ids_ints = None
 
     try:
         return crud.get_evaluations(
-            db=db, dataset_names=dataset_names, model_names=model_names
+            db=db,
+            job_ids=job_ids_ints,
+            dataset_names=dataset_names,
+            model_names=model_names,
         )
     except (ValueError,) as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1067,133 +1085,6 @@ def get_bulk_evaluations(
         exceptions.DatasetDoesNotExistError,
         exceptions.ModelDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/evaluations/{job_id}",
-    dependencies=[Depends(token_auth_scheme)],
-    response_model_exclude_none=True,
-    tags=["Evaluations"],
-)
-def get_evaluation(
-    job_id: int,
-    db: Session = Depends(get_db),
-) -> schemas.Evaluation:
-    """
-    Fetch a particular evaluation by its job ID.
-
-    GET Endpoint: `/evaluations/{job_id}`
-
-    Parameters
-    ----------
-    job_id : int
-        The job ID to fetch the evaluation for.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Returns
-    -------
-    schemas.Evaluation
-        The requested evaluation.
-
-    Raises
-    ------
-    HTTPException (404)
-        If the job doesn't have the correct state.
-        If the job ID does not exist
-    """
-    try:
-        status = crud.get_job_status(
-            evaluation_id=job_id,
-        )
-        if status != enums.JobStatus.DONE:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No metrics for job {job_id} since its status is {status}",
-            )
-        output = crud.get_evaluations(db=db, job_ids=[job_id])
-        return output[0]
-    except (
-        exceptions.JobDoesNotExistError,
-        AttributeError,
-    ) as e:
-        if "'NoneType' object has no attribute 'metrics'" in str(e):
-            raise HTTPException(
-                status_code=404, detail="Evaluation ID does not exist."
-            )
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@app.get(
-    "/evaluations/{job_id}/status",
-    dependencies=[Depends(token_auth_scheme)],
-    tags=["Evaluations"],
-)
-def get_evaluation_status(job_id: int) -> enums.JobStatus:
-    """
-    Get the status of an evaluation.
-
-    GET Endpoint: `/evaluations/{job_id}/status`
-
-    Parameters
-    ----------
-    job_id: int
-        The job ID to fetch the status of.
-
-    Returns
-    -------
-    enums.JobStatus
-        The status of the job.
-
-    Raises
-    ------
-    HTTPException (404)
-        If the job doesn't exist.
-    """
-    return crud.get_job_status(
-        evaluation_id=job_id,
-    )
-
-
-@app.get(
-    "/evaluations/{job_id}/settings",
-    dependencies=[Depends(token_auth_scheme)],
-    response_model_exclude_none=True,
-    tags=["Evaluations"],
-)
-def get_evaluation_job(
-    job_id: int,
-    db: Session = Depends(get_db),
-) -> schemas.EvaluationJob:
-    """
-    Fetch an evaluation job.
-
-    GET Endpoint: `/evaluations/{job_id}/settings`
-
-    Parameters
-    ----------
-    job_id : int
-        The job ID to fetch the evaluation for.
-    db : Session
-        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
-
-    Returns
-    -------
-    schemas.EvaluationJob
-        The requested EvaluationJob.
-
-    Raises
-    ------
-    HTTPException (404)
-        If the job doesn't exist.
-    """
-    try:
-        if job := crud.get_evaluation_jobs(db=db, job_ids=[job_id]):
-            return job[0]
-        else:
-            raise exceptions.JobDoesNotExistError(job_id)
-    except exceptions.JobDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
@@ -1243,3 +1134,45 @@ def get_api_version() -> schemas.APIVersion:
         A response object containing the API's version number.
     """
     return schemas.APIVersion(api_version=api_version)
+
+
+""" STATUS """
+
+@app.get(
+    "/health",
+    tags=["Status"],
+)
+def health():
+    """
+    Return 200 if the service is up.
+
+    GET Endpoint: `/health`
+
+    Returns
+    -------
+    schemas.Health
+        A response indicating that the service is up and running.
+    """
+    return schemas.Health(status="ok")
+
+
+@app.get(
+    "/ready",
+    tags=["Status"],
+)
+def ready(db: Session = Depends(get_db)):
+    """
+    Return 200 if the service is up and connected to the database.
+
+    GET Endpoint: `/ready`
+
+    Returns
+    -------
+    schemas.Readiness
+        A response indicating that the service is up and connected to the database.
+    """
+    try:
+        db.execute(sqlalchemy.text("select 1"))
+        return schemas.Readiness(status="ok")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))

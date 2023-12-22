@@ -13,8 +13,8 @@ def test_evaluate_segmentation(
     gt_semantic_segs2: list[GroundTruth],
     pred_semantic_segs: list[Prediction],
 ):
-    dataset = Dataset.create(client, dataset_name)
-    model = Model.create(client, model_name)
+    dataset = Dataset(client, dataset_name)
+    model = Model(client, model_name)
 
     for gt in gt_semantic_segs1 + gt_semantic_segs2:
         dataset.add_groundtruth(gt)
@@ -24,15 +24,16 @@ def test_evaluate_segmentation(
         model.add_prediction(pred)
     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_segmentation(dataset, timeout=30)
+    eval_job = model.evaluate_segmentation(dataset)
     assert eval_job.missing_pred_labels == [
         {"key": "k3", "value": "v3", "score": None}
     ]
     assert eval_job.ignored_pred_labels == [
         {"key": "k1", "value": "v1", "score": None}
     ]
+    eval_results = eval_job.wait_for_completion(timeout=30)
 
-    metrics = eval_job.results.metrics
+    metrics = eval_results.metrics
 
     assert len(metrics) == 3
     assert set(
@@ -53,8 +54,8 @@ def test_evaluate_segmentation_with_filter(
     gt_semantic_segs2: list[GroundTruth],
     pred_semantic_segs: list[Prediction],
 ):
-    dataset = Dataset.create(client, dataset_name)
-    model = Model.create(client, model_name)
+    dataset = Dataset(client, dataset_name)
+    model = Model(client, model_name)
 
     for gt in gt_semantic_segs1:
         gt.datum.metadata["color"] = "red"
@@ -76,8 +77,9 @@ def test_evaluate_segmentation_with_filter(
         filters=[
             Datum.metadata["color"] == "red",
         ],
-        timeout=30,
     )
+    eval_job.wait_for_completion(timeout=30)
+
     assert eval_job.missing_pred_labels == [
         {"key": "k3", "value": "v3", "score": None}
     ]
@@ -85,7 +87,7 @@ def test_evaluate_segmentation_with_filter(
         {"key": "k1", "value": "v1", "score": None}
     ]
 
-    metrics = eval_job.results.metrics
+    metrics = eval_job.get_result().metrics
 
     assert len(metrics) == 2
     assert set(

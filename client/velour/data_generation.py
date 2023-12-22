@@ -225,7 +225,7 @@ def generate_segmentation_data(
     n_labels : int
         The number of labels per annotation you'd like your dataset to contain.
     """
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
 
     unique_image_ids = list(range(n_images))
     for _ in tqdm(range(n_images)):
@@ -269,7 +269,7 @@ def generate_prediction_data(
     n_labels : int
         The number of labels per annotation you'd like your dataset to contain.
     """
-    model = Model.create(client, model_name)
+    model = Model(client, model_name)
 
     datums = dataset.get_datums()
 

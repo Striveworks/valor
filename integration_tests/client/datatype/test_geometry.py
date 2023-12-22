@@ -75,7 +75,7 @@ def test_boundary(
     img1: ImageMetadata,
 ):
     """Test consistency of boundary in backend and client"""
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     rect1_poly = bbox_to_poly(rect1)
     dataset.add_groundtruth(
         GroundTruth(
@@ -111,7 +111,7 @@ def test_iou(
     rect1_poly = bbox_to_poly(rect1)
     rect2_poly = bbox_to_poly(rect2)
 
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     dataset.add_groundtruth(
         GroundTruth(
             datum=img1.to_datum(),
@@ -127,7 +127,7 @@ def test_iou(
     dataset.finalize()
     db_gt = db.scalar(select(models.Annotation)).polygon
 
-    model = Model.create(client, model_name)
+    model = Model(client, model_name)
     model.add_prediction(
         Prediction(
             model=model_name,
@@ -177,7 +177,7 @@ def test_add_raster_and_boundary_box(
         ],
     )
 
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
 
     dataset.add_groundtruth(gt)
 

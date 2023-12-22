@@ -34,8 +34,12 @@ def test__split_query_params():
 
 
 def test_protected_routes(client: TestClient):
-    """Check that all routes are protected"""
-    routes = [r for r in client.app.routes if isinstance(r, APIRoute)]
+    """Check that all non-status routes are protected"""
+    routes = [
+        r
+        for r in client.app.routes
+        if isinstance(r, APIRoute) and r.name not in {"health", "ready"}
+    ]
     with patch(
         "velour_api.settings.AuthConfig.no_auth",
         new_callable=PropertyMock(return_value=False),
@@ -1064,77 +1068,23 @@ def test_get_bulk_evaluations(crud, client: TestClient):
         )
         assert resp.status_code == 404
 
-
-""" GET /evaluations/{job_id} """
-
-
 @patch("velour_api.main.crud")
-def test_get_evaluations(crud, client: TestClient):
-    crud.get_job_status.return_value = JobStatus.DONE
-    crud.get_evaluations.return_value = [
-        {
-            "model": "modelname",
-            "dataset": "dsetname",
-            "settings": {},
-            "job_id": 1,
-            "status": "done",
-            "metrics": [],
-            "confusion_matrices": [],
-        }
-    ]
+def test_get_bulk_evaluations_job_ids(crud, client: TestClient):
+    crud.get_evaluations.return_value = []
 
-    resp = client.get("/evaluations/1")
-    assert resp.status_code == 200
-    crud.get_evaluations.assert_called_once()
+    def test_ids(ids_str, ids_expected):
+        resp = client.get(f"/evaluations?job_ids={ids_str}")
+        assert resp.status_code == 200
+        call_kwargs = crud.get_evaluations.call_args.kwargs
+        assert call_kwargs["job_ids"] == ids_expected
 
-    with patch(
-        "velour_api.main.crud.get_evaluations",
-        side_effect=exceptions.JobDoesNotExistError("1"),
-    ):
-        resp = client.get("/evaluations/1")
-        assert resp.status_code == 404
+    test_ids("4", [4])
+    test_ids("4,7", [4, 7])
+    test_ids("4,7,11", [4, 7, 11])
 
-    crud.get_job_status.return_value = JobStatus.PROCESSING
-    resp = client.get("/evaluations/1")
-    assert resp.status_code == 404
-
-
-""" GET /evaluations/{job_id}/status """
-
-
-@patch("velour_api.main.crud")
-def test_get_evaluation_status(crud, client: TestClient):
-    crud.get_job_status.return_value = "done"
-
-    resp = client.get("/evaluations/1/status")
-    assert resp.status_code == 200
-    crud.get_job_status.assert_called_once()
-
-
-""" GET /evaluations/{job_id}/settings"""
-
-
-@patch("velour_api.main.crud")
-def test_get_evaluation_job(crud, client: TestClient):
-    crud.get_evaluation_jobs.return_value = [
-        {
-            "model": "modelname",
-            "dataset": "dsetname",
-            "task_type": TaskType.DETECTION.value,
-            "settings": {},
-        }
-    ]
-
-    resp = client.get("/evaluations/1/settings")
-    assert resp.status_code == 200
-    crud.get_evaluation_jobs.assert_called_once()
-
-    with patch(
-        "velour_api.main.crud.get_evaluation_jobs",
-        side_effect=exceptions.JobDoesNotExistError("1"),
-    ):
-        resp = client.get("/evaluations/1/settings")
-        assert resp.status_code == 404
+    for query in ("foo", "4,foo", "1,,"):
+        resp = client.get(f"/evaluations?job_ids={query}")
+        assert resp.status_code == 400
 
 
 """ GET /labels/dataset/{dataset_name} """

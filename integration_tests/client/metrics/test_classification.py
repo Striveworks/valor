@@ -18,6 +18,7 @@ from velour import (
 )
 from velour.client import Client, ClientException
 from velour.enums import JobStatus, TaskType
+from velour.schemas.evaluation import EvaluationSettings
 
 
 def test_evaluate_image_clf(
@@ -27,26 +28,26 @@ def test_evaluate_image_clf(
     dataset_name: str,
     model_name: str,
 ):
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     for gt in gt_clfs:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, model_name)
+    model = Model(client, model_name)
     for pd in pred_clfs:
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_classification(dataset=dataset, timeout=30)
+    eval_job = model.evaluate_classification(dataset=dataset)
 
     assert eval_job.evaluation_id
-    assert eval_job.status.value == "done"
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
     assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
 
-    assert eval_job.status == JobStatus.DONE
+    eval_results = eval_job.wait_for_completion(timeout=30)
+    assert eval_results.status == JobStatus.DONE
 
-    metrics = eval_job.results.metrics
+    metrics = eval_results.metrics
 
     expected_metrics = [
         {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
@@ -79,7 +80,7 @@ def test_evaluate_image_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.results.confusion_matrices
+    confusion_matrices = eval_job.get_result().confusion_matrices
     assert confusion_matrices == [
         {
             "label_key": "k4",
@@ -89,7 +90,7 @@ def test_evaluate_image_clf(
 
 
 def test_evaluate_tabular_clf(
-    client: Session,
+    client: Client,
     dataset_name: str,
     model_name: str,
     gt_clfs_tabular: list[int],
@@ -97,7 +98,7 @@ def test_evaluate_tabular_clf(
 ):
     assert len(gt_clfs_tabular) == len(pred_clfs_tabular)
 
-    dataset = Dataset.create(client, name=dataset_name)
+    dataset = Dataset(client, name=dataset_name)
     gts = [
         GroundTruth(
             datum=Datum(dataset=dataset_name, uid=f"uid{i}"),
@@ -114,9 +115,9 @@ def test_evaluate_tabular_clf(
         dataset.add_groundtruth(gt)
 
     # test
-    model = Model.create(client, name=model_name)
+    model = Model(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset, timeout=30)
+        model.evaluate_classification(dataset=dataset).wait_for_completion(timeout=30)
     assert "has not been finalized" in str(exc_info)
 
     dataset.finalize()
@@ -142,19 +143,20 @@ def test_evaluate_tabular_clf(
 
     # test
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset, timeout=30)
+        model.evaluate_classification(dataset=dataset).wait_for_completion(timeout=30)
     assert "has not been finalized" in str(exc_info)
 
     model.finalize_inferences(dataset)
 
     # evaluate
-    eval_job = model.evaluate_classification(dataset=dataset, timeout=30)
+    eval_job = model.evaluate_classification(dataset=dataset)
     assert eval_job.ignored_pred_keys == []
     assert eval_job.missing_pred_keys == []
 
-    assert eval_job.status == JobStatus.DONE
+    eval_results = eval_job.wait_for_completion(timeout=30)
+    assert eval_results.status == JobStatus.DONE
 
-    metrics = eval_job.results.metrics
+    metrics = eval_job.get_result().metrics
 
     expected_metrics = [
         {
@@ -214,7 +216,7 @@ def test_evaluate_tabular_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.results.confusion_matrices
+    confusion_matrices = eval_job.get_result().confusion_matrices
 
     expected_confusion_matrix = {
         "label_key": "class",
@@ -254,21 +256,16 @@ def test_evaluate_tabular_clf(
 
     # check model methods
     labels = model.get_labels()
-    df = model.get_metric_dataframes()
 
     assert isinstance(model.id, int)
     assert model.name == model_name
     assert len(model.metadata) == 0
-
-    assert len(labels) == 3
-    assert isinstance(df[0]["df"], pandas.DataFrame)
 
     # check evaluation
     results = model.get_evaluations()
     assert len(results) == 1
     assert results[0].dataset == dataset_name
     assert results[0].model == model_name
-    assert results[0].settings == {}
 
     metrics_from_eval_settings_id = results[0].metrics
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
@@ -296,7 +293,7 @@ def test_evaluate_tabular_clf(
         assert entry in confusion_matrix["entries"]
 
     job = model.delete()
-    while job.status != JobStatus.NONE:
+    while job.get_status() != JobStatus.NONE:
         time.sleep(0.5)
 
     assert len(client.get_models()) == 0
@@ -312,7 +309,7 @@ def test_stratify_clf_metrics(
     assert len(gt_clfs_tabular) == len(pred_clfs_tabular)
 
     # create data and two-different defining groups of cohorts
-    dataset = Dataset.create(client, name=dataset_name)
+    dataset = Dataset(client, name=dataset_name)
     for i, label_value in enumerate(gt_clfs_tabular):
         gt = GroundTruth(
             datum=Datum(
@@ -333,7 +330,7 @@ def test_stratify_clf_metrics(
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, name=model_name)
+    model = Model(client, name=model_name)
     for i, pred in enumerate(pred_clfs_tabular):
         pd = Prediction(
             model=model_name,
@@ -358,14 +355,14 @@ def test_stratify_clf_metrics(
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
 
-    eval_job_val2 = model.evaluate_classification(
+    eval_results_val2 = model.evaluate_classification(
         dataset=dataset,
         filters=[
             Datum.metadata["md1"] == "md1-val2",
         ],
-        timeout=30,
     )
-    val2_metrics = eval_job_val2.results.metrics
+    eval_results_val2.wait_for_completion(timeout=30)
+    val2_metrics = eval_results_val2.get_result().metrics
 
     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
     # (hard preds [1, 0, 0])

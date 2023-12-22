@@ -30,7 +30,7 @@ def test_set_and_get_geospatial(
     ]
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
-    dataset = Dataset.create(
+    dataset = Dataset(
         client=client, name=dataset_name, geospatial=geo_dict
     )
 
@@ -39,7 +39,7 @@ def test_set_and_get_geospatial(
     assert fetched_datasets[0]["geospatial"] == geo_dict
 
     # check Model's geospatial coordinates
-    Model.create(client=client, name=model_name, geospatial=geo_dict)
+    Model(client=client, name=model_name, geospatial=geo_dict)
     fetched_models = client.get_models()
     assert fetched_models[0]["geospatial"] == geo_dict
 
@@ -83,7 +83,7 @@ def test_geospatial_filter(
     ]
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
-    dataset = Dataset.create(
+    dataset = Dataset(
         client=client, name=dataset_name, geospatial=geo_dict
     )
     for gt in gt_dets1:
@@ -91,7 +91,7 @@ def test_geospatial_filter(
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client=client, name=model_name, geospatial=geo_dict)
+    model = Model(client=client, name=model_name, geospatial=geo_dict)
     for pd in pred_dets:
         pd.datum.geospatial = geo_dict
         model.add_prediction(pd)
@@ -116,7 +116,6 @@ def test_geospatial_filter(
                     }
                 ],
             },
-            timeout=30,
         )
     assert (
         "should not include any dataset, model, prediction score or task type filters"
@@ -137,7 +136,7 @@ def test_geospatial_filter(
     assert "should be a GeoJSON-style dictionary" in str(e)
 
     # test datums
-    eval_job = model.evaluate_detection(
+    eval_results = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_keep=[0.1, 0.6],
@@ -151,11 +150,10 @@ def test_geospatial_filter(
                 }
             )
         ],
-        timeout=30,
-    )
+    ).wait_for_completion(timeout=30)
 
-    settings = asdict(eval_job.settings)
-    assert settings["filters"]["datum_geospatial"] == [
+    result = asdict(eval_results)
+    assert result["settings"]["filters"]["datum_geospatial"] == [
         {
             "value": {
                 "geometry": {
@@ -167,7 +165,7 @@ def test_geospatial_filter(
         }
     ]
 
-    assert len(eval_job.results.metrics) == 0
+    assert len(eval_results.metrics) == 0
 
     # filtering by model should be disabled as model is called explicitly
     with pytest.raises(ClientException) as e:
@@ -195,7 +193,6 @@ def test_geospatial_filter(
                     }
                 ],
             },
-            timeout=30,
         )
     assert (
         "should not include any dataset, model, prediction score or task type filters"

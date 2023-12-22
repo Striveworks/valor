@@ -578,7 +578,7 @@ class ROCAUCMetric(BaseModel):
         A mapping dictionary.
         """
         return {
-            "value": self.value,
+            "value": self.value if not np.isnan(self.value) else -1,
             "type": "ROCAUC",
             "parameters": {"label_key": self.label_key},
             "evaluation_id": evaluation_id,
@@ -680,9 +680,10 @@ class Evaluation(BaseModel):
     model: str
     settings: EvaluationSettings
     job_id: int
-    status: str
+    status: JobStatus
     metrics: list[Metric]
     confusion_matrices: list[ConfusionMatrixResponse]
+    task_type: TaskType
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
