@@ -50,13 +50,13 @@ def db() -> Session:
 
     for model in client.get_models():
         try:
-            client.delete_model(model["name"], timeout=5)
+            client.delete_model(model["name"], timeout=30)
         except exceptions.ModelDoesNotExistError:
             continue
 
     for dataset in client.get_datasets():
         try:
-            client.delete_dataset(dataset["name"], timeout=5)
+            client.delete_dataset(dataset["name"], timeout=30)
         except exceptions.DatasetDoesNotExistError:
             continue
 

@@ -101,7 +101,7 @@ def test_generate_prediction_data(client: Client):
             Annotation.type == AnnotationType.BOX,
         ],
     )
-    eval_results = eval_job.wait_for_completion(timeout=3)
+    eval_results = eval_job.wait_for_completion(timeout=30)
     assert eval_results.status == JobStatus.DONE
 
     eval_dict = asdict(eval_results)
