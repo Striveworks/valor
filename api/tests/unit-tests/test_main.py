@@ -34,8 +34,12 @@ def test__split_query_params():
 
 
 def test_protected_routes(client: TestClient):
-    """Check that all routes are protected"""
-    routes = [r for r in client.app.routes if isinstance(r, APIRoute)]
+    """Check that all non-status routes are protected"""
+    routes = [
+        r
+        for r in client.app.routes
+        if isinstance(r, APIRoute) and r.name not in {"health", "ready"}
+    ]
     with patch(
         "velour_api.settings.AuthConfig.no_auth",
         new_callable=PropertyMock(return_value=False),
