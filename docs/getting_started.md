@@ -86,7 +86,7 @@ from velour.enums import TaskType
 The `velour.Client` class gives an object that is used to communicate with the `velour` backend.
 
 ```py
-client = Client("http://0.0.0.0:8000")
+client = Client("http://localhost:8000")
 ```
 
 In the event that the host uses authentication, the argument `access_token` should also be passed to `Client`.
@@ -124,8 +124,8 @@ groundtruth_annotations = [
 
 for image in groundtruth_annotations:
 
-    # Each image is represented by a Velour Datum. 
-    # The datum object is used to connect groundtruths and predictions when it's time for evaluation.
+    # each image is represented by a Velour Datum. 
+    # this is used to connect groundtruths and predictions when it's time for evaluation.
     datum = Datum(
         uid=Path(image["path"]).stem, # strip the filename for use as Datum uid.
         metadata={
@@ -133,6 +133,7 @@ for image in groundtruth_annotations:
         }
     )
 
+    # a Velour Annotation consists of a task_type, labels and optionally a geometry.
     annotations = [
         Annotation(
             task_type=TaskType.DETECTION,
@@ -148,6 +149,7 @@ for image in groundtruth_annotations:
         if len(annotation) > 0
     ]
 
+    # the datum and annotations we created are then used to form a GroundTruth.
     groundtruth = GroundTruth(
         datum=datum,
         annotations=annotations,
@@ -180,17 +182,12 @@ model = Model(
 Next, we tell Velour what our model predicted for each image by attaching `Predictions` to our `Model`:
 
 ```py
-# populate a dictionary mapping Datum UIDs to datums for all of the datums in our dataset
-datums_by_uid = {
-    datum.uid: datum
-    for datum in dataset.get_datums()
-}
 
 def create_prediction_from_object_detection_dict(element: dict, datums_by_uid:dict) -> Prediction:
 
     # get datum from dataset using filename
     uid=Path(element["path"]).stem
-    datum = datums_by_uid[uid]
+    groundtruth = dataset.get_groundtruth(uid)
 
     # create Annotations
     annotations = [
@@ -213,10 +210,11 @@ def create_prediction_from_object_detection_dict(element: dict, datums_by_uid:di
 
     # create and return Prediction
     return Prediction(
-        datum=datum,
+        datum=groundtruth.datum,
         annotations=annotations,
     )
 
+# lets represent the simulated model output in a similar format to the groundtruths.
 object_detections = [
     {"path": "a/b/c/img3.png", "annotations": [
         {"labels": [{"class_label": "dog", "score": 0.8}, {"class_label": "cat", "score": 0.1}, {"class_label": "person", "score": 0.1}], "bbox": {"xmin": 16, "ymin": 130, "xmax": 70, "ymax": 150}},
@@ -238,19 +236,60 @@ for element in object_detections:
 
 #### Run your evaluation and print metrics
 
-Now that both our `Dataset` and `Model` are finalized, we can evaluate how well our hypothetical model did at predicting whether or not each image contained a dog.
+Now that both our `Dataset` and `Model` are finalized, we can evaluate how well our hypothetical model performed.
 
 ```py
 # run evaluation
 evaluation = model.evaluate_classification(
     dataset=dataset,
     filters=[
-        Label.key == "class_label" # with this filter, we're asking Velour to only evaluate how well our model predicted animals in each image
+        Label.label.in_(
+            [
+                Label(key="class_label", value="dog"),
+                Label(key="class_label", value="cat"),
+            ]
+         # with this filter, we're asking Velour to only evaluate how well our model predicted cats and dogs in our images.
     ]
-).wait_for_completion() # wait for the job to finish
+)
+evaluation.wait_for_completion() # wait for the job to finish
+
+# get the result of our evaluation
+result = evaluation.get_result()
 
 # print our classification metrics
-print(evaluation.metrics)
+print(result.metrics)
+```
+
+#### Run a filtered evaluation and print metrics
+
+Velour offers more than just 1:1 evaluations, it allows the creation of metadata filters to stratify the dataset groundtruths and model predictions. This enables the user to ask complex questions about their data.
+
+With this in mind lets pose the question: *"How well did the model perform on animal prediction?"*
+
+We can ask this question with the following evaluation statement.
+
+```py
+# run evaluation
+animal_evaluation = model.evaluate_classification(
+    dataset=dataset,
+    filters=[
+        # with this filter, we're asking Velour to only evaluate how well our model performed on predicting cats and dogs.
+        Label.label.in_(
+            [
+                Label(key="class_label", value="dog"),
+                Label(key="class_label", value="cat"),
+            ]
+        ),
+    ]
+)
+
+animal_evaluation.wait_for_completion() # wait for the job to finish
+
+# get the result of our evaluation
+result = animal_evaluation.get_result()
+
+# print our classification metrics
+print(result.metrics)
 ```
 
 For more examples, please see our [sample notebooks](https://github.com/Striveworks/velour/tree/main/sample_notebooks).
