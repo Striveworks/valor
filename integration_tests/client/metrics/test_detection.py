@@ -14,8 +14,8 @@ from velour.enums import AnnotationType, JobStatus, TaskType
 from velour.schemas.filters import Filter
 from velour_api.backend import models
 
-
 default_filter_properties = asdict(Filter())
+
 
 def test_evaluate_detection(
     db: Session,
@@ -113,6 +113,52 @@ def test_evaluate_detection(
         "job_id": eval_job.evaluation_id,
     }
 
+    # test evaluating a job using a `Label.labels` filter
+    eval_job_value_filter_using_in_ = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters=[
+            Label.label.in_([Label(key="k1", value="v1")]),
+            Annotation.type == AnnotationType.BOX,
+        ],
+    )
+    value_filter_result = asdict(
+        eval_job_value_filter_using_in_.wait_for_completion(timeout=30)
+    )
+    assert value_filter_result["metrics"] == result["metrics"]
+
+    # same as the above, but not using the in_ operator
+    eval_job_value_filter = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters=[
+            Label.label == Label(key="k1", value="v1"),
+            Annotation.type == AnnotationType.BOX,
+        ],
+    )
+    value_filter_result = asdict(
+        eval_job_value_filter.wait_for_completion(timeout=30)
+    )
+    assert value_filter_result["metrics"] == result["metrics"]
+
+    # assert that this evaluation returns no metrics as there aren't any
+    # Labels with key=k1 and value=v2
+    eval_job_no_metrics = model.evaluate_detection(
+        dataset=dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_keep=[0.1, 0.6],
+        filters=[
+            Label.label.in_([Label(key="k1", value="v2")]),
+            Annotation.type == AnnotationType.BOX,
+        ],
+    )
+    no_metric_result = asdict(
+        eval_job_no_metrics.wait_for_completion(timeout=30)
+    )
+    assert len(no_metric_result["metrics"]) == 0
+
     # now test if we set min_area and/or max_area
     areas = db.scalars(
         select(ST_Area(models.Annotation.box)).where(
@@ -134,7 +180,9 @@ def test_evaluate_detection(
         ],
     )
 
-    result = asdict(eval_job_bounded_area_10_2000.wait_for_completion(timeout=30))
+    result = asdict(
+        eval_job_bounded_area_10_2000.wait_for_completion(timeout=30)
+    )
     assert result == {
         "model": model_name,
         "dataset": "test_dataset",
@@ -262,7 +310,9 @@ def test_evaluate_detection(
             Annotation.geometric_area <= 1800,
         ],
     )
-    result = asdict(eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30))
+    result = asdict(
+        eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30)
+    )
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "model": model_name,
@@ -299,7 +349,7 @@ def test_evaluate_detection(
 
     # test accessing these evaluations via the dataset
     all_evals = dataset.get_evaluations()
-    assert len(all_evals) == 5
+    assert len(all_evals) == 7
 
 
 def test_evaluate_detection_with_json_filters(
@@ -330,7 +380,10 @@ def test_evaluate_detection_with_json_filters(
     assert eval_results.settings.parameters.iou_thresholds_to_compute == [
         i / 100 for i in range(50, 100, 5)
     ]
-    assert eval_results.settings.parameters.iou_thresholds_to_keep == [0.5, 0.75]
+    assert eval_results.settings.parameters.iou_thresholds_to_keep == [
+        0.5,
+        0.75,
+    ]
 
     expected_metrics = [
         {
@@ -405,7 +458,9 @@ def test_evaluate_detection_with_json_filters(
         },
     )
 
-    result = asdict(eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30))
+    result = asdict(
+        eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30)
+    )
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "model": model_name,
@@ -553,7 +608,9 @@ def test_get_bulk_evaluations(
     assert len(evaluations[0].metrics)
     assert evaluations[0].metrics == expected_metrics
 
-    evaluations_by_job_id = client.get_bulk_evaluations(job_ids=eval_job.job_id)
+    evaluations_by_job_id = client.get_bulk_evaluations(
+        job_ids=eval_job.job_id
+    )
     assert len(evaluations_by_job_id) == 1
     assert evaluations_by_job_id[0] == evaluations[0]
 
