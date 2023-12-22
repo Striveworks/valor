@@ -460,8 +460,8 @@ def _finalize_success(state: StateflowJob, msg: str = ""):
     """
     if state.node == StateflowNode.PREDICTION:
         if get_status_from_uuid(state.model_uuid) == JobStatus.CREATING:
-            Job.get(state.model_uuid).set_status(state.success)
-    state.set_status(state.success)
+            Job.get(state.model_uuid).set_status(state.success, msg)
+    state.set_status(state.success, msg)
 
 
 # stateflow decorator definitions
