@@ -1,8 +1,0 @@
-!*.ipynb
-
-coco
-*.pt
-*.png
-*.jpg
-
-chariot.ipynb

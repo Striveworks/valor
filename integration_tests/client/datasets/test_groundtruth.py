@@ -35,7 +35,7 @@ def test_create_gt_detections_as_bbox_or_poly(
         dataset=dataset_name, uid="uid", height=200, width=150
     ).to_datum()
 
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     gt = GroundTruth(
         datum=image,
         annotations=[
@@ -122,7 +122,7 @@ def test_create_gt_segs_as_polys_or_masks(
         )
     )
 
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
 
     # check we get an error for adding semantic segmentation with duplicate labels
     with pytest.raises(ClientException) as exc_info:
@@ -181,7 +181,7 @@ def test_add_groundtruth(
     dataset_name: str,
     gt_semantic_segs_error: GroundTruth,
 ):
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
 
     # make sure we get an error when passing a non-groundtruth object to add_groundtruth
     with pytest.raises(TypeError):
@@ -212,7 +212,7 @@ def test_get_groundtruth(
     gt_semantic_segs1_mask: GroundTruth,
     gt_semantic_segs2_mask: GroundTruth,
 ):
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     dataset.add_groundtruth(gt_semantic_segs1_mask)
     dataset.add_groundtruth(gt_semantic_segs2_mask)
 

@@ -30,7 +30,7 @@ def test_set_and_get_geospatial(
     ]
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
-    dataset = Dataset.create(
+    dataset = Dataset(
         client=client, name=dataset_name, geospatial=geo_dict
     )
 
@@ -39,7 +39,7 @@ def test_set_and_get_geospatial(
     assert fetched_datasets[0]["geospatial"] == geo_dict
 
     # check Model's geospatial coordinates
-    Model.create(client=client, name=model_name, geospatial=geo_dict)
+    Model(client=client, name=model_name, geospatial=geo_dict)
     fetched_models = client.get_models()
     assert fetched_models[0]["geospatial"] == geo_dict
 
@@ -83,7 +83,7 @@ def test_geospatial_filter(
     ]
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
-    dataset = Dataset.create(
+    dataset = Dataset(
         client=client, name=dataset_name, geospatial=geo_dict
     )
     for gt in gt_dets1:
@@ -91,7 +91,7 @@ def test_geospatial_filter(
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client=client, name=model_name, geospatial=geo_dict)
+    model = Model(client=client, name=model_name, geospatial=geo_dict)
     for pd in pred_dets:
         pd.datum.geospatial = geo_dict
         model.add_prediction(pd)

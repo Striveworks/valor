@@ -37,7 +37,7 @@ def test_create_images_with_metadata(
     ).to_datum()
 
     # create dataset
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     dataset.add_groundtruth(
         GroundTruth(
             datum=img1,

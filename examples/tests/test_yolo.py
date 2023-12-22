@@ -1,6 +1,6 @@
 import numpy
 import pytest
-from integration_utils.yolo import (
+from integrations.yolo import (
     _convert_yolo_segmentation,
     parse_yolo_image_classification,
     parse_yolo_image_segmentation,

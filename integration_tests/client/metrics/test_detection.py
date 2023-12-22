@@ -25,12 +25,12 @@ def test_evaluate_detection(
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
 ):
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, model_name)
+    model = Model(client, model_name)
     for pd in pred_dets:
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
@@ -359,12 +359,12 @@ def test_evaluate_detection_with_json_filters(
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
 ):
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, model_name)
+    model = Model(client, model_name)
     for pd in pred_dets:
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
@@ -507,12 +507,12 @@ def test_get_bulk_evaluations(
     dataset_ = dataset_name
     model_ = model_name
 
-    dataset = Dataset.create(client, dataset_)
+    dataset = Dataset(client, dataset_)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, model_)
+    model = Model(client, model_)
     for pd in pred_dets:
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
@@ -619,7 +619,7 @@ def test_get_bulk_evaluations(
     assert len(client.get_bulk_evaluations(models="wrong_model_name")) == 0
 
     # test with multiple models
-    second_model = Model.create(client, "second_model")
+    second_model = Model(client, "second_model")
     for pd in pred_dets2:
         second_model.add_prediction(pd)
     second_model.finalize_inferences(dataset)
