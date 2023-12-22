@@ -44,6 +44,7 @@ from .metrics import (
     mAPMetricAveragedOverIOUs,
     mIOUMetric,
 )
+from .status import Health, Readiness
 
 __all__ = [
     "APIVersion",
@@ -51,7 +52,6 @@ __all__ = [
     "Annotation",
     "Dataset",
     "Datum",
-    "AnnotatedDatum",
     "Model",
     "GroundTruth",
     "Prediction",
@@ -91,4 +91,6 @@ __all__ = [
     "NumericFilter",
     "GeospatialFilter",
     "Filter",
+    "Health",
+    "Readiness",
 ]
