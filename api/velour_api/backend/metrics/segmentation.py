@@ -163,7 +163,13 @@ def _compute_segmentation_metrics(
         )
 
     ret.append(
-        mIOUMetric(value=sum([metric.value for metric in ret]) / len(ret))
+        mIOUMetric(
+            value=(
+                sum([metric.value for metric in ret]) / len(ret)
+                if len(ret) != 0
+                else -1
+            )
+        )
     )
 
     return ret

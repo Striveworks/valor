@@ -39,10 +39,10 @@ def _test_create_image_dataset_with_gts(
         set of image uids to check were added to the database
     """
 
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
 
     with pytest.raises(ClientException) as exc_info:
-        Dataset.create(client, dataset_name)
+        client.create_dataset({"name": dataset_name})
     assert "already exists" in str(exc_info)
 
     for gt in gts:
@@ -77,7 +77,7 @@ def test_create_image_dataset_with_href_and_description(
 ):
     href = "http://a.com/b"
     description = "a description"
-    Dataset.create(
+    Dataset(
         client,
         dataset_name,
         metadata={
@@ -206,7 +206,7 @@ def test_client_delete_dataset(
     dataset_name: str,
 ):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
-    Dataset.create(client, dataset_name)
+    Dataset(client, dataset_name)
     assert db.scalar(select(func.count(models.Dataset.name))) == 1
     client.delete_dataset(dataset_name, timeout=30)
     assert db.scalar(select(func.count(models.Dataset.name))) == 0
@@ -218,7 +218,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
     metadata: Dict[str, Union[float, int, str]],
     dataset_name: str,
 ):
-    dataset = Dataset.create(client, name=dataset_name)
+    dataset = Dataset(client, name=dataset_name)
     assert isinstance(dataset, Dataset)
 
     md1 = {"metadatum1": metadata["metadatum1"]}
@@ -317,11 +317,11 @@ def test_get_dataset(
     dataset_name: str,
     gt_semantic_segs1_mask: GroundTruth,
 ):
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     dataset.add_groundtruth(gt_semantic_segs1_mask)
 
     # check get
-    fetched_dataset = Dataset.get(client, dataset_name)
+    fetched_dataset = Dataset(client, dataset_name)
     assert fetched_dataset.id == dataset.id
     assert fetched_dataset.name == dataset.name
     assert fetched_dataset.metadata == dataset.metadata
@@ -336,7 +336,7 @@ def test_get_dataset_status(
 ):
     assert client.get_dataset_status(dataset_name) == JobStatus.NONE
 
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
 
     assert client.get_dataset_status(dataset_name) == JobStatus.CREATING
 
@@ -357,7 +357,7 @@ def test_get_dataset_status(
 
 def test_validate_dataset(client: Client, dataset_name: str):
     with pytest.raises(TypeError):
-        Dataset.create(client, name=123)
+        Dataset(client, name=123)
 
     with pytest.raises(TypeError):
-        Dataset.create(client, name=dataset_name, id="not an int")
+        Dataset(client, name=dataset_name, id="not an int")

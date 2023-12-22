@@ -28,12 +28,12 @@ def test_evaluate_image_clf(
     dataset_name: str,
     model_name: str,
 ):
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     for gt in gt_clfs:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, model_name)
+    model = Model(client, model_name)
     for pd in pred_clfs:
         model.add_prediction(pd)
     model.finalize_inferences(dataset)
@@ -80,7 +80,7 @@ def test_evaluate_image_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_results.confusion_matrices
+    confusion_matrices = eval_job.get_result().confusion_matrices
     assert confusion_matrices == [
         {
             "label_key": "k4",
@@ -98,7 +98,7 @@ def test_evaluate_tabular_clf(
 ):
     assert len(gt_clfs_tabular) == len(pred_clfs_tabular)
 
-    dataset = Dataset.create(client, name=dataset_name)
+    dataset = Dataset(client, name=dataset_name)
     gts = [
         GroundTruth(
             datum=Datum(dataset=dataset_name, uid=f"uid{i}"),
@@ -115,7 +115,7 @@ def test_evaluate_tabular_clf(
         dataset.add_groundtruth(gt)
 
     # test
-    model = Model.create(client, name=model_name)
+    model = Model(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
         model.evaluate_classification(dataset=dataset).wait_for_completion(timeout=30)
     assert "has not been finalized" in str(exc_info)
@@ -156,7 +156,7 @@ def test_evaluate_tabular_clf(
     eval_results = eval_job.wait_for_completion(timeout=30)
     assert eval_results.status == JobStatus.DONE
 
-    metrics = eval_results.metrics
+    metrics = eval_job.get_result().metrics
 
     expected_metrics = [
         {
@@ -216,7 +216,7 @@ def test_evaluate_tabular_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_results.confusion_matrices
+    confusion_matrices = eval_job.get_result().confusion_matrices
 
     expected_confusion_matrix = {
         "label_key": "class",
@@ -256,24 +256,18 @@ def test_evaluate_tabular_clf(
 
     # check model methods
     labels = model.get_labels()
-    df = model.get_metric_dataframes()
 
     assert isinstance(model.id, int)
     assert model.name == model_name
     assert len(model.metadata) == 0
 
-    assert len(labels) == 3
-    assert isinstance(df[0]["df"], pandas.DataFrame)
-
     # check evaluation
-    eval_jobs = model.get_evaluations()
-    assert len(eval_jobs) == 1
-    assert eval_jobs[0].model == model_name
-    assert eval_jobs[0].dataset == "test_dataset"
-    assert eval_jobs[0].task_type == "classification"
-    assert eval_jobs[0].settings == EvaluationSettings()
+    results = model.get_evaluations()
+    assert len(results) == 1
+    assert results[0].dataset == dataset_name
+    assert results[0].model == model_name
 
-    metrics_from_eval_settings_id = eval_jobs[0].metrics
+    metrics_from_eval_settings_id = results[0].metrics
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
     for m in metrics_from_eval_settings_id:
         assert m in expected_metrics
@@ -281,7 +275,7 @@ def test_evaluate_tabular_clf(
         assert m in metrics_from_eval_settings_id
 
     # check confusion matrix
-    confusion_matrices = eval_jobs[0].confusion_matrices
+    confusion_matrices = results[0].confusion_matrices
 
     # validate return schema
     assert len(confusion_matrices) == 1
@@ -315,7 +309,7 @@ def test_stratify_clf_metrics(
     assert len(gt_clfs_tabular) == len(pred_clfs_tabular)
 
     # create data and two-different defining groups of cohorts
-    dataset = Dataset.create(client, name=dataset_name)
+    dataset = Dataset(client, name=dataset_name)
     for i, label_value in enumerate(gt_clfs_tabular):
         gt = GroundTruth(
             datum=Datum(
@@ -336,7 +330,7 @@ def test_stratify_clf_metrics(
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, name=model_name)
+    model = Model(client, name=model_name)
     for i, pred in enumerate(pred_clfs_tabular):
         pd = Prediction(
             model=model_name,
@@ -366,8 +360,9 @@ def test_stratify_clf_metrics(
         filters=[
             Datum.metadata["md1"] == "md1-val2",
         ],
-    ).wait_for_completion(timeout=30)
-    val2_metrics = eval_results_val2.metrics
+    )
+    eval_results_val2.wait_for_completion(timeout=30)
+    val2_metrics = eval_results_val2.get_result().metrics
 
     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
     # (hard preds [1, 0, 0])

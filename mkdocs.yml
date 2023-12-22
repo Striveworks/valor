@@ -9,7 +9,7 @@ theme:
     primary: deep purple
 nav:
   - Overview: "index.md"
-  - Sample Notebook: "https://google.com" #TODO update this link when notebook is complete
+  - Sample Notebook: "https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb"
   - Getting Started: "getting_started.md"
   - Endpoints: "endpoints.md"
   - Technical Concepts: "technical_concepts.md"

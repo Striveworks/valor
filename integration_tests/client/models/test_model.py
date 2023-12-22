@@ -72,13 +72,13 @@ def _test_create_model_with_preds(
     -------
     the sqlalchemy objects for the created predictions
     """
-    dataset = Dataset.create(client, dataset_name)
-    model = Model.create(client, model_name)
+    dataset = Dataset(client, dataset_name)
+    model = Model(client, model_name)
 
     # verify we get an error if we try to create another model
     # with the same name
     with pytest.raises(ClientException) as exc_info:
-        Model.create(client, model_name)
+        client.create_model({"name": model_name})
     assert "already exists" in str(exc_info)
 
     # add groundtruths
@@ -106,7 +106,7 @@ def _test_create_model_with_preds(
     assert set([p.score for p in db_preds]) == expected_scores
 
     # check that the get_model method works
-    retrieved_model = Model.get(client, model_name)
+    retrieved_model = Model(client, model_name)
     assert isinstance(retrieved_model, type(model))
     assert retrieved_model.name == model_name
 
@@ -120,7 +120,7 @@ def test_create_model_with_href_and_description(
 ):
     href = "http://a.com/b"
     description = "a description"
-    Model.create(
+    Model(
         client,
         model_name,
         metadata={
@@ -284,7 +284,7 @@ def test_client_delete_model(
     model_name: str,
 ):
     """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
-    Model.create(client, model_name)
+    Model(client, model_name)
     assert db.scalar(select(func.count(models.Model.name))) == 1
     client.delete_model(model_name, timeout=30)
     assert db.scalar(select(func.count(models.Model.name))) == 0
@@ -404,12 +404,12 @@ def test_add_prediction(
         },
     )
 
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, model_name)
+    model = Model(client, model_name)
 
     # make sure we get an error when passing a non-Prediction object to add_prediction
     with pytest.raises(TypeError):
@@ -437,7 +437,7 @@ def test_add_prediction(
 
 def test_validate_model(client: Client, model_name: str):
     with pytest.raises(TypeError):
-        Model.create(client, name=123)
+        Model(client, name=123)
 
     with pytest.raises(TypeError):
-        Model.create(client, name=model_name, id="not an int")
+        Model(client, name=model_name, id="not an int")

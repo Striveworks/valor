@@ -216,6 +216,39 @@ class Client:
         """
         return self._requests_get_rel_host("labels").json()
 
+    def create_dataset(
+        self,
+        dataset: dict,
+    ):
+        """
+        Creates a dataset.
+
+        Parameters
+        ----------
+        dataset : dict
+            A dictionary describing dataset attributes. See `velour.coretypes.Dataset` for reference.
+        """
+        self._requests_post_rel_host("datasets", json=dataset)
+
+    def get_dataset(
+        self,
+        name: str,
+    ) -> dict:
+        """
+        Gets a dataset by name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the dataset to fetch.
+
+        Returns
+        -------
+        dict
+            A dictionary containing all of the associated dataset attributes.
+        """
+        return self._requests_get_rel_host(f"datasets/{name}").json()
+
     def get_datasets(
         self,
     ) -> List[dict]:
@@ -228,6 +261,27 @@ class Client:
             A list of dictionaries describing all the datasets attributed to the `Client` object.
         """
         return self._requests_get_rel_host("datasets").json()
+
+    def get_datums(
+        self,
+        dataset_name: str,
+    ) -> List[dict]:
+        """
+        Get all datums associated with a dataset.
+
+        Parameters
+        ----------
+        dataset_name : str
+            The name of the dataset to search over.
+
+        Returns
+        -------
+        List[dict]
+            A list of dictionaries describing all the datums of the specified dataset.
+        """
+        return self._requests_get_rel_host(
+            f"data/dataset/{dataset_name}"
+        ).json()
 
     def get_dataset_status(
         self,
@@ -274,6 +328,39 @@ class Client:
                     "Dataset wasn't deleted within timeout interval"
                 )
 
+    def create_model(
+        self,
+        model: dict,
+    ):
+        """
+        Creates a model.
+
+        Parameters
+        ----------
+        model : dict
+            A dictionary describing model attributes. See `velour.coretypes.Model` for reference.
+        """
+        self._requests_post_rel_host("models", json=model)
+
+    def get_model(
+        self,
+        name: str,
+    ) -> dict:
+        """
+        Gets a model by name.
+
+        Parameters
+        ----------
+        name : str
+            The name of the model to fetch.
+
+        Returns
+        -------
+        dict
+            A dictionary containing all of the associated model attributes.
+        """
+        return self._requests_get_rel_host(f"models/{name}").json()
+    
     def get_models(
         self,
     ) -> List[dict]:

@@ -45,6 +45,7 @@ class Query:
                 if (
                     isinstance(argument, DeclarativeMeta)
                     or isinstance(argument, InstrumentedAttribute)
+                    or hasattr(argument, "__visit_name__")
                 )
             ]
         )
@@ -76,11 +77,17 @@ class Query:
     def _map_attribute_to_table(
         self, attr: InstrumentedAttribute | DeclarativeMeta
     ) -> DeclarativeMeta | None:
+        
         if isinstance(attr, DeclarativeMeta):
             return attr
-        if not isinstance(attr, InstrumentedAttribute):
+        elif isinstance(attr, InstrumentedAttribute):
+            table_name = attr.table.name
+        elif hasattr(attr, "__visit_name__"):
+            table_name = attr.__visit_name__
+        else:
             return None
-        match attr.table.name:
+
+        match table_name:
             case models.Dataset.__tablename__:
                 return models.Dataset
             case models.Model.__tablename__:

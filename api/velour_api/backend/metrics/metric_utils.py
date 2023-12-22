@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from velour_api.enums import JobStatus
 
 from velour_api import schemas
+from velour_api.enums import JobStatus
 from velour_api.backend import core, models
 
 
@@ -203,7 +204,7 @@ def get_evaluations(
             ),
             settings=evaluation.settings,
             job_id=evaluation.id,
-            status=JobStatus.PENDING,  # unknown to backend
+            status=JobStatus.PENDING,
             metrics=[
                 _db_metric_to_pydantic_metric(metric)
                 for metric in evaluation.metrics

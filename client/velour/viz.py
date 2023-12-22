@@ -133,7 +133,7 @@ def create_combined_segmentation_mask(
                 label_values.append(label.value)
     if not label_values:
         raise RuntimeError(
-            "Annoation doesn't have a label with key `{label.key}`"
+            f"Annotation doesn't have a label with key `{label_key}`"
         )
 
     unique_label_values = list(set(label_values))

@@ -26,12 +26,12 @@ def test_create_pred_detections_as_bbox_or_poly(
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
 
-    dataset = Dataset.create(client, dataset_name)
+    dataset = Dataset(client, dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
     dataset.finalize()
 
-    model = Model.create(client, model_name)
+    model = Model(client, model_name)
     pd = Prediction(
         model=model_name,
         datum=img1.to_datum(),

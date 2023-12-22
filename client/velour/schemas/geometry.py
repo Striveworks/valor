@@ -30,6 +30,11 @@ class Point:
     ------
     TypeError
         If the coordinates are not of type `float` or convertible to `float`.
+
+    Examples
+    --------
+    >>> Point(1,2)
+    Point(x=1.0, y=2.0)
     """
 
     x: float
@@ -52,7 +57,11 @@ class Point:
         return hash(f"{self.x},{self.y}")
 
     def resize(
-        self, og_img_h: int, og_img_w: int, new_img_h: int, new_img_w: int
+        self, 
+        og_img_h: int,
+        og_img_w: int,
+        new_img_h: int,
+        new_img_w: int,
     ) -> "Point":
         """
         Resize the point coordinates based on the scaling factors.
@@ -72,6 +81,15 @@ class Point:
         -------
         Point
             Resized point based on the scaling factors.
+
+        Examples
+        --------
+        >>> p = Point(1,2)
+        >>> p.resize(og_img_h=100,
+        ...          og_img_w=50,
+        ...          new_img_h=1000,
+        ...          new_img_w=1000)
+        Point(x=20.0, y=20.0)
         """
         h_factor, w_factor = new_img_h / og_img_h, new_img_w / og_img_w
         return Point(x=w_factor * self.x, y=h_factor * self.y)
@@ -103,6 +121,17 @@ class Box:
     ValueError
         If the x-coordinate of `min` is greater than the x-coordinate of `max`.
         If the y-coordinate of `min` is greater than the y-coordinate of `max`.
+
+    Examples
+    --------
+    >>> Box(min=Point( 0, 0),
+    ...     max=Point(10,10))
+    Box(min=Point(x=0.0, y=0.0), max=Point(x=10.0, y=10.0))
+
+    Dictionary input results in same output.
+    >>> Box(min={'x':  0, 'y':  0},
+    ...     max={'x': 10, 'y': 10})
+    Box(min=Point(x=0.0, y=0.0), max=Point(x=10.0, y=10.0))
     """
 
     min: Point
@@ -139,6 +168,16 @@ class BasicPolygon:
     ValueError
         If the number of unique points in `points` is less than 3,
         making the BasicPolygon invalid.
+
+    Examples
+    --------
+    >>> BasicPolygon(
+    ...     points=[
+    ...         Point(0,0),
+    ...         Point(0,1),
+    ...         Point(1,0),
+    ...     ]
+    ... )
     """
 
     points: List[Point] = field(default_factory=list)
@@ -242,6 +281,24 @@ class Polygon:
     TypeError
         If `boundary` is not a `BasicPolygon` or cannot be converted to one.
         If `holes` is not a list or an element in `holes` is not a `BasicPolygon`.
+
+    Examples
+    --------
+    Create component polygons with BasicPolygon
+    >>> basic_polygon1 = BasicPolygon(...)
+    >>> basic_polygon2 = BasicPolygon(...)
+    >>> basic_polygon3 = BasicPolygon(...)
+
+    Create a polygon from a basic polygon.
+    >>> polygon1 = Polygon(
+    ...     boundary=basic_polygon1,
+    ... )
+
+    Create a polygon with holes.
+    >>> polygon2 = Polygon(
+    ...     boundary=basic_polygon1,
+    ...     holes=[basic_polygon2, basic_polygon3],
+    ... )
     """
 
     boundary: BasicPolygon
@@ -286,6 +343,27 @@ class BoundingBox:
         If `polygon` is not a `BasicPolygon` or cannot be converted to one.
     ValueError
         If the number of points in `polygon` is not equal to 4, making it invalid as a bounding box.
+
+    Examples
+    --------
+    Create a BoundingBox from Points.
+    Note that ordering is important to prevent self-intersection!
+    >>> box1 = schemas.BoundingBox(
+    ...     polygon=schemas.BasicPolygon(
+    ...         points=[
+    ...             schemas.Point(0,0),
+    ...             schemas.Point(0,1),
+    ...             schemas.Point(1,1),
+    ...             schemas.Point(1,0),
+    ...         ]
+    ...     ),
+    ... )
+
+    Create a BoundingBox using extrema.
+    >>> box2 = BoundingBox.from_extrema(
+    ...     xmin=0, xmax=1,
+    ...     ymin=0, ymax=1,
+    ... )
     """
 
     polygon: BasicPolygon
@@ -369,6 +447,16 @@ class MultiPolygon:
     ------
     TypeError
         If `polygons` is not a list or an element in `polygons` is not a `Polygon`.
+
+    Examples
+    --------
+    >>> MultiPolygon(
+    ...     polygons=[
+    ...         Polygon(...),
+    ...         Polygon(...),
+    ...         Polygon(...),
+    ...     ]
+    ... )
     """
 
     polygons: List[Polygon] = field(default_factory=list)
@@ -402,6 +490,20 @@ class Raster:
     ------
     TypeError
         If `mask` is not a string.
+
+    Examples
+    --------
+    Generate a random mask.
+    >>> import numpy.random
+    >>> height = 640
+    >>> width = 480
+    >>> array = numpy.random.rand(height, width)
+    
+    Convert to binary mask.
+    >>> mask = (array > 0.5)
+
+    Create Raster.
+    >>> Raster.from_numpy(mask)
     """
 
     mask: str
