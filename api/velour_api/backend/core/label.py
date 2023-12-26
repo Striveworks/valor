@@ -6,6 +6,47 @@ from velour_api import enums, schemas
 from velour_api.backend import models
 
 
+def _lookup_label_kv_cross(
+    db: Session,
+    labels: list[schemas.Label]
+) -> dict[tuple[str,str], models.Label]:
+    """
+    Returns cross-product of label key and value sets.
+
+    Do not use this to fetch explicit pairings.
+    """
+    label_keys, label_values = zip(
+        *[(label.key, label.value) for label in labels]
+    )
+    return {
+        (label.key, label.value) : label
+        for label in (
+            db.query(models.Label)
+            .where(
+                and_(
+                    models.Label.key.in_(label_keys),
+                    models.Label.value.in_(label_values),
+                )
+            )
+            .all()
+        )
+    }
+
+
+def _get_existing_labels(
+    db: Session,
+    labels: schemas.Label,
+) -> list[models.Label]:
+    """
+    Fetch labels from postgis that match some list of labels (in terms of both their keys and values).
+    """
+    existing_labels = _lookup_label_kv_cross(db, labels)
+    return [
+        existing_labels[(label.key, label.value)]
+        for label in labels
+    ]
+
+
 def create_labels(
     db: Session,
     labels: list[schemas.Label],
@@ -26,52 +67,26 @@ def create_labels(
         A list of labels.
     """
 
-    # get existing labels
-    existing_labels = set(
-        (label.key, label.value)
-        for label in _get_existing_labels(db=db, labels=labels)
-    )
+    # get labels set
+    existing_labels = _lookup_label_kv_cross(db, labels)
 
-    # determine which labels already exist
-    labels_to_be_added_to_db = []
-    for label in labels:
-        lookup = (label.key, label.value)
-        if lookup not in existing_labels:
-            new_label = models.Label(key=label.key, value=label.value)
-            labels_to_be_added_to_db.append(new_label)
-            existing_labels.add(lookup)
+    # create new labels
+    new_labels = {
+        (label.key, label.value) : models.Label(key=label.key, value=label.value)
+        for label in labels
+        if (label.key, label.value) not in existing_labels
+    }
 
     # upload the labels that were missing
     try:
-        db.add_all(labels_to_be_added_to_db)
+        db.add_all(list(new_labels.values()))
         db.commit()
     except IntegrityError as e:
         db.rollback()
-        raise e  # this should never be called
+        raise e # this should never be called
     
-    return _get_existing_labels(db=db, labels=labels)
-
-
-def _get_existing_labels(
-    db: Session,
-    labels: schemas.Label,
-) -> list[models.Label] | None:
-    """
-    Fetch labels from postgis that match some list of labels (in terms of both their keys and values).
-    """
-    label_keys, label_values = zip(
-        *[(label.key, label.value) for label in labels]
-    )
-    return (
-        db.query(models.Label)
-        .where(
-            and_(
-                models.Label.key.in_(label_keys),
-                models.Label.value.in_(label_values),
-            )
-        )
-        .all()
-    )
+    # get existing labels
+    return _get_existing_labels(db, labels)
 
 
 def get_label(
