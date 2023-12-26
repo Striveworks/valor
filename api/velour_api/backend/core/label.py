@@ -25,27 +25,21 @@ def create_labels(
     List[models.Label]
         A list of labels.
     """
-    replace_val = "to_be_replaced"
 
     # get existing labels
-    existing_labels = {
-        (label.key, label.value): label
+    existing_labels = set(
+        (label.key, label.value)
         for label in _get_existing_labels(db=db, labels=labels)
-    }
-
-    output = []
-    labels_to_be_added_to_db = []
+    )
 
     # determine which labels already exist
+    labels_to_be_added_to_db = []
     for label in labels:
         lookup = (label.key, label.value)
-        if lookup in existing_labels:
-            output.append(existing_labels[lookup])
-        else:
-            labels_to_be_added_to_db.append(
-                models.Label(key=label.key, value=label.value)
-            )
-            output.append(replace_val)
+        if lookup not in existing_labels:
+            new_label = models.Label(key=label.key, value=label.value)
+            labels_to_be_added_to_db.append(new_label)
+            existing_labels.add(lookup)
 
     # upload the labels that were missing
     try:
@@ -54,17 +48,8 @@ def create_labels(
     except IntegrityError as e:
         db.rollback()
         raise e  # this should never be called
-
-    # move those fetched labels into output in the correct order
-    for i in range(len(output)):
-        if output[i] == replace_val:
-            output[i] = labels_to_be_added_to_db.pop(0)
-
-    assert (
-        not labels_to_be_added_to_db
-    ), "Error when merging existing labels with new labels"
-
-    return output
+    
+    return _get_existing_labels(db=db, labels=labels)
 
 
 def _get_existing_labels(
