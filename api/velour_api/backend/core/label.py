@@ -2,23 +2,21 @@ from sqlalchemy import Select, and_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import enums, schemas
+from velour_api import enums, schemas, exceptions
 from velour_api.backend import models
 
 
-def _lookup_label_kv_cross(
+def _get_existing_labels(
     db: Session,
-    labels: list[schemas.Label]
-) -> dict[tuple[str,str], models.Label]:
+    labels: schemas.Label,
+) -> list[models.Label]:
     """
-    Returns cross-product of label key and value sets.
-
-    Do not use this to fetch explicit pairings.
+    Fetch labels from postgis that match some list of labels (in terms of both their keys and values).
     """
     label_keys, label_values = zip(
         *[(label.key, label.value) for label in labels]
     )
-    return {
+    existing_label_kv_combos = {
         (label.key, label.value) : label
         for label in (
             db.query(models.Label)
@@ -31,20 +29,17 @@ def _lookup_label_kv_cross(
             .all()
         )
     }
+    
+    existing_labels = []
+    for label in labels:
+        lookup = (label.key, label.value)
+        if lookup not in existing_label_kv_combos:
+            raise exceptions.LabelDoesNotExistError(label.key, label.value)
+        existing_labels.append(
+            existing_label_kv_combos[lookup]
 
-
-def _get_existing_labels(
-    db: Session,
-    labels: schemas.Label,
-) -> list[models.Label]:
-    """
-    Fetch labels from postgis that match some list of labels (in terms of both their keys and values).
-    """
-    existing_labels = _lookup_label_kv_cross(db, labels)
-    return [
-        existing_labels[(label.key, label.value)]
-        for label in labels
-    ]
+        )
+    return existing_labels
 
 
 def create_labels(
@@ -66,9 +61,24 @@ def create_labels(
     List[models.Label]
         A list of labels.
     """
-
-    # get labels set
-    existing_labels = _lookup_label_kv_cross(db, labels)
+    
+    # get existing labels
+    label_keys, label_values = zip(
+        *[(label.key, label.value) for label in labels]
+    )
+    existing_labels = {
+        (label.key, label.value) : label
+        for label in (
+            db.query(models.Label)
+            .where(
+                and_(
+                    models.Label.key.in_(label_keys),
+                    models.Label.value.in_(label_values),
+                )
+            )
+            .all()
+        )
+    }
 
     # create new labels
     new_labels = {

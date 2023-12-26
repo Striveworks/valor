@@ -227,6 +227,16 @@ class DatumDoesNotBelongToDatasetError(Exception):
         )
 
 
+""" Label """
+
+
+class LabelDoesNotExistError(Exception):
+    def __init__(self, key: str, value: str):
+        return super().__init__(
+            f"Label ({key}, {value}) does not exist."
+        )
+
+
 """ Misc. """
 
 
