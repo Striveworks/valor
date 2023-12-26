@@ -6,12 +6,53 @@ from velour_api import enums, schemas
 from velour_api.backend import models
 
 
+def _get_existing_labels(
+    db: Session,
+    labels: list[schemas.Label],
+) -> list[models.Label]:
+    """
+    Fetch matching labels from the database.
+
+    If a label in the search set is not found, no output is generated.
+
+    Parameters
+    ----------
+    db : Session
+        SQLAlchemy ORM session.
+    labels : List[schemas.Label]
+        List of label schemas to search for in the database.
+    """
+    label_keys, label_values = zip(
+        *[(label.key, label.value) for label in labels]
+    )
+    existing_label_kv_combos = {
+        (label.key, label.value) : label
+        for label in (
+            db.query(models.Label)
+            .where(
+                and_(
+                    models.Label.key.in_(label_keys),
+                    models.Label.value.in_(label_values),
+                )
+            )
+            .all()
+        )
+    }
+    return [
+        existing_label_kv_combos[(label.key, label.value)]
+        for label in labels
+        if (label.key, label.value) in existing_label_kv_combos
+    ]
+
+
 def create_labels(
     db: Session,
     labels: list[schemas.Label],
 ) -> list[models.Label]:
     """
-    Add a list of labels to postgis. Handles cases where the label already exists in the database.
+    Add a list of labels to create in the database. 
+    
+    Handles cases where the label already exists in the database.
 
     Parameters
     -------
@@ -23,70 +64,44 @@ def create_labels(
     Returns
     -------
     List[models.Label]
-        A list of labels.
+        A list of corresponding label rows from the database.
     """
-    replace_val = "to_be_replaced"
-
+    
     # get existing labels
-    existing_labels = {
-        (label.key, label.value): label
-        for label in _get_existing_labels(db=db, labels=labels)
-    }
-
-    output = []
-    labels_to_be_added_to_db = []
-
-    # determine which labels already exist
-    for label in labels:
-        lookup = (label.key, label.value)
-        if lookup in existing_labels:
-            output.append(existing_labels[lookup])
-        else:
-            labels_to_be_added_to_db.append(
-                models.Label(key=label.key, value=label.value)
-            )
-            output.append(replace_val)
-
-    # upload the labels that were missing
-    try:
-        db.add_all(labels_to_be_added_to_db)
-        db.commit()
-    except IntegrityError as e:
-        db.rollback()
-        raise e  # this should never be called
-
-    # move those fetched labels into output in the correct order
-    for i in range(len(output)):
-        if output[i] == replace_val:
-            output[i] = labels_to_be_added_to_db.pop(0)
-
-    assert (
-        not labels_to_be_added_to_db
-    ), "Error when merging existing labels with new labels"
-
-    return output
-
-
-def _get_existing_labels(
-    db: Session,
-    labels: schemas.Label,
-) -> list[models.Label] | None:
-    """
-    Fetch labels from postgis that match some list of labels (in terms of both their keys and values).
-    """
     label_keys, label_values = zip(
         *[(label.key, label.value) for label in labels]
     )
-    return (
-        db.query(models.Label)
-        .where(
-            and_(
-                models.Label.key.in_(label_keys),
-                models.Label.value.in_(label_values),
+    existing_labels = {
+        (label.key, label.value) : label
+        for label in (
+            db.query(models.Label)
+            .where(
+                and_(
+                    models.Label.key.in_(label_keys),
+                    models.Label.value.in_(label_values),
+                )
             )
+            .all()
         )
-        .all()
-    )
+    }
+
+    # create new labels
+    new_labels = {
+        (label.key, label.value) : models.Label(key=label.key, value=label.value)
+        for label in labels
+        if (label.key, label.value) not in existing_labels
+    }
+
+    # upload the labels that were missing
+    try:
+        db.add_all(list(new_labels.values()))
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e # this should never be called
+    
+    # get existing labels
+    return _get_existing_labels(db, labels)
 
 
 def get_label(
