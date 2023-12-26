@@ -2,16 +2,25 @@ from sqlalchemy import Select, and_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import enums, schemas, exceptions
+from velour_api import enums, schemas
 from velour_api.backend import models
 
 
 def _get_existing_labels(
     db: Session,
-    labels: schemas.Label,
+    labels: list[schemas.Label],
 ) -> list[models.Label]:
     """
-    Fetch labels from postgis that match some list of labels (in terms of both their keys and values).
+    Fetch matching labels from the database.
+
+    If a label in the search set is not found, no output is generated.
+
+    Parameters
+    ----------
+    db : Session
+        SQLAlchemy ORM session.
+    labels : List[schemas.Label]
+        List of label schemas to search for in the database.
     """
     label_keys, label_values = zip(
         *[(label.key, label.value) for label in labels]
@@ -29,17 +38,11 @@ def _get_existing_labels(
             .all()
         )
     }
-    
-    existing_labels = []
-    for label in labels:
-        lookup = (label.key, label.value)
-        if lookup not in existing_label_kv_combos:
-            raise exceptions.LabelDoesNotExistError(label.key, label.value)
-        existing_labels.append(
-            existing_label_kv_combos[lookup]
-
-        )
-    return existing_labels
+    return [
+        existing_label_kv_combos[(label.key, label.value)]
+        for label in labels
+        if (label.key, label.value) in existing_label_kv_combos
+    ]
 
 
 def create_labels(
@@ -47,7 +50,9 @@ def create_labels(
     labels: list[schemas.Label],
 ) -> list[models.Label]:
     """
-    Add a list of labels to postgis. Handles cases where the label already exists in the database.
+    Add a list of labels to create in the database. 
+    
+    Handles cases where the label already exists in the database.
 
     Parameters
     -------
@@ -59,7 +64,7 @@ def create_labels(
     Returns
     -------
     List[models.Label]
-        A list of labels.
+        A list of corresponding label rows from the database.
     """
     
     # get existing labels
