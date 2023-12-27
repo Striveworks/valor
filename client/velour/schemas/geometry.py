@@ -57,7 +57,7 @@ class Point:
         return hash(f"{self.x},{self.y}")
 
     def resize(
-        self, 
+        self,
         og_img_h: int,
         og_img_w: int,
         new_img_h: int,
@@ -498,7 +498,7 @@ class Raster:
     >>> height = 640
     >>> width = 480
     >>> array = numpy.random.rand(height, width)
-    
+
     Convert to binary mask.
     >>> mask = (array > 0.5)
 
@@ -560,3 +560,32 @@ class Raster:
         with io.BytesIO(mask_bytes) as f:
             img = PIL.Image.open(f)
             return np.array(img)
+
+    def draw_on_image(
+        self,
+        img: PIL.Image.Image,
+        color: Tuple[int, int, int] = (255, 0, 0),
+        alpha: int = 0.4,
+    ) -> PIL.Image.Image:
+        """Draws the raster on top of an image. this operation is not done in-place
+
+        Parameters
+        ----------
+        img
+            pillow image to draw on.
+        color
+            RGB tuple of the color to use
+        alpha
+            alpha (transparency) value of the mask. 0 is fully transparent, 1 is fully opaque
+        """
+        img = img.copy()
+        binary_mask = self.to_numpy()
+        mask_arr = np.zeros(
+            (binary_mask.shape[0], binary_mask.shape[1], 3), dtype=np.uint8
+        )
+        mask_arr[binary_mask] = color
+        mask_img = PIL.Image.fromarray(mask_arr)
+        blend = PIL.Image.blend(img, mask_img, alpha=alpha)
+        img.paste(blend, (0, 0), mask=PIL.Image.fromarray(binary_mask))
+
+        return img
