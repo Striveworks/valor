@@ -238,7 +238,7 @@ def _create_groundtruths_from_coco_panoptic(
 
     # create groundtruths
     groundtruths = []
-    for image in tqdm(data["annotations"]):
+    for image in tqdm(data["annotations"], "Formatting"):
         # exract masks from annotations
         mask_ids = _create_masks(masks_path / image["file_name"])
 
@@ -335,7 +335,7 @@ def create_dataset_from_coco_panoptic(
             name,
             metadata=metadata,
         )
-        for gt in gts:
+        for gt in tqdm(gts, desc="Uploading"):
             dataset.add_groundtruth(gt)
         dataset.finalize()
 

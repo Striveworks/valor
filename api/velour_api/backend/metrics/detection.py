@@ -4,7 +4,7 @@ from typing import Dict, List
 
 from geoalchemy2 import functions as gfunc
 from sqlalchemy import and_, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from velour_api import enums, schemas
 from velour_api.backend import core, models, query
@@ -149,9 +149,9 @@ def compute_detection_metrics(
     gt = (
         Query(
             models.GroundTruth.id.label("id"),
-            models.Datum.id.label("datum_id"),
-            models.annotation_type_to_geometry[target_type].label("geom"),
-            models.Label.id.label("label_id"),
+            models.GroundTruth.annotation_id.label("annotation_id"),
+            models.GroundTruth.label_id.label("label_id"),
+            models.Annotation.datum_id.label("datum_id"),
         )
         .filter(gt_filter)
         .groundtruths("groundtruths")
@@ -161,10 +161,10 @@ def compute_detection_metrics(
     pd = (
         Query(
             models.Prediction.id.label("id"),
-            models.Datum.id.label("datum_id"),
-            models.annotation_type_to_geometry[target_type].label("geom"),
-            models.Label.id.label("label_id"),
+            models.Prediction.annotation_id.label("annotation_id"),
+            models.Prediction.label_id.label("label_id"),
             models.Prediction.score.label("score"),
+            models.Annotation.datum_id.label("datum_id"),
         )
         .filter(pd_filter)
         .predictions("predictions")
@@ -178,8 +178,8 @@ def compute_detection_metrics(
             pd.c.id.label("pd_id"),
             gt.c.label_id.label("gt_label_id"),
             pd.c.label_id.label("pd_label_id"),
-            gt.c.geom.label("gt_geom"),
-            pd.c.geom.label("pd_geom"),
+            gt.c.annotation_id.label("gt_ann_id"),
+            pd.c.annotation_id.label("pd_ann_id"),
             pd.c.score.label("score"),
         )
         .select_from(gt)
@@ -194,18 +194,38 @@ def compute_detection_metrics(
         .subquery()
     )
 
+    # Alias the annotation table (required for joining twice)
+    gt_annotation = aliased(models.Annotation)
+    pd_annotation = aliased(models.Annotation)
+
+    def _annotation_type_to_column(
+        annotation_type: AnnotationType,
+        table,
+    ):
+        match annotation_type:
+            case AnnotationType.BOX: 
+                return table.box 
+            case AnnotationType.POLYGON: 
+                return table.polygon
+            case AnnotationType.MULTIPOLYGON:
+                return table.multipolygon
+            case _:
+                raise RuntimeError
+
     # IOU Computation Block
     if target_type == AnnotationType.RASTER:
         gintersection = gfunc.ST_Count(
-            gfunc.ST_Intersection(joint.c.gt_geom, joint.c.pd_geom)
+            gfunc.ST_Intersection(gt_annotation.raster, pd_annotation.raster)
         )
-        gunion_gt = gfunc.ST_Count(joint.c.gt_geom)
-        gunion_pd = gfunc.ST_Count(joint.c.pd_geom)
+        gunion_gt = gfunc.ST_Count(gt_annotation.raster)
+        gunion_pd = gfunc.ST_Count(pd_annotation.raster)
         gunion = gunion_gt + gunion_pd - gintersection
         iou_computation = gintersection / gunion
     else:
-        gintersection = gfunc.ST_Intersection(joint.c.gt_geom, joint.c.pd_geom)
-        gunion = gfunc.ST_Union(joint.c.gt_geom, joint.c.pd_geom)
+        gt_geom = _annotation_type_to_column(target_type, gt_annotation)
+        pd_geom = _annotation_type_to_column(target_type, pd_annotation)
+        gintersection = gfunc.ST_Intersection(gt_geom, pd_geom)
+        gunion = gfunc.ST_Union(gt_geom, pd_geom)
         iou_computation = gfunc.ST_Area(gintersection) / gfunc.ST_Area(gunion)
 
     # Compute IOUs
@@ -220,6 +240,8 @@ def compute_detection_metrics(
             func.coalesce(iou_computation, 0).label("iou"),
         )
         .select_from(joint)
+        .join(gt_annotation, gt_annotation.id == joint.c.gt_ann_id)
+        .join(pd_annotation, pd_annotation.id == joint.c.pd_ann_id)
         .where(
             and_(
                 joint.c.gt_id.isnot(None),

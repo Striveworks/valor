@@ -219,11 +219,3 @@ class ConfusionMatrix(Base):
     settings: Mapped[Evaluation] = relationship(
         back_populates="confusion_matrices"
     )
-
-
-annotation_type_to_geometry = {
-    AnnotationType.BOX: Annotation.box,
-    AnnotationType.POLYGON: Annotation.polygon,
-    AnnotationType.MULTIPOLYGON: Annotation.multipolygon,
-    AnnotationType.RASTER: Annotation.raster,
-}
