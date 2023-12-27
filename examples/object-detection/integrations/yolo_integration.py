@@ -82,13 +82,16 @@ def parse_detection_into_raster(
     datum: Datum,
     label_key: str = "class",
     resample: Resampling = Resampling.BILINEAR,
-) -> Union[Prediction, None]:
+) -> Prediction:
     """Parses Ultralytic's result for an image segmentation task."""
 
     result = result[0]
 
     if result.masks is None:
-        return None
+        return Prediction(
+            datum=datum,
+            annotations=[],
+        )
 
     # Extract data
     probabilities = [conf.item() for conf in result.boxes.conf]
