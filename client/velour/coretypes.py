@@ -1365,7 +1365,7 @@ Dataset.geospatial = DeclarativeMapper(
     ],
 )
 
-# Model
+# Annotation
 Annotation.task = DeclarativeMapper("task_types", TaskType)
 Annotation.type = DeclarativeMapper("annotation_types", AnnotationType)
 Annotation.geometric_area = DeclarativeMapper(
@@ -1384,6 +1384,7 @@ Annotation.geospatial = DeclarativeMapper(
     ],
 )
 
+# Model
 Model.name = DeclarativeMapper("models_names", str)
 Model.metadata = DeclarativeMapper("models_metadata", Union[int, float, str])
 Model.geospatial = DeclarativeMapper(
