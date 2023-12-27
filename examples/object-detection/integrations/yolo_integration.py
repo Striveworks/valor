@@ -87,7 +87,7 @@ def parse_detection_into_raster(
 
     result = result[0]
 
-    if result.masks.data is None:
+    if result.masks is None:
         return None
 
     # Extract data
