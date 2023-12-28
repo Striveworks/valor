@@ -759,31 +759,20 @@ class Query:
                 f"metadatum value of type `{type(value_filter.value)}` is currently not supported"
             )
         return op(lhs, rhs)
-        
 
     def filter_by_metadata(
         self,
-        metadata: dict[str, list[NumericFilter] | StringFilter | list[DateTimeFilter]],
+        metadata: dict[str, list[NumericFilter | StringFilter | DateTimeFilter]],
         table: DeclarativeMeta,
     ) -> list[BinaryExpression]:
-        # expressions that are binary (T or F)
         expressions = [
             self._filter_by_metadatum(key, value, table)
-            for key, value in metadata.items()
-            if isinstance(value, StringFilter)
+            for key, f_list in metadata.items()
+            for value in f_list
         ]
-        # expressions that can have multiple boundaries
-        expressions.extend([
-            self._filter_by_metadatum(key, value, table)
-            for key, vlist in metadata.items()
-            if isinstance(vlist, list)
-            for value in metadata[key]
-            if (
-                isinstance(value, NumericFilter) 
-                or isinstance(value, DateTimeFilter)
-            )
-        ])
-        return [and_(*expressions)]
+        if len(expressions) > 1:
+            expressions = [and_(*expressions)]
+        return expressions
 
     def _filter_by_geospatial(
         self,

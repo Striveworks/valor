@@ -703,10 +703,12 @@ def test_query_by_metadata(
                     operator="<",
                 ),
             ],
-            "some_str_attribute": schemas.StringFilter(
-                value="abc",
-                operator="==",
-            ),
+            "some_str_attribute": [
+                schemas.StringFilter(
+                    value="abc",
+                    operator="==",
+                ),
+            ],
         }
     )
     q = Query(models.Datum.uid).filter(f).any()
@@ -723,10 +725,12 @@ def test_query_by_metadata(
                     operator=">",
                 ),
             ],
-            "some_str_attribute": schemas.StringFilter(
-                value="abc",
-                operator="==",
-            ),
+            "some_str_attribute": [
+                schemas.StringFilter(
+                    value="abc",
+                    operator="==",
+                ),
+            ]
         }
     )
     q = Query(models.Datum.uid).filter(f).any()
@@ -743,10 +747,12 @@ def test_query_by_metadata(
                     operator="<",
                 ),
             ],
-            "some_str_attribute": schemas.StringFilter(
-                value="xyz",
-                operator="==",
-            ),
+            "some_str_attribute": [
+                schemas.StringFilter(
+                    value="xyz",
+                    operator="==",
+                ),
+            ],
         }
     )
     q = Query(models.Datum.uid).filter(f).any()
@@ -763,10 +769,12 @@ def test_query_by_metadata(
                     operator=">",
                 ),
             ],
-            "some_str_attribute": schemas.StringFilter(
-                value="xyz",
-                operator="==",
-            ),
+            "some_str_attribute": [
+                schemas.StringFilter(
+                    value="xyz",
+                    operator="==",
+                ),
+            ],
         }
     )
     q = Query(models.Datum.uid).filter(f).any()
@@ -2008,6 +2016,7 @@ def test_datum_datetime_query(
 
     results = db.query(time_filter(4, op)).all()
     assert len(results) == 0
+
 
 def test_datum_datetime_query(
     db: Session,

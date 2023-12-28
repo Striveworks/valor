@@ -293,19 +293,19 @@ class Filter(BaseModel):
     ----------
     dataset_names: List[str], default=None
         A list of `Dataset` names to filter on.
-    dataset_metadata: Dict[str, StringFilter | List[NumericFilter] | List[DateTimeFilter]], default=None
+    dataset_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
         A dictionary of `Dataset` metadata to filter on.
     dataset_geospatial: List[GeospatialFilter]., default=None
         A list of `Dataset` geospatial filters to filter on.
     models_names: List[str], default=None
         A list of `Model` names to filter on.
-    models_metadata: Dict[str, StringFilter | List[NumericFilter] | List[DateTimeFilter]], default=None
+    models_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
         A dictionary of `Model` metadata to filter on.
     models_geospatial: List[GeospatialFilter], default=None
         A list of `Model` geospatial filters to filter on.
     datum_ids: List[str], default=None
         A list of `Datum` UIDs to filter on.
-    datum_metadata: Dict[str, StringFilter | List[NumericFilter] | List[DateTimeFilter]], default=None
+    datum_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
         A dictionary of `Datum` metadata to filter on.
     datum_geospatial: List[GeospatialFilter], default=None
         A list of `Datum` geospatial filters to filter on.
@@ -315,7 +315,7 @@ class Filter(BaseModel):
         A list of `Annotation` types to filter on.
     annotation_geometric_area: List[ValueFilter], default=None
         A list of `ValueFilters` which are used to filter `Evaluations` according to the `Annotation`'s geometric area.
-    annotation_metadata: Dict[str, StringFilter | List[NumericFilter] | List[DateTimeFilter]], default=None
+    annotation_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
         A dictionary of `Annotation` metadata to filter on.
     annotation_geospatial: List[GeospatialFilter], default=None
         A list of `Annotation` geospatial filters to filter on.
@@ -333,14 +333,15 @@ class Filter(BaseModel):
     dataset_names: list[str] | None = None
     dataset_metadata: dict[
         str, 
-        StringFilter | list[NumericFilter] | list[DateTimeFilter]
+        list[StringFilter | NumericFilter | DateTimeFilter]
     ] | None = None
     dataset_geospatial: list[GeospatialFilter] | None = None
 
     # models
     models_names: list[str] | None = None
     models_metadata: dict[
-        str, StringFilter | list[NumericFilter] | list[DateTimeFilter]
+        str, 
+        list[StringFilter | NumericFilter | DateTimeFilter]
     ] | None = None
     models_geospatial: list[GeospatialFilter] | None = None
 
@@ -351,7 +352,7 @@ class Filter(BaseModel):
     datum_uids: list[str] | None = None
     datum_metadata: dict[
         str, 
-        StringFilter | list[NumericFilter] | list[DateTimeFilter]
+        list[StringFilter | NumericFilter | DateTimeFilter]
     ] | None = None
     datum_geospatial: list[GeospatialFilter] | None = None
 
@@ -361,7 +362,7 @@ class Filter(BaseModel):
     annotation_geometric_area: list[NumericFilter] | None = None
     annotation_metadata: dict[
         str, 
-        StringFilter | list[NumericFilter] | list[DateTimeFilter]
+        list[StringFilter | NumericFilter | DateTimeFilter]
     ] | None = None
     annotation_geospatial: list[GeospatialFilter] | None = None
 

@@ -1,8 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum
 from typing import Dict, List, Union
 
 from velour.enums import AnnotationType, TaskType
+from velour.schemas.metadata import DateTime
 
 
 @dataclass
@@ -25,11 +26,17 @@ class ValueFilter:
         If the `operator` doesn't match one of the allowed patterns.
     """
 
-    value: Union[int, float, str]
+    value: Union[int, float, str, DateTime, Dict[str, str]]
     operator: str = "=="
 
     def __post_init__(self):
-        if isinstance(self.value, int) or isinstance(self.value, float):
+        if (
+            isinstance(self.value, int) 
+            or isinstance(self.value, float)
+        ):
+            allowed_operators = [">", "<", ">=", "<=", "==", "!="]
+        elif isinstance(self.value, DateTime):
+            self.value = asdict(self.value)
             allowed_operators = [">", "<", ">=", "<=", "==", "!="]
         elif isinstance(self.value, str):
             allowed_operators = ["==", "!="]
@@ -340,13 +347,17 @@ class Filter:
                 expr.value for expr in expression_dict["dataset_names"]
             ]
         if "dataset_metadata" in expression_dict:
-            filter_request.dataset_metadata = {
-                expr.key: ValueFilter(
-                    value=expr.value,
-                    operator=expr.operator,
+            for expr in expression_dict["dataset_metadata"]:
+                if not filter_request.dataset_metadata:
+                    filter_request.dataset_metadata = {}
+                if expr.key not in filter_request.dataset_metadata:
+                    filter_request.dataset_metadata[expr.key] = []
+                filter_request.dataset_metadata[expr.key].append(
+                    ValueFilter(
+                        value=expr.value,
+                        operator=expr.operator,
+                    )
                 )
-                for expr in expression_dict["dataset_metadata"]
-            }
         if "dataset_geospatial" in expression_dict:
             filter_request.dataset_geospatial = [
                 GeospatialFilter(
@@ -361,13 +372,17 @@ class Filter:
                 expr.value for expr in expression_dict["models_names"]
             ]
         if "models_metadata" in expression_dict:
-            filter_request.models_metadata = {
-                expr.key: ValueFilter(
-                    value=expr.value,
-                    operator=expr.operator,
+            for expr in expression_dict["models_metadata"]:
+                if not filter_request.models_metadata:
+                    filter_request.models_metadata = {}
+                if expr.key not in filter_request.models_metadata:
+                    filter_request.models_metadata[expr.key] = []
+                filter_request.models_metadata[expr.key].append(
+                    ValueFilter(
+                        value=expr.value,
+                        operator=expr.operator,
+                    )
                 )
-                for expr in expression_dict["models_metadata"]
-            }
         if "model_geospatial" in expression_dict:
             filter_request.model_geospatial = [
                 GeospatialFilter(
@@ -382,13 +397,17 @@ class Filter:
                 expr.value for expr in expression_dict["datum_uids"]
             ]
         if "datum_metadata" in expression_dict:
-            filter_request.datum_metadata = {
-                expr.key: ValueFilter(
-                    value=expr.value,
-                    operator=expr.operator,
+            for expr in expression_dict["datum_metadata"]:
+                if not filter_request.datum_metadata:
+                    filter_request.datum_metadata = {}
+                if expr.key not in filter_request.datum_metadata:
+                    filter_request.datum_metadata[expr.key] = []
+                filter_request.datum_metadata[expr.key].append(
+                    ValueFilter(
+                        value=expr.value,
+                        operator=expr.operator,
+                    )
                 )
-                for expr in expression_dict["datum_metadata"]
-            }
         if "datum_geospatial" in expression_dict:
             filter_request.datum_geospatial = [
                 GeospatialFilter(
@@ -416,13 +435,17 @@ class Filter:
                 for expr in expression_dict["annotation_geometric_area"]
             ]
         if "annotation_metadata" in expression_dict:
-            filter_request.annotation_metadata = {
-                expr.key: ValueFilter(
-                    value=expr.value,
-                    operator=expr.operator,
+            for expr in expression_dict["annotation_metadata"]:
+                if not filter_request.annotation_metadata:
+                    filter_request.annotation_metadata = {}
+                if expr.key not in filter_request.annotation_metadata:
+                    filter_request.annotation_metadata[expr.key] = []
+                filter_request.annotation_metadata[expr.key].append(
+                    ValueFilter(
+                        value=expr.value,
+                        operator=expr.operator,
+                    )
                 )
-                for expr in expression_dict["annotation_metadata"]
-            }
         if "annotation_geospatial" in expression_dict:
             filter_request.annotation_geospatial = [
                 GeospatialFilter(

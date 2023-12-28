@@ -20,7 +20,11 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .metadata import validate_metadata
+from .metadata import (
+    validate_metadata,
+    dump_metadata,
+    DateTime,
+)
 
 __all__ = [
     "Box",
@@ -39,5 +43,7 @@ __all__ = [
     "Filter",
     "ValueFilter",
     "GeospatialFilter",
+    "DateTime",
     "validate_metadata",
+    "dump_metadata",
 ]
