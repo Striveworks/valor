@@ -1391,26 +1391,27 @@ def test_model_geospatial_filters(
 
 @pytest.fixture
 def time_metadata():
+    """List of datetimes using different formats."""
     return [
         schemas.DateTime(
-            value="Dec 01 2023 00:00:00",
+            value="2022",
+            pattern="YYYY"
+        ),
+        schemas.DateTime(
+            value="Apr 07 2023 16:34:56",
             pattern="Mon DD YYYY HH24:MI:SS"
         ),
         schemas.DateTime(
-            value="Dec 07 2023 00:00:00",
-            pattern="Mon DD YYYY HH24:MI:SS"
+            value="Apr 07 2023 4:35:56 PM" ,
+            pattern="Mon DD YYYY HH:MI:SS AM"
         ),
         schemas.DateTime(
-            value="Dec 14 2023 00:00:00",
-            pattern="Mon DD YYYY HH24:MI:SS"
+            value="November 023",
+            pattern="Month YYY"
         ),
         schemas.DateTime(
-            value="Dec 21 2023 00:00:00",
-            pattern="Mon DD YYYY HH24:MI:SS"
-        ),
-        schemas.DateTime(
-            value="Dec 28 2023 00:00:00",
-            pattern="Mon DD YYYY HH24:MI:SS"
+            value="52 2023",
+            pattern="WW YYYY"
         ),
     ]
 
