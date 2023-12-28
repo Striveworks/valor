@@ -8,7 +8,13 @@ from .core import (
     Model,
     Prediction,
 )
-from .filters import Filter, GeospatialFilter, NumericFilter, StringFilter
+from .filters import (
+    Filter, 
+    GeospatialFilter, 
+    NumericFilter, 
+    StringFilter,
+    DateTimeFilter,
+)
 from .geojson import GeoJSON
 from .geometry import (
     BasicPolygon,

@@ -1,32 +1,25 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class DateTime(BaseModel):
     """
     An object describing a date and time.
 
+    See patterns at:
+    https://www.postgresql.org/docs/current/functions-formatting.html
+
     Attributes
     ----------
-    timestamp : int
-        The timestamp in UNIX format.
-    timestamp_local : int
-        The local timestamp in UNIX format.
-    date : int
-        The date in UNIX format.
-    time : int
-        The time in UNIX format.
-    time_local : int
-        The local time in UNIX format.
-    interval : int
-        The interval between moments in time.
+    value : str
+        Date and/or time value as a string.
+    pattern : str
+        Template pattern for formatting date and/or time value.
     """
 
-    timestamp: int
-    timestamp_local: int
-    date: int
-    time: int
-    time_local: int
-    interval: int
+    value: str
+    pattern: str
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class Metadatum(BaseModel):
@@ -43,3 +36,5 @@ class Metadatum(BaseModel):
 
     key: str
     value: float | str | DateTime
+
+    model_config = ConfigDict(extra="forbid")

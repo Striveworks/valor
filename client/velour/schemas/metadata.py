@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Dict, Union
 
 from velour.exceptions import SchemaTypeError
@@ -30,3 +31,23 @@ def validate_metadata(metadata):
         # Handle special key-values
         if key == "href":
             _validate_href(value)
+
+
+@dataclass
+class DateTime:
+    """
+    An object describing a date and time.
+    
+    https://www.postgresql.org/docs/current/functions-formatting.html 
+
+    Examples
+    --------
+    >>> DateTime(
+    ...     value="2024",
+    ...     pattern="YYYY"   
+    ... )
+    """
+
+    value: str
+    pattern: str
+    

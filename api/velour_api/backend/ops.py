@@ -12,6 +12,7 @@ from velour_api.schemas import (
     GeospatialFilter,
     NumericFilter,
     StringFilter,
+    DateTimeFilter,
 )
 
 
@@ -737,37 +738,51 @@ class Query:
     def _filter_by_metadatum(
         self,
         key: str,
-        value_filter: NumericFilter | StringFilter,
+        value_filter: NumericFilter | StringFilter | DateTimeFilter,
         table: DeclarativeMeta,
     ) -> BinaryExpression:
         if isinstance(value_filter, NumericFilter):
             op = self._get_numeric_op(value_filter.operator)
             lhs = table.meta[key].astext.cast(Float)
+            rhs = value_filter.value
+            return op(lhs, value_filter.value)
         elif isinstance(value_filter, StringFilter):
             op = self._get_string_op(value_filter.operator)
             lhs = table.meta[key].astext
+            rhs = value_filter.value
+        elif isinstance(value_filter, DateTimeFilter):
+            op = self._get_numeric_op(value_filter.operator)
+            lhs = func.to_timestamp(table.meta[key]['value'].astext, table.meta[key]['pattern'].astext)
+            rhs = func.to_timestamp(value_filter.value.value, value_filter.value.pattern)
         else:
             raise NotImplementedError(
                 f"metadatum value of type `{type(value_filter.value)}` is currently not supported"
             )
-        return op(lhs, value_filter.value)
+        return op(lhs, rhs)
+        
 
     def filter_by_metadata(
         self,
-        metadata: dict[str, list[NumericFilter] | StringFilter],
+        metadata: dict[str, list[NumericFilter] | StringFilter | list[DateTimeFilter]],
         table: DeclarativeMeta,
     ) -> list[BinaryExpression]:
+        # expressions that are binary (T or F)
         expressions = [
             self._filter_by_metadatum(key, value, table)
             for key, value in metadata.items()
             if isinstance(value, StringFilter)
-        ] + [
+        ]
+        # expressions that can have multiple boundaries
+        expressions.extend([
             self._filter_by_metadatum(key, value, table)
             for key, vlist in metadata.items()
             if isinstance(vlist, list)
             for value in metadata[key]
-            if isinstance(value, NumericFilter)
-        ]
+            if (
+                isinstance(value, NumericFilter) 
+                or isinstance(value, DateTimeFilter)
+            )
+        ])
         return [and_(*expressions)]
 
     def _filter_by_geospatial(
