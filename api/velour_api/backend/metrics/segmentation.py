@@ -1,5 +1,5 @@
 from geoalchemy2.functions import ST_Count, ST_MapAlgebra
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import Select, func, join, select
 
 from velour_api import enums, schemas
@@ -16,7 +16,7 @@ def _generate_groundtruth_query(groundtruth_filter: schemas.Filter) -> Select:
     """Generate a sqlalchemy query to fetch a groundtruth."""
     return (
         Query(
-            models.Annotation.raster.label("raster"),
+            models.Annotation.id.label("annotation_id"),
             models.Annotation.datum_id.label("datum_id"),
         )
         .filter(groundtruth_filter)
@@ -29,7 +29,7 @@ def _generate_prediction_query(prediction_filter: schemas.Filter) -> Select:
 
     return (
         Query(
-            models.Annotation.raster.label("raster"),
+            models.Annotation.id.label("annotation_id"),
             models.Annotation.datum_id.label("datum_id"),
         )
         .filter(prediction_filter)
@@ -43,24 +43,32 @@ def _count_true_positives(
     prediction_subquery: Select,
 ) -> int:
     """Computes the pixelwise true positives for the given dataset, model, and label"""
+    gt_annotation = aliased(models.Annotation)
+    pd_annotation = aliased(models.Annotation)
     ret = db.scalar(
         select(
             func.sum(
                 ST_Count(
                     ST_MapAlgebra(
-                        groundtruth_subquery.c.raster,
-                        prediction_subquery.c.raster,
+                        gt_annotation.raster,
+                        pd_annotation.raster,
                         "[rast1]*[rast2]",  # https://postgis.net/docs/RT_ST_MapAlgebra_expr.html
                     )
                 )
             )
-        ).select_from(
-            join(
-                groundtruth_subquery,
-                prediction_subquery,
-                groundtruth_subquery.c.datum_id
-                == prediction_subquery.c.datum_id,
-            )
+        )
+        .select_from(groundtruth_subquery)
+        .join(
+            prediction_subquery, 
+            prediction_subquery.c.datum_id == groundtruth_subquery.c.datum_id
+        )
+        .join(
+            gt_annotation,
+            gt_annotation.id == groundtruth_subquery.c.annotation_id
+        )
+        .join(
+            pd_annotation,
+            pd_annotation.id == prediction_subquery.c.annotation_id
         )
     )
     if ret is None:
@@ -75,7 +83,11 @@ def _count_groundtruths(
     label_id: int,
 ) -> int:
     """Total number of groundtruth pixels for the given dataset and label"""
-    ret = db.scalar(select(func.sum(ST_Count(groundtruth_subquery.c.raster))))
+    ret = db.scalar(
+        select(func.sum(ST_Count(models.Annotation.raster)))
+        .select_from(groundtruth_subquery)
+        .join(models.Annotation, models.Annotation.id == groundtruth_subquery.c.annotation_id)
+    )
     if ret is None:
         raise RuntimeError(
             f"No groundtruth pixels for label id '{label_id}' found in dataset '{dataset_name}'"
@@ -88,7 +100,11 @@ def _count_predictions(
     prediction_subquery: Select,
 ) -> int:
     """Total number of predicted pixels for the given dataset, model, and label"""
-    ret = db.scalar(select(func.sum(ST_Count(prediction_subquery.c.raster))))
+    ret = db.scalar(
+        select(func.sum(ST_Count(models.Annotation.raster)))
+        .select_from(prediction_subquery)
+        .join(models.Annotation, models.Annotation.id == prediction_subquery.c.annotation_id)
+    )
     if ret is None:
         return 0
     return int(ret)
