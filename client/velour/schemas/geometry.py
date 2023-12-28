@@ -5,6 +5,7 @@ from typing import List, Tuple
 
 import numpy as np
 import PIL.Image
+from PIL import ImageDraw
 
 
 @dataclass
@@ -41,9 +42,10 @@ class Point:
     y: float
 
     def __post_init__(self):
-        if isinstance(self.x, int):
+        int_classes = (int, np.int8, np.int16, np.int32, np.int64)
+        if isinstance(self.x, int_classes):
             self.x = float(self.x)
-        if isinstance(self.y, int):
+        if isinstance(self.y, int_classes):
             self.y = float(self.y)
 
         if not isinstance(self.x, float):
@@ -149,6 +151,29 @@ class Box:
             raise ValueError("Cannot have xmin > xmax")
         if self.min.y > self.max.y:
             raise ValueError("Cannot have ymin > ymax")
+
+    def draw_on_image(
+        self, img: PIL.Image.Image, color: Tuple[int, int, int] = (255, 0, 0)
+    ) -> PIL.Image.Image:
+        """Draws the bounding box on top of an image. this operation is not done in-place
+
+        Parameters
+        ----------
+        img
+            pillow image to draw on.
+        color
+            RGB tuple of the color to use
+        """
+        img = img.copy()
+        draw = ImageDraw.Draw(img)
+        draw.rectangle(
+            [
+                (self.min.x, self.min.y),
+                (self.max.x, self.max.y),
+            ],
+            outline=color,
+        )
+        return img
 
 
 @dataclass
