@@ -49,7 +49,7 @@ def dump_metadata(metadata: dict) -> dict:
         elif isinstance(value, datetime.time):
             metadata[key] = {"time": value.isoformat()}
         elif isinstance(value, datetime.timedelta):
-            metadata[key] = {"duration": str(value.total_seconds)}
+            metadata[key] = {"duration": str(value.total_seconds())}
     return metadata
 
 

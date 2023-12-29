@@ -63,7 +63,7 @@ class ValueFilter:
 
         else:
             raise TypeError(
-                f"Filter `value` is of unsupported type: `{self.value}`."
+                f"Filter `value` is an unsupported value: `{self.value}` of type {type(self.value)}."
             )
         
         # check if operator is valid

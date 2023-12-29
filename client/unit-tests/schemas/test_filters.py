@@ -67,4 +67,4 @@ def test_value_filter():
     _test_numeric(datetime.datetime.now().time())
 
     # datetime.timedelta
-    _test_numeric(datetime.datetime.now() - datetime.timedelta(days=1))
+    _test_numeric(datetime.timedelta(days=1))
