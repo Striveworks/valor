@@ -23,7 +23,7 @@ from .geometry import (
 from .metadata import (
     validate_metadata,
     dump_metadata,
-    DateTime,
+    load_metadata,
 )
 
 __all__ = [
@@ -43,7 +43,7 @@ __all__ = [
     "Filter",
     "ValueFilter",
     "GeospatialFilter",
-    "DateTime",
     "validate_metadata",
     "dump_metadata",
+    "load_metadata",
 ]

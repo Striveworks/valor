@@ -1,6 +1,7 @@
 import math
 import json
 import warnings
+import datetime
 from dataclasses import asdict, is_dataclass
 from typing import Dict, List, Tuple, Union
 
@@ -15,7 +16,7 @@ from velour.schemas.evaluation import (
 )
 from velour.schemas.filters import BinaryExpression, DeclarativeMapper, Filter
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
-from velour.schemas.metadata import validate_metadata, dump_metadata, DateTime
+from velour.schemas.metadata import validate_metadata, dump_metadata, load_metadata
 
 
 class Label:
@@ -161,7 +162,10 @@ class Datum:
     def __init__(
         self,
         uid: str,
-        metadata: Dict[str, Union[int, float, str, DateTime]] = None,
+        metadata: Dict[
+            str, 
+            Union[int, float, str, datetime.datetime, datetime.date, datetime.time]
+        ] = None,
         geospatial: Dict[
             str,
             Union[
@@ -190,6 +194,7 @@ class Datum:
         if not isinstance(self.uid, str):
             raise SchemaTypeError("uid", str, self.uid)
         validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
 
     def __str__(self):
         return str(self.dict())
@@ -239,7 +244,7 @@ class Annotation:
         The task type associated with the `Annotation`.
     labels: List[Label]
         A list of labels to use for the `Annotation`.
-    metadata: Dict[str, Union[int, float, str]]
+    metadata: Dict[str, Union[int, float, str, datetime.datetime, datetime.date, datetime.time]]
         A dictionary of metadata that describes the `Annotation`.
     bounding_box: BoundingBox
         A bounding box to assign to the `Annotation`.
@@ -319,7 +324,10 @@ class Annotation:
         self,
         task_type: TaskType,
         labels: List[Label],
-        metadata: Dict[str, Union[int, float, str, DateTime]] = None,
+        metadata: Dict[
+            str, 
+            Union[int, float, str, datetime.datetime, datetime.date, datetime.time]
+        ] = None,
         bounding_box: BoundingBox = None,
         polygon: Polygon = None,
         multipolygon: MultiPolygon = None,
@@ -382,6 +390,7 @@ class Annotation:
 
         # metadata
         validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
 
     def __str__(self):
         return str(self.dict())
@@ -661,7 +670,10 @@ class Dataset:
         self,
         client: Client,
         name: str,
-        metadata: Dict[str, Union[int, float, str, DateTime]] = None,
+        metadata: Dict[
+            str, 
+            Union[int, float, str, datetime.datetime, datetime.date, datetime.time]
+        ] = None,
         geospatial: Dict[
             str,
             Union[
@@ -691,11 +703,6 @@ class Dataset:
             SQL index for model.
         delete_if_exists : bool, default=False
             Deletes any existing dataset with the same name.
-
-        Returns
-        ----------
-        Dataset
-            The newly-created `Dataset`.
         """
         self.name = name
         self.metadata = metadata
@@ -729,7 +736,10 @@ class Dataset:
             self.metadata = {}
         if not self.geospatial:
             self.geospatial = {}
+
+        # metadata
         validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
 
     def __str__(self):
         return str(self.dict())
@@ -937,7 +947,10 @@ class Model:
         self,
         client: Client,
         name: str,
-        metadata: Dict[str, Union[int, float, str, DateTime]] = None,
+        metadata: Dict[
+            str, 
+            Union[int, float, str, datetime.datetime, datetime.date, datetime.time]
+        ] = None,
         geospatial: Dict[
             str,
             Union[
@@ -967,11 +980,6 @@ class Model:
             SQL index for model.
         delete_if_exists : bool, default=False
             Deletes any existing model with the same name.
-
-        Returns
-        ----------
-        Model
-            The newly-created `Model`.
         """
         self.name = name
         self.metadata = metadata
@@ -1004,7 +1012,10 @@ class Model:
             self.metadata = {}
         if not self.geospatial:
             self.geospatial = {}
+
+        # metadata
         validate_metadata(self.metadata)
+        self.metadata = load_metadata(self.metadata)
 
     def __str__(self):
         return str(self.dict())
@@ -1336,7 +1347,7 @@ Label.label = DeclarativeMapper("labels", Label)
 
 # Datum
 Datum.uid = DeclarativeMapper("datum_uids", str)
-Datum.metadata = DeclarativeMapper("datum_metadata", Union[int, float, str, DateTime])
+Datum.metadata = DeclarativeMapper("datum_metadata", Union[int, float, str, datetime.datetime, datetime.date, datetime.time])
 Datum.geospatial = DeclarativeMapper(
     "datum_geospatial",
     Union[
@@ -1353,7 +1364,7 @@ Prediction.score = DeclarativeMapper("prediction_scores", Union[int, float])
 # Dataset
 Dataset.name = DeclarativeMapper("dataset_names", str)
 Dataset.metadata = DeclarativeMapper(
-    "dataset_metadata", Union[int, float, str, DateTime]
+    "dataset_metadata", Union[int, float, str, datetime.datetime, datetime.date, datetime.time]
 )
 Dataset.geospatial = DeclarativeMapper(
     "dataset_geospatial",
@@ -1372,7 +1383,7 @@ Annotation.geometric_area = DeclarativeMapper(
     "annotation_geometric_area", float
 )
 Annotation.metadata = DeclarativeMapper(
-    "annotation_metadata", Union[int, float, str, DateTime]
+    "annotation_metadata", Union[int, float, str, datetime.datetime, datetime.date, datetime.time]
 )
 Annotation.geospatial = DeclarativeMapper(
     "annotation_geospatial",
@@ -1386,7 +1397,7 @@ Annotation.geospatial = DeclarativeMapper(
 
 # Model
 Model.name = DeclarativeMapper("models_names", str)
-Model.metadata = DeclarativeMapper("models_metadata", Union[int, float, str, DateTime])
+Model.metadata = DeclarativeMapper("models_metadata", Union[int, float, str, datetime.datetime, datetime.date, datetime.time])
 Model.geospatial = DeclarativeMapper(
     "model_geospatial",
     Union[

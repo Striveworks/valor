@@ -2,6 +2,7 @@
 that is no auth
 """
 import time
+from datetime import date, datetime
 
 import pandas
 import pytest
@@ -18,7 +19,7 @@ from velour import (
 )
 from velour.client import Client, ClientException
 from velour.enums import JobStatus, TaskType
-from velour.schemas import EvaluationSettings, DateTime
+from velour.schemas import EvaluationSettings
 
 
 def test_evaluate_image_clf(
@@ -448,8 +449,8 @@ def test_stratify_clf_metrics_by_time(
                 uid=f"uid{i}",
                 dataset=dataset_name,
                 metadata={
-                    "md1": DateTime(str(2000 + (i % 3)), "YYYY"),
-                    "md2": DateTime(str(2000 + (i % 4)), "YYYY"),
+                    "md1": date.fromisoformat(f"{2000 + (i % 3)}-01-01"),
+                    "md2": datetime.fromisoformat(f"{2000 + (i % 4)}-01-01"),
                 },
             ),
             annotations=[
@@ -470,8 +471,8 @@ def test_stratify_clf_metrics_by_time(
                 uid=f"uid{i}",
                 dataset=dataset_name,
                 metadata={
-                    "md1": DateTime(str(2000 + (i % 3)), "YYYY"),
-                    "md2": DateTime(str(2000 + (i % 4)), "YYYY"),
+                    "md1": date.fromisoformat(f"{2000 + (i % 3)}-01-01"),
+                    "md2": datetime.fromisoformat(f"{2000 + (i % 4)}-01-01"),
                 },
             ),
             annotations=[
@@ -490,7 +491,7 @@ def test_stratify_clf_metrics_by_time(
     eval_results_val2 = model.evaluate_classification(
         dataset=dataset,
         filters=[
-            Datum.metadata["md1"] == DateTime("2002", "YYYY"),
+            Datum.metadata["md1"] == date.fromisoformat("2002-01-01"),
         ],
     )
     eval_results_val2.wait_for_completion(timeout=30)

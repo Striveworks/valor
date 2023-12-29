@@ -1,9 +1,10 @@
 import operator
 
-from sqlalchemy import Float, and_, func, not_, or_, select
+from sqlalchemy import Float, TIMESTAMP, and_, func, not_, or_, select, cast
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression
+from sqlalchemy.dialects.postgresql import INTERVAL
 
 from velour_api import enums
 from velour_api.backend import models
@@ -13,6 +14,9 @@ from velour_api.schemas import (
     NumericFilter,
     StringFilter,
     DateTimeFilter,
+    DateTime,
+    Date,
+    Time,
 )
 
 
@@ -751,9 +755,19 @@ class Query:
             lhs = table.meta[key].astext
             rhs = value_filter.value
         elif isinstance(value_filter, DateTimeFilter):
+            if isinstance(value_filter.value, Time):
+                cast_type = INTERVAL
+            else:
+                cast_type = TIMESTAMP(timezone=True)
             op = self._get_numeric_op(value_filter.operator)
-            lhs = func.to_timestamp(table.meta[key]['value'].astext, table.meta[key]['pattern'].astext)
-            rhs = func.to_timestamp(value_filter.value.value, value_filter.value.pattern)
+            lhs = cast(
+                table.meta[key][value_filter.value.key].astext,
+                cast_type,
+            )
+            rhs = cast(
+                value_filter.value.value,
+                cast_type,
+            )
         else:
             raise NotImplementedError(
                 f"metadatum value of type `{type(value_filter.value)}` is currently not supported"

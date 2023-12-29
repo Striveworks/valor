@@ -1,9 +1,9 @@
+import datetime
 from dataclasses import dataclass, asdict
 from enum import Enum
 from typing import Dict, List, Union
 
 from velour.enums import AnnotationType, TaskType
-from velour.schemas.metadata import DateTime
 
 
 @dataclass
@@ -26,24 +26,42 @@ class ValueFilter:
         If the `operator` doesn't match one of the allowed patterns.
     """
 
-    value: Union[int, float, str, DateTime, Dict[str, str]]
+    value: Union[int, float, str, Dict[str, str]]
     operator: str = "=="
 
     def __post_init__(self):
+        # numerics
         if (
             isinstance(self.value, int) 
             or isinstance(self.value, float)
         ):
             allowed_operators = [">", "<", ">=", "<=", "==", "!="]
-        elif isinstance(self.value, DateTime):
-            self.value = asdict(self.value)
+        
+        # datetime
+        elif isinstance(self.value, datetime.datetime):
+            self.value = {'datetime' : self.value.isoformat()}
             allowed_operators = [">", "<", ">=", "<=", "==", "!="]
+
+        # date
+        elif isinstance(self.value, datetime.date):
+            self.value = {'date' : self.value.isoformat()}
+            allowed_operators = [">", "<", ">=", "<=", "==", "!="]
+
+        # time
+        elif isinstance(self.value, datetime.time):
+            self.value = {'time' : self.value.isoformat()}
+            allowed_operators = [">", "<", ">=", "<=", "==", "!="]
+
+        # strings
         elif isinstance(self.value, str):
             allowed_operators = ["==", "!="]
+
         else:
             raise TypeError(
-                "`value` should be of type `int`, `float` or `str`"
+                f"Filter `value` is of unsupported type: `{self.value}`."
             )
+        
+        # check if operator is valid
         if self.operator not in allowed_operators:
             raise ValueError(
                 f"Invalid comparison operator '{self.operator}'. Allowed operators are {', '.join(allowed_operators)}."

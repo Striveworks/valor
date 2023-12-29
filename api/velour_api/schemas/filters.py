@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 from velour_api.enums import AnnotationType, TaskType
 from velour_api.schemas.geojson import GeoJSON
-from velour_api.schemas.metadata import DateTime
+from velour_api.schemas.metadata import DateTime, Date, Time
 
 
 class StringFilter(BaseModel):
@@ -231,7 +231,7 @@ class DateTimeFilter(BaseModel):
         If the `operator` doesn't match one of the allowed patterns.
     """
 
-    value: DateTime
+    value: DateTime | Date | Time
     operator: str = "=="
 
     @field_validator("operator")

@@ -25,7 +25,12 @@ from .geometry import (
     Raster,
 )
 from .info import APIVersion
-from .metadata import DateTime, Metadatum
+from .metadata import (
+    DateTime,
+    Date,
+    Time,
+    Metadatum,
+)
 from .metrics import (
     AccuracyMetric,
     APMetric,
@@ -70,6 +75,8 @@ __all__ = [
     "Raster",
     "Metadatum",
     "DateTime",
+    "Date",
+    "Time",
     "Metric",
     "AccuracyMetric",
     "ConfusionMatrix",
@@ -96,6 +103,7 @@ __all__ = [
     "StringFilter",
     "NumericFilter",
     "GeospatialFilter",
+    "DateTimeFilter",
     "Filter",
     "Health",
     "Readiness",

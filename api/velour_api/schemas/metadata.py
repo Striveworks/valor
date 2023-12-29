@@ -1,3 +1,5 @@
+import datetime
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -5,21 +7,63 @@ class DateTime(BaseModel):
     """
     An object describing a date and time.
 
-    See patterns at:
-    https://www.postgresql.org/docs/current/functions-formatting.html
+    Attributes
+    ----------
+    datetime : str
+        Datetime in ISO format.
+    """
+    datetime: str
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def key(self) -> str:
+        return "datetime"
+    
+    @property
+    def value(self) -> str:
+        return self.datetime
+
+
+class Date(BaseModel):
+    """
+    An object describing a date.
 
     Attributes
     ----------
-    value : str
-        Date and/or time value as a string.
-    pattern : str
-        Template pattern for formatting date and/or time value.
+    date : str
+        Date in ISO format.
     """
-
-    value: str
-    pattern: str
-
+    date: str
     model_config = ConfigDict(extra="forbid")
+
+    @property
+    def key(self) -> str:
+        return "date"
+    
+    @property
+    def value(self) -> str:
+        return self.date
+
+
+class Time(BaseModel):
+    """
+    An object describing a time.
+
+    Attributes
+    ----------
+    time : str
+        Time in ISO format.
+    """
+    time: str
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def key(self) -> str:
+        return "time"
+    
+    @property
+    def value(self) -> str:
+        return self.time
 
 
 class Metadatum(BaseModel):
