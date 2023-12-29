@@ -98,19 +98,13 @@ def create_datum(
     # retrieve dataset
     dataset = get_dataset(db, datum.dataset)
 
-    shape = (
-        schemas.GeoJSON.from_dict(data=datum.geospatial).shape().wkt()
-        if datum.geospatial
-        else None
-    )
-
     # create datum
     try:
         row = models.Datum(
             uid=datum.uid,
             dataset_id=dataset.id,
             meta=datum.metadata,
-            geo=shape,
+            geo=datum.geospatial.wkt() if datum.geospatial else None,
         )
         db.add(row)
         db.commit()

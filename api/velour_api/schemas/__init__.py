@@ -15,7 +15,7 @@ from .filters import (
     StringFilter,
     DateTimeFilter,
 )
-from .geojson import GeoJSON
+from .geojson import GeoJSONPoint, GeoJSONPolygon, GeoJSONMultiPolygon
 from .geometry import (
     BasicPolygon,
     BoundingBox,
@@ -94,7 +94,9 @@ __all__ = [
     "APMetricAveragedOverIOUs",
     "CreateClfMetricsResponse",
     "CreateSemanticSegmentationMetricsResponse",
-    "GeoJSON",
+    "GeoJSONPoint", 
+    "GeoJSONPolygon", 
+    "GeoJSONMultiPolygon",
     "mAPMetric",
     "mAPMetricAveragedOverIOUs",
     "ConfusionMatrixEntry",

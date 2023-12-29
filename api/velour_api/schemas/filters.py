@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from velour_api.enums import AnnotationType, TaskType
-from velour_api.schemas.geojson import GeoJSON
+from velour_api.schemas.geojson import GeoJSONPoint, GeoJSONPolygon, GeoJSONMultiPolygon
 from velour_api.schemas.metadata import DateTime, Date, Time, Duration
 
 
@@ -160,7 +160,7 @@ class GeospatialFilter(BaseModel):
 
     """
 
-    value: GeoJSON
+    value: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon
     operator: str = "intersect"
 
     @field_validator("operator")

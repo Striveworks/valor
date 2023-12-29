@@ -88,7 +88,7 @@ def raster_2():
 
 
 @pytest.fixture
-def geospatial_coordinates() -> dict[str, schemas.GeoJSON]:
+def geospatial_coordinates() -> dict[str, schemas.GeoJSONPoint | schemas.GeoJSONPolygon | schemas.GeoJSONMultiPolygon]:
     return {
         "point": {"type": "Point", "coordinates": [125.2750725, 38.760525]},
         "polygon1": {
@@ -962,7 +962,7 @@ def test_datum_geospatial_filters(
             **{
                 arg_name: [
                     schemas.GeospatialFilter(
-                        value=schemas.GeoJSON.from_dict(geodict),
+                        value=schemas.geojson.from_dict(geodict),
                         operator=operator,
                     ),
                 ]
@@ -1146,7 +1146,7 @@ def test_dataset_geospatial_filters(
             **{
                 arg_name: [
                     schemas.GeospatialFilter(
-                        value=schemas.GeoJSON.from_dict(geodict),
+                        value=schemas.geojson.from_dict(geodict),
                         operator=operator,
                     ),
                 ]
@@ -1279,7 +1279,7 @@ def test_model_geospatial_filters(
             **{
                 arg_name: [
                     schemas.GeospatialFilter(
-                        value=schemas.GeoJSON.from_dict(geodict),
+                        value=schemas.geojson.from_dict(geodict),
                         operator=operator,
                     ),
                 ]

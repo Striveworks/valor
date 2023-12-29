@@ -6,20 +6,20 @@ from velour_api import schemas
 
 def test_GeoJSON():
     # test valid entries
-    valid_point = schemas.GeoJSON.from_dict(
+    valid_point = schemas.geojson.from_dict(
         {"type": "Point", "coordinates": [125.2750725, 38.760525]}
     )
-    assert type(valid_point.shape()) is schemas.Point
-    assert type(valid_point.geometry.model_dump()) is dict
+    assert type(valid_point.geometry()) is schemas.Point
+    assert type(valid_point.model_dump()) is dict
     assert all(
         [
             key in ["type", "coordinates"]
-            for key in valid_point.geometry.model_dump().keys()
+            for key in valid_point.model_dump().keys()
         ]
     )
-    assert valid_point.geometry.model_dump()["type"] == "Point"
+    assert valid_point.model_dump()["type"] == "Point"
 
-    valid_polygon = schemas.GeoJSON.from_dict(
+    valid_polygon = schemas.geojson.from_dict(
         {
             "type": "Polygon",
             "coordinates": [
@@ -32,17 +32,17 @@ def test_GeoJSON():
             ],
         }
     )
-    assert type(valid_polygon.shape()) is schemas.Polygon
-    assert type(valid_polygon.geometry.model_dump()) is dict
+    assert type(valid_polygon.geometry()) is schemas.Polygon
+    assert type(valid_polygon.model_dump()) is dict
     assert all(
         [
             key in ["type", "coordinates"]
-            for key in valid_polygon.geometry.model_dump().keys()
+            for key in valid_polygon.model_dump().keys()
         ]
     )
-    assert valid_polygon.geometry.model_dump()["type"] == "Polygon"
+    assert valid_polygon.model_dump()["type"] == "Polygon"
 
-    valid_multi = schemas.GeoJSON.from_dict(
+    valid_multi = schemas.geojson.from_dict(
         {
             "type": "MultiPolygon",
             "coordinates": [
@@ -77,19 +77,19 @@ def test_GeoJSON():
             ],
         }
     )
-    assert type(valid_multi.shape()) is schemas.MultiPolygon
-    assert type(valid_multi.geometry.model_dump()) is dict
+    assert type(valid_multi.geometry()) is schemas.MultiPolygon
+    assert type(valid_multi.model_dump()) is dict
     assert all(
         [
             key in ["type", "coordinates"]
-            for key in valid_multi.geometry.model_dump().keys()
+            for key in valid_multi.model_dump().keys()
         ]
     )
-    assert valid_multi.geometry.model_dump()["type"] == "MultiPolygon"
+    assert valid_multi.model_dump()["type"] == "MultiPolygon"
 
     # invalids
     with pytest.raises(ValueError):
-        schemas.GeoJSON.from_dict(
+        schemas.geojson.from_dict(
             {
                 "type": "fake_type",
                 "coordinates": [
@@ -98,18 +98,18 @@ def test_GeoJSON():
                     ]
                 ],
             }
-        ).shape()
+        )
 
     with pytest.raises(ValidationError):
-        schemas.GeoJSON.from_dict(
+        schemas.geojson.from_dict(
             {
                 "type": "Polygon",
                 "coordinates": "fake_string",
             }
-        ).shape()
+        )
 
     with pytest.raises(ValidationError):
-        schemas.GeoJSON.from_dict(
+        schemas.geojson.from_dict(
             {
                 "type": "Polygon",
                 "coordinates": [
@@ -118,10 +118,10 @@ def test_GeoJSON():
                     ]
                 ],
             }
-        ).shape()
+        ).geometry()
 
     with pytest.raises(ValidationError):
-        schemas.GeoJSON.from_dict(
+        schemas.geojson.from_dict(
             {
                 "type": "Polygon",
                 "coordinates": [
@@ -131,4 +131,4 @@ def test_GeoJSON():
                     ]
                 ],
             }
-        ).shape()
+        ).geometry()

@@ -806,21 +806,21 @@ class Query:
                 geospatial_expressions.append(
                     func.ST_Covers(
                         # note that casting the WKT using ST_GEOGFROMTEXT isn't necessary here: we're implicitely comparing two geographies, not two geometries
-                        geojson.shape().wkt(),
+                        geojson.wkt(),
                         model_object.geo,
                     )
                 )
             elif operator == "intersect":
                 geospatial_expressions.append(
                     model_object.geo.ST_Intersects(
-                        geojson.shape().wkt(),
+                        geojson.wkt(),
                     )
                 )
             elif operator == "outside":
                 geospatial_expressions.append(
                     not_(
                         func.ST_Covers(
-                            geojson.shape().wkt(),
+                            geojson.wkt(),
                             model_object.geo,
                         )
                     )

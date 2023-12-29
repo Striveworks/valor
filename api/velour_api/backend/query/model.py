@@ -23,14 +23,12 @@ def create_model(
     model : schemas.Model
         The model to create.
     """
-    shape = (
-        schemas.GeoJSON.from_dict(data=model.geospatial).shape().wkt()
-        if model.geospatial
-        else None
-    )
-
     try:
-        row = models.Model(name=model.name, meta=model.metadata, geo=shape)
+        row = models.Model(
+            name=model.name,
+            meta=model.metadata, 
+            geo=model.geospatial.wkt() if model.geospatial else None,
+        )
         db.add(row)
         db.commit()
         return row
@@ -59,11 +57,20 @@ def get_model(
         The requested model.
     """
     model = core.get_model(db, name=name)
-    geo_dict = (
-        json.loads(db.scalar(ST_AsGeoJSON(model.geo))) if model.geo else {}
+    geodict = (
+        schemas.geojson.from_dict(
+            json.loads(
+                db.scalar(ST_AsGeoJSON(model.geo))
+            )
+        )
+        if model.geo
+        else None
     )
     return schemas.Model(
-        id=model.id, name=model.name, metadata=model.meta, geospatial=geo_dict
+        id=model.id, 
+        name=model.name, 
+        metadata=model.meta, 
+        geospatial=geodict,
     )
 
 

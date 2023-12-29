@@ -212,7 +212,7 @@ class Datum:
             "dataset": self.dataset_name,
             "uid": self.uid,
             "metadata": dump_metadata(self.metadata),
-            "geospatial": self.geospatial,
+            "geospatial": self.geospatial if self.geospatial else None,
         }
 
     def __eq__(self, other):
@@ -757,7 +757,7 @@ class Dataset:
             "id": self.id,
             "name": self.name,
             "metadata": dump_metadata(self.metadata),
-            "geospatial": self.geospatial,
+            "geospatial": self.geospatial if self.geospatial else None,
         }
 
     def add_groundtruth(
@@ -1033,7 +1033,7 @@ class Model:
             "id": self.id,
             "name": self.name,
             "metadata": dump_metadata(self.metadata),
-            "geospatial": self.geospatial,
+            "geospatial": self.geospatial if self.geospatial else None,
         }
 
     def add_prediction(self, prediction: Prediction):

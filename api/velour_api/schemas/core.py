@@ -18,6 +18,11 @@ from velour_api.schemas.geometry import (
     Polygon,
     Raster,
 )
+from velour_api.schemas.geojson import (
+    GeoJSONPoint,
+    GeoJSONPolygon,
+    GeoJSONMultiPolygon,
+)
 from velour_api.schemas.label import Label
 
 
@@ -66,14 +71,8 @@ class Dataset(BaseModel):
 
     id: int | None = None
     name: str
-    metadata: dict[str, float | str | dict[str, str]] = Field(default_factory=dict)
-    geospatial: dict[
-        str,
-        list[list[list[list[float | int]]]]
-        | list[list[list[float | int]]]
-        | list[float | int]
-        | str,
-    ] = Field(default_factory=dict)
+    metadata: dict[str, float | str | dict[str, str]] = {}
+    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = None
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
@@ -110,14 +109,8 @@ class Model(BaseModel):
 
     id: int | None = None
     name: str
-    metadata: dict[str, float | str | dict[str, str]] = Field(default_factory=dict)
-    geospatial: dict[
-        str,
-        list[list[list[list[float | int]]]]
-        | list[list[list[float | int]]]
-        | list[float | int]
-        | str,
-    ] = Field(default_factory=dict)
+    metadata: dict[str, float | str | dict[str, str]] = {}
+    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = None
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
@@ -154,14 +147,8 @@ class Datum(BaseModel):
 
     uid: str
     dataset: str
-    metadata: dict[str, float | str | dict[str, str]] = Field(default_factory=dict)
-    geospatial: dict[
-        str,
-        list[list[list[list[float | int]]]]
-        | list[list[list[float | int]]]
-        | list[float | int]
-        | str,
-    ] = Field(default_factory=dict)
+    metadata: dict[str, float | str | dict[str, str]] = {}
+    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = None
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("uid")
@@ -200,19 +187,13 @@ class Datum(BaseModel):
         boolean
             A boolean describing whether the two objects are equal.
         """
-        if (
-            not hasattr(other, "uid")
-            or not hasattr(other, "dataset")
-            or not hasattr(other, "metadata")
-            or not hasattr(other, "geospatial")
-        ):
-            return False
-
+        if not isinstance(other, Datum):
+            raise TypeError
         return (
             self.uid == other.uid
             and self.dataset == other.dataset
+            and self.metadata == other.metadata
             and self.geospatial == other.geospatial
-            and self.metadata == other.geospatial
         )
 
 
