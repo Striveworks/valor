@@ -23,6 +23,11 @@ def test_evaluation_evaluation_job():
 
 def test_to_dataframe():
 
+    try:
+        import pandas as pd
+    except ModuleNotFoundError:
+        return
+
     def _generate_metric(
         type: str,
         parameters: dict = None,
