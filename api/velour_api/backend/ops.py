@@ -17,6 +17,7 @@ from velour_api.schemas import (
     DateTime,
     Date,
     Time,
+    Duration,
 )
 
 
@@ -755,7 +756,10 @@ class Query:
             lhs = table.meta[key].astext
             rhs = value_filter.value
         elif isinstance(value_filter, DateTimeFilter):
-            if isinstance(value_filter.value, Time):
+            if (
+                isinstance(value_filter.value, Time)
+                or isinstance(value_filter.value, Duration)
+            ):
                 cast_type = INTERVAL
             else:
                 cast_type = TIMESTAMP(timezone=True)

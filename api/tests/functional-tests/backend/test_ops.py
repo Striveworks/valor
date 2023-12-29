@@ -1455,6 +1455,28 @@ def time_metadata() -> list[schemas.Time]:
     ]
 
 
+@pytest.fixture
+def duration_metadata() -> list[schemas.Time]:
+    """List of time durations using different formats."""
+    return [
+        schemas.Duration(
+            duration="0.0001",
+        ),
+        schemas.Duration(
+            duration="323.01",
+        ),
+        schemas.Duration(
+            duration="324.02"
+        ),
+        schemas.Duration(
+            duration="180223",
+        ),
+        schemas.Duration(
+            duration="220523",
+        ),
+    ]
+
+
 def _test_dataset_datetime_query(
     db: Session, 
     key: str,
@@ -1624,10 +1646,12 @@ def test_dataset_datetime_queries(
     datetime_metadata: list[schemas.DateTime],
     date_metadata: list[schemas.Date],
     time_metadata: list[schemas.Time],
+    duration_metadata: list[schemas.Duration],
 ):
     datetime_key = "maybe_i_was_created_at_this_time"
     date_key = "idk_some_other_date"
     time_key ="a_third_key"
+    duration_key = "some_duration"
 
     crud.create_dataset(
         db=db,
@@ -1655,6 +1679,7 @@ def test_dataset_datetime_queries(
     _test_dataset_datetime_query(db, datetime_key, datetime_metadata)
     _test_dataset_datetime_query(db, date_key, date_metadata)
     _test_dataset_datetime_query(db, time_key, time_metadata)
+    _test_dataset_datetime_query(db, duration_key, duration_metadata)
 
 
 def _test_model_datetime_query(db: Session, key: str, metadata_: list[schemas.DateTime | schemas.Date | schemas.Time]):
@@ -1822,10 +1847,12 @@ def test_model_datetime_queries(
     datetime_metadata: list[schemas.DateTime],
     date_metadata: list[schemas.Date],
     time_metadata: list[schemas.Time],
+    duration_metadata: list[schemas.Duration],
 ):
     datetime_key = "maybe_i_was_created_at_this_time"
     date_key = "idk_some_other_date"
     time_key ="a_third_key"
+    duration_key = "some_duration"
 
     crud.create_model(
         db=db,
@@ -1853,6 +1880,7 @@ def test_model_datetime_queries(
     _test_model_datetime_query(db, datetime_key, datetime_metadata)
     _test_model_datetime_query(db, date_key, date_metadata)
     _test_model_datetime_query(db, time_key, time_metadata)
+    _test_model_datetime_query(db, duration_key, duration_metadata)
 
 
 def _test_datum_datetime_query(
@@ -2060,10 +2088,12 @@ def test_datum_datetime_queries(
     datetime_metadata: list[schemas.DateTime],
     date_metadata: list[schemas.Date],
     time_metadata: list[schemas.Time],
+    duration_metadata: list[schemas.Duration],
 ):
     datetime_key = "maybe_i_was_created_at_this_time"
     date_key = "idk_some_other_date"
     time_key ="a_third_key"
+    duration_key = "some_duration"
 
     datum_1.metadata[datetime_key] = datetime_metadata[1].model_dump()
     datum_2.metadata[datetime_key] = datetime_metadata[2].model_dump()
@@ -2147,6 +2177,7 @@ def test_datum_datetime_queries(
     _test_datum_datetime_query(db, datetime_key, datetime_metadata)
     _test_datum_datetime_query(db, date_key, date_metadata)
     _test_datum_datetime_query(db, time_key, time_metadata)
+    _test_datum_datetime_query(db, duration_key, duration_metadata)
 
 
 def _test_annotation_datetime_query(
@@ -2292,10 +2323,12 @@ def test_annotation_datetime_queries(
     datetime_metadata: list[schemas.DateTime],
     date_metadata: list[schemas.Date],
     time_metadata: list[schemas.Time],
+    duration_metadata: list[schemas.Duration],
 ):
     datetime_key = "maybe_i_was_created_at_this_time"
     date_key = "idk_some_other_date"
-    time_key ="a_third_key"
+    time_key = "a_third_key"
+    duration_key = "some_duration"
 
     annotation_1 = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
@@ -2352,3 +2385,4 @@ def test_annotation_datetime_queries(
     _test_annotation_datetime_query(db, datetime_key, datetime_metadata)
     _test_annotation_datetime_query(db, date_key, date_metadata)
     _test_annotation_datetime_query(db, time_key, time_metadata)
+    _test_annotation_datetime_query(db, duration_key, duration_metadata)

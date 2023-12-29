@@ -29,6 +29,7 @@ from .metadata import (
     DateTime,
     Date,
     Time,
+    Duration,
     Metadatum,
 )
 from .metrics import (
@@ -77,6 +78,7 @@ __all__ = [
     "DateTime",
     "Date",
     "Time",
+    "Duration",
     "Metric",
     "AccuracyMetric",
     "ConfusionMatrix",

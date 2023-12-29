@@ -64,6 +64,27 @@ class Time(BaseModel):
     @property
     def value(self) -> str:
         return self.time
+    
+
+class Duration(BaseModel):
+    """
+    An object describing a time duration.
+
+    Attributes
+    ----------
+    duration : str
+        Time duration in seconds.
+    """
+    duration: str
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def key(self) -> str:
+        return "duration"
+    
+    @property
+    def value(self) -> str:
+        return self.duration
 
 
 class Metadatum(BaseModel):

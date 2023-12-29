@@ -48,6 +48,8 @@ def dump_metadata(metadata: dict) -> dict:
             metadata[key] = {"date": value.isoformat()}
         elif isinstance(value, datetime.time):
             metadata[key] = {"time": value.isoformat()}
+        elif isinstance(value, datetime.timedelta):
+            metadata[key] = {"duration": str(value.total_seconds)}
     return metadata
 
 
@@ -62,4 +64,6 @@ def load_metadata(metadata: dict) -> dict:
                 metadata[key] = datetime.date.fromisoformat(value['date'])
             elif "time" in value:
                 metadata[key] = datetime.time.fromisoformat(value['time'])
+            elif "duration" in value:
+                metadata[key] = datetime.timedelta(seconds=float(value['duration']))
     return metadata

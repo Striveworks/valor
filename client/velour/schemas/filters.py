@@ -52,6 +52,11 @@ class ValueFilter:
             self.value = {'time' : self.value.isoformat()}
             allowed_operators = [">", "<", ">=", "<=", "==", "!="]
 
+        # duration
+        elif isinstance(self.value, datetime.timedelta):
+            self.value = {'duration' : str(self.value.total_seconds())}
+            allowed_operators = [">", "<", ">=", "<=", "==", "!="]
+
         # strings
         elif isinstance(self.value, str):
             allowed_operators = ["==", "!="]
