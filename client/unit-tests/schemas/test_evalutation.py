@@ -1,5 +1,3 @@
-import pandas as pd
-
 from velour import enums, schemas
 
 
