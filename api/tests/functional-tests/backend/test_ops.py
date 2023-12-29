@@ -1456,23 +1456,23 @@ def time_metadata() -> list[schemas.Time]:
 
 
 @pytest.fixture
-def duration_metadata() -> list[schemas.Time]:
+def duration_metadata() -> list[schemas.Duration]:
     """List of time durations using different formats."""
     return [
         schemas.Duration(
             duration="0.0001",
         ),
         schemas.Duration(
-            duration="323.01",
+            duration="324.01",
         ),
         schemas.Duration(
             duration="324.02"
         ),
         schemas.Duration(
-            duration="180223",
+            duration="180223.0",
         ),
         schemas.Duration(
-            duration="220523",
+            duration="220523.0",
         ),
     ]
 
@@ -1480,7 +1480,7 @@ def duration_metadata() -> list[schemas.Time]:
 def _test_dataset_datetime_query(
     db: Session, 
     key: str,
-    metadata_: list[schemas.DateTime | schemas.Date | schemas.Time]
+    metadata_: list[schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration]
 ):
     """
     The metadata_ param is a pytest fixture containing sequential timestamps.
@@ -1660,7 +1660,8 @@ def test_dataset_datetime_queries(
             metadata={
                 datetime_key : datetime_metadata[1].model_dump(),
                 date_key : date_metadata[1].model_dump(),
-                time_key : time_metadata[1].model_dump()
+                time_key : time_metadata[1].model_dump(),
+                duration_key : duration_metadata[1].model_dump(),
             }
         )
     )
@@ -1671,7 +1672,8 @@ def test_dataset_datetime_queries(
             metadata={
                 datetime_key : datetime_metadata[3].model_dump(),
                 date_key : date_metadata[3].model_dump(),
-                time_key : time_metadata[3].model_dump()
+                time_key : time_metadata[3].model_dump(),
+                duration_key : duration_metadata[3].model_dump(),
             }
         )
     )
@@ -1682,7 +1684,7 @@ def test_dataset_datetime_queries(
     _test_dataset_datetime_query(db, duration_key, duration_metadata)
 
 
-def _test_model_datetime_query(db: Session, key: str, metadata_: list[schemas.DateTime | schemas.Date | schemas.Time]):
+def _test_model_datetime_query(db: Session, key: str, metadata_: list[schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration]):
     """
     The metadata_ param is a pytest fixture containing sequential timestamps.
     """
@@ -1861,7 +1863,8 @@ def test_model_datetime_queries(
             metadata={
                 datetime_key : datetime_metadata[1].model_dump(),
                 date_key : date_metadata[1].model_dump(),
-                time_key : time_metadata[1].model_dump()
+                time_key : time_metadata[1].model_dump(),
+                duration_key : duration_metadata[1].model_dump(),
             }
         )
     )
@@ -1872,7 +1875,8 @@ def test_model_datetime_queries(
             metadata={
                 datetime_key : datetime_metadata[3].model_dump(),
                 date_key : date_metadata[3].model_dump(),
-                time_key : time_metadata[3].model_dump()
+                time_key : time_metadata[3].model_dump(),
+                duration_key : duration_metadata[3].model_dump(),
             }
         )
     )
@@ -1886,7 +1890,7 @@ def test_model_datetime_queries(
 def _test_datum_datetime_query(
     db: Session,
     key: str,
-    metadata_: list[schemas.DateTime | schemas.Date | schemas.Time]
+    metadata_: list[schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration]
 ):
     """
     The metadata_ param is a pytest fixture containing sequential timestamps.
@@ -2110,6 +2114,11 @@ def test_datum_datetime_queries(
     datum_3.metadata[time_key] = time_metadata[2].model_dump()
     datum_4.metadata[time_key] = time_metadata[3].model_dump()
 
+    datum_1.metadata[duration_key] = duration_metadata[1].model_dump()
+    datum_2.metadata[duration_key] = duration_metadata[2].model_dump()
+    datum_3.metadata[duration_key] = duration_metadata[2].model_dump()
+    datum_4.metadata[duration_key] = duration_metadata[3].model_dump()
+
     annotation = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k1", value="v1")]
@@ -2183,7 +2192,7 @@ def test_datum_datetime_queries(
 def _test_annotation_datetime_query(
     db: Session,
     key: str,
-    metadata_: list[schemas.DateTime | schemas.Date | schemas.Time]
+    metadata_: list[schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration]
 ):
     """
     The metadata_ param is a pytest fixture containing sequential timestamps.
@@ -2336,7 +2345,8 @@ def test_annotation_datetime_queries(
         metadata={
             datetime_key : datetime_metadata[1].model_dump(),
             date_key : date_metadata[1].model_dump(),
-            time_key : time_metadata[1].model_dump()
+            time_key : time_metadata[1].model_dump(),
+            duration_key : duration_metadata[1].model_dump(),
         }
     )
     annotation_2 = schemas.Annotation(
@@ -2345,7 +2355,8 @@ def test_annotation_datetime_queries(
         metadata={
             datetime_key : datetime_metadata[2].model_dump(),
             date_key : date_metadata[2].model_dump(),
-            time_key : time_metadata[2].model_dump()
+            time_key : time_metadata[2].model_dump(),
+            duration_key : duration_metadata[2].model_dump(),
         }
     )
     annotation_3 = schemas.Annotation(
@@ -2354,7 +2365,8 @@ def test_annotation_datetime_queries(
         metadata={
             datetime_key : datetime_metadata[2].model_dump(),
             date_key : date_metadata[2].model_dump(),
-            time_key : time_metadata[2].model_dump()
+            time_key : time_metadata[2].model_dump(),
+            duration_key : duration_metadata[2].model_dump(),
         }
     )
     annotation_4 = schemas.Annotation(
@@ -2363,7 +2375,8 @@ def test_annotation_datetime_queries(
         metadata={
             datetime_key : datetime_metadata[3].model_dump(),
             date_key : date_metadata[3].model_dump(),
-            time_key : time_metadata[3].model_dump()
+            time_key : time_metadata[3].model_dump(),
+            duration_key : duration_metadata[3].model_dump(),
         }
     )
 
