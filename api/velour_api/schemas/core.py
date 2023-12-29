@@ -66,7 +66,7 @@ class Dataset(BaseModel):
 
     id: int | None = None
     name: str
-    metadata: dict[str, float | str] = Field(default_factory=dict)
+    metadata: dict[str, float | str | dict[str, str]] = Field(default_factory=dict)
     geospatial: dict[
         str,
         list[list[list[list[float | int]]]]
@@ -110,7 +110,7 @@ class Model(BaseModel):
 
     id: int | None = None
     name: str
-    metadata: dict[str, float | str] = Field(default_factory=dict)
+    metadata: dict[str, float | str | dict[str, str]] = Field(default_factory=dict)
     geospatial: dict[
         str,
         list[list[list[list[float | int]]]]
@@ -154,7 +154,7 @@ class Datum(BaseModel):
 
     uid: str
     dataset: str
-    metadata: dict[str, float | str] = Field(default_factory=dict)
+    metadata: dict[str, float | str | dict[str, str]] = Field(default_factory=dict)
     geospatial: dict[
         str,
         list[list[list[list[float | int]]]]
@@ -248,7 +248,7 @@ class Annotation(BaseModel):
 
     task_type: TaskType
     labels: list[Label]
-    metadata: dict[str, float | str] = Field(default_factory=dict)
+    metadata: dict[str, float | str | dict[str, str]] = Field(default_factory=dict)
 
     # Geometric types
     bounding_box: BoundingBox | None = None

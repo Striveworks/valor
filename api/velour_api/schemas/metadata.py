@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+import datetime
+
+from pydantic import BaseModel, ConfigDict
 
 
 class DateTime(BaseModel):
@@ -7,26 +9,82 @@ class DateTime(BaseModel):
 
     Attributes
     ----------
-    timestamp : int
-        The timestamp in UNIX format.
-    timestamp_local : int
-        The local timestamp in UNIX format.
-    date : int
-        The date in UNIX format.
-    time : int
-        The time in UNIX format.
-    time_local : int
-        The local time in UNIX format.
-    interval : int
-        The interval between moments in time.
+    datetime : str
+        Datetime in ISO format.
     """
+    datetime: str
+    model_config = ConfigDict(extra="forbid")
 
-    timestamp: int
-    timestamp_local: int
-    date: int
-    time: int
-    time_local: int
-    interval: int
+    @property
+    def key(self) -> str:
+        return "datetime"
+    
+    @property
+    def value(self) -> str:
+        return self.datetime
+
+
+class Date(BaseModel):
+    """
+    An object describing a date.
+
+    Attributes
+    ----------
+    date : str
+        Date in ISO format.
+    """
+    date: str
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def key(self) -> str:
+        return "date"
+    
+    @property
+    def value(self) -> str:
+        return self.date
+
+
+class Time(BaseModel):
+    """
+    An object describing a time.
+
+    Attributes
+    ----------
+    time : str
+        Time in ISO format.
+    """
+    time: str
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def key(self) -> str:
+        return "time"
+    
+    @property
+    def value(self) -> str:
+        return self.time
+    
+
+class Duration(BaseModel):
+    """
+    An object describing a time duration.
+
+    Attributes
+    ----------
+    duration : str
+        Time duration in seconds.
+    """
+    duration: str
+    model_config = ConfigDict(extra="forbid")
+
+    @property
+    def key(self) -> str:
+        return "duration"
+    
+    @property
+    def value(self) -> str:
+        return self.duration
 
 
 class Metadatum(BaseModel):
@@ -43,3 +101,5 @@ class Metadatum(BaseModel):
 
     key: str
     value: float | str | DateTime
+
+    model_config = ConfigDict(extra="forbid")

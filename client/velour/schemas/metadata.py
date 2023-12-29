@@ -1,4 +1,6 @@
+import datetime
 from typing import Dict, Union
+from copy import deepcopy
 
 from velour.exceptions import SchemaTypeError
 
@@ -10,7 +12,8 @@ def _validate_href(value: str):
         raise ValueError("`href` must start with http:// or https://")
 
 
-def validate_metadata(metadata):
+def validate_metadata(metadata: dict):
+    """Validates metadata dictionary."""
     if not isinstance(metadata, dict):
         raise SchemaTypeError(
             "metadata", Dict[str, Union[float, int, str]], metadata
@@ -22,6 +25,9 @@ def validate_metadata(metadata):
             isinstance(value, int)
             or isinstance(value, float)
             or isinstance(value, str)
+            or isinstance(value, datetime.datetime)
+            or isinstance(value, datetime.date)
+            or isinstance(value, datetime.time)
         ):
             raise SchemaTypeError(
                 "metadatum value", Union[float, int, str], value
@@ -30,3 +36,34 @@ def validate_metadata(metadata):
         # Handle special key-values
         if key == "href":
             _validate_href(value)
+
+
+def dump_metadata(metadata: dict) -> dict:
+    """Ensures that all nested attributes are numerics or str types."""
+    metadata = deepcopy(metadata)
+    for key, value in metadata.items():
+        if isinstance(value, datetime.datetime):
+            metadata[key] = {"datetime": value.isoformat()}
+        elif isinstance(value, datetime.date):
+            metadata[key] = {"date": value.isoformat()}
+        elif isinstance(value, datetime.time):
+            metadata[key] = {"time": value.isoformat()}
+        elif isinstance(value, datetime.timedelta):
+            metadata[key] = {"duration": str(value.total_seconds)}
+    return metadata
+
+
+def load_metadata(metadata: dict) -> dict:
+    """Reconstructs nested objects from primitive types."""
+    metadata = deepcopy(metadata)
+    for key, value in metadata.items():
+        if isinstance(value, dict):
+            if "datetime" in value:
+                metadata[key] = datetime.datetime.fromisoformat(value['datetime'])
+            elif "date" in value:
+                metadata[key] = datetime.date.fromisoformat(value['date'])
+            elif "time" in value:
+                metadata[key] = datetime.time.fromisoformat(value['time'])
+            elif "duration" in value:
+                metadata[key] = datetime.timedelta(seconds=float(value['duration']))
+    return metadata

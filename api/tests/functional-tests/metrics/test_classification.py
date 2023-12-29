@@ -187,7 +187,7 @@ def test_compute_confusion_matrix_at_label_key_and_filter(
         settings=schemas.EvaluationSettings(
             filters=schemas.Filter(
                 task_types=[enums.TaskType.CLASSIFICATION],
-                datum_metadata={"md1": schemas.StringFilter(value="md1-val0")},
+                datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
             )
         ),
     )
@@ -322,7 +322,7 @@ def test_compute_roc_auc_groupby_metadata(
         settings=schemas.EvaluationSettings(
             filters=schemas.Filter(
                 task_types=[enums.TaskType.CLASSIFICATION],
-                datum_metadata={"md1": schemas.StringFilter(value="md1-val0")},
+                datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
             )
         ),
     )

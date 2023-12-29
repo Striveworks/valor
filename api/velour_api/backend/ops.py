@@ -1,9 +1,10 @@
 import operator
 
-from sqlalchemy import Float, and_, func, not_, or_, select
+from sqlalchemy import Float, TIMESTAMP, and_, func, not_, or_, select, cast
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression
+from sqlalchemy.dialects.postgresql import INTERVAL
 
 from velour_api import enums
 from velour_api.backend import models
@@ -12,6 +13,11 @@ from velour_api.schemas import (
     GeospatialFilter,
     NumericFilter,
     StringFilter,
+    DateTimeFilter,
+    DateTime,
+    Date,
+    Time,
+    Duration,
 )
 
 
@@ -737,38 +743,54 @@ class Query:
     def _filter_by_metadatum(
         self,
         key: str,
-        value_filter: NumericFilter | StringFilter,
+        value_filter: NumericFilter | StringFilter | DateTimeFilter,
         table: DeclarativeMeta,
     ) -> BinaryExpression:
         if isinstance(value_filter, NumericFilter):
             op = self._get_numeric_op(value_filter.operator)
             lhs = table.meta[key].astext.cast(Float)
+            rhs = value_filter.value
+            return op(lhs, value_filter.value)
         elif isinstance(value_filter, StringFilter):
             op = self._get_string_op(value_filter.operator)
             lhs = table.meta[key].astext
+            rhs = value_filter.value
+        elif isinstance(value_filter, DateTimeFilter):
+            if (
+                isinstance(value_filter.value, Time)
+                or isinstance(value_filter.value, Duration)
+            ):
+                cast_type = INTERVAL
+            else:
+                cast_type = TIMESTAMP(timezone=True)
+            op = self._get_numeric_op(value_filter.operator)
+            lhs = cast(
+                table.meta[key][value_filter.value.key].astext,
+                cast_type,
+            )
+            rhs = cast(
+                value_filter.value.value,
+                cast_type,
+            )
         else:
             raise NotImplementedError(
                 f"metadatum value of type `{type(value_filter.value)}` is currently not supported"
             )
-        return op(lhs, value_filter.value)
+        return op(lhs, rhs)
 
     def filter_by_metadata(
         self,
-        metadata: dict[str, list[NumericFilter] | StringFilter],
+        metadata: dict[str, list[NumericFilter | StringFilter | DateTimeFilter]],
         table: DeclarativeMeta,
     ) -> list[BinaryExpression]:
         expressions = [
             self._filter_by_metadatum(key, value, table)
-            for key, value in metadata.items()
-            if isinstance(value, StringFilter)
-        ] + [
-            self._filter_by_metadatum(key, value, table)
-            for key, vlist in metadata.items()
-            if isinstance(vlist, list)
-            for value in metadata[key]
-            if isinstance(value, NumericFilter)
+            for key, f_list in metadata.items()
+            for value in f_list
         ]
-        return [and_(*expressions)]
+        if len(expressions) > 1:
+            expressions = [and_(*expressions)]
+        return expressions
 
     def _filter_by_geospatial(
         self,

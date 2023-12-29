@@ -8,7 +8,13 @@ from .core import (
     Model,
     Prediction,
 )
-from .filters import Filter, GeospatialFilter, NumericFilter, StringFilter
+from .filters import (
+    Filter, 
+    GeospatialFilter, 
+    NumericFilter, 
+    StringFilter,
+    DateTimeFilter,
+)
 from .geojson import GeoJSON
 from .geometry import (
     BasicPolygon,
@@ -19,7 +25,13 @@ from .geometry import (
     Raster,
 )
 from .info import APIVersion
-from .metadata import DateTime, Metadatum
+from .metadata import (
+    DateTime,
+    Date,
+    Time,
+    Duration,
+    Metadatum,
+)
 from .metrics import (
     AccuracyMetric,
     APMetric,
@@ -64,6 +76,9 @@ __all__ = [
     "Raster",
     "Metadatum",
     "DateTime",
+    "Date",
+    "Time",
+    "Duration",
     "Metric",
     "AccuracyMetric",
     "ConfusionMatrix",
@@ -90,6 +105,7 @@ __all__ = [
     "StringFilter",
     "NumericFilter",
     "GeospatialFilter",
+    "DateTimeFilter",
     "Filter",
     "Health",
     "Readiness",
