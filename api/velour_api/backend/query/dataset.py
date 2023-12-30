@@ -23,15 +23,11 @@ def create_dataset(
     dataset : schemas.Dataset
         The dataset to create.
     """
-    shape = (
-        schemas.GeoJSON.from_dict(data=dataset.geospatial).shape().wkt()
-        if dataset.geospatial
-        else None
-    )
-
     try:
         row = models.Dataset(
-            name=dataset.name, meta=dataset.metadata, geo=shape
+            name=dataset.name,
+            meta=dataset.metadata,
+            geo=dataset.geospatial.wkt() if dataset.geospatial else None,
         )
         db.add(row)
         db.commit()
@@ -62,7 +58,8 @@ def get_dataset(
     """
     dataset = core.get_dataset(db, name=name)
     geo_dict = (
-        json.loads(db.scalar(ST_AsGeoJSON(dataset.geo))) if dataset.geo else {}
+        schemas.geojson.from_dict(json.loads(db.scalar(ST_AsGeoJSON(dataset.geo))))
+        if dataset.geo else None
     )
     return schemas.Dataset(
         id=dataset.id,
@@ -120,7 +117,8 @@ def get_datums(
 
     for datum in datums:
         geo_dict = (
-            json.loads(db.scalar(ST_AsGeoJSON(datum.geo))) if datum.geo else {}
+            schemas.geojson.from_dict(json.loads(db.scalar(ST_AsGeoJSON(datum.geo)))) 
+            if datum.geo else None
         )
 
         output.append(

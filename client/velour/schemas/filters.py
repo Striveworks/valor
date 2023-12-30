@@ -63,7 +63,7 @@ class ValueFilter:
 
         else:
             raise TypeError(
-                f"Filter `value` is of unsupported type: `{self.value}`."
+                f"Filter `value` is an unsupported value: `{self.value}` of type {type(self.value)}."
             )
         
         # check if operator is valid
@@ -80,7 +80,7 @@ class GeospatialFilter:
 
     Attributes
     ----------
-    geodict : Dict[str, Union[List[List[List[List[Union[float, int]]]]], List[List[List[Union[float, int]]]], List[Union[float, int]], str]]
+    value : Dict[str, Union[List[List[List[List[Union[float, int]]]]], List[List[List[Union[float, int]]]], List[Union[float, int]], str]]
         A dictionary containing a Point, Polygon, or MultiPolygon. Mirrors `shapely's` `GeoJSON` format.
     operator : str
         The operator to use for comparison. Should be one of `intersect`, `inside`, or `outside`.
@@ -94,7 +94,7 @@ class GeospatialFilter:
             List[List[List[Union[float, int]]]],
             List[Union[float, int]],
             str,
-        ],
+        ]
     ]
     operator: str = "intersect"
 
@@ -120,28 +120,37 @@ class DeclarativeMapper:
         self.key = key
         self.object_type = object_type
 
-    def _validate_operator(self, value):
+    def _validate_equality(self, value: any, opstring: str):
         """Validate that the inputs to ac operator filter are of the correct type."""
+        if isinstance(value, dict):
+            raise TypeError(f"`{self.name}` with type {type(value)} does not support operator `{opstring}`.")
         if self.object_type == float and isinstance(value, int):
             return  # edge case
         if not isinstance(value, self.object_type):
-            raise ValueError(
+            raise TypeError(
                 f"`{self.name}` should be of type `{self.object_type}`"
             )
 
     def _validate_numeric_operator(self, value: any, opstring: str):
-        """Validate the inputs to a numeric operator filter."""
-        if not isinstance(value, float) and not isinstance(value, int):
+        """Validate the inputs to a numeric filter."""
+        if (
+            not isinstance(value, float) 
+            and not isinstance(value, int)
+            and not isinstance(value, datetime.datetime)
+            and not isinstance(value, datetime.date)
+            and not isinstance(value, datetime.time)
+            and not isinstance(value, datetime.timedelta)
+        ):
             raise TypeError(f"{opstring} does not support type {type(value)}")
-        self._validate_operator(value)
+        self._validate_equality(value, opstring)
 
     def _validate_geospatial_operator(self, value):
-        """Validate the inputs to a geospatial operator filter."""
-        if (
-            not isinstance(value, dict)
-            or not value.get("geometry")
-            or not value["geometry"].get("type")
-            or not value["geometry"].get("coordinates")
+        """Validate the inputs to a geospatial filter."""
+        if not isinstance(value, dict):
+            raise TypeError("Geospatial filters should be a GeoJSON-style dictionary containing the keys `type` and `coordinates`.")
+        elif (
+            not value.get("type")
+            or not value.get("coordinates")
         ):
             raise ValueError(
                 "Geospatial filters should be a GeoJSON-style dictionary containing the keys `type` and `coordinates`."
@@ -155,9 +164,7 @@ class DeclarativeMapper:
         )
 
     def __eq__(self, __value: object) -> BinaryExpression:
-        self._validate_operator(
-            __value,
-        )
+        self._validate_equality(__value, "==")
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -166,7 +173,7 @@ class DeclarativeMapper:
         )
 
     def __ne__(self, __value: object) -> BinaryExpression:
-        self._validate_operator(__value)
+        self._validate_equality(__value, "!=")
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -216,9 +223,7 @@ class DeclarativeMapper:
         return [self == value for value in __values]
 
     def intersect(self, __value: dict) -> BinaryExpression:
-        self._validate_geospatial_operator(
-            __value,
-        )
+        self._validate_geospatial_operator(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -227,9 +232,7 @@ class DeclarativeMapper:
         )
 
     def inside(self, __value: object) -> BinaryExpression:
-        self._validate_geospatial_operator(
-            __value,
-        )
+        self._validate_geospatial_operator(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -238,9 +241,7 @@ class DeclarativeMapper:
         )
 
     def outside(self, __value: object) -> BinaryExpression:
-        self._validate_geospatial_operator(
-            __value,
-        )
+        self._validate_geospatial_operator(__value)
         return BinaryExpression(
             name=self.name,
             key=self.key,

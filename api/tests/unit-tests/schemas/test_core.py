@@ -206,18 +206,17 @@ def test_datum(metadata):
             metadata={123: 123},
         )
 
-    # test comparator
+    # test `__eq__`
     other_datum = schemas.Datum(
         uid="123",
         dataset="name",
     )
-
     assert valid_datum == other_datum
 
     other_datum = schemas.Datum(
         uid="123", dataset="name", metadata={"fake": "metadata"}
     )
-    assert valid_datum == other_datum
+    assert not valid_datum == other_datum
 
 
 def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
