@@ -108,10 +108,8 @@ def test_geospatial_filter(
                     {
                         "operator": "outside",
                         "value": {
-                            "geometry": {
-                                "type": "Point",
-                                "coordinates": [0, 0],
-                            }
+                            "type": "Point",
+                            "coordinates": [0, 0],
                         },
                     }
                 ],
@@ -143,10 +141,8 @@ def test_geospatial_filter(
         filters=[
             Datum.geospatial.inside(
                 {
-                    "geometry": {
-                        "type": "Point",
-                        "coordinates": [0.0, 0.0],
-                    }
+                    "type": "Point",
+                    "coordinates": [0.0, 0.0],
                 }
             )
         ],
@@ -156,10 +152,8 @@ def test_geospatial_filter(
     assert result["settings"]["filters"]["datum_geospatial"] == [
         {
             "value": {
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [0.0, 0.0],
-                }
+                "type": "Point",
+                "coordinates": [0.0, 0.0],
             },
             "operator": "inside",
         }
@@ -178,17 +172,15 @@ def test_geospatial_filter(
                     {
                         "operator": "inside",
                         "value": {
-                            "geometry": {
-                                "type": "Polygon",
-                                "coordinates": [
-                                    [
-                                        [124.0, 37.0],
-                                        [128.0, 37.0],
-                                        [128.0, 40.0],
-                                        [124.0, 40.0],
-                                    ]
-                                ],
-                            }
+                            "type": "Polygon",
+                            "coordinates": [
+                                [
+                                    [124.0, 37.0],
+                                    [128.0, 37.0],
+                                    [128.0, 40.0],
+                                    [124.0, 40.0],
+                                ]
+                            ],
                         },
                     }
                 ],
