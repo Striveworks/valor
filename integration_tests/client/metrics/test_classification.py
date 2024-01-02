@@ -4,7 +4,6 @@ that is no auth
 import time
 from datetime import date, datetime
 
-import pandas
 import pytest
 from sqlalchemy.orm import Session
 
@@ -19,7 +18,6 @@ from velour import (
 )
 from velour.client import Client, ClientException
 from velour.enums import JobStatus, TaskType
-from velour.schemas import EvaluationSettings
 
 
 def test_evaluate_image_clf(
@@ -118,7 +116,9 @@ def test_evaluate_tabular_clf(
     # test
     model = Model(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset).wait_for_completion(timeout=30)
+        model.evaluate_classification(dataset=dataset).wait_for_completion(
+            timeout=30
+        )
     assert "has not been finalized" in str(exc_info)
 
     dataset.finalize()
@@ -144,7 +144,9 @@ def test_evaluate_tabular_clf(
 
     # test
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset).wait_for_completion(timeout=30)
+        model.evaluate_classification(dataset=dataset).wait_for_completion(
+            timeout=30
+        )
     assert "has not been finalized" in str(exc_info)
 
     model.finalize_inferences(dataset)
@@ -256,7 +258,7 @@ def test_evaluate_tabular_clf(
         assert entry in confusion_matrix["entries"]
 
     # check model methods
-    labels = model.get_labels()
+    model.get_labels()
 
     assert isinstance(model.id, int)
     assert model.name == model_name

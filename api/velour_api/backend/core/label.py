@@ -26,7 +26,7 @@ def _get_existing_labels(
         *[(label.key, label.value) for label in labels]
     )
     existing_label_kv_combos = {
-        (label.key, label.value) : label
+        (label.key, label.value): label
         for label in (
             db.query(models.Label)
             .where(
@@ -50,8 +50,8 @@ def create_labels(
     labels: list[schemas.Label],
 ) -> list[models.Label]:
     """
-    Add a list of labels to create in the database. 
-    
+    Add a list of labels to create in the database.
+
     Handles cases where the label already exists in the database.
 
     Parameters
@@ -66,13 +66,13 @@ def create_labels(
     List[models.Label]
         A list of corresponding label rows from the database.
     """
-    
+
     # get existing labels
     label_keys, label_values = zip(
         *[(label.key, label.value) for label in labels]
     )
     existing_labels = {
-        (label.key, label.value) : label
+        (label.key, label.value): label
         for label in (
             db.query(models.Label)
             .where(
@@ -87,7 +87,9 @@ def create_labels(
 
     # create new labels
     new_labels = {
-        (label.key, label.value) : models.Label(key=label.key, value=label.value)
+        (label.key, label.value): models.Label(
+            key=label.key, value=label.value
+        )
         for label in labels
         if (label.key, label.value) not in existing_labels
     }
@@ -98,8 +100,8 @@ def create_labels(
         db.commit()
     except IntegrityError as e:
         db.rollback()
-        raise e # this should never be called
-    
+        raise e  # this should never be called
+
     # get existing labels
     return _get_existing_labels(db, labels)
 

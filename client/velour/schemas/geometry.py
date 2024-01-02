@@ -57,7 +57,7 @@ class Point:
         return hash(f"{self.x},{self.y}")
 
     def resize(
-        self, 
+        self,
         og_img_h: int,
         og_img_w: int,
         new_img_h: int,
@@ -498,7 +498,7 @@ class Raster:
     >>> height = 640
     >>> width = 480
     >>> array = numpy.random.rand(height, width)
-    
+
     Convert to binary mask.
     >>> mask = (array > 0.5)
 

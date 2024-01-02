@@ -1,6 +1,6 @@
 import datetime
-from typing import Dict, Union
 from copy import deepcopy
+from typing import Dict, Union
 
 from velour.exceptions import SchemaTypeError
 
@@ -59,11 +59,15 @@ def load_metadata(metadata: dict) -> dict:
     for key, value in metadata.items():
         if isinstance(value, dict):
             if "datetime" in value:
-                metadata[key] = datetime.datetime.fromisoformat(value['datetime'])
+                metadata[key] = datetime.datetime.fromisoformat(
+                    value["datetime"]
+                )
             elif "date" in value:
-                metadata[key] = datetime.date.fromisoformat(value['date'])
+                metadata[key] = datetime.date.fromisoformat(value["date"])
             elif "time" in value:
-                metadata[key] = datetime.time.fromisoformat(value['time'])
+                metadata[key] = datetime.time.fromisoformat(value["time"])
             elif "duration" in value:
-                metadata[key] = datetime.timedelta(seconds=float(value['duration']))
+                metadata[key] = datetime.timedelta(
+                    seconds=float(value["duration"])
+                )
     return metadata

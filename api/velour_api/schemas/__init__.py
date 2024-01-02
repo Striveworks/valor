@@ -9,13 +9,13 @@ from .core import (
     Prediction,
 )
 from .filters import (
-    Filter, 
-    GeospatialFilter, 
-    NumericFilter, 
-    StringFilter,
     DateTimeFilter,
+    Filter,
+    GeospatialFilter,
+    NumericFilter,
+    StringFilter,
 )
-from .geojson import GeoJSONPoint, GeoJSONPolygon, GeoJSONMultiPolygon
+from .geojson import GeoJSONMultiPolygon, GeoJSONPoint, GeoJSONPolygon
 from .geometry import (
     BasicPolygon,
     BoundingBox,
@@ -25,13 +25,7 @@ from .geometry import (
     Raster,
 )
 from .info import APIVersion
-from .metadata import (
-    DateTime,
-    Date,
-    Time,
-    Duration,
-    Metadatum,
-)
+from .metadata import Date, DateTime, Duration, Metadatum, Time
 from .metrics import (
     AccuracyMetric,
     APMetric,
@@ -94,8 +88,8 @@ __all__ = [
     "APMetricAveragedOverIOUs",
     "CreateClfMetricsResponse",
     "CreateSemanticSegmentationMetricsResponse",
-    "GeoJSONPoint", 
-    "GeoJSONPolygon", 
+    "GeoJSONPoint",
+    "GeoJSONPolygon",
     "GeoJSONMultiPolygon",
     "mAPMetric",
     "mAPMetricAveragedOverIOUs",

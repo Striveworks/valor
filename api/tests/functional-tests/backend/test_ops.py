@@ -1,6 +1,5 @@
 import numpy
 import pytest
-from sqlalchemy import select, func, text, JSON
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
@@ -88,7 +87,14 @@ def raster_2():
 
 
 @pytest.fixture
-def geospatial_coordinates() -> dict[str, schemas.GeoJSONPoint | schemas.GeoJSONPolygon | schemas.GeoJSONMultiPolygon]:
+def geospatial_coordinates() -> (
+    dict[
+        str,
+        schemas.GeoJSONPoint
+        | schemas.GeoJSONPolygon
+        | schemas.GeoJSONMultiPolygon,
+    ]
+):
     return {
         "point": {"type": "Point", "coordinates": [125.2750725, 38.760525]},
         "polygon1": {
@@ -730,7 +736,7 @@ def test_query_by_metadata(
                     value="abc",
                     operator="==",
                 ),
-            ]
+            ],
         }
     )
     q = Query(models.Datum.uid).filter(f).any()
@@ -1399,9 +1405,7 @@ def datetime_metadata() -> list[schemas.DateTime]:
         schemas.DateTime(
             datetime="Apr 07 2023 16:34:56",
         ),
-        schemas.DateTime(
-            datetime="Apr 07 2023 4:35:56 PM"
-        ),
+        schemas.DateTime(datetime="Apr 07 2023 4:35:56 PM"),
         schemas.DateTime(
             datetime="November 12, 2023",
         ),
@@ -1421,9 +1425,7 @@ def date_metadata() -> list[schemas.Date]:
         schemas.Date(
             date="Apr 07 2023",
         ),
-        schemas.Date(
-            date="Apr 08 2023"
-        ),
+        schemas.Date(date="Apr 08 2023"),
         schemas.Date(
             date="November 12, 2023",
         ),
@@ -1443,9 +1445,7 @@ def time_metadata() -> list[schemas.Time]:
         schemas.Time(
             time="16:34:56",
         ),
-        schemas.Time(
-            time="16:35:56.000283"
-        ),
+        schemas.Time(time="16:35:56.000283"),
         schemas.Time(
             time="18:02:23",
         ),
@@ -1465,9 +1465,7 @@ def duration_metadata() -> list[schemas.Duration]:
         schemas.Duration(
             duration="324.01",
         ),
-        schemas.Duration(
-            duration="324.02"
-        ),
+        schemas.Duration(duration="324.02"),
         schemas.Duration(
             duration="180223.0",
         ),
@@ -1478,31 +1476,33 @@ def duration_metadata() -> list[schemas.Duration]:
 
 
 def _test_dataset_datetime_query(
-    db: Session, 
+    db: Session,
     key: str,
-    metadata_: list[schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration]
+    metadata_: list[
+        schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration
+    ],
 ):
     """
     The metadata_ param is a pytest fixture containing sequential timestamps.
     """
 
-    time_filter = lambda idx, op : (
+    time_filter = lambda idx, op: (  # noqa: E731
         Query(models.Dataset)
         .filter(
             schemas.Filter(
                 dataset_metadata={
-                    key : [
+                    key: [
                         schemas.DateTimeFilter(
-                            value=metadata_[idx],
-                            operator=op
+                            value=metadata_[idx], operator=op
                         )
                     ]
                 }
             )
-        ).any()
+        )
+        .any()
     )
 
-    # Check equality operator 
+    # Check equality operator
     op = "=="
 
     results = db.query(time_filter(0, op)).all()
@@ -1522,7 +1522,7 @@ def _test_dataset_datetime_query(
     results = db.query(time_filter(4, op)).all()
     assert len(results) == 0
 
-    # Check inequality operator 
+    # Check inequality operator
     op = "!="
 
     results = db.query(time_filter(0, op)).all()
@@ -1548,7 +1548,7 @@ def _test_dataset_datetime_query(
     assert "dataset1" in [result.name for result in results]
     assert "dataset2" in [result.name for result in results]
 
-   # Check less-than operator 
+    # Check less-than operator
     op = "<"
 
     results = db.query(time_filter(0, op)).all()
@@ -1570,7 +1570,7 @@ def _test_dataset_datetime_query(
     assert "dataset1" in [result.name for result in results]
     assert "dataset2" in [result.name for result in results]
 
-    # Check greater-than operator 
+    # Check greater-than operator
     op = ">"
 
     results = db.query(time_filter(0, op)).all()
@@ -1592,7 +1592,7 @@ def _test_dataset_datetime_query(
     results = db.query(time_filter(4, op)).all()
     assert len(results) == 0
 
-    # Check less-than or equal operator 
+    # Check less-than or equal operator
     op = "<="
 
     results = db.query(time_filter(0, op)).all()
@@ -1616,7 +1616,7 @@ def _test_dataset_datetime_query(
     assert "dataset1" in [result.name for result in results]
     assert "dataset2" in [result.name for result in results]
 
-    # Check greater-than or equal operator 
+    # Check greater-than or equal operator
     op = ">="
 
     results = db.query(time_filter(0, op)).all()
@@ -1650,7 +1650,7 @@ def test_dataset_datetime_queries(
 ):
     datetime_key = "maybe_i_was_created_at_this_time"
     date_key = "idk_some_other_date"
-    time_key ="a_third_key"
+    time_key = "a_third_key"
     duration_key = "some_duration"
 
     crud.create_dataset(
@@ -1658,24 +1658,24 @@ def test_dataset_datetime_queries(
         dataset=schemas.Dataset(
             name="dataset1",
             metadata={
-                datetime_key : datetime_metadata[1].model_dump(),
-                date_key : date_metadata[1].model_dump(),
-                time_key : time_metadata[1].model_dump(),
-                duration_key : duration_metadata[1].model_dump(),
-            }
-        )
+                datetime_key: datetime_metadata[1].model_dump(),
+                date_key: date_metadata[1].model_dump(),
+                time_key: time_metadata[1].model_dump(),
+                duration_key: duration_metadata[1].model_dump(),
+            },
+        ),
     )
     crud.create_dataset(
         db=db,
         dataset=schemas.Dataset(
             name="dataset2",
             metadata={
-                datetime_key : datetime_metadata[3].model_dump(),
-                date_key : date_metadata[3].model_dump(),
-                time_key : time_metadata[3].model_dump(),
-                duration_key : duration_metadata[3].model_dump(),
-            }
-        )
+                datetime_key: datetime_metadata[3].model_dump(),
+                date_key: date_metadata[3].model_dump(),
+                time_key: time_metadata[3].model_dump(),
+                duration_key: duration_metadata[3].model_dump(),
+            },
+        ),
     )
 
     _test_dataset_datetime_query(db, datetime_key, datetime_metadata)
@@ -1684,28 +1684,34 @@ def test_dataset_datetime_queries(
     _test_dataset_datetime_query(db, duration_key, duration_metadata)
 
 
-def _test_model_datetime_query(db: Session, key: str, metadata_: list[schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration]):
+def _test_model_datetime_query(
+    db: Session,
+    key: str,
+    metadata_: list[
+        schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration
+    ],
+):
     """
     The metadata_ param is a pytest fixture containing sequential timestamps.
     """
 
-    time_filter = lambda idx, op : (
+    time_filter = lambda idx, op: (  # noqa: E731
         Query(models.Model)
         .filter(
             schemas.Filter(
                 models_metadata={
-                    key : [
+                    key: [
                         schemas.DateTimeFilter(
-                            value=metadata_[idx],
-                            operator=op
+                            value=metadata_[idx], operator=op
                         )
                     ]
                 }
             )
-        ).any()
+        )
+        .any()
     )
 
-    # Check equality operator 
+    # Check equality operator
     op = "=="
 
     results = db.query(time_filter(0, op)).all()
@@ -1725,7 +1731,7 @@ def _test_model_datetime_query(db: Session, key: str, metadata_: list[schemas.Da
     results = db.query(time_filter(4, op)).all()
     assert len(results) == 0
 
-    # Check inequality operator 
+    # Check inequality operator
     op = "!="
 
     results = db.query(time_filter(0, op)).all()
@@ -1751,7 +1757,7 @@ def _test_model_datetime_query(db: Session, key: str, metadata_: list[schemas.Da
     assert "model1" in [result.name for result in results]
     assert "model2" in [result.name for result in results]
 
-   # Check less-than operator 
+    # Check less-than operator
     op = "<"
 
     results = db.query(time_filter(0, op)).all()
@@ -1773,7 +1779,7 @@ def _test_model_datetime_query(db: Session, key: str, metadata_: list[schemas.Da
     assert "model1" in [result.name for result in results]
     assert "model2" in [result.name for result in results]
 
-    # Check greater-than operator 
+    # Check greater-than operator
     op = ">"
 
     results = db.query(time_filter(0, op)).all()
@@ -1795,7 +1801,7 @@ def _test_model_datetime_query(db: Session, key: str, metadata_: list[schemas.Da
     results = db.query(time_filter(4, op)).all()
     assert len(results) == 0
 
-    # Check less-than or equal operator 
+    # Check less-than or equal operator
     op = "<="
 
     results = db.query(time_filter(0, op)).all()
@@ -1819,7 +1825,7 @@ def _test_model_datetime_query(db: Session, key: str, metadata_: list[schemas.Da
     assert "model1" in [result.name for result in results]
     assert "model2" in [result.name for result in results]
 
-    # Check greater-than or equal operator 
+    # Check greater-than or equal operator
     op = ">="
 
     results = db.query(time_filter(0, op)).all()
@@ -1853,7 +1859,7 @@ def test_model_datetime_queries(
 ):
     datetime_key = "maybe_i_was_created_at_this_time"
     date_key = "idk_some_other_date"
-    time_key ="a_third_key"
+    time_key = "a_third_key"
     duration_key = "some_duration"
 
     crud.create_model(
@@ -1861,24 +1867,24 @@ def test_model_datetime_queries(
         model=schemas.Model(
             name="model1",
             metadata={
-                datetime_key : datetime_metadata[1].model_dump(),
-                date_key : date_metadata[1].model_dump(),
-                time_key : time_metadata[1].model_dump(),
-                duration_key : duration_metadata[1].model_dump(),
-            }
-        )
+                datetime_key: datetime_metadata[1].model_dump(),
+                date_key: date_metadata[1].model_dump(),
+                time_key: time_metadata[1].model_dump(),
+                duration_key: duration_metadata[1].model_dump(),
+            },
+        ),
     )
     crud.create_model(
         db=db,
-         model=schemas.Model(
+        model=schemas.Model(
             name="model2",
             metadata={
-                datetime_key : datetime_metadata[3].model_dump(),
-                date_key : date_metadata[3].model_dump(),
-                time_key : time_metadata[3].model_dump(),
-                duration_key : duration_metadata[3].model_dump(),
-            }
-        )
+                datetime_key: datetime_metadata[3].model_dump(),
+                date_key: date_metadata[3].model_dump(),
+                time_key: time_metadata[3].model_dump(),
+                duration_key: duration_metadata[3].model_dump(),
+            },
+        ),
     )
 
     _test_model_datetime_query(db, datetime_key, datetime_metadata)
@@ -1890,31 +1896,33 @@ def test_model_datetime_queries(
 def _test_datum_datetime_query(
     db: Session,
     key: str,
-    metadata_: list[schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration]
+    metadata_: list[
+        schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration
+    ],
 ):
     """
     The metadata_ param is a pytest fixture containing sequential timestamps.
     """
 
-    time_filter = lambda idx, op : (
+    time_filter = lambda idx, op: (  # noqa: E731
         Query(models.Datum)
         .filter(
             schemas.Filter(
                 datum_metadata={
-                    key : [
+                    key: [
                         schemas.DateTimeFilter(
-                            value=metadata_[idx],
-                            operator=op
+                            value=metadata_[idx], operator=op
                         )
                     ]
                 }
             )
-        ).any()
+        )
+        .any()
     )
 
     assert len(db.query(models.Datum).all()) == 4
 
-    # Check equality operator 
+    # Check equality operator
     op = "=="
 
     results = db.query(time_filter(0, op)).all()
@@ -1936,7 +1944,7 @@ def _test_datum_datetime_query(
     results = db.query(time_filter(4, op)).all()
     assert len(results) == 0
 
-    # Check inequality operator 
+    # Check inequality operator
     op = "!="
 
     results = db.query(time_filter(0, op)).all()
@@ -1970,7 +1978,7 @@ def _test_datum_datetime_query(
     assert datum_uid3 in [result.uid for result in results]
     assert datum_uid4 in [result.uid for result in results]
 
-   # Check less-than operator 
+    # Check less-than operator
     op = "<"
 
     results = db.query(time_filter(0, op)).all()
@@ -1996,7 +2004,7 @@ def _test_datum_datetime_query(
     assert datum_uid3 in [result.uid for result in results]
     assert datum_uid4 in [result.uid for result in results]
 
-    # Check greater-than operator 
+    # Check greater-than operator
     op = ">"
 
     results = db.query(time_filter(0, op)).all()
@@ -2022,7 +2030,7 @@ def _test_datum_datetime_query(
     results = db.query(time_filter(4, op)).all()
     assert len(results) == 0
 
-    # Check less-than or equal operator 
+    # Check less-than or equal operator
     op = "<="
 
     results = db.query(time_filter(0, op)).all()
@@ -2052,7 +2060,7 @@ def _test_datum_datetime_query(
     assert datum_uid3 in [result.uid for result in results]
     assert datum_uid4 in [result.uid for result in results]
 
-    # Check greater-than or equal operator 
+    # Check greater-than or equal operator
     op = ">="
 
     results = db.query(time_filter(0, op)).all()
@@ -2096,7 +2104,7 @@ def test_datum_datetime_queries(
 ):
     datetime_key = "maybe_i_was_created_at_this_time"
     date_key = "idk_some_other_date"
-    time_key ="a_third_key"
+    time_key = "a_third_key"
     duration_key = "some_duration"
 
     datum_1.metadata[datetime_key] = datetime_metadata[1].model_dump()
@@ -2121,43 +2129,39 @@ def test_datum_datetime_queries(
 
     annotation = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
-        labels=[schemas.Label(key="k1", value="v1")]
+        labels=[schemas.Label(key="k1", value="v1")],
     )
 
     crud.create_dataset(
         db=db,
         dataset=schemas.Dataset(
             name=dset_name,
-        )
+        ),
     )
 
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=datum_1,
-            annotations=[annotation]
-        )
+            datum=datum_1, annotations=[annotation]
+        ),
     )
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=datum_2,
-            annotations=[annotation]
-        )
+            datum=datum_2, annotations=[annotation]
+        ),
     )
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=datum_3,
-            annotations=[annotation]
-        )
+            datum=datum_3, annotations=[annotation]
+        ),
     )
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
-            datum=datum_4,
-            annotations=[annotation]
-        )
+            datum=datum_4, annotations=[annotation]
+        ),
     )
 
     crud.create_model(
@@ -2165,22 +2169,22 @@ def test_datum_datetime_queries(
         model=schemas.Model(
             name="model1",
             metadata={
-                datetime_key : datetime_metadata[1].model_dump(),
-                date_key : date_metadata[1].model_dump(),
-                time_key : time_metadata[1].model_dump()
-            }
-        )
+                datetime_key: datetime_metadata[1].model_dump(),
+                date_key: date_metadata[1].model_dump(),
+                time_key: time_metadata[1].model_dump(),
+            },
+        ),
     )
     crud.create_model(
         db=db,
-         model=schemas.Model(
+        model=schemas.Model(
             name="model2",
             metadata={
-                datetime_key : datetime_metadata[3].model_dump(),
-                date_key : date_metadata[3].model_dump(),
-                time_key : time_metadata[3].model_dump()
-            }
-        )
+                datetime_key: datetime_metadata[3].model_dump(),
+                date_key: date_metadata[3].model_dump(),
+                time_key: time_metadata[3].model_dump(),
+            },
+        ),
     )
 
     _test_datum_datetime_query(db, datetime_key, datetime_metadata)
@@ -2192,7 +2196,9 @@ def test_datum_datetime_queries(
 def _test_annotation_datetime_query(
     db: Session,
     key: str,
-    metadata_: list[schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration]
+    metadata_: list[
+        schemas.DateTime | schemas.Date | schemas.Time | schemas.Duration
+    ],
 ):
     """
     The metadata_ param is a pytest fixture containing sequential timestamps.
@@ -2200,24 +2206,23 @@ def _test_annotation_datetime_query(
 
     assert len(db.query(models.Annotation).all()) == 4
 
-    time_filter = lambda idx, op : (
+    time_filter = lambda idx, op: (  # noqa: E731
         Query(models.Annotation)
         .filter(
             schemas.Filter(
                 annotation_metadata={
-                    key : [
+                    key: [
                         schemas.DateTimeFilter(
-                            value=metadata_[idx],
-                            operator=op
+                            value=metadata_[idx], operator=op
                         )
                     ]
                 }
             )
-        ).any()
+        )
+        .any()
     )
 
-
-    # Check equality operator 
+    # Check equality operator
     op = "=="
 
     results = db.query(time_filter(0, op)).all()
@@ -2235,7 +2240,7 @@ def _test_annotation_datetime_query(
     results = db.query(time_filter(4, op)).all()
     assert len(results) == 0
 
-    # Check inequality operator 
+    # Check inequality operator
     op = "!="
 
     results = db.query(time_filter(0, op)).all()
@@ -2253,7 +2258,7 @@ def _test_annotation_datetime_query(
     results = db.query(time_filter(4, op)).all()
     assert len(results) == 4
 
-   # Check less-than operator 
+    # Check less-than operator
     op = "<"
 
     results = db.query(time_filter(0, op)).all()
@@ -2271,7 +2276,7 @@ def _test_annotation_datetime_query(
     results = db.query(time_filter(4, op)).all()
     assert len(results) == 4
 
-    # Check greater-than operator 
+    # Check greater-than operator
     op = ">"
 
     results = db.query(time_filter(0, op)).all()
@@ -2289,7 +2294,7 @@ def _test_annotation_datetime_query(
     results = db.query(time_filter(4, op)).all()
     assert len(results) == 0
 
-    # Check less-than or equal operator 
+    # Check less-than or equal operator
     op = "<="
 
     results = db.query(time_filter(0, op)).all()
@@ -2307,7 +2312,7 @@ def _test_annotation_datetime_query(
     results = db.query(time_filter(4, op)).all()
     assert len(results) == 4
 
-    # Check greater-than or equal operator 
+    # Check greater-than or equal operator
     op = ">="
 
     results = db.query(time_filter(0, op)).all()
@@ -2343,56 +2348,61 @@ def test_annotation_datetime_queries(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k1", value="v1")],
         metadata={
-            datetime_key : datetime_metadata[1].model_dump(),
-            date_key : date_metadata[1].model_dump(),
-            time_key : time_metadata[1].model_dump(),
-            duration_key : duration_metadata[1].model_dump(),
-        }
+            datetime_key: datetime_metadata[1].model_dump(),
+            date_key: date_metadata[1].model_dump(),
+            time_key: time_metadata[1].model_dump(),
+            duration_key: duration_metadata[1].model_dump(),
+        },
     )
     annotation_2 = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k2", value="v2")],
         metadata={
-            datetime_key : datetime_metadata[2].model_dump(),
-            date_key : date_metadata[2].model_dump(),
-            time_key : time_metadata[2].model_dump(),
-            duration_key : duration_metadata[2].model_dump(),
-        }
+            datetime_key: datetime_metadata[2].model_dump(),
+            date_key: date_metadata[2].model_dump(),
+            time_key: time_metadata[2].model_dump(),
+            duration_key: duration_metadata[2].model_dump(),
+        },
     )
     annotation_3 = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k3", value="v3")],
         metadata={
-            datetime_key : datetime_metadata[2].model_dump(),
-            date_key : date_metadata[2].model_dump(),
-            time_key : time_metadata[2].model_dump(),
-            duration_key : duration_metadata[2].model_dump(),
-        }
+            datetime_key: datetime_metadata[2].model_dump(),
+            date_key: date_metadata[2].model_dump(),
+            time_key: time_metadata[2].model_dump(),
+            duration_key: duration_metadata[2].model_dump(),
+        },
     )
     annotation_4 = schemas.Annotation(
         task_type=enums.TaskType.CLASSIFICATION,
         labels=[schemas.Label(key="k4", value="v4")],
         metadata={
-            datetime_key : datetime_metadata[3].model_dump(),
-            date_key : date_metadata[3].model_dump(),
-            time_key : time_metadata[3].model_dump(),
-            duration_key : duration_metadata[3].model_dump(),
-        }
+            datetime_key: datetime_metadata[3].model_dump(),
+            date_key: date_metadata[3].model_dump(),
+            time_key: time_metadata[3].model_dump(),
+            duration_key: duration_metadata[3].model_dump(),
+        },
     )
 
     crud.create_dataset(
         db=db,
         dataset=schemas.Dataset(
             name=dset_name,
-        )
+        ),
     )
 
     crud.create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
             datum=datum_1,
-            annotations=[annotation_1, annotation_2, annotation_3, annotation_4]
-        )
+            annotations=[
+                annotation_1,
+                annotation_2,
+                annotation_3,
+                annotation_4,
+            ],
+        ),
     )
 
     _test_annotation_datetime_query(db, datetime_key, datetime_metadata)

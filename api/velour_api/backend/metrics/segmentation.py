@@ -1,6 +1,6 @@
 from geoalchemy2.functions import ST_Count, ST_MapAlgebra
 from sqlalchemy.orm import Session, aliased
-from sqlalchemy.sql import Select, func, join, select
+from sqlalchemy.sql import Select, func, select
 
 from velour_api import enums, schemas
 from velour_api.backend import core, models
@@ -59,16 +59,16 @@ def _count_true_positives(
         )
         .select_from(groundtruth_subquery)
         .join(
-            prediction_subquery, 
-            prediction_subquery.c.datum_id == groundtruth_subquery.c.datum_id
+            prediction_subquery,
+            prediction_subquery.c.datum_id == groundtruth_subquery.c.datum_id,
         )
         .join(
             gt_annotation,
-            gt_annotation.id == groundtruth_subquery.c.annotation_id
+            gt_annotation.id == groundtruth_subquery.c.annotation_id,
         )
         .join(
             pd_annotation,
-            pd_annotation.id == prediction_subquery.c.annotation_id
+            pd_annotation.id == prediction_subquery.c.annotation_id,
         )
     )
     if ret is None:
@@ -86,7 +86,10 @@ def _count_groundtruths(
     ret = db.scalar(
         select(func.sum(ST_Count(models.Annotation.raster)))
         .select_from(groundtruth_subquery)
-        .join(models.Annotation, models.Annotation.id == groundtruth_subquery.c.annotation_id)
+        .join(
+            models.Annotation,
+            models.Annotation.id == groundtruth_subquery.c.annotation_id,
+        )
     )
     if ret is None:
         raise RuntimeError(
@@ -103,7 +106,10 @@ def _count_predictions(
     ret = db.scalar(
         select(func.sum(ST_Count(models.Annotation.raster)))
         .select_from(prediction_subquery)
-        .join(models.Annotation, models.Annotation.id == prediction_subquery.c.annotation_id)
+        .join(
+            models.Annotation,
+            models.Annotation.id == prediction_subquery.c.annotation_id,
+        )
     )
     if ret is None:
         return 0

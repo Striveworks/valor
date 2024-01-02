@@ -58,7 +58,7 @@ class GeoJSONPoint(BaseModel):
             x=self.coordinates[0],
             y=self.coordinates[1],
         )
-    
+
     def wkt(self) -> str:
         return self.geometry().wkt()
 
@@ -117,7 +117,7 @@ class GeoJSONPolygon(BaseModel):
             boundary=polygons[0],
             holes=polygons[1:] if len(polygons) > 1 else None,
         )
-    
+
     def wkt(self) -> str:
         return self.geometry().wkt()
 
@@ -181,12 +181,14 @@ class GeoJSONMultiPolygon(BaseModel):
         if not multipolygons:
             raise ValueError("Incorrect geometry type.")
         return MultiPolygon(polygons=multipolygons)
-    
+
     def wkt(self) -> str:
         return self.geometry().wkt()
 
 
-def from_dict(data: dict) -> GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon:
+def from_dict(
+    data: dict,
+) -> GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon:
     """
     Create a GeoJSON from a dictionary.
 

@@ -58,8 +58,11 @@ def get_dataset(
     """
     dataset = core.get_dataset(db, name=name)
     geo_dict = (
-        schemas.geojson.from_dict(json.loads(db.scalar(ST_AsGeoJSON(dataset.geo))))
-        if dataset.geo else None
+        schemas.geojson.from_dict(
+            json.loads(db.scalar(ST_AsGeoJSON(dataset.geo)))
+        )
+        if dataset.geo
+        else None
     )
     return schemas.Dataset(
         id=dataset.id,
@@ -117,8 +120,11 @@ def get_datums(
 
     for datum in datums:
         geo_dict = (
-            schemas.geojson.from_dict(json.loads(db.scalar(ST_AsGeoJSON(datum.geo)))) 
-            if datum.geo else None
+            schemas.geojson.from_dict(
+                json.loads(db.scalar(ST_AsGeoJSON(datum.geo)))
+            )
+            if datum.geo
+            else None
         )
 
         output.append(
