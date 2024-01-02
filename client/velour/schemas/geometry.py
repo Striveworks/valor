@@ -437,6 +437,12 @@ class BoundingBox:
             )
         )
 
+    @classmethod
+    def from_box(cls, box: Box):
+        return cls.from_extrema(
+            xmin=box.min.x, xmax=box.max.x, ymin=box.min.y, ymax=box.max.y
+        )
+
     @property
     def xmin(self):
         """Minimum x-coordinate of the bounding box."""
