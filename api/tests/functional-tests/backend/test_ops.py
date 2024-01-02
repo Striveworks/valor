@@ -16,7 +16,7 @@ datum_uid4 = "uid4"
 
 
 @pytest.fixture
-def metadata_1() -> list[schemas.Metadatum]:
+def metadata_1() -> dict[str, int | float | str]:
     return {
         "some_numeric_attribute": 0.4,
         "some_str_attribute": "abc",
@@ -26,7 +26,7 @@ def metadata_1() -> list[schemas.Metadatum]:
 
 
 @pytest.fixture
-def metadata_2() -> list[schemas.Metadatum]:
+def metadata_2() -> dict[str, int | float | str]:
     return {
         "some_numeric_attribute": 0.6,
         "some_str_attribute": "abc",
@@ -36,7 +36,7 @@ def metadata_2() -> list[schemas.Metadatum]:
 
 
 @pytest.fixture
-def metadata_3() -> list[schemas.Metadatum]:
+def metadata_3() -> dict[str, int | float | str]:
     return {
         "some_numeric_attribute": 0.4,
         "some_str_attribute": "xyz",
@@ -46,7 +46,7 @@ def metadata_3() -> list[schemas.Metadatum]:
 
 
 @pytest.fixture
-def metadata_4() -> list[schemas.Metadatum]:
+def metadata_4() -> dict[str, int | float | str]:
     return {
         "some_numeric_attribute": 0.6,
         "some_str_attribute": "xyz",

@@ -25,43 +25,6 @@ def test__format_uid():
     assert "illegal characters" in str(e)
 
 
-def test_metadata_Metadatum():
-    # valid
-    schemas.Metadatum(key="name", value="value")
-    schemas.Metadatum(
-        key="name",
-        value=123,
-    )
-    schemas.Metadatum(
-        key="name",
-        value=123.0,
-    )
-
-    # test property `name`
-    with pytest.raises(ValidationError):
-        schemas.Metadatum(
-            key=("name",),
-            value=123,
-        )
-
-    # test property `value`
-    with pytest.raises(ValidationError):
-        schemas.Metadatum(
-            key="name",
-            value=[1, 2, 3],
-        )
-    with pytest.raises(ValidationError):
-        schemas.Metadatum(
-            key="name",
-            value=(1, 2, 3),
-        )
-    with pytest.raises(ValidationError):
-        schemas.Metadatum(
-            key="name",
-            value=schemas.geometry.Point(x=1, y=1),
-        )
-
-
 def test_dataset(metadata):
     # valid
     schemas.Dataset(name="dataset1")

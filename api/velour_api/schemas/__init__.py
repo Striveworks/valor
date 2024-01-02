@@ -25,7 +25,7 @@ from .geometry import (
     Raster,
 )
 from .info import APIVersion
-from .metadata import Date, DateTime, Duration, Metadatum, Time
+from .metadata import Date, DateTime, Duration, Time
 from .metrics import (
     AccuracyMetric,
     APMetric,
@@ -68,7 +68,6 @@ __all__ = [
     "MultiPolygon",
     "Polygon",
     "Raster",
-    "Metadatum",
     "DateTime",
     "Date",
     "Time",
