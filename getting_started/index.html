@@ -8,7 +8,7 @@
 <link href=".." rel="prev"/>
 <link href="../endpoints/" rel="next"/>
 <link href="../assets/images/favicon.png" rel="icon"/>
-<meta content="mkdocs-1.5.3, mkdocs-material-9.5.2" name="generator"/>
+<meta content="mkdocs-1.5.3, mkdocs-material-9.5.3" name="generator"/>
 <title>Getting Started - Velour</title>
 <link href="../assets/stylesheets/main.50c56a3b.min.css" rel="stylesheet"/>
 <link href="../assets/stylesheets/palette.06af60db.min.css" rel="stylesheet"/>
@@ -756,7 +756,7 @@
 </span><span id="__span-6-10"><a href="#__codelineno-6-10" id="__codelineno-6-10" name="__codelineno-6-10"></a>
 </span><span id="__span-6-11"><a href="#__codelineno-6-11" id="__codelineno-6-11" name="__codelineno-6-11"></a><span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">groundtruth_annotations</span><span class="p">:</span>
 </span><span id="__span-6-12"><a href="#__codelineno-6-12" id="__codelineno-6-12" name="__codelineno-6-12"></a>
-</span><span id="__span-6-13"><a href="#__codelineno-6-13" id="__codelineno-6-13" name="__codelineno-6-13"></a>    <span class="c1"># each image is represented by a Velour Datum. </span>
+</span><span id="__span-6-13"><a href="#__codelineno-6-13" id="__codelineno-6-13" name="__codelineno-6-13"></a>    <span class="c1"># each image is represented by a Velour Datum.</span>
 </span><span id="__span-6-14"><a href="#__codelineno-6-14" id="__codelineno-6-14" name="__codelineno-6-14"></a>    <span class="c1"># this is used to connect groundtruths and predictions when it's time for evaluation.</span>
 </span><span id="__span-6-15"><a href="#__codelineno-6-15" id="__codelineno-6-15" name="__codelineno-6-15"></a>    <span class="n">datum</span> <span class="o">=</span> <span class="n">Datum</span><span class="p">(</span>
 </span><span id="__span-6-16"><a href="#__codelineno-6-16" id="__codelineno-6-16" name="__codelineno-6-16"></a>        <span class="n">uid</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">image</span><span class="p">[</span><span class="s2">"path"</span><span class="p">])</span><span class="o">.</span><span class="n">stem</span><span class="p">,</span> <span class="c1"># strip the filename for use as Datum uid.</span>
