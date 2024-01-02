@@ -1,0 +1,24 @@
+name: Check pre-commit hooks pass
+
+on:
+  push:
+    branches: "**"
+
+jobs:
+  check-pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install pre-commit
+        run: pip install pre-commit && pre-commit install
+      - name: Run pre-commit. This will fail if pre-commit hooks fail.
+        run: pre-commit run --all-files
