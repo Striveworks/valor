@@ -1,6 +1,6 @@
-from sqlalchemy import Select, select, and_, or_
-from sqlalchemy.orm import Session
+from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
 from velour_api.backend import models, ops
@@ -23,12 +23,11 @@ def _fetch_matching_labels(
         List of label schemas to search for in the database.
     """
     return db.query(
-        select(models.Label)
-        .where(
+        select(models.Label).where(
             or_(
                 *[
                     and_(
-                        models.Label.key == label.key, 
+                        models.Label.key == label.key,
                         models.Label.value == label.value,
                     )
                     for label in labels
@@ -69,7 +68,7 @@ def create_labels(
     # create new labels
     new_labels = [
         models.Label(
-            key=label.key, 
+            key=label.key,
             value=label.value,
         )
         for label in labels
@@ -132,7 +131,7 @@ def get_labels(
     """
     if filters:
         stmt = ops.Query(models.Label).filter(filters).any()
-    
+
     return _get_labels(db, stmt)
 
 

@@ -171,8 +171,8 @@ def _raster_to_png_b64(
 
 
 def get_annotation(
-    db: Session, 
-    annotation: models.Annotation, 
+    db: Session,
+    annotation: models.Annotation,
     datum: models.Datum = None,
 ) -> schemas.Annotation:
     """
@@ -197,7 +197,11 @@ def get_annotation(
         labels = [
             schemas.Label(key=label[0], value=label[1], score=label[2])
             for label in (
-                db.query(models.Label.key, models.Label.value, models.Prediction.score)
+                db.query(
+                    models.Label.key,
+                    models.Label.value,
+                    models.Prediction.score,
+                )
                 .select_from(models.Prediction)
                 .join(
                     models.Label,
