@@ -53,8 +53,7 @@ def fetch_matching_labels(
         List of label schemas to search for in the database.
     """
     return db.query(
-        select(models.Label)
-        .where(
+        select(models.Label).where(
             or_(
                 *[
                     and_(
