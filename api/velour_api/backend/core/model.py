@@ -9,7 +9,7 @@ from velour_api import exceptions, schemas
 from velour_api.backend import models
 
 
-def _fetch_model(
+def fetch_model(
     db: Session,
     name: str,
 ) -> models.Model:
@@ -29,7 +29,6 @@ def _fetch_model(
         The requested model.
 
     """
-
     model = (
         db.query(models.Model).where(models.Model.name == name).one_or_none()
     )
@@ -85,7 +84,7 @@ def get_model(
     schemas.Model
         The requested model.
     """
-    model = _fetch_model(db, name=name)
+    model = fetch_model(db, name=name)
     geodict = (
         schemas.geojson.from_dict(
             json.loads(db.scalar(ST_AsGeoJSON(model.geo)))
@@ -136,7 +135,7 @@ def delete_model(
     name : str
         The name of the model.
     """
-    model = _fetch_model(db, name=name)
+    model = fetch_model(db, name=name)
     try:
         db.delete(model)
         db.commit()

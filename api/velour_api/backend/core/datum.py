@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models, ops
-from velour_api.backend.core.dataset import fetch_dataset_row
+from velour_api.backend.core.dataset import fetch_dataset
 
 
 def create_datum(
@@ -30,7 +30,7 @@ def create_datum(
         The datum.
     """
     # retrieve dataset
-    dataset = fetch_dataset_row(db, datum.dataset)
+    dataset = fetch_dataset(db, datum.dataset)
 
     # create datum
     try:

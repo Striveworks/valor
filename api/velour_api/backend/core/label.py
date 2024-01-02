@@ -6,7 +6,7 @@ from velour_api import enums, schemas
 from velour_api.backend import models, ops
 
 
-def _fetch_matching_labels(
+def fetch_matching_labels(
     db: Session,
     labels: list[schemas.Label],
 ) -> list[models.Label]:
@@ -61,8 +61,7 @@ def create_labels(
 
     # get existing labels
     existing_labels = {
-        (label.key, label.value)
-        for label in _fetch_matching_labels(db, labels)
+        (label.key, label.value) for label in fetch_matching_labels(db, labels)
     }
 
     # create new labels
@@ -84,7 +83,7 @@ def create_labels(
         raise e  # this should never be called
 
     # get existing labels
-    return _fetch_matching_labels(db, labels)
+    return fetch_matching_labels(db, labels)
 
 
 def _get_labels(

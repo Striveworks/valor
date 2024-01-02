@@ -9,35 +9,7 @@ from velour_api import exceptions, schemas
 from velour_api.backend import models
 
 
-def create_dataset(
-    db: Session,
-    dataset: schemas.Dataset,
-):
-    """
-    Creates a dataset.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    dataset : schemas.Dataset
-        The dataset to create.
-    """
-    try:
-        row = models.Dataset(
-            name=dataset.name,
-            meta=dataset.metadata,
-            geo=dataset.geospatial.wkt() if dataset.geospatial else None,
-        )
-        db.add(row)
-        db.commit()
-        return row
-    except IntegrityError:
-        db.rollback()
-        raise exceptions.DatasetAlreadyExistsError(dataset.name)
-
-
-def fetch_dataset_row(
+def fetch_dataset(
     db: Session,
     name: str,
 ) -> models.Dataset:
@@ -68,6 +40,34 @@ def fetch_dataset_row(
     return dataset
 
 
+def create_dataset(
+    db: Session,
+    dataset: schemas.Dataset,
+):
+    """
+    Creates a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    dataset : schemas.Dataset
+        The dataset to create.
+    """
+    try:
+        row = models.Dataset(
+            name=dataset.name,
+            meta=dataset.metadata,
+            geo=dataset.geospatial.wkt() if dataset.geospatial else None,
+        )
+        db.add(row)
+        db.commit()
+        return row
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.DatasetAlreadyExistsError(dataset.name)
+
+
 def get_dataset(
     db: Session,
     name: str,
@@ -87,7 +87,7 @@ def get_dataset(
     schemas.Dataset
         The requested dataset.
     """
-    dataset = fetch_dataset_row(db, name=name)
+    dataset = fetch_dataset(db, name=name)
     geo_dict = (
         schemas.geojson.from_dict(
             json.loads(db.scalar(ST_AsGeoJSON(dataset.geo)))
@@ -139,7 +139,7 @@ def delete_dataset(
     name : str
         The name of the dataset.
     """
-    dataset = fetch_dataset_row(db, name=name)
+    dataset = fetch_dataset(db, name=name)
     try:
         db.delete(dataset)
         db.commit()
