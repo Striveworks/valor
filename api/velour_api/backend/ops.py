@@ -81,10 +81,6 @@ class Query:
     def _map_attribute_to_table(
         self, attr: InstrumentedAttribute | DeclarativeMeta
     ) -> DeclarativeMeta | None:
-<<<<<<< HEAD
-
-=======
->>>>>>> main
         if isinstance(attr, DeclarativeMeta):
             return attr
         elif isinstance(attr, InstrumentedAttribute):

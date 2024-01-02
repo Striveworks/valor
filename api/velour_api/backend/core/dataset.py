@@ -1,7 +1,7 @@
 import json
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
