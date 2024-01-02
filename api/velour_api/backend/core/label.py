@@ -22,18 +22,16 @@ def _fetch_matching_labels(
     labels : List[schemas.Label]
         List of label schemas to search for in the database.
     """
-    label_keys, label_values = zip(
-        *[(label.key, label.value) for label in labels]
-    )
-    existing_label_kv_combos = {
-        (label.key, label.value): label
-        for label in (
-            db.query(models.Label)
-            .where(
-                and_(
-                    models.Label.key.in_(label_keys),
-                    models.Label.value.in_(label_values),
-                )
+    return db.query(
+        select(models.Label).where(
+            or_(
+                *[
+                    and_(
+                        models.Label.key == label.key,
+                        models.Label.value == label.value,
+                    )
+                    for label in labels
+                ]
             )
         )
     ).all()
@@ -63,23 +61,15 @@ def create_labels(
 
     # get existing labels
     existing_labels = {
-        (label.key, label.value): label
-        for label in (
-            db.query(models.Label)
-            .where(
-                and_(
-                    models.Label.key.in_(label_keys),
-                    models.Label.value.in_(label_values),
-                )
-            )
-            .all()
-        )
+        (label.key, label.value)
+        for label in _fetch_matching_labels(db, labels)
     }
 
     # create new labels
-    new_labels = {
-        (label.key, label.value): models.Label(
-            key=label.key, value=label.value
+    new_labels = [
+        models.Label(
+            key=label.key,
+            value=label.value,
         )
         for label in labels
         if (label.key, label.value) not in existing_labels
