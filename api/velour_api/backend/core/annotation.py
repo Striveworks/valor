@@ -171,7 +171,9 @@ def _raster_to_png_b64(
 
 
 def get_annotation(
-    db: Session, annotation: models.Annotation, datum: models.Datum = None
+    db: Session, 
+    annotation: models.Annotation, 
+    datum: models.Datum = None,
 ) -> schemas.Annotation:
     """
     Fetch an annotation from the database.
@@ -186,42 +188,39 @@ def get_annotation(
         The datum associated with the annotation.
 
     Returns
-    ----------
+    -------
     schemas.Annotation
         The requested annotation.
     """
     # Retrieve all labels associated with annotation
-    groundtruth_labels = [
-        schemas.Label(key=label[0], value=label[1])
-        for label in (
-            db.query(models.Label.key, models.Label.value)
-            .join(
-                models.GroundTruth,
-                models.GroundTruth.label_id == models.Label.id,
+    if annotation.model_id is not None:
+        labels = [
+            schemas.Label(key=label[0], value=label[1], score=label[2])
+            for label in (
+                db.query(models.Label.key, models.Label.value, models.Prediction.score)
+                .select_from(models.Prediction)
+                .join(
+                    models.Label,
+                    models.Prediction.label_id == models.Label.id,
+                )
+                .where(models.Prediction.annotation_id == annotation.id)
+                .all()
             )
-            .where(
-                models.GroundTruth.annotation_id == annotation.id,
+        ]
+    else:
+        labels = [
+            schemas.Label(key=label[0], value=label[1])
+            for label in (
+                db.query(models.Label.key, models.Label.value)
+                .select_from(models.GroundTruth)
+                .join(
+                    models.Label,
+                    models.GroundTruth.label_id == models.Label.id,
+                )
+                .where(models.GroundTruth.annotation_id == annotation.id)
+                .all()
             )
-            .all()
-        )
-    ]
-    prediction_labels = [
-        schemas.Label(key=label[0], value=label[1], score=label[2])
-        for label in (
-            db.query(
-                models.Label.key, models.Label.value, models.Prediction.score
-            )
-            .join(
-                models.Prediction,
-                models.Prediction.label_id == models.Label.id,
-            )
-            .where(
-                models.Prediction.annotation_id == annotation.id,
-            )
-            .all()
-        )
-    ]
-    labels = groundtruth_labels if groundtruth_labels else prediction_labels
+        ]
 
     # Initialize
     retval = schemas.Annotation(
@@ -238,7 +237,9 @@ def get_annotation(
     if annotation.box is not None:
         geojson = json.loads(db.scalar(ST_AsGeoJSON(annotation.box)))
         retval.bounding_box = schemas.BoundingBox(
-            polygon=schemas.geojson.from_dict(data=geojson).geometry().boundary,
+            polygon=schemas.geojson.from_dict(data=geojson)
+            .geometry()
+            .boundary,
             box=None,
         )
 

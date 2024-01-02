@@ -1,33 +1,30 @@
-import pytest
-
 import datetime
-from typing import List, Dict, Union
+from typing import Dict, List, Union
+
+import pytest
 
 from velour import Label
 from velour.schemas.filters import (
-    Filter, 
-    ValueFilter,
-    GeospatialFilter,
     DeclarativeMapper,
+    Filter,
+    GeospatialFilter,
+    ValueFilter,
 )
+
 
 def test_labels_filter():
     f = Filter.create(
         [
             Label.label.in_(
-                [
-                    Label(key="k1", value="v1"), 
-                    Label(key="k2", value="v2")
-                ]
+                [Label(key="k1", value="v1"), Label(key="k2", value="v2")]
             )
         ]
     )
-    assert {'k1': 'v1'} in f.labels 
-    assert {'k2': 'v2'} in f.labels
+    assert {"k1": "v1"} in f.labels
+    assert {"k2": "v2"} in f.labels
 
 
 def test_value_filter():
-
     def _test_numeric(value):
         for operator in ["==", "!=", ">=", "<=", ">", "<"]:
             ValueFilter(value=value, operator=operator)
@@ -38,13 +35,22 @@ def test_value_filter():
     def _test_string(value):
         for operator in ["==", "!="]:
             ValueFilter(value=value, operator=operator)
-        for operator in [">=", "<=", ">", "<", "inside", "outside", "intersect", "@"]:
+        for operator in [
+            ">=",
+            "<=",
+            ">",
+            "<",
+            "inside",
+            "outside",
+            "intersect",
+            "@",
+        ]:
             with pytest.raises(ValueError):
                 ValueFilter(value=value, operator=operator)
 
     # int
     _test_numeric(int(123))
-    
+
     # float
     _test_numeric(float(123))
 
@@ -66,6 +72,7 @@ def test_value_filter():
     # unsupported type
     class SomeUnsupportedType:
         pass
+
     with pytest.raises(TypeError):
         _test_numeric(SomeUnsupportedType())
     with pytest.raises(TypeError):
@@ -84,20 +91,21 @@ def test_geospatial_schema():
 
 def test_declarative_mapper_string():
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=str,
-    ) == "value"
+    expression = (
+        DeclarativeMapper(
+            name="name",
+            object_type=str,
+        )
+        == "value"
+    )
     assert expression.name == "name"
     assert expression.operator == "=="
     assert expression.value == "value"
     assert expression.key is None
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=str,
-        key="key"
-    ) != "value"
+    expression = (
+        DeclarativeMapper(name="name", object_type=str, key="key") != "value"
+    )
     assert expression.name == "name"
     assert expression.operator == "!="
     assert expression.value == "value"
@@ -117,25 +125,37 @@ def test_declarative_mapper_string():
     assert expression[1].key is None
 
     with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=str,
-        ) >= "value"
+        expression = (
+            DeclarativeMapper(
+                name="name",
+                object_type=str,
+            )
+            >= "value"
+        )
     with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=str,
-        ) <= "value"
+        expression = (
+            DeclarativeMapper(
+                name="name",
+                object_type=str,
+            )
+            <= "value"
+        )
     with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=str,
-        ) > "value"
+        expression = (
+            DeclarativeMapper(
+                name="name",
+                object_type=str,
+            )
+            > "value"
+        )
     with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=str,
-        ) < "value"
+        expression = (
+            DeclarativeMapper(
+                name="name",
+                object_type=str,
+            )
+            < "value"
+        )
     with pytest.raises(TypeError):
         expression = DeclarativeMapper(
             name="name",
@@ -155,20 +175,21 @@ def test_declarative_mapper_string():
 
 def test_declarative_mapper_int():
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=int,
-    ) == 1234
+    expression = (
+        DeclarativeMapper(
+            name="name",
+            object_type=int,
+        )
+        == 1234
+    )
     assert expression.name == "name"
     assert expression.operator == "=="
     assert expression.value == 1234
     assert expression.key is None
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=int,
-        key="key"
-    ) != 1234
+    expression = (
+        DeclarativeMapper(name="name", object_type=int, key="key") != 1234
+    )
     assert expression.name == "name"
     assert expression.operator == "!="
     assert expression.value == 1234
@@ -187,37 +208,49 @@ def test_declarative_mapper_int():
     assert expression[1].value == 987
     assert expression[1].key is None
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=int,
-    ) >= 1234
+    expression = (
+        DeclarativeMapper(
+            name="name",
+            object_type=int,
+        )
+        >= 1234
+    )
     assert expression.name == "name"
     assert expression.operator == ">="
     assert expression.value == 1234
     assert expression.key is None
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=int,
-    ) <= 1234
+    expression = (
+        DeclarativeMapper(
+            name="name",
+            object_type=int,
+        )
+        <= 1234
+    )
     assert expression.name == "name"
     assert expression.operator == "<="
     assert expression.value == 1234
     assert expression.key is None
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=int,
-    ) > 1234
+    expression = (
+        DeclarativeMapper(
+            name="name",
+            object_type=int,
+        )
+        > 1234
+    )
     assert expression.name == "name"
     assert expression.operator == ">"
     assert expression.value == 1234
     assert expression.key is None
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=int,
-    ) < 1234
+    expression = (
+        DeclarativeMapper(
+            name="name",
+            object_type=int,
+        )
+        < 1234
+    )
     assert expression.name == "name"
     assert expression.operator == "<"
     assert expression.value == 1234
@@ -242,20 +275,21 @@ def test_declarative_mapper_int():
 
 def test_declarative_mapper_float():
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=float,
-    ) == 12.34
+    expression = (
+        DeclarativeMapper(
+            name="name",
+            object_type=float,
+        )
+        == 12.34
+    )
     assert expression.name == "name"
     assert expression.operator == "=="
     assert expression.value == 12.34
     assert expression.key is None
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=float,
-        key="key"
-    ) != 12.34
+    expression = (
+        DeclarativeMapper(name="name", object_type=float, key="key") != 12.34
+    )
     assert expression.name == "name"
     assert expression.operator == "!="
     assert expression.value == 12.34
@@ -274,37 +308,49 @@ def test_declarative_mapper_float():
     assert expression[1].value == 98.7
     assert expression[1].key is None
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=float,
-    ) >= 12.34
+    expression = (
+        DeclarativeMapper(
+            name="name",
+            object_type=float,
+        )
+        >= 12.34
+    )
     assert expression.name == "name"
     assert expression.operator == ">="
     assert expression.value == 12.34
     assert expression.key is None
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=float,
-    ) <= 12.34
+    expression = (
+        DeclarativeMapper(
+            name="name",
+            object_type=float,
+        )
+        <= 12.34
+    )
     assert expression.name == "name"
     assert expression.operator == "<="
     assert expression.value == 12.34
     assert expression.key is None
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=float,
-    ) > 12.34
+    expression = (
+        DeclarativeMapper(
+            name="name",
+            object_type=float,
+        )
+        > 12.34
+    )
     assert expression.name == "name"
     assert expression.operator == ">"
     assert expression.value == 12.34
     assert expression.key is None
 
-    expression = DeclarativeMapper(
-        name="name",
-        object_type=float,
-    ) < 12.34
+    expression = (
+        DeclarativeMapper(
+            name="name",
+            object_type=float,
+        )
+        < 12.34
+    )
     assert expression.name == "name"
     assert expression.operator == "<"
     assert expression.value == 12.34
@@ -328,7 +374,6 @@ def test_declarative_mapper_float():
 
 
 def test_declarative_mapper_datetime_objects():
-    
     def _test_datetime_object(datetime_object):
         # positive
         DeclarativeMapper(
@@ -385,10 +430,7 @@ def test_declarative_mapper_datetime_objects():
 
 def test_declarative_mapper_geospatial():
 
-    point = {
-        "type": "Point", 
-        "coordinates": [30.0, 10.0]
-    }
+    point = {"type": "Point", "coordinates": [30.0, 10.0]}
     object_type = Dict[
         str,
         Union[
@@ -396,7 +438,7 @@ def test_declarative_mapper_geospatial():
             List[List[List[Union[float, int]]]],
             List[Union[float, int]],
             str,
-        ]
+        ],
     ]
 
     expression = DeclarativeMapper(
@@ -413,35 +455,53 @@ def test_declarative_mapper_geospatial():
     ).outside(point)
 
     with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=object_type,
-        ) == point
+        expression = (
+            DeclarativeMapper(
+                name="name",
+                object_type=object_type,
+            )
+            == point
+        )
     with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=object_type,
-        ) != point
+        expression = (
+            DeclarativeMapper(
+                name="name",
+                object_type=object_type,
+            )
+            != point
+        )
     with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=object_type,
-        ) >= point
+        expression = (
+            DeclarativeMapper(
+                name="name",
+                object_type=object_type,
+            )
+            >= point
+        )
     with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=object_type,
-        ) <= point
+        expression = (
+            DeclarativeMapper(
+                name="name",
+                object_type=object_type,
+            )
+            <= point
+        )
     with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=object_type,
-        ) > point
+        expression = (
+            DeclarativeMapper(
+                name="name",
+                object_type=object_type,
+            )
+            > point
+        )
     with pytest.raises(TypeError):
-        expression = DeclarativeMapper(
-            name="name",
-            object_type=object_type,
-        ) < point
+        expression = (
+            DeclarativeMapper(
+                name="name",
+                object_type=object_type,
+            )
+            < point
+        )
     with pytest.raises(TypeError):
         expression = DeclarativeMapper(
             name="name",

@@ -4,17 +4,13 @@ import numpy
 import PIL
 from PIL.Image import Resampling
 
-from velour import Datum, Annotation, Label, Prediction, enums
+from velour import Annotation, Datum, Label, Prediction, enums
 from velour.metatypes import ImageMetadata
 from velour.schemas import BoundingBox, Raster
 
-from typing import Union
-
 
 def parse_detection_into_bounding_box(
-    result, 
-    datum: Datum, 
-    label_key: str = "class"
+    result, datum: Datum, label_key: str = "class"
 ) -> Prediction:
     """Parses Ultralytic's result for an object detection task."""
 
@@ -23,7 +19,6 @@ def parse_detection_into_bounding_box(
     probabilities = [conf.item() for conf in result.boxes.conf]
     labels = [result.names[int(pred.item())] for pred in result.boxes.cls]
     bboxes = [numpy.asarray(box.cpu()) for box in result.boxes.xyxy]
-
 
     # validate dimensions
     image_metadata = ImageMetadata.from_datum(datum)
@@ -114,7 +109,10 @@ def parse_detection_into_raster(
     # Extract masks
     masks = [
         _convert_yolo_segmentation(
-            raw, height=image_metadata.height, width=image_metadata.width, resample=resample
+            raw,
+            height=image_metadata.height,
+            width=image_metadata.width,
+            resample=resample,
         )
         for raw in result.masks.data
     ]
@@ -131,4 +129,3 @@ def parse_detection_into_raster(
             for mask, scored_label in list(zip(masks, labels))
         ],
     )
-

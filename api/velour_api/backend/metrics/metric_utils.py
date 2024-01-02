@@ -1,10 +1,9 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from velour_api.enums import JobStatus
 
 from velour_api import schemas
-from velour_api.enums import JobStatus
 from velour_api.backend import core, models
+from velour_api.enums import JobStatus
 
 
 def get_or_create_row(

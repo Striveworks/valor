@@ -1,8 +1,12 @@
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from velour_api.enums import AnnotationType, TaskType
-from velour_api.schemas.geojson import GeoJSONPoint, GeoJSONPolygon, GeoJSONMultiPolygon
-from velour_api.schemas.metadata import DateTime, Date, Time, Duration
+from velour_api.schemas.geojson import (
+    GeoJSONMultiPolygon,
+    GeoJSONPoint,
+    GeoJSONPolygon,
+)
+from velour_api.schemas.metadata import Date, DateTime, Duration, Time
 
 
 class StringFilter(BaseModel):
@@ -212,7 +216,7 @@ class GeospatialFilter(BaseModel):
             A hashed integer.
         """
         return hash(f"Value:{self.value.model_dump_json},Op:{self.operator}")
-    
+
 
 class DateTimeFilter(BaseModel):
     """
@@ -282,7 +286,9 @@ class DateTimeFilter(BaseModel):
         int
             A hashed integer.
         """
-        return hash(f"Value:{self.value.value},Pattern:{self.value.pattern},Op:{self.operator}")
+        return hash(
+            f"Value:{self.value.value},Pattern:{self.value.pattern},Op:{self.operator}"
+        )
 
 
 class Filter(BaseModel):
@@ -332,16 +338,14 @@ class Filter(BaseModel):
     # datasets
     dataset_names: list[str] | None = None
     dataset_metadata: dict[
-        str, 
-        list[StringFilter | NumericFilter | DateTimeFilter]
+        str, list[StringFilter | NumericFilter | DateTimeFilter]
     ] | None = None
     dataset_geospatial: list[GeospatialFilter] | None = None
 
     # models
     models_names: list[str] | None = None
     models_metadata: dict[
-        str, 
-        list[StringFilter | NumericFilter | DateTimeFilter]
+        str, list[StringFilter | NumericFilter | DateTimeFilter]
     ] | None = None
     models_geospatial: list[GeospatialFilter] | None = None
 
@@ -351,8 +355,7 @@ class Filter(BaseModel):
     ] | None = None  # This should be used sparingly and with small lists.
     datum_uids: list[str] | None = None
     datum_metadata: dict[
-        str, 
-        list[StringFilter | NumericFilter | DateTimeFilter]
+        str, list[StringFilter | NumericFilter | DateTimeFilter]
     ] | None = None
     datum_geospatial: list[GeospatialFilter] | None = None
 
@@ -361,8 +364,7 @@ class Filter(BaseModel):
     annotation_types: list[AnnotationType] | None = None
     annotation_geometric_area: list[NumericFilter] | None = None
     annotation_metadata: dict[
-        str, 
-        list[StringFilter | NumericFilter | DateTimeFilter]
+        str, list[StringFilter | NumericFilter | DateTimeFilter]
     ] | None = None
     annotation_geospatial: list[GeospatialFilter] | None = None
 

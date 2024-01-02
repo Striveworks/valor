@@ -1068,6 +1068,7 @@ def test_get_bulk_evaluations(crud, client: TestClient):
         )
         assert resp.status_code == 404
 
+
 @patch("velour_api.main.crud")
 def test_get_bulk_evaluations_job_ids(crud, client: TestClient):
     crud.get_evaluations.return_value = []

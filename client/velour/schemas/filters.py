@@ -1,5 +1,5 @@
 import datetime
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Dict, List, Union
 
@@ -31,30 +31,27 @@ class ValueFilter:
 
     def __post_init__(self):
         # numerics
-        if (
-            isinstance(self.value, int) 
-            or isinstance(self.value, float)
-        ):
+        if isinstance(self.value, int) or isinstance(self.value, float):
             allowed_operators = [">", "<", ">=", "<=", "==", "!="]
-        
+
         # datetime
         elif isinstance(self.value, datetime.datetime):
-            self.value = {'datetime' : self.value.isoformat()}
+            self.value = {"datetime": self.value.isoformat()}
             allowed_operators = [">", "<", ">=", "<=", "==", "!="]
 
         # date
         elif isinstance(self.value, datetime.date):
-            self.value = {'date' : self.value.isoformat()}
+            self.value = {"date": self.value.isoformat()}
             allowed_operators = [">", "<", ">=", "<=", "==", "!="]
 
         # time
         elif isinstance(self.value, datetime.time):
-            self.value = {'time' : self.value.isoformat()}
+            self.value = {"time": self.value.isoformat()}
             allowed_operators = [">", "<", ">=", "<=", "==", "!="]
 
         # duration
         elif isinstance(self.value, datetime.timedelta):
-            self.value = {'duration' : str(self.value.total_seconds())}
+            self.value = {"duration": str(self.value.total_seconds())}
             allowed_operators = [">", "<", ">=", "<=", "==", "!="]
 
         # strings
@@ -65,7 +62,7 @@ class ValueFilter:
             raise TypeError(
                 f"Filter `value` is an unsupported value: `{self.value}` of type {type(self.value)}."
             )
-        
+
         # check if operator is valid
         if self.operator not in allowed_operators:
             raise ValueError(
@@ -94,7 +91,7 @@ class GeospatialFilter:
             List[List[List[Union[float, int]]]],
             List[Union[float, int]],
             str,
-        ]
+        ],
     ]
     operator: str = "intersect"
 
@@ -123,7 +120,9 @@ class DeclarativeMapper:
     def _validate_equality(self, value: any, opstring: str):
         """Validate that the inputs to ac operator filter are of the correct type."""
         if isinstance(value, dict):
-            raise TypeError(f"`{self.name}` with type {type(value)} does not support operator `{opstring}`.")
+            raise TypeError(
+                f"`{self.name}` with type {type(value)} does not support operator `{opstring}`."
+            )
         if self.object_type == float and isinstance(value, int):
             return  # edge case
         if not isinstance(value, self.object_type):
@@ -134,7 +133,7 @@ class DeclarativeMapper:
     def _validate_numeric_operator(self, value: any, opstring: str):
         """Validate the inputs to a numeric filter."""
         if (
-            not isinstance(value, float) 
+            not isinstance(value, float)
             and not isinstance(value, int)
             and not isinstance(value, datetime.datetime)
             and not isinstance(value, datetime.date)
@@ -147,11 +146,10 @@ class DeclarativeMapper:
     def _validate_geospatial_operator(self, value):
         """Validate the inputs to a geospatial filter."""
         if not isinstance(value, dict):
-            raise TypeError("Geospatial filters should be a GeoJSON-style dictionary containing the keys `type` and `coordinates`.")
-        elif (
-            not value.get("type")
-            or not value.get("coordinates")
-        ):
+            raise TypeError(
+                "Geospatial filters should be a GeoJSON-style dictionary containing the keys `type` and `coordinates`."
+            )
+        elif not value.get("type") or not value.get("coordinates"):
             raise ValueError(
                 "Geospatial filters should be a GeoJSON-style dictionary containing the keys `type` and `coordinates`."
             )

@@ -12,13 +12,14 @@ class DateTime(BaseModel):
     datetime : str
         Datetime in ISO format.
     """
+
     datetime: str
     model_config = ConfigDict(extra="forbid")
 
     @property
     def key(self) -> str:
         return "datetime"
-    
+
     @property
     def value(self) -> str:
         return self.datetime
@@ -33,13 +34,14 @@ class Date(BaseModel):
     date : str
         Date in ISO format.
     """
+
     date: str
     model_config = ConfigDict(extra="forbid")
 
     @property
     def key(self) -> str:
         return "date"
-    
+
     @property
     def value(self) -> str:
         return self.date
@@ -54,17 +56,18 @@ class Time(BaseModel):
     time : str
         Time in ISO format.
     """
+
     time: str
     model_config = ConfigDict(extra="forbid")
 
     @property
     def key(self) -> str:
         return "time"
-    
+
     @property
     def value(self) -> str:
         return self.time
-    
+
 
 class Duration(BaseModel):
     """
@@ -75,13 +78,14 @@ class Duration(BaseModel):
     duration : str
         Time duration in seconds.
     """
+
     duration: str
     model_config = ConfigDict(extra="forbid")
 
     @property
     def key(self) -> str:
         return "duration"
-    
+
     @property
     def value(self) -> str:
         return self.duration

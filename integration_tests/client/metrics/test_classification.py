@@ -118,7 +118,9 @@ def test_evaluate_tabular_clf(
     # test
     model = Model(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset).wait_for_completion(timeout=30)
+        model.evaluate_classification(dataset=dataset).wait_for_completion(
+            timeout=30
+        )
     assert "has not been finalized" in str(exc_info)
 
     dataset.finalize()
@@ -144,7 +146,9 @@ def test_evaluate_tabular_clf(
 
     # test
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset).wait_for_completion(timeout=30)
+        model.evaluate_classification(dataset=dataset).wait_for_completion(
+            timeout=30
+        )
     assert "has not been finalized" in str(exc_info)
 
     model.finalize_inferences(dataset)

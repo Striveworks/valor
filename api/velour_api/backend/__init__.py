@@ -1,3 +1,14 @@
+from .core import (
+    create_dataset,
+    create_groundtruth,
+    create_prediction,
+    delete_dataset,
+    get_dataset,
+    get_datasets,
+    get_datums,
+    get_groundtruth,
+    get_prediction,
+)
 from .metrics import (
     create_clf_evaluation,
     create_clf_metrics,
@@ -9,18 +20,10 @@ from .metrics import (
 )
 from .ops import Query
 from .query import (
-    create_dataset,
-    create_groundtruth,
     create_model,
-    create_prediction,
-    delete_dataset,
     delete_model,
-    get_dataset,
-    get_datasets,
-    get_datums,
     get_disjoint_keys,
     get_disjoint_labels,
-    get_groundtruth,
     get_groundtruth_label_keys,
     get_groundtruth_labels,
     get_joint_keys,
@@ -29,7 +32,6 @@ from .query import (
     get_labels,
     get_model,
     get_models,
-    get_prediction,
     get_prediction_label_keys,
     get_prediction_labels,
 )

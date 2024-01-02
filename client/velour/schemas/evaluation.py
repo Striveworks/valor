@@ -1,6 +1,6 @@
 import json
 from dataclasses import dataclass, field
-from typing import List, Tuple, Union, Optional
+from typing import List, Optional, Tuple, Union
 
 from velour.enums import JobStatus, TaskType
 from velour.schemas.filters import Filter
@@ -144,17 +144,16 @@ class EvaluationResult:
             raise ModuleNotFoundError(
                 "Must have pandas installed to use `get_metric_dataframes`."
             )
-        
+
         if not stratify_by:
             column_type = "dataset"
             column_name = self.dataset
         else:
             column_type = stratify_by[0]
             column_name = stratify_by[1]
-        
+
         metrics = [
-            {**metric, column_type: column_name}
-            for metric in self.metrics
+            {**metric, column_type: column_name} for metric in self.metrics
         ]
         df = pd.DataFrame(metrics)
         for k in ["label", "parameters"]:
@@ -167,4 +166,3 @@ class EvaluationResult:
             index=["type", "parameters", "label"], columns=[column_type]
         )
         return df
-        
