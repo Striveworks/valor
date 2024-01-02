@@ -20,11 +20,7 @@ from .geometry import (
     Polygon,
     Raster,
 )
-from .metadata import (
-    validate_metadata,
-    dump_metadata,
-    load_metadata,
-)
+from .metadata import dump_metadata, load_metadata, validate_metadata
 
 __all__ = [
     "Box",

@@ -2,7 +2,7 @@ from typing import Dict, List, Union
 
 import PIL.Image
 
-from velour.coretypes import Datum, Dataset
+from velour.coretypes import Dataset, Datum
 from velour.exceptions import SchemaTypeError
 from velour.schemas import validate_metadata
 
@@ -45,7 +45,9 @@ class ImageMetadata:
         ] = None,
     ):
         self.uid = uid
-        self.dataset_name = dataset.name if isinstance(dataset, Dataset) else dataset
+        self.dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
         self.height = height
         self.width = width
         self.metadata = metadata if metadata else {}

@@ -124,7 +124,7 @@ groundtruth_annotations = [
 
 for image in groundtruth_annotations:
 
-    # each image is represented by a Velour Datum. 
+    # each image is represented by a Velour Datum.
     # this is used to connect groundtruths and predictions when it's time for evaluation.
     datum = Datum(
         uid=Path(image["path"]).stem, # strip the filename for use as Datum uid.

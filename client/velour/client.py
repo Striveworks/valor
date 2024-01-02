@@ -1,18 +1,18 @@
 import logging
 import os
 import time
-from typing import List, Union, Callable, Optional, TypeVar
-from urllib.parse import urljoin, urlencode
+from typing import Callable, List, Optional, TypeVar, Union
+from urllib.parse import urlencode, urljoin
 
 import requests
 from packaging import version
 
 from velour import __version__ as client_version
-from velour import schemas
 from velour.enums import JobStatus
 from velour.schemas.evaluation import EvaluationResult
 
 T = TypeVar("T")
+
 
 def wait_for_predicate(
     update_func: Callable[[], T],
@@ -360,7 +360,7 @@ class Client:
             A dictionary containing all of the associated model attributes.
         """
         return self._requests_get_rel_host(f"models/{name}").json()
-    
+
     def get_models(
         self,
     ) -> List[dict]:
@@ -457,7 +457,7 @@ class Client:
                 return {}
             if isinstance(element, typ):
                 element = [element]
-            return {param_name: ','.join(map(str, element))}
+            return {param_name: ",".join(map(str, element))}
 
         params = {
             **_build_query_param("job_ids", job_ids, int),

@@ -215,7 +215,7 @@ def _compute_confusion_matrix_at_label_key(
     # 0. Get groundtruths that conform to gFilter
     groundtruths = (
         Query(
-            models.GroundTruth, 
+            models.GroundTruth,
             models.Annotation.datum_id.label("datum_id"),
         )
         .filter(gFilter)
@@ -237,7 +237,10 @@ def _compute_confusion_matrix_at_label_key(
             func.max(predictions.c.score).label("max_score"),
             models.Annotation.datum_id.label("datum_id"),
         )
-        .join(models.Annotation, models.Annotation.id == predictions.c.annotation_id)
+        .join(
+            models.Annotation,
+            models.Annotation.id == predictions.c.annotation_id,
+        )
         .group_by(models.Annotation.datum_id)
         .alias()
     )
@@ -258,7 +261,8 @@ def _compute_confusion_matrix_at_label_key(
         .join(
             max_scores_by_datum_id,
             and_(
-                models.Annotation.datum_id == max_scores_by_datum_id.c.datum_id,
+                models.Annotation.datum_id
+                == max_scores_by_datum_id.c.datum_id,
                 predictions.c.score == max_scores_by_datum_id.c.max_score,
             ),
         )

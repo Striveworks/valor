@@ -203,9 +203,9 @@ def compute_detection_metrics(
         table,
     ):
         match annotation_type:
-            case AnnotationType.BOX: 
-                return table.box 
-            case AnnotationType.POLYGON: 
+            case AnnotationType.BOX:
+                return table.box
+            case AnnotationType.POLYGON:
                 return table.polygon
             case AnnotationType.MULTIPOLYGON:
                 return table.multipolygon
@@ -288,8 +288,7 @@ def compute_detection_metrics(
     labels = {
         label.id: schemas.Label(key=label.key, value=label.value)
         for label in db.scalars(
-            select(models.Label)
-            .where(models.Label.id.in_(ranking.keys()))
+            select(models.Label).where(models.Label.id.in_(ranking.keys()))
         )
     }
 
