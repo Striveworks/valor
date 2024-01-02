@@ -1,12 +1,13 @@
-import pytest
 import datetime
+
+import pytest
 
 from velour.exceptions import SchemaTypeError
 from velour.schemas.metadata import (
     _validate_href,
-    validate_metadata,
     dump_metadata,
     load_metadata,
+    validate_metadata,
 )
 
 

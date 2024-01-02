@@ -30,9 +30,7 @@ def test_set_and_get_geospatial(
     ]
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
-    dataset = Dataset(
-        client=client, name=dataset_name, geospatial=geo_dict
-    )
+    dataset = Dataset(client=client, name=dataset_name, geospatial=geo_dict)
 
     # check Dataset's geospatial coordinates
     fetched_datasets = client.get_datasets()
@@ -83,9 +81,7 @@ def test_geospatial_filter(
     ]
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
-    dataset = Dataset(
-        client=client, name=dataset_name, geospatial=geo_dict
-    )
+    dataset = Dataset(client=client, name=dataset_name, geospatial=geo_dict)
     for gt in gt_dets1:
         gt.datum.geospatial = geo_dict
         dataset.add_groundtruth(gt)

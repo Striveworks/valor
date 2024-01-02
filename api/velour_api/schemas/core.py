@@ -12,16 +12,16 @@ from pydantic import (
 )
 
 from velour_api.enums import TaskType
+from velour_api.schemas.geojson import (
+    GeoJSONMultiPolygon,
+    GeoJSONPoint,
+    GeoJSONPolygon,
+)
 from velour_api.schemas.geometry import (
     BoundingBox,
     MultiPolygon,
     Polygon,
     Raster,
-)
-from velour_api.schemas.geojson import (
-    GeoJSONPoint,
-    GeoJSONPolygon,
-    GeoJSONMultiPolygon,
 )
 from velour_api.schemas.label import Label
 
@@ -72,7 +72,9 @@ class Dataset(BaseModel):
     id: int | None = None
     name: str
     metadata: dict[str, float | str | dict[str, str]] = {}
-    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = None
+    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
+        None
+    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
@@ -110,7 +112,9 @@ class Model(BaseModel):
     id: int | None = None
     name: str
     metadata: dict[str, float | str | dict[str, str]] = {}
-    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = None
+    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
+        None
+    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("name")
@@ -148,7 +152,9 @@ class Datum(BaseModel):
     uid: str
     dataset: str
     metadata: dict[str, float | str | dict[str, str]] = {}
-    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = None
+    geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
+        None
+    )
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("uid")
@@ -229,7 +235,9 @@ class Annotation(BaseModel):
 
     task_type: TaskType
     labels: list[Label]
-    metadata: dict[str, float | str | dict[str, str]] = Field(default_factory=dict)
+    metadata: dict[str, float | str | dict[str, str]] = Field(
+        default_factory=dict
+    )
 
     # Geometric types
     bounding_box: BoundingBox | None = None

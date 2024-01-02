@@ -26,7 +26,7 @@ def create_model(
     try:
         row = models.Model(
             name=model.name,
-            meta=model.metadata, 
+            meta=model.metadata,
             geo=model.geospatial.wkt() if model.geospatial else None,
         )
         db.add(row)
@@ -59,17 +59,15 @@ def get_model(
     model = core.get_model(db, name=name)
     geodict = (
         schemas.geojson.from_dict(
-            json.loads(
-                db.scalar(ST_AsGeoJSON(model.geo))
-            )
+            json.loads(db.scalar(ST_AsGeoJSON(model.geo)))
         )
         if model.geo
         else None
     )
     return schemas.Model(
-        id=model.id, 
-        name=model.name, 
-        metadata=model.meta, 
+        id=model.id,
+        name=model.name,
+        metadata=model.meta,
         geospatial=geodict,
     )
 

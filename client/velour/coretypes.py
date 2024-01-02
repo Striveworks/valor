@@ -1,8 +1,8 @@
-import math
-import json
-import warnings
 import datetime
-from dataclasses import asdict, is_dataclass
+import json
+import math
+import warnings
+from dataclasses import asdict
 from typing import Dict, List, Tuple, Union
 
 from velour.client import Client, ClientException, Job, wait_for_predicate
@@ -16,7 +16,11 @@ from velour.schemas.evaluation import (
 )
 from velour.schemas.filters import BinaryExpression, DeclarativeMapper, Filter
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
-from velour.schemas.metadata import validate_metadata, dump_metadata, load_metadata
+from velour.schemas.metadata import (
+    dump_metadata,
+    load_metadata,
+    validate_metadata,
+)
 
 
 class Label:
@@ -163,8 +167,15 @@ class Datum:
         self,
         uid: str,
         metadata: Dict[
-            str, 
-            Union[int, float, str, datetime.datetime, datetime.date, datetime.time]
+            str,
+            Union[
+                int,
+                float,
+                str,
+                datetime.datetime,
+                datetime.date,
+                datetime.time,
+            ],
         ] = None,
         geospatial: Dict[
             str,
@@ -325,8 +336,15 @@ class Annotation:
         task_type: TaskType,
         labels: List[Label],
         metadata: Dict[
-            str, 
-            Union[int, float, str, datetime.datetime, datetime.date, datetime.time]
+            str,
+            Union[
+                int,
+                float,
+                str,
+                datetime.datetime,
+                datetime.date,
+                datetime.time,
+            ],
         ] = None,
         bounding_box: BoundingBox = None,
         polygon: Polygon = None,
@@ -671,8 +689,15 @@ class Dataset:
         client: Client,
         name: str,
         metadata: Dict[
-            str, 
-            Union[int, float, str, datetime.datetime, datetime.date, datetime.time]
+            str,
+            Union[
+                int,
+                float,
+                str,
+                datetime.datetime,
+                datetime.date,
+                datetime.time,
+            ],
         ] = None,
         geospatial: Dict[
             str,
@@ -948,8 +973,15 @@ class Model:
         client: Client,
         name: str,
         metadata: Dict[
-            str, 
-            Union[int, float, str, datetime.datetime, datetime.date, datetime.time]
+            str,
+            Union[
+                int,
+                float,
+                str,
+                datetime.datetime,
+                datetime.date,
+                datetime.time,
+            ],
         ] = None,
         geospatial: Dict[
             str,
@@ -1347,7 +1379,10 @@ Label.label = DeclarativeMapper("labels", Label)
 
 # Datum
 Datum.uid = DeclarativeMapper("datum_uids", str)
-Datum.metadata = DeclarativeMapper("datum_metadata", Union[int, float, str, datetime.datetime, datetime.date, datetime.time])
+Datum.metadata = DeclarativeMapper(
+    "datum_metadata",
+    Union[int, float, str, datetime.datetime, datetime.date, datetime.time],
+)
 Datum.geospatial = DeclarativeMapper(
     "datum_geospatial",
     Union[
@@ -1364,7 +1399,8 @@ Prediction.score = DeclarativeMapper("prediction_scores", Union[int, float])
 # Dataset
 Dataset.name = DeclarativeMapper("dataset_names", str)
 Dataset.metadata = DeclarativeMapper(
-    "dataset_metadata", Union[int, float, str, datetime.datetime, datetime.date, datetime.time]
+    "dataset_metadata",
+    Union[int, float, str, datetime.datetime, datetime.date, datetime.time],
 )
 Dataset.geospatial = DeclarativeMapper(
     "dataset_geospatial",
@@ -1383,7 +1419,8 @@ Annotation.geometric_area = DeclarativeMapper(
     "annotation_geometric_area", float
 )
 Annotation.metadata = DeclarativeMapper(
-    "annotation_metadata", Union[int, float, str, datetime.datetime, datetime.date, datetime.time]
+    "annotation_metadata",
+    Union[int, float, str, datetime.datetime, datetime.date, datetime.time],
 )
 Annotation.geospatial = DeclarativeMapper(
     "annotation_geospatial",
@@ -1397,7 +1434,10 @@ Annotation.geospatial = DeclarativeMapper(
 
 # Model
 Model.name = DeclarativeMapper("models_names", str)
-Model.metadata = DeclarativeMapper("models_metadata", Union[int, float, str, datetime.datetime, datetime.date, datetime.time])
+Model.metadata = DeclarativeMapper(
+    "models_metadata",
+    Union[int, float, str, datetime.datetime, datetime.date, datetime.time],
+)
 Model.geospatial = DeclarativeMapper(
     "model_geospatial",
     Union[

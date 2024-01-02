@@ -4,10 +4,10 @@ from functools import wraps
 from velour_api.crud.jobs import Job, generate_uuid, get_status_from_uuid
 from velour_api.enums import JobStatus
 from velour_api.exceptions import (
+    DatasetAlreadyExistsError,
     DatasetDoesNotExistError,
     DatasetFinalizedError,
     DatasetNotFinalizedError,
-    DatasetAlreadyExistsError,
     JobStateError,
     ModelAlreadyExistsError,
     ModelDoesNotExistError,
@@ -194,7 +194,7 @@ def _validate_transition(state: StateflowJob):
                 raise ModelNotFinalizedError(
                     dataset_name=dataset_name, model_name=model_name
                 )
-            
+
         # attempt to create while deleting
         if (
             current_status == JobStatus.DELETING
@@ -204,7 +204,7 @@ def _validate_transition(state: StateflowJob):
                 raise DatasetAlreadyExistsError(name=state.dataset_name)
             elif node == StateflowNode.MODEL:
                 raise ModelAlreadyExistsError(name=state.model_name)
-            
+
         # attempt to delete when does not exist
         if (
             current_status == JobStatus.PENDING
@@ -432,7 +432,7 @@ def generate_stateflow_decorator(
             _validate_children(state)
 
             # If precheck is defined as True then return.
-            # This exists for background tasks that just need 
+            # This exists for background tasks that just need
             # to run the validation step.
             if precheck:
                 return
