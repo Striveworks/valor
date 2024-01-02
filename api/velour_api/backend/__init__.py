@@ -18,6 +18,8 @@ from .core import (
     get_model,
     get_models,
     get_prediction,
+    get_prediction_label_keys,
+    get_prediction_labels,
 )
 from .metrics import (
     create_clf_evaluation,
