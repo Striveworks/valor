@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 
 from velour_api import schemas
@@ -81,26 +81,22 @@ def create_metric_mappings(
     List[Dict]
         A list of metric mappings.
     """
-    labels = set(
-        [
-            (metric.label.key, metric.label.value)
-            for metric in metrics
-            if hasattr(metric, "label")
-        ]
-    )
-    label_map = {
-        (label[0], label[1]): core.get_label(
-            db, label=schemas.Label(key=label[0], value=label[1])
-        ).id
-        for label in labels
-    }
-
     ret = []
     for metric in metrics:
         if hasattr(metric, "label"):
+            label = db.query(
+                select(models.Label)
+                .where(
+                    and_(
+                        models.Label.key == metric.label.key,
+                        models.Label.value == metric.label.value,
+                    )
+                )
+                .subquery()
+            ).one_or_none()
             ret.append(
                 metric.db_mapping(
-                    label_id=label_map[(metric.label.key, metric.label.value)],
+                    label_id=label.id if label else None,
                     evaluation_id=evaluation_id,
                 )
             )

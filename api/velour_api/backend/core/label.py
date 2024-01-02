@@ -1,9 +1,39 @@
-from sqlalchemy import Select, and_, or_, select
+from sqlalchemy import and_, or_, select, distinct, Subquery, Select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
 from velour_api.backend import models, ops
+
+
+def fetch_label(
+    db: Session,
+    label: schemas.Label,
+) -> models.Label | None:
+    """
+    Fetch label from the database.
+
+    Parameters
+    ----------
+    db : Session
+        SQLAlchemy ORM session.
+    label : schemas.Label
+        Label schema to search for in the database.
+
+    Returns
+    -------
+    models.Label | None
+    """
+    return db.query(
+        select(models.Label)
+        .where(
+            and_(
+                models.Label.key == label.key,
+                models.Label.value == label.value,
+            )
+        )
+        .subquery()
+    ).one_or_none() 
 
 
 def fetch_matching_labels(
@@ -23,7 +53,8 @@ def fetch_matching_labels(
         List of label schemas to search for in the database.
     """
     return db.query(
-        select(models.Label).where(
+        select(models.Label)
+        .where(
             or_(
                 *[
                     and_(
@@ -34,6 +65,7 @@ def fetch_matching_labels(
                 ]
             )
         )
+        .subquery()
     ).all()
 
 
@@ -58,20 +90,24 @@ def create_labels(
     List[models.Label]
         A list of corresponding label rows from the database.
     """
+    # remove duplicates
+    labels = list(set(labels))
 
     # get existing labels
     existing_labels = {
-        (label.key, label.value) for label in fetch_matching_labels(db, labels)
+        (label.key, label.value) 
+        for label in fetch_matching_labels(db, labels)
     }
 
     # create new labels
-    new_labels = [
-        models.Label(
-            key=label.key,
-            value=label.value,
-        )
+    new_labels_set = {
+        (label.key, label.value)
         for label in labels
         if (label.key, label.value) not in existing_labels
+    }
+    new_labels = [
+        models.Label(key=label[0], value=label[1])
+        for label in list(new_labels_set)
     ]
 
     # upload the labels that were missing
@@ -86,32 +122,30 @@ def create_labels(
     return fetch_matching_labels(db, labels)
 
 
-def _get_labels(
-    db: Session,
-    stmt: Select,
-) -> set[schemas.Label]:
-    """Evaluates statement to get labels."""
-    return {
-        schemas.Label(
-            key=label.key,
-            value=label.value,
-        )
-        for label in db.query(stmt).all()
-        if label
-    }
-
-
-def _get_label_keys(
-    db: Session,
-    stmt: Select,
-) -> set[str]:
-    """Evaluates statement to get label keys."""
-    return {label.key for label in db.query(stmt).all() if label}
+def _getter_statement(
+    selection,
+    filters: schemas.Filter | None = None,
+    ignore_groundtruths: bool = False,
+    ignore_predictions: bool = False,
+) -> Subquery:
+    """Builds sql statement for other functions."""
+    stmt = ops.Query(selection)
+    if filters:
+        stmt = stmt.filter(filters)
+    if not ignore_groundtruths and ignore_predictions:
+        stmt = stmt.groundtruths(as_subquery=False)
+    elif ignore_groundtruths and not ignore_predictions:
+        stmt = stmt.predictions(as_subquery=False)
+    else:
+        stmt = stmt.any(as_subquery=False)
+    return stmt
 
 
 def get_labels(
     db: Session,
     filters: schemas.Filter | None = None,
+    ignore_groundtruths: bool = False,
+    ignore_predictions: bool = False,
 ) -> set[schemas.Label]:
     """
     Returns a set of unique labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type).
@@ -122,22 +156,34 @@ def get_labels(
         The database Session to query against.
     filters : schemas.Filter
         An optional filter to apply.
+    ignore_groundtruths : bool, default=False
+        An optional toggle to ignore labels associated with groundtruths.
+    ignore_predictions : bool, default=False
+        An optional toggle to ignore labels associated with predictions.
 
     Returns
     ----------
     set[schemas.Label]
         A set of labels.
     """
-    if filters:
-        stmt = ops.Query(models.Label).filter(filters).any()
-
-    return _get_labels(db, stmt)
+    stmt = _getter_statement(
+        selection=models.Label,
+        filters=filters,
+        ignore_groundtruths=ignore_groundtruths,
+        ignore_predictions=ignore_predictions,
+    )
+    return {
+        schemas.Label(key=label.key, value=label.value)
+        for label in db.query(stmt.subquery()).all()
+    }
 
 
 def get_label_keys(
     db: Session,
     filters: schemas.Filter | None = None,
-) -> set[schemas.Label]:
+    ignore_groundtruths: bool = False,
+    ignore_predictions: bool = False,
+) -> set[str]:
     """
     Returns all unique label keys.
 
@@ -147,106 +193,26 @@ def get_label_keys(
         The database Session to query against.
     filters : schemas.Filter
         An optional filter to apply.
+    ignore_groundtruths : bool, default=False
+        An optional toggle to ignore label keys associated with groundtruths.
+    ignore_predictions : bool, default=False
+        An optional toggle to ignore label keys associated with predictions.
 
     Returns
     ----------
-    set[schemas.Label]
-        A set of labels.
+    set[str]
+        A set of label keys.
     """
-    stmt = ops.Query(models.Label).filter(filters).any()
-    return _get_label_keys(db, stmt)
-
-
-def get_groundtruth_labels(
-    db: Session,
-    filters: schemas.Filter | None,
-) -> set[schemas.Label]:
-    """
-    Returns a set of unique groundtruth labels.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    filters : schemas.Filter
-        An optional filter to apply.
-
-    Returns
-    ----------
-    set[schemas.Label]
-        A set of labels.
-    """
-    stmt = ops.Query(models.Label).filter(filters).groundtruths()
-    return _get_labels(db, stmt)
-
-
-def get_groundtruth_label_keys(
-    db: Session,
-    filters: schemas.Filter | None,
-) -> set[schemas.Label]:
-    """
-    Returns all unique groundtruth label keys.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    filters : schemas.Filter
-        An optional filter to apply.
-
-    Returns
-    ----------
-    set[schemas.Label]
-        A set of labels.
-    """
-    stmt = ops.Query(models.Label).filter(filters).groundtruths()
-    return _get_label_keys(db, stmt)
-
-
-def get_prediction_labels(
-    db: Session,
-    filters: schemas.Filter | None,
-) -> set[schemas.Label]:
-    """
-    Returns a set of unique prediction labels.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    filters : schemas.Filter
-        An optional filter to apply.
-
-    Returns
-    ----------
-    set[schemas.Label]
-        A set of labels.
-    """
-    stmt = ops.Query(models.Label).filter(filters).predictions()
-    return _get_labels(db, stmt)
-
-
-def get_prediction_label_keys(
-    db: Session,
-    filters: schemas.Filter | None,
-) -> set[schemas.Label]:
-    """
-    Returns all unique prediction label keys.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    filters : schemas.Filter
-        An optional filter to apply.
-
-    Returns
-    ----------
-    set[schemas.Label]
-        A set of labels.
-    """
-    stmt = ops.Query(models.Label).filter(filters).predictions()
-    return _get_label_keys(db, stmt)
+    stmt = _getter_statement(
+        selection=models.Label.key,
+        filters=filters,
+        ignore_groundtruths=ignore_groundtruths,
+        ignore_predictions=ignore_predictions,
+    )
+    return {
+        key
+        for key in db.scalars(stmt)
+    }
 
 
 def get_joint_labels(
@@ -292,8 +258,8 @@ def get_joint_labels(
         annotation_types=[prediction_type],
     )
     return list(
-        get_groundtruth_labels(db, gt_filter).intersection(
-            get_prediction_labels(db, pd_filter)
+        get_labels(db, gt_filter, ignore_predictions=True).intersection(
+            get_labels(db, pd_filter, ignore_groundtruths=True)
         )
     )
 
@@ -333,8 +299,8 @@ def get_joint_keys(
         task_types=[task_type],
     )
     return list(
-        get_groundtruth_label_keys(db, gt_filter).intersection(
-            get_prediction_label_keys(db, pd_filter)
+        get_label_keys(db, gt_filter, ignore_predictions=True).intersection(
+            get_label_keys(db, pd_filter, ignore_groundtruths=True)
         )
     )
 
@@ -385,8 +351,8 @@ def get_disjoint_labels(
     )
 
     # get labels
-    ds_labels = get_groundtruth_labels(db, gt_filter)
-    md_labels = get_prediction_labels(db, pd_filter)
+    ds_labels = get_labels(db, gt_filter, ignore_predictions=True)
+    md_labels = get_labels(db, pd_filter, ignore_groundtruths=True)
 
     # set operation to get disjoint sets wrt the lhs operand
     ds_unique = list(ds_labels - md_labels)
@@ -433,8 +399,8 @@ def get_disjoint_keys(
     )
 
     # get keys
-    ds_keys = get_groundtruth_label_keys(db, gt_filter)
-    md_keys = get_prediction_label_keys(db, pd_filter)
+    ds_keys = get_label_keys(db, gt_filter, ignore_predictions=True)
+    md_keys = get_label_keys(db, pd_filter, ignore_groundtruths=True)
 
     # set operation to get disjoint sets wrt the lhs operand
     ds_unique = list(ds_keys - md_keys)

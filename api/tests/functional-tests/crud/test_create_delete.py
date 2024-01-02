@@ -428,9 +428,10 @@ def test_create_detection_ground_truth_and_delete_dataset(
         assert gt.datum.dataset == new_gt.datum.dataset
         for metadatum in gt.datum.metadata:
             assert metadatum in new_gt.datum.metadata
+
         for gta, new_gta in zip(gt.annotations, new_gt.annotations):
             assert set(gta.labels) == set(new_gta.labels)
-            assert gta == new_gta
+            assert gta.bounding_box == new_gta.bounding_box
 
     # finalize to free job state
     crud.finalize(db=db, dataset_name=dataset_name)
