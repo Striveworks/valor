@@ -2,7 +2,7 @@ import datetime
 import json
 import math
 import warnings
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict
 from typing import Dict, List, Tuple, Union
 
 from velour.client import Client, ClientException, Job, wait_for_predicate

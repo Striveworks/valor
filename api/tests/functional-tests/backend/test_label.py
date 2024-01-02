@@ -1,10 +1,6 @@
-import numpy
 import pytest
-from psycopg2.errors import UniqueViolation
-from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from velour_api.backend import models
 from velour_api.backend.core.label import _get_existing_labels, create_labels
 from velour_api.schemas import Label
 

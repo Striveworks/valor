@@ -9,8 +9,6 @@ from sqlalchemy.sql.elements import BinaryExpression
 from velour_api import enums
 from velour_api.backend import models
 from velour_api.schemas import (
-    Date,
-    DateTime,
     DateTimeFilter,
     Duration,
     Filter,
@@ -83,7 +81,10 @@ class Query:
     def _map_attribute_to_table(
         self, attr: InstrumentedAttribute | DeclarativeMeta
     ) -> DeclarativeMeta | None:
+<<<<<<< HEAD
 
+=======
+>>>>>>> main
         if isinstance(attr, DeclarativeMeta):
             return attr
         elif isinstance(attr, InstrumentedAttribute):

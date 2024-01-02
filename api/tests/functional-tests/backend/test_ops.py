@@ -1,6 +1,5 @@
 import numpy
 import pytest
-from sqlalchemy import JSON, func, select, text
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
@@ -88,12 +87,14 @@ def raster_2():
 
 
 @pytest.fixture
-def geospatial_coordinates() -> dict[
-    str,
-    schemas.GeoJSONPoint
-    | schemas.GeoJSONPolygon
-    | schemas.GeoJSONMultiPolygon,
-]:
+def geospatial_coordinates() -> (
+    dict[
+        str,
+        schemas.GeoJSONPoint
+        | schemas.GeoJSONPolygon
+        | schemas.GeoJSONMultiPolygon,
+    ]
+):
     return {
         "point": {"type": "Point", "coordinates": [125.2750725, 38.760525]},
         "polygon1": {
@@ -1485,7 +1486,7 @@ def _test_dataset_datetime_query(
     The metadata_ param is a pytest fixture containing sequential timestamps.
     """
 
-    time_filter = lambda idx, op: (
+    time_filter = lambda idx, op: (  # noqa: E731
         Query(models.Dataset)
         .filter(
             schemas.Filter(
@@ -1694,7 +1695,7 @@ def _test_model_datetime_query(
     The metadata_ param is a pytest fixture containing sequential timestamps.
     """
 
-    time_filter = lambda idx, op: (
+    time_filter = lambda idx, op: (  # noqa: E731
         Query(models.Model)
         .filter(
             schemas.Filter(
@@ -1903,7 +1904,7 @@ def _test_datum_datetime_query(
     The metadata_ param is a pytest fixture containing sequential timestamps.
     """
 
-    time_filter = lambda idx, op: (
+    time_filter = lambda idx, op: (  # noqa: E731
         Query(models.Datum)
         .filter(
             schemas.Filter(
@@ -2205,7 +2206,7 @@ def _test_annotation_datetime_query(
 
     assert len(db.query(models.Annotation).all()) == 4
 
-    time_filter = lambda idx, op: (
+    time_filter = lambda idx, op: (  # noqa: E731
         Query(models.Annotation)
         .filter(
             schemas.Filter(

@@ -1,5 +1,5 @@
 import datetime
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, Union
 

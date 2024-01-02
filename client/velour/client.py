@@ -8,7 +8,6 @@ import requests
 from packaging import version
 
 from velour import __version__ as client_version
-from velour import schemas
 from velour.enums import JobStatus
 from velour.schemas.evaluation import EvaluationResult
 

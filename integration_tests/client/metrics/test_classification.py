@@ -4,7 +4,6 @@ that is no auth
 import time
 from datetime import date, datetime
 
-import pandas
 import pytest
 from sqlalchemy.orm import Session
 
@@ -19,7 +18,6 @@ from velour import (
 )
 from velour.client import Client, ClientException
 from velour.enums import JobStatus, TaskType
-from velour.schemas import EvaluationSettings
 
 
 def test_evaluate_image_clf(
@@ -260,7 +258,7 @@ def test_evaluate_tabular_clf(
         assert entry in confusion_matrix["entries"]
 
     # check model methods
-    labels = model.get_labels()
+    model.get_labels()
 
     assert isinstance(model.id, int)
     assert model.name == model_name

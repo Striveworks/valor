@@ -6,7 +6,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from velour_api.backend.database import Base
-from velour_api.enums import AnnotationType
 
 
 class Label(Base):

@@ -1,6 +1,6 @@
 from geoalchemy2.functions import ST_Count, ST_MapAlgebra
 from sqlalchemy.orm import Session, aliased
-from sqlalchemy.sql import Select, func, join, select
+from sqlalchemy.sql import Select, func, select
 
 from velour_api import enums, schemas
 from velour_api.backend import core, models

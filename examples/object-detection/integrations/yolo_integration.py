@@ -1,5 +1,3 @@
-from typing import Union
-
 import numpy
 import PIL
 from PIL.Image import Resampling

@@ -105,7 +105,7 @@ def test_generate_prediction_data(client: Client):
     assert eval_results.status == JobStatus.DONE
 
     eval_dict = asdict(eval_results)
-    eval_metrics = eval_dict.pop("metrics")
+    eval_dict.pop("metrics")
     for key in ["job_id", "confusion_matrices", "status"]:
         eval_dict.pop(key)
     assert eval_dict == {
