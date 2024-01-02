@@ -26,12 +26,17 @@ class ValueFilter:
         If the `operator` doesn't match one of the allowed patterns.
     """
 
-    value: Union[int, float, str, Dict[str, str]]
+    value: Union[int, float, str, bool, Dict[str, str]]
     operator: str = "=="
 
     def __post_init__(self):
+        # bools (need to check this first since bool is a subclass of int,
+        # e.g. `isinstance(True, int) == True`)
+        if isinstance(self.value, bool):
+            allowed_operators = ["==", "!="]
+
         # numerics
-        if isinstance(self.value, int) or isinstance(self.value, float):
+        elif isinstance(self.value, int) or isinstance(self.value, float):
             allowed_operators = [">", "<", ">=", "<=", "==", "!="]
 
         # datetime

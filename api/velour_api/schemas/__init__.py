@@ -9,6 +9,7 @@ from .core import (
     Prediction,
 )
 from .filters import (
+    BooleanFilter,
     DateTimeFilter,
     Filter,
     GeospatialFilter,
@@ -100,6 +101,7 @@ __all__ = [
     "StringFilter",
     "NumericFilter",
     "GeospatialFilter",
+    "BooleanFilter",
     "DateTimeFilter",
     "Filter",
     "Health",

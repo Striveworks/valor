@@ -22,6 +22,7 @@ def metadata_1() -> dict[str, int | float | str]:
         "some_str_attribute": "abc",
         "height": 10,
         "width": 10,
+        "some_bool_attribute": True,
     }
 
 
@@ -32,6 +33,7 @@ def metadata_2() -> dict[str, int | float | str]:
         "some_str_attribute": "abc",
         "height": 10,
         "width": 10,
+        "some_bool_attribute": False,
     }
 
 
@@ -42,6 +44,7 @@ def metadata_3() -> dict[str, int | float | str]:
         "some_str_attribute": "xyz",
         "height": 10,
         "width": 10,
+        "some_bool_attribute": True,
     }
 
 
@@ -52,6 +55,7 @@ def metadata_4() -> dict[str, int | float | str]:
         "some_str_attribute": "xyz",
         "height": 10,
         "width": 10,
+        "some_bool_attribute": False,
     }
 
 
@@ -700,7 +704,7 @@ def test_query_by_metadata(
     db: Session,
     model_sim,
 ):
-    # Q: Get datums with metadatum with `numeric` < 0.5 and `str` == 'abc'.
+    # Q: Get datums with metadatum with `numeric` < 0.5, `str` == 'abc', and `bool` == True.
     f = schemas.Filter(
         datum_metadata={
             "some_numeric_attribute": [
@@ -715,12 +719,46 @@ def test_query_by_metadata(
                     operator="==",
                 ),
             ],
+            "some_bool_attribute": [
+                schemas.BooleanFilter(
+                    value=True,
+                    operator="==",
+                )
+            ],
         }
     )
     q = Query(models.Datum.uid).filter(f).any()
     datum_uids = db.query(q).distinct().all()
     assert len(datum_uids) == 1
     assert (datum_uid1,) in datum_uids
+
+    # repeat with `bool` == False or != `True` and check we get nothing
+    for val, op in ([False, "=="], [True, "!="]):
+        f = schemas.Filter(
+            datum_metadata={
+                "some_numeric_attribute": [
+                    schemas.NumericFilter(
+                        value=0.5,
+                        operator="<",
+                    ),
+                ],
+                "some_str_attribute": [
+                    schemas.StringFilter(
+                        value="abc",
+                        operator="==",
+                    ),
+                ],
+                "some_bool_attribute": [
+                    schemas.BooleanFilter(
+                        value=val,
+                        operator=op,
+                    )
+                ],
+            }
+        )
+        q = Query(models.Datum.uid).filter(f).any()
+        datum_uids = db.query(q).distinct().all()
+        assert len(datum_uids) == 0
 
     # Q: Get datums with metadatum with `numeric` > 0.5 and `str` == 'abc'.
     f = schemas.Filter(
