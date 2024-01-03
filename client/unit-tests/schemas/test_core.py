@@ -11,7 +11,6 @@ def test_datum():
     Datum(uid="123")
     Datum(uid="123", metadata={})
     Datum(uid="123", metadata={"name": 1})
-    Datum(uid="123", dataset="dataset")
 
     # test `__post_init__`
     with pytest.raises(SchemaTypeError):
@@ -20,8 +19,6 @@ def test_datum():
         Datum(uid="123", metadata=1)
     with pytest.raises(SchemaTypeError):
         Datum(uid="123", metadata=[1])
-    with pytest.raises(SchemaTypeError):
-        Datum(uid="123", dataset=None)
 
 
 def test_annotation(bbox, polygon, raster, labels, metadata):
@@ -215,7 +212,6 @@ def test_prediction():
 
     # valid
     Prediction(datum=datum, annotations=pds)
-    Prediction(datum=datum, annotations=pds, model="test")
 
     # test `__post_init__`
     with pytest.raises(SchemaTypeError) as e:
@@ -233,13 +229,6 @@ def test_prediction():
             annotations=[pds[0], pds[1], "annotation"],
         )
     assert "`annotation` should be of type" in str(e)
-    with pytest.raises(SchemaTypeError) as e:
-        Prediction(
-            datum=datum,
-            annotations=pds,
-            model=1234,
-        )
-    assert "`model_name` should be of type" in str(e)
 
     with pytest.raises(ValueError) as e:
         Prediction(
@@ -253,6 +242,5 @@ def test_prediction():
                     ],
                 )
             ],
-            model="",
         )
     assert "for label key test got scores summing to 0.9" in str(e)

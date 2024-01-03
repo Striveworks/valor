@@ -32,7 +32,7 @@ def test_evaluate_detection(
 
     model = Model(client, model_name)
     for pd in pred_dets:
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
     expected_metrics = [
@@ -366,7 +366,7 @@ def test_evaluate_detection_with_json_filters(
 
     model = Model(client, model_name)
     for pd in pred_dets:
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
     # test default iou arguments
@@ -514,7 +514,7 @@ def test_get_bulk_evaluations(
 
     model = Model(client, model_)
     for pd in pred_dets:
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_detection(
@@ -621,7 +621,7 @@ def test_get_bulk_evaluations(
     # test with multiple models
     second_model = Model(client, "second_model")
     for pd in pred_dets2:
-        second_model.add_prediction(pd)
+        second_model.add_prediction(dataset, pd)
     second_model.finalize_inferences(dataset)
 
     eval_job2 = second_model.evaluate_detection(

@@ -166,8 +166,6 @@ class Datum:
         A dictionary of metadata that describes the `Datum`.
     geospatial :  dict
         A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
-    dataset : str
-        The name of the dataset to associate the `Datum` with.
     """
 
     def __init__(
@@ -183,22 +181,17 @@ class Datum:
                 str,
             ],
         ] = None,
-        dataset: Union["Dataset", str] = "",
     ):
         self.uid = uid
         self.metadata = metadata if metadata else {}
         self.geospatial = geospatial if geospatial else {}
-        self.dataset_name = (
-            dataset.name if isinstance(dataset, Dataset) else dataset
-        )
+        self._dataset_name = None
         self._validate()
 
     def _validate(self):
         """
         Validates the parameters used to create a `Datum` object.
         """
-        if not isinstance(self.dataset_name, str):
-            raise SchemaTypeError("dataset_name", str, self.dataset_name)
         if not isinstance(self.uid, str):
             raise SchemaTypeError("uid", str, self.uid)
         validate_metadata(self.metadata)
@@ -217,11 +210,18 @@ class Datum:
             A dictionary of the `Datum's` attributes.
         """
         return {
-            "dataset": self.dataset_name,
+            "dataset": self._dataset_name,
             "uid": self.uid,
             "metadata": dump_metadata(self.metadata),
             "geospatial": self.geospatial if self.geospatial else None,
         }
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "Datum":
+        dataset = d.pop("dataset", None)
+        datum = cls(**d)
+        datum._set_dataset(dataset)
+        return datum
 
     def __eq__(self, other):
         """
@@ -240,6 +240,12 @@ class Datum:
         if not isinstance(other, Datum):
             raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
         return self.dict() == other.dict()
+
+    def _set_dataset(self, dataset: Union["Dataset", str]) -> None:
+        """Sets the dataset the datum belongs to. This should never be called by the user."""
+        self._dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
 
 
 class Annotation:
@@ -457,11 +463,7 @@ class GroundTruth:
         The list of `Annotations` associated with the `GroundTruth`.
     """
 
-    def __init__(
-        self,
-        datum: Datum,
-        annotations: List[Annotation],
-    ):
+    def __init__(self, datum: Datum, annotations: List[Annotation]):
         self.datum = datum
         self.annotations = annotations
         self._validate()
@@ -471,8 +473,6 @@ class GroundTruth:
         Validate the inputs of the `GroundTruth`.
         """
         # validate datum
-        if isinstance(self.datum, dict):
-            self.datum = Datum(**self.datum)
         if not isinstance(self.datum, Datum):
             raise SchemaTypeError("datum", Datum, self.datum)
 
@@ -507,6 +507,12 @@ class GroundTruth:
                 annotation.dict() for annotation in self.annotations
             ],
         }
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "GroundTruth":
+        return cls(
+            datum=Datum._from_dict(d["datum"]), annotations=d["annotations"]
+        )
 
     def __eq__(self, other):
         """
@@ -548,15 +554,10 @@ class Prediction:
         The score assigned to the `Prediction`.
     """
 
-    def __init__(
-        self,
-        datum: Datum,
-        annotations: List[Annotation] = None,
-        model: Union["Model", str] = "",
-    ):
+    def __init__(self, datum: Datum, annotations: List[Annotation] = None):
         self.datum = datum
         self.annotations = annotations
-        self.model_name = model.name if isinstance(model, Model) else model
+        self._model_name = None
         self._validate()
 
     def _validate(self):
@@ -581,10 +582,6 @@ class Prediction:
                 raise SchemaTypeError(
                     "annotation", Annotation, self.annotations[idx]
                 )
-
-        # validate model
-        if not isinstance(self.model_name, str):
-            raise SchemaTypeError("model_name", str, self.model_name)
 
         # TaskType-specific validations
         for annotation in self.annotations:
@@ -626,11 +623,19 @@ class Prediction:
         """
         return {
             "datum": self.datum.dict(),
-            "model": self.model_name,
+            "model": self._model_name,
             "annotations": [
                 annotation.dict() for annotation in self.annotations
             ],
         }
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "Prediction":
+        pred = cls(
+            datum=Datum._from_dict(d["datum"]), annotations=d["annotations"]
+        )
+        pred._set_model(d["model"])
+        return pred
 
     def __eq__(self, other):
         """
@@ -651,6 +656,9 @@ class Prediction:
                 f"Expected type `{type(Prediction)}`, got `{other}`"
             )
         return self.dict() == other.dict()
+
+    def _set_model(self, model: Union["Model", str]):
+        self._model_name = model.name if isinstance(model, Model) else model
 
 
 class Dataset:
@@ -782,7 +790,7 @@ class Dataset:
                 f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
             )
 
-        groundtruth.datum.dataset_name = self.name
+        groundtruth.datum._set_dataset(self.name)
         self.client._requests_post_rel_host(
             "groundtruths",
             json=groundtruth.dict(),
@@ -807,7 +815,7 @@ class Dataset:
         resp = self.client._requests_get_rel_host(
             f"groundtruths/dataset/{self.name}/datum/{uid}"
         ).json()
-        return GroundTruth(**resp)
+        return GroundTruth._from_dict(resp)
 
     def get_labels(
         self,
@@ -828,9 +836,7 @@ class Dataset:
             Label(key=label["key"], value=label["value"]) for label in labels
         ]
 
-    def get_datums(
-        self,
-    ) -> List[Datum]:
+    def get_datums(self) -> List[Datum]:
         """
         Get all datums associated with a given dataset.
 
@@ -840,7 +846,7 @@ class Dataset:
             A list of `Datums` associated with the dataset.
         """
         datums = self.client.get_datums(self.name)
-        return [Datum(**datum) for datum in datums]
+        return [Datum._from_dict(datum) for datum in datums]
 
     def get_evaluations(
         self,
@@ -1035,7 +1041,9 @@ class Model:
             "geospatial": self.geospatial if self.geospatial else None,
         }
 
-    def add_prediction(self, prediction: Prediction):
+    def add_prediction(
+        self, dataset: Union[Dataset, str], prediction: Prediction
+    ):
         """
         Add a prediction to a given model.
 
@@ -1054,7 +1062,20 @@ class Model:
                 f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
             )
 
-        prediction.model_name = self.name
+        prediction._set_model(self.name)
+        # should check not already set or set by equal to dataset?
+        if prediction.datum._dataset_name is None:
+            prediction.datum._set_dataset(dataset)
+        else:
+            dataset_name = (
+                dataset.name if isinstance(dataset, Dataset) else dataset
+            )
+            if prediction.datum._dataset_name != dataset_name:
+                raise RuntimeError(
+                    f"Datum with uid `{prediction.datum.uid}` is already linked to the dataset `{prediction.datum._dataset_name}`"
+                    f" but you are trying to add a prediction on it to the dataset `{dataset_name}`"
+                )
+
         return self.client._requests_post_rel_host(
             "predictions",
             json=prediction.dict(),
@@ -1248,7 +1269,7 @@ class Model:
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
         return job
 
-    def get_prediction(self, datum: Datum) -> Prediction:
+    def get_prediction(self, dataset: Dataset, datum: Datum) -> Prediction:
         """
         Fetch a particular prediction.
 
@@ -1263,9 +1284,9 @@ class Model:
             The requested `Prediction`.
         """
         resp = self.client._requests_get_rel_host(
-            f"predictions/model/{self.name}/dataset/{datum.dataset_name}/datum/{datum.uid}",
+            f"predictions/model/{self.name}/dataset/{dataset.name}/datum/{datum.uid}",
         ).json()
-        return Prediction(**resp)
+        return Prediction._from_dict(resp)
 
     def get_labels(
         self,

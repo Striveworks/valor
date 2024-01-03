@@ -34,7 +34,7 @@ def test_evaluate_image_clf(
 
     model = Model(client, model_name)
     for pd in pred_clfs:
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_classification(dataset=dataset)
@@ -100,7 +100,7 @@ def test_evaluate_tabular_clf(
     dataset = Dataset(client, name=dataset_name)
     gts = [
         GroundTruth(
-            datum=Datum(dataset=dataset_name, uid=f"uid{i}"),
+            datum=Datum(uid=f"uid{i}"),
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -125,8 +125,7 @@ def test_evaluate_tabular_clf(
 
     pds = [
         Prediction(
-            model=model_name,
-            datum=Datum(dataset=dataset_name, uid=f"uid{i}"),
+            datum=Datum(uid=f"uid{i}"),
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -140,7 +139,7 @@ def test_evaluate_tabular_clf(
         for i, pred in enumerate(pred_clfs_tabular)
     ]
     for pd in pds:
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
 
     # test
     with pytest.raises(ClientException) as exc_info:
@@ -317,7 +316,6 @@ def test_stratify_clf_metrics(
         gt = GroundTruth(
             datum=Datum(
                 uid=f"uid{i}",
-                dataset=dataset_name,
                 metadata={
                     "md1": f"md1-val{i % 3}",
                     "md2": f"md2-val{i % 4}",
@@ -337,10 +335,8 @@ def test_stratify_clf_metrics(
     model = Model(client, name=model_name)
     for i, pred in enumerate(pred_clfs_tabular):
         pd = Prediction(
-            model=model_name,
             datum=Datum(
                 uid=f"uid{i}",
-                dataset=dataset_name,
                 metadata={
                     "md1": f"md1-val{i % 3}",
                     "md2": f"md2-val{i % 4}",
@@ -357,7 +353,7 @@ def test_stratify_clf_metrics(
                 )
             ],
         )
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
     eval_results_val2 = model.evaluate_classification(
@@ -460,7 +456,6 @@ def test_stratify_clf_metrics_by_time(
         gt = GroundTruth(
             datum=Datum(
                 uid=f"uid{i}",
-                dataset=dataset_name,
                 metadata={
                     "md1": date.fromisoformat(f"{2000 + (i % 3)}-01-01"),
                     "md2": datetime.fromisoformat(f"{2000 + (i % 4)}-01-01"),
@@ -479,10 +474,8 @@ def test_stratify_clf_metrics_by_time(
     model = Model(client, name=model_name)
     for i, pred in enumerate(pred_clfs_tabular):
         pd = Prediction(
-            model=model_name,
             datum=Datum(
                 uid=f"uid{i}",
-                dataset=dataset_name,
                 metadata={
                     "md1": date.fromisoformat(f"{2000 + (i % 3)}-01-01"),
                     "md2": datetime.fromisoformat(f"{2000 + (i % 4)}-01-01"),
@@ -498,7 +491,7 @@ def test_stratify_clf_metrics_by_time(
                 )
             ],
         )
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
     eval_results_val2 = model.evaluate_classification(
