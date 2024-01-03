@@ -12,7 +12,7 @@ class DatasetAlreadyExistsError(Exception):
     """
 
     def __init__(self, name: str):
-        return super().__init__(f"Dataset with name `{name}` already exists.")
+        super().__init__(f"Dataset with name `{name}` already exists.")
 
 
 class DatasetDoesNotExistError(Exception):
@@ -26,7 +26,7 @@ class DatasetDoesNotExistError(Exception):
     """
 
     def __init__(self, name: str):
-        return super().__init__(f"Dataset with name `{name}` does not exist.")
+        super().__init__(f"Dataset with name `{name}` does not exist.")
 
 
 class DatasetIsEmptyError(Exception):
@@ -40,7 +40,7 @@ class DatasetIsEmptyError(Exception):
     """
 
     def __init__(self, name: str):
-        return super().__init__(
+        super().__init__(
             f"Dataset with name `{name}` contains no groundtruths."
         )
 
@@ -56,7 +56,7 @@ class DatasetFinalizedError(Exception):
     """
 
     def __init__(self, name: str):
-        return super().__init__(
+        super().__init__(
             f"cannot edit dataset `{name}` since it has been finalized."
         )
 
@@ -72,7 +72,7 @@ class DatasetNotFinalizedError(Exception):
     """
 
     def __init__(self, name: str):
-        return super().__init__(
+        super().__init__(
             f"cannot evaluate dataset `{name}` since it has not been finalized."
         )
 
@@ -91,7 +91,7 @@ class ModelAlreadyExistsError(Exception):
     """
 
     def __init__(self, name: str):
-        return super().__init__(f"Model with name `{name}` already exists.")
+        super().__init__(f"Model with name `{name}` already exists.")
 
 
 class ModelDoesNotExistError(Exception):
@@ -105,7 +105,7 @@ class ModelDoesNotExistError(Exception):
     """
 
     def __init__(self, name: str):
-        return super().__init__(f"Model with name `{name}` does not exist.")
+        super().__init__(f"Model with name `{name}` does not exist.")
 
 
 class ModelIsEmptyError(Exception):
@@ -119,7 +119,7 @@ class ModelIsEmptyError(Exception):
     """
 
     def __init__(self, name: str):
-        return super().__init__(
+        super().__init__(
             f"Model with name `{name}` contains no inferences."
         )
 
@@ -137,7 +137,7 @@ class ModelFinalizedError(Exception):
     """
 
     def __init__(self, *, dataset_name: str, model_name: str):
-        return super().__init__(
+        super().__init__(
             f"cannot edit inferences for model`{model_name}` on dataset `{dataset_name}` since it has been finalized"
         )
 
@@ -155,7 +155,7 @@ class ModelNotFinalizedError(Exception):
     """
 
     def __init__(self, *, dataset_name: str, model_name: str):
-        return super().__init__(
+        super().__init__(
             f"cannot evaluate inferences for model `{model_name}` on dataset `{dataset_name}` since it has not been finalized."
         )
 
@@ -173,7 +173,7 @@ class ModelInferencesDoNotExist(Exception):
             The name of the model.
         """
 
-        return super().__init__(
+        super().__init__(
             f"inferences for model `{model_name}` over dataset `{dataset_name}` do not exist."
         )
 
@@ -192,7 +192,7 @@ class DatumDoesNotExistError(Exception):
     """
 
     def __init__(self, uid: str):
-        return super().__init__(f"Datum with uid `{uid}` does not exist.")
+        super().__init__(f"Datum with uid `{uid}` does not exist.")
 
 
 class DatumAlreadyExistsError(Exception):
@@ -206,7 +206,7 @@ class DatumAlreadyExistsError(Exception):
     """
 
     def __init__(self, uid: str):
-        return super().__init__(f"Datum with uid: `{uid}` already exists.")
+        super().__init__(f"Datum with uid: `{uid}` already exists.")
 
 
 class DatumDoesNotBelongToDatasetError(Exception):
@@ -222,7 +222,7 @@ class DatumDoesNotBelongToDatasetError(Exception):
     """
 
     def __init__(self, dataset_name: str, datum_uid: str):
-        return super().__init__(
+        super().__init__(
             f"Datum with uid: `{datum_uid}` does not belong to dataset `{dataset_name}`."
         )
 
@@ -232,13 +232,11 @@ class DatumDoesNotBelongToDatasetError(Exception):
 
 class GroundTruthAlreadyExistsError(Exception):
     """Raises an exception if the user tries to create a `GroundTruth` that already exists."""
-
     pass
 
 
 class AnnotationAlreadyExistsError(Exception):
     """Raises an exception if the user tries to create an `Annotation` that already exists."""
-
     pass
 
 
@@ -256,7 +254,7 @@ class JobDoesNotExistError(Exception):
     """
 
     def __init__(self, id: str):
-        return super().__init__(f"job with id `{id}` does not exist")
+        super().__init__(f"job with id `{id}` does not exist")
 
 
 class JobStateError(Exception):
@@ -272,4 +270,4 @@ class JobStateError(Exception):
     """
 
     def __init__(self, id: str, msg: str = ""):
-        return super().__init__(f"state error with job id: `{id}`, msg: {msg}")
+        super().__init__(f"state error with job id: `{id}`, msg: {msg}")
