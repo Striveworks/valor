@@ -151,6 +151,77 @@ class NumericFilter(BaseModel):
         return hash(f"Value:{self.value},Op:{self.operator}")
 
 
+class BooleanFilter(BaseModel):
+    """
+    Used to filter on boolean values that meet some user-defined condition.
+
+    Attributes
+    ----------
+    value : bool
+        The value to compare the specific field against.
+    operator : str
+        The operator to use for comparison. Should be one of `["==", "!="]`.
+
+    Raises
+    ------
+    ValueError
+        If the `operator` doesn't match one of the allowed patterns.
+    """
+
+    value: bool
+    operator: str = "=="
+
+    @field_validator("operator")
+    @classmethod
+    def _validate_comparison_operator(cls, op: str) -> str:
+        """Validate the operator."""
+        allowed_operators = ["==", "!="]
+        if op not in allowed_operators:
+            raise ValueError(
+                f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
+            )
+        return op
+
+    model_config = ConfigDict(extra="forbid")
+
+    def __eq__(self, other) -> bool:
+        """
+        Checks that two `BooleanFilters` are equivalent.
+
+        Parameters
+        ----------
+        other : BooleanFilter
+            The object to compare against.
+
+        Returns
+        ----------
+        boolean
+            A boolean describing whether the two objects are equal.
+
+        Raises
+        ----------
+        TypeError
+            When comparing against an object that isn't a `BooleanFilter`.
+        """
+        if not isinstance(other, BooleanFilter):
+            raise TypeError("expected BooleanFilter")
+        return (
+            self.value == other.value,
+            self.operator == other.operator,
+        )
+
+    def __hash__(self) -> int:
+        """
+        Hashes a `BooleanFilter`.
+
+        Returns
+        ----------
+        int
+            A hashed integer.
+        """
+        return hash(f"Value:{self.value},Op:{self.operator}")
+
+
 class GeospatialFilter(BaseModel):
     """
     Used to filter on geospatial coordinates.
@@ -338,14 +409,16 @@ class Filter(BaseModel):
     # datasets
     dataset_names: list[str] | None = None
     dataset_metadata: dict[
-        str, list[StringFilter | NumericFilter | DateTimeFilter]
+        str,
+        list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
     ] | None = None
     dataset_geospatial: list[GeospatialFilter] | None = None
 
     # models
     models_names: list[str] | None = None
     models_metadata: dict[
-        str, list[StringFilter | NumericFilter | DateTimeFilter]
+        str,
+        list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
     ] | None = None
     models_geospatial: list[GeospatialFilter] | None = None
 
@@ -355,7 +428,8 @@ class Filter(BaseModel):
     ] | None = None  # This should be used sparingly and with small lists.
     datum_uids: list[str] | None = None
     datum_metadata: dict[
-        str, list[StringFilter | NumericFilter | DateTimeFilter]
+        str,
+        list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
     ] | None = None
     datum_geospatial: list[GeospatialFilter] | None = None
 
@@ -364,7 +438,8 @@ class Filter(BaseModel):
     annotation_types: list[AnnotationType] | None = None
     annotation_geometric_area: list[NumericFilter] | None = None
     annotation_metadata: dict[
-        str, list[StringFilter | NumericFilter | DateTimeFilter]
+        str,
+        list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
     ] | None = None
     annotation_geospatial: list[GeospatialFilter] | None = None
 

@@ -22,6 +22,13 @@ from velour.schemas.metadata import (
     validate_metadata,
 )
 
+MetadataType = Dict[
+    str,
+    Union[
+        int, float, str, bool, datetime.datetime, datetime.date, datetime.time
+    ],
+]
+
 
 class Label:
     """
@@ -166,17 +173,7 @@ class Datum:
     def __init__(
         self,
         uid: str,
-        metadata: Dict[
-            str,
-            Union[
-                int,
-                float,
-                str,
-                datetime.datetime,
-                datetime.date,
-                datetime.time,
-            ],
-        ] = None,
+        metadata: MetadataType = None,
         geospatial: Dict[
             str,
             Union[
@@ -255,7 +252,7 @@ class Annotation:
         The task type associated with the `Annotation`.
     labels: List[Label]
         A list of labels to use for the `Annotation`.
-    metadata: Dict[str, Union[int, float, str, datetime.datetime, datetime.date, datetime.time]]
+    metadata: Dict[str, Union[int, float, str, bool, datetime.datetime, datetime.date, datetime.time]]
         A dictionary of metadata that describes the `Annotation`.
     bounding_box: BoundingBox
         A bounding box to assign to the `Annotation`.
@@ -335,17 +332,7 @@ class Annotation:
         self,
         task_type: TaskType,
         labels: List[Label],
-        metadata: Dict[
-            str,
-            Union[
-                int,
-                float,
-                str,
-                datetime.datetime,
-                datetime.date,
-                datetime.time,
-            ],
-        ] = None,
+        metadata: MetadataType = None,
         bounding_box: BoundingBox = None,
         polygon: Polygon = None,
         multipolygon: MultiPolygon = None,
@@ -688,17 +675,7 @@ class Dataset:
         self,
         client: Client,
         name: str,
-        metadata: Dict[
-            str,
-            Union[
-                int,
-                float,
-                str,
-                datetime.datetime,
-                datetime.date,
-                datetime.time,
-            ],
-        ] = None,
+        metadata: MetadataType = None,
         geospatial: Dict[
             str,
             Union[
@@ -972,17 +949,7 @@ class Model:
         self,
         client: Client,
         name: str,
-        metadata: Dict[
-            str,
-            Union[
-                int,
-                float,
-                str,
-                datetime.datetime,
-                datetime.date,
-                datetime.time,
-            ],
-        ] = None,
+        metadata: MetadataType = None,
         geospatial: Dict[
             str,
             Union[
