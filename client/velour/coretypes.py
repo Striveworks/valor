@@ -166,8 +166,6 @@ class Datum:
         A dictionary of metadata that describes the `Datum`.
     geospatial :  dict
         A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
-    dataset : str
-        The name of the dataset to associate the `Datum` with.
     """
 
     def __init__(
@@ -183,14 +181,11 @@ class Datum:
                 str,
             ],
         ] = None,
-        dataset: Union["Dataset", str] = "",
     ):
         self.uid = uid
         self.metadata = metadata if metadata else {}
         self.geospatial = geospatial if geospatial else {}
-        self.dataset_name = (
-            dataset.name if isinstance(dataset, Dataset) else dataset
-        )
+        self._dataset_name = None
         self._validate()
 
     def _validate(self):
@@ -217,7 +212,7 @@ class Datum:
             A dictionary of the `Datum's` attributes.
         """
         return {
-            "dataset": self.dataset_name,
+            "dataset": self._dataset_name,
             "uid": self.uid,
             "metadata": dump_metadata(self.metadata),
             "geospatial": self.geospatial if self.geospatial else None,
@@ -240,6 +235,12 @@ class Datum:
         if not isinstance(other, Datum):
             raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
         return self.dict() == other.dict()
+
+    def _set_dataset(self, dataset: Union["Dataset", str]) -> None:
+        """Sets the dataset the datum belongs to. This should never be called by the user."""
+        self._dataset_name = (
+            dataset.name if isinstance(dataset, Dataset) else dataset
+        )
 
 
 class Annotation:
@@ -548,15 +549,10 @@ class Prediction:
         The score assigned to the `Prediction`.
     """
 
-    def __init__(
-        self,
-        datum: Datum,
-        annotations: List[Annotation] = None,
-        model: Union["Model", str] = "",
-    ):
+    def __init__(self, datum: Datum, annotations: List[Annotation] = None):
         self.datum = datum
         self.annotations = annotations
-        self.model_name = model.name if isinstance(model, Model) else model
+        self._model_name = None
         self._validate()
 
     def _validate(self):
@@ -626,7 +622,7 @@ class Prediction:
         """
         return {
             "datum": self.datum.dict(),
-            "model": self.model_name,
+            "model": self._model_name,
             "annotations": [
                 annotation.dict() for annotation in self.annotations
             ],
@@ -651,6 +647,9 @@ class Prediction:
                 f"Expected type `{type(Prediction)}`, got `{other}`"
             )
         return self.dict() == other.dict()
+
+    def _set_model(self, model: Union["Model", str]):
+        self._model_name = model.name if isinstance(model, Model) else model
 
 
 class Dataset:
@@ -782,7 +781,7 @@ class Dataset:
                 f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
             )
 
-        groundtruth.datum.dataset_name = self.name
+        groundtruth.datum._set_dataset(self.name)
         self.client._requests_post_rel_host(
             "groundtruths",
             json=groundtruth.dict(),
@@ -1054,7 +1053,7 @@ class Model:
                 f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
             )
 
-        prediction.model_name = self.name
+        prediction._set_model(self.name)
         return self.client._requests_post_rel_host(
             "predictions",
             json=prediction.dict(),
