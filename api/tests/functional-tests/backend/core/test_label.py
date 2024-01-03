@@ -159,8 +159,10 @@ def test_create_labels_with_duplicates(db: Session):
         schemas.Label(key="stoplight_color", value="red"),
         schemas.Label(key="stoplight_color", value="red"),
     ]
-    create_labels(db, labels)
+    created_labels = create_labels(db, labels)
     assert len(db.query(models.Label).all()) == 1
+    assert len(created_labels) == 2
+    assert created_labels[0].id == created_labels[1].id
 
 
 def test_get_labels(

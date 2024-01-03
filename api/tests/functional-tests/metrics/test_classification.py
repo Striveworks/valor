@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
+from velour_api.backend import models
 from velour_api.backend.metrics.classification import (
     _compute_accuracy_from_cm,
     _compute_clf_metrics,
@@ -100,12 +101,19 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
     crud.create_model(
         db=db,
         model=schemas.Model(
-            name=model_name, metadata={"type": enums.DataType.IMAGE}
+            name=model_name,
+            metadata={"type": enums.DataType.IMAGE.value},
         ),
     )
     for pd in preds:
         crud.create_prediction(db=db, prediction=pd)
     crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
+
+    assert len(db.query(models.Datum).all()) == 6
+    assert len(db.query(models.Annotation).all()) == 12
+    assert len(db.query(models.Label).all()) == 7
+    assert len(db.query(models.GroundTruth).all()) == 6 * 2
+    assert len(db.query(models.Prediction).all()) == 6 * 7
 
 
 def test_compute_confusion_matrix_at_label_key(
@@ -140,6 +148,7 @@ def test_compute_confusion_matrix_at_label_key(
             prediction="dog", groundtruth="bird", count=1
         ),
     ]
+    assert len(cm.entries) == len(expected_entries)
     for entry in cm.entries:
         assert entry in expected_entries
     for entry in expected_entries:
@@ -165,6 +174,7 @@ def test_compute_confusion_matrix_at_label_key(
             prediction="red", groundtruth="black", count=1
         ),
     ]
+    assert len(cm.entries) == len(expected_entries)
     for entry in cm.entries:
         assert entry in expected_entries
     for entry in expected_entries:
@@ -218,7 +228,6 @@ def test_compute_confusion_matrix_at_label_key_and_filter(
             groundtruth="bird", prediction="dog", count=1
         ),
     ]
-
     assert len(cm.entries) == len(expected_entries)
     for e in expected_entries:
         assert e in cm.entries
