@@ -9,6 +9,34 @@ from velour_api import exceptions, schemas
 from velour_api.backend import models
 
 
+def create_dataset(
+    db: Session,
+    dataset: schemas.Dataset,
+):
+    """
+    Creates a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    dataset : schemas.Dataset
+        The dataset to create.
+    """
+    try:
+        row = models.Dataset(
+            name=dataset.name,
+            meta=dataset.metadata,
+            geo=dataset.geospatial.wkt() if dataset.geospatial else None,
+        )
+        db.add(row)
+        db.commit()
+        return row
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.DatasetAlreadyExistsError(dataset.name)
+    
+
 def fetch_dataset(
     db: Session,
     name: str,
@@ -38,34 +66,6 @@ def fetch_dataset(
     if dataset is None:
         raise exceptions.DatasetDoesNotExistError(name)
     return dataset
-
-
-def create_dataset(
-    db: Session,
-    dataset: schemas.Dataset,
-):
-    """
-    Creates a dataset.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    dataset : schemas.Dataset
-        The dataset to create.
-    """
-    try:
-        row = models.Dataset(
-            name=dataset.name,
-            meta=dataset.metadata,
-            geo=dataset.geospatial.wkt() if dataset.geospatial else None,
-        )
-        db.add(row)
-        db.commit()
-        return row
-    except IntegrityError:
-        db.rollback()
-        raise exceptions.DatasetAlreadyExistsError(dataset.name)
 
 
 def get_dataset(

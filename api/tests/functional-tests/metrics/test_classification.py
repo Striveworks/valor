@@ -105,6 +105,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
     )
     for pd in preds:
         crud.create_prediction(db=db, prediction=pd)
+    crud.finalize(db=db, dataset_name=dataset_name, model_name=model_name)
 
 
 def test_compute_confusion_matrix_at_label_key(
@@ -118,7 +119,7 @@ def test_compute_confusion_matrix_at_label_key(
         dataset=dataset_name,
         model=model_name,
         task_type=enums.TaskType.CLASSIFICATION,
-        settings=schemas.EvaluationSettings(filters=schemas.Filter()),
+        settings=schemas.EvaluationSettings(),
     )
 
     cm = _compute_confusion_matrix_at_label_key(db, job_request, label_key)

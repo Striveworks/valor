@@ -314,12 +314,12 @@ def get_annotations(
     ]
 
 
-# @FIXME: This only services detection annotations
+# @TODO: This only services detection annotations
 def get_annotation_type(
     db: Session,
     dataset: models.Dataset,
     model: models.Model | None = None,
-) -> AnnotationType:
+) -> enums.AnnotationType:
     """
     Fetch an annotation type from postgis.
 
@@ -334,7 +334,7 @@ def get_annotation_type(
 
     Returns
     ----------
-    AnnotationType
+    enums.AnnotationType
         The type of the annotation.
     """
     model_expr = (
@@ -343,10 +343,10 @@ def get_annotation_type(
         else models.Annotation.model_id.is_(None)
     )
     hierarchy = [
-        (AnnotationType.RASTER, models.Annotation.raster),
-        (AnnotationType.MULTIPOLYGON, models.Annotation.multipolygon),
-        (AnnotationType.POLYGON, models.Annotation.polygon),
-        (AnnotationType.BOX, models.Annotation.box),
+        (enums.AnnotationType.RASTER, models.Annotation.raster),
+        (enums.AnnotationType.MULTIPOLYGON, models.Annotation.multipolygon),
+        (enums.AnnotationType.POLYGON, models.Annotation.polygon),
+        (enums.AnnotationType.BOX, models.Annotation.box),
     ]
     for atype, col in hierarchy:
         search = (
@@ -364,4 +364,4 @@ def get_annotation_type(
         )
         if search is not None:
             return atype
-    return AnnotationType.NONE
+    return enums.AnnotationType.NONE

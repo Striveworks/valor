@@ -5,6 +5,7 @@ from velour_api import schemas, enums
 from velour_api.crud import create_dataset, create_model, create_groundtruth, create_prediction
 from velour_api.backend import models
 from velour_api.backend.core.label import (
+    fetch_label,
     fetch_matching_labels,
     create_labels,
     get_labels,
@@ -83,6 +84,16 @@ def create_dataset_model(db: Session, dataset_name: str, model_name: str):
             ]
         )
     )
+
+
+def test_fetch_label(db: Session, simple_labels: list[schemas.Label]):
+    for label in simple_labels:
+        fetched_label = fetch_label(db, label)
+        assert fetched_label.key == label.key
+        assert fetched_label.value == label.value
+
+    # fetch label that doesnt exist
+    assert fetch_label(db, schemas.Label(key="k1234", value="v1234")) is None
 
 
 def test_fetch_matching_labels(db: Session, simple_labels):

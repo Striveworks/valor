@@ -49,7 +49,7 @@ def create_datum(
     return row
 
 
-def get_datum(
+def fetch_datum(
     db: Session,
     dataset_id: int,
     uid: str,

@@ -11,7 +11,7 @@ from .dataset import (
     get_dataset,
     get_datasets,
 )
-from .datum import create_datum, get_datum, get_datums
+from .datum import create_datum, fetch_datum, get_datums
 from .geometry import convert_geometry
 from .groundtruth import create_groundtruth, get_groundtruth
 from .label import (

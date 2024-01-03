@@ -522,8 +522,8 @@ def create_detection_evaluation(
             )
 
     # load sql objects
-    dataset = core.get_dataset(db, job_request.dataset)
-    model = core.get_model(db, job_request.model)
+    dataset = core.fetch_dataset(db, job_request.dataset)
+    model = core.fetch_model(db, job_request.model)
 
     # determine annotation types
     (
@@ -596,8 +596,8 @@ def create_detection_metrics(
         job_request.settings.filters = schemas.Filter()
     job_request.settings.filters.task_types = [enums.TaskType.DETECTION]
 
-    dataset = core.get_dataset(db, job_request.dataset)
-    model = core.get_model(db, job_request.model)
+    dataset = core.fetch_dataset(db, job_request.dataset)
+    model = core.fetch_model(db, job_request.model)
 
     groundtruth_type = core.get_annotation_type(db, dataset, None)
     prediction_type = core.get_annotation_type(db, dataset, model)

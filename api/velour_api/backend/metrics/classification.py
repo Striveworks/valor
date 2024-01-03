@@ -200,6 +200,8 @@ def _compute_confusion_matrix_at_label_key(
         that have both a groundtruth and prediction with label key `label_key`. Otherwise
         returns the confusion matrix.
     """
+    if job_request.settings.filters is None:
+        job_request.settings.filters = schemas.Filter()
 
     # groundtruths filter
     gFilter = job_request.settings.filters.model_copy()
@@ -609,8 +611,8 @@ def create_clf_evaluation(
             )
 
     # create evaluation row
-    dataset = core.get_dataset(db, job_request.dataset)
-    model = core.get_model(db, job_request.model)
+    dataset = core.fetch_dataset(db, job_request.dataset)
+    model = core.fetch_model(db, job_request.model)
     es = get_or_create_row(
         db,
         models.Evaluation,
