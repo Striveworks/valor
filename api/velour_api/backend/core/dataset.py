@@ -36,7 +36,6 @@ def create_dataset(
         db.rollback()
         raise exceptions.DatasetAlreadyExistsError(dataset.name)
 
-
 def fetch_dataset(
     db: Session,
     name: str,

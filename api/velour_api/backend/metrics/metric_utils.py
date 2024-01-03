@@ -1,7 +1,7 @@
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, distinct
 from sqlalchemy.orm import Session
 
-from velour_api import schemas
+from velour_api import schemas, enums
 from velour_api.backend import core, models
 from velour_api.enums import JobStatus
 
