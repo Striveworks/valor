@@ -216,6 +216,13 @@ class Datum:
             "geospatial": self.geospatial if self.geospatial else None,
         }
 
+    @classmethod
+    def _from_dict(cls, d: dict) -> "Datum":
+        dataset = d.pop("dataset", None)
+        datum = cls(**d)
+        datum._set_dataset(dataset)
+        return datum
+
     def __eq__(self, other):
         """
         Defines how `Datums` are compared to one another
@@ -456,11 +463,7 @@ class GroundTruth:
         The list of `Annotations` associated with the `GroundTruth`.
     """
 
-    def __init__(
-        self,
-        datum: Datum,
-        annotations: List[Annotation],
-    ):
+    def __init__(self, datum: Datum, annotations: List[Annotation]):
         self.datum = datum
         self.annotations = annotations
         self._validate()
@@ -470,8 +473,6 @@ class GroundTruth:
         Validate the inputs of the `GroundTruth`.
         """
         # validate datum
-        if isinstance(self.datum, dict):
-            self.datum = Datum(**self.datum)
         if not isinstance(self.datum, Datum):
             raise SchemaTypeError("datum", Datum, self.datum)
 
@@ -506,6 +507,12 @@ class GroundTruth:
                 annotation.dict() for annotation in self.annotations
             ],
         }
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "GroundTruth":
+        return cls(
+            datum=Datum._from_dict(d["datum"]), annotations=d["annotations"]
+        )
 
     def __eq__(self, other):
         """
@@ -621,6 +628,14 @@ class Prediction:
                 annotation.dict() for annotation in self.annotations
             ],
         }
+
+    @classmethod
+    def _from_dict(cls, d: dict) -> "Prediction":
+        pred = cls(
+            datum=Datum._from_dict(d["datum"]), annotations=d["annotations"]
+        )
+        pred._set_model(d["model"])
+        return pred
 
     def __eq__(self, other):
         """
@@ -800,7 +815,7 @@ class Dataset:
         resp = self.client._requests_get_rel_host(
             f"groundtruths/dataset/{self.name}/datum/{uid}"
         ).json()
-        return GroundTruth(**resp)
+        return GroundTruth._from_dict(resp)
 
     def get_labels(
         self,
@@ -821,9 +836,7 @@ class Dataset:
             Label(key=label["key"], value=label["value"]) for label in labels
         ]
 
-    def get_datums(
-        self,
-    ) -> List[Datum]:
+    def get_datums(self) -> List[Datum]:
         """
         Get all datums associated with a given dataset.
 
@@ -833,7 +846,7 @@ class Dataset:
             A list of `Datums` associated with the dataset.
         """
         datums = self.client.get_datums(self.name)
-        return [Datum(**datum) for datum in datums]
+        return [Datum._from_dict(datum) for datum in datums]
 
     def get_evaluations(
         self,
@@ -1028,7 +1041,9 @@ class Model:
             "geospatial": self.geospatial if self.geospatial else None,
         }
 
-    def add_prediction(self, prediction: Prediction):
+    def add_prediction(
+        self, dataset: Union[Dataset, str], prediction: Prediction
+    ):
         """
         Add a prediction to a given model.
 
@@ -1048,6 +1063,8 @@ class Model:
             )
 
         prediction._set_model(self.name)
+        # should check not already set or set by equal to dataset?
+        prediction.datum._set_dataset(dataset)
         return self.client._requests_post_rel_host(
             "predictions",
             json=prediction.dict(),
@@ -1241,7 +1258,7 @@ class Model:
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
         return job
 
-    def get_prediction(self, datum: Datum) -> Prediction:
+    def get_prediction(self, dataset: Dataset, datum: Datum) -> Prediction:
         """
         Fetch a particular prediction.
 
@@ -1256,9 +1273,9 @@ class Model:
             The requested `Prediction`.
         """
         resp = self.client._requests_get_rel_host(
-            f"predictions/model/{self.name}/dataset/{datum.dataset_name}/datum/{datum.uid}",
+            f"predictions/model/{self.name}/dataset/{dataset.name}/datum/{datum.uid}",
         ).json()
-        return Prediction(**resp)
+        return Prediction._from_dict(resp)
 
     def get_labels(
         self,

@@ -174,7 +174,6 @@ def _generate_prediction_annotation(
 
 
 def _generate_prediction(
-    model_name: str,
     datum: ImageMetadata,
     height: int,
     width: int,
@@ -199,7 +198,7 @@ def _generate_prediction(
         for _ in range(n_annotations)
     ]
 
-    return Prediction(model=model_name, datum=datum, annotations=annotations)
+    return Prediction(datum=datum, annotations=annotations)
 
 
 def generate_segmentation_data(
@@ -278,14 +277,13 @@ def generate_prediction_data(
 
         for _ in range(n_predictions):
             prediction = _generate_prediction(
-                model_name=model_name,
                 datum=datum,
                 height=height,
                 width=width,
                 n_annotations=n_annotations,
                 n_labels=n_labels,
             )
-            model.add_prediction(prediction)
+            model.add_prediction(dataset, prediction)
 
     model.finalize_inferences(dataset)
     return model

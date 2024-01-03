@@ -102,7 +102,7 @@ def metadata():
 
 
 @pytest.fixture
-def img1(dataset_name) -> ImageMetadata:
+def img1() -> ImageMetadata:
     coordinates = [
         [
             [125.2750725, 38.760525],
@@ -120,7 +120,6 @@ def img1(dataset_name) -> ImageMetadata:
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
     return ImageMetadata(
-        dataset=dataset_name,
         uid="uid1",
         height=900,
         width=300,
@@ -129,13 +128,12 @@ def img1(dataset_name) -> ImageMetadata:
 
 
 @pytest.fixture
-def img2(dataset_name) -> ImageMetadata:
+def img2() -> ImageMetadata:
     coordinates = [44.1, 22.4]
 
     geo_dict = {"type": "Point", "coordinates": coordinates}
 
     return ImageMetadata(
-        dataset=dataset_name,
         uid="uid2",
         height=40,
         width=30,
@@ -145,22 +143,22 @@ def img2(dataset_name) -> ImageMetadata:
 
 @pytest.fixture
 def img5(dataset_name) -> ImageMetadata:
-    return ImageMetadata(dataset=dataset_name, uid="uid5", height=40, width=30)
+    return ImageMetadata(uid="uid5", height=40, width=30)
 
 
 @pytest.fixture
-def img6(dataset_name) -> ImageMetadata:
-    return ImageMetadata(dataset=dataset_name, uid="uid6", height=40, width=30)
+def img6() -> ImageMetadata:
+    return ImageMetadata(uid="uid6", height=40, width=30)
 
 
 @pytest.fixture
-def img8(dataset_name) -> ImageMetadata:
-    return ImageMetadata(dataset=dataset_name, uid="uid8", height=40, width=30)
+def img8() -> ImageMetadata:
+    return ImageMetadata(uid="uid8", height=40, width=30)
 
 
 @pytest.fixture
-def img9(dataset_name) -> ImageMetadata:
-    return ImageMetadata(dataset=dataset_name, uid="uid9", height=40, width=30)
+def img9() -> ImageMetadata:
+    return ImageMetadata(uid="uid9", height=40, width=30)
 
 
 """Geometrys"""
@@ -509,7 +507,6 @@ def pred_dets(
 ) -> list[Prediction]:
     return [
         Prediction(
-            model=model_name,
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
@@ -520,7 +517,6 @@ def pred_dets(
             ],
         ),
         Prediction(
-            model=model_name,
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
@@ -535,7 +531,6 @@ def pred_dets(
 
 @pytest.fixture
 def pred_dets2(
-    model_name: str,
     rect3: BoundingBox,
     rect4: BoundingBox,
     img1: ImageMetadata,
@@ -543,7 +538,6 @@ def pred_dets2(
 ) -> list[Prediction]:
     return [
         Prediction(
-            model=model_name,
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
@@ -554,7 +548,6 @@ def pred_dets2(
             ],
         ),
         Prediction(
-            model=model_name,
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
@@ -568,12 +561,9 @@ def pred_dets2(
 
 
 @pytest.fixture
-def pred_poly_dets(
-    pred_dets: list[Prediction],
-) -> list[Prediction]:
+def pred_poly_dets(pred_dets: list[Prediction]) -> list[Prediction]:
     return [
         Prediction(
-            model=det.model_name,
             datum=det.datum,
             annotations=[
                 Annotation(
@@ -605,7 +595,6 @@ def pred_instance_segs(
     mask_2 = _random_mask(img2)
     return [
         Prediction(
-            model=model_name,
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
@@ -616,7 +605,6 @@ def pred_instance_segs(
             ],
         ),
         Prediction(
-            model=model_name,
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
@@ -639,7 +627,6 @@ def pred_semantic_segs(
     mask_2 = _random_mask(img2)
     return [
         Prediction(
-            model=model_name,
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
@@ -650,7 +637,6 @@ def pred_semantic_segs(
             ],
         ),
         Prediction(
-            model=model_name,
             datum=img2.to_datum(),
             annotations=[
                 Annotation(
@@ -669,7 +655,6 @@ def pred_clfs(
 ) -> list[Prediction]:
     return [
         Prediction(
-            model=model_name,
             datum=img5.to_datum(),
             annotations=[
                 Annotation(
@@ -683,7 +668,6 @@ def pred_clfs(
             ],
         ),
         Prediction(
-            model=model_name,
             datum=img6.to_datum(),
             annotations=[
                 Annotation(

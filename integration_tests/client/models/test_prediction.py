@@ -33,7 +33,6 @@ def test_create_pred_detections_as_bbox_or_poly(
 
     model = Model(client, model_name)
     pd = Prediction(
-        model=model_name,
         datum=img1.to_datum(),
         annotations=[
             Annotation(
@@ -59,7 +58,7 @@ def test_create_pred_detections_as_bbox_or_poly(
             ),
         ],
     )
-    model.add_prediction(pd)
+    model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
     db_dets = db.scalars(
