@@ -181,26 +181,19 @@ def create_annotations_and_labels(
         [
             (
                 _create_annotation(
-                    annotation=annotation,
-                    datum=datum,
-                    model=model
+                    annotation=annotation, datum=datum, model=model
                 ),
                 create_labels(
                     db=db,
                     labels=annotation.labels,
-                )
+                ),
             )
             for annotation in annotations
         ]
 
-
         for annotation in annotations:
-            annotation_list.append(
-                
-            )
-            label_list.append(
-                create_labels(db=db, labels=annotation.labels)
-            )
+            annotation_list.append()
+            label_list.append(create_labels(db=db, labels=annotation.labels))
     else:
         annotation_list = [_create_empty_annotation(datum, model)]
 

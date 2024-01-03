@@ -40,7 +40,7 @@ def create_groundtruth(
         for annotation in groundtruth.annotations:
             annotation_list.append(_create_annotation(annotation, datum, None))
             label_list = core.create_labels(db, annotation.labels)
-    
+
     try:
         db.add_all(rows)
         db.commit()

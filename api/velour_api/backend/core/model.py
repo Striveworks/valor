@@ -35,7 +35,7 @@ def create_model(
     except IntegrityError:
         db.rollback()
         raise exceptions.ModelAlreadyExistsError(model.name)
-    
+
 
 def fetch_model(
     db: Session,

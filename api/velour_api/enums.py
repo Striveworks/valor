@@ -102,7 +102,7 @@ class JobStatus(Enum):
             return {self.DELETING, self.NONE}
         else:
             raise ValueError
-        
+
 
 class DatasetStatus(str, Enum):
     CREATING = "creating"

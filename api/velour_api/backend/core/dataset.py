@@ -1,11 +1,11 @@
 import json
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import exceptions, schemas, enums
+from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
 
 
@@ -78,7 +78,7 @@ def commit_dataset_status(
     status: enums.DatasetStatus,
 ):
     """
-    Sets the status of a dataset. 
+    Sets the status of a dataset.
     """
     dataset = fetch_dataset(db, name)
     try:
