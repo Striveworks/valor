@@ -676,8 +676,8 @@ def test_label_functions(
                 enums.TaskType.SEGMENTATION,
                 enums.TaskType.DETECTION,
             ],
-            ignore_groundtruths=True,
         ),
+        ignore_groundtruths=True,
     ) == {
         schemas.Label(key="semsegk1", value="semsegv1"),
         schemas.Label(key="semsegk2", value="semsegv2"),
