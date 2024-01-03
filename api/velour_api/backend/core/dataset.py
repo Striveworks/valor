@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import exceptions, schemas
+from velour_api import exceptions, schemas, enums
 from velour_api.backend import models
 
 
@@ -28,6 +28,7 @@ def create_dataset(
             name=dataset.name,
             meta=dataset.metadata,
             geo=dataset.geospatial.wkt() if dataset.geospatial else None,
+            status=enums.DatasetStatus.CREATING,
         )
         db.add(row)
         db.commit()

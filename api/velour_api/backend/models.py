@@ -90,15 +90,13 @@ class Annotation(Base):
     task_type: Mapped[str] = mapped_column(nullable=False)
     meta = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
+    status: Mapped[str] = mapped_column(nullable=False)
 
     # Geometric
     box = mapped_column(Geometry("POLYGON"), nullable=True)
     polygon = mapped_column(Geometry("POLYGON"), nullable=True)
     multipolygon = mapped_column(Geometry("MULTIPOLYGON"), nullable=True)
     raster = mapped_column(GDALRaster, nullable=True)
-
-    # Generic
-    json = mapped_column(JSONB)
 
     # relationships
     datum: Mapped["Datum"] = relationship(back_populates="annotations")
@@ -158,6 +156,7 @@ class Dataset(Base):
     name: Mapped[str] = mapped_column(index=True, unique=True)
     meta = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
+    status: Mapped[str] = mapped_column(nullable=False)
 
     # relationships
     datums: Mapped[list[Datum]] = relationship(cascade="all, delete")
@@ -175,6 +174,7 @@ class Evaluation(Base):
     task_type: Mapped[str] = mapped_column(nullable=False)
     settings = mapped_column(JSONB, nullable=True)
     geo = mapped_column(Geography(), nullable=True)
+    status: Mapped[str] = mapped_column(nullable=False)
 
     # relationships
     dataset = relationship(Dataset, back_populates="evaluation")
