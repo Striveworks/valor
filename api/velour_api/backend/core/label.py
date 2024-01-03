@@ -152,7 +152,7 @@ def get_labels(
     filters: schemas.Filter | None = None,
     ignore_groundtruths: bool = False,
     ignore_predictions: bool = False,
-) -> list[schemas.Label]:
+) -> set[schemas.Label]:
     """
     Returns a set of unique labels from a union of sources (dataset, model, datum, annotation) optionally filtered by (label key, task_type).
 
@@ -178,12 +178,10 @@ def get_labels(
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
-    return list(
-        {
-            schemas.Label(key=label.key, value=label.value)
-            for label in db.query(stmt.subquery()).all()
-        }
-    )
+    return {
+        schemas.Label(key=label.key, value=label.value)
+        for label in db.query(stmt.subquery()).all()
+    }
 
 
 def get_label_keys(
@@ -191,7 +189,7 @@ def get_label_keys(
     filters: schemas.Filter | None = None,
     ignore_groundtruths: bool = False,
     ignore_predictions: bool = False,
-) -> list[str]:
+) -> set[str]:
     """
     Returns all unique label keys.
 
@@ -217,7 +215,7 @@ def get_label_keys(
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
-    return list({key for key in db.scalars(stmt)})
+    return {key for key in db.scalars(stmt)}
 
 
 def get_joint_labels(
@@ -356,8 +354,8 @@ def get_disjoint_labels(
     )
 
     # get labels
-    ds_labels = set(get_labels(db, gt_filter, ignore_predictions=True))
-    md_labels = set(get_labels(db, pd_filter, ignore_groundtruths=True))
+    ds_labels = get_labels(db, gt_filter, ignore_predictions=True)
+    md_labels = get_labels(db, pd_filter, ignore_groundtruths=True)
 
     # set operation to get disjoint sets wrt the lhs operand
     ds_unique = list(ds_labels - md_labels)
@@ -404,8 +402,8 @@ def get_disjoint_keys(
     )
 
     # get keys
-    ds_keys = set(get_label_keys(db, gt_filter, ignore_predictions=True))
-    md_keys = set(get_label_keys(db, pd_filter, ignore_groundtruths=True))
+    ds_keys = get_label_keys(db, gt_filter, ignore_predictions=True)
+    md_keys = get_label_keys(db, pd_filter, ignore_groundtruths=True)
 
     # set operation to get disjoint sets wrt the lhs operand
     ds_unique = list(ds_keys - md_keys)
