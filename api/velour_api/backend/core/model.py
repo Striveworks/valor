@@ -9,34 +9,6 @@ from velour_api import exceptions, schemas
 from velour_api.backend import models
 
 
-def fetch_model(
-    db: Session,
-    name: str,
-) -> models.Model:
-    """
-    Fetch a model from the database.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session you want to query against.
-    name : str
-        The name of the model.
-
-    Returns
-    ----------
-    models.Model
-        The requested model.
-
-    """
-    model = (
-        db.query(models.Model).where(models.Model.name == name).one_or_none()
-    )
-    if model is None:
-        raise exceptions.ModelDoesNotExistError(name)
-    return model
-
-
 def create_model(
     db: Session,
     model: schemas.Model,
@@ -63,6 +35,34 @@ def create_model(
     except IntegrityError:
         db.rollback()
         raise exceptions.ModelAlreadyExistsError(model.name)
+    
+
+def fetch_model(
+    db: Session,
+    name: str,
+) -> models.Model:
+    """
+    Fetch a model from the database.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session you want to query against.
+    name : str
+        The name of the model.
+
+    Returns
+    ----------
+    models.Model
+        The requested model.
+
+    """
+    model = (
+        db.query(models.Model).where(models.Model.name == name).one_or_none()
+    )
+    if model is None:
+        raise exceptions.ModelDoesNotExistError(name)
+    return model
 
 
 def get_model(

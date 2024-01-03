@@ -1,7 +1,7 @@
 import json
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -57,15 +57,36 @@ def fetch_dataset(
         The requested dataset.
 
     """
-
     dataset = (
         db.query(models.Dataset)
-        .where(models.Dataset.name == name)
+        .where(
+            and_(
+                models.Dataset.name == name
+                and models.Dataset.status != enums.DatasetStatus.DELETING
+            )
+        )
         .one_or_none()
     )
     if dataset is None:
         raise exceptions.DatasetDoesNotExistError(name)
     return dataset
+
+
+def commit_dataset_status(
+    db: Session,
+    name: str,
+    status: enums.DatasetStatus,
+):
+    """
+    Sets the status of a dataset. 
+    """
+    dataset = fetch_dataset(db, name)
+    try:
+        dataset.status = status
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 def get_dataset(

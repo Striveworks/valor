@@ -14,125 +14,6 @@ from velour_api.backend import models
 from velour_api.backend.core.label import create_labels
 
 
-def _wkt_multipolygon_to_raster(wkt: str):
-    """
-    Convert a multipolygon to a raster using postgis.
-
-    Parameters
-    ----------
-    wkt : str
-        A postgis multipolygon object in well-known text format.
-
-
-    Returns
-    ----------
-    Query
-        A scalar subquery from postgis.
-    """
-    return select(
-        text(f"ST_AsRaster(ST_GeomFromText('{wkt}'), {1.0}, {1.0})")
-    ).scalar_subquery()
-
-
-def _get_annotation_mapping(
-    annotation: schemas.Annotation,
-    datum: models.Datum,
-    model: models.Model = None,
-) -> dict:
-    """
-    Convert an individual annotation's attributes into a dictionary for upload to postgis.
-
-    Parameters
-    ----------
-    annotation : schemas.Annotation
-        The annotation tom ap.
-    datum : models.Datum
-        The datum associated with the annotation.
-    model : models.Model
-        The model associated with the annotation
-
-    Returns
-    ----------
-    dict
-        A dictionary of annotation attributes.
-
-    """
-    box = None
-    polygon = None
-    raster = None
-    jsonb = None
-
-    if isinstance(annotation.bounding_box, schemas.BoundingBox):
-        box = annotation.bounding_box.wkt()
-    if isinstance(annotation.polygon, schemas.Polygon):
-        polygon = annotation.polygon.wkt()
-    if isinstance(annotation.multipolygon, schemas.MultiPolygon):
-        raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
-    if isinstance(annotation.raster, schemas.Raster):
-        raster = annotation.raster.mask_bytes
-    if isinstance(annotation.jsonb, dict):
-        jsonb = annotation.jsonb
-
-    mapping = {
-        "datum_id": datum.id,
-        "model_id": model.id if model else None,
-        "task_type": annotation.task_type,
-        "meta": annotation.metadata,
-        "box": box,
-        "polygon": polygon,
-        "raster": raster,
-        "json": jsonb,
-    }
-
-    return mapping
-
-
-def create_annotations_and_labels(
-    db: Session,
-    annotations: list[schemas.Annotation],
-    datum: models.Datum,
-    model: models.Model = None,
-) -> list[models.Annotation]:
-    """
-    Create a list of annotations and associated labels in postgis
-
-    Parameters
-    ----------
-    db : Session
-        The database Session you want to query against.
-    annotations : List[schemas.Annotation]
-        The list of annotations to create.
-    datum : models.Datum
-        The datum associated with the annotation.
-    model : models.Model
-        The model associated with the annotation.
-
-    Returns
-    ----------
-    List[models.annotation]
-        The model associated with the annotation.
-    """
-    annotation_list = []
-    label_list = []
-
-    for annotation in annotations:
-        mapping = _get_annotation_mapping(
-            annotation=annotation, datum=datum, model=model
-        )
-        annotation_list.append(models.Annotation(**mapping))
-        label_list.append(create_labels(db=db, labels=annotation.labels))
-
-    try:
-        db.add_all(annotation_list)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise exceptions.AnnotationAlreadyExistsError
-
-    # return the label_list, too, since these are needed for GroundTruth
-    return (annotation_list, label_list)
-
-
 def _get_bounding_box_of_raster(
     db: Session, raster: RasterElement
 ) -> tuple[int, int, int, int]:
@@ -167,6 +48,171 @@ def _raster_to_png_b64(
     f.seek(0)
     mask_bytes = f.read()
     return b64encode(mask_bytes).decode()
+
+
+def _wkt_multipolygon_to_raster(wkt: str):
+    """
+    Convert a multipolygon to a raster using postgis.
+
+    Parameters
+    ----------
+    wkt : str
+        A postgis multipolygon object in well-known text format.
+
+
+    Returns
+    ----------
+    Query
+        A scalar subquery from postgis.
+    """
+    return select(
+        text(f"ST_AsRaster(ST_GeomFromText('{wkt}'), {1.0}, {1.0})")
+    ).scalar_subquery()
+
+
+def _create_annotation(
+    annotation: schemas.Annotation,
+    datum: models.Datum,
+    model: models.Model = None,
+) -> list[models.Label]:
+    """
+    Convert an individual annotation's attributes into a dictionary for upload to postgis.
+
+    Parameters
+    ----------
+    annotation : schemas.Annotation
+        The annotation tom ap.
+    datum : models.Datum
+        The datum associated with the annotation.
+    model : models.Model
+        The model associated with the annotation
+
+    Returns
+    ----------
+    models.Annotation
+        A populated models.Annotation object.
+
+    """
+    box = None
+    polygon = None
+    raster = None
+
+    if isinstance(annotation.bounding_box, schemas.BoundingBox):
+        box = annotation.bounding_box.wkt()
+    if isinstance(annotation.polygon, schemas.Polygon):
+        polygon = annotation.polygon.wkt()
+    if isinstance(annotation.multipolygon, schemas.MultiPolygon):
+        raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
+    if isinstance(annotation.raster, schemas.Raster):
+        raster = annotation.raster.mask_bytes
+
+    mapping = {
+        "datum_id": datum.id,
+        "model_id": model.id if model else None,
+        "task_type": annotation.task_type,
+        "meta": annotation.metadata,
+        "box": box,
+        "polygon": polygon,
+        "raster": raster,
+    }
+    return models.Annotation(**mapping)
+
+
+def _create_empty_annotation(
+    datum: models.Datum,
+    model: models.Model,
+) -> models.Annotation:
+    mapping = {
+        "datum_id": datum.id,
+        "model_id": model.id if model else None,
+        "task_type": enums.TaskType.EMPTY,
+        "meta": {},
+        "box": None,
+        "polygon": None,
+        "raster": None,
+    }
+    return models.Annotation(**mapping)
+
+
+def _create_skipped_annotation(
+    datum: models.Datum,
+    model: models.Model,
+) -> models.Annotation:
+    mapping = {
+        "datum_id": datum.id,
+        "model_id": model.id if model else None,
+        "task_type": enums.TaskType.SKIP,
+        "meta": {},
+        "box": None,
+        "polygon": None,
+        "raster": None,
+    }
+    return models.Annotation(**mapping)
+
+
+def create_annotations_and_labels(
+    db: Session,
+    annotations: list[schemas.Annotation],
+    datum: models.Datum,
+    model: models.Model = None,
+) -> tuple[list[models.Annotation], list[models.Label]]:
+    """
+    Create a list of annotations and associated labels in postgis.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session you want to query against.
+    annotations : List[schemas.Annotation]
+        The list of annotations to create.
+    datum : models.Datum
+        The datum associated with the annotation.
+    model : models.Model
+        The model associated with the annotation.
+
+    Returns
+    ----------
+    List[models.annotation]
+        The model associated with the annotation.
+    """
+    annotation_list = []
+    label_list = []
+    if annotations:
+        [
+            (
+                _create_annotation(
+                    annotation=annotation,
+                    datum=datum,
+                    model=model
+                ),
+                create_labels(
+                    db=db,
+                    labels=annotation.labels,
+                )
+            )
+            for annotation in annotations
+        ]
+
+
+        for annotation in annotations:
+            annotation_list.append(
+                
+            )
+            label_list.append(
+                create_labels(db=db, labels=annotation.labels)
+            )
+    else:
+        annotation_list = [_create_empty_annotation(datum, model)]
+
+    try:
+        db.add_all(annotation_list)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.AnnotationAlreadyExistsError
+
+    # return the label_list, too, since these are needed for GroundTruth
+    return (annotation_list, label_list)
 
 
 def get_annotation(

@@ -90,7 +90,6 @@ class Annotation(Base):
     task_type: Mapped[str] = mapped_column(nullable=False)
     meta = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
-    status: Mapped[str] = mapped_column(nullable=False)
 
     # Geometric
     box = mapped_column(Geometry("POLYGON"), nullable=True)

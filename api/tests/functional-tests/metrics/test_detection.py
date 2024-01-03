@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend.core import get_dataset, get_model
+from velour_api.backend.core import fetch_dataset, fetch_model
 from velour_api.backend.metrics.detection import compute_detection_metrics
 from velour_api.backend.models import GroundTruth, Prediction
 
@@ -25,8 +25,8 @@ def test_compute_detection_metrics(
     iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
     metrics = compute_detection_metrics(
         db=db,
-        dataset=get_dataset(db, "test_dataset"),
-        model=get_model(db, "test_model"),
+        dataset=fetch_dataset(db, "test_dataset"),
+        model=fetch_model(db, "test_model"),
         target_type=enums.AnnotationType.BOX,
         settings=schemas.EvaluationSettings(
             parameters=schemas.DetectionParameters(

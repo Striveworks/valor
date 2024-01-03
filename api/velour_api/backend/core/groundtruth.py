@@ -6,6 +6,11 @@ from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import core, models
+from velour_api.backend.core.annotation import (
+    _create_annotation,
+    _create_empty_annotation,
+    _create_skipped_annotation,
+)
 
 
 def create_groundtruth(
@@ -25,20 +30,17 @@ def create_groundtruth(
     # create datum
     datum = core.create_datum(db, groundtruth.datum)
 
-    annotation_list, label_list = core.create_annotations_and_labels(
-        db=db, annotations=groundtruth.annotations, datum=datum
-    )
-
-    rows = []
-
-    for i, annotation in enumerate(annotation_list):
-        for label in label_list[i]:
-            rows += [
-                models.GroundTruth(
-                    annotation_id=annotation.id, label_id=label.id
-                )
-            ]
-
+    # create annotations and labels
+    groundtruth_list = []
+    annotation_list = []
+    label_list = []
+    if not groundtruth.annotations:
+        annotation_list = [_create_empty_annotation(datum, None)]
+    else:
+        for annotation in groundtruth.annotations:
+            annotation_list.append(_create_annotation(annotation, datum, None))
+            label_list = core.create_labels(db, annotation.labels)
+    
     try:
         db.add_all(rows)
         db.commit()

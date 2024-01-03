@@ -66,6 +66,8 @@ class AnnotationType(str, Enum):
 
 
 class TaskType(str, Enum):
+    SKIP = "skip"
+    EMPTY = "empty"
     CLASSIFICATION = "classification"
     DETECTION = "object-detection"
     SEGMENTATION = "semantic-segmentation"
