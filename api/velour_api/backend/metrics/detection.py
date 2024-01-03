@@ -7,7 +7,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session, aliased
 
 from velour_api import enums, schemas
-from velour_api.backend import core, models, query
+from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
     create_metric_mappings,
     get_or_create_row,
