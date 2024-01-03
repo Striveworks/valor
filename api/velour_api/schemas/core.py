@@ -19,7 +19,7 @@ from velour_api.schemas.geometry import (
 )
 from velour_api.schemas.label import Label
 
-MetaDataType = dict[str, float | str | bool | dict[str, str]]
+MetadataType = dict[str, float | str | bool | dict[str, str]]
 
 
 def _validate_name_format(name: str):
@@ -107,7 +107,7 @@ class Model(BaseModel):
 
     id: int | None = None
     name: str
-    metadata: MetaDataType = {}
+    metadata: MetadataType = {}
     geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
         None
     )
@@ -147,7 +147,7 @@ class Datum(BaseModel):
 
     uid: str
     dataset: str
-    metadata: MetaDataType = {}
+    metadata: MetadataType = {}
     geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
         None
     )
@@ -231,7 +231,7 @@ class Annotation(BaseModel):
 
     task_type: TaskType
     labels: list[Label]
-    metadata: MetaDataType = {}
+    metadata: MetadataType = {}
 
     # Geometric types
     bounding_box: BoundingBox | None = None
