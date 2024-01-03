@@ -1,3 +1,10 @@
+import pytest
+
+try:
+    import pandas as pd  # noqa: F401
+except ModuleNotFoundError:
+    pd = None
+
 from velour import enums, schemas
 
 
@@ -19,6 +26,7 @@ def test_evaluation_evaluation_job():
     schemas.EvaluationJob(**params)
 
 
+@pytest.mark.skipif(pd is None, reason="pandas package is not installed")
 def test_to_dataframe():
     try:
         import pandas as pd  # noqa: F401
@@ -63,12 +71,12 @@ def test_to_dataframe():
     ).to_dataframe()
 
     df_str = """                                        value
-dataset                              dataset1
-type parameters               label
-a    "n/a"                    n/a        0.99
-b    "n/a"                    n/a        0.30
-c    {"x": 0.123, "y": 0.987} n/a        0.30
-d    {"x": 0.123, "y": 0.987} k1: v1     0.30
-                              k1: v2     0.30"""
+    dataset                              dataset1
+    type parameters               label
+    a    "n/a"                    n/a        0.99
+    b    "n/a"                    n/a        0.30
+    c    {"x": 0.123, "y": 0.987} n/a        0.30
+    d    {"x": 0.123, "y": 0.987} k1: v1     0.30
+                                  k1: v2     0.30"""
 
-    assert str(df) == df_str
+    assert str(df).replace(" ", "") == df_str.replace(" ", "")

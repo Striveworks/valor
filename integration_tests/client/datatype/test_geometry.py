@@ -129,8 +129,8 @@ def test_iou(
 
     model = Model(client, model_name)
     model.add_prediction(
+        dataset,
         Prediction(
-            model=model_name,
             datum=img1.to_datum(),
             annotations=[
                 Annotation(
@@ -139,7 +139,7 @@ def test_iou(
                     labels=[Label("k", "v", score=0.6)],
                 )
             ],
-        )
+        ),
     )
     model.finalize_inferences(dataset)
     db_pred = db.scalar(

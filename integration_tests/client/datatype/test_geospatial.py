@@ -90,7 +90,7 @@ def test_geospatial_filter(
     model = Model(client=client, name=model_name, geospatial=geo_dict)
     for pd in pred_dets:
         pd.datum.geospatial = geo_dict
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
     # filtering by dataset should be disabled as dataset is called explicitly

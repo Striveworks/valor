@@ -49,6 +49,8 @@ def _test_create_image_dataset_with_gts(
         dataset.add_groundtruth(gt)
     # check that the dataset has two images
     images = dataset.get_datums()
+    for image in images:
+        assert image._dataset_name == dataset_name
     assert len(images) == len(expected_image_uids)
     assert set([image.uid for image in images]) == expected_image_uids
 
@@ -229,11 +231,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
 
     gts = [
         GroundTruth(
-            datum=Datum(
-                dataset=dataset_name,
-                uid="uid1",
-                metadata=md1,
-            ),
+            datum=Datum(uid="uid1", metadata=md1),
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -245,11 +243,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
             ],
         ),
         GroundTruth(
-            datum=Datum(
-                dataset=dataset_name,
-                uid="uid2",
-                metadata=md23,
-            ),
+            datum=Datum(uid="uid2", metadata=md23),
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -284,7 +278,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
     # check that we can add data with specified uids
     new_gts = [
         GroundTruth(
-            datum=Datum(dataset=dataset_name, uid="uid3"),
+            datum=Datum(uid="uid3"),
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -293,7 +287,7 @@ def test_create_tabular_dataset_and_add_groundtruth(
             ],
         ),
         GroundTruth(
-            datum=Datum(dataset=dataset_name, uid="uid4"),
+            datum=Datum(uid="uid4"),
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,

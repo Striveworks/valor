@@ -31,9 +31,7 @@ def test_create_gt_detections_as_bbox_or_poly(
     or a polygon
     """
     xmin, ymin, xmax, ymax = 10, 25, 30, 50
-    image = ImageMetadata(
-        dataset=dataset_name, uid="uid", height=200, width=150
-    ).to_datum()
+    image = ImageMetadata(uid="uid", height=200, width=150).to_datum()
 
     dataset = Dataset(client, dataset_name)
     gt = GroundTruth(
@@ -192,7 +190,7 @@ def test_add_groundtruth(
         dataset.add_groundtruth(
             GroundTruth(
                 datum=ImageMetadata(
-                    dataset=dataset_name, uid="uid", height=200, width=150
+                    uid="uid", height=200, width=150
                 ).to_datum(),
                 annotations=[],
             )

@@ -90,7 +90,7 @@ def _test_create_model_with_preds(
 
     # add predictions
     for pd in preds:
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
 
     # check predictions have been added
     db_preds = db.scalars(select(preds_model_class)).all()
@@ -303,7 +303,7 @@ def test_create_tabular_model_with_predicted_classifications(
         datum_type=DataType.TABULAR,
         gts=[
             GroundTruth(
-                datum=Datum(dataset=dataset_name, uid="uid1"),
+                datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
                         task_type=TaskType.CLASSIFICATION,
@@ -315,10 +315,7 @@ def test_create_tabular_model_with_predicted_classifications(
                 ],
             ),
             GroundTruth(
-                datum=Datum(
-                    dataset=dataset_name,
-                    uid="uid2",
-                ),
+                datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
                         task_type=TaskType.CLASSIFICATION,
@@ -329,8 +326,7 @@ def test_create_tabular_model_with_predicted_classifications(
         ],
         preds=[
             Prediction(
-                model=model_name,
-                datum=Datum(dataset=dataset_name, uid="uid1"),
+                datum=Datum(uid="uid1"),
                 annotations=[
                     Annotation(
                         task_type=TaskType.CLASSIFICATION,
@@ -343,11 +339,7 @@ def test_create_tabular_model_with_predicted_classifications(
                 ],
             ),
             Prediction(
-                model=model_name,
-                datum=Datum(
-                    dataset=dataset_name,
-                    uid="uid2",
-                ),
+                datum=Datum(uid="uid2"),
                 annotations=[
                     Annotation(
                         task_type=TaskType.CLASSIFICATION,
@@ -382,7 +374,6 @@ def test_add_prediction(
     db: Session,
 ):
     img1 = ImageMetadata(
-        dataset=dataset_name,
         uid="uid1",
         height=900,
         width=300,
@@ -413,24 +404,24 @@ def test_add_prediction(
 
     # make sure we get an error when passing a non-Prediction object to add_prediction
     with pytest.raises(TypeError):
-        model.add_prediction("not_a_pred")
+        model.add_prediction(dataset, "not_a_pred")
 
     # make sure we get a warning when adding a prediction without annotations
     with pytest.warns(UserWarning):
         model.add_prediction(
-            Prediction(model=model_name, datum=img1.to_datum(), annotations=[])
+            dataset, Prediction(datum=img1.to_datum(), annotations=[])
         )
 
     for pd in pred_dets:
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
 
     model.finalize_inferences(dataset)
 
     # test get predictions
-    assert (
-        model.get_prediction(img1.to_datum()).annotations
-        == pred_dets[0].annotations
-    )
+    pred = model.get_prediction(dataset, img1.to_datum())
+    assert pred.annotations == pred_dets[0].annotations
+    assert pred._model_name == model_name
+    assert pred.datum._dataset_name == dataset_name
 
     client.delete_dataset(dataset_name, timeout=30)
 
