@@ -34,7 +34,7 @@ def test_evaluate_image_clf(
 
     model = Model(client, model_name)
     for pd in pred_clfs:
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
     eval_job = model.evaluate_classification(dataset=dataset)
@@ -100,7 +100,7 @@ def test_evaluate_tabular_clf(
     dataset = Dataset(client, name=dataset_name)
     gts = [
         GroundTruth(
-            datum=Datum(dataset=dataset_name, uid=f"uid{i}"),
+            datum=Datum(uid=f"uid{i}"),
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -125,8 +125,7 @@ def test_evaluate_tabular_clf(
 
     pds = [
         Prediction(
-            model=model_name,
-            datum=Datum(dataset=dataset_name, uid=f"uid{i}"),
+            datum=Datum(uid=f"uid{i}"),
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
@@ -140,7 +139,7 @@ def test_evaluate_tabular_clf(
         for i, pred in enumerate(pred_clfs_tabular)
     ]
     for pd in pds:
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
 
     # test
     with pytest.raises(ClientException) as exc_info:
@@ -317,10 +316,10 @@ def test_stratify_clf_metrics(
         gt = GroundTruth(
             datum=Datum(
                 uid=f"uid{i}",
-                dataset=dataset_name,
                 metadata={
                     "md1": f"md1-val{i % 3}",
                     "md2": f"md2-val{i % 4}",
+                    "md3": i % 3 == 2,
                 },
             ),
             annotations=[
@@ -336,13 +335,12 @@ def test_stratify_clf_metrics(
     model = Model(client, name=model_name)
     for i, pred in enumerate(pred_clfs_tabular):
         pd = Prediction(
-            model=model_name,
             datum=Datum(
                 uid=f"uid{i}",
-                dataset=dataset_name,
                 metadata={
                     "md1": f"md1-val{i % 3}",
                     "md2": f"md2-val{i % 4}",
+                    "md3": i % 3 == 2,
                 },
             ),
             annotations=[
@@ -355,7 +353,7 @@ def test_stratify_clf_metrics(
                 )
             ],
         )
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
     eval_results_val2 = model.evaluate_classification(
@@ -366,6 +364,14 @@ def test_stratify_clf_metrics(
     )
     eval_results_val2.wait_for_completion(timeout=30)
     val2_metrics = eval_results_val2.get_result().metrics
+
+    # should get the same thing if we use the boolean filter
+    eval_results_bool = model.evaluate_classification(
+        dataset=dataset,
+        filters=[Datum.metadata["md3"] == True],  # noqa: E712
+    )
+    eval_results_bool.wait_for_completion(timeout=30)
+    val_bool_metrics = eval_results_bool.get_result().metrics
 
     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
     # (hard preds [1, 0, 0])
@@ -427,11 +433,12 @@ def test_stratify_clf_metrics(
         },
     ]
 
-    assert len(val2_metrics) == len(expected_metrics)
-    for m in val2_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in val2_metrics
+    for metrics in [val2_metrics, val_bool_metrics]:
+        assert len(metrics) == len(expected_metrics)
+        for m in metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in metrics
 
 
 def test_stratify_clf_metrics_by_time(
@@ -449,7 +456,6 @@ def test_stratify_clf_metrics_by_time(
         gt = GroundTruth(
             datum=Datum(
                 uid=f"uid{i}",
-                dataset=dataset_name,
                 metadata={
                     "md1": date.fromisoformat(f"{2000 + (i % 3)}-01-01"),
                     "md2": datetime.fromisoformat(f"{2000 + (i % 4)}-01-01"),
@@ -468,10 +474,8 @@ def test_stratify_clf_metrics_by_time(
     model = Model(client, name=model_name)
     for i, pred in enumerate(pred_clfs_tabular):
         pd = Prediction(
-            model=model_name,
             datum=Datum(
                 uid=f"uid{i}",
-                dataset=dataset_name,
                 metadata={
                     "md1": date.fromisoformat(f"{2000 + (i % 3)}-01-01"),
                     "md2": datetime.fromisoformat(f"{2000 + (i % 4)}-01-01"),
@@ -487,7 +491,7 @@ def test_stratify_clf_metrics_by_time(
                 )
             ],
         )
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
     eval_results_val2 = model.evaluate_classification(

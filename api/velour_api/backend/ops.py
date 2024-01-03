@@ -1,6 +1,16 @@
 import operator
 
-from sqlalchemy import TIMESTAMP, Float, and_, cast, func, not_, or_, select
+from sqlalchemy import (
+    TIMESTAMP,
+    Boolean,
+    Float,
+    and_,
+    cast,
+    func,
+    not_,
+    or_,
+    select,
+)
 from sqlalchemy.dialects.postgresql import INTERVAL
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
@@ -9,6 +19,7 @@ from sqlalchemy.sql.elements import BinaryExpression
 from velour_api import enums
 from velour_api.backend import models
 from velour_api.schemas import (
+    BooleanFilter,
     DateTimeFilter,
     Duration,
     Filter,
@@ -476,6 +487,12 @@ class Query:
             raise ValueError(f"invalid numeric comparison operator `{opstr}`")
         return ops[opstr]
 
+    def _get_boolean_op(self, opstr) -> operator:
+        ops = {"==": operator.eq, "!=": operator.ne}
+        if opstr not in ops:
+            raise ValueError(f"invalid boolean comparison operator `{opstr}`")
+        return ops[opstr]
+
     def _get_string_op(self, opstr) -> operator:
         ops = {
             "==": operator.eq,
@@ -752,10 +769,13 @@ class Query:
             op = self._get_numeric_op(value_filter.operator)
             lhs = table.meta[key].astext.cast(Float)
             rhs = value_filter.value
-            return op(lhs, value_filter.value)
         elif isinstance(value_filter, StringFilter):
             op = self._get_string_op(value_filter.operator)
             lhs = table.meta[key].astext
+            rhs = value_filter.value
+        elif isinstance(value_filter, BooleanFilter):
+            op = self._get_boolean_op(value_filter.operator)
+            lhs = table.meta[key].astext.cast(Boolean)
             rhs = value_filter.value
         elif isinstance(value_filter, DateTimeFilter):
             if isinstance(value_filter.value, Time) or isinstance(

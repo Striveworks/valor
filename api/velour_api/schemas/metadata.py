@@ -87,21 +87,3 @@ class Duration(BaseModel):
     @property
     def value(self) -> str:
         return self.duration
-
-
-class Metadatum(BaseModel):
-    """
-    An object describing metadata that can be attached to other objects.
-
-    Attributes
-    ----------
-    key : str
-        The metadata key.
-    value : float | str | DateTime
-        The metadata value.
-    """
-
-    key: str
-    value: float | str | DateTime
-
-    model_config = ConfigDict(extra="forbid")
