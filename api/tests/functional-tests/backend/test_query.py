@@ -4,12 +4,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
-from velour_api.backend.query.label import (
-    get_groundtruth_label_keys,
-    get_groundtruth_labels,
-    get_prediction_label_keys,
-    get_prediction_labels,
-)
+from velour_api.backend.core.label import get_label_keys, get_labels
 
 
 @pytest.fixture
@@ -151,48 +146,52 @@ def test_label(
     for pred in pds:
         crud.create_prediction(db=db, prediction=pred)
 
-    assert get_groundtruth_label_keys(
+    assert get_label_keys(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
+        ignore_predictions=True,
     ) == {"semsegk1", "semsegk2", "semsegk3"}
 
-    assert get_groundtruth_labels(
+    assert get_labels(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
             annotation_types=[enums.AnnotationType.RASTER],
         ),
+        ignore_predictions=True,
     ) == {
         schemas.Label(key="semsegk1", value="semsegv1"),
         schemas.Label(key="semsegk2", value="semsegv2"),
         schemas.Label(key="semsegk3", value="semsegv3"),
     }
     assert (
-        get_groundtruth_labels(
+        get_labels(
             db,
             schemas.Filter(
                 dataset_names=[dataset_name],
                 task_types=[enums.TaskType.SEGMENTATION],
                 annotation_types=[enums.AnnotationType.POLYGON],
             ),
+            ignore_predictions=True,
         )
         == set()
     )
 
-    assert get_prediction_label_keys(
+    assert get_label_keys(
         db,
         schemas.Filter(
             models_names=[model_name],
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
+        ignore_groundtruths=True,
     ) == {"semsegk1", "semsegk2", "semsegk3_pred"}
 
-    assert get_prediction_labels(
+    assert get_labels(
         db,
         schemas.Filter(
             models_names=[model_name],
@@ -200,6 +199,7 @@ def test_label(
             annotation_types=[enums.AnnotationType.RASTER],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
+        ignore_groundtruths=True,
     ) == {
         schemas.Label(key="semsegk1", value="semsegv1"),
         schemas.Label(key="semsegk2", value="semsegv2"),
@@ -207,7 +207,7 @@ def test_label(
     }
 
     assert (
-        get_prediction_labels(
+        get_labels(
             db,
             schemas.Filter(
                 models_names=[model_name],
@@ -215,53 +215,58 @@ def test_label(
                 annotation_types=[enums.AnnotationType.POLYGON],
                 task_types=[enums.TaskType.SEGMENTATION],
             ),
+            ignore_groundtruths=True,
         )
         == set()
     )
 
     assert (
-        get_groundtruth_label_keys(
+        get_label_keys(
             db,
             schemas.Filter(
                 dataset_names=[dataset_name],
                 task_types=[enums.TaskType.CLASSIFICATION],
             ),
+            ignore_predictions=True,
         )
         == set()
     )
     assert (
-        get_prediction_labels(
+        get_labels(
             db,
             schemas.Filter(
                 models_names=[model_name],
                 dataset_names=[dataset_name],
                 task_types=[enums.TaskType.CLASSIFICATION],
             ),
+            ignore_groundtruths=True,
         )
         == set()
     )
 
-    assert get_groundtruth_label_keys(
+    assert get_label_keys(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.DETECTION],
         ),
+        ignore_predictions=True,
     ) == {"inssegk1", "inssegk2", "inssegk3"}
 
-    assert get_groundtruth_labels(
+    assert get_labels(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
             annotation_types=[enums.AnnotationType.RASTER],
             task_types=[enums.TaskType.DETECTION],
         ),
+        ignore_predictions=True,
     ) == {
         schemas.Label(key="inssegk1", value="inssegv1"),
         schemas.Label(key="inssegk2", value="inssegv2"),
         schemas.Label(key="inssegk3", value="inssegv3"),
     }
-    assert get_groundtruth_labels(
+    assert get_labels(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
@@ -271,6 +276,7 @@ def test_label(
                 enums.TaskType.SEGMENTATION,
             ],
         ),
+        ignore_predictions=True,
     ) == {
         schemas.Label(key="inssegk1", value="inssegv1"),
         schemas.Label(key="inssegk2", value="inssegv2"),
@@ -280,36 +286,39 @@ def test_label(
         schemas.Label(key="semsegk3", value="semsegv3"),
     }
 
-    assert get_groundtruth_label_keys(
+    assert get_label_keys(
         db,
         schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
+        ignore_predictions=True,
     ) == {"semsegk1", "semsegk2", "semsegk3"}
 
-    assert get_prediction_label_keys(
+    assert get_label_keys(
         db,
         schemas.Filter(
             models_names=[model_name],
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
+        ignore_groundtruths=True,
     ) == {"semsegk1", "semsegk2", "semsegk3_pred"}
 
     assert (
-        get_prediction_labels(
+        get_labels(
             db,
             schemas.Filter(
                 models_names=[model_name],
                 dataset_names=[dataset_name],
                 task_types=[enums.TaskType.DETECTION],
             ),
+            ignore_groundtruths=True,
         )
         == set()
     )
 
-    assert get_prediction_labels(
+    assert get_labels(
         db,
         schemas.Filter(
             models_names=[model_name],
@@ -319,6 +328,7 @@ def test_label(
                 enums.TaskType.SEGMENTATION,
                 enums.TaskType.DETECTION,
             ],
+            ignore_groundtruths=True,
         ),
     ) == {
         schemas.Label(key="semsegk1", value="semsegv1"),
@@ -326,7 +336,7 @@ def test_label(
         schemas.Label(key="semsegk3_pred", value="semsegv3_pred"),
     }
     assert (
-        get_prediction_labels(
+        get_labels(
             db,
             schemas.Filter(
                 models_names=[model_name],
@@ -334,6 +344,7 @@ def test_label(
                 annotation_types=[enums.AnnotationType.RASTER],
                 task_types=[enums.TaskType.DETECTION],
             ),
+            ignore_groundtruths=True,
         )
         == set()
     )
