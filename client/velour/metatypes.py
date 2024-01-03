@@ -2,7 +2,7 @@ from typing import Dict, List, Union
 
 import PIL.Image
 
-from velour.coretypes import Dataset, Datum
+from velour.coretypes import Dataset, Datum, MetadataType
 from velour.exceptions import SchemaTypeError
 from velour.schemas import validate_metadata
 
@@ -33,7 +33,7 @@ class ImageMetadata:
         height: int,
         width: int,
         dataset: Union[Dataset, str] = "",
-        metadata: Dict[str, Union[int, float, str]] = None,
+        metadata: MetadataType = None,
         geospatial: Dict[
             str,
             Union[

@@ -321,6 +321,7 @@ def test_stratify_clf_metrics(
                 metadata={
                     "md1": f"md1-val{i % 3}",
                     "md2": f"md2-val{i % 4}",
+                    "md3": i % 3 == 2,
                 },
             ),
             annotations=[
@@ -343,6 +344,7 @@ def test_stratify_clf_metrics(
                 metadata={
                     "md1": f"md1-val{i % 3}",
                     "md2": f"md2-val{i % 4}",
+                    "md3": i % 3 == 2,
                 },
             ),
             annotations=[
@@ -366,6 +368,14 @@ def test_stratify_clf_metrics(
     )
     eval_results_val2.wait_for_completion(timeout=30)
     val2_metrics = eval_results_val2.get_result().metrics
+
+    # should get the same thing if we use the boolean filter
+    eval_results_bool = model.evaluate_classification(
+        dataset=dataset,
+        filters=[Datum.metadata["md3"] == True],  # noqa: E712
+    )
+    eval_results_bool.wait_for_completion(timeout=30)
+    val_bool_metrics = eval_results_bool.get_result().metrics
 
     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
     # (hard preds [1, 0, 0])
@@ -427,11 +437,12 @@ def test_stratify_clf_metrics(
         },
     ]
 
-    assert len(val2_metrics) == len(expected_metrics)
-    for m in val2_metrics:
-        assert m in expected_metrics
-    for m in expected_metrics:
-        assert m in val2_metrics
+    for metrics in [val2_metrics, val_bool_metrics]:
+        assert len(metrics) == len(expected_metrics)
+        for m in metrics:
+            assert m in expected_metrics
+        for m in expected_metrics:
+            assert m in metrics
 
 
 def test_stratify_clf_metrics_by_time(

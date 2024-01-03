@@ -6,28 +6,6 @@ from velour_api import enums, schemas
 
 
 @pytest.fixture
-def img() -> schemas.Datum:
-    return schemas.Datum(
-        uid="",
-        dataset="name",
-        metadata=[
-            schemas.MetaDatum(
-                name="type",
-                value="image",
-            ),
-            schemas.MetaDatum(
-                name="height",
-                value=1098,
-            ),
-            schemas.MetaDatum(
-                name="width",
-                value=4591,
-            ),
-        ],
-    )
-
-
-@pytest.fixture
 def cm() -> schemas.ConfusionMatrix:
     return schemas.ConfusionMatrix(
         label_key="class",
