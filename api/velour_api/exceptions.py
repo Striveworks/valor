@@ -119,9 +119,7 @@ class ModelIsEmptyError(Exception):
     """
 
     def __init__(self, name: str):
-        super().__init__(
-            f"Model with name `{name}` contains no inferences."
-        )
+        super().__init__(f"Model with name `{name}` contains no inferences.")
 
 
 class ModelFinalizedError(Exception):
@@ -232,11 +230,13 @@ class DatumDoesNotBelongToDatasetError(Exception):
 
 class GroundTruthAlreadyExistsError(Exception):
     """Raises an exception if the user tries to create a `GroundTruth` that already exists."""
+
     pass
 
 
 class AnnotationAlreadyExistsError(Exception):
     """Raises an exception if the user tries to create an `Annotation` that already exists."""
+
     pass
 
 
