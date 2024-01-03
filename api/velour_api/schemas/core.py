@@ -3,13 +3,7 @@ import re
 from base64 import b64decode
 
 import PIL.Image
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from velour_api.enums import TaskType
 from velour_api.schemas.geojson import (
@@ -24,6 +18,8 @@ from velour_api.schemas.geometry import (
     Raster,
 )
 from velour_api.schemas.label import Label
+
+MetadataType = dict[str, float | str | bool | dict[str, str]]
 
 
 def _validate_name_format(name: str):
@@ -111,7 +107,7 @@ class Model(BaseModel):
 
     id: int | None = None
     name: str
-    metadata: dict[str, float | str | dict[str, str]] = {}
+    metadata: MetadataType = {}
     geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
         None
     )
@@ -151,7 +147,7 @@ class Datum(BaseModel):
 
     uid: str
     dataset: str
-    metadata: dict[str, float | str | dict[str, str]] = {}
+    metadata: MetadataType = {}
     geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
         None
     )
@@ -235,9 +231,7 @@ class Annotation(BaseModel):
 
     task_type: TaskType
     labels: list[Label]
-    metadata: dict[str, float | str | dict[str, str]] = Field(
-        default_factory=dict
-    )
+    metadata: MetadataType = {}
 
     # Geometric types
     bounding_box: BoundingBox | None = None

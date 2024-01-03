@@ -32,7 +32,7 @@ def test_value_filter():
             with pytest.raises(ValueError):
                 ValueFilter(value=value, operator=operator)
 
-    def _test_string(value):
+    def _test_string_or_bool(value):
         for operator in ["==", "!="]:
             ValueFilter(value=value, operator=operator)
         for operator in [
@@ -55,7 +55,10 @@ def test_value_filter():
     _test_numeric(float(123))
 
     # string
-    _test_string(str(123))
+    _test_string_or_bool(str(123))
+
+    # bool
+    _test_string_or_bool(True)
 
     # datetime.datetime
     _test_numeric(datetime.datetime.now())
@@ -76,7 +79,7 @@ def test_value_filter():
     with pytest.raises(TypeError):
         _test_numeric(SomeUnsupportedType())
     with pytest.raises(TypeError):
-        _test_string(SomeUnsupportedType())
+        _test_string_or_bool(SomeUnsupportedType())
 
 
 def test_geospatial_schema():
