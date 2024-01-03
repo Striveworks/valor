@@ -458,8 +458,12 @@ def _get_disjoint_label_sets(
     prediction_filters: schemas.Filter,
 ) -> tuple:
     """Return a tuple containing the unique labels associated with the groundtruths and predictions stored in a database."""
-    groundtruth_labels = query.get_groundtruth_labels(db, groundtruth_filter)
-    prediction_labels = query.get_prediction_labels(db, prediction_filters)
+    groundtruth_labels = core.get_labels(
+        db, groundtruth_filter, ignore_predictions=True
+    )
+    prediction_labels = core.get_labels(
+        db, prediction_filters, ignore_groundtruths=True
+    )
     groundtruth_unique = list(groundtruth_labels - prediction_labels)
     prediction_unique = list(prediction_labels - groundtruth_labels)
     return groundtruth_unique, prediction_unique
