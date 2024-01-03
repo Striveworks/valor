@@ -78,6 +78,8 @@ def create_labels(
 
     Handles cases where the label already exists in the database.
 
+    The returned list of `models.Label` retains the inputs ordering.
+
     Parameters
     -------
     db : Session
