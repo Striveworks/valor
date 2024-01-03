@@ -1064,7 +1064,18 @@ class Model:
 
         prediction._set_model(self.name)
         # should check not already set or set by equal to dataset?
-        prediction.datum._set_dataset(dataset)
+        if prediction.datum._dataset_name is None:
+            prediction.datum._set_dataset(dataset)
+        else:
+            dataset_name = (
+                dataset.name if isinstance(dataset, Dataset) else dataset
+            )
+            if prediction.datum._dataset_name != dataset_name:
+                raise RuntimeError(
+                    f"Datum with uid `{prediction.datum.uid}` is already linked to the dataset `{prediction.datum._dataset_name}`"
+                    f" but you are trying to add a prediction on it to the dataset `{dataset_name}`"
+                )
+
         return self.client._requests_post_rel_host(
             "predictions",
             json=prediction.dict(),
