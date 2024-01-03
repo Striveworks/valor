@@ -254,8 +254,8 @@ def create_semantic_segmentation_evaluation(
                 "Evaluation filter objects should not include any dataset, model, prediction score or task type filters."
             )
 
-    dataset = core.get_dataset(db, job_request.dataset)
-    model = core.get_model(db, job_request.model)
+    dataset = core.fetch_dataset(db, job_request.dataset)
+    model = core.fetch_model(db, job_request.model)
 
     es = get_or_create_row(
         db,

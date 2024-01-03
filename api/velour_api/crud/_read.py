@@ -84,9 +84,10 @@ def get_dataset_labels(
         A list of labels.
     """
     return list(
-        backend.get_groundtruth_labels(
+        backend.get_labels(
             db=db,
             filters=filters,
+            ignore_predictions=True,
         )
     )
 
@@ -112,9 +113,10 @@ def get_model_labels(
         A list of labels.
     """
     return list(
-        backend.get_prediction_labels(
+        backend.get_labels(
             db=db,
             filters=filters,
+            ignore_groundtruths=True,
         )
     )
 
