@@ -1,4 +1,7 @@
-from sqlalchemy import and_
+import json
+
+from geoalchemy2.functions import ST_AsGeoJSON
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -6,45 +9,35 @@ from velour_api import exceptions, schemas
 from velour_api.backend import models
 
 
-def get_datum(
+def create_dataset(
     db: Session,
-    dataset_id: int,
-    uid: str,
-) -> models.Datum:
+    dataset: schemas.Dataset,
+):
     """
-    Fetch a datum from the database.
+    Creates a dataset.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
-    dataset_id : int
-        The ID of the dataset.
-    uid : str
-        The UID of the datum.
-
-    Returns
-    ----------
-    models.Datum
-        The requested datum.
-
+    dataset : schemas.Dataset
+        The dataset to create.
     """
-    datum = (
-        db.query(models.Datum)
-        .where(
-            and_(
-                models.Datum.dataset_id == dataset_id,
-                models.Datum.uid == uid,
-            )
+    try:
+        row = models.Dataset(
+            name=dataset.name,
+            meta=dataset.metadata,
+            geo=dataset.geospatial.wkt() if dataset.geospatial else None,
         )
-        .one_or_none()
-    )
-    if datum is None:
-        raise exceptions.DatumDoesNotExistError(uid)
-    return datum
+        db.add(row)
+        db.commit()
+        return row
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.DatasetAlreadyExistsError(dataset.name)
 
 
-def get_dataset(
+def fetch_dataset(
     db: Session,
     name: str,
 ) -> models.Dataset:
@@ -75,41 +68,81 @@ def get_dataset(
     return dataset
 
 
-def create_datum(
+def get_dataset(
     db: Session,
-    datum: schemas.Datum,
-) -> models.Datum:
+    name: str,
+) -> schemas.Dataset:
     """
-    Create a datum in the database.
+    Fetch a dataset.
 
     Parameters
     ----------
     db : Session
-        The database Session you want to query against.
-    datum : schemas.Datum
-        The datum to add to the database.
+        The database Session to query against.
+    name : str
+        The name of the dataset.
 
     Returns
     ----------
-    models.Datum
-        The datum.
-
+    schemas.Dataset
+        The requested dataset.
     """
-    # retrieve dataset
-    dataset = get_dataset(db, datum.dataset)
-
-    # create datum
-    try:
-        row = models.Datum(
-            uid=datum.uid,
-            dataset_id=dataset.id,
-            meta=datum.metadata,
-            geo=datum.geospatial.wkt() if datum.geospatial else None,
+    dataset = fetch_dataset(db, name=name)
+    geo_dict = (
+        schemas.geojson.from_dict(
+            json.loads(db.scalar(ST_AsGeoJSON(dataset.geo)))
         )
-        db.add(row)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise exceptions.DatumAlreadyExistsError(datum.uid)
+        if dataset.geo
+        else None
+    )
+    return schemas.Dataset(
+        id=dataset.id,
+        name=dataset.name,
+        metadata=dataset.meta,
+        geospatial=geo_dict,
+    )
 
-    return row
+
+def get_datasets(
+    db: Session,
+) -> list[schemas.Dataset]:
+    """
+    Fetch all datasets.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+
+    Returns
+    ----------
+    List[schemas.Dataset]
+        A list of all datasets.
+    """
+    return [
+        get_dataset(db, name)
+        for name in db.scalars(select(models.Dataset.name)).all()
+    ]
+
+
+def delete_dataset(
+    db: Session,
+    name: str,
+):
+    """
+    Delete a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    name : str
+        The name of the dataset.
+    """
+    dataset = fetch_dataset(db, name=name)
+    try:
+        db.delete(dataset)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e

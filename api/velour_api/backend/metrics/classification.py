@@ -35,12 +35,14 @@ def _compute_binary_roc_auc(
     float
         The binary ROC AUC score.
     """
-
     # query to get the datum_ids and label values of groundtruths that have the given label key
-    gts_filter = job_request.settings.filters.model_copy()
+    gts_filter = (
+        job_request.settings.filters.model_copy()
+        if job_request.settings.filters is not None
+        else schemas.Filter()
+    )
     gts_filter.dataset_names = [job_request.dataset]
     gts_filter.label_keys = [label.key]
-
     gts_query = (
         Query(
             models.Annotation.datum_id.label("datum_id"),
@@ -51,11 +53,14 @@ def _compute_binary_roc_auc(
     )
 
     # get the prediction scores for the given label (key and value)
-    preds_filter = job_request.settings.filters.model_copy()
+    preds_filter = (
+        job_request.settings.filters.model_copy()
+        if job_request.settings.filters is not None
+        else schemas.Filter()
+    )
     preds_filter.dataset_names = [job_request.dataset]
     preds_filter.models_names = [job_request.model]
     preds_filter.labels = [{label.key: label.value}]
-
     preds_query = (
         Query(
             models.Annotation.datum_id.label("datum_id"),
@@ -149,16 +154,19 @@ def _compute_roc_auc(
         The ROC AUC.
     """
 
-    label_filter = job_request.settings.filters.model_copy()
+    label_filter = (
+        job_request.settings.filters.model_copy()
+        if job_request.settings.filters is not None
+        else schemas.Filter()
+    )
     label_filter.dataset_names = [job_request.dataset]
     label_filter.label_keys = [label_key]
 
-    labels = {
-        schemas.Label(key=label.key, value=label.value)
-        for label in db.query(
-            Query(models.Label).filter(label_filter).groundtruths()
-        ).all()
-    }
+    labels = core.get_labels(
+        db=db,
+        filters=label_filter,
+        ignore_predictions=True,
+    )
     if len(labels) == 0:
         raise RuntimeError(
             f"The label key '{label_key}' is not a classification label in the dataset {job_request.dataset}."
@@ -200,14 +208,21 @@ def _compute_confusion_matrix_at_label_key(
         that have both a groundtruth and prediction with label key `label_key`. Otherwise
         returns the confusion matrix.
     """
-
     # groundtruths filter
-    gFilter = job_request.settings.filters.model_copy()
+    gFilter = (
+        job_request.settings.filters.model_copy()
+        if job_request.settings.filters is not None
+        else schemas.Filter()
+    )
     gFilter.dataset_names = [job_request.dataset]
     gFilter.label_keys = [label_key]
 
     # predictions filter
-    pFilter = job_request.settings.filters.model_copy()
+    pFilter = (
+        job_request.settings.filters.model_copy()
+        if job_request.settings.filters is not None
+        else schemas.Filter()
+    )
     pFilter.dataset_names = [job_request.dataset]
     pFilter.models_names = [job_request.model]
     pFilter.label_keys = [label_key]
@@ -516,11 +531,19 @@ def _compute_clf_metrics(
         A tuple of confusion matrices and metrics.
     """
     # construct dataset filter
-    groundtruth_label_filter = job_request.settings.filters.model_copy()
+    groundtruth_label_filter = (
+        job_request.settings.filters.model_copy()
+        if job_request.settings.filters is not None
+        else schemas.Filter()
+    )
     groundtruth_label_filter.dataset_names = [job_request.dataset]
 
     # construct model filter
-    prediction_label_filter = job_request.settings.filters.model_copy()
+    prediction_label_filter = (
+        job_request.settings.filters.model_copy()
+        if job_request.settings.filters is not None
+        else schemas.Filter()
+    )
     prediction_label_filter.dataset_names = [job_request.dataset]
     prediction_label_filter.models_names = [job_request.model]
 
@@ -609,8 +632,8 @@ def create_clf_evaluation(
             )
 
     # create evaluation row
-    dataset = core.get_dataset(db, job_request.dataset)
-    model = core.get_model(db, job_request.model)
+    dataset = core.fetch_dataset(db, job_request.dataset)
+    model = core.fetch_model(db, job_request.model)
     es = get_or_create_row(
         db,
         models.Evaluation,

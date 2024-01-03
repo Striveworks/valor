@@ -395,12 +395,17 @@ class Query:
         prediction_graph_unique = {models.Prediction}
 
         # edge case - only one table specified in args and filters
-        if self._selected == self._filtered and len(self._selected) == 1:
-            query = select(*self._args)
-            expression = self._expression(self._selected)
-            if expression is not None:
-                query = query.where(expression)
-            return query, None
+        if len(self._selected) == 1 and (
+            len(self._filtered) == 0 or self._selected == self._filtered
+        ):
+            if pivot_table:
+                self._filtered.add(pivot_table)
+            else:
+                query = select(*self._args)
+                expression = self._expression(self._selected)
+                if expression is not None:
+                    query = query.where(expression)
+                return query, None
 
         # edge case - catch intersection that resolves into an empty return.
         if self._selected.intersection(
