@@ -192,8 +192,6 @@ class Datum:
         """
         Validates the parameters used to create a `Datum` object.
         """
-        if not isinstance(self.dataset_name, str):
-            raise SchemaTypeError("dataset_name", str, self.dataset_name)
         if not isinstance(self.uid, str):
             raise SchemaTypeError("uid", str, self.uid)
         validate_metadata(self.metadata)
@@ -577,10 +575,6 @@ class Prediction:
                 raise SchemaTypeError(
                     "annotation", Annotation, self.annotations[idx]
                 )
-
-        # validate model
-        if not isinstance(self.model_name, str):
-            raise SchemaTypeError("model_name", str, self.model_name)
 
         # TaskType-specific validations
         for annotation in self.annotations:

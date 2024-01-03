@@ -2,7 +2,7 @@ from typing import Dict, List, Union
 
 import PIL.Image
 
-from velour.coretypes import Dataset, Datum, MetadataType
+from velour.coretypes import Datum, MetadataType
 from velour.exceptions import SchemaTypeError
 from velour.schemas import validate_metadata
 
@@ -32,7 +32,6 @@ class ImageMetadata:
         uid: str,
         height: int,
         width: int,
-        dataset: Union[Dataset, str] = "",
         metadata: MetadataType = None,
         geospatial: Dict[
             str,
@@ -45,16 +44,12 @@ class ImageMetadata:
         ] = None,
     ):
         self.uid = uid
-        self.dataset_name = (
-            dataset.name if isinstance(dataset, Dataset) else dataset
-        )
+        self._dataset_name = None
         self.height = height
         self.width = width
         self.metadata = metadata if metadata else {}
         self.geospatial = geospatial if geospatial else {}
 
-        if not isinstance(self.dataset_name, str):
-            raise TypeError("ImageMetadata dataset name must be a string.")
         if not isinstance(self.uid, str):
             raise TypeError("ImageMetadata uid must be a string.")
         if not isinstance(self.height, int):
@@ -91,7 +86,6 @@ class ImageMetadata:
             )
         metadata = datum.metadata.copy()
         return cls(
-            dataset=datum.dataset_name,
             uid=datum.uid,
             height=int(metadata.pop("height")),
             width=int(metadata.pop("width")),
@@ -126,12 +120,13 @@ class ImageMetadata:
 
         metadata["height"] = self.height
         metadata["width"] = self.width
-        return Datum(
-            dataset=self.dataset_name,
+        datum = Datum(
             uid=self.uid,
             metadata=metadata,
             geospatial=geospatial,
         )
+        datum._set_dataset(self._dataset_name)
+        return datum
 
 
 class VideoFrameMetadata:
