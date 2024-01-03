@@ -46,7 +46,7 @@ __all__ = [
     "fetch_dataset_row",
     "delete_dataset",
     "create_datum",
-    "get_datum",
+    "fetch_datum",
     "get_datums",
     "convert_geometry",
     "create_labels",

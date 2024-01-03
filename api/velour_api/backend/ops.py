@@ -384,12 +384,8 @@ class Query:
         prediction_graph_unique = {models.Prediction}
 
         # edge case - only one table specified in args and filters
-        if (
-            len(self._selected) == 1 
-            and (
-                len(self._filtered) == 0
-                or self._selected == self._filtered
-            )
+        if len(self._selected) == 1 and (
+            len(self._filtered) == 0 or self._selected == self._filtered
         ):
             if pivot_table:
                 self._filtered.add(pivot_table)

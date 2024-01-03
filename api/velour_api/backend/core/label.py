@@ -1,4 +1,4 @@
-from sqlalchemy import and_, or_, select, distinct, Subquery, Select
+from sqlalchemy import Subquery, and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -33,7 +33,7 @@ def fetch_label(
             )
         )
         .subquery()
-    ).one_or_none() 
+    ).one_or_none()
 
 
 def fetch_matching_labels(
@@ -95,8 +95,7 @@ def create_labels(
 
     # get existing labels
     existing_labels = {
-        (label.key, label.value) 
-        for label in fetch_matching_labels(db, labels)
+        (label.key, label.value) for label in fetch_matching_labels(db, labels)
     }
 
     # create new labels
@@ -209,10 +208,7 @@ def get_label_keys(
         ignore_groundtruths=ignore_groundtruths,
         ignore_predictions=ignore_predictions,
     )
-    return {
-        key
-        for key in db.scalars(stmt)
-    }
+    return {key for key in db.scalars(stmt)}
 
 
 def get_joint_labels(

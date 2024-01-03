@@ -1,19 +1,24 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from velour_api import schemas, enums
-from velour_api.crud import create_dataset, create_model, create_groundtruth, create_prediction
+from velour_api import enums, schemas
 from velour_api.backend import models
 from velour_api.backend.core.label import (
+    create_labels,
     fetch_label,
     fetch_matching_labels,
-    create_labels,
-    get_labels,
-    get_label_keys,
-    get_joint_labels,
-    get_joint_keys,
-    get_disjoint_labels,
     get_disjoint_keys,
+    get_disjoint_labels,
+    get_joint_keys,
+    get_joint_labels,
+    get_label_keys,
+    get_labels,
+)
+from velour_api.crud import (
+    create_dataset,
+    create_groundtruth,
+    create_model,
+    create_prediction,
 )
 
 
@@ -43,14 +48,8 @@ def labels_with_common_values(db: Session) -> list[schemas.Label]:
 
 @pytest.fixture
 def create_dataset_model(db: Session, dataset_name: str, model_name: str):
-    create_dataset(
-        db=db,
-        dataset=schemas.Dataset(name=dataset_name)
-    )
-    create_model(
-        db=db,
-        model=schemas.Model(name=model_name)
-    )
+    create_dataset(db=db, dataset=schemas.Dataset(name=dataset_name))
+    create_model(db=db, model=schemas.Model(name=model_name))
     create_groundtruth(
         db=db,
         groundtruth=schemas.GroundTruth(
@@ -62,10 +61,10 @@ def create_dataset_model(db: Session, dataset_name: str, model_name: str):
                         schemas.Label(key="k1", value="v1"),
                         schemas.Label(key="k1", value="v2"),
                         schemas.Label(key="k2", value="v3"),
-                    ]
+                    ],
                 )
-            ]
-        )
+            ],
+        ),
     )
     create_prediction(
         db=db,
@@ -78,11 +77,11 @@ def create_dataset_model(db: Session, dataset_name: str, model_name: str):
                     labels=[
                         schemas.Label(key="k1", value="v2", score=0.1),
                         schemas.Label(key="k1", value="v3", score=0.9),
-                        schemas.Label(key="k3", value="v3", score=1.0)
-                    ]
+                        schemas.Label(key="k3", value="v3", score=1.0),
+                    ],
                 )
-            ]
-        )
+            ],
+        ),
     )
 
 
@@ -169,7 +168,7 @@ def test_get_labels(
     create_dataset_model,
 ):
     assert len(db.query(models.Label).all()) == 5
-    
+
     labels = get_labels(db)
     assert len(labels) == 5
     assert set(labels) == {
@@ -178,15 +177,15 @@ def test_get_labels(
         schemas.Label(key="k2", value="v3"),
         schemas.Label(key="k1", value="v2"),
         schemas.Label(key="k1", value="v3"),
-        schemas.Label(key="k3", value="v3")
+        schemas.Label(key="k3", value="v3"),
     }
-    
+
     pred_labels = get_labels(db, ignore_groundtruths=True)
     assert len(pred_labels) == 3
     assert set(pred_labels) == {
         schemas.Label(key="k1", value="v2"),
         schemas.Label(key="k1", value="v3"),
-        schemas.Label(key="k3", value="v3")
+        schemas.Label(key="k3", value="v3"),
     }
 
     gt_labels = get_labels(db, ignore_predictions=True)
@@ -204,10 +203,8 @@ def test_get_labels_filtered(
 ):
     assert len(db.query(models.Label).all()) == 5
 
-    filters = schemas.Filter(
-        label_keys=["k1"]
-    )
-    
+    filters = schemas.Filter(label_keys=["k1"])
+
     labels = get_labels(db, filters=filters)
     assert len(labels) == 3
     assert set(labels) == {
@@ -215,7 +212,7 @@ def test_get_labels_filtered(
         schemas.Label(key="k1", value="v2"),
         schemas.Label(key="k1", value="v3"),
     }
-    
+
     pred_labels = get_labels(db, filters=filters, ignore_groundtruths=True)
     assert len(pred_labels) == 2
     assert set(pred_labels) == {
@@ -236,18 +233,18 @@ def test_get_label_keys(
     create_dataset_model,
 ):
     assert len(db.query(models.Label).all()) == 5
-    
+
     labels = get_label_keys(db)
     assert len(labels) == 3
-    assert set(labels) == {"k1","k2","k3"}
-    
+    assert set(labels) == {"k1", "k2", "k3"}
+
     pred_labels = get_label_keys(db, ignore_groundtruths=True)
     assert len(pred_labels) == 2
-    assert set(pred_labels) == {"k1","k3"}
+    assert set(pred_labels) == {"k1", "k3"}
 
     gt_labels = get_label_keys(db, ignore_predictions=True)
     assert len(gt_labels) == 2
-    assert set(gt_labels) == {"k1","k2"}
+    assert set(gt_labels) == {"k1", "k2"}
 
 
 def test_get_label_keys_filtered(
@@ -256,14 +253,12 @@ def test_get_label_keys_filtered(
 ):
     assert len(db.query(models.Label).all()) == 5
 
-    filters = schemas.Filter(
-        label_keys=["k1"]
-    )
-    
+    filters = schemas.Filter(label_keys=["k1"])
+
     labels = get_label_keys(db, filters=filters)
     assert len(labels) == 1
     assert set(labels) == {"k1"}
-    
+
     pred_labels = get_label_keys(db, filters=filters, ignore_groundtruths=True)
     assert len(pred_labels) == 1
     assert set(pred_labels) == {"k1"}
@@ -307,7 +302,7 @@ def test_get_joint_keys(
         task_type=enums.TaskType.CLASSIFICATION,
     )
     assert len(keys) == 1
-    assert set(keys) ==  {"k1"}
+    assert set(keys) == {"k1"}
 
 
 def test_get_disjoint_labels(
@@ -333,7 +328,7 @@ def test_get_disjoint_labels(
     assert len(md_unique) == 2
     assert set(md_unique) == {
         schemas.Label(key="k1", value="v3"),
-        schemas.Label(key="k3", value="v3") 
+        schemas.Label(key="k3", value="v3"),
     }
 
 

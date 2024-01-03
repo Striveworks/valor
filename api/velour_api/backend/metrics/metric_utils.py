@@ -1,7 +1,7 @@
-from sqlalchemy import select, and_, distinct
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour_api import schemas, enums
+from velour_api import schemas
 from velour_api.backend import core, models
 from velour_api.enums import JobStatus
 
@@ -85,7 +85,7 @@ def create_metric_mappings(
     for metric in metrics:
         if hasattr(metric, "label"):
             label = core.fetch_label(
-                db=db, 
+                db=db,
                 label=metric.label,
             )
             ret.append(

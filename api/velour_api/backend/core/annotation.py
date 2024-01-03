@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
 from velour_api.backend.core.label import create_labels
-from velour_api.enums import AnnotationType
 
 
 def _wkt_multipolygon_to_raster(wkt: str):

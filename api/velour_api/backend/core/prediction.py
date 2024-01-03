@@ -25,7 +25,9 @@ def create_prediction(
     # retrieve existing table entries
     model = core.fetch_model(db, name=prediction.model)
     dataset = core.fetch_dataset(db, name=prediction.datum.dataset)
-    datum = core.fetch_datum(db, dataset_id=dataset.id, uid=prediction.datum.uid)
+    datum = core.fetch_datum(
+        db, dataset_id=dataset.id, uid=prediction.datum.uid
+    )
 
     annotation_list, label_list = core.create_annotations_and_labels(
         db=db, annotations=prediction.annotations, datum=datum, model=model

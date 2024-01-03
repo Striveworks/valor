@@ -35,7 +35,7 @@ def create_dataset(
     except IntegrityError:
         db.rollback()
         raise exceptions.DatasetAlreadyExistsError(dataset.name)
-    
+
 
 def fetch_dataset(
     db: Session,
