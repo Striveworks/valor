@@ -204,6 +204,22 @@ def draw_bounding_box_on_image(
     img: Image.Image,
     color: Tuple[int, int, int] = (255, 0, 0),
 ) -> Image.Image:
+    """Draws a bounding polygon on an image. This operation is not done in-place
+
+    Parameters
+    ----------
+    bounding_box
+        bounding box to draw on the image
+    img
+        pillow image to draw on
+    color
+        RGB tuple of the color to use
+
+    Returns
+    -------
+    img
+        pillow image with bounding box drawn on it
+    """
     return _draw_bounding_polygon_on_image(
         bounding_box.polygon, img, color=color, inplace=False
     )
@@ -306,7 +322,7 @@ def draw_raster_on_image(
     color: Tuple[int, int, int] = (255, 0, 0),
     alpha: float = 0.4,
 ) -> Image.Image:
-    """Draws the raster on top of an image. this operation is not done in-place
+    """Draws the raster on top of an image. This operation is not done in-place
 
     Parameters
     ----------
