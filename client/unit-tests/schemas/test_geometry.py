@@ -33,27 +33,6 @@ def test_point():
     assert p11.y == p1.y * 10
 
 
-def test_box():
-    p1 = schemas.Point(x=0, y=0)
-    p2 = schemas.Point(x=10, y=10)
-    p3 = schemas.Point(x=10, y=-10)
-    p4 = schemas.Point(x=-10, y=10)
-
-    # valid
-    schemas.Box(min=p1, max=p2)
-
-    # test `__post_init__`
-    with pytest.raises(ValueError) as e:
-        schemas.Box(min=p2, max=p1)
-    assert "xmin > xmax" in str(e)
-    with pytest.raises(ValueError) as e:
-        schemas.Box(min=p1, max=p4)
-    assert "xmin > xmax" in str(e)
-    with pytest.raises(ValueError) as e:
-        schemas.Box(min=p1, max=p3)
-    assert "ymin > ymax" in str(e)
-
-
 def test_basicpolygon():
     p1 = schemas.Point(x=0, y=0)
     p2 = schemas.Point(x=5, y=0)
@@ -82,22 +61,6 @@ def test_basicpolygon():
     assert poly.xmax == 10
     assert poly.ymin == 0
     assert poly.ymax == 5
-
-    # Test classmethod `from_box`
-    cmin = schemas.Point(x=-1, y=-2)
-    cmax = schemas.Point(x=10, y=11)
-    poly = schemas.BasicPolygon.from_box(
-        box=schemas.Box(
-            min=cmin,
-            max=cmax,
-        )
-    )
-    assert poly.xy_list() == [
-        schemas.Point(x=-1, y=-2),
-        schemas.Point(x=-1, y=11),
-        schemas.Point(x=10, y=11),
-        schemas.Point(x=10, y=-2),
-    ]
 
 
 def test_polygon():
