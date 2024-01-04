@@ -73,7 +73,7 @@ class TaskType(str, Enum):
     SEGMENTATION = "semantic-segmentation"
 
 
-class JobStatus(Enum):
+class JobStatus(str, Enum):
     NONE = "none"
     PENDING = "pending"
     CREATING = "creating"
@@ -102,16 +102,3 @@ class JobStatus(Enum):
             return {self.DELETING, self.NONE}
         else:
             raise ValueError
-
-
-class DatasetStatus(str, Enum):
-    CREATING = "creating"
-    FINALIZED = "finalized"
-    DELETING = "deleting"
-
-
-class EvaluationStatus(str, Enum):
-    CREATING = "creating"
-    PROCESSING = "processing"
-    DONE = "done"
-    FAILED = "failed"

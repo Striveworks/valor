@@ -10,7 +10,7 @@ from velour_api.backend.metrics.metric_utils import (
     get_or_create_row,
 )
 from velour_api.backend.ops import Query
-from velour_api.enums import TaskType, EvaluationStatus
+from velour_api.enums import TaskType
 
 
 def _compute_binary_roc_auc(
@@ -581,71 +581,6 @@ def _compute_clf_metrics(
             metrics.extend(cm_and_metrics[1])
 
     return confusion_matrices, metrics
-
-
-def create_clf_evaluation(
-    db: Session,
-    job_request: schemas.EvaluationJob,
-) -> int:
-    """
-    Create a classification evaluation job.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    job_request : schemas.EvaluationJob
-        The job request to create an evaluation for.
-
-    Returns
-    ----------
-    int
-        The evaluation job id.
-
-    Raises
-    ----------
-    TypeError
-        If the job's task type is incorrect.
-    ValueError
-        If the evaluation contains an inappropriate filter.
-    """
-    # check matching task_type
-    if job_request.task_type != TaskType.CLASSIFICATION:
-        raise TypeError(
-            "Invalid task_type, please choose an evaluation method that supports classification"
-        )
-
-    # configure filters object
-    if job_request.settings.filters:
-        if (
-            job_request.settings.filters.dataset_names is not None
-            or job_request.settings.filters.dataset_metadata is not None
-            or job_request.settings.filters.dataset_geospatial is not None
-            or job_request.settings.filters.models_names is not None
-            or job_request.settings.filters.models_metadata is not None
-            or job_request.settings.filters.models_geospatial is not None
-            or job_request.settings.filters.prediction_scores is not None
-            or job_request.settings.filters.task_types is not None
-        ):
-            raise ValueError(
-                "Evaluation filter objects should not include any dataset, model, prediction score or task type filters."
-            )
-
-    # create evaluation row
-    dataset = core.fetch_dataset(db, job_request.dataset)
-    model = core.fetch_model(db, job_request.model)
-    es = get_or_create_row(
-        db,
-        models.Evaluation,
-        mapping={
-            "dataset_id": dataset.id,
-            "model_id": model.id,
-            "task_type": TaskType.CLASSIFICATION,
-            "settings": job_request.settings.model_dump(),
-            "status": EvaluationStatus.CREATING,
-        },
-    )
-    return es.id
 
 
 def create_clf_metrics(

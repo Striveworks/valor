@@ -228,6 +228,24 @@ class DatumDoesNotBelongToDatasetError(Exception):
 """ Misc. """
 
 
+class EvaluationDoesNotExistError(Exception):
+    """
+    Raises an exception if the user tries to manipulate an evaluation that doesn't exist.
+    """
+
+    def __init__(self):
+        super().__init__(f"Evaluation does not exist.")
+
+
+class EvaluationAlreadyExistsError(Exception):
+    """
+    Raises an exception if the user tries to create an evaluation that already exists.
+    """
+
+    def __init__(self):
+        super().__init__(f"Evaluation with provided settings already exists.")
+
+
 class GroundTruthAlreadyExistsError(Exception):
     """Raises an exception if the user tries to create a `GroundTruth` that already exists."""
 

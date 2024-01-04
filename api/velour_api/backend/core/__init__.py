@@ -10,8 +10,18 @@ from .dataset import (
     fetch_dataset,
     get_dataset,
     get_datasets,
+    set_dataset_status,
 )
-from .datum import create_datum, fetch_datum, get_datums
+from .datum import (
+    create_datum, 
+    fetch_datum, 
+    get_datums,
+)
+from .evaluation import (
+    create_or_get_evaluation,
+    get_disjoint_labels_from_evaluation,
+    set_evaluation_status,
+)
 from .geometry import convert_geometry
 from .groundtruth import create_groundtruth, get_groundtruth
 from .label import (
@@ -40,15 +50,17 @@ __all__ = [
     "get_annotation_type",
     "get_annotations",
     "create_dataset",
+    "delete_dataset",
     "fetch_dataset",
     "get_dataset",
     "get_datasets",
-    "fetch_dataset_row",
-    "delete_dataset",
-    "create_datum",
-    "fetch_datum",
+    "set_dataset_status",
+    "create_datum", 
+    "fetch_datum", 
     "get_datums",
     "convert_geometry",
+    "create_groundtruth",
+    "get_groundtruth",
     "create_labels",
     "fetch_label",
     "fetch_matching_labels",
@@ -59,12 +71,13 @@ __all__ = [
     "get_label_keys",
     "get_labels",
     "create_model",
+    "delete_model",
+    "fetch_model",
     "get_model",
     "get_models",
-    "fetch_model",
-    "delete_model",
-    "create_groundtruth",
-    "get_groundtruth",
     "create_prediction",
     "get_prediction",
+    "create_or_get_evaluation",
+    "get_disjoint_labels_from_evaluation",
+    "set_evaluation_status",
 ]

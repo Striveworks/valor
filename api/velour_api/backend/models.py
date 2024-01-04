@@ -166,6 +166,14 @@ class Dataset(Base):
 
 class Evaluation(Base):
     __tablename__ = "evaluation"
+    __table_args__ = (
+        UniqueConstraint(
+            "dataset_id",
+            "model_id", 
+            "task_type",
+            "settings",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))

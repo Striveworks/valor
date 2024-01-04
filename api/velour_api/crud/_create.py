@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from velour_api import backend, enums, schemas
+from velour_api import backend, enums, schemas, exceptions
 from velour_api.crud import stateflow
 from velour_api.crud._read import get_disjoint_keys, get_disjoint_labels
 
@@ -114,8 +114,8 @@ def create_clf_evaluation(
         task_type=enums.TaskType.CLASSIFICATION,
     )
 
-    # create evaluation setting
-    job_id = backend.create_clf_evaluation(db, job_request)
+    # create or get evaluation
+    job_id = backend.create_or_get_evaluation(db, job_request)
 
     # create response
     return schemas.CreateClfMetricsResponse(
@@ -183,8 +183,8 @@ def create_semantic_segmentation_evaluation(
         prediction_type=enums.AnnotationType.RASTER,
     )
 
-    # create evaluation setting
-    job_id = backend.create_semantic_segmentation_evaluation(db, job_request)
+    # create or get evaluation
+    job_id = backend.create_or_get_evaluation(db, job_request)
 
     # create response
     return schemas.CreateSemanticSegmentationMetricsResponse(
@@ -236,19 +236,17 @@ def create_detection_evaluation(
     job_request: schemas.EvaluationJob
         The evaluation job.
 
-
     Returns
     ----------
     schemas.CreateDetectionMetricsResponse
         A detection metric response.
     """
 
-    # create evaluation setting
-    (
-        job_id,
-        missing_pred_labels,
-        ignored_pred_labels,
-    ) = backend.create_detection_evaluation(db, job_request)
+    # get disjoint label sets
+    missing_pred_labels, ignored_pred_labels = backend.get_disjoint_labels_from_evaluation(db, job_request)
+
+    # create or get evaluation
+    job_id = backend.create_or_get_evaluation(db, job_request)
 
     # create response
     return schemas.CreateDetectionMetricsResponse(

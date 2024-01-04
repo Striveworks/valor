@@ -28,7 +28,7 @@ def create_dataset(
             name=dataset.name,
             meta=dataset.metadata,
             geo=dataset.geospatial.wkt() if dataset.geospatial else None,
-            status=enums.DatasetStatus.CREATING,
+            status=enums.JobStatus.CREATING,
         )
         db.add(row)
         db.commit()
@@ -63,7 +63,7 @@ def fetch_dataset(
         .where(
             and_(
                 models.Dataset.name == name
-                and models.Dataset.status != enums.DatasetStatus.DELETING
+                and models.Dataset.status != enums.JobStatus.DELETING
             )
         )
         .one_or_none()
@@ -73,10 +73,10 @@ def fetch_dataset(
     return dataset
 
 
-def commit_dataset_status(
+def set_dataset_status(
     db: Session,
     name: str,
-    status: enums.DatasetStatus,
+    status: enums.JobStatus,
 ):
     """
     Sets the status of a dataset.

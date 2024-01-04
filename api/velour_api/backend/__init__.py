@@ -18,13 +18,12 @@ from .core import (
     get_model,
     get_models,
     get_prediction,
+    create_or_get_evaluation,
+    get_disjoint_labels_from_evaluation,
 )
 from .metrics import (
-    create_clf_evaluation,
     create_clf_metrics,
-    create_detection_evaluation,
     create_detection_metrics,
-    create_semantic_segmentation_evaluation,
     create_semantic_segmentation_metrics,
     get_evaluations,
 )
@@ -50,12 +49,11 @@ __all__ = [
     "get_joint_labels",
     "get_label_keys",
     "get_labels",
-    "create_clf_evaluation",
     "create_clf_metrics",
-    "create_detection_evaluation",
     "create_detection_metrics",
-    "create_semantic_segmentation_evaluation",
     "create_semantic_segmentation_metrics",
     "get_evaluations",
     "Query",
+    "create_or_get_evaluation",
+    "get_disjoint_labels_from_evaluation",
 ]
