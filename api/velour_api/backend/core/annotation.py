@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.label import create_labels
 
 
 def _get_bounding_box_of_raster(
@@ -73,7 +72,7 @@ def _wkt_multipolygon_to_raster(wkt: str):
 def _create_annotation(
     annotation: schemas.Annotation,
     datum: models.Datum,
-    model: models.Model = None,
+    model: models.Model | None = None,
 ) -> list[models.Label]:
     """
     Convert an individual annotation's attributes into a dictionary for upload to postgis.
@@ -120,7 +119,7 @@ def _create_annotation(
 
 def _create_empty_annotation(
     datum: models.Datum,
-    model: models.Model,
+    model: models.Model | None = None,
 ) -> models.Annotation:
     mapping = {
         "datum_id": datum.id,
@@ -136,7 +135,7 @@ def _create_empty_annotation(
 
 def _create_skipped_annotation(
     datum: models.Datum,
-    model: models.Model,
+    model: models.Model | None = None,
 ) -> models.Annotation:
     mapping = {
         "datum_id": datum.id,
@@ -150,12 +149,12 @@ def _create_skipped_annotation(
     return models.Annotation(**mapping)
 
 
-def create_annotations_and_labels(
+def create_annotations(
     db: Session,
     annotations: list[schemas.Annotation],
     datum: models.Datum,
     model: models.Model = None,
-) -> tuple[list[models.Annotation], list[models.Label]]:
+) -> list[models.Annotation]:
     """
     Create a list of annotations and associated labels in postgis.
 
@@ -175,27 +174,18 @@ def create_annotations_and_labels(
     List[models.annotation]
         The model associated with the annotation.
     """
-    annotation_list = []
-    label_list = []
     if annotations:
-        [
-            (
-                _create_annotation(
-                    annotation=annotation, datum=datum, model=model
-                ),
-                create_labels(
-                    db=db,
-                    labels=annotation.labels,
-                ),
-            )
+        annotation_list = [
+            _create_annotation(annotation=annotation, datum=datum, model=model)
             for annotation in annotations
         ]
-
-        for annotation in annotations:
-            annotation_list.append()
-            label_list.append(create_labels(db=db, labels=annotation.labels))
     else:
-        annotation_list = [_create_empty_annotation(datum, model)]
+        annotation_list = [
+            _create_empty_annotation(
+                datum=datum,
+                model=model,
+            )
+        ]
 
     try:
         db.add_all(annotation_list)
@@ -203,9 +193,7 @@ def create_annotations_and_labels(
     except IntegrityError:
         db.rollback()
         raise exceptions.AnnotationAlreadyExistsError
-
-    # return the label_list, too, since these are needed for GroundTruth
-    return (annotation_list, label_list)
+    return annotation_list
 
 
 def get_annotation(

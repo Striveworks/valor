@@ -1,5 +1,5 @@
 from .annotation import (
-    create_annotations_and_labels,
+    create_annotations,
     get_annotation,
     get_annotation_type,
     get_annotations,
@@ -35,7 +35,7 @@ from .model import (
 from .prediction import create_prediction, get_prediction
 
 __all__ = [
-    "create_annotations_and_labels",
+    "create_annotations",
     "get_annotation",
     "get_annotation_type",
     "get_annotations",

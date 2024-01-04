@@ -6,11 +6,6 @@ from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import core, models
-from velour_api.backend.core.annotation import (
-    _create_annotation,
-    _create_empty_annotation,
-    _create_skipped_annotation,
-)
 
 
 def create_groundtruth(
@@ -30,25 +25,43 @@ def create_groundtruth(
     # create datum
     datum = core.create_datum(db, groundtruth.datum)
 
-    # create annotations and labels
+    # create labels
+    all_labels = [
+        label
+        for annotation in groundtruth.annotations
+        for label in annotation.labels
+    ]
+    label_list = core.create_labels(db=db, labels=all_labels)
+
+    # create annotations
+    annotation_list = core.create_annotations(
+        db=db,
+        annotations=groundtruth.annotations,
+        datum=datum,
+        model=None,
+    )
+
+    # create groundtruths
+    label_idx = 0
     groundtruth_list = []
-    annotation_list = []
-    label_list = []
-    if not groundtruth.annotations:
-        annotation_list = [_create_empty_annotation(datum, None)]
-    else:
-        for annotation in groundtruth.annotations:
-            annotation_list.append(_create_annotation(annotation, datum, None))
-            label_list = core.create_labels(db, annotation.labels)
+    for i, annotation in enumerate(groundtruth.annotations):
+        for label in label_list[
+            label_idx : label_idx + len(annotation.labels)
+        ]:
+            groundtruth_list.append(
+                models.GroundTruth(
+                    annotation_id=annotation_list[i].id,
+                    label_id=label.id,
+                )
+            )
+        label_idx += len(annotation.labels)
 
     try:
-        db.add_all(rows)
+        db.add_all(groundtruth_list)
         db.commit()
     except IntegrityError:
         db.rollback()
         raise exceptions.GroundTruthAlreadyExistsError
-
-    return rows
 
 
 def get_groundtruth(

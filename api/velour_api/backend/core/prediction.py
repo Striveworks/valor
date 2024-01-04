@@ -29,30 +29,44 @@ def create_prediction(
         db, dataset_id=dataset.id, uid=prediction.datum.uid
     )
 
-    annotation_list, label_list = core.create_annotations_and_labels(
-        db=db, annotations=prediction.annotations, datum=datum, model=model
+    # create labels
+    all_labels = [
+        label
+        for annotation in prediction.annotations
+        for label in annotation.labels
+    ]
+    label_list = core.create_labels(db=db, labels=all_labels)
+
+    # create annotations
+    annotation_list = core.create_annotations(
+        db=db,
+        annotations=prediction.annotations,
+        datum=datum,
+        model=model,
     )
 
-    # create tables entries
-    rows = []
-
-    for i, annotation in enumerate(annotation_list):
-        for j, label in enumerate(label_list[i]):
-            rows += [
+    # create predictions
+    label_idx = 0
+    prediction_list = []
+    for i, annotation in enumerate(prediction.annotations):
+        for label in label_list[
+            label_idx : label_idx + len(annotation.labels)
+        ]:
+            prediction_list.append(
                 models.Prediction(
-                    annotation_id=annotation.id,
+                    annotation_id=annotation_list[i].id,
                     label_id=label.id,
-                    score=prediction.annotations[i].labels[j].score,
+                    score=label.score,
                 )
-            ]
+            )
+        label_idx += len(annotation.labels)
 
     try:
-        db.add_all(rows)
+        db.add_all(prediction_list)
         db.commit()
     except IntegrityError as e:
         db.rollback()
         raise e
-    return rows
 
 
 def get_prediction(
