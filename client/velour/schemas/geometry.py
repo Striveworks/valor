@@ -5,7 +5,6 @@ from typing import List, Tuple
 
 import numpy as np
 import PIL.Image
-from PIL import ImageDraw
 
 
 @dataclass
@@ -98,85 +97,6 @@ class Point:
 
 
 @dataclass
-class Box:
-    """
-    Represents a 2D box defined by minimum and maximum points.
-
-    Parameters
-    ----------
-    min : Union[Point, dict]
-        The minimum point of the box. Can be a `Point` object or a dictionary
-        with keys 'x' and 'y' representing the coordinates.
-    max : Union[Point, dict]
-        The maximum point of the box. Can be a `Point` object or a dictionary
-        with keys 'x' and 'y' representing the coordinates.
-
-    Attributes
-    ----------
-    min : Point
-        The minimum point of the box.
-    max : Point
-        The maximum point of the box.
-
-    Raises
-    ------
-    ValueError
-        If the x-coordinate of `min` is greater than the x-coordinate of `max`.
-        If the y-coordinate of `min` is greater than the y-coordinate of `max`.
-
-    Examples
-    --------
-    >>> Box(min=Point( 0, 0),
-    ...     max=Point(10,10))
-    Box(min=Point(x=0.0, y=0.0), max=Point(x=10.0, y=10.0))
-
-    Dictionary input results in same output.
-    >>> Box(min={'x':  0, 'y':  0},
-    ...     max={'x': 10, 'y': 10})
-    Box(min=Point(x=0.0, y=0.0), max=Point(x=10.0, y=10.0))
-    """
-
-    min: Point
-    max: Point
-
-    def __post_init__(self):
-        # unpack
-        if isinstance(self.min, dict):
-            self.min = Point(**self.min)
-        if isinstance(self.max, dict):
-            self.max = Point(**self.max)
-
-        # validate
-        if self.min.x > self.max.x:
-            raise ValueError("Cannot have xmin > xmax")
-        if self.min.y > self.max.y:
-            raise ValueError("Cannot have ymin > ymax")
-
-    def draw_on_image(
-        self, img: PIL.Image.Image, color: Tuple[int, int, int] = (255, 0, 0)
-    ) -> PIL.Image.Image:
-        """Draws the bounding box on top of an image. this operation is not done in-place
-
-        Parameters
-        ----------
-        img
-            pillow image to draw on.
-        color
-            RGB tuple of the color to use
-        """
-        img = img.copy()
-        draw = ImageDraw.Draw(img)
-        draw.rectangle(
-            [
-                (self.min.x, self.min.y),
-                (self.max.x, self.max.y),
-            ],
-            outline=color,
-        )
-        return img
-
-
-@dataclass
 class BasicPolygon:
     """
     Class for representing a bounding region.
@@ -263,30 +183,6 @@ class BasicPolygon:
         """Maximum y-coordinate of the polygon."""
         return max(p.y for p in self.points)
 
-    @classmethod
-    def from_box(cls, box: Box):
-        """
-        Create a BasicPolygon from a Box.
-
-        Parameters
-        ----------
-        box : Box
-            The box to convert to a BasicPolygon.
-
-        Returns
-        -------
-        BasicPolygon
-            A BasicPolygon created from the provided Box.
-        """
-        return cls(
-            points=[
-                Point(box.min.x, box.min.y),
-                Point(box.min.x, box.max.y),
-                Point(box.max.x, box.max.y),
-                Point(box.max.x, box.min.y),
-            ]
-        )
-
 
 @dataclass
 class Polygon:
@@ -354,7 +250,7 @@ class Polygon:
 @dataclass
 class BoundingBox:
     """
-    Represents a bounding box defined by a 4-point polygon.
+    Represents a bounding box defined by a 4-point polygon. Note that this does not need to be axis-aligned.
 
     Parameters
     ----------
@@ -435,12 +331,6 @@ class BoundingBox:
                     Point(x=xmin, y=ymax),
                 ]
             )
-        )
-
-    @classmethod
-    def from_box(cls, box: Box):
-        return cls.from_extrema(
-            xmin=box.min.x, xmax=box.max.x, ymin=box.min.y, ymax=box.max.y
         )
 
     @property
@@ -591,32 +481,3 @@ class Raster:
         with io.BytesIO(mask_bytes) as f:
             img = PIL.Image.open(f)
             return np.array(img)
-
-    def draw_on_image(
-        self,
-        img: PIL.Image.Image,
-        color: Tuple[int, int, int] = (255, 0, 0),
-        alpha: int = 0.4,
-    ) -> PIL.Image.Image:
-        """Draws the raster on top of an image. this operation is not done in-place
-
-        Parameters
-        ----------
-        img
-            pillow image to draw on.
-        color
-            RGB tuple of the color to use
-        alpha
-            alpha (transparency) value of the mask. 0 is fully transparent, 1 is fully opaque
-        """
-        img = img.copy()
-        binary_mask = self.to_numpy()
-        mask_arr = np.zeros(
-            (binary_mask.shape[0], binary_mask.shape[1], 3), dtype=np.uint8
-        )
-        mask_arr[binary_mask] = color
-        mask_img = PIL.Image.fromarray(mask_arr)
-        blend = PIL.Image.blend(img, mask_img, alpha=alpha)
-        img.paste(blend, (0, 0), mask=PIL.Image.fromarray(binary_mask))
-
-        return img

@@ -199,6 +199,16 @@ def draw_detections_on_image(
     return img
 
 
+def draw_bounding_box_on_image(
+    bounding_box: schemas.BoundingBox,
+    img: Image.Image,
+    color: Tuple[int, int, int] = (255, 0, 0),
+) -> Image.Image:
+    return _draw_bounding_polygon_on_image(
+        bounding_box.polygon, img, color=color, inplace=False
+    )
+
+
 def _draw_detection_on_image(
     detection: Annotation, img: Image.Image, inplace: bool
 ) -> Image.Image:
@@ -288,3 +298,33 @@ def _write_text(
         fill="black",
         font=font,
     )
+
+
+def draw_raster_on_image(
+    raster: schemas.Raster,
+    img: Image.Image,
+    color: Tuple[int, int, int] = (255, 0, 0),
+    alpha: float = 0.4,
+) -> Image.Image:
+    """Draws the raster on top of an image. this operation is not done in-place
+
+    Parameters
+    ----------
+    img
+        pillow image to draw on.
+    color
+        RGB tuple of the color to use
+    alpha
+        alpha (transparency) value of the mask. 0 is fully transparent, 1 is fully opaque
+    """
+    img = img.copy()
+    binary_mask = raster.to_numpy()
+    mask_arr = np.zeros(
+        (binary_mask.shape[0], binary_mask.shape[1], 3), dtype=np.uint8
+    )
+    mask_arr[binary_mask] = color
+    mask_img = Image.fromarray(mask_arr)
+    blend = Image.blend(img, mask_img, alpha=alpha)
+    img.paste(blend, (0, 0), mask=Image.fromarray(binary_mask))
+
+    return img
