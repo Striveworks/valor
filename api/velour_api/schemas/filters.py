@@ -1,7 +1,12 @@
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from velour_api.enums import AnnotationType, TaskType
-from velour_api.schemas.geojson import GeoJSON
+from velour_api.schemas.geojson import (
+    GeoJSONMultiPolygon,
+    GeoJSONPoint,
+    GeoJSONPolygon,
+)
+from velour_api.schemas.metadata import Date, DateTime, Duration, Time
 
 
 class StringFilter(BaseModel):
@@ -146,6 +151,77 @@ class NumericFilter(BaseModel):
         return hash(f"Value:{self.value},Op:{self.operator}")
 
 
+class BooleanFilter(BaseModel):
+    """
+    Used to filter on boolean values that meet some user-defined condition.
+
+    Attributes
+    ----------
+    value : bool
+        The value to compare the specific field against.
+    operator : str
+        The operator to use for comparison. Should be one of `["==", "!="]`.
+
+    Raises
+    ------
+    ValueError
+        If the `operator` doesn't match one of the allowed patterns.
+    """
+
+    value: bool
+    operator: str = "=="
+
+    @field_validator("operator")
+    @classmethod
+    def _validate_comparison_operator(cls, op: str) -> str:
+        """Validate the operator."""
+        allowed_operators = ["==", "!="]
+        if op not in allowed_operators:
+            raise ValueError(
+                f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
+            )
+        return op
+
+    model_config = ConfigDict(extra="forbid")
+
+    def __eq__(self, other) -> bool:
+        """
+        Checks that two `BooleanFilters` are equivalent.
+
+        Parameters
+        ----------
+        other : BooleanFilter
+            The object to compare against.
+
+        Returns
+        ----------
+        boolean
+            A boolean describing whether the two objects are equal.
+
+        Raises
+        ----------
+        TypeError
+            When comparing against an object that isn't a `BooleanFilter`.
+        """
+        if not isinstance(other, BooleanFilter):
+            raise TypeError("expected BooleanFilter")
+        return (
+            self.value == other.value,
+            self.operator == other.operator,
+        )
+
+    def __hash__(self) -> int:
+        """
+        Hashes a `BooleanFilter`.
+
+        Returns
+        ----------
+        int
+            A hashed integer.
+        """
+        return hash(f"Value:{self.value},Op:{self.operator}")
+
+
 class GeospatialFilter(BaseModel):
     """
     Used to filter on geospatial coordinates.
@@ -159,7 +235,7 @@ class GeospatialFilter(BaseModel):
 
     """
 
-    value: GeoJSON
+    value: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon
     operator: str = "intersect"
 
     @field_validator("operator")
@@ -213,61 +289,136 @@ class GeospatialFilter(BaseModel):
         return hash(f"Value:{self.value.model_dump_json},Op:{self.operator}")
 
 
+class DateTimeFilter(BaseModel):
+    """
+    Used to filter on datetime values that meet some user-defined condition.
+
+    Attributes
+    ----------
+    value : DateTime
+        The value to compare the specific field against.
+    operator : str
+        The operator to use for comparison. Should be one of `[">", "<", ">=", "<=", "==", "!="]`.
+
+    Raises
+    ------
+    ValueError
+        If the `operator` doesn't match one of the allowed patterns.
+    """
+
+    value: DateTime | Date | Time | Duration
+    operator: str = "=="
+
+    @field_validator("operator")
+    @classmethod
+    def _validate_comparison_operator(cls, op: str) -> str:
+        """Validate the operator."""
+        allowed_operators = [">", "<", ">=", "<=", "==", "!="]
+        if op not in allowed_operators:
+            raise ValueError(
+                f"Invalid comparison operator '{op}'. Allowed operators are {', '.join(allowed_operators)}."
+            )
+        return op
+
+    model_config = ConfigDict(extra="forbid")
+
+    def __eq__(self, other) -> bool:
+        """
+        Checks that `DateTimeFilter` objects are equivalent.
+
+        Parameters
+        ----------
+        other : DateTimeFilter
+            The object to compare against.
+
+        Returns
+        ----------
+        boolean
+            A boolean describing whether the two objects are equal.
+
+        Raises
+        ----------
+        TypeError
+            When comparing against an object that isn't a `DateTimeFilter`.
+        """
+        if not isinstance(other, DateTimeFilter):
+            raise TypeError("expected DateTimeFilter")
+        return (
+            self.value == other.value,
+            self.operator == other.operator,
+        )
+
+    def __hash__(self) -> int:
+        """
+        Hashes a `DateTimeFilter`.
+
+        Returns
+        ----------
+        int
+            A hashed integer.
+        """
+        return hash(
+            f"Value:{self.value.value},Pattern:{self.value.pattern},Op:{self.operator}"
+        )
+
+
 class Filter(BaseModel):
     """
     Used to filter Evaluations according to specific, user-defined criteria.
 
     Attributes
     ----------
-    dataset_names: List[str]
+    dataset_names: List[str], default=None
         A list of `Dataset` names to filter on.
-    dataset_metadata: Dict[str, List[ValueFilter]]
+    dataset_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
         A dictionary of `Dataset` metadata to filter on.
-    dataset_geospatial: List[GeospatialFilter].
+    dataset_geospatial: List[GeospatialFilter]., default=None
         A list of `Dataset` geospatial filters to filter on.
-    models_names: List[str]
+    models_names: List[str], default=None
         A list of `Model` names to filter on.
-    models_metadata: Dict[str, List[ValueFilter]]
+    models_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
         A dictionary of `Model` metadata to filter on.
-    models_geospatial: List[GeospatialFilter]
+    models_geospatial: List[GeospatialFilter], default=None
         A list of `Model` geospatial filters to filter on.
-    datum_ids: List[str]
+    datum_ids: List[str], default=None
         A list of `Datum` UIDs to filter on.
-    datum_metadata: Dict[str, List[ValueFilter]] = None
+    datum_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
         A dictionary of `Datum` metadata to filter on.
-    datum_geospatial: List[GeospatialFilter]
+    datum_geospatial: List[GeospatialFilter], default=None
         A list of `Datum` geospatial filters to filter on.
-    task_types: List[TaskType]
+    task_types: List[TaskType], default=None
         A list of task types to filter on.
-    annotation_types: List[AnnotationType]
+    annotation_types: List[AnnotationType], default=None
         A list of `Annotation` types to filter on.
-    annotation_geometric_area: List[ValueFilter]
+    annotation_geometric_area: List[ValueFilter], default=None
         A list of `ValueFilters` which are used to filter `Evaluations` according to the `Annotation`'s geometric area.
-    annotation_metadata: Dict[str, List[ValueFilter]]
+    annotation_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
         A dictionary of `Annotation` metadata to filter on.
-    annotation_geospatial: List[GeospatialFilter]
+    annotation_geospatial: List[GeospatialFilter], default=None
         A list of `Annotation` geospatial filters to filter on.
-    prediction_scores: List[ValueFilter]
+    prediction_scores: List[ValueFilter], default=None
         A list of `ValueFilters` which are used to filter `Evaluations` according to the `Model`'s prediction scores.
-    labels: List[Dict[str, str]]
+    labels: List[Dict[str, str]], default=None
         A dictionary of `Labels' to filter on.
-    label_ids: List[int]
+    label_ids: List[int], default=None
         A list of `Label` IDs to filter on.
-    label_keys: List[str] = None
+    label_keys: List[str] = None, default=None
         A list of `Label` keys to filter on.
     """
 
     # datasets
     dataset_names: list[str] | None = None
     dataset_metadata: dict[
-        str, StringFilter | list[NumericFilter]
+        str,
+        list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
     ] | None = None
     dataset_geospatial: list[GeospatialFilter] | None = None
 
     # models
     models_names: list[str] | None = None
     models_metadata: dict[
-        str, StringFilter | list[NumericFilter]
+        str,
+        list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
     ] | None = None
     models_geospatial: list[GeospatialFilter] | None = None
 
@@ -276,7 +427,10 @@ class Filter(BaseModel):
         int
     ] | None = None  # This should be used sparingly and with small lists.
     datum_uids: list[str] | None = None
-    datum_metadata: dict[str, StringFilter | list[NumericFilter]] | None = None
+    datum_metadata: dict[
+        str,
+        list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
+    ] | None = None
     datum_geospatial: list[GeospatialFilter] | None = None
 
     # annotations
@@ -284,7 +438,8 @@ class Filter(BaseModel):
     annotation_types: list[AnnotationType] | None = None
     annotation_geometric_area: list[NumericFilter] | None = None
     annotation_metadata: dict[
-        str, StringFilter | list[NumericFilter]
+        str,
+        list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
     ] | None = None
     annotation_geospatial: list[GeospatialFilter] | None = None
 

@@ -23,9 +23,11 @@ def create_prediction(
         The prediction to create.
     """
     # retrieve existing table entries
-    model = core.get_model(db, name=prediction.model)
-    dataset = core.get_dataset(db, name=prediction.datum.dataset)
-    datum = core.get_datum(db, dataset_id=dataset.id, uid=prediction.datum.uid)
+    model = core.fetch_model(db, name=prediction.model)
+    dataset = core.fetch_dataset(db, name=prediction.datum.dataset)
+    datum = core.fetch_datum(
+        db, dataset_id=dataset.id, uid=prediction.datum.uid
+    )
 
     annotation_list, label_list = core.create_annotations_and_labels(
         db=db, annotations=prediction.annotations, datum=datum, model=model
@@ -78,11 +80,15 @@ def get_prediction(
     schemas.Prediction
         The requested prediction.
     """
-    model = core.get_model(db, name=model_name)
-    dataset = core.get_dataset(db, name=dataset_name)
-    datum = core.get_datum(db, dataset_id=dataset.id, uid=datum_uid)
+    model = core.fetch_model(db, name=model_name)
+    dataset = core.fetch_dataset(db, name=dataset_name)
+    datum = core.fetch_datum(db, dataset_id=dataset.id, uid=datum_uid)
     geo_dict = (
-        json.loads(db.scalar(ST_AsGeoJSON(datum.geo))) if datum.geo else {}
+        schemas.geojson.from_dict(
+            json.loads(db.scalar(ST_AsGeoJSON(datum.geo)))
+        )
+        if datum.geo
+        else None
     )
 
     return schemas.Prediction(

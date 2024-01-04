@@ -14,7 +14,7 @@ class GeoJSONPoint(BaseModel):
 
     Attributes
     ----------
-    types : str
+    type : str
         The type of GeoJSON. Should be "Point" for this class.
     coordinates : List[float | int]
         A list of coordinates describing where the `Point` lies.
@@ -45,7 +45,7 @@ class GeoJSONPoint(BaseModel):
             raise ValueError("Incorrect number of points.")
         return v
 
-    def point(self) -> Point:
+    def geometry(self) -> Point:
         """
         Converts the GeoJSON into a Point object.
 
@@ -59,6 +59,9 @@ class GeoJSONPoint(BaseModel):
             y=self.coordinates[1],
         )
 
+    def wkt(self) -> str:
+        return self.geometry().wkt()
+
 
 class GeoJSONPolygon(BaseModel):
     """
@@ -66,7 +69,7 @@ class GeoJSONPolygon(BaseModel):
 
     Attributes
     ----------
-    types : str
+    type : str
         The type of GeoJSON. Should be "Polygon" for this class.
     coordinates : List[List[List[float | int]]]
         A list of coordinates describing where the `Polygon` lies.
@@ -88,7 +91,7 @@ class GeoJSONPolygon(BaseModel):
             raise ValueError("Incorrect geometry type.")
         return v
 
-    def polygon(self) -> Polygon:
+    def geometry(self) -> Polygon:
         """
         Converts the GeoJSON into a Polygon object.
 
@@ -115,6 +118,9 @@ class GeoJSONPolygon(BaseModel):
             holes=polygons[1:] if len(polygons) > 1 else None,
         )
 
+    def wkt(self) -> str:
+        return self.geometry().wkt()
+
 
 class GeoJSONMultiPolygon(BaseModel):
     """
@@ -122,7 +128,7 @@ class GeoJSONMultiPolygon(BaseModel):
 
     Attributes
     ----------
-    types : str
+    type : str
         The type of GeoJSON. Should be "MultiPolygon" for this class.
     coordinates : List[List[List[List[float | int]]]]
         A list of coordinates describing where the `MultiPolygon` lies.
@@ -144,7 +150,7 @@ class GeoJSONMultiPolygon(BaseModel):
 
         return v
 
-    def multipolygon(self) -> MultiPolygon:
+    def geometry(self) -> MultiPolygon:
         """
         Converts the GeoJSON into a MultiPolygon object.
 
@@ -176,73 +182,42 @@ class GeoJSONMultiPolygon(BaseModel):
             raise ValueError("Incorrect geometry type.")
         return MultiPolygon(polygons=multipolygons)
 
+    def wkt(self) -> str:
+        return self.geometry().wkt()
 
-class GeoJSON(BaseModel):
+
+def from_dict(
+    data: dict,
+) -> GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon:
     """
-    Wraps other GeoJSON types.
+    Create a GeoJSON from a dictionary.
 
-    Attributes
+    Parameters
     ----------
-    geometry : GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon
-        The geometry type of the GeoJSON.
+    data : dict
+        A dictionary of GeoJSON-like data.
+
+    Returns
+    ----------
+    GeoJSON
+        A GeoJSON object.
+
+    Raises
+    ----------
+    ValueError
+        If the dict doesn't contain a "type" or "coordinates" key.
+        If the type of the GeoJSON isn't supported.
     """
+    if "type" not in data:
+        raise ValueError("missing geojson type")
+    if "coordinates" not in data:
+        raise ValueError("missing geojson coordinates")
 
-    geometry: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        """
-        Create a GeoJSON from a dictionary.
-
-        Parameters
-        ----------
-        data : dict
-            A dictionary of GeoJSON-like data.
-
-        Returns
-        ----------
-        GeoJSON
-            A GeoJSON object.
-
-        Raises
-        ----------
-        ValueError
-            If the dict doesn't contain a "type" or "coordinates" key.
-            If the type of the GeoJSON isn't supported.
-        """
-        if "type" not in data:
-            raise ValueError("missing geojson type")
-        if "coordinates" not in data:
-            raise ValueError("missing geojson coordinates")
-
-        if data["type"] == "Point":
-            return cls(geometry=GeoJSONPoint(**data))
-        elif data["type"] == "Polygon":
-            return cls(geometry=GeoJSONPolygon(**data))
-        elif data["type"] == "MultiPolygon":
-            return cls(geometry=GeoJSONMultiPolygon(**data))
-        else:
-            raise ValueError("Unsupported type.")
-
-    def shape(self) -> Point | Polygon | MultiPolygon:
-        """
-        Convert the GeoJSON into a geometric shape.
-
-        Returns
-        ----------
-        Point | Polygon | MultiPolygon
-            A geometric object.
-
-        Raises
-        ----------
-        ValueError
-            If the GeoJSON isn't of a recognized type.
-        """
-        if isinstance(self.geometry, GeoJSONPoint):
-            return self.geometry.point()
-        elif isinstance(self.geometry, GeoJSONPolygon):
-            return self.geometry.polygon()
-        elif isinstance(self.geometry, GeoJSONMultiPolygon):
-            return self.geometry.multipolygon()
-        else:
-            raise ValueError
+    if data["type"] == "Point":
+        return GeoJSONPoint(**data)
+    elif data["type"] == "Polygon":
+        return GeoJSONPolygon(**data)
+    elif data["type"] == "MultiPolygon":
+        return GeoJSONMultiPolygon(**data)
+    else:
+        raise ValueError("Unsupported type.")

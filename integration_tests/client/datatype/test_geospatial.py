@@ -30,9 +30,7 @@ def test_set_and_get_geospatial(
     ]
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
-    dataset = Dataset(
-        client=client, name=dataset_name, geospatial=geo_dict
-    )
+    dataset = Dataset(client=client, name=dataset_name, geospatial=geo_dict)
 
     # check Dataset's geospatial coordinates
     fetched_datasets = client.get_datasets()
@@ -83,9 +81,7 @@ def test_geospatial_filter(
     ]
     geo_dict = {"type": "Polygon", "coordinates": coordinates}
 
-    dataset = Dataset(
-        client=client, name=dataset_name, geospatial=geo_dict
-    )
+    dataset = Dataset(client=client, name=dataset_name, geospatial=geo_dict)
     for gt in gt_dets1:
         gt.datum.geospatial = geo_dict
         dataset.add_groundtruth(gt)
@@ -94,7 +90,7 @@ def test_geospatial_filter(
     model = Model(client=client, name=model_name, geospatial=geo_dict)
     for pd in pred_dets:
         pd.datum.geospatial = geo_dict
-        model.add_prediction(pd)
+        model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
     # filtering by dataset should be disabled as dataset is called explicitly
@@ -108,10 +104,8 @@ def test_geospatial_filter(
                     {
                         "operator": "outside",
                         "value": {
-                            "geometry": {
-                                "type": "Point",
-                                "coordinates": [0, 0],
-                            }
+                            "type": "Point",
+                            "coordinates": [0, 0],
                         },
                     }
                 ],
@@ -143,10 +137,8 @@ def test_geospatial_filter(
         filters=[
             Datum.geospatial.inside(
                 {
-                    "geometry": {
-                        "type": "Point",
-                        "coordinates": [0.0, 0.0],
-                    }
+                    "type": "Point",
+                    "coordinates": [0.0, 0.0],
                 }
             )
         ],
@@ -156,10 +148,8 @@ def test_geospatial_filter(
     assert result["settings"]["filters"]["datum_geospatial"] == [
         {
             "value": {
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [0.0, 0.0],
-                }
+                "type": "Point",
+                "coordinates": [0.0, 0.0],
             },
             "operator": "inside",
         }
@@ -178,17 +168,15 @@ def test_geospatial_filter(
                     {
                         "operator": "inside",
                         "value": {
-                            "geometry": {
-                                "type": "Polygon",
-                                "coordinates": [
-                                    [
-                                        [124.0, 37.0],
-                                        [128.0, 37.0],
-                                        [128.0, 40.0],
-                                        [124.0, 40.0],
-                                    ]
-                                ],
-                            }
+                            "type": "Polygon",
+                            "coordinates": [
+                                [
+                                    [124.0, 37.0],
+                                    [128.0, 37.0],
+                                    [128.0, 40.0],
+                                    [124.0, 40.0],
+                                ]
+                            ],
                         },
                     }
                 ],

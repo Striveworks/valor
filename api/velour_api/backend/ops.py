@@ -1,6 +1,17 @@
 import operator
 
-from sqlalchemy import Float, and_, func, not_, or_, select
+from sqlalchemy import (
+    TIMESTAMP,
+    Boolean,
+    Float,
+    and_,
+    cast,
+    func,
+    not_,
+    or_,
+    select,
+)
+from sqlalchemy.dialects.postgresql import INTERVAL
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.decl_api import DeclarativeMeta
 from sqlalchemy.sql.elements import BinaryExpression
@@ -8,10 +19,14 @@ from sqlalchemy.sql.elements import BinaryExpression
 from velour_api import enums
 from velour_api.backend import models
 from velour_api.schemas import (
+    BooleanFilter,
+    DateTimeFilter,
+    Duration,
     Filter,
     GeospatialFilter,
     NumericFilter,
     StringFilter,
+    Time,
 )
 
 
@@ -77,7 +92,6 @@ class Query:
     def _map_attribute_to_table(
         self, attr: InstrumentedAttribute | DeclarativeMeta
     ) -> DeclarativeMeta | None:
-        
         if isinstance(attr, DeclarativeMeta):
             return attr
         elif isinstance(attr, InstrumentedAttribute):
@@ -381,12 +395,17 @@ class Query:
         prediction_graph_unique = {models.Prediction}
 
         # edge case - only one table specified in args and filters
-        if self._selected == self._filtered and len(self._selected) == 1:
-            query = select(*self._args)
-            expression = self._expression(self._selected)
-            if expression is not None:
-                query = query.where(expression)
-            return query, None
+        if len(self._selected) == 1 and (
+            len(self._filtered) == 0 or self._selected == self._filtered
+        ):
+            if pivot_table:
+                self._filtered.add(pivot_table)
+            else:
+                query = select(*self._args)
+                expression = self._expression(self._selected)
+                if expression is not None:
+                    query = query.where(expression)
+                return query, None
 
         # edge case - catch intersection that resolves into an empty return.
         if self._selected.intersection(
@@ -466,6 +485,12 @@ class Query:
         }
         if opstr not in ops:
             raise ValueError(f"invalid numeric comparison operator `{opstr}`")
+        return ops[opstr]
+
+    def _get_boolean_op(self, opstr) -> operator:
+        ops = {"==": operator.eq, "!=": operator.ne}
+        if opstr not in ops:
+            raise ValueError(f"invalid boolean comparison operator `{opstr}`")
         return ops[opstr]
 
     def _get_string_op(self, opstr) -> operator:
@@ -737,38 +762,58 @@ class Query:
     def _filter_by_metadatum(
         self,
         key: str,
-        value_filter: NumericFilter | StringFilter,
+        value_filter: NumericFilter | StringFilter | DateTimeFilter,
         table: DeclarativeMeta,
     ) -> BinaryExpression:
         if isinstance(value_filter, NumericFilter):
             op = self._get_numeric_op(value_filter.operator)
             lhs = table.meta[key].astext.cast(Float)
+            rhs = value_filter.value
         elif isinstance(value_filter, StringFilter):
             op = self._get_string_op(value_filter.operator)
             lhs = table.meta[key].astext
+            rhs = value_filter.value
+        elif isinstance(value_filter, BooleanFilter):
+            op = self._get_boolean_op(value_filter.operator)
+            lhs = table.meta[key].astext.cast(Boolean)
+            rhs = value_filter.value
+        elif isinstance(value_filter, DateTimeFilter):
+            if isinstance(value_filter.value, Time) or isinstance(
+                value_filter.value, Duration
+            ):
+                cast_type = INTERVAL
+            else:
+                cast_type = TIMESTAMP(timezone=True)
+            op = self._get_numeric_op(value_filter.operator)
+            lhs = cast(
+                table.meta[key][value_filter.value.key].astext,
+                cast_type,
+            )
+            rhs = cast(
+                value_filter.value.value,
+                cast_type,
+            )
         else:
             raise NotImplementedError(
                 f"metadatum value of type `{type(value_filter.value)}` is currently not supported"
             )
-        return op(lhs, value_filter.value)
+        return op(lhs, rhs)
 
     def filter_by_metadata(
         self,
-        metadata: dict[str, list[NumericFilter] | StringFilter],
+        metadata: dict[
+            str, list[NumericFilter | StringFilter | DateTimeFilter]
+        ],
         table: DeclarativeMeta,
     ) -> list[BinaryExpression]:
         expressions = [
             self._filter_by_metadatum(key, value, table)
-            for key, value in metadata.items()
-            if isinstance(value, StringFilter)
-        ] + [
-            self._filter_by_metadatum(key, value, table)
-            for key, vlist in metadata.items()
-            if isinstance(vlist, list)
-            for value in metadata[key]
-            if isinstance(value, NumericFilter)
+            for key, f_list in metadata.items()
+            for value in f_list
         ]
-        return [and_(*expressions)]
+        if len(expressions) > 1:
+            expressions = [and_(*expressions)]
+        return expressions
 
     def _filter_by_geospatial(
         self,
@@ -784,21 +829,21 @@ class Query:
                 geospatial_expressions.append(
                     func.ST_Covers(
                         # note that casting the WKT using ST_GEOGFROMTEXT isn't necessary here: we're implicitely comparing two geographies, not two geometries
-                        geojson.shape().wkt(),
+                        geojson.wkt(),
                         model_object.geo,
                     )
                 )
             elif operator == "intersect":
                 geospatial_expressions.append(
                     model_object.geo.ST_Intersects(
-                        geojson.shape().wkt(),
+                        geojson.wkt(),
                     )
                 )
             elif operator == "outside":
                 geospatial_expressions.append(
                     not_(
                         func.ST_Covers(
-                            geojson.shape().wkt(),
+                            geojson.wkt(),
                             model_object.geo,
                         )
                     )

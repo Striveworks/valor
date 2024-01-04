@@ -1,10 +1,9 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from velour_api.enums import JobStatus
 
 from velour_api import schemas
-from velour_api.enums import JobStatus
 from velour_api.backend import core, models
+from velour_api.enums import JobStatus
 
 
 def get_or_create_row(
@@ -82,26 +81,16 @@ def create_metric_mappings(
     List[Dict]
         A list of metric mappings.
     """
-    labels = set(
-        [
-            (metric.label.key, metric.label.value)
-            for metric in metrics
-            if hasattr(metric, "label")
-        ]
-    )
-    label_map = {
-        (label[0], label[1]): core.get_label(
-            db, label=schemas.Label(key=label[0], value=label[1])
-        ).id
-        for label in labels
-    }
-
     ret = []
     for metric in metrics:
         if hasattr(metric, "label"):
+            label = core.fetch_label(
+                db=db,
+                label=metric.label,
+            )
             ret.append(
                 metric.db_mapping(
-                    label_id=label_map[(metric.label.key, metric.label.value)],
+                    label_id=label.id if label else None,
                     evaluation_id=evaluation_id,
                 )
             )

@@ -1138,6 +1138,7 @@ def get_api_version() -> schemas.APIVersion:
 
 """ STATUS """
 
+
 @app.get(
     "/health",
     tags=["Status"],

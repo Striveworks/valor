@@ -73,11 +73,15 @@ def get_groundtruth(
         The requested groundtruth.
     """
     # retrieve from table
-    dataset = core.get_dataset(db, name=dataset_name)
-    datum = core.get_datum(db, dataset_id=dataset.id, uid=datum_uid)
+    dataset = core.fetch_dataset(db, name=dataset_name)
+    datum = core.fetch_datum(db, dataset_id=dataset.id, uid=datum_uid)
 
     geo_dict = (
-        json.loads(db.scalar(ST_AsGeoJSON(datum.geo))) if datum.geo else {}
+        schemas.geojson.from_dict(
+            json.loads(db.scalar(ST_AsGeoJSON(datum.geo)))
+        )
+        if datum.geo
+        else None
     )
 
     return schemas.GroundTruth(

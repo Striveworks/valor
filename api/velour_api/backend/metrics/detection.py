@@ -7,7 +7,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session, aliased
 
 from velour_api import enums, schemas
-from velour_api.backend import core, models, query
+from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
     create_metric_mappings,
     get_or_create_row,
@@ -203,9 +203,9 @@ def compute_detection_metrics(
         table,
     ):
         match annotation_type:
-            case AnnotationType.BOX: 
-                return table.box 
-            case AnnotationType.POLYGON: 
+            case AnnotationType.BOX:
+                return table.box
+            case AnnotationType.POLYGON:
                 return table.polygon
             case AnnotationType.MULTIPOLYGON:
                 return table.multipolygon
@@ -288,8 +288,7 @@ def compute_detection_metrics(
     labels = {
         label.id: schemas.Label(key=label.key, value=label.value)
         for label in db.scalars(
-            select(models.Label)
-            .where(models.Label.id.in_(ranking.keys()))
+            select(models.Label).where(models.Label.id.in_(ranking.keys()))
         )
     }
 
@@ -459,8 +458,12 @@ def _get_disjoint_label_sets(
     prediction_filters: schemas.Filter,
 ) -> tuple:
     """Return a tuple containing the unique labels associated with the groundtruths and predictions stored in a database."""
-    groundtruth_labels = query.get_groundtruth_labels(db, groundtruth_filter)
-    prediction_labels = query.get_prediction_labels(db, prediction_filters)
+    groundtruth_labels = core.get_labels(
+        db, groundtruth_filter, ignore_predictions=True
+    )
+    prediction_labels = core.get_labels(
+        db, prediction_filters, ignore_groundtruths=True
+    )
     groundtruth_unique = list(groundtruth_labels - prediction_labels)
     prediction_unique = list(prediction_labels - groundtruth_labels)
     return groundtruth_unique, prediction_unique
@@ -523,8 +526,8 @@ def create_detection_evaluation(
             )
 
     # load sql objects
-    dataset = core.get_dataset(db, job_request.dataset)
-    model = core.get_model(db, job_request.model)
+    dataset = core.fetch_dataset(db, job_request.dataset)
+    model = core.fetch_model(db, job_request.model)
 
     # determine annotation types
     (
@@ -597,8 +600,8 @@ def create_detection_metrics(
         job_request.settings.filters = schemas.Filter()
     job_request.settings.filters.task_types = [enums.TaskType.DETECTION]
 
-    dataset = core.get_dataset(db, job_request.dataset)
-    model = core.get_model(db, job_request.model)
+    dataset = core.fetch_dataset(db, job_request.dataset)
+    model = core.fetch_model(db, job_request.model)
 
     groundtruth_type = core.get_annotation_type(db, dataset, None)
     prediction_type = core.get_annotation_type(db, dataset, model)
