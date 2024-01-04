@@ -118,6 +118,7 @@ def create_groundtruths(
     except (
         exceptions.DatasetFinalizedError,
         exceptions.DatumAlreadyExistsError,
+        exceptions.AnnotationAlreadyExistsError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -211,6 +212,7 @@ def create_predictions(
     except (
         exceptions.DatasetNotFinalizedError,
         exceptions.ModelFinalizedError,
+        exceptions.AnnotationAlreadyExistsError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 

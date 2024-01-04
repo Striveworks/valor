@@ -274,16 +274,14 @@ def generate_prediction_data(
 
     for datum in datums:
         height, width = (datum.metadata["height"], datum.metadata["width"])
-
-        for _ in range(n_predictions):
-            prediction = _generate_prediction(
-                datum=datum,
-                height=height,
-                width=width,
-                n_annotations=n_annotations,
-                n_labels=n_labels,
-            )
-            model.add_prediction(dataset, prediction)
+        prediction = _generate_prediction(
+            datum=datum,
+            height=height,
+            width=width,
+            n_annotations=n_annotations,
+            n_labels=n_labels,
+        )
+        model.add_prediction(dataset, prediction)
 
     model.finalize_inferences(dataset)
     return model

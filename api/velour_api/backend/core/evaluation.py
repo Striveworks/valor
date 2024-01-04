@@ -48,6 +48,13 @@ def create_or_get_evaluation(
     int
         The id of the new evaluation.
     """
+    # validate args
+    if (
+        not isinstance(db, Session)
+        or not isinstance(job_request, schemas.EvaluationJob)
+    ):
+        raise TypeError
+
     # validate parameters
     match job_request.task_type:
         case enums.TaskType.DETECTION:

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
-
+from velour_api.backend.ops import Query
 
 def _get_bounding_box_of_raster(
     db: Session, raster: RasterElement
@@ -174,6 +174,22 @@ def create_annotations(
     List[models.annotation]
         The model associated with the annotation.
     """
+    # validate that there are no existing annotations for this datum.
+    if db.query(
+        select(models.Annotation.id)
+        .where(
+            and_(
+                models.Annotation.datum_id == datum.id,
+                (
+                    models.Annotation.model_id == model.id 
+                    if model else models.Annotation.model_id.is_(None)
+                ),
+            )
+        )
+        .subquery()
+    ).all():
+        raise exceptions.AnnotationAlreadyExistsError
+
     if annotations:
         annotation_list = [
             _create_annotation(annotation=annotation, datum=datum, model=model)
@@ -199,7 +215,6 @@ def create_annotations(
 def get_annotation(
     db: Session,
     annotation: models.Annotation,
-    datum: models.Datum = None,
 ) -> schemas.Annotation:
     """
     Fetch an annotation from the database.
@@ -210,46 +225,33 @@ def get_annotation(
         The database Session you want to query against.
     annotation : models.Annotation
         The annotation you want to fetch.
-    datum : models.Datum
-        The datum associated with the annotation.
 
     Returns
     -------
     schemas.Annotation
         The requested annotation.
     """
-    # Retrieve all labels associated with annotation
-    if annotation.model_id is not None:
+    # retrieve all labels associated with annotation
+    if annotation.model_id:
+        q = Query(
+            models.Label.key,
+            models.Label.value,
+            models.Prediction.score,
+        ).predictions(as_subquery=False)
+        q = q.where(models.Prediction.annotation_id == annotation.id)
         labels = [
-            schemas.Label(key=label[0], value=label[1], score=label[2])
-            for label in (
-                db.query(
-                    models.Label.key,
-                    models.Label.value,
-                    models.Prediction.score,
-                )
-                .select_from(models.Prediction)
-                .join(
-                    models.Label,
-                    models.Prediction.label_id == models.Label.id,
-                )
-                .where(models.Prediction.annotation_id == annotation.id)
-                .all()
-            )
+            schemas.Label(key=scored_label[0], value=scored_label[1], score=scored_label[2])
+            for scored_label in db.query(q.subquery()).all()
         ]
     else:
+        q = Query(
+            models.Label.key,
+            models.Label.value,
+        ).groundtruths(as_subquery=False)
+        q = q.where(models.GroundTruth.annotation_id == annotation.id)
         labels = [
             schemas.Label(key=label[0], value=label[1])
-            for label in (
-                db.query(models.Label.key, models.Label.value)
-                .select_from(models.GroundTruth)
-                .join(
-                    models.Label,
-                    models.GroundTruth.label_id == models.Label.id,
-                )
-                .where(models.GroundTruth.annotation_id == annotation.id)
-                .all()
-            )
+            for label in db.query(q.subquery()).all()
         ]
 
     # Initialize
@@ -326,7 +328,7 @@ def get_annotations(
         else models.Annotation.model_id == model.id
     )
     return [
-        get_annotation(db, annotation=annotation, datum=datum)
+        get_annotation(db, annotation=annotation)
         for annotation in (
             db.query(models.Annotation)
             .where(

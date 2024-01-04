@@ -406,12 +406,6 @@ def test_add_prediction(
     with pytest.raises(TypeError):
         model.add_prediction(dataset, "not_a_pred")
 
-    # make sure we get a warning when adding a prediction without annotations
-    with pytest.warns(UserWarning):
-        model.add_prediction(
-            dataset, Prediction(datum=img1.to_datum(), annotations=[])
-        )
-
     for pd in pred_dets:
         model.add_prediction(dataset, pd)
 
@@ -420,6 +414,45 @@ def test_add_prediction(
     # test get predictions
     pred = model.get_prediction(dataset, img1.to_datum())
     assert pred.annotations == pred_dets[0].annotations
+    assert pred._model_name == model_name
+    assert pred.datum._dataset_name == dataset_name
+
+    client.delete_dataset(dataset_name, timeout=30)
+
+
+def test_add_empty_prediction(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    img1: ImageMetadata,
+    model_name: str,
+    dataset_name: str,
+    db: Session,
+):
+
+    dataset = Dataset(client, dataset_name)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.finalize()
+
+    model = Model(client, model_name)
+
+    # make sure we get an error when passing a non-Prediction object to add_prediction
+    with pytest.raises(TypeError):
+        model.add_prediction(dataset, "not_a_pred")
+
+    # make sure we get a warning when adding a prediction without annotations
+    with pytest.warns(UserWarning):
+        model.add_prediction(
+            dataset, Prediction(datum=img1.to_datum(), annotations=[])
+        )
+
+    model.finalize_inferences(dataset)
+
+    # test get predictions
+    pred = model.get_prediction(dataset, img1.to_datum())
+    assert len(pred.annotations) == 1
+    assert pred.annotations[0].task_type == TaskType.EMPTY
     assert pred._model_name == model_name
     assert pred.datum._dataset_name == dataset_name
 

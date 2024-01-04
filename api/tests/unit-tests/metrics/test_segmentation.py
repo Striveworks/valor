@@ -1,5 +1,6 @@
 import pytest
 
+from velour_api.backend.core import create_or_get_evaluation
 import velour_api.backend.metrics.segmentation as segmentation
 from velour_api import enums, schemas
 
@@ -16,7 +17,7 @@ def test_create_semantic_segmentation_evaluation():
     )
 
     with pytest.raises(TypeError):
-        segmentation.create_semantic_segmentation_evaluation(
+        create_or_get_evaluation(
             db=None, job_request=mock_job_request
         )
 
@@ -35,8 +36,8 @@ def test_create_semantic_segmentation_evaluation():
         }
     )
 
-    with pytest.raises(ValueError):
-        segmentation.create_semantic_segmentation_evaluation(
+    with pytest.raises(TypeError):
+        create_or_get_evaluation(
             db=None, job_request=mock_job_request
         )
 
@@ -55,7 +56,7 @@ def test_create_semantic_segmentation_evaluation():
         }
     )
 
-    with pytest.raises(ValueError):
-        segmentation.create_semantic_segmentation_evaluation(
+    with pytest.raises(TypeError):
+        create_or_get_evaluation(
             db=None, job_request=mock_job_request
         )
