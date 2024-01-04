@@ -14,7 +14,6 @@ from .filters import (
 from .geometry import (
     BasicPolygon,
     BoundingBox,
-    Box,
     MultiPolygon,
     Point,
     Polygon,
@@ -23,7 +22,6 @@ from .geometry import (
 from .metadata import dump_metadata, load_metadata, validate_metadata
 
 __all__ = [
-    "Box",
     "BasicPolygon",
     "Point",
     "BoundingBox",

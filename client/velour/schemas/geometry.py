@@ -41,9 +41,10 @@ class Point:
     y: float
 
     def __post_init__(self):
-        if isinstance(self.x, int):
+        int_classes = (int, np.int8, np.int16, np.int32, np.int64)
+        if isinstance(self.x, int_classes):
             self.x = float(self.x)
-        if isinstance(self.y, int):
+        if isinstance(self.y, int_classes):
             self.y = float(self.y)
 
         if not isinstance(self.x, float):
@@ -93,62 +94,6 @@ class Point:
         """
         h_factor, w_factor = new_img_h / og_img_h, new_img_w / og_img_w
         return Point(x=w_factor * self.x, y=h_factor * self.y)
-
-
-@dataclass
-class Box:
-    """
-    Represents a 2D box defined by minimum and maximum points.
-
-    Parameters
-    ----------
-    min : Union[Point, dict]
-        The minimum point of the box. Can be a `Point` object or a dictionary
-        with keys 'x' and 'y' representing the coordinates.
-    max : Union[Point, dict]
-        The maximum point of the box. Can be a `Point` object or a dictionary
-        with keys 'x' and 'y' representing the coordinates.
-
-    Attributes
-    ----------
-    min : Point
-        The minimum point of the box.
-    max : Point
-        The maximum point of the box.
-
-    Raises
-    ------
-    ValueError
-        If the x-coordinate of `min` is greater than the x-coordinate of `max`.
-        If the y-coordinate of `min` is greater than the y-coordinate of `max`.
-
-    Examples
-    --------
-    >>> Box(min=Point( 0, 0),
-    ...     max=Point(10,10))
-    Box(min=Point(x=0.0, y=0.0), max=Point(x=10.0, y=10.0))
-
-    Dictionary input results in same output.
-    >>> Box(min={'x':  0, 'y':  0},
-    ...     max={'x': 10, 'y': 10})
-    Box(min=Point(x=0.0, y=0.0), max=Point(x=10.0, y=10.0))
-    """
-
-    min: Point
-    max: Point
-
-    def __post_init__(self):
-        # unpack
-        if isinstance(self.min, dict):
-            self.min = Point(**self.min)
-        if isinstance(self.max, dict):
-            self.max = Point(**self.max)
-
-        # validate
-        if self.min.x > self.max.x:
-            raise ValueError("Cannot have xmin > xmax")
-        if self.min.y > self.max.y:
-            raise ValueError("Cannot have ymin > ymax")
 
 
 @dataclass
@@ -238,30 +183,6 @@ class BasicPolygon:
         """Maximum y-coordinate of the polygon."""
         return max(p.y for p in self.points)
 
-    @classmethod
-    def from_box(cls, box: Box):
-        """
-        Create a BasicPolygon from a Box.
-
-        Parameters
-        ----------
-        box : Box
-            The box to convert to a BasicPolygon.
-
-        Returns
-        -------
-        BasicPolygon
-            A BasicPolygon created from the provided Box.
-        """
-        return cls(
-            points=[
-                Point(box.min.x, box.min.y),
-                Point(box.min.x, box.max.y),
-                Point(box.max.x, box.max.y),
-                Point(box.max.x, box.min.y),
-            ]
-        )
-
 
 @dataclass
 class Polygon:
@@ -329,7 +250,7 @@ class Polygon:
 @dataclass
 class BoundingBox:
     """
-    Represents a bounding box defined by a 4-point polygon.
+    Represents a bounding box defined by a 4-point polygon. Note that this does not need to be axis-aligned.
 
     Parameters
     ----------
