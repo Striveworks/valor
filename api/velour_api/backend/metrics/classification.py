@@ -10,7 +10,7 @@ from velour_api.backend.metrics.metric_utils import (
     get_or_create_row,
 )
 from velour_api.backend.ops import Query
-from velour_api.enums import TaskType
+from velour_api.enums import TaskType, EvaluationStatus
 
 
 def _compute_binary_roc_auc(
@@ -642,6 +642,7 @@ def create_clf_evaluation(
             "model_id": model.id,
             "task_type": TaskType.CLASSIFICATION,
             "settings": job_request.settings.model_dump(),
+            "status": EvaluationStatus.CREATING,
         },
     )
     return es.id

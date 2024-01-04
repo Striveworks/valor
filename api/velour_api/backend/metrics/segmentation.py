@@ -265,6 +265,7 @@ def create_semantic_segmentation_evaluation(
             "model_id": model.id,
             "task_type": enums.TaskType.SEGMENTATION,
             "settings": job_request.settings.model_dump(),
+            "status": enums.EvaluationStatus.CREATING,
         },
     )
 

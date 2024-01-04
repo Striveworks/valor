@@ -49,14 +49,16 @@ def create_prediction(
     label_idx = 0
     prediction_list = []
     for i, annotation in enumerate(prediction.annotations):
-        for label in label_list[
-            label_idx : label_idx + len(annotation.labels)
-        ]:
+        indices = slice(
+            label_idx, 
+            label_idx + len(annotation.labels)
+        )
+        for j, label in enumerate(label_list[indices]):
             prediction_list.append(
                 models.Prediction(
                     annotation_id=annotation_list[i].id,
                     label_id=label.id,
-                    score=label.score,
+                    score=annotation.labels[j].score,
                 )
             )
         label_idx += len(annotation.labels)

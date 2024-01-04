@@ -108,3 +108,10 @@ class DatasetStatus(str, Enum):
     CREATING = "creating"
     FINALIZED = "finalized"
     DELETING = "deleting"
+
+
+class EvaluationStatus(str, Enum):
+    CREATING = "creating"
+    PROCESSING = "processing"
+    DONE = "done"
+    FAILED = "failed"

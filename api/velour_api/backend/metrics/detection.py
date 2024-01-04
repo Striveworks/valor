@@ -562,6 +562,7 @@ def create_detection_evaluation(
             "model_id": model.id,
             "task_type": enums.TaskType.DETECTION,
             "settings": job_request.settings.model_dump(),
+            "status": enums.EvaluationStatus.CREATING,
         },
     )
 
