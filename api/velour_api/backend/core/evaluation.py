@@ -1,4 +1,4 @@
-from sqlalchemy import and_
+from sqlalchemy import select, and_, or_, func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -34,7 +34,7 @@ def create_or_get_evaluation(
     job_request: schemas.EvaluationJob,
 ) -> int:
     """
-    Creates an evaluation.
+    Creates or gets an evaluation.
 
     Parameters
     ----------
@@ -95,7 +95,7 @@ def create_or_get_evaluation(
                 model_id=model.id,
                 task_type=job_request.task_type,
                 settings=job_request.settings.model_dump(),
-                status=enums.JobStatus.CREATING,
+                status=enums.EvaluationStatus.CREATING,
             )
             db.add(evaluation)
             db.commit()
@@ -106,23 +106,59 @@ def create_or_get_evaluation(
     return evaluation.id
 
 
+def fetch_evaluation(
+    db: Session,
+    evaluation_id: int,
+) -> models.Evaluation:
+    """
+    Fetch evaluation from database.
+    """
+    evaluation = db.query(
+        select(models.Evaluation)
+        .where(models.Evaluation.id == evaluation_id)
+    ).one_or_none()
+    if evaluation is None:
+        raise exceptions.EvaluationDoesNotExistError
+    return evaluation
+
+
+def get_evaluation_status(
+    db: Session,
+    evaluation_id: int,
+) -> enums.EvaluationStatus:
+    """
+    Get the status of an evaluation.
+
+    Parameters
+    ----------
+    db : Session
+
+    """
+    evaluation = fetch_evaluation(db, evaluation_id)
+    return enums.EvaluationStatus(evaluation.status)
+
+
 def set_evaluation_status(
     db: Session,
     evaluation_id: int,
-    status: enums.JobStatus,
+    status: enums.EvaluationStatus,
 ):
     """
-    Sets the status of an evaluation.
+    Set the status of an evaluation.
     """
-    pass
-    # evaluation = fetch_evaluation(db, evaluation_id)
-    # try:
-    #     evaluation.status = status
-    #     db.commit()
-    # except Exception as e:
-    #     db.rollback()
-    #     raise e
-    
+    evaluation = fetch_evaluation(db, evaluation_id)
+
+    current_status = enums.EvaluationStatus(evaluation.status)
+    if status not in current_status.next():
+        raise exceptions.JobStateError(evaluation_id, "Bad evaluation state transition.")
+
+    try:
+        evaluation.status = status
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.EvaluationDoesNotExistError
+
 
 def _get_annotation_types_for_computation(
     db: Session,
@@ -202,3 +238,52 @@ def get_disjoint_labels_from_evaluation(
     prediction_unique = list(prediction_labels - groundtruth_labels)
 
     return groundtruth_unique, prediction_unique
+
+
+def check_for_active_evaluations(
+    db: Session,
+    dataset_name: str | None = None,
+    model_name: str | None = None,
+) -> int:
+    """
+    Get the number of active evaluations.
+
+    Parameters
+    ----------
+    db : Session
+        Database session instance.
+    dataset_name : str, default=None
+        Name of a dataset.
+    model_name : str, default=None
+        Name of a model.
+
+    Returns
+    -------
+    int
+        Number of active evaluations.
+    """
+    expr = []
+    if dataset_name:
+        expr.append(models.Dataset.name == dataset_name)
+    if model_name:
+        expr.append(models.Model.name == model_name)
+
+    return db.scalar(
+        select(func.count())
+        .select_from(models.Evaluation)
+        .join(
+            models.Dataset,
+            models.Dataset.id == models.Evaluation.dataset_id
+        )
+        .join(
+            models.Model,
+            models.Model.id == models.Evaluation.model_id
+        )
+        .where(
+            or_(
+                models.Evaluation.status == enums.EvaluationStatus.PENDING,    
+                models.Evaluation.status == enums.EvaluationStatus.RUNNING,
+            ),
+            *expr,
+        )
+    )

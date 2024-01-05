@@ -1,12 +1,14 @@
 import json
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import select
+from sqlalchemy import select, and_, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import exceptions, schemas
+from velour_api import exceptions, schemas, enums
 from velour_api.backend import models
+from velour_api.backend.core.dataset import fetch_dataset, get_dataset_status
+from velour_api.backend.core.evaluation import check_for_active_evaluations
 
 
 def create_model(
@@ -28,6 +30,7 @@ def create_model(
             name=model.name,
             meta=model.metadata,
             geo=model.geospatial.wkt() if model.geospatial else None,
+            status=enums.ModelStatus.READY,
         )
         db.add(row)
         db.commit()
@@ -109,7 +112,7 @@ def get_models(
     Parameters
     ----------
     db : Session
-        The database Session to query against.
+        The database session.
 
     Returns
     ----------
@@ -119,6 +122,106 @@ def get_models(
     return [
         get_model(db, name) for name in db.scalars(select(models.Model.name))
     ]
+
+
+def get_model_status(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+) -> enums.TableStatus:
+    """
+    Get status of model.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    name : str
+        Name of the model.
+
+    Returns
+    -------
+    enums.TableStatus
+    """
+    # check if deleting
+    model = fetch_model(db, model_name)
+    if model.status == enums.ModelStatus.DELETING:
+        return enums.TableStatus.DELETING
+    
+    # check dataset status
+    dataset_status = get_dataset_status(db, dataset_name)
+    if dataset_status == enums.TableStatus.DELETING:
+        raise exceptions.DatasetDoesNotExistError(dataset_name)
+    elif dataset_status == enums.TableStatus.CREATING:
+        return enums.TableStatus.CREATING
+
+    # check if model maps to all dataset datums
+    dataset = fetch_dataset(db, dataset_name)
+    disjoint_datums = (
+        select(func.count())
+        .select_from(models.Datum)
+        .join(
+            models.Annotation,
+            and_(
+                models.Annotation.datum_id == models.Datum.id,
+                models.Annotation.model_id == model.id,    
+            ),
+            isouter=True,
+        )
+        .where(
+            models.Datum.dataset_id == dataset.id,
+        )
+        .filter(models.Annotation.id.is_(None))
+    )
+    if db.scalar(disjoint_datums):
+        return enums.TableStatus.CREATING
+    else:
+        return enums.TableStatus.FINALIZED
+    
+
+def set_model_status(
+    db: Session,
+    dataset_name: str,
+    model_name: str,
+    status: enums.TableStatus,
+):
+    """
+    Set the status of the model.
+    """
+    dataset_status = get_dataset_status(db, dataset_name)
+    if dataset_status == enums.TableStatus.DELETING:
+        raise exceptions.DatasetDoesNotExistError(dataset_name)
+
+    model_status = get_model_status(db, dataset_name, model_name)
+    if status == model_status:
+        return
+
+    # check if transition is valid
+    if status not in model_status.next():
+        raise exceptions.JobStateError(model_name, f"Model state error with dataset `{dataset_name}`")
+    
+    # verify model-dataset parity
+    if (
+        model_status == enums.TableStatus.CREATING
+        and status == enums.TableStatus.FINALIZED
+    ):
+        if dataset_status != enums.TableStatus.FINALIZED:
+            raise exceptions.DatasetNotFinalizedError(dataset_name)
+        # edge case - check that there exists at least one prediction per datum
+        raise NotImplementedError("Populate missing predictions with `skip` annotations.")
+
+    # TODO - write test for this after evaluation status is implemented
+    elif status == enums.JobStatus.DELETING:
+        if check_for_active_evaluations(db=db, model_name=model_name):
+            raise exceptions.JobStateError(model_name, "Cannot delete model as evaluations are currently running.")
+        
+    model = fetch_model(db, model_name)
+    try:
+        model.status = status
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 def delete_model(

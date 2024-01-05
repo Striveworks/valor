@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
+from velour_api.backend.core.evaluation import check_for_active_evaluations
 
 
 def create_dataset(
@@ -28,7 +29,7 @@ def create_dataset(
             name=dataset.name,
             meta=dataset.metadata,
             geo=dataset.geospatial.wkt() if dataset.geospatial else None,
-            status=enums.JobStatus.CREATING,
+            status=enums.TableStatus.CREATING,
         )
         db.add(row)
         db.commit()
@@ -63,7 +64,7 @@ def fetch_dataset(
         .where(
             and_(
                 models.Dataset.name == name
-                and models.Dataset.status != enums.JobStatus.DELETING
+                and models.Dataset.status != enums.TableStatus.DELETING
             )
         )
         .one_or_none()
@@ -71,23 +72,6 @@ def fetch_dataset(
     if dataset is None:
         raise exceptions.DatasetDoesNotExistError(name)
     return dataset
-
-
-def set_dataset_status(
-    db: Session,
-    name: str,
-    status: enums.JobStatus,
-):
-    """
-    Sets the status of a dataset.
-    """
-    dataset = fetch_dataset(db, name)
-    try:
-        dataset.status = status
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise e
 
 
 def get_dataset(
@@ -145,6 +129,47 @@ def get_datasets(
         get_dataset(db, name)
         for name in db.scalars(select(models.Dataset.name)).all()
     ]
+
+
+def get_dataset_status(
+    db: Session,
+    name: str,
+) -> enums.TableStatus:
+    """
+    Get the status of a dataset.
+    """
+    dataset = fetch_dataset(db, name)
+    return enums.TableStatus(dataset.status)
+
+
+def set_dataset_status(
+    db: Session,
+    name: str,
+    status: enums.TableStatus,
+):
+    """
+    Sets the status of a dataset.
+    """
+    dataset = fetch_dataset(db, name)
+    active_status = enums.TableStatus(dataset.status)
+    
+    if status == active_status:
+        return
+    
+    if status not in active_status.next():
+        raise exceptions.JobStateError(name, "Invalid dataset transition.")
+    
+    # TODO - write test for this after evaluation status is implemented
+    if status == enums.TableStatus.DELETING:
+        if check_for_active_evaluations(db=db, dataset_name=name):
+            raise exceptions.JobStateError(name, "Cannot delete dataset as evaluations are currently running.")
+
+    try:
+        dataset.status = status
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
 
 
 def delete_dataset(

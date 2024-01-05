@@ -84,7 +84,7 @@ class JobStatus(str, Enum):
 
     def next(self):
         """
-        Returns the set of valid next state transitions based on the current state.
+        Returns the set of valid next states based on the current state.
         """
         if self == self.NONE:
             return {self.NONE}
@@ -100,5 +100,65 @@ class JobStatus(str, Enum):
             return {self.DONE, self.PROCESSING, self.DELETING}
         elif self == self.DELETING:
             return {self.DELETING, self.NONE}
+        else:
+            raise ValueError
+
+
+class TableStatus(str, Enum):
+    CREATING = "creating"
+    FINALIZED = "finalized"
+    DELETING = "deleting"
+
+    def next(self) -> set["TableStatus"]:
+        """
+        Returns the set of valid next states based on the current state.
+        """
+        if self == self.CREATING:
+            return {self.CREATING, self.FINALIZED, self.DELETING}
+        elif self == self.FINALIZED:
+            return {self.FINALIZED, self.DELETING}
+        elif self == self.DELETING:
+            return {self.DELETING}
+        else:
+            raise ValueError
+        
+
+class ModelStatus(str, Enum):
+    READY = "ready"
+    DELETING = "deleting"
+
+    def next(self) -> set["ModelStatus"]:
+        """
+        Returns the set of valid next states based on the current state.
+        """
+        if self == self.READY:
+            return {self.READY, self.DELETING}
+        elif self == self.DELETING:
+            return {self.DELETING}
+        else:
+            raise ValueError
+        
+
+class EvaluationStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+    DELETING = "deleting"
+
+    def next(self):
+        """
+        Returns the set of valid next states based on the current state.
+        """
+        if self == self.PENDING:
+            return {self.PENDING, self.RUNNING}
+        elif self == self.RUNNING:
+            return {self.RUNNING, self.DONE, self.FAILED}
+        elif self == self.FAILED:
+            return {self.FAILED, self.PENDING, self.DELETING}
+        elif self == self.DONE:
+            return {self.DONE, self.DELETING}
+        elif self == self.DELETING:
+            return {self.DELETING}
         else:
             raise ValueError

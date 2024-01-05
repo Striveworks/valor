@@ -190,18 +190,13 @@ def create_annotations(
     ).all():
         raise exceptions.AnnotationAlreadyExistsError
 
-    if annotations:
-        annotation_list = [
-            _create_annotation(annotation=annotation, datum=datum, model=model)
-            for annotation in annotations
-        ]
-    else:
-        annotation_list = [
-            _create_empty_annotation(
-                datum=datum,
-                model=model,
-            )
-        ]
+    # create annotations
+    annotation_list = [
+        _create_annotation(annotation=annotation, datum=datum, model=model)
+        for annotation in annotations
+    ] if annotations else [
+        _create_empty_annotation(datum=datum, model=model)
+    ]
 
     try:
         db.add_all(annotation_list)

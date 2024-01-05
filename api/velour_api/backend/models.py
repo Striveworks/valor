@@ -138,6 +138,7 @@ class Model(Base):
     name: Mapped[str] = mapped_column(index=True, unique=True)
     meta = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
+    status: Mapped[str] = mapped_column(nullable=False)
 
     # relationships
     annotations: Mapped[list[Annotation]] = relationship(

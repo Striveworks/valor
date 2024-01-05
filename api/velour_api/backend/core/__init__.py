@@ -10,6 +10,7 @@ from .dataset import (
     fetch_dataset,
     get_dataset,
     get_datasets,
+    get_dataset_status,
     set_dataset_status,
 )
 from .datum import (
@@ -21,6 +22,7 @@ from .evaluation import (
     create_or_get_evaluation,
     get_disjoint_labels_from_evaluation,
     set_evaluation_status,
+    check_for_active_evaluations,
 )
 from .geometry import convert_geometry
 from .groundtruth import create_groundtruth, get_groundtruth
@@ -41,6 +43,8 @@ from .model import (
     fetch_model,
     get_model,
     get_models,
+    get_model_status,
+    set_model_status,
 )
 from .prediction import create_prediction, get_prediction
 
@@ -54,6 +58,7 @@ __all__ = [
     "fetch_dataset",
     "get_dataset",
     "get_datasets",
+    "get_dataset_status",
     "set_dataset_status",
     "create_datum", 
     "fetch_datum", 
@@ -75,9 +80,12 @@ __all__ = [
     "fetch_model",
     "get_model",
     "get_models",
+    "get_model_status",
+    "set_model_status",
     "create_prediction",
     "get_prediction",
     "create_or_get_evaluation",
     "get_disjoint_labels_from_evaluation",
     "set_evaluation_status",
+    "check_for_active_evaluations",
 ]
