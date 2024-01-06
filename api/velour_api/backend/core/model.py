@@ -239,6 +239,16 @@ def delete_model(
         The name of the model.
     """
     model = fetch_model(db, name=name)
+    if check_for_active_evaluations(db=db, model_name=name):
+        raise exceptions.EvaluationRunningError(name)
+    
+    try:
+        model.status = enums.ModelStatus.DELETING
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
+
     try:
         db.delete(model)
         db.commit()

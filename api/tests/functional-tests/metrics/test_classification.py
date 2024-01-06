@@ -3,15 +3,14 @@ from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
 from velour_api.backend import models
-from velour_api.backend.core import create_or_get_evaluation
+from velour_api.backend.core import create_or_get_evaluation, get_evaluations
 from velour_api.backend.metrics.classification import (
     _compute_accuracy_from_cm,
     _compute_clf_metrics,
     _compute_confusion_matrix_at_label_key,
     _compute_roc_auc,
-    create_clf_metrics,
+    compute_clf_metrics,
 )
-from velour_api.backend.metrics.metric_utils import get_evaluations
 
 
 @pytest.fixture
@@ -444,13 +443,13 @@ def test_classification(
     )
 
     # creates evaluation job
-    job_id = create_or_get_evaluation(db, job_request)
+    evaluation_id = create_or_get_evaluation(db, job_request)
 
     # computation, normally run as background task
-    _ = create_clf_metrics(db, job_id)  # returns job_ud
+    _ = compute_clf_metrics(db=db, evaluation_id=evaluation_id)  # returns job_ud
 
     # get evaluations
-    evaluations = get_evaluations(db, job_ids=[job_id])
+    evaluations = get_evaluations(db, evaluation_ids=[evaluation_id])
 
     assert len(evaluations) == 1
     metrics = evaluations[0].metrics

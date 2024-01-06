@@ -20,12 +20,17 @@ from .core import (
     get_prediction,
     create_or_get_evaluation,
     get_disjoint_labels_from_evaluation,
+    set_dataset_status,
+    set_model_status,
+    set_evaluation_status,
+    get_dataset_status,
+    get_model_status,
+    get_evaluations,
 )
 from .metrics import (
-    create_clf_metrics,
-    create_detection_metrics,
-    create_semantic_segmentation_metrics,
-    get_evaluations,
+    compute_clf_metrics,
+    compute_detection_metrics,
+    compute_semantic_segmentation_metrics,
 )
 from .ops import Query
 
@@ -49,11 +54,16 @@ __all__ = [
     "get_joint_labels",
     "get_label_keys",
     "get_labels",
-    "create_clf_metrics",
-    "create_detection_metrics",
-    "create_semantic_segmentation_metrics",
+    "compute_clf_metrics",
+    "compute_detection_metrics",
+    "compute_semantic_segmentation_metrics",
     "get_evaluations",
     "Query",
     "create_or_get_evaluation",
     "get_disjoint_labels_from_evaluation",
+    "set_dataset_status",
+    "set_model_status",
+    "set_evaluation_status",
+    "get_dataset_status",
+    "get_model_status",
 ]

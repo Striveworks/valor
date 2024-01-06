@@ -1,13 +1,23 @@
 from sqlalchemy.orm import Session
 
-from velour_api.crud import stateflow
+from velour_api import enums
+from velour_api.backend import set_dataset_status, set_model_status
 
 
-@stateflow.finalize
 def finalize(*, db: Session, dataset_name: str, model_name: str = None):
     """
     Finalizes dataset and dataset/model pairings.
-
-    No logic is needed as this exists only for controlling state of the backend through the stateflow decorator.
     """
-    pass
+    if dataset_name and model_name:
+        set_model_status(
+            db=db,
+            dataset_name=dataset_name,
+            model_name=model_name,
+            status=enums.TableStatus.FINALIZED,
+        )
+    elif dataset_name:
+        set_dataset_status(
+            db=db,
+            name=dataset_name,
+            status=enums.TableStatus.FINALIZED,
+        )

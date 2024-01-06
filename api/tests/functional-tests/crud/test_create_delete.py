@@ -1068,12 +1068,12 @@ def test_create_detection_metrics(
         # run computation (returns nothing on completion)
         crud.compute_detection_metrics(
             db=db,
+            evaluation_id=resp.evaluation_id,
             job_request=job_request,
-            job_id=resp.job_id,
         )
 
         return (
-            resp.job_id,
+            resp.evaluation_id,
             resp.missing_pred_labels,
             resp.ignored_pred_labels,
         )
@@ -1115,7 +1115,7 @@ def test_create_detection_metrics(
     assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 5
 
     # test getting metrics from evaluation settings id
-    pydantic_metrics = crud.get_evaluations(db=db, job_ids=[evaluation_id])
+    pydantic_metrics = crud.get_evaluations(db=db, evaluation_ids=[evaluation_id])
     for m in pydantic_metrics[0].metrics:
         assert isinstance(m, schemas.Metric)
     assert len(pydantic_metrics[0].metrics) == len(metric_ids)
@@ -1137,7 +1137,7 @@ def test_create_detection_metrics(
     metrics_pydantic = crud.get_evaluations(
         db=db,
         model_names=["test_model"],
-        job_ids=[evaluation_id],
+        evaluation_ids=[evaluation_id],
     )[0].metrics
 
     assert len(metrics_pydantic) == len(metrics)
@@ -1161,7 +1161,7 @@ def test_create_detection_metrics(
     metrics_pydantic = crud.get_evaluations(
         db=db,
         model_names=["test_model"],
-        job_ids=[evaluation_id],
+        evaluation_ids=[evaluation_id],
     )[0].metrics
     for m in metrics_pydantic:
         assert m.type in {
@@ -1191,7 +1191,7 @@ def test_create_detection_metrics(
                 label_keys=["class"],
             ),
         ),
-        job_id=1,
+        evaluation_id=1,
         status=enums.JobStatus.DONE,
         metrics=[],
         confusion_matrices=[],
@@ -1220,7 +1220,7 @@ def test_create_detection_metrics(
                 label_keys=["class"],
             ),
         ),
-        job_id=2,
+        evaluation_id=2,
         status=enums.JobStatus.DONE,
         metrics=[],
         confusion_matrices=[],
@@ -1262,7 +1262,7 @@ def test_create_clf_metrics(
     )
     missing_pred_keys = resp.missing_pred_keys
     ignored_pred_keys = resp.ignored_pred_keys
-    evaluation_id = resp.job_id
+    evaluation_id = resp.evaluation_id
 
     assert missing_pred_keys == []
     assert set(ignored_pred_keys) == {"k3", "k4"}
@@ -1270,8 +1270,8 @@ def test_create_clf_metrics(
     # compute clf metrics
     crud.compute_clf_metrics(
         db=db,
+        evaluation_id=evaluation_id,
         job_request=job_request,
-        job_id=evaluation_id,
     )
 
     # check we have one evaluation
@@ -1317,7 +1317,7 @@ def test_create_clf_metrics(
     assert len(confusion_matrices) == 2
 
     # test getting metrics from evaluation settings id
-    pydantic_metrics = crud.get_evaluations(db=db, job_ids=[evaluation_id])
+    pydantic_metrics = crud.get_evaluations(db=db, evaluation_ids=[evaluation_id])
     for m in pydantic_metrics[0].metrics:
         assert isinstance(m, schemas.Metric)
     assert len(pydantic_metrics[0].metrics) == len(metrics)
@@ -1343,7 +1343,7 @@ def test_create_clf_metrics(
     crud.compute_clf_metrics(
         db=db,
         job_request=job_request,
-        job_id=evaluation_id,
+        evaluation_id=evaluation_id,
     )
     assert len(crud.get_evaluations(db=db, model_names=[model_name])) == 1
 

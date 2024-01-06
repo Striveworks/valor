@@ -970,8 +970,8 @@ def create_evaluation(
                 handler=background_tasks,
                 task=crud.compute_clf_metrics,
                 db=db,
+                evaluation_id=resp.job_id,
                 job_request=job_request,
-                job_id=resp.job_id,
             )
         elif job_request.task_type == enums.TaskType.DETECTION:
             resp = crud.create_detection_evaluation(
@@ -981,8 +981,8 @@ def create_evaluation(
                 handler=background_tasks,
                 task=crud.compute_detection_metrics,
                 db=db,
+                evaluation_id=resp.job_id,
                 job_request=job_request,
-                job_id=resp.job_id,
             )
         elif job_request.task_type == enums.TaskType.SEGMENTATION:
             resp = crud.create_semantic_segmentation_evaluation(
@@ -992,8 +992,8 @@ def create_evaluation(
                 handler=background_tasks,
                 task=crud.compute_semantic_segmentation_metrics,
                 db=db,
+                evaluation_id=resp.job_id,
                 job_request=job_request,
-                job_id=resp.job_id,
             )
         else:
             raise ValueError(

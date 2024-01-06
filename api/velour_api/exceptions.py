@@ -225,7 +225,7 @@ class DatumDoesNotBelongToDatasetError(Exception):
         )
 
 
-""" Misc. """
+""" Evaluation """
 
 
 class EvaluationDoesNotExistError(Exception):
@@ -246,16 +246,13 @@ class EvaluationAlreadyExistsError(Exception):
         super().__init__(f"Evaluation with provided settings already exists.")
 
 
-class GroundTruthAlreadyExistsError(Exception):
-    """Raises an exception if the user tries to create a `GroundTruth` that already exists."""
+class EvaluationRunningError(Exception):
+    """
+    Raises an exception if the user tries to modify a dataset or model while an evaluation is running.
+    """
 
-    pass
-
-
-class AnnotationAlreadyExistsError(Exception):
-    """Raises an exception if the user tries to create an `Annotation` that already exists."""
-
-    pass
+    def __init__(self, name: str):
+        super().__init__(f"User action on `{name}` is blocked by running evaluation(s).")
 
 
 """ Jobs """

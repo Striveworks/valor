@@ -1,11 +1,9 @@
 from sqlalchemy.orm import Session
 
 from velour_api import backend, enums, schemas, exceptions
-from velour_api.crud import stateflow
 from velour_api.crud._read import get_disjoint_keys, get_disjoint_labels
 
 
-@stateflow.create
 def create_dataset(*, db: Session, dataset: schemas.Dataset):
     """
     Creates a dataset.
@@ -25,7 +23,6 @@ def create_dataset(*, db: Session, dataset: schemas.Dataset):
     backend.create_dataset(db, dataset)
 
 
-@stateflow.create
 def create_model(*, db: Session, model: schemas.Model):
     """
     Creates a model.
@@ -45,7 +42,6 @@ def create_model(*, db: Session, model: schemas.Model):
     backend.create_model(db, model)
 
 
-@stateflow.create
 def create_groundtruth(
     *,
     db: Session,
@@ -64,7 +60,6 @@ def create_groundtruth(
     backend.create_groundtruth(db, groundtruth=groundtruth)
 
 
-@stateflow.create
 def create_prediction(
     *,
     db: Session,
@@ -83,7 +78,6 @@ def create_prediction(
     backend.create_prediction(db, prediction=prediction)
 
 
-@stateflow.evaluate
 def create_clf_evaluation(
     *,
     db: Session,
@@ -115,21 +109,20 @@ def create_clf_evaluation(
     )
 
     # create or get evaluation
-    job_id = backend.create_or_get_evaluation(db, job_request)
+    evaluation_id = backend.create_or_get_evaluation(db, job_request)
 
     # create response
     return schemas.CreateClfMetricsResponse(
         missing_pred_keys=missing_pred_keys,
         ignored_pred_keys=ignored_pred_keys,
-        job_id=job_id,
+        evaluation_id=evaluation_id,
     )
 
 
-@stateflow.evaluate
 def compute_clf_metrics(
     *,
     db: Session,
-    job_id: int,
+    evaluation_id: int,
     job_request: schemas.EvaluationJob,
 ):
     """
@@ -139,18 +132,17 @@ def compute_clf_metrics(
     ----------
     db : Session
         The database Session to query against.
-    job_id: int
+    evaluation_id: int
         The job id.
     job_request: schemas.EvaluationJob
         The evaluation job.
     """
-    backend.create_clf_metrics(
-        db,
-        job_id=job_id,
+    backend.compute_clf_metrics(
+        db=db,
+        evaluation_id=evaluation_id,
     )
 
 
-@stateflow.evaluate
 def create_semantic_segmentation_evaluation(
     *,
     db: Session,
@@ -184,22 +176,21 @@ def create_semantic_segmentation_evaluation(
     )
 
     # create or get evaluation
-    job_id = backend.create_or_get_evaluation(db, job_request)
+    evaluation_id = backend.create_or_get_evaluation(db, job_request)
 
     # create response
     return schemas.CreateSemanticSegmentationMetricsResponse(
         missing_pred_labels=missing_pred_labels,
         ignored_pred_labels=ignored_pred_labels,
-        job_id=job_id,
+        evaluation_id=evaluation_id,
     )
 
 
-@stateflow.evaluate
 def compute_semantic_segmentation_metrics(
     *,
     db: Session,
     job_request: schemas.EvaluationJob,
-    job_id: int,
+    evaluation_id: int,
 ):
     """
     Compute semantic segmentation metrics.
@@ -210,17 +201,16 @@ def compute_semantic_segmentation_metrics(
         The database Session to query against.
     job_request: schemas.EvaluationJob
         The evaluation job object.
-    job_id: int
+    evaluation_id: int
         The job id.
     """
-    backend.create_semantic_segmentation_metrics(
+    backend.compute_semantic_segmentation_metrics(
         db,
+        evaluation_id=evaluation_id,
         job_request=job_request,
-        job_id=job_id,
     )
 
 
-@stateflow.evaluate
 def create_detection_evaluation(
     *,
     db: Session,
@@ -246,22 +236,21 @@ def create_detection_evaluation(
     missing_pred_labels, ignored_pred_labels = backend.get_disjoint_labels_from_evaluation(db, job_request)
 
     # create or get evaluation
-    job_id = backend.create_or_get_evaluation(db, job_request)
+    evaluation_id = backend.create_or_get_evaluation(db, job_request)
 
     # create response
     return schemas.CreateDetectionMetricsResponse(
         missing_pred_labels=missing_pred_labels,
         ignored_pred_labels=ignored_pred_labels,
-        job_id=job_id,
+        evaluation_id=evaluation_id,
     )
 
 
-@stateflow.evaluate
 def compute_detection_metrics(
     *,
     db: Session,
     job_request: schemas.EvaluationJob,
-    job_id: int,
+    evaluation_id: int,
 ):
     """
     Compute detection metrics.
@@ -272,10 +261,10 @@ def compute_detection_metrics(
         The database Session to query against.
     job_request: schemas.EvaluationJob
         The evaluation job object.
-    job_id: int
+    evaluation_id: int
         The job id.
     """
-    backend.create_detection_metrics(
+    backend.compute_detection_metrics(
         db=db,
-        job_id=job_id,
+        evaluation_id=evaluation_id,
     )

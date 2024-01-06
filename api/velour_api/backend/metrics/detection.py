@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session, aliased
 
 from velour_api import enums, schemas
 from velour_api.backend import core, models
-from velour_api.backend.core.evaluation import _validate_evaluation_job
 from velour_api.backend.metrics.metric_utils import (
     create_metric_mappings,
     get_or_create_row,
+    computation_wrapper,
 )
 from velour_api.backend.ops import Query
 from velour_api.enums import AnnotationType
@@ -98,7 +98,7 @@ def _calculate_101_pt_interp(precisions, recalls) -> float:
     return ret / 101
 
 
-def compute_detection_metrics(
+def _compute_detection_metrics(
     db: Session,
     dataset: models.Dataset,
     model: models.Model,
@@ -422,9 +422,11 @@ def _compute_mean_detection_metrics_from_aps(
     return mean_detection_metrics
 
 
-def create_detection_metrics(
+@computation_wrapper
+def compute_detection_metrics(
+    *,
     db: Session,
-    job_id: int,
+    evaluation_id: int,
 ):
     """
     Create detection metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
@@ -433,11 +435,11 @@ def create_detection_metrics(
     ----------
     db : Session
         The database Session to query against.
-    job_id : int
+    evaluation_id : int
         The job ID to create metrics for.
     """
     evaluation = db.scalar(
-        select(models.Evaluation).where(models.Evaluation.id == job_id)
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     )
 
     # unpack job request
@@ -478,7 +480,7 @@ def create_detection_metrics(
         evaluation_target_type=target_type,
     )
 
-    metrics = compute_detection_metrics(
+    metrics = _compute_detection_metrics(
         db=db,
         dataset=dataset,
         model=model,
@@ -487,7 +489,7 @@ def create_detection_metrics(
     )
 
     metric_mappings = create_metric_mappings(
-        db=db, metrics=metrics, evaluation_id=job_id
+        db=db, metrics=metrics, evaluation_id=evaluation_id
     )
 
     for mapping in metric_mappings:

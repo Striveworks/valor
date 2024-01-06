@@ -8,6 +8,7 @@ from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
     create_metric_mappings,
     get_or_create_row,
+    computation_wrapper,
 )
 from velour_api.backend.ops import Query
 from velour_api.enums import TaskType
@@ -583,9 +584,11 @@ def _compute_clf_metrics(
     return confusion_matrices, metrics
 
 
-def create_clf_metrics(
+@computation_wrapper
+def compute_clf_metrics(
+    *,
     db: Session,
-    job_id: int,
+    evaluation_id: int,
 ) -> int:
     """
     Create classification metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
@@ -594,7 +597,7 @@ def create_clf_metrics(
     ----------
     db : Session
         The database Session to query against.
-    job_id : int
+    evaluation_id : int
         The job ID to create metrics for.
 
     Returns
@@ -603,7 +606,7 @@ def create_clf_metrics(
         The evaluation job id.
     """
     evaluation = db.scalar(
-        select(models.Evaluation).where(models.Evaluation.id == job_id)
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     )
 
     # unpack job request
@@ -653,4 +656,4 @@ def create_clf_metrics(
             columns_to_ignore=["value"],
         )
 
-    return job_id
+    return evaluation_id

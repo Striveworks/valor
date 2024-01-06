@@ -186,7 +186,11 @@ def delete_dataset(
     name : str
         The name of the dataset.
     """
+    if check_for_active_evaluations(db=db, model_name=name):
+        raise exceptions.EvaluationRunningError(name)
+    set_dataset_status(db, name, enums.TableStatus.DELETING)
     dataset = fetch_dataset(db, name=name)
+    
     try:
         db.delete(dataset)
         db.commit()

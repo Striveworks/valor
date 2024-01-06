@@ -439,7 +439,7 @@ def get_model_metrics(
 def get_evaluation_jobs(
     *,
     db: Session,
-    job_ids: list[int] | None = None,
+    evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
     settings: list[schemas.EvaluationSettings] | None = None,
@@ -451,7 +451,7 @@ def get_evaluation_jobs(
     ----------
     db : Session
         The database Session to query against.
-    job_ids : list[int]
+    evaluation_ids : list[int]
         A list of evaluation job id constraints.
     dataset_names | list[str]
         A list of dataset names to constrain by.
@@ -467,7 +467,7 @@ def get_evaluation_jobs(
     """
     return backend.get_evaluation_jobs(
         db=db,
-        job_ids=job_ids,
+        evaluation_ids=evaluation_ids,
         dataset_names=dataset_names,
         model_names=model_names,
         settings=settings,
@@ -477,7 +477,7 @@ def get_evaluation_jobs(
 def get_evaluations(
     *,
     db: Session,
-    job_ids: list[int] | None = None,
+    evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
     settings: list[schemas.EvaluationSettings] | None = None,
@@ -489,7 +489,7 @@ def get_evaluations(
     ----------
     db : Session
         The database Session to query against.
-    job_ids
+    evaluation_ids
         A list of evaluation job id constraints.
     dataset_names
         A list of dataset names to constrain by.
@@ -504,20 +504,10 @@ def get_evaluations(
         A list of evaluations.
     """
     # get evaluations that conform to input args
-    evaluations = backend.get_evaluations(
+    return backend.get_evaluations(
         db=db,
-        job_ids=job_ids,
+        evaluation_ids=evaluation_ids,
         dataset_names=dataset_names,
         model_names=model_names,
         settings=settings,
     )
-
-    # set evaluation status (redis only available in crud)
-    for evaluation in evaluations:
-        evaluation.status = get_status_from_names(
-            dataset_name=evaluation.dataset,
-            model_name=evaluation.model,
-            evaluation_id=evaluation.job_id,
-        )
-
-    return evaluations

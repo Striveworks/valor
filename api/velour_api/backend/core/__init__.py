@@ -20,7 +20,10 @@ from .datum import (
 )
 from .evaluation import (
     create_or_get_evaluation,
+    fetch_evaluation,
+    get_evaluations,
     get_disjoint_labels_from_evaluation,
+    get_evaluation_status,
     set_evaluation_status,
     check_for_active_evaluations,
 )
@@ -85,6 +88,9 @@ __all__ = [
     "create_prediction",
     "get_prediction",
     "create_or_get_evaluation",
+    "fetch_evaluation",
+    "get_evaluations",
+    "get_evaluation_status",
     "get_disjoint_labels_from_evaluation",
     "set_evaluation_status",
     "check_for_active_evaluations",
