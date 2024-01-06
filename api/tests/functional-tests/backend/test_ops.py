@@ -936,7 +936,7 @@ def test_multiple_tables_in_args(
     name_pairings = [
         (
             pair[1],
-            pair[5],
+            pair[6],
         )
         for pair in db.query(q).distinct().all()
     ]

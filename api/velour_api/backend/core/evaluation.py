@@ -95,7 +95,7 @@ def create_or_get_evaluation(
                 model_id=model.id,
                 task_type=job_request.task_type,
                 settings=job_request.settings.model_dump(),
-                status=enums.EvaluationStatus.CREATING,
+                status=enums.EvaluationStatus.PENDING,
             )
             db.add(evaluation)
             db.commit()
