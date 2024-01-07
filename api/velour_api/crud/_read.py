@@ -307,6 +307,52 @@ def get_datasets(
     return backend.get_datasets(db)
 
 
+def get_n_datums_in_dataset(db: Session, name: str) -> int:
+    """Returns a count of the number of datums in a dataset."""
+    return backend.get_n_datums_in_dataset(db, name)
+
+
+def get_n_groundtruth_bounding_boxes_in_dataset(db: Session, name: str) -> int:
+    """Returns a count of the number of groundtruth annotations in a dataset."""
+    return backend.get_n_groundtruth_bounding_boxes_in_dataset(db, name)
+
+
+def get_n_groundtruth_polygons_in_dataset(db: Session, name: str) -> int:
+    """Returns a count of the number of groundtruth annotations in a dataset."""
+    return backend.get_n_groundtruth_polygons_in_dataset(db, name)
+
+
+def get_n_groundtruth_multipolygons_in_dataset(db: Session, name: str) -> int:
+    """Returns a count of the number of groundtruth annotations in a dataset."""
+    return backend.get_n_groundtruth_multipolygons_in_dataset(db, name)
+
+
+def get_n_groundtruth_rasters_in_dataset(db: Session, name: str) -> int:
+    """Returns a count of the number of groundtruth annotations in a dataset."""
+    return backend.get_n_groundtruth_rasters_in_dataset(db, name)
+
+
+def get_unique_task_types_in_dataset(
+    db: Session, name: str
+) -> list[enums.TaskType]:
+    """Returns a list of unique task types in a dataset."""
+    return backend.get_unique_task_types_in_dataset(db, name)
+
+
+def get_unique_datum_metadata_in_dataset(db: Session, name: str) -> list[str]:
+    """Returns a list of unique metadata keys in a dataset."""
+    return backend.get_unique_datum_metadata_in_dataset(db, name)
+
+
+def get_unique_groundtruth_annotation_metadata_in_dataset(
+    db: Session, name: str
+) -> list[str]:
+    """Returns a list of unique metadata keys in a dataset."""
+    return backend.get_unique_groundtruth_annotation_metadata_in_dataset(
+        db, name
+    )
+
+
 def get_groundtruth(
     *,
     db: Session,

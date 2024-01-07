@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 from sqlalchemy.orm import Session
 
@@ -5,10 +6,63 @@ from velour_api import crud, enums, exceptions, schemas
 
 
 @pytest.fixture
-def groundtruth_detections(img1: schemas.Datum) -> list[schemas.GroundTruth]:
+def groundtruth_detections(
+    img1: schemas.Datum, img2: schemas.Datum
+) -> list[schemas.GroundTruth]:
     return [
         schemas.GroundTruth(
             datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k2", value="v2"),
+                    ],
+                    metadata={"int_key": 1},
+                    bounding_box=schemas.BoundingBox(
+                        polygon=schemas.BasicPolygon(
+                            points=[
+                                schemas.Point(x=10, y=20),
+                                schemas.Point(x=10, y=30),
+                                schemas.Point(x=20, y=30),
+                                schemas.Point(
+                                    x=20, y=20
+                                ),  # removed repeated first point
+                            ]
+                        )
+                    ),
+                ),
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[schemas.Label(key="k2", value="v2")],
+                    metadata={},
+                    polygon=schemas.Polygon(
+                        boundary=schemas.BasicPolygon(
+                            points=[
+                                schemas.Point(x=10, y=20),
+                                schemas.Point(x=10, y=30),
+                                schemas.Point(x=20, y=30),
+                            ]
+                        )
+                    ),
+                    bounding_box=schemas.BoundingBox(
+                        polygon=schemas.BasicPolygon(
+                            points=[
+                                schemas.Point(x=10, y=20),
+                                schemas.Point(x=10, y=30),
+                                schemas.Point(x=20, y=30),
+                                schemas.Point(
+                                    x=20, y=20
+                                ),  # removed repeated first point
+                            ]
+                        )
+                    ),
+                ),
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=img2,
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
@@ -29,26 +83,17 @@ def groundtruth_detections(img1: schemas.Datum) -> list[schemas.GroundTruth]:
                             ]
                         )
                     ),
-                ),
-                schemas.Annotation(
-                    task_type=enums.TaskType.DETECTION,
-                    labels=[schemas.Label(key="k2", value="v2")],
-                    metadata={},
-                    bounding_box=schemas.BoundingBox(
-                        polygon=schemas.BasicPolygon(
-                            points=[
-                                schemas.Point(x=10, y=20),
-                                schemas.Point(x=10, y=30),
-                                schemas.Point(x=20, y=30),
-                                schemas.Point(
-                                    x=20, y=20
-                                ),  # removed repeated first point
-                            ]
-                        )
+                    raster=schemas.Raster.from_numpy(
+                        np.zeros((80, 32), dtype=bool)
                     ),
                 ),
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[schemas.Label(key="k2", value="v2")],
+                    metadata={"string_key": "string_val", "int_key": 1},
+                ),
             ],
-        )
+        ),
     ]
 
 
@@ -223,7 +268,7 @@ def test_get_labels_from_dataset(
             ],
         ),
     )
-    assert ds1 == []
+    assert ds1 == [schemas.Label(key="k2", value="v2")]
 
     # POSITIVE - Test filter by task type
     ds1 = crud.get_dataset_labels(
@@ -249,7 +294,7 @@ def test_get_labels_from_dataset(
             ],
         ),
     )
-    assert ds1 == []
+    assert ds1 == [schemas.Label(key="k2", value="v2")]
 
     # POSITIVE - Test filter by annotation type
     ds1 = crud.get_dataset_labels(
@@ -331,3 +376,88 @@ def test_get_joint_labels(
             schemas.Label(key="k2", value="v2"),
         ]
     )
+
+
+def test_get_n_datums_in_dataset(
+    db: Session, dataset_names: list[str], dataset_model_create
+):
+    assert crud.get_n_datums_in_dataset(db=db, name=dataset_names[0]) == 2
+
+
+def test_get_n_groundtruth_bounding_boxes_in_dataset(
+    db: Session, dataset_names: list[str], dataset_model_create
+):
+    assert (
+        crud.get_n_groundtruth_bounding_boxes_in_dataset(
+            db=db, name=dataset_names[0]
+        )
+        == 3
+    )
+
+
+def test_get_n_groundtruth_polygons_in_dataset(
+    db: Session, dataset_names: list[str], dataset_model_create
+):
+    assert (
+        crud.get_n_groundtruth_polygons_in_dataset(
+            db=db, name=dataset_names[0]
+        )
+        == 1
+    )
+
+
+def test_get_n_groundtruth_multipolygons_in_dataset(
+    db: Session, dataset_names: list[str], dataset_model_create
+):
+    assert (
+        crud.get_n_groundtruth_multipolygons_in_dataset(
+            db=db, name=dataset_names[0]
+        )
+        == 0
+    )
+
+
+def test_get_n_groundtruth_rasters_in_dataset(
+    db: Session, dataset_names: list[str], dataset_model_create
+):
+    assert (
+        crud.get_n_groundtruth_rasters_in_dataset(db=db, name=dataset_names[0])
+        == 1
+    )
+
+
+def test_get_unique_task_types_in_dataset(
+    db: Session, dataset_names: list[str], dataset_model_create
+):
+    assert set(
+        crud.get_unique_task_types_in_dataset(db=db, name=dataset_names[0])
+    ) == set(
+        [enums.TaskType.DETECTION.value, enums.TaskType.CLASSIFICATION.value]
+    )
+
+
+def test_get_unique_datum_metadata_in_dataset(
+    db: Session, dataset_names: list[str], dataset_model_create
+):
+    unique_metadata = crud.get_unique_datum_metadata_in_dataset(
+        db=db, name=dataset_names[0]
+    )
+    unique_metadata.sort(key=lambda x: x["width"])
+    assert unique_metadata == [
+        {"width": 32.0, "height": 80.0},
+        {"width": 200.0, "height": 100.0},
+    ]
+
+
+def test_get_unique_groundtruth_annotation_metadata_in_dataset(
+    db: Session, dataset_names: list[str], dataset_model_create
+):
+    unique_metadata = (
+        crud.get_unique_groundtruth_annotation_metadata_in_dataset(
+            db=db, name=dataset_names[0]
+        )
+    )
+
+    assert len(unique_metadata) == 2
+    assert {"int_key": 1} in unique_metadata
+    assert {"string_key": "string_val", "int_key": 1} in unique_metadata
