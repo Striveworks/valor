@@ -1,7 +1,4 @@
 from ._create import (
-    compute_clf_metrics,
-    compute_detection_metrics,
-    compute_semantic_segmentation_metrics,
     create_clf_evaluation,
     create_dataset,
     create_detection_evaluation,
@@ -30,7 +27,12 @@ from ._read import (
     get_models,
     get_prediction,
 )
-from ._update import finalize
+from ._update import (
+    finalize,
+    compute_clf_metrics,
+    compute_detection_metrics,
+    compute_semantic_segmentation_metrics,
+)
 
 __all__ = [
     "create_dataset",

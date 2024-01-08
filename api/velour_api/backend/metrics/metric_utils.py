@@ -125,6 +125,13 @@ def computation_wrapper(fn: callable) -> callable:
         db = kwargs["db"]
         evaluation_id = int(kwargs["evaluation_id"])
 
+        # edge case - evaluation has already been run
+        if core.get_evaluation_status(db, evaluation_id) not in [
+            enums.EvaluationStatus.PENDING,
+            enums.EvaluationStatus.FAILED,
+        ]:
+            return evaluation_id            
+
         core.set_evaluation_status(db, evaluation_id, enums.EvaluationStatus.RUNNING)
         try:
             result = fn(*args, **kwargs)

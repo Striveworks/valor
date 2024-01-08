@@ -157,12 +157,12 @@ def set_dataset_status(
         return
     
     if status not in active_status.next():
-        raise exceptions.JobStateError(name, "Invalid dataset transition.")
+        raise exceptions.DatasetStateError(name, active_status, status)
     
     # TODO - write test for this after evaluation status is implemented
     if status == enums.TableStatus.DELETING:
         if check_for_active_evaluations(db=db, dataset_name=name):
-            raise exceptions.JobStateError(name, "Cannot delete dataset as evaluations are currently running.")
+            raise exceptions.EvaluationRunningError(dataset_name=name)
 
     try:
         dataset.status = status

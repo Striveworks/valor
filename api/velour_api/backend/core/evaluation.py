@@ -71,12 +71,12 @@ def _validate_request(
         _validate_filters(job_request=job_request)
 
 
-def create_or_get_evaluation(
+def create_evaluation(
     db: Session,
     job_request: schemas.EvaluationJob,
 ) -> int:
     """
-    Creates or gets an evaluation.
+    Creates an evaluation.
 
     Parameters
     ----------
@@ -89,6 +89,65 @@ def create_or_get_evaluation(
     -------
     int
         The id of the new evaluation.
+    """
+    if fetch_evaluation_from_job_request(db, job_request) is not None:
+        raise exceptions.EvaluationAlreadyExistsError() 
+
+    dataset = core.fetch_dataset(db, job_request.dataset)
+    model = core.fetch_model(db, job_request.model)
+
+    _validate_request(job_request, dataset, model)
+
+    try:
+        evaluation = models.Evaluation(
+            dataset_id=dataset.id,
+            model_id=model.id,
+            task_type=job_request.task_type,
+            settings=job_request.settings.model_dump(),
+            status=enums.EvaluationStatus.PENDING,
+        )
+        db.add(evaluation)
+        db.commit()
+        return evaluation.id
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.EvaluationAlreadyExistsError()
+
+
+def fetch_evaluation_from_id(
+    db: Session,
+    evaluation_id: int,
+) -> models.Evaluation:
+    """
+    Fetch evaluation from database.
+    """
+    evaluation = db.scalar(
+        select(models.Evaluation)
+        .where(models.Evaluation.id == evaluation_id)
+    )
+    if evaluation is None:
+        raise exceptions.EvaluationDoesNotExistError
+    return evaluation
+
+
+def fetch_evaluation_from_job_request(
+    db: Session,
+    job_request: schemas.EvaluationJob,
+):
+    """
+    Get the row model for an evaluation that matches the provided `EvaluationJob`.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_request : schemas.EvaluationJob
+        The evaluation job to create.
+
+    Returns
+    -------
+    models.Evaluation
+        The evaluation row.
     """
     dataset = core.fetch_dataset(db, job_request.dataset)
     model = core.fetch_model(db, job_request.model)
@@ -107,39 +166,30 @@ def create_or_get_evaluation(
         )
         .one_or_none()
     )
-
-    if evaluation is None:
-        try:
-            evaluation = models.Evaluation(
-                dataset_id=dataset.id,
-                model_id=model.id,
-                task_type=job_request.task_type,
-                settings=job_request.settings.model_dump(),
-                status=enums.EvaluationStatus.PENDING,
-            )
-            db.add(evaluation)
-            db.commit()
-        except IntegrityError:
-            db.rollback()
-            raise exceptions.EvaluationAlreadyExistsError()
-    
-    return evaluation.id
-
-
-def fetch_evaluation(
-    db: Session,
-    evaluation_id: int,
-) -> models.Evaluation:
-    """
-    Fetch evaluation from database.
-    """
-    evaluation = db.scalar(
-        select(models.Evaluation)
-        .where(models.Evaluation.id == evaluation_id)
-    )
-    if evaluation is None:
-        raise exceptions.EvaluationDoesNotExistError
     return evaluation
+
+
+def get_evaluation_id(
+    db: Session,
+    job_request: schemas.EvaluationJob,
+) -> int | None:
+    """
+    Get the id for an evaluation that matches the provided `EvaluationJob`.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_request : schemas.EvaluationJob
+        The evaluation job to create.
+
+    Returns
+    -------
+    int | None
+        The id of the matching evaluation. Returns None if one does not exist.
+    """
+    evaluation = fetch_evaluation_from_job_request(db, job_request)
+    return evaluation.id if evaluation else None
 
 
 def get_evaluations(
@@ -251,7 +301,7 @@ def get_evaluation_status(
     db : Session
 
     """
-    evaluation = fetch_evaluation(db, evaluation_id)
+    evaluation = fetch_evaluation_from_id(db, evaluation_id)
     return enums.EvaluationStatus(evaluation.status)
 
 
@@ -263,11 +313,11 @@ def set_evaluation_status(
     """
     Set the status of an evaluation.
     """
-    evaluation = fetch_evaluation(db, evaluation_id)
+    evaluation = fetch_evaluation_from_id(db, evaluation_id)
 
     current_status = enums.EvaluationStatus(evaluation.status)
     if status not in current_status.next():
-        raise exceptions.JobStateError(evaluation_id, "Requested illegal evaluation state transition.")
+        raise exceptions.EvaluationStateError(evaluation_id, current_status, status)
 
     try:
         evaluation.status = status

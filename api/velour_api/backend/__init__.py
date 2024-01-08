@@ -18,7 +18,7 @@ from .core import (
     get_model,
     get_models,
     get_prediction,
-    create_or_get_evaluation,
+    create_evaluation,
     get_disjoint_labels_from_evaluation,
     set_dataset_status,
     set_model_status,
@@ -26,6 +26,7 @@ from .core import (
     get_dataset_status,
     get_model_status,
     get_evaluations,
+    get_evaluation_id,
 )
 from .metrics import (
     compute_clf_metrics,
@@ -58,8 +59,9 @@ __all__ = [
     "compute_detection_metrics",
     "compute_semantic_segmentation_metrics",
     "get_evaluations",
+    "get_evaluation_id",
     "Query",
-    "create_or_get_evaluation",
+    "create_evaluation",
     "get_disjoint_labels_from_evaluation",
     "set_dataset_status",
     "set_model_status",

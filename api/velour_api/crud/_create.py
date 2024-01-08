@@ -109,7 +109,10 @@ def create_clf_evaluation(
     )
 
     # create or get evaluation
-    evaluation_id = backend.create_or_get_evaluation(db, job_request)
+    try:
+        evaluation_id = backend.create_evaluation(db, job_request)
+    except exceptions.EvaluationAlreadyExistsError:
+        evaluation_id = backend.get_evaluation_id(db, job_request)
 
     # create response
     return schemas.CreateClfMetricsResponse(
@@ -119,26 +122,40 @@ def create_clf_evaluation(
     )
 
 
-def compute_clf_metrics(
+def create_detection_evaluation(
     *,
     db: Session,
-    evaluation_id: int,
     job_request: schemas.EvaluationJob,
-):
+) -> schemas.CreateDetectionMetricsResponse:
     """
-    Compute classification metrics.
+    Creates a detection evaluation.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
-    evaluation_id: int
-        The job id.
     job_request: schemas.EvaluationJob
         The evaluation job.
+
+    Returns
+    ----------
+    schemas.CreateDetectionMetricsResponse
+        A detection metric response.
     """
-    backend.compute_clf_metrics(
-        db=db,
+
+    # get disjoint label sets
+    missing_pred_labels, ignored_pred_labels = backend.get_disjoint_labels_from_evaluation(db, job_request)
+
+    # create or get evaluation
+    try:
+        evaluation_id = backend.create_evaluation(db, job_request)
+    except exceptions.EvaluationAlreadyExistsError:
+        evaluation_id = backend.get_evaluation_id(db, job_request)
+
+    # create response
+    return schemas.CreateDetectionMetricsResponse(
+        missing_pred_labels=missing_pred_labels,
+        ignored_pred_labels=ignored_pred_labels,
         evaluation_id=evaluation_id,
     )
 
@@ -176,95 +193,14 @@ def create_semantic_segmentation_evaluation(
     )
 
     # create or get evaluation
-    evaluation_id = backend.create_or_get_evaluation(db, job_request)
+    try:
+        evaluation_id = backend.create_evaluation(db, job_request)
+    except exceptions.EvaluationAlreadyExistsError:
+        evaluation_id = backend.get_evaluation_id(db, job_request)
 
     # create response
     return schemas.CreateSemanticSegmentationMetricsResponse(
         missing_pred_labels=missing_pred_labels,
         ignored_pred_labels=ignored_pred_labels,
-        evaluation_id=evaluation_id,
-    )
-
-
-def compute_semantic_segmentation_metrics(
-    *,
-    db: Session,
-    job_request: schemas.EvaluationJob,
-    evaluation_id: int,
-):
-    """
-    Compute semantic segmentation metrics.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    job_request: schemas.EvaluationJob
-        The evaluation job object.
-    evaluation_id: int
-        The job id.
-    """
-    backend.compute_semantic_segmentation_metrics(
-        db,
-        evaluation_id=evaluation_id,
-        job_request=job_request,
-    )
-
-
-def create_detection_evaluation(
-    *,
-    db: Session,
-    job_request: schemas.EvaluationJob,
-) -> schemas.CreateDetectionMetricsResponse:
-    """
-    Creates a detection evaluation.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    job_request: schemas.EvaluationJob
-        The evaluation job.
-
-    Returns
-    ----------
-    schemas.CreateDetectionMetricsResponse
-        A detection metric response.
-    """
-
-    # get disjoint label sets
-    missing_pred_labels, ignored_pred_labels = backend.get_disjoint_labels_from_evaluation(db, job_request)
-
-    # create or get evaluation
-    evaluation_id = backend.create_or_get_evaluation(db, job_request)
-
-    # create response
-    return schemas.CreateDetectionMetricsResponse(
-        missing_pred_labels=missing_pred_labels,
-        ignored_pred_labels=ignored_pred_labels,
-        evaluation_id=evaluation_id,
-    )
-
-
-def compute_detection_metrics(
-    *,
-    db: Session,
-    job_request: schemas.EvaluationJob,
-    evaluation_id: int,
-):
-    """
-    Compute detection metrics.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    job_request: schemas.EvaluationJob
-        The evaluation job object.
-    evaluation_id: int
-        The job id.
-    """
-    backend.compute_detection_metrics(
-        db=db,
         evaluation_id=evaluation_id,
     )

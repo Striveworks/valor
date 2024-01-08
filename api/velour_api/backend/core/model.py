@@ -198,7 +198,7 @@ def set_model_status(
 
     # check if transition is valid
     if status not in model_status.next():
-        raise exceptions.JobStateError(model_name, f"Model state error with dataset `{dataset_name}`")
+        raise exceptions.ModelStateError(model_name, model_status, status)
     
     # verify model-dataset parity
     if (
@@ -213,7 +213,7 @@ def set_model_status(
     # TODO - write test for this after evaluation status is implemented
     elif status == enums.JobStatus.DELETING:
         if check_for_active_evaluations(db=db, model_name=model_name):
-            raise exceptions.JobStateError(model_name, "Cannot delete model as evaluations are currently running.")
+            raise exceptions.EvaluationRunningError(dataset_name=dataset_name, model_name=model_name)
         
     model = fetch_model(db, model_name)
     try:
