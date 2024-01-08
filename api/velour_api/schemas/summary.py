@@ -9,7 +9,7 @@ from .label import Label
 class DatasetSummary(BaseModel):
     name: str
     num_datums: int
-    # num_groundtruth_annotations: int
+    num_groundtruth_annotations: int
     num_groundtruth_bounding_boxes: int
     num_groundtruth_polygons: int
     num_groundtruth_multipolygons: int

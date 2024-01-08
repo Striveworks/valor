@@ -386,6 +386,14 @@ def test_get_n_datums_in_dataset(
     assert crud.get_n_datums_in_dataset(db=db, name=dataset_names[0]) == 2
 
 
+def test_get_n_groundtruth_annotations(
+    db: Session, dataset_names: list[str], dataset_model_create
+):
+    assert (
+        crud.get_n_groundtruth_annotations(db=db, name=dataset_names[0]) == 6
+    )
+
+
 def test_get_n_groundtruth_bounding_boxes_in_dataset(
     db: Session, dataset_names: list[str], dataset_model_create
 ):
@@ -471,6 +479,7 @@ def test_get_dataset_summary(
     summary = crud.get_dataset_summary(db=db, name=dataset_names[0])
     assert summary.name == dataset_names[0]
     assert summary.num_datums == 2
+    assert summary.num_groundtruth_annotations == 6
     assert summary.num_groundtruth_bounding_boxes == 3
     assert summary.num_groundtruth_polygons == 1
     assert summary.num_groundtruth_multipolygons == 0

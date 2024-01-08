@@ -667,7 +667,7 @@ class DatasetSummary:
 
     name: str
     num_datums: int
-    # num_groundtruth_annotations: int
+    num_groundtruth_annotations: int
     num_groundtruth_bounding_boxes: int
     num_groundtruth_polygons: int
     num_groundtruth_multipolygons: int
@@ -893,7 +893,32 @@ class Dataset:
         Returns
         -------
         DatasetSummary
-            The summary of the dataset.
+            The summary of the dataset. This class has the following fields:
+
+            name: name of the dataset
+
+            num_datums: total number of datums in the dataset
+
+            num_groundtruth_annotations: total number of labeled annotations in the dataset. if an
+            object (such as a bounding box) has multiple labels then each label is counted separately
+
+            num_groundtruth_bounding_boxes: total number of bounding boxes in the dataset
+
+            num_groundtruth_polygons: total number of polygons in the dataset
+
+            num_groundtruth_multipolygons: total number of multipolygons in the dataset
+
+            num_groundtruth_rasters: total number of rasters in the dataset
+
+            task_types: list of the unique task types in the dataset
+
+            labels: list of the unique labels in the dataset
+
+            datum_metadata: list of the unique metadata dictionaries in the dataset that are associated
+            to datums
+
+            groundtruth_annotation_metadata: list of the unique metadata dictionaries in the dataset that are
+            associated to annotations
         """
         resp = self.client._requests_get_rel_host(
             f"datasets/{self.name}/summary"

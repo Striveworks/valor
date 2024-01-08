@@ -79,6 +79,18 @@ def get_n_datums_in_dataset(db: Session, name: str) -> int:
     )
 
 
+def get_n_groundtruth_annotations(db: Session, name: str) -> int:
+    """Returns the number of groundtruth annotations in a dataset."""
+    return (
+        db.query(models.Annotation)
+        .join(models.GroundTruth)
+        .join(models.Datum)
+        .join(models.Dataset)
+        .where(models.Dataset.name == name)
+        .count()
+    )
+
+
 def get_n_groundtruth_bounding_boxes_in_dataset(db: Session, name: str) -> int:
     return (
         db.query(models.Annotation.id)
@@ -191,6 +203,7 @@ def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
     return schemas.DatasetSummary(
         name=name,
         num_datums=get_n_datums_in_dataset(db, name),
+        num_groundtruth_annotations=get_n_groundtruth_annotations(db, name),
         num_groundtruth_bounding_boxes=get_n_groundtruth_bounding_boxes_in_dataset(
             db, name
         ),

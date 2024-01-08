@@ -363,11 +363,14 @@ def test_get_summary(
     summary = dataset.get_summary()
     assert summary.name == dataset_name
     assert summary.num_datums == 2
+    assert summary.num_groundtruth_annotations == 2
     assert summary.num_groundtruth_bounding_boxes == 1
     assert summary.num_groundtruth_polygons == 0
     assert summary.num_groundtruth_multipolygons == 0
     assert summary.num_groundtruth_rasters == 1
     assert summary.task_types == [TaskType.DETECTION, TaskType.SEGMENTATION]
+
+    summary.labels.sort(key=lambda x: x.key)
     assert summary.labels == [
         Label(key="k1", value="v1"),
         Label(key="k2", value="v2"),

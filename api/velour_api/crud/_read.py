@@ -312,6 +312,11 @@ def get_n_datums_in_dataset(db: Session, name: str) -> int:
     return backend.get_n_datums_in_dataset(db, name)
 
 
+def get_n_groundtruth_annotations(db: Session, name: str) -> int:
+    """Returns a count of the number of groundtruth annotations in a dataset."""
+    return backend.get_n_groundtruth_annotations(db, name)
+
+
 def get_n_groundtruth_bounding_boxes_in_dataset(db: Session, name: str) -> int:
     """Returns a count of the number of groundtruth annotations in a dataset."""
     return backend.get_n_groundtruth_bounding_boxes_in_dataset(db, name)
