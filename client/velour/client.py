@@ -305,6 +305,11 @@ class Client:
         ).json()
         return JobStatus(resp)
 
+    def get_dataset_summary(self, dataset_name: str) -> dict:
+        return self._requests_get_rel_host(
+            f"datasets/{dataset_name}/summary"
+        ).json()
+
     def delete_dataset(self, name: str, timeout: int = 0) -> None:
         """
         Delete a dataset using FastAPI's `BackgroundProcess`.

@@ -920,9 +920,7 @@ class Dataset:
             groundtruth_annotation_metadata: list of the unique metadata dictionaries in the dataset that are
             associated to annotations
         """
-        resp = self.client._requests_get_rel_host(
-            f"datasets/{self.name}/summary"
-        ).json()
+        resp = self.client.get_dataset_summary(self.name)
         return DatasetSummary(**resp)
 
     def finalize(
