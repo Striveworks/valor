@@ -1,3 +1,5 @@
+import datetime
+
 from geoalchemy2 import Geography, Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
 from sqlalchemy import ForeignKey, UniqueConstraint
@@ -21,6 +23,10 @@ class Label(Base):
     )
     predictions: Mapped[list["Prediction"]] = relationship(
         back_populates="label"
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        default=func.now(), onupdate=func.now()
     )
 
     __table_args__ = (UniqueConstraint("key", "value"),)
@@ -56,6 +62,10 @@ class GroundTruth(Base):
         back_populates="groundtruths"
     )
     label: Mapped["Label"] = relationship(back_populates="groundtruths")
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        default=func.now(), onupdate=func.now()
+    )
 
 
 class Prediction(Base):
@@ -75,6 +85,10 @@ class Prediction(Base):
         back_populates="predictions"
     )
     label: Mapped["Label"] = relationship(back_populates="predictions")
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        default=func.now(), onupdate=func.now()
+    )
 
 
 class Annotation(Base):
@@ -109,6 +123,10 @@ class Annotation(Base):
     predictions: Mapped[list["Prediction"]] = relationship(
         cascade="all, delete-orphan"
     )
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        default=func.now(), onupdate=func.now()
+    )
 
 
 class Datum(Base):
@@ -130,6 +148,10 @@ class Datum(Base):
     annotations: Mapped[list[Annotation]] = relationship(
         cascade="all, delete-orphan"
     )
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        default=func.now(), onupdate=func.now()
+    )
 
 
 class Model(Base):
@@ -149,6 +171,10 @@ class Model(Base):
     evaluation: Mapped[list["Evaluation"]] = relationship(
         cascade="all, delete"
     )
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        default=func.now(), onupdate=func.now()
+    )
 
 
 class Dataset(Base):
@@ -163,6 +189,10 @@ class Dataset(Base):
     datums: Mapped[list[Datum]] = relationship(cascade="all, delete")
     evaluation: Mapped[list["Evaluation"]] = relationship(
         cascade="all, delete"
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        default=func.now(), onupdate=func.now()
     )
 
 
@@ -185,6 +215,10 @@ class Evaluation(Base):
     confusion_matrices: Mapped[list["ConfusionMatrix"]] = relationship(
         "ConfusionMatrix", cascade="all, delete"
     )
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        default=func.now(), onupdate=func.now()
+    )
 
 
 class Metric(Base):
@@ -204,6 +238,10 @@ class Metric(Base):
     settings: Mapped[Evaluation] = relationship(
         "Evaluation", back_populates="metrics"
     )
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        default=func.now(), onupdate=func.now()
+    )
 
 
 class ConfusionMatrix(Base):
@@ -217,4 +255,8 @@ class ConfusionMatrix(Base):
     # relationships
     settings: Mapped[Evaluation] = relationship(
         back_populates="confusion_matrices"
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
+    updated_at: Mapped[datetime.datetime] = mapped_column(
+        default=func.now(), onupdate=func.now()
     )
