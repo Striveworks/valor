@@ -1,40 +1,24 @@
 from enum import Enum
 
 
-class DataType(str, Enum):
-    IMAGE = "image"
-    TABULAR = "tabular"
-
-
 class AnnotationType(str, Enum):
     NONE = "none"
-    JSON = "json"
     BOX = "box"
     POLYGON = "polygon"
     MULTIPOLYGON = "multipolygon"
     RASTER = "raster"
 
-    def __hash__(self):
-        return hash(self.value)
-
     @property
     def numeric(self) -> int:
         mapping = {
             self.NONE: 0,
-            self.JSON: 1,
-            self.BOX: 2,
-            self.POLYGON: 3,
-            self.MULTIPOLYGON: 4,
-            self.RASTER: 5,
+            self.BOX: 1,
+            self.POLYGON: 2,
+            self.MULTIPOLYGON: 3,
+            self.RASTER: 4,
         }
         return mapping[self]
 
-    def __eq__(self, other):
-        if not isinstance(other, type(self)):
-            raise TypeError(
-                "operator can only be used with other `velour_api.enums.AnnotationType` objects"
-            )
-        return self.numeric == other.numeric
 
     def __gt__(self, other):
         if not isinstance(other, type(self)):
