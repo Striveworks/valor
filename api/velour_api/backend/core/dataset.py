@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.label import get_groundtruth_labels_in_dataset
+from velour_api.backend.core.label import get_labels
 
 
 def create_dataset(
@@ -200,6 +200,11 @@ def get_unique_groundtruth_annotation_metadata_in_dataset(
 
 
 def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
+    gt_labels = get_labels(
+        db,
+        schemas.Filter(dataset_names=[name]),
+        ignore_predictions=True,
+    )
     return schemas.DatasetSummary(
         name=name,
         num_datums=get_n_datums_in_dataset(db, name),
@@ -213,7 +218,7 @@ def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
         ),
         num_rasters=get_n_groundtruth_rasters_in_dataset(db, name),
         task_types=get_unique_task_types_in_dataset(db, name),
-        labels=get_groundtruth_labels_in_dataset(db, name),
+        labels=gt_labels,
         datum_metadata=get_unique_datum_metadata_in_dataset(db, name),
         annotation_metadata=get_unique_groundtruth_annotation_metadata_in_dataset(
             db, name
