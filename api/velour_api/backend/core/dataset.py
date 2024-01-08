@@ -152,13 +152,13 @@ def set_dataset_status(
     """
     dataset = fetch_dataset(db, name)
     active_status = enums.TableStatus(dataset.status)
-    
+
     if status == active_status:
         return
-    
+
     if status not in active_status.next():
         raise exceptions.DatasetStateError(name, active_status, status)
-    
+
     # TODO - write test for this after evaluation status is implemented
     if status == enums.TableStatus.DELETING:
         if check_for_active_evaluations(db=db, dataset_name=name):
@@ -190,7 +190,7 @@ def delete_dataset(
         raise exceptions.EvaluationRunningError(name)
     set_dataset_status(db, name, enums.TableStatus.DELETING)
     dataset = fetch_dataset(db, name=name)
-    
+
     try:
         db.delete(dataset)
         db.commit()

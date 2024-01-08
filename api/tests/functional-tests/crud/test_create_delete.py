@@ -1116,7 +1116,9 @@ def test_create_detection_metrics(
     assert len(set(m.label_id for m in metrics if m.label_id is not None)) == 5
 
     # test getting metrics from evaluation settings id
-    pydantic_metrics = crud.get_evaluations(db=db, evaluation_ids=[evaluation_id])
+    pydantic_metrics = crud.get_evaluations(
+        db=db, evaluation_ids=[evaluation_id]
+    )
     for m in pydantic_metrics[0].metrics:
         assert isinstance(m, schemas.Metric)
     assert len(pydantic_metrics[0].metrics) == len(metric_ids)
@@ -1318,7 +1320,9 @@ def test_create_clf_metrics(
     assert len(confusion_matrices) == 2
 
     # test getting metrics from evaluation settings id
-    pydantic_metrics = crud.get_evaluations(db=db, evaluation_ids=[evaluation_id])
+    pydantic_metrics = crud.get_evaluations(
+        db=db, evaluation_ids=[evaluation_id]
+    )
     for m in pydantic_metrics[0].metrics:
         assert isinstance(m, schemas.Metric)
     assert len(pydantic_metrics[0].metrics) == len(metrics)

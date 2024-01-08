@@ -5,8 +5,13 @@ import warnings
 from dataclasses import asdict
 from typing import Dict, List, Tuple, Union
 
-from velour.client import Client, ClientException, DeletionJob, wait_for_predicate
-from velour.enums import AnnotationType, TableStatus, EvaluationStatus, TaskType
+from velour.client import (
+    Client,
+    ClientException,
+    DeletionJob,
+    wait_for_predicate,
+)
+from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import (
     DetectionParameters,
@@ -720,10 +725,7 @@ class Dataset:
         self.id = id
         self._validate()
 
-        if (
-            delete_if_exists
-            and client.get_dataset(name) is None
-        ):
+        if delete_if_exists and client.get_dataset(name) is None:
             client.delete_dataset(name, timeout=30)
 
         if client.get_dataset(name) is None:
@@ -927,7 +929,8 @@ class Evaluation:
     ) -> EvaluationResult:
         return wait_for_predicate(
             lambda: self.get_result(),
-            lambda result: result.status in [EvaluationStatus.DONE, EvaluationStatus.FAILED],
+            lambda result: result.status
+            in [EvaluationStatus.DONE, EvaluationStatus.FAILED],
             timeout,
             interval,
         )
@@ -992,10 +995,7 @@ class Model:
         self.id = id
         self._validate()
 
-        if (
-            delete_if_exists
-            and client.get_model(name) is None
-        ):
+        if delete_if_exists and client.get_model(name) is None:
             client.delete_model(name, timeout=30)
 
         if client.get_model(name) is None:

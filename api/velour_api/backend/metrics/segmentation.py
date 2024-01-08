@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import Select, func, select
 
 from velour_api import enums, schemas
-from velour_api.backend import core, models
+from velour_api.backend import models
 from velour_api.backend.metrics.metric_utils import (
+    computation_wrapper,
     create_metric_mappings,
     get_or_create_row,
-    computation_wrapper,
 )
 from velour_api.backend.ops import Query
 from velour_api.schemas.metrics import EvaluationJob, IOUMetric, mIOUMetric
@@ -232,7 +232,9 @@ def compute_semantic_segmentation_metrics(
 
     # check evaluation type
     if job_request.task_type != enums.TaskType.SEGMENTATION:
-        raise ValueError(f"Cannot run segmentation evaluation on task with type `{job_request.task_type}`.")
+        raise ValueError(
+            f"Cannot run segmentation evaluation on task with type `{job_request.task_type}`."
+        )
 
     # configure filters
     if not job_request.settings.filters:

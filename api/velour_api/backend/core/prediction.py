@@ -4,7 +4,7 @@ from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import schemas, enums, exceptions
+from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
 
 
@@ -29,7 +29,9 @@ def create_prediction(
         model_name=prediction.model,
     )
     if model_status != enums.TableStatus.CREATING:
-        raise exceptions.ModelFinalizedError(dataset_name=prediction.datum.dataset, model_name=prediction.model)
+        raise exceptions.ModelFinalizedError(
+            dataset_name=prediction.datum.dataset, model_name=prediction.model
+        )
 
     # retrieve existing table entries
     model = core.fetch_model(db, name=prediction.model)
@@ -58,10 +60,7 @@ def create_prediction(
     label_idx = 0
     prediction_list = []
     for i, annotation in enumerate(prediction.annotations):
-        indices = slice(
-            label_idx, 
-            label_idx + len(annotation.labels)
-        )
+        indices = slice(label_idx, label_idx + len(annotation.labels))
         for j, label in enumerate(label_list[indices]):
             prediction_list.append(
                 models.Prediction(

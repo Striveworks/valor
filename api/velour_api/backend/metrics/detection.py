@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session, aliased
 from velour_api import enums, schemas
 from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
+    computation_wrapper,
     create_metric_mappings,
     get_or_create_row,
-    computation_wrapper,
 )
 from velour_api.backend.ops import Query
 from velour_api.enums import AnnotationType
@@ -453,7 +453,9 @@ def compute_detection_metrics(
 
     # check evaluation type
     if job_request.task_type != enums.TaskType.DETECTION:
-        raise ValueError(f"Cannot run detection evaluation on task with type `{job_request.task_type}`.")
+        raise ValueError(
+            f"Cannot run detection evaluation on task with type `{job_request.task_type}`."
+        )
 
     # configure filters
     if not job_request.settings.filters:

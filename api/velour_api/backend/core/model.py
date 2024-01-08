@@ -1,21 +1,19 @@
 import json
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import select, and_, func
+from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import exceptions, schemas, enums
+from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.dataset import fetch_dataset, get_dataset_status
 from velour_api.backend.core.annotation import create_skipped_annotations
+from velour_api.backend.core.dataset import fetch_dataset, get_dataset_status
 from velour_api.backend.core.evaluation import check_for_active_evaluations
 
 
 def _count_disjoint_datums(
-    db: Session,
-    dataset_name: str,
-    model_name: str
+    db: Session, dataset_name: str, model_name: str
 ) -> int:
     """
     Count all datums that the model has not provided predictions for.
@@ -111,9 +109,7 @@ def fetch_model(
 
 
 def fetch_disjoint_datums(
-    db: Session,
-    dataset_name: str,
-    model_name: str
+    db: Session, dataset_name: str, model_name: str
 ) -> list[models.Datum]:
     """
     Fetch all datums that the model has not provided predictions for.
@@ -230,7 +226,7 @@ def get_model_status(
     model = fetch_model(db, model_name)
     if model.status == enums.ModelStatus.DELETING:
         return enums.TableStatus.DELETING
-    
+
     # check dataset status
     dataset_status = get_dataset_status(db, dataset_name)
     if dataset_status == enums.TableStatus.DELETING:
@@ -239,13 +235,15 @@ def get_model_status(
         return enums.TableStatus.CREATING
 
     # check if model maps to all datums in the dataset
-    number_of_disjoint_datums = _count_disjoint_datums(db, dataset_name, model_name)
+    number_of_disjoint_datums = _count_disjoint_datums(
+        db, dataset_name, model_name
+    )
 
     if number_of_disjoint_datums != 0:
         return enums.TableStatus.CREATING
     else:
         return enums.TableStatus.FINALIZED
-    
+
 
 def set_model_status(
     db: Session,
@@ -263,13 +261,13 @@ def set_model_status(
     model_status = get_model_status(db, dataset_name, model_name)
     if status == model_status:
         return
-    
+
     model = fetch_model(db, model_name)
 
     # check if transition is valid
     if status not in model_status.next():
         raise exceptions.ModelStateError(model_name, model_status, status)
-    
+
     # verify model-dataset parity
     if (
         model_status == enums.TableStatus.CREATING
@@ -287,8 +285,10 @@ def set_model_status(
     # TODO - write test for this after evaluation status is implemented
     elif status == enums.TableStatus.DELETING:
         if check_for_active_evaluations(db=db, model_name=model_name):
-            raise exceptions.EvaluationRunningError(dataset_name=dataset_name, model_name=model_name)
-        
+            raise exceptions.EvaluationRunningError(
+                dataset_name=dataset_name, model_name=model_name
+            )
+
     try:
         model.status = status
         db.commit()
@@ -314,7 +314,7 @@ def delete_model(
     model = fetch_model(db, name=name)
     if check_for_active_evaluations(db=db, model_name=name):
         raise exceptions.EvaluationRunningError(name)
-    
+
     try:
         model.status = enums.ModelStatus.DELETING
         db.commit()

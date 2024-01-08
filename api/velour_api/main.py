@@ -788,7 +788,9 @@ def get_model_status(
         If the model doesn't exist.
     """
     try:
-        return crud.get_table_status(db=db, dataset_name=dataset_name, model_name=model_name)
+        return crud.get_table_status(
+            db=db, dataset_name=dataset_name, model_name=model_name
+        )
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 

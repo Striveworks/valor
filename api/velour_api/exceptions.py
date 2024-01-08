@@ -1,6 +1,5 @@
 from velour_api import enums
 
-
 """ Dataset """
 
 
@@ -84,7 +83,7 @@ class DatasetStateError(Exception):
     """
     Raise an exception if a requested state transition is illegal.
 
-    This is a catch-all exception, if it is called regularly a more specific 
+    This is a catch-all exception, if it is called regularly a more specific
     exception should be defined.
 
     Parameters
@@ -103,7 +102,9 @@ class DatasetStateError(Exception):
         current_state: enums.TableStatus,
         requested_state: enums.TableStatus,
     ):
-        super().__init__(f"Dataset `{dataset_name}` attempted an illegal transition from `{current_state}` to `{requested_state}`.")
+        super().__init__(
+            f"Dataset `{dataset_name}` attempted an illegal transition from `{current_state}` to `{requested_state}`."
+        )
 
 
 """ Model """
@@ -209,7 +210,7 @@ class ModelStateError(Exception):
     """
     Raise an exception if a requested state transition is illegal.
 
-    This is a catch-all exception, if it is called regularly a more specific 
+    This is a catch-all exception, if it is called regularly a more specific
     exception should be defined.
 
     Parameters
@@ -228,7 +229,9 @@ class ModelStateError(Exception):
         current_state: enums.TableStatus,
         requested_state: enums.TableStatus,
     ):
-        super().__init__(f"Model `{model_name}` attempted an illegal transition from `{current_state}` to `{requested_state}`.")
+        super().__init__(
+            f"Model `{model_name}` attempted an illegal transition from `{current_state}` to `{requested_state}`."
+        )
 
 
 """ Datum """
@@ -294,7 +297,9 @@ class AnnotationAlreadyExistsError(Exception):
     """
 
     def __init__(self, datum_uid: str):
-        super().__init__(f"Annotation(s) for datum with uid: `{datum_uid}` already exist.")
+        super().__init__(
+            f"Annotation(s) for datum with uid: `{datum_uid}` already exist."
+        )
 
 
 """ Evaluation """
@@ -306,7 +311,7 @@ class EvaluationDoesNotExistError(Exception):
     """
 
     def __init__(self):
-        super().__init__(f"Evaluation does not exist.")
+        super().__init__("Evaluation does not exist.")
 
 
 class EvaluationAlreadyExistsError(Exception):
@@ -315,7 +320,7 @@ class EvaluationAlreadyExistsError(Exception):
     """
 
     def __init__(self):
-        super().__init__(f"Evaluation with provided settings already exists.")
+        super().__init__("Evaluation with provided settings already exists.")
 
 
 class EvaluationRunningError(Exception):
@@ -323,7 +328,9 @@ class EvaluationRunningError(Exception):
     Raises an exception if the user tries to modify a dataset or model while an evaluation is running.
     """
 
-    def __init__(self, dataset_name: str | None = None, model_name: str | None = None):
+    def __init__(
+        self, dataset_name: str | None = None, model_name: str | None = None
+    ):
         if dataset_name and model_name:
             msg = f"User action on model `{model_name}` and dataset `{dataset_name}` is blocked by at least one running evaluation."
         elif dataset_name:
@@ -339,7 +346,7 @@ class EvaluationStateError(Exception):
     """
     Raises an exception if a requested state transition is illegal.
 
-    This is a catch-all exception, if it is called regularly a more specific 
+    This is a catch-all exception, if it is called regularly a more specific
     exception should be defined.
 
     Parameters
@@ -358,4 +365,6 @@ class EvaluationStateError(Exception):
         current_state: enums.EvaluationStatus,
         requested_state: enums.EvaluationStatus,
     ):
-        super().__init__(f"Evaluation `{evaluation_id}` attempted an illegal transition from `{current_state}` to `{requested_state}`.")
+        super().__init__(
+            f"Evaluation `{evaluation_id}` attempted an illegal transition from `{current_state}` to `{requested_state}`."
+        )

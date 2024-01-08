@@ -440,9 +440,9 @@ def test_add_empty_prediction(
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
-                    labels=[Label(key="k1", value="v1")]
+                    labels=[Label(key="k1", value="v1")],
                 )
-            ]
+            ],
         )
     )
     dataset.finalize()
@@ -491,9 +491,9 @@ def test_add_skipped_prediction(
             annotations=[
                 Annotation(
                     task_type=TaskType.CLASSIFICATION,
-                    labels=[Label(key="k1", value="v1")]
+                    labels=[Label(key="k1", value="v1")],
                 )
-            ]
+            ],
         )
     )
     dataset.finalize()

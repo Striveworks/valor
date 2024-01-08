@@ -1,12 +1,11 @@
-import pytest
-
-from velour_api import enums, schemas
+from velour_api import schemas
 from velour_api.backend.metrics.detection import (
     RankedPair,
     _ap,
     _calculate_101_pt_interp,
     _compute_mean_detection_metrics_from_aps,
 )
+
 
 def truncate_float(x: float) -> str:
     return f"{int(x)}.{int((x - int(x)) * 100)}"

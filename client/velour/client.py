@@ -90,11 +90,12 @@ class ClientException(Exception):
 
     status_code: int
     detail: str
-    
+
     def __init__(self, resp):
         self.detail = resp.json()["detail"]
         self.status_code = resp.status_code
         super().__init__(str(self.detail))
+
 
 class Client:
     """
@@ -552,7 +553,7 @@ class DeletionJob:
         """
         wait_for_predicate(
             lambda: self.completed(),
-            lambda status: status == True,
+            lambda status: status is True,
             timeout,
             interval,
         )

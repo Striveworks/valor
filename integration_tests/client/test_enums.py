@@ -41,4 +41,3 @@ def test_table_status_enum():
     assert _enum_to_dict(enums.TableStatus) == _enum_to_dict(
         backend_enums.TableStatus
     )
-

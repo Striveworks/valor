@@ -446,7 +446,9 @@ def test_classification(
     evaluation_id = create_evaluation(db, job_request)
 
     # computation, normally run as background task
-    _ = compute_clf_metrics(db=db, evaluation_id=evaluation_id)  # returns job_ud
+    _ = compute_clf_metrics(
+        db=db, evaluation_id=evaluation_id
+    )  # returns job_ud
 
     # get evaluations
     evaluations = get_evaluations(db, evaluation_ids=[evaluation_id])

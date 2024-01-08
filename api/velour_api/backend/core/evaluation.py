@@ -1,10 +1,12 @@
-from sqlalchemy import select, and_, or_, func
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
-from velour_api.backend import models, core
-from velour_api.backend.metrics.metric_utils import _db_metric_to_pydantic_metric
+from velour_api.backend import core, models
+from velour_api.backend.metrics.metric_utils import (
+    _db_metric_to_pydantic_metric,
+)
 
 
 def _validate_filters(job_request: schemas.EvaluationJob):
@@ -37,7 +39,9 @@ def _validate_request(
 ):
     # validate type
     if not isinstance(job_request, schemas.EvaluationJob):
-        raise TypeError(f"Expected `schemas.EvaluationJob`, received `{type(job_request)}`")
+        raise TypeError(
+            f"Expected `schemas.EvaluationJob`, received `{type(job_request)}`"
+        )
 
     # verify dataset status
     match dataset.status:
@@ -92,7 +96,7 @@ def create_evaluation(
     """
     if fetch_evaluation_from_job_request(db, job_request) is not None:
         raise exceptions.EvaluationAlreadyExistsError()
-    
+
     match core.get_dataset_status(db, job_request.dataset):
         case enums.TableStatus.CREATING:
             raise exceptions.DatasetNotFinalizedError(job_request.dataset)
@@ -101,9 +105,13 @@ def create_evaluation(
         case _:
             pass
 
-    match core.get_model_status(db=db, dataset_name=job_request.dataset, model_name=job_request.model):
+    match core.get_model_status(
+        db=db, dataset_name=job_request.dataset, model_name=job_request.model
+    ):
         case enums.TableStatus.CREATING:
-            raise exceptions.ModelNotFinalizedError(dataset_name=job_request.dataset, model_name=job_request.model)
+            raise exceptions.ModelNotFinalizedError(
+                dataset_name=job_request.dataset, model_name=job_request.model
+            )
         case enums.TableStatus.DELETING | None:
             raise exceptions.ModelDoesNotExistError(job_request.model)
         case _:
@@ -137,8 +145,7 @@ def fetch_evaluation_from_id(
     Fetch evaluation from database.
     """
     evaluation = db.scalar(
-        select(models.Evaluation)
-        .where(models.Evaluation.id == evaluation_id)
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     )
     if evaluation is None:
         raise exceptions.EvaluationDoesNotExistError
@@ -176,7 +183,8 @@ def fetch_evaluation_from_job_request(
                 models.Evaluation.dataset_id == dataset.id,
                 models.Evaluation.model_id == model.id,
                 models.Evaluation.task_type == job_request.task_type,
-                models.Evaluation.settings == job_request.settings.model_dump(),
+                models.Evaluation.settings
+                == job_request.settings.model_dump(),
             )
         )
         .one_or_none()
@@ -235,7 +243,9 @@ def get_evaluations(
     """
 
     # argument expressions
-    expr_evaluation_ids = models.Evaluation.id.in_(evaluation_ids) if evaluation_ids else None
+    expr_evaluation_ids = (
+        models.Evaluation.id.in_(evaluation_ids) if evaluation_ids else None
+    )
     expr_datasets = (
         models.Dataset.name.in_(dataset_names) if dataset_names else None
     )
@@ -251,7 +261,12 @@ def get_evaluations(
     # aggregate valid expressions
     expressions = [
         expr
-        for expr in [expr_evaluation_ids, expr_datasets, expr_models, expr_settings]
+        for expr in [
+            expr_evaluation_ids,
+            expr_datasets,
+            expr_models,
+            expr_settings,
+        ]
         if expr is not None
     ]
 
@@ -332,7 +347,9 @@ def set_evaluation_status(
 
     current_status = enums.EvaluationStatus(evaluation.status)
     if status not in current_status.next():
-        raise exceptions.EvaluationStateError(evaluation_id, current_status, status)
+        raise exceptions.EvaluationStateError(
+            evaluation_id, current_status, status
+        )
 
     try:
         evaluation.status = status
@@ -371,7 +388,7 @@ def _get_annotation_types_for_computation(
                 f"Annotation type filter is too restrictive. Attempted filter `{greatest_common_type}` over `{groundtruth_type, prediction_type}`."
             )
     return groundtruth_type, prediction_type
-    
+
 
 def get_disjoint_labels_from_evaluation(
     db: Session,
@@ -387,16 +404,16 @@ def get_disjoint_labels_from_evaluation(
     if not job_request.settings.filters:
         filters = schemas.Filter()
     else:
-        _validate_request(job_request=job_request, dataset=dataset, model=model)
+        _validate_request(
+            job_request=job_request, dataset=dataset, model=model
+        )
         filters = job_request.settings.filters.model_copy()
 
     # determine annotation types
     (
         groundtruth_type,
         prediction_type,
-    ) = _get_annotation_types_for_computation(
-        db, dataset, model, filters
-    )
+    ) = _get_annotation_types_for_computation(db, dataset, model, filters)
 
     # create groundtruth label filter
     groundtruth_label_filter = filters.model_copy()
@@ -454,16 +471,12 @@ def check_for_active_evaluations(
         select(func.count())
         .select_from(models.Evaluation)
         .join(
-            models.Dataset,
-            models.Dataset.id == models.Evaluation.dataset_id
+            models.Dataset, models.Dataset.id == models.Evaluation.dataset_id
         )
-        .join(
-            models.Model,
-            models.Model.id == models.Evaluation.model_id
-        )
+        .join(models.Model, models.Model.id == models.Evaluation.model_id)
         .where(
             or_(
-                models.Evaluation.status == enums.EvaluationStatus.PENDING,    
+                models.Evaluation.status == enums.EvaluationStatus.PENDING,
                 models.Evaluation.status == enums.EvaluationStatus.RUNNING,
             ),
             *expr,

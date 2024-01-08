@@ -6,9 +6,9 @@ from sqlalchemy.sql import and_, func, select
 from velour_api import schemas
 from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
+    computation_wrapper,
     create_metric_mappings,
     get_or_create_row,
-    computation_wrapper,
 )
 from velour_api.backend.ops import Query
 from velour_api.enums import TaskType
@@ -620,7 +620,9 @@ def compute_clf_metrics(
 
     # check evaluation type
     if job_request.task_type != TaskType.CLASSIFICATION:
-        raise ValueError(f"Cannot run classification evaluation on task with type `{job_request.task_type}`.")
+        raise ValueError(
+            f"Cannot run classification evaluation on task with type `{job_request.task_type}`."
+        )
 
     # configure filters
     if not job_request.settings.filters:

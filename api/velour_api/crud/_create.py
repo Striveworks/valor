@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from velour_api import backend, enums, schemas, exceptions
+from velour_api import backend, enums, exceptions, schemas
 from velour_api.crud._read import get_disjoint_keys, get_disjoint_labels
 
 
@@ -144,7 +144,10 @@ def create_detection_evaluation(
     """
 
     # get disjoint label sets
-    missing_pred_labels, ignored_pred_labels = backend.get_disjoint_labels_from_evaluation(db, job_request)
+    (
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = backend.get_disjoint_labels_from_evaluation(db, job_request)
 
     # create or get evaluation
     try:

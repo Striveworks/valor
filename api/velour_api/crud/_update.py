@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from velour_api import enums, backend, schemas
+from velour_api import backend, enums, schemas
 from velour_api.backend import set_dataset_status, set_model_status
 
 
@@ -69,7 +69,6 @@ def compute_detection_metrics(
         db=db,
         evaluation_id=evaluation_id,
     )
-
 
 
 def compute_semantic_segmentation_metrics(

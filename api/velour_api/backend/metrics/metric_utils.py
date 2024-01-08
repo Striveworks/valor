@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from velour_api import schemas, enums
+from velour_api import enums, schemas
 from velour_api.backend import core, models
 
 
@@ -118,9 +118,13 @@ def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
 def computation_wrapper(fn: callable) -> callable:
     def wrapper(*args, **kwargs):
         if "db" not in kwargs:
-            raise RuntimeError("This decorator requires `db` to be explicitly defined in kwargs.")
+            raise RuntimeError(
+                "This decorator requires `db` to be explicitly defined in kwargs."
+            )
         if "evaluation_id" not in kwargs:
-            raise RuntimeError("This decorator requires `evaluation_id` to be explicitly defined in kwargs.")
+            raise RuntimeError(
+                "This decorator requires `evaluation_id` to be explicitly defined in kwargs."
+            )
 
         db = kwargs["db"]
         evaluation_id = int(kwargs["evaluation_id"])
@@ -130,14 +134,21 @@ def computation_wrapper(fn: callable) -> callable:
             enums.EvaluationStatus.PENDING,
             enums.EvaluationStatus.FAILED,
         ]:
-            return evaluation_id            
+            return evaluation_id
 
-        core.set_evaluation_status(db, evaluation_id, enums.EvaluationStatus.RUNNING)
+        core.set_evaluation_status(
+            db, evaluation_id, enums.EvaluationStatus.RUNNING
+        )
         try:
             result = fn(*args, **kwargs)
         except Exception as e:
-            core.set_evaluation_status(db, evaluation_id, enums.EvaluationStatus.FAILED)
+            core.set_evaluation_status(
+                db, evaluation_id, enums.EvaluationStatus.FAILED
+            )
             raise e
-        core.set_evaluation_status(db, evaluation_id, enums.EvaluationStatus.DONE)
+        core.set_evaluation_status(
+            db, evaluation_id, enums.EvaluationStatus.DONE
+        )
         return result
+
     return wrapper

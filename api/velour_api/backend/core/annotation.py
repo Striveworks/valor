@@ -13,6 +13,7 @@ from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
 from velour_api.backend.ops import Query
 
+
 def _get_bounding_box_of_raster(
     db: Session, raster: RasterElement
 ) -> tuple[int, int, int, int]:
@@ -181,8 +182,9 @@ def create_annotations(
             and_(
                 models.Annotation.datum_id == datum.id,
                 (
-                    models.Annotation.model_id == model.id 
-                    if model else models.Annotation.model_id.is_(None)
+                    models.Annotation.model_id == model.id
+                    if model
+                    else models.Annotation.model_id.is_(None)
                 ),
             )
         )
@@ -191,12 +193,14 @@ def create_annotations(
         raise exceptions.AnnotationAlreadyExistsError(datum.id)
 
     # create annotations
-    annotation_list = [
-        _create_annotation(annotation=annotation, datum=datum, model=model)
-        for annotation in annotations
-    ] if annotations else [
-        _create_empty_annotation(datum=datum, model=model)
-    ]
+    annotation_list = (
+        [
+            _create_annotation(annotation=annotation, datum=datum, model=model)
+            for annotation in annotations
+        ]
+        if annotations
+        else [_create_empty_annotation(datum=datum, model=model)]
+    )
 
     try:
         db.add_all(annotation_list)
@@ -225,8 +229,7 @@ def create_skipped_annotations(
         The model associated with the annotation.
     """
     annotation_list = [
-        _create_skipped_annotation(datum, model)
-        for datum in datums
+        _create_skipped_annotation(datum, model) for datum in datums
     ]
     try:
         db.add_all(annotation_list)
@@ -264,7 +267,11 @@ def get_annotation(
         ).predictions(as_subquery=False)
         q = q.where(models.Prediction.annotation_id == annotation.id)
         labels = [
-            schemas.Label(key=scored_label[0], value=scored_label[1], score=scored_label[2])
+            schemas.Label(
+                key=scored_label[0],
+                value=scored_label[1],
+                score=scored_label[2],
+            )
             for scored_label in db.query(q.subquery()).all()
         ]
     else:

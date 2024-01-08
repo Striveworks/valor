@@ -1,9 +1,8 @@
 import pytest
-
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from velour_api import schemas, exceptions, enums
+from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
 
 
@@ -70,11 +69,12 @@ def test_get_models(db: Session, created_models):
 
 def test_model_status(db: Session, created_model, created_dataset):
     # creating
-    assert core.get_model_status(
-        db=db,
-        dataset_name=created_dataset,
-        model_name=created_model
-    ) == enums.TableStatus.CREATING
+    assert (
+        core.get_model_status(
+            db=db, dataset_name=created_dataset, model_name=created_model
+        )
+        == enums.TableStatus.CREATING
+    )
 
     # attempt to finalize before dataset
     with pytest.raises(exceptions.DatasetNotFinalizedError):
@@ -84,11 +84,12 @@ def test_model_status(db: Session, created_model, created_dataset):
             model_name=created_model,
             status=enums.TableStatus.FINALIZED,
         )
-    assert core.get_model_status(
-        db=db,
-        dataset_name=created_dataset,
-        model_name=created_model
-    ) == enums.TableStatus.CREATING
+    assert (
+        core.get_model_status(
+            db=db, dataset_name=created_dataset, model_name=created_model
+        )
+        == enums.TableStatus.CREATING
+    )
 
     # finalize dataset
     core.set_dataset_status(
@@ -102,11 +103,12 @@ def test_model_status(db: Session, created_model, created_dataset):
         model_name=created_model,
         status=enums.TableStatus.FINALIZED,
     )
-    assert core.get_model_status(
-        db=db,
-        dataset_name=created_dataset,
-        model_name=created_model
-    ) == enums.TableStatus.FINALIZED
+    assert (
+        core.get_model_status(
+            db=db, dataset_name=created_dataset, model_name=created_model
+        )
+        == enums.TableStatus.FINALIZED
+    )
 
     # test others
     core.set_model_status(
@@ -130,11 +132,12 @@ def test_model_status(db: Session, created_model, created_dataset):
         model_name=created_model,
         status=enums.TableStatus.DELETING,
     )
-    assert core.get_model_status(
-        db=db,
-        dataset_name=created_dataset,
-        model_name=created_model
-    ) == enums.TableStatus.DELETING
+    assert (
+        core.get_model_status(
+            db=db, dataset_name=created_dataset, model_name=created_model
+        )
+        == enums.TableStatus.DELETING
+    )
 
     # test others
     with pytest.raises(exceptions.ModelStateError):
@@ -154,25 +157,24 @@ def test_model_status(db: Session, created_model, created_dataset):
 
 
 def test_delete_model(db: Session):
-    core.create_model(
-        db=db,
-        model=schemas.Model(name="model1")
+    core.create_model(db=db, model=schemas.Model(name="model1"))
+
+    assert (
+        db.scalar(
+            select(func.count())
+            .select_from(models.Model)
+            .where(models.Model.name == "model1")
+        )
+        == 1
     )
 
-    assert db.scalar(
-        select(func.count())
-        .select_from(models.Model)
-        .where(models.Model.name =="model1")
-    ) == 1
+    core.delete_model(db=db, name="model1")
 
-    core.delete_model(
-        db=db,
-        name="model1"
+    assert (
+        db.scalar(
+            select(func.count())
+            .select_from(models.Model)
+            .where(models.Model.name == "model1")
+        )
+        == 0
     )
-
-    assert db.scalar(
-        select(func.count())
-        .select_from(models.Model)
-        .where(models.Model.name =="model1")
-    ) == 0
-

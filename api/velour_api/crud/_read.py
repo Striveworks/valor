@@ -27,7 +27,9 @@ def get_table_status(
         The requested status.
     """
     if dataset_name and model_name:
-        return backend.get_model_status(db=db, dataset_name=dataset_name, model_name=model_name)
+        return backend.get_model_status(
+            db=db, dataset_name=dataset_name, model_name=model_name
+        )
     else:
         return backend.get_dataset_status(db=db, name=dataset_name)
 

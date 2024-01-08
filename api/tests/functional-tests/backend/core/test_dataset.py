@@ -1,9 +1,8 @@
 import pytest
-
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from velour_api import schemas, exceptions, enums
+from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
 
 
@@ -63,57 +62,77 @@ def test_get_datasets(db: Session, created_datasets):
 
 def test_dataset_status(db: Session, created_dataset):
     # creating
-    assert core.get_dataset_status(db, created_dataset) == enums.TableStatus.CREATING
+    assert (
+        core.get_dataset_status(db, created_dataset)
+        == enums.TableStatus.CREATING
+    )
 
     # finalized
     core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
-    assert core.get_dataset_status(db, created_dataset) == enums.TableStatus.FINALIZED
+    assert (
+        core.get_dataset_status(db, created_dataset)
+        == enums.TableStatus.FINALIZED
+    )
 
     # test others
     core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
     with pytest.raises(exceptions.DatasetStateError):
-        core.set_dataset_status(db, created_dataset, enums.TableStatus.CREATING)
+        core.set_dataset_status(
+            db, created_dataset, enums.TableStatus.CREATING
+        )
 
     # deleting
     core.set_dataset_status(db, created_dataset, enums.TableStatus.DELETING)
-    assert core.get_dataset_status(db, created_dataset) == enums.TableStatus.DELETING
+    assert (
+        core.get_dataset_status(db, created_dataset)
+        == enums.TableStatus.DELETING
+    )
 
     # test others
     with pytest.raises(exceptions.DatasetStateError):
-        core.set_dataset_status(db, created_dataset, enums.TableStatus.CREATING)
+        core.set_dataset_status(
+            db, created_dataset, enums.TableStatus.CREATING
+        )
     with pytest.raises(exceptions.DatasetStateError):
-        core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
+        core.set_dataset_status(
+            db, created_dataset, enums.TableStatus.FINALIZED
+        )
 
 
 def test_dataset_status_create_to_delete(db: Session, created_dataset):
     # creating
-    assert core.get_dataset_status(db, created_dataset) == enums.TableStatus.CREATING
+    assert (
+        core.get_dataset_status(db, created_dataset)
+        == enums.TableStatus.CREATING
+    )
 
     # deleting
     core.set_dataset_status(db, created_dataset, enums.TableStatus.DELETING)
-    assert core.get_dataset_status(db, created_dataset) == enums.TableStatus.DELETING
+    assert (
+        core.get_dataset_status(db, created_dataset)
+        == enums.TableStatus.DELETING
+    )
 
 
 def test_delete_dataset(db: Session):
-    core.create_dataset(
-        db=db,
-        dataset=schemas.Dataset(name="dataset1")
+    core.create_dataset(db=db, dataset=schemas.Dataset(name="dataset1"))
+
+    assert (
+        db.scalar(
+            select(func.count())
+            .select_from(models.Dataset)
+            .where(models.Dataset.name == "dataset1")
+        )
+        == 1
     )
 
-    assert db.scalar(
-        select(func.count())
-        .select_from(models.Dataset)
-        .where(models.Dataset.name =="dataset1")
-    ) == 1
+    core.delete_dataset(db=db, name="dataset1")
 
-    core.delete_dataset(
-        db=db,
-        name="dataset1"
+    assert (
+        db.scalar(
+            select(func.count())
+            .select_from(models.Dataset)
+            .where(models.Dataset.name == "dataset1")
+        )
+        == 0
     )
-
-    assert db.scalar(
-        select(func.count())
-        .select_from(models.Dataset)
-        .where(models.Dataset.name =="dataset1")
-    ) == 0
-

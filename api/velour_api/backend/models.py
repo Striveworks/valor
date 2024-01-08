@@ -170,7 +170,7 @@ class Evaluation(Base):
     __table_args__ = (
         UniqueConstraint(
             "dataset_id",
-            "model_id", 
+            "model_id",
             "task_type",
             "settings",
         ),

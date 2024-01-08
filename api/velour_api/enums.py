@@ -90,7 +90,7 @@ class TableStatus(str, Enum):
             return {self.DELETING}
         else:
             raise ValueError
-        
+
 
 class ModelStatus(str, Enum):
     READY = "ready"
@@ -106,7 +106,7 @@ class ModelStatus(str, Enum):
             return {self.DELETING}
         else:
             raise ValueError
-        
+
 
 class EvaluationStatus(str, Enum):
     PENDING = "pending"
