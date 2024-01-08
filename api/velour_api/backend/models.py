@@ -25,9 +25,6 @@ class Label(Base):
         back_populates="label"
     )
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=func.now(), onupdate=func.now()
-    )
 
     __table_args__ = (UniqueConstraint("key", "value"),)
 
@@ -63,9 +60,6 @@ class GroundTruth(Base):
     )
     label: Mapped["Label"] = relationship(back_populates="groundtruths")
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=func.now(), onupdate=func.now()
-    )
 
 
 class Prediction(Base):
@@ -86,9 +80,6 @@ class Prediction(Base):
     )
     label: Mapped["Label"] = relationship(back_populates="predictions")
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=func.now(), onupdate=func.now()
-    )
 
 
 class Annotation(Base):
@@ -124,9 +115,6 @@ class Annotation(Base):
         cascade="all, delete-orphan"
     )
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=func.now(), onupdate=func.now()
-    )
 
 
 class Datum(Base):
@@ -149,9 +137,6 @@ class Datum(Base):
         cascade="all, delete-orphan"
     )
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=func.now(), onupdate=func.now()
-    )
 
 
 class Model(Base):
@@ -172,9 +157,6 @@ class Model(Base):
         cascade="all, delete"
     )
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=func.now(), onupdate=func.now()
-    )
 
 
 class Dataset(Base):
@@ -191,9 +173,6 @@ class Dataset(Base):
         cascade="all, delete"
     )
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=func.now(), onupdate=func.now()
-    )
 
 
 class Evaluation(Base):
@@ -216,9 +195,6 @@ class Evaluation(Base):
         "ConfusionMatrix", cascade="all, delete"
     )
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=func.now(), onupdate=func.now()
-    )
 
 
 class Metric(Base):
@@ -239,9 +215,6 @@ class Metric(Base):
         "Evaluation", back_populates="metrics"
     )
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=func.now(), onupdate=func.now()
-    )
 
 
 class ConfusionMatrix(Base):
@@ -257,6 +230,3 @@ class ConfusionMatrix(Base):
         back_populates="confusion_matrices"
     )
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
-    updated_at: Mapped[datetime.datetime] = mapped_column(
-        default=func.now(), onupdate=func.now()
-    )
