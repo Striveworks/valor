@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Set
 
 
 class DataType(Enum):
@@ -35,7 +36,7 @@ class TableStatus(str, Enum):
     FINALIZED = "finalized"
     DELETING = "deleting"
 
-    def next(self) -> set["TableStatus"]:
+    def next(self) -> Set["TableStatus"]:
         """
         Returns the set of valid next states based on the current state.
         """
@@ -56,7 +57,7 @@ class EvaluationStatus(str, Enum):
     FAILED = "failed"
     DELETING = "deleting"
 
-    def next(self):
+    def next(self) -> Set["EvaluationStatus"]:
         """
         Returns the set of valid next states based on the current state.
         """
