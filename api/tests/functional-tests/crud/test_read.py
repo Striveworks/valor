@@ -294,7 +294,9 @@ def test_get_labels_from_dataset(
             ],
         ),
     )
-    assert ds1 == [schemas.Label(key="k2", value="v2")]
+    assert len(ds1) == 2
+    assert schemas.Label(key="k2", value="v2") in ds1
+    assert schemas.Label(key="k1", value="v1") in ds1
 
     # POSITIVE - Test filter by annotation type
     ds1 = crud.get_dataset_labels(

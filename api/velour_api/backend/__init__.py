@@ -24,6 +24,7 @@ from .core import (
     get_n_groundtruth_rasters_in_dataset,
     get_prediction,
     get_unique_datum_metadata_in_dataset,
+    get_unique_groundtruth_annotation_metadata_in_dataset,
     get_unique_task_types_in_dataset,
 )
 from .metrics import (
