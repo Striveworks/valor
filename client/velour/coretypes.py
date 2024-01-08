@@ -667,15 +667,15 @@ class DatasetSummary:
 
     name: str
     num_datums: int
-    num_groundtruth_annotations: int
-    num_groundtruth_bounding_boxes: int
-    num_groundtruth_polygons: int
+    num_annotations: int
+    num_bounding_boxes: int
+    num_polygons: int
     num_groundtruth_multipolygons: int
-    num_groundtruth_rasters: int
+    num_rasters: int
     task_types: List[TaskType]
     labels: List[Label]
     datum_metadata: List[MetadataType]
-    groundtruth_annotation_metadata: List[MetadataType]
+    annotation_metadata: List[MetadataType]
 
     def __post_init__(self):
         for i, tt in enumerate(self.task_types):
@@ -899,16 +899,16 @@ class Dataset:
 
             num_datums: total number of datums in the dataset
 
-            num_groundtruth_annotations: total number of labeled annotations in the dataset. if an
+            num_annotations: total number of labeled annotations in the dataset. if an
             object (such as a bounding box) has multiple labels then each label is counted separately
 
-            num_groundtruth_bounding_boxes: total number of bounding boxes in the dataset
+            num_bounding_boxes: total number of bounding boxes in the dataset
 
-            num_groundtruth_polygons: total number of polygons in the dataset
+            num_polygons: total number of polygons in the dataset
 
             num_groundtruth_multipolygons: total number of multipolygons in the dataset
 
-            num_groundtruth_rasters: total number of rasters in the dataset
+            num_rasters: total number of rasters in the dataset
 
             task_types: list of the unique task types in the dataset
 

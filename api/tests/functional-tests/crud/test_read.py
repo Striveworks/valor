@@ -479,11 +479,11 @@ def test_get_dataset_summary(
     summary = crud.get_dataset_summary(db=db, name=dataset_names[0])
     assert summary.name == dataset_names[0]
     assert summary.num_datums == 2
-    assert summary.num_groundtruth_annotations == 6
-    assert summary.num_groundtruth_bounding_boxes == 3
-    assert summary.num_groundtruth_polygons == 1
+    assert summary.num_annotations == 6
+    assert summary.num_bounding_boxes == 3
+    assert summary.num_polygons == 1
     assert summary.num_groundtruth_multipolygons == 0
-    assert summary.num_groundtruth_rasters == 1
+    assert summary.num_rasters == 1
     assert set(summary.task_types) == set(
         [enums.TaskType.DETECTION.value, enums.TaskType.CLASSIFICATION.value]
     )

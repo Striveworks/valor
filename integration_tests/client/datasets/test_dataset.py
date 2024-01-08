@@ -363,11 +363,11 @@ def test_get_summary(
     summary = dataset.get_summary()
     assert summary.name == dataset_name
     assert summary.num_datums == 2
-    assert summary.num_groundtruth_annotations == 2
-    assert summary.num_groundtruth_bounding_boxes == 1
-    assert summary.num_groundtruth_polygons == 0
+    assert summary.num_annotations == 2
+    assert summary.num_bounding_boxes == 1
+    assert summary.num_polygons == 0
     assert summary.num_groundtruth_multipolygons == 0
-    assert summary.num_groundtruth_rasters == 1
+    assert summary.num_rasters == 1
     assert summary.task_types == [TaskType.DETECTION, TaskType.SEGMENTATION]
 
     summary.labels.sort(key=lambda x: x.key)
@@ -380,7 +380,7 @@ def test_get_summary(
     assert {"height": 900, "width": 300} in summary.datum_metadata  # uid1
     assert {"height": 40, "width": 30} in summary.datum_metadata  # uid2
 
-    assert summary.groundtruth_annotation_metadata == []
+    assert summary.annotation_metadata == []
 
 
 def test_validate_dataset(client: Client, dataset_name: str):
