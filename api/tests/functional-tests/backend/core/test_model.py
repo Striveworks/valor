@@ -115,7 +115,7 @@ def test_model_status(db: Session, created_model, created_dataset):
         model_name=created_model,
         status=enums.TableStatus.FINALIZED,
     )
-    with pytest.raises(exceptions.JobStateError):
+    with pytest.raises(exceptions.ModelStateError):
         core.set_model_status(
             db=db,
             dataset_name=created_dataset,
@@ -137,14 +137,14 @@ def test_model_status(db: Session, created_model, created_dataset):
     ) == enums.TableStatus.DELETING
 
     # test others
-    with pytest.raises(exceptions.JobStateError):
+    with pytest.raises(exceptions.ModelStateError):
         core.set_model_status(
             db=db,
             dataset_name=created_dataset,
             model_name=created_model,
             status=enums.TableStatus.CREATING,
         )
-    with pytest.raises(exceptions.JobStateError):
+    with pytest.raises(exceptions.ModelStateError):
         core.set_model_status(
             db=db,
             dataset_name=created_dataset,

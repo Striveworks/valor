@@ -280,6 +280,23 @@ class DatumDoesNotBelongToDatasetError(Exception):
         )
 
 
+""" Annotation """
+
+
+class AnnotationAlreadyExistsError(Exception):
+    """
+    Raises an exception if the user tries to create a annotation for a datum that already has annotation(s).
+
+    Parameters
+    -------
+    datum_uid : str
+        The uid of the datum.
+    """
+
+    def __init__(self, datum_uid: str):
+        super().__init__(f"Annotation(s) for datum with uid: `{datum_uid}` already exist.")
+
+
 """ Evaluation """
 
 

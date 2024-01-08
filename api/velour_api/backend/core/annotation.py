@@ -51,18 +51,18 @@ def _raster_to_png_b64(
 
 def _wkt_multipolygon_to_raster(wkt: str):
     """
-    Convert a multipolygon to a raster using postgis.
+    Convert a multipolygon to a raster using psql.
 
     Parameters
     ----------
     wkt : str
-        A postgis multipolygon object in well-known text format.
+        A psql multipolygon object in well-known text format.
 
 
     Returns
     ----------
     Query
-        A scalar subquery from postgis.
+        A scalar subquery from psql.
     """
     return select(
         text(f"ST_AsRaster(ST_GeomFromText('{wkt}'), {1.0}, {1.0})")
@@ -75,7 +75,7 @@ def _create_annotation(
     model: models.Model | None = None,
 ) -> list[models.Label]:
     """
-    Convert an individual annotation's attributes into a dictionary for upload to postgis.
+    Convert an individual annotation's attributes into a dictionary for upload to psql.
 
     Parameters
     ----------
@@ -156,7 +156,7 @@ def create_annotations(
     model: models.Model = None,
 ) -> list[models.Annotation]:
     """
-    Create a list of annotations and associated labels in postgis.
+    Create a list of annotations and associated labels in psql.
 
     Parameters
     ----------
@@ -188,7 +188,7 @@ def create_annotations(
         )
         .subquery()
     ).all():
-        raise exceptions.AnnotationAlreadyExistsError
+        raise exceptions.AnnotationAlreadyExistsError(datum.id)
 
     # create annotations
     annotation_list = [
@@ -203,8 +203,37 @@ def create_annotations(
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise exceptions.AnnotationAlreadyExistsError
+        raise exceptions.AnnotationAlreadyExistsError(datum.id)
     return annotation_list
+
+
+def create_skipped_annotations(
+    db: Session,
+    datums: list[models.Datum],
+    model: models.Model | None = None,
+):
+    """
+    Create a list of skipped annotations and associated labels in psql.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session you want to query against.
+    datums : List[schemas.Datum]
+        The list of datums to create skipped annotations for.
+    model : models.Model
+        The model associated with the annotation.
+    """
+    annotation_list = [
+        _create_skipped_annotation(datum, model)
+        for datum in datums
+    ]
+    try:
+        db.add_all(annotation_list)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.AnnotationAlreadyExistsError("")
 
 
 def get_annotation(
@@ -301,7 +330,7 @@ def get_annotations(
     model: models.Model | None = None,
 ) -> list[schemas.Annotation]:
     """
-    Query postgis to get all annotations for a particular datum.
+    Query psql to get all annotations for a particular datum.
 
     Parameters
     -------
@@ -344,7 +373,7 @@ def get_annotation_type(
     model: models.Model | None = None,
 ) -> enums.AnnotationType:
     """
-    Fetch an annotation type from postgis.
+    Fetch an annotation type from psql.
 
     Parameters
     ----------

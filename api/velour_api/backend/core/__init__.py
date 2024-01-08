@@ -1,5 +1,6 @@
 from .annotation import (
     create_annotations,
+    create_skipped_annotations,
     get_annotation,
     get_annotation_type,
     get_annotations,
@@ -46,6 +47,7 @@ from .model import (
     create_model,
     delete_model,
     fetch_model,
+    fetch_disjoint_datums,
     get_model,
     get_models,
     get_model_status,
@@ -83,6 +85,7 @@ __all__ = [
     "create_model",
     "delete_model",
     "fetch_model",
+    "fetch_disjoint_datums",
     "get_model",
     "get_models",
     "get_model_status",

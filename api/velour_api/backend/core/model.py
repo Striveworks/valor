@@ -8,7 +8,57 @@ from sqlalchemy.orm import Session
 from velour_api import exceptions, schemas, enums
 from velour_api.backend import models
 from velour_api.backend.core.dataset import fetch_dataset, get_dataset_status
+from velour_api.backend.core.annotation import create_skipped_annotations
 from velour_api.backend.core.evaluation import check_for_active_evaluations
+
+
+def _count_disjoint_datums(
+    db: Session,
+    dataset_name: str,
+    model_name: str
+) -> int:
+    """
+    Count all datums that the model has not provided predictions for.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    dataset_name : str
+        The name of the dataset.
+    model_name : str
+        The name of the model.
+
+    Returns
+    -------
+    int
+        Number of disjoint datums.
+    """
+    disjoint_datums = (
+        select(func.count())
+        .select_from(models.Datum)
+        .join(
+            models.Annotation,
+            models.Annotation.datum_id == models.Datum.id,
+            isouter=True,
+        )
+        .join(
+            models.Dataset,
+            and_(
+                models.Dataset.id == models.Datum.dataset_id,
+                models.Dataset.name == dataset_name,
+            )
+        )
+        .join(
+            models.Model,
+            and_(
+                models.Model.id == models.Annotation.model_id,
+                models.Model.name == model_name,
+            )
+        )
+        .filter(models.Annotation.id.is_(None))
+    )
+    return db.scalar(disjoint_datums)
 
 
 def create_model(
@@ -66,6 +116,55 @@ def fetch_model(
     if model is None:
         raise exceptions.ModelDoesNotExistError(name)
     return model
+
+
+def fetch_disjoint_datums(
+    db: Session,
+    dataset_name: str,
+    model_name: str
+) -> list[models.Datum]:
+    """
+    Fetch all datums that the model has not provided predictions for.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    dataset_name : str
+        The name of the dataset.
+    model_name : str
+        The name of the model.
+
+    Returns
+    -------
+    list[models.Datum]
+        List of Datums.
+    """
+    disjoint_datums = (
+        select(models.Datum)
+        .join(
+            models.Annotation,
+            models.Annotation.datum_id == models.Datum.id,
+            isouter=True,
+        )
+        .join(
+            models.Dataset,
+            and_(
+                models.Dataset.id == models.Datum.dataset_id,
+                models.Dataset.name == dataset_name,
+            )
+        )
+        .join(
+            models.Model,
+            and_(
+                models.Model.id == models.Annotation.model_id,
+                models.Model.name == model_name,
+            )
+        )
+        .filter(models.Annotation.id.is_(None))
+        .subquery()
+    )
+    return db.query(disjoint_datums).all()
 
 
 def get_model(
@@ -155,25 +254,10 @@ def get_model_status(
     elif dataset_status == enums.TableStatus.CREATING:
         return enums.TableStatus.CREATING
 
-    # check if model maps to all dataset datums
-    dataset = fetch_dataset(db, dataset_name)
-    disjoint_datums = (
-        select(func.count())
-        .select_from(models.Datum)
-        .join(
-            models.Annotation,
-            and_(
-                models.Annotation.datum_id == models.Datum.id,
-                models.Annotation.model_id == model.id,    
-            ),
-            isouter=True,
-        )
-        .where(
-            models.Datum.dataset_id == dataset.id,
-        )
-        .filter(models.Annotation.id.is_(None))
-    )
-    if db.scalar(disjoint_datums):
+    # check if model maps to all datums in the dataset
+    number_of_disjoint_datums = _count_disjoint_datums(db, dataset_name, model_name)
+
+    if number_of_disjoint_datums:
         return enums.TableStatus.CREATING
     else:
         return enums.TableStatus.FINALIZED
@@ -195,6 +279,8 @@ def set_model_status(
     model_status = get_model_status(db, dataset_name, model_name)
     if status == model_status:
         return
+    
+    model = fetch_model(db, model_name)
 
     # check if transition is valid
     if status not in model_status.next():
@@ -208,14 +294,17 @@ def set_model_status(
         if dataset_status != enums.TableStatus.FINALIZED:
             raise exceptions.DatasetNotFinalizedError(dataset_name)
         # edge case - check that there exists at least one prediction per datum
-        raise NotImplementedError("Populate missing predictions with `skip` annotations.")
+        create_skipped_annotations(
+            db=db,
+            datums=fetch_disjoint_datums(db, dataset_name, model_name),
+            model=model,
+        )
 
     # TODO - write test for this after evaluation status is implemented
     elif status == enums.JobStatus.DELETING:
         if check_for_active_evaluations(db=db, model_name=model_name):
             raise exceptions.EvaluationRunningError(dataset_name=dataset_name, model_name=model_name)
         
-    model = fetch_model(db, model_name)
     try:
         model.status = status
         db.commit()

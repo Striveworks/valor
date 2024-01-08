@@ -71,7 +71,7 @@ def test_dataset_status(db: Session, created_dataset):
 
     # test others
     core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
-    with pytest.raises(exceptions.JobStateError):
+    with pytest.raises(exceptions.DatasetStateError):
         core.set_dataset_status(db, created_dataset, enums.TableStatus.CREATING)
 
     # deleting
@@ -79,9 +79,9 @@ def test_dataset_status(db: Session, created_dataset):
     assert core.get_dataset_status(db, created_dataset) == enums.TableStatus.DELETING
 
     # test others
-    with pytest.raises(exceptions.JobStateError):
+    with pytest.raises(exceptions.DatasetStateError):
         core.set_dataset_status(db, created_dataset, enums.TableStatus.CREATING)
-    with pytest.raises(exceptions.JobStateError):
+    with pytest.raises(exceptions.DatasetStateError):
         core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
 
 
