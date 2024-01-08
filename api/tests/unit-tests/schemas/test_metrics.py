@@ -212,81 +212,81 @@ def test_metrics_EvaluationJob():
 
 def test_metrics_CreateDetectionMetricsResponse():
     schemas.CreateDetectionMetricsResponse(
-        missing_pred_labels=[], ignored_pred_labels=[], job_id=1
+        missing_pred_labels=[], ignored_pred_labels=[], evaluation_id=1
     )
 
     schemas.CreateDetectionMetricsResponse(
         missing_pred_labels=[schemas.Label(key="k1", value="v1")],
         ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
-        job_id=123,
+        evaluation_id=123,
     )
 
     with pytest.raises(ValidationError):
         schemas.CreateDetectionMetricsResponse(
             missing_pred_labels=None,
             ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
-            job_id=123,
+            evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
         schemas.CreateDetectionMetricsResponse(
             missing_pred_labels=schemas.Label(key="k1", value="v1"),
             ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
-            job_id=123,
+            evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
         schemas.CreateDetectionMetricsResponse(
             missing_pred_labels=[schemas.Label(key="k1", value="v1")],
             ignored_pred_labels=None,
-            job_id=123,
+            evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
         schemas.CreateDetectionMetricsResponse(
             missing_pred_labels=[schemas.Label(key="k1", value="v1")],
             ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
-            job_id="not a job id",
+            evaluation_id="not a job id",
         )
 
 
 def test_metrics_CreateSemanticSegmentationMetricsResponse():
     schemas.CreateDetectionMetricsResponse(
-        missing_pred_labels=[], ignored_pred_labels=[], job_id=1
+        missing_pred_labels=[], ignored_pred_labels=[], evaluation_id=1
     )
 
     schemas.CreateSemanticSegmentationMetricsResponse(
         missing_pred_labels=[schemas.Label(key="k1", value="v1")],
         ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
-        job_id=123,
+        evaluation_id=123,
     )
 
     with pytest.raises(ValidationError):
         schemas.CreateSemanticSegmentationMetricsResponse(
             missing_pred_labels=None,
             ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
-            job_id=123,
+            evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
         schemas.CreateSemanticSegmentationMetricsResponse(
             missing_pred_labels=schemas.Label(key="k1", value="v1"),
             ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
-            job_id=123,
+            evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
         schemas.CreateSemanticSegmentationMetricsResponse(
             missing_pred_labels=[schemas.Label(key="k1", value="v1")],
             ignored_pred_labels=None,
-            job_id=123,
+            evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
         schemas.CreateSemanticSegmentationMetricsResponse(
             missing_pred_labels=[schemas.Label(key="k1", value="v1")],
             ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
-            job_id="not a job id",
+            evaluation_id="not a job id",
         )
 
 
@@ -294,41 +294,41 @@ def test_metrics_CreateClfMetricsResponse():
     schemas.CreateClfMetricsResponse(
         missing_pred_keys=["k1", "k2"],
         ignored_pred_keys=["k1", "k2"],
-        job_id=123,
+        evaluation_id=123,
     )
 
     schemas.CreateClfMetricsResponse(
         missing_pred_keys=[],
         ignored_pred_keys=[],
-        job_id=123,
+        evaluation_id=123,
     )
 
     with pytest.raises(ValidationError):
         schemas.CreateClfMetricsResponse(
             missing_pred_keys=None,
             ignored_pred_keys=["k1", "k2"],
-            job_id=123,
+            evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
         schemas.CreateClfMetricsResponse(
             missing_pred_keys="k1",
             ignored_pred_keys=["k1", "k2"],
-            job_id=123,
+            evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
         schemas.CreateClfMetricsResponse(
             missing_pred_keys=["k1", "k2"],
             ignored_pred_keys=None,
-            job_id=123,
+            evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
         schemas.CreateClfMetricsResponse(
             missing_pred_keys=["k1", "k2"],
             ignored_pred_keys=["k1", "k2"],
-            job_id="not a job id",
+            evaluation_id="not a job id",
         )
 
 
@@ -729,7 +729,7 @@ def test_Evaluation():
         model="model",
         task_type=enums.TaskType.CLASSIFICATION,
         settings=schemas.EvaluationSettings(),
-        job_id=1,
+        evaluation_id=1,
         status="done",
         metrics=[],
         confusion_matrices=[],
@@ -741,7 +741,7 @@ def test_Evaluation():
             model="model",
             task_type=enums.TaskType.CLASSIFICATION,
             settings=schemas.EvaluationSettings(),
-            job_id=1,
+            evaluation_id=1,
             status="done",
             metrics=[],
             confusion_matrices=[],
@@ -753,7 +753,7 @@ def test_Evaluation():
             model=None,
             task_type=enums.TaskType.CLASSIFICATION,
             settings=schemas.EvaluationSettings(),
-            job_id=1,
+            evaluation_id=1,
             status="done",
             metrics=[],
             confusion_matrices=[],
@@ -765,7 +765,7 @@ def test_Evaluation():
             model="model",
             task_type=enums.TaskType.CLASSIFICATION,
             settings=123,
-            job_id=1,
+            evaluation_id=1,
             status="done",
             metrics=[],
             confusion_matrices=[],
@@ -777,7 +777,7 @@ def test_Evaluation():
             model="model",
             task_type=enums.TaskType.CLASSIFICATION,
             settings=schemas.EvaluationSettings(),
-            job_id="not a job id",
+            evaluation_id="not a job id",
             status="done",
             metrics=[],
             confusion_matrices=[],
@@ -789,7 +789,7 @@ def test_Evaluation():
             model="model",
             task_type=enums.TaskType.CLASSIFICATION,
             settings=schemas.EvaluationSettings(),
-            job_id=1,
+            evaluation_id=1,
             status=123,
             metrics=[],
             confusion_matrices=[],
@@ -801,7 +801,7 @@ def test_Evaluation():
             model="model",
             task_type=enums.TaskType.CLASSIFICATION,
             settings=schemas.EvaluationSettings(),
-            job_id=1,
+            evaluation_id=1,
             status="done",
             metrics=None,
             confusion_matrices=[],
@@ -813,7 +813,7 @@ def test_Evaluation():
             model="model",
             task_type=enums.TaskType.CLASSIFICATION,
             settings=schemas.EvaluationSettings(),
-            job_id=1,
+            evaluation_id=1,
             status="done",
             metrics=[],
             confusion_matrices=None,

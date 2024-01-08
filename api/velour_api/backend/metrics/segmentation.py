@@ -230,6 +230,10 @@ def compute_semantic_segmentation_metrics(
         id=evaluation.id,
     )
 
+    # check evaluation type
+    if job_request.task_type != enums.TaskType.SEGMENTATION:
+        raise ValueError(f"Cannot run segmentation evaluation on task with type `{job_request.task_type}`.")
+
     # configure filters
     if not job_request.settings.filters:
         job_request.settings.filters = schemas.Filter()

@@ -7,7 +7,6 @@ from velour_api.backend.metrics.detection import (
     _calculate_101_pt_interp,
     _compute_mean_detection_metrics_from_aps,
 )
-from velour_api.backend.core.evaluation import create_or_get_evaluation
 
 def truncate_float(x: float) -> str:
     return f"{int(x)}.{int((x - int(x)) * 100)}"
@@ -21,33 +20,6 @@ def test__calculate_101_pt_interp():
 def test__compute_mean_detection_metrics_from_aps():
     # make sure we get back 0 if we don't pass any precisions
     assert _compute_mean_detection_metrics_from_aps([]) == list()
-
-
-def test_create_or_get_evaluation():
-    # assert error if we pass in the wrong task type
-    with pytest.raises(TypeError):
-        create_or_get_evaluation(
-            db=None,
-            job_request=schemas.EvaluationJob(
-                model="model1",
-                dataset="dataset1",
-                task_type=enums.TaskType.CLASSIFICATION,
-            ),
-        )
-
-    # assert error if we pass in the wrong parameters
-    with pytest.raises(TypeError):
-        create_or_get_evaluation(
-            db=None,
-            job_request=schemas.EvaluationJob(
-                model="model1",
-                dataset="dataset1",
-                task_type=enums.TaskType.DETECTION,
-                settings={
-                    "filters": schemas.Filter(models_names=["fake_name"])
-                },
-            ),
-        )
 
 
 def test__ap():

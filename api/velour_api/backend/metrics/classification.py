@@ -618,6 +618,10 @@ def compute_clf_metrics(
         id=evaluation.id,
     )
 
+    # check evaluation type
+    if job_request.task_type != TaskType.CLASSIFICATION:
+        raise ValueError(f"Cannot run classification evaluation on task with type `{job_request.task_type}`.")
+
     # configure filters
     if not job_request.settings.filters:
         job_request.settings.filters = schemas.Filter()

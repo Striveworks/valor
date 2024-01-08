@@ -11,7 +11,6 @@ from velour_api import __version__ as api_version
 from velour_api import auth, crud, enums, exceptions, logger, schemas
 from velour_api.api_utils import _split_query_params
 from velour_api.backend import database
-from velour_api.crud import jobs
 from velour_api.settings import auth_settings
 
 token_auth_scheme = auth.OptionalHTTPBearer()
@@ -20,7 +19,6 @@ token_auth_scheme = auth.OptionalHTTPBearer()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     database.create_db()
-    jobs.connect_to_redis()
     yield
 
 
@@ -586,7 +584,7 @@ def delete_dataset(
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except (
-        exceptions.JobStateError,
+        exceptions.DatasetStateError,
         exceptions.DatasetNotFinalizedError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -907,7 +905,8 @@ def delete_model(
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except (
-        exceptions.JobStateError,
+        exceptions.DatasetStateError,
+        exceptions.ModelStateError,
         exceptions.ModelNotFinalizedError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
@@ -970,7 +969,7 @@ def create_evaluation(
                 handler=background_tasks,
                 task=crud.compute_clf_metrics,
                 db=db,
-                evaluation_id=resp.job_id,
+                evaluation_id=resp.evaluation_id,
                 job_request=job_request,
             )
         elif job_request.task_type == enums.TaskType.DETECTION:
@@ -981,7 +980,7 @@ def create_evaluation(
                 handler=background_tasks,
                 task=crud.compute_detection_metrics,
                 db=db,
-                evaluation_id=resp.job_id,
+                evaluation_id=resp.evaluation_id,
                 job_request=job_request,
             )
         elif job_request.task_type == enums.TaskType.SEGMENTATION:
@@ -992,7 +991,7 @@ def create_evaluation(
                 handler=background_tasks,
                 task=crud.compute_semantic_segmentation_metrics,
                 db=db,
-                evaluation_id=resp.job_id,
+                evaluation_id=resp.evaluation_id,
                 job_request=job_request,
             )
         else:
@@ -1012,7 +1011,10 @@ def create_evaluation(
         exceptions.ModelNotFinalizedError,
     ) as e:
         raise HTTPException(status_code=405, detail=str(e))
-    except exceptions.JobStateError as e:
+    except (
+        exceptions.DatasetStateError,
+        exceptions.ModelStateError,
+    ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
 
@@ -1025,7 +1027,7 @@ def create_evaluation(
 def get_bulk_evaluations(
     datasets: str = None,
     models: str = None,
-    job_ids: str = None,
+    evaluation_ids: str = None,
     db: Session = Depends(get_db),
 ) -> list[schemas.Evaluation]:
     """
@@ -1045,8 +1047,8 @@ def get_bulk_evaluations(
         An optional set of dataset names to return metrics for
     models : str
         An optional set of model names to return metrics for
-    job_ids : str
-        An optional set of job_ids to return metrics for
+    evaluation_ids : str
+        An optional set of evaluation_ids to return metrics for
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -1064,20 +1066,20 @@ def get_bulk_evaluations(
     """
     model_names = _split_query_params(models)
     dataset_names = _split_query_params(datasets)
-    job_ids_str = _split_query_params(job_ids)
+    evaluation_ids_str = _split_query_params(evaluation_ids)
 
-    if job_ids_str:
+    if evaluation_ids_str:
         try:
-            job_ids_ints = [int(id) for id in job_ids_str]
+            evaluation_ids_ints = [int(id) for id in evaluation_ids_str]
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
     else:
-        job_ids_ints = None
+        evaluation_ids_ints = None
 
     try:
         return crud.get_evaluations(
             db=db,
-            job_ids=job_ids_ints,
+            evaluation_ids=evaluation_ids_ints,
             dataset_names=dataset_names,
             model_names=model_names,
         )
