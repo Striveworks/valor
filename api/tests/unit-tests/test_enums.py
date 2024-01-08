@@ -1,4 +1,9 @@
-from velour_api.enums import EvaluationStatus, TableStatus, ModelStatus, AnnotationType
+from velour_api.enums import (
+    AnnotationType,
+    EvaluationStatus,
+    ModelStatus,
+    TableStatus,
+)
 
 
 def test_annotation_type_members():
@@ -103,15 +108,13 @@ def test_table_status_members():
     assert TableStatus.CREATING.next() == {
         TableStatus.CREATING,
         TableStatus.FINALIZED,
-        TableStatus.DELETING
+        TableStatus.DELETING,
     }
     assert TableStatus.FINALIZED.next() == {
         TableStatus.FINALIZED,
         TableStatus.DELETING,
     }
-    assert TableStatus.DELETING.next() == {
-        TableStatus.DELETING
-    }
+    assert TableStatus.DELETING.next() == {TableStatus.DELETING}
 
 
 def test_model_status_members():
@@ -124,11 +127,9 @@ def test_model_status_members():
     # test `next`
     assert ModelStatus.READY.next() == {
         ModelStatus.READY,
-        ModelStatus.DELETING
+        ModelStatus.DELETING,
     }
-    assert ModelStatus.DELETING.next() == {
-        ModelStatus.DELETING
-    }
+    assert ModelStatus.DELETING.next() == {ModelStatus.DELETING}
 
 
 def test_evaluation_status_members():
@@ -140,7 +141,7 @@ def test_evaluation_status_members():
         EvaluationStatus.FAILED,
         EvaluationStatus.DELETING,
     }
-    
+
     # test `next`
     assert EvaluationStatus.PENDING.next() == {
         EvaluationStatus.PENDING,
@@ -160,6 +161,4 @@ def test_evaluation_status_members():
         EvaluationStatus.PENDING,
         EvaluationStatus.DELETING,
     }
-    assert EvaluationStatus.DELETING.next() == {
-        EvaluationStatus.DELETING
-    }
+    assert EvaluationStatus.DELETING.next() == {EvaluationStatus.DELETING}

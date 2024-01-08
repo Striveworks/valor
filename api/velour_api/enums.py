@@ -19,7 +19,6 @@ class AnnotationType(str, Enum):
         }
         return mapping[self]
 
-
     def __gt__(self, other):
         if not isinstance(other, type(self)):
             raise TypeError(
