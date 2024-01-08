@@ -646,14 +646,12 @@ def test_get_bulk_evaluations(
 
     # should contain two different entries, one for each model
     assert len(both_evaluations) == 2
-    assert all(
-        [
-            evaluation.model in ["second_model", model_name]
-            for evaluation in both_evaluations
-        ]
-    )
-    assert both_evaluations[0].metrics == expected_metrics
-    assert both_evaluations[1].metrics == second_model_expected_metrics
+    for evaluation in both_evaluations:
+        assert evaluation.model in ["second_model", model_name]
+        if evaluation.model == model_name:
+            assert evaluation.metrics == expected_metrics
+        elif evaluation.model == "second_model":
+            assert evaluation.metrics == second_model_expected_metrics
 
     # should be equivalent since there are only two models attributed to this dataset
     both_evaluations_from_model_names = client.get_bulk_evaluations(
