@@ -50,31 +50,6 @@ def get_db():
         db.close()
 
 
-def create_background_task_with_precheck(
-    *_,
-    handler: BackgroundTasks,
-    task: callable,
-    **kwargs,
-):
-    """
-    Runs precheck validation on the stateflow decorator before creating a background task.
-
-    Parameters
-    ----------
-    handler : BackgroundTasks
-        The background task handler to add the task to.
-    task : Callable
-        The callable task function to be executed.
-    **kwargs
-        Additional keyword arguments to be passed to the task.
-    """
-    task(precheck=True, **kwargs)
-    handler.add_task(
-        task,
-        **kwargs,
-    )
-
-
 """ GROUNDTRUTHS """
 
 
@@ -477,7 +452,7 @@ def get_dataset(
 )
 def get_dataset_status(
     dataset_name: str, db: Session = Depends(get_db)
-) -> enums.JobStatus:
+) -> enums.TableStatus:
     """
     Fetch the status of a dataset.
 
@@ -492,7 +467,7 @@ def get_dataset_status(
 
     Returns
     -------
-    enums.JobStatus
+    enums.TableStatus
         The requested state.
 
     Raises
@@ -501,7 +476,7 @@ def get_dataset_status(
         If the dataset doesn't exist.
     """
     try:
-        resp = crud.get_job_status(dataset_name=dataset_name)
+        resp = crud.get_table_status(db=db, dataset_name=dataset_name)
         return resp
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -575,9 +550,8 @@ def delete_dataset(
     """
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
-        create_background_task_with_precheck(
-            handler=background_tasks,
-            task=crud.delete,
+        background_tasks.add_task(
+            crud.delete,
             db=db,
             dataset_name=dataset_name,
         )
@@ -784,18 +758,20 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
 
 
 @app.get(
-    "/models/{model_name}/status",
+    "/models/{model_name}/dataset/{dataset_name}/status",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
 )
 def get_model_status(
-    model_name: str, db: Session = Depends(get_db)
-) -> enums.JobStatus:
+    dataset_name: str, model_name: str, db: Session = Depends(get_db)
+) -> enums.TableStatus:
     """
-    Fetch the status of a model.
+    Fetch the status of a model over a dataset.
 
     Parameters
     ----------
+    dataset_name : str
+        The name of the dataset.
     model_name : str
         The name of the model.
     db : Session
@@ -803,7 +779,7 @@ def get_model_status(
 
     Returns
     -------
-    enums.JobStatus
+    enums.TableStatus
         The requested state.
 
     Raises
@@ -812,7 +788,7 @@ def get_model_status(
         If the model doesn't exist.
     """
     try:
-        return crud.get_job_status(model_name=model_name)
+        return crud.get_table_status(db=db, dataset_name=dataset_name, model_name=model_name)
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -896,9 +872,8 @@ def delete_model(
         If the model isn't in the correct state to be deleted.
     """
     try:
-        create_background_task_with_precheck(
-            handler=background_tasks,
-            task=crud.delete,
+        background_tasks.add_task(
+            crud.delete,
             db=db,
             model_name=model_name,
         )
@@ -965,9 +940,8 @@ def create_evaluation(
         # add metric computation to background tasks
         if job_request.task_type == enums.TaskType.CLASSIFICATION:
             resp = crud.create_clf_evaluation(db=db, job_request=job_request)
-            create_background_task_with_precheck(
-                handler=background_tasks,
-                task=crud.compute_clf_metrics,
+            background_tasks.add_task(
+                crud.compute_clf_metrics,
                 db=db,
                 evaluation_id=resp.evaluation_id,
                 job_request=job_request,
@@ -976,9 +950,8 @@ def create_evaluation(
             resp = crud.create_detection_evaluation(
                 db=db, job_request=job_request
             )
-            create_background_task_with_precheck(
-                handler=background_tasks,
-                task=crud.compute_detection_metrics,
+            background_tasks.add_task(
+                crud.compute_detection_metrics,
                 db=db,
                 evaluation_id=resp.evaluation_id,
                 job_request=job_request,
@@ -987,9 +960,8 @@ def create_evaluation(
             resp = crud.create_semantic_segmentation_evaluation(
                 db=db, job_request=job_request
             )
-            create_background_task_with_precheck(
-                handler=background_tasks,
-                task=crud.compute_semantic_segmentation_metrics,
+            background_tasks.add_task(
+                crud.compute_semantic_segmentation_metrics,
                 db=db,
                 evaluation_id=resp.evaluation_id,
                 job_request=job_request,

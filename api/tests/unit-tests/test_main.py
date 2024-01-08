@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from velour_api import exceptions, schemas
 from velour_api.api_utils import _split_query_params
 from velour_api.backend import database
-from velour_api.enums import JobStatus, TaskType
+from velour_api.enums import TableStatus, TaskType
 
 
 @pytest.fixture
@@ -783,13 +783,13 @@ def test_get_dataset_by_name(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_dataset_status(crud, client: TestClient):
-    crud.get_job_status.return_value = JobStatus.DONE.value
+    crud.get_table_status.return_value = TableStatus.FINALIZED.value
     resp = client.get("/datasets/dsetname/status")
     assert resp.status_code == 200
-    crud.get_job_status.assert_called_once()
+    crud.get_table_status.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_job_status",
+        "velour_api.main.crud.get_table_status",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("/datasets/dsetname/status")
@@ -831,7 +831,7 @@ def test_delete_dataset(crud, client: TestClient):
     crud.delete.return_value = None
     resp = client.delete("/datasets/dsetname")
     assert resp.status_code == 200
-    assert crud.delete.call_count == 2
+    assert crud.delete.call_count == 1
 
     with patch(
         "fastapi.BackgroundTasks.add_task",
@@ -839,7 +839,7 @@ def test_delete_dataset(crud, client: TestClient):
     ):
         resp = client.delete("/datasets/dsetname")
         assert resp.status_code == 404
-        assert crud.delete.call_count == 3
+        assert crud.delete.call_count == 1
 
     with patch(
         "fastapi.BackgroundTasks.add_task",
@@ -847,7 +847,7 @@ def test_delete_dataset(crud, client: TestClient):
     ):
         resp = client.delete("/datasets/dsetname")
         assert resp.status_code == 409
-        assert crud.delete.call_count == 4
+        assert crud.delete.call_count == 1
 
 
 """ POST /models """
@@ -946,7 +946,7 @@ def test_delete_model(crud, client: TestClient):
     crud.delete.return_value = None
     resp = client.delete("/models/modelname")
     assert resp.status_code == 200
-    assert crud.delete.call_count == 2
+    assert crud.delete.call_count == 1
 
     with patch(
         "fastapi.BackgroundTasks.add_task",
@@ -954,7 +954,7 @@ def test_delete_model(crud, client: TestClient):
     ):
         resp = client.delete("/models/modelname")
         assert resp.status_code == 404
-        assert crud.delete.call_count == 3
+        assert crud.delete.call_count == 1
 
     with patch(
         "fastapi.BackgroundTasks.add_task",
@@ -962,7 +962,7 @@ def test_delete_model(crud, client: TestClient):
     ):
         resp = client.delete("/models/modelname")
         assert resp.status_code == 409
-        assert crud.delete.call_count == 4
+        assert crud.delete.call_count == 1
 
 
 """ POST /evaluations/ap-metrics """

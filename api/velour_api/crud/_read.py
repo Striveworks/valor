@@ -3,37 +3,56 @@ from sqlalchemy.orm import Session
 from velour_api import backend, enums, schemas
 
 
-def get_job_status(
+def get_table_status(
     *,
-    dataset_name: str = None,
-    model_name: str = None,
-    evaluation_id: int = None,
-) -> enums.JobStatus:
+    db: Session,
+    dataset_name: str,
+    model_name: str | None = None,
+) -> enums.TableStatus:
     """
-    Fetch job status.
-
-    The input must conform to one of the following sets to properly fetch a job:
-
-    - Dataset Job: {dataset_name}
-    - Model Job: {model_name}
-    - Model Prediction Job: {dataset_name, model_name}
-    - Evaluation Job: {evaluation_id} or {dataset_name, model_name, evaluation_id}
+    Fetch dataset or dataset + model status.
 
     Parameters
     ----------
-    dataset_name : str, optional
-        Name of a dataset.
+    db : Session
+        The database session.
+    dataset_name : str
+        Name of the dataset.
     model_name : str, optional
-        Name of a model.
-    evaluation_id : int, optional
-        Unique identifer of an Evaluation.
+        Name of the model.
 
     Returns
     ----------
-    enums.JobStatus
+    enums.TableStatus
+        The requested status.
+    """
+    if dataset_name and model_name:
+        return backend.get_model_status(db=db, dataset_name=dataset_name, model_name=model_name)
+    else:
+        return backend.get_dataset_status(db=db, name=dataset_name)
+
+
+def get_evaluation_status(
+    *,
+    db: Session,
+    evaluation_id: int,
+) -> enums.EvaluationStatus:
+    """
+    Fetch evaluation status.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    evaluation_id : int
+        Unique identifer of an evaluation.
+
+    Returns
+    ----------
+    enums.EvaluationStatus
         The requested evaluation status.
     """
-    return get_status_from_names(dataset_name, model_name, evaluation_id)
+    return backend.get_evaluation_status(db=db, evaluation_id=evaluation_id)
 
 
 """ Labels """

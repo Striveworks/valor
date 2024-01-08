@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from velour import Annotation, Dataset, GroundTruth, Label, Model, Prediction
 from velour.client import Client
-from velour.enums import AnnotationType, JobStatus, TaskType
+from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.schemas.filters import Filter
 from velour_api.backend import models
 
@@ -89,7 +89,7 @@ def test_evaluate_detection(
     assert eval_job.missing_pred_labels == []
 
     eval_results = eval_job.wait_for_completion()
-    assert eval_results.status == JobStatus.DONE
+    assert eval_results.status == EvaluationStatus.DONE
 
     result = asdict(eval_results)
     assert result == {
@@ -109,8 +109,8 @@ def test_evaluate_detection(
         },
         "metrics": expected_metrics,
         "confusion_matrices": [],
-        "status": JobStatus.DONE,
-        "job_id": eval_job.evaluation_id,
+        "status": EvaluationStatus.DONE,
+        "evaluation_id": eval_job.evaluation_id,
     }
 
     # test evaluating a job using a `Label.labels` filter
@@ -210,8 +210,8 @@ def test_evaluate_detection(
         },
         "metrics": expected_metrics,
         "confusion_matrices": [],
-        "status": JobStatus.DONE,
-        "job_id": eval_job_bounded_area_10_2000.evaluation_id,
+        "status": EvaluationStatus.DONE,
+        "evaluation_id": eval_job_bounded_area_10_2000.evaluation_id,
     }
 
     # now check we get different things by setting the thresholds accordingly
@@ -251,8 +251,8 @@ def test_evaluate_detection(
         },
         # check metrics below
         "confusion_matrices": [],
-        "status": JobStatus.DONE,
-        "job_id": eval_job_min_area_1200.evaluation_id,
+        "status": EvaluationStatus.DONE,
+        "evaluation_id": eval_job_min_area_1200.evaluation_id,
     }
     assert min_area_1200_metrics != expected_metrics
 
@@ -292,8 +292,8 @@ def test_evaluate_detection(
         },
         # check metrics below
         "confusion_matrices": [],
-        "status": JobStatus.DONE,
-        "job_id": eval_job_max_area_1200.evaluation_id,
+        "status": EvaluationStatus.DONE,
+        "evaluation_id": eval_job_max_area_1200.evaluation_id,
     }
     assert max_area_1200_metrics != expected_metrics
 
@@ -341,8 +341,8 @@ def test_evaluate_detection(
         },
         # check metrics below
         "confusion_matrices": [],
-        "status": JobStatus.DONE,
-        "job_id": eval_job_bounded_area_1200_1800.evaluation_id,
+        "status": EvaluationStatus.DONE,
+        "evaluation_id": eval_job_bounded_area_1200_1800.evaluation_id,
     }
     assert bounded_area_metrics != expected_metrics
     assert bounded_area_metrics == min_area_1200_metrics
@@ -489,8 +489,8 @@ def test_evaluate_detection_with_json_filters(
         },
         # check metrics below
         "confusion_matrices": [],
-        "status": JobStatus.DONE,
-        "job_id": eval_job_bounded_area_1200_1800.evaluation_id,
+        "status": EvaluationStatus.DONE,
+        "evaluation_id": eval_job_bounded_area_1200_1800.evaluation_id,
     }
     assert bounded_area_metrics != expected_metrics
     assert bounded_area_metrics == min_area_1200_metrics
@@ -608,11 +608,11 @@ def test_get_bulk_evaluations(
     assert len(evaluations[0].metrics)
     assert evaluations[0].metrics == expected_metrics
 
-    evaluations_by_job_id = client.get_bulk_evaluations(
-        job_ids=eval_job.job_id
+    evaluations_by_evaluation_id = client.get_bulk_evaluations(
+        evaluation_ids=eval_job.evaluation_id
     )
-    assert len(evaluations_by_job_id) == 1
-    assert evaluations_by_job_id[0] == evaluations[0]
+    assert len(evaluations_by_evaluation_id) == 1
+    assert evaluations_by_evaluation_id[0] == evaluations[0]
 
     # test incorrect names
     assert len(client.get_bulk_evaluations(datasets="wrong_dataset_name")) == 0
@@ -664,9 +664,9 @@ def test_get_bulk_evaluations(
     assert both_evaluations[1] in both_evaluations_from_model_names
 
     # should also be equivalent
-    both_evaluations_from_job_ids = client.get_bulk_evaluations(
-        job_ids=[eval_job.job_id, eval_job2.job_id]
+    both_evaluations_from_evaluation_ids = client.get_bulk_evaluations(
+        evaluation_ids=[eval_job.evaluation_id, eval_job2.evaluation_id]
     )
-    assert len(both_evaluations_from_job_ids) == 2
-    assert both_evaluations[0] in both_evaluations_from_job_ids
-    assert both_evaluations[1] in both_evaluations_from_job_ids
+    assert len(both_evaluations_from_evaluation_ids) == 2
+    assert both_evaluations[0] in both_evaluations_from_evaluation_ids
+    assert both_evaluations[1] in both_evaluations_from_evaluation_ids

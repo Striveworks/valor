@@ -73,37 +73,6 @@ class TaskType(str, Enum):
     SEGMENTATION = "semantic-segmentation"
 
 
-class JobStatus(str, Enum):
-    NONE = "none"
-    PENDING = "pending"
-    CREATING = "creating"
-    PROCESSING = "processing"
-    DELETING = "deleting"
-    FAILED = "failed"
-    DONE = "done"
-
-    def next(self):
-        """
-        Returns the set of valid next states based on the current state.
-        """
-        if self == self.NONE:
-            return {self.NONE}
-        elif self == self.PENDING:
-            return {self.PENDING, self.CREATING, self.PROCESSING}
-        elif self == self.CREATING:
-            return {self.CREATING, self.DONE, self.FAILED, self.DELETING}
-        elif self == self.PROCESSING:
-            return {self.PROCESSING, self.DONE, self.FAILED, self.DELETING}
-        elif self == self.FAILED:
-            return {self.FAILED, self.CREATING, self.PROCESSING, self.DELETING}
-        elif self == self.DONE:
-            return {self.DONE, self.PROCESSING, self.DELETING}
-        elif self == self.DELETING:
-            return {self.DELETING, self.NONE}
-        else:
-            raise ValueError
-
-
 class TableStatus(str, Enum):
     CREATING = "creating"
     FINALIZED = "finalized"

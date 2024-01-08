@@ -34,28 +34,20 @@ def _count_disjoint_datums(
     int
         Number of disjoint datums.
     """
+    dataset = fetch_dataset(db=db, name=dataset_name)
+    model = fetch_model(db=db, name=model_name)
     disjoint_datums = (
         select(func.count())
         .select_from(models.Datum)
         .join(
             models.Annotation,
-            models.Annotation.datum_id == models.Datum.id,
+            and_(
+                models.Annotation.datum_id == models.Datum.id,
+                models.Annotation.model_id == model.id,
+            ),
             isouter=True,
         )
-        .join(
-            models.Dataset,
-            and_(
-                models.Dataset.id == models.Datum.dataset_id,
-                models.Dataset.name == dataset_name,
-            )
-        )
-        .join(
-            models.Model,
-            and_(
-                models.Model.id == models.Annotation.model_id,
-                models.Model.name == model_name,
-            )
-        )
+        .where(models.Datum.dataset_id == dataset.id)
         .filter(models.Annotation.id.is_(None))
     )
     return db.scalar(disjoint_datums)
@@ -140,27 +132,19 @@ def fetch_disjoint_datums(
     list[models.Datum]
         List of Datums.
     """
+    dataset = fetch_dataset(db=db, name=dataset_name)
+    model = fetch_model(db=db, name=model_name)
     disjoint_datums = (
         select(models.Datum)
         .join(
             models.Annotation,
-            models.Annotation.datum_id == models.Datum.id,
+            and_(
+                models.Annotation.datum_id == models.Datum.id,
+                models.Annotation.model_id == model.id,
+            ),
             isouter=True,
         )
-        .join(
-            models.Dataset,
-            and_(
-                models.Dataset.id == models.Datum.dataset_id,
-                models.Dataset.name == dataset_name,
-            )
-        )
-        .join(
-            models.Model,
-            and_(
-                models.Model.id == models.Annotation.model_id,
-                models.Model.name == model_name,
-            )
-        )
+        .where(models.Datum.dataset_id == dataset.id)
         .filter(models.Annotation.id.is_(None))
         .subquery()
     )
@@ -257,7 +241,7 @@ def get_model_status(
     # check if model maps to all datums in the dataset
     number_of_disjoint_datums = _count_disjoint_datums(db, dataset_name, model_name)
 
-    if number_of_disjoint_datums:
+    if number_of_disjoint_datums != 0:
         return enums.TableStatus.CREATING
     else:
         return enums.TableStatus.FINALIZED
@@ -301,7 +285,7 @@ def set_model_status(
         )
 
     # TODO - write test for this after evaluation status is implemented
-    elif status == enums.JobStatus.DELETING:
+    elif status == enums.TableStatus.DELETING:
         if check_for_active_evaluations(db=db, model_name=model_name):
             raise exceptions.EvaluationRunningError(dataset_name=dataset_name, model_name=model_name)
         

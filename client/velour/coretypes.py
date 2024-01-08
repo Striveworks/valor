@@ -5,8 +5,8 @@ import warnings
 from dataclasses import asdict
 from typing import Dict, List, Tuple, Union
 
-from velour.client import Client, ClientException, Job, wait_for_predicate
-from velour.enums import AnnotationType, JobStatus, TaskType
+from velour.client import Client, ClientException, DeletionJob, wait_for_predicate
+from velour.enums import AnnotationType, TableStatus, EvaluationStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import (
     DetectionParameters,
@@ -722,11 +722,11 @@ class Dataset:
 
         if (
             delete_if_exists
-            and client.get_dataset_status(name) != JobStatus.NONE
+            and client.get_dataset(name) is None
         ):
             client.delete_dataset(name, timeout=30)
 
-        if client.get_dataset_status(name) == JobStatus.NONE:
+        if client.get_dataset(name) is None:
             client.create_dataset(self.dict())
 
         for k, v in client.get_dataset(name).items():
@@ -877,7 +877,7 @@ class Dataset:
         """
         Delete the `Dataset` object from the backend.
         """
-        job = Job(self.client, dataset_name=self.name)
+        job = DeletionJob(self.client, dataset_name=self.name)
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
         return job
 
@@ -895,12 +895,12 @@ class Evaluation:
             setattr(self, k, v)
 
     @property
-    def job_id(self):
+    def id(self):
         return self.evaluation_id
 
     def get_result(self) -> EvaluationResult:
         """
-        Fetch the `EvaluationResult` for our `job_id`.
+        Fetch the `EvaluationResult` for our `evaluation_id`.
 
         Returns
         ----------
@@ -910,10 +910,10 @@ class Evaluation:
         Raises
         ----------
         ClientException
-            If an Evaluation with the given `job_id` is not found.
+            If an Evaluation with the given `evaluation_id` is not found.
         """
         response = self.client.get_bulk_evaluations(
-            job_ids=[self.evaluation_id]
+            evaluation_ids=[self.evaluation_id]
         )
         if not response:
             raise ClientException("Not Found")
@@ -927,7 +927,7 @@ class Evaluation:
     ) -> EvaluationResult:
         return wait_for_predicate(
             lambda: self.get_result(),
-            lambda result: result.status in [JobStatus.DONE, JobStatus.FAILED],
+            lambda result: result.status in [EvaluationStatus.DONE, EvaluationStatus.FAILED],
             timeout,
             interval,
         )
@@ -994,11 +994,11 @@ class Model:
 
         if (
             delete_if_exists
-            and client.get_model_status(name) != JobStatus.NONE
+            and client.get_model(name) is None
         ):
             client.delete_model(name, timeout=30)
 
-        if client.get_model_status(name) == JobStatus.NONE:
+        if client.get_model(name) is None:
             client.create_model(self.dict())
 
         for k, v in client.get_model(name).items():
@@ -1127,7 +1127,7 @@ class Model:
             "evaluations", json=asdict(evaluation)
         ).json()
 
-        evaluation_id = resp.pop("job_id")
+        evaluation_id = resp.pop("evaluation_id")
         evaluation_job = Evaluation(
             client=self.client,
             dataset_name=dataset.name,
@@ -1201,7 +1201,7 @@ class Model:
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
             resp[k] = [Label(**la) for la in resp[k]]
 
-        evaluation_id = resp.pop("job_id")
+        evaluation_id = resp.pop("evaluation_id")
         evaluation_job = Evaluation(
             client=self.client,
             evaluation_id=evaluation_id,
@@ -1250,7 +1250,7 @@ class Model:
         ).json()
 
         # create client-side evaluation handler
-        evaluation_id = resp.pop("job_id")
+        evaluation_id = resp.pop("evaluation_id")
         evaluation_job = Evaluation(
             client=self.client,
             evaluation_id=evaluation_id,
@@ -1265,7 +1265,7 @@ class Model:
         """
         Delete the `Model` object from the backend.
         """
-        job = Job(self.client, model_name=self.name)
+        job = DeletionJob(self.client, model_name=self.name)
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
         return job
 

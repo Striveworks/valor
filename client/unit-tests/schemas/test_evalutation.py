@@ -46,8 +46,8 @@ def test_to_dataframe():
         model="model1",
         task_type=enums.TaskType.CLASSIFICATION,
         settings=schemas.EvaluationSettings(),
-        job_id=1,
-        status=enums.JobStatus.DONE,
+        evaluation_id=1,
+        status=enums.EvaluationStatus.DONE,
         metrics=[
             _generate_metric(
                 "d",

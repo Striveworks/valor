@@ -9,7 +9,7 @@ from pydantic import (
     model_validator,
 )
 
-from velour_api.enums import JobStatus, TaskType
+from velour_api.enums import EvaluationStatus, TaskType
 from velour_api.schemas.filters import Filter
 from velour_api.schemas.label import Label
 
@@ -160,12 +160,12 @@ class Job(BaseModel):
     ----------
     uid : str
         The UID of the job.
-    status : JobStatus
+    status : EvaluationStatus
         The status of the job.
     """
 
     uid: str = Field(default_factory=lambda: str(uuid4()))
-    status: JobStatus = JobStatus.PENDING
+    status: EvaluationStatus = EvaluationStatus.PENDING
     model_config = ConfigDict(extra="allow")
 
 
@@ -680,7 +680,7 @@ class Evaluation(BaseModel):
     model: str
     settings: EvaluationSettings
     evaluation_id: int
-    status: JobStatus
+    status: EvaluationStatus
     metrics: list[Metric]
     confusion_matrices: list[ConfusionMatrixResponse]
     task_type: TaskType

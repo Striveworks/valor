@@ -4,7 +4,7 @@ from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import exceptions, schemas
+from velour_api import exceptions, schemas, enums
 from velour_api.backend import core, models
 
 
@@ -22,6 +22,10 @@ def create_groundtruth(
     groundtruth: schemas.GroundTruth
         The groundtruth to create.
     """
+    # check dataset status
+    if core.get_dataset_status(db=db, name=groundtruth.datum.dataset) != enums.TableStatus.CREATING:
+        raise exceptions.DatasetFinalizedError(groundtruth.datum.dataset)
+
     # create datum
     datum = core.create_datum(db, groundtruth.datum)
 

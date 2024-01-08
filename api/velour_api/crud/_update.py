@@ -50,8 +50,8 @@ def compute_clf_metrics(
 def compute_detection_metrics(
     *,
     db: Session,
-    job_request: schemas.EvaluationJob,
     evaluation_id: int,
+    job_request: schemas.EvaluationJob,
 ):
     """
     Compute detection metrics.
@@ -75,8 +75,8 @@ def compute_detection_metrics(
 def compute_semantic_segmentation_metrics(
     *,
     db: Session,
-    job_request: schemas.EvaluationJob,
     evaluation_id: int,
+    job_request: schemas.EvaluationJob,
 ):
     """
     Compute semantic segmentation metrics.
@@ -91,7 +91,7 @@ def compute_semantic_segmentation_metrics(
         The job id.
     """
     backend.compute_semantic_segmentation_metrics(
-        db,
+        db=db,
         evaluation_id=evaluation_id,
         job_request=job_request,
     )

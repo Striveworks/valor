@@ -429,10 +429,22 @@ def test_add_empty_prediction(
     dataset_name: str,
     db: Session,
 ):
+    extra_datum = Datum(uid="some_extra_datum")
 
     dataset = Dataset(client, dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
+    dataset.add_groundtruth(
+        GroundTruth(
+            datum=extra_datum,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[Label(key="k1", value="v1")]
+                )
+            ]
+        )
+    )
     dataset.finalize()
 
     model = Model(client, model_name)
@@ -444,15 +456,55 @@ def test_add_empty_prediction(
     # make sure we get a warning when adding a prediction without annotations
     with pytest.warns(UserWarning):
         model.add_prediction(
-            dataset, Prediction(datum=img1.to_datum(), annotations=[])
+            dataset, Prediction(datum=extra_datum, annotations=[])
         )
 
+    for pd in pred_dets:
+        model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
     # test get predictions
-    pred = model.get_prediction(dataset, img1.to_datum())
+    pred = model.get_prediction(dataset, extra_datum)
     assert len(pred.annotations) == 1
     assert pred.annotations[0].task_type == TaskType.EMPTY
+    assert pred._model_name == model_name
+    assert pred.datum._dataset_name == dataset_name
+
+    client.delete_dataset(dataset_name, timeout=30)
+
+
+def test_add_skipped_prediction(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    img1: ImageMetadata,
+    model_name: str,
+    dataset_name: str,
+    db: Session,
+):
+    extra_datum = Datum(uid="some_extra_datum")
+
+    dataset = Dataset(client, dataset_name)
+    dataset.add_groundtruth(
+        GroundTruth(
+            datum=extra_datum,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[Label(key="k1", value="v1")]
+                )
+            ]
+        )
+    )
+    dataset.finalize()
+
+    model = Model(client, model_name)
+    model.finalize_inferences(dataset)
+
+    # test get predictions
+    pred = model.get_prediction(dataset, extra_datum)
+    assert len(pred.annotations) == 1
+    assert pred.annotations[0].task_type == TaskType.SKIP
     assert pred._model_name == model_name
     assert pred.datum._dataset_name == dataset_name
 

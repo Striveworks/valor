@@ -27,6 +27,7 @@ from .core import (
     get_model_status,
     get_evaluations,
     get_evaluation_id,
+    get_evaluation_status,
 )
 from .metrics import (
     compute_clf_metrics,
@@ -60,6 +61,7 @@ __all__ = [
     "compute_semantic_segmentation_metrics",
     "get_evaluations",
     "get_evaluation_id",
+    "get_evaluation_status",
     "Query",
     "create_evaluation",
     "get_disjoint_labels_from_evaluation",

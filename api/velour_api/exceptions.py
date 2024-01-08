@@ -165,7 +165,7 @@ class ModelFinalizedError(Exception):
 
     def __init__(self, *, dataset_name: str, model_name: str):
         super().__init__(
-            f"cannot edit inferences for model`{model_name}` on dataset `{dataset_name}` since it has been finalized"
+            f"cannot edit inferences for model `{model_name}` on dataset `{dataset_name}` since it has been finalized"
         )
 
 

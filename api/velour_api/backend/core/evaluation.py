@@ -91,11 +91,26 @@ def create_evaluation(
         The id of the new evaluation.
     """
     if fetch_evaluation_from_job_request(db, job_request) is not None:
-        raise exceptions.EvaluationAlreadyExistsError() 
+        raise exceptions.EvaluationAlreadyExistsError()
+    
+    match core.get_dataset_status(db, job_request.dataset):
+        case enums.TableStatus.CREATING:
+            raise exceptions.DatasetNotFinalizedError(job_request.dataset)
+        case enums.TableStatus.DELETING | None:
+            raise exceptions.DatasetDoesNotExistError(job_request.dataset)
+        case _:
+            pass
+
+    match core.get_model_status(db=db, dataset_name=job_request.dataset, model_name=job_request.model):
+        case enums.TableStatus.CREATING:
+            raise exceptions.ModelNotFinalizedError(dataset_name=job_request.dataset, model_name=job_request.model)
+        case enums.TableStatus.DELETING | None:
+            raise exceptions.ModelDoesNotExistError(job_request.model)
+        case _:
+            pass
 
     dataset = core.fetch_dataset(db, job_request.dataset)
     model = core.fetch_model(db, job_request.model)
-
     _validate_request(job_request, dataset, model)
 
     try:

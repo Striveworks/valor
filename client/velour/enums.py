@@ -1,16 +1,6 @@
 from enum import Enum
 
 
-class JobStatus(str, Enum):
-    NONE = "none"
-    PENDING = "pending"
-    CREATING = "creating"
-    PROCESSING = "processing"
-    DELETING = "deleting"
-    FAILED = "failed"
-    DONE = "done"
-
-
 class DataType(Enum):
     IMAGE = "image"
     TABULAR = "tabular"
@@ -38,3 +28,47 @@ class TaskType(str, Enum):
     CLASSIFICATION = "classification"
     DETECTION = "object-detection"
     SEGMENTATION = "semantic-segmentation"
+
+
+class TableStatus(str, Enum):
+    CREATING = "creating"
+    FINALIZED = "finalized"
+    DELETING = "deleting"
+
+    def next(self) -> set["TableStatus"]:
+        """
+        Returns the set of valid next states based on the current state.
+        """
+        if self == self.CREATING:
+            return {self.CREATING, self.FINALIZED, self.DELETING}
+        elif self == self.FINALIZED:
+            return {self.FINALIZED, self.DELETING}
+        elif self == self.DELETING:
+            return {self.DELETING}
+        else:
+            raise ValueError
+        
+
+class EvaluationStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+    DELETING = "deleting"
+
+    def next(self):
+        """
+        Returns the set of valid next states based on the current state.
+        """
+        if self == self.PENDING:
+            return {self.PENDING, self.RUNNING}
+        elif self == self.RUNNING:
+            return {self.RUNNING, self.DONE, self.FAILED}
+        elif self == self.FAILED:
+            return {self.FAILED, self.PENDING, self.DELETING}
+        elif self == self.DONE:
+            return {self.DONE, self.DELETING}
+        elif self == self.DELETING:
+            return {self.DELETING}
+        else:
+            raise ValueError

@@ -1193,7 +1193,7 @@ def test_create_detection_metrics(
             ),
         ),
         evaluation_id=1,
-        status=enums.JobStatus.DONE,
+        status=enums.EvaluationStatus.DONE,
         metrics=[],
         confusion_matrices=[],
     )
@@ -1222,7 +1222,7 @@ def test_create_detection_metrics(
             ),
         ),
         evaluation_id=2,
-        status=enums.JobStatus.DONE,
+        status=enums.EvaluationStatus.DONE,
         metrics=[],
         confusion_matrices=[],
     )

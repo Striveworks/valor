@@ -335,13 +335,13 @@ def test_metrics_CreateClfMetricsResponse():
 def test_metrics_Job():
     schemas.metrics.Job(
         uid="uid",
-        status=enums.JobStatus.PENDING,
+        status=enums.EvaluationStatus.PENDING,
     )
 
     with pytest.raises(ValidationError):
         schemas.metrics.Job(
             uid=123,
-            status=enums.JobStatus.PENDING,
+            status=enums.EvaluationStatus.PENDING,
         )
 
     with pytest.raises(ValidationError):
