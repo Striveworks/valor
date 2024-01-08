@@ -672,10 +672,10 @@ class DatasetSummary:
     num_groundtruth_polygons: int
     num_groundtruth_multipolygons: int
     num_groundtruth_rasters: int
-    task_types: list[TaskType]
-    labels: list[Label]
-    datum_metadata: list[MetadataType]
-    groundtruth_annotation_metadata: list[MetadataType]
+    task_types: List[TaskType]
+    labels: List[Label]
+    datum_metadata: List[MetadataType]
+    groundtruth_annotation_metadata: List[MetadataType]
 
     def __post_init__(self):
         for i, tt in enumerate(self.task_types):
