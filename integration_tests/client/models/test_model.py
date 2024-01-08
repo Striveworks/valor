@@ -22,7 +22,7 @@ from velour import (
     Prediction,
 )
 from velour.client import Client, ClientException
-from velour.enums import DataType, TaskType
+from velour.enums import TaskType
 from velour.metatypes import ImageMetadata
 from velour.schemas import Point
 from velour_api.backend import models
@@ -40,7 +40,7 @@ def _test_create_model_with_preds(
     client: Client,
     dataset_name: str,
     model_name: str,
-    datum_type: DataType,
+    datum_type: str,
     gts: list[Any],
     preds: list[Any],
     preds_model_class: type,
@@ -155,7 +155,7 @@ def test_create_image_model_with_predicted_detections(
         client=client,
         dataset_name=dataset_name,
         model_name=model_name,
-        datum_type=DataType.IMAGE,
+        datum_type="image",
         gts=gt_poly_dets1,
         preds=pred_poly_dets,
         preds_model_class=models.Prediction,
@@ -207,7 +207,7 @@ def test_create_model_with_predicted_segmentations(
         client=client,
         dataset_name=dataset_name,
         model_name=model_name,
-        datum_type=DataType.IMAGE,
+        datum_type="image",
         gts=gt_segs,
         preds=pred_instance_segs,
         preds_model_class=models.Prediction,
@@ -261,7 +261,7 @@ def test_create_image_model_with_predicted_classifications(
         client=client,
         dataset_name=dataset_name,
         model_name=model_name,
-        datum_type=DataType.IMAGE,
+        datum_type="image",
         gts=gt_clfs,
         preds=pred_clfs,
         preds_model_class=models.Prediction,
@@ -300,7 +300,7 @@ def test_create_tabular_model_with_predicted_classifications(
         client=client,
         dataset_name=dataset_name,
         model_name=model_name,
-        datum_type=DataType.TABULAR,
+        datum_type="tabular",
         gts=[
             GroundTruth(
                 datum=Datum(uid="uid1"),

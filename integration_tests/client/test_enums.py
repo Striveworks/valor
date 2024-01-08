@@ -19,12 +19,6 @@ def test_tasktype_enum():
     )
 
 
-def test_datatypes_enum():
-    assert _enum_to_dict(enums.DataType) == _enum_to_dict(
-        backend_enums.DataType
-    )
-
-
 def test_annotation_types_enum():
     assert _enum_to_dict(enums.AnnotationType) == _enum_to_dict(
         backend_enums.AnnotationType

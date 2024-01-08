@@ -174,7 +174,7 @@ def groundtruths(
         db=db,
         dataset=schemas.Dataset(
             name=dataset_name,
-            metadata={"type": enums.DataType.IMAGE.value},
+            metadata={"type": "image"},
         ),
     )
 
@@ -272,7 +272,7 @@ def predictions(
         db=db,
         model=schemas.Model(
             name=model_name,
-            metadata={"type": enums.DataType.IMAGE.value},
+            metadata={"type": "image"},
         ),
     )
 

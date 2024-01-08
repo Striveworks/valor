@@ -90,7 +90,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
         db=db,
         dataset=schemas.Dataset(
             name=dataset_name,
-            metadata={"type": enums.DataType.IMAGE.value},
+            metadata={"type": "image"},
         ),
     )
     for gt in gts:
@@ -101,7 +101,7 @@ def classification_test_data(db: Session, dataset_name: str, model_name: str):
         db=db,
         model=schemas.Model(
             name=model_name,
-            metadata={"type": enums.DataType.IMAGE.value},
+            metadata={"type": "image"},
         ),
     )
     for pd in preds:
