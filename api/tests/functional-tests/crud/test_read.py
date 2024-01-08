@@ -463,3 +463,26 @@ def test_get_unique_groundtruth_annotation_metadata_in_dataset(
     assert len(unique_metadata) == 2
     assert {"int_key": 1} in unique_metadata
     assert {"string_key": "string_val", "int_key": 1} in unique_metadata
+
+
+def test_get_dataset_summary(
+    db: Session, dataset_names: list[str], dataset_model_create
+):
+    summary = crud.get_dataset_summary(db=db, name=dataset_names[0])
+    assert summary.name == dataset_names[0]
+    assert summary.num_datums == 2
+    assert summary.num_groundtruth_bounding_boxes == 3
+    assert summary.num_groundtruth_polygons == 1
+    assert summary.num_groundtruth_multipolygons == 0
+    assert summary.num_groundtruth_rasters == 1
+    assert set(summary.task_types) == set(
+        [enums.TaskType.DETECTION.value, enums.TaskType.CLASSIFICATION.value]
+    )
+    assert summary.datum_metadata == [
+        {"width": 32.0, "height": 80.0},
+        {"width": 200.0, "height": 100.0},
+    ]
+    assert summary.groundtruth_annotation_metadata == [
+        {"int_key": 1},
+        {"string_key": "string_val", "int_key": 1},
+    ]

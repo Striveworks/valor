@@ -2,7 +2,7 @@ import datetime
 import json
 import math
 import warnings
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from typing import Dict, List, Tuple, Union
 
 from velour.client import Client, ClientException, Job, wait_for_predicate
@@ -661,6 +661,31 @@ class Prediction:
         self._model_name = model.name if isinstance(model, Model) else model
 
 
+@dataclass
+class DatasetSummary:
+    """Dataclass for storing dataset summary information"""
+
+    name: str
+    num_datums: int
+    # num_groundtruth_annotations: int
+    num_groundtruth_bounding_boxes: int
+    num_groundtruth_polygons: int
+    num_groundtruth_multipolygons: int
+    num_groundtruth_rasters: int
+    task_types: list[TaskType]
+    labels: list[Label]
+    datum_metadata: list[MetadataType]
+    groundtruth_annotation_metadata: list[MetadataType]
+
+    def __post_init__(self):
+        for i, tt in enumerate(self.task_types):
+            if isinstance(tt, str):
+                self.task_types[i] = TaskType(tt)
+        for i, label in enumerate(self.labels):
+            if isinstance(label, dict):
+                self.labels[i] = Label(**label)
+
+
 class Dataset:
     """
     A class describing a given dataset.
@@ -860,6 +885,20 @@ class Dataset:
             A list of `Evaluations` associated with the dataset.
         """
         return self.client.get_bulk_evaluations(datasets=self.name)
+
+    def get_summary(self) -> DatasetSummary:
+        """
+        Get the summary of a given dataset.
+
+        Returns
+        -------
+        DatasetSummary
+            The summary of the dataset.
+        """
+        resp = self.client._requests_get_rel_host(
+            f"datasets/{self.name}/summary"
+        ).json()
+        return DatasetSummary(**resp)
 
     def finalize(
         self,

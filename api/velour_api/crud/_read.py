@@ -353,6 +353,10 @@ def get_unique_groundtruth_annotation_metadata_in_dataset(
     )
 
 
+def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
+    return backend.get_dataset_summary(db, name)
+
+
 def get_groundtruth(
     *,
     db: Session,

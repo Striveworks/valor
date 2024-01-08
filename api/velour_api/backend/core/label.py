@@ -411,3 +411,16 @@ def get_disjoint_keys(
 
     # returns tuple of label lists
     return (ds_unique, md_unique)
+
+
+def get_groundtruth_labels_in_dataset(
+    db: Session, dataset_name: str
+) -> list[schemas.Label]:
+    """
+    Returns all unique labels associated with groundtruths in a dataset.
+    """
+    return get_labels(
+        db,
+        schemas.Filter(dataset_names=[dataset_name]),
+        ignore_predictions=True,
+    )
