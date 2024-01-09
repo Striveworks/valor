@@ -1,4 +1,5 @@
 import os
+import json
 from contextlib import asynccontextmanager
 
 import sqlalchemy
@@ -50,6 +51,21 @@ def get_db():
         db.close()
 
 
+def create_http_error(
+    status_code: int,
+    error: Exception,
+) -> HTTPException:
+    return HTTPException(
+        status_code=status_code,
+        detail=json.dumps(
+            {
+                "name": str(type(error).__name__),
+                "detail": str(error),
+            }
+        )
+    )
+
+
 """ GROUNDTRUTHS """
 
 
@@ -87,13 +103,13 @@ def create_groundtruths(
         exceptions.DatasetDoesNotExistError,
         exceptions.DatumDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
     except (
         exceptions.DatasetFinalizedError,
         exceptions.DatumAlreadyExistsError,
         exceptions.AnnotationAlreadyExistsError,
     ) as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=409, error=e)
 
 
 @app.get(
@@ -139,7 +155,7 @@ def get_groundtruth(
         exceptions.DatumDoesNotExistError,
         exceptions.DatasetDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 """ PREDICTIONS """
@@ -181,13 +197,13 @@ def create_predictions(
         exceptions.ModelDoesNotExistError,
         exceptions.DatumDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
     except (
         exceptions.DatasetNotFinalizedError,
         exceptions.ModelFinalizedError,
         exceptions.AnnotationAlreadyExistsError,
     ) as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=409, error=e)
 
 
 @app.get(
@@ -236,7 +252,7 @@ def get_prediction(
         exceptions.DatumDoesNotExistError,
         exceptions.DatasetDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 """ LABELS """
@@ -306,7 +322,7 @@ def get_labels_from_dataset(
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.get(
@@ -348,7 +364,7 @@ def get_labels_from_model(
             ),
         )
     except exceptions.ModelDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 """ DATASET """
@@ -381,7 +397,7 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     try:
         crud.create_dataset(db=db, dataset=dataset)
     except exceptions.DatasetAlreadyExistsError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=409, error=e)
 
 
 @app.get(
@@ -442,7 +458,7 @@ def get_dataset(
     try:
         return crud.get_dataset(db=db, dataset_name=dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.get(
@@ -479,7 +495,7 @@ def get_dataset_status(
         resp = crud.get_table_status(db=db, dataset_name=dataset_name)
         return resp
     except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.put(
@@ -512,9 +528,9 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     try:
         crud.finalize(db=db, dataset_name=dataset_name)
     except exceptions.DatasetIsEmptyError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise create_http_error(status_code=400, error=e)
     except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.delete(
@@ -559,12 +575,12 @@ def delete_dataset(
         #     dataset_name=dataset_name,
         # )
     except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
     except (
         exceptions.DatasetStateError,
         exceptions.EvaluationRunningError,
     ) as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=409, error=e)
 
 
 """ DATUMS """
@@ -612,7 +628,7 @@ def get_datums(
         exceptions.DatumDoesNotExistError,
         exceptions.DatasetDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.get(
@@ -658,7 +674,7 @@ def get_datum(
         exceptions.DatumDoesNotExistError,
         exceptions.DatasetDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 """ MODELS """
@@ -696,9 +712,9 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
         exceptions.DatumDoesNotExistError,
         exceptions.DatasetDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
     except (exceptions.ModelAlreadyExistsError,) as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=409, error=e)
 
 
 @app.get(
@@ -757,7 +773,7 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     try:
         return crud.get_model(db=db, model_name=model_name)
     except exceptions.ModelDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.get(
@@ -795,7 +811,7 @@ def get_model_status(
             db=db, dataset_name=dataset_name, model_name=model_name
         )
     except exceptions.ModelDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.put(
@@ -839,12 +855,12 @@ def finalize_inferences(
         exceptions.DatasetIsEmptyError,
         exceptions.ModelIsEmptyError,
     ) as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise create_http_error(status_code=400, error=e)
     except (
         exceptions.DatasetDoesNotExistError,
         exceptions.ModelDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.delete(
@@ -886,13 +902,13 @@ def delete_model(
         #     model_name=model_name,
         # )
     except exceptions.ModelDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
     except (
         exceptions.DatasetStateError,
         exceptions.ModelStateError,
         exceptions.EvaluationRunningError,
     ) as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=409, error=e)
 
 
 """ EVALUATION """
@@ -980,22 +996,22 @@ def create_evaluation(
             )
         return resp
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise create_http_error(status_code=400, error=e)
     except (
         exceptions.DatasetDoesNotExistError,
         exceptions.ModelDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
     except (
         exceptions.DatasetNotFinalizedError,
         exceptions.ModelNotFinalizedError,
     ) as e:
-        raise HTTPException(status_code=405, detail=str(e))
+        raise create_http_error(status_code=405, error=e)
     except (
         exceptions.DatasetStateError,
         exceptions.ModelStateError,
     ) as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=409, error=e)
 
 
 @app.get(
@@ -1052,7 +1068,7 @@ def get_bulk_evaluations(
         try:
             evaluation_ids_ints = [int(id) for id in evaluation_ids_str]
         except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise create_http_error(status_code=400, error=e)
     else:
         evaluation_ids_ints = None
 
@@ -1064,12 +1080,12 @@ def get_bulk_evaluations(
             model_names=model_names,
         )
     except (ValueError,) as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise create_http_error(status_code=400, error=e)
     except (
         exceptions.DatasetDoesNotExistError,
         exceptions.ModelDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 """ AUTHENTICATION """
@@ -1160,4 +1176,4 @@ def ready(db: Session = Depends(get_db)):
         db.execute(sqlalchemy.text("select 1"))
         return schemas.Readiness(status="ok")
     except Exception as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise create_http_error(status_code=503, error=e)

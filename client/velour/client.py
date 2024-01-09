@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import json
 from typing import Callable, List, Optional, TypeVar, Union
 from urllib.parse import urlencode, urljoin
 
@@ -10,6 +11,7 @@ from packaging import version
 from velour import __version__ as client_version
 from velour.enums import TableStatus
 from velour.schemas.evaluation import EvaluationResult
+
 
 T = TypeVar("T")
 
@@ -87,13 +89,9 @@ def _validate_version(client_version: str, api_version: str):
 
 
 class ClientException(Exception):
-
-    status_code: int
-    detail: str
-
     def __init__(self, resp):
-        self.detail = resp.json()["detail"]
         self.status_code = resp.status_code
+        self.detail = resp.json()["detail"]
         super().__init__(str(self.detail))
 
 
