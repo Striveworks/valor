@@ -283,7 +283,6 @@ def test_client_delete_model(
     client: Client,
     model_name: str,
 ):
-    """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
     Model(client, model_name)
     assert db.scalar(select(func.count(models.Model.name))) == 1
     client.delete_model(model_name, timeout=30)
