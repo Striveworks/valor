@@ -112,7 +112,7 @@ def create_clf_evaluation(
     try:
         evaluation_id = backend.create_evaluation(db, job_request)
     except exceptions.EvaluationAlreadyExistsError:
-        evaluation_id = backend.get_evaluation_id(db, job_request)
+        evaluation_id = backend.get_evaluation_id_from_job_request(db, job_request)
 
     # create response
     return schemas.CreateClfMetricsResponse(
@@ -153,7 +153,7 @@ def create_detection_evaluation(
     try:
         evaluation_id = backend.create_evaluation(db, job_request)
     except exceptions.EvaluationAlreadyExistsError:
-        evaluation_id = backend.get_evaluation_id(db, job_request)
+        evaluation_id = backend.get_evaluation_id_from_job_request(db, job_request)
 
     # create response
     return schemas.CreateDetectionMetricsResponse(
@@ -199,7 +199,7 @@ def create_semantic_segmentation_evaluation(
     try:
         evaluation_id = backend.create_evaluation(db, job_request)
     except exceptions.EvaluationAlreadyExistsError:
-        evaluation_id = backend.get_evaluation_id(db, job_request)
+        evaluation_id = backend.get_evaluation_id_from_job_request(db, job_request)
 
     # create response
     return schemas.CreateSemanticSegmentationMetricsResponse(

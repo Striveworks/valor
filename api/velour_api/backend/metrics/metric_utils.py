@@ -114,7 +114,12 @@ def validate_computation(fn: callable) -> callable:
             )
 
         db = kwargs["db"]
-        evaluation_id = int(kwargs["evaluation_id"])
+        evaluation_id = kwargs["evaluation_id"]
+
+        if not isinstance(db, Session):
+            raise TypeError("Expected `db` to be of type `sqlalchemy.orm.Session`.")
+        if not isinstance(evaluation_id, int):
+            raise TypeError("Expected `evaluation_id` to be of type `int`.")
 
         # edge case - evaluation has already been run
         if core.get_evaluation_status(db, evaluation_id) not in [

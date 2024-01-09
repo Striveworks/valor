@@ -101,11 +101,11 @@ class EvaluationStatus(str, Enum):
         Returns the set of valid next states based on the current state.
         """
         if self == self.PENDING:
-            return {self.PENDING, self.RUNNING}
+            return {self.PENDING, self.RUNNING, self.FAILED}
         elif self == self.RUNNING:
             return {self.RUNNING, self.DONE, self.FAILED}
         elif self == self.FAILED:
-            return {self.FAILED, self.PENDING, self.DELETING}
+            return {self.FAILED, self.RUNNING, self.DELETING}
         elif self == self.DONE:
             return {self.DONE, self.DELETING}
         elif self == self.DELETING:

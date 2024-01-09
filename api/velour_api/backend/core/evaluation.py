@@ -50,7 +50,7 @@ def _validate_request(
     job_request: schemas.EvaluationJob,
     dataset: models.Dataset,
     model: models.Model,
-)
+):
     """Validates that the requested dependencies exist and are valid for evaluation."""
     # validate type
     if not isinstance(job_request, schemas.EvaluationJob):
@@ -61,16 +61,20 @@ def _validate_request(
     # verify dataset status
     match dataset.status:
         case enums.TableStatus.CREATING:
-            raise exceptions.DatasetNotFinalizedError(dataset.name)
-        case enums.TableStatus.DELETING:
-            raise exceptions.DatasetDoesNotExistError(dataset.name)
+            raise exceptions.DatasetNotFinalizedError(job_request.dataset)
+        case enums.TableStatus.DELETING | None:
+            raise exceptions.DatasetDoesNotExistError(job_request.dataset)
         case _:
             pass
 
     # verify model status
     match model.status:
-        case enums.ModelStatus.DELETING:
-            raise exceptions.ModelDoesNotExistError(dataset.name)
+        case enums.TableStatus.CREATING:
+            raise exceptions.ModelNotFinalizedError(
+                dataset_name=job_request.dataset, model_name=job_request.model
+            )
+        case enums.TableStatus.DELETING | None:
+            raise exceptions.ModelDoesNotExistError(job_request.model)
         case _:
             pass
 
@@ -112,28 +116,9 @@ def create_evaluation(
     if fetch_evaluation_from_job_request(db, job_request) is not None:
         raise exceptions.EvaluationAlreadyExistsError()
 
-    match core.get_dataset_status(db, job_request.dataset):
-        case enums.TableStatus.CREATING:
-            raise exceptions.DatasetNotFinalizedError(job_request.dataset)
-        case enums.TableStatus.DELETING | None:
-            raise exceptions.DatasetDoesNotExistError(job_request.dataset)
-        case _:
-            pass
-
-    match core.get_model_status(
-        db=db, dataset_name=job_request.dataset, model_name=job_request.model
-    ):
-        case enums.TableStatus.CREATING:
-            raise exceptions.ModelNotFinalizedError(
-                dataset_name=job_request.dataset, model_name=job_request.model
-            )
-        case enums.TableStatus.DELETING | None:
-            raise exceptions.ModelDoesNotExistError(job_request.model)
-        case _:
-            pass
-
     dataset = core.fetch_dataset(db, job_request.dataset)
     model = core.fetch_model(db, job_request.model)
+    
     _validate_request(job_request, dataset, model)
 
     try:
@@ -207,7 +192,7 @@ def fetch_evaluation_from_job_request(
     return evaluation
 
 
-def get_evaluation_id(
+def get_evaluation_id_from_job_request(
     db: Session,
     job_request: schemas.EvaluationJob,
 ) -> int | None:
