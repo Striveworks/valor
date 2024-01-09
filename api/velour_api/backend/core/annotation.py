@@ -29,7 +29,7 @@ def _get_bounding_box_of_raster(
 def _raster_to_png_b64(
     db: Session, raster: RasterElement, height: float, width: float
 ) -> str:
-    """COnvert a raster to a png"""
+    """Convert a raster to a png"""
     enveloping_box = _get_bounding_box_of_raster(db, raster)
     raster = Image.open(io.BytesIO(db.scalar(ST_AsPNG((raster))).tobytes()))
 
@@ -84,14 +84,13 @@ def _create_annotation(
         The annotation tom ap.
     datum : models.Datum
         The datum associated with the annotation.
-    model : models.Model
+    model : models.Model, optional
         The model associated with the annotation
 
     Returns
     ----------
     models.Annotation
         A populated models.Annotation object.
-
     """
     box = None
     polygon = None
@@ -122,6 +121,21 @@ def _create_empty_annotation(
     datum: models.Datum,
     model: models.Model | None = None,
 ) -> models.Annotation:
+    """
+    Create an empty annotation for upload to psql.
+
+    Parameters
+    ----------
+    datum : models.Datum
+        The datum associated with the annotation.
+    model : models.Model, optional
+        The model associated with the annotation.
+
+    Returns
+    ----------
+    models.Annotation
+        A populated models.Annotation object.
+    """
     mapping = {
         "datum_id": datum.id,
         "model_id": model.id if model else None,
@@ -138,6 +152,21 @@ def _create_skipped_annotation(
     datum: models.Datum,
     model: models.Model | None = None,
 ) -> models.Annotation:
+    """
+    Create a skipped annotation for upload to psql.
+
+    Parameters
+    ----------
+    datum : models.Datum
+        The datum associated with the annotation.
+    model : models.Model, optional
+        The model associated with the annotation.
+
+    Returns
+    ----------
+    models.Annotation
+        A populated models.Annotation object.
+    """
     mapping = {
         "datum_id": datum.id,
         "model_id": model.id if model else None,
@@ -174,6 +203,11 @@ def create_annotations(
     ----------
     List[models.annotation]
         The model associated with the annotation.
+
+    Raises
+    ------
+    exceptions.AnnotationAlreadyExistsError
+        If the provided datum already has existing annotations for that dataset or model.
     """
     # validate that there are no existing annotations for this datum.
     if db.query(

@@ -14,6 +14,13 @@ def created_dataset(db: Session, dataset_name: str) -> str:
 
 
 @pytest.fixture
+def created_model(db: Session, model_name: str) -> str:
+    model = schemas.Model(name=model_name)
+    core.create_model(db, model=model)
+    return model_name
+
+
+@pytest.fixture
 def created_datasets(db: Session) -> list[str]:
     dataset1 = schemas.Dataset(name="dataset1")
     dataset2 = schemas.Dataset(name="dataset2")
@@ -22,7 +29,7 @@ def created_datasets(db: Session) -> list[str]:
     return ["dataset1", "dataset2"]
 
 
-def test_created_dataset(db: Session, created_dataset):
+def test_create_dataset(db: Session, created_dataset):
     dataset = db.query(
         select(models.Dataset)
         .where(models.Dataset.name == created_dataset)
@@ -112,6 +119,36 @@ def test_dataset_status_create_to_delete(db: Session, created_dataset):
         core.get_dataset_status(db, created_dataset)
         == enums.TableStatus.DELETING
     )
+
+
+def test_dataset_status_with_evaluations(
+    db: Session, 
+    created_dataset: str,
+    created_model: str,
+):
+    # create an evaluation
+    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
+    evaluation_id = core.create_evaluation(
+        db, 
+        schemas.EvaluationJob(
+            dataset=created_dataset,
+            model=created_model,
+            task_type=enums.TaskType.CLASSIFICATION,
+        )
+    )
+    
+    # set the evaluation to the running state
+    core.set_evaluation_status(db, evaluation_id, enums.EvaluationStatus.RUNNING)
+
+    # test that deletion is blocked while evaluation is running
+    with pytest.raises(exceptions.EvaluationRunningError):
+        core.set_dataset_status(db, created_dataset, enums.TableStatus.DELETING)
+
+    # set the evaluation to the done state
+    core.set_evaluation_status(db, evaluation_id, enums.EvaluationStatus.DONE)
+
+    # test that deletion is unblocked when evaluation is DONE
+    core.set_dataset_status(db, created_dataset, enums.TableStatus.DELETING)
 
 
 def test_delete_dataset(db: Session):

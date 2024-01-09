@@ -4,12 +4,26 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
-from velour_api.backend.metrics.metric_utils import (
-    _db_metric_to_pydantic_metric,
-)
+
+
+def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
+    """Apply schemas.Metric to a metric from the database"""
+    label = (
+        schemas.Label(key=metric.label.key, value=metric.label.value)
+        if metric.label
+        else None
+    )
+    return schemas.Metric(
+        type=metric.type,
+        value=metric.value,
+        label=label,
+        parameters=metric.parameters,
+        group=None,
+    )
 
 
 def _validate_filters(job_request: schemas.EvaluationJob):
+    """Validates that the filter object is properly configured for evaluation."""
     if (
         job_request.settings.filters.dataset_names is not None
         or job_request.settings.filters.dataset_metadata is not None
@@ -36,7 +50,8 @@ def _validate_request(
     job_request: schemas.EvaluationJob,
     dataset: models.Dataset,
     model: models.Model,
-):
+)
+    """Validates that the requested dependencies exist and are valid for evaluation."""
     # validate type
     if not isinstance(job_request, schemas.EvaluationJob):
         raise TypeError(
@@ -393,8 +408,21 @@ def _get_annotation_types_for_computation(
 def get_disjoint_labels_from_evaluation(
     db: Session,
     job_request: schemas.EvaluationJob,
-) -> tuple:
-    """Return a tuple containing the unique labels associated with the groundtruths and predictions stored in a database."""
+) -> tuple[list[schemas.Label], list[schemas.Label]]:
+    """
+    Return a tuple containing the unique labels associated with the groundtruths and predictions stored in a database.
+    
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    job_request : schemas.EvaluationJob
+
+    Returns
+    -------
+    tuple[list[schemas.Label], list[schemas.Label]]
+        A tuple of the disjoint label sets. The tuple follows the form (GroundTruth, Prediction).
+    """
 
     # load sql objects
     dataset = core.fetch_dataset(db, job_request.dataset)

@@ -99,23 +99,10 @@ def create_metric_mappings(
     return ret
 
 
-def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
-    """Apply schemas.Metric to a metric from the database"""
-    label = (
-        schemas.Label(key=metric.label.key, value=metric.label.value)
-        if metric.label
-        else None
-    )
-    return schemas.Metric(
-        type=metric.type,
-        value=metric.value,
-        label=label,
-        parameters=metric.parameters,
-        group=None,
-    )
-
-
-def computation_wrapper(fn: callable) -> callable:
+def validate_computation(fn: callable) -> callable:
+    """
+    Computation decorator that validates that a computation can proceed.
+    """
     def wrapper(*args, **kwargs):
         if "db" not in kwargs:
             raise RuntimeError(

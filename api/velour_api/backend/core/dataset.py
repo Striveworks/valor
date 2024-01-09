@@ -137,6 +137,18 @@ def get_dataset_status(
 ) -> enums.TableStatus:
     """
     Get the status of a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    name : str
+        The name of the dataset.
+    
+    Returns
+    -------
+    enums.TableStatus
+        The status of the dataset.
     """
     dataset = fetch_dataset(db, name)
     return enums.TableStatus(dataset.status)
@@ -149,6 +161,22 @@ def set_dataset_status(
 ):
     """
     Sets the status of a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    name : str
+        The name of the dataset.
+    status : enums.TableStatus
+        The desired dataset state.
+
+    Raises
+    ------
+    exceptions.DatasetStateError
+        If an illegal transition is requested.
+    exceptions.EvaluationRunningError
+        If the requested state is DELETING while an evaluation is running.
     """
     dataset = fetch_dataset(db, name)
     active_status = enums.TableStatus(dataset.status)
@@ -159,7 +187,6 @@ def set_dataset_status(
     if status not in active_status.next():
         raise exceptions.DatasetStateError(name, active_status, status)
 
-    # TODO - write test for this after evaluation status is implemented
     if status == enums.TableStatus.DELETING:
         if check_for_active_evaluations(db=db, dataset_name=name):
             raise exceptions.EvaluationRunningError(dataset_name=name)

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, aliased
 from velour_api import enums, schemas
 from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
-    computation_wrapper,
+    validate_computation,
     create_metric_mappings,
     get_or_create_row,
 )
@@ -422,7 +422,7 @@ def _compute_mean_detection_metrics_from_aps(
     return mean_detection_metrics
 
 
-@computation_wrapper
+@validate_computation
 def compute_detection_metrics(
     *,
     db: Session,

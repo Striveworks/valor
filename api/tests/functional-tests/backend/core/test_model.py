@@ -156,6 +156,36 @@ def test_model_status(db: Session, created_model, created_dataset):
         )
 
 
+def test_model_status_with_evaluations(
+    db: Session, 
+    created_dataset: str,
+    created_model: str,
+):
+    # create an evaluation
+    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
+    evaluation_id = core.create_evaluation(
+        db, 
+        schemas.EvaluationJob(
+            dataset=created_dataset,
+            model=created_model,
+            task_type=enums.TaskType.CLASSIFICATION,
+        )
+    )
+    
+    # set the evaluation to the running state
+    core.set_evaluation_status(db, evaluation_id, enums.EvaluationStatus.RUNNING)
+
+    # test that deletion is blocked while evaluation is running
+    with pytest.raises(exceptions.EvaluationRunningError):
+        core.set_model_status(db, created_dataset, created_model, enums.TableStatus.DELETING)
+
+    # set the evaluation to the done state
+    core.set_evaluation_status(db, evaluation_id, enums.EvaluationStatus.DONE)
+
+    # test that deletion is unblocked when evaluation is DONE
+    core.set_model_status(db, created_dataset, created_model, enums.TableStatus.DELETING)
+
+
 def test_delete_model(db: Session):
     core.create_model(db=db, model=schemas.Model(name="model1"))
 

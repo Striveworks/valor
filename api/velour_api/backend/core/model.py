@@ -216,11 +216,12 @@ def get_model_status(
     db : Session
         The database session.
     name : str
-        Name of the model.
+        The name of the model.
 
     Returns
     -------
     enums.TableStatus
+        The status of the model.
     """
     # check if deleting
     model = fetch_model(db, model_name)
@@ -252,7 +253,27 @@ def set_model_status(
     status: enums.TableStatus,
 ):
     """
-    Set the status of the model.
+    Sets the status of a model.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    dataset_name : str
+        The name of the dataset.
+    model_name : str
+        The name of the model.
+    status : enums.TableStatus
+        The desired dataset state.
+
+    Raises
+    ------
+    exceptions.DatasetDoesNotExistError
+        If the dataset does not exist or is being deleted.
+    exceptions.ModelStateError
+        If an illegal transition is requested.
+    exceptions.EvaluationRunningError
+        If the requested state is DELETING while an evaluation is running.
     """
     dataset_status = get_dataset_status(db, dataset_name)
     if dataset_status == enums.TableStatus.DELETING:
@@ -282,7 +303,6 @@ def set_model_status(
             model=model,
         )
 
-    # TODO - write test for this after evaluation status is implemented
     elif status == enums.TableStatus.DELETING:
         if check_for_active_evaluations(db=db, model_name=model_name):
             raise exceptions.EvaluationRunningError(
