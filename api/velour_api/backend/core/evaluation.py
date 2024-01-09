@@ -59,15 +59,14 @@ def _validate_request(
         raise TypeError(
             f"Expected `schemas.EvaluationJob`, received `{type(job_request)}`"
         )
-    if (
-        job_request.dataset != dataset.name
-        or job_request.model != model.name
-    ):
+    if job_request.dataset != dataset.name or job_request.model != model.name:
         raise ValueError("Name mismatch.")
-    
+
     # get statuses
     dataset_status = enums.TableStatus(dataset.status)
-    model_status = core.get_model_status(db=db, dataset_name=dataset.name, model_name=model.name)
+    model_status = core.get_model_status(
+        db=db, dataset_name=dataset.name, model_name=model.name
+    )
 
     # verify dataset status
     match dataset_status:
@@ -135,10 +134,7 @@ def create_evaluation(
     model = core.fetch_model(db, job_request.model)
 
     _validate_request(
-        db=db,
-        job_request=job_request,
-        dataset=dataset,
-        model=model
+        db=db, job_request=job_request, dataset=dataset, model=model
     )
 
     try:
@@ -195,10 +191,7 @@ def fetch_evaluation_from_job_request(
     model = core.fetch_model(db, job_request.model)
 
     _validate_request(
-        db=db,
-        job_request=job_request,
-        dataset=dataset,
-        model=model
+        db=db, job_request=job_request, dataset=dataset, model=model
     )
 
     evaluation = (

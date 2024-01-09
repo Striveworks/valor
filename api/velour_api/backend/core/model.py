@@ -6,36 +6,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
-from velour_api.enums import TableStatus, ModelStatus
 from velour_api.backend import models
 from velour_api.backend.core.annotation import create_skipped_annotations
 from velour_api.backend.core.dataset import fetch_dataset, get_dataset_status
 from velour_api.backend.core.evaluation import check_for_active_evaluations
-
-
-def _count_disjoint_datums(
-    db: Session, dataset_name: str, model_name: str
-) -> int:
-    """
-    Count all datums that the model has not provided predictions for.
-
-    Parameters
-    ----------
-    db : Session
-        The database session.
-    dataset_name : str
-        The name of the dataset.
-    model_name : str
-        The name of the model.
-
-    Returns
-    -------
-    int
-        Number of disjoint datums.
-    """
-    dataset = fetch_dataset(db=db, name=dataset_name)
-    model = fetch_model(db=db, name=model_name)
-    
+from velour_api.enums import ModelStatus, TableStatus
 
 
 def create_model(
@@ -220,13 +195,13 @@ def get_model_status(
     # check if deleting
     if model_status == ModelStatus.DELETING:
         return TableStatus.DELETING
-    
+
     # check dataset status
     if dataset_status == TableStatus.DELETING:
         raise exceptions.DatasetDoesNotExistError(dataset.name)
     elif dataset_status == TableStatus.CREATING:
         return TableStatus.CREATING
-    
+
     # query the number of datums that do not have any prediction annotations
     query_num_disjoint_datums = (
         select(func.count())
@@ -248,6 +223,7 @@ def get_model_status(
         return TableStatus.CREATING
     else:
         return TableStatus.FINALIZED
+
 
 def set_model_status(
     db: Session,
@@ -313,7 +289,11 @@ def set_model_status(
             )
 
     try:
-        model.status = ModelStatus.READY if status != TableStatus.DELETING else ModelStatus.DELETING
+        model.status = (
+            ModelStatus.READY
+            if status != TableStatus.DELETING
+            else ModelStatus.DELETING
+        )
         db.commit()
     except Exception as e:
         db.rollback()
