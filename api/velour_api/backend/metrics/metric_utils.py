@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend import core, models
+from velour_api.backend import core
 
 
 def get_or_create_row(
@@ -103,6 +103,7 @@ def validate_computation(fn: callable) -> callable:
     """
     Computation decorator that validates that a computation can proceed.
     """
+
     def wrapper(*args, **kwargs):
         if "db" not in kwargs:
             raise RuntimeError(
@@ -117,7 +118,9 @@ def validate_computation(fn: callable) -> callable:
         evaluation_id = kwargs["evaluation_id"]
 
         if not isinstance(db, Session):
-            raise TypeError("Expected `db` to be of type `sqlalchemy.orm.Session`.")
+            raise TypeError(
+                "Expected `db` to be of type `sqlalchemy.orm.Session`."
+            )
         if not isinstance(evaluation_id, int):
             raise TypeError("Expected `evaluation_id` to be of type `int`.")
 

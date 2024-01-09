@@ -118,7 +118,7 @@ def create_evaluation(
 
     dataset = core.fetch_dataset(db, job_request.dataset)
     model = core.fetch_model(db, job_request.model)
-    
+
     _validate_request(job_request, dataset, model)
 
     try:
@@ -396,7 +396,7 @@ def get_disjoint_labels_from_evaluation(
 ) -> tuple[list[schemas.Label], list[schemas.Label]]:
     """
     Return a tuple containing the unique labels associated with the groundtruths and predictions stored in a database.
-    
+
     Parameters
     ----------
     db : Session

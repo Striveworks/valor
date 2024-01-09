@@ -144,7 +144,7 @@ def get_dataset_status(
         The database session.
     name : str
         The name of the dataset.
-    
+
     Returns
     -------
     enums.TableStatus

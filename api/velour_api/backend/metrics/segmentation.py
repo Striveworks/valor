@@ -5,9 +5,9 @@ from sqlalchemy.sql import Select, func, select
 from velour_api import enums, schemas
 from velour_api.backend import models
 from velour_api.backend.metrics.metric_utils import (
-    validate_computation,
     create_metric_mappings,
     get_or_create_row,
+    validate_computation,
 )
 from velour_api.backend.ops import Query
 from velour_api.schemas.metrics import EvaluationJob, IOUMetric, mIOUMetric

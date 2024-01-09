@@ -1,5 +1,6 @@
 import pytest
 from sqlalchemy.orm import Session
+
 from velour_api import enums, schemas
 from velour_api.backend import core
 from velour_api.backend.metrics.metric_utils import validate_computation
@@ -37,14 +38,17 @@ def test_validate_computation(
     # create evaluation
     core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
     evaluation_id = core.create_evaluation(
-        db, 
+        db,
         schemas.EvaluationJob(
             dataset=created_dataset,
             model=created_model,
             task_type=enums.TaskType.CLASSIFICATION,
-        )
+        ),
     )
-    assert core.get_evaluation_status(db, evaluation_id) == enums.EvaluationStatus.PENDING
+    assert (
+        core.get_evaluation_status(db, evaluation_id)
+        == enums.EvaluationStatus.PENDING
+    )
 
     with pytest.raises(RuntimeError) as e:
         _test_successful_computation(db, evaluation_id)
@@ -66,9 +70,13 @@ def test_validate_computation(
     with pytest.raises(RuntimeError) as e:
         _test_failed_computation(db=db, evaluation_id=evaluation_id)
     assert "This is my test function." in str(e)
-    assert core.get_evaluation_status(db, evaluation_id) == enums.EvaluationStatus.FAILED
+    assert (
+        core.get_evaluation_status(db, evaluation_id)
+        == enums.EvaluationStatus.FAILED
+    )
 
     _test_successful_computation(db=db, evaluation_id=evaluation_id)
-    assert core.get_evaluation_status(db, evaluation_id) == enums.EvaluationStatus.DONE
-
-    
+    assert (
+        core.get_evaluation_status(db, evaluation_id)
+        == enums.EvaluationStatus.DONE
+    )

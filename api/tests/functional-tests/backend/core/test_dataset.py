@@ -122,27 +122,31 @@ def test_dataset_status_create_to_delete(db: Session, created_dataset):
 
 
 def test_dataset_status_with_evaluations(
-    db: Session, 
+    db: Session,
     created_dataset: str,
     created_model: str,
 ):
     # create an evaluation
     core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
     evaluation_id = core.create_evaluation(
-        db, 
+        db,
         schemas.EvaluationJob(
             dataset=created_dataset,
             model=created_model,
             task_type=enums.TaskType.CLASSIFICATION,
-        )
+        ),
     )
-    
+
     # set the evaluation to the running state
-    core.set_evaluation_status(db, evaluation_id, enums.EvaluationStatus.RUNNING)
+    core.set_evaluation_status(
+        db, evaluation_id, enums.EvaluationStatus.RUNNING
+    )
 
     # test that deletion is blocked while evaluation is running
     with pytest.raises(exceptions.EvaluationRunningError):
-        core.set_dataset_status(db, created_dataset, enums.TableStatus.DELETING)
+        core.set_dataset_status(
+            db, created_dataset, enums.TableStatus.DELETING
+        )
 
     # set the evaluation to the done state
     core.set_evaluation_status(db, evaluation_id, enums.EvaluationStatus.DONE)
