@@ -42,7 +42,6 @@ from .label import (
 from .model import (
     create_model,
     delete_model,
-    fetch_disjoint_datums,
     fetch_model,
     get_model,
     get_model_status,
@@ -82,7 +81,6 @@ __all__ = [
     "create_model",
     "delete_model",
     "fetch_model",
-    "fetch_disjoint_datums",
     "get_model",
     "get_models",
     "get_model_status",

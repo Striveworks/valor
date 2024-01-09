@@ -239,16 +239,16 @@ def create_annotations(
     try:
         db.add_all(annotation_list)
         db.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
-        raise exceptions.AnnotationAlreadyExistsError(datum.id)
+        raise e
     return annotation_list
 
 
 def create_skipped_annotations(
     db: Session,
     datums: list[models.Datum],
-    model: models.Model | None = None,
+    model: models.Model,
 ):
     """
     Create a list of skipped annotations and associated labels in psql.
@@ -268,9 +268,9 @@ def create_skipped_annotations(
     try:
         db.add_all(annotation_list)
         db.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
-        raise exceptions.AnnotationAlreadyExistsError("")
+        raise e
 
 
 def get_annotation(

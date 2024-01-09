@@ -29,7 +29,7 @@ def created_models(db: Session) -> list[str]:
     return ["model1", "model2"]
 
 
-def test_created_model(db: Session, created_model):
+def test_create_model(db: Session, created_model):
     model = db.query(
         select(models.Model)
         .where(models.Model.name == created_model)

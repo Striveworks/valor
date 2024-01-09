@@ -13,6 +13,45 @@ from velour_api.backend.core.evaluation import check_for_active_evaluations
 from velour_api.enums import ModelStatus, TableStatus
 
 
+def _fetch_disjoint_datums(
+    db: Session, dataset_name: str, model_name: str
+) -> list[models.Datum]:
+    """
+    Fetch all datums that the model has not provided predictions for.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    dataset_name : str
+        The name of the dataset.
+    model_name : str
+        The name of the model.
+
+    Returns
+    -------
+    list[models.Datum]
+        List of Datums.
+    """
+    dataset = fetch_dataset(db=db, name=dataset_name)
+    model = fetch_model(db=db, name=model_name)
+    disjoint_datums = (
+        select(models.Datum)
+        .join(
+            models.Annotation,
+            and_(
+                models.Annotation.datum_id == models.Datum.id,
+                models.Annotation.model_id == model.id,
+            ),
+            isouter=True,
+        )
+        .where(models.Datum.dataset_id == dataset.id)
+        .filter(models.Annotation.id.is_(None))
+        .subquery()
+    )
+    return db.query(disjoint_datums).all()
+
+
 def create_model(
     db: Session,
     model: schemas.Model,
@@ -68,45 +107,6 @@ def fetch_model(
     if model is None:
         raise exceptions.ModelDoesNotExistError(name)
     return model
-
-
-def fetch_disjoint_datums(
-    db: Session, dataset_name: str, model_name: str
-) -> list[models.Datum]:
-    """
-    Fetch all datums that the model has not provided predictions for.
-
-    Parameters
-    ----------
-    db : Session
-        The database session.
-    dataset_name : str
-        The name of the dataset.
-    model_name : str
-        The name of the model.
-
-    Returns
-    -------
-    list[models.Datum]
-        List of Datums.
-    """
-    dataset = fetch_dataset(db=db, name=dataset_name)
-    model = fetch_model(db=db, name=model_name)
-    disjoint_datums = (
-        select(models.Datum)
-        .join(
-            models.Annotation,
-            and_(
-                models.Annotation.datum_id == models.Datum.id,
-                models.Annotation.model_id == model.id,
-            ),
-            isouter=True,
-        )
-        .where(models.Datum.dataset_id == dataset.id)
-        .filter(models.Annotation.id.is_(None))
-        .subquery()
-    )
-    return db.query(disjoint_datums).all()
 
 
 def get_model(
@@ -278,7 +278,7 @@ def set_model_status(
         # edge case - check that there exists at least one prediction per datum
         create_skipped_annotations(
             db=db,
-            datums=fetch_disjoint_datums(db, dataset_name, model_name),
+            datums=_fetch_disjoint_datums(db, dataset_name, model_name),
             model=model,
         )
 
