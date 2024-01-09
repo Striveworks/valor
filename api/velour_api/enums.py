@@ -20,28 +20,28 @@ class AnnotationType(str, Enum):
         return mapping[self]
 
     def __gt__(self, other):
-        if not isinstance(other, type(self)):
+        if not isinstance(other, AnnotationType):
             raise TypeError(
                 "operator can only be used with other `velour_api.enums.AnnotationType` objects"
             )
         return self.numeric > other.numeric
 
     def __lt__(self, other):
-        if not isinstance(other, type(self)):
+        if not isinstance(other, AnnotationType):
             raise TypeError(
                 "operator can only be used with other `velour_api.enums.AnnotationType` objects"
             )
         return self.numeric < other.numeric
 
     def __ge__(self, other):
-        if not isinstance(other, type(self)):
+        if not isinstance(other, AnnotationType):
             raise TypeError(
                 "operator can only be used with other `velour_api.enums.AnnotationType` objects"
             )
         return self.numeric >= other.numeric
 
     def __le__(self, other):
-        if not isinstance(other, type(self)):
+        if not isinstance(other, AnnotationType):
             raise TypeError(
                 "operator can only be used with other `velour_api.enums.AnnotationType` objects"
             )
@@ -65,14 +65,13 @@ class TableStatus(str, Enum):
         """
         Returns the set of valid next states based on the current state.
         """
-        if self == self.CREATING:
-            return {self.CREATING, self.FINALIZED, self.DELETING}
-        elif self == self.FINALIZED:
-            return {self.FINALIZED, self.DELETING}
-        elif self == self.DELETING:
-            return {self.DELETING}
-        else:
-            raise ValueError
+        match self:
+            case self.CREATING:
+                return {self.CREATING, self.FINALIZED, self.DELETING}
+            case self.FINALIZED:
+                return {self.FINALIZED, self.DELETING}
+            case self.DELETING:
+                return {self.DELETING}
 
 
 class ModelStatus(str, Enum):
@@ -83,12 +82,11 @@ class ModelStatus(str, Enum):
         """
         Returns the set of valid next states based on the current state.
         """
-        if self == self.READY:
-            return {self.READY, self.DELETING}
-        elif self == self.DELETING:
-            return {self.DELETING}
-        else:
-            raise ValueError
+        match self:
+            case self.READY:
+                return {self.READY, self.DELETING}
+            case self.DELETING:
+                return {self.DELETING}
 
 
 class EvaluationStatus(str, Enum):
@@ -98,7 +96,7 @@ class EvaluationStatus(str, Enum):
     FAILED = "failed"
     DELETING = "deleting"
 
-    def next(self):
+    def next(self) -> set["EvaluationStatus"]:
         """
         Returns the set of valid next states based on the current state.
         """
@@ -112,5 +110,3 @@ class EvaluationStatus(str, Enum):
             return {self.DONE, self.DELETING}
         elif self == self.DELETING:
             return {self.DELETING}
-        else:
-            raise ValueError

@@ -1,3 +1,5 @@
+import pytest
+
 from velour_api.enums import (
     AnnotationType,
     EvaluationStatus,
@@ -28,30 +30,30 @@ def test_annotation_type_members():
     AnnotationType.RASTER > AnnotationType.POLYGON
     AnnotationType.RASTER > AnnotationType.BOX
     AnnotationType.RASTER > AnnotationType.NONE
-
     AnnotationType.MULTIPOLYGON > AnnotationType.POLYGON
     AnnotationType.MULTIPOLYGON > AnnotationType.BOX
     AnnotationType.MULTIPOLYGON > AnnotationType.NONE
-
     AnnotationType.POLYGON > AnnotationType.BOX
     AnnotationType.POLYGON > AnnotationType.NONE
-
     AnnotationType.BOX > AnnotationType.NONE
+    for e in AnnotationType:
+        with pytest.raises(TypeError):
+            e > 1234
 
     # test `__lt__`
     AnnotationType.NONE < AnnotationType.RASTER
     AnnotationType.NONE < AnnotationType.MULTIPOLYGON
     AnnotationType.NONE < AnnotationType.POLYGON
     AnnotationType.NONE < AnnotationType.BOX
-
     AnnotationType.BOX < AnnotationType.RASTER
     AnnotationType.BOX < AnnotationType.MULTIPOLYGON
     AnnotationType.BOX < AnnotationType.POLYGON
-
     AnnotationType.POLYGON < AnnotationType.RASTER
     AnnotationType.POLYGON < AnnotationType.MULTIPOLYGON
-
     AnnotationType.MULTIPOLYGON < AnnotationType.RASTER
+    for e in AnnotationType:
+        with pytest.raises(TypeError):
+            e < 1234
 
     # test `__ge__`
     AnnotationType.RASTER >= AnnotationType.RASTER
@@ -59,20 +61,19 @@ def test_annotation_type_members():
     AnnotationType.RASTER >= AnnotationType.POLYGON
     AnnotationType.RASTER >= AnnotationType.BOX
     AnnotationType.RASTER >= AnnotationType.NONE
-
     AnnotationType.MULTIPOLYGON >= AnnotationType.MULTIPOLYGON
     AnnotationType.MULTIPOLYGON >= AnnotationType.POLYGON
     AnnotationType.MULTIPOLYGON >= AnnotationType.BOX
     AnnotationType.MULTIPOLYGON >= AnnotationType.NONE
-
     AnnotationType.POLYGON >= AnnotationType.POLYGON
     AnnotationType.POLYGON >= AnnotationType.BOX
     AnnotationType.POLYGON >= AnnotationType.NONE
-
     AnnotationType.BOX >= AnnotationType.BOX
     AnnotationType.BOX >= AnnotationType.NONE
-
     AnnotationType.NONE >= AnnotationType.NONE
+    for e in AnnotationType:
+        with pytest.raises(TypeError):
+            e >= 1234
 
     # test `__le__`
     AnnotationType.NONE <= AnnotationType.RASTER
@@ -80,20 +81,19 @@ def test_annotation_type_members():
     AnnotationType.NONE <= AnnotationType.POLYGON
     AnnotationType.NONE <= AnnotationType.BOX
     AnnotationType.NONE <= AnnotationType.NONE
-
     AnnotationType.BOX <= AnnotationType.RASTER
     AnnotationType.BOX <= AnnotationType.MULTIPOLYGON
     AnnotationType.BOX <= AnnotationType.POLYGON
     AnnotationType.BOX <= AnnotationType.BOX
-
     AnnotationType.POLYGON <= AnnotationType.RASTER
     AnnotationType.POLYGON <= AnnotationType.MULTIPOLYGON
     AnnotationType.POLYGON <= AnnotationType.POLYGON
-
     AnnotationType.MULTIPOLYGON <= AnnotationType.RASTER
     AnnotationType.MULTIPOLYGON <= AnnotationType.MULTIPOLYGON
-
     AnnotationType.RASTER <= AnnotationType.RASTER
+    for e in AnnotationType:
+        with pytest.raises(TypeError):
+            e <= 1234
 
 
 def test_table_status_members():
