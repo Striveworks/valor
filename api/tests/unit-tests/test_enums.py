@@ -146,6 +146,7 @@ def test_evaluation_status_members():
     assert EvaluationStatus.PENDING.next() == {
         EvaluationStatus.PENDING,
         EvaluationStatus.RUNNING,
+        EvaluationStatus.FAILED,
     }
     assert EvaluationStatus.RUNNING.next() == {
         EvaluationStatus.RUNNING,
