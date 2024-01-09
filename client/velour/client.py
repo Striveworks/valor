@@ -1,7 +1,6 @@
 import logging
 import os
 import time
-import json
 from typing import Callable, List, Optional, TypeVar, Union
 from urllib.parse import urlencode, urljoin
 
@@ -11,7 +10,6 @@ from packaging import version
 from velour import __version__ as client_version
 from velour.enums import TableStatus
 from velour.schemas.evaluation import EvaluationResult
-
 
 T = TypeVar("T")
 

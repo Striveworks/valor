@@ -1,5 +1,5 @@
-import os
 import json
+import os
 from contextlib import asynccontextmanager
 
 import sqlalchemy
@@ -62,7 +62,7 @@ def create_http_error(
                 "name": str(type(error).__name__),
                 "detail": str(error),
             }
-        )
+        ),
     )
 
 
