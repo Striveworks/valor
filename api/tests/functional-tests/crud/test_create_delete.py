@@ -458,7 +458,7 @@ def test_create_detection_prediction_and_delete_model(
     groundtruth_detections: list[schemas.GroundTruth],
 ):
     # check this gives an error since the model hasn't been added yet
-    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
         for pd in prediction_detections:
             crud.create_prediction(db=db, prediction=pd)
     assert "does not exist" in str(exc_info)
@@ -602,8 +602,8 @@ def test_create_predicted_classifications_and_delete_model(
     pred_clfs_create: list[schemas.Prediction],
     gt_clfs_create: list[schemas.GroundTruth],
 ):
-    # check this gives an error since the model hasn't been added yet
-    with pytest.raises(exceptions.ModelDoesNotExistError) as exc_info:
+    # check this gives an error since the dataset hasn't been added yet
+    with pytest.raises(exceptions.DatasetDoesNotExistError) as exc_info:
         crud.create_prediction(db=db, prediction=pred_clfs_create[0])
     assert "does not exist" in str(exc_info)
 
