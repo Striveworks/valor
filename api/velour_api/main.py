@@ -551,6 +551,8 @@ def delete_dataset(
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
         crud.delete(db=db, dataset_name=dataset_name)
+
+        # TODO - https://github.com/Striveworks/velour/issues/353
         # background_tasks.add_task(
         #     crud.delete,
         #     db=db,
@@ -876,6 +878,8 @@ def delete_model(
     """
     try:
         crud.delete(db=db, model_name=model_name)
+
+        # TODO - https://github.com/Striveworks/velour/issues/353
         # background_tasks.add_task(
         #     crud.delete,
         #     db=db,

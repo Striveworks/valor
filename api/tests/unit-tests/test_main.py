@@ -833,6 +833,7 @@ def test_delete_dataset(crud, client: TestClient):
     assert resp.status_code == 200
     assert crud.delete.call_count == 1
 
+    # TODO - https://github.com/Striveworks/velour/issues/353
     # with patch(
     #     "fastapi.BackgroundTasks.add_task",
     #     side_effect=exceptions.DatasetDoesNotExistError(""),
@@ -948,6 +949,7 @@ def test_delete_model(crud, client: TestClient):
     assert resp.status_code == 200
     assert crud.delete.call_count == 1
 
+    # TODO - https://github.com/Striveworks/velour/issues/353
     # with patch(
     #     "fastapi.BackgroundTasks.add_task",
     #     side_effect=exceptions.ModelDoesNotExistError(""),
