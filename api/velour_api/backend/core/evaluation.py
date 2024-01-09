@@ -47,36 +47,51 @@ def _validate_filters(job_request: schemas.EvaluationJob):
 
 
 def _validate_request(
+    db: Session,
     job_request: schemas.EvaluationJob,
     dataset: models.Dataset,
     model: models.Model,
 ):
     """Validates that the requested dependencies exist and are valid for evaluation."""
+
     # validate type
     if not isinstance(job_request, schemas.EvaluationJob):
         raise TypeError(
             f"Expected `schemas.EvaluationJob`, received `{type(job_request)}`"
         )
+    if (
+        job_request.dataset != dataset.name
+        or job_request.model != model.name
+    ):
+        raise ValueError("Name mismatch.")
+    
+    # get statuses
+    dataset_status = enums.TableStatus(dataset.status)
+    model_status = core.get_model_status(db=db, dataset_name=dataset.name, model_name=model.name)
 
     # verify dataset status
-    match dataset.status:
+    match dataset_status:
         case enums.TableStatus.CREATING:
             raise exceptions.DatasetNotFinalizedError(job_request.dataset)
         case enums.TableStatus.DELETING | None:
             raise exceptions.DatasetDoesNotExistError(job_request.dataset)
-        case _:
+        case enums.TableStatus.FINALIZED:
             pass
+        case _:
+            raise RuntimeError
 
     # verify model status
-    match model.status:
+    match model_status:
         case enums.TableStatus.CREATING:
             raise exceptions.ModelNotFinalizedError(
                 dataset_name=job_request.dataset, model_name=job_request.model
             )
         case enums.TableStatus.DELETING | None:
             raise exceptions.ModelDoesNotExistError(job_request.model)
-        case _:
+        case enums.TableStatus.FINALIZED:
             pass
+        case _:
+            raise RuntimeError
 
     # validate parameters
     match job_request.task_type:
@@ -119,7 +134,12 @@ def create_evaluation(
     dataset = core.fetch_dataset(db, job_request.dataset)
     model = core.fetch_model(db, job_request.model)
 
-    _validate_request(job_request, dataset, model)
+    _validate_request(
+        db=db,
+        job_request=job_request,
+        dataset=dataset,
+        model=model
+    )
 
     try:
         evaluation = models.Evaluation(
@@ -174,7 +194,12 @@ def fetch_evaluation_from_job_request(
     dataset = core.fetch_dataset(db, job_request.dataset)
     model = core.fetch_model(db, job_request.model)
 
-    _validate_request(job_request, dataset, model)
+    _validate_request(
+        db=db,
+        job_request=job_request,
+        dataset=dataset,
+        model=model
+    )
 
     evaluation = (
         db.query(models.Evaluation)
@@ -418,7 +443,10 @@ def get_disjoint_labels_from_evaluation(
         filters = schemas.Filter()
     else:
         _validate_request(
-            job_request=job_request, dataset=dataset, model=model
+            db=db,
+            job_request=job_request,
+            dataset=dataset,
+            model=model,
         )
         filters = job_request.settings.filters.model_copy()
 

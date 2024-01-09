@@ -5,7 +5,8 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import enums, exceptions, schemas
+from velour_api import exceptions, schemas
+from velour_api.enums import TableStatus, ModelStatus
 from velour_api.backend import models
 from velour_api.backend.core.annotation import create_skipped_annotations
 from velour_api.backend.core.dataset import fetch_dataset, get_dataset_status
@@ -34,21 +35,7 @@ def _count_disjoint_datums(
     """
     dataset = fetch_dataset(db=db, name=dataset_name)
     model = fetch_model(db=db, name=model_name)
-    disjoint_datums = (
-        select(func.count())
-        .select_from(models.Datum)
-        .join(
-            models.Annotation,
-            and_(
-                models.Annotation.datum_id == models.Datum.id,
-                models.Annotation.model_id == model.id,
-            ),
-            isouter=True,
-        )
-        .where(models.Datum.dataset_id == dataset.id)
-        .filter(models.Annotation.id.is_(None))
-    )
-    return db.scalar(disjoint_datums)
+    
 
 
 def create_model(
@@ -70,7 +57,7 @@ def create_model(
             name=model.name,
             meta=model.metadata,
             geo=model.geospatial.wkt() if model.geospatial else None,
-            status=enums.ModelStatus.READY,
+            status=ModelStatus.READY,
         )
         db.add(row)
         db.commit()
@@ -207,7 +194,7 @@ def get_model_status(
     db: Session,
     dataset_name: str,
     model_name: str,
-) -> enums.TableStatus:
+) -> TableStatus:
     """
     Get status of model.
 
@@ -220,37 +207,53 @@ def get_model_status(
 
     Returns
     -------
-    enums.TableStatus
+    TableStatus
         The status of the model.
     """
-    # check if deleting
+    dataset = fetch_dataset(db, dataset_name)
     model = fetch_model(db, model_name)
-    if model.status == enums.ModelStatus.DELETING:
-        return enums.TableStatus.DELETING
 
+    # format statuses
+    dataset_status = TableStatus(dataset.status)
+    model_status = ModelStatus(model.status)
+
+    # check if deleting
+    if model_status == ModelStatus.DELETING:
+        return TableStatus.DELETING
+    
     # check dataset status
-    dataset_status = get_dataset_status(db, dataset_name)
-    if dataset_status == enums.TableStatus.DELETING:
-        raise exceptions.DatasetDoesNotExistError(dataset_name)
-    elif dataset_status == enums.TableStatus.CREATING:
-        return enums.TableStatus.CREATING
-
-    # check if model maps to all datums in the dataset
-    number_of_disjoint_datums = _count_disjoint_datums(
-        db, dataset_name, model_name
+    if dataset_status == TableStatus.DELETING:
+        raise exceptions.DatasetDoesNotExistError(dataset.name)
+    elif dataset_status == TableStatus.CREATING:
+        return TableStatus.CREATING
+    
+    # query the number of datums that do not have any prediction annotations
+    query_num_disjoint_datums = (
+        select(func.count())
+        .select_from(models.Datum)
+        .join(
+            models.Annotation,
+            and_(
+                models.Annotation.datum_id == models.Datum.id,
+                models.Annotation.model_id == model.id,
+            ),
+            isouter=True,
+        )
+        .where(models.Datum.dataset_id == dataset.id)
+        .filter(models.Annotation.id.is_(None))
     )
 
-    if number_of_disjoint_datums != 0:
-        return enums.TableStatus.CREATING
+    # finalization is determined by the existence of at least one annotation per datum.
+    if db.scalar(query_num_disjoint_datums) != 0:
+        return TableStatus.CREATING
     else:
-        return enums.TableStatus.FINALIZED
-
+        return TableStatus.FINALIZED
 
 def set_model_status(
     db: Session,
     dataset_name: str,
     model_name: str,
-    status: enums.TableStatus,
+    status: TableStatus,
 ):
     """
     Sets the status of a model.
@@ -263,7 +266,7 @@ def set_model_status(
         The name of the dataset.
     model_name : str
         The name of the model.
-    status : enums.TableStatus
+    status : TableStatus
         The desired dataset state.
 
     Raises
@@ -276,7 +279,7 @@ def set_model_status(
         If the requested state is DELETING while an evaluation is running.
     """
     dataset_status = get_dataset_status(db, dataset_name)
-    if dataset_status == enums.TableStatus.DELETING:
+    if dataset_status == TableStatus.DELETING:
         raise exceptions.DatasetDoesNotExistError(dataset_name)
 
     model_status = get_model_status(db, dataset_name, model_name)
@@ -291,10 +294,10 @@ def set_model_status(
 
     # verify model-dataset parity
     if (
-        model_status == enums.TableStatus.CREATING
-        and status == enums.TableStatus.FINALIZED
+        model_status == TableStatus.CREATING
+        and status == TableStatus.FINALIZED
     ):
-        if dataset_status != enums.TableStatus.FINALIZED:
+        if dataset_status != TableStatus.FINALIZED:
             raise exceptions.DatasetNotFinalizedError(dataset_name)
         # edge case - check that there exists at least one prediction per datum
         create_skipped_annotations(
@@ -303,14 +306,14 @@ def set_model_status(
             model=model,
         )
 
-    elif status == enums.TableStatus.DELETING:
+    elif status == TableStatus.DELETING:
         if check_for_active_evaluations(db=db, model_name=model_name):
             raise exceptions.EvaluationRunningError(
                 dataset_name=dataset_name, model_name=model_name
             )
 
     try:
-        model.status = status
+        model.status = ModelStatus.READY if status != TableStatus.DELETING else ModelStatus.DELETING
         db.commit()
     except Exception as e:
         db.rollback()
@@ -336,7 +339,7 @@ def delete_model(
         raise exceptions.EvaluationRunningError(name)
 
     try:
-        model.status = enums.ModelStatus.DELETING
+        model.status = ModelStatus.DELETING
         db.commit()
     except Exception as e:
         db.rollback()

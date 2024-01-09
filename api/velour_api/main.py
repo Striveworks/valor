@@ -550,16 +550,17 @@ def delete_dataset(
     """
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
-        background_tasks.add_task(
-            crud.delete,
-            db=db,
-            dataset_name=dataset_name,
-        )
+        crud.delete(db=db, dataset_name=dataset_name)
+        # background_tasks.add_task(
+        #     crud.delete,
+        #     db=db,
+        #     dataset_name=dataset_name,
+        # )
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except (
         exceptions.DatasetStateError,
-        exceptions.DatasetNotFinalizedError,
+        exceptions.EvaluationRunningError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -874,17 +875,18 @@ def delete_model(
         If the model isn't in the correct state to be deleted.
     """
     try:
-        background_tasks.add_task(
-            crud.delete,
-            db=db,
-            model_name=model_name,
-        )
+        crud.delete(db=db, model_name=model_name)
+        # background_tasks.add_task(
+        #     crud.delete,
+        #     db=db,
+        #     model_name=model_name,
+        # )
     except exceptions.ModelDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except (
         exceptions.DatasetStateError,
         exceptions.ModelStateError,
-        exceptions.ModelNotFinalizedError,
+        exceptions.EvaluationRunningError,
     ) as e:
         raise HTTPException(status_code=409, detail=str(e))
 
