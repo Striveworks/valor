@@ -1,12 +1,13 @@
 import json
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import exceptions, schemas
 from velour_api.backend import models
+from velour_api.backend.core.label import get_labels
 
 
 def create_dataset(
@@ -66,6 +67,163 @@ def fetch_dataset(
     if dataset is None:
         raise exceptions.DatasetDoesNotExistError(name)
     return dataset
+
+
+def get_n_datums_in_dataset(db: Session, name: str) -> int:
+    """Returns the number of datums in a dataset."""
+    return (
+        db.query(models.Datum)
+        .join(models.Dataset)
+        .where(models.Dataset.name == name)
+        .count()
+    )
+
+
+def get_n_groundtruth_annotations(db: Session, name: str) -> int:
+    """Returns the number of groundtruth annotations in a dataset."""
+    return (
+        db.query(models.Annotation)
+        .join(models.GroundTruth)
+        .join(models.Datum)
+        .join(models.Dataset)
+        .where(models.Dataset.name == name)
+        .count()
+    )
+
+
+def get_n_groundtruth_bounding_boxes_in_dataset(db: Session, name: str) -> int:
+    return (
+        db.query(models.Annotation.id)
+        .join(models.GroundTruth)
+        .join(models.Datum)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == name, models.Annotation.box.isnot(None)
+            )
+        )
+        .distinct()
+        .count()
+    )
+
+
+def get_n_groundtruth_polygons_in_dataset(db: Session, name: str) -> int:
+    return (
+        db.query(models.Annotation.id)
+        .join(models.GroundTruth)
+        .join(models.Datum)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == name,
+                models.Annotation.polygon.isnot(None),
+            )
+        )
+        .distinct()
+        .count()
+    )
+
+
+def get_n_groundtruth_multipolygons_in_dataset(db: Session, name: str) -> int:
+    return (
+        db.query(models.Annotation.id)
+        .join(models.GroundTruth)
+        .join(models.Datum)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == name,
+                models.Annotation.multipolygon.isnot(None),
+            )
+        )
+        .distinct()
+        .count()
+    )
+
+
+def get_n_groundtruth_rasters_in_dataset(db: Session, name: str) -> int:
+    return (
+        db.query(models.Annotation.id)
+        .join(models.GroundTruth)
+        .join(models.Datum)
+        .join(models.Dataset)
+        .where(
+            and_(
+                models.Dataset.name == name,
+                models.Annotation.raster.isnot(None),
+            )
+        )
+        .distinct()
+        .count()
+    )
+
+
+def get_unique_task_types_in_dataset(db: Session, name: str) -> list[str]:
+    return db.scalars(
+        select(models.Annotation.task_type)
+        .join(models.GroundTruth)
+        .join(models.Datum)
+        .join(models.Dataset)
+        .where(models.Dataset.name == name)
+        .distinct()
+    ).all()
+
+
+def get_unique_datum_metadata_in_dataset(db: Session, name: str) -> list[str]:
+    md = db.scalars(
+        select(models.Datum.meta)
+        .join(models.Dataset)
+        .where(models.Dataset.name == name)
+        .distinct()
+    ).all()
+
+    # remove trivial metadata
+    md = [m for m in md if m != {}]
+    return md
+
+
+def get_unique_groundtruth_annotation_metadata_in_dataset(
+    db: Session, name: str
+) -> list[str]:
+    md = db.scalars(
+        select(models.Annotation.meta)
+        .join(models.GroundTruth)
+        .join(models.Datum)
+        .join(models.Dataset)
+        .where(models.Dataset.name == name)
+        .distinct()
+    ).all()
+
+    # remove trivial metadata
+    md = [m for m in md if m != {}]
+    return md
+
+
+def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
+    gt_labels = get_labels(
+        db,
+        schemas.Filter(dataset_names=[name]),
+        ignore_predictions=True,
+    )
+    return schemas.DatasetSummary(
+        name=name,
+        num_datums=get_n_datums_in_dataset(db, name),
+        num_annotations=get_n_groundtruth_annotations(db, name),
+        num_bounding_boxes=get_n_groundtruth_bounding_boxes_in_dataset(
+            db, name
+        ),
+        num_polygons=get_n_groundtruth_polygons_in_dataset(db, name),
+        num_groundtruth_multipolygons=get_n_groundtruth_multipolygons_in_dataset(
+            db, name
+        ),
+        num_rasters=get_n_groundtruth_rasters_in_dataset(db, name),
+        task_types=get_unique_task_types_in_dataset(db, name),
+        labels=gt_labels,
+        datum_metadata=get_unique_datum_metadata_in_dataset(db, name),
+        annotation_metadata=get_unique_groundtruth_annotation_metadata_in_dataset(
+            db, name
+        ),
+    )
 
 
 def get_dataset(
