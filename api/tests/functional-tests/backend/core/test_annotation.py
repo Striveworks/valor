@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from velour_api import enums, schemas, exceptions
+from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
 
 
@@ -34,22 +34,14 @@ def datums(created_dataset) -> list[schemas.Datum]:
 @pytest.fixture
 def empty_groundtruths(datums) -> list[schemas.GroundTruth]:
     return [
-        schemas.GroundTruth(
-            datum=datum,
-            annotations=[]
-        )
-        for datum in datums
+        schemas.GroundTruth(datum=datum, annotations=[]) for datum in datums
     ]
 
 
 @pytest.fixture
 def empty_predictions(created_model, datums) -> list[schemas.Prediction]:
     return [
-        schemas.Prediction(
-            model=created_model,
-            datum=datum,
-            annotations=[]
-        )
+        schemas.Prediction(model=created_model, datum=datum, annotations=[])
         for datum in datums
     ]
 
@@ -62,21 +54,27 @@ def test_create_empty_annotations(
 ):
     for gt in empty_groundtruths:
         core.create_groundtruth(db, gt)
-    
-    assert db.scalar(
-        select(func.count())
-        .select_from(models.Annotation)
-        .where(models.Annotation.task_type == enums.TaskType.EMPTY.value)
-    ) == 3
-    
+
+    assert (
+        db.scalar(
+            select(func.count())
+            .select_from(models.Annotation)
+            .where(models.Annotation.task_type == enums.TaskType.EMPTY.value)
+        )
+        == 3
+    )
+
     for pd in empty_predictions:
         core.create_prediction(db, pd)
 
-    assert db.scalar(
-        select(func.count())
-        .select_from(models.Annotation)
-        .where(models.Annotation.task_type == enums.TaskType.EMPTY.value)
-    ) == 6
+    assert (
+        db.scalar(
+            select(func.count())
+            .select_from(models.Annotation)
+            .where(models.Annotation.task_type == enums.TaskType.EMPTY.value)
+        )
+        == 6
+    )
 
 
 def test_create_annotation_already_exists_error(
@@ -92,4 +90,3 @@ def test_create_annotation_already_exists_error(
         core.create_groundtruth(db, empty_groundtruths[0])
     with pytest.raises(exceptions.AnnotationAlreadyExistsError):
         core.create_prediction(db, empty_predictions[0])
-    
