@@ -507,6 +507,43 @@ def get_dataset_status(
         raise HTTPException(status_code=404, detail=str(e))
 
 
+@app.get(
+    "/datasets/{dataset_name}/summary",
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
+)
+def get_dataset_summary(
+    dataset_name: str, db: Session = Depends(get_db)
+) -> schemas.DatasetSummary:
+    """
+    Get the summary of a dataset.
+
+    GET Endpoint: `/datasets/{dataset_name}/summary`
+
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    schemas.DatasetSummary
+        The dataset summary.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset doesn't exist.
+    """
+    try:
+        resp = crud.get_dataset_summary(db, name=dataset_name)
+        return resp
+    except exceptions.DatasetDoesNotExistError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 @app.put(
     "/datasets/{dataset_name}/finalize",
     status_code=200,

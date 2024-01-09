@@ -2,7 +2,7 @@ import datetime
 import json
 import math
 import warnings
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from typing import Dict, List, Tuple, Union
 
 from velour.client import Client, ClientException, Job, wait_for_predicate
@@ -661,6 +661,31 @@ class Prediction:
         self._model_name = model.name if isinstance(model, Model) else model
 
 
+@dataclass
+class DatasetSummary:
+    """Dataclass for storing dataset summary information"""
+
+    name: str
+    num_datums: int
+    num_annotations: int
+    num_bounding_boxes: int
+    num_polygons: int
+    num_groundtruth_multipolygons: int
+    num_rasters: int
+    task_types: List[TaskType]
+    labels: List[Label]
+    datum_metadata: List[MetadataType]
+    annotation_metadata: List[MetadataType]
+
+    def __post_init__(self):
+        for i, tt in enumerate(self.task_types):
+            if isinstance(tt, str):
+                self.task_types[i] = TaskType(tt)
+        for i, label in enumerate(self.labels):
+            if isinstance(label, dict):
+                self.labels[i] = Label(**label)
+
+
 class Dataset:
     """
     A class describing a given dataset.
@@ -860,6 +885,43 @@ class Dataset:
             A list of `Evaluations` associated with the dataset.
         """
         return self.client.get_bulk_evaluations(datasets=self.name)
+
+    def get_summary(self) -> DatasetSummary:
+        """
+        Get the summary of a given dataset.
+
+        Returns
+        -------
+        DatasetSummary
+            The summary of the dataset. This class has the following fields:
+
+            name: name of the dataset
+
+            num_datums: total number of datums in the dataset
+
+            num_annotations: total number of labeled annotations in the dataset. if an
+            object (such as a bounding box) has multiple labels then each label is counted separately
+
+            num_bounding_boxes: total number of bounding boxes in the dataset
+
+            num_polygons: total number of polygons in the dataset
+
+            num_groundtruth_multipolygons: total number of multipolygons in the dataset
+
+            num_rasters: total number of rasters in the dataset
+
+            task_types: list of the unique task types in the dataset
+
+            labels: list of the unique labels in the dataset
+
+            datum_metadata: list of the unique metadata dictionaries in the dataset that are associated
+            to datums
+
+            groundtruth_annotation_metadata: list of the unique metadata dictionaries in the dataset that are
+            associated to annotations
+        """
+        resp = self.client.get_dataset_summary(self.name)
+        return DatasetSummary(**resp)
 
     def finalize(
         self,
