@@ -52,6 +52,7 @@ from .metrics import (
     mIOUMetric,
 )
 from .status import Health, Readiness
+from .summary import DatasetSummary
 
 __all__ = [
     "APIVersion",
@@ -106,4 +107,5 @@ __all__ = [
     "Filter",
     "Health",
     "Readiness",
+    "DatasetSummary",
 ]

@@ -479,3 +479,186 @@ def gt_semantic_segs_create(
             ],
         ),
     ]
+
+
+@pytest.fixture
+def groundtruth_detections(
+    img1: schemas.Datum, img2: schemas.Datum
+) -> list[schemas.GroundTruth]:
+    return [
+        schemas.GroundTruth(
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k2", value="v2"),
+                    ],
+                    metadata={"int_key": 1},
+                    bounding_box=schemas.BoundingBox(
+                        polygon=schemas.BasicPolygon(
+                            points=[
+                                schemas.Point(x=10, y=20),
+                                schemas.Point(x=10, y=30),
+                                schemas.Point(x=20, y=30),
+                                schemas.Point(
+                                    x=20, y=20
+                                ),  # removed repeated first point
+                            ]
+                        )
+                    ),
+                ),
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[schemas.Label(key="k2", value="v2")],
+                    metadata={},
+                    polygon=schemas.Polygon(
+                        boundary=schemas.BasicPolygon(
+                            points=[
+                                schemas.Point(x=10, y=20),
+                                schemas.Point(x=10, y=30),
+                                schemas.Point(x=20, y=30),
+                            ]
+                        )
+                    ),
+                    bounding_box=schemas.BoundingBox(
+                        polygon=schemas.BasicPolygon(
+                            points=[
+                                schemas.Point(x=10, y=20),
+                                schemas.Point(x=10, y=30),
+                                schemas.Point(x=20, y=30),
+                                schemas.Point(
+                                    x=20, y=20
+                                ),  # removed repeated first point
+                            ]
+                        )
+                    ),
+                ),
+            ],
+        ),
+        schemas.GroundTruth(
+            datum=img2,
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[
+                        schemas.Label(key="k1", value="v1"),
+                        schemas.Label(key="k2", value="v2"),
+                    ],
+                    metadata={},
+                    bounding_box=schemas.BoundingBox(
+                        polygon=schemas.BasicPolygon(
+                            points=[
+                                schemas.Point(x=10, y=20),
+                                schemas.Point(x=10, y=30),
+                                schemas.Point(x=20, y=30),
+                                schemas.Point(
+                                    x=20, y=20
+                                ),  # removed repeated first point
+                            ]
+                        )
+                    ),
+                    raster=schemas.Raster.from_numpy(
+                        np.zeros((80, 32), dtype=bool)
+                    ),
+                ),
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[schemas.Label(key="k2", value="v2")],
+                    metadata={"string_key": "string_val", "int_key": 1},
+                ),
+            ],
+        ),
+    ]
+
+
+@pytest.fixture
+def prediction_detections(
+    model_name: str, img1: schemas.Datum
+) -> list[schemas.Prediction]:
+    return [
+        schemas.Prediction(
+            model=model_name,
+            datum=img1,
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[
+                        schemas.Label(key="k1", value="v1", score=0.6),
+                        schemas.Label(key="k1", value="v2", score=0.4),
+                        schemas.Label(key="k2", value="v1", score=0.8),
+                        schemas.Label(key="k2", value="v2", score=0.2),
+                    ],
+                    bounding_box=schemas.BoundingBox(
+                        polygon=schemas.BasicPolygon(
+                            points=[
+                                schemas.Point(x=107, y=207),
+                                schemas.Point(x=107, y=307),
+                                schemas.Point(x=207, y=307),
+                                schemas.Point(x=207, y=207),
+                            ]
+                        )
+                    ),
+                ),
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[
+                        schemas.Label(key="k2", value="v1", score=0.1),
+                        schemas.Label(key="k2", value="v2", score=0.9),
+                    ],
+                    bounding_box=schemas.BoundingBox(
+                        polygon=schemas.BasicPolygon(
+                            points=[
+                                schemas.Point(x=107, y=207),
+                                schemas.Point(x=107, y=307),
+                                schemas.Point(x=207, y=307),
+                                schemas.Point(x=207, y=207),
+                            ]
+                        )
+                    ),
+                ),
+            ],
+        )
+    ]
+
+
+@pytest.fixture
+def dataset_model_create(
+    db: Session,
+    groundtruth_detections: list[schemas.GroundTruth],
+    prediction_detections: list[schemas.Prediction],
+    dataset_name: str,
+    model_name: str,
+):
+    # create dataset1
+    crud.create_dataset(
+        db=db,
+        dataset=schemas.Dataset(name=dataset_name),
+    )
+    for gt in groundtruth_detections:
+        gt.datum.dataset = dataset_name
+        crud.create_groundtruth(db=db, groundtruth=gt)
+    crud.finalize(db=db, dataset_name=dataset_name)
+
+    # Create model1
+    crud.create_model(db=db, model=schemas.Model(name=model_name))
+
+    # Link model1 to dataset1
+    for pd in prediction_detections:
+        pd.model = model_name
+        pd.datum.dataset = dataset_name
+        crud.create_prediction(db=db, prediction=pd)
+
+    # Finalize model1 over dataset1
+    crud.finalize(
+        db=db,
+        dataset_name=dataset_name,
+        model_name=model_name,
+    )
+
+    yield
+
+    # clean up
+    crud.delete(db=db, model_name=model_name)
+    crud.delete(db=db, dataset_name=dataset_name)

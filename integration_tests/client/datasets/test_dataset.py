@@ -355,6 +355,40 @@ def test_get_dataset_status(
     assert status in [TableStatus.DELETING, None]
 
 
+def test_get_summary(
+    client: Client,
+    dataset_name: str,
+    gt_semantic_segs1_mask: GroundTruth,
+    gt_dets1: list[GroundTruth],
+):
+    dataset = Dataset(client, dataset_name)
+    dataset.add_groundtruth(gt_semantic_segs1_mask)
+    dataset.add_groundtruth(gt_dets1[1])
+    dataset.finalize()
+
+    summary = dataset.get_summary()
+    assert summary.name == dataset_name
+    assert summary.num_datums == 2
+    assert summary.num_annotations == 2
+    assert summary.num_bounding_boxes == 1
+    assert summary.num_polygons == 0
+    assert summary.num_groundtruth_multipolygons == 0
+    assert summary.num_rasters == 1
+    assert summary.task_types == [TaskType.DETECTION, TaskType.SEGMENTATION]
+
+    summary.labels.sort(key=lambda x: x.key)
+    assert summary.labels == [
+        Label(key="k1", value="v1"),
+        Label(key="k2", value="v2"),
+    ]
+
+    assert len(summary.datum_metadata) == 2
+    assert {"height": 900, "width": 300} in summary.datum_metadata  # uid1
+    assert {"height": 40, "width": 30} in summary.datum_metadata  # uid2
+
+    assert summary.annotation_metadata == []
+
+
 def test_validate_dataset(client: Client, dataset_name: str):
     with pytest.raises(TypeError):
         Dataset(client, name=123)

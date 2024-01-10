@@ -327,6 +327,10 @@ def get_datasets(
     return backend.get_datasets(db)
 
 
+def get_dataset_summary(db: Session, name: str) -> schemas.DatasetSummary:
+    return backend.get_dataset_summary(db, name)
+
+
 def get_groundtruth(
     *,
     db: Session,
