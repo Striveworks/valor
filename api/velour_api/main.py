@@ -55,6 +55,22 @@ def create_http_error(
     status_code: int,
     error: Exception,
 ) -> HTTPException:
+    """
+    Creates a HTTP execption using a caught exception.
+    
+    The HTTPException is populated with the name and details of the caught exception.
+
+    Parameters
+    ----------
+    status_code : int
+        The desired HTTP status code.
+    error : Exception
+        The exception that was caught and needs conversion.
+
+    Returns
+    -------
+    fastapi.HTTPException
+    """
     return HTTPException(
         status_code=status_code,
         detail=json.dumps(
