@@ -550,8 +550,6 @@ class Prediction:
         The `Datum` associated with the `Prediction`.
     annotations : List[Annotation]
         The list of `Annotations` associated with the `Prediction`.
-    model : str
-        The name of the model that produced the `Prediction`.
 
     Attributes
     ----------
