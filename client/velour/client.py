@@ -8,7 +8,7 @@ import requests
 from packaging import version
 
 from velour import __version__ as client_version
-from velour.enums import JobStatus
+from velour.enums import TableStatus
 from velour.schemas.evaluation import EvaluationResult
 
 T = TypeVar("T")
@@ -87,7 +87,10 @@ def _validate_version(client_version: str, api_version: str):
 
 
 class ClientException(Exception):
-    pass
+    def __init__(self, resp):
+        self.status_code = resp.status_code
+        self.detail = resp.json()["detail"]
+        super().__init__(str(self.detail))
 
 
 class Client:
@@ -165,7 +168,7 @@ class Client:
         resp = requests_method(url, headers=headers, *args, **kwargs)
         if not resp.ok:
             try:
-                raise ClientException(resp.json()["detail"])
+                raise ClientException(resp)
             except (requests.exceptions.JSONDecodeError, KeyError):
                 resp.raise_for_status()
 
@@ -247,7 +250,12 @@ class Client:
         dict
             A dictionary containing all of the associated dataset attributes.
         """
-        return self._requests_get_rel_host(f"datasets/{name}").json()
+        try:
+            return self._requests_get_rel_host(f"datasets/{name}").json()
+        except ClientException as e:
+            if e.status_code == 404:
+                return None
+            raise e
 
     def get_datasets(
         self,
@@ -286,7 +294,7 @@ class Client:
     def get_dataset_status(
         self,
         dataset_name: str,
-    ) -> JobStatus:
+    ) -> TableStatus:
         """
         Get the state of a given dataset.
 
@@ -297,13 +305,18 @@ class Client:
 
         Returns
         ------
-        JobStatus
-            The state of the `Dataset`.
+        TableStatus | None
+            The state of the `Dataset`. Returns None if dataset does not exist.
         """
-        resp = self._requests_get_rel_host(
-            f"datasets/{dataset_name}/status"
-        ).json()
-        return JobStatus(resp)
+        try:
+            resp = self._requests_get_rel_host(
+                f"datasets/{dataset_name}/status"
+            ).json()
+        except ClientException as e:
+            if e.status_code == 404:
+                return None
+            raise e
+        return TableStatus(resp)
 
     def get_dataset_summary(self, dataset_name: str) -> dict:
         return self._requests_get_rel_host(
@@ -324,7 +337,7 @@ class Client:
         self._requests_delete_rel_host(f"datasets/{name}")
         if timeout:
             for _ in range(timeout):
-                if self.get_dataset_status(name) == JobStatus.NONE:
+                if self.get_dataset_status(name) is None:
                     break
                 else:
                     time.sleep(1)
@@ -364,7 +377,12 @@ class Client:
         dict
             A dictionary containing all of the associated model attributes.
         """
-        return self._requests_get_rel_host(f"models/{name}").json()
+        try:
+            return self._requests_get_rel_host(f"models/{name}").json()
+        except ClientException as e:
+            if e.status_code == 404:
+                return None
+            raise e
 
     def get_models(
         self,
@@ -381,25 +399,33 @@ class Client:
 
     def get_model_status(
         self,
+        dataset_name: str,
         model_name: str,
-    ) -> JobStatus:
+    ) -> TableStatus:
         """
         Get the state of a given model.
 
         Parameters
         ----------
+        dataset_name : str
+            The name of the dataset that the model is operating over.
         model_name : str
             The name of the model we want to fetch the state of.
 
         Returns
         ------
-        JobStatus
+        TableStatus
             The state of the `Model`.
         """
-        resp = self._requests_get_rel_host(
-            f"models/{model_name}/status"
-        ).json()
-        return JobStatus(resp)
+        try:
+            resp = self._requests_get_rel_host(
+                f"models/{model_name}/dataset/{dataset_name}/status"
+            ).json()
+        except ClientException as e:
+            if e.status_code == 404:
+                return None
+            raise e
+        return TableStatus(resp)
 
     def delete_model(self, name: str, timeout: int = 0) -> None:
         """
@@ -416,7 +442,7 @@ class Client:
 
         if timeout:
             for _ in range(timeout):
-                if self.get_dataset_status(name) == JobStatus.NONE:
+                if self.get_dataset_status(name) is None:
                     break
                 else:
                     time.sleep(1)
@@ -428,7 +454,7 @@ class Client:
     def get_bulk_evaluations(
         self,
         *,
-        job_ids: Union[int, List[int], None] = None,
+        evaluation_ids: Union[int, List[int], None] = None,
         models: Union[str, List[str], None] = None,
         datasets: Union[str, List[str], None] = None,
     ) -> List[EvaluationResult]:
@@ -437,7 +463,7 @@ class Client:
 
         Parameters
         ----------
-        job_ids : Union[int, List[int], None]
+        evaluation_ids : Union[int, List[int], None]
             A list of job ids to return metrics for.  If the user passes a single value, it will automatically be converted to a list for convenience.
         models : Union[str, List[str], None]
             A list of model names that we want to return metrics for. If the user passes a string, it will automatically be converted to a list for convenience.
@@ -451,9 +477,9 @@ class Client:
 
         """
 
-        if not (job_ids or models or datasets):
+        if not (evaluation_ids or models or datasets):
             raise ValueError(
-                "Please provide at least one job_id, model name, or dataset name"
+                "Please provide at least one evaluation_id, model name, or dataset name"
             )
 
         def _build_query_param(param_name, element, typ):
@@ -465,7 +491,7 @@ class Client:
             return {param_name: ",".join(map(str, element))}
 
         params = {
-            **_build_query_param("job_ids", job_ids, int),
+            **_build_query_param("evaluation_ids", evaluation_ids, int),
             **_build_query_param("models", models, str),
             **_build_query_param("datasets", datasets, str),
         }
@@ -477,7 +503,7 @@ class Client:
         return [EvaluationResult(**eval) for eval in evals]
 
 
-class Job:
+class DeletionJob:
     def __init__(
         self,
         client: Client,
@@ -491,22 +517,19 @@ class Job:
         self.model_name = model_name
 
         if dataset_name and not model_name:
-            self.url = f"datasets/{dataset_name}/status"
+            self.func = self.client.get_dataset
+            self.args = self.dataset_name
         elif model_name and not dataset_name:
-            self.url = f"models/{model_name}/status"
-        elif model_name and dataset_name:
-            raise NotImplementedError(
-                "The status endpoint of dataset-model pairings has not been implemented yet."
-            )
+            self.func = self.client.get_model
+            self.args = self.model_name
         else:
             raise ValueError
 
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-    def get_status(self) -> JobStatus:
-        resp = self.client._requests_get_rel_host(self.url).json()
-        return JobStatus(resp)
+    def completed(self) -> bool:
+        return self.func(self.args) is None
 
     def wait_for_completion(
         self,
@@ -524,15 +547,14 @@ class Job:
         interval : float
             The polling interval.
 
-
         Raises
         ----------
         TimeoutError
-            If the job's status doesn't change to DONE or FAILED before the timeout expires
+            If the job's status doesn't change to True the timeout expires
         """
         wait_for_predicate(
-            lambda: self.get_status(),
-            lambda status: status in [JobStatus.DONE, JobStatus.FAILED],
+            lambda: self.completed(),
+            lambda status: status is True,
             timeout,
             interval,
         )

@@ -252,7 +252,6 @@ def test_get_labels(
     create_dataset_model,
 ):
     assert len(db.query(models.Label).all()) == 5
-
     labels = get_labels(db)
     assert len(labels) == 5
     assert set(labels) == {
@@ -296,7 +295,6 @@ def test_get_labels_filtered(
         schemas.Label(key="k1", value="v2"),
         schemas.Label(key="k1", value="v3"),
     }
-
     pred_labels = get_labels(db, filters=filters, ignore_groundtruths=True)
     assert len(pred_labels) == 2
     assert set(pred_labels) == {

@@ -1,5 +1,6 @@
 from .annotation import (
-    create_annotations_and_labels,
+    create_annotations,
+    create_skipped_annotations,
     get_annotation,
     get_annotation_type,
     get_annotations,
@@ -9,6 +10,7 @@ from .dataset import (
     delete_dataset,
     fetch_dataset,
     get_dataset,
+    get_dataset_status,
     get_dataset_summary,
     get_datasets,
     get_n_datums_in_dataset,
@@ -20,8 +22,20 @@ from .dataset import (
     get_unique_datum_metadata_in_dataset,
     get_unique_groundtruth_annotation_metadata_in_dataset,
     get_unique_task_types_in_dataset,
+    set_dataset_status,
 )
 from .datum import create_datum, fetch_datum, get_datums
+from .evaluation import (
+    check_for_active_evaluations,
+    create_evaluation,
+    fetch_evaluation_from_id,
+    fetch_evaluation_from_job_request,
+    get_disjoint_labels_from_evaluation,
+    get_evaluation_id_from_job_request,
+    get_evaluation_status,
+    get_evaluations,
+    set_evaluation_status,
+)
 from .geometry import convert_geometry
 from .groundtruth import create_groundtruth, get_groundtruth
 from .label import (
@@ -40,19 +54,25 @@ from .model import (
     delete_model,
     fetch_model,
     get_model,
+    get_model_status,
     get_models,
+    set_model_status,
 )
 from .prediction import create_prediction, get_prediction
 
 __all__ = [
-    "create_annotations_and_labels",
+    "create_annotations",
+    "create_skipped_annotations",
     "get_annotation",
     "get_annotation_type",
     "get_annotations",
     "create_dataset",
+    "delete_dataset",
     "fetch_dataset",
     "get_dataset",
     "get_datasets",
+    "get_dataset_status",
+    "set_dataset_status",
     "get_n_datums_in_dataset",
     "get_n_groundtruth_annotations",
     "get_n_groundtruth_bounding_boxes_in_dataset",
@@ -69,6 +89,8 @@ __all__ = [
     "fetch_datum",
     "get_datums",
     "convert_geometry",
+    "create_groundtruth",
+    "get_groundtruth",
     "create_labels",
     "fetch_label",
     "fetch_matching_labels",
@@ -79,12 +101,21 @@ __all__ = [
     "get_label_keys",
     "get_labels",
     "create_model",
+    "delete_model",
+    "fetch_model",
     "get_model",
     "get_models",
-    "fetch_model",
-    "delete_model",
-    "create_groundtruth",
-    "get_groundtruth",
+    "get_model_status",
+    "set_model_status",
     "create_prediction",
     "get_prediction",
+    "create_evaluation",
+    "fetch_evaluation_from_id",
+    "fetch_evaluation_from_job_request",
+    "get_evaluation_id_from_job_request",
+    "get_evaluations",
+    "get_evaluation_status",
+    "get_disjoint_labels_from_evaluation",
+    "set_evaluation_status",
+    "check_for_active_evaluations",
 ]

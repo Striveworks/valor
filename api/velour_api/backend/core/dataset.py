@@ -5,8 +5,9 @@ from sqlalchemy import and_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import exceptions, schemas
+from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
+from velour_api.backend.core.evaluation import check_for_active_evaluations
 from velour_api.backend.core.label import get_labels
 
 
@@ -29,6 +30,7 @@ def create_dataset(
             name=dataset.name,
             meta=dataset.metadata,
             geo=dataset.geospatial.wkt() if dataset.geospatial else None,
+            status=enums.TableStatus.CREATING,
         )
         db.add(row)
         db.commit()
@@ -58,10 +60,14 @@ def fetch_dataset(
         The requested dataset.
 
     """
-
     dataset = (
         db.query(models.Dataset)
-        .where(models.Dataset.name == name)
+        .where(
+            and_(
+                models.Dataset.name == name
+                and models.Dataset.status != enums.TableStatus.DELETING
+            )
+        )
         .one_or_none()
     )
     if dataset is None:
@@ -283,6 +289,74 @@ def get_datasets(
     ]
 
 
+def get_dataset_status(
+    db: Session,
+    name: str,
+) -> enums.TableStatus:
+    """
+    Get the status of a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    name : str
+        The name of the dataset.
+
+    Returns
+    -------
+    enums.TableStatus
+        The status of the dataset.
+    """
+    dataset = fetch_dataset(db, name)
+    return enums.TableStatus(dataset.status)
+
+
+def set_dataset_status(
+    db: Session,
+    name: str,
+    status: enums.TableStatus,
+):
+    """
+    Sets the status of a dataset.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    name : str
+        The name of the dataset.
+    status : enums.TableStatus
+        The desired dataset state.
+
+    Raises
+    ------
+    exceptions.DatasetStateError
+        If an illegal transition is requested.
+    exceptions.EvaluationRunningError
+        If the requested state is DELETING while an evaluation is running.
+    """
+    dataset = fetch_dataset(db, name)
+    active_status = enums.TableStatus(dataset.status)
+
+    if status == active_status:
+        return
+
+    if status not in active_status.next():
+        raise exceptions.DatasetStateError(name, active_status, status)
+
+    if status == enums.TableStatus.DELETING:
+        if check_for_active_evaluations(db=db, dataset_name=name):
+            raise exceptions.EvaluationRunningError(dataset_name=name)
+
+    try:
+        dataset.status = status
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise e
+
+
 def delete_dataset(
     db: Session,
     name: str,
@@ -297,7 +371,11 @@ def delete_dataset(
     name : str
         The name of the dataset.
     """
+    if check_for_active_evaluations(db=db, model_name=name):
+        raise exceptions.EvaluationRunningError(name)
+    set_dataset_status(db, name, enums.TableStatus.DELETING)
     dataset = fetch_dataset(db, name=name)
+
     try:
         db.delete(dataset)
         db.commit()

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from velour import Annotation, Dataset, Datum, GroundTruth, Label
 from velour.client import Client, ClientException
-from velour.enums import JobStatus, TaskType
+from velour.enums import TableStatus, TaskType
 from velour.metatypes import ImageMetadata
 from velour_api.backend import models
 
@@ -63,10 +63,16 @@ def _test_create_image_dataset_with_gts(
     )
 
     dataset.finalize()
+
     # check that we get an error when trying to add more images
     # to the dataset since it is finalized
     with pytest.raises(ClientException) as exc_info:
-        dataset.add_groundtruth(gts[0])
+        dataset.add_groundtruth(
+            GroundTruth(
+                datum=Datum(uid="some_extra_datum"),
+                annotations=[],
+            )
+        )
     assert "has been finalized" in str(exc_info)
 
     return dataset
@@ -328,25 +334,25 @@ def test_get_dataset_status(
     dataset_name: str,
     gt_dets1: list,
 ):
-    assert client.get_dataset_status(dataset_name) == JobStatus.NONE
+    assert client.get_dataset_status(dataset_name) is None
 
     dataset = Dataset(client, dataset_name)
 
-    assert client.get_dataset_status(dataset_name) == JobStatus.CREATING
+    assert client.get_dataset_status(dataset_name) == TableStatus.CREATING
 
     gt = gt_dets1[0]
 
     dataset.add_groundtruth(gt)
     dataset.finalize()
     status = client.get_dataset_status(dataset_name)
-    assert status == JobStatus.DONE
+    assert status == TableStatus.FINALIZED
 
     dataset.delete()
 
     status = client.get_dataset_status(dataset_name)
 
     # check that the dataset's state is no longer "ready"
-    assert status in [JobStatus.DELETING, JobStatus.NONE]
+    assert status in [TableStatus.DELETING, None]
 
 
 def test_get_summary(

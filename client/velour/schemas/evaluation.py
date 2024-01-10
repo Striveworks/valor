@@ -2,7 +2,7 @@ import json
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple, Union
 
-from velour.enums import JobStatus, TaskType
+from velour.enums import EvaluationStatus, TaskType
 from velour.schemas.filters import Filter
 
 
@@ -93,9 +93,9 @@ class EvaluationResult:
         The task type of the evaluation.
     settings : EvaluationSettings
         The `EvaluationSettings` object used to configurate the `EvaluationJob`.
-    job_id : int
+    evaluation_id : int
         The id of the job.
-    status : JobStatus
+    status : EvaluationStatus
         The status of the `EvaluationJob`.
     metrics : List[dict]
         A list of metric dictionaries returned by the job.
@@ -107,8 +107,8 @@ class EvaluationResult:
     model: str
     task_type: TaskType
     settings: EvaluationSettings
-    job_id: int
-    status: JobStatus
+    evaluation_id: int
+    status: EvaluationStatus
     metrics: List[dict]
     confusion_matrices: List[dict] = field(default_factory=list)
 
@@ -118,7 +118,7 @@ class EvaluationResult:
         if isinstance(self.task_type, str):
             self.task_type = TaskType(self.task_type)
         if isinstance(self.status, str):
-            self.status = JobStatus(self.status)
+            self.status = EvaluationStatus(self.status)
 
     def to_dataframe(
         self,

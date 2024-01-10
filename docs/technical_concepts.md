@@ -45,13 +45,9 @@ We can think of Velour in terms of four orthogonal components:
 
 ### API
 
-The core of Velour is a backend REST API service. Users can call the API's endpoints directly (e.g., `POST /datasets`), or they can use our Python client to handle the API calls in their Python environment.  All of Velour's state is stored in Postgres and/or Redis; the API itself is completely stateless.
+The core of Velour is a backend REST API service. Users can call the API's endpoints directly (e.g., `POST /datasets`), or they can use our Python client to handle the API calls in their Python environment.  All of Velour's state is stored in Postgres; the API itself is completely stateless.
 
 Note that, after you start the API service in Dockers, you'll be able to view FastAPI's automatically generated API documentation at `https://<your host>/docs`.
-
-### Redis
-
-Redis is an open source, in-memory data store commonly used for caching. We use Redis to cache state and speed-up our evaluation calculations.
 
 ### PostgreSQL
 
