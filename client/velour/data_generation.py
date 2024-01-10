@@ -246,7 +246,6 @@ def generate_prediction_data(
     client: Client,
     dataset: Dataset,
     model_name: str,
-    n_predictions: int = 10,
     n_annotations: int = 10,
     n_labels: int = 2,
 ):
@@ -261,8 +260,6 @@ def generate_prediction_data(
         The dataset object to create predictions for.
     model_name : str
         The name of your model.
-    n_predictions : int
-        The number of images you'd like your dataset to contain.
     n_annotations : int
         The number of annotations per prediction you'd like your dataset to contain.
     n_labels : int
@@ -274,16 +271,14 @@ def generate_prediction_data(
 
     for datum in datums:
         height, width = (datum.metadata["height"], datum.metadata["width"])
-
-        for _ in range(n_predictions):
-            prediction = _generate_prediction(
-                datum=datum,
-                height=height,
-                width=width,
-                n_annotations=n_annotations,
-                n_labels=n_labels,
-            )
-            model.add_prediction(dataset, prediction)
+        prediction = _generate_prediction(
+            datum=datum,
+            height=height,
+            width=width,
+            n_annotations=n_annotations,
+            n_labels=n_labels,
+        )
+        model.add_prediction(dataset, prediction)
 
     model.finalize_inferences(dataset)
     return model

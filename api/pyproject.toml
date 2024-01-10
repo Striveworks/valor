@@ -16,7 +16,6 @@ dependencies = [
     "python-dotenv",
     "pydantic-settings",
     "motmetrics",
-    "redis",
 ]
 
 [build-system]

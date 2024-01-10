@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from velour_api import crud, enums, schemas
 from velour_api.backend import models
 from velour_api.backend.database import Base, create_db, make_session
-from velour_api.crud import jobs
 
 np.random.seed(29)
 dset_name = "test_dataset"
@@ -45,10 +44,6 @@ def db():
 
     create_db()
     yield db
-
-    # clear redis
-    jobs.connect_to_redis()
-    jobs.r.flushdb()
 
     # clear postgres
     db.execute(text(f"DROP TABLE {', '.join(tablenames)} CASCADE;"))
@@ -179,7 +174,7 @@ def groundtruths(
         db=db,
         dataset=schemas.Dataset(
             name=dataset_name,
-            metadata={"type": enums.DataType.IMAGE.value},
+            metadata={"type": "image"},
         ),
     )
 
@@ -277,7 +272,7 @@ def predictions(
         db=db,
         model=schemas.Model(
             name=model_name,
-            metadata={"type": enums.DataType.IMAGE.value},
+            metadata={"type": "image"},
         ),
     )
 

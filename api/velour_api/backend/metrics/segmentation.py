@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import Select, func, select
 
 from velour_api import enums, schemas
-from velour_api.backend import core, models
+from velour_api.backend import models
 from velour_api.backend.metrics.metric_utils import (
     create_metric_mappings,
     get_or_create_row,
+    validate_computation,
 )
 from velour_api.backend.ops import Query
 from velour_api.schemas.metrics import EvaluationJob, IOUMetric, mIOUMetric
@@ -197,84 +198,12 @@ def _compute_segmentation_metrics(
     return ret
 
 
-def create_semantic_segmentation_evaluation(
-    db: Session, job_request: EvaluationJob
-) -> int:
-    """
-    Create a semantic segmentation evaluation job.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    job_request : schemas.EvaluationJob
-        The job request to create an evaluation for.
-
-    Returns
-    ----------
-    int
-        The evaluation id.
-
-    Raises
-    ----------
-    TypeError
-        If the job's task type is incorrect.
-        If the settings passed to the job are for another type of evaluation.
-    ValueError
-        If the evaluation contains an inappropriate filter.
-    """
-    # check matching task_type
-    if job_request.task_type != enums.TaskType.SEGMENTATION:
-        raise TypeError(
-            "Invalid task_type, please choose an evaluation method that supports semantic segmentation"
-        )
-
-    # validate parameters
-    if job_request.settings.parameters:
-        raise ValueError(
-            "Semantic segmentation evaluations do not take parametric input."
-        )
-
-    # validate filters
-    if not job_request.settings.filters:
-        job_request.settings.filters = schemas.Filter()
-    else:
-        if (
-            job_request.settings.filters.dataset_names is not None
-            or job_request.settings.filters.dataset_metadata is not None
-            or job_request.settings.filters.dataset_geospatial is not None
-            or job_request.settings.filters.models_names is not None
-            or job_request.settings.filters.models_metadata is not None
-            or job_request.settings.filters.models_geospatial is not None
-            or job_request.settings.filters.prediction_scores is not None
-            or job_request.settings.filters.task_types is not None
-            or job_request.settings.filters.annotation_types is not None
-        ):
-            raise ValueError(
-                "Evaluation filter objects should not include any dataset, model, prediction score or task type filters."
-            )
-
-    dataset = core.fetch_dataset(db, job_request.dataset)
-    model = core.fetch_model(db, job_request.model)
-
-    es = get_or_create_row(
-        db,
-        models.Evaluation,
-        mapping={
-            "dataset_id": dataset.id,
-            "model_id": model.id,
-            "task_type": enums.TaskType.SEGMENTATION,
-            "settings": job_request.settings.model_dump(),
-        },
-    )
-
-    return es.id
-
-
-def create_semantic_segmentation_metrics(
+@validate_computation
+def compute_semantic_segmentation_metrics(
+    *,
     db: Session,
+    evaluation_id: int,
     job_request: EvaluationJob,
-    job_id: int,
 ) -> int:
     """
     Create semantic segmentation metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
@@ -283,13 +212,13 @@ def create_semantic_segmentation_metrics(
     ----------
     db : Session
         The database Session to query against.
+    evaluation_id : int
+        The job ID to create metrics for.
     job_request : EvaluationJob
         The evaluation job.
-    job_id : int
-        The job ID to create metrics for.
     """
     evaluation = db.scalar(
-        select(models.Evaluation).where(models.Evaluation.id == job_id)
+        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
     )
 
     # unpack job request
@@ -300,6 +229,12 @@ def create_semantic_segmentation_metrics(
         settings=schemas.EvaluationSettings(**evaluation.settings),
         id=evaluation.id,
     )
+
+    # check evaluation type
+    if job_request.task_type != enums.TaskType.SEGMENTATION:
+        raise ValueError(
+            f"Cannot run segmentation evaluation on task with type `{job_request.task_type}`."
+        )
 
     # configure filters
     if not job_request.settings.filters:
@@ -314,7 +249,7 @@ def create_semantic_segmentation_metrics(
         db,
         job_request,
     )
-    metric_mappings = create_metric_mappings(db, metrics, job_id)
+    metric_mappings = create_metric_mappings(db, metrics, evaluation_id)
     for mapping in metric_mappings:
         # ignore value since the other columns are unique identifiers
         # and have empirically noticed value can slightly change due to floating
@@ -326,4 +261,4 @@ def create_semantic_segmentation_metrics(
             columns_to_ignore=["value"],
         )
 
-    return job_id
+    return evaluation_id

@@ -64,10 +64,13 @@ def test_create_pred_detections_as_bbox_or_poly(
     db_dets = db.scalars(
         select(models.Annotation).where(models.Annotation.model_id.isnot(None))
     ).all()
-    assert len(db_dets) == 2
-    assert set([db_det.box is not None for db_det in db_dets]) == {True, False}
+    assert len(db_dets) == 3
+    boxes = [det.box for det in db_dets if det.box is not None]
+    assert len(boxes) == 1
+    polygons = [det.polygon for det in db_dets if det.polygon is not None]
+    assert len(polygons) == 1
     assert (
-        db.scalar(ST_AsText(db_dets[0].box))
+        db.scalar(ST_AsText(boxes[0]))
         == "POLYGON((10 25,30 25,30 50,10 50,10 25))"
-        == db.scalar(ST_AsText(db_dets[1].polygon))
+        == db.scalar(ST_AsText(polygons[0]))
     )

@@ -22,7 +22,7 @@ from velour import (
     Prediction,
 )
 from velour.client import Client, ClientException
-from velour.enums import DataType, TaskType
+from velour.enums import TaskType
 from velour.metatypes import ImageMetadata
 from velour.schemas import Point
 from velour_api.backend import models
@@ -40,7 +40,6 @@ def _test_create_model_with_preds(
     client: Client,
     dataset_name: str,
     model_name: str,
-    datum_type: DataType,
     gts: list[Any],
     preds: list[Any],
     preds_model_class: type,
@@ -155,7 +154,6 @@ def test_create_image_model_with_predicted_detections(
         client=client,
         dataset_name=dataset_name,
         model_name=model_name,
-        datum_type=DataType.IMAGE,
         gts=gt_poly_dets1,
         preds=pred_poly_dets,
         preds_model_class=models.Prediction,
@@ -207,7 +205,6 @@ def test_create_model_with_predicted_segmentations(
         client=client,
         dataset_name=dataset_name,
         model_name=model_name,
-        datum_type=DataType.IMAGE,
         gts=gt_segs,
         preds=pred_instance_segs,
         preds_model_class=models.Prediction,
@@ -261,7 +258,6 @@ def test_create_image_model_with_predicted_classifications(
         client=client,
         dataset_name=dataset_name,
         model_name=model_name,
-        datum_type=DataType.IMAGE,
         gts=gt_clfs,
         preds=pred_clfs,
         preds_model_class=models.Prediction,
@@ -283,7 +279,6 @@ def test_client_delete_model(
     client: Client,
     model_name: str,
 ):
-    """test that delete dataset returns a job whose status changes from "Processing" to "Done" """
     Model(client, model_name)
     assert db.scalar(select(func.count(models.Model.name))) == 1
     client.delete_model(model_name, timeout=30)
@@ -300,7 +295,6 @@ def test_create_tabular_model_with_predicted_classifications(
         client=client,
         dataset_name=dataset_name,
         model_name=model_name,
-        datum_type=DataType.TABULAR,
         gts=[
             GroundTruth(
                 datum=Datum(uid="uid1"),
@@ -406,12 +400,6 @@ def test_add_prediction(
     with pytest.raises(TypeError):
         model.add_prediction(dataset, "not_a_pred")
 
-    # make sure we get a warning when adding a prediction without annotations
-    with pytest.warns(UserWarning):
-        model.add_prediction(
-            dataset, Prediction(datum=img1.to_datum(), annotations=[])
-        )
-
     for pd in pred_dets:
         model.add_prediction(dataset, pd)
 
@@ -420,6 +408,97 @@ def test_add_prediction(
     # test get predictions
     pred = model.get_prediction(dataset, img1.to_datum())
     assert pred.annotations == pred_dets[0].annotations
+    assert pred._model_name == model_name
+    assert pred.datum._dataset_name == dataset_name
+
+    client.delete_dataset(dataset_name, timeout=30)
+
+
+def test_add_empty_prediction(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    img1: ImageMetadata,
+    model_name: str,
+    dataset_name: str,
+    db: Session,
+):
+    extra_datum = Datum(uid="some_extra_datum")
+
+    dataset = Dataset(client, dataset_name)
+    for gt in gt_dets1:
+        dataset.add_groundtruth(gt)
+    dataset.add_groundtruth(
+        GroundTruth(
+            datum=extra_datum,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[Label(key="k1", value="v1")],
+                )
+            ],
+        )
+    )
+    dataset.finalize()
+
+    model = Model(client, model_name)
+
+    # make sure we get an error when passing a non-Prediction object to add_prediction
+    with pytest.raises(TypeError):
+        model.add_prediction(dataset, "not_a_pred")
+
+    # make sure we get a warning when adding a prediction without annotations
+    with pytest.warns(UserWarning):
+        model.add_prediction(
+            dataset, Prediction(datum=extra_datum, annotations=[])
+        )
+
+    for pd in pred_dets:
+        model.add_prediction(dataset, pd)
+    model.finalize_inferences(dataset)
+
+    # test get predictions
+    pred = model.get_prediction(dataset, extra_datum)
+    assert len(pred.annotations) == 1
+    assert pred.annotations[0].task_type == TaskType.EMPTY
+    assert pred._model_name == model_name
+    assert pred.datum._dataset_name == dataset_name
+
+    client.delete_dataset(dataset_name, timeout=30)
+
+
+def test_add_skipped_prediction(
+    client: Client,
+    gt_dets1: list[GroundTruth],
+    pred_dets: list[Prediction],
+    img1: ImageMetadata,
+    model_name: str,
+    dataset_name: str,
+    db: Session,
+):
+    extra_datum = Datum(uid="some_extra_datum")
+
+    dataset = Dataset(client, dataset_name)
+    dataset.add_groundtruth(
+        GroundTruth(
+            datum=extra_datum,
+            annotations=[
+                Annotation(
+                    task_type=TaskType.CLASSIFICATION,
+                    labels=[Label(key="k1", value="v1")],
+                )
+            ],
+        )
+    )
+    dataset.finalize()
+
+    model = Model(client, model_name)
+    model.finalize_inferences(dataset)
+
+    # test get predictions
+    pred = model.get_prediction(dataset, extra_datum)
+    assert len(pred.annotations) == 1
+    assert pred.annotations[0].task_type == TaskType.SKIP
     assert pred._model_name == model_name
     assert pred.datum._dataset_name == dataset_name
 

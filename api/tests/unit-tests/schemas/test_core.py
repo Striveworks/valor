@@ -213,6 +213,10 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
         task_type=enums.TaskType.SEGMENTATION.value,
         labels=labels,
     )
+    schemas.Annotation(
+        task_type=enums.TaskType.SEGMENTATION.value,
+        labels=[],
+    )
 
     # test property `task_type`
     with pytest.raises(ValidationError):
@@ -227,11 +231,6 @@ def test_annotation_without_scores(metadata, bbox, polygon, raster, labels):
     with pytest.raises(ValidationError):
         schemas.Annotation(
             labels=[labels[0], 123],
-            task_type=enums.TaskType.CLASSIFICATION,
-        )
-    with pytest.raises(ValidationError):
-        schemas.Annotation(
-            labels=[],
             task_type=enums.TaskType.CLASSIFICATION,
         )
     assert gt.labels == labels

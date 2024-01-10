@@ -1,11 +1,9 @@
 from sqlalchemy.orm import Session
 
-from velour_api import backend, enums, schemas
-from velour_api.crud import stateflow
+from velour_api import backend, enums, exceptions, schemas
 from velour_api.crud._read import get_disjoint_keys, get_disjoint_labels
 
 
-@stateflow.create
 def create_dataset(*, db: Session, dataset: schemas.Dataset):
     """
     Creates a dataset.
@@ -25,7 +23,6 @@ def create_dataset(*, db: Session, dataset: schemas.Dataset):
     backend.create_dataset(db, dataset)
 
 
-@stateflow.create
 def create_model(*, db: Session, model: schemas.Model):
     """
     Creates a model.
@@ -45,7 +42,6 @@ def create_model(*, db: Session, model: schemas.Model):
     backend.create_model(db, model)
 
 
-@stateflow.create
 def create_groundtruth(
     *,
     db: Session,
@@ -64,7 +60,6 @@ def create_groundtruth(
     backend.create_groundtruth(db, groundtruth=groundtruth)
 
 
-@stateflow.create
 def create_prediction(
     *,
     db: Session,
@@ -83,7 +78,6 @@ def create_prediction(
     backend.create_prediction(db, prediction=prediction)
 
 
-@stateflow.evaluate
 def create_clf_evaluation(
     *,
     db: Session,
@@ -114,43 +108,65 @@ def create_clf_evaluation(
         task_type=enums.TaskType.CLASSIFICATION,
     )
 
-    # create evaluation setting
-    job_id = backend.create_clf_evaluation(db, job_request)
+    # create or get evaluation
+    try:
+        evaluation_id = backend.create_evaluation(db, job_request)
+    except exceptions.EvaluationAlreadyExistsError:
+        evaluation_id = backend.get_evaluation_id_from_job_request(
+            db, job_request
+        )
 
     # create response
     return schemas.CreateClfMetricsResponse(
         missing_pred_keys=missing_pred_keys,
         ignored_pred_keys=ignored_pred_keys,
-        job_id=job_id,
+        evaluation_id=evaluation_id,
     )
 
 
-@stateflow.evaluate
-def compute_clf_metrics(
+def create_detection_evaluation(
     *,
     db: Session,
-    job_id: int,
     job_request: schemas.EvaluationJob,
-):
+) -> schemas.CreateDetectionMetricsResponse:
     """
-    Compute classification metrics.
+    Creates a detection evaluation.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
-    job_id: int
-        The job id.
     job_request: schemas.EvaluationJob
         The evaluation job.
+
+    Returns
+    ----------
+    schemas.CreateDetectionMetricsResponse
+        A detection metric response.
     """
-    backend.create_clf_metrics(
-        db,
-        job_id=job_id,
+
+    # get disjoint label sets
+    (
+        missing_pred_labels,
+        ignored_pred_labels,
+    ) = backend.get_disjoint_labels_from_evaluation(db, job_request)
+
+    # create or get evaluation
+    try:
+        evaluation_id = backend.create_evaluation(db, job_request)
+    except exceptions.EvaluationAlreadyExistsError:
+        evaluation_id = backend.get_evaluation_id_from_job_request(
+            db, job_request
+        )
+
+    # create response
+    return schemas.CreateDetectionMetricsResponse(
+        missing_pred_labels=missing_pred_labels,
+        ignored_pred_labels=ignored_pred_labels,
+        evaluation_id=evaluation_id,
     )
 
 
-@stateflow.evaluate
 def create_semantic_segmentation_evaluation(
     *,
     db: Session,
@@ -183,101 +199,17 @@ def create_semantic_segmentation_evaluation(
         prediction_type=enums.AnnotationType.RASTER,
     )
 
-    # create evaluation setting
-    job_id = backend.create_semantic_segmentation_evaluation(db, job_request)
+    # create or get evaluation
+    try:
+        evaluation_id = backend.create_evaluation(db, job_request)
+    except exceptions.EvaluationAlreadyExistsError:
+        evaluation_id = backend.get_evaluation_id_from_job_request(
+            db, job_request
+        )
 
     # create response
     return schemas.CreateSemanticSegmentationMetricsResponse(
         missing_pred_labels=missing_pred_labels,
         ignored_pred_labels=ignored_pred_labels,
-        job_id=job_id,
-    )
-
-
-@stateflow.evaluate
-def compute_semantic_segmentation_metrics(
-    *,
-    db: Session,
-    job_request: schemas.EvaluationJob,
-    job_id: int,
-):
-    """
-    Compute semantic segmentation metrics.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    job_request: schemas.EvaluationJob
-        The evaluation job object.
-    job_id: int
-        The job id.
-    """
-    backend.create_semantic_segmentation_metrics(
-        db,
-        job_request=job_request,
-        job_id=job_id,
-    )
-
-
-@stateflow.evaluate
-def create_detection_evaluation(
-    *,
-    db: Session,
-    job_request: schemas.EvaluationJob,
-) -> schemas.CreateDetectionMetricsResponse:
-    """
-    Creates a detection evaluation.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    job_request: schemas.EvaluationJob
-        The evaluation job.
-
-
-    Returns
-    ----------
-    schemas.CreateDetectionMetricsResponse
-        A detection metric response.
-    """
-
-    # create evaluation setting
-    (
-        job_id,
-        missing_pred_labels,
-        ignored_pred_labels,
-    ) = backend.create_detection_evaluation(db, job_request)
-
-    # create response
-    return schemas.CreateDetectionMetricsResponse(
-        missing_pred_labels=missing_pred_labels,
-        ignored_pred_labels=ignored_pred_labels,
-        job_id=job_id,
-    )
-
-
-@stateflow.evaluate
-def compute_detection_metrics(
-    *,
-    db: Session,
-    job_request: schemas.EvaluationJob,
-    job_id: int,
-):
-    """
-    Compute detection metrics.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    job_request: schemas.EvaluationJob
-        The evaluation job object.
-    job_id: int
-        The job id.
-    """
-    backend.create_detection_metrics(
-        db=db,
-        job_id=job_id,
+        evaluation_id=evaluation_id,
     )

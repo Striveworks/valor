@@ -17,7 +17,7 @@ from velour import (
     Prediction,
 )
 from velour.client import Client, ClientException
-from velour.enums import JobStatus, TaskType
+from velour.enums import EvaluationStatus, TaskType
 
 
 def test_evaluate_image_clf(
@@ -44,7 +44,7 @@ def test_evaluate_image_clf(
     assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
 
     eval_results = eval_job.wait_for_completion(timeout=30)
-    assert eval_results.status == JobStatus.DONE
+    assert eval_results.status == EvaluationStatus.DONE
 
     metrics = eval_results.metrics
 
@@ -113,7 +113,7 @@ def test_evaluate_tabular_clf(
     for gt in gts:
         dataset.add_groundtruth(gt)
 
-    # test
+    # test dataset finalization
     model = Model(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
         model.evaluate_classification(dataset=dataset).wait_for_completion(
@@ -138,17 +138,21 @@ def test_evaluate_tabular_clf(
         )
         for i, pred in enumerate(pred_clfs_tabular)
     ]
-    for pd in pds:
+    for pd in pds[:-1]:
         model.add_prediction(dataset, pd)
 
-    # test
-    with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset).wait_for_completion(
-            timeout=30
+    # test model finalization
+    print(
+        client.get_model_status(
+            dataset_name=dataset_name, model_name=model_name
         )
+    )
+    with pytest.raises(ClientException) as exc_info:
+        model.evaluate_classification(dataset=dataset)
     assert "has not been finalized" in str(exc_info)
 
-    model.finalize_inferences(dataset)
+    # model is automatically finalized if all datums have a prediction
+    model.add_prediction(dataset, pds[-1])
 
     # evaluate
     eval_job = model.evaluate_classification(dataset=dataset)
@@ -156,7 +160,7 @@ def test_evaluate_tabular_clf(
     assert eval_job.missing_pred_keys == []
 
     eval_results = eval_job.wait_for_completion(timeout=30)
-    assert eval_results.status == JobStatus.DONE
+    assert eval_results.status == EvaluationStatus.DONE
 
     metrics = eval_job.get_result().metrics
 
@@ -295,7 +299,7 @@ def test_evaluate_tabular_clf(
         assert entry in confusion_matrix["entries"]
 
     job = model.delete()
-    while job.get_status() != JobStatus.NONE:
+    while not job.completed():
         time.sleep(0.5)
 
     assert len(client.get_models()) == 0

@@ -11,126 +11,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.label import create_labels
-
-
-def _wkt_multipolygon_to_raster(wkt: str):
-    """
-    Convert a multipolygon to a raster using postgis.
-
-    Parameters
-    ----------
-    wkt : str
-        A postgis multipolygon object in well-known text format.
-
-
-    Returns
-    ----------
-    Query
-        A scalar subquery from postgis.
-    """
-    return select(
-        text(f"ST_AsRaster(ST_GeomFromText('{wkt}'), {1.0}, {1.0})")
-    ).scalar_subquery()
-
-
-def _get_annotation_mapping(
-    annotation: schemas.Annotation,
-    datum: models.Datum,
-    model: models.Model = None,
-) -> dict:
-    """
-    Convert an individual annotation's attributes into a dictionary for upload to postgis.
-
-    Parameters
-    ----------
-    annotation : schemas.Annotation
-        The annotation tom ap.
-    datum : models.Datum
-        The datum associated with the annotation.
-    model : models.Model
-        The model associated with the annotation
-
-    Returns
-    ----------
-    dict
-        A dictionary of annotation attributes.
-
-    """
-    box = None
-    polygon = None
-    raster = None
-    jsonb = None
-
-    if isinstance(annotation.bounding_box, schemas.BoundingBox):
-        box = annotation.bounding_box.wkt()
-    if isinstance(annotation.polygon, schemas.Polygon):
-        polygon = annotation.polygon.wkt()
-    if isinstance(annotation.multipolygon, schemas.MultiPolygon):
-        raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
-    if isinstance(annotation.raster, schemas.Raster):
-        raster = annotation.raster.mask_bytes
-    if isinstance(annotation.jsonb, dict):
-        jsonb = annotation.jsonb
-
-    mapping = {
-        "datum_id": datum.id,
-        "model_id": model.id if model else None,
-        "task_type": annotation.task_type,
-        "meta": annotation.metadata,
-        "box": box,
-        "polygon": polygon,
-        "raster": raster,
-        "json": jsonb,
-    }
-
-    return mapping
-
-
-def create_annotations_and_labels(
-    db: Session,
-    annotations: list[schemas.Annotation],
-    datum: models.Datum,
-    model: models.Model = None,
-) -> list[models.Annotation]:
-    """
-    Create a list of annotations and associated labels in postgis
-
-    Parameters
-    ----------
-    db : Session
-        The database Session you want to query against.
-    annotations : List[schemas.Annotation]
-        The list of annotations to create.
-    datum : models.Datum
-        The datum associated with the annotation.
-    model : models.Model
-        The model associated with the annotation.
-
-    Returns
-    ----------
-    List[models.annotation]
-        The model associated with the annotation.
-    """
-    annotation_list = []
-    label_list = []
-
-    for annotation in annotations:
-        mapping = _get_annotation_mapping(
-            annotation=annotation, datum=datum, model=model
-        )
-        annotation_list.append(models.Annotation(**mapping))
-        label_list.append(create_labels(db=db, labels=annotation.labels))
-
-    try:
-        db.add_all(annotation_list)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise exceptions.AnnotationAlreadyExistsError
-
-    # return the label_list, too, since these are needed for GroundTruth
-    return (annotation_list, label_list)
+from velour_api.backend.ops import Query
 
 
 def _get_bounding_box_of_raster(
@@ -148,7 +29,7 @@ def _get_bounding_box_of_raster(
 def _raster_to_png_b64(
     db: Session, raster: RasterElement, height: float, width: float
 ) -> str:
-    """COnvert a raster to a png"""
+    """Convert a raster to a png"""
     enveloping_box = _get_bounding_box_of_raster(db, raster)
     raster = Image.open(io.BytesIO(db.scalar(ST_AsPNG((raster))).tobytes()))
 
@@ -169,10 +50,232 @@ def _raster_to_png_b64(
     return b64encode(mask_bytes).decode()
 
 
+def _wkt_multipolygon_to_raster(wkt: str):
+    """
+    Convert a multipolygon to a raster using psql.
+
+    Parameters
+    ----------
+    wkt : str
+        A psql multipolygon object in well-known text format.
+
+
+    Returns
+    ----------
+    Query
+        A scalar subquery from psql.
+    """
+    return select(
+        text(f"ST_AsRaster(ST_GeomFromText('{wkt}'), {1.0}, {1.0})")
+    ).scalar_subquery()
+
+
+def _create_annotation(
+    annotation: schemas.Annotation,
+    datum: models.Datum,
+    model: models.Model | None = None,
+) -> list[models.Label]:
+    """
+    Convert an individual annotation's attributes into a dictionary for upload to psql.
+
+    Parameters
+    ----------
+    annotation : schemas.Annotation
+        The annotation tom ap.
+    datum : models.Datum
+        The datum associated with the annotation.
+    model : models.Model, optional
+        The model associated with the annotation
+
+    Returns
+    ----------
+    models.Annotation
+        A populated models.Annotation object.
+    """
+    box = None
+    polygon = None
+    raster = None
+
+    if isinstance(annotation.bounding_box, schemas.BoundingBox):
+        box = annotation.bounding_box.wkt()
+    if isinstance(annotation.polygon, schemas.Polygon):
+        polygon = annotation.polygon.wkt()
+    if isinstance(annotation.multipolygon, schemas.MultiPolygon):
+        raster = _wkt_multipolygon_to_raster(annotation.multipolygon.wkt())
+    if isinstance(annotation.raster, schemas.Raster):
+        raster = annotation.raster.mask_bytes
+
+    mapping = {
+        "datum_id": datum.id,
+        "model_id": model.id if model else None,
+        "task_type": annotation.task_type,
+        "meta": annotation.metadata,
+        "box": box,
+        "polygon": polygon,
+        "raster": raster,
+    }
+    return models.Annotation(**mapping)
+
+
+def _create_empty_annotation(
+    datum: models.Datum,
+    model: models.Model | None = None,
+) -> models.Annotation:
+    """
+    Create an empty annotation for upload to psql.
+
+    Parameters
+    ----------
+    datum : models.Datum
+        The datum associated with the annotation.
+    model : models.Model, optional
+        The model associated with the annotation.
+
+    Returns
+    ----------
+    models.Annotation
+        A populated models.Annotation object.
+    """
+    mapping = {
+        "datum_id": datum.id,
+        "model_id": model.id if model else None,
+        "task_type": enums.TaskType.EMPTY,
+        "meta": {},
+        "box": None,
+        "polygon": None,
+        "raster": None,
+    }
+    return models.Annotation(**mapping)
+
+
+def _create_skipped_annotation(
+    datum: models.Datum,
+    model: models.Model | None = None,
+) -> models.Annotation:
+    """
+    Create a skipped annotation for upload to psql.
+
+    Parameters
+    ----------
+    datum : models.Datum
+        The datum associated with the annotation.
+    model : models.Model, optional
+        The model associated with the annotation.
+
+    Returns
+    ----------
+    models.Annotation
+        A populated models.Annotation object.
+    """
+    mapping = {
+        "datum_id": datum.id,
+        "model_id": model.id if model else None,
+        "task_type": enums.TaskType.SKIP,
+        "meta": {},
+        "box": None,
+        "polygon": None,
+        "raster": None,
+    }
+    return models.Annotation(**mapping)
+
+
+def create_annotations(
+    db: Session,
+    annotations: list[schemas.Annotation],
+    datum: models.Datum,
+    model: models.Model = None,
+) -> list[models.Annotation]:
+    """
+    Create a list of annotations and associated labels in psql.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session you want to query against.
+    annotations : List[schemas.Annotation]
+        The list of annotations to create.
+    datum : models.Datum
+        The datum associated with the annotation.
+    model : models.Model
+        The model associated with the annotation.
+
+    Returns
+    ----------
+    List[models.annotation]
+        The model associated with the annotation.
+
+    Raises
+    ------
+    exceptions.AnnotationAlreadyExistsError
+        If the provided datum already has existing annotations for that dataset or model.
+    """
+    # validate that there are no existing annotations for this datum.
+    if db.query(
+        select(models.Annotation.id)
+        .where(
+            and_(
+                models.Annotation.datum_id == datum.id,
+                (
+                    models.Annotation.model_id == model.id
+                    if model
+                    else models.Annotation.model_id.is_(None)
+                ),
+            )
+        )
+        .subquery()
+    ).all():
+        raise exceptions.AnnotationAlreadyExistsError(datum.id)
+
+    # create annotations
+    annotation_list = (
+        [
+            _create_annotation(annotation=annotation, datum=datum, model=model)
+            for annotation in annotations
+        ]
+        if annotations
+        else [_create_empty_annotation(datum=datum, model=model)]
+    )
+
+    try:
+        db.add_all(annotation_list)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+    return annotation_list
+
+
+def create_skipped_annotations(
+    db: Session,
+    datums: list[models.Datum],
+    model: models.Model,
+):
+    """
+    Create a list of skipped annotations and associated labels in psql.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session you want to query against.
+    datums : List[schemas.Datum]
+        The list of datums to create skipped annotations for.
+    model : models.Model
+        The model associated with the annotation.
+    """
+    annotation_list = [
+        _create_skipped_annotation(datum, model) for datum in datums
+    ]
+    try:
+        db.add_all(annotation_list)
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e
+
+
 def get_annotation(
     db: Session,
     annotation: models.Annotation,
-    datum: models.Datum = None,
 ) -> schemas.Annotation:
     """
     Fetch an annotation from the database.
@@ -183,46 +286,37 @@ def get_annotation(
         The database Session you want to query against.
     annotation : models.Annotation
         The annotation you want to fetch.
-    datum : models.Datum
-        The datum associated with the annotation.
 
     Returns
     -------
     schemas.Annotation
         The requested annotation.
     """
-    # Retrieve all labels associated with annotation
-    if annotation.model_id is not None:
+    # retrieve all labels associated with annotation
+    if annotation.model_id:
+        q = Query(
+            models.Label.key,
+            models.Label.value,
+            models.Prediction.score,
+        ).predictions(as_subquery=False)
+        q = q.where(models.Prediction.annotation_id == annotation.id)
         labels = [
-            schemas.Label(key=label[0], value=label[1], score=label[2])
-            for label in (
-                db.query(
-                    models.Label.key,
-                    models.Label.value,
-                    models.Prediction.score,
-                )
-                .select_from(models.Prediction)
-                .join(
-                    models.Label,
-                    models.Prediction.label_id == models.Label.id,
-                )
-                .where(models.Prediction.annotation_id == annotation.id)
-                .all()
+            schemas.Label(
+                key=scored_label[0],
+                value=scored_label[1],
+                score=scored_label[2],
             )
+            for scored_label in db.query(q.subquery()).all()
         ]
     else:
+        q = Query(
+            models.Label.key,
+            models.Label.value,
+        ).groundtruths(as_subquery=False)
+        q = q.where(models.GroundTruth.annotation_id == annotation.id)
         labels = [
             schemas.Label(key=label[0], value=label[1])
-            for label in (
-                db.query(models.Label.key, models.Label.value)
-                .select_from(models.GroundTruth)
-                .join(
-                    models.Label,
-                    models.GroundTruth.label_id == models.Label.id,
-                )
-                .where(models.GroundTruth.annotation_id == annotation.id)
-                .all()
-            )
+            for label in db.query(q.subquery()).all()
         ]
 
     # Initialize
@@ -277,7 +371,7 @@ def get_annotations(
     model: models.Model | None = None,
 ) -> list[schemas.Annotation]:
     """
-    Query postgis to get all annotations for a particular datum.
+    Query psql to get all annotations for a particular datum.
 
     Parameters
     -------
@@ -299,7 +393,7 @@ def get_annotations(
         else models.Annotation.model_id == model.id
     )
     return [
-        get_annotation(db, annotation=annotation, datum=datum)
+        get_annotation(db, annotation=annotation)
         for annotation in (
             db.query(models.Annotation)
             .where(
@@ -313,14 +407,14 @@ def get_annotations(
     ]
 
 
-# @TODO: This only services detection annotations
 def get_annotation_type(
     db: Session,
     dataset: models.Dataset,
     model: models.Model | None = None,
+    task_type: enums.TaskType = enums.TaskType.DETECTION,
 ) -> enums.AnnotationType:
     """
-    Fetch an annotation type from postgis.
+    Fetch annotation type from psql.
 
     Parameters
     ----------
@@ -355,7 +449,7 @@ def get_annotation_type(
             .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
             .where(
                 models.Datum.dataset_id == dataset.id,
-                models.Annotation.task_type == enums.TaskType.DETECTION.value,
+                models.Annotation.task_type == task_type.value,
                 model_expr,
                 col.isnot(None),
             )

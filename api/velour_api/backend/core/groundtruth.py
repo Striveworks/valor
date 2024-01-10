@@ -4,7 +4,7 @@ from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import exceptions, schemas
+from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
 
 
@@ -22,31 +22,53 @@ def create_groundtruth(
     groundtruth: schemas.GroundTruth
         The groundtruth to create.
     """
+    # check dataset status
+    if (
+        core.get_dataset_status(db=db, name=groundtruth.datum.dataset)
+        != enums.TableStatus.CREATING
+    ):
+        raise exceptions.DatasetFinalizedError(groundtruth.datum.dataset)
+
     # create datum
     datum = core.create_datum(db, groundtruth.datum)
 
-    annotation_list, label_list = core.create_annotations_and_labels(
-        db=db, annotations=groundtruth.annotations, datum=datum
+    # create labels
+    all_labels = [
+        label
+        for annotation in groundtruth.annotations
+        for label in annotation.labels
+    ]
+    label_list = core.create_labels(db=db, labels=all_labels)
+
+    # create annotations
+    annotation_list = core.create_annotations(
+        db=db,
+        annotations=groundtruth.annotations,
+        datum=datum,
+        model=None,
     )
 
-    rows = []
-
-    for i, annotation in enumerate(annotation_list):
-        for label in label_list[i]:
-            rows += [
+    # create groundtruths
+    label_idx = 0
+    groundtruth_list = []
+    for i, annotation in enumerate(groundtruth.annotations):
+        for label in label_list[
+            label_idx : label_idx + len(annotation.labels)
+        ]:
+            groundtruth_list.append(
                 models.GroundTruth(
-                    annotation_id=annotation.id, label_id=label.id
+                    annotation_id=annotation_list[i].id,
+                    label_id=label.id,
                 )
-            ]
+            )
+        label_idx += len(annotation.labels)
 
     try:
-        db.add_all(rows)
+        db.add_all(groundtruth_list)
         db.commit()
     except IntegrityError:
         db.rollback()
         raise exceptions.GroundTruthAlreadyExistsError
-
-    return rows
 
 
 def get_groundtruth(

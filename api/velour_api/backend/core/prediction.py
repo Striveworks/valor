@@ -4,7 +4,7 @@ from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from velour_api import schemas
+from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
 
 
@@ -22,6 +22,17 @@ def create_prediction(
     prediction : schemas.Prediction
         The prediction to create.
     """
+    # check model status
+    model_status = core.get_model_status(
+        db=db,
+        dataset_name=prediction.datum.dataset,
+        model_name=prediction.model,
+    )
+    if model_status != enums.TableStatus.CREATING:
+        raise exceptions.ModelFinalizedError(
+            dataset_name=prediction.datum.dataset, model_name=prediction.model
+        )
+
     # retrieve existing table entries
     model = core.fetch_model(db, name=prediction.model)
     dataset = core.fetch_dataset(db, name=prediction.datum.dataset)
@@ -29,30 +40,43 @@ def create_prediction(
         db, dataset_id=dataset.id, uid=prediction.datum.uid
     )
 
-    annotation_list, label_list = core.create_annotations_and_labels(
-        db=db, annotations=prediction.annotations, datum=datum, model=model
+    # create labels
+    all_labels = [
+        label
+        for annotation in prediction.annotations
+        for label in annotation.labels
+    ]
+    label_list = core.create_labels(db=db, labels=all_labels)
+
+    # create annotations
+    annotation_list = core.create_annotations(
+        db=db,
+        annotations=prediction.annotations,
+        datum=datum,
+        model=model,
     )
 
-    # create tables entries
-    rows = []
-
-    for i, annotation in enumerate(annotation_list):
-        for j, label in enumerate(label_list[i]):
-            rows += [
+    # create predictions
+    label_idx = 0
+    prediction_list = []
+    for i, annotation in enumerate(prediction.annotations):
+        indices = slice(label_idx, label_idx + len(annotation.labels))
+        for j, label in enumerate(label_list[indices]):
+            prediction_list.append(
                 models.Prediction(
-                    annotation_id=annotation.id,
+                    annotation_id=annotation_list[i].id,
                     label_id=label.id,
-                    score=prediction.annotations[i].labels[j].score,
+                    score=annotation.labels[j].score,
                 )
-            ]
+            )
+        label_idx += len(annotation.labels)
 
     try:
-        db.add_all(rows)
+        db.add_all(prediction_list)
         db.commit()
     except IntegrityError as e:
         db.rollback()
         raise e
-    return rows
 
 
 def get_prediction(

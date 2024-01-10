@@ -1,7 +1,4 @@
 from ._create import (
-    compute_clf_metrics,
-    compute_detection_metrics,
-    compute_semantic_segmentation_metrics,
     create_clf_evaluation,
     create_dataset,
     create_detection_evaluation,
@@ -21,24 +18,31 @@ from ._read import (
     get_disjoint_keys,
     get_disjoint_labels,
     get_evaluation_jobs,
+    get_evaluation_status,
     get_evaluations,
     get_groundtruth,
-    get_job_status,
     get_joint_labels,
     get_model,
     get_model_labels,
     get_model_metrics,
     get_models,
     get_prediction,
+    get_table_status,
 )
-from ._update import finalize
+from ._update import (
+    compute_clf_metrics,
+    compute_detection_metrics,
+    compute_semantic_segmentation_metrics,
+    finalize,
+)
 
 __all__ = [
     "create_dataset",
     "create_model",
     "create_groundtruth",
     "create_prediction",
-    "get_job_status",
+    "get_table_status",
+    "get_evaluation_status",
     "get_datasets",
     "get_dataset",
     "get_datums",

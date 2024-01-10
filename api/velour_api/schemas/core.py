@@ -242,14 +242,6 @@ class Annotation(BaseModel):
 
     model_config = ConfigDict(use_enum_values=True, extra="forbid")
 
-    @field_validator("labels")
-    @classmethod
-    def _check_labels_not_empty(cls, v):
-        """Validate that labels aren't empty."""
-        if not v:
-            raise ValueError("`labels` cannot be empty.")
-        return v
-
 
 def _check_semantic_segmentations_single_label(
     annotations: list[Annotation],

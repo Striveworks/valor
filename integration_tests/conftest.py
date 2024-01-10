@@ -14,7 +14,6 @@ from velour.metatypes import ImageMetadata
 from velour.schemas import BoundingBox, MultiPolygon, Polygon, Raster
 from velour_api import exceptions
 from velour_api.backend import models
-from velour_api.crud import jobs
 
 
 @pytest.fixture
@@ -64,10 +63,6 @@ def db() -> Session:
     for label in labels:
         sess.delete(label)
     sess.commit()
-
-    # clean redis
-    jobs.connect_to_redis()
-    jobs.r.flushdb()
 
 
 @pytest.fixture

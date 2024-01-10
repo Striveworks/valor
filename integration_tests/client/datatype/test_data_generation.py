@@ -10,7 +10,7 @@ from velour.data_generation import (
     generate_prediction_data,
     generate_segmentation_data,
 )
-from velour.enums import AnnotationType, JobStatus, TaskType
+from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.metatypes import ImageMetadata
 from velour.schemas.filters import Filter
 
@@ -102,11 +102,11 @@ def test_generate_prediction_data(client: Client):
         ],
     )
     eval_results = eval_job.wait_for_completion(timeout=30)
-    assert eval_results.status == JobStatus.DONE
+    assert eval_results.status == EvaluationStatus.DONE
 
     eval_dict = asdict(eval_results)
     eval_dict.pop("metrics")
-    for key in ["job_id", "confusion_matrices", "status"]:
+    for key in ["evaluation_id", "confusion_matrices", "status"]:
         eval_dict.pop(key)
     assert eval_dict == {
         "model": model_name,

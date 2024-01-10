@@ -19,8 +19,6 @@ class ImageMetadata:
         The height of the image.
     width : int
         The width of the image.
-    dataset : str
-        The name of the dataset associated with the image.
     metadata : dict
         A dictionary of metadata that describes the image.
     geospatial :  dict
