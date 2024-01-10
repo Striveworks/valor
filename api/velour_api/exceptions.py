@@ -83,7 +83,7 @@ class DatasetStateError(Exception):
     """
     Raise an exception if a requested state transition is illegal.
 
-    This is a catch-all exception, if it is called regularly a more specific
+    This is a catch-all exception for dataset transitions. If it is called regularly a more specific
     exception should be defined.
 
     Parameters
@@ -210,7 +210,7 @@ class ModelStateError(Exception):
     """
     Raise an exception if a requested state transition is illegal.
 
-    This is a catch-all exception, if it is called regularly a more specific
+    This is a catch-all exception for model transitions. If it is called regularly a more specific
     exception should be defined.
 
     Parameters
@@ -346,7 +346,7 @@ class EvaluationStateError(Exception):
     """
     Raises an exception if a requested state transition is illegal.
 
-    This is a catch-all exception, if it is called regularly a more specific
+    This is a catch-all exception for evaluation transitions. If it is called regularly a more specific
     exception should be defined.
 
     Parameters
