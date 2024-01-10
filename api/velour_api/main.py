@@ -57,7 +57,7 @@ def create_http_error(
 ) -> HTTPException:
     """
     Creates a HTTP execption using a caught exception.
-    
+
     The HTTPException is populated with the name and details of the caught exception.
 
     Parameters
