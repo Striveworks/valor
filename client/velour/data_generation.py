@@ -246,7 +246,6 @@ def generate_prediction_data(
     client: Client,
     dataset: Dataset,
     model_name: str,
-    n_predictions: int = 10,
     n_annotations: int = 10,
     n_labels: int = 2,
 ):
@@ -261,8 +260,6 @@ def generate_prediction_data(
         The dataset object to create predictions for.
     model_name : str
         The name of your model.
-    n_predictions : int
-        The number of images you'd like your dataset to contain.
     n_annotations : int
         The number of annotations per prediction you'd like your dataset to contain.
     n_labels : int
