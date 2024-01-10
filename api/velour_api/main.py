@@ -1,5 +1,6 @@
 import json
 import os
+import datetime
 from contextlib import asynccontextmanager
 
 import sqlalchemy
@@ -77,6 +78,7 @@ def create_http_error(
             {
                 "name": str(type(error).__name__),
                 "detail": str(error),
+                "timestamp": datetime.utcnow().timestamp(),
             }
         ),
     )
