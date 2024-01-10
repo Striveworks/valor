@@ -460,7 +460,6 @@ def get_disjoint_labels_from_evaluation(
     prediction_label_filter.models_names = [model.name]
     prediction_label_filter.annotation_types = [prediction_type]
 
-    # TODO - update core.get_disjoint_labels to take filter object
     groundtruth_labels = core.get_labels(
         db, groundtruth_label_filter, ignore_predictions=True
     )

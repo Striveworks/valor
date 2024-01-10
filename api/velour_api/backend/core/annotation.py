@@ -407,14 +407,14 @@ def get_annotations(
     ]
 
 
-# @TODO: This only services detection annotations
 def get_annotation_type(
     db: Session,
     dataset: models.Dataset,
     model: models.Model | None = None,
+    task_type: enums.TaskType = enums.TaskType.DETECTION,
 ) -> enums.AnnotationType:
     """
-    Fetch an annotation type from psql.
+    Fetch annotation type from psql.
 
     Parameters
     ----------
@@ -449,7 +449,7 @@ def get_annotation_type(
             .join(models.Dataset, models.Dataset.id == models.Datum.dataset_id)
             .where(
                 models.Datum.dataset_id == dataset.id,
-                models.Annotation.task_type == enums.TaskType.DETECTION.value,
+                models.Annotation.task_type == task_type.value,
                 model_expr,
                 col.isnot(None),
             )

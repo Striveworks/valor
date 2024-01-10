@@ -833,23 +833,6 @@ def test_delete_dataset(crud, client: TestClient):
     assert resp.status_code == 200
     assert crud.delete.call_count == 1
 
-    # TODO - https://github.com/Striveworks/velour/issues/353
-    # with patch(
-    #     "fastapi.BackgroundTasks.add_task",
-    #     side_effect=exceptions.DatasetDoesNotExistError(""),
-    # ):
-    #     resp = client.delete("/datasets/dsetname")
-    #     assert resp.status_code == 404
-    #     assert crud.delete.call_count == 1
-
-    # with patch(
-    #     "fastapi.BackgroundTasks.add_task",
-    #     side_effect=exceptions.DatasetStateError("a", "b", "c"),
-    # ):
-    #     resp = client.delete("/datasets/dsetname")
-    #     assert resp.status_code == 409
-    #     assert crud.delete.call_count == 1
-
 
 """ POST /models """
 
@@ -948,23 +931,6 @@ def test_delete_model(crud, client: TestClient):
     resp = client.delete("/models/modelname")
     assert resp.status_code == 200
     assert crud.delete.call_count == 1
-
-    # TODO - https://github.com/Striveworks/velour/issues/353
-    # with patch(
-    #     "fastapi.BackgroundTasks.add_task",
-    #     side_effect=exceptions.ModelDoesNotExistError(""),
-    # ):
-    #     resp = client.delete("/models/modelname")
-    #     assert resp.status_code == 404
-    #     assert crud.delete.call_count == 1
-
-    # with patch(
-    #     "fastapi.BackgroundTasks.add_task",
-    #     side_effect=exceptions.ModelStateError("a", "b", "c"),
-    # ):
-    #     resp = client.delete("/models/modelname")
-    #     assert resp.status_code == 409
-    #     assert crud.delete.call_count == 1
 
 
 """ POST /evaluations/ap-metrics """

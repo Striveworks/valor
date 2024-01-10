@@ -620,13 +620,6 @@ def delete_dataset(
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
         crud.delete(db=db, dataset_name=dataset_name)
-
-        # TODO - https://github.com/Striveworks/velour/issues/353
-        # background_tasks.add_task(
-        #     crud.delete,
-        #     db=db,
-        #     dataset_name=dataset_name,
-        # )
     except exceptions.DatasetDoesNotExistError as e:
         raise create_http_error(status_code=404, error=e)
     except (
@@ -947,13 +940,6 @@ def delete_model(
     """
     try:
         crud.delete(db=db, model_name=model_name)
-
-        # TODO - https://github.com/Striveworks/velour/issues/353
-        # background_tasks.add_task(
-        #     crud.delete,
-        #     db=db,
-        #     model_name=model_name,
-        # )
     except exceptions.ModelDoesNotExistError as e:
         raise create_http_error(status_code=404, error=e)
     except (
