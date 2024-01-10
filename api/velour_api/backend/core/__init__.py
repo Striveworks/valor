@@ -10,10 +10,9 @@ from .dataset import (
     delete_dataset,
     fetch_dataset,
     get_dataset,
-    get_datasets,
     get_dataset_status,
-    set_dataset_status,
     get_dataset_summary,
+    get_datasets,
     get_n_datums_in_dataset,
     get_n_groundtruth_annotations,
     get_n_groundtruth_bounding_boxes_in_dataset,
@@ -23,6 +22,7 @@ from .dataset import (
     get_unique_datum_metadata_in_dataset,
     get_unique_groundtruth_annotation_metadata_in_dataset,
     get_unique_task_types_in_dataset,
+    set_dataset_status,
 )
 from .datum import create_datum, fetch_datum, get_datums
 from .evaluation import (
