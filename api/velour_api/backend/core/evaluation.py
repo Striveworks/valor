@@ -208,54 +208,64 @@ def create_evaluations(
     created_evaluation_rows = []
     for model in models_to_evaluate:
         for task_type in job_request.evaluation_filter.task_types:
-            for (
-                annotation_type
-            ) in job_request.evaluation_filter.annotation_types:
+            if job_request.evaluation_filter.annotation_types:
+                annotation_types = [
+                    annotation_type
+                    for annotation_type 
+                    in job_request.evaluation_filter.annotation_types
+                ]
 
-                # clean model filter
-                model_filter = job_request.model_filter.model_copy()
-                model_filter.models_names = [model.name]
-                model_filter.models_metadata = None
-                model_filter.models_geospatial = None
+                    
+                    if job_request.evaluation_filter.annotation_types
+                    else []
+                )
+                for annotation_type in annotation_types:
+                    # clean model filter
+                    model_filter = job_request.model_filter.model_copy()
+                    model_filter.models_names = [model.name]
+                    model_filter.models_metadata = None
+                    model_filter.models_geospatial = None
 
-                # clean evaluation filter
-                evaluation_filter = job_request.evaluation_filter.model_copy()
-                evaluation_filter.task_types = [task_type]
-                evaluation_filter.annotation_types = [annotation_type]
+                    # clean evaluation filter
+                    evaluation_filter = job_request.evaluation_filter.model_copy()
+                    evaluation_filter.task_types = [task_type]
+                    evaluation_filter.annotation_types = annotation_types
 
-                # dump parameters (if they exist)
-                match task_type:
-                    case enums.TaskType.CLASSIFICATION:
-                        parameters = None
-                    case enums.TaskType.DETECTION:
-                        parameters = (
-                            job_request.parameters.detection.model_dump()
-                        )
-                    case enums.TaskType.SEGMENTATION:
-                        parameters = None
-                    case _:
-                        raise NotImplementedError
+                    # dump parameters (if they exist)
+                    match task_type:
+                        case enums.TaskType.CLASSIFICATION:
+                            parameters = None
+                        case enums.TaskType.DETECTION:
+                            parameters = (
+                                job_request.parameters.detection.model_dump()
+                            )
+                        case enums.TaskType.SEGMENTATION:
+                            parameters = None
+                        case _:
+                            raise NotImplementedError
 
-                # check if evaluation exists
-                if evaluation := _fetch_evaluation(
-                    db=db,
-                    model=model,
-                    model_filter=model_filter,
-                    evaluation_filter=evaluation_filter,
-                    parameters=parameters,
-                ):
-                    existing_evaluation_rows.append(evaluation)
-
-                # create evaluation row
-                else:
-                    evaluation = models.Evaluation(
-                        model_id=model.id,
-                        model_filter=model_filter.model_dump(),
-                        evaluation_filter=evaluation_filter.model_dump(),
+                    # check if evaluation exists
+                    if evaluation := _fetch_evaluation(
+                        db=db,
+                        model=model,
+                        model_filter=model_filter,
+                        evaluation_filter=evaluation_filter,
                         parameters=parameters,
-                        status=enums.EvaluationStatus.PENDING,
-                    )
-                    created_evaluation_rows.append(evaluation)
+                    ):
+                        existing_evaluation_rows.append(evaluation)
+
+                    # create evaluation row
+                    else:
+                        evaluation = models.Evaluation(
+                            model_id=model.id,
+                            model_filter=model_filter.model_dump(),
+                            evaluation_filter=evaluation_filter.model_dump(),
+                            parameters=parameters,
+                            status=enums.EvaluationStatus.PENDING,
+                        )
+                        created_evaluation_rows.append(evaluation)
+
+                
 
     try:
         db.add_all(created_evaluation_rows)

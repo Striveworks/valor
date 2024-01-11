@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import Select, func, select
 
 from velour_api import enums, schemas
-from velour_api.backend import models
+from velour_api.backend import models, core
 from velour_api.backend.metrics.metric_utils import (
     create_metric_mappings,
     get_or_create_row,
@@ -218,33 +218,25 @@ def compute_semantic_segmentation_metrics(
     job_request : EvaluationRequest
         The evaluation job.
     """
-    evaluation = db.scalar(
-        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
-    )
 
-    # unpack job request
-    job_request = schemas.EvaluationRequest(
-        dataset=evaluation.dataset.name,
-        model=evaluation.model.name,
-        task_type=evaluation.task_type,
-        settings=schemas.EvaluationSettings(**evaluation.settings),
-        id=evaluation.id,
-    )
+    # fetch evaluation
+    evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
-    # check evaluation type
-    if job_request.task_type != enums.TaskType.SEGMENTATION:
-        raise ValueError(
-            f"Cannot run segmentation evaluation on task with type `{job_request.task_type}`."
+    # unpack filters and params
+    model_filter = schemas.Filter(**evaluation.model_filter)
+    evaluation_filter = schemas.Filter(**evaluation.evaluation_filter)
+
+    # check task type
+    if evaluation_filter.task_types != [enums.TaskType.SEGMENTATION]:
+        raise RuntimeError(
+            f"Evaluation `{evaluation.id}` with task type `{evaluation_filter.task_types}` attempted to run the object detection computation."
         )
-
-    # configure filters
-    if not job_request.settings.filters:
-        job_request.settings.filters = schemas.Filter()
-    job_request.settings.filters.task_types = [enums.TaskType.SEGMENTATION]
-    job_request.settings.filters.dataset_names = [job_request.dataset]
-    job_request.settings.filters.annotation_types = [
-        enums.AnnotationType.RASTER
-    ]
+    
+    # check annotation type
+    if evaluation_filter.annotation_types != [enums.AnnotationType.RASTER]:
+        raise RuntimeError(
+            f"Evaluation `{evaluation.id}` with annotation type `{evaluation_filter.annotation_types}` attempted to run the semantic segmentation computation."
+        )
 
     metrics = _compute_segmentation_metrics(
         db,

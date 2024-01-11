@@ -485,16 +485,16 @@ def compute_detection_metrics(
     # fetch evaluation
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
-    # check task type
-    if evaluation.task_type != enums.TaskType.DETECTION:
-        raise RuntimeError(
-            f"Evaluation `{evaluation.id}` with task type `{evaluation.task_type}` attempted to run the object detection computation."
-        )
-
     # unpack filters and params
     model_filter = schemas.Filter(**evaluation.model_filter)
     evaluation_filter = schemas.Filter(**evaluation.evaluation_filter)
     parameters = schemas.DetectionParameters(**evaluation.parameters)
+
+    # check task type
+    if evaluation_filter.task_types != [enums.TaskType.DETECTION]:
+        raise RuntimeError(
+            f"Evaluation `{evaluation.id}` with task type `{evaluation_filter.task_types}` attempted to run the object detection computation."
+        )
 
     # fetch model and datasets
     model = db.scalar(

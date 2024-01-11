@@ -16,7 +16,8 @@ from velour_api.enums import TaskType
 
 def _compute_binary_roc_auc(
     db: Session,
-    job_request: schemas.EvaluationRequest,
+    model_filter: schemas.Filter,
+    evaluation_filter: schemas.Filter,
     label: schemas.Label,
 ) -> float:
     """
@@ -37,7 +38,7 @@ def _compute_binary_roc_auc(
         The binary ROC AUC score.
     """
     # query to get the datum_ids and label values of groundtruths that have the given label key
-    gts_filter = job_request.settings.model_copy()
+    gts_filter = evaluation_filter.model_copy()
     gts_filter.label_keys = [label.key]
     gts_query = (
         Query(
@@ -49,8 +50,7 @@ def _compute_binary_roc_auc(
     )
 
     # get the prediction scores for the given label (key and value)
-    preds_filter = job_request.settings.model_copy()
-    preds_filter.models_names = [job_request.model]
+    preds_filter = model_filter.model_copy()
     preds_filter.labels = [{label.key: label.value}]
     preds_query = (
         Query(
@@ -122,7 +122,8 @@ def _compute_binary_roc_auc(
 
 def _compute_roc_auc(
     db: Session,
-    job_request: schemas.EvaluationRequest,
+    model_filter: schemas.Filter,
+    evaluation_filter: schemas.Filter,
     label_key: str,
 ) -> float:
     """
@@ -145,9 +146,8 @@ def _compute_roc_auc(
         The ROC AUC.
     """
 
-    label_filter = job_request.settings.model_copy()
+    label_filter = evaluation_filter.model_copy()
     label_filter.label_keys = [label_key]
-
     labels = core.get_labels(
         db=db,
         filters=label_filter,
@@ -159,7 +159,12 @@ def _compute_roc_auc(
     sum_roc_aucs = 0
     label_count = 0
     for label in labels:
-        bin_roc = _compute_binary_roc_auc(db, job_request, label)
+        bin_roc = _compute_binary_roc_auc(
+            db=db,
+            model_filter=model_filter,
+            evaluation_filter=evaluation_filter,
+            label=label,
+        )
 
         if bin_roc is not None:
             sum_roc_aucs += bin_roc
@@ -170,7 +175,8 @@ def _compute_roc_auc(
 
 def _compute_confusion_matrix_at_label_key(
     db: Session,
-    job_request: schemas.EvaluationRequest,
+    model_filter: schemas.Filter,
+    evaluation_filter: schemas.Filter,
     label_key: str,
 ) -> schemas.ConfusionMatrix | None:
     """
@@ -193,12 +199,11 @@ def _compute_confusion_matrix_at_label_key(
         returns the confusion matrix.
     """
     # groundtruths filter
-    gFilter = job_request.settings.model_copy()
+    gFilter = evaluation_filter.model_copy()
     gFilter.label_keys = [label_key]
 
     # predictions filter
-    pFilter = job_request.settings.model_copy()
-    pFilter.models_names = [job_request.model]
+    pFilter = model_filter.model_copy()
     pFilter.label_keys = [label_key]
 
     # 0. Get groundtruths that conform to gFilter
@@ -331,7 +336,8 @@ def _compute_accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
 
 
 def _compute_precision_and_recall_f1_from_confusion_matrix(
-    cm: schemas.ConfusionMatrix, label_value: str
+    cm: schemas.ConfusionMatrix, 
+    label_value: str,
 ) -> tuple[float, float, float]:
     """
     Computes the precision, recall, and f1 score at a class index
@@ -371,7 +377,8 @@ def _compute_precision_and_recall_f1_from_confusion_matrix(
 
 def _compute_confusion_matrix_and_metrics_at_label_key(
     db: Session,
-    job_request: schemas.EvaluationRequest,
+    model_filter: schemas.Filter,
+    evaluation_filter: schemas.Filter,
     label_key: str,
     labels: list[models.Label],
 ) -> (
@@ -419,7 +426,8 @@ def _compute_confusion_matrix_and_metrics_at_label_key(
 
     confusion_matrix = _compute_confusion_matrix_at_label_key(
         db=db,
-        job_request=job_request,
+        model_filter=model_filter,
+        evaluation_filter=evaluation_filter,
         label_key=label_key,
     )
 
@@ -435,9 +443,10 @@ def _compute_confusion_matrix_and_metrics_at_label_key(
         schemas.ROCAUCMetric(
             label_key=label_key,
             value=_compute_roc_auc(
-                db,
-                job_request,
-                label_key,
+                db=db,
+                model_filter=model_filter,
+                evaluation_filter=evaluation_filter,
+                label_key=label_key,
             ),
         ),
     ]
@@ -477,7 +486,8 @@ def _compute_confusion_matrix_and_metrics_at_label_key(
 
 def _compute_clf_metrics(
     db: Session,
-    job_request: schemas.EvaluationRequest,
+    model_filter: schemas.Filter,
+    evaluation_filter: schemas.Filter,
 ) -> tuple[
     list[schemas.ConfusionMatrix],
     list[
@@ -504,18 +514,11 @@ def _compute_clf_metrics(
     Tuple[List[schemas.ConfusionMatrix], List[schemas.ConfusionMatrix | schemas.AccuracyMetric | schemas.ROCAUCMetric| schemas.PrecisionMetric | schemas.RecallMetric | schemas.F1Metric]]
         A tuple of confusion matrices and metrics.
     """
-    # construct dataset filter
-    groundtruth_label_filter = job_request.settings.model_copy()
-
-    # construct model filter
-    prediction_label_filter = job_request.settings.model_copy()
-    prediction_label_filter.models_names = [job_request.model]
-
     # retrieve dataset labels
     dataset_labels = {
         schemas.Label(key=label.key, value=label.value)
         for label in db.query(
-            Query(models.Label).filter(groundtruth_label_filter).groundtruths()
+            Query(models.Label).filter(evaluation_filter).groundtruths()
         ).all()
     }
 
@@ -523,7 +526,7 @@ def _compute_clf_metrics(
     model_labels = {
         schemas.Label(key=label.key, value=label.value)
         for label in db.query(
-            Query(models.Label).filter(prediction_label_filter).predictions()
+            Query(models.Label).filter(model_filter).predictions()
         ).all()
     }
 
@@ -535,8 +538,9 @@ def _compute_clf_metrics(
     confusion_matrices, metrics = [], []
     for label_key in unique_label_keys:
         cm_and_metrics = _compute_confusion_matrix_and_metrics_at_label_key(
-            db,
-            job_request=job_request,
+            db=db,
+            model_filter=model_filter,
+            evaluation_filter=evaluation_filter,
             label_key=label_key,
             labels=[label for label in labels if label.key == label_key],
         )
@@ -568,37 +572,30 @@ def compute_clf_metrics(
     int
         The evaluation job id.
     """
-    evaluation = db.scalar(
-        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
-    )
+    
+    # fetch evaluation
+    evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
-    # unpack job request
-    job_request = schemas.EvaluationRequest(
-        model=evaluation.model.name,
-        settings=schemas.Filter(**evaluation.settings),
-        parameters=None,
-        id=evaluation.id,
-    )
+    # unpack filters and params
+    model_filter = schemas.Filter(**evaluation.model_filter)
+    evaluation_filter = schemas.Filter(**evaluation.evaluation_filter)
 
-    # check evaluation type
-    if TaskType.CLASSIFICATION not in job_request.settings.task_types:
-        raise ValueError(
-            f"Classification is not in the requested task types `{job_request.settings.task_types}`."
+    # check task type
+    if evaluation_filter.task_types != [TaskType.CLASSIFICATION]:
+        raise RuntimeError(
+            f"Evaluation `{evaluation.id}` with task type `{evaluation_filter.task_types}` attempted to run the classification computation."
         )
-
-    # configure filters
-    job_request = job_request.model_copy()
-    job_request.settings.task_types = [TaskType.CLASSIFICATION]
 
     confusion_matrices, metrics = _compute_clf_metrics(
         db=db,
-        job_request=job_request,
+        model_filter=model_filter,
+        evaluation_filter=evaluation_filter,
     )
 
     confusion_matrices_mappings = create_metric_mappings(
         db=db,
         metrics=confusion_matrices,
-        evaluation_id=job_request.id,
+        evaluation_id=evaluation.id,
     )
 
     for mapping in confusion_matrices_mappings:
@@ -609,7 +606,9 @@ def compute_clf_metrics(
         )
 
     metric_mappings = create_metric_mappings(
-        db=db, metrics=metrics, evaluation_id=job_request.id
+        db=db,
+        metrics=metrics,
+        evaluation_id=evaluation.id,
     )
 
     for mapping in metric_mappings:
