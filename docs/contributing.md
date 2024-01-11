@@ -30,11 +30,11 @@ Generally, the high-level workflow for contributing to this repo includes:
 For questions or comments on this process, please reach out to us at any time on [Slack](https://striveworks-public.slack.com/join/shared_invite/zt-1a0jx768y-2J1fffN~b4fXYM8GecvOhA#/shared-invite/email).
 
 
-# Development Tips & Tricks
+## Development Tips & Tricks
 
-## Deploying the Backend for Development
+### Deploying the Backend for Development
 
-### Docker Compose
+#### Docker Compose
 
 The fastest way to test the API and Python client is via Docker Compose. Start by setting the environment variable `POSTGRES_PASSWORD` to your liking, then start Docker and build the container:
 
@@ -43,7 +43,7 @@ export POSTGRES_PASSWORD="my_password"
 docker compose up
 ```
 
-### Makefile (requires Docker)
+#### Makefile (requires Docker)
 
 Alternatively, you may want to run the API service from a terminal to enable faster debugging. To start the service, you can run:
 
@@ -56,7 +56,7 @@ make start-postgis # Start the postgis service in Docker
 make start-server # Start the API service locally
 ```
 
-## Setting-Up Your Environment
+### Setting-Up Your Environment
 
 Creating a Velour-specific Python environment at the start of development can help you avoid dependency and versioning issues later on. To start, we'd recommend activating a new Python environment:
 
@@ -87,7 +87,7 @@ python -m pip install -e client/.[test]
 python -m pip install -e api/.[test]
 ```
 
-## Use pgAdmin to Debug PostGIS
+### Use pgAdmin to Debug PostGIS
 
 You can use the pgAdmin utility to debug your postgis tables as you code. Start by [installing pgAdmin](https://www.pgadmin.org/download/), then select `Object > Register > Server` to connect to your PostGIS container. The default connection details are listed below for convenience:
 
@@ -98,7 +98,7 @@ You can use the pgAdmin utility to debug your postgis tables as you code. Start 
 - *Username*: postgres
 ```
 
-## Running Tests
+### Running Tests
 
 All of our tests are run automatically via GitHub Actions on every push, so it's important to double-check that your code passes all local tests before committing your code. All of the tests below require `pytest`:
 
@@ -107,20 +107,19 @@ pip install pytest
 ```
 
 
-
-### Running integration tests
+#### Running integration tests
 
 ```shell
 pytest integration_tests
 ```
 
-### Running bacend unit tests
+#### Running bacend unit tests
 
 ```shell
 pytest api/tests/unit-tests
 ```
 
-### Running backkend functional tests
+#### Running backkend functional tests
 
 > **Note:** Functional tests require a running instance of PostgreSQL, which you can start using `make start-postgis-docker`.
 
