@@ -98,7 +98,7 @@ def test_geospatial_filter(
         model.evaluate_detection(
             dataset=dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
-            iou_thresholds_to_keep=[0.1, 0.6],
+            iou_thresholds_to_return=[0.1, 0.6],
             filters={
                 "dataset_geospatial": [
                     {
@@ -121,7 +121,7 @@ def test_geospatial_filter(
         model.evaluate_detection(
             dataset=dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
-            iou_thresholds_to_keep=[0.1, 0.6],
+            iou_thresholds_to_return=[0.1, 0.6],
             filters=[
                 Datum.geospatial.inside({"incorrectly_formatted_dict": {}})
             ],
@@ -133,7 +133,7 @@ def test_geospatial_filter(
     eval_results = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Datum.geospatial.inside(
                 {
@@ -162,7 +162,7 @@ def test_geospatial_filter(
         model.evaluate_detection(
             dataset=dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
-            iou_thresholds_to_keep=[0.1, 0.6],
+            iou_thresholds_to_return=[0.1, 0.6],
             filters={
                 "models_geospatial": [
                     {

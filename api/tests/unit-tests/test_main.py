@@ -85,9 +85,9 @@ def _test_post_evaluation_endpoint(
     endpoint: str,
     crud_method_name: str,
     example_json: dict,
-    metric_response: schemas.CreateDetectionMetricsResponse
-    | schemas.CreateClfMetricsResponse
-    | schemas.CreateSemanticSegmentationMetricsResponse,
+    metric_response: schemas.CreateDetectionEvaluationResponse
+    | schemas.CreateClfEvaluationResponse
+    | schemas.CreateSemanticSegmentationEvaluationResponse,
 ):
     """Helper function to test our metric endpoints by patching fastapi's BackgroundTasks"""
     crud_method = getattr(crud, crud_method_name)
@@ -937,7 +937,7 @@ def test_delete_model(crud, client: TestClient):
 
 
 def test_post_detection_metrics(client: TestClient):
-    metric_response = schemas.CreateDetectionMetricsResponse(
+    metric_response = schemas.CreateDetectionEvaluationResponse(
         missing_pred_labels=[], ignored_pred_labels=[], evaluation_id=1
     )
 
@@ -961,7 +961,7 @@ def test_post_detection_metrics(client: TestClient):
 
 
 def test_post_clf_metrics(client: TestClient):
-    metric_response = schemas.CreateClfMetricsResponse(
+    metric_response = schemas.CreateClfEvaluationResponse(
         missing_pred_keys=[], ignored_pred_keys=[], evaluation_id=1
     )
 
@@ -985,7 +985,7 @@ def test_post_clf_metrics(client: TestClient):
 
 
 def test_post_semenatic_segmentation_metrics(client: TestClient):
-    metric_response = schemas.CreateSemanticSegmentationMetricsResponse(
+    metric_response = schemas.CreateSemanticSegmentationEvaluationResponse(
         missing_pred_labels=[], ignored_pred_labels=[], evaluation_id=1
     )
 

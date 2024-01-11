@@ -1202,7 +1202,7 @@ class Model:
         self,
         dataset: "Dataset",
         iou_thresholds_to_compute: List[float] = None,
-        iou_thresholds_to_keep: List[float] = None,
+        iou_thresholds_to_return: List[float] = None,
         filters: Union[Dict, List[BinaryExpression]] = None,
     ) -> Evaluation:
         """
@@ -1214,7 +1214,7 @@ class Model:
             The dataset to evaluate against.
         iou_thresholds_to_compute : List[float]
             Thresholds to compute mAP against.
-        iou_thresholds_to_keep : List[float]
+        iou_thresholds_to_return : List[float]
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
         filters : Union[Dict, List[BinaryExpression]]
             Optional set of filters to constrain evaluation by.
@@ -1230,12 +1230,12 @@ class Model:
             iou_thresholds_to_compute = [
                 round(0.5 + 0.05 * i, 2) for i in range(10)
             ]
-        if iou_thresholds_to_keep is None:
-            iou_thresholds_to_keep = [0.5, 0.75]
+        if iou_thresholds_to_return is None:
+            iou_thresholds_to_return = [0.5, 0.75]
 
         parameters = DetectionParameters(
             iou_thresholds_to_compute=iou_thresholds_to_compute,
-            iou_thresholds_to_keep=iou_thresholds_to_keep,
+            iou_thresholds_to_return=iou_thresholds_to_return,
         )
 
         if not isinstance(filters, dict) and filters is not None:

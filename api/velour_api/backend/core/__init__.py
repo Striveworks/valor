@@ -2,7 +2,6 @@ from .annotation import (
     create_annotations,
     create_skipped_annotations,
     get_annotation,
-    get_annotation_type,
     get_annotations,
 )
 from .dataset import (
@@ -27,16 +26,15 @@ from .dataset import (
 from .datum import create_datum, fetch_datum, get_datums
 from .evaluation import (
     check_for_active_evaluations,
-    create_evaluation,
+    create_evaluations,
     fetch_evaluation_from_id,
-    fetch_evaluation_from_job_request,
-    get_disjoint_labels_from_evaluation,
-    get_evaluation_id_from_job_request,
+    get_disjoint_labels_from_evaluation_id,
+    get_evaluation_ids_from_request,
     get_evaluation_status,
     get_evaluations,
     set_evaluation_status,
 )
-from .geometry import convert_geometry
+from .geometry import convert_geometry, get_annotation_type
 from .groundtruth import create_groundtruth, get_groundtruth
 from .label import (
     create_labels,
@@ -109,13 +107,12 @@ __all__ = [
     "set_model_status",
     "create_prediction",
     "get_prediction",
-    "create_evaluation",
+    "create_evaluations",
     "fetch_evaluation_from_id",
-    "fetch_evaluation_from_job_request",
-    "get_evaluation_id_from_job_request",
+    "get_evaluation_ids_from_request",
     "get_evaluations",
     "get_evaluation_status",
-    "get_disjoint_labels_from_evaluation",
+    "get_disjoint_labels_from_evaluation_id",
     "set_evaluation_status",
     "check_for_active_evaluations",
 ]

@@ -31,7 +31,7 @@ def test__compute_detection_metrics(
         settings=schemas.EvaluationSettings(
             parameters=schemas.DetectionParameters(
                 iou_thresholds_to_compute=iou_thresholds,
-                iou_thresholds_to_keep=[0.5, 0.75],
+                iou_thresholds_to_return=[0.5, 0.75],
             ),
             filters=schemas.Filter(
                 annotation_types=[enums.AnnotationType.BOX],

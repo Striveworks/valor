@@ -78,7 +78,7 @@ def test_evaluate_detection(
     eval_job = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
@@ -99,7 +99,7 @@ def test_evaluate_detection(
         "settings": {
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
-                "iou_thresholds_to_keep": [0.1, 0.6],
+                "iou_thresholds_to_return": [0.1, 0.6],
             },
             "filters": {
                 **default_filter_properties,
@@ -117,7 +117,7 @@ def test_evaluate_detection(
     eval_job_value_filter_using_in_ = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.label.in_([Label(key="k1", value="v1")]),
             Annotation.type == AnnotationType.BOX,
@@ -132,7 +132,7 @@ def test_evaluate_detection(
     eval_job_value_filter = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.label == Label(key="k1", value="v1"),
             Annotation.type == AnnotationType.BOX,
@@ -148,7 +148,7 @@ def test_evaluate_detection(
     eval_job_no_metrics = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.label.in_([Label(key="k1", value="v2")]),
             Annotation.type == AnnotationType.BOX,
@@ -171,7 +171,7 @@ def test_evaluate_detection(
     eval_job_bounded_area_10_2000 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
@@ -205,7 +205,7 @@ def test_evaluate_detection(
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
-                "iou_thresholds_to_keep": [0.1, 0.6],
+                "iou_thresholds_to_return": [0.1, 0.6],
             },
         },
         "metrics": expected_metrics,
@@ -219,7 +219,7 @@ def test_evaluate_detection(
     eval_job_min_area_1200 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
@@ -246,7 +246,7 @@ def test_evaluate_detection(
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
-                "iou_thresholds_to_keep": [0.1, 0.6],
+                "iou_thresholds_to_return": [0.1, 0.6],
             },
         },
         # check metrics below
@@ -260,7 +260,7 @@ def test_evaluate_detection(
     eval_job_max_area_1200 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
@@ -287,7 +287,7 @@ def test_evaluate_detection(
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
-                "iou_thresholds_to_keep": [0.1, 0.6],
+                "iou_thresholds_to_return": [0.1, 0.6],
             },
         },
         # check metrics below
@@ -302,7 +302,7 @@ def test_evaluate_detection(
     eval_job_bounded_area_1200_1800 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
@@ -336,7 +336,7 @@ def test_evaluate_detection(
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
-                "iou_thresholds_to_keep": [0.1, 0.6],
+                "iou_thresholds_to_return": [0.1, 0.6],
             },
         },
         # check metrics below
@@ -380,7 +380,7 @@ def test_evaluate_detection_with_json_filters(
     assert eval_results.settings.parameters.iou_thresholds_to_compute == [
         i / 100 for i in range(50, 100, 5)
     ]
-    assert eval_results.settings.parameters.iou_thresholds_to_keep == [
+    assert eval_results.settings.parameters.iou_thresholds_to_return == [
         0.5,
         0.75,
     ]
@@ -428,7 +428,7 @@ def test_evaluate_detection_with_json_filters(
     eval_results_min_area_1200 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
@@ -440,7 +440,7 @@ def test_evaluate_detection_with_json_filters(
     eval_job_bounded_area_1200_1800 = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         filters={
             **default_filter_properties,
             "annotation_types": ["box"],
@@ -484,7 +484,7 @@ def test_evaluate_detection_with_json_filters(
             },
             "parameters": {
                 "iou_thresholds_to_compute": [0.1, 0.6],
-                "iou_thresholds_to_keep": [0.1, 0.6],
+                "iou_thresholds_to_return": [0.1, 0.6],
             },
         },
         # check metrics below
@@ -520,7 +520,7 @@ def test_get_bulk_evaluations(
     eval_job = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
@@ -627,7 +627,7 @@ def test_get_bulk_evaluations(
     eval_job2 = second_model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
-        iou_thresholds_to_keep=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,

@@ -95,7 +95,7 @@ def test_generate_prediction_data(client: Client):
     eval_job = model.evaluate_detection(
         dataset=dataset,
         iou_thresholds_to_compute=[0, 1],
-        iou_thresholds_to_keep=[0, 1],
+        iou_thresholds_to_return=[0, 1],
         filters=[
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
@@ -115,7 +115,7 @@ def test_generate_prediction_data(client: Client):
         "settings": {
             "parameters": {
                 "iou_thresholds_to_compute": [0.0, 1.0],
-                "iou_thresholds_to_keep": [0.0, 1.0],
+                "iou_thresholds_to_return": [0.0, 1.0],
             },
             "filters": {
                 **asdict(

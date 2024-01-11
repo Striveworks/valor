@@ -9,30 +9,30 @@ def test_metrics_DetectionParameters():
 
     schemas.DetectionParameters(
         iou_thresholds_to_compute=[0.2, 0.6],
-        iou_thresholds_to_keep=[],
+        iou_thresholds_to_return=[],
     )
 
     schemas.DetectionParameters(
         iou_thresholds_to_compute=[],
-        iou_thresholds_to_keep=[],
+        iou_thresholds_to_return=[],
     )
 
     with pytest.raises(ValidationError):
         schemas.DetectionParameters(
             iou_thresholds_to_compute=None,
-            iou_thresholds_to_keep=[0.2],
+            iou_thresholds_to_return=[0.2],
         )
 
     with pytest.raises(ValidationError):
         schemas.DetectionParameters(
             iou_thresholds_to_compute=None,
-            iou_thresholds_to_keep=0.2,
+            iou_thresholds_to_return=0.2,
         )
 
     with pytest.raises(ValidationError):
         schemas.DetectionParameters(
             iou_thresholds_to_compute=[0.2, "test"],
-            iou_thresholds_to_keep=[],
+            iou_thresholds_to_return=[],
         )
 
 
@@ -42,21 +42,21 @@ def test_metrics_EvaluationSettings():
     schemas.EvaluationSettings(
         parameters=schemas.DetectionParameters(
             iou_thresholds_to_compute=[0.2, 0.6],
-            iou_thresholds_to_keep=[],
+            iou_thresholds_to_return=[],
         ),
     )
 
     schemas.EvaluationSettings(
         parameters=schemas.DetectionParameters(
             iou_thresholds_to_compute=[],
-            iou_thresholds_to_keep=[],
+            iou_thresholds_to_return=[],
         ),
     )
 
     schemas.EvaluationSettings(
         parameters=schemas.DetectionParameters(
             iou_thresholds_to_compute=[],
-            iou_thresholds_to_keep=[],
+            iou_thresholds_to_return=[],
         ),
         filters=schemas.Filter(
             annotation_types=[enums.AnnotationType.BOX],
@@ -79,7 +79,7 @@ def test_metrics_EvaluationJob():
         settings=schemas.EvaluationSettings(
             parameters=schemas.DetectionParameters(
                 iou_thresholds_to_compute=[0.2, 0.6],
-                iou_thresholds_to_keep=[0.2],
+                iou_thresholds_to_return=[0.2],
             ),
             filters=schemas.Filter(
                 annotation_types=[enums.AnnotationType.BOX],
@@ -97,7 +97,7 @@ def test_metrics_EvaluationJob():
             settings=schemas.EvaluationSettings(
                 parameters=schemas.DetectionParameters(
                     iou_thresholds_to_compute=[0.2, 0.6],
-                    iou_thresholds_to_keep=[0.2],
+                    iou_thresholds_to_return=[0.2],
                 ),
                 filters=schemas.Filter(
                     annotation_types=[enums.AnnotationType.BOX],
@@ -114,7 +114,7 @@ def test_metrics_EvaluationJob():
             settings=schemas.EvaluationSettings(
                 parameters=schemas.DetectionParameters(
                     iou_thresholds_to_compute=[0.2, 0.6],
-                    iou_thresholds_to_keep=[0.2],
+                    iou_thresholds_to_return=[0.2],
                 ),
                 filters=schemas.Filter(
                     annotation_types=[enums.AnnotationType.BOX],
@@ -132,7 +132,7 @@ def test_metrics_EvaluationJob():
                 settings=schemas.EvaluationSettings(
                     parameters=schemas.DetectionParameters(
                         iou_thresholds_to_compute=[0.2, 0.6],
-                        iou_thresholds_to_keep=[0.2],
+                        iou_thresholds_to_return=[0.2],
                     ),
                     filters=schemas.Filter(
                         annotation_types=[enums.AnnotationType.BOX],
@@ -149,7 +149,7 @@ def test_metrics_EvaluationJob():
                 settings=schemas.EvaluationSettings(
                     parameters=schemas.DetectionParameters(
                         iou_thresholds_to_compute=[0.2, 0.6],
-                        iou_thresholds_to_keep=[0.2],
+                        iou_thresholds_to_return=[0.2],
                     ),
                     filters=schemas.Filter(
                         annotation_types=[enums.AnnotationType.BOX],
@@ -167,7 +167,7 @@ def test_metrics_EvaluationJob():
                 settings=schemas.EvaluationSettings(
                     parameters=schemas.DetectionParameters(
                         iou_thresholds_to_compute=[0.2, 0.6],
-                        iou_thresholds_to_keep=[0.2],
+                        iou_thresholds_to_return=[0.2],
                     ),
                     filters=schemas.Filter(
                         annotation_types=[enums.AnnotationType.BOX],
@@ -184,7 +184,7 @@ def test_metrics_EvaluationJob():
                 settings=schemas.EvaluationSettings(
                     parameters=schemas.DetectionParameters(
                         iou_thresholds_to_compute=[0.2, 0.6],
-                        iou_thresholds_to_keep=[0.2],
+                        iou_thresholds_to_return=[0.2],
                     ),
                     filters=schemas.Filter(
                         annotation_types=[enums.AnnotationType.BOX],
@@ -210,122 +210,122 @@ def test_metrics_EvaluationJob():
             )
 
 
-def test_metrics_CreateDetectionMetricsResponse():
-    schemas.CreateDetectionMetricsResponse(
+def test_metrics_CreateDetectionEvaluationResponse():
+    schemas.CreateDetectionEvaluationResponse(
         missing_pred_labels=[], ignored_pred_labels=[], evaluation_id=1
     )
 
-    schemas.CreateDetectionMetricsResponse(
+    schemas.CreateDetectionEvaluationResponse(
         missing_pred_labels=[schemas.Label(key="k1", value="v1")],
         ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
         evaluation_id=123,
     )
 
     with pytest.raises(ValidationError):
-        schemas.CreateDetectionMetricsResponse(
+        schemas.CreateDetectionEvaluationResponse(
             missing_pred_labels=None,
             ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
             evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
-        schemas.CreateDetectionMetricsResponse(
+        schemas.CreateDetectionEvaluationResponse(
             missing_pred_labels=schemas.Label(key="k1", value="v1"),
             ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
             evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
-        schemas.CreateDetectionMetricsResponse(
+        schemas.CreateDetectionEvaluationResponse(
             missing_pred_labels=[schemas.Label(key="k1", value="v1")],
             ignored_pred_labels=None,
             evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
-        schemas.CreateDetectionMetricsResponse(
+        schemas.CreateDetectionEvaluationResponse(
             missing_pred_labels=[schemas.Label(key="k1", value="v1")],
             ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
             evaluation_id="not a job id",
         )
 
 
-def test_metrics_CreateSemanticSegmentationMetricsResponse():
-    schemas.CreateDetectionMetricsResponse(
+def test_metrics_CreateSemanticSegmentationEvaluationResponse():
+    schemas.CreateDetectionEvaluationResponse(
         missing_pred_labels=[], ignored_pred_labels=[], evaluation_id=1
     )
 
-    schemas.CreateSemanticSegmentationMetricsResponse(
+    schemas.CreateSemanticSegmentationEvaluationResponse(
         missing_pred_labels=[schemas.Label(key="k1", value="v1")],
         ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
         evaluation_id=123,
     )
 
     with pytest.raises(ValidationError):
-        schemas.CreateSemanticSegmentationMetricsResponse(
+        schemas.CreateSemanticSegmentationEvaluationResponse(
             missing_pred_labels=None,
             ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
             evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
-        schemas.CreateSemanticSegmentationMetricsResponse(
+        schemas.CreateSemanticSegmentationEvaluationResponse(
             missing_pred_labels=schemas.Label(key="k1", value="v1"),
             ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
             evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
-        schemas.CreateSemanticSegmentationMetricsResponse(
+        schemas.CreateSemanticSegmentationEvaluationResponse(
             missing_pred_labels=[schemas.Label(key="k1", value="v1")],
             ignored_pred_labels=None,
             evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
-        schemas.CreateSemanticSegmentationMetricsResponse(
+        schemas.CreateSemanticSegmentationEvaluationResponse(
             missing_pred_labels=[schemas.Label(key="k1", value="v1")],
             ignored_pred_labels=[schemas.Label(key="k2", value="v2")],
             evaluation_id="not a job id",
         )
 
 
-def test_metrics_CreateClfMetricsResponse():
-    schemas.CreateClfMetricsResponse(
+def test_metrics_CreateClfEvaluationResponse():
+    schemas.CreateClfEvaluationResponse(
         missing_pred_keys=["k1", "k2"],
         ignored_pred_keys=["k1", "k2"],
         evaluation_id=123,
     )
 
-    schemas.CreateClfMetricsResponse(
+    schemas.CreateClfEvaluationResponse(
         missing_pred_keys=[],
         ignored_pred_keys=[],
         evaluation_id=123,
     )
 
     with pytest.raises(ValidationError):
-        schemas.CreateClfMetricsResponse(
+        schemas.CreateClfEvaluationResponse(
             missing_pred_keys=None,
             ignored_pred_keys=["k1", "k2"],
             evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
-        schemas.CreateClfMetricsResponse(
+        schemas.CreateClfEvaluationResponse(
             missing_pred_keys="k1",
             ignored_pred_keys=["k1", "k2"],
             evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
-        schemas.CreateClfMetricsResponse(
+        schemas.CreateClfEvaluationResponse(
             missing_pred_keys=["k1", "k2"],
             ignored_pred_keys=None,
             evaluation_id=123,
         )
 
     with pytest.raises(ValidationError):
-        schemas.CreateClfMetricsResponse(
+        schemas.CreateClfEvaluationResponse(
             missing_pred_keys=["k1", "k2"],
             ignored_pred_keys=["k1", "k2"],
             evaluation_id="not a job id",

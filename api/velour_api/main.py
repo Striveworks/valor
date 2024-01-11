@@ -961,14 +961,14 @@ def delete_model(
     dependencies=[Depends(token_auth_scheme)],
     tags=["Evaluations"],
 )
-def create_evaluation(
-    job_request: schemas.EvaluationJob,
+def create_evaluations(
+    job_request: schemas.EvaluationRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ) -> (
-    schemas.CreateClfMetricsResponse
-    | schemas.CreateDetectionMetricsResponse
-    | schemas.CreateSemanticSegmentationMetricsResponse
+    schemas.CreateClfEvaluationResponse
+    | schemas.CreateDetectionEvaluationResponse
+    | schemas.CreateSemanticSegmentationEvaluationResponse
 ):
     """
     Create a new evaluation.
@@ -986,7 +986,7 @@ def create_evaluation(
 
     Returns
     -------
-    schemas.CreateClfMetricsResponse | schemas.CreateDetectionMetricsResponse | schemas.CreateSemanticSegmentationMetricsResponse
+    schemas.CreateClfEvaluationResponse | schemas.CreateDetectionEvaluationResponse | schemas.CreateSemanticSegmentationEvaluationResponse
         An evaluation response object.
 
     Raises
@@ -1001,41 +1001,11 @@ def create_evaluation(
         If there is a state exception when creating the evaluation.
     """
     try:
-        # create evaluation
-        # add metric computation to background tasks
-        if job_request.task_type == enums.TaskType.CLASSIFICATION:
-            resp = crud.create_clf_evaluation(db=db, job_request=job_request)
-            background_tasks.add_task(
-                crud.compute_clf_metrics,
-                db=db,
-                evaluation_id=resp.evaluation_id,
-                job_request=job_request,
-            )
-        elif job_request.task_type == enums.TaskType.DETECTION:
-            resp = crud.create_detection_evaluation(
-                db=db, job_request=job_request
-            )
-            background_tasks.add_task(
-                crud.compute_detection_metrics,
-                db=db,
-                evaluation_id=resp.evaluation_id,
-                job_request=job_request,
-            )
-        elif job_request.task_type == enums.TaskType.SEGMENTATION:
-            resp = crud.create_semantic_segmentation_evaluation(
-                db=db, job_request=job_request
-            )
-            background_tasks.add_task(
-                crud.compute_semantic_segmentation_metrics,
-                db=db,
-                evaluation_id=resp.evaluation_id,
-                job_request=job_request,
-            )
-        else:
-            raise ValueError(
-                f"Evaluation method for task type `{str(job_request.task_type)}` does not exist."
-            )
-        return resp
+        return crud.create_evaluations(
+            db=db,
+            job_request=job_request,
+            task_handler=background_tasks,
+        )
     except ValueError as e:
         raise create_http_error(status_code=400, error=e)
     except (

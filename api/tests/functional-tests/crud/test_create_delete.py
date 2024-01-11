@@ -1051,7 +1051,7 @@ def test_create_detection_metrics(
             settings=schemas.EvaluationSettings(
                 parameters=schemas.DetectionParameters(
                     iou_thresholds_to_compute=[0.2, 0.6],
-                    iou_thresholds_to_keep=[0.2],
+                    iou_thresholds_to_return=[0.2],
                 ),
                 filters=schemas.Filter(
                     annotation_types=[enums.AnnotationType.BOX],
@@ -1187,7 +1187,7 @@ def test_create_detection_metrics(
         settings=schemas.EvaluationSettings(
             parameters=schemas.DetectionParameters(
                 iou_thresholds_to_compute=[0.2, 0.6],
-                iou_thresholds_to_keep=[0.2],
+                iou_thresholds_to_return=[0.2],
             ),
             filters=schemas.Filter(
                 annotation_types=[enums.AnnotationType.BOX],
@@ -1206,7 +1206,7 @@ def test_create_detection_metrics(
         settings=schemas.EvaluationSettings(
             parameters=schemas.DetectionParameters(
                 iou_thresholds_to_compute=[0.2, 0.6],
-                iou_thresholds_to_keep=[0.2],
+                iou_thresholds_to_return=[0.2],
             ),
             filters=schemas.Filter(
                 annotation_types=[enums.AnnotationType.BOX],

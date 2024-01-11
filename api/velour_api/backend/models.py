@@ -174,34 +174,30 @@ class Dataset(Base):
 
     # relationships
     datums: Mapped[list[Datum]] = relationship(cascade="all, delete")
-    evaluation: Mapped[list["Evaluation"]] = relationship(
-        cascade="all, delete"
-    )
 
 
 class Evaluation(Base):
     __tablename__ = "evaluation"
     __table_args__ = (
         UniqueConstraint(
-            "dataset_id",
             "model_id",
-            "task_type",
-            "settings",
+            "parameters",
+            "model_filter",
+            "evaluation_filter",
         ),
     )
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
-    task_type: Mapped[str] = mapped_column(nullable=False)
-    settings = mapped_column(JSONB, nullable=True)
+    model_filter = mapped_column(JSONB, nullable=False)
+    evaluation_filter = mapped_column(JSONB, nullable=False)
+    parameters = mapped_column(JSONB, nullable=True)
     geo = mapped_column(Geography(), nullable=True)
     status: Mapped[str] = mapped_column(nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
-    dataset = relationship(Dataset, back_populates="evaluation")
     model = relationship(Model, back_populates="evaluation")
     metrics: Mapped[list["Metric"]] = relationship(
         "Metric", cascade="all, delete"
@@ -222,7 +218,7 @@ class Metric(Base):
     )
     type: Mapped[str] = mapped_column()
     value: Mapped[float] = mapped_column(nullable=True)
-    parameters = mapped_column(JSONB)
+    parameters = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships

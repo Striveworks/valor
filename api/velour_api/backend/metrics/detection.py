@@ -25,6 +25,32 @@ class RankedPair:
     iou: float
 
 
+def _calculate_101_pt_interp(precisions, recalls) -> float:
+    """Use the 101 point interpolation method (following torchmetrics)"""
+
+    assert len(precisions) == len(recalls)
+    if len(precisions) == 0:
+        return 0
+
+    data = list(zip(precisions, recalls))
+    data.sort(key=lambda x: x[1])
+    # negative is because we want a max heap
+    prec_heap = [[-precision, i] for i, (precision, _) in enumerate(data)]
+    prec_heap.sort()
+
+    cutoff_idx = 0
+    ret = 0
+    for r in [0.01 * i for i in range(101)]:
+        while cutoff_idx < len(data) and data[cutoff_idx][1] < r:
+            cutoff_idx += 1
+        while prec_heap and prec_heap[0][1] < cutoff_idx:
+            heapq.heappop(prec_heap)
+        if cutoff_idx >= len(data):
+            continue
+        ret -= prec_heap[0][0]
+    return ret / 101
+
+
 def _ap(
     sorted_ranked_pairs: Dict[int, List[RankedPair]],
     number_of_ground_truths: Dict[int, int],
@@ -72,37 +98,11 @@ def _ap(
     return detection_metrics
 
 
-def _calculate_101_pt_interp(precisions, recalls) -> float:
-    """Use the 101 point interpolation method (following torchmetrics)"""
-
-    assert len(precisions) == len(recalls)
-    if len(precisions) == 0:
-        return 0
-
-    data = list(zip(precisions, recalls))
-    data.sort(key=lambda x: x[1])
-    # negative is because we want a max heap
-    prec_heap = [[-precision, i] for i, (precision, _) in enumerate(data)]
-    prec_heap.sort()
-
-    cutoff_idx = 0
-    ret = 0
-    for r in [0.01 * i for i in range(101)]:
-        while cutoff_idx < len(data) and data[cutoff_idx][1] < r:
-            cutoff_idx += 1
-        while prec_heap and prec_heap[0][1] < cutoff_idx:
-            heapq.heappop(prec_heap)
-        if cutoff_idx >= len(data):
-            continue
-        ret -= prec_heap[0][0]
-    return ret / 101
-
-
 def _compute_detection_metrics(
     db: Session,
-    dataset: models.Dataset,
-    model: models.Model,
-    settings: schemas.EvaluationSettings,
+    parameters: schemas.DetectionParameters,
+    model_filter: schemas.Filter,
+    evaluation_filter: schemas.Filter,
     target_type: enums.AnnotationType,
 ) -> list[
     schemas.APMetric
@@ -133,18 +133,6 @@ def _compute_detection_metrics(
         A list of average precision metrics.
 
     """
-    # Create groundtruth filter
-    gt_filter = settings.filters.model_copy()
-    gt_filter.dataset_names = [dataset.name]
-    gt_filter.models_names = None
-    gt_filter.models_metadata = None
-    gt_filter.models_geospatial = None
-    gt_filter.prediction_scores = None
-
-    # Create prediction filter
-    pd_filter = settings.filters.model_copy()
-    pd_filter.dataset_names = [dataset.name]
-    pd_filter.models_names = [model.name]
 
     # Join gt, datum, annotation, label
     gt = (
@@ -154,7 +142,7 @@ def _compute_detection_metrics(
             models.GroundTruth.label_id.label("label_id"),
             models.Annotation.datum_id.label("datum_id"),
         )
-        .filter(gt_filter)
+        .filter(evaluation_filter)
         .groundtruths("groundtruths")
     )
 
@@ -167,7 +155,7 @@ def _compute_detection_metrics(
             models.Prediction.score.label("score"),
             models.Annotation.datum_id.label("datum_id"),
         )
-        .filter(pd_filter)
+        .filter(model_filter)
         .predictions("predictions")
     )
 
@@ -296,10 +284,10 @@ def _compute_detection_metrics(
     # Get the number of ground truths per label id
     number_of_ground_truths = {}
     for id in labels:
-        gt_filter.label_ids = [id]
+        evaluation_filter.label_ids = [id]
         number_of_ground_truths[id] = db.query(
             Query(func.count(models.GroundTruth.id))
-            .filter(gt_filter)
+            .filter(evaluation_filter)
             .groundtruths()
         ).scalar()
 
@@ -308,7 +296,7 @@ def _compute_detection_metrics(
         sorted_ranked_pairs=ranking,
         number_of_ground_truths=number_of_ground_truths,
         labels=labels,
-        iou_thresholds=settings.parameters.iou_thresholds_to_compute,
+        iou_thresholds=parameters.iou_thresholds_to_compute,
     )
 
     # now extend to the averaged AP metrics and mAP metric
@@ -330,12 +318,12 @@ def _compute_detection_metrics(
     detection_metrics = [
         m
         for m in detection_metrics
-        if m.iou in settings.parameters.iou_thresholds_to_keep
+        if m.iou in parameters.iou_thresholds_to_return
     ]
     mean_detection_metrics = [
         m
         for m in mean_detection_metrics
-        if m.iou in settings.parameters.iou_thresholds_to_keep
+        if m.iou in parameters.iou_thresholds_to_return
     ]
 
     return (
@@ -422,6 +410,61 @@ def _compute_mean_detection_metrics_from_aps(
     return mean_detection_metrics
 
 
+def _convert_annotations_to_common_type(
+    db: Session,
+    datasets: list[models.Dataset],
+    model: models.Model,
+    target_type: list[enums.AnnotationType],
+):
+    """Convert all annotations to a common type."""
+    
+    # user has specified a target type
+    if len(target_type) > 1:
+        raise RuntimeError("Should receive a single annotation type.")
+    elif not target_type:
+        groundtruth_type = min(
+            datasets,
+            lambda dataset: core.get_annotation_type(db=db, dataset=dataset),
+        )
+        prediction_type = min(
+            datasets,
+            lambda dataset: core.get_annotation_type(
+                db=db, dataset=dataset, model=model
+            ),
+        )
+        target_type = min([groundtruth_type, prediction_type])
+    else:
+        target_type = target_type[0]
+
+    for dataset in datasets:
+        # dataset
+        source_type = core.get_annotation_type(
+            db=db, 
+            dataset=dataset
+        )
+        core.convert_geometry(
+            db,
+            dataset=dataset,
+            source_type=source_type,
+            target_type=target_type,
+        )
+        # model
+        source_type = core.get_annotation_type(
+            db=db, 
+            dataset=dataset, 
+            model=model
+        )
+        core.convert_geometry(
+            db,
+            dataset=dataset,
+            model=model,
+            source_type=source_type,
+            target_type=target_type,
+        )
+
+    return [target_type]
+        
+
 @validate_computation
 def compute_detection_metrics(
     *,
@@ -438,64 +481,53 @@ def compute_detection_metrics(
     evaluation_id : int
         The job ID to create metrics for.
     """
-    evaluation = db.scalar(
-        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
-    )
 
-    # unpack job request
-    job_request = schemas.EvaluationJob(
-        dataset=evaluation.dataset.name,
-        model=evaluation.model.name,
-        task_type=evaluation.task_type,
-        settings=schemas.EvaluationSettings(**evaluation.settings),
-        id=evaluation.id,
-    )
+    # fetch evaluation
+    evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
-    # check evaluation type
-    if job_request.task_type != enums.TaskType.DETECTION:
-        raise ValueError(
-            f"Cannot run detection evaluation on task with type `{job_request.task_type}`."
+    # check task type
+    if evaluation.task_type != enums.TaskType.DETECTION:
+        raise RuntimeError(
+            f"Evaluation `{evaluation.id}` with task type `{evaluation.task_type}` attempted to run the object detection computation."
         )
 
-    # configure filters
-    if not job_request.settings.filters:
-        job_request.settings.filters = schemas.Filter()
-    job_request.settings.filters.task_types = [enums.TaskType.DETECTION]
+    # unpack filters and params
+    model_filter = schemas.Filter(**evaluation.model_filter)
+    evaluation_filter = schemas.Filter(**evaluation.evaluation_filter)
+    parameters = schemas.DetectionParameters(**evaluation.parameters)
 
-    dataset = core.fetch_dataset(db, job_request.dataset)
-    model = core.fetch_model(db, job_request.model)
+    # fetch model and datasets
+    model = db.scalar(
+        select(models.Model)
+        .where(models.Model.id == evaluation.model_id)
+    )
+    datasets = db.query(
+        Query(models.Dataset)
+        .filter(evaluation_filter)
+        .any()
+    ).all()
 
-    groundtruth_type = core.get_annotation_type(db, dataset, None)
-    prediction_type = core.get_annotation_type(db, dataset, model)
-
-    # Get user-specified annotation type
-    if job_request.settings.filters.annotation_types:
-        target_type = max(
-            job_request.settings.filters.annotation_types, key=lambda x: x
-        )
-    else:
-        target_type = min([groundtruth_type, prediction_type])
-
-    # Convert geometries to target type (if required)
-    core.convert_geometry(
-        db,
-        dataset=dataset,
+    # ensure that all annotations have a common type to operate over
+    target_type = _convert_annotations_to_common_type(
+        db=db,
+        datasets=datasets,
         model=model,
-        dataset_source_type=groundtruth_type,
-        model_source_type=prediction_type,
-        evaluation_target_type=target_type,
+        target_type=evaluation_filter.annotation_types,
     )
+    evaluation_filter.annotation_types = [target_type]
 
     metrics = _compute_detection_metrics(
         db=db,
-        dataset=dataset,
-        model=model,
-        settings=job_request.settings,
+        parameters=parameters,
+        model_filter=model_filter,
+        evaluation_filter=evaluation_filter,
         target_type=target_type,
     )
 
     metric_mappings = create_metric_mappings(
-        db=db, metrics=metrics, evaluation_id=evaluation_id
+        db=db, 
+        metrics=metrics, 
+        evaluation_id=evaluation_id,
     )
 
     for mapping in metric_mappings:

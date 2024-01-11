@@ -10,7 +10,8 @@ from velour_api.backend.metrics.metric_utils import (
     validate_computation,
 )
 from velour_api.backend.ops import Query
-from velour_api.schemas.metrics import EvaluationJob, IOUMetric, mIOUMetric
+from velour_api.schemas.evaluation import EvaluationRequest
+from velour_api.schemas.metrics import IOUMetric, mIOUMetric
 
 
 def _generate_groundtruth_query(groundtruth_filter: schemas.Filter) -> Select:
@@ -150,7 +151,7 @@ def _get_groundtruth_labels(
 
 def _compute_segmentation_metrics(
     db: Session,
-    job_request: schemas.EvaluationJob,
+    job_request: schemas.EvaluationRequest,
 ) -> list[IOUMetric | mIOUMetric]:
     """
     Computes the _compute_IOU metrics. The return is one `IOUMetric` for each label in groundtruth
@@ -203,7 +204,7 @@ def compute_semantic_segmentation_metrics(
     *,
     db: Session,
     evaluation_id: int,
-    job_request: EvaluationJob,
+    job_request: EvaluationRequest,
 ) -> int:
     """
     Create semantic segmentation metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
@@ -214,7 +215,7 @@ def compute_semantic_segmentation_metrics(
         The database Session to query against.
     evaluation_id : int
         The job ID to create metrics for.
-    job_request : EvaluationJob
+    job_request : EvaluationRequest
         The evaluation job.
     """
     evaluation = db.scalar(
@@ -222,7 +223,7 @@ def compute_semantic_segmentation_metrics(
     )
 
     # unpack job request
-    job_request = schemas.EvaluationJob(
+    job_request = schemas.EvaluationRequest(
         dataset=evaluation.dataset.name,
         model=evaluation.model.name,
         task_type=evaluation.task_type,
