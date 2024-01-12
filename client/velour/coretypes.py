@@ -99,19 +99,14 @@ class Label:
         ):
             return False
 
-        # if the scores aren't the same type return False
-        if (other.score is None) != (self.score is None):
+        if self.key != other.key or self.value != other.value:
             return False
 
-        scores_equal = (other.score is None and self.score is None) or (
-            math.isclose(self.score, other.score)
-        )
-
-        return (
-            scores_equal
-            and self.key == other.key
-            and self.value == other.value
-        )
+        if self.score is not None and other.score is not None:
+            return math.isclose(self.score, other.score)
+        else:
+            # if the scores aren't the same type return False
+            return (other.score is None) == (self.score is None)
 
     def __hash__(self) -> int:
         """
