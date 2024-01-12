@@ -164,8 +164,8 @@ def test_declarative_mapper_string():
             name="name",
             object_type=str,
         ).intersect(
-            "value"
-        )  # type: ignore
+            "value"  # type: ignore
+        )
     with pytest.raises(TypeError):
         expression = DeclarativeMapper(
             name="name",
@@ -265,8 +265,8 @@ def test_declarative_mapper_int():
             name="name",
             object_type=int,
         ).intersect(
-            1234
-        )  # type: ignore
+            1234  # type: ignore
+        )
     with pytest.raises(TypeError):
         expression = DeclarativeMapper(
             name="name",
@@ -366,8 +366,8 @@ def test_declarative_mapper_float():
             name="name",
             object_type=float,
         ).intersect(
-            12.34
-        )  # type: ignore
+            12.34  # type: ignore
+        )
     with pytest.raises(TypeError):
         expression = DeclarativeMapper(
             name="name",
@@ -435,23 +435,17 @@ def test_declarative_mapper_datetime_objects():
             DeclarativeMapper(
                 name="some_name",
                 object_type=type(datetime_object),
-            ).intersect(
-                datetime_object, datetime_object
-            )  # type: ignore
+            ).intersect(datetime_object)
         with pytest.raises(TypeError):
             DeclarativeMapper(
                 name="some_name",
                 object_type=type(datetime_object),
-            ).inside(
-                datetime_object, datetime_object
-            )  # type: ignore
+            ).inside(datetime_object)
         with pytest.raises(TypeError):
             DeclarativeMapper(
                 name="some_name",
                 object_type=type(datetime_object),
-            ).outside(
-                datetime_object, datetime_object
-            )  # type: ignore
+            ).outside(datetime_object)
 
     _test_datetime_object(datetime.datetime.now())
     _test_datetime_object(datetime.date.today())
@@ -485,7 +479,7 @@ def test_declarative_mapper_geospatial():
     ).outside(point)
 
     with pytest.raises(TypeError):
-        (
+        assert (
             DeclarativeMapper(
                 name="name",
                 object_type=object_type,
@@ -493,7 +487,7 @@ def test_declarative_mapper_geospatial():
             == point
         )
     with pytest.raises(TypeError):
-        (
+        assert (
             DeclarativeMapper(
                 name="name",
                 object_type=object_type,
@@ -501,7 +495,7 @@ def test_declarative_mapper_geospatial():
             != point
         )
     with pytest.raises(TypeError):
-        (
+        assert (
             DeclarativeMapper(
                 name="name",
                 object_type=object_type,
@@ -509,7 +503,7 @@ def test_declarative_mapper_geospatial():
             >= point
         )
     with pytest.raises(TypeError):
-        (
+        assert (
             DeclarativeMapper(
                 name="name",
                 object_type=object_type,
@@ -517,7 +511,7 @@ def test_declarative_mapper_geospatial():
             <= point
         )
     with pytest.raises(TypeError):
-        (
+        assert (
             DeclarativeMapper(
                 name="name",
                 object_type=object_type,
@@ -525,7 +519,7 @@ def test_declarative_mapper_geospatial():
             > point
         )
     with pytest.raises(TypeError):
-        (
+        assert (
             DeclarativeMapper(
                 name="name",
                 object_type=object_type,
