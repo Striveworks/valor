@@ -3,6 +3,7 @@ from ._create import (
     create_groundtruth,
     create_model,
     create_prediction,
+    create_or_get_evaluations,
 )
 from ._delete import delete
 from ._read import (
@@ -27,6 +28,7 @@ __all__ = [
     "create_model",
     "create_groundtruth",
     "create_prediction",
+    "create_or_get_evaluations",
     "get_table_status",
     "get_evaluation_status",
     "get_datasets",

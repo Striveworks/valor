@@ -75,7 +75,7 @@ def test_query_generators(
 
     prediction_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        models_names=[model_name],
+        model_names=[model_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
         label_ids=None,
@@ -200,7 +200,7 @@ def test_count_true_positives(
 
     prediction_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        models_names=[model_name],
+        model_names=[model_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
         label_ids=None,
@@ -323,7 +323,7 @@ def test_count_predictions(
 
     prediction_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        models_names=[model_name],
+        model_names=[model_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
         label_ids=None,

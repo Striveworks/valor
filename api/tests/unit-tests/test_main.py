@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from velour_api import exceptions, schemas
 from velour_api.api_utils import _split_query_params
 from velour_api.backend import database
-from velour_api.enums import TableStatus, TaskType
+from velour_api.enums import TableStatus, TaskType, EvaluationStatus
 
 
 @pytest.fixture
@@ -85,13 +85,11 @@ def _test_post_evaluation_endpoint(
     endpoint: str,
     crud_method_name: str,
     example_json: dict,
-    metric_response: schemas.CreateDetectionEvaluationResponse
-    | schemas.CreateClfEvaluationResponse
-    | schemas.CreateSemanticSegmentationEvaluationResponse,
+    response: list[schemas.EvaluationRequest],
 ):
     """Helper function to test our metric endpoints by patching fastapi's BackgroundTasks"""
     crud_method = getattr(crud, crud_method_name)
-    crud_method.return_value = metric_response
+    crud_method.return_value = response
 
     resp = client.post(endpoint, json=example_json)
     assert resp.status_code == 202
@@ -101,21 +99,21 @@ def _test_post_evaluation_endpoint(
     assert resp.status_code == 422
 
     with patch(
-        "fastapi.BackgroundTasks.add_task",
+        "velour_api.main.crud." + crud_method_name,
         side_effect=ValueError(),
     ):
         resp = client.post(endpoint, json=example_json)
         assert resp.status_code == 400
 
     with patch(
-        "fastapi.BackgroundTasks.add_task",
+        "velour_api.main.crud." + crud_method_name,
         side_effect=exceptions.DatasetNotFinalizedError(""),
     ):
         resp = client.post(endpoint, json=example_json)
-        assert resp.status_code == 405
+        assert resp.status_code == 409
 
     with patch(
-        "fastapi.BackgroundTasks.add_task",
+        "velour_api.main.crud." + crud_method_name,
         side_effect=exceptions.ModelStateError("a", "b", "c"),
     ):
         resp = client.post(endpoint, json=example_json)
@@ -129,7 +127,7 @@ def test_post_groundtruth(client: TestClient):
     example_json = {
         "datum": {
             "uid": "file_uid",
-            "dataset": "dataset1",
+            "dataset_name": "dataset1",
             "metadata": {},
         },
         "annotations": [
@@ -164,7 +162,7 @@ def test_post_groundtruth_classification(client: TestClient):
     example_json = {
         "datum": {
             "uid": "file_uid",
-            "dataset": "dataset1",
+            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -208,7 +206,7 @@ def test_post_groundtruth_bbox_detection(client: TestClient):
     example_json = {
         "datum": {
             "uid": "file_uid",
-            "dataset": "dataset1",
+            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -250,7 +248,7 @@ def test_post_groundtruth_polygon_detection(client: TestClient):
     example_json = {
         "datum": {
             "uid": "file_uid",
-            "dataset": "dataset1",
+            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -311,7 +309,7 @@ def test_post_groundtruth_raster_segmentation(client: TestClient):
     example_json = {
         "datum": {
             "uid": "file_uid",
-            "dataset": "dataset1",
+            "dataset_name": "dataset1",
             "metadata": {
                 "height": 20,
                 "width": 20,
@@ -364,7 +362,7 @@ def test_get_groundtruth(crud, client: TestClient):
     crud.get_groundtruth.return_value = {
         "datum": {
             "uid": "file_uid",
-            "dataset": "dataset1",
+            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -413,10 +411,10 @@ def test_get_groundtruth(crud, client: TestClient):
 
 def test_post_prediction(client: TestClient):
     example_json = {
-        "model": "model1",
+        "model_name": "model1",
         "datum": {
             "uid": "file_uid",
-            "dataset": "dataset1",
+            "dataset_name": "dataset1",
             "metadata": {},
         },
         "annotations": [
@@ -458,10 +456,10 @@ def test_post_prediction(client: TestClient):
 
 def test_post_prediction_classification(client: TestClient):
     example_json = {
-        "model": "model1",
+        "model_name": "model1",
         "datum": {
             "uid": "file_uid",
-            "dataset": "dataset1",
+            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -502,10 +500,10 @@ def test_post_prediction_classification(client: TestClient):
 
 def test_post_prediction_bbox_detection(client: TestClient):
     example_json = {
-        "model": "model1",
+        "model_name": "model1",
         "datum": {
             "uid": "file_uid",
-            "dataset": "dataset1",
+            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -546,10 +544,10 @@ def test_post_prediction_bbox_detection(client: TestClient):
 
 def test_post_prediction_polygon_detection(client: TestClient):
     example_json = {
-        "model": "model1",
+        "model_name": "model1",
         "datum": {
             "uid": "file_uid",
-            "dataset": "dataset1",
+            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -599,8 +597,6 @@ def test_post_prediction_polygon_detection(client: TestClient):
         ],
     }
 
-    from velour_api import schemas
-
     schemas.Prediction(**example_json)
 
     _test_post_endpoints(
@@ -613,10 +609,10 @@ def test_post_prediction_polygon_detection(client: TestClient):
 
 def test_post_prediction_raster_segmentation(client: TestClient):
     example_json = {
-        "model": "model1",
+        "model_name": "model1",
         "datum": {
             "uid": "file_uid",
-            "dataset": "dataset1",
+            "dataset_name": "dataset1",
             "metadata": {
                 "height": 20,
                 "width": 20,
@@ -667,10 +663,10 @@ def test_post_prediction_raster_segmentation(client: TestClient):
 @patch("velour_api.main.crud")
 def test_get_prediction(crud, client: TestClient):
     crud.get_prediction.return_value = {
-        "model": "model1",
+        "model_name": "model1",
         "datum": {
             "uid": "file_uid",
-            "dataset": "dataset1",
+            "dataset_name": "dataset1",
             "metadata": {
                 "meta1": 0.4,
                 "meta2": "v1",
@@ -817,7 +813,7 @@ def test_finalize_datasets(crud, client: TestClient):
         side_effect=exceptions.DatasetIsEmptyError(""),
     ):
         resp = client.put("datasets/dsetname/finalize")
-        assert resp.status_code == 400
+        assert resp.status_code == 409
 
     resp = client.get("/datasets/dsetname/finalize")
     assert resp.status_code == 405
@@ -916,7 +912,7 @@ def test_finalize_inferences(crud, client: TestClient):
         side_effect=exceptions.DatasetIsEmptyError(""),
     ):
         resp = client.put("/models/modelname/datasets/dsetname/finalize")
-        assert resp.status_code == 400
+        assert resp.status_code == 409
 
     resp = client.get("/models/modelname/datasets/dsetname/finalize")
     assert resp.status_code == 405
@@ -933,127 +929,111 @@ def test_delete_model(crud, client: TestClient):
     assert crud.delete.call_count == 1
 
 
-""" POST /evaluations/ap-metrics """
+""" POST /evaluations """
 
 
 def test_post_detection_metrics(client: TestClient):
-    metric_response = schemas.CreateDetectionEvaluationResponse(
-        missing_pred_labels=[], ignored_pred_labels=[], evaluation_id=1
-    )
+    response = schemas.EvaluationResponse(
+        evaluation_id=1,
+        model_name="modelname",
+        model_filter=schemas.Filter(model_names=["modelname"]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=["dsetname"],
+            task_types=[TaskType.DETECTION],
+        ),
+        parameters=schemas.DetectionParameters(),
+        status=EvaluationStatus.PENDING,
+        metrics=[],
+        confusion_matrices=[],
+        missing_pred_labels=[],
+        ignored_pred_labels=[], 
+    ).model_dump()
 
-    example_json = {
-        "model": "modelname",
-        "dataset": "dsetname",
-        "task_type": TaskType.DETECTION.value,
-        "settings": {},
-    }
+    example_json = schemas.EvaluationRequest(
+        model_filter=schemas.Filter(model_names=["modelname"]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=["dsetname"],
+            task_types=[TaskType.DETECTION],
+        ),
+        parameters=schemas.EvaluationParameters()
+    ).model_dump()
 
     _test_post_evaluation_endpoint(
         client=client,
-        crud_method_name="create_detection_evaluation",
+        crud_method_name="create_or_get_evaluations",
         endpoint="/evaluations",
-        metric_response=metric_response,
+        response=[response],
         example_json=example_json,
     )
-
-
-""" POST /evaluations/clf-metrics """
 
 
 def test_post_clf_metrics(client: TestClient):
-    metric_response = schemas.CreateClfEvaluationResponse(
-        missing_pred_keys=[], ignored_pred_keys=[], evaluation_id=1
-    )
+    response = schemas.EvaluationResponse(
+        evaluation_id=1,
+        model_name="modelname",
+        model_filter=schemas.Filter(model_names=["modelname"]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=["dsetname"],
+            task_types=[TaskType.CLASSIFICATION],
+        ),
+        status=EvaluationStatus.PENDING,
+        metrics=[],
+        confusion_matrices=[],
+        missing_pred_keys=[],
+        ignored_pred_keys=[], 
+    ).model_dump()
 
-    example_json = {
-        "model": "modelname",
-        "dataset": "dsetname",
-        "task_type": TaskType.CLASSIFICATION.value,
-        "settings": {},
-    }
+    example_json = schemas.EvaluationRequest(
+        model_filter=schemas.Filter(model_names=["modelname"]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=["dsetname"],
+            task_types=[TaskType.CLASSIFICATION],
+        ),
+        parameters=schemas.EvaluationParameters()
+    ).model_dump()
 
     _test_post_evaluation_endpoint(
         client=client,
-        crud_method_name="create_clf_evaluation",
+        crud_method_name="create_or_get_evaluations",
         endpoint="/evaluations",
-        metric_response=metric_response,
+        response=[response],
         example_json=example_json,
     )
-
-
-""" POST /evaluations/semantic-segmentation-metrics """
 
 
 def test_post_semenatic_segmentation_metrics(client: TestClient):
-    metric_response = schemas.CreateSemanticSegmentationEvaluationResponse(
-        missing_pred_labels=[], ignored_pred_labels=[], evaluation_id=1
-    )
+    response = schemas.EvaluationResponse(
+        evaluation_id=1,
+        model_name="modelname",
+        model_filter=schemas.Filter(model_names=["modelname"]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=["dsetname"],
+            task_types=[TaskType.SEGMENTATION],
+        ),
+        parameters=None,
+        status=EvaluationStatus.PENDING,
+        metrics=[],
+        confusion_matrices=[],
+        missing_pred_labels=[],
+        ignored_pred_labels=[], 
+    ).model_dump()
 
-    example_json = {
-        "model": "modelname",
-        "dataset": "dsetname",
-        "task_type": TaskType.SEGMENTATION.value,
-        "settings": {},
-    }
+    example_json = schemas.EvaluationRequest(
+        model_filter=schemas.Filter(model_names=["modelname"]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=["dsetname"],
+            task_types=[TaskType.SEGMENTATION],
+        ),
+        parameters=schemas.EvaluationParameters()
+    ).model_dump()
 
     _test_post_evaluation_endpoint(
         client=client,
-        crud_method_name="create_semantic_segmentation_evaluation",
+        crud_method_name="create_or_get_evaluations",
         endpoint="/evaluations",
-        metric_response=metric_response,
+        response=[response],
         example_json=example_json,
     )
-
-
-""" GET /evaluations"""
-
-
-@patch("velour_api.main.crud")
-def test_get_bulk_evaluations(crud, client: TestClient):
-    crud.get_evaluations.return_value = []
-
-    resp = client.get(
-        "/evaluations?models=model1,model2&datasets=dataset1,dataset2"
-    )
-    assert resp.status_code == 200
-    crud.get_evaluations.assert_called_once()
-
-    with patch(
-        "velour_api.main.crud.get_evaluations",
-        side_effect=ValueError(),
-    ):
-        resp = client.get(
-            "/evaluations?models=model1,model2&datasets=dataset1,dataset2"
-        )
-        assert resp.status_code == 400
-
-    with patch(
-        "velour_api.main.crud.get_evaluations",
-        side_effect=exceptions.DatasetDoesNotExistError("dataset1"),
-    ):
-        resp = client.get(
-            "/evaluations?models=model1,model2&datasets=dataset1,dataset2"
-        )
-        assert resp.status_code == 404
-
-
-@patch("velour_api.main.crud")
-def test_get_bulk_evaluations_evaluation_ids(crud, client: TestClient):
-    crud.get_evaluations.return_value = []
-
-    def test_ids(ids_str, ids_expected):
-        resp = client.get(f"/evaluations?evaluation_ids={ids_str}")
-        assert resp.status_code == 200
-        call_kwargs = crud.get_evaluations.call_args.kwargs
-        assert call_kwargs["evaluation_ids"] == ids_expected
-
-    test_ids("4", [4])
-    test_ids("4,7", [4, 7])
-    test_ids("4,7,11", [4, 7, 11])
-
-    for query in ("foo", "4,foo", "1,,"):
-        resp = client.get(f"/evaluations?evaluation_ids={query}")
-        assert resp.status_code == 400
 
 
 """ GET /labels/dataset/{dataset_name} """

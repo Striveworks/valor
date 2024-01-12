@@ -269,11 +269,11 @@ class Filter:
         A dictionary of `Dataset` metadata to filter on.
     dataset_geospatial: List[GeospatialFilter].
         A list of `Dataset` geospatial filters to filter on.
-    models_names: List[str]
+    model_names: List[str]
         A list of `Model` names to filter on.
-    models_metadata: Dict[str, List[ValueFilter]]
+    model_metadata: Dict[str, List[ValueFilter]]
         A dictionary of `Model` metadata to filter on.
-    models_geospatial: List[GeospatialFilter]
+    model_geospatial: List[GeospatialFilter]
         A list of `Model` geospatial filters to filter on.
     datum_uids: List[str]
         A list of `Datum` UIDs to filter on.
@@ -315,9 +315,9 @@ class Filter:
     dataset_geospatial: List[GeospatialFilter] = None
 
     # models
-    models_names: List[str] = None
-    models_metadata: Dict[str, List[ValueFilter]] = None
-    models_geospatial: List[GeospatialFilter] = None
+    model_names: List[str] = None
+    model_metadata: Dict[str, List[ValueFilter]] = None
+    model_geospatial: List[GeospatialFilter] = None
 
     # datums
     datum_uids: List[str] = None
@@ -397,17 +397,17 @@ class Filter:
                 for expr in expression_dict["dataset_geospatial"]
             ]
         # models
-        if "models_names" in expression_dict:
-            filter_request.models_names = [
-                expr.value for expr in expression_dict["models_names"]
+        if "model_names" in expression_dict:
+            filter_request.model_names = [
+                expr.value for expr in expression_dict["model_names"]
             ]
-        if "models_metadata" in expression_dict:
-            for expr in expression_dict["models_metadata"]:
-                if not filter_request.models_metadata:
-                    filter_request.models_metadata = {}
-                if expr.key not in filter_request.models_metadata:
-                    filter_request.models_metadata[expr.key] = []
-                filter_request.models_metadata[expr.key].append(
+        if "model_metadata" in expression_dict:
+            for expr in expression_dict["model_metadata"]:
+                if not filter_request.model_metadata:
+                    filter_request.model_metadata = {}
+                if expr.key not in filter_request.model_metadata:
+                    filter_request.model_metadata[expr.key] = []
+                filter_request.model_metadata[expr.key].append(
                     ValueFilter(
                         value=expr.value,
                         operator=expr.operator,

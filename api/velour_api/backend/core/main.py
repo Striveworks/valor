@@ -321,7 +321,7 @@ def get_labels_from_model(
         return crud.get_model_labels(
             db=db,
             filters=schemas.Filter(
-                models_names=[model_name],
+                model_names=[model_name],
             ),
         )
     except Exception as e:

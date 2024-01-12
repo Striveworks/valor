@@ -5,6 +5,15 @@ from fastapi import HTTPException
 
 from velour_api import enums, logger
 
+
+class ServiceUnavailable(Exception):
+    """
+    Raises an exception if the Velour service is unavailble.
+    """
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
 """ Dataset """
 
 
@@ -404,12 +413,12 @@ error_to_status_code = {
     EvaluationStateError: 409,
     # 500
     NotImplementedError: 500,
+    # 503
+    ServiceUnavailable : 503,
 }
 
 
-def create_http_error(
-    error: Exception, status_code: int | None = None
-) -> HTTPException:
+def create_http_error(error: Exception) -> HTTPException:
     """
     Creates a HTTP execption using a caught exception.
 
@@ -419,17 +428,11 @@ def create_http_error(
     ----------
     error : Exception
         The exception that was caught and needs conversion.
-    status_code : int, optional
-        Status code value override.
 
     Returns
     -------
     fastapi.HTTPException
     """
-    if status_code:
-        logger.debug(
-            f"`{type(error).__name__}` has been raised with an overwritten status code."
-        )
     if type(error) in error_to_status_code:
         status_code = error_to_status_code[type(error)]
     else:

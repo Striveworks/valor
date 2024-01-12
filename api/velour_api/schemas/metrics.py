@@ -7,23 +7,6 @@ from velour_api.enums import EvaluationStatus
 from velour_api.schemas.label import Label
 
 
-class Job(BaseModel):
-    """
-    Defines important attributes for a job.
-
-    Attributes
-    ----------
-    uid : str
-        The UID of the job.
-    status : EvaluationStatus
-        The status of the job.
-    """
-
-    uid: str = Field(default_factory=lambda: str(uuid4()))
-    status: EvaluationStatus = EvaluationStatus.PENDING
-    model_config = ConfigDict(extra="allow")
-
-
 class Metric(BaseModel):
     """
     A metric response from the API.

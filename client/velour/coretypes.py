@@ -1205,7 +1205,7 @@ class Model:
         filters = self._format_filters(datasets, filters)
 
         evaluation = EvaluationRequest(
-            model_filter=Filter(models_names=[self.name]),
+            model_filter=Filter(model_names=[self.name]),
             evaluation_filter=filters,
         )
 
@@ -1268,7 +1268,7 @@ class Model:
         filters = self._format_filters(datasets, filters)
 
         evaluation = EvaluationRequest(
-            model_filter=Filter(models_names=[self.name]),
+            model_filter=Filter(model_names=[self.name]),
             evaluation_filter=filters,
             parameters=EvaluationParameters(detection=parameters),
         )
@@ -1314,7 +1314,7 @@ class Model:
 
         # create evaluation job
         evaluation = EvaluationRequest(
-            model_filter=Filter(models_names=[self.name]),
+            model_filter=Filter(model_names=[self.name]),
             evaluation_filter=filters,
         )
         resp = self.client._requests_post_rel_host(
@@ -1497,9 +1497,9 @@ Annotation.geospatial = DeclarativeMapper(
 )
 
 # Model
-Model.name = DeclarativeMapper("models_names", str)
+Model.name = DeclarativeMapper("model_names", str)
 Model.metadata = DeclarativeMapper(
-    "models_metadata",
+    "model_metadata",
     Union[int, float, str, datetime.datetime, datetime.date, datetime.time],
 )
 Model.geospatial = DeclarativeMapper(

@@ -180,7 +180,7 @@ def _create_response(
     return schemas.EvaluationResponse(
         evaluation_id=evaluation.id,
         model=model_name,
-        models_filter=evaluation.model_filter,
+        model_filter=evaluation.model_filter,
         evaluation_filter=evaluation.evaluation_filter,
         parameters=evaluation.parameters,
         status=evaluation.status,
@@ -278,8 +278,8 @@ def create_or_get_evaluations(
         A tuple of evaluation response lists following the pattern (list[created_evaluations], list[existing_evaluations])
     """
 
-    models_to_evaluate = db.query(
-        Query(models.Model).filter(job_request.models_filter).any()
+    model_to_evaluate = db.query(
+        Query(models.Model).filter(job_request.model_filter).any()
     ).all()
     datasets_to_evaluate = db.query(
         Query(models.Dataset).filter(job_request.evaluation_filter).any()
@@ -289,7 +289,7 @@ def create_or_get_evaluations(
     _verify_ready_to_evaluate(
         db=db,
         dataset_list=datasets_to_evaluate,
-        model_list=models_to_evaluate,
+        model_list=model_to_evaluate,
     )
 
     # dataset_names
@@ -297,26 +297,26 @@ def create_or_get_evaluations(
 
     created_rows = []
     existing_rows = []
-    for model in models_to_evaluate:
+    for model in model_to_evaluate:
         for task_type in job_request.evaluation_filter.task_types:
 
             # clean model filter
-            model_filter = job_request.models_filters.model_copy()
+            model_filter = job_request.model_filters.model_copy()
             model_filter.dataset_names = dataset_names
             model_filter.dataset_metadata = None
             model_filter.dataset_geospatial = None
-            model_filter.models_names = [model.name]
-            model_filter.models_metadata = None
-            model_filter.models_geospatial = None
+            model_filter.model_names = [model.name]
+            model_filter.model_metadata = None
+            model_filter.model_geospatial = None
 
             # clean evaluation filter
             evaluation_filter = job_request.evaluation_filter.model_copy()
             evaluation_filter.dataset_names = dataset_names
             evaluation_filter.dataset_metadata = None
             evaluation_filter.dataset_geospatial = None
-            evaluation_filter.models_names = [model.name]
-            evaluation_filter.models_metadata = None
-            evaluation_filter.models_geospatial = None
+            evaluation_filter.model_names = [model.name]
+            evaluation_filter.model_metadata = None
+            evaluation_filter.model_geospatial = None
             evaluation_filter.task_types = [task_type]
 
             # some task_types require parameters and/or special filter handling
@@ -421,22 +421,22 @@ def get_evaluation_ids_from_request(
     list[int]
         The ids of any matching evaluations.
     """
-    models_to_evaluate = db.query(
-        Query(models.Model).filter(job_request.models_filter).any()
+    model_to_evaluate = db.query(
+        Query(models.Model).filter(job_request.model_filter).any()
     ).all()
 
     evaluation_ids = []
-    for model in models_to_evaluate:
+    for model in model_to_evaluate:
         for task_type in job_request.evaluation_filter.task_types:
             for (
                 annotation_type
             ) in job_request.evaluation_filter.annotation_types:
 
                 # clean model filter
-                model_filter = job_request.models_filter.model_copy()
-                model_filter.models_names = [model.name]
-                model_filter.models_metadata = None
-                model_filter.models_geospatial = None
+                model_filter = job_request.model_filter.model_copy()
+                model_filter.model_names = [model.name]
+                model_filter.model_metadata = None
+                model_filter.model_geospatial = None
 
                 # clean evaluation filter
                 evaluation_filter = job_request.evaluation_filter.model_copy()
@@ -459,7 +459,7 @@ def get_evaluation_ids_from_request(
                 evaluation = _fetch_evaluation(
                     db=db,
                     model=model,
-                    model_filter=job_request.models_filter,
+                    model_filter=job_request.model_filter,
                     evaluation_filter=evaluation_filter,
                     parameters=parameters,
                 )

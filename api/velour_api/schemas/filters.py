@@ -374,11 +374,11 @@ class Filter(BaseModel):
         A dictionary of `Dataset` metadata to filter on.
     dataset_geospatial: List[GeospatialFilter]., default=None
         A list of `Dataset` geospatial filters to filter on.
-    models_names: List[str], default=None
+    model_names: List[str], default=None
         A list of `Model` names to filter on.
-    models_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
+    model_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
         A dictionary of `Model` metadata to filter on.
-    models_geospatial: List[GeospatialFilter], default=None
+    model_geospatial: List[GeospatialFilter], default=None
         A list of `Model` geospatial filters to filter on.
     datum_ids: List[str], default=None
         A list of `Datum` UIDs to filter on.
@@ -415,12 +415,12 @@ class Filter(BaseModel):
     dataset_geospatial: list[GeospatialFilter] | None = None
 
     # models
-    models_names: list[str] | None = None
-    models_metadata: dict[
+    model_names: list[str] | None = None
+    model_metadata: dict[
         str,
         list[StringFilter | NumericFilter | DateTimeFilter | BooleanFilter],
     ] | None = None
-    models_geospatial: list[GeospatialFilter] | None = None
+    model_geospatial: list[GeospatialFilter] | None = None
 
     # datums
     datum_ids: list[
@@ -452,4 +452,7 @@ class Filter(BaseModel):
     label_keys: list[str] | None = None
 
     # pydantic settings
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        protected_namespaces=('protected_',),
+    )

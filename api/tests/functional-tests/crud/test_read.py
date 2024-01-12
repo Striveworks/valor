@@ -128,7 +128,7 @@ def test_get_labels_from_model(
     md1 = crud.get_model_labels(
         db=db,
         filters=schemas.Filter(
-            models_names=[model_name],
+            model_names=[model_name],
         ),
     )
     assert len(md1) == 4
@@ -141,7 +141,7 @@ def test_get_labels_from_model(
     md1 = crud.get_model_labels(
         db=db,
         filters=schemas.Filter(
-            models_names=[model_name],
+            model_names=[model_name],
             task_types=[enums.TaskType.CLASSIFICATION],
         ),
     )
@@ -151,7 +151,7 @@ def test_get_labels_from_model(
     md1 = crud.get_model_labels(
         db=db,
         filters=schemas.Filter(
-            models_names=[model_name],
+            model_names=[model_name],
             annotation_types=[enums.AnnotationType.BOX],
         ),
     )

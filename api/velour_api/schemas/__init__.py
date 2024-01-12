@@ -10,6 +10,7 @@ from .core import (
 )
 from .evaluation import (
     DetectionParameters,
+    EvaluationParameters,
     EvaluationRequest,
     EvaluationResponse,
 )
@@ -94,6 +95,7 @@ __all__ = [
     "EvaluationRequest",
     "EvaluationResponse",
     "DetectionParameters",
+    "EvaluationParameters",
     "StringFilter",
     "NumericFilter",
     "GeospatialFilter",

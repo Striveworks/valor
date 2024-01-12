@@ -574,23 +574,23 @@ class Query:
             self._add_expressions(models.Dataset, geospatial_expressions)
 
         # models
-        if filters.models_names:
+        if filters.model_names:
             self._add_expressions(
                 models.Model,
                 [
                     models.Model.name == name
-                    for name in filters.models_names
+                    for name in filters.model_names
                     if isinstance(name, str)
                 ],
             )
-        if filters.models_metadata:
+        if filters.model_metadata:
             self._add_expressions(
                 models.Model,
-                self.filter_by_metadata(filters.models_metadata, models.Model),
+                self.filter_by_metadata(filters.model_metadata, models.Model),
             )
-        if filters.models_geospatial:
+        if filters.model_geospatial:
             geospatial_expressions = self._filter_by_geospatial(
-                geospatial_filters=filters.models_geospatial,
+                geospatial_filters=filters.model_geospatial,
                 model_object=models.Model,
             )
             self._add_expressions(models.Model, geospatial_expressions)

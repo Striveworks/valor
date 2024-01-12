@@ -2,7 +2,7 @@ import os
 from contextlib import asynccontextmanager
 
 import sqlalchemy
-from fastapi import BackgroundTasks, Depends, FastAPI
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -321,7 +321,7 @@ def get_labels_from_model(
         return crud.get_model_labels(
             db=db,
             filters=schemas.Filter(
-                models_names=[model_name],
+                model_names=[model_name],
             ),
         )
     except Exception as e:
@@ -911,13 +911,11 @@ def create_or_get_evaluations(
         If there is a state exception when creating the evaluation.
     """
     try:
-        # TODO - return the complete list
-        evaluations = crud.create_evaluations(
+        return crud.create_or_get_evaluations(
             db=db,
             job_request=job_request,
             task_handler=background_tasks,
         )
-        return evaluations[0]
     except Exception as e:
         raise exceptions.create_http_error(e)
 
@@ -1010,4 +1008,6 @@ def ready(db: Session = Depends(get_db)):
         db.execute(sqlalchemy.text("select 1"))
         return schemas.Readiness(status="ok")
     except Exception as e:
-        raise exceptions.create_http_error(status_code=503, error=e)
+        exceptions.create_http_error(
+            error=exceptions.ServiceUnavailable("Could not connect to postgresql.")
+        )

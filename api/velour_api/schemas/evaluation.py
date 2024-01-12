@@ -62,7 +62,7 @@ class EvaluationRequest(BaseModel):
 
     Attributes
     ----------
-    models_filter : schemas.Filter
+    model_filter : schemas.Filter
         The filter used to enumerate all the models we want to evaluate.
     evaluation_filter : schemas.Filter
         The filter object used to define what the model is evaluating against.
@@ -70,12 +70,15 @@ class EvaluationRequest(BaseModel):
         Any parameters that are used to modify an evaluation method.
     """
 
-    models_filter: Filter
+    model_filter: Filter
     evaluation_filter: Filter
     parameters: EvaluationParameters = Field(default=EvaluationParameters())
 
     # pydantic setting
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        protected_namespaces=('protected_',),
+    )
 
     @model_validator(mode="after")
     @classmethod
@@ -110,9 +113,9 @@ class EvaluationResponse(BaseModel):
     ----------
     evaluation_id : int
         The ID of the evaluation job.
-    model : str
+    model_name : str
         The name of the model.
-    models_filter : schemas.Filter
+    model_filter : schemas.Filter
         The model filter used in the evaluation.
     evaluation_filter : schemas.Filter
         The evaluation filter used in the evaluation.
@@ -127,15 +130,19 @@ class EvaluationResponse(BaseModel):
     """
 
     evaluation_id: int
-    model: str
+    model_name: str
 
-    models_filter: Filter
+    model_filter: Filter
     evaluation_filter: Filter
-    parameters: EvaluationParameters
+    parameters: DetectionParameters | None = None
 
     status: EvaluationStatus
     metrics: list[Metric]
     confusion_matrices: list[ConfusionMatrixResponse]
 
     # pydantic setting
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(
+        extra="allow",
+        protected_namespaces=('protected_',)
+    )
+    
