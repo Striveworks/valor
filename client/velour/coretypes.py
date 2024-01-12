@@ -1636,7 +1636,7 @@ Model.metadata = DeclarativeMapper(
     Union[int, float, str, datetime.datetime, datetime.date, datetime.time],
 )
 Model.geospatial = DeclarativeMapper(
-    "model_geospatial",
+    "models_geospatial",
     Union[
         List[List[List[List[Union[float, int]]]]],
         List[List[List[Union[float, int]]]],

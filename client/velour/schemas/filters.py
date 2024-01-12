@@ -415,13 +415,13 @@ class Filter:
                         operator=expr.operator,
                     )
                 )
-        if "model_geospatial" in expression_dict:
-            filter_request.model_geospatial = [
+        if "models_geospatial" in expression_dict:
+            filter_request.models_geospatial = [
                 GeospatialFilter(
                     value=expr.value,
                     operator=expr.operator,
                 )
-                for expr in expression_dict["model_geospatial"]
+                for expr in expression_dict["models_geospatial"]
             ]
         # datums
         if "datum_uids" in expression_dict:
