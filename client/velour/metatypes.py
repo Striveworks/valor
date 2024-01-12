@@ -91,10 +91,14 @@ class ImageMetadata:
                 f"`datum` does not contain height and/or width in metadata `{datum.metadata}`"
             )
         metadata = datum.metadata.copy()
+        width = metadata.pop("width")
+        height = metadata.pop("height")
+        assert isinstance(width, SupportsInt)
+        assert isinstance(height, SupportsInt)
         img = cls(
             uid=datum.uid,
-            height=int(metadata.pop("height")),
-            width=int(metadata.pop("width")),
+            height=int(height),
+            width=int(width),
             metadata=metadata,
         )
         img._dataset_name = datum._dataset_name
