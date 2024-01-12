@@ -35,22 +35,24 @@ def validate_metadata(metadata: dict):
 
         # Handle special key-values
         if key == "href":
+            if not isinstance(value, str):
+                raise SchemaTypeError("href", str, value)
             _validate_href(value)
 
 
-def dump_metadata(metadata: dict) -> dict:
+def dump_metadata(metadata: Dict) -> dict:
     """Ensures that all nested attributes are numerics or str types."""
-    metadata = deepcopy(metadata)
-    for key, value in metadata.items():
+    _metadata = deepcopy(metadata)
+    for key, value in _metadata.items():
         if isinstance(value, datetime.datetime):
-            metadata[key] = {"datetime": value.isoformat()}
+            _metadata[key] = {"datetime": value.isoformat()}
         elif isinstance(value, datetime.date):
-            metadata[key] = {"date": value.isoformat()}
+            _metadata[key] = {"date": value.isoformat()}
         elif isinstance(value, datetime.time):
-            metadata[key] = {"time": value.isoformat()}
+            _metadata[key] = {"time": value.isoformat()}
         elif isinstance(value, datetime.timedelta):
-            metadata[key] = {"duration": str(value.total_seconds())}
-    return metadata
+            _metadata[key] = {"duration": str(value.total_seconds())}
+    return _metadata
 
 
 def load_metadata(metadata: dict) -> dict:
