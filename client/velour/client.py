@@ -61,7 +61,9 @@ def wait_for_predicate(
     return state
 
 
-def _validate_version(client_version: str, api_version: str):
+def _validate_version(
+    client_version: Optional[str], api_version: Optional[str]
+):
     """Log and/or warn users if the Velour Python client version differs from the API version."""
 
     def _msg(state):
@@ -107,7 +109,7 @@ class Client:
         The access token for the host (if the host requires authentication).
     """
 
-    def __init__(self, host: str, access_token: str = None):
+    def __init__(self, host: str, access_token: Optional[str] = None):
         if not (host.startswith("http://") or host.startswith("https://")):
             raise ValueError(
                 f"host must stat with 'http://' or 'https://' but got {host}"
@@ -247,7 +249,7 @@ class Client:
     def get_dataset(
         self,
         name: str,
-    ) -> dict:
+    ) -> Optional[dict]:
         """
         Gets a dataset by name.
 
@@ -315,7 +317,7 @@ class Client:
     def get_dataset_status(
         self,
         dataset_name: str,
-    ) -> TableStatus:
+    ) -> Optional[TableStatus]:
         """
         Get the state of a given dataset.
 
@@ -384,7 +386,7 @@ class Client:
     def get_model(
         self,
         name: str,
-    ) -> dict:
+    ) -> Optional[dict]:
         """
         Gets a model by name.
 
@@ -431,7 +433,7 @@ class Client:
         self,
         dataset_name: str,
         model_name: str,
-    ) -> TableStatus:
+    ) -> Optional[TableStatus]:
         """
         Get the state of a given model.
 

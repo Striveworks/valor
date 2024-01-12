@@ -1,7 +1,7 @@
 import datetime
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from velour.enums import AnnotationType, TaskType
 
@@ -120,12 +120,14 @@ class BinaryExpression:
 
 
 class DeclarativeMapper:
-    def __init__(self, name: str, object_type: object, key: str = None):
+    def __init__(
+        self, name: str, object_type: Type, key: Optional[str] = None
+    ):
         self.name = name
         self.key = key
         self.object_type = object_type
 
-    def _validate_equality_operator(self, value: any, opstring: str):
+    def _validate_equality_operator(self, value: Any, opstring: str):
         """Validate that the inputs to ac operator filter are of the correct type."""
         if isinstance(value, dict):
             raise TypeError(
@@ -138,7 +140,7 @@ class DeclarativeMapper:
                 f"`{self.name}` should be of type `{self.object_type}`"
             )
 
-    def _validate_numeric_operator(self, value: any, opstring: str):
+    def _validate_numeric_operator(self, value: Any, opstring: str):
         """Validate the inputs to a numeric filter."""
         if (
             not isinstance(value, float)
@@ -310,34 +312,34 @@ class Filter:
     """
 
     # datasets
-    dataset_names: List[str] = None
-    dataset_metadata: Dict[str, List[ValueFilter]] = None
-    dataset_geospatial: List[GeospatialFilter] = None
+    dataset_names: Optional[List[str]] = None
+    dataset_metadata: Optional[Dict[str, List[ValueFilter]]] = None
+    dataset_geospatial: Optional[List[GeospatialFilter]] = None
 
     # models
-    model_names: List[str] = None
-    model_metadata: Dict[str, List[ValueFilter]] = None
-    model_geospatial: List[GeospatialFilter] = None
+    model_names: Optional[List[str]] = None
+    model_metadata: Optional[Dict[str, List[ValueFilter]]] = None
+    model_geospatial: Optional[List[GeospatialFilter]] = None
 
     # datums
-    datum_uids: List[str] = None
-    datum_metadata: Dict[str, List[ValueFilter]] = None
-    datum_geospatial: List[GeospatialFilter] = None
+    datum_uids: Optional[List[str]] = None
+    datum_metadata: Optional[Dict[str, List[ValueFilter]]] = None
+    datum_geospatial: Optional[List[GeospatialFilter]] = None
 
     # annotations
-    task_types: List[TaskType] = None
-    annotation_types: List[AnnotationType] = None
-    annotation_geometric_area: List[ValueFilter] = None
-    annotation_metadata: Dict[str, List[ValueFilter]] = None
-    annotation_geospatial: List[GeospatialFilter] = None
+    task_types: Optional[List[TaskType]] = None
+    annotation_types: Optional[List[AnnotationType]] = None
+    annotation_geometric_area: Optional[List[ValueFilter]] = None
+    annotation_metadata: Optional[Dict[str, List[ValueFilter]]] = None
+    annotation_geospatial: Optional[List[GeospatialFilter]] = None
 
     # predictions
-    prediction_scores: List[ValueFilter] = None
+    prediction_scores: Optional[List[ValueFilter]] = None
 
     # labels
-    labels: List[Dict[str, str]] = None
-    label_ids: List[int] = None
-    label_keys: List[str] = None
+    labels: Optional[List[Dict[str, str]]] = None
+    label_ids: Optional[List[int]] = None
+    label_keys: Optional[List[str]] = None
 
     @classmethod
     def create(cls, expressions: List[BinaryExpression]):

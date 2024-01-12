@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 import PIL.Image
 
@@ -30,15 +30,23 @@ class ImageMetadata:
         uid: str,
         height: int,
         width: int,
-        metadata: MetadataType = None,
-        geospatial: Dict[
-            str,
-            Union[
-                List[List[List[List[Union[float, int]]]]],
-                List[List[List[Union[float, int]]]],
-                List[Union[float, int]],
+        metadata: Optional[MetadataType] = None,
+        geospatial: Optional[
+            Dict[
                 str,
-            ],
+                Union[
+                    List[List[List[List[Union[float, int]]]]],
+                    List[List[List[Union[float, int]]]],
+                    List[Union[float, int]],
+                    str,
+                    Union[
+                        List[List[List[List[Union[float, int]]]]],
+                        List[List[List[Union[float, int]]]],
+                        List[Union[float, int]],
+                        str,
+                    ],
+                ],
+            ]
         ] = None,
     ):
         self.uid = uid

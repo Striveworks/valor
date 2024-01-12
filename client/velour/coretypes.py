@@ -4,7 +4,7 @@ import math
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
@@ -167,19 +167,21 @@ class Datum:
     def __init__(
         self,
         uid: str,
-        metadata: MetadataType = None,
-        geospatial: Dict[
-            str,
-            Union[
-                List[List[List[List[Union[float, int]]]]],
-                List[List[List[Union[float, int]]]],
-                List[Union[float, int]],
+        metadata: Optional[MetadataType] = None,
+        geospatial: Optional[
+            Dict[
                 str,
-            ],
+                Union[
+                    List[List[List[List[Union[float, int]]]]],
+                    List[List[List[Union[float, int]]]],
+                    List[Union[float, int]],
+                    str,
+                ],
+            ]
         ] = None,
     ):
         self.uid = uid
-        self.metadata = metadata if metadata else {}
+        self.metadata: MetadataType = metadata if metadata else {}
         self.geospatial = geospatial if geospatial else {}
         self._dataset_name = None
         self._validate()
@@ -213,7 +215,7 @@ class Datum:
         }
 
     @classmethod
-    def _from_dict(cls, d: dict) -> "Datum":
+    def _from_dict(cls, d: Dict) -> "Datum":
         dataset_name = d.pop("dataset_name", None)
         datum = cls(**d)
         datum._set_dataset_name(dataset_name)
@@ -334,12 +336,12 @@ class Annotation:
         self,
         task_type: TaskType,
         labels: List[Label],
-        metadata: MetadataType = None,
-        bounding_box: BoundingBox = None,
-        polygon: Polygon = None,
-        multipolygon: MultiPolygon = None,
-        raster: Raster = None,
-        jsonb: Dict = None,
+        metadata: Optional[MetadataType] = None,
+        bounding_box: Optional[BoundingBox] = None,
+        polygon: Optional[Polygon] = None,
+        multipolygon: Optional[MultiPolygon] = None,
+        raster: Optional[Raster] = None,
+        jsonb: Optional[Dict] = None,
     ):
         self.task_type = task_type
         self.labels = labels
@@ -505,7 +507,7 @@ class GroundTruth:
         }
 
     @classmethod
-    def _from_dict(cls, d: dict) -> "GroundTruth":
+    def _from_dict(cls, d: Dict) -> "GroundTruth":
         return cls(
             datum=Datum._from_dict(d["datum"]), annotations=d["annotations"]
         )
@@ -624,7 +626,7 @@ class Prediction:
         }
 
     @classmethod
-    def _from_dict(cls, d: dict) -> "Prediction":
+    def _from_dict(cls, d: Dict) -> "Prediction":
         pred = cls(
             datum=Datum._from_dict(d["datum"]),
             annotations=d["annotations"],
@@ -870,17 +872,19 @@ class Dataset:
         self,
         client: Client,
         name: str,
-        metadata: MetadataType = None,
-        geospatial: Dict[
-            str,
-            Union[
-                List[List[List[List[Union[float, int]]]]],
-                List[List[List[Union[float, int]]]],
-                List[Union[float, int]],
+        metadata: Optional[MetadataType] = None,
+        geospatial: Optional[
+            Dict[
                 str,
-            ],
+                Union[
+                    List[List[List[List[Union[float, int]]]]],
+                    List[List[List[Union[float, int]]]],
+                    List[Union[float, int]],
+                    str,
+                ],
+            ]
         ] = None,
-        id: Union[int, None] = None,
+        id: Optional[int] = None,
         delete_if_exists: bool = False,
     ):
         """
@@ -913,7 +917,7 @@ class Dataset:
         if delete_if_exists or client.get_dataset(name) is None:
             client.create_dataset(self.dict())
 
-        for k, v in client.get_dataset(name).items():
+        for k, v in (client.get_dataset(name) or {}).items():
             setattr(self, k, v)
         self.client = client
 
@@ -950,7 +954,7 @@ class Dataset:
         return {
             "id": self.id,
             "name": self.name,
-            "metadata": dump_metadata(self.metadata),
+            "metadata": dump_metadata(self.metadata or {}),
             "geospatial": self.geospatial if self.geospatial else None,
         }
 
@@ -1128,17 +1132,19 @@ class Model:
         self,
         client: Client,
         name: str,
-        metadata: MetadataType = None,
-        geospatial: Dict[
-            str,
-            Union[
-                List[List[List[List[Union[float, int]]]]],
-                List[List[List[Union[float, int]]]],
-                List[Union[float, int]],
+        metadata: Optional[MetadataType] = None,
+        geospatial: Optional[
+            Dict[
                 str,
-            ],
+                Union[
+                    List[List[List[List[Union[float, int]]]]],
+                    List[List[List[Union[float, int]]]],
+                    List[Union[float, int]],
+                    str,
+                ],
+            ]
         ] = None,
-        id: Union[int, None] = None,
+        id: Optional[int] = None,
         delete_if_exists: bool = False,
     ):
         """
@@ -1171,7 +1177,7 @@ class Model:
         if delete_if_exists or client.get_model(name) is None:
             client.create_model(self.dict())
 
-        for k, v in client.get_model(name).items():
+        for k, v in (client.get_model(name) or {}).items():
             setattr(self, k, v)
         self.client = client
 
@@ -1207,7 +1213,7 @@ class Model:
         return {
             "id": self.id,
             "name": self.name,
-            "metadata": dump_metadata(self.metadata),
+            "metadata": dump_metadata(self.metadata or {}),
             "geospatial": self.geospatial if self.geospatial else None,
         }
 
@@ -1306,8 +1312,8 @@ class Model:
 
     def evaluate_classification(
         self,
-        datasets: Union[Dataset, List[Dataset]] = None,
-        filters: Union[Dict, List[BinaryExpression]] = None,
+        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        filters: Optional[Union[Dict, List[BinaryExpression]]] = None,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -1525,7 +1531,7 @@ class Model:
 
     def get_metric_dataframes(
         self,
-    ) -> dict:
+    ) -> List[Dict]:
         """
         Get all metrics associated with a Model and return them in a `pd.DataFrame`.
 

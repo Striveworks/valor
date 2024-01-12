@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Union
+from typing import List, Optional, Union
 
 from velour.enums import AnnotationType, TaskType
 from velour.schemas.filters import Filter
@@ -21,9 +21,9 @@ class EvaluationParameters:
     task_type: TaskType
 
     # object detection
-    convert_annotations_to_type: AnnotationType = None
-    iou_thresholds_to_compute: List[float] = None
-    iou_thresholds_to_return: List[float] = None
+    convert_annotations_to_type: Optional[AnnotationType] = None
+    iou_thresholds_to_compute: Optional[List[float]] = None
+    iou_thresholds_to_return: Optional[List[float]] = None
 
 
 @dataclass

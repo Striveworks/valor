@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -255,7 +255,7 @@ def _draw_bounding_polygon_on_image(
     img: Image.Image,
     color: Tuple[int, int, int] = (255, 0, 0),
     inplace: bool = False,
-    text: str = None,
+    text: Optional[str] = None,
     font_size: int = 24,
 ) -> Image.Image:
     """Draw a bounding polygon on an image."""
