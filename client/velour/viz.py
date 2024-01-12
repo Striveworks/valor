@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -50,7 +50,7 @@ def _polygons_to_binary_mask(
 
 
 def create_combined_segmentation_mask(
-    annotated_datums: List[Union[GroundTruth, Prediction]],
+    annotated_datums: Sequence[Union[GroundTruth, Prediction]],
     label_key: str,
     task_type: Union[enums.TaskType, None] = None,
 ) -> Tuple[Image.Image, Dict[str, Image.Image]]:
@@ -169,7 +169,7 @@ def create_combined_segmentation_mask(
 
 
 def draw_detections_on_image(
-    detections: List[Union[GroundTruth, Prediction]],
+    detections: Sequence[Union[GroundTruth, Prediction]],
     img: Image.Image,
 ) -> Image.Image:
     """
@@ -282,8 +282,8 @@ def _write_text(
     font_size: int,
     text: str,
     boundary: schemas.BasicPolygon,
-    draw: ImageDraw.Draw,
-    color: str,
+    draw: ImageDraw.ImageDraw,
+    color: Union[Tuple[int, int, int], str],
 ):
     """Write text on an image."""
     try:
@@ -302,10 +302,10 @@ def _write_text(
 
     margin = math.ceil(0.05 * text_height) - 1
     draw.rectangle(
-        [
+        (
             (boundary.xmin, text_bottom - text_height - 2 * margin),
             (boundary.xmin + text_width, text_bottom),
-        ],
+        ),
         fill=color,
     )
     draw.text(
