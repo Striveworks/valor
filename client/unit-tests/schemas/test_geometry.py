@@ -12,10 +12,10 @@ def test_point():
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
-        schemas.Point(x="1", y=1)
+        schemas.Point(x="1", y=1)  # type: ignore
     assert "should be `float` type" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Point(x=1, y="1")
+        schemas.Point(x=1, y="1")  # type: ignore
     assert "should be `float` type" in str(e)
 
     # test member fn `__hash__`
@@ -43,10 +43,10 @@ def test_basicpolygon():
 
     # Test __post_init__
     with pytest.raises(TypeError) as e:
-        schemas.BasicPolygon(points=p1)
+        schemas.BasicPolygon(points=p1)  # type: ignore
     assert "is not a list" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.BasicPolygon(points=[p1, p2, 4])
+        schemas.BasicPolygon(points=[p1, p2, 4])  # type: ignore
     assert "is not a `Point`"
     with pytest.raises(ValueError) as e:
         schemas.BasicPolygon(points=[p1, p2])
@@ -75,13 +75,13 @@ def test_polygon():
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
-        schemas.Polygon(boundary=123)
+        schemas.Polygon(boundary=123)  # type: ignore
     assert "boundary should be of type `velour.schemas.BasicPolygon`" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Polygon(boundary=poly, holes=123)
+        schemas.Polygon(boundary=poly, holes=123)  # type: ignore
     assert "holes should be a list of `velour.schemas.BasicPolygon`" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.Polygon(boundary=poly, holes=[123])
+        schemas.Polygon(boundary=poly, holes=[123])  # type: ignore
     assert (
         "should contain elements of type `velour.schemas.BasicPolygon`"
         in str(e)
@@ -98,7 +98,7 @@ def test_boundingbox():
     # test __post_init__
     schemas.BoundingBox(polygon=poly)
     with pytest.raises(TypeError) as e:
-        schemas.BoundingBox(polygon=p1)
+        schemas.BoundingBox(polygon=p1)  # type: ignore
     assert "should be of type `velour.schemas.BasicPolygon`" in str(e)
     with pytest.raises(ValueError) as e:
         schemas.BoundingBox(polygon=schemas.BasicPolygon(points=[p1, p2, p3]))
@@ -127,10 +127,10 @@ def test_multipolygon():
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
-        schemas.MultiPolygon(polygons=component_poly)
+        schemas.MultiPolygon(polygons=component_poly)  # type: ignore
     assert "polygons should be list of `velour.schemas.Polyon`" in str(e)
     with pytest.raises(TypeError) as e:
-        schemas.MultiPolygon(polygons=[component_poly])
+        schemas.MultiPolygon(polygons=[component_poly])  # type: ignore
     assert (
         "polygons list should contain elements of type `velour.schemas.Polygon`"
         in str(e)
@@ -146,7 +146,7 @@ def test_raster(raster_raw_mask):
 
     # test `__post_init__`
     with pytest.raises(TypeError) as e:
-        schemas.Raster(mask=123)
+        schemas.Raster(mask=123)  # type: ignore
     assert "mask should be of type `str`" in str(e)
 
     # test classmethod `from_numpy`

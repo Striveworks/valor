@@ -19,7 +19,7 @@ def test__validate_href():
         _validate_href("test")
     assert "`href` must start with http:// or https://" in str(e)
     with pytest.raises(SchemaTypeError) as e:
-        _validate_href(1)
+        _validate_href(1)  # type: ignore
     assert "`href` should be of type" in str(e)
 
 
