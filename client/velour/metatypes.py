@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, SupportsInt, Union
 
 import PIL.Image
 
@@ -190,9 +190,10 @@ class VideoFrameMetadata:
             )
         image = ImageMetadata.from_datum(datum)
         frame = image.metadata.pop("frame")
+        assert isinstance(frame, SupportsInt)
         return cls(
             image=image,
-            frame=frame,
+            frame=int(frame),
         )
 
     def to_datum(self) -> Datum:
