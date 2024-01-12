@@ -4,7 +4,7 @@ import math
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
@@ -361,8 +361,11 @@ class Annotation:
         if not isinstance(self.labels, list):
             raise SchemaTypeError("labels", List[Label], self.labels)
         for idx, label in enumerate(self.labels):
-            if isinstance(self.labels[idx], dict):
-                self.labels[idx] = Label(**label)
+            if isinstance(label, dict):
+                kw_label = label.copy()
+                key = kw_label.pop("key")
+                value = kw_label.pop("value")
+                self.labels[idx] = Label(key, value, **kw_label)
             if not isinstance(self.labels[idx], Label):
                 raise SchemaTypeError("label", Label, self.labels[idx])
 
@@ -444,6 +447,45 @@ class Annotation:
         return self.dict() == other.dict()
 
 
+def _validate_annotations(
+    annotations: Sequence[Union[Dict, Annotation]]
+) -> Sequence[Annotation]:
+    """
+    Validates and transforms a sequence of annotation inputs to a sequence of
+    Annotation objects.
+
+    Parameters
+    ----------
+    annotations : Sequence[Union[Dict, Annotation]]
+        A sequence of dictionaries or Annotation objects to be validated and
+        transformed.
+
+    Returns
+    ----------
+    Sequence[Annotation]
+        A sequence of validated Annotation objects.
+
+    Raises
+    ------
+    SchemaTypeError
+        If 'annotations' is not a list or if any element in 'annotations' cannot
+        be parsed into an Annotation object.
+    """
+    if not isinstance(annotations, list):
+        raise SchemaTypeError("annotations", List[Annotation], annotations)
+    validated_annotations = []
+    for idx, annotation in enumerate(annotations):
+        if isinstance(annotation, dict):
+            kw_annotation = annotation.copy()
+            task_type = kw_annotation.pop("task_type")
+            labels = kw_annotation.pop("labels")
+            annotation = Annotation(task_type, labels, **kw_annotation)
+        if not isinstance(annotation, Annotation):
+            raise SchemaTypeError("annotation", Annotation, annotations[idx])
+        validated_annotations.append(annotation)
+    return validated_annotations
+
+
 class GroundTruth:
     """
     An object describing a groundtruth (e.g., a human-drawn bounding box on an image).
@@ -456,7 +498,7 @@ class GroundTruth:
         The list of `Annotations` associated with the `GroundTruth`.
     """
 
-    def __init__(self, datum: Datum, annotations: List[Annotation]):
+    def __init__(self, datum: Datum, annotations: Sequence[Annotation]):
         self.datum = datum
         self.annotations = annotations
         self._validate()
@@ -469,18 +511,7 @@ class GroundTruth:
         if not isinstance(self.datum, Datum):
             raise SchemaTypeError("datum", Datum, self.datum)
 
-        # validate annotations
-        if not isinstance(self.annotations, list):
-            raise SchemaTypeError(
-                "annotations", List[Annotation], self.annotations
-            )
-        for idx, annotation in enumerate(self.annotations):
-            if isinstance(self.annotations[idx], dict):
-                self.annotations[idx] = Annotation(**annotation)
-            if not isinstance(self.annotations[idx], Annotation):
-                raise SchemaTypeError(
-                    "annotation", Annotation, self.annotations[idx]
-                )
+        self.annotations = _validate_annotations(self.annotations)
 
     def __str__(self):
         return str(self.dict())
@@ -545,9 +576,11 @@ class Prediction:
         The score assigned to the `Prediction`.
     """
 
-    def __init__(self, datum: Datum, annotations: List[Annotation] = None):
+    def __init__(
+        self, datum: Datum, annotations: Optional[List[Annotation]] = None
+    ):
         self.datum = datum
-        self.annotations = annotations
+        self.annotations = _validate_annotations(annotations or [])
         self._model_name = None
         self._validate()
 
@@ -560,19 +593,6 @@ class Prediction:
             self.datum = Datum(**self.datum)
         if not isinstance(self.datum, Datum):
             raise SchemaTypeError("datum", Datum, self.datum)
-
-        # validate annotations
-        if not isinstance(self.annotations, list):
-            raise SchemaTypeError(
-                "annotations", List[Annotation], self.annotations
-            )
-        for idx, annotation in enumerate(self.annotations):
-            if isinstance(self.annotations[idx], dict):
-                self.annotations[idx] = Annotation(**annotation)
-            if not isinstance(self.annotations[idx], Annotation):
-                raise SchemaTypeError(
-                    "annotation", Annotation, self.annotations[idx]
-                )
 
         # TaskType-specific validations
         for annotation in self.annotations:
@@ -1354,11 +1374,11 @@ class Model:
 
     def evaluate_detection(
         self,
-        datasets: Union[Dataset, List[Dataset]] = None,
-        filters: Union[Dict, List[BinaryExpression]] = None,
-        convert_annotations_to_type: AnnotationType = None,
-        iou_thresholds_to_compute: List[float] = None,
-        iou_thresholds_to_return: List[float] = None,
+        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        filters: Optional[Union[Dict, List[BinaryExpression]]] = None,
+        convert_annotations_to_type: Optional[AnnotationType] = None,
+        iou_thresholds_to_compute: Optional[List[float]] = None,
+        iou_thresholds_to_return: Optional[List[float]] = None,
     ) -> Evaluation:
         """
         Start a object-detection evaluation job.
@@ -1419,8 +1439,8 @@ class Model:
 
     def evaluate_segmentation(
         self,
-        datasets: Union[Dataset, List[Dataset]] = None,
-        filters: Union[Dict, List[BinaryExpression]] = None,
+        datasets: Optional[Union[Dataset, List[Dataset]]] = None,
+        filters: Optional[Union[Dict, List[BinaryExpression]]] = None,
     ) -> Evaluation:
         """
         Start a semantic-segmentation evaluation job.
