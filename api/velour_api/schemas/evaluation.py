@@ -111,8 +111,8 @@ class EvaluationResponse(BaseModel):
 
     Attributes
     ----------
-    evaluation_id : int
-        The ID of the evaluation job.
+    id : int
+        The id of the evaluation.
     model_name : str
         The name of the model.
     model_filter : schemas.Filter
@@ -129,7 +129,7 @@ class EvaluationResponse(BaseModel):
         A list of confusion matrices associated with the evaluation.
     """
 
-    evaluation_id: int
+    id: int
     model_name: str
 
     model_filter: Filter

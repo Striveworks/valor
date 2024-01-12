@@ -9,7 +9,7 @@ from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, enums, exceptions, schemas
+from velour_api import crud, enums, exceptions, schemas, backend
 from velour_api.backend import models
 
 
@@ -941,7 +941,7 @@ def test_gt_seg_as_mask_or_polys(
     mask_b64 = b64encode(_np_to_bytes(mask)).decode()
 
     img = schemas.Datum(
-        dataset=dataset_name,
+        dataset_name=dataset_name,
         uid="uid",
         metadata={
             "height": h,
@@ -1009,7 +1009,7 @@ def test_gt_seg_as_mask_or_polys(
 
     np.testing.assert_equal(decoded_mask_arr, mask)
     assert segs.datum.uid == gt.datum.uid
-    assert segs.datum.dataset == gt.datum.dataset
+    assert segs.datum.dataset_name == gt.datum.dataset_name
     for metadatum in segs.datum.metadata:
         assert metadatum in gt.datum.metadata
     assert segs.annotations[0].labels == gt.annotations[0].labels
@@ -1044,37 +1044,44 @@ def test_create_detection_metrics(
                 )
             )
 
-        job_request = schemas.EvaluationJob(
-            model="test_model",
-            dataset="test_dataset",
-            task_type=enums.TaskType.DETECTION,
-            settings=schemas.EvaluationSettings(
-                parameters=schemas.DetectionParameters(
+        job_request = schemas.EvaluationRequest(
+            model_filter=schemas.Filter(
+                model_names=["test_model"],
+                annotation_geometric_area=geometric_filters
+                if geometric_filters
+                else None,
+                label_keys=[label_key],
+            ),
+            evaluation_filter=schemas.Filter(
+                dataset_names=["test_dataset"],
+                task_types=[enums.TaskType.DETECTION],
+                annotation_types=[enums.AnnotationType.BOX],
+                annotation_geometric_area=geometric_filters
+                if geometric_filters
+                else None,
+                label_keys=[label_key],
+            ),
+            parameters=schemas.EvaluationParameters(
+                detection=schemas.DetectionParameters(
                     iou_thresholds_to_compute=[0.2, 0.6],
                     iou_thresholds_to_return=[0.2],
                 ),
-                filters=schemas.Filter(
-                    annotation_types=[enums.AnnotationType.BOX],
-                    annotation_geometric_area=geometric_filters
-                    if geometric_filters
-                    else None,
-                    label_keys=[label_key],
-                ),
-            ),
+            )
         )
 
         # create evaluation (return AP Response)
-        resp = crud.create_detection_evaluation(db=db, job_request=job_request)
+        created_evaluations, _ = crud.create_or_get_evaluations(db=db, job_request=job_request)
+        resp = created_evaluations[0]
 
         # run computation (returns nothing on completion)
-        crud.compute_detection_metrics(
+        backend.compute_detection_metrics(
             db=db,
-            evaluation_id=resp.evaluation_id,
+            evaluation_id=c.evaluation_id,
             job_request=job_request,
         )
 
         return (
-            resp.evaluation_id,
+            resp.id,
             resp.missing_pred_labels,
             resp.ignored_pred_labels,
         )
@@ -1182,7 +1189,7 @@ def test_create_detection_metrics(
     model_evals[1].metrics = []
     assert model_evals[0] == schemas.Evaluation(
         model=model_name,
-        dataset=dataset_name,
+        dataset_name=dataset_name,
         task_type=enums.TaskType.DETECTION,
         settings=schemas.EvaluationSettings(
             parameters=schemas.DetectionParameters(
@@ -1201,7 +1208,7 @@ def test_create_detection_metrics(
     )
     assert model_evals[1] == schemas.Evaluation(
         model=model_name,
-        dataset=dataset_name,
+        dataset_name=dataset_name,
         task_type=enums.TaskType.DETECTION,
         settings=schemas.EvaluationSettings(
             parameters=schemas.DetectionParameters(
@@ -1254,7 +1261,7 @@ def test_create_clf_metrics(
 
     job_request = schemas.EvaluationJob(
         model=model_name,
-        dataset=dataset_name,
+        dataset_name=dataset_name,
         task_type=enums.TaskType.CLASSIFICATION,
     )
 

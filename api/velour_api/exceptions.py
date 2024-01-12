@@ -316,6 +316,28 @@ class AnnotationAlreadyExistsError(Exception):
         )
 
 
+class GroundTruthAlreadyExistsError(Exception):
+    """
+    Raises an exception if a groundtruth is duplicated.
+    """
+
+    def __init__(self, annotation_id: int, label_id: int):
+        super().__init__(
+            f"A groundtruth already exists mapping label `{label_id}` to annotation `{annotation_id}`."
+        )
+
+
+class PredictionAlreadyExistsError(Exception):
+    """
+    Raises an exception if a prediction is duplicated.
+    """
+
+    def __init__(self, annotation_id: int, label_id: int):
+        super().__init__(
+            f"A prediction already exists mapping label `{label_id}` to annotation `{annotation_id}`."
+        )
+
+
 """ Evaluation """
 
 
@@ -408,6 +430,8 @@ error_to_status_code = {
     DatumAlreadyExistsError: 409,
     DatumDoesNotBelongToDatasetError: 409,
     AnnotationAlreadyExistsError: 409,
+    GroundTruthAlreadyExistsError : 409,
+    PredictionAlreadyExistsError : 409,
     EvaluationAlreadyExistsError: 409,
     EvaluationRunningError: 409,
     EvaluationStateError: 409,

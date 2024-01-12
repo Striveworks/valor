@@ -934,7 +934,7 @@ def test_delete_model(crud, client: TestClient):
 
 def test_post_detection_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
-        evaluation_id=1,
+        id=1,
         model_name="modelname",
         model_filter=schemas.Filter(model_names=["modelname"]),
         evaluation_filter=schemas.Filter(
@@ -969,7 +969,7 @@ def test_post_detection_metrics(client: TestClient):
 
 def test_post_clf_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
-        evaluation_id=1,
+        id=1,
         model_name="modelname",
         model_filter=schemas.Filter(model_names=["modelname"]),
         evaluation_filter=schemas.Filter(
@@ -1003,7 +1003,7 @@ def test_post_clf_metrics(client: TestClient):
 
 def test_post_semenatic_segmentation_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
-        evaluation_id=1,
+        id=1,
         model_name="modelname",
         model_filter=schemas.Filter(model_names=["modelname"]),
         evaluation_filter=schemas.Filter(

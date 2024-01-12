@@ -179,7 +179,7 @@ def _create_response(
     )
     return schemas.EvaluationResponse(
         evaluation_id=evaluation.id,
-        model=model_name,
+        model_name=model_name,
         model_filter=evaluation.model_filter,
         evaluation_filter=evaluation.evaluation_filter,
         parameters=evaluation.parameters,

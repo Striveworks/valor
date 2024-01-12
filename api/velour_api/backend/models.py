@@ -45,6 +45,12 @@ class GDALRaster(Raster):
 
 class GroundTruth(Base):
     __tablename__ = "groundtruth"
+    __table_args__ = (
+        UniqueConstraint(
+            "annotation_id", 
+            "label_id",
+        ),
+    )
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -65,6 +71,12 @@ class GroundTruth(Base):
 
 class Prediction(Base):
     __tablename__ = "prediction"
+    __table_args__ = (
+        UniqueConstraint(
+            "annotation_id", 
+            "label_id",
+        ),
+    )
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)

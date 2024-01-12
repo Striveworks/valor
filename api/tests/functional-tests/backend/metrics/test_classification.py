@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from velour_api import crud, enums, schemas
 from velour_api.backend import models
-from velour_api.backend.core import create_evaluation, get_evaluations
+from velour_api.backend.core import create_or_get_evaluations
 from velour_api.backend.metrics.classification import (
     _compute_accuracy_from_cm,
     _compute_clf_metrics,
@@ -435,27 +435,32 @@ def test_classification(
     classification_test_data,
 ):
     # default request
-    job_request = schemas.EvaluationJob(
-        dataset=dataset_name,
-        model=model_name,
-        task_type=enums.TaskType.CLASSIFICATION,
-        settings=schemas.EvaluationSettings(),
+    job_request = schemas.EvaluationRequest(
+        model_filter=schemas.Filter(model_names=[model_name]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=[dataset_name],
+            task_types=[enums.TaskType.CLASSIFICATION],
+        )
     )
 
     # creates evaluation job
-    evaluation_id = create_evaluation(db, job_request)
+    created_evaluations, existing_evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(created_evaluations) == 1
+    assert len(existing_evaluations) == 0
 
     # computation, normally run as background task
     _ = compute_clf_metrics(
-        db=db, evaluation_id=evaluation_id
-    )  # returns job_ud
+        db=db,
+        evaluation_id=created_evaluations[0].id,
+    )
 
     # get evaluations
-    evaluations = get_evaluations(db, evaluation_ids=[evaluation_id])
+    created_evaluations, existing_evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    assert len(created_evaluations) == 0
+    assert len(existing_evaluations) == 1
 
-    assert len(evaluations) == 1
-    metrics = evaluations[0].metrics
-    confusion = evaluations[0].confusion_matrices
+    metrics = existing_evaluations[0].metrics
+    confusion = existing_evaluations[0].confusion_matrices
 
     # Make matrices accessible by label_key
     confusion = {matrix.label_key: matrix for matrix in confusion}

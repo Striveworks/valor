@@ -163,12 +163,14 @@ def test_model_status_with_evaluations(
 ):
     # create an evaluation
     core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
-    evaluation_id = core.create_evaluation(
+    evaluation_id = core.create_or_get_evaluations(
         db,
-        schemas.EvaluationJob(
-            dataset=created_dataset,
-            model=created_model,
-            task_type=enums.TaskType.CLASSIFICATION,
+        schemas.EvaluationRequest(
+            model_filter=schemas.Filter(model_names=[created_model]),
+            evaluation_filter=schemas.Filter(
+                dataset_names=[created_dataset],
+                task_types=[enums.TaskType.CLASSIFICATION],
+            )
         ),
     )
 

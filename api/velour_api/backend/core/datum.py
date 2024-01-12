@@ -30,7 +30,7 @@ def create_datum(
         The datum.
     """
     # retrieve dataset
-    dataset = fetch_dataset(db, datum.dataset)
+    dataset = fetch_dataset(db, datum.dataset_name)
 
     # create datum
     try:
@@ -122,7 +122,7 @@ def get_datums(
 
         output.append(
             schemas.Datum(
-                dataset=db.scalar(
+                dataset_name=db.scalar(
                     select(models.Dataset.name).where(
                         models.Dataset.id == datum.dataset_id
                     )

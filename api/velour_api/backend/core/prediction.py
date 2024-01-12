@@ -25,17 +25,17 @@ def create_prediction(
     # check model status
     model_status = core.get_model_status(
         db=db,
-        dataset_name=prediction.datum.dataset,
-        model_name=prediction.model,
+        dataset_name=prediction.datum.dataset_name,
+        model_name=prediction.model_name,
     )
     if model_status != enums.TableStatus.CREATING:
         raise exceptions.ModelFinalizedError(
-            dataset_name=prediction.datum.dataset, model_name=prediction.model
+            dataset_name=prediction.datum.dataset_name, model_name=prediction.model_name
         )
 
     # retrieve existing table entries
-    model = core.fetch_model(db, name=prediction.model)
-    dataset = core.fetch_dataset(db, name=prediction.datum.dataset)
+    model = core.fetch_model(db, name=prediction.model_name)
+    dataset = core.fetch_dataset(db, name=prediction.datum.dataset_name)
     datum = core.fetch_datum(
         db, dataset_id=dataset.id, uid=prediction.datum.uid
     )
@@ -76,7 +76,7 @@ def create_prediction(
         db.commit()
     except IntegrityError as e:
         db.rollback()
-        raise e
+        raise exceptions.PredictionAlreadyExistsError
 
 
 def get_prediction(
@@ -116,10 +116,10 @@ def get_prediction(
     )
 
     return schemas.Prediction(
-        model=model_name,
+        model_name=model_name,
         datum=schemas.Datum(
             uid=datum.uid,
-            dataset=dataset.name,
+            dataset_name=dataset.name,
             metadata=datum.meta,
             geospatial=geo_dict,
         ),

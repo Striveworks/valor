@@ -123,7 +123,7 @@ def test_EvaluationRequest():
 
 def test_EvaluationResponse():
     schemas.EvaluationResponse(
-        evaluation_id=1,
+        id=1,
         model_name="model",
         model_filter=schemas.Filter(),
         evaluation_filter=schemas.Filter(),
@@ -133,7 +133,7 @@ def test_EvaluationResponse():
         confusion_matrices=[],
     )
     schemas.EvaluationResponse(
-        evaluation_id=1,
+        id=1,
         model_name="model",
         model_filter=schemas.Filter(),
         evaluation_filter=schemas.Filter(),
@@ -146,7 +146,7 @@ def test_EvaluationResponse():
     # test missing evaluation_id
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
-            evaluation_id=None,
+            id=None,
             model_name="model",
             model_filter=schemas.Filter,
             evaluation_filter=schemas.Filter(),
@@ -159,7 +159,7 @@ def test_EvaluationResponse():
     # test missing model name
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
-            evaluation_id=1,
+            id=1,
             model_name=None,
             model_filter=schemas.Filter,
             evaluation_filter=schemas.Filter(),
@@ -172,7 +172,7 @@ def test_EvaluationResponse():
     # test missing model_filters
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
-            evaluation_id=1,
+            id=1,
             model_name="model",
             model_filter=None,
             evaluation_filter=schemas.Filter(),
@@ -183,7 +183,7 @@ def test_EvaluationResponse():
         )
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
-            evaluation_id=1,
+            id=1,
             model_name="model",
             model_filter=schemas.Filter(),
             evaluation_filter=None,

@@ -321,20 +321,26 @@ def test_check_for_active_evaluations(
     core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
 
     # create evaluation 1
-    job_request_1 = schemas.EvaluationJob(
-        dataset=created_dataset,
-        model=created_model,
-        task_type=enums.TaskType.CLASSIFICATION,
+    job_request_1 = schemas.EvaluationRequest(
+        model_filter=schemas.Filter(model_names=[created_model]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=[created_dataset],
+            task_types=[enums.TaskType.CLASSIFICATION],
+        )
     )
-    evaluation_1 = core.create_evaluation(db, job_request_1)
+    evaluation_1, _ = core.create_or_get_evaluations(db, job_request_1)
+    evaluation_1 = evaluation_1[0].id
 
     # create evaluation 2
-    job_request_2 = schemas.EvaluationJob(
-        dataset=created_dataset,
-        model=created_model,
-        task_type=enums.TaskType.SEGMENTATION,
+    job_request_2 = schemas.EvaluationRequest(
+        model_filter=schemas.Filter(model_names=[created_model]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=[created_dataset],
+            task_types=[enums.TaskType.SEGMENTATION],
+        )
     )
-    evaluation_2 = core.create_evaluation(db, job_request_2)
+    evaluation_2, _ = core.create_or_get_evaluations(db, job_request_2)
+    evaluation_2 = evaluation_2[0].id
 
     # keep evaluation 2 constant, run evaluation 1
 
@@ -360,12 +366,15 @@ def test_check_for_active_evaluations(
     )
 
     # create evaluation 3
-    job_request_3 = schemas.EvaluationJob(
-        dataset=created_dataset,
-        model=created_model,
-        task_type=enums.TaskType.DETECTION,
+    job_request_3 = schemas.EvaluationRequest(
+        model_filter=schemas.Filter(model_names=[created_model]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=[created_dataset],
+            task_types=[enums.TaskType.DETECTION],
+        )
     )
-    evaluation_3 = core.create_evaluation(db, job_request_3)
+    evaluation_3, _ = core.create_or_get_evaluations(db, job_request_3)
+    evaluation_3 = evaluation_3[0].id
 
     assert (
         core.check_for_active_evaluations(db, created_dataset, created_model)
