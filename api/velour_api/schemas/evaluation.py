@@ -1,7 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from velour_api.enums import EvaluationStatus, TaskType
-from velour_api.schemas.core import Label
 from velour_api.schemas.filters import Filter
 from velour_api.schemas.metrics import ConfusionMatrixResponse, Metric
 
@@ -46,12 +45,8 @@ class EvaluationParameters(BaseModel):
 
     Attributes
     ----------
-    classification : undefined, optional
-        Placeholder for classification parameters.
     detection : DetectionParameters, optional
         Parameters for the detection evaluation method.
-    segmentation : undefined, optional
-        Placeholder for segmentation parameters.
     """
 
     # classification = None
@@ -67,7 +62,7 @@ class EvaluationRequest(BaseModel):
 
     Attributes
     ----------
-    model_filter : schemas.Filter
+    models_filter : schemas.Filter
         The filter used to enumerate all the models we want to evaluate.
     evaluation_filter : schemas.Filter
         The filter object used to define what the model is evaluating against.
@@ -75,7 +70,7 @@ class EvaluationRequest(BaseModel):
         Any parameters that are used to modify an evaluation method.
     """
 
-    model_filter: Filter
+    models_filter: Filter
     evaluation_filter: Filter
     parameters: EvaluationParameters = Field(default=EvaluationParameters())
 
@@ -97,116 +92,50 @@ class EvaluationRequest(BaseModel):
 
         # validate evaluation_filter
         if values.evaluation_filter.task_types is None:
-            raise ValueError("`evaluation_filter.task_types` is empty.")
-        for task_type in values.evaluation_filter.task_types:
-            match task_type:
-                case TaskType.CLASSIFICATION:
-                    pass
-                case TaskType.DETECTION:
-                    if values.parameters.detection is None:
-                        values.parameters.detection = DetectionParameters()
-                case TaskType.SEGMENTATION:
-                    pass
-                case _:
-                    raise NotImplementedError
+            raise ValueError(
+                "Evaluation requires the definition of `evaluation_filter.task_types`."
+            )
+        if TaskType.DETECTION in values.evaluation_filter.task_types:
+            if values.parameters.detection is None:
+                values.parameters.detection = DetectionParameters()
 
         return values
 
 
-class CreateDetectionEvaluationResponse(BaseModel):
-    """
-    The response from a job that creates AP metrics.
-
-    Attributes
-    ----------
-    missing_pred_labels: list[Label]
-        A list of missing prediction labels.
-    ignored_pred_labels: list[Label]
-        A list of ignored preiction labels.
-    evaluation_id: int
-        The job ID.
-    """
-
-    missing_pred_labels: list[Label]
-    ignored_pred_labels: list[Label]
-    evaluation_id: int
-
-
-class CreateSemanticSegmentationEvaluationResponse(BaseModel):
-    """
-    The response from a job that creates segmentation metrics.
-
-    Attributes
-    ----------
-    missing_pred_labels: list[Label]
-        A list of missing prediction labels.
-    ignored_pred_labels: list[Label]
-        A list of ignored preiction labels.
-    evaluation_id: int
-        The job ID.
-    """
-
-    missing_pred_labels: list[Label]
-    ignored_pred_labels: list[Label]
-    evaluation_id: int
-
-
-class CreateClfEvaluationResponse(BaseModel):
-    """
-    The response from a job that creates classification metrics.
-
-    Attributes
-    ----------
-    missing_pred_keys: list[str]
-        A list of missing prediction keys.
-    ignored_pred_keys: list[str]
-        A list of ignored preiction keys.
-    evaluation_id: int
-        The job ID.
-    """
-
-    missing_pred_keys: list[str]
-    ignored_pred_keys: list[str]
-    evaluation_id: int
-
-
-CreateEvaluationResponse = (
-    CreateClfEvaluationResponse
-    | CreateDetectionEvaluationResponse
-    | CreateSemanticSegmentationEvaluationResponse
-)
-
-
-class Evaluation(BaseModel):
+class EvaluationResponse(BaseModel):
     """
     An object for storing the returned results of a model evaluation (where groundtruths are compared with predictions to measure performance).
 
     Attributes
     ----------
-    dataset : str
-        The name of the dataset.
-    model : str
-        The name of the model.
-    settings : EvaluationSettings
-        Settings for the evaluation.
     evaluation_id : int
         The ID of the evaluation job.
+    model : str
+        The name of the model.
+    models_filter : schemas.Filter
+        The model filter used in the evaluation.
+    evaluation_filter : schemas.Filter
+        The evaluation filter used in the evaluation.
+    parameters : schemas.EvaluationParameters
+        Any parameters used by the evaluation method.
     status : str
         The status of the evaluation.
     metrics : List[Metric]
         A list of metrics associated with the evaluation.
     confusion_matrices: List[ConfusionMatrixResponse]
         A list of confusion matrices associated with the evaluation.
-
     """
 
-    model: str
-    settings: Filter
     evaluation_id: int
+    model: str
+
+    models_filter: Filter
+    evaluation_filter: Filter
+    parameters: EvaluationParameters
+
     status: EvaluationStatus
     metrics: list[Metric]
     confusion_matrices: list[ConfusionMatrixResponse]
-    task_type: TaskType
 
     # pydantic setting
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="allow")

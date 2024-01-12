@@ -5,6 +5,17 @@ from typing import Dict, List, Union
 
 from velour.enums import AnnotationType, TaskType
 
+ValueType = Union[int, float, str, bool, Dict[str, str]]
+
+GeoJSONPointType = Dict[str, Union[str, List[Union[float, int]]]]
+GeoJSONPolygonType = Dict[str, Union[str, List[List[List[Union[float, int]]]]]]
+GeoJSONMultiPolygonType = Dict[
+    str, Union[str, List[List[List[List[Union[float, int]]]]]]
+]
+GeoJSONType = Union[
+    GeoJSONPointType, GeoJSONPolygonType, GeoJSONMultiPolygonType
+]
+
 
 @dataclass
 class ValueFilter:
@@ -26,7 +37,7 @@ class ValueFilter:
         If the `operator` doesn't match one of the allowed patterns.
     """
 
-    value: Union[int, float, str, bool, Dict[str, str]]
+    value: ValueType
     operator: str = "=="
 
     def __post_init__(self):
@@ -89,15 +100,7 @@ class GeospatialFilter:
 
     """
 
-    value: Dict[
-        str,
-        Union[
-            List[List[List[List[Union[float, int]]]]],
-            List[List[List[Union[float, int]]]],
-            List[Union[float, int]],
-            str,
-        ],
-    ]
+    value: GeoJSONType
     operator: str = "intersect"
 
     def __post_init__(self):
@@ -122,7 +125,7 @@ class DeclarativeMapper:
         self.key = key
         self.object_type = object_type
 
-    def _validate_equality(self, value: any, opstring: str):
+    def _validate_equality_operator(self, value: any, opstring: str):
         """Validate that the inputs to ac operator filter are of the correct type."""
         if isinstance(value, dict):
             raise TypeError(
@@ -146,7 +149,7 @@ class DeclarativeMapper:
             and not isinstance(value, datetime.timedelta)
         ):
             raise TypeError(f"{opstring} does not support type {type(value)}")
-        self._validate_equality(value, opstring)
+        self._validate_equality_operator(value, opstring)
 
     def _validate_geospatial_operator(self, value):
         """Validate the inputs to a geospatial filter."""
@@ -167,7 +170,7 @@ class DeclarativeMapper:
         )
 
     def __eq__(self, __value: object) -> BinaryExpression:
-        self._validate_equality(__value, "==")
+        self._validate_equality_operator(__value, "==")
         return BinaryExpression(
             name=self.name,
             key=self.key,
@@ -176,7 +179,7 @@ class DeclarativeMapper:
         )
 
     def __ne__(self, __value: object) -> BinaryExpression:
-        self._validate_equality(__value, "!=")
+        self._validate_equality_operator(__value, "!=")
         return BinaryExpression(
             name=self.name,
             key=self.key,

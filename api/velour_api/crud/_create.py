@@ -1,8 +1,7 @@
 from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
-from velour_api import backend, enums, exceptions, schemas
-from velour_api.crud._read import get_disjoint_keys, get_disjoint_labels
+from velour_api import backend, enums, schemas
 
 
 def create_dataset(
@@ -87,18 +86,14 @@ def create_prediction(
     backend.create_prediction(db, prediction=prediction)
 
 
-def create_evaluations(
+def create_or_get_evaluations(
     *,
     db: Session,
     job_request: schemas.EvaluationRequest,
     task_handler: BackgroundTasks,
-) -> list[
-    schemas.CreateClfEvaluationResponse
-    | schemas.CreateDetectionEvaluationResponse
-    | schemas.CreateSemanticSegmentationEvaluationResponse
-]:
+) -> list[schemas.EvaluationResponse]:
     """
-    Creates evaluations.
+    Create or get evaluations.
 
     Parameters
     ----------
@@ -107,37 +102,33 @@ def create_evaluations(
     job_request: schemas.EvaluationRequest
         The evaluation request.
 
-
     Returns
     ----------
-    tuple[list[int], list[int]]
+    tuple[list[schemas.EvaluatationResponse], list[schemas.EvaluatationResponse]]
         Tuple of evaluation id lists following the form ([created], [existing])
     """
-    created, existing = backend.create_evaluations(db, job_request)
+    created, existing = backend.create_or_get_evaluations(db, job_request)
 
     # start computations
-    for resp in created:
-        match type(resp):
-            case schemas.CreateClfEvaluationResponse:
+    for evaluation in created:
+        match evaluation.evaluation_filter.task_types[0]:
+            case enums.TaskType.CLASSIFICATION:
                 task_handler.add_task(
                     backend.compute_clf_metrics,
                     db=db,
-                    evaluation_id=resp.evaluation_id,
-                    job_request=job_request,
+                    evaluation_id=evaluation.evaluation_id,
                 )
-            case schemas.CreateDetectionEvaluationResponse:
+            case enums.TaskType.DETECTION:
                 task_handler.add_task(
                     backend.compute_detection_metrics,
                     db=db,
-                    evaluation_id=resp.evaluation_id,
-                    job_request=job_request,
+                    evaluation_id=evaluation.evaluation_id,
                 )
-            case schemas.CreateSemanticSegmentationEvaluationResponse:
+            case enums.TaskType.SEGMENTATION:
                 task_handler.add_task(
                     backend.compute_semantic_segmentation_metrics,
                     db=db,
-                    evaluation_id=resp.evaluation_id,
-                    job_request=job_request,
+                    evaluation_id=evaluation.evaluation_id,
                 )
             case _:
                 raise RuntimeError

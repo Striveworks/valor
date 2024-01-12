@@ -3,30 +3,29 @@ from sqlalchemy.orm import Session, aliased
 from sqlalchemy.sql import Select, func, select
 
 from velour_api import enums, schemas
-from velour_api.backend import models, core
+from velour_api.backend import core, models
 from velour_api.backend.metrics.metric_utils import (
     create_metric_mappings,
     get_or_create_row,
     validate_computation,
 )
 from velour_api.backend.ops import Query
-from velour_api.schemas.evaluation import EvaluationRequest
 from velour_api.schemas.metrics import IOUMetric, mIOUMetric
 
 
-def _generate_groundtruth_query(groundtruth_filter: schemas.Filter) -> Select:
+def _generate_groundtruth_query(evaluation_filter: schemas.Filter) -> Select:
     """Generate a sqlalchemy query to fetch a groundtruth."""
     return (
         Query(
             models.Annotation.id.label("annotation_id"),
             models.Annotation.datum_id.label("datum_id"),
         )
-        .filter(groundtruth_filter)
+        .filter(evaluation_filter)
         .groundtruths("gt")
     )
 
 
-def _generate_prediction_query(prediction_filter: schemas.Filter) -> Select:
+def _generate_prediction_query(model_filter: schemas.Filter) -> Select:
     """Generate a sqlalchemy query to fetch a prediction."""
 
     return (
@@ -34,7 +33,7 @@ def _generate_prediction_query(prediction_filter: schemas.Filter) -> Select:
             models.Annotation.id.label("annotation_id"),
             models.Annotation.datum_id.label("datum_id"),
         )
-        .filter(prediction_filter)
+        .filter(model_filter)
         .predictions("pd")
     )
 
@@ -81,7 +80,6 @@ def _count_true_positives(
 def _count_groundtruths(
     db: Session,
     groundtruth_subquery: schemas.Filter,
-    dataset_name: str,
     label_id: int,
 ) -> int:
     """Total number of groundtruth pixels for the given dataset and label"""
@@ -94,9 +92,7 @@ def _count_groundtruths(
         )
     )
     if ret is None:
-        raise RuntimeError(
-            f"No groundtruth pixels for label id '{label_id}' found in dataset '{dataset_name}'"
-        )
+        raise RuntimeError(f"No groundtruth pixels for label id '{label_id}'.")
     return int(ret)
 
 
@@ -120,30 +116,29 @@ def _count_predictions(
 
 def _compute_iou(
     db: Session,
-    groundtruth_filter: schemas.Filter,
-    prediction_filter: schemas.Filter,
-    dataset_name: str,
+    evaluation_filter: schemas.Filter,
+    model_filter: schemas.Filter,
     label_id: int,
 ) -> float:
     """Computes the pixelwise intersection over union for the given dataset, model, and label"""
 
-    groundtruth_subquery = _generate_groundtruth_query(groundtruth_filter)
-    prediction_subquery = _generate_prediction_query(prediction_filter)
+    groundtruth_subquery = _generate_groundtruth_query(evaluation_filter)
+    prediction_subquery = _generate_prediction_query(model_filter)
 
     tp = _count_true_positives(db, groundtruth_subquery, prediction_subquery)
-    gt = _count_groundtruths(db, groundtruth_subquery, dataset_name, label_id)
+    gt = _count_groundtruths(db, groundtruth_subquery, label_id)
     pred = _count_predictions(db, prediction_subquery)
 
     return tp / (gt + pred - tp)
 
 
 def _get_groundtruth_labels(
-    db: Session, groundtruth_filter: schemas.Filter
+    db: Session, evaluation_filter: schemas.Filter
 ) -> list[models.Label]:
     """Fetch groundtruth labels from the database."""
     return db.scalars(
         Query(models.Label)
-        .filter(groundtruth_filter)
+        .filter(evaluation_filter)
         .groundtruths(as_subquery=False)
         .distinct()
     ).all()
@@ -151,31 +146,26 @@ def _get_groundtruth_labels(
 
 def _compute_segmentation_metrics(
     db: Session,
-    job_request: schemas.EvaluationRequest,
+    model_filter: schemas.Filter,
+    evaluation_filter: schemas.Filter,
 ) -> list[IOUMetric | mIOUMetric]:
     """
     Computes the _compute_IOU metrics. The return is one `IOUMetric` for each label in groundtruth
     and one `mIOUMetric` for the mean _compute_IOU over all labels.
     """
 
-    # create groundtruth + prediction filters
-    groundtruth_filter = job_request.settings.filters.model_copy()
-    prediction_filter = job_request.settings.filters.model_copy()
-    prediction_filter.models_names = [job_request.model]
-
-    labels = _get_groundtruth_labels(db, groundtruth_filter)
+    labels = _get_groundtruth_labels(db, evaluation_filter)
 
     ret = []
     for label in labels:
         # set filter
-        groundtruth_filter.label_ids = [label.id]
-        prediction_filter.label_ids = [label.id]
+        evaluation_filter.label_ids = [label.id]
+        model_filter.label_ids = [label.id]
 
         _compute_iou_score = _compute_iou(
             db,
-            groundtruth_filter,
-            prediction_filter,
-            job_request.dataset,
+            evaluation_filter,
+            model_filter,
             label.id,
         )
 
@@ -204,7 +194,6 @@ def compute_semantic_segmentation_metrics(
     *,
     db: Session,
     evaluation_id: int,
-    job_request: EvaluationRequest,
 ) -> int:
     """
     Create semantic segmentation metrics. This function is intended to be run using FastAPI's `BackgroundTasks`.
@@ -215,8 +204,6 @@ def compute_semantic_segmentation_metrics(
         The database Session to query against.
     evaluation_id : int
         The job ID to create metrics for.
-    job_request : EvaluationRequest
-        The evaluation job.
     """
 
     # fetch evaluation
@@ -231,7 +218,7 @@ def compute_semantic_segmentation_metrics(
         raise RuntimeError(
             f"Evaluation `{evaluation.id}` with task type `{evaluation_filter.task_types}` attempted to run the object detection computation."
         )
-    
+
     # check annotation type
     if evaluation_filter.annotation_types != [enums.AnnotationType.RASTER]:
         raise RuntimeError(
@@ -239,8 +226,9 @@ def compute_semantic_segmentation_metrics(
         )
 
     metrics = _compute_segmentation_metrics(
-        db,
-        job_request,
+        db=db,
+        model_filter=model_filter,
+        evaluation_filter=evaluation_filter,
     )
     metric_mappings = create_metric_mappings(db, metrics, evaluation_id)
     for mapping in metric_mappings:

@@ -1,8 +1,8 @@
 from .evaluation import (
     DetectionParameters,
-    EvaluationJob,
+    EvaluationParameters,
+    EvaluationRequest,
     EvaluationResult,
-    EvaluationSettings,
 )
 from .filters import (
     BinaryExpression,
@@ -28,8 +28,8 @@ __all__ = [
     "Polygon",
     "MultiPolygon",
     "Raster",
-    "EvaluationJob",
-    "EvaluationSettings",
+    "EvaluationRequest",
+    "EvaluationParameters",
     "EvaluationResult",
     "DetectionParameters",
     "BinaryExpression",

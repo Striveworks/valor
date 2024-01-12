@@ -15,9 +15,9 @@ from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import (
     DetectionParameters,
-    EvaluationJob,
+    EvaluationParameters,
+    EvaluationRequest,
     EvaluationResult,
-    EvaluationSettings,
 )
 from velour.schemas.filters import BinaryExpression, DeclarativeMapper, Filter
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
@@ -746,7 +746,7 @@ class Dataset:
         self.metadata = metadata
         self.geospatial = geospatial
         self.id = id
-        self._validate()
+        self._validate_coretype()
 
         if delete_if_exists and client.get_dataset(name) is None:
             client.delete_dataset(name, timeout=30)
@@ -758,7 +758,7 @@ class Dataset:
             setattr(self, k, v)
         self.client = client
 
-    def _validate(self):
+    def _validate_coretype(self):
         """
         Validates the arguments used to create a `Dataset` object.
         """
@@ -1149,9 +1149,36 @@ class Model:
             f"models/{self.name}/datasets/{dataset.name}/finalize"
         ).json()
 
+    def _format_filters(
+        datasets: Union[Dataset, List[Dataset]],
+        filters: Union[Dict, List[BinaryExpression]],
+    ) -> Union[dict, Filter]:
+        """Formats evaluation request's `evaluation_filter` input."""
+
+        # get list of dataset names
+        dataset_names_from_obj = []
+        if isinstance(datasets, list):
+            dataset_names_from_obj = [dataset.name for dataset in datasets]
+        elif isinstance(datasets, Dataset):
+            dataset_names_from_obj = [datasets.name]
+
+        # format filtering object
+        if isinstance(filters, list) or filters is None:
+            filters = filters if filters else []
+            filters = Filter.create(filters)
+            if not filters.dataset_names:
+                filters.dataset_names = []
+            filters.dataset_names.extend(dataset_names_from_obj)
+        elif isinstance(filters, dict) and dataset_names_from_obj:
+            if "dataset_names" not in filters:
+                filters["dataset_names"] = []
+            filters["dataset_names"] = dataset_names_from_obj
+
+        return filters
+
     def evaluate_classification(
         self,
-        dataset: Dataset,
+        datasets: Union[Dataset, List[Dataset]] = None,
         filters: Union[Dict, List[BinaryExpression]] = None,
     ) -> Evaluation:
         """
@@ -1169,30 +1196,30 @@ class Model:
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion.
         """
+        #
+        if not datasets and not filters:
+            raise ValueError(
+                "Evaluation requires the definition of either datasets, dataset filters or both."
+            )
 
-        # If list[BinaryExpression], convert to filter object
-        if not isinstance(filters, dict) and filters is not None:
-            filters = Filter.create(filters)
+        filters = self._format_filters(datasets, filters)
 
-        evaluation = EvaluationJob(
-            model=self.name,
-            dataset=dataset.name,
-            task_type=TaskType.CLASSIFICATION.value,
-            settings=EvaluationSettings(
-                filters=filters,
-            ),
+        evaluation = EvaluationRequest(
+            model_filter=Filter(models_names=[self.name]),
+            evaluation_filter=filters,
         )
 
         resp = self.client._requests_post_rel_host(
             "evaluations", json=asdict(evaluation)
         ).json()
 
-        evaluation_id = resp.pop("evaluation_id")
+        # resp should have keys "missing_pred_keys", "ignored_pred_keys", with values
+        # list of label dicts. convert label dicts to Label objects
+        for k in ["missing_pred_keys", "ignored_pred_keys"]:
+            resp[k] = [Label(**la) for la in resp[k]]
+
         evaluation_job = Evaluation(
             client=self.client,
-            dataset_name=dataset.name,
-            model_name=self.name,
-            evaluation_id=evaluation_id,
             **resp,
         )
 
@@ -1200,10 +1227,10 @@ class Model:
 
     def evaluate_detection(
         self,
-        dataset: "Dataset",
+        datasets: Union[Dataset, List[Dataset]] = None,
+        filters: Union[Dict, List[BinaryExpression]] = None,
         iou_thresholds_to_compute: List[float] = None,
         iou_thresholds_to_return: List[float] = None,
-        filters: Union[Dict, List[BinaryExpression]] = None,
     ) -> Evaluation:
         """
         Start a object-detection evaluation job.
@@ -1238,17 +1265,12 @@ class Model:
             iou_thresholds_to_return=iou_thresholds_to_return,
         )
 
-        if not isinstance(filters, dict) and filters is not None:
-            filters = Filter.create(filters)
+        filters = self._format_filters(datasets, filters)
 
-        evaluation = EvaluationJob(
-            model=self.name,
-            dataset=dataset.name,
-            task_type=TaskType.DETECTION.value,
-            settings=EvaluationSettings(
-                parameters=parameters,
-                filters=filters,
-            ),
+        evaluation = EvaluationRequest(
+            model_filter=Filter(models_names=[self.name]),
+            evaluation_filter=filters,
+            parameters=EvaluationParameters(detection=parameters),
         )
 
         resp = self.client._requests_post_rel_host(
@@ -1257,14 +1279,11 @@ class Model:
 
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
         # list of label dicts. convert label dicts to Label objects
-
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
             resp[k] = [Label(**la) for la in resp[k]]
 
-        evaluation_id = resp.pop("evaluation_id")
         evaluation_job = Evaluation(
             client=self.client,
-            evaluation_id=evaluation_id,
             **resp,
         )
 
@@ -1272,7 +1291,7 @@ class Model:
 
     def evaluate_segmentation(
         self,
-        dataset: Dataset,
+        datasets: Union[Dataset, List[Dataset]] = None,
         filters: Union[Dict, List[BinaryExpression]] = None,
     ) -> Evaluation:
         """
@@ -1291,29 +1310,26 @@ class Model:
             a job object that can be used to track the status of the job and get the metrics of it upon completion
         """
 
-        # if list[BinaryExpression], convert to filter object
-        if not isinstance(filters, dict) and filters is not None:
-            filters = Filter.create(filters)
+        filters = self._format_filters(datasets, filters)
 
         # create evaluation job
-        evaluation = EvaluationJob(
-            model=self.name,
-            dataset=dataset.name,
-            task_type=TaskType.SEGMENTATION.value,
-            settings=EvaluationSettings(
-                filters=filters,
-            ),
+        evaluation = EvaluationRequest(
+            model_filter=Filter(models_names=[self.name]),
+            evaluation_filter=filters,
         )
         resp = self.client._requests_post_rel_host(
             "evaluations",
             json=asdict(evaluation),
         ).json()
 
+        # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
+        # list of label dicts. convert label dicts to Label objects
+        for k in ["missing_pred_labels", "ignored_pred_labels"]:
+            resp[k] = [Label(**la) for la in resp[k]]
+
         # create client-side evaluation handler
-        evaluation_id = resp.pop("evaluation_id")
         evaluation_job = Evaluation(
             client=self.client,
-            evaluation_id=evaluation_id,
             **resp,
         )
 

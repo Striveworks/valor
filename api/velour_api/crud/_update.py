@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from velour_api import backend, enums, schemas
+from velour_api import enums
 from velour_api.backend import set_dataset_status, set_model_status
 
 

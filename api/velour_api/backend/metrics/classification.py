@@ -336,7 +336,7 @@ def _compute_accuracy_from_cm(cm: schemas.ConfusionMatrix) -> float:
 
 
 def _compute_precision_and_recall_f1_from_confusion_matrix(
-    cm: schemas.ConfusionMatrix, 
+    cm: schemas.ConfusionMatrix,
     label_value: str,
 ) -> tuple[float, float, float]:
     """
@@ -572,7 +572,7 @@ def compute_clf_metrics(
     int
         The evaluation job id.
     """
-    
+
     # fetch evaluation
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 

@@ -9,13 +9,9 @@ from .core import (
     Prediction,
 )
 from .evaluation import (
-    CreateClfEvaluationResponse,
-    CreateDetectionEvaluationResponse,
-    CreateEvaluationResponse,
-    CreateSemanticSegmentationEvaluationResponse,
     DetectionParameters,
-    Evaluation,
     EvaluationRequest,
+    EvaluationResponse,
 )
 from .filters import (
     BooleanFilter,
@@ -87,11 +83,7 @@ __all__ = [
     "ROCAUCMetric",
     "ConfusionMatrixResponse",
     "APMetric",
-    "CreateDetectionEvaluationResponse",
     "APMetricAveragedOverIOUs",
-    "CreateClfEvaluationResponse",
-    "CreateSemanticSegmentationEvaluationResponse",
-    "CreateEvaluationResponse",
     "GeoJSONPoint",
     "GeoJSONPolygon",
     "GeoJSONMultiPolygon",
@@ -100,7 +92,7 @@ __all__ = [
     "ConfusionMatrixEntry",
     "EvaluationSettings",
     "EvaluationRequest",
-    "Evaluation",
+    "EvaluationResponse",
     "DetectionParameters",
     "StringFilter",
     "NumericFilter",

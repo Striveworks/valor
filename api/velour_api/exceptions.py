@@ -1,4 +1,9 @@
-from velour_api import enums
+import json
+from datetime import datetime
+
+from fastapi import HTTPException
+
+from velour_api import enums, logger
 
 """ Dataset """
 
@@ -189,18 +194,18 @@ class ModelNotFinalizedError(Exception):
 
 
 class ModelInferencesDoNotExist(Exception):
+    """
+    Raises an exception if the user tries to manipulate an inference that doesn't exist.
+
+    Parameters
+    -------
+    dataset_name : str
+        The name of the dataset.
+    model_name : str
+        The name of the model.
+    """
+
     def __init__(self, *, dataset_name: str, model_name: str):
-        """
-        Raises an exception if the user tries to manipulate an inference that doesn't exist.
-
-        Parameters
-        -------
-        dataset_name : str
-            The name of the dataset.
-        model_name : str
-            The name of the model.
-        """
-
         super().__init__(
             f"inferences for model `{model_name}` over dataset `{dataset_name}` do not exist."
         )
@@ -368,3 +373,78 @@ class EvaluationStateError(Exception):
         super().__init__(
             f"Evaluation `{evaluation_id}` attempted an illegal transition from `{current_state}` to `{requested_state}`."
         )
+
+
+error_to_status_code = {
+    # 400
+    ModelIsEmptyError: 400,
+    ValueError: 400,
+    AttributeError: 400,
+    # 404
+    DatasetDoesNotExistError: 404,
+    DatumDoesNotExistError: 404,
+    ModelDoesNotExistError: 404,
+    ModelInferencesDoNotExist: 404,
+    EvaluationDoesNotExistError: 404,
+    # 409
+    DatasetAlreadyExistsError: 409,
+    DatasetIsEmptyError: 409,
+    DatasetFinalizedError: 409,
+    DatasetNotFinalizedError: 409,
+    DatasetStateError: 409,
+    ModelAlreadyExistsError: 409,
+    ModelFinalizedError: 409,
+    ModelNotFinalizedError: 409,
+    ModelStateError: 409,
+    DatumAlreadyExistsError: 409,
+    DatumDoesNotBelongToDatasetError: 409,
+    AnnotationAlreadyExistsError: 409,
+    EvaluationAlreadyExistsError: 409,
+    EvaluationRunningError: 409,
+    EvaluationStateError: 409,
+    # 500
+    NotImplementedError: 500,
+}
+
+
+def create_http_error(
+    error: Exception, status_code: int | None = None
+) -> HTTPException:
+    """
+    Creates a HTTP execption using a caught exception.
+
+    The HTTPException is populated with the name and details of the caught exception.
+
+    Parameters
+    ----------
+    error : Exception
+        The exception that was caught and needs conversion.
+    status_code : int, optional
+        Status code value override.
+
+    Returns
+    -------
+    fastapi.HTTPException
+    """
+    if status_code:
+        logger.debug(
+            f"`{type(error).__name__}` has been raised with an overwritten status code."
+        )
+    if type(error) in error_to_status_code:
+        status_code = error_to_status_code[type(error)]
+    else:
+        status_code = 500
+        logger.debug(
+            f"`{type(error).__name__}` does not have a status_code assigned to it."
+        )
+
+    return HTTPException(
+        status_code=status_code,
+        detail=json.dumps(
+            {
+                "name": str(type(error).__name__),
+                "detail": str(error),
+                "timestamp": datetime.utcnow().timestamp(),
+            }
+        ),
+    )

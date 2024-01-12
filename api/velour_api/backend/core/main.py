@@ -879,7 +879,7 @@ def create_or_get_evaluations(
     job_request: schemas.EvaluationRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-) -> list[schemas.EvaluationResponse]:
+) -> list[schemas.CreateClfEvaluationResponse]:
     """
     Create a new evaluation.
 
@@ -896,7 +896,7 @@ def create_or_get_evaluations(
 
     Returns
     -------
-    list[schemas.EvaluationResponse]
+    list[schemas.CreateClfEvaluationResponse]
         A list of evaluation response objects.
 
     Raises
@@ -1010,4 +1010,4 @@ def ready(db: Session = Depends(get_db)):
         db.execute(sqlalchemy.text("select 1"))
         return schemas.Readiness(status="ok")
     except Exception as e:
-        raise exceptions.create_http_error(status_code=503, error=e)
+        raise exceptions.create_http_error(error=e, status_code=503)

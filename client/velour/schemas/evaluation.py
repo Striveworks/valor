@@ -1,8 +1,7 @@
-import json
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Union
+from typing import List, Union
 
-from velour.enums import EvaluationStatus, TaskType
+from velour.enums import EvaluationStatus
 from velour.schemas.filters import Filter
 
 
@@ -24,58 +23,55 @@ class DetectionParameters:
 
 
 @dataclass
-class EvaluationSettings:
+class EvaluationParameters:
     """
-    Defines important attributes for evaluating a model.
+    Defines evaluation method parameters.
 
     Attributes
     ----------
-    parameters : Union[DetectionParameters, None]
-        The parameter object (e.g., `DetectionParameters) to use when creating an evaluation.
-    filters: Union[Filter, None]
-        The `Filter`object to use when creating an evaluation.
+    detection : DetectionParameters, optional
+        Parameters for the detection evaluation method.
     """
 
-    parameters: Union[DetectionParameters, None] = None
-    filters: Union[Filter, None] = None
+    # classification = None
+    detection: Union[DetectionParameters, None] = None
+    # segmentation = None
 
     def __post_init__(self):
-        if isinstance(self.parameters, dict):
-            self.parameters = DetectionParameters(**self.parameters)
-        if isinstance(self.filters, dict):
-            self.filters = Filter(**self.filters)
+        if isinstance(self.detection, dict):
+            self.detection = DetectionParameters(**self.detection)
 
 
 @dataclass
-class EvaluationJob:
+class EvaluationRequest:
     """
-    Defines important attributes of the API's `EvaluationJob`.
+    An evaluation request.
+
+    Defines important attributes of the API's `EvaluationRequest`.
 
     Attributes
     ----------
-    model : str
-        The name of the `Model` invoked during the evaluation.
-    dataset : str
-        The name of the `Dataset` invoked during the evaluation.
-    task_type : TaskType
-        The task type of the evaluation.
-    settings : EvaluationSettings
-        The `EvaluationSettings` object used to configurate the `EvaluationJob`.
-    id : int
-        The id of the job.
+    model_filter : schemas.Filter
+        The filter used to enumerate all the models we want to evaluate.
+    evaluation_filter : schemas.Filter
+        The filter object used to define what the model(s) is evaluating against.
+    parameters : EvaluationParameters
+        Any parameters that are used to modify an evaluation method.
     """
 
-    model: str
-    dataset: str
-    task_type: TaskType
-    settings: EvaluationSettings = field(default_factory=EvaluationSettings)
-    id: Optional[int] = None
+    model_filter: Filter
+    evaluation_filter: Filter
+    parameters: EvaluationParameters = field(
+        default_factory=EvaluationParameters
+    )
 
     def __post_init__(self):
-        if isinstance(self.settings, dict):
-            self.settings = EvaluationSettings(**self.settings)
-        if isinstance(self.task_type, str):
-            self.task_type = TaskType(self.task_type)
+        if isinstance(self.model_filter, dict):
+            self.model_filter = Filter(**self.model_filter)
+        if isinstance(self.evaluation_filter, dict):
+            self.evaluation_filter = Filter(**self.evaluation_filter)
+        if isinstance(self.parameters, dict):
+            self.parameters = EvaluationParameters(**self.parameters)
 
 
 @dataclass
@@ -103,66 +99,69 @@ class EvaluationResult:
         A list of confusion matrix dictionaries returned by the job.
     """
 
-    dataset: str
-    model: str
-    task_type: TaskType
-    settings: EvaluationSettings
     evaluation_id: int
+    model: str
+    model_filter: Filter
+    evaluation_filter: Filter
+    parameters: EvaluationParameters
     status: EvaluationStatus
     metrics: List[dict]
     confusion_matrices: List[dict] = field(default_factory=list)
 
     def __post_init__(self):
-        if isinstance(self.settings, dict):
-            self.settings = EvaluationSettings(**self.settings)
-        if isinstance(self.task_type, str):
-            self.task_type = TaskType(self.task_type)
+        if isinstance(self.model_filter, dict):
+            self.model_filter = Filter(**self.model_filter)
+        if isinstance(self.evaluation_filter, dict):
+            self.evaluation_filter = Filter(**self.evaluation_filter)
+        if isinstance(self.parameters, dict):
+            self.parameters = EvaluationParameters(**self.parameters)
         if isinstance(self.status, str):
             self.status = EvaluationStatus(self.status)
 
-    def to_dataframe(
-        self,
-        stratify_by: Tuple[str, str] = None,
-    ):
-        """
-        Get all metrics associated with a Model and return them in a `pd.DataFrame`.
+    # TODO
+    # def to_dataframe(
+    #     self,
+    #     stratify_by: Tuple[str, str] = None,
+    # ):
+    #     """
+    #     Get all metrics associated with a Model and return them in a `pd.DataFrame`.
 
-        Returns
-        ----------
-        pd.DataFrame
-            Evaluation metrics being displayed in a `pd.DataFrame`.
+    #     Returns
+    #     ----------
+    #     pd.DataFrame
+    #         Evaluation metrics being displayed in a `pd.DataFrame`.
 
-        Raises
-        ------
-        ModuleNotFoundError
-            This function requires the use of `pandas.DataFrame`.
+    #     Raises
+    #     ------
+    #     ModuleNotFoundError
+    #         This function requires the use of `pandas.DataFrame`.
 
-        """
-        try:
-            import pandas as pd
-        except ModuleNotFoundError:
-            raise ModuleNotFoundError(
-                "Must have pandas installed to use `get_metric_dataframes`."
-            )
+    #     """
+    #     try:
+    #         import pandas as pd
+    #     except ModuleNotFoundError:
+    #         raise ModuleNotFoundError(
+    #             "Must have pandas installed to use `get_metric_dataframes`."
+    #         )
 
-        if not stratify_by:
-            column_type = "dataset"
-            column_name = self.dataset
-        else:
-            column_type = stratify_by[0]
-            column_name = stratify_by[1]
+    #     if not stratify_by:
+    #         column_type = "dataset"
+    #         column_name = self.dataset
+    #     else:
+    #         column_type = stratify_by[0]
+    #         column_name = stratify_by[1]
 
-        metrics = [
-            {**metric, column_type: column_name} for metric in self.metrics
-        ]
-        df = pd.DataFrame(metrics)
-        for k in ["label", "parameters"]:
-            df[k] = df[k].fillna("n/a")
-        df["parameters"] = df["parameters"].apply(json.dumps)
-        df["label"] = df["label"].apply(
-            lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
-        )
-        df = df.pivot(
-            index=["type", "parameters", "label"], columns=[column_type]
-        )
-        return df
+    #     metrics = [
+    #         {**metric, column_type: column_name} for metric in self.metrics
+    #     ]
+    #     df = pd.DataFrame(metrics)
+    #     for k in ["label", "parameters"]:
+    #         df[k] = df[k].fillna("n/a")
+    #     df["parameters"] = df["parameters"].apply(json.dumps)
+    #     df["label"] = df["label"].apply(
+    #         lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
+    #     )
+    #     df = df.pivot(
+    #         index=["type", "parameters", "label"], columns=[column_type]
+    #     )
+    #     return df

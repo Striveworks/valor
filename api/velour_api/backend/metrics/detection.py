@@ -417,7 +417,7 @@ def _convert_annotations_to_common_type(
     target_type: list[enums.AnnotationType],
 ):
     """Convert all annotations to a common type."""
-    
+
     # user has specified a target type
     if len(target_type) > 1:
         raise RuntimeError("Should receive a single annotation type.")
@@ -438,10 +438,7 @@ def _convert_annotations_to_common_type(
 
     for dataset in datasets:
         # dataset
-        source_type = core.get_annotation_type(
-            db=db, 
-            dataset=dataset
-        )
+        source_type = core.get_annotation_type(db=db, dataset=dataset)
         core.convert_geometry(
             db,
             dataset=dataset,
@@ -450,9 +447,7 @@ def _convert_annotations_to_common_type(
         )
         # model
         source_type = core.get_annotation_type(
-            db=db, 
-            dataset=dataset, 
-            model=model
+            db=db, dataset=dataset, model=model
         )
         core.convert_geometry(
             db,
@@ -463,7 +458,7 @@ def _convert_annotations_to_common_type(
         )
 
     return [target_type]
-        
+
 
 @validate_computation
 def compute_detection_metrics(
@@ -498,13 +493,10 @@ def compute_detection_metrics(
 
     # fetch model and datasets
     model = db.scalar(
-        select(models.Model)
-        .where(models.Model.id == evaluation.model_id)
+        select(models.Model).where(models.Model.id == evaluation.model_id)
     )
     datasets = db.query(
-        Query(models.Dataset)
-        .filter(evaluation_filter)
-        .any()
+        Query(models.Dataset).filter(evaluation_filter).any()
     ).all()
 
     # ensure that all annotations have a common type to operate over
@@ -525,8 +517,8 @@ def compute_detection_metrics(
     )
 
     metric_mappings = create_metric_mappings(
-        db=db, 
-        metrics=metrics, 
+        db=db,
+        metrics=metrics,
         evaluation_id=evaluation_id,
     )
 

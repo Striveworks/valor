@@ -26,12 +26,11 @@ from .dataset import (
 from .datum import create_datum, fetch_datum, get_datums
 from .evaluation import (
     check_for_active_evaluations,
-    create_evaluations,
+    create_or_get_evaluations,
     fetch_evaluation_from_id,
     get_disjoint_labels_from_evaluation_id,
     get_evaluation_ids_from_request,
     get_evaluation_status,
-    get_evaluations,
     set_evaluation_status,
 )
 from .geometry import convert_geometry, get_annotation_type
@@ -107,10 +106,9 @@ __all__ = [
     "set_model_status",
     "create_prediction",
     "get_prediction",
-    "create_evaluations",
+    "create_or_get_evaluations",
     "fetch_evaluation_from_id",
     "get_evaluation_ids_from_request",
-    "get_evaluations",
     "get_evaluation_status",
     "get_disjoint_labels_from_evaluation_id",
     "set_evaluation_status",
