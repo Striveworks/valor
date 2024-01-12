@@ -1,7 +1,7 @@
 import io
 from base64 import b64decode, b64encode
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import List, SupportsFloat, Tuple
 
 import numpy as np
 import PIL.Image
@@ -41,16 +41,14 @@ class Point:
     y: float
 
     def __post_init__(self):
-        int_classes = (int, np.int8, np.int16, np.int32, np.int64)
-        if isinstance(self.x, int_classes):
-            self.x = float(self.x)
-        if isinstance(self.y, int_classes):
-            self.y = float(self.y)
-
-        if not isinstance(self.x, float):
-            raise TypeError("Point coordinates should be `float` type.")
-        if not isinstance(self.y, float):
-            raise TypeError("Point coordinates should be `float` type.")
+        if not isinstance(self.x, SupportsFloat):
+            raise TypeError(
+                "Point coordinates should be numbers convertible to `float` type."
+            )
+        if not isinstance(self.y, SupportsFloat):
+            raise TypeError(
+                "Point coordinates should be numbers convertible to `float` type."
+            )
         self.x = float(self.x)
         self.y = float(self.y)
 
