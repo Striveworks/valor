@@ -13,6 +13,7 @@ For more information, please see our user docs:
 - **[Overview](https://striveworks.github.io/velour/)**: Provides an overview of what Velour is, why it's important, and how it works.
 - **[Sample Notebook](https://github.com/Striveworks/velour/blob/main/examples/getting_started.ipynb)**: Illustrates how to evaluate model performance using Velour in a descriptive Jupyter notebook.
 - **[Getting Started](https://striveworks.github.io/velour/getting_started)**: Details everything you need to get up-and-running with Velour.
+- **[Metrics](https://striveworks.github.io/velour/metrics)**: Describes all of the metrics that you can calculate using Velour.
 - **[Endpoints](https://striveworks.github.io/velour/endpoints/)**: Documents Velour's various API endpoints.
 - **[Technical Concepts](https://striveworks.github.io/velour/technical_concepts)**: Describes the technical concepts that underpin Velour.
 - **[Contributing & Development](https://striveworks.github.io/velour/contributing)**: Explains how you can contribute to Velour.
