@@ -2,9 +2,10 @@ from typing import Dict, List, Optional, SupportsInt, Union
 
 import PIL.Image
 
-from velour.coretypes import Datum, MetadataType
+from velour.coretypes import Datum
 from velour.exceptions import SchemaTypeError
 from velour.schemas import validate_metadata
+from velour.schemas.metadata import DictMetadataType, MetadataType
 
 
 class ImageMetadata:
@@ -53,7 +54,7 @@ class ImageMetadata:
         self._dataset_name = None
         self.height = height
         self.width = width
-        self.metadata = metadata if metadata else {}
+        self.metadata: DictMetadataType = dict(metadata) if metadata else {}
         self.geospatial = geospatial if geospatial else {}
 
         if not isinstance(self.uid, str):
@@ -90,7 +91,7 @@ class ImageMetadata:
             raise ValueError(
                 f"`datum` does not contain height and/or width in metadata `{datum._metadata}`"
             )
-        metadata = datum._metadata.copy()
+        metadata = dict(datum._metadata)
         width = metadata.pop("width")
         height = metadata.pop("height")
         assert isinstance(width, SupportsInt)
@@ -127,7 +128,7 @@ class ImageMetadata:
         """
         Converts an `ImageMetadata` object into a `Datum`.
         """
-        metadata = self.metadata.copy() if self.metadata else {}
+        metadata = dict(self.metadata) if self.metadata else {}
         geospatial = self.geospatial.copy() if self.geospatial else {}
 
         metadata["height"] = self.height

@@ -4,7 +4,18 @@ import math
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
 
 from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
@@ -13,17 +24,11 @@ from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
 from velour.schemas.filters import BinaryExpression, DeclarativeMapper, Filter
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import (
+    MetadataType,
     dump_metadata,
     load_metadata,
     validate_metadata,
 )
-
-MetadataType = Dict[
-    str,
-    Union[
-        int, float, str, bool, datetime.datetime, datetime.date, datetime.time
-    ],
-]
 
 
 class Label:
@@ -172,7 +177,7 @@ class Datum:
         uid: str,
         metadata: Optional[MetadataType] = None,
         geospatial: Optional[
-            Dict[
+            Mapping[
                 str,
                 Union[
                     List[List[List[List[Union[float, int]]]]],
@@ -183,20 +188,14 @@ class Datum:
             ]
         ] = None,
     ):
+        if not isinstance(uid, str):
+            raise SchemaTypeError("uid", str, uid)
+        validate_metadata(metadata or {})
+
         self._uid = uid
-        self._metadata: MetadataType = metadata if metadata else {}
+        self._metadata = dict(load_metadata(metadata or {}))
         self._geospatial = geospatial if geospatial else {}
         self._dataset_name = None
-        self._validate()
-
-    def _validate(self):
-        """
-        Validates the parameters used to create a `Datum` object.
-        """
-        if not isinstance(self._uid, str):
-            raise SchemaTypeError("uid", str, self._uid)
-        validate_metadata(self._metadata)
-        self._metadata = load_metadata(self._metadata)
 
     def __str__(self):
         return str(self.dict())
