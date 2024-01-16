@@ -243,6 +243,8 @@ class Polygon:
                     raise TypeError(
                         "holes list should contain elements of type `velour.schemas.BasicPolygon`"
                     )
+        else:
+            self.holes = []
 
 
 @dataclass

@@ -17,10 +17,7 @@ from velour_api.backend import models
 
 
 def bbox_to_poly(bbox: BoundingBox) -> Polygon:
-    return Polygon(
-        boundary=bbox.polygon,
-        holes=None,
-    )
+    return Polygon(boundary=bbox.polygon)
 
 
 def _list_of_points_from_wkt_polygon(

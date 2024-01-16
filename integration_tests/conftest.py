@@ -239,7 +239,7 @@ def gt_dets2(
                 Annotation(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=Polygon(boundary=rect1.polygon, holes=None),
+                    polygon=Polygon(boundary=rect1.polygon, holes=[]),
                 ),
                 Annotation(
                     task_type=TaskType.DETECTION,
@@ -254,7 +254,7 @@ def gt_dets2(
                 Annotation(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=Polygon(boundary=rect2.polygon, holes=None),
+                    polygon=Polygon(boundary=rect2.polygon, holes=[]),
                 )
             ],
         ),
@@ -286,7 +286,7 @@ def gt_poly_dets1(
                 Annotation(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=Polygon(boundary=rect1.polygon, holes=None),
+                    polygon=Polygon(boundary=rect1.polygon, holes=[]),
                 ),
             ],
         ),
@@ -296,7 +296,7 @@ def gt_poly_dets1(
                 Annotation(
                     task_type=TaskType.DETECTION,
                     labels=[Label(key="k1", value="v1")],
-                    polygon=Polygon(boundary=rect2.polygon, holes=None),
+                    polygon=Polygon(boundary=rect2.polygon, holes=[]),
                 )
             ],
         ),
@@ -570,10 +570,11 @@ def pred_poly_dets(pred_dets: list[Prediction]) -> list[Prediction]:
                     labels=annotation.labels,
                     polygon=Polygon(
                         boundary=annotation.bounding_box.polygon,
-                        holes=None,
+                        holes=[],
                     ),
                 )
                 for annotation in det.annotations
+                if annotation.bounding_box is not None
             ],
         )
         for det in pred_dets

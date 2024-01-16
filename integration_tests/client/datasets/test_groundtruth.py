@@ -56,7 +56,7 @@ def test_create_gt_detections_as_bbox_or_poly(
                             Point(x=xmin, y=ymax),
                         ]
                     ),
-                    holes=None,
+                    holes=[],
                 ),
             ),
         ],
