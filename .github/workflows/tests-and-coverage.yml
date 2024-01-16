@@ -51,12 +51,6 @@ jobs:
           - 5432:5432
         env:
           POSTGRES_PASSWORD: password
-      redis:
-        image: public.ecr.aws/bitnami/redis:7.0
-        ports:
-          - 6379:6379
-        env:
-          ALLOW_EMPTY_PASSWORD: "yes"
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4

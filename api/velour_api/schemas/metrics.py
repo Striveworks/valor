@@ -9,7 +9,7 @@ from pydantic import (
     model_validator,
 )
 
-from velour_api.enums import JobStatus, TaskType
+from velour_api.enums import EvaluationStatus, TaskType
 from velour_api.schemas.filters import Filter
 from velour_api.schemas.label import Label
 
@@ -105,13 +105,13 @@ class CreateDetectionMetricsResponse(BaseModel):
         A list of missing prediction labels.
     ignored_pred_labels: list[Label]
         A list of ignored preiction labels.
-    job_id: int
+    evaluation_id: int
         The job ID.
     """
 
     missing_pred_labels: list[Label]
     ignored_pred_labels: list[Label]
-    job_id: int
+    evaluation_id: int
 
 
 class CreateSemanticSegmentationMetricsResponse(BaseModel):
@@ -124,13 +124,13 @@ class CreateSemanticSegmentationMetricsResponse(BaseModel):
         A list of missing prediction labels.
     ignored_pred_labels: list[Label]
         A list of ignored preiction labels.
-    job_id: int
+    evaluation_id: int
         The job ID.
     """
 
     missing_pred_labels: list[Label]
     ignored_pred_labels: list[Label]
-    job_id: int
+    evaluation_id: int
 
 
 class CreateClfMetricsResponse(BaseModel):
@@ -143,13 +143,13 @@ class CreateClfMetricsResponse(BaseModel):
         A list of missing prediction keys.
     ignored_pred_keys: list[str]
         A list of ignored preiction keys.
-    job_id: int
+    evaluation_id: int
         The job ID.
     """
 
     missing_pred_keys: list[str]
     ignored_pred_keys: list[str]
-    job_id: int
+    evaluation_id: int
 
 
 class Job(BaseModel):
@@ -160,12 +160,12 @@ class Job(BaseModel):
     ----------
     uid : str
         The UID of the job.
-    status : JobStatus
+    status : EvaluationStatus
         The status of the job.
     """
 
     uid: str = Field(default_factory=lambda: str(uuid4()))
-    status: JobStatus = JobStatus.PENDING
+    status: EvaluationStatus = EvaluationStatus.PENDING
     model_config = ConfigDict(extra="allow")
 
 
@@ -665,7 +665,7 @@ class Evaluation(BaseModel):
         The name of the model.
     settings : EvaluationSettings
         Settings for the evaluation.
-    job_id : int
+    evaluation_id : int
         The ID of the evaluation job.
     status : str
         The status of the evaluation.
@@ -679,8 +679,8 @@ class Evaluation(BaseModel):
     dataset: str
     model: str
     settings: EvaluationSettings
-    job_id: int
-    status: JobStatus
+    evaluation_id: int
+    status: EvaluationStatus
     metrics: list[Metric]
     confusion_matrices: list[ConfusionMatrixResponse]
     task_type: TaskType

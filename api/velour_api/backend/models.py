@@ -1,3 +1,5 @@
+import datetime
+
 from geoalchemy2 import Geography, Geometry, Raster
 from geoalchemy2.functions import ST_SetBandNoDataValue, ST_SetGeoReference
 from sqlalchemy import ForeignKey, UniqueConstraint
@@ -10,10 +12,13 @@ from velour_api.backend.database import Base
 
 class Label(Base):
     __tablename__ = "label"
+    __table_args__ = (UniqueConstraint("key", "value"),)
 
+    # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     key: Mapped[str]
     value: Mapped[str]
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
     groundtruths: Mapped[list["GroundTruth"]] = relationship(
@@ -22,8 +27,6 @@ class Label(Base):
     predictions: Mapped[list["Prediction"]] = relationship(
         back_populates="label"
     )
-
-    __table_args__ = (UniqueConstraint("key", "value"),)
 
 
 class GDALRaster(Raster):
@@ -43,6 +46,7 @@ class GDALRaster(Raster):
 class GroundTruth(Base):
     __tablename__ = "groundtruth"
 
+    # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     annotation_id: Mapped[int] = mapped_column(
         ForeignKey("annotation.id"), nullable=True
@@ -50,6 +54,7 @@ class GroundTruth(Base):
     label_id: Mapped[int] = mapped_column(
         ForeignKey("label.id"), nullable=False
     )
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
     annotation: Mapped["Annotation"] = relationship(
@@ -61,6 +66,7 @@ class GroundTruth(Base):
 class Prediction(Base):
     __tablename__ = "prediction"
 
+    # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     annotation_id: Mapped[int] = mapped_column(
         ForeignKey("annotation.id"), nullable=True
@@ -69,6 +75,7 @@ class Prediction(Base):
         ForeignKey("label.id"), nullable=False
     )
     score: Mapped[float] = mapped_column(nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
     annotation: Mapped["Annotation"] = relationship(
@@ -80,6 +87,7 @@ class Prediction(Base):
 class Annotation(Base):
     __tablename__ = "annotation"
 
+    # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     datum_id: Mapped[int] = mapped_column(
         ForeignKey("datum.id"), nullable=False
@@ -90,15 +98,13 @@ class Annotation(Base):
     task_type: Mapped[str] = mapped_column(nullable=False)
     meta = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
-    # Geometric
+    # columns - geometric
     box = mapped_column(Geometry("POLYGON"), nullable=True)
     polygon = mapped_column(Geometry("POLYGON"), nullable=True)
     multipolygon = mapped_column(Geometry("MULTIPOLYGON"), nullable=True)
     raster = mapped_column(GDALRaster, nullable=True)
-
-    # Generic
-    json = mapped_column(JSONB)
 
     # relationships
     datum: Mapped["Datum"] = relationship(back_populates="annotations")
@@ -124,6 +130,7 @@ class Datum(Base):
     uid: Mapped[str] = mapped_column(nullable=False)
     meta = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationship
     dataset: Mapped["Dataset"] = relationship(back_populates="datums")
@@ -137,10 +144,13 @@ class Model(Base):
 
     __tablename__ = "model"
 
+    # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
     meta = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
+    status: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
     annotations: Mapped[list[Annotation]] = relationship(
@@ -154,10 +164,13 @@ class Model(Base):
 class Dataset(Base):
     __tablename__ = "dataset"
 
+    # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(index=True, unique=True)
     meta = mapped_column(JSONB)
     geo = mapped_column(Geography(), nullable=True)
+    status: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
     datums: Mapped[list[Datum]] = relationship(cascade="all, delete")
@@ -168,13 +181,24 @@ class Dataset(Base):
 
 class Evaluation(Base):
     __tablename__ = "evaluation"
+    __table_args__ = (
+        UniqueConstraint(
+            "dataset_id",
+            "model_id",
+            "task_type",
+            "settings",
+        ),
+    )
 
+    # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     dataset_id: Mapped[int] = mapped_column(ForeignKey("dataset.id"))
     model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
     task_type: Mapped[str] = mapped_column(nullable=False)
     settings = mapped_column(JSONB, nullable=True)
     geo = mapped_column(Geography(), nullable=True)
+    status: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
     dataset = relationship(Dataset, back_populates="evaluation")
@@ -190,6 +214,7 @@ class Evaluation(Base):
 class Metric(Base):
     __tablename__ = "metric"
 
+    # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     evaluation_id: Mapped[int] = mapped_column(ForeignKey("evaluation.id"))
     label_id: Mapped[int] = mapped_column(
@@ -198,6 +223,7 @@ class Metric(Base):
     type: Mapped[str] = mapped_column()
     value: Mapped[float] = mapped_column(nullable=True)
     parameters = mapped_column(JSONB)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
     label = relationship(Label)
@@ -209,10 +235,12 @@ class Metric(Base):
 class ConfusionMatrix(Base):
     __tablename__ = "confusion_matrix"
 
+    # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     evaluation_id: Mapped[int] = mapped_column(ForeignKey("evaluation.id"))
     label_key: Mapped[str] = mapped_column()
     value = mapped_column(JSONB)
+    created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
     settings: Mapped[Evaluation] = relationship(

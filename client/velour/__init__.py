@@ -10,7 +10,7 @@ try:
 except importlib_metadata.PackageNotFoundError:
     __version__ = ""
 
-from .client import Client, ClientException, Job
+from .client import Client, ClientException, DeletionJob
 from .coretypes import (
     Annotation,
     Dataset,
@@ -25,7 +25,7 @@ from .coretypes import (
 __all__ = [
     "Client",
     "ClientException",
-    "Job",
+    "DeletionJob",
     "Label",
     "Evaluation",
     "Dataset",

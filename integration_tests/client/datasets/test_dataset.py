@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from velour import Annotation, Dataset, Datum, GroundTruth, Label
 from velour.client import Client, ClientException
-from velour.enums import JobStatus, TaskType
+from velour.enums import TableStatus, TaskType
 from velour.metatypes import ImageMetadata
 from velour_api.backend import models
 
@@ -63,10 +63,16 @@ def _test_create_image_dataset_with_gts(
     )
 
     dataset.finalize()
+
     # check that we get an error when trying to add more images
     # to the dataset since it is finalized
     with pytest.raises(ClientException) as exc_info:
-        dataset.add_groundtruth(gts[0])
+        dataset.add_groundtruth(
+            GroundTruth(
+                datum=Datum(uid="some_extra_datum"),
+                annotations=[],
+            )
+        )
     assert "has been finalized" in str(exc_info)
 
     return dataset
@@ -328,25 +334,59 @@ def test_get_dataset_status(
     dataset_name: str,
     gt_dets1: list,
 ):
-    assert client.get_dataset_status(dataset_name) == JobStatus.NONE
+    assert client.get_dataset_status(dataset_name) is None
 
     dataset = Dataset(client, dataset_name)
 
-    assert client.get_dataset_status(dataset_name) == JobStatus.CREATING
+    assert client.get_dataset_status(dataset_name) == TableStatus.CREATING
 
     gt = gt_dets1[0]
 
     dataset.add_groundtruth(gt)
     dataset.finalize()
     status = client.get_dataset_status(dataset_name)
-    assert status == JobStatus.DONE
+    assert status == TableStatus.FINALIZED
 
     dataset.delete()
 
     status = client.get_dataset_status(dataset_name)
 
     # check that the dataset's state is no longer "ready"
-    assert status in [JobStatus.DELETING, JobStatus.NONE]
+    assert status in [TableStatus.DELETING, None]
+
+
+def test_get_summary(
+    client: Client,
+    dataset_name: str,
+    gt_semantic_segs1_mask: GroundTruth,
+    gt_dets1: list[GroundTruth],
+):
+    dataset = Dataset(client, dataset_name)
+    dataset.add_groundtruth(gt_semantic_segs1_mask)
+    dataset.add_groundtruth(gt_dets1[1])
+    dataset.finalize()
+
+    summary = dataset.get_summary()
+    assert summary.name == dataset_name
+    assert summary.num_datums == 2
+    assert summary.num_annotations == 2
+    assert summary.num_bounding_boxes == 1
+    assert summary.num_polygons == 0
+    assert summary.num_groundtruth_multipolygons == 0
+    assert summary.num_rasters == 1
+    assert summary.task_types == [TaskType.DETECTION, TaskType.SEGMENTATION]
+
+    summary.labels.sort(key=lambda x: x.key)
+    assert summary.labels == [
+        Label(key="k1", value="v1"),
+        Label(key="k2", value="v2"),
+    ]
+
+    assert len(summary.datum_metadata) == 2
+    assert {"height": 900, "width": 300} in summary.datum_metadata  # uid1
+    assert {"height": 40, "width": 30} in summary.datum_metadata  # uid2
+
+    assert summary.annotation_metadata == []
 
 
 def test_validate_dataset(client: Client, dataset_name: str):

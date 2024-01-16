@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from velour_api import exceptions, schemas
 from velour_api.api_utils import _split_query_params
 from velour_api.backend import database
-from velour_api.enums import JobStatus, TaskType
+from velour_api.enums import TableStatus, TaskType
 
 
 @pytest.fixture
@@ -116,7 +116,7 @@ def _test_post_evaluation_endpoint(
 
     with patch(
         "fastapi.BackgroundTasks.add_task",
-        side_effect=exceptions.JobStateError(""),
+        side_effect=exceptions.ModelStateError("a", "b", "c"),
     ):
         resp = client.post(endpoint, json=example_json)
         assert resp.status_code == 409
@@ -783,13 +783,13 @@ def test_get_dataset_by_name(crud, client: TestClient):
 
 @patch("velour_api.main.crud")
 def test_get_dataset_status(crud, client: TestClient):
-    crud.get_job_status.return_value = JobStatus.DONE.value
+    crud.get_table_status.return_value = TableStatus.FINALIZED.value
     resp = client.get("/datasets/dsetname/status")
     assert resp.status_code == 200
-    crud.get_job_status.assert_called_once()
+    crud.get_table_status.assert_called_once()
 
     with patch(
-        "velour_api.main.crud.get_job_status",
+        "velour_api.main.crud.get_table_status",
         side_effect=exceptions.DatasetDoesNotExistError(""),
     ):
         resp = client.get("/datasets/dsetname/status")
@@ -831,23 +831,7 @@ def test_delete_dataset(crud, client: TestClient):
     crud.delete.return_value = None
     resp = client.delete("/datasets/dsetname")
     assert resp.status_code == 200
-    assert crud.delete.call_count == 2
-
-    with patch(
-        "fastapi.BackgroundTasks.add_task",
-        side_effect=exceptions.DatasetDoesNotExistError(""),
-    ):
-        resp = client.delete("/datasets/dsetname")
-        assert resp.status_code == 404
-        assert crud.delete.call_count == 3
-
-    with patch(
-        "fastapi.BackgroundTasks.add_task",
-        side_effect=exceptions.JobStateError(""),
-    ):
-        resp = client.delete("/datasets/dsetname")
-        assert resp.status_code == 409
-        assert crud.delete.call_count == 4
+    assert crud.delete.call_count == 1
 
 
 """ POST /models """
@@ -946,23 +930,7 @@ def test_delete_model(crud, client: TestClient):
     crud.delete.return_value = None
     resp = client.delete("/models/modelname")
     assert resp.status_code == 200
-    assert crud.delete.call_count == 2
-
-    with patch(
-        "fastapi.BackgroundTasks.add_task",
-        side_effect=exceptions.ModelDoesNotExistError(""),
-    ):
-        resp = client.delete("/models/modelname")
-        assert resp.status_code == 404
-        assert crud.delete.call_count == 3
-
-    with patch(
-        "fastapi.BackgroundTasks.add_task",
-        side_effect=exceptions.JobStateError(""),
-    ):
-        resp = client.delete("/models/modelname")
-        assert resp.status_code == 409
-        assert crud.delete.call_count == 4
+    assert crud.delete.call_count == 1
 
 
 """ POST /evaluations/ap-metrics """
@@ -970,7 +938,7 @@ def test_delete_model(crud, client: TestClient):
 
 def test_post_detection_metrics(client: TestClient):
     metric_response = schemas.CreateDetectionMetricsResponse(
-        missing_pred_labels=[], ignored_pred_labels=[], job_id=1
+        missing_pred_labels=[], ignored_pred_labels=[], evaluation_id=1
     )
 
     example_json = {
@@ -994,7 +962,7 @@ def test_post_detection_metrics(client: TestClient):
 
 def test_post_clf_metrics(client: TestClient):
     metric_response = schemas.CreateClfMetricsResponse(
-        missing_pred_keys=[], ignored_pred_keys=[], job_id=1
+        missing_pred_keys=[], ignored_pred_keys=[], evaluation_id=1
     )
 
     example_json = {
@@ -1018,7 +986,7 @@ def test_post_clf_metrics(client: TestClient):
 
 def test_post_semenatic_segmentation_metrics(client: TestClient):
     metric_response = schemas.CreateSemanticSegmentationMetricsResponse(
-        missing_pred_labels=[], ignored_pred_labels=[], job_id=1
+        missing_pred_labels=[], ignored_pred_labels=[], evaluation_id=1
     )
 
     example_json = {
@@ -1070,21 +1038,21 @@ def test_get_bulk_evaluations(crud, client: TestClient):
 
 
 @patch("velour_api.main.crud")
-def test_get_bulk_evaluations_job_ids(crud, client: TestClient):
+def test_get_bulk_evaluations_evaluation_ids(crud, client: TestClient):
     crud.get_evaluations.return_value = []
 
     def test_ids(ids_str, ids_expected):
-        resp = client.get(f"/evaluations?job_ids={ids_str}")
+        resp = client.get(f"/evaluations?evaluation_ids={ids_str}")
         assert resp.status_code == 200
         call_kwargs = crud.get_evaluations.call_args.kwargs
-        assert call_kwargs["job_ids"] == ids_expected
+        assert call_kwargs["evaluation_ids"] == ids_expected
 
     test_ids("4", [4])
     test_ids("4,7", [4, 7])
     test_ids("4,7,11", [4, 7, 11])
 
     for query in ("foo", "4,foo", "1,,"):
-        resp = client.get(f"/evaluations?job_ids={query}")
+        resp = client.get(f"/evaluations?evaluation_ids={query}")
         assert resp.status_code == 400
 
 

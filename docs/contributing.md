@@ -53,7 +53,6 @@ pip install api # Install the API in your python environment
 export POSTGRES_PASSWORD=password
 export POSTGRES_HOST=localhost
 make start-postgis # Start the postgis service in Docker
-make start-redis # Start the redis service in Docker
 make start-server # Start the API service locally
 ```
 

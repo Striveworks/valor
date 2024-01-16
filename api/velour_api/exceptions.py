@@ -1,3 +1,5 @@
+from velour_api import enums
+
 """ Dataset """
 
 
@@ -77,6 +79,34 @@ class DatasetNotFinalizedError(Exception):
         )
 
 
+class DatasetStateError(Exception):
+    """
+    Raise an exception if a requested state transition is illegal.
+
+    This is a catch-all exception for dataset transitions. If it is called regularly a more specific
+    exception should be defined.
+
+    Parameters
+    -------
+    dataset_name : str
+        The name of the dataset.
+    current_state : enums.TableStatus
+        The current state of the dataset.
+    requested_state : enums.TableStatus
+        The illegal state transition that was requested for the dataset.
+    """
+
+    def __init__(
+        self,
+        dataset_name: str,
+        current_state: enums.TableStatus,
+        requested_state: enums.TableStatus,
+    ):
+        super().__init__(
+            f"Dataset `{dataset_name}` attempted an illegal transition from `{current_state}` to `{requested_state}`."
+        )
+
+
 """ Model """
 
 
@@ -136,7 +166,7 @@ class ModelFinalizedError(Exception):
 
     def __init__(self, *, dataset_name: str, model_name: str):
         super().__init__(
-            f"cannot edit inferences for model`{model_name}` on dataset `{dataset_name}` since it has been finalized"
+            f"cannot edit inferences for model `{model_name}` on dataset `{dataset_name}` since it has been finalized"
         )
 
 
@@ -173,6 +203,34 @@ class ModelInferencesDoNotExist(Exception):
 
         super().__init__(
             f"inferences for model `{model_name}` over dataset `{dataset_name}` do not exist."
+        )
+
+
+class ModelStateError(Exception):
+    """
+    Raise an exception if a requested state transition is illegal.
+
+    This is a catch-all exception for model transitions. If it is called regularly a more specific
+    exception should be defined.
+
+    Parameters
+    -------
+    model_name : str
+        The name of the model.
+    current_state : enums.TableStatus
+        The current state of the model.
+    requested_state : enums.TableStatus
+        The illegal state transition that was requested for the model.
+    """
+
+    def __init__(
+        self,
+        model_name: str,
+        current_state: enums.TableStatus,
+        requested_state: enums.TableStatus,
+    ):
+        super().__init__(
+            f"Model `{model_name}` attempted an illegal transition from `{current_state}` to `{requested_state}`."
         )
 
 
@@ -225,49 +283,88 @@ class DatumDoesNotBelongToDatasetError(Exception):
         )
 
 
-""" Misc. """
-
-
-class GroundTruthAlreadyExistsError(Exception):
-    """Raises an exception if the user tries to create a `GroundTruth` that already exists."""
-
-    pass
+""" Annotation """
 
 
 class AnnotationAlreadyExistsError(Exception):
-    """Raises an exception if the user tries to create an `Annotation` that already exists."""
-
-    pass
-
-
-""" Jobs """
-
-
-class JobDoesNotExistError(Exception):
     """
-    Raises an exception if the user queries a job ID which doesn't exist.
+    Raises an exception if the user tries to create a annotation for a datum that already has annotation(s).
 
     Parameters
     -------
-    id : str
-        The id of the job.
+    datum_uid : str
+        The uid of the datum.
     """
 
-    def __init__(self, id: str):
-        super().__init__(f"job with id `{id}` does not exist")
+    def __init__(self, datum_uid: str):
+        super().__init__(
+            f"Annotation(s) for datum with uid: `{datum_uid}` already exist."
+        )
 
 
-class JobStateError(Exception):
+""" Evaluation """
+
+
+class EvaluationDoesNotExistError(Exception):
     """
-    Raises an exception if the user tries to manipulate a job at the wrong time (e.g., deleting a job that is currently processing).
+    Raises an exception if the user tries to manipulate an evaluation that doesn't exist.
+    """
+
+    def __init__(self):
+        super().__init__("Evaluation does not exist.")
+
+
+class EvaluationAlreadyExistsError(Exception):
+    """
+    Raises an exception if the user tries to create an evaluation that already exists.
+    """
+
+    def __init__(self):
+        super().__init__("Evaluation with provided settings already exists.")
+
+
+class EvaluationRunningError(Exception):
+    """
+    Raises an exception if the user tries to modify a dataset or model while an evaluation is running.
+    """
+
+    def __init__(
+        self, dataset_name: str | None = None, model_name: str | None = None
+    ):
+        if dataset_name and model_name:
+            msg = f"User action on model `{model_name}` and dataset `{dataset_name}` is blocked by at least one running evaluation."
+        elif dataset_name:
+            msg = f"User action on dataset `{dataset_name}` is blocked by at least one running evaluation."
+        elif model_name:
+            msg = f"User action on model `{model_name}` is blocked by at least one running evaluation."
+        else:
+            msg = "User action is blocked by at least one running evaluation."
+        super().__init__(msg)
+
+
+class EvaluationStateError(Exception):
+    """
+    Raises an exception if a requested state transition is illegal.
+
+    This is a catch-all exception for evaluation transitions. If it is called regularly a more specific
+    exception should be defined.
 
     Parameters
     -------
-    id : str
-        The id of the job.
-    msg : str
-        The message of the stateflow error.
+    evaluation_id : int
+        The id of the evaluation.
+    current_state : enums.EvaluationStatus
+        The current state of the evaluation.
+    requested_state : enums.EvaluationStatus
+        The illegal state transition that was requested for the evaluation.
     """
 
-    def __init__(self, id: str, msg: str = ""):
-        super().__init__(f"state error with job id: `{id}`, msg: {msg}")
+    def __init__(
+        self,
+        evaluation_id: int,
+        current_state: enums.EvaluationStatus,
+        requested_state: enums.EvaluationStatus,
+    ):
+        super().__init__(
+            f"Evaluation `{evaluation_id}` attempted an illegal transition from `{current_state}` to `{requested_state}`."
+        )

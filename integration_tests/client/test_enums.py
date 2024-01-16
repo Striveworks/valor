@@ -13,25 +13,25 @@ def _enum_to_dict(enum: EnumMeta) -> dict:
     return {x.name: x.value for x in enum}
 
 
-def test_jobstatus_enum():
-    assert _enum_to_dict(enums.JobStatus) == _enum_to_dict(
-        backend_enums.JobStatus
-    )
-
-
 def test_tasktype_enum():
     assert _enum_to_dict(enums.TaskType) == _enum_to_dict(
         backend_enums.TaskType
     )
 
 
-def test_datatypes_enum():
-    assert _enum_to_dict(enums.DataType) == _enum_to_dict(
-        backend_enums.DataType
-    )
-
-
 def test_annotation_types_enum():
     assert _enum_to_dict(enums.AnnotationType) == _enum_to_dict(
         backend_enums.AnnotationType
+    )
+
+
+def test_evaluation_status_enum():
+    assert _enum_to_dict(enums.EvaluationStatus) == _enum_to_dict(
+        backend_enums.EvaluationStatus
+    )
+
+
+def test_table_status_enum():
+    assert _enum_to_dict(enums.TableStatus) == _enum_to_dict(
+        backend_enums.TableStatus
     )

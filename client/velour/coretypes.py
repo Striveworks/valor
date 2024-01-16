@@ -2,11 +2,16 @@ import datetime
 import json
 import math
 import warnings
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from typing import Dict, List, Tuple, Union
 
-from velour.client import Client, ClientException, Job, wait_for_predicate
-from velour.enums import AnnotationType, JobStatus, TaskType
+from velour.client import (
+    Client,
+    ClientException,
+    DeletionJob,
+    wait_for_predicate,
+)
+from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import (
     DetectionParameters,
@@ -545,8 +550,6 @@ class Prediction:
         The `Datum` associated with the `Prediction`.
     annotations : List[Annotation]
         The list of `Annotations` associated with the `Prediction`.
-    model : str
-        The name of the model that produced the `Prediction`.
 
     Attributes
     ----------
@@ -661,6 +664,31 @@ class Prediction:
         self._model_name = model.name if isinstance(model, Model) else model
 
 
+@dataclass
+class DatasetSummary:
+    """Dataclass for storing dataset summary information"""
+
+    name: str
+    num_datums: int
+    num_annotations: int
+    num_bounding_boxes: int
+    num_polygons: int
+    num_groundtruth_multipolygons: int
+    num_rasters: int
+    task_types: List[TaskType]
+    labels: List[Label]
+    datum_metadata: List[MetadataType]
+    annotation_metadata: List[MetadataType]
+
+    def __post_init__(self):
+        for i, tt in enumerate(self.task_types):
+            if isinstance(tt, str):
+                self.task_types[i] = TaskType(tt)
+        for i, label in enumerate(self.labels):
+            if isinstance(label, dict):
+                self.labels[i] = Label(**label)
+
+
 class Dataset:
     """
     A class describing a given dataset.
@@ -720,13 +748,10 @@ class Dataset:
         self.id = id
         self._validate()
 
-        if (
-            delete_if_exists
-            and client.get_dataset_status(name) != JobStatus.NONE
-        ):
+        if delete_if_exists and client.get_dataset(name) is None:
             client.delete_dataset(name, timeout=30)
 
-        if client.get_dataset_status(name) == JobStatus.NONE:
+        if client.get_dataset(name) is None:
             client.create_dataset(self.dict())
 
         for k, v in client.get_dataset(name).items():
@@ -861,6 +886,43 @@ class Dataset:
         """
         return self.client.get_bulk_evaluations(datasets=self.name)
 
+    def get_summary(self) -> DatasetSummary:
+        """
+        Get the summary of a given dataset.
+
+        Returns
+        -------
+        DatasetSummary
+            The summary of the dataset. This class has the following fields:
+
+            name: name of the dataset
+
+            num_datums: total number of datums in the dataset
+
+            num_annotations: total number of labeled annotations in the dataset. if an
+            object (such as a bounding box) has multiple labels then each label is counted separately
+
+            num_bounding_boxes: total number of bounding boxes in the dataset
+
+            num_polygons: total number of polygons in the dataset
+
+            num_groundtruth_multipolygons: total number of multipolygons in the dataset
+
+            num_rasters: total number of rasters in the dataset
+
+            task_types: list of the unique task types in the dataset
+
+            labels: list of the unique labels in the dataset
+
+            datum_metadata: list of the unique metadata dictionaries in the dataset that are associated
+            to datums
+
+            groundtruth_annotation_metadata: list of the unique metadata dictionaries in the dataset that are
+            associated to annotations
+        """
+        resp = self.client.get_dataset_summary(self.name)
+        return DatasetSummary(**resp)
+
     def finalize(
         self,
     ):
@@ -877,7 +939,7 @@ class Dataset:
         """
         Delete the `Dataset` object from the backend.
         """
-        job = Job(self.client, dataset_name=self.name)
+        job = DeletionJob(self.client, dataset_name=self.name)
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
         return job
 
@@ -895,12 +957,12 @@ class Evaluation:
             setattr(self, k, v)
 
     @property
-    def job_id(self):
+    def id(self):
         return self.evaluation_id
 
     def get_result(self) -> EvaluationResult:
         """
-        Fetch the `EvaluationResult` for our `job_id`.
+        Fetch the `EvaluationResult` for our `evaluation_id`.
 
         Returns
         ----------
@@ -910,10 +972,10 @@ class Evaluation:
         Raises
         ----------
         ClientException
-            If an Evaluation with the given `job_id` is not found.
+            If an Evaluation with the given `evaluation_id` is not found.
         """
         response = self.client.get_bulk_evaluations(
-            job_ids=[self.evaluation_id]
+            evaluation_ids=[self.evaluation_id]
         )
         if not response:
             raise ClientException("Not Found")
@@ -927,7 +989,8 @@ class Evaluation:
     ) -> EvaluationResult:
         return wait_for_predicate(
             lambda: self.get_result(),
-            lambda result: result.status in [JobStatus.DONE, JobStatus.FAILED],
+            lambda result: result.status
+            in [EvaluationStatus.DONE, EvaluationStatus.FAILED],
             timeout,
             interval,
         )
@@ -992,13 +1055,10 @@ class Model:
         self.id = id
         self._validate()
 
-        if (
-            delete_if_exists
-            and client.get_model_status(name) != JobStatus.NONE
-        ):
+        if delete_if_exists and client.get_model(name) is None:
             client.delete_model(name, timeout=30)
 
-        if client.get_model_status(name) == JobStatus.NONE:
+        if client.get_model(name) is None:
             client.create_model(self.dict())
 
         for k, v in client.get_model(name).items():
@@ -1127,7 +1187,7 @@ class Model:
             "evaluations", json=asdict(evaluation)
         ).json()
 
-        evaluation_id = resp.pop("job_id")
+        evaluation_id = resp.pop("evaluation_id")
         evaluation_job = Evaluation(
             client=self.client,
             dataset_name=dataset.name,
@@ -1201,7 +1261,7 @@ class Model:
         for k in ["missing_pred_labels", "ignored_pred_labels"]:
             resp[k] = [Label(**la) for la in resp[k]]
 
-        evaluation_id = resp.pop("job_id")
+        evaluation_id = resp.pop("evaluation_id")
         evaluation_job = Evaluation(
             client=self.client,
             evaluation_id=evaluation_id,
@@ -1250,7 +1310,7 @@ class Model:
         ).json()
 
         # create client-side evaluation handler
-        evaluation_id = resp.pop("job_id")
+        evaluation_id = resp.pop("evaluation_id")
         evaluation_job = Evaluation(
             client=self.client,
             evaluation_id=evaluation_id,
@@ -1265,7 +1325,7 @@ class Model:
         """
         Delete the `Model` object from the backend.
         """
-        job = Job(self.client, model_name=self.name)
+        job = DeletionJob(self.client, model_name=self.name)
         self.client._requests_delete_rel_host(f"models/{self.name}").json()
         return job
 

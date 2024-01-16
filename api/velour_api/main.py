@@ -1,5 +1,7 @@
+import json
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 import sqlalchemy
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
@@ -11,7 +13,6 @@ from velour_api import __version__ as api_version
 from velour_api import auth, crud, enums, exceptions, logger, schemas
 from velour_api.api_utils import _split_query_params
 from velour_api.backend import database
-from velour_api.crud import jobs
 from velour_api.settings import auth_settings
 
 token_auth_scheme = auth.OptionalHTTPBearer()
@@ -20,7 +21,6 @@ token_auth_scheme = auth.OptionalHTTPBearer()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     database.create_db()
-    jobs.connect_to_redis()
     yield
 
 
@@ -52,28 +52,35 @@ def get_db():
         db.close()
 
 
-def create_background_task_with_precheck(
-    *_,
-    handler: BackgroundTasks,
-    task: callable,
-    **kwargs,
-):
+def create_http_error(
+    status_code: int,
+    error: Exception,
+) -> HTTPException:
     """
-    Runs precheck validation on the stateflow decorator before creating a background task.
+    Creates a HTTP execption using a caught exception.
+
+    The HTTPException is populated with the name and details of the caught exception.
 
     Parameters
     ----------
-    handler : BackgroundTasks
-        The background task handler to add the task to.
-    task : Callable
-        The callable task function to be executed.
-    **kwargs
-        Additional keyword arguments to be passed to the task.
+    status_code : int
+        The desired HTTP status code.
+    error : Exception
+        The exception that was caught and needs conversion.
+
+    Returns
+    -------
+    fastapi.HTTPException
     """
-    task(precheck=True, **kwargs)
-    handler.add_task(
-        task,
-        **kwargs,
+    return HTTPException(
+        status_code=status_code,
+        detail=json.dumps(
+            {
+                "name": str(type(error).__name__),
+                "detail": str(error),
+                "timestamp": datetime.utcnow().timestamp(),
+            }
+        ),
     )
 
 
@@ -114,12 +121,13 @@ def create_groundtruths(
         exceptions.DatasetDoesNotExistError,
         exceptions.DatumDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
     except (
         exceptions.DatasetFinalizedError,
         exceptions.DatumAlreadyExistsError,
+        exceptions.AnnotationAlreadyExistsError,
     ) as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=409, error=e)
 
 
 @app.get(
@@ -165,7 +173,7 @@ def get_groundtruth(
         exceptions.DatumDoesNotExistError,
         exceptions.DatasetDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 """ PREDICTIONS """
@@ -207,12 +215,13 @@ def create_predictions(
         exceptions.ModelDoesNotExistError,
         exceptions.DatumDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
     except (
         exceptions.DatasetNotFinalizedError,
         exceptions.ModelFinalizedError,
+        exceptions.AnnotationAlreadyExistsError,
     ) as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=409, error=e)
 
 
 @app.get(
@@ -261,7 +270,7 @@ def get_prediction(
         exceptions.DatumDoesNotExistError,
         exceptions.DatasetDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 """ LABELS """
@@ -331,7 +340,7 @@ def get_labels_from_dataset(
             ),
         )
     except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.get(
@@ -373,7 +382,7 @@ def get_labels_from_model(
             ),
         )
     except exceptions.ModelDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 """ DATASET """
@@ -406,7 +415,7 @@ def create_dataset(dataset: schemas.Dataset, db: Session = Depends(get_db)):
     try:
         crud.create_dataset(db=db, dataset=dataset)
     except exceptions.DatasetAlreadyExistsError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=409, error=e)
 
 
 @app.get(
@@ -467,7 +476,7 @@ def get_dataset(
     try:
         return crud.get_dataset(db=db, dataset_name=dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.get(
@@ -477,7 +486,7 @@ def get_dataset(
 )
 def get_dataset_status(
     dataset_name: str, db: Session = Depends(get_db)
-) -> enums.JobStatus:
+) -> enums.TableStatus:
     """
     Fetch the status of a dataset.
 
@@ -492,7 +501,7 @@ def get_dataset_status(
 
     Returns
     -------
-    enums.JobStatus
+    enums.TableStatus
         The requested state.
 
     Raises
@@ -501,7 +510,44 @@ def get_dataset_status(
         If the dataset doesn't exist.
     """
     try:
-        resp = crud.get_job_status(dataset_name=dataset_name)
+        resp = crud.get_table_status(db=db, dataset_name=dataset_name)
+        return resp
+    except exceptions.DatasetDoesNotExistError as e:
+        raise create_http_error(status_code=404, error=e)
+
+
+@app.get(
+    "/datasets/{dataset_name}/summary",
+    dependencies=[Depends(token_auth_scheme)],
+    tags=["Datasets"],
+)
+def get_dataset_summary(
+    dataset_name: str, db: Session = Depends(get_db)
+) -> schemas.DatasetSummary:
+    """
+    Get the summary of a dataset.
+
+    GET Endpoint: `/datasets/{dataset_name}/summary`
+
+    Parameters
+    ----------
+    dataset_name : str
+        The name of the dataset.
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    schemas.DatasetSummary
+        The dataset summary.
+
+    Raises
+    ------
+    HTTPException (404)
+        If the dataset doesn't exist.
+    """
+    try:
+        resp = crud.get_dataset_summary(db, name=dataset_name)
         return resp
     except exceptions.DatasetDoesNotExistError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -537,9 +583,9 @@ def finalize_dataset(dataset_name: str, db: Session = Depends(get_db)):
     try:
         crud.finalize(db=db, dataset_name=dataset_name)
     except exceptions.DatasetIsEmptyError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise create_http_error(status_code=400, error=e)
     except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.delete(
@@ -575,19 +621,14 @@ def delete_dataset(
     """
     logger.debug(f"request to delete dataset {dataset_name}")
     try:
-        create_background_task_with_precheck(
-            handler=background_tasks,
-            task=crud.delete,
-            db=db,
-            dataset_name=dataset_name,
-        )
+        crud.delete(db=db, dataset_name=dataset_name)
     except exceptions.DatasetDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
     except (
-        exceptions.JobStateError,
-        exceptions.DatasetNotFinalizedError,
+        exceptions.DatasetStateError,
+        exceptions.EvaluationRunningError,
     ) as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=409, error=e)
 
 
 """ DATUMS """
@@ -635,7 +676,7 @@ def get_datums(
         exceptions.DatumDoesNotExistError,
         exceptions.DatasetDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.get(
@@ -681,7 +722,7 @@ def get_datum(
         exceptions.DatumDoesNotExistError,
         exceptions.DatasetDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 """ MODELS """
@@ -719,9 +760,9 @@ def create_model(model: schemas.Model, db: Session = Depends(get_db)):
         exceptions.DatumDoesNotExistError,
         exceptions.DatasetDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
     except (exceptions.ModelAlreadyExistsError,) as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=409, error=e)
 
 
 @app.get(
@@ -780,22 +821,24 @@ def get_model(model_name: str, db: Session = Depends(get_db)) -> schemas.Model:
     try:
         return crud.get_model(db=db, model_name=model_name)
     except exceptions.ModelDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.get(
-    "/models/{model_name}/status",
+    "/models/{model_name}/dataset/{dataset_name}/status",
     dependencies=[Depends(token_auth_scheme)],
     tags=["Models"],
 )
 def get_model_status(
-    model_name: str, db: Session = Depends(get_db)
-) -> enums.JobStatus:
+    dataset_name: str, model_name: str, db: Session = Depends(get_db)
+) -> enums.TableStatus:
     """
-    Fetch the status of a model.
+    Fetch the status of a model over a dataset.
 
     Parameters
     ----------
+    dataset_name : str
+        The name of the dataset.
     model_name : str
         The name of the model.
     db : Session
@@ -803,7 +846,7 @@ def get_model_status(
 
     Returns
     -------
-    enums.JobStatus
+    enums.TableStatus
         The requested state.
 
     Raises
@@ -812,9 +855,11 @@ def get_model_status(
         If the model doesn't exist.
     """
     try:
-        return crud.get_job_status(model_name=model_name)
+        return crud.get_table_status(
+            db=db, dataset_name=dataset_name, model_name=model_name
+        )
     except exceptions.ModelDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.put(
@@ -858,12 +903,12 @@ def finalize_inferences(
         exceptions.DatasetIsEmptyError,
         exceptions.ModelIsEmptyError,
     ) as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise create_http_error(status_code=400, error=e)
     except (
         exceptions.DatasetDoesNotExistError,
         exceptions.ModelDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 @app.delete(
@@ -896,19 +941,15 @@ def delete_model(
         If the model isn't in the correct state to be deleted.
     """
     try:
-        create_background_task_with_precheck(
-            handler=background_tasks,
-            task=crud.delete,
-            db=db,
-            model_name=model_name,
-        )
+        crud.delete(db=db, model_name=model_name)
     except exceptions.ModelDoesNotExistError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
     except (
-        exceptions.JobStateError,
-        exceptions.ModelNotFinalizedError,
+        exceptions.DatasetStateError,
+        exceptions.ModelStateError,
+        exceptions.EvaluationRunningError,
     ) as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=409, error=e)
 
 
 """ EVALUATION """
@@ -964,34 +1005,31 @@ def create_evaluation(
         # add metric computation to background tasks
         if job_request.task_type == enums.TaskType.CLASSIFICATION:
             resp = crud.create_clf_evaluation(db=db, job_request=job_request)
-            create_background_task_with_precheck(
-                handler=background_tasks,
-                task=crud.compute_clf_metrics,
+            background_tasks.add_task(
+                crud.compute_clf_metrics,
                 db=db,
+                evaluation_id=resp.evaluation_id,
                 job_request=job_request,
-                job_id=resp.job_id,
             )
         elif job_request.task_type == enums.TaskType.DETECTION:
             resp = crud.create_detection_evaluation(
                 db=db, job_request=job_request
             )
-            create_background_task_with_precheck(
-                handler=background_tasks,
-                task=crud.compute_detection_metrics,
+            background_tasks.add_task(
+                crud.compute_detection_metrics,
                 db=db,
+                evaluation_id=resp.evaluation_id,
                 job_request=job_request,
-                job_id=resp.job_id,
             )
         elif job_request.task_type == enums.TaskType.SEGMENTATION:
             resp = crud.create_semantic_segmentation_evaluation(
                 db=db, job_request=job_request
             )
-            create_background_task_with_precheck(
-                handler=background_tasks,
-                task=crud.compute_semantic_segmentation_metrics,
+            background_tasks.add_task(
+                crud.compute_semantic_segmentation_metrics,
                 db=db,
+                evaluation_id=resp.evaluation_id,
                 job_request=job_request,
-                job_id=resp.job_id,
             )
         else:
             raise ValueError(
@@ -999,19 +1037,22 @@ def create_evaluation(
             )
         return resp
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise create_http_error(status_code=400, error=e)
     except (
         exceptions.DatasetDoesNotExistError,
         exceptions.ModelDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
     except (
         exceptions.DatasetNotFinalizedError,
         exceptions.ModelNotFinalizedError,
     ) as e:
-        raise HTTPException(status_code=405, detail=str(e))
-    except exceptions.JobStateError as e:
-        raise HTTPException(status_code=409, detail=str(e))
+        raise create_http_error(status_code=405, error=e)
+    except (
+        exceptions.DatasetStateError,
+        exceptions.ModelStateError,
+    ) as e:
+        raise create_http_error(status_code=409, error=e)
 
 
 @app.get(
@@ -1023,7 +1064,7 @@ def create_evaluation(
 def get_bulk_evaluations(
     datasets: str = None,
     models: str = None,
-    job_ids: str = None,
+    evaluation_ids: str = None,
     db: Session = Depends(get_db),
 ) -> list[schemas.Evaluation]:
     """
@@ -1043,8 +1084,8 @@ def get_bulk_evaluations(
         An optional set of dataset names to return metrics for
     models : str
         An optional set of model names to return metrics for
-    job_ids : str
-        An optional set of job_ids to return metrics for
+    evaluation_ids : str
+        An optional set of evaluation_ids to return metrics for
     db : Session
         The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
 
@@ -1062,30 +1103,30 @@ def get_bulk_evaluations(
     """
     model_names = _split_query_params(models)
     dataset_names = _split_query_params(datasets)
-    job_ids_str = _split_query_params(job_ids)
+    evaluation_ids_str = _split_query_params(evaluation_ids)
 
-    if job_ids_str:
+    if evaluation_ids_str:
         try:
-            job_ids_ints = [int(id) for id in job_ids_str]
+            evaluation_ids_ints = [int(id) for id in evaluation_ids_str]
         except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise create_http_error(status_code=400, error=e)
     else:
-        job_ids_ints = None
+        evaluation_ids_ints = None
 
     try:
         return crud.get_evaluations(
             db=db,
-            job_ids=job_ids_ints,
+            evaluation_ids=evaluation_ids_ints,
             dataset_names=dataset_names,
             model_names=model_names,
         )
     except (ValueError,) as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise create_http_error(status_code=400, error=e)
     except (
         exceptions.DatasetDoesNotExistError,
         exceptions.ModelDoesNotExistError,
     ) as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise create_http_error(status_code=404, error=e)
 
 
 """ AUTHENTICATION """
@@ -1176,4 +1217,4 @@ def ready(db: Session = Depends(get_db)):
         db.execute(sqlalchemy.text("select 1"))
         return schemas.Readiness(status="ok")
     except Exception as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise create_http_error(status_code=503, error=e)

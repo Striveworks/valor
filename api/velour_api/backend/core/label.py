@@ -92,6 +92,10 @@ def create_labels(
     List[models.Label]
         A list of corresponding label rows from the database.
     """
+    # check if empty
+    if not labels:
+        return []
+
     # remove duplicates
     labels_no_duplicates = list(set(labels))
 
