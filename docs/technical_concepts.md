@@ -35,6 +35,7 @@ As of January 2024, Velour supports the following types of supervised learning t
     - IOU
     - mIOU
 
+For descriptions of each of these metrics, see our [Metrics](metrics.md) page.
 
 We expect the Velour framework to extend well to other types of supervised learning tasks, and plan to expand our supported task types in future releases.
 
