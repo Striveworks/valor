@@ -15,8 +15,8 @@ On this page, we'll describe the various metrics that you can calculate using Ve
 
 | Name 	| Description 	|
 |---	|---	|
-| Average Precision (AP) 	| The weighted mean of precisions achieved at several different recall thresholds for a single IOU. 	|
-| AP Averaged Over Intersection over Unions (IOUs) 	| The average of several AP metrics calculated at various IOUs. 	|
+| Average Precision (AP) 	| The weighted mean of precisions achieved at several different recall thresholds for a single IOU, grouped by class. 	|
+| AP Averaged Over Intersection over Unions (IOUs) 	| The average of several AP metrics calculated at various IOUs, grouped by class. 	|
 | Mean Average Precision (mAP) 	| The mean of several AP scores calculated over various classes. 	|
 | mAP Averaged Over Intersection over Unions (IOUs) 	| The mean of several averaged AP scores calculated over various classes. 	|
 
