@@ -74,7 +74,7 @@ class ImageMetadata:
         datum : Datum
             The `Datum` to check validity for.
         """
-        return {"height", "width"}.issubset(datum.metadata)
+        return {"height", "width"}.issubset(datum._metadata)
 
     @classmethod
     def from_datum(cls, datum: Datum):
@@ -88,15 +88,15 @@ class ImageMetadata:
         """
         if not cls.valid(datum):
             raise ValueError(
-                f"`datum` does not contain height and/or width in metadata `{datum.metadata}`"
+                f"`datum` does not contain height and/or width in metadata `{datum._metadata}`"
             )
-        metadata = datum.metadata.copy()
+        metadata = datum._metadata.copy()
         width = metadata.pop("width")
         height = metadata.pop("height")
         assert isinstance(width, SupportsInt)
         assert isinstance(height, SupportsInt)
         img = cls(
-            uid=datum.uid,
+            uid=datum._uid,
             height=int(height),
             width=int(width),
             metadata=metadata,
@@ -176,7 +176,7 @@ class VideoFrameMetadata:
         datum : Datum
             The `Datum` to check validity for.
         """
-        return {"height", "width", "frame"}.issubset(datum.metadata)
+        return {"height", "width", "frame"}.issubset(datum._metadata)
 
     @classmethod
     def from_datum(cls, datum: Datum):
@@ -190,7 +190,7 @@ class VideoFrameMetadata:
         """
         if not cls.valid(datum):
             raise ValueError(
-                f"`datum` does not contain height, width and/or frame in metadata `{datum.metadata}`"
+                f"`datum` does not contain height, width and/or frame in metadata `{datum._metadata}`"
             )
         image = ImageMetadata.from_datum(datum)
         frame = image.metadata.pop("frame")
@@ -205,5 +205,5 @@ class VideoFrameMetadata:
         Converts an `VideoFrameMetadata` object into a `Datum`.
         """
         datum = self.image.to_datum()
-        datum.metadata["frame"] = self.frame
+        datum._metadata["frame"] = self.frame
         return datum

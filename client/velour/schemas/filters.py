@@ -503,7 +503,7 @@ class Filter:
             ]
         if "labels" in expression_dict:
             filter_request.labels = [
-                {expr.value.key: expr.value.value}
+                {expr.value._key: expr.value.value}
                 for expr in expression_dict["labels"]
             ]
         if "label_keys" in expression_dict:

@@ -92,7 +92,7 @@ def create_combined_segmentation_mask(
         len(
             set(
                 [
-                    annotated_datum.datum.uid
+                    annotated_datum.datum._uid
                     for annotated_datum in annotated_datums
                 ]
             )
@@ -131,7 +131,7 @@ def create_combined_segmentation_mask(
     label_values = []
     for annotation in annotations:
         for label in annotation.labels:
-            if label.key == label_key:
+            if label._key == label_key:
                 label_values.append(label.value)
     if not label_values:
         raise RuntimeError(
@@ -232,7 +232,7 @@ def _draw_detection_on_image(
 ) -> Image.Image:
     """Draw a detection on an image."""
     text = ", ".join(
-        [f"{label.key}:{label.value}" for label in detection.labels]
+        [f"{label._key}:{label.value}" for label in detection.labels]
     )
     if detection.polygon is not None:
         img = _draw_bounding_polygon_on_image(

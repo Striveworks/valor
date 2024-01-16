@@ -43,7 +43,7 @@ def test_generate_segmentation_data(
     ), "Number of images doesn't match the test input"
 
     for image in dataset.get_datums():
-        uid = image.uid
+        uid = image._uid
         sample_gt = dataset.get_groundtruth(uid)
 
         sample_annotations = sample_gt.annotations

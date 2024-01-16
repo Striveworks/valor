@@ -45,8 +45,12 @@ class Label:
         A unique ID for the `Label`.
     """
 
+    id: DeclarativeMapper
+    key: DeclarativeMapper
+    label: DeclarativeMapper
+
     def __init__(self, key: str, value: str, score: Union[float, None] = None):
-        self.key = key
+        self._key = key
         self.value = value
         self.score = score
         self._validate()
@@ -55,7 +59,7 @@ class Label:
         """
         Validate the inputs of the `Label`.
         """
-        if not isinstance(self.key, str):
+        if not isinstance(self._key, str):
             raise TypeError("key should be of type `str`")
         if not isinstance(self.value, str):
             raise TypeError("value should be of type `str`")
@@ -76,7 +80,7 @@ class Label:
         tuple
             A tuple of the `Label's` arguments.
         """
-        return (self.key, self.value, self.score)
+        return (self._key, self.value, self.score)
 
     def __eq__(self, other):
         """
@@ -93,13 +97,13 @@ class Label:
             A boolean describing whether the two objects are equal.
         """
         if (
-            not hasattr(other, "key")
-            or not hasattr(other, "key")
+            not hasattr(other, "_key")
+            or not hasattr(other, "value")
             or not hasattr(other, "score")
         ):
             return False
 
-        if self.key != other.key or self.value != other.value:
+        if self._key != other._key or self.value != other.value:
             return False
 
         if self.score is not None and other.score is not None:
@@ -117,7 +121,7 @@ class Label:
         int
             The hashed 'Label`.
         """
-        return hash(f"key:{self.key},value:{self.value},score:{self.score}")
+        return hash(f"key:{self._key},value:{self.value},score:{self.score}")
 
     def dict(self) -> dict:
         """
@@ -129,7 +133,7 @@ class Label:
             A dictionary of the `Label's` attributes.
         """
         return {
-            "key": self.key,
+            "key": self._key,
             "value": self.value,
             "score": self.score,
         }
@@ -159,6 +163,10 @@ class Datum:
         A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
     """
 
+    uid: DeclarativeMapper
+    metadata: DeclarativeMapper
+    geospatial: DeclarativeMapper
+
     def __init__(
         self,
         uid: str,
@@ -175,9 +183,9 @@ class Datum:
             ]
         ] = None,
     ):
-        self.uid = uid
-        self.metadata: MetadataType = metadata if metadata else {}
-        self.geospatial = geospatial if geospatial else {}
+        self._uid = uid
+        self._metadata: MetadataType = metadata if metadata else {}
+        self._geospatial = geospatial if geospatial else {}
         self._dataset_name = None
         self._validate()
 
@@ -185,10 +193,10 @@ class Datum:
         """
         Validates the parameters used to create a `Datum` object.
         """
-        if not isinstance(self.uid, str):
-            raise SchemaTypeError("uid", str, self.uid)
-        validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
+        if not isinstance(self._uid, str):
+            raise SchemaTypeError("uid", str, self._uid)
+        validate_metadata(self._metadata)
+        self._metadata = load_metadata(self._metadata)
 
     def __str__(self):
         return str(self.dict())
@@ -204,9 +212,9 @@ class Datum:
         """
         return {
             "dataset_name": self._dataset_name,
-            "uid": self.uid,
-            "metadata": dump_metadata(self.metadata),
-            "geospatial": self.geospatial if self.geospatial else None,
+            "uid": self._uid,
+            "metadata": dump_metadata(self._metadata),
+            "geospatial": self._geospatial if self._geospatial else None,
         }
 
     @classmethod
@@ -237,7 +245,7 @@ class Datum:
     def _set_dataset_name(self, dataset: Union["Dataset", str]) -> None:
         """Sets the dataset the datum belongs to. This should never be called by the user."""
         self._dataset_name = (
-            dataset.name if isinstance(dataset, Dataset) else dataset
+            dataset._name if isinstance(dataset, Dataset) else dataset
         )
 
 
@@ -327,6 +335,12 @@ class Annotation:
     ... )
     """
 
+    task: DeclarativeMapper
+    type: DeclarativeMapper
+    metadata: DeclarativeMapper
+    geometric_area: DeclarativeMapper
+    geospatial: DeclarativeMapper
+
     def __init__(
         self,
         task_type: TaskType,
@@ -340,7 +354,7 @@ class Annotation:
     ):
         self.task_type = task_type
         self.labels = labels
-        self.metadata = metadata if metadata else {}
+        self._metadata = metadata if metadata else {}
         self.bounding_box = bounding_box
         self.polygon = polygon
         self.multipolygon = multipolygon
@@ -396,8 +410,8 @@ class Annotation:
                 raise SchemaTypeError("raster", Raster, self.raster)
 
         # metadata
-        validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
+        validate_metadata(self._metadata)
+        self._metadata = load_metadata(self._metadata)
 
     def __str__(self):
         return str(self.dict())
@@ -414,7 +428,7 @@ class Annotation:
         return {
             "task_type": self.task_type.value,
             "labels": [label.dict() for label in self.labels],
-            "metadata": dump_metadata(self.metadata),
+            "metadata": dump_metadata(self._metadata),
             "bounding_box": asdict(self.bounding_box)
             if self.bounding_box
             else None,
@@ -576,6 +590,8 @@ class Prediction:
         The score assigned to the `Prediction`.
     """
 
+    score: DeclarativeMapper
+
     def __init__(
         self, datum: Datum, annotations: Optional[List[Annotation]] = None
     ):
@@ -608,7 +624,7 @@ class Prediction:
             if annotation.task_type == TaskType.CLASSIFICATION:
                 label_keys_to_sum = {}
                 for scored_label in annotation.labels:
-                    label_key = scored_label.key
+                    label_key = scored_label._key
                     if label_key not in label_keys_to_sum:
                         label_keys_to_sum[label_key] = 0.0
                     label_keys_to_sum[label_key] += scored_label.score
@@ -670,7 +686,7 @@ class Prediction:
         return self.dict() == other.dict()
 
     def _set_model_name(self, model: Union["Model", str]):
-        self._model_name = model.name if isinstance(model, Model) else model
+        self._model_name = model._name if isinstance(model, Model) else model
 
 
 @dataclass
@@ -745,8 +761,8 @@ class Evaluation:
         datum_filter: Filter,
         parameters: EvaluationParameters,
         status: EvaluationStatus,
-        metrics: List[dict],
-        confusion_matrices: List[dict],
+        metrics: List[Dict],
+        confusion_matrices: List[Dict],
         **kwargs,
     ):
         self.id = id
@@ -883,6 +899,10 @@ class Dataset:
         A GeoJSON-style dictionary describing the geospatial coordinates of the dataset.
     """
 
+    name: DeclarativeMapper
+    metadata: DeclarativeMapper
+    geospatial: DeclarativeMapper
+
     def __init__(
         self,
         client: Client,
@@ -920,9 +940,9 @@ class Dataset:
         delete_if_exists : bool, default=False
             Deletes any existing dataset with the same name.
         """
-        self.name = name
-        self.metadata = metadata
-        self.geospatial = geospatial
+        self._name = name
+        self._metadata = metadata
+        self._geospatial = geospatial
         self.id = id
         self._validate_coretype()
 
@@ -941,18 +961,18 @@ class Dataset:
         Validates the arguments used to create a `Dataset` object.
         """
         # validation
-        if not isinstance(self.name, str):
+        if not isinstance(self._name, str):
             raise TypeError("`name` should be of type `str`")
         if not isinstance(self.id, int) and self.id is not None:
             raise TypeError("`id` should be of type `int`")
-        if not self.metadata:
-            self.metadata = {}
-        if not self.geospatial:
-            self.geospatial = {}
+        if not self._metadata:
+            self._metadata = {}
+        if not self._geospatial:
+            self._geospatial = {}
 
         # metadata
-        validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
+        validate_metadata(self._metadata)
+        self._metadata = load_metadata(self._metadata)
 
     def __str__(self):
         return str(self.dict())
@@ -968,9 +988,9 @@ class Dataset:
         """
         return {
             "id": self.id,
-            "name": self.name,
-            "metadata": dump_metadata(self.metadata or {}),
-            "geospatial": self.geospatial if self.geospatial else None,
+            "name": self._name,
+            "metadata": dump_metadata(self._metadata or {}),
+            "geospatial": self._geospatial if self._geospatial else None,
         }
 
     def add_groundtruth(
@@ -990,10 +1010,10 @@ class Dataset:
 
         if len(groundtruth.annotations) == 0:
             warnings.warn(
-                f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
+                f"GroundTruth for datum with uid `{groundtruth.datum._uid}` contains no annotations."
             )
 
-        groundtruth.datum._set_dataset_name(self.name)
+        groundtruth.datum._set_dataset_name(self._name)
         self.client._requests_post_rel_host(
             "groundtruths",
             json=groundtruth.dict(),
@@ -1014,9 +1034,9 @@ class Dataset:
         GroundTruth
             The requested `GroundTruth`.
         """
-        uid = datum.uid if isinstance(datum, Datum) else datum
+        uid = datum._uid if isinstance(datum, Datum) else datum
         resp = self.client._requests_get_rel_host(
-            f"groundtruths/dataset/{self.name}/datum/{uid}"
+            f"groundtruths/dataset/{self._name}/datum/{uid}"
         ).json()
         return GroundTruth._from_dict(resp)
 
@@ -1032,7 +1052,7 @@ class Dataset:
             A list of `Labels` associated with the dataset.
         """
         labels = self.client._requests_get_rel_host(
-            f"labels/dataset/{self.name}"
+            f"labels/dataset/{self._name}"
         ).json()
 
         return [
@@ -1049,7 +1069,7 @@ class Dataset:
             A list of `Datums` associated with the dataset.
         """
         datums = self.client.get_datums(
-            filters=Filter(dataset_names=[self.name])
+            filters=Filter(dataset_names=[self._name])
         )
         return [Datum._from_dict(datum) for datum in datums]
 
@@ -1066,7 +1086,7 @@ class Dataset:
         """
         return [
             Evaluation(self.client, **resp)
-            for resp in self.client.get_evaluations(datasets=self.name)
+            for resp in self.client.get_evaluations(datasets=self._name)
         ]
 
     def get_summary(self) -> DatasetSummary:
@@ -1103,7 +1123,7 @@ class Dataset:
             groundtruth_annotation_metadata: list of the unique metadata dictionaries in the dataset that are
             associated to annotations
         """
-        resp = self.client.get_dataset_summary(self.name)
+        resp = self.client.get_dataset_summary(self._name)
         return DatasetSummary(**resp)
 
     def finalize(
@@ -1113,7 +1133,7 @@ class Dataset:
         Finalize the `Dataset` object such that new `GroundTruths` cannot be added to it.
         """
         return self.client._requests_put_rel_host(
-            f"datasets/{self.name}/finalize"
+            f"datasets/{self._name}/finalize"
         )
 
     def delete(
@@ -1142,6 +1162,10 @@ class Model:
     geospatial :  dict
         A GeoJSON-style dictionary describing the geospatial coordinates of the model.
     """
+
+    name: DeclarativeMapper
+    metadata: DeclarativeMapper
+    geospatial: DeclarativeMapper
 
     def __init__(
         self,
@@ -1180,9 +1204,9 @@ class Model:
         delete_if_exists : bool, default=False
             Deletes any existing model with the same name.
         """
-        self.name = name
-        self.metadata = metadata
-        self.geospatial = geospatial
+        self._name = name
+        self._metadata = metadata
+        self._geospatial = geospatial
         self.id = id
         self._validate()
 
@@ -1200,18 +1224,18 @@ class Model:
         """
         Validates the arguments used to create a `Model` object.
         """
-        if not isinstance(self.name, str):
+        if not isinstance(self._name, str):
             raise TypeError("`name` should be of type `str`")
         if not isinstance(self.id, int) and self.id is not None:
             raise TypeError("`id` should be of type `int`")
-        if not self.metadata:
-            self.metadata = {}
-        if not self.geospatial:
-            self.geospatial = {}
+        if not self._metadata:
+            self._metadata = {}
+        if not self._geospatial:
+            self._geospatial = {}
 
         # metadata
-        validate_metadata(self.metadata)
-        self.metadata = load_metadata(self.metadata)
+        validate_metadata(self._metadata)
+        self._metadata = load_metadata(self._metadata)
 
     def __str__(self):
         return str(self.dict())
@@ -1227,9 +1251,9 @@ class Model:
         """
         return {
             "id": self.id,
-            "name": self.name,
-            "metadata": dump_metadata(self.metadata or {}),
-            "geospatial": self.geospatial if self.geospatial else None,
+            "name": self._name,
+            "metadata": dump_metadata(self._metadata or {}),
+            "geospatial": self._geospatial if self._geospatial else None,
         }
 
     def add_prediction(
@@ -1250,20 +1274,20 @@ class Model:
 
         if len(prediction.annotations) == 0:
             warnings.warn(
-                f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
+                f"Prediction for datum with uid `{prediction.datum._uid}` contains no annotations."
             )
 
-        prediction._set_model_name(self.name)
+        prediction._set_model_name(self._name)
         # should check not already set or set by equal to dataset?
         if prediction.datum._dataset_name is None:
             prediction.datum._set_dataset_name(dataset)
         else:
             dataset_name = (
-                dataset.name if isinstance(dataset, Dataset) else dataset
+                dataset._name if isinstance(dataset, Dataset) else dataset
             )
             if prediction.datum._dataset_name != dataset_name:
                 raise RuntimeError(
-                    f"Datum with uid `{prediction.datum.uid}` is already linked to the dataset `{prediction.datum._dataset_name}`"
+                    f"Datum with uid `{prediction.datum._uid}` is already linked to the dataset `{prediction.datum._dataset_name}`"
                     f" but you are trying to add a prediction on it to the dataset `{dataset_name}`"
                 )
 
@@ -1277,7 +1301,7 @@ class Model:
         Finalize the `Model` object such that new `Predictions` cannot be added to it.
         """
         return self.client._requests_put_rel_host(
-            f"models/{self.name}/datasets/{dataset.name}/finalize"
+            f"models/{self._name}/datasets/{dataset._name}/finalize"
         ).json()
 
     def _format_filters(
@@ -1353,7 +1377,7 @@ class Model:
         datum_filter = self._format_filters(datasets, filters)
 
         evaluation = EvaluationRequest(
-            model_names=self.name,
+            model_names=self._name,
             datum_filter=datum_filter,
             parameters=EvaluationParameters(task_type=TaskType.CLASSIFICATION),
         )
@@ -1418,7 +1442,7 @@ class Model:
         datum_filter = self._format_filters(datasets, filters)
 
         evaluation = EvaluationRequest(
-            model_names=self.name,
+            model_names=self._name,
             datum_filter=datum_filter,
             parameters=parameters,
         )
@@ -1462,7 +1486,7 @@ class Model:
 
         # create evaluation job
         evaluation = EvaluationRequest(
-            model_names=self.name,
+            model_names=self._name,
             datum_filter=datum_filter,
             parameters=EvaluationParameters(task_type=TaskType.SEGMENTATION),
         )
@@ -1505,7 +1529,7 @@ class Model:
             The requested `Prediction`.
         """
         resp = self.client._requests_get_rel_host(
-            f"predictions/model/{self.name}/dataset/{dataset.name}/datum/{datum.uid}",
+            f"predictions/model/{self._name}/dataset/{dataset._name}/datum/{datum._uid}",
         ).json()
         return Prediction._from_dict(resp)
 
@@ -1521,7 +1545,7 @@ class Model:
             A list of `Labels` associated with the model.
         """
         labels = self.client._requests_get_rel_host(
-            f"labels/model/{self.name}"
+            f"labels/model/{self._name}"
         ).json()
 
         return [
@@ -1541,7 +1565,7 @@ class Model:
         """
         return [
             Evaluation(self.client, **resp)
-            for resp in self.client.get_evaluations(models=self.name)
+            for resp in self.client.get_evaluations(models=self._name)
         ]
 
     def get_metric_dataframes(

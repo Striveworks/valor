@@ -43,7 +43,7 @@ def test_scored_label():
     assert "score should be of type `float`" in str(e)
 
     # test property `key`
-    assert l1.key == "test"
+    assert l1._key == "test"
 
     # test property `value`
     assert l1.value == "value"

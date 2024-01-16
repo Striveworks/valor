@@ -270,7 +270,7 @@ def generate_prediction_data(
     datums = dataset.get_datums()
 
     for datum in datums:
-        height, width = (datum.metadata["height"], datum.metadata["width"])
+        height, width = (datum._metadata["height"], datum._metadata["width"])
         assert isinstance(height, SupportsFloat)
         assert isinstance(width, SupportsFloat)
         prediction = _generate_prediction(
