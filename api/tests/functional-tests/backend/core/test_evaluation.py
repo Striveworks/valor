@@ -142,6 +142,28 @@ def test_create_evaluation(
     ).model_dump()
     assert rows[0].parameters == schemas.EvaluationParameters().model_dump()
 
+    # test - bad request
+    with pytest.raises(exceptions.EvaluationRequestError) as e:
+        job_request_1 = schemas.EvaluationRequest(
+            model_filter=schemas.Filter(model_names=[created_model]),
+            evaluation_filter=schemas.Filter(
+                dataset_names=["some_other_dataset"],
+                task_types=[enums.TaskType.CLASSIFICATION],
+            ),
+        )
+        core.create_or_get_evaluations(db, job_request_1)
+    assert "No datasets" in str(e)
+    with pytest.raises(exceptions.EvaluationRequestError) as e:
+        job_request_1 = schemas.EvaluationRequest(
+            model_filter=schemas.Filter(model_names=["some_other_model"]),
+            evaluation_filter=schemas.Filter(
+                dataset_names=[created_dataset],
+                task_types=[enums.TaskType.CLASSIFICATION],
+            ),
+        )
+        core.create_or_get_evaluations(db, job_request_1)
+    assert "No models" in str(e)
+    
 
 def test_fetch_evaluation_from_id(
     db: Session,

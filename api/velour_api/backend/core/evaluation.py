@@ -75,13 +75,13 @@ def _split_request(
         Query(models.Dataset).filter(job_request.evaluation_filter).any()
     ).distinct().all()
     if not datasets_to_evaluate:
-        raise ValueError("No datasets meet the requirements of this request.")
+        raise exceptions.EvaluationRequestError("No datasets meet the requirements of this request.")
 
     model_to_evaluate = db.query(
         Query(models.Model).filter(job_request.model_filter).any()
     ).distinct().all()
     if not model_to_evaluate:
-        raise ValueError("No models meet the requirements of this request.")
+        raise exceptions.EvaluationRequestError("No models meet the requirements of this request.")
 
     # verify all models and datasets are ready for evaluation
     _verify_ready_to_evaluate(

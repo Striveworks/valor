@@ -25,7 +25,7 @@ def datums(created_dataset) -> list[schemas.Datum]:
     return [
         schemas.Datum(
             uid=f"uid_{i}",
-            dataset=created_dataset,
+            dataset_name=created_dataset,
         )
         for i in range(3)
     ]
@@ -41,7 +41,7 @@ def empty_groundtruths(datums) -> list[schemas.GroundTruth]:
 @pytest.fixture
 def empty_predictions(created_model, datums) -> list[schemas.Prediction]:
     return [
-        schemas.Prediction(model=created_model, datum=datum, annotations=[])
+        schemas.Prediction(model_name=created_model, datum=datum, annotations=[])
         for datum in datums
     ]
 

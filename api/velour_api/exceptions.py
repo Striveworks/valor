@@ -378,6 +378,15 @@ class EvaluationRunningError(Exception):
         super().__init__(msg)
 
 
+class EvaluationRequestError(Exception):
+    """
+    Raises an exception if the user request fails.
+    """
+
+    def __init__(self, msg: str):
+        super().__init__(msg)
+
+
 class EvaluationStateError(Exception):
     """
     Raises an exception if a requested state transition is illegal.
