@@ -2,7 +2,7 @@ import io
 from base64 import b64decode
 from dataclasses import asdict
 
-import PIL
+from PIL import Image
 
 from velour import Label
 from velour.client import Client
@@ -17,7 +17,7 @@ from velour.schemas.filters import Filter
 
 def _mask_bytes_to_pil(mask_bytes):
     with io.BytesIO(mask_bytes) as f:
-        return PIL.Image.open(f)
+        return Image.open(f)
 
 
 def test_generate_segmentation_data(
@@ -47,6 +47,7 @@ def test_generate_segmentation_data(
         sample_gt = dataset.get_groundtruth(uid)
 
         sample_annotations = sample_gt.annotations
+        assert sample_annotations[0].raster is not None
         sample_mask_size = _mask_bytes_to_pil(
             b64decode(sample_annotations[0].raster.mask)
         ).size

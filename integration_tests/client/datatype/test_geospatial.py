@@ -118,7 +118,6 @@ def test_geospatial_filter(
             filters=[
                 Datum.geospatial.inside({"incorrectly_formatted_dict": {}})
             ],
-            timeout=30,
         )
     assert "should be a GeoJSON-style dictionary" in str(e)
 

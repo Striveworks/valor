@@ -19,7 +19,7 @@ def _test_create_image_dataset_with_gts(
     dataset_name: str,
     gts: list[Any],
     expected_labels_tuples: set[tuple[str, str]],
-    expected_image_uids: list[str],
+    expected_image_uids: set[str],
 ) -> Dataset:
     """This test does the following
     - Creates a dataset
@@ -397,7 +397,7 @@ def test_get_summary(
 
 def test_validate_dataset(client: Client, dataset_name: str):
     with pytest.raises(TypeError):
-        Dataset(client, name=123)
+        Dataset(client, name=123)  # type: ignore
 
     with pytest.raises(TypeError):
-        Dataset(client, name=dataset_name, id="not an int")
+        Dataset(client, name=dataset_name, id="not an int")  # type: ignore

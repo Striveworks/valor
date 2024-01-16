@@ -29,15 +29,15 @@ def test_validate_metadata():
     validate_metadata({"test": 1.0})
 
     with pytest.raises(SchemaTypeError) as e:
-        validate_metadata({123: 123})
+        validate_metadata({123: 123})  # type: ignore
     assert "`metadatum key` should be of type" in str(e)
 
     # Test supported value types
     with pytest.raises(SchemaTypeError):
-        validate_metadata({"test": (1, 2)})
+        validate_metadata({"test": (1, 2)})  # type: ignore
     assert "`metadatum value` should be of type"
     with pytest.raises(SchemaTypeError):
-        validate_metadata({"test": [1, 2]})
+        validate_metadata({"test": [1, 2]})  # type: ignore
     assert "`metadatum value` should be of type"
 
     # Test special type with name=href

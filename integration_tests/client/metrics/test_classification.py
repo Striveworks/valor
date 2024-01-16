@@ -4,7 +4,6 @@ that is no auth
 from datetime import date, datetime
 
 import pytest
-from sqlalchemy.orm import Session
 
 from velour import (
     Annotation,
@@ -299,7 +298,7 @@ def test_evaluate_tabular_clf(
 
 
 def test_stratify_clf_metrics(
-    client: Session,
+    client: Client,
     gt_clfs_tabular: list[int],
     pred_clfs_tabular: list[list[float]],
     dataset_name: str,
@@ -445,7 +444,7 @@ def test_stratify_clf_metrics(
 
 
 def test_stratify_clf_metrics_by_time(
-    client: Session,
+    client: Client,
     gt_clfs_tabular: list[int],
     pred_clfs_tabular: list[list[float]],
     dataset_name: str,
