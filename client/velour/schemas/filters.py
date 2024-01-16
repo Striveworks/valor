@@ -344,8 +344,8 @@ class Filter:
     @classmethod
     def create(
         cls,
-        expressions: Union[
-            Iterable[BinaryExpression], Iterable[Iterable[BinaryExpression]]
+        expressions: Iterable[
+            Union[BinaryExpression, Iterable[BinaryExpression]]
         ],
     ) -> "Filter":
         """
@@ -353,8 +353,8 @@ class Filter:
 
         Parameters
         ----------
-        expressions: List[BinaryExpression]
-            A list of `BinaryExpressions' to parse into a `Filter` object.
+        expressions: Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]]
+            A list of (lists of) `BinaryExpressions' to parse into a `Filter` object.
         """
 
         # expand nested expressions

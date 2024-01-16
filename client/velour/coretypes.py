@@ -4,7 +4,7 @@ import math
 import time
 import warnings
 from dataclasses import asdict, dataclass
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 from velour.client import Client, ClientException
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
@@ -1352,7 +1352,12 @@ class Model:
     def evaluate_classification(
         self,
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
-        filters: Optional[Union[Dict, List[BinaryExpression]]] = None,
+        filters: Optional[
+            Union[
+                Dict,
+                Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]],
+            ]
+        ] = None,
     ) -> Evaluation:
         """
         Start a classification evaluation job.
@@ -1361,7 +1366,7 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, List[BinaryExpression]]
+        filters : Union[Dict, Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]]]
             Optional set of filters to constrain evaluation by.
 
         Returns
@@ -1464,7 +1469,12 @@ class Model:
     def evaluate_segmentation(
         self,
         datasets: Optional[Union[Dataset, List[Dataset]]] = None,
-        filters: Optional[Union[Dict, List[BinaryExpression]]] = None,
+        filters: Optional[
+            Union[
+                Dict,
+                Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]],
+            ]
+        ] = None,
     ) -> Evaluation:
         """
         Start a semantic-segmentation evaluation job.
@@ -1473,7 +1483,7 @@ class Model:
         ----------
         datasets : Union[Dataset, List[Dataset]], optional
             The dataset or list of datasets to evaluate against.
-        filters : Union[Dict, List[BinaryExpression]]
+        filters : Union[Dict, Iterable[Union[BinaryExpression, Iterable[BinaryExpression]]]]
             Optional set of filters to constrain evaluation by.
 
         Returns
