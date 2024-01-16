@@ -5,7 +5,7 @@ from velour_api.schemas.filters import Filter
 from velour_api.schemas.metrics import ConfusionMatrixResponse, Metric
 
 
-class DetectionParameters(BaseModel):
+class EvaluationParameters(BaseModel):
     """
     Defines important attributes to use when evaluating an object detection model.
 
@@ -17,7 +17,7 @@ class DetectionParameters(BaseModel):
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
     """
 
-    # thresholds to iterate over (mutable defaults are ok for pydantic models)
+    # object detection
     iou_thresholds_to_compute: list[float] = [
         round(0.5 + 0.05 * i, 2) for i in range(10)
     ]
@@ -37,21 +37,6 @@ class DetectionParameters(BaseModel):
                         "`iou_thresholds_to_return` must be contained in `iou_thresholds_to_compute`"
                     )
         return values
-
-
-class EvaluationParameters(BaseModel):
-    """
-    Parameters for evaluation methods.
-
-    Attributes
-    ----------
-    detection : DetectionParameters, optional
-        Parameters for the detection evaluation method.
-    """
-
-    # classification = None
-    detection: DetectionParameters | None = None
-    # segmentation = None
 
 
 class EvaluationRequest(BaseModel):
@@ -98,9 +83,6 @@ class EvaluationRequest(BaseModel):
             raise ValueError(
                 "Evaluation requires the definition of `evaluation_filter.task_types`."
             )
-        if TaskType.DETECTION in values.evaluation_filter.task_types:
-            if values.parameters.detection is None:
-                values.parameters.detection = DetectionParameters()
 
         return values
 
@@ -113,8 +95,6 @@ class EvaluationResponse(BaseModel):
     ----------
     id : int
         The id of the evaluation.
-    model_name : str
-        The name of the model.
     model_filter : schemas.Filter
         The model filter used in the evaluation.
     evaluation_filter : schemas.Filter
@@ -130,11 +110,10 @@ class EvaluationResponse(BaseModel):
     """
 
     id: int
-    model_name: str
 
     model_filter: Filter
     evaluation_filter: Filter
-    parameters: DetectionParameters | None = None
+    parameters: EvaluationParameters
 
     status: EvaluationStatus
     metrics: list[Metric]

@@ -63,109 +63,99 @@ def _verify_ready_to_evaluate(
                     raise RuntimeError
 
 
-def _fetch_evaluation(
+def _split_request(
     db: Session,
-    model: models.Model,
-    model_filter: schemas.Filter,
-    evaluation_filter: schemas.Filter,
-    parameters: dict | None = None,
-) -> models.Evaluation:
+    job_request: schemas.EvaluationRequest,
+) -> list[schemas.EvaluationRequest]:
     """
-    Fetch the row for an evaluation that matches the provided `EvaluationRequest` attributes.
-
-    Parameters
-    ----------
-    db : Session
-        The database Session to query against.
-    model : models.Model
-        A model row.
-    evaluation_filter : schemas.Filter
-        The filter from a `EvaluationRequest`.
-    parameters : schemas.DetectionParameters, optional
-        Any parameters included from an `EvaluationRequest`. These should be in `dict` form.
-
-    Returns
-    -------
-    models.Evaluation
-        The evaluation row.
+    Splits a job request into component requests.
     """
-    evaluation = (
-        db.query(models.Evaluation)
-        .where(
-            and_(
-                models.Evaluation.model_id == model.id,
-                models.Evaluation.model_filter == model_filter.model_dump(),
-                models.Evaluation.evaluation_filter
-                == evaluation_filter.model_dump(),
-                (
-                    models.Evaluation.parameters == parameters
-                    if parameters
-                    else models.Evaluation.parameters.is_(None)
-                ),
-            )
-        )
-        .one_or_none()
-    )
-    return evaluation
 
+    model_to_evaluate = db.query(
+        Query(models.Model).filter(job_request.model_filter).any()
+    ).all()
+    datasets_to_evaluate = db.query(
+        Query(models.Dataset).filter(job_request.evaluation_filter).any()
+    ).all()
 
-def _create_or_fetch_evaluation(
-    db: Session,
-    model: models.Model,
-    model_filter: schemas.Filter,
-    evaluation_filter: schemas.Filter,
-    parameters: schemas.DetectionParameters | None,
-) -> tuple[list[models.Evaluation], list[models.Evaluation]]:
-    """
-    Attempts to fetch an evaluation matching the input arguments, if one doesn't exist, it returns a new evaluation.
-    """
-    # check if evaluation exists
-    if evaluation := _fetch_evaluation(
+    # verify all models and datasets are ready for evaluation
+    _verify_ready_to_evaluate(
         db=db,
-        model=model,
-        model_filter=model_filter,
-        evaluation_filter=evaluation_filter,
-        parameters=parameters,
-    ):
-        return ([], [evaluation])
+        dataset_list=datasets_to_evaluate,
+        model_list=model_to_evaluate,
+    )
 
-    # create evaluation row
-    else:
-        evaluation = models.Evaluation(
-            model_id=model.id,
-            model_filter=model_filter.model_dump(),
-            evaluation_filter=evaluation_filter.model_dump(),
-            parameters=parameters,
-            status=enums.EvaluationStatus.PENDING,
-        )
-        return ([evaluation], [])
+    # dataset_names
+    dataset_names = [dataset.name for dataset in datasets_to_evaluate]
 
+    request_list = []
+    for model in model_to_evaluate:
+        for task_type in job_request.evaluation_filter.task_types:
 
-def _create_or_fetch_detection_evaluation(
-    db: Session,
-    model: models.Model,
-    model_filter: schemas.Filter,
-    evaluation_filter: schemas.Filter,
-    parameters: schemas.DetectionParameters,
-) -> tuple[list[models.Evaluation], list[models.Evaluation]]:
-    """
-    Variant of `_create_or_fetch_evaluation` that handles detection job parameterization and filtering.
-    """
-    created_rows = []
-    existing_rows = []
-    annotation_types = evaluation_filter.annotation_types.copy()
-    for annotation_type in annotation_types:
-        evaluation_filter.annotation_types = [annotation_type]
-        created_row, existing_row = _create_or_fetch_evaluation(
-            db=db,
-            model=model,
-            model_filter=model_filter,
-            evaluation_filter=evaluation_filter,
-            parameters=parameters,
-        )
-        created_rows.extend(created_row)
-        existing_row.extend(existing_row)
-    return (created_rows, existing_rows)
+            # clean model filter
+            model_filter = job_request.model_filter.model_copy()
+            model_filter.dataset_names = dataset_names
+            model_filter.dataset_metadata = None
+            model_filter.dataset_geospatial = None
+            model_filter.model_names = [model.name]
+            model_filter.model_metadata = None
+            model_filter.model_geospatial = None
+
+            # clean evaluation filter
+            evaluation_filter = job_request.evaluation_filter.model_copy()
+            evaluation_filter.dataset_names = dataset_names
+            evaluation_filter.dataset_metadata = None
+            evaluation_filter.dataset_geospatial = None
+            evaluation_filter.model_names = [model.name]
+            evaluation_filter.model_metadata = None
+            evaluation_filter.model_geospatial = None
+            evaluation_filter.task_types = [task_type]
+
+            # some task_types require parameters and/or special filter handling
+            match task_type:
+                case enums.TaskType.CLASSIFICATION:
+                    request_list.append(
+                        schemas.EvaluationRequest(
+                            model_filter=model_filter,
+                            evaluation_filter=evaluation_filter,
+                            parameters=schemas.EvaluationParameters(), # default as clf has no parameterization
+                        )
+                    )
+                case enums.TaskType.DETECTION:
+                    annotation_types = evaluation_filter.annotation_types.copy()
+                    if annotation_types:
+                        for atype in annotation_types:
+                            evaluation_filter.annotation_types = [atype]
+                            request_list.append(
+                                schemas.EvaluationRequest(
+                                    model_filter=model_filter,
+                                    evaluation_filter=evaluation_filter,
+                                    parameters=job_request.parameters.model_dump(),
+                                )
+                            )
+                    else:
+                        request_list.append(
+                            schemas.EvaluationRequest(
+                                model_filter=model_filter,
+                                evaluation_filter=evaluation_filter,
+                                parameters=job_request.parameters.model_dump(),
+                            )
+                        )
+                case enums.TaskType.SEGMENTATION:
+                    evaluation_filter.annotation_types = [
+                        enums.AnnotationType.RASTER
+                    ]
+                    request_list.append(
+                        schemas.EvaluationRequest(
+                            model_filter=model_filter,
+                            evaluation_filter=evaluation_filter,
+                            parameters=schemas.EvaluationParameters(), # default as clf has no parameterization
+                        )
+                    )
+                case _:
+                    raise NotImplementedError
+    
+    return request_list
 
 
 def _create_response(
@@ -174,12 +164,8 @@ def _create_response(
     **kwargs,
 ) -> schemas.EvaluationResponse:
     """Converts a evaluation row into a response schema."""
-    model_name = db.scalar(
-        select(models.Model.name).where(models.Model.id == evaluation.model_id)
-    )
     return schemas.EvaluationResponse(
-        evaluation_id=evaluation.id,
-        model_name=model_name,
+        id=evaluation.id,
         model_filter=evaluation.model_filter,
         evaluation_filter=evaluation.evaluation_filter,
         parameters=evaluation.parameters,
@@ -208,6 +194,18 @@ def _create_responses(
 ) -> list[schemas.EvaluationResponse]:
     """
     Takes a list of evaluation rows and returns a matching list of evaluation creation responses.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    evaluations : list[models.Evaluation]
+        A list of evaluation rows to generate responses for.
+
+    Returns
+    -------
+    list[schemas.EvaluationResponse]
+        A list of evaluations in response format.
     """
     results = []
     for evaluation in evaluations:
@@ -225,14 +223,10 @@ def _create_responses(
                 missing_pred_keys, ignored_pred_keys = core.get_disjoint_keys(
                     db, evaluation_filter, model_filter
                 )
-                results.append(
-                    _create_response(
-                        db=db,
-                        evaluation=evaluation,
-                        missing_pred_keys=missing_pred_keys,
-                        ignored_pred_keys=ignored_pred_keys,
-                    )
-                )
+                kwargs = {
+                    "missing_pred_keys": missing_pred_keys,
+                    "ignored_pred_keys": ignored_pred_keys,
+                }
             case (enums.TaskType.DETECTION | enums.TaskType.SEGMENTATION):
                 (
                     missing_pred_labels,
@@ -240,134 +234,112 @@ def _create_responses(
                 ) = core.get_disjoint_labels(
                     db, evaluation_filter, model_filter
                 )
-                results.append(
-                    _create_response(
-                        db=db,
-                        evaluation=evaluation,
-                        missing_pred_labels=missing_pred_labels,
-                        ignored_pred_labels=ignored_pred_labels,
-                    )
-                )
+                kwargs = {
+                    "missing_pred_labels": missing_pred_labels,
+                    "ignored_pred_labels": ignored_pred_labels,
+                }
             case _:
                 raise NotImplementedError
+            
+        results.append(
+            _create_response(
+                db=db,
+                evaluation=evaluation,
+                **kwargs,
+            )
+        )
     return results
 
 
-def create_or_get_evaluations(
+def check_for_active_evaluations(
+    db: Session,
+    dataset_name: str | None = None,
+    model_name: str | None = None,
+) -> int:
+    """
+    Get the number of active evaluations.
+
+    Parameters
+    ----------
+    db : Session
+        Database session instance.
+    dataset_name : str, default=None
+        Name of a dataset.
+    model_name : str, default=None
+        Name of a model.
+
+    Returns
+    -------
+    int
+        Number of active evaluations.
+    """
+    expr = []
+    if dataset_name:
+        expr.append(
+            models.Evaluation.evaluation_filter["dataset_names"].op("?")(
+                dataset_name
+            )
+        )
+    if model_name:
+        expr.append(
+            models.Evaluation.model_filter["model_names"].op("?")(
+                model_name
+            )
+        )
+
+    return db.scalar(
+        select(func.count())
+        .select_from(models.Evaluation)
+        .where(
+            or_(
+                models.Evaluation.status == enums.EvaluationStatus.PENDING,
+                models.Evaluation.status == enums.EvaluationStatus.RUNNING,
+            ),
+            *expr,
+        )
+    )
+
+
+def fetch_evaluation_from_request(
     db: Session,
     job_request: schemas.EvaluationRequest,
-) -> tuple[
-    list[schemas.EvaluationResponse],
-    list[schemas.EvaluationResponse],
-]:
+) -> models.Evaluation:
     """
-    Creates evaluations from evaluation request.
-
-    If an evaluation already exists, it will be returned as running.
+    Fetch the row for an evaluation that matches the provided `EvaluationRequest` attributes.
 
     Parameters
     ----------
     db : Session
         The database Session to query against.
-    job_request : schemas.EvaluationRequest
-        The evaluations to create.
+    model : models.Model
+        A model row.
+    evaluation_filter : schemas.Filter
+        The filter from a `EvaluationRequest`.
+    parameters : schemas.DetectionParameters, optional
+        Any parameters included from an `EvaluationRequest`. These should be in `dict` form.
 
     Returns
     -------
-    tuple[list[schemas.EvaluationResponse], list[schemas.EvaluationResponse]]
-        A tuple of evaluation response lists following the pattern (list[created_evaluations], list[existing_evaluations])
+    models.Evaluation
+        The evaluation row.
     """
-
-    model_to_evaluate = db.query(
-        Query(models.Model).filter(job_request.model_filter).any()
-    ).all()
-    datasets_to_evaluate = db.query(
-        Query(models.Dataset).filter(job_request.evaluation_filter).any()
-    ).all()
-
-    # verify all models and datasets are ready for evaluation
-    _verify_ready_to_evaluate(
-        db=db,
-        dataset_list=datasets_to_evaluate,
-        model_list=model_to_evaluate,
+    evaluation = (
+        db.query(models.Evaluation)
+        .where(
+            and_(
+                models.Evaluation.model_filter == job_request.model_filter.model_dump(),
+                models.Evaluation.evaluation_filter
+                == job_request.evaluation_filter.model_dump(),
+                (
+                    models.Evaluation.parameters == job_request.parameters.model_dump()
+                    if job_request.parameters
+                    else models.Evaluation.parameters.is_(None)
+                ),
+            )
+        )
+        .one_or_none()
     )
-
-    # dataset_names
-    dataset_names = [dataset.name for dataset in datasets_to_evaluate]
-
-    created_rows = []
-    existing_rows = []
-    for model in model_to_evaluate:
-        for task_type in job_request.evaluation_filter.task_types:
-
-            # clean model filter
-            model_filter = job_request.model_filters.model_copy()
-            model_filter.dataset_names = dataset_names
-            model_filter.dataset_metadata = None
-            model_filter.dataset_geospatial = None
-            model_filter.model_names = [model.name]
-            model_filter.model_metadata = None
-            model_filter.model_geospatial = None
-
-            # clean evaluation filter
-            evaluation_filter = job_request.evaluation_filter.model_copy()
-            evaluation_filter.dataset_names = dataset_names
-            evaluation_filter.dataset_metadata = None
-            evaluation_filter.dataset_geospatial = None
-            evaluation_filter.model_names = [model.name]
-            evaluation_filter.model_metadata = None
-            evaluation_filter.model_geospatial = None
-            evaluation_filter.task_types = [task_type]
-
-            # some task_types require parameters and/or special filter handling
-            match task_type:
-                case enums.TaskType.CLASSIFICATION:
-                    new_evals, existing_evals = _create_or_fetch_evaluation(
-                        db=db,
-                        model=model,
-                        model_filter=model_filter,
-                        evaluation_filter=evaluation_filter,
-                        parameters=None,
-                    )
-                case enums.TaskType.DETECTION:
-                    (
-                        new_evals,
-                        existing_evals,
-                    ) = _create_or_fetch_detection_evaluation(
-                        db=db,
-                        model=model,
-                        model_filter=model_filter,
-                        evaluation_filter=evaluation_filter,
-                        parameters=job_request.parameters.detection.model_dump(),
-                    )
-                case enums.TaskType.SEGMENTATION:
-                    evaluation_filter.annotation_types = [
-                        enums.AnnotationType.RASTER
-                    ]
-                    new_evals, existing_evals = _create_or_fetch_evaluation(
-                        db=db,
-                        model=model,
-                        model_filter=model_filter,
-                        evaluation_filter=evaluation_filter,
-                        parameters=None,
-                    )
-                case _:
-                    raise NotImplementedError
-
-            created_rows.extend(new_evals)
-            existing_evals.extend(existing_evals)
-
-    try:
-        db.add_all(created_rows)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise exceptions.EvaluationAlreadyExistsError()
-
-    return (
-        _create_responses(db, created_rows),
-        _create_responses(db, existing_rows),
-    )
+    return evaluation
 
 
 def fetch_evaluation_from_id(
@@ -402,7 +374,94 @@ def fetch_evaluation_from_id(
     return evaluation
 
 
-def get_evaluation_ids_from_request(
+def create_or_get_evaluations(
+    db: Session,
+    job_request: schemas.EvaluationRequest,
+) -> tuple[
+    list[schemas.EvaluationResponse],
+    list[schemas.EvaluationResponse],
+]:
+    """
+    Creates evaluations from evaluation request.
+
+    If an evaluation already exists, it will be returned as running.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    job_request : schemas.EvaluationRequest
+        The evaluations to create.
+
+    Returns
+    -------
+    tuple[list[schemas.EvaluationResponse], list[schemas.EvaluationResponse]]
+        A tuple of evaluation response lists following the pattern (list[created_evaluations], list[existing_evaluations])
+    """
+
+    created_rows = []
+    existing_rows = []
+    for subrequest in _split_request(db, job_request):
+        # check if evaluation exists
+        if evaluation := fetch_evaluation_from_request(
+            db=db,
+            job_request=subrequest,
+        ):
+            existing_rows.append(evaluation)
+
+        # create evaluation row
+        else:
+            evaluation = models.Evaluation(
+                model_filter=subrequest.model_filter.model_dump(),
+                evaluation_filter=subrequest.evaluation_filter.model_dump(),
+                parameters=subrequest.parameters.model_dump() if subrequest.parameters else None,
+                status=enums.EvaluationStatus.PENDING,
+            )
+            created_rows.append(evaluation)
+
+    try:
+        db.add_all(created_rows)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise exceptions.EvaluationAlreadyExistsError()
+
+    return (
+        _create_responses(db, created_rows),
+        _create_responses(db, existing_rows),
+    )
+
+
+def get_evaluations(
+    db: Session,
+    job_request: schemas.EvaluationRequest,
+) -> list[schemas.EvaluationRequest]:
+    """
+    Get all evaluations that meet the requested parameters.
+
+    Parameters
+    ----------
+    db : Session
+        The database session.
+    job_request : list[schemas.EvaluationRequest]
+        The evaluation request to search by.
+
+    Returns
+    -------
+    list[schemas.EvaluationResponse]
+        A list of evaluations in response format.
+    """
+    evaluations = []
+    for subrequest in _split_request(db, job_request):
+        if evaluation := fetch_evaluation_from_request(
+            db=db,
+            job_request=subrequest,
+        ):
+            evaluations.append(evaluation)
+    return _create_responses(db, evaluations)
+
+
+def get_evaluation_ids(
     db: Session,
     job_request: schemas.EvaluationRequest,
 ) -> list[int]:
@@ -421,49 +480,13 @@ def get_evaluation_ids_from_request(
     list[int]
         The ids of any matching evaluations.
     """
-    model_to_evaluate = db.query(
-        Query(models.Model).filter(job_request.model_filter).any()
-    ).all()
-
     evaluation_ids = []
-    for model in model_to_evaluate:
-        for task_type in job_request.evaluation_filter.task_types:
-            for (
-                annotation_type
-            ) in job_request.evaluation_filter.annotation_types:
-
-                # clean model filter
-                model_filter = job_request.model_filter.model_copy()
-                model_filter.model_names = [model.name]
-                model_filter.model_metadata = None
-                model_filter.model_geospatial = None
-
-                # clean evaluation filter
-                evaluation_filter = job_request.evaluation_filter.model_copy()
-                evaluation_filter.task_types = [task_type]
-                evaluation_filter.annotation_types = [annotation_type]
-
-                match task_type:
-                    case enums.TaskType.CLASSIFICATION:
-                        parameters = None
-                    case enums.TaskType.DETECTION:
-                        parameters = (
-                            job_request.parameters.detection.model_dump()
-                        )
-                    case enums.TaskType.SEGMENTATION:
-                        parameters = None
-                    case _:
-                        raise NotImplementedError
-
-                # if exists, append to existing evaluations list
-                evaluation = _fetch_evaluation(
-                    db=db,
-                    model=model,
-                    model_filter=job_request.model_filter,
-                    evaluation_filter=evaluation_filter,
-                    parameters=parameters,
-                )
-                evaluation_ids.append(evaluation.id)
+    for subrequest in _split_request(db, job_request):
+        if evaluation := fetch_evaluation_from_request(
+            db=db,
+            job_request=subrequest,
+        ):
+            evaluation_ids.append(evaluation.id)
     return evaluation_ids
 
 
@@ -552,49 +575,3 @@ def get_disjoint_labels_from_evaluation_id(
     model_filter = schemas.Filter(**evaluation.model_filter)
     evaluation_filter = schemas.Filter(**evaluation.evaluation_filter)
     return core.get_disjoint_labels(db, evaluation_filter, model_filter)
-
-
-def check_for_active_evaluations(
-    db: Session,
-    dataset_name: str | None = None,
-    model_name: str | None = None,
-) -> int:
-    """
-    Get the number of active evaluations.
-
-    Parameters
-    ----------
-    db : Session
-        Database session instance.
-    dataset_name : str, default=None
-        Name of a dataset.
-    model_name : str, default=None
-        Name of a model.
-
-    Returns
-    -------
-    int
-        Number of active evaluations.
-    """
-    expr = []
-    if dataset_name:
-        expr.append(
-            models.Evaluation.evaluation_filter["dataset_names"].op("?")(
-                dataset_name
-            )
-        )
-    if model_name:
-        expr.append(models.Model.name == model_name)
-
-    return db.scalar(
-        select(func.count())
-        .select_from(models.Evaluation)
-        .join(models.Model, models.Model.id == models.Evaluation.model_id)
-        .where(
-            or_(
-                models.Evaluation.status == enums.EvaluationStatus.PENDING,
-                models.Evaluation.status == enums.EvaluationStatus.RUNNING,
-            ),
-            *expr,
-        )
-    )

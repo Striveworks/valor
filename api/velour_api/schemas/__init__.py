@@ -9,7 +9,6 @@ from .core import (
     Prediction,
 )
 from .evaluation import (
-    DetectionParameters,
     EvaluationParameters,
     EvaluationRequest,
     EvaluationResponse,
@@ -94,7 +93,6 @@ __all__ = [
     "EvaluationSettings",
     "EvaluationRequest",
     "EvaluationResponse",
-    "DetectionParameters",
     "EvaluationParameters",
     "StringFilter",
     "NumericFilter",

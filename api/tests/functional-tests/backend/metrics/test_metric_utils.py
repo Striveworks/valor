@@ -37,7 +37,7 @@ def test_validate_computation(
 ):
     # create evaluation
     core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
-    evaluation_id = core.create_or_get_evaluations(
+    created, _ = core.create_or_get_evaluations(
         db,
         schemas.EvaluationRequest(
             model_filter=schemas.Filter(model_names=[created_model]),
@@ -47,6 +47,8 @@ def test_validate_computation(
             )
         ),
     )
+    assert len(created) == 1
+    evaluation_id = created[0].id
     assert (
         core.get_evaluation_status(db, evaluation_id)
         == enums.EvaluationStatus.PENDING

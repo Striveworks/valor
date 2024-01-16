@@ -168,9 +168,6 @@ class Model(Base):
     annotations: Mapped[list[Annotation]] = relationship(
         cascade="all, delete-orphan"
     )
-    evaluation: Mapped[list["Evaluation"]] = relationship(
-        cascade="all, delete"
-    )
 
 
 class Dataset(Base):
@@ -192,16 +189,14 @@ class Evaluation(Base):
     __tablename__ = "evaluation"
     __table_args__ = (
         UniqueConstraint(
-            "model_id",
-            "parameters",
             "model_filter",
             "evaluation_filter",
+            "parameters",
         ),
     )
 
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    model_id: Mapped[int] = mapped_column(ForeignKey("model.id"))
     model_filter = mapped_column(JSONB, nullable=False)
     evaluation_filter = mapped_column(JSONB, nullable=False)
     parameters = mapped_column(JSONB, nullable=True)
@@ -210,7 +205,6 @@ class Evaluation(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(default=func.now())
 
     # relationships
-    model = relationship(Model, back_populates="evaluation")
     metrics: Mapped[list["Metric"]] = relationship(
         "Metric", cascade="all, delete"
     )

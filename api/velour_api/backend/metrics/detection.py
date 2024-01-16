@@ -100,7 +100,7 @@ def _ap(
 
 def _compute_detection_metrics(
     db: Session,
-    parameters: schemas.DetectionParameters,
+    parameters: schemas.EvaluationParameters,
     model_filter: schemas.Filter,
     evaluation_filter: schemas.Filter,
     target_type: enums.AnnotationType,
