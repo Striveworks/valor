@@ -5,8 +5,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<link href="../Evaluation/" rel="prev"/>
-<link href="../Geometries/" rel="next"/>
+<link href="../evaluation/" rel="prev"/>
+<link href="../geometries/" rel="next"/>
 <link href="../../../assets/images/favicon.png" rel="icon"/>
 <meta content="mkdocs-1.5.3, mkdocs-material-9.5.4" name="generator"/>
 <title>Filters - Velour</title>
@@ -357,6 +357,27 @@
   </span>
 </a>
 </li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../Filters/">
+<span class="md-ellipsis">
+    Filters
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../Geometries/">
+<span class="md-ellipsis">
+    Geometries
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../evaluation/">
+<span class="md-ellipsis">
+    Evaluation
+  </span>
+</a>
+</li>
 <li class="md-nav__item md-nav__item--active">
 <input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
 <label class="md-nav__link md-nav__link--active" for="__toc">
@@ -439,27 +460,6 @@
 </li>
 </ul>
 </nav>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../Geometries/">
-<span class="md-ellipsis">
-    Geometries
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../evaluation/">
-<span class="md-ellipsis">
-    Evaluation
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../filters/">
-<span class="md-ellipsis">
-    Filters
-  </span>
-</a>
 </li>
 <li class="md-nav__item">
 <a class="md-nav__link" href="../geometries/">
@@ -876,7 +876,7 @@
 <tr>
 <td><code><span title="velour.schemas.filters.Filter.dataset_metadata">dataset_metadata</span></code></td>
 <td>
-<code><span title="typing.Dict">Dict</span>[str, <span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.ValueFilter" href="../filters/#velour.schemas.filters.ValueFilter">ValueFilter</a>]]</code>
+<code><span title="typing.Dict">Dict</span>[str, <span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.ValueFilter" href="#velour.schemas.filters.ValueFilter">ValueFilter</a>]]</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -909,7 +909,7 @@
 <tr>
 <td><code><span title="velour.schemas.filters.Filter.models_metadata">models_metadata</span></code></td>
 <td>
-<code><span title="typing.Dict">Dict</span>[str, <span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.ValueFilter" href="../filters/#velour.schemas.filters.ValueFilter">ValueFilter</a>]]</code>
+<code><span title="typing.Dict">Dict</span>[str, <span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.ValueFilter" href="#velour.schemas.filters.ValueFilter">ValueFilter</a>]]</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -920,7 +920,7 @@
 <tr>
 <td><code><span title="velour.schemas.filters.Filter.models_geospatial">models_geospatial</span></code></td>
 <td>
-<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.GeospatialFilter" href="../filters/#velour.schemas.filters.GeospatialFilter">GeospatialFilter</a>]</code>
+<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.GeospatialFilter" href="#velour.schemas.filters.GeospatialFilter">GeospatialFilter</a>]</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -953,7 +953,7 @@
 <tr>
 <td><code><span title="velour.schemas.filters.Filter.datum_geospatial">datum_geospatial</span></code></td>
 <td>
-<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.GeospatialFilter" href="../filters/#velour.schemas.filters.GeospatialFilter">GeospatialFilter</a>]</code>
+<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.GeospatialFilter" href="#velour.schemas.filters.GeospatialFilter">GeospatialFilter</a>]</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -986,7 +986,7 @@
 <tr>
 <td><code><span title="velour.schemas.filters.Filter.annotation_geometric_area">annotation_geometric_area</span></code></td>
 <td>
-<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.ValueFilter" href="../filters/#velour.schemas.filters.ValueFilter">ValueFilter</a>]</code>
+<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.ValueFilter" href="#velour.schemas.filters.ValueFilter">ValueFilter</a>]</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -997,7 +997,7 @@
 <tr>
 <td><code><span title="velour.schemas.filters.Filter.annotation_metadata">annotation_metadata</span></code></td>
 <td>
-<code><span title="typing.Dict">Dict</span>[str, <span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.ValueFilter" href="../filters/#velour.schemas.filters.ValueFilter">ValueFilter</a>]]</code>
+<code><span title="typing.Dict">Dict</span>[str, <span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.ValueFilter" href="#velour.schemas.filters.ValueFilter">ValueFilter</a>]]</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -1008,7 +1008,7 @@
 <tr>
 <td><code><span title="velour.schemas.filters.Filter.annotation_geospatial">annotation_geospatial</span></code></td>
 <td>
-<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.GeospatialFilter" href="../filters/#velour.schemas.filters.GeospatialFilter">GeospatialFilter</a>]</code>
+<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.GeospatialFilter" href="#velour.schemas.filters.GeospatialFilter">GeospatialFilter</a>]</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -1019,7 +1019,7 @@
 <tr>
 <td><code><span title="velour.schemas.filters.Filter.prediction_scores">prediction_scores</span></code></td>
 <td>
-<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.ValueFilter" href="../filters/#velour.schemas.filters.ValueFilter">ValueFilter</a>]</code>
+<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.filters.ValueFilter" href="#velour.schemas.filters.ValueFilter">ValueFilter</a>]</code>
 </td>
 <td>
 <div class="doc-md-description">

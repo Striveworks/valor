@@ -5,8 +5,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<link href="../Filters/" rel="prev"/>
-<link href="../evaluation/" rel="next"/>
+<link href="../filters/" rel="prev"/>
 <link href="../../../assets/images/favicon.png" rel="icon"/>
 <meta content="mkdocs-1.5.3, mkdocs-material-9.5.4" name="generator"/>
 <title>Geometries - Velour</title>
@@ -364,6 +363,27 @@
   </span>
 </a>
 </li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../Geometries/">
+<span class="md-ellipsis">
+    Geometries
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../evaluation/">
+<span class="md-ellipsis">
+    Evaluation
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../filters/">
+<span class="md-ellipsis">
+    Filters
+  </span>
+</a>
+</li>
 <li class="md-nav__item md-nav__item--active">
 <input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
 <label class="md-nav__link md-nav__link--active" for="__toc">
@@ -618,27 +638,6 @@
 </li>
 </ul>
 </nav>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../evaluation/">
-<span class="md-ellipsis">
-    Evaluation
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../filters/">
-<span class="md-ellipsis">
-    Filters
-  </span>
-</a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../geometries/">
-<span class="md-ellipsis">
-    Geometries
-  </span>
-</a>
 </li>
 </ul>
 </nav>
@@ -927,7 +926,7 @@
 <tr>
 <td><code><span title="velour.schemas.geometry.BasicPolygon.points">points</span></code></td>
 <td>
-<code>(<span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.geometry.Point" href="../geometries/#velour.schemas.geometry.Point">Point</a>], optional)</code>
+<code>(<span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.geometry.Point" href="#velour.schemas.geometry.Point">Point</a>], optional)</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -1269,7 +1268,7 @@ making the BasicPolygon invalid.</p>
 <tbody>
 <tr>
 <td>
-<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.geometry.Point" href="../geometries/#velour.schemas.geometry.Point">Point</a>]</code>
+<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.geometry.Point" href="#velour.schemas.geometry.Point">Point</a>]</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -1330,7 +1329,7 @@ making the BasicPolygon invalid.</p>
 <tr>
 <td><code>polygon</code></td>
 <td>
-<code><a class="autorefs autorefs-internal" title="velour.schemas.geometry.BasicPolygon" href="../geometries/#velour.schemas.geometry.BasicPolygon">BasicPolygon</a> or dict</code>
+<code><a class="autorefs autorefs-internal" title="velour.schemas.geometry.BasicPolygon" href="#velour.schemas.geometry.BasicPolygon">BasicPolygon</a> or dict</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -1744,7 +1743,7 @@ Note that ordering is important to prevent self-intersection!</p>
 <tbody>
 <tr>
 <td>
-<code><a class="autorefs autorefs-internal" title="velour.schemas.geometry.BoundingBox" href="../geometries/#velour.schemas.geometry.BoundingBox">BoundingBox</a></code>
+<code><a class="autorefs autorefs-internal" title="velour.schemas.geometry.BoundingBox" href="#velour.schemas.geometry.BoundingBox">BoundingBox</a></code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -1847,7 +1846,7 @@ Note that ordering is important to prevent self-intersection!</p>
 <tr>
 <td><code>polygons</code></td>
 <td>
-<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.geometry.Polygon" href="../geometries/#velour.schemas.geometry.Polygon">Polygon</a>]</code>
+<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.geometry.Polygon" href="#velour.schemas.geometry.Polygon">Polygon</a>]</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -2353,7 +2352,7 @@ Note that ordering is important to prevent self-intersection!</p>
 <tbody>
 <tr>
 <td>
-<code><a class="autorefs autorefs-internal" title="velour.schemas.geometry.Point" href="../geometries/#velour.schemas.geometry.Point">Point</a></code>
+<code><a class="autorefs autorefs-internal" title="velour.schemas.geometry.Point" href="#velour.schemas.geometry.Point">Point</a></code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -2476,7 +2475,7 @@ Note that ordering is important to prevent self-intersection!</p>
 <tr>
 <td><code>boundary</code></td>
 <td>
-<code><a class="autorefs autorefs-internal" title="velour.schemas.geometry.BasicPolygon" href="../geometries/#velour.schemas.geometry.BasicPolygon">BasicPolygon</a> or dict</code>
+<code><a class="autorefs autorefs-internal" title="velour.schemas.geometry.BasicPolygon" href="#velour.schemas.geometry.BasicPolygon">BasicPolygon</a> or dict</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -2491,7 +2490,7 @@ dictionary with the necessary information to create a <code>BasicPolygon</code>.
 <tr>
 <td><code>holes</code></td>
 <td>
-<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.geometry.BasicPolygon" href="../geometries/#velour.schemas.geometry.BasicPolygon">BasicPolygon</a>]</code>
+<code><span title="typing.List">List</span>[<a class="autorefs autorefs-internal" title="velour.schemas.geometry.BasicPolygon" href="#velour.schemas.geometry.BasicPolygon">BasicPolygon</a>]</code>
 </td>
 <td>
 <div class="doc-md-description">
@@ -2962,7 +2961,7 @@ If <code>holes</code> is not a list or an element in <code>holes</code> is not a
 <tbody>
 <tr>
 <td>
-<code><a class="autorefs autorefs-internal" title="velour.schemas.geometry.Raster" href="../geometries/#velour.schemas.geometry.Raster">Raster</a></code>
+<code><a class="autorefs autorefs-internal" title="velour.schemas.geometry.Raster" href="#velour.schemas.geometry.Raster">Raster</a></code>
 </td>
 <td>
 <div class="doc-md-description">
