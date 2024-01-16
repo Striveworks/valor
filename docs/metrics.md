@@ -24,5 +24,5 @@ On this page, we'll describe the various metrics that you can calculate using Ve
 
 | Name 	| Description 	|
 |---	|---	|
-| Intersection over Union (IOU) 	| The overlap between the groundtruth and predicted regions of an image, measured as a percentage, for a given label.  	|
+| Intersection over Union (IOU) 	| The overlap between the groundtruth and predicted regions of an image, measured as a percentage, grouped by class. IoUs are calculated by a) fetching the groundtruth and prediction bounding boxes / masks for a particular image, b) counting the true positive pixels (e.g., the number of pixels that were selected in both the groundtruth masks and prediction masks), and c) dividing the sum of true positives by the total number pixels in both the groundtruth and prediction masks. |
 | Mean IOU 	| The average of IOUs calculated over several different classes. 	|
