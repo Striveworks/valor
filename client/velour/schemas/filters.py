@@ -1,7 +1,7 @@
 import datetime
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, Iterable, List, Optional, Type, Union
 
 from velour.enums import AnnotationType, TaskType
 
@@ -342,7 +342,12 @@ class Filter:
     label_keys: Optional[List[str]] = None
 
     @classmethod
-    def create(cls, expressions: List[BinaryExpression]):
+    def create(
+        cls,
+        expressions: Union[
+            Iterable[BinaryExpression], Iterable[Iterable[BinaryExpression]]
+        ],
+    ) -> "Filter":
         """
         Parses a list of `BinaryExpression` to create a `schemas.Filter` object.
 
