@@ -439,6 +439,43 @@ def create_or_get_evaluations(
 
 def get_evaluations(
     db: Session,
+    evaluation_ids: list[int] | None = None,
+    dataset_names: list[str] | None = None,
+    model_names: list[str] | None = None,
+) -> list[schemas.EvaluationResponse]:
+    expr = []
+    if dataset_names:
+        expr.append(
+            models.Evaluation.evaluation_filter["dataset_names"].op("?")(dataset_names)
+        )
+    if model_names:
+        expr.append(
+            models.Evaluation.model_filter["model_names"].op("?")(
+                model_names
+            )
+        )
+    if evaluation_ids:
+        expr.append(models.Evaluation.id.in_(evaluation_ids))
+
+
+    q = (
+        select(models.Evaluation)
+        .where(
+            or_(
+                models.Evaluation.status == enums.EvaluationStatus.PENDING,
+                models.Evaluation.status == enums.EvaluationStatus.RUNNING,
+            ),
+            *expr,
+        )
+        .subquery()
+    )
+    print(q)
+    evaluations = db.query(q).all()
+    return _create_responses(db, evaluations)
+
+
+def get_evaluations_from_request(
+    db: Session,
     job_request: schemas.EvaluationRequest,
 ) -> list[schemas.EvaluationRequest]:
     """

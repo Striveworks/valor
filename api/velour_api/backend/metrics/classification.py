@@ -154,7 +154,7 @@ def _compute_roc_auc(
         ignore_predictions=True,
     )
     if len(labels) == 0:
-        return None
+        None
 
     sum_roc_aucs = 0
     label_count = 0

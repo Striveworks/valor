@@ -10,13 +10,88 @@ from velour_api.backend.metrics.metric_utils import validate_computation
 def created_dataset(db: Session, dataset_name: str) -> str:
     dataset = schemas.Dataset(name=dataset_name)
     core.create_dataset(db, dataset=dataset)
+    core.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid1", dataset_name=dataset_name),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[schemas.Label(key="k1", value="v1")]
+                )
+            ]
+        )
+    )
+    core.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid2", dataset_name=dataset_name),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[schemas.Label(key="k1", value="v1")]
+                )
+            ]
+        )
+    )
+    core.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid3", dataset_name=dataset_name),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEGMENTATION,
+                    labels=[schemas.Label(key="k1", value="v1")]
+                )
+            ]
+        )
+    )
     return dataset_name
 
 
 @pytest.fixture
-def created_model(db: Session, model_name: str) -> str:
+def created_model(db: Session, model_name: str, created_dataset: str) -> str:
     model = schemas.Model(name=model_name)
     core.create_model(db, model=model)
+    core.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model_name=model_name,
+            datum=schemas.Datum(uid="uid1", dataset_name=created_dataset),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[schemas.Label(key="k1", value="v1", score=1.0)]
+                )
+            ]
+        )
+    )
+    core.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model_name=model_name,
+            datum=schemas.Datum(uid="uid2", dataset_name=created_dataset),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[schemas.Label(key="k1", value="v1", score=1.0)]
+                )
+            ]
+        )
+    )
+    core.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model_name=model_name,
+            datum=schemas.Datum(uid="uid3", dataset_name=created_dataset),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEGMENTATION,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                )
+            ]
+        )
+    )
     return model_name
 
 

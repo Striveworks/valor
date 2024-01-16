@@ -167,7 +167,7 @@ def geospatial_coordinates() -> (
 def datum_1(metadata_1, geospatial_coordinates) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid1,
-        dataset=dset_name,
+        dataset_name=dset_name,
         metadata=metadata_1,
         geospatial=geospatial_coordinates["polygon1"],
     )
@@ -177,7 +177,7 @@ def datum_1(metadata_1, geospatial_coordinates) -> schemas.Datum:
 def datum_2(metadata_2, geospatial_coordinates) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid2,
-        dataset=dset_name,
+        dataset_name=dset_name,
         metadata=metadata_2,
         geospatial=geospatial_coordinates["multipolygon"],
     )
@@ -187,7 +187,7 @@ def datum_2(metadata_2, geospatial_coordinates) -> schemas.Datum:
 def datum_3(metadata_3, geospatial_coordinates) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid3,
-        dataset=dset_name,
+        dataset_name=dset_name,
         metadata=metadata_3,
         geospatial=geospatial_coordinates["polygon2"],
     )
@@ -197,7 +197,7 @@ def datum_3(metadata_3, geospatial_coordinates) -> schemas.Datum:
 def datum_4(metadata_4, geospatial_coordinates) -> schemas.Datum:
     return schemas.Datum(
         uid=datum_uid4,
-        dataset=dset_name,
+        dataset_name=dset_name,
         metadata=metadata_4,
         geospatial=geospatial_coordinates["polygon3"],
     )
@@ -441,7 +441,7 @@ def prediction_cat_datum1_model1(
     prediction_annotations_cat,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name1,
+        model_name=model_name1,
         datum=datum_1,
         annotations=prediction_annotations_cat,
     )
@@ -453,7 +453,7 @@ def prediction_cat_datum2_model1(
     prediction_annotations_cat,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name1,
+        model_name=model_name1,
         datum=datum_2,
         annotations=prediction_annotations_cat,
     )
@@ -465,7 +465,7 @@ def prediction_dog_datum3_model1(
     prediction_annotations_dog,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name1,
+        model_name=model_name1,
         datum=datum_3,
         annotations=prediction_annotations_dog,
     )
@@ -477,7 +477,7 @@ def prediction_dog_datum4_model1(
     prediction_annotations_dog,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name1,
+        model_name=model_name1,
         datum=datum_4,
         annotations=prediction_annotations_dog,
     )
@@ -489,7 +489,7 @@ def prediction_dog_datum1_model2(
     prediction_annotations_dog,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name2,
+        model_name=model_name2,
         datum=datum_1,
         annotations=prediction_annotations_dog,
     )
@@ -501,7 +501,7 @@ def prediction_dog_datum2_model2(
     prediction_annotations_dog,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name2,
+        model_name=model_name2,
         datum=datum_2,
         annotations=prediction_annotations_dog,
     )
@@ -513,7 +513,7 @@ def prediction_cat_datum3_model2(
     prediction_annotations_cat,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name2,
+        model_name=model_name2,
         datum=datum_3,
         annotations=prediction_annotations_cat,
     )
@@ -525,7 +525,7 @@ def prediction_cat_datum4_model2(
     prediction_annotations_cat,
 ) -> schemas.Prediction:
     return schemas.Prediction(
-        model=model_name2,
+        model_name=model_name2,
         datum=datum_4,
         annotations=prediction_annotations_cat,
     )

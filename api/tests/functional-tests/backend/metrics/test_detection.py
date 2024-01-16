@@ -25,19 +25,22 @@ def test__compute_detection_metrics(
     iou_thresholds = set([round(0.5 + 0.05 * i, 2) for i in range(10)])
     metrics = _compute_detection_metrics(
         db=db,
-        dataset=fetch_dataset(db, "test_dataset"),
-        model=fetch_model(db, "test_model"),
-        target_type=enums.AnnotationType.BOX,
-        settings=schemas.EvaluationSettings(
-            parameters=schemas.DetectionParameters(
-                iou_thresholds_to_compute=iou_thresholds,
-                iou_thresholds_to_return=[0.5, 0.75],
-            ),
-            filters=schemas.Filter(
-                annotation_types=[enums.AnnotationType.BOX],
-                label_keys=["class"],
-            ),
+        parameters=schemas.EvaluationParameters(
+            iou_thresholds_to_compute=iou_thresholds,
+            iou_thresholds_to_return=[0.5, 0.75],
         ),
+        model_filter=schemas.Filter(
+            model_names=["test_model"],
+            dataset_names=["test_dataset"],
+        ),
+        evaluation_filter=schemas.Filter(
+            model_names=["test_model"],
+            dataset_names=["test_dataset"],
+            task_types=[enums.TaskType.DETECTION],
+            annotation_types=[enums.AnnotationType.BOX],
+            label_keys=["class"],
+        ),
+        target_type=enums.AnnotationType.BOX,
     )
 
     metrics = [m.model_dump(exclude_none=True) for m in metrics]

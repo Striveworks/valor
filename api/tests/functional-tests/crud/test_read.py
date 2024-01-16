@@ -162,30 +162,6 @@ def test_get_labels_from_model(
     assert schemas.Label(key="k2", value="v2") in md1
 
 
-def test_get_joint_labels(
-    db: Session,
-    dataset_name: str,
-    model_name: str,
-    dataset_model_create,
-):
-    # Test get joint labels from dataset 1 and model 1
-    assert set(
-        crud.get_joint_labels(
-            db=db,
-            dataset_name=dataset_name,
-            model_name=model_name,
-            task_types=[enums.TaskType.DETECTION],
-            groundtruth_type=enums.AnnotationType.BOX,
-            prediction_type=enums.AnnotationType.BOX,
-        )
-    ) == set(
-        [
-            schemas.Label(key="k1", value="v1"),
-            schemas.Label(key="k2", value="v2"),
-        ]
-    )
-
-
 def test_get_dataset_summary(
     db: Session, dataset_name: str, dataset_model_create
 ):

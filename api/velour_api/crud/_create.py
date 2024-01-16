@@ -90,7 +90,7 @@ def create_or_get_evaluations(
     *,
     db: Session,
     job_request: schemas.EvaluationRequest,
-    task_handler: BackgroundTasks,
+    task_handler: BackgroundTasks | None = None,
 ) -> list[schemas.EvaluationResponse]:
     """
     Create or get evaluations.
@@ -113,24 +113,21 @@ def create_or_get_evaluations(
     for evaluation in created:
         match evaluation.evaluation_filter.task_types[0]:
             case enums.TaskType.CLASSIFICATION:
-                task_handler.add_task(
-                    backend.compute_clf_metrics,
-                    db=db,
-                    evaluation_id=evaluation.evaluation_id,
-                )
+                compute_func = backend.compute_clf_metrics
             case enums.TaskType.DETECTION:
-                task_handler.add_task(
-                    backend.compute_detection_metrics,
-                    db=db,
-                    evaluation_id=evaluation.evaluation_id,
-                )
+                compute_func = backend.compute_detection_metrics
             case enums.TaskType.SEGMENTATION:
-                task_handler.add_task(
-                    backend.compute_semantic_segmentation_metrics,
-                    db=db,
-                    evaluation_id=evaluation.evaluation_id,
-                )
+                compute_func = backend.compute_semantic_segmentation_metrics
             case _:
                 raise RuntimeError
+            
+        if task_handler:
+            task_handler.add_task(
+                compute_func,
+                db=db,
+                evaluation_id=evaluation.evaluation_id,
+            )
+        else:
+            compute_func(db=db, evaluation_id=evaluation.id)
 
     return created + existing

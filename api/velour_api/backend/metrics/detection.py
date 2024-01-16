@@ -198,6 +198,8 @@ def _compute_detection_metrics(
                 return table.polygon
             case AnnotationType.MULTIPOLYGON:
                 return table.multipolygon
+            case AnnotationType.RASTER:
+                return table.raster
             case _:
                 raise RuntimeError
 
@@ -414,14 +416,14 @@ def _convert_annotations_to_common_type(
     db: Session,
     datasets: list[models.Dataset],
     model: models.Model,
-    target_type: list[enums.AnnotationType],
-):
+    annotation_types: list[enums.AnnotationType],
+) -> enums.AnnotationType:
     """Convert all annotations to a common type."""
 
     # user has specified a target type
-    if len(target_type) > 1:
+    if len(annotation_types) > 1:
         raise RuntimeError("Should receive a single annotation type.")
-    elif not target_type:
+    elif not annotation_types:
         groundtruth_type = min(
             datasets,
             lambda dataset: core.get_annotation_type(db=db, dataset=dataset),
@@ -434,7 +436,7 @@ def _convert_annotations_to_common_type(
         )
         target_type = min([groundtruth_type, prediction_type])
     else:
-        target_type = target_type[0]
+        target_type = annotation_types[0]
 
     for dataset in datasets:
         # dataset
@@ -457,7 +459,7 @@ def _convert_annotations_to_common_type(
             target_type=target_type,
         )
 
-    return [target_type]
+    return target_type
 
 
 @validate_computation
@@ -483,7 +485,7 @@ def compute_detection_metrics(
     # unpack filters and params
     model_filter = schemas.Filter(**evaluation.model_filter)
     evaluation_filter = schemas.Filter(**evaluation.evaluation_filter)
-    parameters = schemas.DetectionParameters(**evaluation.parameters)
+    parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
     # check task type
     if evaluation_filter.task_types != [enums.TaskType.DETECTION]:
@@ -492,19 +494,19 @@ def compute_detection_metrics(
         )
 
     # fetch model and datasets
-    model = db.scalar(
-        select(models.Model).where(models.Model.id == evaluation.model_id)
-    )
     datasets = db.query(
         Query(models.Dataset).filter(evaluation_filter).any()
-    ).all()
+    ).distinct().all()
+    model = db.query(
+        Query(models.Model).filter(model_filter).any()
+    ).distinct().one_or_none()
 
     # ensure that all annotations have a common type to operate over
     target_type = _convert_annotations_to_common_type(
         db=db,
         datasets=datasets,
         model=model,
-        target_type=evaluation_filter.annotation_types,
+        annotation_types=evaluation_filter.annotation_types,
     )
     evaluation_filter.annotation_types = [target_type]
 

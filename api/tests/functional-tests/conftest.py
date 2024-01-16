@@ -150,7 +150,7 @@ def dset(db: Session) -> models.Dataset:
 def images() -> list[schemas.Datum]:
     return [
         schemas.Datum(
-            dataset="test_dataset",
+            dataset_name="test_dataset",
             uid=f"{i}",
             metadata={
                 "height": 1000,

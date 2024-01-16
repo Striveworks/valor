@@ -322,3 +322,43 @@ def get_prediction(
         dataset_name=dataset_name,
         datum_uid=datum_uid,
     )
+
+
+""" Evaluations """
+
+
+def get_evaluations(
+    *,
+    db: Session,
+    evaluation_ids: list[int] | None = None,
+    dataset_names: list[str] | None = None,
+    model_names: list[str] | None = None,
+) -> list[schemas.EvaluationResponse]:
+    """
+    Returns all evaluations that conform to user-supplied constraints.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    evaluation_ids
+        A list of evaluation job id constraints.
+    dataset_names
+        A list of dataset names to constrain by.
+    model_names
+        A list of model names to constrain by.
+    settings:
+        A list of `schemas.EvaluationSettings` to constrain by.
+
+    Returns
+    ----------
+    list[schemas.Evaluations]
+        A list of evaluations.
+    """
+    # get evaluations that conform to input args
+    return backend.get_evaluations(
+        db=db,
+        evaluation_ids=evaluation_ids,
+        dataset_names=dataset_names,
+        model_names=model_names,
+    )

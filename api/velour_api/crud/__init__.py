@@ -20,6 +20,7 @@ from ._read import (
     get_models,
     get_prediction,
     get_table_status,
+    get_evaluations,
 )
 from ._update import finalize
 
@@ -45,4 +46,5 @@ __all__ = [
     "get_groundtruth",
     "get_prediction",
     "finalize",
+    "get_evaluations",
 ]

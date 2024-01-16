@@ -8,7 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from velour_api import __version__ as api_version
-from velour_api import auth, crud, enums, exceptions, logger, schemas
+from velour_api import auth, crud, enums, exceptions, logger, schemas, api_utils
 from velour_api.backend import database
 from velour_api.settings import auth_settings
 
@@ -915,6 +915,75 @@ def create_or_get_evaluations(
             db=db,
             job_request=job_request,
             task_handler=background_tasks,
+        )
+    except Exception as e:
+        raise exceptions.create_http_error(e)
+    
+
+@app.get(
+    "/evaluations",
+    dependencies=[Depends(token_auth_scheme)],
+    response_model_exclude_none=True,
+    tags=["Evaluations"],
+)
+def get_evaluations(
+    datasets: str = None,
+    models: str = None,
+    evaluation_ids: str = None,
+    db: Session = Depends(get_db),
+) -> list[schemas.EvaluationResponse]:
+    """
+    Fetch all metrics associated with user-supplied dataset and model names. Users
+    may query using model names, dataset names, or both. All metrics for all specified
+    models and datasets will be returned in a list of Evaluations.
+
+    This endpoint can handle multiple dataset and model names. For example, you can use
+    `/evaluations?models=first_model,second_model&datasets=test_dataset` to get all evaluations
+    related to `test_dataset` and either `first_model` or `second_model`.
+
+    GET Endpoint: `/evaluations`
+
+    Parameters
+    ----------
+    datasets : str
+        An optional set of dataset names to return metrics for
+    models : str
+        An optional set of model names to return metrics for
+    evaluation_ids : str
+        An optional set of evaluation_ids to return metrics for
+    db : Session
+        The database session to use. This parameter is a sqlalchemy dependency and shouldn't be submitted by the user.
+
+    Returns
+    -------
+    List[schemas.Evaluation]
+        A list of evaluations.
+
+    Raises
+    ------
+    HTTPException (400)
+        If a ValueError is thrown.
+    HTTPException (404)
+        If the dataset or model doesn't exist.
+    """
+    model_names = api_utils._split_query_params(models)
+    dataset_names = api_utils._split_query_params(datasets)
+    evaluation_ids_str = api_utils._split_query_params(evaluation_ids)
+
+    if evaluation_ids_str:
+        try:
+            evaluation_ids_ints = [int(id) for id in evaluation_ids_str]
+        except Exception as e:
+            raise exceptions.create_http_error(e)
+    else:
+        evaluation_ids_ints = None
+
+    try:
+        return crud.get_evaluations(
+            db=db,
+            evaluation_ids=evaluation_ids_ints,
+            dataset_names=dataset_names,
+            model_names=model_names,
         )
     except Exception as e:
         raise exceptions.create_http_error(e)
