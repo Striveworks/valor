@@ -9,13 +9,89 @@ from velour_api.backend import core, models
 def created_dataset(db: Session, dataset_name: str) -> str:
     dataset = schemas.Dataset(name=dataset_name)
     core.create_dataset(db, dataset=dataset)
+    core.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid1", dataset_name=dataset_name),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[schemas.Label(key="k1", value="v1")]
+                )
+            ]
+        )
+    )
+    core.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid2", dataset_name=dataset_name),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[schemas.Label(key="k1", value="v1")]
+                )
+            ]
+        )
+    )
+    core.create_groundtruth(
+        db=db,
+        groundtruth=schemas.GroundTruth(
+            datum=schemas.Datum(uid="uid3", dataset_name=dataset_name),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEGMENTATION,
+                    labels=[schemas.Label(key="k1", value="v1")]
+                )
+            ]
+        )
+    )
     return dataset_name
 
 
 @pytest.fixture
-def created_model(db: Session, model_name: str) -> str:
+def created_model(db: Session, model_name: str, created_dataset: str) -> str:
     model = schemas.Model(name=model_name)
     core.create_model(db, model=model)
+    core.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model_name=model_name,
+            datum=schemas.Datum(uid="uid1", dataset_name=created_dataset),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.CLASSIFICATION,
+                    labels=[schemas.Label(key="k1", value="v1", score=1.0)]
+                )
+            ]
+        )
+    )
+    core.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model_name=model_name,
+            datum=schemas.Datum(uid="uid2", dataset_name=created_dataset),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.DETECTION,
+                    labels=[schemas.Label(key="k1", value="v1", score=1.0)]
+                )
+            ]
+        )
+    )
+    core.create_prediction(
+        db=db,
+        prediction=schemas.Prediction(
+            model_name=model_name,
+            datum=schemas.Datum(uid="uid3", dataset_name=created_dataset),
+            annotations=[
+                schemas.Annotation(
+                    task_type=enums.TaskType.SEGMENTATION,
+                    labels=[schemas.Label(key="k1", value="v1")],
+                )
+            ]
+        )
+    )
+    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
     return model_name
 
 
@@ -24,9 +100,6 @@ def test_create_evaluation(
     created_dataset: str,
     created_model: str,
 ):
-    # create finalized dataset (automatically finalizes model as both are empty)
-    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
-
     job_request_1 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
         evaluation_filter=schemas.Filter(
@@ -58,9 +131,16 @@ def test_create_evaluation(
     rows = db.query(models.Evaluation).all()
     assert len(rows) == 1
     assert rows[0].id == evaluation_id
-    assert rows[0].model_filter == schemas.Filter(model_names=[created_model])
-    assert rows[0].evaluation_filter == job_request_1.evaluation_filter.model_dump()
-    assert rows[0].parameters == None
+    assert rows[0].model_filter == schemas.Filter(
+        model_names=[created_model],
+        dataset_names=[created_dataset],
+    ).model_dump()
+    assert rows[0].evaluation_filter == schemas.Filter(
+        model_names=[created_model],
+        dataset_names=[created_dataset],
+        task_types=[enums.TaskType.CLASSIFICATION],
+    ).model_dump()
+    assert rows[0].parameters == schemas.EvaluationParameters().model_dump()
 
 
 def test_fetch_evaluation_from_id(
@@ -68,9 +148,6 @@ def test_fetch_evaluation_from_id(
     created_dataset: str,
     created_model: str,
 ):
-    # create finalized dataset (automatically finalizes model as both are empty)
-    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
-
     # create evaluation 1
     job_request_1 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
@@ -109,9 +186,6 @@ def test_get_evaluation_id_from_job_request(
     created_dataset: str,
     created_model: str,
 ):
-    # create finalized dataset (automatically finalizes model as both are empty)
-    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
-
     # create evaluation 1
     job_request_1 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
@@ -145,55 +219,50 @@ def test_get_evaluation_id_from_job_request(
     assert fetched_ids[0] == evaluation_2
 
 
-# TODO 
-# def test_get_evaluations(
-#     db: Session,
-#     created_dataset: str,
-#     created_model: str,
-# ):
-#     # create finalized dataset (automatically finalizes model as both are empty)
-#     core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
+def test_get_evaluations(
+    db: Session,
+    created_dataset: str,
+    created_model: str,
+):
+    # create evaluation 1
+    job_request_1 = schemas.EvaluationRequest(
+        model_filter=schemas.Filter(model_names=[created_model]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=[created_dataset],
+            task_types=[enums.TaskType.CLASSIFICATION],
+        ),
+    )
+    created_1, _ = core.create_or_get_evaluations(db, job_request_1)
+    assert len(created_1) == 1
 
-#     # create evaluation 1
-#     job_request_1 = schemas.EvaluationRequest(
-#         model_filter=schemas.Filter(model_names=[created_model]),
-#         evaluation_filter=schemas.Filter(
-#             dataset_names=[created_dataset],
-#             task_types=[enums.TaskType.CLASSIFICATION],
-#         ),
-#     )
-#     created_1, _ = core.create_or_get_evaluations(db, job_request_1)
-#     assert len(created_1) == 1
+    # create evaluation 2
+    job_request_2 = schemas.EvaluationRequest(
+        model_filter=schemas.Filter(model_names=[created_model]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=[created_dataset],
+            task_types=[enums.TaskType.SEGMENTATION],
+        ),
+    )
+    created_2, _ = core.create_or_get_evaluations(db, job_request_2)
+    assert len(created_2) == 1
 
-#     # create evaluation 2
-#     job_request_2 = schemas.EvaluationRequest(
-#         model_filter=schemas.Filter(model_names=[created_model]),
-#         evaluation_filter=schemas.Filter(
-#             dataset_names=[created_dataset],
-#             task_types=[enums.TaskType.SEGMENTATION],
-#         ),
-#     )
-#     created_2, _ = core.create_or_get_evaluations(db, job_request_2)
-#     assert len(created_2) == 1
-
-#     get_request = schemas.EvaluationRequest(
-#         model_filter=schemas.Filter(model_names=[created_model]),
-#         evaluation_filter=schemas.Filter(
-#             dataset_names=[created_dataset],
-#             task_types=[
-#                 enums.TaskType.CLASSIFICATION,
-#                 enums.TaskType.SEGMENTATION,
-#             ],
-#         ),
-#     )
-#     created, existing = core.create_or_get_evaluations(
-#         db=db,
-#         job_request=get_request,
-#     )
-#     assert len(created) == 0
-#     assert len(existing) == 2
-#     task_types = {e.evaluation_filter.task_types[0] for e in existing if len(e.evaluation_filter.task_types) == 1}
-#     assert task_types == {enums.TaskType.CLASSIFICATION, enums.TaskType.SEGMENTATION}
+    get_request = schemas.EvaluationRequest(
+        model_filter=schemas.Filter(model_names=[created_model]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=[created_dataset],
+            task_types=[
+                enums.TaskType.CLASSIFICATION,
+                enums.TaskType.SEGMENTATION,
+            ],
+        ),
+    )
+    existing = core.get_evaluations(
+        db=db,
+        job_request=get_request,
+    )
+    assert len(existing) == 2
+    task_types = {e.evaluation_filter.task_types[0] for e in existing if len(e.evaluation_filter.task_types) == 1}
+    assert task_types == {enums.TaskType.CLASSIFICATION, enums.TaskType.SEGMENTATION}
 
 
 def test_evaluation_status(
@@ -201,9 +270,6 @@ def test_evaluation_status(
     created_dataset: str,
     created_model: str,
 ):
-    # create finalized dataset (automatically finalizes model as both are empty)
-    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
-
     # create evaluation 1
     job_request_1 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
@@ -330,9 +396,6 @@ def test_check_for_active_evaluations(
     created_dataset: str,
     created_model: str,
 ):
-    # create finalized dataset (automatically finalizes model as both are empty)
-    core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
-
     # create evaluation 1
     job_request_1 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
@@ -358,10 +421,6 @@ def test_check_for_active_evaluations(
     evaluation_2 = created[0].id
 
     # keep evaluation 2 constant, run evaluation 1
-
-    from sqlalchemy import select, func
-    print(db.scalar(select(func.count()).select_from(models.Evaluation)))
-
     assert (
         core.check_for_active_evaluations(db, created_dataset, created_model)
         == 2

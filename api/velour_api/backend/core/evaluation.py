@@ -71,12 +71,17 @@ def _split_request(
     Splits a job request into component requests.
     """
 
-    model_to_evaluate = db.query(
-        Query(models.Model).filter(job_request.model_filter).any()
-    ).all()
     datasets_to_evaluate = db.query(
         Query(models.Dataset).filter(job_request.evaluation_filter).any()
-    ).all()
+    ).distinct().all()
+    if not datasets_to_evaluate:
+        raise ValueError("No datasets meet the requirements of this request.")
+
+    model_to_evaluate = db.query(
+        Query(models.Model).filter(job_request.model_filter).any()
+    ).distinct().all()
+    if not model_to_evaluate:
+        raise ValueError("No models meet the requirements of this request.")
 
     # verify all models and datasets are ready for evaluation
     _verify_ready_to_evaluate(
@@ -122,8 +127,8 @@ def _split_request(
                         )
                     )
                 case enums.TaskType.DETECTION:
-                    annotation_types = evaluation_filter.annotation_types.copy()
-                    if annotation_types:
+                    if evaluation_filter.annotation_types:
+                        annotation_types = evaluation_filter.annotation_types.copy()
                         for atype in annotation_types:
                             evaluation_filter.annotation_types = [atype]
                             request_list.append(
