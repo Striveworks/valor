@@ -73,9 +73,9 @@ class DatasetNotFinalizedError(Exception):
         The name of the dataset.
     """
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, action: str = "evaluate"):
         super().__init__(
-            f"cannot evaluate dataset `{name}` since it has not been finalized."
+            f"cannot {action} on dataset `{name}` since it has not been finalized."
         )
 
 
