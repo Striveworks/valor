@@ -4,12 +4,7 @@ from sqlalchemy.orm import Session
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
 from velour_api.backend.core.evaluation import (
-    _db_metric_to_pydantic_metric,
-    _verify_ready_to_evaluate,
-    _split_request,
     _fetch_evaluation_from_subrequest,
-    _create_response,
-    _create_responses,
 )
 
 
@@ -24,10 +19,10 @@ def created_dataset(db: Session, dataset_name: str) -> str:
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1")]
+                    labels=[schemas.Label(key="k1", value="v1")],
                 )
-            ]
-        )
+            ],
+        ),
     )
     core.create_groundtruth(
         db=db,
@@ -36,10 +31,10 @@ def created_dataset(db: Session, dataset_name: str) -> str:
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1")]
+                    labels=[schemas.Label(key="k1", value="v1")],
                 )
-            ]
-        )
+            ],
+        ),
     )
     core.create_groundtruth(
         db=db,
@@ -48,10 +43,10 @@ def created_dataset(db: Session, dataset_name: str) -> str:
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.SEGMENTATION,
-                    labels=[schemas.Label(key="k1", value="v1")]
+                    labels=[schemas.Label(key="k1", value="v1")],
                 )
-            ]
-        )
+            ],
+        ),
     )
     return dataset_name
 
@@ -68,10 +63,10 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)]
+                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
                 )
-            ]
-        )
+            ],
+        ),
     )
     core.create_prediction(
         db=db,
@@ -81,10 +76,10 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)]
+                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
                 )
-            ]
-        )
+            ],
+        ),
     )
     core.create_prediction(
         db=db,
@@ -96,8 +91,8 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
                     task_type=enums.TaskType.SEGMENTATION,
                     labels=[schemas.Label(key="k1", value="v1")],
                 )
-            ]
-        )
+            ],
+        ),
     )
     core.set_dataset_status(db, created_dataset, enums.TableStatus.FINALIZED)
     return model_name
@@ -139,15 +134,21 @@ def test_create_evaluation(
     rows = db.query(models.Evaluation).all()
     assert len(rows) == 1
     assert rows[0].id == evaluation_id
-    assert rows[0].model_filter == schemas.Filter(
-        model_names=[created_model],
-        dataset_names=[created_dataset],
-    ).model_dump()
-    assert rows[0].evaluation_filter == schemas.Filter(
-        model_names=[created_model],
-        dataset_names=[created_dataset],
-        task_types=[enums.TaskType.CLASSIFICATION],
-    ).model_dump()
+    assert (
+        rows[0].model_filter
+        == schemas.Filter(
+            model_names=[created_model],
+            dataset_names=[created_dataset],
+        ).model_dump()
+    )
+    assert (
+        rows[0].evaluation_filter
+        == schemas.Filter(
+            model_names=[created_model],
+            dataset_names=[created_dataset],
+            task_types=[enums.TaskType.CLASSIFICATION],
+        ).model_dump()
+    )
     assert rows[0].parameters == schemas.EvaluationParameters().model_dump()
 
     # test - bad request
@@ -171,7 +172,7 @@ def test_create_evaluation(
         )
         core.create_or_get_evaluations(db, job_request_1)
     assert "No models" in str(e)
-    
+
 
 def test_fetch_evaluation_from_id(
     db: Session,
@@ -204,11 +205,17 @@ def test_fetch_evaluation_from_id(
 
     fetched_evaluation = core.fetch_evaluation_from_id(db, evaluation_id_1)
     assert fetched_evaluation.id == evaluation_id_1
-    assert fetched_evaluation.evaluation_filter["task_types"][0] == enums.TaskType.CLASSIFICATION
+    assert (
+        fetched_evaluation.evaluation_filter["task_types"][0]
+        == enums.TaskType.CLASSIFICATION
+    )
 
     fetched_evaluation = core.fetch_evaluation_from_id(db, evaluation_id_2)
     assert fetched_evaluation.id == evaluation_id_2
-    assert fetched_evaluation.evaluation_filter["task_types"][0] == enums.TaskType.SEGMENTATION
+    assert (
+        fetched_evaluation.evaluation_filter["task_types"][0]
+        == enums.TaskType.SEGMENTATION
+    )
 
 
 def test_get_evaluation_ids(
@@ -514,7 +521,7 @@ def test_check_for_active_evaluations(
         evaluation_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.CLASSIFICATION],
-        )
+        ),
     )
     created, _ = core.create_or_get_evaluations(db, job_request_1)
     assert len(created) == 1
@@ -526,7 +533,7 @@ def test_check_for_active_evaluations(
         evaluation_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.SEGMENTATION],
-        )
+        ),
     )
     created, _ = core.create_or_get_evaluations(db, job_request_2)
     assert len(created) == 1
@@ -535,8 +542,8 @@ def test_check_for_active_evaluations(
     # keep evaluation 2 constant, run evaluation 1
     assert (
         core.check_for_active_evaluations(
-            db=db, 
-            dataset_names=[created_dataset], 
+            db=db,
+            dataset_names=[created_dataset],
             model_names=[created_model],
         )
         == 2
@@ -548,8 +555,8 @@ def test_check_for_active_evaluations(
 
     assert (
         core.check_for_active_evaluations(
-            db=db, 
-            dataset_names=[created_dataset], 
+            db=db,
+            dataset_names=[created_dataset],
             model_names=[created_model],
         )
         == 2
@@ -559,8 +566,8 @@ def test_check_for_active_evaluations(
 
     assert (
         core.check_for_active_evaluations(
-            db=db, 
-            dataset_names=[created_dataset], 
+            db=db,
+            dataset_names=[created_dataset],
             model_names=[created_model],
         )
         == 1
@@ -572,15 +579,15 @@ def test_check_for_active_evaluations(
         evaluation_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.DETECTION],
-        )
+        ),
     )
     evaluation_3, _ = core.create_or_get_evaluations(db, job_request_3)
     evaluation_3 = evaluation_3[0].id
 
     assert (
         core.check_for_active_evaluations(
-            db=db, 
-            dataset_names=[created_dataset], 
+            db=db,
+            dataset_names=[created_dataset],
             model_names=[created_model],
         )
         == 2
@@ -599,8 +606,8 @@ def test_check_for_active_evaluations(
 
     assert (
         core.check_for_active_evaluations(
-            db=db, 
-            dataset_names=[created_dataset], 
+            db=db,
+            dataset_names=[created_dataset],
             model_names=[created_model],
         )
         == 2
@@ -610,8 +617,8 @@ def test_check_for_active_evaluations(
 
     assert (
         core.check_for_active_evaluations(
-            db=db, 
-            dataset_names=[created_dataset], 
+            db=db,
+            dataset_names=[created_dataset],
             model_names=[created_model],
         )
         == 1
@@ -623,8 +630,8 @@ def test_check_for_active_evaluations(
 
     assert (
         core.check_for_active_evaluations(
-            db=db, 
-            dataset_names=[created_dataset], 
+            db=db,
+            dataset_names=[created_dataset],
             model_names=[created_model],
         )
         == 2
@@ -634,8 +641,8 @@ def test_check_for_active_evaluations(
 
     assert (
         core.check_for_active_evaluations(
-            db=db, 
-            dataset_names=[created_dataset], 
+            db=db,
+            dataset_names=[created_dataset],
             model_names=[created_model],
         )
         == 1
@@ -647,8 +654,8 @@ def test_check_for_active_evaluations(
 
     assert (
         core.check_for_active_evaluations(
-            db=db, 
-            dataset_names=[created_dataset], 
+            db=db,
+            dataset_names=[created_dataset],
             model_names=[created_model],
         )
         == 1
@@ -660,8 +667,8 @@ def test_check_for_active_evaluations(
 
     assert (
         core.check_for_active_evaluations(
-            db=db, 
-            dataset_names=[created_dataset], 
+            db=db,
+            dataset_names=[created_dataset],
             model_names=[created_model],
         )
         == 0

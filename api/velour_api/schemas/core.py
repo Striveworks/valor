@@ -326,7 +326,7 @@ class Prediction(BaseModel):
     annotations: list[Annotation]
     model_config = ConfigDict(
         extra="forbid",
-        protected_namespaces=('protected_',),
+        protected_namespaces=("protected_",),
     )
 
     @field_validator("model_name")

@@ -9,7 +9,7 @@ from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from velour_api import crud, enums, exceptions, schemas, backend
+from velour_api import crud, enums, exceptions, schemas
 from velour_api.backend import models
 
 
@@ -1064,7 +1064,7 @@ def test_create_detection_metrics(
             parameters=schemas.EvaluationParameters(
                 iou_thresholds_to_compute=[0.2, 0.6],
                 iou_thresholds_to_return=[0.2],
-            )
+            ),
         )
 
         # create evaluation (return AP Response)
@@ -1203,7 +1203,9 @@ def test_create_detection_metrics(
         metrics=[],
         confusion_matrices=[],
         missing_pred_labels=[],
-        ignored_pred_labels=[schemas.Label(key='class', value='3', score=None)],
+        ignored_pred_labels=[
+            schemas.Label(key="class", value="3", score=None)
+        ],
     )
     assert model_evals[1] == schemas.EvaluationResponse(
         model_filter=schemas.Filter(
@@ -1278,7 +1280,7 @@ def test_create_clf_metrics(
         evaluation_filter=schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-        )
+        ),
     )
 
     # create clf evaluation (returns Clf Response)
@@ -1338,9 +1340,7 @@ def test_create_clf_metrics(
     assert len(confusion_matrices) == 2
 
     # test getting metrics from evaluation settings id
-    evaluations = crud.get_evaluations(
-        db=db, evaluation_ids=[evaluation_id]
-    )
+    evaluations = crud.get_evaluations(db=db, evaluation_ids=[evaluation_id])
     assert len(evaluations) == 1
 
     for m in evaluations[0].metrics:

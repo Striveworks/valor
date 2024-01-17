@@ -510,7 +510,7 @@ class Client:
         ----------
         req : schemas.EvaluationRequest
             The requested evaluation parameters.
-        
+
         Returns
         -------
         List[schemas.EvaluationResponse]

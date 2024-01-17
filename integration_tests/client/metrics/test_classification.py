@@ -115,9 +115,7 @@ def test_evaluate_tabular_clf(
     # test dataset finalization
     model = Model(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset).wait_for_completion(
-            timeout=30
-        )
+        model.evaluate_classification(dataset).wait_for_completion(timeout=30)
     assert "has not been finalized" in str(exc_info)
 
     dataset.finalize()
@@ -364,7 +362,10 @@ def test_stratify_clf_metrics(
             Datum.metadata["md1"] == "md1-val2",
         ],
     )
-    assert eval_results_val2.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert (
+        eval_results_val2.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
     val2_metrics = eval_results_val2.metrics
 
     # should get the same thing if we use the boolean filter
@@ -372,7 +373,10 @@ def test_stratify_clf_metrics(
         dataset,
         filters=[Datum.metadata["md3"] == True],  # noqa: E712
     )
-    assert eval_results_bool.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert (
+        eval_results_bool.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
     val_bool_metrics = eval_results_bool.metrics
 
     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
@@ -502,7 +506,10 @@ def test_stratify_clf_metrics_by_time(
             Datum.metadata["md1"] == date.fromisoformat("2002-01-01"),
         ],
     )
-    assert eval_results_val2.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert (
+        eval_results_val2.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
     val2_metrics = eval_results_val2.metrics
 
     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]

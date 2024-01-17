@@ -429,10 +429,19 @@ def _convert_annotations_to_common_type(
                 db=db, dataset=dataset, task_type=enums.TaskType.DETECTION
             )
             model_type = core.get_annotation_type(
-                db=db, dataset=dataset, model=model, task_type=enums.TaskType.DETECTION
+                db=db,
+                dataset=dataset,
+                model=model,
+                task_type=enums.TaskType.DETECTION,
             )
-            groundtruth_type = dataset_type if dataset_type < groundtruth_type else groundtruth_type
-            prediction_type = model_type if model_type < prediction_type else prediction_type
+            groundtruth_type = (
+                dataset_type
+                if dataset_type < groundtruth_type
+                else groundtruth_type
+            )
+            prediction_type = (
+                model_type if model_type < prediction_type else prediction_type
+            )
         target_type = min([groundtruth_type, prediction_type])
     elif len(annotation_types) > 1:
         raise RuntimeError("Should receive a single annotation type.")
@@ -441,7 +450,9 @@ def _convert_annotations_to_common_type(
 
     for dataset in datasets:
         # dataset
-        source_type = core.get_annotation_type(db=db, dataset=dataset, task_type=enums.TaskType.DETECTION)
+        source_type = core.get_annotation_type(
+            db=db, dataset=dataset, task_type=enums.TaskType.DETECTION
+        )
         core.convert_geometry(
             db=db,
             dataset=dataset,
@@ -450,7 +461,10 @@ def _convert_annotations_to_common_type(
         )
         # model
         source_type = core.get_annotation_type(
-            db=db, dataset=dataset, model=model, task_type=enums.TaskType.DETECTION
+            db=db,
+            dataset=dataset,
+            model=model,
+            task_type=enums.TaskType.DETECTION,
         )
         core.convert_geometry(
             db=db,
@@ -495,12 +509,16 @@ def compute_detection_metrics(
         )
 
     # fetch model and datasets
-    datasets = db.query(
-        Query(models.Dataset).filter(evaluation_filter).any()
-    ).distinct().all()
-    model = db.query(
-        Query(models.Model).filter(model_filter).any()
-    ).distinct().one_or_none()
+    datasets = (
+        db.query(Query(models.Dataset).filter(evaluation_filter).any())
+        .distinct()
+        .all()
+    )
+    model = (
+        db.query(Query(models.Model).filter(model_filter).any())
+        .distinct()
+        .one_or_none()
+    )
 
     # ensure that all annotations have a common type to operate over
     target_type = _convert_annotations_to_common_type(

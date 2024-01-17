@@ -9,7 +9,10 @@ from velour_api import exceptions, schemas
 from velour_api.backend import models
 from velour_api.backend.core.annotation import create_skipped_annotations
 from velour_api.backend.core.dataset import fetch_dataset, get_dataset_status
-from velour_api.backend.core.evaluation import check_for_active_evaluations, delete_evaluations
+from velour_api.backend.core.evaluation import (
+    check_for_active_evaluations,
+    delete_evaluations,
+)
 from velour_api.enums import ModelStatus, TableStatus
 
 
@@ -284,7 +287,7 @@ def set_model_status(
 
     elif status == TableStatus.DELETING:
         if check_for_active_evaluations(
-            db=db, 
+            db=db,
             model_names=[model_name],
         ):
             raise exceptions.EvaluationRunningError(

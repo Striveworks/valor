@@ -1,9 +1,6 @@
-from uuid import uuid4
-
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
-from velour_api.enums import EvaluationStatus
 from velour_api.schemas.label import Label
 
 

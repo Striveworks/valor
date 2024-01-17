@@ -17,10 +17,10 @@ def created_dataset(db: Session, dataset_name: str) -> str:
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1")]
+                    labels=[schemas.Label(key="k1", value="v1")],
                 )
-            ]
-        )
+            ],
+        ),
     )
     core.create_groundtruth(
         db=db,
@@ -29,10 +29,10 @@ def created_dataset(db: Session, dataset_name: str) -> str:
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1")]
+                    labels=[schemas.Label(key="k1", value="v1")],
                 )
-            ]
-        )
+            ],
+        ),
     )
     core.create_groundtruth(
         db=db,
@@ -41,10 +41,10 @@ def created_dataset(db: Session, dataset_name: str) -> str:
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.SEGMENTATION,
-                    labels=[schemas.Label(key="k1", value="v1")]
+                    labels=[schemas.Label(key="k1", value="v1")],
                 )
-            ]
-        )
+            ],
+        ),
     )
     return dataset_name
 
@@ -61,10 +61,10 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.CLASSIFICATION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)]
+                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
                 )
-            ]
-        )
+            ],
+        ),
     )
     core.create_prediction(
         db=db,
@@ -74,10 +74,10 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
             annotations=[
                 schemas.Annotation(
                     task_type=enums.TaskType.DETECTION,
-                    labels=[schemas.Label(key="k1", value="v1", score=1.0)]
+                    labels=[schemas.Label(key="k1", value="v1", score=1.0)],
                 )
-            ]
-        )
+            ],
+        ),
     )
     core.create_prediction(
         db=db,
@@ -89,8 +89,8 @@ def created_model(db: Session, model_name: str, created_dataset: str) -> str:
                     task_type=enums.TaskType.SEGMENTATION,
                     labels=[schemas.Label(key="k1", value="v1")],
                 )
-            ]
-        )
+            ],
+        ),
     )
     return model_name
 
@@ -210,7 +210,7 @@ def test_dataset_status_with_evaluations(
             evaluation_filter=schemas.Filter(
                 dataset_names=[created_dataset],
                 task_types=[enums.TaskType.CLASSIFICATION],
-            )
+            ),
         ),
     )
     assert len(evaluations) == 1

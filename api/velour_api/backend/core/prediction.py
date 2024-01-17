@@ -30,7 +30,8 @@ def create_prediction(
     )
     if model_status != enums.TableStatus.CREATING:
         raise exceptions.ModelFinalizedError(
-            dataset_name=prediction.datum.dataset_name, model_name=prediction.model_name
+            dataset_name=prediction.datum.dataset_name,
+            model_name=prediction.model_name,
         )
 
     # retrieve existing table entries
@@ -74,7 +75,7 @@ def create_prediction(
     try:
         db.add_all(prediction_list)
         db.commit()
-    except IntegrityError as e:
+    except IntegrityError:
         db.rollback()
         raise exceptions.PredictionAlreadyExistsError
 

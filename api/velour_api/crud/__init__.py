@@ -2,8 +2,8 @@ from ._create import (
     create_dataset,
     create_groundtruth,
     create_model,
-    create_prediction,
     create_or_get_evaluations,
+    create_prediction,
 )
 from ._delete import delete
 from ._read import (
@@ -14,13 +14,13 @@ from ._read import (
     get_datasets,
     get_datums,
     get_evaluation_status,
+    get_evaluations,
     get_groundtruth,
     get_model,
     get_model_labels,
     get_models,
     get_prediction,
     get_table_status,
-    get_evaluations,
 )
 from ._update import finalize
 

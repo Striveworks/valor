@@ -114,7 +114,7 @@ def test_generate_prediction_data(client: Client):
         "evaluation_filter": {
             **asdict(
                 Filter()
-            ), # default filter properties with overrides below            
+            ),  # default filter properties with overrides below
             "model_names": [model_name],
             "dataset_names": [dataset_name],
             "task_types": [TaskType.DETECTION.value],

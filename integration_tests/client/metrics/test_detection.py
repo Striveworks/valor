@@ -14,7 +14,6 @@ from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.schemas.filters import Filter
 from velour_api.backend import models
 
-
 default_filter_properties = asdict(Filter())
 
 
@@ -87,7 +86,7 @@ def test_evaluate_detection(
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
     assert isinstance(eval_job.id, int)
-    assert eval_job.ignored_pred_labels == [{'key': 'k2', 'value': 'v2'}]
+    assert eval_job.ignored_pred_labels == [{"key": "k2", "value": "v2"}]
     assert eval_job.missing_pred_labels == []
     assert eval_job.status == EvaluationStatus.DONE
 
@@ -115,7 +114,7 @@ def test_evaluate_detection(
         "metrics": expected_metrics,
         "confusion_matrices": [],
         "missing_pred_labels": [],
-        "ignored_pred_labels": [{'key': 'k2', 'value': 'v2'}],
+        "ignored_pred_labels": [{"key": "k2", "value": "v2"}],
     }
 
     # test evaluating a job using a `Label.labels` filter
@@ -128,7 +127,10 @@ def test_evaluate_detection(
             Annotation.type == AnnotationType.BOX,
         ],
     )
-    assert eval_job_value_filter_using_in_.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert (
+        eval_job_value_filter_using_in_.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
     value_filter_result = eval_job_value_filter_using_in_.dict()
     assert value_filter_result["metrics"] == result["metrics"]
 
@@ -142,7 +144,10 @@ def test_evaluate_detection(
             Annotation.type == AnnotationType.BOX,
         ],
     )
-    assert eval_job_value_filter.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert (
+        eval_job_value_filter.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
     value_filter_result = eval_job_value_filter.dict()
     assert value_filter_result["metrics"] == result["metrics"]
 
@@ -181,7 +186,10 @@ def test_evaluate_detection(
         ],
     )
 
-    assert eval_job_bounded_area_10_2000.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert (
+        eval_job_bounded_area_10_2000.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
     result = eval_job_bounded_area_10_2000.dict()
     assert result == {
         "id": eval_job_bounded_area_10_2000.id,
@@ -216,7 +224,7 @@ def test_evaluate_detection(
         "metrics": expected_metrics,
         "confusion_matrices": [],
         "missing_pred_labels": [],
-        "ignored_pred_labels": [{'key': 'k2', 'value': 'v2'}],
+        "ignored_pred_labels": [{"key": "k2", "value": "v2"}],
     }
 
     # now check we get different things by setting the thresholds accordingly
@@ -231,7 +239,10 @@ def test_evaluate_detection(
             Annotation.geometric_area >= 1200,
         ],
     )
-    assert eval_job_min_area_1200.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert (
+        eval_job_min_area_1200.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
     result = eval_job_min_area_1200.dict()
     min_area_1200_metrics = result.pop("metrics")
     assert result == {
@@ -263,7 +274,7 @@ def test_evaluate_detection(
         "status": EvaluationStatus.DONE.value,
         "confusion_matrices": [],
         "missing_pred_labels": [],
-        "ignored_pred_labels": [{'key': 'k2', 'value': 'v2'}],
+        "ignored_pred_labels": [{"key": "k2", "value": "v2"}],
     }
     assert min_area_1200_metrics != expected_metrics
 
@@ -278,7 +289,10 @@ def test_evaluate_detection(
             Annotation.geometric_area <= 1200,
         ],
     )
-    assert eval_job_max_area_1200.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert (
+        eval_job_max_area_1200.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
     result = eval_job_max_area_1200.dict()
     max_area_1200_metrics = result.pop("metrics")
     assert result == {
@@ -310,7 +324,7 @@ def test_evaluate_detection(
         "status": EvaluationStatus.DONE.value,
         "confusion_matrices": [],
         "missing_pred_labels": [],
-        "ignored_pred_labels": [{'key': 'k2', 'value': 'v2'}],
+        "ignored_pred_labels": [{"key": "k2", "value": "v2"}],
     }
     assert max_area_1200_metrics != expected_metrics
 
@@ -327,7 +341,10 @@ def test_evaluate_detection(
             Annotation.geometric_area <= 1800,
         ],
     )
-    assert eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert (
+        eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
     result = eval_job_bounded_area_1200_1800.dict()
     bounded_area_metrics = result.pop("metrics")
     assert result == {
@@ -363,7 +380,7 @@ def test_evaluate_detection(
         "status": EvaluationStatus.DONE.value,
         "confusion_matrices": [],
         "missing_pred_labels": [],
-        "ignored_pred_labels": [{'key': 'k2', 'value': 'v2'}],
+        "ignored_pred_labels": [{"key": "k2", "value": "v2"}],
     }
     assert bounded_area_metrics != expected_metrics
     assert bounded_area_metrics == min_area_1200_metrics
@@ -398,7 +415,9 @@ def test_evaluate_detection_with_json_filters(
             Annotation.type == AnnotationType.BOX,
         ],
     )
-    assert eval_results.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert (
+        eval_results.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    )
     assert eval_results.parameters.iou_thresholds_to_compute == [
         i / 100 for i in range(50, 100, 5)
     ]
@@ -457,7 +476,10 @@ def test_evaluate_detection_with_json_filters(
             Annotation.geometric_area >= 1200,
         ],
     )
-    assert eval_results_min_area_1200.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert (
+        eval_results_min_area_1200.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
     min_area_1200_metrics = eval_results_min_area_1200.metrics
 
     eval_job_bounded_area_1200_1800 = model.evaluate_detection(
@@ -481,10 +503,12 @@ def test_evaluate_detection_with_json_filters(
         },
     )
 
-    
-    assert eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert (
+        eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
     result = eval_job_bounded_area_1200_1800.dict()
-    
+
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_bounded_area_1200_1800.id,
@@ -519,7 +543,7 @@ def test_evaluate_detection_with_json_filters(
         "status": EvaluationStatus.DONE.value,
         "confusion_matrices": [],
         "missing_pred_labels": [],
-        "ignored_pred_labels": [{'key': 'k2', 'value': 'v2'}],
+        "ignored_pred_labels": [{"key": "k2", "value": "v2"}],
     }
     assert bounded_area_metrics != expected_metrics
     assert bounded_area_metrics == min_area_1200_metrics
@@ -664,19 +688,22 @@ def test_get_evaluations(
     )
     eval_job2.wait_for_completion(timeout=30)
 
-    second_model_evaluations = client.get_evaluations(
-        models="second_model"
-    )
+    second_model_evaluations = client.get_evaluations(models="second_model")
 
     assert len(second_model_evaluations) == 1
-    assert second_model_evaluations[0]["metrics"] == second_model_expected_metrics
+    assert (
+        second_model_evaluations[0]["metrics"] == second_model_expected_metrics
+    )
 
     both_evaluations = client.get_evaluations(datasets=["test_dataset"])
 
     # should contain two different entries, one for each model
     assert len(both_evaluations) == 2
     for evaluation in both_evaluations:
-        assert evaluation["model_filter"]["model_names"][0] in ["second_model", model_name]
+        assert evaluation["model_filter"]["model_names"][0] in [
+            "second_model",
+            model_name,
+        ]
         if evaluation["model_filter"]["model_names"][0] == model_name:
             assert evaluation["metrics"] == expected_metrics
         elif evaluation["model_filter"]["model_names"][0] == "second_model":

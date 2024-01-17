@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
-from typing import List, Union
+from typing import List
 
-from velour.enums import EvaluationStatus
 from velour.schemas.filters import Filter
 
 
@@ -41,7 +40,9 @@ class EvaluationRequest:
 
     model_filter: Filter
     evaluation_filter: Filter
-    parameters: EvaluationParameters = field(default_factory=EvaluationParameters)
+    parameters: EvaluationParameters = field(
+        default_factory=EvaluationParameters
+    )
 
     def __post_init__(self):
         if isinstance(self.model_filter, dict):

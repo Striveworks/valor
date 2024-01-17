@@ -1,12 +1,11 @@
 """ These integration tests should be run with a backend at http://localhost:8000
 that is no auth
 """
-from dataclasses import asdict
 
 import pytest
 
 from velour import Dataset, Datum, GroundTruth, Model, Prediction
-from velour.client import Client, ClientException
+from velour.client import Client
 from velour.enums import EvaluationStatus
 
 
@@ -128,9 +127,7 @@ def test_geospatial_filter(
         dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
-        filters=[
-            Datum.geospatial.intersect(geo_dict)
-        ],
+        filters=[Datum.geospatial.intersect(geo_dict)],
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
@@ -143,7 +140,7 @@ def test_geospatial_filter(
     ]
     assert len(eval_job.metrics) == 6
 
-    # filtering by model is allowed, this is the equivalent of requesting.. 
+    # filtering by model is allowed, this is the equivalent of requesting..
     # "Give me the dataset that model A has operated over."
     eval_job = model.evaluate_detection(
         dataset,

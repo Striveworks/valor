@@ -10,6 +10,7 @@ class ServiceUnavailable(Exception):
     """
     Raises an exception if the Velour service is unavailble.
     """
+
     def __init__(self, message: str):
         super().__init__(message)
 
@@ -334,7 +335,7 @@ class PredictionAlreadyExistsError(Exception):
 
     def __init__(self):
         super().__init__(
-            f"A prediction with the same label already exists for this datum."
+            "A prediction with the same label already exists for this datum."
         )
 
 
@@ -439,15 +440,15 @@ error_to_status_code = {
     DatumAlreadyExistsError: 409,
     DatumDoesNotBelongToDatasetError: 409,
     AnnotationAlreadyExistsError: 409,
-    GroundTruthAlreadyExistsError : 409,
-    PredictionAlreadyExistsError : 409,
+    GroundTruthAlreadyExistsError: 409,
+    PredictionAlreadyExistsError: 409,
     EvaluationAlreadyExistsError: 409,
     EvaluationRunningError: 409,
     EvaluationStateError: 409,
     # 500
     NotImplementedError: 500,
     # 503
-    ServiceUnavailable : 503,
+    ServiceUnavailable: 503,
 }
 
 

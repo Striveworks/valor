@@ -330,7 +330,7 @@ def convert_geometry(
         raise ValueError(f"Source type `{source_type}` not a geometric type.")
     if target_type not in valid_geometric_types:
         raise ValueError(f"Target type `{target_type}` not a geometric type.")
-    
+
     # Check if source type can serve the target type
     if source_type == target_type:
         return

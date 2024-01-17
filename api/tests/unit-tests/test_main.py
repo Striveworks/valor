@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from velour_api import exceptions, schemas
 from velour_api.api_utils import _split_query_params
 from velour_api.backend import database
-from velour_api.enums import TableStatus, TaskType, EvaluationStatus
+from velour_api.enums import EvaluationStatus, TableStatus, TaskType
 
 
 @pytest.fixture
@@ -935,7 +935,9 @@ def test_delete_model(crud, client: TestClient):
 def test_post_detection_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
-        model_filter=schemas.Filter(model_names=["modelname"], dataset_names=["dsetname"]),
+        model_filter=schemas.Filter(
+            model_names=["modelname"], dataset_names=["dsetname"]
+        ),
         evaluation_filter=schemas.Filter(
             dataset_names=["dsetname"],
             model_names=["modelname"],
@@ -946,7 +948,7 @@ def test_post_detection_metrics(client: TestClient):
         metrics=[],
         confusion_matrices=[],
         missing_pred_labels=[],
-        ignored_pred_labels=[], 
+        ignored_pred_labels=[],
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(
@@ -955,7 +957,7 @@ def test_post_detection_metrics(client: TestClient):
             dataset_names=["dsetname"],
             task_types=[TaskType.DETECTION],
         ),
-        parameters=schemas.EvaluationParameters()
+        parameters=schemas.EvaluationParameters(),
     ).model_dump()
 
     _test_post_evaluation_endpoint(
@@ -970,7 +972,9 @@ def test_post_detection_metrics(client: TestClient):
 def test_post_clf_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
-        model_filter=schemas.Filter(model_names=["modelname"], dataset_names=["dsetname"]),
+        model_filter=schemas.Filter(
+            model_names=["modelname"], dataset_names=["dsetname"]
+        ),
         evaluation_filter=schemas.Filter(
             dataset_names=["dsetname"],
             model_names=["modelname"],
@@ -981,7 +985,7 @@ def test_post_clf_metrics(client: TestClient):
         metrics=[],
         confusion_matrices=[],
         missing_pred_keys=[],
-        ignored_pred_keys=[], 
+        ignored_pred_keys=[],
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(
@@ -990,7 +994,7 @@ def test_post_clf_metrics(client: TestClient):
             dataset_names=["dsetname"],
             task_types=[TaskType.CLASSIFICATION],
         ),
-        parameters=schemas.EvaluationParameters()
+        parameters=schemas.EvaluationParameters(),
     ).model_dump()
 
     _test_post_evaluation_endpoint(
@@ -1005,7 +1009,9 @@ def test_post_clf_metrics(client: TestClient):
 def test_post_semenatic_segmentation_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
-        model_filter=schemas.Filter(model_names=["modelname"], dataset_names=["dsetname"]),
+        model_filter=schemas.Filter(
+            model_names=["modelname"], dataset_names=["dsetname"]
+        ),
         evaluation_filter=schemas.Filter(
             dataset_names=["dsetname"],
             model_names=["modelname"],
@@ -1016,7 +1022,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
         metrics=[],
         confusion_matrices=[],
         missing_pred_labels=[],
-        ignored_pred_labels=[], 
+        ignored_pred_labels=[],
     ).model_dump()
 
     example_json = schemas.EvaluationRequest(
@@ -1025,7 +1031,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
             dataset_names=["dsetname"],
             task_types=[TaskType.SEGMENTATION],
         ),
-        parameters=schemas.EvaluationParameters()
+        parameters=schemas.EvaluationParameters(),
     ).model_dump()
 
     _test_post_evaluation_endpoint(

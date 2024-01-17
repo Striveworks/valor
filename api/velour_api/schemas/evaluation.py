@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from velour_api.enums import EvaluationStatus, TaskType
+from velour_api.enums import EvaluationStatus
 from velour_api.schemas.filters import Filter
 from velour_api.schemas.metrics import ConfusionMatrixResponse, Metric
 
@@ -62,7 +62,7 @@ class EvaluationRequest(BaseModel):
     # pydantic setting
     model_config = ConfigDict(
         extra="forbid",
-        protected_namespaces=('protected_',),
+        protected_namespaces=("protected_",),
     )
 
     @model_validator(mode="after")
@@ -119,7 +119,5 @@ class EvaluationResponse(BaseModel):
 
     # pydantic setting
     model_config = ConfigDict(
-        extra="allow",
-        protected_namespaces=('protected_',)
+        extra="allow", protected_namespaces=("protected_",)
     )
-    

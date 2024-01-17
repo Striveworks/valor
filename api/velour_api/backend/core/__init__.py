@@ -27,13 +27,13 @@ from .datum import create_datum, fetch_datum, get_datums
 from .evaluation import (
     check_for_active_evaluations,
     create_or_get_evaluations,
-    fetch_evaluations,
     fetch_evaluation_from_id,
+    fetch_evaluations,
     get_disjoint_labels_from_evaluation_id,
-    get_evaluations,
-    get_evaluations_from_request,
     get_evaluation_ids,
     get_evaluation_status,
+    get_evaluations,
+    get_evaluations_from_request,
     set_evaluation_status,
 )
 from .geometry import convert_geometry, get_annotation_type

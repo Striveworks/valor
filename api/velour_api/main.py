@@ -2,13 +2,21 @@ import os
 from contextlib import asynccontextmanager
 
 import sqlalchemy
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from velour_api import __version__ as api_version
-from velour_api import auth, crud, enums, exceptions, logger, schemas, api_utils
+from velour_api import (
+    api_utils,
+    auth,
+    crud,
+    enums,
+    exceptions,
+    logger,
+    schemas,
+)
 from velour_api.backend import database
 from velour_api.settings import auth_settings
 
@@ -918,7 +926,7 @@ def create_or_get_evaluations(
         )
     except Exception as e:
         raise exceptions.create_http_error(e)
-    
+
 
 @app.get(
     "/evaluations",
@@ -1076,7 +1084,9 @@ def ready(db: Session = Depends(get_db)):
     try:
         db.execute(sqlalchemy.text("select 1"))
         return schemas.Readiness(status="ok")
-    except Exception as e:
+    except Exception:
         exceptions.create_http_error(
-            error=exceptions.ServiceUnavailable("Could not connect to postgresql.")
+            error=exceptions.ServiceUnavailable(
+                "Could not connect to postgresql."
+            )
         )

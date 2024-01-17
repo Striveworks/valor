@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from velour_api import schemas, enums
+from velour_api import enums, schemas
 
 
 def test_EvaluationParameters():
@@ -35,14 +35,6 @@ def test_EvaluationParameters():
             iou_thresholds_to_return=[],
         )
 
-
-def test_EvaluationParameters():
-    schemas.EvaluationParameters()
-    schemas.EvaluationParameters(
-        iou_thresholds_to_compute=[0.2, 0.6],
-        iou_thresholds_to_return=[],
-    )
-
     with pytest.raises(ValidationError):
         schemas.EvaluationParameters(detection="random_string")
 
@@ -50,7 +42,9 @@ def test_EvaluationParameters():
 def test_EvaluationRequest():
     schemas.EvaluationRequest(
         model_filter=schemas.Filter(),
-        evaluation_filter=schemas.Filter(task_types=[enums.TaskType.CLASSIFICATION]),
+        evaluation_filter=schemas.Filter(
+            task_types=[enums.TaskType.CLASSIFICATION]
+        ),
         parameters=schemas.EvaluationParameters(),
     )
 
@@ -58,7 +52,9 @@ def test_EvaluationRequest():
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
             model_filter=None,
-            evaluation_filter=schemas.Filter(task_types=[enums.TaskType.CLASSIFICATION]),
+            evaluation_filter=schemas.Filter(
+                task_types=[enums.TaskType.CLASSIFICATION]
+            ),
             parameters=schemas.EvaluationParameters(),
         )
     with pytest.raises(ValidationError):
@@ -70,21 +66,31 @@ def test_EvaluationRequest():
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
             model_filter=schemas.Filter(),
-            evaluation_filter=schemas.Filter(task_types=[enums.TaskType.CLASSIFICATION]),
+            evaluation_filter=schemas.Filter(
+                task_types=[enums.TaskType.CLASSIFICATION]
+            ),
             parameters=None,
         )
 
     # test `model_filter` validator
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
-            model_filter=schemas.Filter(task_types=[enums.TaskType.CLASSIFICATION]),
-            evaluation_filter=schemas.Filter(task_types=[enums.TaskType.CLASSIFICATION]),
+            model_filter=schemas.Filter(
+                task_types=[enums.TaskType.CLASSIFICATION]
+            ),
+            evaluation_filter=schemas.Filter(
+                task_types=[enums.TaskType.CLASSIFICATION]
+            ),
             parameters=schemas.EvaluationParameters(),
         )
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
-            model_filter=schemas.Filter(annotation_types=[enums.AnnotationType.RASTER]),
-            evaluation_filter=schemas.Filter(task_types=[enums.TaskType.CLASSIFICATION]),
+            model_filter=schemas.Filter(
+                annotation_types=[enums.AnnotationType.RASTER]
+            ),
+            evaluation_filter=schemas.Filter(
+                task_types=[enums.TaskType.CLASSIFICATION]
+            ),
             parameters=schemas.EvaluationParameters(),
         )
 
@@ -97,7 +103,9 @@ def test_EvaluationRequest():
         )
         req = schemas.EvaluationRequest(
             model_filter=schemas.Filter(),
-            evaluation_filter=schemas.Filter(task_types=[enums.TaskType.DETECTION]),
+            evaluation_filter=schemas.Filter(
+                task_types=[enums.TaskType.DETECTION]
+            ),
             parameters=schemas.EvaluationParameters(),
         )
         assert req.parameters.detection is not None

@@ -1,4 +1,4 @@
-from sqlalchemy import and_, func, or_, select, delete, ColumnElement
+from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -7,7 +7,9 @@ from velour_api.backend import core, models
 from velour_api.backend.ops import Query
 
 
-def _create_name_expr_from_list(key: str, names: list[str]) -> ColumnElement[bool]:
+def _create_name_expr_from_list(
+    key: str, names: list[str]
+) -> ColumnElement[bool]:
     if not names:
         return None
     elif len(names) == 1:
@@ -17,7 +19,7 @@ def _create_name_expr_from_list(key: str, names: list[str]) -> ColumnElement[boo
             *[
                 models.Evaluation.evaluation_filter[key].op("?")(name)
                 for name in names
-                if isinstance(name, str)  
+                if isinstance(name, str)
             ]
         )
 
@@ -32,24 +34,28 @@ def _create_id_expr_from_list(key: str, ids: list[int]) -> ColumnElement[bool]:
             *[
                 models.Evaluation.id == id_
                 for id_ in ids
-                if isinstance(id_, int)  
+                if isinstance(id_, int)
             ]
         )
-    
+
 
 def _create_bulk_expression(
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
-    model_names: list[str] | None = None,        
+    model_names: list[str] | None = None,
 ) -> ColumnElement[bool]:
     """Creates an expression that queries for evaluations by the input args."""
     expr = []
     if dataset_names:
-        expr.append(_create_name_expr_from_list("dataset_names", dataset_names))
+        expr.append(
+            _create_name_expr_from_list("dataset_names", dataset_names)
+        )
     if model_names:
         expr.append(_create_name_expr_from_list("model_names", model_names))
     if evaluation_ids:
-        expr.append(_create_id_expr_from_list("evaluation_ids", evaluation_ids))
+        expr.append(
+            _create_id_expr_from_list("evaluation_ids", evaluation_ids)
+        )
     return expr
 
 
@@ -59,11 +65,15 @@ def _db_metric_to_pydantic_metric(
 ) -> schemas.Metric:
     """Apply schemas.Metric to a metric from the database"""
 
-    label_row = db.query(
-        select(models.Label)
-        .where(models.Label.id == metric.label_id)
-        .subquery()
-    ).one_or_none() if metric.label_id else None
+    label_row = (
+        db.query(
+            select(models.Label)
+            .where(models.Label.id == metric.label_id)
+            .subquery()
+        ).one_or_none()
+        if metric.label_id
+        else None
+    )
     label = (
         schemas.Label(key=label_row.key, value=label_row.value)
         if label_row
@@ -127,17 +137,27 @@ def _split_request(
     Splits a job request into component requests.
     """
 
-    datasets_to_evaluate = db.query(
-        Query(models.Dataset).filter(job_request.evaluation_filter).any()
-    ).distinct().all()
+    datasets_to_evaluate = (
+        db.query(
+            Query(models.Dataset).filter(job_request.evaluation_filter).any()
+        )
+        .distinct()
+        .all()
+    )
     if not datasets_to_evaluate:
-        raise exceptions.EvaluationRequestError("No datasets meet the requirements of this request.")
+        raise exceptions.EvaluationRequestError(
+            "No datasets meet the requirements of this request."
+        )
 
-    model_to_evaluate = db.query(
-        Query(models.Model).filter(job_request.model_filter).any()
-    ).distinct().all()
+    model_to_evaluate = (
+        db.query(Query(models.Model).filter(job_request.model_filter).any())
+        .distinct()
+        .all()
+    )
     if not model_to_evaluate:
-        raise exceptions.EvaluationRequestError("No models meet the requirements of this request.")
+        raise exceptions.EvaluationRequestError(
+            "No models meet the requirements of this request."
+        )
 
     # verify all models and datasets are ready for evaluation
     _verify_ready_to_evaluate(
@@ -179,12 +199,14 @@ def _split_request(
                         schemas.EvaluationRequest(
                             model_filter=model_filter,
                             evaluation_filter=evaluation_filter,
-                            parameters=schemas.EvaluationParameters(), # default as clf has no parameterization
+                            parameters=schemas.EvaluationParameters(),  # default as clf has no parameterization
                         )
                     )
                 case enums.TaskType.DETECTION:
                     if evaluation_filter.annotation_types:
-                        annotation_types = evaluation_filter.annotation_types.copy()
+                        annotation_types = (
+                            evaluation_filter.annotation_types.copy()
+                        )
                         for atype in annotation_types:
                             evaluation_filter.annotation_types = [atype]
                             request_list.append(
@@ -210,12 +232,12 @@ def _split_request(
                         schemas.EvaluationRequest(
                             model_filter=model_filter,
                             evaluation_filter=evaluation_filter,
-                            parameters=schemas.EvaluationParameters(), # default as clf has no parameterization
+                            parameters=schemas.EvaluationParameters(),  # default as clf has no parameterization
                         )
                     )
                 case _:
                     raise NotImplementedError
-    
+
     return request_list
 
 
@@ -242,8 +264,7 @@ def _create_response(
         parameters=evaluation.parameters,
         status=evaluation.status,
         metrics=[
-            _db_metric_to_pydantic_metric(db, metric)
-            for metric in metrics
+            _db_metric_to_pydantic_metric(db, metric) for metric in metrics
         ],
         confusion_matrices=[
             schemas.ConfusionMatrixResponse(
@@ -311,7 +332,7 @@ def _create_responses(
                 }
             case _:
                 raise NotImplementedError
-            
+
         results.append(
             _create_response(
                 db=db,
@@ -349,11 +370,13 @@ def _fetch_evaluation_from_subrequest(
         db.query(models.Evaluation)
         .where(
             and_(
-                models.Evaluation.model_filter == job_request.model_filter.model_dump(),
+                models.Evaluation.model_filter
+                == job_request.model_filter.model_dump(),
                 models.Evaluation.evaluation_filter
                 == job_request.evaluation_filter.model_dump(),
                 (
-                    models.Evaluation.parameters == job_request.parameters.model_dump()
+                    models.Evaluation.parameters
+                    == job_request.parameters.model_dump()
                     if job_request.parameters
                     else models.Evaluation.parameters.is_(None)
                 ),
@@ -421,7 +444,11 @@ def fetch_evaluation_from_id(
     exceptions.EvaluationDoesNotExistError
         If the evaluation id has no corresponding row in the database.
     """
-    evaluation = db.query(models.Evaluation).where(models.Evaluation.id == evaluation_id).one_or_none()
+    evaluation = (
+        db.query(models.Evaluation)
+        .where(models.Evaluation.id == evaluation_id)
+        .one_or_none()
+    )
     if evaluation is None:
         raise exceptions.EvaluationDoesNotExistError
     return evaluation
@@ -510,7 +537,9 @@ def create_or_get_evaluations(
             evaluation = models.Evaluation(
                 model_filter=subrequest.model_filter.model_dump(),
                 evaluation_filter=subrequest.evaluation_filter.model_dump(),
-                parameters=subrequest.parameters.model_dump() if subrequest.parameters else None,
+                parameters=subrequest.parameters.model_dump()
+                if subrequest.parameters
+                else None,
                 status=enums.EvaluationStatus.PENDING,
             )
             created_rows.append(evaluation)
@@ -558,11 +587,7 @@ def get_evaluations(
         dataset_names=dataset_names,
         model_names=model_names,
     )
-    q = (
-        select(models.Evaluation)
-        .where(*expr)
-        .subquery()
-    )
+    q = select(models.Evaluation).where(*expr).subquery()
     evaluations = db.query(q).all()
     return _create_responses(db, evaluations)
 
@@ -737,9 +762,9 @@ def delete_evaluations(
         evaluation_ids=evaluation_ids,
         dataset_names=dataset_names,
         model_names=model_names,
-    ): 
+    ):
         raise exceptions.EvaluationRunningError
-    
+
     evaluations = fetch_evaluations(
         db=db,
         evaluation_ids=evaluation_ids,

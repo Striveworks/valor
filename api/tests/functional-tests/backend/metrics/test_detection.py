@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
 
 from velour_api import enums, schemas
-from velour_api.backend.core import fetch_dataset, fetch_model
 from velour_api.backend.metrics.detection import _compute_detection_metrics
 from velour_api.backend.models import GroundTruth, Prediction
 

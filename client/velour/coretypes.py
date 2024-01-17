@@ -6,17 +6,10 @@ import warnings
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Tuple, Union
 
-from velour.client import (
-    Client,
-    ClientException,
-    DeletionJob,
-)
+from velour.client import Client, ClientException, DeletionJob
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.exceptions import SchemaTypeError
-from velour.schemas.evaluation import (
-    EvaluationParameters,
-    EvaluationRequest,
-)
+from velour.schemas.evaluation import EvaluationParameters, EvaluationRequest
 from velour.schemas.filters import BinaryExpression, DeclarativeMapper, Filter
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
 from velour.schemas.metadata import (
@@ -693,12 +686,7 @@ class Evaluation:
     Wraps `velour.client.Job` to provide evaluation-specifc members.
     """
 
-    def __init__(
-        self,
-        client: Client,
-        *_,
-        **kwargs
-    ):
+    def __init__(self, client: Client, *_, **kwargs):
         """
         Defines important attributes of the API's `EvaluationResult`.
 
@@ -731,7 +719,7 @@ class Evaluation:
             "confusion_matrices": self.confusion_matrices,
             **self.kwargs,
         }
-    
+
     def _from_dict(
         self,
         *_,
@@ -743,7 +731,7 @@ class Evaluation:
         metrics: List[dict],
         confusion_matrices: List[dict],
         **kwargs,
-    ):        
+    ):
         self.id = id
         self.model_filter = Filter(**model_filter)
         self.evaluation_filter = Filter(**evaluation_filter)
@@ -755,12 +743,11 @@ class Evaluation:
 
         for k, v in kwargs.items():
             setattr(self, k, v)
-        
 
     def poll(self) -> EvaluationStatus:
         """
         Poll the backend.
-         
+
         Updates the evaluation with the latest state from the backend.
 
         Returns
@@ -773,9 +760,7 @@ class Evaluation:
         ClientException
             If an Evaluation with the given `evaluation_id` is not found.
         """
-        response = self.client.get_evaluations(
-            evaluation_ids=[self.id]
-        )
+        response = self.client.get_evaluations(evaluation_ids=[self.id])
         if not response:
             raise ClientException("Not Found")
         self._from_dict(**response[0])
@@ -798,12 +783,15 @@ class Evaluation:
             Polling interval in seconds.
         """
         t_start = time.time()
-        while self.poll() not in [EvaluationStatus.DONE, EvaluationStatus.FAILED]:
+        while self.poll() not in [
+            EvaluationStatus.DONE,
+            EvaluationStatus.FAILED,
+        ]:
             time.sleep(interval)
             if timeout and time.time() - t_start > timeout:
                 raise TimeoutError
         return self.status
-    
+
     # TODO
     # def to_dataframe(
     #     self,
@@ -1319,7 +1307,9 @@ class Model:
                 "Evaluation requires the definition of either datasets, dataset filters or both."
             )
 
-        evaluation_filter = self._format_filters(datasets, filters, TaskType.CLASSIFICATION)
+        evaluation_filter = self._format_filters(
+            datasets, filters, TaskType.CLASSIFICATION
+        )
 
         evaluation = EvaluationRequest(
             model_filter=Filter(model_names=[self.name]),
@@ -1378,7 +1368,9 @@ class Model:
             iou_thresholds_to_return=iou_thresholds_to_return,
         )
 
-        evaluation_filter = self._format_filters(datasets, filters, TaskType.DETECTION)
+        evaluation_filter = self._format_filters(
+            datasets, filters, TaskType.DETECTION
+        )
 
         evaluation = EvaluationRequest(
             model_filter=Filter(model_names=[self.name]),
@@ -1421,7 +1413,9 @@ class Model:
             a job object that can be used to track the status of the job and get the metrics of it upon completion
         """
 
-        evaluation_filter = self._format_filters(datasets, filters, TaskType.SEGMENTATION)
+        evaluation_filter = self._format_filters(
+            datasets, filters, TaskType.SEGMENTATION
+        )
 
         # create evaluation job
         evaluation = EvaluationRequest(

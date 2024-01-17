@@ -7,7 +7,10 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
-from velour_api.backend.core.evaluation import delete_evaluations, check_for_active_evaluations
+from velour_api.backend.core.evaluation import (
+    check_for_active_evaluations,
+    delete_evaluations,
+)
 from velour_api.backend.core.label import get_labels
 
 
@@ -190,7 +193,7 @@ def set_dataset_status(
 
     if status == enums.TableStatus.DELETING:
         if check_for_active_evaluations(
-            db=db, 
+            db=db,
             dataset_names=[name],
         ):
             raise exceptions.EvaluationRunningError(dataset_name=name)
@@ -201,7 +204,7 @@ def set_dataset_status(
     except Exception as e:
         db.rollback()
         raise e
-    
+
 
 def get_n_datums_in_dataset(db: Session, name: str) -> int:
     """Returns the number of datums in a dataset."""

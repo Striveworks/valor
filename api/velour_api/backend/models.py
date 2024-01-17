@@ -47,7 +47,7 @@ class GroundTruth(Base):
     __tablename__ = "groundtruth"
     __table_args__ = (
         UniqueConstraint(
-            "annotation_id", 
+            "annotation_id",
             "label_id",
         ),
     )
@@ -73,7 +73,7 @@ class Prediction(Base):
     __tablename__ = "prediction"
     __table_args__ = (
         UniqueConstraint(
-            "annotation_id", 
+            "annotation_id",
             "label_id",
         ),
     )
@@ -229,9 +229,7 @@ class Metric(Base):
 
     # relationships
     label = relationship(Label)
-    settings: Mapped[Evaluation] = relationship(
-        back_populates="metrics"
-    )
+    settings: Mapped[Evaluation] = relationship(back_populates="metrics")
 
 
 class ConfusionMatrix(Base):

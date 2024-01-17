@@ -364,7 +364,7 @@ def test_get_joint_labels(
             annotation_types=[enums.AnnotationType.NONE],
         ),
         rhs=schemas.Filter(
-            model_names=[model_name],                    
+            model_names=[model_name],
             task_types=[enums.TaskType.CLASSIFICATION],
             annotation_types=[enums.AnnotationType.NONE],
         ),
@@ -389,7 +389,7 @@ def test_get_joint_keys(
             task_types=[enums.TaskType.CLASSIFICATION],
         ),
         rhs=schemas.Filter(
-            model_names=[model_name],                    
+            model_names=[model_name],
             task_types=[enums.TaskType.CLASSIFICATION],
         ),
     )
@@ -411,7 +411,7 @@ def test_get_disjoint_labels(
             annotation_types=[enums.AnnotationType.NONE],
         ),
         rhs=schemas.Filter(
-            model_names=[model_name],                    
+            model_names=[model_name],
             task_types=[enums.TaskType.CLASSIFICATION],
             annotation_types=[enums.AnnotationType.NONE],
         ),
@@ -442,7 +442,7 @@ def test_get_disjoint_keys(
             task_types=[enums.TaskType.CLASSIFICATION],
         ),
         rhs=schemas.Filter(
-            model_names=[model_name],                    
+            model_names=[model_name],
             task_types=[enums.TaskType.CLASSIFICATION],
         ),
     )

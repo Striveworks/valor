@@ -449,5 +449,5 @@ class Filter(BaseModel):
     # pydantic settings
     model_config = ConfigDict(
         extra="forbid",
-        protected_namespaces=('protected_',),
+        protected_namespaces=("protected_",),
     )

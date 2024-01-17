@@ -1,7 +1,4 @@
-from .evaluation import (
-    EvaluationParameters,
-    EvaluationRequest,
-)
+from .evaluation import EvaluationParameters, EvaluationRequest
 from .filters import (
     BinaryExpression,
     DeclarativeMapper,

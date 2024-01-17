@@ -128,11 +128,11 @@ def test_compute_confusion_matrix_at_label_key(
     evaluation_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
-        task_types=[enums.TaskType.CLASSIFICATION],     
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     cm = _compute_confusion_matrix_at_label_key(
-        db=db, 
+        db=db,
         model_filter=model_filter,
         evaluation_filter=evaluation_filter,
         label_key="animal",
@@ -162,7 +162,7 @@ def test_compute_confusion_matrix_at_label_key(
     assert _compute_accuracy_from_cm(cm) == 2 / 6
 
     cm = _compute_confusion_matrix_at_label_key(
-        db=db, 
+        db=db,
         model_filter=model_filter,
         evaluation_filter=evaluation_filter,
         label_key="color",
@@ -210,9 +210,7 @@ def test_compute_confusion_matrix_at_label_key_and_filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
-        datum_metadata={
-            "md1": [schemas.StringFilter(value="md1-val0")]
-        },
+        datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
     cm = _compute_confusion_matrix_at_label_key(
@@ -288,11 +286,11 @@ def test_compute_roc_auc(
     0.43125
     ```
     """
-    model_filter=schemas.Filter(
+    model_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
     )
-    evaluation_filter=schemas.Filter(
+    evaluation_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
@@ -303,23 +301,29 @@ def test_compute_roc_auc(
             db=db,
             model_filter=model_filter,
             evaluation_filter=evaluation_filter,
-            label_key="animal"
+            label_key="animal",
         )
         == 0.8009259259259259
     )
-    assert _compute_roc_auc(
+    assert (
+        _compute_roc_auc(
             db=db,
             model_filter=model_filter,
             evaluation_filter=evaluation_filter,
-            label_key="color"
-        ) == 0.43125
+            label_key="color",
+        )
+        == 0.43125
+    )
 
-    assert _compute_roc_auc(
-        db=db,
-        model_filter=model_filter,
-        evaluation_filter=evaluation_filter,
-        label_key="not a key"
-    ) is None
+    assert (
+        _compute_roc_auc(
+            db=db,
+            model_filter=model_filter,
+            evaluation_filter=evaluation_filter,
+            label_key="not a key",
+        )
+        is None
+    )
 
 
 def test_compute_roc_auc_groupby_metadata(
@@ -352,15 +356,13 @@ def test_compute_roc_auc_groupby_metadata(
 
     which gives 2/3. So we expect our implementation to give the average of 0.5 and 2/3
     """
-    model_filter=schemas.Filter(
+    model_filter = schemas.Filter(
         model_names=[model_name],
     )
-    evaluation_filter=schemas.Filter(
+    evaluation_filter = schemas.Filter(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.CLASSIFICATION],
-        datum_metadata={
-            "md1": [schemas.StringFilter(value="md1-val0")]
-        },
+        datum_metadata={"md1": [schemas.StringFilter(value="md1-val0")]},
     )
 
     assert (
@@ -383,17 +385,18 @@ def test_compute_classification(
     """
     Tests the _compute_classification function.
     """
-    model_filter=schemas.Filter(
-        dataset_names=[dataset_name],
-        model_names=[model_name]
+    model_filter = schemas.Filter(
+        dataset_names=[dataset_name], model_names=[model_name]
     )
-    evaluation_filter=schemas.Filter(
+    evaluation_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
-    confusion, metrics = _compute_clf_metrics(db, model_filter, evaluation_filter)
+    confusion, metrics = _compute_clf_metrics(
+        db, model_filter, evaluation_filter
+    )
 
     # Make matrices accessible by label_key
     confusion = {matrix.label_key: matrix for matrix in confusion}
@@ -463,11 +466,13 @@ def test_classification(
         evaluation_filter=schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.CLASSIFICATION],
-        )
+        ),
     )
 
     # creates evaluation job
-    created_evaluations, existing_evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    created_evaluations, existing_evaluations = create_or_get_evaluations(
+        db=db, job_request=job_request
+    )
     assert len(created_evaluations) == 1
     assert len(existing_evaluations) == 0
 
@@ -478,7 +483,9 @@ def test_classification(
     )
 
     # get evaluations
-    created_evaluations, existing_evaluations = create_or_get_evaluations(db=db, job_request=job_request)
+    created_evaluations, existing_evaluations = create_or_get_evaluations(
+        db=db, job_request=job_request
+    )
     assert len(created_evaluations) == 0
     assert len(existing_evaluations) == 1
 
