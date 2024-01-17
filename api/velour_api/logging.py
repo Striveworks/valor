@@ -1,14 +1,20 @@
-import structlog
-from fastapi import Response, Request
-from starlette.background import BackgroundTask
-from fastapi.routing import APIRoute
 from typing import Callable
 
+import structlog
+from fastapi import Request, Response
+from fastapi.routing import APIRoute
+from starlette.background import BackgroundTask
 
 logger = structlog.get_logger()
 
+
 def log_request(request: Request):
-    logger.info("Velour API Call", method=request.method, path=request.url.path, hostname=request.url.hostname)
+    logger.info(
+        "Velour API Call",
+        method=request.method,
+        path=request.url.path,
+        hostname=request.url.hostname,
+    )
 
 
 class LoggingRoute(APIRoute):
@@ -19,5 +25,5 @@ class LoggingRoute(APIRoute):
             response = await original_route_handler(request)
             response.background = BackgroundTask(log_request, request)
             return response
-            
+
         return custom_route_handler
