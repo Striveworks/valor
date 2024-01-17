@@ -13,7 +13,7 @@ These docs are organized as follows:
 - **[Metrics](https://striveworks.github.io/velour/metrics)**: Describes all of the metrics that you can calculate using Velour.
 - **[Endpoints](endpoints.md)**: Documents Velour's various API endpoints.
 - **[Technical Concepts](technical_concepts.md)**: Describes the technical concepts that underpin Velour.
-- **[Contributing & Development](getting_started.md)**: Explains how you can build on and contribute to Velour.
+- **[Contributing & Development](contributing.md)**: Explains how you can build on and contribute to Velour.
 - **[Python Client API](client_api/Client.md)**: Shares reference documentation for our Python client.
 
 # Overview
