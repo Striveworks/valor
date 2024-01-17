@@ -748,7 +748,7 @@ class Dataset:
         self.id = id
         self._validate()
 
-        if delete_if_exists and client.get_dataset(name) is None:
+        if delete_if_exists and client.get_dataset(name) is not None:
             client.delete_dataset(name, timeout=30)
 
         if client.get_dataset(name) is None:
@@ -1055,7 +1055,7 @@ class Model:
         self.id = id
         self._validate()
 
-        if delete_if_exists and client.get_model(name) is None:
+        if delete_if_exists and client.get_model(name) is not None:
             client.delete_model(name, timeout=30)
 
         if client.get_model(name) is None:

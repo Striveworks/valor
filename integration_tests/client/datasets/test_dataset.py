@@ -219,6 +219,12 @@ def test_client_delete_dataset(
     client.delete_dataset(dataset_name, timeout=30)
     assert db.scalar(select(func.count(models.Dataset.name))) == 0
 
+    assert client.get_dataset(dataset_name) is None
+    Dataset(client, dataset_name, delete_if_exists=True)
+    assert client.get_dataset(dataset_name) is not None
+    Dataset(client, dataset_name, delete_if_exists=True)
+    assert client.get_dataset(dataset_name) is not None
+
 
 def test_create_tabular_dataset_and_add_groundtruth(
     client: Client,
