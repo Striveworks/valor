@@ -392,7 +392,6 @@ def test_add_prediction(
     dataset = Dataset(client, dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
-    dataset.finalize()
 
     model = Model(client, model_name)
 
@@ -403,6 +402,12 @@ def test_add_prediction(
     for pd in pred_dets:
         model.add_prediction(dataset, pd)
 
+    # check we get an error since the dataset has not been finalized
+    with pytest.raises(ClientException) as exc_info:
+        model.finalize_inferences(dataset)
+    assert "DatasetNotFinalizedError" in str(exc_info)
+
+    dataset.finalize()
     model.finalize_inferences(dataset)
 
     # test get predictions
