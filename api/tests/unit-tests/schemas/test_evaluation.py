@@ -4,33 +4,33 @@ from pydantic import ValidationError
 from velour_api import schemas, enums
 
 
-def test_DetectionParameters():
-    schemas.DetectionParameters()
+def test_EvaluationParameters():
+    schemas.EvaluationParameters()
 
-    schemas.DetectionParameters(
+    schemas.EvaluationParameters(
         iou_thresholds_to_compute=[0.2, 0.6],
         iou_thresholds_to_return=[],
     )
 
-    schemas.DetectionParameters(
+    schemas.EvaluationParameters(
         iou_thresholds_to_compute=[],
         iou_thresholds_to_return=[],
     )
 
     with pytest.raises(ValidationError):
-        schemas.DetectionParameters(
+        schemas.EvaluationParameters(
             iou_thresholds_to_compute=None,
             iou_thresholds_to_return=[0.2],
         )
 
     with pytest.raises(ValidationError):
-        schemas.DetectionParameters(
+        schemas.EvaluationParameters(
             iou_thresholds_to_compute=None,
             iou_thresholds_to_return=0.2,
         )
 
     with pytest.raises(ValidationError):
-        schemas.DetectionParameters(
+        schemas.EvaluationParameters(
             iou_thresholds_to_compute=[0.2, "test"],
             iou_thresholds_to_return=[],
         )
@@ -39,26 +39,8 @@ def test_DetectionParameters():
 def test_EvaluationParameters():
     schemas.EvaluationParameters()
     schemas.EvaluationParameters(
-        parameters=schemas.DetectionParameters(
-            iou_thresholds_to_compute=[0.2, 0.6],
-            iou_thresholds_to_return=[],
-        ),
-    )
-    schemas.EvaluationParameters(
-        parameters=schemas.DetectionParameters(
-            iou_thresholds_to_compute=[],
-            iou_thresholds_to_return=[],
-        ),
-    )
-    schemas.EvaluationParameters(
-        parameters=schemas.DetectionParameters(
-            iou_thresholds_to_compute=[],
-            iou_thresholds_to_return=[],
-        ),
-        filters=schemas.Filter(
-            annotation_types=[enums.AnnotationType.BOX],
-            label_keys=["class"],
-        ),
+        iou_thresholds_to_compute=[0.2, 0.6],
+        iou_thresholds_to_return=[],
     )
 
     with pytest.raises(ValidationError):
@@ -124,20 +106,18 @@ def test_EvaluationRequest():
 def test_EvaluationResponse():
     schemas.EvaluationResponse(
         id=1,
-        model_name="model",
         model_filter=schemas.Filter(),
         evaluation_filter=schemas.Filter(),
-        parameters=schemas.DetectionParameters(),
+        parameters=schemas.EvaluationParameters(),
         status=enums.EvaluationStatus.DONE,
         metrics=[],
         confusion_matrices=[],
     )
     schemas.EvaluationResponse(
         id=1,
-        model_name="model",
         model_filter=schemas.Filter(),
         evaluation_filter=schemas.Filter(),
-        parameters=None,
+        parameters=schemas.EvaluationParameters(),
         status=enums.EvaluationStatus.DONE,
         metrics=[],
         confusion_matrices=[],
@@ -147,10 +127,9 @@ def test_EvaluationResponse():
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
             id=None,
-            model_name="model",
             model_filter=schemas.Filter,
             evaluation_filter=schemas.Filter(),
-            parameters=None,
+            parameters=schemas.EvaluationParameters(),
             status=enums.EvaluationStatus.DONE,
             metrics=[],
             confusion_matrices=[],
@@ -160,10 +139,9 @@ def test_EvaluationResponse():
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
             id=1,
-            model_name=None,
             model_filter=schemas.Filter,
             evaluation_filter=schemas.Filter(),
-            parameters=None,
+            parameters=schemas.EvaluationParameters(),
             status=enums.EvaluationStatus.DONE,
             metrics=[],
             confusion_matrices=[],
@@ -173,10 +151,9 @@ def test_EvaluationResponse():
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
             id=1,
-            model_name="model",
             model_filter=None,
             evaluation_filter=schemas.Filter(),
-            parameters=None,
+            parameters=schemas.EvaluationParameters(),
             status=enums.EvaluationStatus.DONE,
             metrics=[],
             confusion_matrices=[],
@@ -184,11 +161,34 @@ def test_EvaluationResponse():
     with pytest.raises(ValidationError):
         schemas.EvaluationResponse(
             id=1,
-            model_name="model",
             model_filter=schemas.Filter(),
             evaluation_filter=None,
+            parameters=schemas.EvaluationParameters(),
+            status=enums.EvaluationStatus.DONE,
+            metrics=[],
+            confusion_matrices=[],
+        )
+
+    # test missing EvaluationParameters
+    with pytest.raises(ValidationError):
+        schemas.EvaluationResponse(
+            id=1,
+            model_filter=schemas.Filter(),
+            evaluation_filter=schemas.Filter(),
             parameters=None,
             status=enums.EvaluationStatus.DONE,
+            metrics=[],
+            confusion_matrices=[],
+        )
+
+    # test missing EvaluationStatus
+    with pytest.raises(ValidationError):
+        schemas.EvaluationResponse(
+            id=1,
+            model_filter=schemas.Filter(),
+            evaluation_filter=schemas.Filter(),
+            parameters=schemas.EvaluationParameters(),
+            status=None,
             metrics=[],
             confusion_matrices=[],
         )

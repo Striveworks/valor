@@ -935,13 +935,13 @@ def test_delete_model(crud, client: TestClient):
 def test_post_detection_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
-        model_name="modelname",
-        model_filter=schemas.Filter(model_names=["modelname"]),
+        model_filter=schemas.Filter(model_names=["modelname"], dataset_names=["dsetname"]),
         evaluation_filter=schemas.Filter(
             dataset_names=["dsetname"],
+            model_names=["modelname"],
             task_types=[TaskType.DETECTION],
         ),
-        parameters=schemas.DetectionParameters(),
+        parameters=schemas.EvaluationParameters(),
         status=EvaluationStatus.PENDING,
         metrics=[],
         confusion_matrices=[],
@@ -970,12 +970,13 @@ def test_post_detection_metrics(client: TestClient):
 def test_post_clf_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
-        model_name="modelname",
-        model_filter=schemas.Filter(model_names=["modelname"]),
+        model_filter=schemas.Filter(model_names=["modelname"], dataset_names=["dsetname"]),
         evaluation_filter=schemas.Filter(
             dataset_names=["dsetname"],
+            model_names=["modelname"],
             task_types=[TaskType.CLASSIFICATION],
         ),
+        parameters=schemas.EvaluationParameters(),
         status=EvaluationStatus.PENDING,
         metrics=[],
         confusion_matrices=[],
@@ -1004,13 +1005,13 @@ def test_post_clf_metrics(client: TestClient):
 def test_post_semenatic_segmentation_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
-        model_name="modelname",
-        model_filter=schemas.Filter(model_names=["modelname"]),
+        model_filter=schemas.Filter(model_names=["modelname"], dataset_names=["dsetname"]),
         evaluation_filter=schemas.Filter(
             dataset_names=["dsetname"],
+            model_names=["modelname"],
             task_types=[TaskType.SEGMENTATION],
         ),
-        parameters=None,
+        parameters=schemas.EvaluationParameters(),
         status=EvaluationStatus.PENDING,
         metrics=[],
         confusion_matrices=[],
