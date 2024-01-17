@@ -347,12 +347,10 @@ def get_evaluations(
         A list of dataset names to constrain by.
     model_names
         A list of model names to constrain by.
-    settings:
-        A list of `schemas.EvaluationSettings` to constrain by.
 
     Returns
     ----------
-    list[schemas.Evaluations]
+    list[schemas.EvaluationResponse]
         A list of evaluations.
     """
     # get evaluations that conform to input args

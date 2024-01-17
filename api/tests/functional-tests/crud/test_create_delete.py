@@ -1181,53 +1181,73 @@ def test_create_detection_metrics(
     # Don't examine metrics
     model_evals[0].metrics = []
     model_evals[1].metrics = []
-    assert model_evals[0] == schemas.Evaluation(
-        model_name=model_name,
-        dataset_name=dataset_name,
-        task_type=enums.TaskType.DETECTION,
-        settings=schemas.EvaluationSettings(
-            parameters=schemas.DetectionParameters(
-                iou_thresholds_to_compute=[0.2, 0.6],
-                iou_thresholds_to_return=[0.2],
-            ),
-            filters=schemas.Filter(
-                annotation_types=[enums.AnnotationType.BOX],
-                label_keys=["class"],
-            ),
+    assert model_evals[0] == schemas.EvaluationResponse(
+        model_filter=schemas.Filter(
+            dataset_names=[dataset_name],
+            model_names=[model_name],
+            label_keys=["class"],
         ),
-        evaluation_id=1,
+        evaluation_filter=schemas.Filter(
+            dataset_names=[dataset_name],
+            model_names=[model_name],
+            task_types=[enums.TaskType.DETECTION],
+            annotation_types=[enums.AnnotationType.BOX],
+            label_keys=["class"],
+        ),
+        parameters=schemas.EvaluationParameters(
+            iou_thresholds_to_compute=[0.2, 0.6],
+            iou_thresholds_to_return=[0.2],
+        ),
+        id=1,
         status=enums.EvaluationStatus.DONE,
         metrics=[],
         confusion_matrices=[],
+        missing_pred_labels=[],
+        ignored_pred_labels=[schemas.Label(key='class', value='3', score=None)],
     )
-    assert model_evals[1] == schemas.Evaluation(
-        model_name=model_name,
-        dataset_name=dataset_name,
-        task_type=enums.TaskType.DETECTION,
-        settings=schemas.EvaluationSettings(
-            parameters=schemas.DetectionParameters(
-                iou_thresholds_to_compute=[0.2, 0.6],
-                iou_thresholds_to_return=[0.2],
-            ),
-            filters=schemas.Filter(
-                annotation_types=[enums.AnnotationType.BOX],
-                annotation_geometric_area=[
-                    schemas.NumericFilter(
-                        value=min_area,
-                        operator=">=",
-                    ),
-                    schemas.NumericFilter(
-                        value=max_area,
-                        operator="<=",
-                    ),
-                ],
-                label_keys=["class"],
-            ),
+    assert model_evals[1] == schemas.EvaluationResponse(
+        model_filter=schemas.Filter(
+            dataset_names=[dataset_name],
+            model_names=[model_name],
+            annotation_geometric_area=[
+                schemas.NumericFilter(
+                    value=min_area,
+                    operator=">=",
+                ),
+                schemas.NumericFilter(
+                    value=max_area,
+                    operator="<=",
+                ),
+            ],
+            label_keys=["class"],
         ),
-        evaluation_id=2,
+        evaluation_filter=schemas.Filter(
+            dataset_names=[dataset_name],
+            model_names=[model_name],
+            task_types=[enums.TaskType.DETECTION],
+            annotation_types=[enums.AnnotationType.BOX],
+            annotation_geometric_area=[
+                schemas.NumericFilter(
+                    value=min_area,
+                    operator=">=",
+                ),
+                schemas.NumericFilter(
+                    value=max_area,
+                    operator="<=",
+                ),
+            ],
+            label_keys=["class"],
+        ),
+        parameters=schemas.EvaluationParameters(
+            iou_thresholds_to_compute=[0.2, 0.6],
+            iou_thresholds_to_return=[0.2],
+        ),
+        id=2,
         status=enums.EvaluationStatus.DONE,
         metrics=[],
         confusion_matrices=[],
+        missing_pred_labels=[],
+        ignored_pred_labels=[],
     )
 
 

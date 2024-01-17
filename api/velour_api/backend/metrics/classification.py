@@ -125,7 +125,7 @@ def _compute_roc_auc(
     model_filter: schemas.Filter,
     evaluation_filter: schemas.Filter,
     label_key: str,
-) -> float:
+) -> float | None:
     """
     Computes the area under the ROC curve. Note that for the multi-class setting
     this does one-vs-rest AUC for each class and then averages those scores. This should give
@@ -142,8 +142,8 @@ def _compute_roc_auc(
 
     Returns
     -------
-    float
-        The ROC AUC.
+    float | None
+        The ROC AUC. Returns None if no labels exist for that label_key.
     """
 
     label_filter = evaluation_filter.model_copy()
@@ -154,7 +154,7 @@ def _compute_roc_auc(
         ignore_predictions=True,
     )
     if len(labels) == 0:
-        None
+        return None
 
     sum_roc_aucs = 0
     label_count = 0

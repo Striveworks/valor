@@ -1,4 +1,4 @@
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, ColumnElement
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -7,13 +7,23 @@ from velour_api.backend import core, models
 from velour_api.backend.ops import Query
 
 
-def _db_metric_to_pydantic_metric(metric: models.Metric) -> schemas.Metric:
+def _db_metric_to_pydantic_metric(
+    db: Session,
+    metric: models.Metric,
+) -> schemas.Metric:
     """Apply schemas.Metric to a metric from the database"""
+
+    label_row = db.query(
+        select(models.Label)
+        .where(models.Label.id == metric.label_id)
+        .subquery()
+    ).one_or_none() if metric.label_id else None
     label = (
-        schemas.Label(key=metric.label.key, value=metric.label.value)
-        if metric.label
+        schemas.Label(key=label_row.key, value=label_row.value)
+        if label_row
         else None
     )
+
     return schemas.Metric(
         type=metric.type,
         value=metric.value,
@@ -169,6 +179,16 @@ def _create_response(
     **kwargs,
 ) -> schemas.EvaluationResponse:
     """Converts a evaluation row into a response schema."""
+    metrics = db.query(
+        select(models.Metric)
+        .where(models.Metric.evaluation_id == evaluation.id)
+        .subquery()
+    ).all()
+    confusion_matrices = db.query(
+        select(models.ConfusionMatrix)
+        .where(models.ConfusionMatrix.evaluation_id == evaluation.id)
+        .subquery()
+    ).all()
     return schemas.EvaluationResponse(
         id=evaluation.id,
         model_filter=evaluation.model_filter,
@@ -176,8 +196,8 @@ def _create_response(
         parameters=evaluation.parameters,
         status=evaluation.status,
         metrics=[
-            _db_metric_to_pydantic_metric(metric)
-            for metric in evaluation.metrics
+            _db_metric_to_pydantic_metric(db, metric)
+            for metric in metrics
         ],
         confusion_matrices=[
             schemas.ConfusionMatrixResponse(
@@ -187,7 +207,7 @@ def _create_response(
                     for entry in matrix.value
                 ],
             )
-            for matrix in evaluation.confusion_matrices
+            for matrix in confusion_matrices
         ],
         **kwargs,
     )
@@ -305,7 +325,7 @@ def check_for_active_evaluations(
     )
 
 
-def fetch_evaluation_from_request(
+def _fetch_evaluation_from_subrequest(
     db: Session,
     job_request: schemas.EvaluationRequest,
 ) -> models.Evaluation:
@@ -408,7 +428,7 @@ def create_or_get_evaluations(
     existing_rows = []
     for subrequest in _split_request(db, job_request):
         # check if evaluation exists
-        if evaluation := fetch_evaluation_from_request(
+        if evaluation := _fetch_evaluation_from_subrequest(
             db=db,
             job_request=subrequest,
         ):
@@ -443,33 +463,67 @@ def get_evaluations(
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
 ) -> list[schemas.EvaluationResponse]:
+    """
+    Returns all evaluations that conform to user-supplied constraints.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    evaluation_ids
+        A list of evaluation job id constraints.
+    dataset_names
+        A list of dataset names to constrain by.
+    model_names
+        A list of model names to constrain by.
+
+    Returns
+    ----------
+    list[schemas.EvaluationResponse]
+        A list of evaluations.
+    """
+
+    def _create_name_expr_from_list(key: str, names: list[str]) -> ColumnElement[bool]:
+        if not names:
+            return None
+        elif len(names) == 1:
+            return models.Evaluation.evaluation_filter[key].op("?")(names[0])
+        else:
+            return or_(
+                *[
+                    models.Evaluation.evaluation_filter[key].op("?")(name)
+                    for name in names
+                    if isinstance(name, str)  
+                ]
+            )
+        
+    def _create_id_expr_from_list(key: str, ids: list[int]) -> ColumnElement[bool]:
+        if not ids:
+            return None
+        elif len(ids) == 1:
+            return models.Evaluation.id == ids[0]
+        else:
+            return or_(
+                *[
+                    models.Evaluation.id == id_
+                    for id_ in ids
+                    if isinstance(id_, int)  
+                ]
+            )
+    
     expr = []
     if dataset_names:
-        expr.append(
-            models.Evaluation.evaluation_filter["dataset_names"].op("?")(dataset_names)
-        )
+        expr.append(_create_name_expr_from_list("dataset_names", dataset_names))
     if model_names:
-        expr.append(
-            models.Evaluation.model_filter["model_names"].op("?")(
-                model_names
-            )
-        )
+        expr.append(_create_name_expr_from_list("model_names", model_names))
     if evaluation_ids:
-        expr.append(models.Evaluation.id.in_(evaluation_ids))
-
-
+        expr.append(_create_id_expr_from_list("evaluation_ids", evaluation_ids))
+        
     q = (
         select(models.Evaluation)
-        .where(
-            or_(
-                models.Evaluation.status == enums.EvaluationStatus.PENDING,
-                models.Evaluation.status == enums.EvaluationStatus.RUNNING,
-            ),
-            *expr,
-        )
+        .where(*expr)
         .subquery()
     )
-    print(q)
     evaluations = db.query(q).all()
     return _create_responses(db, evaluations)
 
@@ -495,7 +549,7 @@ def get_evaluations_from_request(
     """
     evaluations = []
     for subrequest in _split_request(db, job_request):
-        if evaluation := fetch_evaluation_from_request(
+        if evaluation := _fetch_evaluation_from_subrequest(
             db=db,
             job_request=subrequest,
         ):
@@ -524,7 +578,7 @@ def get_evaluation_ids(
     """
     evaluation_ids = []
     for subrequest in _split_request(db, job_request):
-        if evaluation := fetch_evaluation_from_request(
+        if evaluation := _fetch_evaluation_from_subrequest(
             db=db,
             job_request=subrequest,
         ):

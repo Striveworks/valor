@@ -3,6 +3,14 @@ from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
+from velour_api.backend.core.evaluation import (
+    _db_metric_to_pydantic_metric,
+    _verify_ready_to_evaluate,
+    _split_request,
+    _fetch_evaluation_from_subrequest,
+    _create_response,
+    _create_responses,
+)
 
 
 @pytest.fixture
@@ -203,7 +211,7 @@ def test_fetch_evaluation_from_id(
     assert fetched_evaluation.evaluation_filter["task_types"][0] == enums.TaskType.SEGMENTATION
 
 
-def test_get_evaluation_id_from_job_request(
+def test_get_evaluation_ids(
     db: Session,
     created_dataset: str,
     created_model: str,
@@ -241,6 +249,57 @@ def test_get_evaluation_id_from_job_request(
     assert fetched_ids[0] == evaluation_2
 
 
+def test__fetch_evaluation_from_subrequest(
+    db: Session,
+    created_dataset: str,
+    created_model: str,
+):
+    # create evaluation 1
+    job_request_1 = schemas.EvaluationRequest(
+        model_filter=schemas.Filter(model_names=[created_model]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=[created_dataset],
+            task_types=[enums.TaskType.CLASSIFICATION],
+        ),
+    )
+    created_1, _ = core.create_or_get_evaluations(db, job_request_1)
+    assert len(created_1) == 1
+
+    # create evaluation 2
+    job_request_2 = schemas.EvaluationRequest(
+        model_filter=schemas.Filter(model_names=[created_model]),
+        evaluation_filter=schemas.Filter(
+            dataset_names=[created_dataset],
+            task_types=[enums.TaskType.SEGMENTATION],
+        ),
+    )
+    created_2, _ = core.create_or_get_evaluations(db, job_request_2)
+    assert len(created_2) == 1
+
+    # test fetching a subrequest
+    subrequest = schemas.EvaluationRequest(
+        model_filter=schemas.Filter(
+            model_names=[created_model],
+            dataset_names=[created_dataset],
+        ),
+        evaluation_filter=schemas.Filter(
+            model_names=[created_model],
+            dataset_names=[created_dataset],
+            task_types=[
+                enums.TaskType.CLASSIFICATION,
+            ],
+        ),
+    )
+    existing = _fetch_evaluation_from_subrequest(
+        db=db,
+        job_request=subrequest,
+    )
+    assert existing is not None
+    retr_eval_filter = schemas.Filter(**existing.evaluation_filter)
+    assert len(retr_eval_filter.task_types) == 1
+    assert retr_eval_filter.task_types[0] == enums.TaskType.CLASSIFICATION
+
+
 def test_get_evaluations(
     db: Session,
     created_dataset: str,
@@ -268,23 +327,54 @@ def test_get_evaluations(
     created_2, _ = core.create_or_get_evaluations(db, job_request_2)
     assert len(created_2) == 1
 
-    get_request = schemas.EvaluationRequest(
-        model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
-            dataset_names=[created_dataset],
-            task_types=[
-                enums.TaskType.CLASSIFICATION,
-                enums.TaskType.SEGMENTATION,
-            ],
-        ),
-    )
-    existing = core.get_evaluations(
+    # test get by dataset
+    evaluations_by_dataset = core.get_evaluations(
         db=db,
-        job_request=get_request,
+        dataset_names=[created_dataset],
     )
-    assert len(existing) == 2
-    task_types = {e.evaluation_filter.task_types[0] for e in existing if len(e.evaluation_filter.task_types) == 1}
-    assert task_types == {enums.TaskType.CLASSIFICATION, enums.TaskType.SEGMENTATION}
+    assert len(evaluations_by_dataset) == 2
+
+    # test get by model
+    evaluations_by_model = core.get_evaluations(
+        db=db,
+        model_names=[created_model],
+    )
+    assert len(evaluations_by_model) == 2
+
+    # test get by id
+    evaluations_by_id = core.get_evaluations(
+        db=db,
+        evaluation_ids=[created_1[0].id, created_2[0].id],
+    )
+    assert len(evaluations_by_id) == 2
+
+    # make sure stratifying works by dataset and evaluation id
+    evaluations_by_dataset_and_eval_id = core.get_evaluations(
+        db=db,
+        evaluation_ids=[created_1[0].id],
+        dataset_names=[created_dataset],
+    )
+    assert len(evaluations_by_dataset_and_eval_id) == 1
+    assert evaluations_by_dataset_and_eval_id[0].id == created_1[0].id
+
+    # make sure stratifying works by model and evaluation id
+    evaluations_by_model_and_eval_id = core.get_evaluations(
+        db=db,
+        evaluation_ids=[created_2[0].id],
+        model_names=[created_model],
+    )
+    assert len(evaluations_by_model_and_eval_id) == 1
+    assert evaluations_by_model_and_eval_id[0].id == created_2[0].id
+
+    # make sure stratifying works by dataset, model and evaluation id
+    evaluations_by_dataset_model_eval_id = core.get_evaluations(
+        db=db,
+        evaluation_ids=[created_2[0].id],
+        dataset_names=[created_dataset],
+        model_names=[created_model],
+    )
+    assert len(evaluations_by_dataset_model_eval_id) == 1
+    assert evaluations_by_dataset_model_eval_id[0].id == created_2[0].id
 
 
 def test_evaluation_status(
