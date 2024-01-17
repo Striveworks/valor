@@ -1,12 +1,12 @@
 import importlib.metadata
-import structlog
 import logging
 import os
 
+import structlog
 
 try:
     logging_level = int(os.getenv("LOGGING_LEVEL"))
-except:
+except (TypeError, ValueError):
     logging_level = logging.INFO
 
 structlog.configure(
