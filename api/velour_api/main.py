@@ -8,6 +8,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+
 from velour_api import __version__ as api_version
 from velour_api import auth, crud, enums, exceptions, logger, schemas
 from velour_api.api_utils import _split_query_params
@@ -94,7 +95,9 @@ def create_http_error(
     dependencies=[Depends(token_auth_scheme)],
     tags=["GroundTruths"],
 )
-def create_groundtruths(gt: schemas.GroundTruth, db: Session = Depends(get_db)):
+def create_groundtruths(
+    gt: schemas.GroundTruth, db: Session = Depends(get_db)
+):
     """
     Create a groundtruth in the database.
 
@@ -447,7 +450,9 @@ def get_datasets(db: Session = Depends(get_db)) -> list[schemas.Dataset]:
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datasets"],
 )
-def get_dataset(dataset_name: str, db: Session = Depends(get_db)) -> schemas.Dataset:
+def get_dataset(
+    dataset_name: str, db: Session = Depends(get_db)
+) -> schemas.Dataset:
     """
     Fetch a particular dataset from the database.
 
@@ -637,7 +642,9 @@ def delete_dataset(
     dependencies=[Depends(token_auth_scheme)],
     tags=["Datums"],
 )
-def get_datums(dataset_name: str, db: Session = Depends(get_db)) -> list[schemas.Datum]:
+def get_datums(
+    dataset_name: str, db: Session = Depends(get_db)
+) -> list[schemas.Datum]:
     """
     Fetch all datums for a particular dataset.
 
@@ -1008,7 +1015,9 @@ def create_evaluation(
                 job_request=job_request,
             )
         elif job_request.task_type == enums.TaskType.DETECTION:
-            resp = crud.create_detection_evaluation(db=db, job_request=job_request)
+            resp = crud.create_detection_evaluation(
+                db=db, job_request=job_request
+            )
             background_tasks.add_task(
                 crud.compute_detection_metrics,
                 db=db,
