@@ -902,6 +902,7 @@ def finalize_inferences(
     except (
         exceptions.DatasetIsEmptyError,
         exceptions.ModelIsEmptyError,
+        exceptions.DatasetNotFinalizedError,
     ) as e:
         raise create_http_error(status_code=400, error=e)
     except (
