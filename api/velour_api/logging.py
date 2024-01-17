@@ -23,7 +23,7 @@ class LoggingRoute(APIRoute):
 
         async def custom_route_handler(request: Request) -> Response:
             response = await original_route_handler(request)
-            response.background = BackgroundTask(log_request, request)
+            BackgroundTask(log_request, request)
             return response
 
         return custom_route_handler
