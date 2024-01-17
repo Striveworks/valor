@@ -596,15 +596,6 @@ class Query:
             self._add_expressions(models.Model, geospatial_expressions)
 
         # datums
-        if filters.datum_ids:
-            self._add_expressions(
-                models.Datum,
-                [
-                    models.Datum.id == id
-                    for id in filters.datum_ids
-                    if isinstance(id, int)
-                ],
-            )
         if filters.datum_uids:
             self._add_expressions(
                 models.Datum,

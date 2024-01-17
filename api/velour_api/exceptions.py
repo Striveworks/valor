@@ -332,9 +332,9 @@ class PredictionAlreadyExistsError(Exception):
     Raises an exception if a prediction is duplicated.
     """
 
-    def __init__(self, annotation_id: int, label_id: int):
+    def __init__(self):
         super().__init__(
-            f"A prediction already exists mapping label `{label_id}` to annotation `{annotation_id}`."
+            f"A prediction with the same label already exists for this datum."
         )
 
 

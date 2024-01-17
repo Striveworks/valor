@@ -380,8 +380,6 @@ class Filter(BaseModel):
         A dictionary of `Model` metadata to filter on.
     model_geospatial: List[GeospatialFilter], default=None
         A list of `Model` geospatial filters to filter on.
-    datum_ids: List[str], default=None
-        A list of `Datum` UIDs to filter on.
     datum_metadata: Dict[str, list[StringFilter | NumericFilter | DateTimeFilter]], default=None
         A dictionary of `Datum` metadata to filter on.
     datum_geospatial: List[GeospatialFilter], default=None
@@ -423,9 +421,6 @@ class Filter(BaseModel):
     model_geospatial: list[GeospatialFilter] | None = None
 
     # datums
-    datum_ids: list[
-        int
-    ] | None = None  # This should be used sparingly and with small lists.
     datum_uids: list[str] | None = None
     datum_metadata: dict[
         str,

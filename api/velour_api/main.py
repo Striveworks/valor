@@ -493,7 +493,7 @@ def get_dataset_summary(
         If the dataset doesn't exist.
     """
     try:
-        resp = crud.get_dataset_summary(db, name=dataset_name)
+        resp = crud.get_dataset_summary(db=db, name=dataset_name)
         return resp
     except Exception as e:
         raise exceptions.create_http_error(e)

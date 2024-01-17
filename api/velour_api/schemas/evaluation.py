@@ -110,11 +110,9 @@ class EvaluationResponse(BaseModel):
     """
 
     id: int
-
     model_filter: Filter
     evaluation_filter: Filter
     parameters: EvaluationParameters
-
     status: EvaluationStatus
     metrics: list[Metric]
     confusion_matrices: list[ConfusionMatrixResponse]

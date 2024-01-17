@@ -421,38 +421,39 @@ def _convert_annotations_to_common_type(
     """Convert all annotations to a common type."""
 
     # user has specified a target type
-    if len(annotation_types) > 1:
-        raise RuntimeError("Should receive a single annotation type.")
-    elif not annotation_types:
-        groundtruth_type = min(
-            datasets,
-            lambda dataset: core.get_annotation_type(db=db, dataset=dataset),
-        )
-        prediction_type = min(
-            datasets,
-            lambda dataset: core.get_annotation_type(
-                db=db, dataset=dataset, model=model
-            ),
-        )
+    if not annotation_types:
+        groundtruth_type = AnnotationType.RASTER
+        prediction_type = AnnotationType.RASTER
+        for dataset in datasets:
+            dataset_type = core.get_annotation_type(
+                db=db, dataset=dataset, task_type=enums.TaskType.DETECTION
+            )
+            model_type = core.get_annotation_type(
+                db=db, dataset=dataset, model=model, task_type=enums.TaskType.DETECTION
+            )
+            groundtruth_type = dataset_type if dataset_type < groundtruth_type else groundtruth_type
+            prediction_type = model_type if model_type < prediction_type else prediction_type
         target_type = min([groundtruth_type, prediction_type])
+    elif len(annotation_types) > 1:
+        raise RuntimeError("Should receive a single annotation type.")
     else:
         target_type = annotation_types[0]
 
     for dataset in datasets:
         # dataset
-        source_type = core.get_annotation_type(db=db, dataset=dataset)
+        source_type = core.get_annotation_type(db=db, dataset=dataset, task_type=enums.TaskType.DETECTION)
         core.convert_geometry(
-            db,
+            db=db,
             dataset=dataset,
             source_type=source_type,
             target_type=target_type,
         )
         # model
         source_type = core.get_annotation_type(
-            db=db, dataset=dataset, model=model
+            db=db, dataset=dataset, model=model, task_type=enums.TaskType.DETECTION
         )
         core.convert_geometry(
-            db,
+            db=db,
             dataset=dataset,
             model=model,
             source_type=source_type,

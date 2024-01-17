@@ -1,10 +1,56 @@
-from sqlalchemy import and_, func, or_, select, ColumnElement
+from sqlalchemy import and_, func, or_, select, delete, ColumnElement
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import core, models
 from velour_api.backend.ops import Query
+
+
+def _create_name_expr_from_list(key: str, names: list[str]) -> ColumnElement[bool]:
+    if not names:
+        return None
+    elif len(names) == 1:
+        return models.Evaluation.evaluation_filter[key].op("?")(names[0])
+    else:
+        return or_(
+            *[
+                models.Evaluation.evaluation_filter[key].op("?")(name)
+                for name in names
+                if isinstance(name, str)  
+            ]
+        )
+
+
+def _create_id_expr_from_list(key: str, ids: list[int]) -> ColumnElement[bool]:
+    if not ids:
+        return None
+    elif len(ids) == 1:
+        return models.Evaluation.id == ids[0]
+    else:
+        return or_(
+            *[
+                models.Evaluation.id == id_
+                for id_ in ids
+                if isinstance(id_, int)  
+            ]
+        )
+    
+
+def _create_bulk_expression(
+    evaluation_ids: list[int] | None = None,
+    dataset_names: list[str] | None = None,
+    model_names: list[str] | None = None,        
+) -> ColumnElement[bool]:
+    """Creates an expression that queries for evaluations by the input args."""
+    expr = []
+    if dataset_names:
+        expr.append(_create_name_expr_from_list("dataset_names", dataset_names))
+    if model_names:
+        expr.append(_create_name_expr_from_list("model_names", model_names))
+    if evaluation_ids:
+        expr.append(_create_id_expr_from_list("evaluation_ids", evaluation_ids))
+    return expr
 
 
 def _db_metric_to_pydantic_metric(
@@ -276,55 +322,6 @@ def _create_responses(
     return results
 
 
-def check_for_active_evaluations(
-    db: Session,
-    dataset_name: str | None = None,
-    model_name: str | None = None,
-) -> int:
-    """
-    Get the number of active evaluations.
-
-    Parameters
-    ----------
-    db : Session
-        Database session instance.
-    dataset_name : str, default=None
-        Name of a dataset.
-    model_name : str, default=None
-        Name of a model.
-
-    Returns
-    -------
-    int
-        Number of active evaluations.
-    """
-    expr = []
-    if dataset_name:
-        expr.append(
-            models.Evaluation.evaluation_filter["dataset_names"].op("?")(
-                dataset_name
-            )
-        )
-    if model_name:
-        expr.append(
-            models.Evaluation.model_filter["model_names"].op("?")(
-                model_name
-            )
-        )
-
-    return db.scalar(
-        select(func.count())
-        .select_from(models.Evaluation)
-        .where(
-            or_(
-                models.Evaluation.status == enums.EvaluationStatus.PENDING,
-                models.Evaluation.status == enums.EvaluationStatus.RUNNING,
-            ),
-            *expr,
-        )
-    )
-
-
 def _fetch_evaluation_from_subrequest(
     db: Session,
     job_request: schemas.EvaluationRequest,
@@ -367,6 +364,39 @@ def _fetch_evaluation_from_subrequest(
     return evaluation
 
 
+def fetch_evaluations(
+    db: Session,
+    evaluation_ids: list[int] | None = None,
+    dataset_names: list[str] | None = None,
+    model_names: list[str] | None = None,
+) -> list[models.Evaluation]:
+    """
+    Returns all evaluations that conform to user-supplied constraints.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    evaluation_ids : list[int], optional
+        A list of evaluation job id constraints.
+    dataset_names : list[str], optional
+        A list of dataset names to constrain by.
+    model_names : list[str], optional
+        A list of model names to constrain by.
+
+    Returns
+    ----------
+    list[models.Evaluation]
+        A list of evaluations.
+    """
+    expr = _create_bulk_expression(
+        evaluation_ids=evaluation_ids,
+        dataset_names=dataset_names,
+        model_names=model_names,
+    )
+    return db.query(models.Evaluation).where(*expr).all()
+
+
 def fetch_evaluation_from_id(
     db: Session,
     evaluation_id: int,
@@ -391,12 +421,53 @@ def fetch_evaluation_from_id(
     exceptions.EvaluationDoesNotExistError
         If the evaluation id has no corresponding row in the database.
     """
-    evaluation = db.scalar(
-        select(models.Evaluation).where(models.Evaluation.id == evaluation_id)
-    )
+    evaluation = db.query(models.Evaluation).where(models.Evaluation.id == evaluation_id).one_or_none()
     if evaluation is None:
         raise exceptions.EvaluationDoesNotExistError
     return evaluation
+
+
+def check_for_active_evaluations(
+    db: Session,
+    evaluation_ids: list[int] | None = None,
+    dataset_names: list[str] | None = None,
+    model_names: list[str] | None = None,
+) -> int:
+    """
+    Get the number of active evaluations.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    evaluation_ids : list[int], optional
+        A list of evaluation job id constraints.
+    dataset_names : list[str], optional
+        A list of dataset names to constrain by.
+    model_names : list[str], optional
+        A list of model names to constrain by.
+
+    Returns
+    -------
+    int
+        Number of active evaluations.
+    """
+    expr = _create_bulk_expression(
+        evaluation_ids=evaluation_ids,
+        dataset_names=dataset_names,
+        model_names=model_names,
+    )
+    return db.scalar(
+        select(func.count())
+        .select_from(models.Evaluation)
+        .where(
+            or_(
+                models.Evaluation.status == enums.EvaluationStatus.PENDING,
+                models.Evaluation.status == enums.EvaluationStatus.RUNNING,
+            ),
+            *expr,
+        )
+    )
 
 
 def create_or_get_evaluations(
@@ -470,11 +541,11 @@ def get_evaluations(
     ----------
     db : Session
         The database Session to query against.
-    evaluation_ids
+    evaluation_ids : list[int], optional
         A list of evaluation job id constraints.
-    dataset_names
+    dataset_names : list[str], optional
         A list of dataset names to constrain by.
-    model_names
+    model_names : list[str], optional
         A list of model names to constrain by.
 
     Returns
@@ -482,43 +553,11 @@ def get_evaluations(
     list[schemas.EvaluationResponse]
         A list of evaluations.
     """
-
-    def _create_name_expr_from_list(key: str, names: list[str]) -> ColumnElement[bool]:
-        if not names:
-            return None
-        elif len(names) == 1:
-            return models.Evaluation.evaluation_filter[key].op("?")(names[0])
-        else:
-            return or_(
-                *[
-                    models.Evaluation.evaluation_filter[key].op("?")(name)
-                    for name in names
-                    if isinstance(name, str)  
-                ]
-            )
-        
-    def _create_id_expr_from_list(key: str, ids: list[int]) -> ColumnElement[bool]:
-        if not ids:
-            return None
-        elif len(ids) == 1:
-            return models.Evaluation.id == ids[0]
-        else:
-            return or_(
-                *[
-                    models.Evaluation.id == id_
-                    for id_ in ids
-                    if isinstance(id_, int)  
-                ]
-            )
-    
-    expr = []
-    if dataset_names:
-        expr.append(_create_name_expr_from_list("dataset_names", dataset_names))
-    if model_names:
-        expr.append(_create_name_expr_from_list("model_names", model_names))
-    if evaluation_ids:
-        expr.append(_create_id_expr_from_list("evaluation_ids", evaluation_ids))
-        
+    expr = _create_bulk_expression(
+        evaluation_ids=evaluation_ids,
+        dataset_names=dataset_names,
+        model_names=model_names,
+    )
     q = (
         select(models.Evaluation)
         .where(*expr)
@@ -671,3 +710,46 @@ def get_disjoint_labels_from_evaluation_id(
     model_filter = schemas.Filter(**evaluation.model_filter)
     evaluation_filter = schemas.Filter(**evaluation.evaluation_filter)
     return core.get_disjoint_labels(db, evaluation_filter, model_filter)
+
+
+def delete_evaluations(
+    db: Session,
+    evaluation_ids: list[int] | None = None,
+    dataset_names: list[str] | None = None,
+    model_names: list[str] | None = None,
+):
+    """
+    Deletes all evaluations that match the input args.
+
+    Parameters
+    ----------
+    db : Session
+        The database Session to query against.
+    evaluation_ids : list[int], optional
+        A list of evaluation job id constraints.
+    dataset_names : list[str], optional
+        A list of dataset names to constrain by.
+    model_names : list[str], optional
+        A list of model names to constrain by.
+    """
+    if check_for_active_evaluations(
+        db=db,
+        evaluation_ids=evaluation_ids,
+        dataset_names=dataset_names,
+        model_names=model_names,
+    ): 
+        raise exceptions.EvaluationRunningError
+    
+    evaluations = fetch_evaluations(
+        db=db,
+        evaluation_ids=evaluation_ids,
+        dataset_names=dataset_names,
+        model_names=model_names,
+    )
+    try:
+        for evaluation in evaluations:
+            db.delete(evaluation)
+            db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        raise e

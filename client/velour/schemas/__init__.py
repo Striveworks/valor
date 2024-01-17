@@ -1,8 +1,6 @@
 from .evaluation import (
-    DetectionParameters,
     EvaluationParameters,
     EvaluationRequest,
-    EvaluationResult,
 )
 from .filters import (
     BinaryExpression,
@@ -30,8 +28,6 @@ __all__ = [
     "Raster",
     "EvaluationRequest",
     "EvaluationParameters",
-    "EvaluationResult",
-    "DetectionParameters",
     "BinaryExpression",
     "DeclarativeMapper",
     "Filter",

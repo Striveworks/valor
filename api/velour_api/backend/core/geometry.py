@@ -27,9 +27,9 @@ class RawGeometry(Geometry):
 
 def get_annotation_type(
     db: Session,
+    task_type: TaskType,
     dataset: models.Dataset,
     model: models.Model | None = None,
-    task_type: TaskType = TaskType.DETECTION,
 ) -> AnnotationType:
     """
     Fetch annotation type from psql.

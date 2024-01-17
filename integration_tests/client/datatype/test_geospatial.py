@@ -7,6 +7,7 @@ import pytest
 
 from velour import Dataset, Datum, GroundTruth, Model, Prediction
 from velour.client import Client, ClientException
+from velour.enums import EvaluationStatus
 
 
 def test_set_and_get_geospatial(
@@ -93,33 +94,26 @@ def test_geospatial_filter(
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
-    # filtering by dataset should be disabled as dataset is called explicitly
-    with pytest.raises(ClientException) as e:
-        model.evaluate_detection(
-            dataset=dataset,
-            iou_thresholds_to_compute=[0.1, 0.6],
-            iou_thresholds_to_return=[0.1, 0.6],
-            filters={
-                "dataset_geospatial": [
-                    {
-                        "operator": "outside",
-                        "value": {
-                            "type": "Point",
-                            "coordinates": [0, 0],
-                        },
-                    }
-                ],
-            },
-        )
-    assert (
-        "should not include any dataset, model, prediction score or task type filters"
-        in str(e)
+    # filtering by concatenation of datasets geospatially
+    eval_job = model.evaluate_detection(
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        filters={
+            "dataset_geospatial": [
+                {
+                    "operator": "intersect",
+                    "value": geo_dict,
+                }
+            ],
+        },
     )
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
+    assert len(eval_job.metrics) == 6
 
     # passing in an incorrectly-formatted geojson dict should return a ValueError
     with pytest.raises(ValueError) as e:
         model.evaluate_detection(
-            dataset=dataset,
+            dataset,
             iou_thresholds_to_compute=[0.1, 0.6],
             iou_thresholds_to_return=[0.1, 0.6],
             filters=[
@@ -130,59 +124,48 @@ def test_geospatial_filter(
     assert "should be a GeoJSON-style dictionary" in str(e)
 
     # test datums
-    eval_results = model.evaluate_detection(
-        dataset=dataset,
+    eval_job = model.evaluate_detection(
+        dataset,
         iou_thresholds_to_compute=[0.1, 0.6],
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
-            Datum.geospatial.inside(
-                {
-                    "type": "Point",
-                    "coordinates": [0.0, 0.0],
-                }
-            )
+            Datum.geospatial.intersect(geo_dict)
         ],
-    ).wait_for_completion(timeout=30)
+    )
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    result = asdict(eval_results)
-    assert result["settings"]["filters"]["datum_geospatial"] == [
+    result = eval_job.dict()
+    assert result["evaluation_filter"]["datum_geospatial"] == [
         {
-            "value": {
-                "type": "Point",
-                "coordinates": [0.0, 0.0],
-            },
-            "operator": "inside",
+            "value": geo_dict,
+            "operator": "intersect",
         }
     ]
+    assert len(eval_job.metrics) == 6
 
-    assert len(eval_results.metrics) == 0
-
-    # filtering by model should be disabled as model is called explicitly
-    with pytest.raises(ClientException) as e:
-        model.evaluate_detection(
-            dataset=dataset,
-            iou_thresholds_to_compute=[0.1, 0.6],
-            iou_thresholds_to_return=[0.1, 0.6],
-            filters={
-                "model_geospatial": [
-                    {
-                        "operator": "inside",
-                        "value": {
-                            "type": "Polygon",
-                            "coordinates": [
-                                [
-                                    [124.0, 37.0],
-                                    [128.0, 37.0],
-                                    [128.0, 40.0],
-                                    [124.0, 40.0],
-                                ]
-                            ],
-                        },
-                    }
-                ],
-            },
-        )
-    assert (
-        "should not include any dataset, model, prediction score or task type filters"
-        in str(e)
+    # filtering by model is allowed, this is the equivalent of requesting.. 
+    # "Give me the dataset that model A has operated over."
+    eval_job = model.evaluate_detection(
+        dataset,
+        iou_thresholds_to_compute=[0.1, 0.6],
+        iou_thresholds_to_return=[0.1, 0.6],
+        filters={
+            "model_geospatial": [
+                {
+                    "operator": "inside",
+                    "value": {
+                        "type": "Polygon",
+                        "coordinates": [
+                            [
+                                [124.0, 37.0],
+                                [128.0, 37.0],
+                                [128.0, 40.0],
+                                [124.0, 40.0],
+                            ]
+                        ],
+                    },
+                }
+            ],
+        },
     )
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE

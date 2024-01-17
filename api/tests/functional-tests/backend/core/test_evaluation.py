@@ -534,7 +534,11 @@ def test_check_for_active_evaluations(
 
     # keep evaluation 2 constant, run evaluation 1
     assert (
-        core.check_for_active_evaluations(db, created_dataset, created_model)
+        core.check_for_active_evaluations(
+            db=db, 
+            dataset_names=[created_dataset], 
+            model_names=[created_model],
+        )
         == 2
     )
 
@@ -543,14 +547,22 @@ def test_check_for_active_evaluations(
     )
 
     assert (
-        core.check_for_active_evaluations(db, created_dataset, created_model)
+        core.check_for_active_evaluations(
+            db=db, 
+            dataset_names=[created_dataset], 
+            model_names=[created_model],
+        )
         == 2
     )
 
     core.set_evaluation_status(db, evaluation_1, enums.EvaluationStatus.DONE)
 
     assert (
-        core.check_for_active_evaluations(db, created_dataset, created_model)
+        core.check_for_active_evaluations(
+            db=db, 
+            dataset_names=[created_dataset], 
+            model_names=[created_model],
+        )
         == 1
     )
 
@@ -566,7 +578,11 @@ def test_check_for_active_evaluations(
     evaluation_3 = evaluation_3[0].id
 
     assert (
-        core.check_for_active_evaluations(db, created_dataset, created_model)
+        core.check_for_active_evaluations(
+            db=db, 
+            dataset_names=[created_dataset], 
+            model_names=[created_model],
+        )
         == 2
     )
 
@@ -582,14 +598,22 @@ def test_check_for_active_evaluations(
     # test a failed run and then a successful run on evaluation 2
 
     assert (
-        core.check_for_active_evaluations(db, created_dataset, created_model)
+        core.check_for_active_evaluations(
+            db=db, 
+            dataset_names=[created_dataset], 
+            model_names=[created_model],
+        )
         == 2
     )
 
     core.set_evaluation_status(db, evaluation_2, enums.EvaluationStatus.FAILED)
 
     assert (
-        core.check_for_active_evaluations(db, created_dataset, created_model)
+        core.check_for_active_evaluations(
+            db=db, 
+            dataset_names=[created_dataset], 
+            model_names=[created_model],
+        )
         == 1
     )
 
@@ -598,14 +622,22 @@ def test_check_for_active_evaluations(
     )
 
     assert (
-        core.check_for_active_evaluations(db, created_dataset, created_model)
+        core.check_for_active_evaluations(
+            db=db, 
+            dataset_names=[created_dataset], 
+            model_names=[created_model],
+        )
         == 2
     )
 
     core.set_evaluation_status(db, evaluation_2, enums.EvaluationStatus.DONE)
 
     assert (
-        core.check_for_active_evaluations(db, created_dataset, created_model)
+        core.check_for_active_evaluations(
+            db=db, 
+            dataset_names=[created_dataset], 
+            model_names=[created_model],
+        )
         == 1
     )
 
@@ -614,7 +646,11 @@ def test_check_for_active_evaluations(
     )
 
     assert (
-        core.check_for_active_evaluations(db, created_dataset, created_model)
+        core.check_for_active_evaluations(
+            db=db, 
+            dataset_names=[created_dataset], 
+            model_names=[created_model],
+        )
         == 1
     )
 
@@ -623,6 +659,10 @@ def test_check_for_active_evaluations(
     core.set_evaluation_status(db, evaluation_3, enums.EvaluationStatus.DONE)
 
     assert (
-        core.check_for_active_evaluations(db, created_dataset, created_model)
+        core.check_for_active_evaluations(
+            db=db, 
+            dataset_names=[created_dataset], 
+            model_names=[created_model],
+        )
         == 0
     )

@@ -93,37 +93,37 @@ def test_generate_prediction_data(client: Client):
     )
 
     eval_job = model.evaluate_detection(
-        dataset=dataset,
-        iou_thresholds_to_compute=[0, 1],
-        iou_thresholds_to_return=[0, 1],
+        dataset,
+        iou_thresholds_to_compute=[0.1, 0.9],
+        iou_thresholds_to_return=[0.1, 0.9],
         filters=[
             Label.key == "k1",
             Annotation.type == AnnotationType.BOX,
         ],
     )
-    eval_results = eval_job.wait_for_completion(timeout=30)
-    assert eval_results.status == EvaluationStatus.DONE
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    eval_dict = asdict(eval_results)
-    eval_dict.pop("metrics")
-    for key in ["evaluation_id", "confusion_matrices", "status"]:
+    eval_dict = eval_job.dict()
+    for key in ["id", "confusion_matrices", "metrics", "status"]:
         eval_dict.pop(key)
     assert eval_dict == {
-        "model": model_name,
-        "dataset": dataset_name,
-        "task_type": TaskType.DETECTION.value,
-        "settings": {
-            "parameters": {
-                "iou_thresholds_to_compute": [0.0, 1.0],
-                "iou_thresholds_to_return": [0.0, 1.0],
-            },
-            "filters": {
-                **asdict(
-                    Filter()
-                ),  # default filter properties with overrides below
-                "annotation_types": ["box"],
-                "label_keys": ["k1"],
-            },
+        "model_filter": {
+            "model_names": [model_name],
+            "dataset_names": [dataset_name],
+        },
+        "evaluation_filter": {
+            **asdict(
+                Filter()
+            ), # default filter properties with overrides below            
+            "model_names": [model_name],
+            "dataset_names": [dataset_name],
+            "task_types": [TaskType.DETECTION.value],
+            "annotation_types": ["box"],
+            "label_keys": ["k1"],
+        },
+        "parameters": {
+            "iou_thresholds_to_compute": [0.0, 1.0],
+            "iou_thresholds_to_return": [0.0, 1.0],
         },
     }
-    assert len(eval_job.get_result().metrics) > 0
+    assert len(eval_job.metrics) > 0

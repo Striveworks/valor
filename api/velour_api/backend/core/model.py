@@ -9,7 +9,7 @@ from velour_api import exceptions, schemas
 from velour_api.backend import models
 from velour_api.backend.core.annotation import create_skipped_annotations
 from velour_api.backend.core.dataset import fetch_dataset, get_dataset_status
-from velour_api.backend.core.evaluation import check_for_active_evaluations
+from velour_api.backend.core.evaluation import check_for_active_evaluations, delete_evaluations
 from velour_api.enums import ModelStatus, TableStatus
 
 
@@ -283,7 +283,10 @@ def set_model_status(
         )
 
     elif status == TableStatus.DELETING:
-        if check_for_active_evaluations(db=db, model_name=model_name):
+        if check_for_active_evaluations(
+            db=db, 
+            model_names=[model_name],
+        ):
             raise exceptions.EvaluationRunningError(
                 dataset_name=dataset_name, model_name=model_name
             )
@@ -314,10 +317,8 @@ def delete_model(
     name : str
         The name of the model.
     """
+    delete_evaluations(db=db, model_names=[name])
     model = fetch_model(db, name=name)
-    if check_for_active_evaluations(db=db, model_name=name):
-        raise exceptions.EvaluationRunningError(name)
-
     try:
         model.status = ModelStatus.DELETING
         db.commit()

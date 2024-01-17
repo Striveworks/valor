@@ -230,7 +230,7 @@ class Metric(Base):
     # relationships
     label = relationship(Label)
     settings: Mapped[Evaluation] = relationship(
-        "Evaluation", back_populates="metrics"
+        back_populates="metrics"
     )
 
 

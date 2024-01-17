@@ -1,6 +1,7 @@
 import datetime
 import json
 import math
+import time
 import warnings
 from dataclasses import asdict, dataclass
 from typing import Dict, List, Tuple, Union
@@ -9,15 +10,12 @@ from velour.client import (
     Client,
     ClientException,
     DeletionJob,
-    wait_for_predicate,
 )
 from velour.enums import AnnotationType, EvaluationStatus, TaskType
 from velour.exceptions import SchemaTypeError
 from velour.schemas.evaluation import (
-    DetectionParameters,
     EvaluationParameters,
     EvaluationRequest,
-    EvaluationResult,
 )
 from velour.schemas.filters import BinaryExpression, DeclarativeMapper, Filter
 from velour.schemas.geometry import BoundingBox, MultiPolygon, Polygon, Raster
@@ -215,7 +213,7 @@ class Datum:
             A dictionary of the `Datum's` attributes.
         """
         return {
-            "dataset": self._dataset_name,
+            "dataset_name": self._dataset_name,
             "uid": self.uid,
             "metadata": dump_metadata(self.metadata),
             "geospatial": self.geospatial if self.geospatial else None,
@@ -223,9 +221,9 @@ class Datum:
 
     @classmethod
     def _from_dict(cls, d: dict) -> "Datum":
-        dataset = d.pop("dataset", None)
+        dataset_name = d.pop("dataset_name", None)
         datum = cls(**d)
-        datum._set_dataset(dataset)
+        datum._set_dataset_name(dataset_name)
         return datum
 
     def __eq__(self, other):
@@ -246,7 +244,7 @@ class Datum:
             raise TypeError(f"Expected type `{type(Datum)}`, got `{other}`")
         return self.dict() == other.dict()
 
-    def _set_dataset(self, dataset: Union["Dataset", str]) -> None:
+    def _set_dataset_name(self, dataset: Union["Dataset", str]) -> None:
         """Sets the dataset the datum belongs to. This should never be called by the user."""
         self._dataset_name = (
             dataset.name if isinstance(dataset, Dataset) else dataset
@@ -626,7 +624,7 @@ class Prediction:
         """
         return {
             "datum": self.datum.dict(),
-            "model": self._model_name,
+            "model_name": self._model_name,
             "annotations": [
                 annotation.dict() for annotation in self.annotations
             ],
@@ -635,9 +633,10 @@ class Prediction:
     @classmethod
     def _from_dict(cls, d: dict) -> "Prediction":
         pred = cls(
-            datum=Datum._from_dict(d["datum"]), annotations=d["annotations"]
+            datum=Datum._from_dict(d["datum"]),
+            annotations=d["annotations"],
         )
-        pred._set_model(d["model"])
+        pred._set_model_name(d["model_name"])
         return pred
 
     def __eq__(self, other):
@@ -660,7 +659,7 @@ class Prediction:
             )
         return self.dict() == other.dict()
 
-    def _set_model(self, model: Union["Model", str]):
+    def _set_model_name(self, model: Union["Model", str]):
         self._model_name = model.name if isinstance(model, Model) else model
 
 
@@ -687,6 +686,171 @@ class DatasetSummary:
         for i, label in enumerate(self.labels):
             if isinstance(label, dict):
                 self.labels[i] = Label(**label)
+
+
+class Evaluation:
+    """
+    Wraps `velour.client.Job` to provide evaluation-specifc members.
+    """
+
+    def __init__(
+        self,
+        client: Client,
+        *_,
+        **kwargs
+    ):
+        """
+        Defines important attributes of the API's `EvaluationResult`.
+
+        Attributes
+        ----------
+        id : int
+            The id of the evaluation.
+        model_filter : schemas.Filter
+            The filter used to select the predictions for evaluation.
+        evalutation_filter : schemas.Filter
+            The filter used to select the groundtruths for evaluation.
+        status : EvaluationStatus
+            The status of the evaluation.
+        metrics : List[dict]
+            A list of metric dictionaries returned by the job.
+        confusion_matrices : List[dict]
+            A list of confusion matrix dictionaries returned by the job.
+        """
+        self.client = client
+        self._from_dict(**kwargs)
+
+    def dict(self):
+        return {
+            "id": self.id,
+            "model_filter": asdict(self.model_filter),
+            "evaluation_filter": asdict(self.evaluation_filter),
+            "parameters": asdict(self.parameters),
+            "status": self.status.value,
+            "metrics": self.metrics,
+            "confusion_matrices": self.confusion_matrices,
+            **self.kwargs,
+        }
+    
+    def _from_dict(
+        self,
+        *_,
+        id: int,
+        model_filter: Filter,
+        evaluation_filter: Filter,
+        parameters: EvaluationParameters,
+        status: EvaluationStatus,
+        metrics: List[dict],
+        confusion_matrices: List[dict],
+        **kwargs,
+    ):        
+        self.id = id
+        self.model_filter = Filter(**model_filter)
+        self.evaluation_filter = Filter(**evaluation_filter)
+        self.parameters = EvaluationParameters(**parameters)
+        self.status = EvaluationStatus(status)
+        self.metrics = metrics
+        self.confusion_matrices = confusion_matrices
+        self.kwargs = kwargs
+
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+        
+
+    def poll(self) -> EvaluationStatus:
+        """
+        Poll the backend.
+         
+        Updates the evaluation with the latest state from the backend.
+
+        Returns
+        -------
+        enums.EvaluationStatus
+            The status of the evaluation.
+
+        Raises
+        ----------
+        ClientException
+            If an Evaluation with the given `evaluation_id` is not found.
+        """
+        response = self.client.get_evaluations(
+            evaluation_ids=[self.id]
+        )
+        if not response:
+            raise ClientException("Not Found")
+        self._from_dict(**response[0])
+        return self.status
+
+    def wait_for_completion(
+        self,
+        *,
+        timeout: int = None,
+        interval: float = 1.0,
+    ) -> EvaluationStatus:
+        """
+        Blocking function that waits for evaluation to finish.
+
+        Parameters
+        ----------
+        timeout : int, optional
+            Length of timeout in seconds.
+        interval : float, default=1.0
+            Polling interval in seconds.
+        """
+        t_start = time.time()
+        while self.poll() not in [EvaluationStatus.DONE, EvaluationStatus.FAILED]:
+            time.sleep(interval)
+            if timeout and time.time() - t_start > timeout:
+                raise TimeoutError
+        return self.status
+    
+    # TODO
+    # def to_dataframe(
+    #     self,
+    #     stratify_by: Tuple[str, str] = None,
+    # ):
+    #     """
+    #     Get all metrics associated with a Model and return them in a `pd.DataFrame`.
+
+    #     Returns
+    #     ----------
+    #     pd.DataFrame
+    #         Evaluation metrics being displayed in a `pd.DataFrame`.
+
+    #     Raises
+    #     ------
+    #     ModuleNotFoundError
+    #         This function requires the use of `pandas.DataFrame`.
+
+    #     """
+    #     try:
+    #         import pandas as pd
+    #     except ModuleNotFoundError:
+    #         raise ModuleNotFoundError(
+    #             "Must have pandas installed to use `get_metric_dataframes`."
+    #         )
+
+    #     if not stratify_by:
+    #         column_type = "dataset"
+    #         column_name = self.dataset
+    #     else:
+    #         column_type = stratify_by[0]
+    #         column_name = stratify_by[1]
+
+    #     metrics = [
+    #         {**metric, column_type: column_name} for metric in self.metrics
+    #     ]
+    #     df = pd.DataFrame(metrics)
+    #     for k in ["label", "parameters"]:
+    #         df[k] = df[k].fillna("n/a")
+    #     df["parameters"] = df["parameters"].apply(json.dumps)
+    #     df["label"] = df["label"].apply(
+    #         lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
+    #     )
+    #     df = df.pivot(
+    #         index=["type", "parameters", "label"], columns=[column_type]
+    #     )
+    #     return df
 
 
 class Dataset:
@@ -815,7 +979,7 @@ class Dataset:
                 f"GroundTruth for datum with uid `{groundtruth.datum.uid}` contains no annotations."
             )
 
-        groundtruth.datum._set_dataset(self.name)
+        groundtruth.datum._set_dataset_name(self.name)
         self.client._requests_post_rel_host(
             "groundtruths",
             json=groundtruth.dict(),
@@ -875,7 +1039,7 @@ class Dataset:
 
     def get_evaluations(
         self,
-    ) -> List[EvaluationResult]:
+    ) -> List[Evaluation]:
         """
         Get all evaluations associated with a given dataset.
 
@@ -884,7 +1048,10 @@ class Dataset:
         List[Evaluation]
             A list of `Evaluations` associated with the dataset.
         """
-        return self.client.get_bulk_evaluations(datasets=self.name)
+        return [
+            Evaluation(self.client, **resp)
+            for resp in self.client.get_evaluations(datasets=self.name)
+        ]
 
     def get_summary(self) -> DatasetSummary:
         """
@@ -942,58 +1109,6 @@ class Dataset:
         job = DeletionJob(self.client, dataset_name=self.name)
         self.client._requests_delete_rel_host(f"datasets/{self.name}").json()
         return job
-
-
-class Evaluation:
-    """
-    Wraps `velour.client.Job` to provide evaluation-specifc members.
-    """
-
-    def __init__(self, client: Client, evaluation_id: int, **kwargs):
-        self.client = client
-        self.evaluation_id = evaluation_id
-
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
-    @property
-    def id(self):
-        return self.evaluation_id
-
-    def get_result(self) -> EvaluationResult:
-        """
-        Fetch the `EvaluationResult` for our `evaluation_id`.
-
-        Returns
-        ----------
-        schemas.EvaluationResult
-            The result of the evaluation job
-
-        Raises
-        ----------
-        ClientException
-            If an Evaluation with the given `evaluation_id` is not found.
-        """
-        response = self.client.get_bulk_evaluations(
-            evaluation_ids=[self.evaluation_id]
-        )
-        if not response:
-            raise ClientException("Not Found")
-        return response[0]
-
-    def wait_for_completion(
-        self,
-        *,
-        timeout: int = None,
-        interval: float = 1.0,
-    ) -> EvaluationResult:
-        return wait_for_predicate(
-            lambda: self.get_result(),
-            lambda result: result.status
-            in [EvaluationStatus.DONE, EvaluationStatus.FAILED],
-            timeout,
-            interval,
-        )
 
 
 class Model:
@@ -1122,10 +1237,10 @@ class Model:
                 f"Prediction for datum with uid `{prediction.datum.uid}` contains no annotations."
             )
 
-        prediction._set_model(self.name)
+        prediction._set_model_name(self.name)
         # should check not already set or set by equal to dataset?
         if prediction.datum._dataset_name is None:
-            prediction.datum._set_dataset(dataset)
+            prediction.datum._set_dataset_name(dataset)
         else:
             dataset_name = (
                 dataset.name if isinstance(dataset, Dataset) else dataset
@@ -1150,8 +1265,10 @@ class Model:
         ).json()
 
     def _format_filters(
+        self,
         datasets: Union[Dataset, List[Dataset]],
         filters: Union[Dict, List[BinaryExpression]],
+        task_type: TaskType,
     ) -> Union[dict, Filter]:
         """Formats evaluation request's `evaluation_filter` input."""
 
@@ -1169,11 +1286,12 @@ class Model:
             if not filters.dataset_names:
                 filters.dataset_names = []
             filters.dataset_names.extend(dataset_names_from_obj)
-        elif isinstance(filters, dict) and dataset_names_from_obj:
+            filters.task_types = [task_type]
+        elif isinstance(filters, dict):
             if "dataset_names" not in filters:
                 filters["dataset_names"] = []
             filters["dataset_names"] = dataset_names_from_obj
-
+            filters["task_types"] = [task_type]
         return filters
 
     def evaluate_classification(
@@ -1196,27 +1314,24 @@ class Model:
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion.
         """
-        #
         if not datasets and not filters:
             raise ValueError(
                 "Evaluation requires the definition of either datasets, dataset filters or both."
             )
 
-        filters = self._format_filters(datasets, filters)
+        evaluation_filter = self._format_filters(datasets, filters, TaskType.CLASSIFICATION)
 
         evaluation = EvaluationRequest(
             model_filter=Filter(model_names=[self.name]),
-            evaluation_filter=filters,
+            evaluation_filter=evaluation_filter,
         )
-
-        resp = self.client._requests_post_rel_host(
-            "evaluations", json=asdict(evaluation)
-        ).json()
+        resp = self.client.evaluate(evaluation)
+        if len(resp) != 1:
+            raise RuntimeError
+        resp = resp[0]
 
         # resp should have keys "missing_pred_keys", "ignored_pred_keys", with values
         # list of label dicts. convert label dicts to Label objects
-        for k in ["missing_pred_keys", "ignored_pred_keys"]:
-            resp[k] = [Label(**la) for la in resp[k]]
 
         evaluation_job = Evaluation(
             client=self.client,
@@ -1251,8 +1366,6 @@ class Model:
         Evaluation
             A job object that can be used to track the status of the job and get the metrics of it upon completion.
         """
-
-        # Default iou thresholds
         if iou_thresholds_to_compute is None:
             iou_thresholds_to_compute = [
                 round(0.5 + 0.05 * i, 2) for i in range(10)
@@ -1260,27 +1373,25 @@ class Model:
         if iou_thresholds_to_return is None:
             iou_thresholds_to_return = [0.5, 0.75]
 
-        parameters = DetectionParameters(
+        parameters = EvaluationParameters(
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_return=iou_thresholds_to_return,
         )
 
-        filters = self._format_filters(datasets, filters)
+        evaluation_filter = self._format_filters(datasets, filters, TaskType.DETECTION)
 
         evaluation = EvaluationRequest(
             model_filter=Filter(model_names=[self.name]),
-            evaluation_filter=filters,
-            parameters=EvaluationParameters(detection=parameters),
+            evaluation_filter=evaluation_filter,
+            parameters=parameters,
         )
-
-        resp = self.client._requests_post_rel_host(
-            "evaluations", json=asdict(evaluation)
-        ).json()
+        resp = self.client.evaluate(evaluation)
+        if len(resp) != 1:
+            raise RuntimeError
+        resp = resp[0]
 
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
         # list of label dicts. convert label dicts to Label objects
-        for k in ["missing_pred_labels", "ignored_pred_labels"]:
-            resp[k] = [Label(**la) for la in resp[k]]
 
         evaluation_job = Evaluation(
             client=self.client,
@@ -1310,22 +1421,20 @@ class Model:
             a job object that can be used to track the status of the job and get the metrics of it upon completion
         """
 
-        filters = self._format_filters(datasets, filters)
+        evaluation_filter = self._format_filters(datasets, filters, TaskType.SEGMENTATION)
 
         # create evaluation job
         evaluation = EvaluationRequest(
             model_filter=Filter(model_names=[self.name]),
-            evaluation_filter=filters,
+            evaluation_filter=evaluation_filter,
         )
-        resp = self.client._requests_post_rel_host(
-            "evaluations",
-            json=asdict(evaluation),
-        ).json()
+        resp = self.client.evaluate(evaluation)
+        if len(resp) != 1:
+            raise RuntimeError
+        resp = resp[0]
 
         # resp should have keys "missing_pred_labels", "ignored_pred_labels", with values
         # list of label dicts. convert label dicts to Label objects
-        for k in ["missing_pred_labels", "ignored_pred_labels"]:
-            resp[k] = [Label(**la) for la in resp[k]]
 
         # create client-side evaluation handler
         evaluation_job = Evaluation(
@@ -1385,7 +1494,7 @@ class Model:
 
     def get_evaluations(
         self,
-    ) -> List[EvaluationResult]:
+    ) -> List[Evaluation]:
         """
         Get all evaluations associated with a given model.
 
@@ -1394,7 +1503,10 @@ class Model:
         List[Evaluation]
             A list of `Evaluations` associated with the model.
         """
-        return self.client.get_bulk_evaluations(models=self.name)
+        return [
+            Evaluation(self.client, **resp)
+            for resp in self.client.get_evaluations(models=self.name)
+        ]
 
     def get_metric_dataframes(
         self,

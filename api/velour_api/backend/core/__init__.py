@@ -27,6 +27,7 @@ from .datum import create_datum, fetch_datum, get_datums
 from .evaluation import (
     check_for_active_evaluations,
     create_or_get_evaluations,
+    fetch_evaluations,
     fetch_evaluation_from_id,
     get_disjoint_labels_from_evaluation_id,
     get_evaluations,
@@ -109,6 +110,7 @@ __all__ = [
     "create_prediction",
     "get_prediction",
     "create_or_get_evaluations",
+    "fetch_evaluations",
     "fetch_evaluation_from_id",
     "get_evaluations",
     "get_evaluations_from_request",

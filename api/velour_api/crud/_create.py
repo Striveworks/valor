@@ -125,7 +125,7 @@ def create_or_get_evaluations(
             task_handler.add_task(
                 compute_func,
                 db=db,
-                evaluation_id=evaluation.evaluation_id,
+                evaluation_id=evaluation.id,
             )
         else:
             compute_func(db=db, evaluation_id=evaluation.id)

@@ -3,6 +3,7 @@ that is no auth
 """
 from velour import Dataset, Datum, GroundTruth, Model, Prediction
 from velour.client import Client
+from velour.enums import EvaluationStatus
 
 
 def test_evaluate_segmentation(
@@ -31,9 +32,9 @@ def test_evaluate_segmentation(
     assert eval_job.ignored_pred_labels == [
         {"key": "k1", "value": "v1", "score": None}
     ]
-    eval_results = eval_job.wait_for_completion(timeout=30)
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    metrics = eval_results.metrics
+    metrics = eval_job.metrics
 
     assert len(metrics) == 3
     assert set(
@@ -78,16 +79,14 @@ def test_evaluate_segmentation_with_filter(
             Datum.metadata["color"] == "red",
         ],
     )
-    eval_job.wait_for_completion(timeout=30)
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    assert eval_job.missing_pred_labels == [
-        {"key": "k3", "value": "v3", "score": None}
-    ]
+    assert eval_job.missing_pred_labels == []
     assert eval_job.ignored_pred_labels == [
-        {"key": "k1", "value": "v1", "score": None}
+        {"key": "k1", "value": "v1"}
     ]
 
-    metrics = eval_job.get_result().metrics
+    metrics = eval_job.metrics
 
     assert len(metrics) == 2
     assert set(

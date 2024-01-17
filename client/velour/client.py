@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from dataclasses import asdict
 from typing import Callable, List, Optional, TypeVar, Union
 from urllib.parse import urlencode, urljoin
 
@@ -9,7 +10,7 @@ from packaging import version
 
 from velour import __version__ as client_version
 from velour.enums import TableStatus
-from velour.schemas.evaluation import EvaluationResult
+from velour.schemas.evaluation import EvaluationRequest
 
 T = TypeVar("T")
 
@@ -451,13 +452,13 @@ class Client:
                     "Model wasn't deleted within timeout interval"
                 )
 
-    def get_bulk_evaluations(
+    def get_evaluations(
         self,
         *,
         evaluation_ids: Union[int, List[int], None] = None,
         models: Union[str, List[str], None] = None,
         datasets: Union[str, List[str], None] = None,
-    ) -> List[EvaluationResult]:
+    ) -> List[dict]:
         """
         Returns all metrics associated with user-supplied dataset and/or model names.
 
@@ -499,8 +500,26 @@ class Client:
         query_str = urlencode(params)
         endpoint = f"evaluations?{query_str}"
 
-        evals = self._requests_get_rel_host(endpoint).json()
-        return [EvaluationResult(**eval) for eval in evals]
+        return self._requests_get_rel_host(endpoint).json()
+
+    def evaluate(self, req: EvaluationRequest) -> List[dict]:
+        """
+        Creates as many evaluations as necessary to fulfill the request.
+
+        Parameters
+        ----------
+        req : schemas.EvaluationRequest
+            The requested evaluation parameters.
+        
+        Returns
+        -------
+        List[schemas.EvaluationResponse]
+            A list of evaluations that meet the parameters.
+        """
+        resp = self._requests_post_rel_host(
+            "evaluations", json=asdict(req)
+        ).json()
+        return resp
 
 
 class DeletionJob:
