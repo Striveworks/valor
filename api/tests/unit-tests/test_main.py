@@ -935,15 +935,9 @@ def test_delete_model(crud, client: TestClient):
 def test_post_detection_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
-        model_filter=schemas.Filter(
-            model_names=["modelname"], dataset_names=["dsetname"]
-        ),
-        dataset_filter=schemas.Filter(
-            dataset_names=["dsetname"],
-            model_names=["modelname"],
-            task_types=[TaskType.DETECTION],
-        ),
-        parameters=schemas.EvaluationParameters(),
+        model_filter=schemas.Filter(model_names=["modelname"]),
+        dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
+        parameters=schemas.EvaluationParameters(task_type=TaskType.DETECTION),
         status=EvaluationStatus.PENDING,
         metrics=[],
         confusion_matrices=[],
@@ -955,9 +949,8 @@ def test_post_detection_metrics(client: TestClient):
         model_filter=schemas.Filter(model_names=["modelname"]),
         dataset_filter=schemas.Filter(
             dataset_names=["dsetname"],
-            task_types=[TaskType.DETECTION],
         ),
-        parameters=schemas.EvaluationParameters(),
+        parameters=schemas.EvaluationParameters(task_type=TaskType.DETECTION),
     ).model_dump()
 
     _test_post_evaluation_endpoint(
@@ -972,15 +965,9 @@ def test_post_detection_metrics(client: TestClient):
 def test_post_clf_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
-        model_filter=schemas.Filter(
-            model_names=["modelname"], dataset_names=["dsetname"]
-        ),
-        dataset_filter=schemas.Filter(
-            dataset_names=["dsetname"],
-            model_names=["modelname"],
-            task_types=[TaskType.CLASSIFICATION],
-        ),
-        parameters=schemas.EvaluationParameters(),
+        model_filter=schemas.Filter(model_names=["modelname"]),
+        dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
+        parameters=schemas.EvaluationParameters(task_type=TaskType.CLASSIFICATION),
         status=EvaluationStatus.PENDING,
         metrics=[],
         confusion_matrices=[],
@@ -990,11 +977,8 @@ def test_post_clf_metrics(client: TestClient):
 
     example_json = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=["modelname"]),
-        dataset_filter=schemas.Filter(
-            dataset_names=["dsetname"],
-            task_types=[TaskType.CLASSIFICATION],
-        ),
-        parameters=schemas.EvaluationParameters(),
+        dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
+        parameters=schemas.EvaluationParameters(task_type=TaskType.CLASSIFICATION),
     ).model_dump()
 
     _test_post_evaluation_endpoint(
@@ -1009,15 +993,9 @@ def test_post_clf_metrics(client: TestClient):
 def test_post_semenatic_segmentation_metrics(client: TestClient):
     response = schemas.EvaluationResponse(
         id=1,
-        model_filter=schemas.Filter(
-            model_names=["modelname"], dataset_names=["dsetname"]
-        ),
-        dataset_filter=schemas.Filter(
-            dataset_names=["dsetname"],
-            model_names=["modelname"],
-            task_types=[TaskType.SEGMENTATION],
-        ),
-        parameters=schemas.EvaluationParameters(),
+        model_filter=schemas.Filter(model_names=["modelname"]),
+        dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
+        parameters=schemas.EvaluationParameters(task_type=TaskType.SEGMENTATION),
         status=EvaluationStatus.PENDING,
         metrics=[],
         confusion_matrices=[],
@@ -1027,11 +1005,8 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
 
     example_json = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=["modelname"]),
-        dataset_filter=schemas.Filter(
-            dataset_names=["dsetname"],
-            task_types=[TaskType.SEGMENTATION],
-        ),
-        parameters=schemas.EvaluationParameters(),
+        dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
+        parameters=schemas.EvaluationParameters(task_type=TaskType.SEGMENTATION),
     ).model_dump()
 
     _test_post_evaluation_endpoint(

@@ -25,18 +25,17 @@ def test__compute_detection_metrics(
     metrics = _compute_detection_metrics(
         db=db,
         parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.DETECTION,
+            force_annotation_type=enums.AnnotationType.BOX,
             iou_thresholds_to_compute=iou_thresholds,
             iou_thresholds_to_return=[0.5, 0.75],
         ),
         model_filter=schemas.Filter(
             model_names=["test_model"],
-            dataset_names=["test_dataset"],
+            label_keys=["class"],
         ),
         dataset_filter=schemas.Filter(
-            model_names=["test_model"],
             dataset_names=["test_dataset"],
-            task_types=[enums.TaskType.DETECTION],
-            annotation_types=[enums.AnnotationType.BOX],
             label_keys=["class"],
         ),
         target_type=enums.AnnotationType.BOX,

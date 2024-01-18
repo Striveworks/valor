@@ -520,8 +520,6 @@ def test_evaluate_detection_with_json_filters(
         "dataset_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "task_types": [TaskType.DETECTION.value],
-            "annotation_types": [AnnotationType.BOX.value],
             "annotation_geometric_area": [
                 {
                     "operator": ">=",
@@ -535,7 +533,8 @@ def test_evaluate_detection_with_json_filters(
             "label_keys": ["k1"],
         },
         "parameters": {
-            "force_annotation_type": None,
+            "task_type": TaskType.DETECTION.value,
+            "force_annotation_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
         },

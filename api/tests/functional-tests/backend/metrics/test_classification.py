@@ -461,9 +461,9 @@ def test_classification(
     # default request
     job_request = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[model_name]),
-        dataset_filter=schemas.Filter(
-            dataset_names=[dataset_name],
-            task_types=[enums.TaskType.CLASSIFICATION],
+        dataset_filter=schemas.Filter(dataset_names=[dataset_name]),
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION,
         ),
     )
 

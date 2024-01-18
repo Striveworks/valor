@@ -579,12 +579,12 @@ def compute_clf_metrics(
     # unpack filters and params
     model_filter = schemas.Filter(**evaluation.model_filter)
     dataset_filter = schemas.Filter(**evaluation.dataset_filter)
+    parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
-    # check task type
-    if dataset_filter.task_types != [TaskType.CLASSIFICATION]:
-        raise RuntimeError(
-            f"Evaluation `{evaluation.id}` with task type `{dataset_filter.task_types}` attempted to run the classification computation."
-        )
+    # load task type into filters
+    dataset_filter.task_types = [parameters.task_type]
+    model_filter.task_types = [parameters.task_type]
+
 
     confusion_matrices, metrics = _compute_clf_metrics(
         db=db,

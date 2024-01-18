@@ -498,11 +498,9 @@ def compute_detection_metrics(
     dataset_filter = schemas.Filter(**evaluation.dataset_filter)
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
-    # check task type
-    if dataset_filter.task_types != [enums.TaskType.DETECTION]:
-        raise RuntimeError(
-            f"Evaluation `{evaluation.id}` with task type `{dataset_filter.task_types}` attempted to run the object detection computation."
-        )
+    # load task type into filters
+    dataset_filter.task_types = [parameters.task_type]
+    model_filter.task_types = [parameters.task_type]
 
     # fetch model and datasets
     datasets = (

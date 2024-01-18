@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from velour_api.enums import AnnotationType, EvaluationStatus
+from velour_api.enums import AnnotationType, EvaluationStatus, TaskType
 from velour_api.schemas.filters import Filter
 from velour_api.schemas.metrics import ConfusionMatrixResponse, Metric
 
@@ -11,11 +11,13 @@ class EvaluationParameters(BaseModel):
 
     Attributes
     ----------
-    iou_thresholds_to_compute : List[float]
+
+    iou_thresholds_to_compute : List[float], optional
         A list of floats describing which Intersection over Unions (IoUs) to use when calculating metrics (i.e., mAP).
-    iou_thresholds_to_return: List[float]
+    iou_thresholds_to_return: List[float], optional
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
     """
+    task_type: TaskType
 
     # object detection
     force_annotation_type: AnnotationType | None = None
@@ -27,18 +29,30 @@ class EvaluationParameters(BaseModel):
 
     @model_validator(mode="after")
     @classmethod
-    def _check_detection_ious(cls, values):
+    def _validate_by_task_type(cls, values):
         """Validate the IOU thresholds."""
-        if values.iou_thresholds_to_return:
-            if not values.iou_thresholds_to_compute:
-                raise ValueError(
-                    "`iou_thresholds_to_compute` must exist as a superset of `iou_thresholds_to_return`."
-                )
-            for iou in values.iou_thresholds_to_return:
-                if iou not in values.iou_thresholds_to_compute:
-                    raise ValueError(
-                        "`iou_thresholds_to_return` must be contained in `iou_thresholds_to_compute`"
-                    )
+
+        match values.task_type:
+            case TaskType.CLASSIFICATION | TaskType.SEGMENTATION:
+                if values.force_annotation_type is not None:
+                    raise ValueError("`force_annotation_type` should only be used for object detection evaluations.")
+                if values.iou_thresholds_to_compute is not None:
+                    raise ValueError("`iou_thresholds_to_compute` should only be used for object detection evaluations.")
+                if values.iou_thresholds_to_return is not None:
+                    raise ValueError("`iou_thresholds_to_return` should only be used for object detection evaluations.")
+            case TaskType.DETECTION:
+                if values.iou_thresholds_to_return:
+                    if not values.iou_thresholds_to_compute:
+                        raise ValueError(
+                            "`iou_thresholds_to_compute` must exist as a superset of `iou_thresholds_to_return`."
+                        )
+                    for iou in values.iou_thresholds_to_return:
+                        if iou not in values.iou_thresholds_to_compute:
+                            raise ValueError(
+                                "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
+                            )
+            case _:
+                raise NotImplementedError(f"Task type `{values.task_type}` is unsupported.")
         return values
 
 
@@ -60,7 +74,7 @@ class EvaluationRequest(BaseModel):
 
     model_filter: Filter
     dataset_filter: Filter
-    parameters: EvaluationParameters = Field(default=EvaluationParameters())
+    parameters: EvaluationParameters
 
     # pydantic setting
     model_config = ConfigDict(
@@ -70,23 +84,12 @@ class EvaluationRequest(BaseModel):
 
     @model_validator(mode="after")
     @classmethod
-    def _validate_filter(cls, values):
-        """Validates filters for evaluation."""
-
-        # validate model_filter
+    def _validate_no_task_type(cls, values):
+        """Validate filters do not contain task type."""
+        if values.dataset_filter.task_types is not None:
+            raise ValueError("`dataset_filter` should not define the task_types constraint. Please set this in `parameters`.")
         if values.model_filter.task_types is not None:
-            raise ValueError("`model_filter` should not define task types.")
-        elif values.model_filter.annotation_types is not None:
-            raise ValueError(
-                "`model_filter` should not define annotation types."
-            )
-
-        # validate dataset_filter
-        if values.dataset_filter.task_types is None:
-            raise ValueError(
-                "Evaluation requires the definition of `dataset_filter.task_types`."
-            )
-
+            raise ValueError("`model_filter` should not define the task_types constraint. Please set this in `parameters`.")
         return values
 
 

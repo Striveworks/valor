@@ -207,9 +207,9 @@ def test_dataset_status_with_evaluations(
         db,
         schemas.EvaluationRequest(
             model_filter=schemas.Filter(model_names=[created_model]),
-            dataset_filter=schemas.Filter(
-                dataset_names=[created_dataset],
-                task_types=[enums.TaskType.CLASSIFICATION],
+            dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
+            parameters=schemas.EvaluationParameters(
+                task_type=enums.TaskType.CLASSIFICATION,
             ),
         ),
     )

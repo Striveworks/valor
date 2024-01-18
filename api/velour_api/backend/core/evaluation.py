@@ -207,59 +207,34 @@ def _split_request(
         model_list=model_to_evaluate,
     )
 
-    # dataset_names
-    dataset_names = [dataset.name for dataset in datasets_to_evaluate]
+    # clean dataset filter
+    dataset_filter = job_request.dataset_filter
+    dataset_filter.dataset_names = [dataset.name for dataset in datasets_to_evaluate]
+    dataset_filter.dataset_metadata = None
+    dataset_filter.dataset_geospatial = None
+    dataset_filter.model_names = None
+    dataset_filter.model_metadata = None
+    dataset_filter.model_geospatial = None
+
+    # clean model filter
+    model_filter = job_request.model_filter
+    model_filter.dataset_names = None
+    model_filter.dataset_metadata = None
+    model_filter.dataset_geospatial = None
+    model_filter.model_metadata = None
+    model_filter.model_geospatial = None
 
     request_list = []
     for model in model_to_evaluate:
-        for task_type in job_request.dataset_filter.task_types:
-
-            # clean model filter
-            model_filter = job_request.model_filter.model_copy()
-            model_filter.dataset_names = None
-            model_filter.dataset_metadata = None
-            model_filter.dataset_geospatial = None
-            model_filter.model_names = [model.name]
-            model_filter.model_metadata = None
-            model_filter.model_geospatial = None
-
-            # clean evaluation filter
-            dataset_filter = job_request.dataset_filter.model_copy()
-            dataset_filter.dataset_names = dataset_names
-            dataset_filter.dataset_metadata = None
-            dataset_filter.dataset_geospatial = None
-            dataset_filter.model_names = None
-            dataset_filter.model_metadata = None
-            dataset_filter.model_geospatial = None
-            dataset_filter.task_types = [task_type]
-
-            # some task_types require parameters and/or special filter handling
-            match task_type:
-                case enums.TaskType.CLASSIFICATION:
-                    parameters = (
-                        schemas.EvaluationParameters()
-                    )  # default as clf has no parameterization
-                case enums.TaskType.DETECTION:
-                    parameters = job_request.parameters
-                case enums.TaskType.SEGMENTATION:
-                    parameters = (
-                        schemas.EvaluationParameters()
-                    )  # default as clf has no parameterization
-                    dataset_filter.annotation_types = [
-                        enums.AnnotationType.RASTER
-                    ]
-
-                case _:
-                    raise NotImplementedError
-
-            request_list.append(
-                schemas.EvaluationRequest(
-                    model_filter=model_filter,
-                    dataset_filter=dataset_filter,
-                    parameters=parameters.model_dump(),
-                )
+        model_filter = job_request.model_filter.model_copy()
+        model_filter.model_names = [model.name]
+        request_list.append(
+            schemas.EvaluationRequest(
+                model_filter=model_filter,
+                dataset_filter=dataset_filter,
+                parameters=job_request.parameters,
             )
-
+        )
     return request_list
 
 
@@ -329,11 +304,9 @@ def _create_responses(
 
         model_filter = schemas.Filter(**evaluation.model_filter)
         dataset_filter = schemas.Filter(**evaluation.dataset_filter)
+        parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
-        if len(dataset_filter.task_types) != 1:
-            raise RuntimeError
-
-        match dataset_filter.task_types[0]:
+        match parameters.task_type:
             case enums.TaskType.CLASSIFICATION:
                 missing_pred_keys, ignored_pred_keys = core.get_disjoint_keys(
                     db, dataset_filter, model_filter
@@ -395,12 +368,8 @@ def _fetch_evaluation_from_subrequest(
                 == job_request.model_filter.model_dump(),
                 models.Evaluation.dataset_filter
                 == job_request.dataset_filter.model_dump(),
-                (
-                    models.Evaluation.parameters
-                    == job_request.parameters.model_dump()
-                    if job_request.parameters
-                    else models.Evaluation.parameters.is_(None)
-                ),
+                models.Evaluation.parameters
+                == job_request.parameters.model_dump(),
             )
         )
         .one_or_none()

@@ -1267,7 +1267,6 @@ class Model:
         self,
         datasets: Union[Dataset, List[Dataset]],
         filters: Union[Dict, List[BinaryExpression]],
-        task_type: TaskType,
     ) -> Union[dict, Filter]:
         """Formats evaluation request's `dataset_filter` input."""
 
@@ -1302,9 +1301,6 @@ class Model:
                 filters.dataset_names = []
             filters.dataset_names.extend(dataset_names_from_obj)
 
-            # set task type
-            filters.task_types = [task_type]
-
         elif isinstance(filters, dict):
             # reset model name
             filters["model_names"] = None
@@ -1327,9 +1323,6 @@ class Model:
             model_filter["dataset_metadata"] = None
             model_filter["annotation_types"] = None
             model_filter["annotation_geometric_area"] = None
-
-            # set task type
-            filters["task_types"] = [task_type]
 
         return model_filter, filters
 
@@ -1359,12 +1352,13 @@ class Model:
             )
 
         model_filter, dataset_filter = self._format_filters(
-            datasets, filters, TaskType.CLASSIFICATION
+            datasets, filters
         )
 
         evaluation = EvaluationRequest(
             model_filter=model_filter,
             dataset_filter=dataset_filter,
+            parameters=EvaluationParameters(task_type=TaskType.CLASSIFICATION),
         )
         resp = self.client.evaluate(evaluation)
         if len(resp) != 1:
@@ -1418,13 +1412,14 @@ class Model:
             iou_thresholds_to_return = [0.5, 0.75]
 
         parameters = EvaluationParameters(
+            task_type=TaskType.DETECTION,
             force_annotation_type=force_annotation_type,
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_return=iou_thresholds_to_return,
         )
 
         model_filter, dataset_filter = self._format_filters(
-            datasets, filters, TaskType.DETECTION
+            datasets, filters
         )
 
         evaluation = EvaluationRequest(
@@ -1469,13 +1464,14 @@ class Model:
         """
 
         model_filter, dataset_filter = self._format_filters(
-            datasets, filters, TaskType.SEGMENTATION
+            datasets, filters
         )
 
         # create evaluation job
         evaluation = EvaluationRequest(
             model_filter=model_filter,
             dataset_filter=dataset_filter,
+            parameters=EvaluationParameters(task_type=TaskType.SEGMENTATION),
         )
         resp = self.client.evaluate(evaluation)
         if len(resp) != 1:

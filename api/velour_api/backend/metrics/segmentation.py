@@ -210,20 +210,13 @@ def compute_semantic_segmentation_metrics(
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
     # unpack filters and params
-    model_filter = schemas.Filter(**evaluation.model_filter)
     dataset_filter = schemas.Filter(**evaluation.dataset_filter)
+    model_filter = schemas.Filter(**evaluation.model_filter)
+    parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
-    # check task type
-    if dataset_filter.task_types != [enums.TaskType.SEGMENTATION]:
-        raise RuntimeError(
-            f"Evaluation `{evaluation.id}` with task type `{dataset_filter.task_types}` attempted to run the object detection computation."
-        )
-
-    # check annotation type
-    if dataset_filter.annotation_types != [enums.AnnotationType.RASTER]:
-        raise RuntimeError(
-            f"Evaluation `{evaluation.id}` with annotation type `{dataset_filter.annotation_types}` attempted to run the semantic segmentation computation."
-        )
+    # load task type into filters
+    dataset_filter.task_types = [parameters.task_type]
+    model_filter.task_types = [parameters.task_type]
 
     metrics = _compute_segmentation_metrics(
         db=db,

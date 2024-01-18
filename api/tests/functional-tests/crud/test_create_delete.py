@@ -1054,14 +1054,14 @@ def test_create_detection_metrics(
             ),
             dataset_filter=schemas.Filter(
                 dataset_names=["test_dataset"],
-                task_types=[enums.TaskType.DETECTION],
-                annotation_types=[enums.AnnotationType.BOX],
                 annotation_geometric_area=geometric_filters
                 if geometric_filters
                 else None,
                 label_keys=[label_key],
             ),
             parameters=schemas.EvaluationParameters(
+                task_type=enums.TaskType.DETECTION,
+                force_annotation_type=enums.AnnotationType.BOX,
                 iou_thresholds_to_compute=[0.2, 0.6],
                 iou_thresholds_to_return=[0.2],
             ),
@@ -1188,11 +1188,11 @@ def test_create_detection_metrics(
         ),
         dataset_filter=schemas.Filter(
             dataset_names=[dataset_name],
-            task_types=[enums.TaskType.DETECTION],
-            annotation_types=[enums.AnnotationType.BOX],
             label_keys=["class"],
         ),
         parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.DETECTION,
+            force_annotation_type=enums.AnnotationType.BOX,
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[0.2],
         ),
@@ -1222,8 +1222,6 @@ def test_create_detection_metrics(
         ),
         dataset_filter=schemas.Filter(
             dataset_names=[dataset_name],
-            task_types=[enums.TaskType.DETECTION],
-            annotation_types=[enums.AnnotationType.BOX],
             annotation_geometric_area=[
                 schemas.NumericFilter(
                     value=min_area,
@@ -1237,6 +1235,8 @@ def test_create_detection_metrics(
             label_keys=["class"],
         ),
         parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.DETECTION,
+            force_annotation_type=enums.AnnotationType.BOX,
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[0.2],
         ),
@@ -1273,10 +1273,8 @@ def test_create_clf_metrics(
 
     job_request = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[model_name]),
-        dataset_filter=schemas.Filter(
-            dataset_names=[dataset_name],
-            task_types=[enums.TaskType.CLASSIFICATION],
-        ),
+        dataset_filter=schemas.Filter(dataset_names=[dataset_name]),
+        parameters=schemas.EvaluationParameters(task_type=enums.TaskType.CLASSIFICATION),
     )
 
     # create clf evaluation (returns Clf Response)
