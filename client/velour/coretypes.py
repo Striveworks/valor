@@ -911,10 +911,10 @@ class Dataset:
         self.id = id
         self._validate_coretype()
 
-        if delete_if_exists and client.get_dataset(name) is None:
+        if delete_if_exists and client.get_dataset(name) is not None:
             client.delete_dataset(name, timeout=30)
 
-        if client.get_dataset(name) is None:
+        if delete_if_exists or client.get_dataset(name) is None:
             client.create_dataset(self.dict())
 
         for k, v in client.get_dataset(name).items():
@@ -1169,10 +1169,10 @@ class Model:
         self.id = id
         self._validate()
 
-        if delete_if_exists and client.get_model(name) is None:
+        if delete_if_exists and client.get_model(name) is not None:
             client.delete_model(name, timeout=30)
 
-        if client.get_model(name) is None:
+        if delete_if_exists or client.get_model(name) is None:
             client.create_model(self.dict())
 
         for k, v in client.get_model(name).items():

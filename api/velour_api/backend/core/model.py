@@ -277,7 +277,9 @@ def set_model_status(
         and status == TableStatus.FINALIZED
     ):
         if dataset_status != TableStatus.FINALIZED:
-            raise exceptions.DatasetNotFinalizedError(dataset_name)
+            raise exceptions.DatasetNotFinalizedError(
+                dataset_name, "finalize inferences"
+            )
         # edge case - check that there exists at least one prediction per datum
         create_skipped_annotations(
             db=db,

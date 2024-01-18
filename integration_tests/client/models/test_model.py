@@ -284,6 +284,12 @@ def test_client_delete_model(
     client.delete_model(model_name, timeout=30)
     assert db.scalar(select(func.count(models.Model.name))) == 0
 
+    assert client.get_model(model_name) is None
+    Model(client, model_name, delete_if_exists=True)
+    assert client.get_model(model_name) is not None
+    Model(client, model_name, delete_if_exists=True)
+    assert client.get_model(model_name) is not None
+
 
 def test_create_tabular_model_with_predicted_classifications(
     db: Session,
@@ -392,7 +398,6 @@ def test_add_prediction(
     dataset = Dataset(client, dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
-    dataset.finalize()
 
     model = Model(client, model_name)
 
@@ -403,6 +408,12 @@ def test_add_prediction(
     for pd in pred_dets:
         model.add_prediction(dataset, pd)
 
+    # check we get an error since the dataset has not been finalized
+    with pytest.raises(ClientException) as exc_info:
+        model.finalize_inferences(dataset)
+    assert "DatasetNotFinalizedError" in str(exc_info)
+
+    dataset.finalize()
     model.finalize_inferences(dataset)
 
     # test get predictions

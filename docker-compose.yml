@@ -2,6 +2,8 @@ services:
   service:
     image: ghcr.io/striveworks/velour/velour-service
     build: ./api
+    volumes:
+      - ./api/velour_api:/src/velour_api
     ports:
       - "8000:8000"
     environment:
@@ -10,6 +12,7 @@ services:
       AUTH0_DOMAIN: ${AUTH0_DOMAIN}
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
       AUTH0_ALGORITHMS: ${AUTH0_ALGORITHMS}
+    command: "uvicorn velour_api.main:app --reload --host 0.0.0.0"
     depends_on:
       - 'db'
   db:
