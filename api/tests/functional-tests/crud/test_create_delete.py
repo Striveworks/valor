@@ -1183,13 +1183,11 @@ def test_create_detection_metrics(
     model_evals[1].metrics = []
     assert model_evals[0] == schemas.EvaluationResponse(
         model_filter=schemas.Filter(
-            dataset_names=[dataset_name],
             model_names=[model_name],
             label_keys=["class"],
         ),
         evaluation_filter=schemas.Filter(
             dataset_names=[dataset_name],
-            model_names=[model_name],
             task_types=[enums.TaskType.DETECTION],
             annotation_types=[enums.AnnotationType.BOX],
             label_keys=["class"],
@@ -1209,7 +1207,6 @@ def test_create_detection_metrics(
     )
     assert model_evals[1] == schemas.EvaluationResponse(
         model_filter=schemas.Filter(
-            dataset_names=[dataset_name],
             model_names=[model_name],
             annotation_geometric_area=[
                 schemas.NumericFilter(
@@ -1225,7 +1222,6 @@ def test_create_detection_metrics(
         ),
         evaluation_filter=schemas.Filter(
             dataset_names=[dataset_name],
-            model_names=[model_name],
             task_types=[enums.TaskType.DETECTION],
             annotation_types=[enums.AnnotationType.BOX],
             annotation_geometric_area=[

@@ -340,7 +340,7 @@ class Filter:
     label_keys: List[str] = None
 
     @classmethod
-    def create(cls, expressions: List[BinaryExpression]) -> "Filter":
+    def create(cls, expressions: List[BinaryExpression]):
         """
         Parses a list of `BinaryExpression` to create a `schemas.Filter` object.
 

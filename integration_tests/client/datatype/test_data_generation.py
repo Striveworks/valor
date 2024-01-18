@@ -119,13 +119,12 @@ def test_generate_prediction_data(client: Client):
                 Filter()
             ),  # default filter properties with overrides below
             "model_names": [model_name],
-            "dataset_names": [dataset_name],
+            "label_keys": ["k1"],
         },
         "evaluation_filter": {
             **asdict(
                 Filter()
             ),  # default filter properties with overrides below
-            "model_names": [model_name],
             "dataset_names": [dataset_name],
             "task_types": [TaskType.DETECTION.value],
             "annotation_types": ["box"],

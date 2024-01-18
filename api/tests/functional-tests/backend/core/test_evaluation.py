@@ -138,13 +138,11 @@ def test_create_evaluation(
         rows[0].model_filter
         == schemas.Filter(
             model_names=[created_model],
-            dataset_names=[created_dataset],
         ).model_dump()
     )
     assert (
         rows[0].evaluation_filter
         == schemas.Filter(
-            model_names=[created_model],
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.CLASSIFICATION],
         ).model_dump()
@@ -287,10 +285,8 @@ def test__fetch_evaluation_from_subrequest(
     subrequest = schemas.EvaluationRequest(
         model_filter=schemas.Filter(
             model_names=[created_model],
-            dataset_names=[created_dataset],
         ),
         evaluation_filter=schemas.Filter(
-            model_names=[created_model],
             dataset_names=[created_dataset],
             task_types=[
                 enums.TaskType.CLASSIFICATION,
@@ -382,6 +378,14 @@ def test_get_evaluations(
     )
     assert len(evaluations_by_dataset_model_eval_id) == 1
     assert evaluations_by_dataset_model_eval_id[0].id == created_2[0].id
+
+    # make sure stratifying works by dataset and model
+    evaluations_by_dataset_model_eval_id = core.get_evaluations(
+        db=db,
+        dataset_names=[created_dataset],
+        model_names=[created_model],
+    )
+    assert len(evaluations_by_dataset_model_eval_id) == 2
 
 
 def test_evaluation_status(

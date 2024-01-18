@@ -27,14 +27,21 @@ def _create_name_expr_from_list(
     ColumnElement[bool]
         The sqlalchemy expression.
     """
+    if key == "dataset_names":
+        table = models.Evaluation.evaluation_filter
+    elif key == "model_names":
+        table = models.Evaluation.model_filter
+    else:
+        raise ValueError
+
     if not names:
         return None
     elif len(names) == 1:
-        return models.Evaluation.evaluation_filter[key].op("?")(names[0])
+        return table[key].op("?")(names[0])
     else:
         return or_(
             *[
-                models.Evaluation.evaluation_filter[key].op("?")(name)
+                table[key].op("?")(name)
                 for name in names
                 if isinstance(name, str)
             ]
@@ -209,7 +216,7 @@ def _split_request(
 
             # clean model filter
             model_filter = job_request.model_filter.model_copy()
-            model_filter.dataset_names = dataset_names
+            model_filter.dataset_names = None
             model_filter.dataset_metadata = None
             model_filter.dataset_geospatial = None
             model_filter.model_names = [model.name]
@@ -221,7 +228,7 @@ def _split_request(
             evaluation_filter.dataset_names = dataset_names
             evaluation_filter.dataset_metadata = None
             evaluation_filter.dataset_geospatial = None
-            evaluation_filter.model_names = [model.name]
+            evaluation_filter.model_names = None
             evaluation_filter.model_metadata = None
             evaluation_filter.model_geospatial = None
             evaluation_filter.task_types = [task_type]
@@ -621,8 +628,7 @@ def get_evaluations(
         dataset_names=dataset_names,
         model_names=model_names,
     )
-    q = select(models.Evaluation).where(*expr).subquery()
-    evaluations = db.query(q).all()
+    evaluations = db.query(models.Evaluation).where(*expr).all()
     return _create_responses(db, evaluations)
 
 

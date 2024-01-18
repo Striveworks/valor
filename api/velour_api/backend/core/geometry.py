@@ -353,7 +353,7 @@ def convert_geometry(
             AnnotationType.MULTIPOLYGON: _convert_raster_to_multipolygon,
         },
         AnnotationType.POLYGON: {
-            AnnotationType.POLYGON: _convert_polygon_to_box,
+            AnnotationType.BOX: _convert_polygon_to_box,
         },
     }
 

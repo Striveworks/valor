@@ -82,7 +82,7 @@ def test_evaluate_segmentation_with_filter(
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
     assert eval_job.missing_pred_labels == []
-    assert eval_job.ignored_pred_labels == [{"key": "k1", "value": "v1"}]
+    assert eval_job.ignored_pred_labels == []
 
     metrics = eval_job.metrics
 

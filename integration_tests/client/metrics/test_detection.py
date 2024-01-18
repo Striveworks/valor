@@ -86,7 +86,7 @@ def test_evaluate_detection(
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
     assert isinstance(eval_job.id, int)
-    assert eval_job.ignored_pred_labels == [{"key": "k2", "value": "v2"}]
+    assert eval_job.ignored_pred_labels == []
     assert eval_job.missing_pred_labels == []
     assert eval_job.status == EvaluationStatus.DONE
 
@@ -95,13 +95,12 @@ def test_evaluate_detection(
         "id": eval_job.id,
         "model_filter": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "model_names": [model_name],
+            "label_keys": ["k1"],
         },
         "evaluation_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "model_names": [model_name],
             "task_types": [TaskType.DETECTION.value],
             "annotation_types": [AnnotationType.BOX.value],
             "label_keys": ["k1"],
@@ -114,7 +113,7 @@ def test_evaluate_detection(
         "metrics": expected_metrics,
         "confusion_matrices": [],
         "missing_pred_labels": [],
-        "ignored_pred_labels": [{"key": "k2", "value": "v2"}],
+        "ignored_pred_labels": [],
     }
 
     # test evaluating a job using a `Label.labels` filter
@@ -195,13 +194,12 @@ def test_evaluate_detection(
         "id": eval_job_bounded_area_10_2000.id,
         "model_filter": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "model_names": [model_name],
+            "label_keys": ["k1"],
         },
         "evaluation_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "model_names": [model_name],
             "task_types": [TaskType.DETECTION.value],
             "annotation_types": [AnnotationType.BOX.value],
             "annotation_geometric_area": [
@@ -224,7 +222,7 @@ def test_evaluate_detection(
         "metrics": expected_metrics,
         "confusion_matrices": [],
         "missing_pred_labels": [],
-        "ignored_pred_labels": [{"key": "k2", "value": "v2"}],
+        "ignored_pred_labels": [],
     }
 
     # now check we get different things by setting the thresholds accordingly
@@ -249,13 +247,12 @@ def test_evaluate_detection(
         "id": eval_job_min_area_1200.id,
         "model_filter": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "model_names": [model_name],
+            "label_keys": ["k1"],
         },
         "evaluation_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "model_names": [model_name],
             "task_types": [TaskType.DETECTION.value],
             "annotation_types": [AnnotationType.BOX.value],
             "annotation_geometric_area": [
@@ -274,7 +271,7 @@ def test_evaluate_detection(
         "status": EvaluationStatus.DONE.value,
         "confusion_matrices": [],
         "missing_pred_labels": [],
-        "ignored_pred_labels": [{"key": "k2", "value": "v2"}],
+        "ignored_pred_labels": [],
     }
     assert min_area_1200_metrics != expected_metrics
 
@@ -299,13 +296,12 @@ def test_evaluate_detection(
         "id": eval_job_max_area_1200.id,
         "model_filter": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "model_names": [model_name],
+            "label_keys": ["k1"],
         },
         "evaluation_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "model_names": [model_name],
             "task_types": [TaskType.DETECTION.value],
             "annotation_types": [AnnotationType.BOX.value],
             "annotation_geometric_area": [
@@ -324,7 +320,7 @@ def test_evaluate_detection(
         "status": EvaluationStatus.DONE.value,
         "confusion_matrices": [],
         "missing_pred_labels": [],
-        "ignored_pred_labels": [{"key": "k2", "value": "v2"}],
+        "ignored_pred_labels": [],
     }
     assert max_area_1200_metrics != expected_metrics
 
@@ -351,13 +347,12 @@ def test_evaluate_detection(
         "id": eval_job_bounded_area_1200_1800.id,
         "model_filter": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "model_names": [model_name],
+            "label_keys": ["k1"],
         },
         "evaluation_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "model_names": [model_name],
             "task_types": [TaskType.DETECTION.value],
             "annotation_types": [AnnotationType.BOX.value],
             "annotation_geometric_area": [
@@ -380,7 +375,7 @@ def test_evaluate_detection(
         "status": EvaluationStatus.DONE.value,
         "confusion_matrices": [],
         "missing_pred_labels": [],
-        "ignored_pred_labels": [{"key": "k2", "value": "v2"}],
+        "ignored_pred_labels": [],
     }
     assert bounded_area_metrics != expected_metrics
     assert bounded_area_metrics == min_area_1200_metrics
@@ -514,13 +509,12 @@ def test_evaluate_detection_with_json_filters(
         "id": eval_job_bounded_area_1200_1800.id,
         "model_filter": {
             **default_filter_properties,
-            "dataset_names": ["test_dataset"],
             "model_names": [model_name],
+            "label_keys": ["k1"],
         },
         "evaluation_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "model_names": [model_name],
             "task_types": [TaskType.DETECTION.value],
             "annotation_types": [AnnotationType.BOX.value],
             "annotation_geometric_area": [
@@ -543,7 +537,7 @@ def test_evaluate_detection_with_json_filters(
         "status": EvaluationStatus.DONE.value,
         "confusion_matrices": [],
         "missing_pred_labels": [],
-        "ignored_pred_labels": [{"key": "k2", "value": "v2"}],
+        "ignored_pred_labels": [],
     }
     assert bounded_area_metrics != expected_metrics
     assert bounded_area_metrics == min_area_1200_metrics

@@ -3,7 +3,7 @@ import json
 import math
 import time
 import warnings
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Dict, List, Tuple, Union
 
 from velour.client import Client, ClientException, DeletionJob
@@ -1282,16 +1282,56 @@ class Model:
         if isinstance(filters, list) or filters is None:
             filters = filters if filters else []
             filters = Filter.create(filters)
+
+            # create model_filter
+            model_filter = replace(filters)
+            model_filter.model_names = [self.name]
+            model_filter.dataset_names = None
+            model_filter.dataset_geospatial = None
+            model_filter.dataset_metadata = None
+            model_filter.annotation_types = None
+            model_filter.annotation_geometric_area = None
+
+            # reset model name
+            filters.model_names = None
+            filters.model_geospatial = None
+            filters.model_metadata = None
+
+            # set dataset names
             if not filters.dataset_names:
                 filters.dataset_names = []
             filters.dataset_names.extend(dataset_names_from_obj)
+
+            # set task type
             filters.task_types = [task_type]
+
         elif isinstance(filters, dict):
-            if "dataset_names" not in filters:
+            # reset model name
+            filters["model_names"] = None
+            filters["model_geospatial"] = None
+            filters["model_metadata"] = None
+
+            # set dataset names
+            if (
+                "dataset_names" not in filters
+                or filters["dataset_names"] is None
+            ):
                 filters["dataset_names"] = []
-            filters["dataset_names"] = dataset_names_from_obj
+            filters["dataset_names"].extend(dataset_names_from_obj)
+
+            # create model_filter
+            model_filter = filters.copy()
+            model_filter["model_names"] = [self.name]
+            model_filter["dataset_names"] = None
+            model_filter["dataset_geospatial"] = None
+            model_filter["dataset_metadata"] = None
+            model_filter["annotation_types"] = None
+            model_filter["annotation_geometric_area"] = None
+
+            # set task type
             filters["task_types"] = [task_type]
-        return filters
+
+        return model_filter, filters
 
     def evaluate_classification(
         self,
@@ -1318,12 +1358,12 @@ class Model:
                 "Evaluation requires the definition of either datasets, dataset filters or both."
             )
 
-        evaluation_filter = self._format_filters(
+        model_filter, evaluation_filter = self._format_filters(
             datasets, filters, TaskType.CLASSIFICATION
         )
 
         evaluation = EvaluationRequest(
-            model_filter=Filter(model_names=[self.name]),
+            model_filter=model_filter,
             evaluation_filter=evaluation_filter,
         )
         resp = self.client.evaluate(evaluation)
@@ -1379,12 +1419,12 @@ class Model:
             iou_thresholds_to_return=iou_thresholds_to_return,
         )
 
-        evaluation_filter = self._format_filters(
+        model_filter, evaluation_filter = self._format_filters(
             datasets, filters, TaskType.DETECTION
         )
 
         evaluation = EvaluationRequest(
-            model_filter=Filter(model_names=[self.name]),
+            model_filter=model_filter,
             evaluation_filter=evaluation_filter,
             parameters=parameters,
         )
@@ -1424,13 +1464,13 @@ class Model:
             a job object that can be used to track the status of the job and get the metrics of it upon completion
         """
 
-        evaluation_filter = self._format_filters(
+        model_filter, evaluation_filter = self._format_filters(
             datasets, filters, TaskType.SEGMENTATION
         )
 
         # create evaluation job
         evaluation = EvaluationRequest(
-            model_filter=Filter(model_names=[self.name]),
+            model_filter=model_filter,
             evaluation_filter=evaluation_filter,
         )
         resp = self.client.evaluate(evaluation)
