@@ -42,7 +42,7 @@ def test_EvaluationParameters():
 def test_EvaluationRequest():
     schemas.EvaluationRequest(
         model_filter=schemas.Filter(),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             task_types=[enums.TaskType.CLASSIFICATION]
         ),
         parameters=schemas.EvaluationParameters(),
@@ -52,7 +52,7 @@ def test_EvaluationRequest():
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
             model_filter=None,
-            evaluation_filter=schemas.Filter(
+            dataset_filter=schemas.Filter(
                 task_types=[enums.TaskType.CLASSIFICATION]
             ),
             parameters=schemas.EvaluationParameters(),
@@ -60,13 +60,13 @@ def test_EvaluationRequest():
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
             model_filter=schemas.Filter(),
-            evaluation_filter=None,
+            dataset_filter=None,
             parameters=schemas.EvaluationParameters(),
         )
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
             model_filter=schemas.Filter(),
-            evaluation_filter=schemas.Filter(
+            dataset_filter=schemas.Filter(
                 task_types=[enums.TaskType.CLASSIFICATION]
             ),
             parameters=None,
@@ -78,7 +78,7 @@ def test_EvaluationRequest():
             model_filter=schemas.Filter(
                 task_types=[enums.TaskType.CLASSIFICATION]
             ),
-            evaluation_filter=schemas.Filter(
+            dataset_filter=schemas.Filter(
                 task_types=[enums.TaskType.CLASSIFICATION]
             ),
             parameters=schemas.EvaluationParameters(),
@@ -88,22 +88,22 @@ def test_EvaluationRequest():
             model_filter=schemas.Filter(
                 annotation_types=[enums.AnnotationType.RASTER]
             ),
-            evaluation_filter=schemas.Filter(
+            dataset_filter=schemas.Filter(
                 task_types=[enums.TaskType.CLASSIFICATION]
             ),
             parameters=schemas.EvaluationParameters(),
         )
 
-    # test `evaluation_filter` validator
+    # test `dataset_filter` validator
     with pytest.raises(ValidationError):
         schemas.EvaluationRequest(
             model_filter=schemas.Filter(),
-            evaluation_filter=schemas.Filter(),
+            dataset_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(),
         )
         req = schemas.EvaluationRequest(
             model_filter=schemas.Filter(),
-            evaluation_filter=schemas.Filter(
+            dataset_filter=schemas.Filter(
                 task_types=[enums.TaskType.DETECTION]
             ),
             parameters=schemas.EvaluationParameters(),
@@ -115,7 +115,7 @@ def test_EvaluationResponse():
     schemas.EvaluationResponse(
         id=1,
         model_filter=schemas.Filter(),
-        evaluation_filter=schemas.Filter(),
+        dataset_filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(),
         status=enums.EvaluationStatus.DONE,
         metrics=[],
@@ -124,7 +124,7 @@ def test_EvaluationResponse():
     schemas.EvaluationResponse(
         id=1,
         model_filter=schemas.Filter(),
-        evaluation_filter=schemas.Filter(),
+        dataset_filter=schemas.Filter(),
         parameters=schemas.EvaluationParameters(),
         status=enums.EvaluationStatus.DONE,
         metrics=[],
@@ -136,7 +136,7 @@ def test_EvaluationResponse():
         schemas.EvaluationResponse(
             id=None,
             model_filter=schemas.Filter,
-            evaluation_filter=schemas.Filter(),
+            dataset_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(),
             status=enums.EvaluationStatus.DONE,
             metrics=[],
@@ -148,7 +148,7 @@ def test_EvaluationResponse():
         schemas.EvaluationResponse(
             id=1,
             model_filter=schemas.Filter,
-            evaluation_filter=schemas.Filter(),
+            dataset_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(),
             status=enums.EvaluationStatus.DONE,
             metrics=[],
@@ -160,7 +160,7 @@ def test_EvaluationResponse():
         schemas.EvaluationResponse(
             id=1,
             model_filter=None,
-            evaluation_filter=schemas.Filter(),
+            dataset_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(),
             status=enums.EvaluationStatus.DONE,
             metrics=[],
@@ -170,7 +170,7 @@ def test_EvaluationResponse():
         schemas.EvaluationResponse(
             id=1,
             model_filter=schemas.Filter(),
-            evaluation_filter=None,
+            dataset_filter=None,
             parameters=schemas.EvaluationParameters(),
             status=enums.EvaluationStatus.DONE,
             metrics=[],
@@ -182,7 +182,7 @@ def test_EvaluationResponse():
         schemas.EvaluationResponse(
             id=1,
             model_filter=schemas.Filter(),
-            evaluation_filter=schemas.Filter(),
+            dataset_filter=schemas.Filter(),
             parameters=None,
             status=enums.EvaluationStatus.DONE,
             metrics=[],
@@ -194,7 +194,7 @@ def test_EvaluationResponse():
         schemas.EvaluationResponse(
             id=1,
             model_filter=schemas.Filter(),
-            evaluation_filter=schemas.Filter(),
+            dataset_filter=schemas.Filter(),
             parameters=schemas.EvaluationParameters(),
             status=None,
             metrics=[],

@@ -242,7 +242,7 @@ def test_model_status_with_evaluations(
         db,
         schemas.EvaluationRequest(
             model_filter=schemas.Filter(model_names=[created_model]),
-            evaluation_filter=schemas.Filter(
+            dataset_filter=schemas.Filter(
                 dataset_names=[created_dataset],
                 task_types=[enums.TaskType.CLASSIFICATION],
             ),

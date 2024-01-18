@@ -132,7 +132,7 @@ def test_geospatial_filter(
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
     result = eval_job.dict()
-    assert result["evaluation_filter"]["datum_geospatial"] == [
+    assert result["dataset_filter"]["datum_geospatial"] == [
         {
             "value": geo_dict,
             "operator": "intersect",

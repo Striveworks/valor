@@ -712,7 +712,7 @@ class Evaluation:
         return {
             "id": self.id,
             "model_filter": asdict(self.model_filter),
-            "evaluation_filter": asdict(self.evaluation_filter),
+            "dataset_filter": asdict(self.dataset_filter),
             "parameters": asdict(self.parameters),
             "status": self.status.value,
             "metrics": self.metrics,
@@ -725,7 +725,7 @@ class Evaluation:
         *_,
         id: int,
         model_filter: Filter,
-        evaluation_filter: Filter,
+        dataset_filter: Filter,
         parameters: EvaluationParameters,
         status: EvaluationStatus,
         metrics: List[dict],
@@ -738,10 +738,10 @@ class Evaluation:
             if isinstance(model_filter, dict)
             else model_filter
         )
-        self.evaluation_filter = (
-            Filter(**evaluation_filter)
-            if isinstance(evaluation_filter, dict)
-            else evaluation_filter
+        self.dataset_filter = (
+            Filter(**dataset_filter)
+            if isinstance(dataset_filter, dict)
+            else dataset_filter
         )
         self.parameters = (
             EvaluationParameters(**parameters)
@@ -1269,7 +1269,7 @@ class Model:
         filters: Union[Dict, List[BinaryExpression]],
         task_type: TaskType,
     ) -> Union[dict, Filter]:
-        """Formats evaluation request's `evaluation_filter` input."""
+        """Formats evaluation request's `dataset_filter` input."""
 
         # get list of dataset names
         dataset_names_from_obj = []
@@ -1358,13 +1358,13 @@ class Model:
                 "Evaluation requires the definition of either datasets, dataset filters or both."
             )
 
-        model_filter, evaluation_filter = self._format_filters(
+        model_filter, dataset_filter = self._format_filters(
             datasets, filters, TaskType.CLASSIFICATION
         )
 
         evaluation = EvaluationRequest(
             model_filter=model_filter,
-            evaluation_filter=evaluation_filter,
+            dataset_filter=dataset_filter,
         )
         resp = self.client.evaluate(evaluation)
         if len(resp) != 1:
@@ -1419,13 +1419,13 @@ class Model:
             iou_thresholds_to_return=iou_thresholds_to_return,
         )
 
-        model_filter, evaluation_filter = self._format_filters(
+        model_filter, dataset_filter = self._format_filters(
             datasets, filters, TaskType.DETECTION
         )
 
         evaluation = EvaluationRequest(
             model_filter=model_filter,
-            evaluation_filter=evaluation_filter,
+            dataset_filter=dataset_filter,
             parameters=parameters,
         )
         resp = self.client.evaluate(evaluation)
@@ -1464,14 +1464,14 @@ class Model:
             a job object that can be used to track the status of the job and get the metrics of it upon completion
         """
 
-        model_filter, evaluation_filter = self._format_filters(
+        model_filter, dataset_filter = self._format_filters(
             datasets, filters, TaskType.SEGMENTATION
         )
 
         # create evaluation job
         evaluation = EvaluationRequest(
             model_filter=model_filter,
-            evaluation_filter=evaluation_filter,
+            dataset_filter=dataset_filter,
         )
         resp = self.client.evaluate(evaluation)
         if len(resp) != 1:

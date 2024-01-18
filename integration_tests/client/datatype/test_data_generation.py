@@ -121,7 +121,7 @@ def test_generate_prediction_data(client: Client):
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "evaluation_filter": {
+        "dataset_filter": {
             **asdict(
                 Filter()
             ),  # default filter properties with overrides below
@@ -131,6 +131,7 @@ def test_generate_prediction_data(client: Client):
             "label_keys": ["k1"],
         },
         "parameters": {
+            "annotation_type": None,
             "iou_thresholds_to_compute": [0.1, 0.9],
             "iou_thresholds_to_return": [0.1, 0.9],
         },

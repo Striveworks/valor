@@ -1052,7 +1052,7 @@ def test_create_detection_metrics(
                 else None,
                 label_keys=[label_key],
             ),
-            evaluation_filter=schemas.Filter(
+            dataset_filter=schemas.Filter(
                 dataset_names=["test_dataset"],
                 task_types=[enums.TaskType.DETECTION],
                 annotation_types=[enums.AnnotationType.BOX],
@@ -1186,7 +1186,7 @@ def test_create_detection_metrics(
             model_names=[model_name],
             label_keys=["class"],
         ),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.DETECTION],
             annotation_types=[enums.AnnotationType.BOX],
@@ -1220,7 +1220,7 @@ def test_create_detection_metrics(
             ],
             label_keys=["class"],
         ),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.DETECTION],
             annotation_types=[enums.AnnotationType.BOX],
@@ -1273,7 +1273,7 @@ def test_create_clf_metrics(
 
     job_request = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[model_name]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[dataset_name],
             task_types=[enums.TaskType.CLASSIFICATION],
         ),

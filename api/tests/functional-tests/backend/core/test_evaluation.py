@@ -105,7 +105,7 @@ def test_create_evaluation(
 ):
     job_request_1 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.CLASSIFICATION],
         ),
@@ -141,7 +141,7 @@ def test_create_evaluation(
         ).model_dump()
     )
     assert (
-        rows[0].evaluation_filter
+        rows[0].dataset_filter
         == schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.CLASSIFICATION],
@@ -153,7 +153,7 @@ def test_create_evaluation(
     with pytest.raises(exceptions.EvaluationRequestError) as e:
         job_request_1 = schemas.EvaluationRequest(
             model_filter=schemas.Filter(model_names=[created_model]),
-            evaluation_filter=schemas.Filter(
+            dataset_filter=schemas.Filter(
                 dataset_names=["some_other_dataset"],
                 task_types=[enums.TaskType.CLASSIFICATION],
             ),
@@ -163,7 +163,7 @@ def test_create_evaluation(
     with pytest.raises(exceptions.EvaluationRequestError) as e:
         job_request_1 = schemas.EvaluationRequest(
             model_filter=schemas.Filter(model_names=["some_other_model"]),
-            evaluation_filter=schemas.Filter(
+            dataset_filter=schemas.Filter(
                 dataset_names=[created_dataset],
                 task_types=[enums.TaskType.CLASSIFICATION],
             ),
@@ -180,7 +180,7 @@ def test_fetch_evaluation_from_id(
     # create evaluation 1
     job_request_1 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.CLASSIFICATION],
         ),
@@ -192,7 +192,7 @@ def test_fetch_evaluation_from_id(
     # create evaluation 2
     job_request_2 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
@@ -204,14 +204,14 @@ def test_fetch_evaluation_from_id(
     fetched_evaluation = core.fetch_evaluation_from_id(db, evaluation_id_1)
     assert fetched_evaluation.id == evaluation_id_1
     assert (
-        fetched_evaluation.evaluation_filter["task_types"][0]
+        fetched_evaluation.dataset_filter["task_types"][0]
         == enums.TaskType.CLASSIFICATION
     )
 
     fetched_evaluation = core.fetch_evaluation_from_id(db, evaluation_id_2)
     assert fetched_evaluation.id == evaluation_id_2
     assert (
-        fetched_evaluation.evaluation_filter["task_types"][0]
+        fetched_evaluation.dataset_filter["task_types"][0]
         == enums.TaskType.SEGMENTATION
     )
 
@@ -224,7 +224,7 @@ def test_get_evaluation_ids(
     # create evaluation 1
     job_request_1 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.CLASSIFICATION],
         ),
@@ -236,7 +236,7 @@ def test_get_evaluation_ids(
     # create evaluation 2
     job_request_2 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
@@ -262,7 +262,7 @@ def test__fetch_evaluation_from_subrequest(
     # create evaluation 1
     job_request_1 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.CLASSIFICATION],
         ),
@@ -273,7 +273,7 @@ def test__fetch_evaluation_from_subrequest(
     # create evaluation 2
     job_request_2 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
@@ -286,7 +286,7 @@ def test__fetch_evaluation_from_subrequest(
         model_filter=schemas.Filter(
             model_names=[created_model],
         ),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[
                 enums.TaskType.CLASSIFICATION,
@@ -298,7 +298,7 @@ def test__fetch_evaluation_from_subrequest(
         job_request=subrequest,
     )
     assert existing is not None
-    retr_eval_filter = schemas.Filter(**existing.evaluation_filter)
+    retr_eval_filter = schemas.Filter(**existing.dataset_filter)
     assert len(retr_eval_filter.task_types) == 1
     assert retr_eval_filter.task_types[0] == enums.TaskType.CLASSIFICATION
 
@@ -311,7 +311,7 @@ def test_get_evaluations(
     # create evaluation 1
     job_request_1 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.CLASSIFICATION],
         ),
@@ -322,7 +322,7 @@ def test_get_evaluations(
     # create evaluation 2
     job_request_2 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
@@ -396,7 +396,7 @@ def test_evaluation_status(
     # create evaluation 1
     job_request_1 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.CLASSIFICATION],
         ),
@@ -522,7 +522,7 @@ def test_count_active_evaluations(
     # create evaluation 1
     job_request_1 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.CLASSIFICATION],
         ),
@@ -534,7 +534,7 @@ def test_count_active_evaluations(
     # create evaluation 2
     job_request_2 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.SEGMENTATION],
         ),
@@ -580,7 +580,7 @@ def test_count_active_evaluations(
     # create evaluation 3
     job_request_3 = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[created_model]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=[created_dataset],
             task_types=[enums.TaskType.DETECTION],
         ),

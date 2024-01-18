@@ -23,10 +23,8 @@ def test_to_dataframe():
         id=1,
         model_filter=schemas.Filter(
             model_names=["model1"],
-            dataset_names=["dataset1"],
         ),
-        evaluation_filter=schemas.Filter(
-            model_names=["model1"],
+        dataset_filter=schemas.Filter(
             dataset_names=["dataset1"],
             task_types=[enums.TaskType.CLASSIFICATION],
         ),

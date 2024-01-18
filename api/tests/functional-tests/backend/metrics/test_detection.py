@@ -32,7 +32,7 @@ def test__compute_detection_metrics(
             model_names=["test_model"],
             dataset_names=["test_dataset"],
         ),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             model_names=["test_model"],
             dataset_names=["test_dataset"],
             task_types=[enums.TaskType.DETECTION],

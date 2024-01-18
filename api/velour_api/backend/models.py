@@ -190,7 +190,7 @@ class Evaluation(Base):
     __table_args__ = (
         UniqueConstraint(
             "model_filter",
-            "evaluation_filter",
+            "dataset_filter",
             "parameters",
         ),
     )
@@ -198,7 +198,7 @@ class Evaluation(Base):
     # columns
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     model_filter = mapped_column(JSONB, nullable=False)
-    evaluation_filter = mapped_column(JSONB, nullable=False)
+    dataset_filter = mapped_column(JSONB, nullable=False)
     parameters = mapped_column(JSONB, nullable=True)
     geo = mapped_column(Geography(), nullable=True)
     status: Mapped[str] = mapped_column(nullable=False)

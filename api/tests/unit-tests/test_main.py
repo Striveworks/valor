@@ -938,7 +938,7 @@ def test_post_detection_metrics(client: TestClient):
         model_filter=schemas.Filter(
             model_names=["modelname"], dataset_names=["dsetname"]
         ),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=["dsetname"],
             model_names=["modelname"],
             task_types=[TaskType.DETECTION],
@@ -953,7 +953,7 @@ def test_post_detection_metrics(client: TestClient):
 
     example_json = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=["modelname"]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=["dsetname"],
             task_types=[TaskType.DETECTION],
         ),
@@ -975,7 +975,7 @@ def test_post_clf_metrics(client: TestClient):
         model_filter=schemas.Filter(
             model_names=["modelname"], dataset_names=["dsetname"]
         ),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=["dsetname"],
             model_names=["modelname"],
             task_types=[TaskType.CLASSIFICATION],
@@ -990,7 +990,7 @@ def test_post_clf_metrics(client: TestClient):
 
     example_json = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=["modelname"]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=["dsetname"],
             task_types=[TaskType.CLASSIFICATION],
         ),
@@ -1012,7 +1012,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
         model_filter=schemas.Filter(
             model_names=["modelname"], dataset_names=["dsetname"]
         ),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=["dsetname"],
             model_names=["modelname"],
             task_types=[TaskType.SEGMENTATION],
@@ -1027,7 +1027,7 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
 
     example_json = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=["modelname"]),
-        evaluation_filter=schemas.Filter(
+        dataset_filter=schemas.Filter(
             dataset_names=["dsetname"],
             task_types=[TaskType.SEGMENTATION],
         ),

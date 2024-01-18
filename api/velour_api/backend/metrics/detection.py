@@ -102,7 +102,7 @@ def _compute_detection_metrics(
     db: Session,
     parameters: schemas.EvaluationParameters,
     model_filter: schemas.Filter,
-    evaluation_filter: schemas.Filter,
+    dataset_filter: schemas.Filter,
     target_type: enums.AnnotationType,
 ) -> list[
     schemas.APMetric
@@ -142,7 +142,7 @@ def _compute_detection_metrics(
             models.GroundTruth.label_id.label("label_id"),
             models.Annotation.datum_id.label("datum_id"),
         )
-        .filter(evaluation_filter)
+        .filter(dataset_filter)
         .groundtruths("groundtruths")
     )
 
@@ -286,10 +286,10 @@ def _compute_detection_metrics(
     # Get the number of ground truths per label id
     number_of_ground_truths = {}
     for id in labels:
-        evaluation_filter.label_ids = [id]
+        dataset_filter.label_ids = [id]
         number_of_ground_truths[id] = db.query(
             Query(func.count(models.GroundTruth.id))
-            .filter(evaluation_filter)
+            .filter(dataset_filter)
             .groundtruths()
         ).scalar()
 
@@ -416,12 +416,12 @@ def _convert_annotations_to_common_type(
     db: Session,
     datasets: list[models.Dataset],
     model: models.Model,
-    annotation_types: list[enums.AnnotationType],
+    target_type: enums.AnnotationType | None = None,
 ) -> enums.AnnotationType:
     """Convert all annotations to a common type."""
 
-    # user has specified a target type
-    if not annotation_types:
+    if target_type is None:
+        # find the greatest common type
         groundtruth_type = AnnotationType.RASTER
         prediction_type = AnnotationType.RASTER
         for dataset in datasets:
@@ -443,10 +443,6 @@ def _convert_annotations_to_common_type(
                 model_type if model_type < prediction_type else prediction_type
             )
         target_type = min([groundtruth_type, prediction_type])
-    elif len(annotation_types) > 1:
-        raise RuntimeError("Should receive a single annotation type.")
-    else:
-        target_type = annotation_types[0]
 
     for dataset in datasets:
         # dataset
@@ -499,18 +495,18 @@ def compute_detection_metrics(
 
     # unpack filters and params
     model_filter = schemas.Filter(**evaluation.model_filter)
-    evaluation_filter = schemas.Filter(**evaluation.evaluation_filter)
+    dataset_filter = schemas.Filter(**evaluation.dataset_filter)
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
     # check task type
-    if evaluation_filter.task_types != [enums.TaskType.DETECTION]:
+    if dataset_filter.task_types != [enums.TaskType.DETECTION]:
         raise RuntimeError(
-            f"Evaluation `{evaluation.id}` with task type `{evaluation_filter.task_types}` attempted to run the object detection computation."
+            f"Evaluation `{evaluation.id}` with task type `{dataset_filter.task_types}` attempted to run the object detection computation."
         )
 
     # fetch model and datasets
     datasets = (
-        db.query(Query(models.Dataset).filter(evaluation_filter).any())
+        db.query(Query(models.Dataset).filter(dataset_filter).any())
         .distinct()
         .all()
     )
@@ -525,15 +521,16 @@ def compute_detection_metrics(
         db=db,
         datasets=datasets,
         model=model,
-        annotation_types=evaluation_filter.annotation_types,
+        target_type=parameters.annotation_type,
     )
-    evaluation_filter.annotation_types = [target_type]
+    dataset_filter.annotation_types = [target_type]
+    model_filter.annotation_types = [target_type]
 
     metrics = _compute_detection_metrics(
         db=db,
         parameters=parameters,
         model_filter=model_filter,
-        evaluation_filter=evaluation_filter,
+        dataset_filter=dataset_filter,
         target_type=target_type,
     )
 

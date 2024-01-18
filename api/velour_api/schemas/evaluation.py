@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from velour_api.enums import EvaluationStatus
+from velour_api.enums import EvaluationStatus, AnnotationType
 from velour_api.schemas.filters import Filter
 from velour_api.schemas.metrics import ConfusionMatrixResponse, Metric
 
@@ -18,6 +18,7 @@ class EvaluationParameters(BaseModel):
     """
 
     # object detection
+    annotation_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
 
@@ -51,14 +52,14 @@ class EvaluationRequest(BaseModel):
     ----------
     model_filter : schemas.Filter
         The filter used to enumerate all the models we want to evaluate.
-    evaluation_filter : schemas.Filter
+    dataset_filter : schemas.Filter
         The filter object used to define what the model is evaluating against.
     parameters : DetectionParameters, optional
         Any parameters that are used to modify an evaluation method.
     """
 
     model_filter: Filter
-    evaluation_filter: Filter
+    dataset_filter: Filter
     parameters: EvaluationParameters = Field(default=EvaluationParameters())
 
     # pydantic setting
@@ -80,10 +81,10 @@ class EvaluationRequest(BaseModel):
                 "`model_filter` should not define annotation types."
             )
 
-        # validate evaluation_filter
-        if values.evaluation_filter.task_types is None:
+        # validate dataset_filter
+        if values.dataset_filter.task_types is None:
             raise ValueError(
-                "Evaluation requires the definition of `evaluation_filter.task_types`."
+                "Evaluation requires the definition of `dataset_filter.task_types`."
             )
 
         return values
@@ -99,7 +100,7 @@ class EvaluationResponse(BaseModel):
         The id of the evaluation.
     model_filter : schemas.Filter
         The model filter used in the evaluation.
-    evaluation_filter : schemas.Filter
+    dataset_filter : schemas.Filter
         The evaluation filter used in the evaluation.
     parameters : schemas.EvaluationParameters
         Any parameters used by the evaluation method.
@@ -113,7 +114,7 @@ class EvaluationResponse(BaseModel):
 
     id: int
     model_filter: Filter
-    evaluation_filter: Filter
+    dataset_filter: Filter
     parameters: EvaluationParameters
     status: EvaluationStatus
     metrics: list[Metric]

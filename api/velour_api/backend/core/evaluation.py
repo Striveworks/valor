@@ -28,7 +28,7 @@ def _create_name_expr_from_list(
         The sqlalchemy expression.
     """
     if key == "dataset_names":
-        table = models.Evaluation.evaluation_filter
+        table = models.Evaluation.dataset_filter
     elif key == "model_names":
         table = models.Evaluation.model_filter
     else:
@@ -180,7 +180,7 @@ def _split_request(
 
     datasets_to_evaluate = (
         db.query(
-            Query(models.Dataset).filter(job_request.evaluation_filter).any()
+            Query(models.Dataset).filter(job_request.dataset_filter).any()
         )
         .distinct()
         .all()
@@ -212,7 +212,7 @@ def _split_request(
 
     request_list = []
     for model in model_to_evaluate:
-        for task_type in job_request.evaluation_filter.task_types:
+        for task_type in job_request.dataset_filter.task_types:
 
             # clean model filter
             model_filter = job_request.model_filter.model_copy()
@@ -224,60 +224,37 @@ def _split_request(
             model_filter.model_geospatial = None
 
             # clean evaluation filter
-            evaluation_filter = job_request.evaluation_filter.model_copy()
-            evaluation_filter.dataset_names = dataset_names
-            evaluation_filter.dataset_metadata = None
-            evaluation_filter.dataset_geospatial = None
-            evaluation_filter.model_names = None
-            evaluation_filter.model_metadata = None
-            evaluation_filter.model_geospatial = None
-            evaluation_filter.task_types = [task_type]
+            dataset_filter = job_request.dataset_filter.model_copy()
+            dataset_filter.dataset_names = dataset_names
+            dataset_filter.dataset_metadata = None
+            dataset_filter.dataset_geospatial = None
+            dataset_filter.model_names = None
+            dataset_filter.model_metadata = None
+            dataset_filter.model_geospatial = None
+            dataset_filter.task_types = [task_type]
 
             # some task_types require parameters and/or special filter handling
             match task_type:
                 case enums.TaskType.CLASSIFICATION:
-                    request_list.append(
-                        schemas.EvaluationRequest(
-                            model_filter=model_filter,
-                            evaluation_filter=evaluation_filter,
-                            parameters=schemas.EvaluationParameters(),  # default as clf has no parameterization
-                        )
-                    )
+                    parameters = schemas.EvaluationParameters() # default as clf has no parameterization
                 case enums.TaskType.DETECTION:
-                    if evaluation_filter.annotation_types:
-                        annotation_types = (
-                            evaluation_filter.annotation_types.copy()
-                        )
-                        for atype in annotation_types:
-                            evaluation_filter.annotation_types = [atype]
-                            request_list.append(
-                                schemas.EvaluationRequest(
-                                    model_filter=model_filter,
-                                    evaluation_filter=evaluation_filter,
-                                    parameters=job_request.parameters.model_dump(),
-                                )
-                            )
-                    else:
-                        request_list.append(
-                            schemas.EvaluationRequest(
-                                model_filter=model_filter,
-                                evaluation_filter=evaluation_filter,
-                                parameters=job_request.parameters.model_dump(),
-                            )
-                        )
+                    parameters=job_request.parameters
                 case enums.TaskType.SEGMENTATION:
-                    evaluation_filter.annotation_types = [
+                    parameters = schemas.EvaluationParameters() # default as clf has no parameterization
+                    dataset_filter.annotation_types = [
                         enums.AnnotationType.RASTER
                     ]
-                    request_list.append(
-                        schemas.EvaluationRequest(
-                            model_filter=model_filter,
-                            evaluation_filter=evaluation_filter,
-                            parameters=schemas.EvaluationParameters(),  # default as clf has no parameterization
-                        )
-                    )
+                    
                 case _:
                     raise NotImplementedError
+                
+            request_list.append(
+                schemas.EvaluationRequest(
+                    model_filter=model_filter,
+                    dataset_filter=dataset_filter,
+                    parameters=parameters.model_dump()
+                )
+            )
 
     return request_list
 
@@ -301,7 +278,7 @@ def _create_response(
     return schemas.EvaluationResponse(
         id=evaluation.id,
         model_filter=evaluation.model_filter,
-        evaluation_filter=evaluation.evaluation_filter,
+        dataset_filter=evaluation.dataset_filter,
         parameters=evaluation.parameters,
         status=evaluation.status,
         metrics=[
@@ -346,15 +323,15 @@ def _create_responses(
             raise exceptions.EvaluationDoesNotExistError()
 
         model_filter = schemas.Filter(**evaluation.model_filter)
-        evaluation_filter = schemas.Filter(**evaluation.evaluation_filter)
+        dataset_filter = schemas.Filter(**evaluation.dataset_filter)
 
-        if len(evaluation_filter.task_types) != 1:
+        if len(dataset_filter.task_types) != 1:
             raise RuntimeError
 
-        match evaluation_filter.task_types[0]:
+        match dataset_filter.task_types[0]:
             case enums.TaskType.CLASSIFICATION:
                 missing_pred_keys, ignored_pred_keys = core.get_disjoint_keys(
-                    db, evaluation_filter, model_filter
+                    db, dataset_filter, model_filter
                 )
                 kwargs = {
                     "missing_pred_keys": missing_pred_keys,
@@ -365,7 +342,7 @@ def _create_responses(
                     missing_pred_labels,
                     ignored_pred_labels,
                 ) = core.get_disjoint_labels(
-                    db, evaluation_filter, model_filter
+                    db, dataset_filter, model_filter
                 )
                 kwargs = {
                     "missing_pred_labels": missing_pred_labels,
@@ -397,7 +374,7 @@ def _fetch_evaluation_from_subrequest(
         The database Session to query against.
     model : models.Model
         A model row.
-    evaluation_filter : schemas.Filter
+    dataset_filter : schemas.Filter
         The filter from a `EvaluationRequest`.
     parameters : schemas.DetectionParameters, optional
         Any parameters included from an `EvaluationRequest`. These should be in `dict` form.
@@ -413,8 +390,8 @@ def _fetch_evaluation_from_subrequest(
             and_(
                 models.Evaluation.model_filter
                 == job_request.model_filter.model_dump(),
-                models.Evaluation.evaluation_filter
-                == job_request.evaluation_filter.model_dump(),
+                models.Evaluation.dataset_filter
+                == job_request.dataset_filter.model_dump(),
                 (
                     models.Evaluation.parameters
                     == job_request.parameters.model_dump()
@@ -577,7 +554,7 @@ def create_or_get_evaluations(
         else:
             evaluation = models.Evaluation(
                 model_filter=subrequest.model_filter.model_dump(),
-                evaluation_filter=subrequest.evaluation_filter.model_dump(),
+                dataset_filter=subrequest.dataset_filter.model_dump(),
                 parameters=subrequest.parameters.model_dump()
                 if subrequest.parameters
                 else None,
@@ -773,8 +750,8 @@ def get_disjoint_labels_from_evaluation_id(
     """
     evaluation = fetch_evaluation_from_id(db, evaluation_id)
     model_filter = schemas.Filter(**evaluation.model_filter)
-    evaluation_filter = schemas.Filter(**evaluation.evaluation_filter)
-    return core.get_disjoint_labels(db, evaluation_filter, model_filter)
+    dataset_filter = schemas.Filter(**evaluation.dataset_filter)
+    return core.get_disjoint_labels(db, dataset_filter, model_filter)
 
 
 def delete_evaluations(

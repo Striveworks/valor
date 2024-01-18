@@ -111,7 +111,7 @@ def create_or_get_evaluations(
 
     # start computations
     for evaluation in created:
-        match evaluation.evaluation_filter.task_types[0]:
+        match evaluation.dataset_filter.task_types[0]:
             case enums.TaskType.CLASSIFICATION:
                 compute_func = backend.compute_clf_metrics
             case enums.TaskType.DETECTION:

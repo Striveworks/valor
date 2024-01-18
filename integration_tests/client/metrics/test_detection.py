@@ -98,7 +98,7 @@ def test_evaluate_detection(
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "evaluation_filter": {
+        "dataset_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
             "task_types": [TaskType.DETECTION.value],
@@ -106,6 +106,7 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
+            "annotation_type": None,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
         },
@@ -197,7 +198,7 @@ def test_evaluate_detection(
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "evaluation_filter": {
+        "dataset_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
             "task_types": [TaskType.DETECTION.value],
@@ -215,6 +216,7 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
+            "annotation_type": None,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
         },
@@ -250,7 +252,7 @@ def test_evaluate_detection(
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "evaluation_filter": {
+        "dataset_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
             "task_types": [TaskType.DETECTION.value],
@@ -264,6 +266,7 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
+            "annotation_type": None,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
         },
@@ -299,7 +302,7 @@ def test_evaluate_detection(
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "evaluation_filter": {
+        "dataset_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
             "task_types": [TaskType.DETECTION.value],
@@ -313,6 +316,7 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
+            "annotation_type": None,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
         },
@@ -350,7 +354,7 @@ def test_evaluate_detection(
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "evaluation_filter": {
+        "dataset_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
             "task_types": [TaskType.DETECTION.value],
@@ -368,6 +372,7 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
+            "annotation_type": None,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
         },
@@ -512,7 +517,7 @@ def test_evaluate_detection_with_json_filters(
             "model_names": [model_name],
             "label_keys": ["k1"],
         },
-        "evaluation_filter": {
+        "dataset_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
             "task_types": [TaskType.DETECTION.value],
@@ -530,6 +535,7 @@ def test_evaluate_detection_with_json_filters(
             "label_keys": ["k1"],
         },
         "parameters": {
+            "annotation_type": None,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
         },

@@ -266,7 +266,7 @@ def test_evaluate_tabular_clf(
     # check evaluation
     results = model.get_evaluations()
     assert len(results) == 1
-    assert results[0].evaluation_filter.dataset_names[0] == dataset_name
+    assert results[0].dataset_filter.dataset_names[0] == dataset_name
     assert results[0].model_filter.model_names[0] == model_name
 
     metrics_from_eval_settings_id = results[0].metrics

@@ -13,14 +13,14 @@ from velour_api.backend.ops import Query
 from velour_api.schemas.metrics import IOUMetric, mIOUMetric
 
 
-def _generate_groundtruth_query(evaluation_filter: schemas.Filter) -> Select:
+def _generate_groundtruth_query(dataset_filter: schemas.Filter) -> Select:
     """Generate a sqlalchemy query to fetch a groundtruth."""
     return (
         Query(
             models.Annotation.id.label("annotation_id"),
             models.Annotation.datum_id.label("datum_id"),
         )
-        .filter(evaluation_filter)
+        .filter(dataset_filter)
         .groundtruths("gt")
     )
 
@@ -116,13 +116,13 @@ def _count_predictions(
 
 def _compute_iou(
     db: Session,
-    evaluation_filter: schemas.Filter,
+    dataset_filter: schemas.Filter,
     model_filter: schemas.Filter,
     label_id: int,
 ) -> float:
     """Computes the pixelwise intersection over union for the given dataset, model, and label"""
 
-    groundtruth_subquery = _generate_groundtruth_query(evaluation_filter)
+    groundtruth_subquery = _generate_groundtruth_query(dataset_filter)
     prediction_subquery = _generate_prediction_query(model_filter)
 
     tp = _count_true_positives(db, groundtruth_subquery, prediction_subquery)
@@ -133,12 +133,12 @@ def _compute_iou(
 
 
 def _get_groundtruth_labels(
-    db: Session, evaluation_filter: schemas.Filter
+    db: Session, dataset_filter: schemas.Filter
 ) -> list[models.Label]:
     """Fetch groundtruth labels from the database."""
     return db.scalars(
         Query(models.Label)
-        .filter(evaluation_filter)
+        .filter(dataset_filter)
         .groundtruths(as_subquery=False)
         .distinct()
     ).all()
@@ -147,24 +147,24 @@ def _get_groundtruth_labels(
 def _compute_segmentation_metrics(
     db: Session,
     model_filter: schemas.Filter,
-    evaluation_filter: schemas.Filter,
+    dataset_filter: schemas.Filter,
 ) -> list[IOUMetric | mIOUMetric]:
     """
     Computes the _compute_IOU metrics. The return is one `IOUMetric` for each label in groundtruth
     and one `mIOUMetric` for the mean _compute_IOU over all labels.
     """
 
-    labels = _get_groundtruth_labels(db, evaluation_filter)
+    labels = _get_groundtruth_labels(db, dataset_filter)
 
     ret = []
     for label in labels:
         # set filter
-        evaluation_filter.label_ids = [label.id]
+        dataset_filter.label_ids = [label.id]
         model_filter.label_ids = [label.id]
 
         _compute_iou_score = _compute_iou(
             db,
-            evaluation_filter,
+            dataset_filter,
             model_filter,
             label.id,
         )
@@ -211,24 +211,24 @@ def compute_semantic_segmentation_metrics(
 
     # unpack filters and params
     model_filter = schemas.Filter(**evaluation.model_filter)
-    evaluation_filter = schemas.Filter(**evaluation.evaluation_filter)
+    dataset_filter = schemas.Filter(**evaluation.dataset_filter)
 
     # check task type
-    if evaluation_filter.task_types != [enums.TaskType.SEGMENTATION]:
+    if dataset_filter.task_types != [enums.TaskType.SEGMENTATION]:
         raise RuntimeError(
-            f"Evaluation `{evaluation.id}` with task type `{evaluation_filter.task_types}` attempted to run the object detection computation."
+            f"Evaluation `{evaluation.id}` with task type `{dataset_filter.task_types}` attempted to run the object detection computation."
         )
 
     # check annotation type
-    if evaluation_filter.annotation_types != [enums.AnnotationType.RASTER]:
+    if dataset_filter.annotation_types != [enums.AnnotationType.RASTER]:
         raise RuntimeError(
-            f"Evaluation `{evaluation.id}` with annotation type `{evaluation_filter.annotation_types}` attempted to run the semantic segmentation computation."
+            f"Evaluation `{evaluation.id}` with annotation type `{dataset_filter.annotation_types}` attempted to run the semantic segmentation computation."
         )
 
     metrics = _compute_segmentation_metrics(
         db=db,
         model_filter=model_filter,
-        evaluation_filter=evaluation_filter,
+        dataset_filter=dataset_filter,
     )
     metric_mappings = create_metric_mappings(db, metrics, evaluation_id)
     for mapping in metric_mappings:
