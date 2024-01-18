@@ -21,6 +21,8 @@ class GeomvalType(CompositeType):
 
 
 class RawGeometry(Geometry):
+    cache_ok = True
+
     def column_expression(self, col):
         return col
 
@@ -164,13 +166,17 @@ def _convert_raster_to_box(
         )
         .alias("subquery1")
     )
-    subquery2 = select(
-        subquery1.c.id.label("id"),
-        func.ST_Envelope(
-            func.ST_Union(subquery1.c.geom),
-            type_=RawGeometry,
-        ).label("raster_envelope"),
-    ).alias("subquery2")
+    subquery2 = (
+        select(
+            subquery1.c.id.label("id"),
+            func.ST_Envelope(
+                func.ST_Union(subquery1.c.geom),
+                type_=RawGeometry,
+            ).label("raster_envelope"),
+        )
+        .group_by(subquery1.c.id)
+        .alias("subquery2")
+    )
     return (
         update(models.Annotation)
         .where(models.Annotation.id == subquery2.c.id)

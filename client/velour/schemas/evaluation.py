@@ -17,8 +17,8 @@ class EvaluationParameters:
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
     """
 
-    iou_thresholds_to_compute: List[float] = field(default_factory=list)
-    iou_thresholds_to_return: List[float] = field(default_factory=list)
+    iou_thresholds_to_compute: List[float] = None
+    iou_thresholds_to_return: List[float] = None
 
 
 @dataclass

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from velour_api import enums, exceptions, schemas
 from velour_api.backend import models
 from velour_api.backend.core.evaluation import (
-    check_for_active_evaluations,
+    count_active_evaluations,
     delete_evaluations,
 )
 from velour_api.backend.core.label import get_labels
@@ -83,7 +83,7 @@ def get_dataset(
     name: str,
 ) -> schemas.Dataset:
     """
-    Fetch a dataset.
+    Gets a dataset by name.
 
     Parameters
     ----------
@@ -113,11 +113,11 @@ def get_dataset(
     )
 
 
-def get_datasets(
+def get_all_datasets(
     db: Session,
 ) -> list[schemas.Dataset]:
     """
-    Fetch all datasets.
+    Get all datasets.
 
     Parameters
     ----------
@@ -192,7 +192,7 @@ def set_dataset_status(
         raise exceptions.DatasetStateError(name, active_status, status)
 
     if status == enums.TableStatus.DELETING:
-        if check_for_active_evaluations(
+        if count_active_evaluations(
             db=db,
             dataset_names=[name],
         ):

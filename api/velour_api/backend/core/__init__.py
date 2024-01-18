@@ -8,10 +8,10 @@ from .dataset import (
     create_dataset,
     delete_dataset,
     fetch_dataset,
+    get_all_datasets,
     get_dataset,
     get_dataset_status,
     get_dataset_summary,
-    get_datasets,
     get_n_datums_in_dataset,
     get_n_groundtruth_annotations,
     get_n_groundtruth_bounding_boxes_in_dataset,
@@ -25,7 +25,7 @@ from .dataset import (
 )
 from .datum import create_datum, fetch_datum, get_datums
 from .evaluation import (
-    check_for_active_evaluations,
+    count_active_evaluations,
     create_or_get_evaluations,
     fetch_evaluation_from_id,
     fetch_evaluations,
@@ -70,7 +70,7 @@ __all__ = [
     "delete_dataset",
     "fetch_dataset",
     "get_dataset",
-    "get_datasets",
+    "get_all_datasets",
     "get_dataset_status",
     "set_dataset_status",
     "get_n_datums_in_dataset",
@@ -118,5 +118,5 @@ __all__ = [
     "get_evaluation_status",
     "get_disjoint_labels_from_evaluation_id",
     "set_evaluation_status",
-    "check_for_active_evaluations",
+    "count_active_evaluations",
 ]

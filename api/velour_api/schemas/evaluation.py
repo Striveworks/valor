@@ -7,7 +7,7 @@ from velour_api.schemas.metrics import ConfusionMatrixResponse, Metric
 
 class EvaluationParameters(BaseModel):
     """
-    Defines important attributes to use when evaluating an object detection model.
+    Defines parameters for evaluation methods.
 
     Attributes
     ----------
@@ -18,19 +18,21 @@ class EvaluationParameters(BaseModel):
     """
 
     # object detection
-    iou_thresholds_to_compute: list[float] = [
-        round(0.5 + 0.05 * i, 2) for i in range(10)
-    ]
-    iou_thresholds_to_return: list[float] | None = [0.5, 0.75]
+    iou_thresholds_to_compute: list[float] | None = None
+    iou_thresholds_to_return: list[float] | None = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")
 
     @model_validator(mode="after")
     @classmethod
-    def _check_ious(cls, values):
+    def _check_detection_ious(cls, values):
         """Validate the IOU thresholds."""
         if values.iou_thresholds_to_return:
+            if not values.iou_thresholds_to_compute:
+                raise ValueError(
+                    "`iou_thresholds_to_compute` must exist as a superset of `iou_thresholds_to_return`."
+                )
             for iou in values.iou_thresholds_to_return:
                 if iou not in values.iou_thresholds_to_compute:
                     raise ValueError(

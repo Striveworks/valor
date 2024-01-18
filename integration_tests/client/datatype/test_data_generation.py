@@ -104,10 +104,20 @@ def test_generate_prediction_data(client: Client):
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
     eval_dict = eval_job.dict()
-    for key in ["id", "confusion_matrices", "metrics", "status"]:
+    for key in [
+        "id",
+        "confusion_matrices",
+        "metrics",
+        "status",
+        "ignored_pred_labels",
+        "missing_pred_labels",
+    ]:
         eval_dict.pop(key)
     assert eval_dict == {
         "model_filter": {
+            **asdict(
+                Filter()
+            ),  # default filter properties with overrides below
             "model_names": [model_name],
             "dataset_names": [dataset_name],
         },
@@ -122,8 +132,8 @@ def test_generate_prediction_data(client: Client):
             "label_keys": ["k1"],
         },
         "parameters": {
-            "iou_thresholds_to_compute": [0.0, 1.0],
-            "iou_thresholds_to_return": [0.0, 1.0],
+            "iou_thresholds_to_compute": [0.1, 0.9],
+            "iou_thresholds_to_return": [0.1, 0.9],
         },
     }
     assert len(eval_job.metrics) > 0

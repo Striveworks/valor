@@ -733,9 +733,21 @@ class Evaluation:
         **kwargs,
     ):
         self.id = id
-        self.model_filter = Filter(**model_filter)
-        self.evaluation_filter = Filter(**evaluation_filter)
-        self.parameters = EvaluationParameters(**parameters)
+        self.model_filter = (
+            Filter(**model_filter)
+            if isinstance(model_filter, dict)
+            else model_filter
+        )
+        self.evaluation_filter = (
+            Filter(**evaluation_filter)
+            if isinstance(evaluation_filter, dict)
+            else evaluation_filter
+        )
+        self.parameters = (
+            EvaluationParameters(**parameters)
+            if isinstance(parameters, dict)
+            else parameters
+        )
         self.status = EvaluationStatus(status)
         self.metrics = metrics
         self.confusion_matrices = confusion_matrices
@@ -792,53 +804,52 @@ class Evaluation:
                 raise TimeoutError
         return self.status
 
-    # TODO
-    # def to_dataframe(
-    #     self,
-    #     stratify_by: Tuple[str, str] = None,
-    # ):
-    #     """
-    #     Get all metrics associated with a Model and return them in a `pd.DataFrame`.
+    def to_dataframe(
+        self,
+        stratify_by: Tuple[str, str] = None,
+    ):
+        """
+        Get all metrics associated with a Model and return them in a `pd.DataFrame`.
 
-    #     Returns
-    #     ----------
-    #     pd.DataFrame
-    #         Evaluation metrics being displayed in a `pd.DataFrame`.
+        Returns
+        ----------
+        pd.DataFrame
+            Evaluation metrics being displayed in a `pd.DataFrame`.
 
-    #     Raises
-    #     ------
-    #     ModuleNotFoundError
-    #         This function requires the use of `pandas.DataFrame`.
+        Raises
+        ------
+        ModuleNotFoundError
+            This function requires the use of `pandas.DataFrame`.
 
-    #     """
-    #     try:
-    #         import pandas as pd
-    #     except ModuleNotFoundError:
-    #         raise ModuleNotFoundError(
-    #             "Must have pandas installed to use `get_metric_dataframes`."
-    #         )
+        """
+        try:
+            import pandas as pd
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError(
+                "Must have pandas installed to use `get_metric_dataframes`."
+            )
 
-    #     if not stratify_by:
-    #         column_type = "dataset"
-    #         column_name = self.dataset
-    #     else:
-    #         column_type = stratify_by[0]
-    #         column_name = stratify_by[1]
+        if not stratify_by:
+            column_type = "evaluation"
+            column_name = self.id
+        else:
+            column_type = stratify_by[0]
+            column_name = stratify_by[1]
 
-    #     metrics = [
-    #         {**metric, column_type: column_name} for metric in self.metrics
-    #     ]
-    #     df = pd.DataFrame(metrics)
-    #     for k in ["label", "parameters"]:
-    #         df[k] = df[k].fillna("n/a")
-    #     df["parameters"] = df["parameters"].apply(json.dumps)
-    #     df["label"] = df["label"].apply(
-    #         lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
-    #     )
-    #     df = df.pivot(
-    #         index=["type", "parameters", "label"], columns=[column_type]
-    #     )
-    #     return df
+        metrics = [
+            {**metric, column_type: column_name} for metric in self.metrics
+        ]
+        df = pd.DataFrame(metrics)
+        for k in ["label", "parameters"]:
+            df[k] = df[k].fillna("n/a")
+        df["parameters"] = df["parameters"].apply(json.dumps)
+        df["label"] = df["label"].apply(
+            lambda x: f"{x['key']}: {x['value']}" if x != "n/a" else x
+        )
+        df = df.pivot(
+            index=["type", "parameters", "label"], columns=[column_type]
+        )
+        return df
 
 
 class Dataset:

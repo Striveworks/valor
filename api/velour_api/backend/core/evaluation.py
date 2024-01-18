@@ -10,6 +10,23 @@ from velour_api.backend.ops import Query
 def _create_name_expr_from_list(
     key: str, names: list[str]
 ) -> ColumnElement[bool]:
+    """
+    Creates a sqlalchemy or_ expression from a list of str.
+
+    Note that this is for accessing models.Evaluation with a list of dataset or model names.
+
+    Parameters
+    ----------
+    key : str
+        Key to models.Evaluation.evaluation_fitler. Either "dataset_names" or "model_names".
+    names : list[str]
+        List of names from either datasets or models.
+
+    Returns
+    -------
+    ColumnElement[bool]
+        The sqlalchemy expression.
+    """
     if not names:
         return None
     elif len(names) == 1:
@@ -25,6 +42,23 @@ def _create_name_expr_from_list(
 
 
 def _create_id_expr_from_list(key: str, ids: list[int]) -> ColumnElement[bool]:
+    """
+    Creates a sqlalchemy or_ expression from a list of int.
+
+    Note that this is for accessing models.Evaluation with a list of ids.
+
+    Parameters
+    ----------
+    key : str
+        Key to models.Evaluation.evaluation_fitler. Either "dataset_names" or "model_names".
+    ids : list[int]
+        List of evaluations ids.
+
+    Returns
+    -------
+    ColumnElement[bool]
+        The sqlalchemy expression.
+    """
     if not ids:
         return None
     elif len(ids) == 1:
@@ -454,14 +488,14 @@ def fetch_evaluation_from_id(
     return evaluation
 
 
-def check_for_active_evaluations(
+def count_active_evaluations(
     db: Session,
     evaluation_ids: list[int] | None = None,
     dataset_names: list[str] | None = None,
     model_names: list[str] | None = None,
 ) -> int:
     """
-    Get the number of active evaluations.
+    Count the number of active evaluations.
 
     Parameters
     ----------
@@ -757,7 +791,7 @@ def delete_evaluations(
     model_names : list[str], optional
         A list of model names to constrain by.
     """
-    if check_for_active_evaluations(
+    if count_active_evaluations(
         db=db,
         evaluation_ids=evaluation_ids,
         dataset_names=dataset_names,

@@ -210,7 +210,7 @@ def get_datasets(
     List[schemas.Dataset]
         A list of all datasets.
     """
-    return backend.get_datasets(db)
+    return backend.get_all_datasets(db)
 
 
 def get_dataset_summary(*, db: Session, name: str) -> schemas.DatasetSummary:
