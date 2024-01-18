@@ -10,8 +10,9 @@ services:
       AUTH0_DOMAIN: ${AUTH0_DOMAIN}
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
       AUTH0_ALGORITHMS: ${AUTH0_ALGORITHMS}
+    command: "uvicorn velour_api.main:app --reload --host 0.0.0.0"
     depends_on:
-      - 'dbb'
+      - 'db'
   db:
     image: "postgis/postgis"
     ports:
