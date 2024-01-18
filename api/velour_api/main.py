@@ -1087,8 +1087,10 @@ def ready(db: Session = Depends(get_db)):
         db.execute(sqlalchemy.text("select 1"))
         return schemas.Readiness(status="ok")
     except Exception:
-        exceptions.create_http_error(
+        raise exceptions.create_http_error(
             error=exceptions.ServiceUnavailable(
                 "Could not connect to postgresql."
             )
         )
+    
+app.include_router(router)

@@ -1143,4 +1143,5 @@ def test_get_all_labels(crud, client: TestClient):
 
 def test_get_user(client: TestClient):
     resp = client.get("/user")
+    assert resp.status_code == 200
     assert resp.json() == {"email": None}
