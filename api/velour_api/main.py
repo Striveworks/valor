@@ -1092,5 +1092,6 @@ def ready(db: Session = Depends(get_db)):
                 "Could not connect to postgresql."
             )
         )
-    
+
+
 app.include_router(router)
