@@ -284,6 +284,12 @@ def test_client_delete_model(
     client.delete_model(model_name, timeout=30)
     assert db.scalar(select(func.count(models.Model.name))) == 0
 
+    assert client.get_model(model_name) is None
+    Model(client, model_name, delete_if_exists=True)
+    assert client.get_model(model_name) is not None
+    Model(client, model_name, delete_if_exists=True)
+    assert client.get_model(model_name) is not None
+
 
 def test_create_tabular_model_with_predicted_classifications(
     db: Session,
