@@ -2,6 +2,8 @@ services:
   service:
     image: ghcr.io/striveworks/velour/velour-service
     build: ./api
+    volumes:
+      - ./api/velour_api:/src/velour_api
     ports:
       - "8000:8000"
     environment:
