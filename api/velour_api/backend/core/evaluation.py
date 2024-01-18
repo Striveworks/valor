@@ -236,23 +236,27 @@ def _split_request(
             # some task_types require parameters and/or special filter handling
             match task_type:
                 case enums.TaskType.CLASSIFICATION:
-                    parameters = schemas.EvaluationParameters() # default as clf has no parameterization
+                    parameters = (
+                        schemas.EvaluationParameters()
+                    )  # default as clf has no parameterization
                 case enums.TaskType.DETECTION:
-                    parameters=job_request.parameters
+                    parameters = job_request.parameters
                 case enums.TaskType.SEGMENTATION:
-                    parameters = schemas.EvaluationParameters() # default as clf has no parameterization
+                    parameters = (
+                        schemas.EvaluationParameters()
+                    )  # default as clf has no parameterization
                     dataset_filter.annotation_types = [
                         enums.AnnotationType.RASTER
                     ]
-                    
+
                 case _:
                     raise NotImplementedError
-                
+
             request_list.append(
                 schemas.EvaluationRequest(
                     model_filter=model_filter,
                     dataset_filter=dataset_filter,
-                    parameters=parameters.model_dump()
+                    parameters=parameters.model_dump(),
                 )
             )
 
@@ -341,9 +345,7 @@ def _create_responses(
                 (
                     missing_pred_labels,
                     ignored_pred_labels,
-                ) = core.get_disjoint_labels(
-                    db, dataset_filter, model_filter
-                )
+                ) = core.get_disjoint_labels(db, dataset_filter, model_filter)
                 kwargs = {
                     "missing_pred_labels": missing_pred_labels,
                     "ignored_pred_labels": ignored_pred_labels,

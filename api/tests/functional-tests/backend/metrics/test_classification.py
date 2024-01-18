@@ -394,9 +394,7 @@ def test_compute_classification(
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
-    confusion, metrics = _compute_clf_metrics(
-        db, model_filter, dataset_filter
-    )
+    confusion, metrics = _compute_clf_metrics(db, model_filter, dataset_filter)
 
     # Make matrices accessible by label_key
     confusion = {matrix.label_key: matrix for matrix in confusion}

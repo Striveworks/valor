@@ -12,7 +12,7 @@ import requests
 from tqdm import tqdm
 
 from velour import Annotation, Client, Dataset, Datum, GroundTruth, Label
-from velour.enums import TableStatus, TaskType
+from velour.enums import TaskType
 from velour.metatypes import ImageMetadata
 from velour.schemas import Raster
 

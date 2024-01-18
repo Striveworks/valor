@@ -412,9 +412,7 @@ def test_compute_segmentation_metrics(
         annotation_types=[enums.AnnotationType.RASTER],
     )
 
-    metrics = _compute_segmentation_metrics(
-        db, model_filter, dataset_filter
-    )
+    metrics = _compute_segmentation_metrics(db, model_filter, dataset_filter)
     # should have five metrics (one IOU for each of the four labels, and one mIOU)
     assert len(metrics) == 5
     for metric in metrics[:-1]:

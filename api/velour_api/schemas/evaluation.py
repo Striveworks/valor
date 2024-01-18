@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from velour_api.enums import EvaluationStatus, AnnotationType
+from velour_api.enums import AnnotationType, EvaluationStatus
 from velour_api.schemas.filters import Filter
 from velour_api.schemas.metrics import ConfusionMatrixResponse, Metric
 
