@@ -11,7 +11,7 @@ services:
       AUTH0_AUDIENCE: ${AUTH0_AUDIENCE}
       AUTH0_ALGORITHMS: ${AUTH0_ALGORITHMS}
     depends_on:
-      - 'db'
+      - 'dbb'
   db:
     image: "postgis/postgis"
     ports:
