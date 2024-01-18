@@ -19,7 +19,7 @@ class EvaluationParameters:
     """
 
     # object detection
-    annotation_type: AnnotationType = None
+    force_annotation_type: AnnotationType = None
     iou_thresholds_to_compute: List[float] = None
     iou_thresholds_to_return: List[float] = None
 

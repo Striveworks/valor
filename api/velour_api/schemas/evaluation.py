@@ -18,7 +18,7 @@ class EvaluationParameters(BaseModel):
     """
 
     # object detection
-    annotation_type: AnnotationType | None = None
+    force_annotation_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
 

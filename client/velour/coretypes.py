@@ -1343,8 +1343,8 @@ class Model:
 
         Parameters
         ----------
-        dataset : Dataset
-            The dataset to evaluate against.
+        datasets : Union[Dataset, List[Dataset]], optional
+            The dataset or list of datasets to evaluate against.
         filters : Union[Dict, List[BinaryExpression]]
             Optional set of filters to constrain evaluation by.
 
@@ -1385,6 +1385,7 @@ class Model:
         self,
         datasets: Union[Dataset, List[Dataset]] = None,
         filters: Union[Dict, List[BinaryExpression]] = None,
+        force_annotation_type: AnnotationType = None,
         iou_thresholds_to_compute: List[float] = None,
         iou_thresholds_to_return: List[float] = None,
     ) -> Evaluation:
@@ -1393,14 +1394,16 @@ class Model:
 
         Parameters
         ----------
-        dataset : Dataset
-            The dataset to evaluate against.
-        iou_thresholds_to_compute : List[float]
-            Thresholds to compute mAP against.
-        iou_thresholds_to_return : List[float]
-            Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
-        filters : Union[Dict, List[BinaryExpression]]
+        datasets : Union[Dataset, List[Dataset]], optional
+            The dataset or list of datasets to evaluate against.
+        filters : Union[Dict, List[BinaryExpression]], optional
             Optional set of filters to constrain evaluation by.
+        force_annotation_type : enums.AnnotationType, optional
+            Forces the object detection evaluation to compute over this type.
+        iou_thresholds_to_compute : List[float], optional
+            Thresholds to compute mAP against.
+        iou_thresholds_to_return : List[float], optional
+            Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
 
         Returns
         -------
@@ -1415,6 +1418,7 @@ class Model:
             iou_thresholds_to_return = [0.5, 0.75]
 
         parameters = EvaluationParameters(
+            force_annotation_type=force_annotation_type,
             iou_thresholds_to_compute=iou_thresholds_to_compute,
             iou_thresholds_to_return=iou_thresholds_to_return,
         )
@@ -1453,8 +1457,8 @@ class Model:
 
         Parameters
         ----------
-        dataset : Dataset
-            The dataset to evaluate against.
+        datasets : Union[Dataset, List[Dataset]], optional
+            The dataset or list of datasets to evaluate against.
         filters : Union[Dict, List[BinaryExpression]]
             Optional set of filters to constrain evaluation by.
 

@@ -521,7 +521,7 @@ def compute_detection_metrics(
         db=db,
         datasets=datasets,
         model=model,
-        target_type=parameters.annotation_type,
+        target_type=parameters.force_annotation_type,
     )
     dataset_filter.annotation_types = [target_type]
     model_filter.annotation_types = [target_type]

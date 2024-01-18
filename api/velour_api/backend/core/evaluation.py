@@ -100,7 +100,7 @@ def _create_bulk_expression(
     return expr
 
 
-def _db_metric_to_pydantic_metric(
+def _convert_db_metric_to_pydantic_metric(
     db: Session,
     metric: models.Metric,
 ) -> schemas.Metric:
@@ -286,7 +286,8 @@ def _create_response(
         parameters=evaluation.parameters,
         status=evaluation.status,
         metrics=[
-            _db_metric_to_pydantic_metric(db, metric) for metric in metrics
+            _convert_db_metric_to_pydantic_metric(db, metric)
+            for metric in metrics
         ],
         confusion_matrices=[
             schemas.ConfusionMatrixResponse(
