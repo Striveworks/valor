@@ -26,9 +26,10 @@ def test_to_dataframe():
         ),
         dataset_filter=schemas.Filter(
             dataset_names=["dataset1"],
-            task_types=[enums.TaskType.CLASSIFICATION],
         ),
-        parameters=schemas.EvaluationParameters(),
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION,
+        ),
         status=enums.EvaluationStatus.DONE,
         metrics=[
             _generate_metric(

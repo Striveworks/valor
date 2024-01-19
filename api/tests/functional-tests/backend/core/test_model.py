@@ -245,7 +245,7 @@ def test_model_status_with_evaluations(
             dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
-            )
+            ),
         ),
     )
     assert len(created) == 1

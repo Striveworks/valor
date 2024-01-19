@@ -17,6 +17,7 @@ class EvaluationParameters:
     iou_thresholds_to_return: List[float]
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
     """
+
     task_type: TaskType
 
     # object detection

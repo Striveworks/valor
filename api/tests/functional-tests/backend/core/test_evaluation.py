@@ -108,7 +108,7 @@ def test_create_evaluation(
         dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
-        )
+        ),
     )
     created, existing = core.create_or_get_evaluations(db, job_request_1)
     assert len(existing) == 0
@@ -146,16 +146,23 @@ def test_create_evaluation(
             dataset_names=[created_dataset],
         ).model_dump()
     )
-    assert rows[0].parameters == schemas.EvaluationParameters(task_type=enums.TaskType.CLASSIFICATION).model_dump()
+    assert (
+        rows[0].parameters
+        == schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION
+        ).model_dump()
+    )
 
     # test - bad request
     with pytest.raises(exceptions.EvaluationRequestError) as e:
         job_request_1 = schemas.EvaluationRequest(
             model_filter=schemas.Filter(model_names=[created_model]),
-            dataset_filter=schemas.Filter(dataset_names=["some_other_dataset"]),
+            dataset_filter=schemas.Filter(
+                dataset_names=["some_other_dataset"]
+            ),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
-            )
+            ),
         )
         core.create_or_get_evaluations(db, job_request_1)
     assert "No datasets" in str(e)
@@ -165,7 +172,7 @@ def test_create_evaluation(
             dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.CLASSIFICATION,
-            )
+            ),
         )
         core.create_or_get_evaluations(db, job_request_1)
     assert "No models" in str(e)
@@ -182,7 +189,7 @@ def test_fetch_evaluation_from_id(
         dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
-        )
+        ),
     )
     created_1, _ = core.create_or_get_evaluations(db, job_request_1)
     assert len(created_1) == 1
@@ -194,7 +201,7 @@ def test_fetch_evaluation_from_id(
         dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEGMENTATION,
-        )
+        ),
     )
     created_2, _ = core.create_or_get_evaluations(db, job_request_2)
     assert len(created_2) == 1
@@ -226,7 +233,7 @@ def test_get_evaluation_ids(
         dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
-        )
+        ),
     )
     created_1, _ = core.create_or_get_evaluations(db, job_request_1)
     assert len(created_1) == 1
@@ -238,7 +245,7 @@ def test_get_evaluation_ids(
         dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEGMENTATION,
-        )
+        ),
     )
     created_2, _ = core.create_or_get_evaluations(db, job_request_2)
     assert len(created_2) == 1
@@ -264,7 +271,7 @@ def test__fetch_evaluation_from_subrequest(
         dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
-        )
+        ),
     )
     created_1, _ = core.create_or_get_evaluations(db, job_request_1)
     assert len(created_1) == 1
@@ -275,7 +282,7 @@ def test__fetch_evaluation_from_subrequest(
         dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEGMENTATION,
-        )
+        ),
     )
     created_2, _ = core.create_or_get_evaluations(db, job_request_2)
     assert len(created_2) == 1
@@ -297,7 +304,10 @@ def test__fetch_evaluation_from_subrequest(
         job_request=subrequest,
     )
     assert existing is not None
-    assert schemas.EvaluationParameters(**existing.parameters).task_type == enums.TaskType.CLASSIFICATION
+    assert (
+        schemas.EvaluationParameters(**existing.parameters).task_type
+        == enums.TaskType.CLASSIFICATION
+    )
 
 
 def test_get_evaluations(
@@ -311,7 +321,7 @@ def test_get_evaluations(
         dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
-        )
+        ),
     )
     created_1, _ = core.create_or_get_evaluations(db, job_request_1)
     assert len(created_1) == 1
@@ -322,7 +332,7 @@ def test_get_evaluations(
         dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEGMENTATION,
-        )
+        ),
     )
     created_2, _ = core.create_or_get_evaluations(db, job_request_2)
     assert len(created_2) == 1
@@ -396,7 +406,7 @@ def test_evaluation_status(
         dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
-        )
+        ),
     )
     created_1, existing = core.create_or_get_evaluations(db, job_request_1)
     assert len(existing) == 0
@@ -522,7 +532,7 @@ def test_count_active_evaluations(
         dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.CLASSIFICATION,
-        )
+        ),
     )
     created, _ = core.create_or_get_evaluations(db, job_request_1)
     assert len(created) == 1
@@ -534,7 +544,7 @@ def test_count_active_evaluations(
         dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.SEGMENTATION,
-        )
+        ),
     )
     created, _ = core.create_or_get_evaluations(db, job_request_2)
     assert len(created) == 1
@@ -580,7 +590,7 @@ def test_count_active_evaluations(
         dataset_filter=schemas.Filter(dataset_names=[created_dataset]),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.DETECTION,
-        )
+        ),
     )
     evaluation_3, _ = core.create_or_get_evaluations(db, job_request_3)
     evaluation_3 = evaluation_3[0].id

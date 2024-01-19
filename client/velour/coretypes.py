@@ -1351,9 +1351,7 @@ class Model:
                 "Evaluation requires the definition of either datasets, dataset filters or both."
             )
 
-        model_filter, dataset_filter = self._format_filters(
-            datasets, filters
-        )
+        model_filter, dataset_filter = self._format_filters(datasets, filters)
 
         evaluation = EvaluationRequest(
             model_filter=model_filter,
@@ -1418,9 +1416,7 @@ class Model:
             iou_thresholds_to_return=iou_thresholds_to_return,
         )
 
-        model_filter, dataset_filter = self._format_filters(
-            datasets, filters
-        )
+        model_filter, dataset_filter = self._format_filters(datasets, filters)
 
         evaluation = EvaluationRequest(
             model_filter=model_filter,
@@ -1463,9 +1459,7 @@ class Model:
             a job object that can be used to track the status of the job and get the metrics of it upon completion
         """
 
-        model_filter, dataset_filter = self._format_filters(
-            datasets, filters
-        )
+        model_filter, dataset_filter = self._format_filters(datasets, filters)
 
         # create evaluation job
         evaluation = EvaluationRequest(

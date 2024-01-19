@@ -4,7 +4,7 @@ from dataclasses import asdict
 
 import PIL
 
-from velour import Annotation, Label
+from velour import Label
 from velour.client import Client
 from velour.data_generation import (
     generate_prediction_data,
@@ -98,8 +98,8 @@ def test_generate_prediction_data(client: Client):
         iou_thresholds_to_return=[0.1, 0.9],
         filters=[
             Label.key == "k1",
-            Annotation.type == AnnotationType.BOX,
         ],
+        force_annotation_type=AnnotationType.BOX,
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
@@ -126,12 +126,11 @@ def test_generate_prediction_data(client: Client):
                 Filter()
             ),  # default filter properties with overrides below
             "dataset_names": [dataset_name],
-            "task_types": [TaskType.DETECTION.value],
-            "annotation_types": ["box"],
             "label_keys": ["k1"],
         },
         "parameters": {
-            "force_annotation_type": None,
+            "task_type": TaskType.DETECTION.value,
+            "force_annotation_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.9],
             "iou_thresholds_to_return": [0.1, 0.9],
         },

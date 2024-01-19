@@ -967,7 +967,9 @@ def test_post_clf_metrics(client: TestClient):
         id=1,
         model_filter=schemas.Filter(model_names=["modelname"]),
         dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
-        parameters=schemas.EvaluationParameters(task_type=TaskType.CLASSIFICATION),
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.CLASSIFICATION
+        ),
         status=EvaluationStatus.PENDING,
         metrics=[],
         confusion_matrices=[],
@@ -978,7 +980,9 @@ def test_post_clf_metrics(client: TestClient):
     example_json = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=["modelname"]),
         dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
-        parameters=schemas.EvaluationParameters(task_type=TaskType.CLASSIFICATION),
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.CLASSIFICATION
+        ),
     ).model_dump()
 
     _test_post_evaluation_endpoint(
@@ -995,7 +999,9 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
         id=1,
         model_filter=schemas.Filter(model_names=["modelname"]),
         dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
-        parameters=schemas.EvaluationParameters(task_type=TaskType.SEGMENTATION),
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.SEGMENTATION
+        ),
         status=EvaluationStatus.PENDING,
         metrics=[],
         confusion_matrices=[],
@@ -1006,7 +1012,9 @@ def test_post_semenatic_segmentation_metrics(client: TestClient):
     example_json = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=["modelname"]),
         dataset_filter=schemas.Filter(dataset_names=["dsetname"]),
-        parameters=schemas.EvaluationParameters(task_type=TaskType.SEGMENTATION),
+        parameters=schemas.EvaluationParameters(
+            task_type=TaskType.SEGMENTATION
+        ),
     ).model_dump()
 
     _test_post_evaluation_endpoint(

@@ -81,8 +81,8 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.type == AnnotationType.BOX,
         ],
+        force_annotation_type=AnnotationType.BOX,
     )
     assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
     assert isinstance(eval_job.id, int)
@@ -101,12 +101,11 @@ def test_evaluate_detection(
         "dataset_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "task_types": [TaskType.DETECTION.value],
-            "annotation_types": [AnnotationType.BOX.value],
             "label_keys": ["k1"],
         },
         "parameters": {
-            "force_annotation_type": None,
+            "task_type": TaskType.DETECTION.value,
+            "force_annotation_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
         },
@@ -141,8 +140,8 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.label == Label(key="k1", value="v1"),
-            Annotation.type == AnnotationType.BOX,
         ],
+        force_annotation_type=AnnotationType.BOX,
     )
     assert (
         eval_job_value_filter.wait_for_completion(timeout=30)
@@ -160,8 +159,8 @@ def test_evaluate_detection(
             iou_thresholds_to_return=[0.1, 0.6],
             filters=[
                 Label.label.in_([Label(key="k1", value="v2")]),
-                Annotation.type == AnnotationType.BOX,
             ],
+            force_annotation_type=AnnotationType.BOX,
         )
     assert "EvaluationRequestError" in str(e)
 
@@ -180,10 +179,10 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.type == AnnotationType.BOX,
             Annotation.geometric_area >= 10,
             Annotation.geometric_area <= 2000,
         ],
+        force_annotation_type=AnnotationType.BOX,
     )
 
     assert (
@@ -201,8 +200,6 @@ def test_evaluate_detection(
         "dataset_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "task_types": [TaskType.DETECTION.value],
-            "annotation_types": [AnnotationType.BOX.value],
             "annotation_geometric_area": [
                 {
                     "operator": ">=",
@@ -216,7 +213,8 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
-            "force_annotation_type": None,
+            "task_type": TaskType.DETECTION.value,
+            "force_annotation_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
         },
@@ -235,9 +233,9 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.type == AnnotationType.BOX,
             Annotation.geometric_area >= 1200,
         ],
+        force_annotation_type=AnnotationType.BOX,
     )
     assert (
         eval_job_min_area_1200.wait_for_completion(timeout=30)
@@ -255,8 +253,6 @@ def test_evaluate_detection(
         "dataset_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "task_types": [TaskType.DETECTION.value],
-            "annotation_types": [AnnotationType.BOX.value],
             "annotation_geometric_area": [
                 {
                     "operator": ">=",
@@ -266,7 +262,8 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
-            "force_annotation_type": None,
+            "task_type": TaskType.DETECTION.value,
+            "force_annotation_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
         },
@@ -285,9 +282,9 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.type == AnnotationType.BOX,
             Annotation.geometric_area <= 1200,
         ],
+        force_annotation_type=AnnotationType.BOX,
     )
     assert (
         eval_job_max_area_1200.wait_for_completion(timeout=30)
@@ -305,8 +302,6 @@ def test_evaluate_detection(
         "dataset_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "task_types": [TaskType.DETECTION.value],
-            "annotation_types": [AnnotationType.BOX.value],
             "annotation_geometric_area": [
                 {
                     "operator": "<=",
@@ -316,7 +311,8 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
-            "force_annotation_type": None,
+            "task_type": TaskType.DETECTION.value,
+            "force_annotation_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
         },
@@ -336,10 +332,10 @@ def test_evaluate_detection(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.type == AnnotationType.BOX,
             Annotation.geometric_area >= 1200,
             Annotation.geometric_area <= 1800,
         ],
+        force_annotation_type=AnnotationType.BOX,
     )
     assert (
         eval_job_bounded_area_1200_1800.wait_for_completion(timeout=30)
@@ -357,8 +353,6 @@ def test_evaluate_detection(
         "dataset_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
-            "task_types": [TaskType.DETECTION.value],
-            "annotation_types": [AnnotationType.BOX.value],
             "annotation_geometric_area": [
                 {
                     "operator": ">=",
@@ -372,7 +366,8 @@ def test_evaluate_detection(
             "label_keys": ["k1"],
         },
         "parameters": {
-            "force_annotation_type": None,
+            "task_type": TaskType.DETECTION.value,
+            "force_annotation_type": AnnotationType.BOX.value,
             "iou_thresholds_to_compute": [0.1, 0.6],
             "iou_thresholds_to_return": [0.1, 0.6],
         },
@@ -387,7 +382,7 @@ def test_evaluate_detection(
 
     # test accessing these evaluations via the dataset
     all_evals = dataset.get_evaluations()
-    assert len(all_evals) == 6
+    assert len(all_evals) == 7
 
 
 def test_evaluate_detection_with_json_filters(
@@ -472,9 +467,9 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_return=[0.1, 0.6],
         filters=[
             Label.key == "k1",
-            Annotation.type == AnnotationType.BOX,
             Annotation.geometric_area >= 1200,
         ],
+        force_annotation_type=AnnotationType.BOX,
     )
     assert (
         eval_results_min_area_1200.wait_for_completion(timeout=30)
@@ -488,7 +483,6 @@ def test_evaluate_detection_with_json_filters(
         iou_thresholds_to_return=[0.1, 0.6],
         filters={
             **default_filter_properties,
-            "annotation_types": [AnnotationType.BOX.value],
             "annotation_geometric_area": [
                 {
                     "operator": ">=",
@@ -501,6 +495,7 @@ def test_evaluate_detection_with_json_filters(
             ],
             "label_keys": ["k1"],
         },
+        force_annotation_type=AnnotationType.BOX,
     )
 
     assert (

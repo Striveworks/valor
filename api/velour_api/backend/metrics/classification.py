@@ -11,7 +11,6 @@ from velour_api.backend.metrics.metric_utils import (
     validate_computation,
 )
 from velour_api.backend.ops import Query
-from velour_api.enums import TaskType
 
 
 def _compute_binary_roc_auc(
@@ -584,7 +583,6 @@ def compute_clf_metrics(
     # load task type into filters
     dataset_filter.task_types = [parameters.task_type]
     model_filter.task_types = [parameters.task_type]
-
 
     confusion_matrices, metrics = _compute_clf_metrics(
         db=db,

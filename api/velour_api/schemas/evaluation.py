@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from velour_api.enums import AnnotationType, EvaluationStatus, TaskType
 from velour_api.schemas.filters import Filter
@@ -17,6 +17,7 @@ class EvaluationParameters(BaseModel):
     iou_thresholds_to_return: List[float], optional
         A list of floats describing which Intersection over Union (IoUs) thresholds to calculate a metric for. Must be a subset of `iou_thresholds_to_compute`.
     """
+
     task_type: TaskType
 
     # object detection
@@ -35,11 +36,17 @@ class EvaluationParameters(BaseModel):
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEGMENTATION:
                 if values.force_annotation_type is not None:
-                    raise ValueError("`force_annotation_type` should only be used for object detection evaluations.")
+                    raise ValueError(
+                        "`force_annotation_type` should only be used for object detection evaluations."
+                    )
                 if values.iou_thresholds_to_compute is not None:
-                    raise ValueError("`iou_thresholds_to_compute` should only be used for object detection evaluations.")
+                    raise ValueError(
+                        "`iou_thresholds_to_compute` should only be used for object detection evaluations."
+                    )
                 if values.iou_thresholds_to_return is not None:
-                    raise ValueError("`iou_thresholds_to_return` should only be used for object detection evaluations.")
+                    raise ValueError(
+                        "`iou_thresholds_to_return` should only be used for object detection evaluations."
+                    )
             case TaskType.DETECTION:
                 if values.iou_thresholds_to_return:
                     if not values.iou_thresholds_to_compute:
@@ -52,7 +59,9 @@ class EvaluationParameters(BaseModel):
                                 "`iou_thresholds_to_return` must be a subset of `iou_thresholds_to_compute`"
                             )
             case _:
-                raise NotImplementedError(f"Task type `{values.task_type}` is unsupported.")
+                raise NotImplementedError(
+                    f"Task type `{values.task_type}` is unsupported."
+                )
         return values
 
 
@@ -87,9 +96,13 @@ class EvaluationRequest(BaseModel):
     def _validate_no_task_type(cls, values):
         """Validate filters do not contain task type."""
         if values.dataset_filter.task_types is not None:
-            raise ValueError("`dataset_filter` should not define the task_types constraint. Please set this in `parameters`.")
+            raise ValueError(
+                "`dataset_filter` should not define the task_types constraint. Please set this in `parameters`."
+            )
         if values.model_filter.task_types is not None:
-            raise ValueError("`model_filter` should not define the task_types constraint. Please set this in `parameters`.")
+            raise ValueError(
+                "`model_filter` should not define the task_types constraint. Please set this in `parameters`."
+            )
         return values
 
 

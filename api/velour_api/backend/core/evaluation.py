@@ -209,7 +209,9 @@ def _split_request(
 
     # clean dataset filter
     dataset_filter = job_request.dataset_filter
-    dataset_filter.dataset_names = [dataset.name for dataset in datasets_to_evaluate]
+    dataset_filter.dataset_names = [
+        dataset.name for dataset in datasets_to_evaluate
+    ]
     dataset_filter.dataset_metadata = None
     dataset_filter.dataset_geospatial = None
     dataset_filter.model_names = None

@@ -1274,7 +1274,9 @@ def test_create_clf_metrics(
     job_request = schemas.EvaluationRequest(
         model_filter=schemas.Filter(model_names=[model_name]),
         dataset_filter=schemas.Filter(dataset_names=[dataset_name]),
-        parameters=schemas.EvaluationParameters(task_type=enums.TaskType.CLASSIFICATION),
+        parameters=schemas.EvaluationParameters(
+            task_type=enums.TaskType.CLASSIFICATION
+        ),
     )
 
     # create clf evaluation (returns Clf Response)
