@@ -92,7 +92,40 @@ func (d *Database) MigrateUp(sqlPath string) error {
 	return nil
 }
 
+func getConfigFromEnv() dbConfig {
+	// TODO add logging for defaults
+	host, found := os.LookupEnv("POSTGRES_HOST")
+	if !found {
+		host = ""
+	}
+	port, found := os.LookupEnv("POSTGRES_PORT")
+	if !found {
+		port = "5432"
+	}
+	user, found := os.LookupEnv("")
+	if !found {
+		user = "postgres"
+	}
+	password, found := os.LookupEnv("POSTGRES_PASSWORD")
+	if !found {
+		panic("POSTGRES_PASSWORD must be provided as an environment variable")
+	}
+	name, found := os.LookupEnv("POSTGRES_DB")
+	if !found {
+		// TODO should be velour?
+		name = "postgres"
+	}
+	return dbConfig{
+		Host:     host,
+		Port:     port,
+		User:     user,
+		Password: password,
+		Name:     name,
+	}
+}
+
 func main() {
+	// TODO take flags and env vars?
 	//host := flag.String("host", "", "db host address")
 	//port := flag.String("port", "", "db port")
 	//user := flag.String("user", "", "postgres user")
@@ -115,35 +148,7 @@ func main() {
 	//if name == nil {
 	//
 	//}
-	host, found := os.LookupEnv("POSTGRES_HOST")
-	if !found {
-		host = ""
-	}
-	port, found := os.LookupEnv("POSTGRES_PORT")
-	if !found {
-		port = "5432"
-	}
-	user, found := os.LookupEnv("")
-	if !found {
-		port = "5432"
-	}
-	password, found := os.LookupEnv("POSTGRES_PASSWORD")
-	if !found {
-		panic("POSTGRES_PASSWORD must be provided as an environment variable")
-	}
-	name, found := os.LookupEnv("POSTGRES_DB")
-	if !found {
-		// TODO should be velour?
-		name = "postgres"
-	}
-	config := dbConfig{
-		Host:     host,
-		Port:     port,
-		User:     user,
-		Password: password,
-		Name:     name,
-	}
-	db, err := getDatabase(config)
+	db, err := getDatabase(getConfigFromEnv())
 	if err != nil {
 		panic(fmt.Errorf("error connecting to the database for migrations %w", err))
 	}
