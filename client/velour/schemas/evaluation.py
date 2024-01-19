@@ -21,7 +21,7 @@ class EvaluationParameters:
     task_type: TaskType
 
     # object detection
-    convert_annotation_to_type: AnnotationType = None
+    convert_annotations_to_type: AnnotationType = None
     iou_thresholds_to_compute: List[float] = None
     iou_thresholds_to_return: List[float] = None
 

@@ -1061,7 +1061,7 @@ def test_create_detection_metrics(
             ),
             parameters=schemas.EvaluationParameters(
                 task_type=enums.TaskType.DETECTION,
-                convert_annotation_to_type=enums.AnnotationType.BOX,
+                convert_annotations_to_type=enums.AnnotationType.BOX,
                 iou_thresholds_to_compute=[0.2, 0.6],
                 iou_thresholds_to_return=[0.2],
             ),
@@ -1192,7 +1192,7 @@ def test_create_detection_metrics(
         ),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.DETECTION,
-            convert_annotation_to_type=enums.AnnotationType.BOX,
+            convert_annotations_to_type=enums.AnnotationType.BOX,
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[0.2],
         ),
@@ -1236,7 +1236,7 @@ def test_create_detection_metrics(
         ),
         parameters=schemas.EvaluationParameters(
             task_type=enums.TaskType.DETECTION,
-            convert_annotation_to_type=enums.AnnotationType.BOX,
+            convert_annotations_to_type=enums.AnnotationType.BOX,
             iou_thresholds_to_compute=[0.2, 0.6],
             iou_thresholds_to_return=[0.2],
         ),

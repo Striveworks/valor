@@ -11,7 +11,7 @@ def test_evaluation_evaluation_job():
         },
         "parameters": {
             "task_type": enums.TaskType.DETECTION.value,
-            "convert_annotation_to_type": enums.AnnotationType.BOX.value,
+            "convert_annotations_to_type": enums.AnnotationType.BOX.value,
         },
     }
     schemas.EvaluationRequest(**params)
