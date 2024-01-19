@@ -122,12 +122,11 @@ def test_compute_confusion_matrix_at_label_key(
     classification_test_data,
 ):
     model_filter = schemas.Filter(
-        dataset_names=[dataset_name],
         model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
     dataset_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
@@ -287,12 +286,11 @@ def test_compute_roc_auc(
     ```
     """
     model_filter = schemas.Filter(
-        dataset_names=[dataset_name],
         model_names=[model_name],
+        task_types=[enums.TaskType.CLASSIFICATION],
     )
     dataset_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 

@@ -176,8 +176,14 @@ def _split_request(
 ) -> list[schemas.EvaluationRequest]:
     """
     Splits a job request into component requests.
+
+    1. Fetch all datasets and models that conform to their respective filters.
+    2. Verify all datasets and models are ready to be evaluated.
+    3. For auditability, replace ambiguous dataset/model queries with explicit lists of names.
+    4. Create a response per model..
     """
 
+    # 1.a - get all datasets, note this uses the unmodified filter
     datasets_to_evaluate = (
         db.query(
             Query(models.Dataset).filter(job_request.dataset_filter).any()
@@ -190,6 +196,7 @@ def _split_request(
             "No datasets meet the requirements of this request."
         )
 
+    # 1.b - get all models, note this uses the unmodified filter
     model_to_evaluate = (
         db.query(Query(models.Model).filter(job_request.model_filter).any())
         .distinct()
@@ -200,36 +207,44 @@ def _split_request(
             "No models meet the requirements of this request."
         )
 
-    # verify all models and datasets are ready for evaluation
+    # 2 - verify all models and datasets are ready for evaluation
     _verify_ready_to_evaluate(
         db=db,
         dataset_list=datasets_to_evaluate,
         model_list=model_to_evaluate,
     )
 
-    # clean dataset filter
-    dataset_filter = job_request.dataset_filter
+    # 3.a - convert ambiguous queries into explicit lists of dataset and model names. 
+    dataset_filter = job_request.dataset_filter.model_copy()
+    model_filter = job_request.model_filter.model_copy()
+
+    dataset_filter.model_names = None
+    model_filter.dataset_names = None
+     
+    dataset_filter.dataset_metadata = None
+    model_filter.dataset_metadata = None
+
+    dataset_filter.model_metadata = None
+    model_filter.model_metadata = None
+
+    dataset_filter.dataset_geospatial = None
+    model_filter.dataset_geospatial = None
+
+    dataset_filter.model_geospatial = None
+    model_filter.model_geospatial = None
+
+    # 3. b load dataset names
     dataset_filter.dataset_names = [
         dataset.name for dataset in datasets_to_evaluate
     ]
-    dataset_filter.dataset_metadata = None
-    dataset_filter.dataset_geospatial = None
-    dataset_filter.model_names = None
-    dataset_filter.model_metadata = None
-    dataset_filter.model_geospatial = None
-
-    # clean model filter
-    model_filter = job_request.model_filter
-    model_filter.dataset_names = None
-    model_filter.dataset_metadata = None
-    model_filter.dataset_geospatial = None
-    model_filter.model_metadata = None
-    model_filter.model_geospatial = None
-
+    
     request_list = []
     for model in model_to_evaluate:
-        model_filter = job_request.model_filter.model_copy()
+        
+        # 3.b - load model name
         model_filter.model_names = [model.name]
+        
+        # 4. - create request
         request_list.append(
             schemas.EvaluationRequest(
                 model_filter=model_filter,
