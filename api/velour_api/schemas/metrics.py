@@ -58,10 +58,14 @@ class EvaluationSettings(BaseModel):
         The parameter object (e.g., `DetectionParameters) to use when creating an evaluation.
     filters: Filter
         The `Filter`object to use when creating an evaluation.
+    label_map : Tuple[Tuple[Label, Label]]
+        Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
+
     """
 
     parameters: DetectionParameters | None = None
     filters: Filter | None = None
+    label_map: tuple | None = None
 
     # pydantic setting
     model_config = ConfigDict(extra="forbid")

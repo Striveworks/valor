@@ -1204,6 +1204,7 @@ class Model:
         iou_thresholds_to_compute: List[float] = None,
         iou_thresholds_to_keep: List[float] = None,
         filters: Union[Dict, List[BinaryExpression]] = None,
+        label_map: Dict[Label, Label] = None,
     ) -> Evaluation:
         """
         Start a object-detection evaluation job.
@@ -1218,6 +1219,8 @@ class Model:
             Thresholds to return AP for. Must be subset of `iou_thresholds_to_compute`.
         filters : Union[Dict, List[BinaryExpression]]
             Optional set of filters to constrain evaluation by.
+        label_map : Dict[Label, Label]
+            Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
 
         Returns
         -------
@@ -1246,8 +1249,7 @@ class Model:
             dataset=dataset.name,
             task_type=TaskType.DETECTION.value,
             settings=EvaluationSettings(
-                parameters=parameters,
-                filters=filters,
+                parameters=parameters, filters=filters, label_map=label_map
             ),
         )
 

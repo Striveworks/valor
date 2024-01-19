@@ -34,16 +34,24 @@ class EvaluationSettings:
         The parameter object (e.g., `DetectionParameters) to use when creating an evaluation.
     filters: Union[Filter, None]
         The `Filter`object to use when creating an evaluation.
+    label_map : Dict[Label, Label]
+        Optional mapping of individual Labels to a grouper Label. Useful when you need to evaluate performance using Labels that differ across datasets and models.
     """
 
     parameters: Union[DetectionParameters, None] = None
     filters: Union[Filter, None] = None
+    label_map: Union[dict, None] = None
 
     def __post_init__(self):
         if isinstance(self.parameters, dict):
             self.parameters = DetectionParameters(**self.parameters)
         if isinstance(self.filters, dict):
             self.filters = Filter(**self.filters)
+        if isinstance(self.label_map, dict):
+            self.label_map = tuple(
+                (key.dict(), value.dict())
+                for key, value in self.label_map.items()
+            )
 
 
 @dataclass
