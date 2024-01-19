@@ -1,0 +1,14 @@
+FROM 724664234782.dkr.ecr.us-east-1.amazonaws.com/public.ecr.aws/docker/library/alpine:3.18
+
+RUN apk update && apk add --no-cache
+
+COPY
+
+WORKDIR /src
+RUN python -m pip install -U pip
+# when building, we'll use setuptools_scm on the hostmachine to get the version
+# and then pass it to the build arg VERSION. this is so we don't need to install
+# git and put .git (which setuptools_scm needs to determine the version) in the container
+RUN SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION} python -m pip install .
+
+CMD ["uvicorn", "velour_api.main:app", "--host", "0.0.0.0"]
