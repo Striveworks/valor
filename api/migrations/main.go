@@ -3,13 +3,13 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"flag"
 	"fmt"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 	"log/slog"
+	"os"
 )
 
 type Database struct {
@@ -35,7 +35,7 @@ type dbConfig struct {
 	Name     string
 }
 
-func getDatabase(c dbConfig) (*sql.DB, error) {
+func getDatabase(c dbConfig) (Database, error) {
 	db, err := sql.Open(
 		"postgres",
 		fmt.Sprintf(
@@ -49,15 +49,15 @@ func getDatabase(c dbConfig) (*sql.DB, error) {
 		),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error opening database: %w", err)
+		return Database{}, fmt.Errorf("error opening database: %w", err)
 	}
-	return db, nil
+	return Database{db}, nil
 }
 
 var slogger = slog.Logger{}
 
 func (d *Database) MigrateUp(sqlPath string) error {
-	driver, err := postgres.WithInstance(d.DB, &postgres.Config{MigrationsTable: "models_catalog_schema_migrations"})
+	driver, err := postgres.WithInstance(d.DB, &postgres.Config{MigrationsTable: "velour_schema_migrations"})
 	if err != nil {
 		return fmt.Errorf("error configuring driver for migration: %w", err)
 	}
@@ -92,27 +92,15 @@ func (d *Database) MigrateUp(sqlPath string) error {
 	return nil
 }
 
-//func migrate() {
-//	migrationsDB, err := dao.GetMigrationDatabase(config.Config.Database)
-//	if err != nil {
-//		log.FatalErr(fmt.Errorf("error getting database: %w", err))
-//	}
-//	// Run migrations and close DB connection.
-//	err = migrationsDB.MigrateUp("file://migrations")
-//	if err != nil {
-//		log.FatalErr(fmt.Errorf("error migrating database: %w", err))
-//	}
-//}
-
 func main() {
-	host := flag.String("host", "", "db host address")
-	port := flag.String("port", "", "db port")
-	user := flag.String("user", "", "postgres user")
-	password := flag.String("password", "", "postgres password")
-	name := flag.String("name", "", "database name")
-	flag.Parse()
-
-	//if host == nil {
+	//host := flag.String("host", "", "db host address")
+	//port := flag.String("port", "", "db port")
+	//user := flag.String("user", "", "postgres user")
+	//password := flag.String("password", "", "postgres password")
+	//name := flag.String("name", "", "database name")
+	//flag.Parse()
+	//
+	//if host == "" {
 	//
 	//}
 	//if port == nil {
@@ -127,13 +115,40 @@ func main() {
 	//if name == nil {
 	//
 	//}
-
-	dbConfig{
+	host, found := os.LookupEnv("POSTGRES_HOST")
+	if !found {
+		host = ""
+	}
+	port, found := os.LookupEnv("POSTGRES_PORT")
+	if !found {
+		port = "5432"
+	}
+	user, found := os.LookupEnv("")
+	if !found {
+		port = "5432"
+	}
+	password, found := os.LookupEnv("POSTGRES_PASSWORD")
+	if !found {
+		panic("POSTGRES_PASSWORD must be provided as an environment variable")
+	}
+	name, found := os.LookupEnv("POSTGRES_DB")
+	if !found {
+		// TODO should be velour?
+		name = "postgres"
+	}
+	config := dbConfig{
 		Host:     host,
 		Port:     port,
 		User:     user,
 		Password: password,
 		Name:     name,
 	}
-	db, _ := getDatabase()
+	db, err := getDatabase(config)
+	if err != nil {
+		panic(fmt.Errorf("error connecting to the database for migrations %w", err))
+	}
+	err = db.MigrateUp("file://migrations")
+	if err != nil {
+		panic(fmt.Errorf("error running database migrations %w", err))
+	}
 }
