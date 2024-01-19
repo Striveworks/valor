@@ -17,7 +17,7 @@ type Database struct {
 }
 
 type logger struct {
-	slog.Logger
+	*slog.Logger
 }
 
 func (l logger) Verbose() bool {
@@ -54,7 +54,7 @@ func getDatabase(c dbConfig) (Database, error) {
 	return Database{db}, nil
 }
 
-var slogger = slog.Logger{}
+var slogger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
 func (d *Database) MigrateUp(sqlPath string) error {
 	driver, err := postgres.WithInstance(d.DB, &postgres.Config{MigrationsTable: "velour_schema_migrations"})
@@ -96,7 +96,7 @@ func getConfigFromEnv() dbConfig {
 	// TODO add logging for defaults
 	host, found := os.LookupEnv("POSTGRES_HOST")
 	if !found {
-		host = ""
+		panic("POSTGRES_HOST must be provided as an environment variable")
 	}
 	port, found := os.LookupEnv("POSTGRES_PORT")
 	if !found {
@@ -125,34 +125,11 @@ func getConfigFromEnv() dbConfig {
 }
 
 func main() {
-	// TODO take flags and env vars?
-	//host := flag.String("host", "", "db host address")
-	//port := flag.String("port", "", "db port")
-	//user := flag.String("user", "", "postgres user")
-	//password := flag.String("password", "", "postgres password")
-	//name := flag.String("name", "", "database name")
-	//flag.Parse()
-	//
-	//if host == "" {
-	//
-	//}
-	//if port == nil {
-	//
-	//}
-	//if user == nil {
-	//
-	//}
-	//if password == nil {
-	//
-	//}
-	//if name == nil {
-	//
-	//}
 	db, err := getDatabase(getConfigFromEnv())
 	if err != nil {
 		panic(fmt.Errorf("error connecting to the database for migrations %w", err))
 	}
-	err = db.MigrateUp("file://migrations")
+	err = db.MigrateUp("file://sql")
 	if err != nil {
 		panic(fmt.Errorf("error running database migrations %w", err))
 	}

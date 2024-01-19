@@ -15,9 +15,19 @@ services:
     command: "uvicorn velour_api.main:app --reload --host 0.0.0.0"
     depends_on:
       - 'db'
+      - 'migration'
   db:
     image: "postgis/postgis"
     ports:
       - "5432:5432"
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  migration:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.migrate
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      - 'db'
