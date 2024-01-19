@@ -214,13 +214,13 @@ def _split_request(
         model_list=model_to_evaluate,
     )
 
-    # 3.a - convert ambiguous queries into explicit lists of dataset and model names. 
+    # 3.a - convert ambiguous queries into explicit lists of dataset and model names.
     dataset_filter = job_request.dataset_filter.model_copy()
     model_filter = job_request.model_filter.model_copy()
 
     dataset_filter.model_names = None
     model_filter.dataset_names = None
-     
+
     dataset_filter.dataset_metadata = None
     model_filter.dataset_metadata = None
 
@@ -237,13 +237,13 @@ def _split_request(
     dataset_filter.dataset_names = [
         dataset.name for dataset in datasets_to_evaluate
     ]
-    
+
     request_list = []
     for model in model_to_evaluate:
-        
+
         # 3.b - load model name
         model_filter.model_names = [model.name]
-        
+
         # 4. - create request
         request_list.append(
             schemas.EvaluationRequest(
