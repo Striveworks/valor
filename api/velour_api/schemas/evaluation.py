@@ -21,7 +21,7 @@ class EvaluationParameters(BaseModel):
     task_type: TaskType
 
     # object detection
-    force_annotation_type: AnnotationType | None = None
+    convert_annotation_to_type: AnnotationType | None = None
     iou_thresholds_to_compute: list[float] | None = None
     iou_thresholds_to_return: list[float] | None = None
 
@@ -35,9 +35,9 @@ class EvaluationParameters(BaseModel):
 
         match values.task_type:
             case TaskType.CLASSIFICATION | TaskType.SEGMENTATION:
-                if values.force_annotation_type is not None:
+                if values.convert_annotation_to_type is not None:
                     raise ValueError(
-                        "`force_annotation_type` should only be used for object detection evaluations."
+                        "`convert_annotation_to_type` should only be used for object detection evaluations."
                     )
                 if values.iou_thresholds_to_compute is not None:
                     raise ValueError(
