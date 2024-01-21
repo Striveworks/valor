@@ -54,6 +54,7 @@ func getDatabase(c dbConfig) (Database, error) {
 	return Database{db}, nil
 }
 
+// TODO why is go-migrate throwing bad key errors? make a PR
 var slogger = slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
 func (d *Database) MigrateUp(sqlPath string) error {
@@ -102,7 +103,7 @@ func getConfigFromEnv() dbConfig {
 	if !found {
 		port = "5432"
 	}
-	user, found := os.LookupEnv("")
+	user, found := os.LookupEnv("POSTGRES_USER")
 	if !found {
 		user = "postgres"
 	}
@@ -113,7 +114,7 @@ func getConfigFromEnv() dbConfig {
 	name, found := os.LookupEnv("POSTGRES_DB")
 	if !found {
 		// TODO should be velour?
-		name = "postgres"
+		name = "velour"
 	}
 	return dbConfig{
 		Host:     host,
