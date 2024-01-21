@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from sqlalchemy.sql import text
 
 from velour_api import logger
-from velour_api.backend import models
 
 POSTGRES_HOST = os.getenv("POSTGRES_HOST")
 POSTGRES_USERNAME = os.getenv("POSTGRES_USERNAME", "postgres")
@@ -67,17 +66,16 @@ Base = declarative_base()
 def create_db():
     db = make_session()
     # create postgis and raster extensions if they don't exist
-    for extension in ["postgis", "postgis_raster"]:
-        if (
-            db.execute(
-                text(
-                    f"SELECT * FROM pg_extension WHERE extname='{extension}';"
-                )
-            ).scalar()
-            is None
-        ):
-            db.execute(text(f"CREATE EXTENSION {extension};"))
-            db.commit()
+    # for extension in ["postgis", "postgis_raster"]:
+    #     if (
+    #         db.execute(
+    #             text(
+    #                 f"SELECT * FROM pg_extension WHERE extname='{extension}';"
+    #             )
+    #         ).scalar()
+    #         is None
+    #     ):
+    #         db.execute(text(f"CREATE EXTENSION {extension};"))
+    #         db.commit()
 
     db.close()
-    models.Base.metadata.create_all(bind=engine)
