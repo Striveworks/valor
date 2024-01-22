@@ -459,7 +459,7 @@ def delete_model_annotations(
     model: models.Model,
 ):
     """
-    Delete all annotations of a model.
+    Delete all annotations from a model.
 
     Parameters
     ----------

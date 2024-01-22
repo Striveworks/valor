@@ -134,7 +134,7 @@ def delete_dataset_predictions(
     dataset: models.Dataset,
 ):
     """
-    Delete all predictions related to a dataset.
+    Delete all predictions over a dataset.
 
     Parameters
     ----------
