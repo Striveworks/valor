@@ -37,16 +37,15 @@ def test_evaluate_image_clf(
         model.add_prediction(dataset, pd)
     model.finalize_inferences(dataset)
 
-    eval_job = model.evaluate_classification(dataset=dataset)
+    eval_job = model.evaluate_classification(dataset)
 
-    assert eval_job.evaluation_id
+    assert eval_job.id
     assert set(eval_job.ignored_pred_keys) == {"k12", "k13"}
     assert set(eval_job.missing_pred_keys) == {"k3", "k5"}
 
-    eval_results = eval_job.wait_for_completion(timeout=30)
-    assert eval_results.status == EvaluationStatus.DONE
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    metrics = eval_results.metrics
+    metrics = eval_job.metrics
 
     expected_metrics = [
         {"type": "Accuracy", "parameters": {"label_key": "k4"}, "value": 1.0},
@@ -79,7 +78,7 @@ def test_evaluate_image_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.get_result().confusion_matrices
+    confusion_matrices = eval_job.confusion_matrices
     assert confusion_matrices == [
         {
             "label_key": "k4",
@@ -116,9 +115,7 @@ def test_evaluate_tabular_clf(
     # test dataset finalization
     model = Model(client, name=model_name)
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset).wait_for_completion(
-            timeout=30
-        )
+        model.evaluate_classification(dataset).wait_for_completion(timeout=30)
     assert "has not been finalized" in str(exc_info)
 
     dataset.finalize()
@@ -148,21 +145,20 @@ def test_evaluate_tabular_clf(
         )
     )
     with pytest.raises(ClientException) as exc_info:
-        model.evaluate_classification(dataset=dataset)
+        model.evaluate_classification(dataset)
     assert "has not been finalized" in str(exc_info)
 
     # model is automatically finalized if all datums have a prediction
     model.add_prediction(dataset, pds[-1])
 
     # evaluate
-    eval_job = model.evaluate_classification(dataset=dataset)
+    eval_job = model.evaluate_classification(dataset)
     assert eval_job.ignored_pred_keys == []
     assert eval_job.missing_pred_keys == []
 
-    eval_results = eval_job.wait_for_completion(timeout=30)
-    assert eval_results.status == EvaluationStatus.DONE
+    assert eval_job.wait_for_completion(timeout=30) == EvaluationStatus.DONE
 
-    metrics = eval_job.get_result().metrics
+    metrics = eval_job.metrics
 
     expected_metrics = [
         {
@@ -222,7 +218,7 @@ def test_evaluate_tabular_clf(
     for m in expected_metrics:
         assert m in metrics
 
-    confusion_matrices = eval_job.get_result().confusion_matrices
+    confusion_matrices = eval_job.confusion_matrices
 
     expected_confusion_matrix = {
         "label_key": "class",
@@ -235,13 +231,13 @@ def test_evaluate_tabular_clf(
         ],
     }
 
-    # validate that we can fetch the confusion matrices through get_bulk_evaluations()
-    bulk_evals = client.get_bulk_evaluations(datasets=dataset_name)
+    # validate that we can fetch the confusion matrices through get_evaluations()
+    bulk_evals = client.get_evaluations(datasets=dataset_name)
 
     assert len(bulk_evals) == 1
-    for metric in bulk_evals[0].metrics:
+    for metric in bulk_evals[0]["metrics"]:
         assert metric in expected_metrics
-    assert len(bulk_evals[0].confusion_matrices[0]) == len(
+    assert len(bulk_evals[0]["confusion_matrices"][0]) == len(
         expected_confusion_matrix
     )
 
@@ -270,8 +266,8 @@ def test_evaluate_tabular_clf(
     # check evaluation
     results = model.get_evaluations()
     assert len(results) == 1
-    assert results[0].dataset == dataset_name
-    assert results[0].model == model_name
+    assert results[0].datum_filter.dataset_names[0] == dataset_name
+    assert results[0].model_name == model_name
 
     metrics_from_eval_settings_id = results[0].metrics
     assert len(metrics_from_eval_settings_id) == len(expected_metrics)
@@ -361,21 +357,27 @@ def test_stratify_clf_metrics(
     model.finalize_inferences(dataset)
 
     eval_results_val2 = model.evaluate_classification(
-        dataset=dataset,
+        dataset,
         filters=[
             Datum.metadata["md1"] == "md1-val2",
         ],
     )
-    eval_results_val2.wait_for_completion(timeout=30)
-    val2_metrics = eval_results_val2.get_result().metrics
+    assert (
+        eval_results_val2.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    val2_metrics = eval_results_val2.metrics
 
     # should get the same thing if we use the boolean filter
     eval_results_bool = model.evaluate_classification(
-        dataset=dataset,
+        dataset,
         filters=[Datum.metadata["md3"] == True],  # noqa: E712
     )
-    eval_results_bool.wait_for_completion(timeout=30)
-    val_bool_metrics = eval_results_bool.get_result().metrics
+    assert (
+        eval_results_bool.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    val_bool_metrics = eval_results_bool.metrics
 
     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
     # (hard preds [1, 0, 0])
@@ -499,13 +501,16 @@ def test_stratify_clf_metrics_by_time(
     model.finalize_inferences(dataset)
 
     eval_results_val2 = model.evaluate_classification(
-        dataset=dataset,
+        dataset,
         filters=[
             Datum.metadata["md1"] == date.fromisoformat("2002-01-01"),
         ],
     )
-    eval_results_val2.wait_for_completion(timeout=30)
-    val2_metrics = eval_results_val2.get_result().metrics
+    assert (
+        eval_results_val2.wait_for_completion(timeout=30)
+        == EvaluationStatus.DONE
+    )
+    val2_metrics = eval_results_val2.metrics
 
     # for value 2: the gts are [2, 0, 1] and preds are [[0.03, 0.88, 0.09], [1.0, 0.0, 0.0], [0.78, 0.21, 0.01]]
     # (hard preds [1, 0, 0])

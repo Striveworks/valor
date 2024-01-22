@@ -75,7 +75,7 @@ def test_query_generators(
 
     prediction_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        models_names=[model_name],
+        model_names=[model_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
         label_ids=None,
@@ -200,7 +200,7 @@ def test_count_true_positives(
 
     prediction_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        models_names=[model_name],
+        model_names=[model_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
         label_ids=None,
@@ -274,7 +274,6 @@ def test_count_groundtruths(
             _count_groundtruths(
                 db,
                 _generate_groundtruth_query(groundtruth_filter),
-                dataset_name,
                 label_id,
             )
             == expected
@@ -285,7 +284,6 @@ def test_count_groundtruths(
         _count_groundtruths(
             db,
             _generate_groundtruth_query(groundtruth_filter),
-            dataset_name,
             1000000,
         )
 
@@ -323,7 +321,7 @@ def test_count_predictions(
 
     prediction_filter = schemas.Filter(
         dataset_names=[dataset_name],
-        models_names=[model_name],
+        model_names=[model_name],
         task_types=[enums.TaskType.SEGMENTATION],
         annotation_types=[enums.AnnotationType.RASTER],
         label_ids=None,
@@ -403,20 +401,18 @@ def test_compute_segmentation_metrics(
         pred_semantic_segs_img2_create=pred_semantic_segs_img2_create,
     )
 
-    job_request = schemas.EvaluationJob(
-        dataset=dataset_name,
-        model=model_name,
-        task_type=enums.TaskType.SEGMENTATION,
-        settings=schemas.EvaluationSettings(
-            filters=schemas.Filter(
-                dataset_names=[dataset_name],
-                task_types=[enums.TaskType.SEGMENTATION],
-                annotation_types=[enums.AnnotationType.RASTER],
-            )
-        ),
+    model_filter = schemas.Filter(
+        model_names=[model_name],
+        dataset_names=[dataset_name],
+    )
+    datum_filter = schemas.Filter(
+        model_names=[model_name],
+        dataset_names=[dataset_name],
+        task_types=[enums.TaskType.SEGMENTATION],
+        annotation_types=[enums.AnnotationType.RASTER],
     )
 
-    metrics = _compute_segmentation_metrics(db, job_request)
+    metrics = _compute_segmentation_metrics(db, model_filter, datum_filter)
     # should have five metrics (one IOU for each of the four labels, and one mIOU)
     assert len(metrics) == 5
     for metric in metrics[:-1]:

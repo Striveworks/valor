@@ -83,12 +83,14 @@ class ImageMetadata:
                 f"`datum` does not contain height and/or width in metadata `{datum.metadata}`"
             )
         metadata = datum.metadata.copy()
-        return cls(
+        img = cls(
             uid=datum.uid,
             height=int(metadata.pop("height")),
             width=int(metadata.pop("width")),
             metadata=metadata,
         )
+        img._dataset_name = datum._dataset_name
+        return img
 
     @classmethod
     def from_pil(cls, uid: str, image: PIL.Image.Image):
@@ -123,7 +125,7 @@ class ImageMetadata:
             metadata=metadata,
             geospatial=geospatial,
         )
-        datum._set_dataset(self._dataset_name)
+        datum._set_dataset_name(self._dataset_name)
         return datum
 
 

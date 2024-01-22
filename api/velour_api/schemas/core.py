@@ -132,12 +132,12 @@ class Datum(BaseModel):
     ----------
     uid : str
         The UID of the `Datum`.
+    dataset_name : str
+        The name of the dataset to associate the `Datum` with.
     metadata : dict
         A dictionary of metadata that describes the `Datum`.
     geospatial :  dict
         A GeoJSON-style dictionary describing the geospatial coordinates of the `Datum`.
-    dataset : str
-        The name of the dataset to associate the `Datum` with.
 
     Raises
     ----------
@@ -146,7 +146,7 @@ class Datum(BaseModel):
     """
 
     uid: str
-    dataset: str
+    dataset_name: str
     metadata: MetadataType = {}
     geospatial: GeoJSONPoint | GeoJSONPolygon | GeoJSONMultiPolygon | None = (
         None
@@ -164,7 +164,7 @@ class Datum(BaseModel):
         _validate_uid_format(v)
         return v
 
-    @field_validator("dataset")
+    @field_validator("dataset_name")
     @classmethod
     def _check_name_valid(cls, v):
         """Validate the dataset field."""
@@ -193,7 +193,7 @@ class Datum(BaseModel):
             raise TypeError
         return (
             self.uid == other.uid
-            and self.dataset == other.dataset
+            and self.dataset_name == other.dataset_name
             and self.metadata == other.metadata
             and self.geospatial == other.geospatial
         )
@@ -303,7 +303,7 @@ class Prediction(BaseModel):
 
     Attributes
     ----------
-    model : str
+    model_name : str
         The name of the model that produced the `Prediction`.
     datum : Datum
         The `Datum` associated with the `Prediction`.
@@ -321,12 +321,15 @@ class Prediction(BaseModel):
         If label scores for any key sum to more than 1.
     """
 
-    model: str
+    model_name: str
     datum: Datum
     annotations: list[Annotation]
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(
+        extra="forbid",
+        protected_namespaces=("protected_",),
+    )
 
-    @field_validator("model")
+    @field_validator("model_name")
     @classmethod
     def _check_name_valid(cls, v):
         """Validate the model field."""

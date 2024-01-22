@@ -1,9 +1,4 @@
-from .evaluation import (
-    DetectionParameters,
-    EvaluationJob,
-    EvaluationResult,
-    EvaluationSettings,
-)
+from .evaluation import EvaluationParameters, EvaluationRequest
 from .filters import (
     BinaryExpression,
     DeclarativeMapper,
@@ -28,10 +23,8 @@ __all__ = [
     "Polygon",
     "MultiPolygon",
     "Raster",
-    "EvaluationJob",
-    "EvaluationSettings",
-    "EvaluationResult",
-    "DetectionParameters",
+    "EvaluationRequest",
+    "EvaluationParameters",
     "BinaryExpression",
     "DeclarativeMapper",
     "Filter",
