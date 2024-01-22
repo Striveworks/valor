@@ -30,11 +30,11 @@ def test__compute_detection_metrics(
             iou_thresholds_to_compute=iou_thresholds,
             iou_thresholds_to_return=[0.5, 0.75],
         ),
-        model_filter=schemas.Filter(
+        prediction_filter=schemas.Filter(
             model_names=["test_model"],
             label_keys=["class"],
         ),
-        datum_filter=schemas.Filter(
+        groundtruth_filter=schemas.Filter(
             dataset_names=["test_dataset"],
             label_keys=["class"],
         ),

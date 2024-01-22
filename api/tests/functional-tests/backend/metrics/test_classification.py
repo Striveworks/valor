@@ -121,19 +121,19 @@ def test_compute_confusion_matrix_at_label_key(
     model_name: str,
     classification_test_data,
 ):
-    model_filter = schemas.Filter(
+    prediction_filter = schemas.Filter(
         model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
     )
-    datum_filter = schemas.Filter(
+    groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.CLASSIFICATION],
     )
 
     cm = _compute_confusion_matrix_at_label_key(
         db=db,
-        model_filter=model_filter,
-        datum_filter=datum_filter,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
         label_key="animal",
     )
     expected_entries = [
@@ -162,8 +162,8 @@ def test_compute_confusion_matrix_at_label_key(
 
     cm = _compute_confusion_matrix_at_label_key(
         db=db,
-        model_filter=model_filter,
-        datum_filter=datum_filter,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
         label_key="color",
     )
     expected_entries = [
@@ -201,11 +201,11 @@ def test_compute_confusion_matrix_at_label_key_and_filter(
     Test filtering by metadata (md1: md1-val0).
     """
 
-    model_filter = schemas.Filter(
+    prediction_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
     )
-    datum_filters = schemas.Filter(
+    groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
         model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
@@ -214,8 +214,8 @@ def test_compute_confusion_matrix_at_label_key_and_filter(
 
     cm = _compute_confusion_matrix_at_label_key(
         db,
-        model_filter=model_filter,
-        datum_filter=datum_filters,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
         label_key="animal",
     )
 
@@ -285,11 +285,11 @@ def test_compute_roc_auc(
     0.43125
     ```
     """
-    model_filter = schemas.Filter(
+    prediction_filter = schemas.Filter(
         model_names=[model_name],
         task_types=[enums.TaskType.CLASSIFICATION],
     )
-    datum_filter = schemas.Filter(
+    groundtruth_filter = schemas.Filter(
         dataset_names=[dataset_name],
         task_types=[enums.TaskType.CLASSIFICATION],
     )
@@ -297,8 +297,8 @@ def test_compute_roc_auc(
     assert (
         _compute_roc_auc(
             db=db,
-            model_filter=model_filter,
-            datum_filter=datum_filter,
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
             label_key="animal",
         )
         == 0.8009259259259259
@@ -306,8 +306,8 @@ def test_compute_roc_auc(
     assert (
         _compute_roc_auc(
             db=db,
-            model_filter=model_filter,
-            datum_filter=datum_filter,
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
             label_key="color",
         )
         == 0.43125
@@ -316,8 +316,8 @@ def test_compute_roc_auc(
     assert (
         _compute_roc_auc(
             db=db,
-            model_filter=model_filter,
-            datum_filter=datum_filter,
+            prediction_filter=prediction_filter,
+            groundtruth_filter=groundtruth_filter,
             label_key="not a key",
         )
         is None
@@ -366,8 +366,8 @@ def test_compute_roc_auc_groupby_metadata(
     assert (
         _compute_roc_auc(
             db,
-            model_filter=model_filter,
-            datum_filter=datum_filter,
+            prediction_filter=model_filter,
+            groundtruth_filter=datum_filter,
             label_key="animal",
         )
         == (0.5 + 2 / 3) / 2

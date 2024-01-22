@@ -101,8 +101,8 @@ def _ap(
 def _compute_detection_metrics(
     db: Session,
     parameters: schemas.EvaluationParameters,
-    model_filter: schemas.Filter,
-    datum_filter: schemas.Filter,
+    prediction_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
     target_type: enums.AnnotationType,
 ) -> list[
     schemas.APMetric
@@ -142,7 +142,7 @@ def _compute_detection_metrics(
             models.GroundTruth.label_id.label("label_id"),
             models.Annotation.datum_id.label("datum_id"),
         )
-        .filter(datum_filter)
+        .filter(groundtruth_filter)
         .groundtruths("groundtruths")
     )
 
@@ -155,7 +155,7 @@ def _compute_detection_metrics(
             models.Prediction.score.label("score"),
             models.Annotation.datum_id.label("datum_id"),
         )
-        .filter(model_filter)
+        .filter(prediction_filter)
         .predictions("predictions")
     )
 
@@ -286,10 +286,10 @@ def _compute_detection_metrics(
     # Get the number of ground truths per label id
     number_of_ground_truths = {}
     for id in labels:
-        datum_filter.label_ids = [id]
+        groundtruth_filter.label_ids = [id]
         number_of_ground_truths[id] = db.query(
             Query(func.count(models.GroundTruth.id))
-            .filter(datum_filter)
+            .filter(groundtruth_filter)
             .groundtruths()
         ).scalar()
 
@@ -494,24 +494,23 @@ def compute_detection_metrics(
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
     # unpack filters and params
-    datum_filter = schemas.Filter(**evaluation.datum_filter)
-    model_filter = datum_filter.model_copy()
-    model_filter.dataset_names = None
-    model_filter.model_names = [evaluation.model_name]
+    groundtruth_filter = schemas.Filter(**evaluation.datum_filter)
+    prediction_filter = groundtruth_filter.model_copy()
+    prediction_filter.model_names = [evaluation.model_name]
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
     # load task type into filters
-    datum_filter.task_types = [parameters.task_type]
-    model_filter.task_types = [parameters.task_type]
+    groundtruth_filter.task_types = [parameters.task_type]
+    prediction_filter.task_types = [parameters.task_type]
 
     # fetch model and datasets
     datasets = (
-        db.query(Query(models.Dataset).filter(datum_filter).any())
+        db.query(Query(models.Dataset).filter(groundtruth_filter).any())
         .distinct()
         .all()
     )
     model = (
-        db.query(Query(models.Model).filter(model_filter).any())
+        db.query(Query(models.Model).filter(prediction_filter).any())
         .distinct()
         .one_or_none()
     )
@@ -523,14 +522,14 @@ def compute_detection_metrics(
         model=model,
         target_type=parameters.convert_annotations_to_type,
     )
-    datum_filter.annotation_types = [target_type]
-    model_filter.annotation_types = [target_type]
+    groundtruth_filter.annotation_types = [target_type]
+    prediction_filter.annotation_types = [target_type]
 
     metrics = _compute_detection_metrics(
         db=db,
         parameters=parameters,
-        model_filter=model_filter,
-        datum_filter=datum_filter,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
         target_type=target_type,
     )
 

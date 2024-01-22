@@ -13,19 +13,19 @@ from velour_api.backend.ops import Query
 from velour_api.schemas.metrics import IOUMetric, mIOUMetric
 
 
-def _generate_groundtruth_query(datum_filter: schemas.Filter) -> Select:
+def _generate_groundtruth_query(groundtruth_filter: schemas.Filter) -> Select:
     """Generate a sqlalchemy query to fetch a groundtruth."""
     return (
         Query(
             models.Annotation.id.label("annotation_id"),
             models.Annotation.datum_id.label("datum_id"),
         )
-        .filter(datum_filter)
+        .filter(groundtruth_filter)
         .groundtruths("gt")
     )
 
 
-def _generate_prediction_query(model_filter: schemas.Filter) -> Select:
+def _generate_prediction_query(prediction_filter: schemas.Filter) -> Select:
     """Generate a sqlalchemy query to fetch a prediction."""
 
     return (
@@ -33,7 +33,7 @@ def _generate_prediction_query(model_filter: schemas.Filter) -> Select:
             models.Annotation.id.label("annotation_id"),
             models.Annotation.datum_id.label("datum_id"),
         )
-        .filter(model_filter)
+        .filter(prediction_filter)
         .predictions("pd")
     )
 
@@ -116,14 +116,14 @@ def _count_predictions(
 
 def _compute_iou(
     db: Session,
-    datum_filter: schemas.Filter,
-    model_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
+    prediction_filter: schemas.Filter,
     label_id: int,
 ) -> float:
     """Computes the pixelwise intersection over union for the given dataset, model, and label"""
 
-    groundtruth_subquery = _generate_groundtruth_query(datum_filter)
-    prediction_subquery = _generate_prediction_query(model_filter)
+    groundtruth_subquery = _generate_groundtruth_query(groundtruth_filter)
+    prediction_subquery = _generate_prediction_query(prediction_filter)
 
     tp = _count_true_positives(db, groundtruth_subquery, prediction_subquery)
     gt = _count_groundtruths(db, groundtruth_subquery, label_id)
@@ -133,12 +133,12 @@ def _compute_iou(
 
 
 def _get_groundtruth_labels(
-    db: Session, datum_filter: schemas.Filter
+    db: Session, groundtruth_filter: schemas.Filter
 ) -> list[models.Label]:
     """Fetch groundtruth labels from the database."""
     return db.scalars(
         Query(models.Label)
-        .filter(datum_filter)
+        .filter(groundtruth_filter)
         .groundtruths(as_subquery=False)
         .distinct()
     ).all()
@@ -146,26 +146,26 @@ def _get_groundtruth_labels(
 
 def _compute_segmentation_metrics(
     db: Session,
-    model_filter: schemas.Filter,
-    datum_filter: schemas.Filter,
+    prediction_filter: schemas.Filter,
+    groundtruth_filter: schemas.Filter,
 ) -> list[IOUMetric | mIOUMetric]:
     """
     Computes the _compute_IOU metrics. The return is one `IOUMetric` for each label in groundtruth
     and one `mIOUMetric` for the mean _compute_IOU over all labels.
     """
 
-    labels = _get_groundtruth_labels(db, datum_filter)
+    labels = _get_groundtruth_labels(db, groundtruth_filter)
 
     ret = []
     for label in labels:
         # set filter
-        datum_filter.label_ids = [label.id]
-        model_filter.label_ids = [label.id]
+        groundtruth_filter.label_ids = [label.id]
+        prediction_filter.label_ids = [label.id]
 
         _compute_iou_score = _compute_iou(
             db,
-            datum_filter,
-            model_filter,
+            groundtruth_filter,
+            prediction_filter,
             label.id,
         )
 
@@ -210,20 +210,19 @@ def compute_semantic_segmentation_metrics(
     evaluation = core.fetch_evaluation_from_id(db, evaluation_id)
 
     # unpack filters and params
-    datum_filter = schemas.Filter(**evaluation.datum_filter)
-    model_filter = datum_filter.model_copy()
-    model_filter.dataset_names = None
-    model_filter.model_names = [evaluation.model_name]
+    groundtruth_filter = schemas.Filter(**evaluation.datum_filter)
+    prediction_filter = groundtruth_filter.model_copy()
+    prediction_filter.model_names = [evaluation.model_name]
     parameters = schemas.EvaluationParameters(**evaluation.parameters)
 
     # load task type into filters
-    datum_filter.task_types = [parameters.task_type]
-    model_filter.task_types = [parameters.task_type]
+    groundtruth_filter.task_types = [parameters.task_type]
+    prediction_filter.task_types = [parameters.task_type]
 
     metrics = _compute_segmentation_metrics(
         db=db,
-        model_filter=model_filter,
-        datum_filter=datum_filter,
+        prediction_filter=prediction_filter,
+        groundtruth_filter=groundtruth_filter,
     )
     metric_mappings = create_metric_mappings(db, metrics, evaluation_id)
     for mapping in metric_mappings:
