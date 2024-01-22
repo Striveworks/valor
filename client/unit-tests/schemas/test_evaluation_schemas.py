@@ -1,11 +1,9 @@
 from velour import enums, schemas
 
 
-def test_evaluation_evaluation_job():
+def test_evaluation_request():
     params = {
-        "model_filter": {
-            "model_names": ["md"],
-        },
+        "model_names": ["md"],
         "datum_filter": {
             "dataset_names": ["ds"],
         },

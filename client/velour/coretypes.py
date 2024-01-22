@@ -3,7 +3,7 @@ import json
 import math
 import time
 import warnings
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass
 from typing import Dict, List, Tuple, Union
 
 from velour.client import Client, ClientException, DeletionJob
@@ -711,7 +711,7 @@ class Evaluation:
     def dict(self):
         return {
             "id": self.id,
-            "model_filter": asdict(self.model_filter),
+            "model_name": self.model_name,
             "datum_filter": asdict(self.datum_filter),
             "parameters": asdict(self.parameters),
             "status": self.status.value,
@@ -724,7 +724,7 @@ class Evaluation:
         self,
         *_,
         id: int,
-        model_filter: Filter,
+        model_name: str,
         datum_filter: Filter,
         parameters: EvaluationParameters,
         status: EvaluationStatus,
@@ -733,11 +733,7 @@ class Evaluation:
         **kwargs,
     ):
         self.id = id
-        self.model_filter = (
-            Filter(**model_filter)
-            if isinstance(model_filter, dict)
-            else model_filter
-        )
+        self.model_name = model_name
         self.datum_filter = (
             Filter(**datum_filter)
             if isinstance(datum_filter, dict)
@@ -1282,15 +1278,6 @@ class Model:
             filters = filters if filters else []
             filters = Filter.create(filters)
 
-            # create model_filter
-            model_filter = replace(filters)
-            model_filter.model_names = [self.name]
-            model_filter.dataset_names = None
-            model_filter.dataset_geospatial = None
-            model_filter.dataset_metadata = None
-            model_filter.annotation_types = None
-            model_filter.annotation_geometric_area = None
-
             # reset model name
             filters.model_names = None
             filters.model_geospatial = None
@@ -1315,16 +1302,7 @@ class Model:
                 filters["dataset_names"] = []
             filters["dataset_names"].extend(dataset_names_from_obj)
 
-            # create model_filter
-            model_filter = filters.copy()
-            model_filter["model_names"] = [self.name]
-            model_filter["dataset_names"] = None
-            model_filter["dataset_geospatial"] = None
-            model_filter["dataset_metadata"] = None
-            model_filter["annotation_types"] = None
-            model_filter["annotation_geometric_area"] = None
-
-        return model_filter, filters
+        return filters
 
     def evaluate_classification(
         self,
@@ -1351,10 +1329,10 @@ class Model:
                 "Evaluation requires the definition of either datasets, dataset filters or both."
             )
 
-        model_filter, datum_filter = self._format_filters(datasets, filters)
+        datum_filter = self._format_filters(datasets, filters)
 
         evaluation = EvaluationRequest(
-            model_filter=model_filter,
+            model_names=self.name,
             datum_filter=datum_filter,
             parameters=EvaluationParameters(task_type=TaskType.CLASSIFICATION),
         )
@@ -1416,10 +1394,10 @@ class Model:
             iou_thresholds_to_return=iou_thresholds_to_return,
         )
 
-        model_filter, datum_filter = self._format_filters(datasets, filters)
+        datum_filter = self._format_filters(datasets, filters)
 
         evaluation = EvaluationRequest(
-            model_filter=model_filter,
+            model_names=self.name,
             datum_filter=datum_filter,
             parameters=parameters,
         )
@@ -1459,11 +1437,11 @@ class Model:
             a job object that can be used to track the status of the job and get the metrics of it upon completion
         """
 
-        model_filter, datum_filter = self._format_filters(datasets, filters)
+        datum_filter = self._format_filters(datasets, filters)
 
         # create evaluation job
         evaluation = EvaluationRequest(
-            model_filter=model_filter,
+            model_names=self.name,
             datum_filter=datum_filter,
             parameters=EvaluationParameters(task_type=TaskType.SEGMENTATION),
         )

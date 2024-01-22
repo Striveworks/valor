@@ -25,6 +25,23 @@ def test_evaluate_detection(
     gt_dets1: list[GroundTruth],
     pred_dets: list[Prediction],
 ):
+    """
+    Test detection evaluations with area thresholds.
+
+    gt_dets1
+        datum 1
+            - Label (k1, v1) with Annotation area = 1500
+            - Label (k2, v2) with Annotation area = 57,510
+        datum2
+            - Label (k1, v1) with Annotation area = 1100
+
+    pred_dets
+        datum 1
+            - Label (k1, v1) with Annotation area = 1500
+            - Label (k2, v2) with Annotation area = 57,510
+        datum2
+            - Label (k1, v1) with Annotation area = 1100
+    """
     dataset = Dataset(client, dataset_name)
     for gt in gt_dets1:
         dataset.add_groundtruth(gt)
@@ -93,11 +110,7 @@ def test_evaluate_detection(
     result = eval_job.dict()
     assert result == {
         "id": eval_job.id,
-        "model_filter": {
-            **default_filter_properties,
-            "model_names": [model_name],
-            "label_keys": ["k1"],
-        },
+        "model_name": model_name,
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
@@ -192,11 +205,7 @@ def test_evaluate_detection(
     result = eval_job_bounded_area_10_2000.dict()
     assert result == {
         "id": eval_job_bounded_area_10_2000.id,
-        "model_filter": {
-            **default_filter_properties,
-            "model_names": [model_name],
-            "label_keys": ["k1"],
-        },
+        "model_name": model_name,
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
@@ -245,11 +254,7 @@ def test_evaluate_detection(
     min_area_1200_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_min_area_1200.id,
-        "model_filter": {
-            **default_filter_properties,
-            "model_names": [model_name],
-            "label_keys": ["k1"],
-        },
+        "model_name": model_name,
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
@@ -294,11 +299,7 @@ def test_evaluate_detection(
     max_area_1200_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_max_area_1200.id,
-        "model_filter": {
-            **default_filter_properties,
-            "model_names": [model_name],
-            "label_keys": ["k1"],
-        },
+        "model_name": model_name,
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
@@ -319,7 +320,7 @@ def test_evaluate_detection(
         # check metrics below
         "status": EvaluationStatus.DONE.value,
         "confusion_matrices": [],
-        "missing_pred_labels": [],
+        "missing_pred_labels": [{"key": "k1", "value": "v1"}],
         "ignored_pred_labels": [],
     }
     assert max_area_1200_metrics != expected_metrics
@@ -345,11 +346,7 @@ def test_evaluate_detection(
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_bounded_area_1200_1800.id,
-        "model_filter": {
-            **default_filter_properties,
-            "model_names": [model_name],
-            "label_keys": ["k1"],
-        },
+        "model_name": model_name,
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
@@ -507,11 +504,7 @@ def test_evaluate_detection_with_json_filters(
     bounded_area_metrics = result.pop("metrics")
     assert result == {
         "id": eval_job_bounded_area_1200_1800.id,
-        "model_filter": {
-            **default_filter_properties,
-            "model_names": [model_name],
-            "label_keys": ["k1"],
-        },
+        "model_name": model_name,
         "datum_filter": {
             **default_filter_properties,
             "dataset_names": ["test_dataset"],
@@ -694,13 +687,13 @@ def test_get_evaluations(
     # should contain two different entries, one for each model
     assert len(both_evaluations) == 2
     for evaluation in both_evaluations:
-        assert evaluation["model_filter"]["model_names"][0] in [
+        assert evaluation["model_name"] in [
             "second_model",
             model_name,
         ]
-        if evaluation["model_filter"]["model_names"][0] == model_name:
+        if evaluation["model_name"] == model_name:
             assert evaluation["metrics"] == expected_metrics
-        elif evaluation["model_filter"]["model_names"][0] == "second_model":
+        elif evaluation["model_name"] == "second_model":
             assert evaluation["metrics"] == second_model_expected_metrics
 
     # should be equivalent since there are only two models attributed to this dataset

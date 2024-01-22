@@ -114,13 +114,7 @@ def test_generate_prediction_data(client: Client):
     ]:
         eval_dict.pop(key)
     assert eval_dict == {
-        "model_filter": {
-            **asdict(
-                Filter()
-            ),  # default filter properties with overrides below
-            "model_names": [model_name],
-            "label_keys": ["k1"],
-        },
+        "model_name": model_name,
         "datum_filter": {
             **asdict(
                 Filter()

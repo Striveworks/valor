@@ -21,9 +21,7 @@ def test_to_dataframe():
     df = Evaluation(
         client=None,
         id=1,
-        model_filter=schemas.Filter(
-            model_names=["model1"],
-        ),
+        model_name="model1",
         datum_filter=schemas.Filter(
             dataset_names=["dataset1"],
         ),

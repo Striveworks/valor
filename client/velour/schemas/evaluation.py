@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Union
 
 from velour.enums import AnnotationType, TaskType
 from velour.schemas.filters import Filter
@@ -35,23 +35,21 @@ class EvaluationRequest:
 
     Attributes
     ----------
-    model_filter : schemas.Filter
-        The filter used to enumerate all the models we want to evaluate.
+    model_names : List[str]
+        The list of models we want to evaluate by name.
     datum_filter : schemas.Filter
         The filter object used to define what the model(s) is evaluating against.
     parameters : EvaluationParameters
         Any parameters that are used to modify an evaluation method.
     """
 
-    model_filter: Filter
+    model_names: Union[str, List[str]]
     datum_filter: Filter
     parameters: EvaluationParameters = field(
         default_factory=EvaluationParameters
     )
 
     def __post_init__(self):
-        if isinstance(self.model_filter, dict):
-            self.model_filter = Filter(**self.model_filter)
         if isinstance(self.datum_filter, dict):
             self.datum_filter = Filter(**self.datum_filter)
         if isinstance(self.parameters, dict):
